@@ -33,6 +33,7 @@ export class AppAdminRouter {
   adminUsers = $page({
     path: "/users",
     head: { title: "Users" },
+    use: [$secure({ permissions: ["admin:user:read"] })],
     component: AdminUsers,
     props: () => ({
       defaultHiddenColumns: ["firstName", "lastName"] as const,
@@ -43,6 +44,7 @@ export class AppAdminRouter {
   adminUserDetail = $page({
     path: "/users/:id",
     head: { title: "User" },
+    use: [$secure({ permissions: ["admin:user:read"] })],
     schema: {
       params: t.object({
         id: t.uuid(),
@@ -55,6 +57,7 @@ export class AppAdminRouter {
   adminSessions = $page({
     path: "/sessions",
     head: { title: "Sessions" },
+    use: [$secure({ permissions: ["admin:session:read"] })],
     component: AdminSessions,
     parent: this.adminLayout,
   });
@@ -62,6 +65,7 @@ export class AppAdminRouter {
   adminKeys = $page({
     path: "/keys",
     head: { title: "API keys" },
+    use: [$secure({ permissions: ["admin:api-key:read"] })],
     component: AdminKeys,
     parent: this.adminLayout,
   });
@@ -69,6 +73,7 @@ export class AppAdminRouter {
   adminJobs = $page({
     path: "/jobs",
     head: { title: "Jobs" },
+    use: [$secure({ permissions: ["admin:job:read"] })],
     component: AdminJobs,
     parent: this.adminLayout,
   });
@@ -76,6 +81,7 @@ export class AppAdminRouter {
   adminNotifications = $page({
     path: "/notifications",
     head: { title: "Notifications" },
+    use: [$secure({ permissions: ["admin:notification:read"] })],
     component: AdminNotifications,
     parent: this.adminLayout,
   });
@@ -83,6 +89,7 @@ export class AppAdminRouter {
   adminAudits = $page({
     path: "/audits",
     head: { title: "Audit log" },
+    use: [$secure({ permissions: ["admin:audit:read"] })],
     component: AdminAudits,
     parent: this.adminLayout,
   });
@@ -90,6 +97,7 @@ export class AppAdminRouter {
   adminFiles = $page({
     path: "/files",
     head: { title: "Files" },
+    use: [$secure({ permissions: ["admin:file:read"] })],
     component: AdminFiles,
     parent: this.adminLayout,
   });
@@ -97,6 +105,7 @@ export class AppAdminRouter {
   adminParameters = $page({
     path: "/parameters",
     head: { title: "Parameters" },
+    use: [$secure({ permissions: ["admin:parameter:read"] })],
     component: AdminParameters,
     parent: this.adminLayout,
   });

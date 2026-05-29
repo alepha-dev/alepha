@@ -16,7 +16,7 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Page, type Static, t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
-import { useClient } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import type { useFieldValue } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -97,26 +97,23 @@ export function AdminUsers(props: AdminUsersProps) {
   const { l, tr } = useI18n();
   const dialog = useDialog();
 
-  const [availableRoles, setAvailableRoles] = useState<RoleMeta[]>([]);
-  // Bumped after every per-row mutation (e.g. role toggle) to force the
-  // AlephaTable's fetcher identity to change so the data reloads.
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const roles = (await client.findRoles({
-        query: { userRealmName: props.userRealmName },
-      } as never)) as RoleMeta[];
-      if (!cancelled) setAvailableRoles(roles);
-    })().catch(() => {
-      // The picker simply degrades to read-only text if the metadata
-      // fetch fails; not a blocking error.
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, props.userRealmName]);
+  // Role metadata is a read-only fetch via useQuery: runs on mount, re-runs
+  // when realm changes, aborts on unmount via the passed signal, and exposes
+  // refetch() — called after a role toggle so the picker reflects new state.
+  // The picker simply degrades to read-only text if the metadata fetch fails;
+  // not a blocking error (swallowed in onError).
+  const rolesQuery = useQuery(
+    {
+      handler: ({ signal }) =>
+        client.findRoles(
+          { query: { userRealmName: props.userRealmName } } as never,
+          { request: { signal } },
+        ) as Promise<RoleMeta[]>,
+      onError: () => {},
+    },
+    [client, props.userRealmName],
+  );
+  const availableRoles = rolesQuery.data ?? [];
 
   const fetcher = useCallback(
     async (params: {
@@ -141,33 +138,26 @@ export function AdminUsers(props: AdminUsersProps) {
       });
       return res as Page<UserEntity>;
     },
-    [client, props.userRealmName, reloadKey],
+    [client, props.userRealmName],
   );
 
   const isSelf = (user: UserEntity) => currentUser?.id === user.id;
 
-  const handleToggleRole = useCallback(
-    async (user: UserEntity, role: string, checked: boolean) => {
-      const next = checked
-        ? Array.from(new Set([...(user.roles ?? []), role]))
-        : (user.roles ?? []).filter((r) => r !== role);
-      try {
+  const toggleRole = useAction<[UserEntity, string, boolean]>(
+    {
+      handler: async (user, role, checked) => {
+        const next = checked
+          ? Array.from(new Set([...(user.roles ?? []), role]))
+          : (user.roles ?? []).filter((r) => r !== role);
         await client.updateUser({
           params: { id: user.id },
           query: { userRealmName: props.userRealmName },
           body: { roles: next },
         } as never);
-        setReloadKey((k) => k + 1);
-      } catch (err) {
-        toast.error(
-          tr("admin.users.roleUpdateFailed", {
-            default: "Failed to update roles",
-          }),
-        );
-        throw err;
-      }
+        await rolesQuery.refetch();
+      },
     },
-    [client, props.userRealmName, tr],
+    [client, props.userRealmName],
   );
 
   const userLabel = (u: UserEntity) =>
@@ -175,145 +165,149 @@ export function AdminUsers(props: AdminUsersProps) {
     u.username ||
     tr("admin.users.thisUser", { default: "this user" });
 
-  const handleToggleEnabled = async (user: UserEntity, refresh: () => void) => {
-    if (isSelf(user)) {
-      toast.error(
-        tr("admin.users.cantDisableSelf", {
-          default: "You cannot disable your own account",
-        }),
-      );
-      return;
-    }
-    const enable = !user.enabled;
-    const label = userLabel(user);
-    const ok = await dialog.confirm({
-      title: enable
-        ? tr("admin.users.enableTitle", { default: "Enable user" })
-        : tr("admin.users.disableTitle", { default: "Disable user" }),
-      description: enable
-        ? tr("admin.users.enableConfirm", {
-            default: `Enable ${label}?`,
-            args: [label],
-          })
-        : tr("admin.users.disableConfirm", {
-            default: `Disable ${label}? They will no longer be able to sign in.`,
+  const toggleEnabled = useAction<[UserEntity]>(
+    {
+      handler: async (user) => {
+        if (isSelf(user)) {
+          toast.error(
+            tr("admin.users.cantDisableSelf", {
+              default: "You cannot disable your own account",
+            }),
+          );
+          return;
+        }
+        const enable = !user.enabled;
+        const label = userLabel(user);
+        const ok = await dialog.confirm({
+          title: enable
+            ? tr("admin.users.enableTitle", { default: "Enable user" })
+            : tr("admin.users.disableTitle", { default: "Disable user" }),
+          description: enable
+            ? tr("admin.users.enableConfirm", {
+                default: `Enable ${label}?`,
+                args: [label],
+              })
+            : tr("admin.users.disableConfirm", {
+                default: `Disable ${label}? They will no longer be able to sign in.`,
+                args: [label],
+              }),
+          destructive: !enable,
+        });
+        if (!ok) return;
+        await client.updateUser({
+          params: { id: user.id },
+          query: { userRealmName: props.userRealmName },
+          body: { enabled: enable },
+        });
+        toast.success(
+          enable
+            ? tr("admin.users.enabled", { default: "User enabled" })
+            : tr("admin.users.disabled", { default: "User disabled" }),
+        );
+      },
+    },
+    [client, currentUser, props.userRealmName],
+  );
+
+  const deleteUser = useAction<[UserEntity]>(
+    {
+      handler: async (user) => {
+        const label = userLabel(user);
+        const ok = await dialog.confirm({
+          title: tr("admin.users.deleteTitle", { default: "Delete user" }),
+          description: tr("admin.users.deleteConfirm", {
+            default: `Permanently delete ${label}? This action cannot be undone.`,
             args: [label],
           }),
-      destructive: !enable,
-    });
-    if (!ok) return;
-    await client.updateUser({
-      params: { id: user.id },
-      query: { userRealmName: props.userRealmName },
-      body: { enabled: enable },
-    });
-    toast.success(
-      enable
-        ? tr("admin.users.enabled", { default: "User enabled" })
-        : tr("admin.users.disabled", { default: "User disabled" }),
-    );
-    refresh();
-  };
+          destructive: true,
+        });
+        if (!ok) return;
+        await client.deleteUser({
+          params: { id: user.id },
+          query: { userRealmName: props.userRealmName },
+        });
+        toast.success(tr("admin.users.deleted", { default: "User deleted" }));
+      },
+    },
+    [client, props.userRealmName],
+  );
 
-  const handleDelete = async (user: UserEntity, refresh: () => void) => {
-    const label = userLabel(user);
-    const ok = await dialog.confirm({
-      title: tr("admin.users.deleteTitle", { default: "Delete user" }),
-      description: tr("admin.users.deleteConfirm", {
-        default: `Permanently delete ${label}? This action cannot be undone.`,
-        args: [label],
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    await client.deleteUser({
-      params: { id: user.id },
-      query: { userRealmName: props.userRealmName },
-    });
-    toast.success(tr("admin.users.deleted", { default: "User deleted" }));
-    refresh();
-  };
-
-  const handleBulkDelete = async (
-    items: UserEntity[],
+  const bulkDelete = useAction<[UserEntity[]]>(
     {
-      clearSelection,
-      refresh,
-    }: { clearSelection: () => void; refresh: () => void },
-  ) => {
-    const targets = items.filter((u) => !isSelf(u));
-    if (targets.length === 0) {
-      toast.error(
-        tr("admin.users.noneSelected", {
-          default: "No deletable users in selection",
-        }),
-      );
-      return;
-    }
-    const ok = await dialog.confirm({
-      title: tr("admin.users.bulkDeleteTitle", { default: "Delete users" }),
-      description: tr("admin.users.bulkDeleteConfirm", {
-        default: `Delete ${targets.length} user(s)? This cannot be undone.`,
-        args: [String(targets.length)],
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    const res = await client.deleteUsers({
-      query: { userRealmName: props.userRealmName },
-      body: { ids: targets.map((u) => u.id) },
-    });
-    toast.success(
-      tr("admin.users.bulkDeleted", {
-        default: `${res.deleted.length} user(s) deleted`,
-        args: [String(res.deleted.length)],
-      }),
-    );
-    clearSelection();
-    refresh();
-  };
+      handler: async (items) => {
+        const targets = items.filter((u) => !isSelf(u));
+        if (targets.length === 0) {
+          toast.error(
+            tr("admin.users.noneSelected", {
+              default: "No deletable users in selection",
+            }),
+          );
+          return;
+        }
+        const ok = await dialog.confirm({
+          title: tr("admin.users.bulkDeleteTitle", { default: "Delete users" }),
+          description: tr("admin.users.bulkDeleteConfirm", {
+            default: `Delete ${targets.length} user(s)? This cannot be undone.`,
+            args: [String(targets.length)],
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        const res = await client.deleteUsers({
+          query: { userRealmName: props.userRealmName },
+          body: { ids: targets.map((u) => u.id) },
+        });
+        toast.success(
+          tr("admin.users.bulkDeleted", {
+            default: `${res.deleted.length} user(s) deleted`,
+            args: [String(res.deleted.length)],
+          }),
+        );
+      },
+    },
+    [client, currentUser, props.userRealmName],
+  );
 
-  const handleBulkDisable = async (
-    items: UserEntity[],
+  const bulkDisable = useAction<[UserEntity[]]>(
     {
-      clearSelection,
-      refresh,
-    }: { clearSelection: () => void; refresh: () => void },
-  ) => {
-    const enabled = items.filter((u) => u.enabled && !isSelf(u));
-    if (enabled.length === 0) {
-      toast.error(
-        tr("admin.users.noneSelected", {
-          default: "No active users in selection",
-        }),
-      );
-      return;
-    }
-    const ok = await dialog.confirm({
-      title: tr("admin.users.bulkDisableTitle", { default: "Disable users" }),
-      description: tr("admin.users.bulkDisableConfirm", {
-        default: `Disable ${enabled.length} user(s)? They will no longer be able to sign in.`,
-        args: [String(enabled.length)],
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    for (const u of enabled) {
-      await client.updateUser({
-        params: { id: u.id },
-        query: { userRealmName: props.userRealmName },
-        body: { enabled: false },
-      });
-    }
-    toast.success(
-      tr("admin.users.bulkDisabled", {
-        default: `${enabled.length} user(s) disabled`,
-        args: [String(enabled.length)],
-      }),
-    );
-    clearSelection();
-    refresh();
-  };
+      handler: async (items) => {
+        const enabled = items.filter((u) => u.enabled && !isSelf(u));
+        if (enabled.length === 0) {
+          toast.error(
+            tr("admin.users.noneSelected", {
+              default: "No active users in selection",
+            }),
+          );
+          return;
+        }
+        const ok = await dialog.confirm({
+          title: tr("admin.users.bulkDisableTitle", {
+            default: "Disable users",
+          }),
+          description: tr("admin.users.bulkDisableConfirm", {
+            default: `Disable ${enabled.length} user(s)? They will no longer be able to sign in.`,
+            args: [String(enabled.length)],
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        for (const u of enabled) {
+          await client.updateUser({
+            params: { id: u.id },
+            query: { userRealmName: props.userRealmName },
+            body: { enabled: false },
+          });
+        }
+        toast.success(
+          tr("admin.users.bulkDisabled", {
+            default: `${enabled.length} user(s) disabled`,
+            args: [String(enabled.length)],
+          }),
+        );
+      },
+    },
+    [client, currentUser, props.userRealmName],
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
@@ -353,7 +347,11 @@ export function AdminUsers(props: AdminUsersProps) {
             }),
             icon: UserX,
             destructive: true,
-            onClick: handleBulkDisable,
+            onClick: async (items, ctx) => {
+              await bulkDisable.run(items);
+              ctx.clearSelection();
+              ctx.refresh();
+            },
           },
           {
             label: tr("admin.users.bulkDelete", {
@@ -361,7 +359,11 @@ export function AdminUsers(props: AdminUsersProps) {
             }),
             icon: Trash2,
             destructive: true,
-            onClick: handleBulkDelete,
+            onClick: async (items, ctx) => {
+              await bulkDelete.run(items);
+              ctx.clearSelection();
+              ctx.refresh();
+            },
           },
         ]}
         columns={applyDefaultHidden(props.defaultHiddenColumns, {
@@ -434,7 +436,10 @@ export function AdminUsers(props: AdminUsersProps) {
               <RolesPicker
                 user={u}
                 availableRoles={availableRoles}
-                onToggle={(role, checked) => handleToggleRole(u, role, checked)}
+                onToggle={(role, checked) => toggleRole.run(u, role, checked)}
+                rolesLabel={String(
+                  tr("admin.users.rolesLabel", { default: "Roles" }),
+                )}
                 noRolesLabel={String(
                   tr("admin.users.noRoles", { default: "No roles" }),
                 )}
@@ -491,10 +496,13 @@ export function AdminUsers(props: AdminUsersProps) {
                       })
                     : tr("admin.users.enableUser", { default: "Enable user" }),
                   icon: u.enabled ? UserX : UserCheck,
-                  onClick: (
+                  onClick: async (
                     _u: UserEntity,
                     { refresh }: { refresh: () => void },
-                  ) => handleToggleEnabled(u, refresh),
+                  ) => {
+                    await toggleEnabled.run(u);
+                    refresh();
+                  },
                 },
                 {
                   label: tr("admin.users.deleteUser", {
@@ -502,10 +510,13 @@ export function AdminUsers(props: AdminUsersProps) {
                   }),
                   icon: Trash2,
                   destructive: true,
-                  onClick: (
+                  onClick: async (
                     _u: UserEntity,
                     { refresh }: { refresh: () => void },
-                  ) => handleDelete(u, refresh),
+                  ) => {
+                    await deleteUser.run(u);
+                    refresh();
+                  },
                 },
               ]
             : []),
@@ -519,17 +530,27 @@ function RolesPicker({
   user,
   availableRoles,
   onToggle,
+  rolesLabel,
   noRolesLabel,
 }: {
   user: UserEntity;
   availableRoles: RoleMeta[];
   onToggle: (role: string, checked: boolean) => Promise<void>;
+  rolesLabel: string;
   noRolesLabel: string;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
+  // The users table no longer hard-reloads after a role toggle, so the row's
+  // `user.roles` would stay stale. Track an optimistic override locally so the
+  // label and checkboxes reflect the change immediately; re-sync whenever the
+  // row's roles change (e.g. a table refresh from another action).
+  const [optimisticRoles, setOptimisticRoles] = useState<string[] | null>(null);
+  useEffect(() => {
+    setOptimisticRoles(null);
+  }, [user.roles]);
 
-  const userRoles = user.roles ?? [];
+  const userRoles = optimisticRoles ?? user.roles ?? [];
   const label =
     userRoles.length > 0 ? (
       userRoles.join(", ")
@@ -559,7 +580,9 @@ function RolesPicker({
         {label}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 p-1">
-        <div className="px-2 py-1.5 text-xs text-muted-foreground">Roles</div>
+        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+          {rolesLabel}
+        </div>
         <div className="flex flex-col">
           {rows.map((role) => {
             const checked = userRoles.includes(role.name);
@@ -581,6 +604,13 @@ function RolesPicker({
                     setPending(role.name);
                     try {
                       await onToggle(role.name, Boolean(next));
+                      // Reflect the change locally — the table no longer
+                      // reloads the row after a role toggle.
+                      setOptimisticRoles(
+                        next
+                          ? Array.from(new Set([...userRoles, role.name]))
+                          : userRoles.filter((r) => r !== role.name),
+                      );
                     } finally {
                       setPending(null);
                     }

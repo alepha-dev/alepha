@@ -8,7 +8,7 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { Page } from "alepha";
 import type { AdminSessionController, SessionResource } from "alepha/api/users";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { LogOut } from "lucide-react";
 import { useCallback } from "react";
@@ -27,59 +27,69 @@ export function AdminSessions() {
     [client],
   );
 
-  const handleRevoke = async (s: SessionResource, refresh: () => void) => {
-    const ok = await dialog.confirm({
-      title: tr("admin.sessions.revokeTitle", { default: "Revoke session" }),
-      description: tr("admin.sessions.revokeConfirm", {
-        default: "The user will be signed out from this session.",
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    await client.deleteSession({ params: { id: s.id } });
-    toast.success(tr("admin.sessions.revoked", { default: "Session revoked" }));
-    refresh();
-  };
-
-  const handleBulkRevoke = async (
-    items: SessionResource[],
+  const revoke = useAction<[SessionResource, () => void]>(
     {
-      clearSelection,
-      refresh,
-    }: { clearSelection: () => void; refresh: () => void },
-  ) => {
-    const targets = items.filter((s) => !(s as any).revokedAt);
-    if (targets.length === 0) {
-      toast.error(
-        tr("admin.sessions.noneSelected", {
-          default: "No active sessions in selection",
-        }),
-      );
-      return;
-    }
-    const ok = await dialog.confirm({
-      title: tr("admin.sessions.bulkRevokeTitle", {
-        default: "Revoke sessions",
-      }),
-      description: tr("admin.sessions.bulkRevokeConfirm", {
-        default: `Revoke ${targets.length} session(s)? Affected users will be signed out.`,
-        args: [String(targets.length)],
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    const res = await client.deleteSessions({
-      body: { ids: targets.map((s) => s.id) },
-    });
-    toast.success(
-      tr("admin.sessions.bulkRevoked", {
-        default: `${res.deleted.length} session(s) revoked`,
-        args: [String(res.deleted.length)],
-      }),
-    );
-    clearSelection();
-    refresh();
-  };
+      handler: async (s, refresh) => {
+        const ok = await dialog.confirm({
+          title: tr("admin.sessions.revokeTitle", {
+            default: "Revoke session",
+          }),
+          description: tr("admin.sessions.revokeConfirm", {
+            default: "The user will be signed out from this session.",
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        await client.deleteSession({ params: { id: s.id } });
+        toast.success(
+          tr("admin.sessions.revoked", { default: "Session revoked" }),
+        );
+        refresh();
+      },
+    },
+    [client, dialog, toast, tr],
+  );
+
+  const bulkRevoke = useAction<
+    [SessionResource[], { clearSelection: () => void; refresh: () => void }]
+  >(
+    {
+      handler: async (items, ctx) => {
+        const targets = items.filter((s) => !(s as any).revokedAt);
+        if (targets.length === 0) {
+          toast.error(
+            tr("admin.sessions.noneSelected", {
+              default: "No active sessions in selection",
+            }),
+          );
+          return;
+        }
+        const ok = await dialog.confirm({
+          title: tr("admin.sessions.bulkRevokeTitle", {
+            default: "Revoke sessions",
+          }),
+          description: tr("admin.sessions.bulkRevokeConfirm", {
+            default: `Revoke ${targets.length} session(s)? Affected users will be signed out.`,
+            args: [String(targets.length)],
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        const res = await client.deleteSessions({
+          body: { ids: targets.map((s) => s.id) },
+        });
+        toast.success(
+          tr("admin.sessions.bulkRevoked", {
+            default: `${res.deleted.length} session(s) revoked`,
+            args: [String(res.deleted.length)],
+          }),
+        );
+        ctx.clearSelection();
+        ctx.refresh();
+      },
+    },
+    [client, dialog, toast, tr],
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
@@ -94,7 +104,7 @@ export function AdminSessions() {
             }),
             icon: LogOut,
             destructive: true,
-            onClick: handleBulkRevoke,
+            onClick: (items, ctx) => bulkRevoke.run(items, ctx),
           },
         ]}
         columns={{
@@ -163,7 +173,7 @@ export function AdminSessions() {
                   label: tr("admin.sessions.revoke", { default: "Revoke" }),
                   icon: LogOut,
                   destructive: true,
-                  onClick: (_s, { refresh }) => handleRevoke(s, refresh),
+                  onClick: (_s, { refresh }) => revoke.run(s, refresh),
                 },
               ]
         }

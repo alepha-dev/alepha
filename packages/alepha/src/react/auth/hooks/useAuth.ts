@@ -1,6 +1,6 @@
 import { useAlepha, useStore } from "alepha/react";
 import { currentUserAtom } from "alepha/security";
-import { type HttpVirtualClient, LinkProvider } from "alepha/server/links";
+import { LinkProvider } from "alepha/server/links";
 import { ReactAuth } from "../services/ReactAuth.ts";
 
 export const useAuth = <T extends object = any>() => {
@@ -24,10 +24,15 @@ export const useAuth = <T extends object = any>() => {
     ) => {
       await alepha.inject(ReactAuth).login(provider as string, options);
     },
-    can: <Api extends object = any>(
-      name: keyof HttpVirtualClient<Api>,
-    ): boolean => {
-      return alepha.inject(LinkProvider).can(name as string);
+    /**
+     * UI permission check — does the current user hold this permission?
+     * Supports exact and wildcard names (e.g. `"admin:*"`, `"admin:user:read"`).
+     *
+     * UI affordance only (show/hide/disable). Real access control is enforced
+     * server-side via `$secure` on the route/action.
+     */
+    has: (permission: string): boolean => {
+      return alepha.inject(LinkProvider).can(permission);
     },
   };
 };

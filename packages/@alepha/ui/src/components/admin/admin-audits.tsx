@@ -8,7 +8,7 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { Page } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
 import { useCallback } from "react";
@@ -27,37 +27,38 @@ export function AdminAudits() {
     [client],
   );
 
-  const handleBulkDelete = async (
-    items: AuditEntity[],
+  const bulkDelete = useAction<
+    [AuditEntity[], { clearSelection: () => void; refresh: () => void }]
+  >(
     {
-      clearSelection,
-      refresh,
-    }: { clearSelection: () => void; refresh: () => void },
-  ) => {
-    if (items.length === 0) return;
-    const ok = await dialog.confirm({
-      title: tr("admin.audits.bulkDeleteTitle", {
-        default: "Delete audit entries",
-      }),
-      description: tr("admin.audits.bulkDeleteConfirm", {
-        default: `Delete ${items.length} audit record(s)? Audit logs are usually retained for compliance — this cannot be undone.`,
-        args: [String(items.length)],
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    const res = await client.deleteAudits({
-      body: { ids: items.map((a) => a.id) },
-    });
-    toast.success(
-      tr("admin.audits.bulkDeleted", {
-        default: `${res.deleted.length} audit(s) deleted`,
-        args: [String(res.deleted.length)],
-      }),
-    );
-    clearSelection();
-    refresh();
-  };
+      handler: async (items, ctx) => {
+        if (items.length === 0) return;
+        const ok = await dialog.confirm({
+          title: tr("admin.audits.bulkDeleteTitle", {
+            default: "Delete audit entries",
+          }),
+          description: tr("admin.audits.bulkDeleteConfirm", {
+            default: `Delete ${items.length} audit record(s)? Audit logs are usually retained for compliance — this cannot be undone.`,
+            args: [String(items.length)],
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        const res = await client.deleteAudits({
+          body: { ids: items.map((a) => a.id) },
+        });
+        toast.success(
+          tr("admin.audits.bulkDeleted", {
+            default: `${res.deleted.length} audit(s) deleted`,
+            args: [String(res.deleted.length)],
+          }),
+        );
+        ctx.clearSelection();
+        ctx.refresh();
+      },
+    },
+    [client, dialog, toast, tr],
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
@@ -71,7 +72,7 @@ export function AdminAudits() {
             }),
             icon: Trash2,
             destructive: true,
-            onClick: handleBulkDelete,
+            onClick: (items, ctx) => bulkDelete.run(items, ctx),
           },
         ]}
         header={

@@ -8,7 +8,7 @@ import type { GettingStartedSlide } from "./GettingStarted.tsx";
  * Returns undefined if admin routes are not configured.
  */
 export const useAdminSlide = (): GettingStartedSlide | undefined => {
-  const { user, can } = useAuth();
+  const { user, has } = useAuth();
   const router = useRouter();
 
   // Check if admin routes exist
@@ -18,7 +18,7 @@ export const useAdminSlide = (): GettingStartedSlide | undefined => {
   }
 
   const adminAnchorProps = router.anchor(router.path("adminLayout"));
-  const canAccessAdmin = can("admin:*");
+  const canAccessAdmin = has("admin:*");
 
   // User is admin - show success message
   if (canAccessAdmin) {

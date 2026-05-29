@@ -235,12 +235,17 @@ export interface PagePrimitiveOptions<
   parent?: PagePrimitive<PageConfigSchema, TPropsParent, any>;
 
   /**
-   * Function to determine if the page can be accessed.
+   * UI-affordance predicate for this page's navigation entry — **NOT security**.
+   * For real access control, gate the route with `use: [$secure({ permissions })]`
+   * (server-enforced); `can` is only consulted by the sidebar / nav builder.
    *
-   * If it returns false, the page will not be accessible and a 403 Forbidden error will be returned.
-   * This function can be used to implement permission-based access control.
+   * - `true` (or omitted) → nav entry visible and enabled.
+   * - `"disabled"` → visible but disabled (greyed — e.g. insufficient role / paywalled).
+   * - `false` → hidden.
+   *
+   * The router does NOT block routing on this.
    */
-  can?: () => boolean;
+  can?: () => boolean | "disabled";
 
   /**
    * Catch any error from the `loader` function or during `rendering`.

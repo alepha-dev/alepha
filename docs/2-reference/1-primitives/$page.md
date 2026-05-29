@@ -52,7 +52,7 @@ It provides a declarative way to define pages with powerful features:
 | `lazy` | `Object` | No | Lazy load the component when the page is loaded |
 | `children` | `Array&lt;PagePrimitive&gt; \| (() =&gt; Array&lt;PagePrimitive&gt;)` | No | Attach child pages to create nested routes, adopting them as children of this page |
 | `parent` | `PagePrimitive&lt;PageConfigSchema, TPropsParent, any&gt;` | No | Define a parent page for nested routing |
-| `can` | `Object` | No | Function to determine if the page can be accessed |
+| `can` | `Object` | No | UI-affordance predicate for this page's navigation entry — **NOT security** |
 | `errorHandler` | `ErrorHandler` | No | Catch any error from the `loader` function or during `rendering` |
 | `ssr` | `boolean` | No | Enable or disable server-side rendering for this page |
 | `onServerResponse` | `Object` | No | Called before the server response is sent to the client |

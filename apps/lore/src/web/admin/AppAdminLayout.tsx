@@ -2,6 +2,7 @@ import { AppShell } from "@alepha/ui/components/app-shell/app-shell";
 import { ButtonDark } from "@alepha/ui/components/button-dark/button-dark";
 import { ButtonLanguage } from "@alepha/ui/components/button-language/button-language";
 import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
+import { useAuth } from "alepha/react/auth";
 import { useRouter, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import {
@@ -33,26 +34,67 @@ const PAGE_META: Record<string, { label: string }> = {
   parameters: { label: "Parameters" },
 };
 
+/**
+ * `permission` is the UI gate for the nav entry (hidden when the user lacks
+ * it). The real route gate is `use: [$secure(...)]` on each leaf page in
+ * AppAdminRouter — these must stay in sync.
+ */
 const NAV_GROUPS = [
   {
     label: "Identity",
     items: [
-      { href: "/admin/users", label: "Users", icon: UsersIcon },
-      { href: "/admin/sessions", label: "Sessions", icon: ShieldCheck },
-      { href: "/admin/keys", label: "API keys", icon: KeyRound },
+      {
+        href: "/admin/users",
+        label: "Users",
+        icon: UsersIcon,
+        permission: "admin:user:read",
+      },
+      {
+        href: "/admin/sessions",
+        label: "Sessions",
+        icon: ShieldCheck,
+        permission: "admin:session:read",
+      },
+      {
+        href: "/admin/keys",
+        label: "API keys",
+        icon: KeyRound,
+        permission: "admin:api-key:read",
+      },
     ],
   },
   {
     label: "Operations",
     items: [
-      { href: "/admin/jobs", label: "Jobs", icon: Timer },
-      { href: "/admin/notifications", label: "Notifications", icon: Bell },
-      { href: "/admin/audits", label: "Audit log", icon: ShieldAlert },
-      { href: "/admin/files", label: "Files", icon: Files },
+      {
+        href: "/admin/jobs",
+        label: "Jobs",
+        icon: Timer,
+        permission: "admin:job:read",
+      },
+      {
+        href: "/admin/notifications",
+        label: "Notifications",
+        icon: Bell,
+        permission: "admin:notification:read",
+      },
+      {
+        href: "/admin/audits",
+        label: "Audit log",
+        icon: ShieldAlert,
+        permission: "admin:audit:read",
+      },
+      {
+        href: "/admin/files",
+        label: "Files",
+        icon: Files,
+        permission: "admin:file:read",
+      },
       {
         href: "/admin/parameters",
         label: "Parameters",
         icon: SlidersHorizontal,
+        permission: "admin:parameter:read",
       },
     ],
   },
@@ -66,6 +108,7 @@ const NAV_GROUPS = [
 export function AppAdminLayout() {
   const router = useRouter<any>();
   const state = useRouterState();
+  const { has } = useAuth();
   const path = state.url?.pathname ?? "/admin";
 
   const breadcrumbs = useMemo(() => {
@@ -87,18 +130,22 @@ export function AppAdminLayout() {
     return crumbs;
   }, [path]);
 
-  // Decorate the static groups with per-item `active` so the AppShell
-  // sidebar can highlight the row matching the current pathname.
+  // Hide entries the user lacks permission for (UI gate — the route is
+  // really gated by `use: [$secure(...)]`), then decorate the rest with
+  // per-item `active` so the AppShell sidebar highlights the current row.
+  // Groups left with no visible items are dropped.
   const nav = useMemo(
     () =>
       NAV_GROUPS.map((group) => ({
         ...group,
-        items: group.items.map((item) => ({
-          ...item,
-          active: path === item.href || path.startsWith(`${item.href}/`),
-        })),
-      })),
-    [path],
+        items: group.items
+          .filter((item) => has(item.permission))
+          .map((item) => ({
+            ...item,
+            active: path === item.href || path.startsWith(`${item.href}/`),
+          })),
+      })).filter((group) => group.items.length > 0),
+    [path, has],
   );
 
   return (

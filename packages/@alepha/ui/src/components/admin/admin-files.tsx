@@ -18,13 +18,13 @@ import type {
   FileController,
   FileResource,
 } from "alepha/api/files";
-import { useClient } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Download, Search, Trash2, Upload } from "lucide-react";
 import {
   type ChangeEvent,
   useCallback,
-  useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -55,64 +55,56 @@ export function AdminFiles() {
   const dialog = useDialog();
   const { l, tr } = useI18n();
   const toast = useToast();
+  // Bumped after a successful upload to reload the bucket-stats query and the
+  // table fetcher (which both list it in their deps). Row/bulk actions reload
+  // via the table's own ctx.refresh() and don't touch this.
   const [refreshKey, setRefreshKey] = useState(0);
-  const [uploading, setUploading] = useState(false);
-  const [bucketItems, setBucketItems] = useState<
-    { value: string; label: string }[]
-  >([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Populate the bucket filter from storage stats. Re-runs after uploads so
-  // counts (and any newly-created bucket) stay current.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const stats = await statsClient.getFileStats({} as never);
-      if (cancelled) return;
-      setBucketItems(
-        (stats.byBucket ?? []).map((b) => ({
-          value: b.bucket,
-          label: `${b.bucket} (${b.fileCount})`,
-        })),
-      );
-    })().catch(() => {
-      // The bucket filter degrades to empty if stats can't be fetched.
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [statsClient, refreshKey]);
+  // counts (and any newly-created bucket) stay current. If stats can't be
+  // fetched the filter degrades to empty.
+  const { data: stats } = useQuery(
+    {
+      handler: ({ signal }) =>
+        statsClient.getFileStats({} as never, { request: { signal } }),
+      onError: () => {},
+    },
+    [statsClient, refreshKey],
+  );
+  const bucketItems = useMemo(
+    () =>
+      (stats?.byBucket ?? []).map((b) => ({
+        value: b.bucket,
+        label: `${b.bucket} (${b.fileCount})`,
+      })),
+    [stats],
+  );
 
   const downloadFile = useCallback((f: FileResource) => {
     window.open(`/api/files/${f.id}`, "_blank");
   }, []);
 
-  const handleUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      await client.uploadFile({ body: { file } });
-      toast.success(
-        tr("admin.files.uploaded", {
-          default: `Uploaded ${file.name}`,
-          args: [file.name],
-        }),
-      );
-      setRefreshKey((k) => k + 1);
-    } catch (err) {
-      const msg = (err as Error).message;
-      toast.error(
-        tr("admin.files.uploadFailed", {
-          default: `Upload failed: ${msg}`,
-          args: [msg],
-        }),
-      );
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
+  const upload = useAction<[ChangeEvent<HTMLInputElement>], void>(
+    {
+      handler: async (e) => {
+        const file = e.target.files?.[0];
+        // Reset so the same file can be re-selected on a subsequent click,
+        // regardless of whether the upload succeeds.
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        if (!file) return;
+        await client.uploadFile({ body: { file } });
+        toast.success(
+          tr("admin.files.uploaded", {
+            default: `Uploaded ${file.name}`,
+            args: [file.name],
+          }),
+        );
+        setRefreshKey((k) => k + 1);
+      },
+    },
+    [client, toast, tr],
+  );
 
   const fetcher = useCallback(
     async (params: {
@@ -135,50 +127,57 @@ export function AdminFiles() {
     [client, refreshKey],
   );
 
-  const handleDelete = async (file: FileResource, refresh: () => void) => {
-    const ok = await dialog.confirm({
-      title: tr("admin.files.deleteTitle", { default: "Delete file" }),
-      description: tr("admin.files.deleteConfirm", {
-        default: `Permanently delete "${file.name}"?`,
-        args: [file.name],
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    await client.deleteFile({ params: { id: file.id } });
-    toast.success(tr("admin.files.deleted", { default: "File deleted" }));
-    refresh();
-  };
-
-  const handleBulkDelete = async (
-    items: FileResource[],
+  const deleteFile = useAction<[FileResource, () => void], void>(
     {
-      clearSelection,
-      refresh,
-    }: { clearSelection: () => void; refresh: () => void },
-  ) => {
-    if (items.length === 0) return;
-    const ok = await dialog.confirm({
-      title: tr("admin.files.bulkDeleteTitle", { default: "Delete files" }),
-      description: tr("admin.files.bulkDeleteConfirm", {
-        default: `Permanently delete ${items.length} file(s)? This cannot be undone.`,
-        args: [String(items.length)],
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    const res = await client.deleteFiles({
-      body: { ids: items.map((f) => f.id) },
-    });
-    toast.success(
-      tr("admin.files.bulkDeleted", {
-        default: `${res.deleted.length} file(s) deleted`,
-        args: [String(res.deleted.length)],
-      }),
-    );
-    clearSelection();
-    refresh();
-  };
+      handler: async (file, refresh) => {
+        const ok = await dialog.confirm({
+          title: tr("admin.files.deleteTitle", { default: "Delete file" }),
+          description: tr("admin.files.deleteConfirm", {
+            default: `Permanently delete "${file.name}"?`,
+            args: [file.name],
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        await client.deleteFile({ params: { id: file.id } });
+        toast.success(tr("admin.files.deleted", { default: "File deleted" }));
+        refresh();
+      },
+    },
+    [client, dialog, toast, tr],
+  );
+
+  const bulkDelete = useAction<
+    [FileResource[], { clearSelection: () => void; refresh: () => void }],
+    void
+  >(
+    {
+      handler: async (items, { clearSelection, refresh }) => {
+        if (items.length === 0) return;
+        const ok = await dialog.confirm({
+          title: tr("admin.files.bulkDeleteTitle", { default: "Delete files" }),
+          description: tr("admin.files.bulkDeleteConfirm", {
+            default: `Permanently delete ${items.length} file(s)? This cannot be undone.`,
+            args: [String(items.length)],
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        const res = await client.deleteFiles({
+          body: { ids: items.map((f) => f.id) },
+        });
+        toast.success(
+          tr("admin.files.bulkDeleted", {
+            default: `${res.deleted.length} file(s) deleted`,
+            args: [String(res.deleted.length)],
+          }),
+        );
+        clearSelection();
+        refresh();
+      },
+    },
+    [client, dialog, toast, tr],
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
@@ -186,7 +185,7 @@ export function AdminFiles() {
         ref={fileInputRef}
         type="file"
         className="hidden"
-        onChange={handleUpload}
+        onChange={(e) => upload.run(e)}
       />
       <AlephaTable<FileResource>
         className="min-h-0 flex-1"
@@ -195,10 +194,10 @@ export function AdminFiles() {
         actions={[
           {
             icon: Upload,
-            label: uploading
+            label: upload.loading
               ? tr("admin.files.uploading", { default: "Uploading…" })
               : tr("admin.files.upload", { default: "Upload" }),
-            disabled: uploading,
+            disabled: upload.loading,
             onClick: () => fileInputRef.current?.click(),
           },
         ]}
@@ -241,7 +240,7 @@ export function AdminFiles() {
             }),
             icon: Trash2,
             destructive: true,
-            onClick: handleBulkDelete,
+            onClick: (items, ctx) => bulkDelete.run(items, ctx),
           },
         ]}
         columns={{
@@ -338,7 +337,7 @@ export function AdminFiles() {
             label: tr("admin.files.delete", { default: "Delete" }),
             icon: Trash2,
             destructive: true,
-            onClick: (_f, { refresh }) => handleDelete(f, refresh),
+            onClick: (_f, { refresh }) => deleteFile.run(f, refresh),
           },
         ]}
       />

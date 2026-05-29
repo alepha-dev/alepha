@@ -374,10 +374,19 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
       });
       setData(res.content);
       setMeta(res.page);
+    } catch (error) {
+      // Surface read failures through the same `react:action:error` channel
+      // that useAction/useQuery use, so a mounted <ActionErrorToaster /> toasts
+      // them. Keep the previous rows on screen rather than blanking the table.
+      void alepha.events.emit("react:action:error", {
+        type: "custom",
+        id: "alepha-table:load",
+        error: error as Error,
+      });
     } finally {
       setLoading(false);
     }
-  }, [props.fetch, page, size, sortParam, refreshKey, form]);
+  }, [props.fetch, page, size, sortParam, refreshKey, form, alepha]);
 
   useEffect(() => {
     void load();

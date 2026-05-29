@@ -230,10 +230,12 @@ export function useAction<Args extends any[], Result = void>(
 
         if (options.onError) {
           await options.onError(error);
-        } else {
-          // Re-throw if no custom error handler
-          throw error;
         }
+        // Without a custom `onError`, the error is NOT re-thrown: it is captured
+        // in `error` state and emitted as `react:action:error` (a mounted
+        // <ActionErrorToaster /> surfaces it as a toast). This keeps
+        // fire-and-forget `action.run()` calls from producing unhandled
+        // promise rejections.
       } finally {
         isExecutingRef.current = false;
         if (isMountedRef.current) {

@@ -3,6 +3,10 @@ import * as React from "react";
 void React;
 
 import {
+  ActionErrorToaster,
+  type ActionErrorToasterProps,
+} from "@alepha/ui/components/action-error-toaster/action-error-toaster";
+import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
@@ -346,6 +350,14 @@ export interface AppShellProps {
    */
   children?: ReactNode;
   /**
+   * Surface failed `useAction` / `useQuery` calls as a toast (via the
+   * `react:action:error` event). `true` (default) enables it, `false`
+   * disables it, or pass an options object to configure
+   * (see {@link ActionErrorToasterProps}). Ignored when `embedded` (the
+   * parent layout owns the toaster).
+   */
+  actionErrorToaster?: boolean | ActionErrorToasterProps;
+  /**
    * When `true`, the shell assumes it is mounted inside an outer provider tree
    * and skips its own `<DialogProvider>` and `<Toaster />` wrappers. Use this
    * when a parent layout already provides them.
@@ -490,10 +502,17 @@ export function AppShell(props: AppShellProps) {
     return renderBody();
   }
 
+  const errorToaster = props.actionErrorToaster ?? true;
+
   return (
     <DialogProvider>
       {renderBody()}
       <Toaster />
+      {errorToaster !== false && (
+        <ActionErrorToaster
+          {...(typeof errorToaster === "object" ? errorToaster : {})}
+        />
+      )}
     </DialogProvider>
   );
 }

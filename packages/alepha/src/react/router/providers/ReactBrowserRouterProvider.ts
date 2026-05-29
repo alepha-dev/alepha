@@ -2,7 +2,6 @@ import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { BrowserHeadProvider } from "alepha/react/head";
 import { type Route, RouterProvider } from "alepha/router";
-import { ForbiddenError } from "alepha/server";
 import { createElement, type ReactNode } from "react";
 import NotFoundPage from "../components/NotFound.tsx";
 import { Redirection } from "../errors/Redirection.ts";
@@ -85,12 +84,9 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
         }
       }
 
-      if (route?.page.can) {
-        const canAccess = route.page.can();
-        if (!canAccess) {
-          throw new ForbiddenError("Access denied to this page.");
-        }
-      }
+      // NOTE: `page.can` is a UI-affordance predicate (sidebar visibility),
+      // NOT a route guard — real access control is `use: [$secure(...)]`.
+      // The router intentionally does not block routing on it.
 
       state.name = route?.page.name;
       state.query = query;

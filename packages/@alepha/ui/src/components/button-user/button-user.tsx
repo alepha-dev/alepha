@@ -174,7 +174,7 @@ export interface ButtonUserAdminMenuItemProps {
    */
   label?: string;
   /**
-   * Permission name checked via `useAuth().can(...)`. Defaults to
+   * Permission name checked via `useAuth().has(...)`. Defaults to
    * `"admin:ui"`. The item is hidden when the check returns false.
    */
   permission?: string;
@@ -183,7 +183,7 @@ export interface ButtonUserAdminMenuItemProps {
 const AdminMenuItem = (props: ButtonUserAdminMenuItemProps) => {
   const auth = useAuth();
   const permission = props.permission ?? "admin:ui";
-  if (!auth.can(permission as never)) return null;
+  if (!auth.has(permission)) return null;
   return (
     <DropdownMenuItem onClick={props.onClick}>
       <Shield className="size-4" />

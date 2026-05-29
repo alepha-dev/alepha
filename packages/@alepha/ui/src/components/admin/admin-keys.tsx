@@ -8,7 +8,7 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { Page } from "alepha";
 import type { AdminApiKeyController } from "alepha/api/keys";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
 import { useCallback } from "react";
@@ -27,60 +27,66 @@ export function AdminKeys() {
     [client],
   );
 
-  const handleRevoke = async (k: any, refresh: () => void) => {
-    const ok = await dialog.confirm({
-      title: tr("admin.keys.revokeTitle", { default: "Revoke API key" }),
-      description: tr("admin.keys.revokeConfirm", {
-        default: `Revoke "${k.name}"? Any apps using this key will lose access.`,
-        args: [k.name],
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    await client.revokeApiKey({ params: { id: k.id } });
-    toast.success(tr("admin.keys.revoked", { default: "API key revoked" }));
-    refresh();
-  };
-
-  const handleBulkRevoke = async (
-    items: any[],
+  const revoke = useAction<[any, () => void]>(
     {
-      clearSelection,
-      refresh,
-    }: { clearSelection: () => void; refresh: () => void },
-  ) => {
-    const targets = items.filter((k) => !k.revokedAt);
-    if (targets.length === 0) {
-      toast.error(
-        tr("admin.keys.noneSelected", {
-          default: "No active API keys in selection",
-        }),
-      );
-      return;
-    }
-    const ok = await dialog.confirm({
-      title: tr("admin.keys.bulkRevokeTitle", {
-        default: "Revoke API keys",
-      }),
-      description: tr("admin.keys.bulkRevokeConfirm", {
-        default: `Revoke ${targets.length} API key(s)? Any apps using these keys will lose access.`,
-        args: [String(targets.length)],
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    const res = await client.revokeApiKeys({
-      body: { ids: targets.map((k) => k.id) },
-    });
-    toast.success(
-      tr("admin.keys.bulkRevoked", {
-        default: `${res.revoked.length} API key(s) revoked`,
-        args: [String(res.revoked.length)],
-      }),
-    );
-    clearSelection();
-    refresh();
-  };
+      handler: async (k, refresh) => {
+        const ok = await dialog.confirm({
+          title: tr("admin.keys.revokeTitle", { default: "Revoke API key" }),
+          description: tr("admin.keys.revokeConfirm", {
+            default: `Revoke "${k.name}"? Any apps using this key will lose access.`,
+            args: [k.name],
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        await client.revokeApiKey({ params: { id: k.id } });
+        toast.success(tr("admin.keys.revoked", { default: "API key revoked" }));
+        refresh();
+      },
+    },
+    [client, dialog, toast, tr],
+  );
+
+  const bulkRevoke = useAction<
+    [any[], { clearSelection: () => void; refresh: () => void }]
+  >(
+    {
+      handler: async (items, ctx) => {
+        const targets = items.filter((k) => !k.revokedAt);
+        if (targets.length === 0) {
+          toast.error(
+            tr("admin.keys.noneSelected", {
+              default: "No active API keys in selection",
+            }),
+          );
+          return;
+        }
+        const ok = await dialog.confirm({
+          title: tr("admin.keys.bulkRevokeTitle", {
+            default: "Revoke API keys",
+          }),
+          description: tr("admin.keys.bulkRevokeConfirm", {
+            default: `Revoke ${targets.length} API key(s)? Any apps using these keys will lose access.`,
+            args: [String(targets.length)],
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        const res = await client.revokeApiKeys({
+          body: { ids: targets.map((k) => k.id) },
+        });
+        toast.success(
+          tr("admin.keys.bulkRevoked", {
+            default: `${res.revoked.length} API key(s) revoked`,
+            args: [String(res.revoked.length)],
+          }),
+        );
+        ctx.clearSelection();
+        ctx.refresh();
+      },
+    },
+    [client, dialog, toast, tr],
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
@@ -94,7 +100,7 @@ export function AdminKeys() {
             }),
             icon: Trash2,
             destructive: true,
-            onClick: handleBulkRevoke,
+            onClick: (items, ctx) => bulkRevoke.run(items, ctx),
           },
         ]}
         header={
@@ -152,7 +158,7 @@ export function AdminKeys() {
             label: tr("admin.keys.revoke", { default: "Revoke" }),
             icon: Trash2,
             destructive: true,
-            onClick: (_k, { refresh }) => handleRevoke(k, refresh),
+            onClick: (_k, { refresh }) => revoke.run(k, refresh),
           },
         ]}
       />

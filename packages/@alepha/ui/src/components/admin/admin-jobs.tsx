@@ -20,7 +20,7 @@ import type {
   JobExecutionResource,
   JobRegistration,
 } from "alepha/api/jobs";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Ban, Play, RotateCcw, Search, Timer } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -108,9 +108,9 @@ export function AdminJobs() {
     [client],
   );
 
-  const trigger = useCallback(
-    async (job: JobRegistration, refresh: () => void) => {
-      try {
+  const triggerAction = useAction<[JobRegistration], void>(
+    {
+      handler: async (job) => {
         await client.triggerJob({ params: { name: job.name }, body: {} });
         toast.success(
           tr("admin.jobs.triggered", {
@@ -118,18 +118,17 @@ export function AdminJobs() {
             args: [job.name],
           }),
         );
-        refresh();
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        toast.error(
-          tr("admin.jobs.triggerFailed", {
-            default: `Failed to trigger: ${msg}`,
-            args: [msg],
-          }),
-        );
-      }
+      },
     },
-    [client, tr],
+    [client, toast, tr],
+  );
+
+  const trigger = useCallback(
+    async (job: JobRegistration, refresh: () => void) => {
+      await triggerAction.run(job);
+      refresh();
+    },
+    [triggerAction.run],
   );
 
   return (
@@ -342,6 +341,18 @@ function ExecutionsPanel(props: ExecutionsPanelProps) {
     [client, jobName],
   );
 
+  const retryAction = useAction<[JobExecutionResource], void>(
+    {
+      handler: async (e) => {
+        await client.retryExecution({ params: { id: e.id } });
+        toast.success(
+          tr("admin.jobs.retried", { default: "Execution re-queued" }),
+        );
+      },
+    },
+    [client, toast, tr],
+  );
+
   const retry = useCallback(
     async (e: JobExecutionResource, refresh: () => void) => {
       const ok = await dialog.confirm({
@@ -351,13 +362,22 @@ function ExecutionsPanel(props: ExecutionsPanelProps) {
         }),
       });
       if (!ok) return;
-      await client.retryExecution({ params: { id: e.id } });
-      toast.success(
-        tr("admin.jobs.retried", { default: "Execution re-queued" }),
-      );
+      await retryAction.run(e);
       refresh();
     },
-    [client, dialog, tr],
+    [dialog, tr, retryAction.run],
+  );
+
+  const cancelAction = useAction<[JobExecutionResource], void>(
+    {
+      handler: async (e) => {
+        await client.cancelExecution({ params: { id: e.id } });
+        toast.success(
+          tr("admin.jobs.cancelled", { default: "Execution cancelled" }),
+        );
+      },
+    },
+    [client, toast, tr],
   );
 
   const cancel = useCallback(
@@ -370,13 +390,10 @@ function ExecutionsPanel(props: ExecutionsPanelProps) {
         destructive: true,
       });
       if (!ok) return;
-      await client.cancelExecution({ params: { id: e.id } });
-      toast.success(
-        tr("admin.jobs.cancelled", { default: "Execution cancelled" }),
-      );
+      await cancelAction.run(e);
       refresh();
     },
-    [client, dialog, tr],
+    [dialog, tr, cancelAction.run],
   );
 
   return (

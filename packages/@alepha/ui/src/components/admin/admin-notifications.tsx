@@ -8,7 +8,7 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { Page } from "alepha";
 import type { AdminNotificationController } from "alepha/api/notifications";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
 import { useCallback } from "react";
@@ -27,37 +27,38 @@ export function AdminNotifications() {
     [client],
   );
 
-  const handleBulkDelete = async (
-    items: any[],
+  const bulkDelete = useAction<
+    [any[], { clearSelection: () => void; refresh: () => void }]
+  >(
     {
-      clearSelection,
-      refresh,
-    }: { clearSelection: () => void; refresh: () => void },
-  ) => {
-    if (items.length === 0) return;
-    const ok = await dialog.confirm({
-      title: tr("admin.notifications.bulkDeleteTitle", {
-        default: "Delete notifications",
-      }),
-      description: tr("admin.notifications.bulkDeleteConfirm", {
-        default: `Delete ${items.length} notification record(s)? This cannot be undone.`,
-        args: [String(items.length)],
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    const res = await client.deleteNotifications({
-      body: { ids: items.map((n) => n.id) },
-    });
-    toast.success(
-      tr("admin.notifications.bulkDeleted", {
-        default: `${res.deleted.length} notification(s) deleted`,
-        args: [String(res.deleted.length)],
-      }),
-    );
-    clearSelection();
-    refresh();
-  };
+      handler: async (items, ctx) => {
+        if (items.length === 0) return;
+        const ok = await dialog.confirm({
+          title: tr("admin.notifications.bulkDeleteTitle", {
+            default: "Delete notifications",
+          }),
+          description: tr("admin.notifications.bulkDeleteConfirm", {
+            default: `Delete ${items.length} notification record(s)? This cannot be undone.`,
+            args: [String(items.length)],
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        const res = await client.deleteNotifications({
+          body: { ids: items.map((n) => n.id) },
+        });
+        toast.success(
+          tr("admin.notifications.bulkDeleted", {
+            default: `${res.deleted.length} notification(s) deleted`,
+            args: [String(res.deleted.length)],
+          }),
+        );
+        ctx.clearSelection();
+        ctx.refresh();
+      },
+    },
+    [client, dialog, toast, tr],
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
@@ -71,7 +72,7 @@ export function AdminNotifications() {
             }),
             icon: Trash2,
             destructive: true,
-            onClick: handleBulkDelete,
+            onClick: (items, ctx) => bulkDelete.run(items, ctx),
           },
         ]}
         header={
