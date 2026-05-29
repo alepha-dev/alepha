@@ -490,6 +490,7 @@ export class SessionService {
       expiresAt,
       lastUsedAt: nowIso,
       ip: request?.ip,
+      country: request?.geo?.country,
       userAgent: request?.userAgent,
       refreshToken,
       clientId,

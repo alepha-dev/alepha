@@ -57,6 +57,13 @@
       "when": 1779981409623,
       "tag": "0007_fluffy_sharon_ventura",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1780089783653,
+      "tag": "0008_breezy_loa",
+      "breakpoints": true
     }
   ]
 }

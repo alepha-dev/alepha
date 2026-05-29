@@ -115,7 +115,16 @@ export function AdminSessions() {
           },
           ip: {
             label: tr("admin.sessions.colIp", { default: "IP" }),
-            cell: (s) => <code className="text-xs">{s.ip ?? "—"}</code>,
+            cell: (s) => (
+              <span className="flex items-center gap-1.5">
+                <code className="text-xs">{s.ip ?? "—"}</code>
+                {s.country ? (
+                  <span className="text-muted-foreground text-xs uppercase">
+                    {s.country}
+                  </span>
+                ) : null}
+              </span>
+            ),
           },
           userAgent: {
             label: tr("admin.sessions.colDevice", { default: "Device" }),

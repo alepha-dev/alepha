@@ -27,6 +27,12 @@ export const sessions = $entity({
      */
     lastUsedAt: t.optional(t.datetime()),
     ip: t.optional(t.text()),
+    /**
+     * ISO 3166-1 alpha-2 country code derived from the request geo headers
+     * (`cf-ipcountry` on Cloudflare, CDN equivalents elsewhere) at login time.
+     * `null` on pre-migration rows and where geo isn't available.
+     */
+    country: t.optional(t.text({ maxLength: 2 })),
     userAgent: t.optional(
       t.object({
         os: t.text(),

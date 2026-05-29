@@ -24,6 +24,7 @@ export const sessionResourceSchema = t.object({
   userId: t.uuid(),
   expiresAt: t.datetime(),
   ip: t.optional(t.string()),
+  country: t.optional(t.string()),
   userAgent: t.optional(
     t.object({
       os: t.string(),
