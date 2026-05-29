@@ -7,20 +7,37 @@ import { AdminParameters } from "@alepha/ui/components/admin/admin-parameters";
 import { AdminSessions } from "@alepha/ui/components/admin/admin-sessions";
 import { AdminUserDetail } from "@alepha/ui/components/admin/admin-user-detail";
 import { AdminUsers } from "@alepha/ui/components/admin/admin-users";
+import { navPage } from "@alepha/ui/components/nav-shell/nav-page";
 import { t } from "alepha";
 import { $page, Redirection } from "alepha/react/router";
 import { $secure } from "alepha/security";
+import {
+  Bell,
+  Files,
+  KeyRound,
+  ShieldAlert,
+  ShieldCheck,
+  SlidersHorizontal,
+  Timer,
+  UsersIcon,
+} from "lucide-react";
 import { AppAdminLayout } from "./AppAdminLayout.tsx";
 
 /**
- * Admin shell. Each leaf page mounts an `@alepha/ui` admin block. The
- * layout component owns the sidebar nav, breadcrumb trail, dark-mode
- * toggle and account menu. Sub-routes only declare their component.
+ * Admin shell routes. Each leaf is declared with `navPage`, which co-locates
+ * the page's permission (wired into both the `$secure` route gate and the nav
+ * gate) and its `nav` metadata (label / icon / group / order). The sidebar and
+ * breadcrumbs are derived from this tree by `<NavShell>` in AppAdminLayout —
+ * there is no separate hand-maintained nav list.
  */
 export class AppAdminRouter {
   adminLayout = $page({
+    name: "admin",
     path: "/admin",
     use: [$secure({ permissions: ["admin:ui"] })],
+    // Anchors the shell + first breadcrumb ("Admin"). Not itself a nav entry
+    // (the shell root is excluded from its own sidebar).
+    nav: { label: "Admin" },
     loader: async ({ url }) => {
       if (url.pathname === "/admin" || url.pathname === "/admin/") {
         throw new Redirection("/admin/users");
@@ -30,10 +47,11 @@ export class AppAdminRouter {
     component: AppAdminLayout,
   });
 
-  adminUsers = $page({
+  adminUsers = navPage({
     path: "/users",
     head: { title: "Users" },
-    use: [$secure({ permissions: ["admin:user:read"] })],
+    permission: "admin:user:read",
+    nav: { label: "Users", icon: <UsersIcon />, group: "Identity", order: 1 },
     component: AdminUsers,
     props: () => ({
       defaultHiddenColumns: ["firstName", "lastName"] as const,
@@ -41,10 +59,12 @@ export class AppAdminRouter {
     parent: this.adminLayout,
   });
 
-  adminUserDetail = $page({
+  adminUserDetail = navPage({
     path: "/users/:id",
     head: { title: "User" },
-    use: [$secure({ permissions: ["admin:user:read"] })],
+    permission: "admin:user:read",
+    // No `nav` → secured route, but not a sidebar entry. Breadcrumb label
+    // falls back to `head.title`.
     schema: {
       params: t.object({
         id: t.uuid(),
@@ -54,58 +74,92 @@ export class AppAdminRouter {
     parent: this.adminLayout,
   });
 
-  adminSessions = $page({
+  adminSessions = navPage({
     path: "/sessions",
     head: { title: "Sessions" },
-    use: [$secure({ permissions: ["admin:session:read"] })],
+    permission: "admin:session:read",
+    nav: {
+      label: "Sessions",
+      icon: <ShieldCheck />,
+      group: "Identity",
+      order: 2,
+    },
     component: AdminSessions,
     parent: this.adminLayout,
   });
 
-  adminKeys = $page({
+  adminKeys = navPage({
     path: "/keys",
     head: { title: "API keys" },
-    use: [$secure({ permissions: ["admin:api-key:read"] })],
+    permission: "admin:api-key:read",
+    nav: {
+      label: "API keys",
+      icon: <KeyRound />,
+      group: "Identity",
+      order: 3,
+      keywords: ["tokens", "credentials"],
+    },
     component: AdminKeys,
     parent: this.adminLayout,
   });
 
-  adminJobs = $page({
+  adminJobs = navPage({
     path: "/jobs",
     head: { title: "Jobs" },
-    use: [$secure({ permissions: ["admin:job:read"] })],
+    permission: "admin:job:read",
+    nav: { label: "Jobs", icon: <Timer />, group: "Operations", order: 4 },
     component: AdminJobs,
     parent: this.adminLayout,
   });
 
-  adminNotifications = $page({
+  adminNotifications = navPage({
     path: "/notifications",
     head: { title: "Notifications" },
-    use: [$secure({ permissions: ["admin:notification:read"] })],
+    permission: "admin:notification:read",
+    nav: {
+      label: "Notifications",
+      icon: <Bell />,
+      group: "Operations",
+      order: 5,
+    },
     component: AdminNotifications,
     parent: this.adminLayout,
   });
 
-  adminAudits = $page({
+  adminAudits = navPage({
     path: "/audits",
     head: { title: "Audit log" },
-    use: [$secure({ permissions: ["admin:audit:read"] })],
+    permission: "admin:audit:read",
+    nav: {
+      label: "Audit log",
+      icon: <ShieldAlert />,
+      group: "Operations",
+      order: 6,
+    },
     component: AdminAudits,
     parent: this.adminLayout,
   });
 
-  adminFiles = $page({
+  adminFiles = navPage({
     path: "/files",
     head: { title: "Files" },
-    use: [$secure({ permissions: ["admin:file:read"] })],
+    permission: "admin:file:read",
+    nav: { label: "Files", icon: <Files />, group: "Operations", order: 7 },
     component: AdminFiles,
     parent: this.adminLayout,
   });
 
-  adminParameters = $page({
+  adminParameters = navPage({
     path: "/parameters",
     head: { title: "Parameters" },
-    use: [$secure({ permissions: ["admin:parameter:read"] })],
+    permission: "admin:parameter:read",
+    nav: {
+      label: "Parameters",
+      icon: <SlidersHorizontal />,
+      group: "Operations",
+      order: 8,
+      keywords: ["settings", "config", "configuration"],
+    },
     component: AdminParameters,
     parent: this.adminLayout,
   });
