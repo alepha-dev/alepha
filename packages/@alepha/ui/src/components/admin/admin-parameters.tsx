@@ -31,6 +31,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { ParameterDiffDialog } from "./parameter-diff-dialog.tsx";
 import { ParameterHistoryItem } from "./parameter-history-item.tsx";
 import { ParameterSaveDialog } from "./parameter-save-dialog.tsx";
 
@@ -465,6 +466,10 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
     [client, props.name, current],
   );
 
+  // Factory reset is gated behind a confirm dialog that previews the diff
+  // between the current effective value and the compiled defaults.
+  const [resetOpen, setResetOpen] = useState(false);
+
   if (!props.name) {
     // No selection → history pane is hidden, so the editor is the rightmost
     // pane and closes the card on its right edge.
@@ -530,34 +535,60 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
     data.current?.content ?? data.currentValue ?? data.defaultValue ?? {};
 
   return (
-    <ParameterEditorForm
-      name={props.name}
-      schema={schema}
-      initial={initial}
-      schemaHash={data.current?.schemaHash}
-      currentVersion={data.current?.version}
-      initialTags={data.current?.tags ?? undefined}
-      onSubmit={async (content, meta) => {
-        await client.createVersion({
-          params: { name: props.name! },
-          body: {
-            content: content as Record<string, any>,
-            schemaHash,
-            tags: meta.tags.length > 0 ? meta.tags : undefined,
-            activationDate: meta.activationDate,
+    <>
+      <ParameterEditorForm
+        name={props.name}
+        schema={schema}
+        initial={initial}
+        schemaHash={data.current?.schemaHash}
+        currentVersion={data.current?.version}
+        initialTags={data.current?.tags ?? undefined}
+        onSubmit={async (content, meta) => {
+          await client.createVersion({
+            params: { name: props.name! },
+            body: {
+              content: content as Record<string, any>,
+              schemaHash,
+              tags: meta.tags.length > 0 ? meta.tags : undefined,
+              activationDate: meta.activationDate,
+            },
+          });
+          props.onSaved();
+        }}
+        onFactoryReset={() => setResetOpen(true)}
+        factoryResetLoading={factoryReset.loading}
+        onExport={() => {
+          downloadJson(
+            [{ name: props.name!, content: exportContent }],
+            `${props.name}.json`,
+          );
+        }}
+      />
+      <ParameterDiffDialog
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        title={tr("admin.parameters.factoryResetTitle", {
+          default: "Factory reset",
+        })}
+        description={tr("admin.parameters.factoryResetConfirm", {
+          default:
+            "Reset to compiled defaults? The change below will be saved as a new version.",
+        })}
+        previous={initial}
+        current={data.defaultValue ?? {}}
+        confirm={{
+          label: tr("admin.parameters.factoryReset", {
+            default: "Factory reset",
+          }),
+          destructive: true,
+          loading: factoryReset.loading,
+          onConfirm: async () => {
+            await factoryReset.run();
+            setResetOpen(false);
           },
-        });
-        props.onSaved();
-      }}
-      onFactoryReset={factoryReset.run}
-      factoryResetLoading={factoryReset.loading}
-      onExport={() => {
-        downloadJson(
-          [{ name: props.name!, content: exportContent }],
-          `${props.name}.json`,
-        );
-      }}
-    />
+        }}
+      />
+    </>
   );
 };
 
