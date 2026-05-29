@@ -202,6 +202,21 @@ export class JobProvider {
     }
 
     const kind: "cron" | "queue" = options.cron ? "cron" : "queue";
+
+    // Cron jobs keep their last successful run by default, so the admin
+    // "Last run" reflects reality — a routine cron success is otherwise
+    // unrecorded (only failures are), making every healthy cron look like it
+    // "never" ran. Bounded to the latest row (keep.ok=1) to avoid unbounded
+    // growth from recurring ticks. Opt out of recording successes entirely
+    // with `record: "error"` (recommended for very high-frequency crons).
+    if (kind === "cron" && options.record === undefined) {
+      options = {
+        ...options,
+        record: "all",
+        keep: { ...options.keep, ok: options.keep?.ok ?? 1 },
+      };
+    }
+
     this.jobs.set(name, { name, options, kind });
     this.log.debug(`Registered ${kind} job '${name}'`, {
       cron: options.cron,

@@ -115,9 +115,13 @@ export interface JobPrimitiveOptions<T extends TSchema = TSchema>
   /**
    * Whether to record successful executions.
    *
-   * - `"error"` (default for cron, default for queue): only error/cancelled rows kept
+   * - `"error"` (default for queue): only error/cancelled rows kept
    * - `"all"`: keep success rows too (bounded by `keepLastSuccess`)
    * - `"none"`: fire-and-forget, no row even on error
+   *
+   * **Cron jobs default to keeping their last successful run** (`record: "all"`
+   * with `keep.ok = 1`) so the admin "Last run" is accurate — set
+   * `record: "error"` to opt out (e.g. for very high-frequency crons).
    *
    * Note: queue-mode jobs always write a `pending` row at push time (outbox).
    * This setting controls whether that row is kept on success.

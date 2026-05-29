@@ -71,7 +71,7 @@ describe("$job — registration validation", () => {
 // ---------------------------------------------------------------------------
 
 describe("$job — cron mode", () => {
-  it("runs handler inline on trigger, no DB row on success by default", async ({
+  it("runs handler inline on trigger and keeps the last successful run", async ({
     expect,
   }) => {
     const alepha = makeApp();
@@ -89,6 +89,29 @@ describe("$job — cron mode", () => {
     await alepha.start();
     await app.tick.trigger();
     expect(calls).toBe(1);
+    // Cron jobs keep their last successful run by default so "Last run" works.
+    const rows = await app.executions.findMany({
+      where: { jobName: { eq: "App.tick" } },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe("ok");
+  });
+
+  it("records no row on success when record is 'error' (opt-out)", async ({
+    expect,
+  }) => {
+    const alepha = makeApp();
+    class App {
+      executions = $repository(jobExecutionEntity);
+      tick = $job({
+        cron: "0 0 * * *",
+        record: "error",
+        handler: async () => {},
+      });
+    }
+    const app = alepha.inject(App);
+    await alepha.start();
+    await app.tick.trigger();
     const rows = await app.executions.findMany({
       where: { jobName: { eq: "App.tick" } },
     });
