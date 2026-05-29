@@ -237,15 +237,37 @@ export interface PagePrimitiveOptions<
   /**
    * UI-affordance predicate for this page's navigation entry — **NOT security**.
    * For real access control, gate the route with `use: [$secure({ permissions })]`
-   * (server-enforced); `can` is only consulted by the sidebar / nav builder.
+   * (server-enforced); `can` is only consulted by navigation surfaces (sidebar,
+   * breadcrumbs, command palette), never by the router.
+   *
+   * Receives a `{ has }` context (a permission probe equivalent to
+   * `useAuth().has`) so it can express arbitrary access logic — including
+   * OR-of-permissions, which `nav.permission` (AND) cannot.
    *
    * - `true` (or omitted) → nav entry visible and enabled.
    * - `"disabled"` → visible but disabled (greyed — e.g. insufficient role / paywalled).
    * - `false` → hidden.
    *
-   * The router does NOT block routing on this.
+   * For the common "needs these permissions" case, prefer the declarative
+   * {@link PageNav.permission} instead.
    */
-  can?: () => boolean | "disabled";
+  can?: (ctx: PageCanContext) => boolean | "disabled";
+
+  /**
+   * Navigation metadata — declares this page's presence in navigation
+   * surfaces: the sidebar, the breadcrumb trail, and a command palette
+   * (Spotlight). A page WITHOUT `nav` is route-only (reachable by URL but not
+   * listed).
+   *
+   * `$page` is pure React, so `label` / `icon` / `description` / `badge` accept
+   * `ReactNode` (pass `<Users />` directly).
+   *
+   * Visibility is UI-only (NOT security — gate the route with `use: [$secure(...)]`):
+   * an entry is hidden when `nav.hidden`, when `nav.permission` is set and not
+   * fully granted, or when `can()` returns `false`; it renders disabled when
+   * `can()` returns `"disabled"`.
+   */
+  nav?: PageNav;
 
   /**
    * Catch any error from the `loader` function or during `rendering`.
@@ -510,6 +532,60 @@ export class PagePrimitive<
 $page[KIND] = PagePrimitive;
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Context passed to {@link PagePrimitiveOptions.can} — a permission probe
+ * (equivalent to `useAuth().has`) supplied by the navigation builder.
+ */
+export interface PageCanContext {
+  has: (permission: string) => boolean;
+}
+
+/**
+ * Navigation metadata for a page — see {@link PagePrimitiveOptions.nav}.
+ * Consumed by the sidebar, breadcrumbs and the command palette, all derived
+ * from the route tree (no separate nav list).
+ */
+export interface PageNav {
+  /**
+   * Label for nav surfaces. Falls back to the page's `label`, then `head.title`.
+   */
+  label?: ReactNode;
+  /**
+   * Leading icon — a React element, e.g. `icon: <Users />`.
+   */
+  icon?: ReactNode;
+  /**
+   * Section the entry belongs to: sidebar group heading + command-palette section.
+   */
+  group?: string;
+  /**
+   * Sort order within the group (ascending).
+   */
+  order?: number;
+  /**
+   * Permission(s) required to SEE the entry — a single string or an array
+   * (ALL required, matching `$secure({ permissions })`). UI gate only; the
+   * real route gate is `use: [$secure(...)]`. For OR / custom logic use `can`.
+   */
+  permission?: string | string[];
+  /**
+   * Extra search terms for the command palette (synonyms / aliases beyond the label).
+   */
+  keywords?: string[];
+  /**
+   * Short description — command-palette subtitle / sidebar tooltip.
+   */
+  description?: ReactNode;
+  /**
+   * Trailing badge (unread count, "New", …) for the sidebar entry.
+   */
+  badge?: ReactNode;
+  /**
+   * Keep the route but exclude it from nav surfaces (e.g. a `/users/:id` detail page).
+   */
+  hidden?: boolean;
+}
 
 export type ErrorHandler = (
   error: Error,

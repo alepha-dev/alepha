@@ -3,15 +3,24 @@ import { HttpClient, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 import { $page } from "../index.ts";
 
-describe("$page can() access control", () => {
-  it("should return 403 when leaf page can() returns false", async ({
-    expect,
-  }) => {
+/**
+ * `$page.can` is a UI-only navigation predicate (sidebar visibility / disabled
+ * state, command palette) — NOT a route access gate. It is intentionally not
+ * consulted by the server renderer or the browser router: a `can` that only
+ * blocked SSR (and not client-side navigation) would be an inconsistent,
+ * bypassable gate. Real access control is `use: [$secure({ permissions })]`,
+ * which runs in the loader pipeline on both server and client.
+ *
+ * These tests pin that contract: `can()` returning false must NOT block the
+ * page from rendering.
+ */
+describe("$page can() is a UI-only predicate, not a route gate", () => {
+  it("renders the page even when can() returns false", async ({ expect }) => {
     class App {
       home = $page({
         path: "/forbidden",
         can: () => false,
-        component: () => "Should not render",
+        component: () => "Rendered regardless of can()",
       });
     }
 
@@ -23,11 +32,10 @@ describe("$page can() access control", () => {
     const http = alepha.inject(HttpClient);
     const response = await http.fetch(`${server.hostname}/forbidden`);
 
-    expect(response.status).toBe(403);
-    expect(response.data).toBe("Forbidden");
+    expect(response.status).toBe(200);
   });
 
-  it("should return 403 when parent page can() returns false", async ({
+  it("renders a child page even when a parent's can() returns false", async ({
     expect,
   }) => {
     class App {
@@ -52,13 +60,10 @@ describe("$page can() access control", () => {
     const http = alepha.inject(HttpClient);
     const response = await http.fetch(`${server.hostname}/admin/dashboard`);
 
-    expect(response.status).toBe(403);
-    expect(response.data).toBe("Forbidden");
+    expect(response.status).toBe(200);
   });
 
-  it("should allow access when all can() in parent chain return true", async ({
-    expect,
-  }) => {
+  it("renders normally when can() returns true", async ({ expect }) => {
     class App {
       admin = $page({
         path: "/admin",

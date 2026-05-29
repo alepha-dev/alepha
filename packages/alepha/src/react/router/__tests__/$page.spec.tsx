@@ -255,10 +255,11 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.protected.options.can?.()).toBe(true);
+    const ctx = { has: () => false };
+    expect(app.protected.options.can?.(ctx)).toBe(true);
 
     canAccess = false;
-    expect(app.protected.options.can?.()).toBe(false);
+    expect(app.protected.options.can?.(ctx)).toBe(false);
 
     const rendered = await app.protected.render();
     expect(rendered.html).toBe("Protected content");

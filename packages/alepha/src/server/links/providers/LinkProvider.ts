@@ -197,6 +197,16 @@ export class LinkProvider {
    * - `can("admin:user:read")` → O(1) set lookup
    */
   public can(name: string): boolean {
+    // Ensure the registry parsed from the store (actions + permissions) is
+    // loaded. On SSR the `links` getter only calls `loadRegistry` in the
+    // browser branch, so `this.permissions` would otherwise stay empty and
+    // every permission check would (wrongly) fail — making `has()`-gated UI
+    // render differently on the server than on the client (hydration drift).
+    const registry = this.alepha.store.get("alepha.server.request.apiLinks");
+    if (registry && registry !== this.lastLoadedRegistry) {
+      this.loadRegistry(registry);
+    }
+
     // Action check — O(1) map lookup
     if (this.actionMap.size > 0) {
       if (this.actionMap.has(name)) return true;

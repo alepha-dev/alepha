@@ -338,19 +338,10 @@ export class ReactServerProvider {
         );
       }
 
-      // Check access permissions (walk up the parent chain)
-      let target: PageRoute | undefined = route;
-      while (target) {
-        if (target.can && !target.can()) {
-          this.log.warn(
-            `Access to page '${route.name}' is forbidden by can() check on '${target.name}'`,
-          );
-          reply.status = 403;
-          reply.headers["content-type"] = "text/plain";
-          return "Forbidden";
-        }
-        target = target.parent;
-      }
+      // Route access control is enforced by `use: [$secure(...)]` middleware
+      // in the loader pipeline (below). `$page.can` is a UI-only nav gate
+      // (sidebar visibility / disabled state) and is intentionally NOT consulted
+      // here — it has no server-side permission context to evaluate against.
 
       await this.alepha.events.emit("react:server:render:begin", {
         request: serverRequest,

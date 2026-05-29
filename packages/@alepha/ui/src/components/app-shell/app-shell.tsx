@@ -146,12 +146,18 @@ function StatefulSidebarTrigger() {
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
 export interface NavItem {
-  label: string;
+  label: ReactNode;
   /**
    * Required for leaf items. Ignored when `children` is provided (the parent becomes a toggle group).
    */
   href?: string;
-  icon?: IconType;
+  /**
+   * Either an icon *component* (e.g. a lucide `Users`) which is instantiated
+   * with the row's sizing className, or an already-rendered ReactNode element
+   * (e.g. `<Users />`). The latter lets nav metadata declared on a `$page`
+   * (which is pure React) carry its icon as a node — see `useNavTree`.
+   */
+  icon?: IconType | ReactNode;
   /**
    * When provided, renders as the active marker. Compare against current path.
    */
@@ -187,9 +193,33 @@ function hasActiveDescendant(item: NavItem): boolean {
   return (item.children ?? []).some(hasActiveDescendant);
 }
 
+/**
+ * Render a NavItem icon. An already-created element (e.g. `<Users />`, which
+ * `React.isValidElement` recognises) is returned as-is; anything else is
+ * treated as a component *type* — including lucide's `forwardRef` icons, which
+ * are objects rather than plain functions — and instantiated with the row's
+ * sizing className.
+ */
+function renderNavIcon(icon: NavItem["icon"], className: string): ReactNode {
+  if (icon == null || icon === false) return null;
+  if (React.isValidElement(icon)) {
+    // Already an element (e.g. `<Users />`): clone it to apply the row's sizing
+    // className so element icons render at the same size as component icons,
+    // merging with any className the caller already set.
+    const existing = (icon.props as { className?: string })?.className;
+    return React.cloneElement(
+      icon as React.ReactElement<{ className?: string }>,
+      {
+        className: existing ? `${existing} ${className}` : className,
+      },
+    );
+  }
+  const Icon = icon as IconType;
+  return <Icon className={className} />;
+}
+
 function SidebarNavItem(props: { item: NavItem }) {
   const { item } = props;
-  const Icon = item.icon;
   const children = item.children;
   const isGroup = !!children && children.length > 0;
   const [open, setOpen] = useState(
@@ -213,7 +243,7 @@ function SidebarNavItem(props: { item: NavItem }) {
           className="flex h-8 w-full items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 bg-muted/40 px-2 text-sm text-muted-foreground"
           style={{ cursor: "not-allowed" }}
         >
-          {Icon && <Icon className="size-4 shrink-0" />}
+          {renderNavIcon(item.icon, "size-4 shrink-0")}
           <span className="flex-1 truncate text-left">{item.label}</span>
           <Lock className="size-3.5 shrink-0 opacity-70" />
         </div>
@@ -237,10 +267,10 @@ function SidebarNavItem(props: { item: NavItem }) {
     const link = (
       <SidebarMenuButton
         isActive={item.active}
-        tooltip={item.label}
+        tooltip={typeof item.label === "string" ? item.label : undefined}
         render={<Link href={item.href ?? "#"} />}
       >
-        {Icon && <Icon className="size-4" />}
+        {renderNavIcon(item.icon, "size-4")}
         <span>{item.label}</span>
       </SidebarMenuButton>
     );
@@ -269,9 +299,9 @@ function SidebarNavItem(props: { item: NavItem }) {
       <SidebarMenuButton
         onClick={() => setOpen((v) => !v)}
         isActive={item.active}
-        tooltip={item.label}
+        tooltip={typeof item.label === "string" ? item.label : undefined}
       >
-        {Icon && <Icon className="size-4" />}
+        {renderNavIcon(item.icon, "size-4")}
         <span className="flex-1 text-left">{item.label}</span>
         <ChevronRight
           className={`size-4 transition-transform ${open ? "rotate-90" : ""}`}
@@ -288,7 +318,7 @@ function SidebarNavItem(props: { item: NavItem }) {
                   isActive={child.active}
                   render={<Link href={child.href ?? "#"} />}
                 >
-                  {child.icon && <child.icon className="size-4" />}
+                  {renderNavIcon(child.icon, "size-4")}
                   <span>{child.label}</span>
                 </SidebarMenuSubButton>
               )}
@@ -321,7 +351,7 @@ export interface AppShellProps {
   /**
    * Breadcrumb crumbs (last one is rendered as the current page).
    */
-  breadcrumbs?: { label: string; href?: string }[];
+  breadcrumbs?: { label: ReactNode; href?: string }[];
   /**
    * Top-bar right-side content (search, theme toggle, user menu).
    */
