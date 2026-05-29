@@ -469,11 +469,17 @@ export class BuildCloudflareTask extends BuildTask {
       return;
     }
 
+    // NOTE: do NOT set `destination_address` here. On a Cloudflare
+    // `send_email` binding, `destination_address` is a *recipient* allow-list
+    // lock (the worker may then only send TO that one address) — it is not the
+    // sender. Setting it to `EMAIL_FROM` (the sender) broke all outbound mail:
+    // a bare address locked delivery to that single recipient ("email to … not
+    // allowed"), and a display-name form like `Lore <noreply@…>` is a malformed
+    // destination value that Cloudflare rejects with "internal error". The
+    // sender goes in the message `from` field (see CloudflareEmailProvider.send);
+    // leaving the binding unrestricted lets the worker send to any verified
+    // destination.
     const entry: Record<string, unknown> = { name: SEND_EMAIL_DEFAULT_BINDING };
-    const destination = process.env.EMAIL_FROM;
-    if (destination) {
-      entry.destination_address = destination;
-    }
 
     wrangler.send_email.push(entry);
   }
