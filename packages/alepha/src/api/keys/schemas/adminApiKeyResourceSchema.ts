@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { type Static, t } from "alepha";
 
 export const adminApiKeyResourceSchema = t.object({
   id: t.uuid(),
@@ -15,3 +15,5 @@ export const adminApiKeyResourceSchema = t.object({
   revokedAt: t.optional(t.datetime()),
   usageCount: t.integer(),
 });
+
+export type AdminApiKeyResource = Static<typeof adminApiKeyResourceSchema>;

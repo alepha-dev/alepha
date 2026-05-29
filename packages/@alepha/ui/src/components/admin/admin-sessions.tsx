@@ -2,11 +2,12 @@ import * as React from "react";
 
 void React;
 
+import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { PageHeader } from "@alepha/ui/components/admin/page-header";
+import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import type { Page } from "alepha";
 import type { AdminSessionController, SessionResource } from "alepha/api/users";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -21,33 +22,27 @@ export function AdminSessions() {
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
-      const res = await client.findSessions({ query: params as never });
-      return res as Page<SessionResource>;
+      return client.findSessions({ query: params });
     },
     [client],
   );
 
-  const revoke = useAction<[SessionResource, () => void]>(
+  const revoke = useConfirmedAction<[SessionResource, () => void]>(
     {
+      confirm: {
+        title: tr("admin.sessions.revokeTitle", { default: "Revoke session" }),
+        description: tr("admin.sessions.revokeConfirm", {
+          default: "The user will be signed out from this session.",
+        }),
+        destructive: true,
+      },
       handler: async (s, refresh) => {
-        const ok = await dialog.confirm({
-          title: tr("admin.sessions.revokeTitle", {
-            default: "Revoke session",
-          }),
-          description: tr("admin.sessions.revokeConfirm", {
-            default: "The user will be signed out from this session.",
-          }),
-          destructive: true,
-        });
-        if (!ok) return;
         await client.deleteSession({ params: { id: s.id } });
-        toast.success(
-          tr("admin.sessions.revoked", { default: "Session revoked" }),
-        );
         refresh();
       },
+      success: tr("admin.sessions.revoked", { default: "Session revoked" }),
     },
-    [client, dialog, toast, tr],
+    [client, tr],
   );
 
   const bulkRevoke = useAction<
@@ -55,28 +50,20 @@ export function AdminSessions() {
   >(
     {
       handler: async (items, ctx) => {
-        const targets = items.filter((s) => !(s as any).revokedAt);
-        if (targets.length === 0) {
-          toast.error(
-            tr("admin.sessions.noneSelected", {
-              default: "No active sessions in selection",
-            }),
-          );
-          return;
-        }
+        if (items.length === 0) return;
         const ok = await dialog.confirm({
           title: tr("admin.sessions.bulkRevokeTitle", {
             default: "Revoke sessions",
           }),
           description: tr("admin.sessions.bulkRevokeConfirm", {
-            default: `Revoke ${targets.length} session(s)? Affected users will be signed out.`,
-            args: [String(targets.length)],
+            default: `Revoke ${items.length} session(s)? Affected users will be signed out.`,
+            args: [String(items.length)],
           }),
           destructive: true,
         });
         if (!ok) return;
         const res = await client.deleteSessions({
-          body: { ids: targets.map((s) => s.id) },
+          body: { ids: items.map((s) => s.id) },
         });
         toast.success(
           tr("admin.sessions.bulkRevoked", {
@@ -92,7 +79,7 @@ export function AdminSessions() {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
+    <AdminPage>
       <AlephaTable<SessionResource>
         className="min-h-0 flex-1"
         persistenceKey="admin.sessions"
@@ -107,6 +94,14 @@ export function AdminSessions() {
             onClick: (items, ctx) => bulkRevoke.run(items, ctx),
           },
         ]}
+        header={
+          <PageHeader
+            title={tr("admin.sessions.title", { default: "Sessions" })}
+            description={tr("admin.sessions.subtitle", {
+              default: "Active sign-in sessions across all users.",
+            })}
+          />
+        }
         columns={{
           user: {
             label: tr("admin.sessions.colUser", { default: "User" }),
@@ -154,30 +149,24 @@ export function AdminSessions() {
               </span>
             ),
           },
-          status: {
-            label: tr("admin.sessions.colStatus", { default: "Status" }),
+          expiresAt: {
+            label: tr("admin.sessions.colExpires", { default: "Expires" }),
             cell: (s) => (
-              <Badge variant={(s as any).revokedAt ? "outline" : "default"}>
-                {(s as any).revokedAt
-                  ? tr("admin.sessions.revokedBadge", { default: "Revoked" })
-                  : tr("admin.sessions.active", { default: "Active" })}
-              </Badge>
+              <span className="text-muted-foreground text-xs">
+                {String(l(s.expiresAt, { date: "fromNow" }))}
+              </span>
             ),
           },
         }}
-        rowActions={(s) =>
-          (s as any).revokedAt
-            ? []
-            : [
-                {
-                  label: tr("admin.sessions.revoke", { default: "Revoke" }),
-                  icon: LogOut,
-                  destructive: true,
-                  onClick: (_s, { refresh }) => revoke.run(s, refresh),
-                },
-              ]
-        }
+        rowActions={(s) => [
+          {
+            label: tr("admin.sessions.revoke", { default: "Revoke" }),
+            icon: LogOut,
+            destructive: true,
+            onClick: (_s, { refresh }) => revoke.run(s, refresh),
+          },
+        ]}
       />
-    </div>
+    </AdminPage>
   );
 }

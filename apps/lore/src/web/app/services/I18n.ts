@@ -864,9 +864,7 @@ export class I18n {
         "admin.sessions.colIp": "IP",
         "admin.sessions.colDevice": "Device",
         "admin.sessions.colStarted": "Started",
-        "admin.sessions.colStatus": "Status",
-        "admin.sessions.active": "Active",
-        "admin.sessions.revokedBadge": "Revoked",
+        "admin.sessions.colExpires": "Expires",
         "admin.sessions.revoke": "Revoke",
         "admin.sessions.bulkRevoke": "Revoke selected",
         "admin.sessions.revokeTitle": "Revoke session",
@@ -874,7 +872,6 @@ export class I18n {
           "The user will be signed out from this session.",
         "admin.sessions.revoked": "Session revoked",
         "admin.sessions.bulkRevokeTitle": "Revoke sessions",
-        "admin.sessions.noneSelected": "No active sessions in selection",
       },
     }),
   });
@@ -1737,9 +1734,7 @@ export class I18n {
         "admin.sessions.colIp": "IP",
         "admin.sessions.colDevice": "Appareil",
         "admin.sessions.colStarted": "Démarrée",
-        "admin.sessions.colStatus": "Statut",
-        "admin.sessions.active": "Active",
-        "admin.sessions.revokedBadge": "Révoquée",
+        "admin.sessions.colExpires": "Expire",
         "admin.sessions.revoke": "Révoquer",
         "admin.sessions.bulkRevoke": "Révoquer la sélection",
         "admin.sessions.revokeTitle": "Révoquer la session",
@@ -1747,8 +1742,6 @@ export class I18n {
           "L'utilisateur sera déconnecté de cette session.",
         "admin.sessions.revoked": "Session révoquée",
         "admin.sessions.bulkRevokeTitle": "Révoquer les sessions",
-        "admin.sessions.noneSelected":
-          "Aucune session active dans la sélection",
       },
     }),
   });

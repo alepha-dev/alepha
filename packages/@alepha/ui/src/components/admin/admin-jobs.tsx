@@ -2,6 +2,8 @@ import * as React from "react";
 
 void React;
 
+import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { PageHeader } from "@alepha/ui/components/admin/page-header";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
@@ -132,13 +134,21 @@ export function AdminJobs() {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
+    <AdminPage>
       <AlephaTable<JobRegistration>
         className="min-h-0 flex-1"
         persistenceKey="admin.jobs"
         pollMs={POLL_MS}
         rowKey={(j) => j.name}
         fetch={fetcher}
+        header={
+          <PageHeader
+            title={tr("admin.jobs.title", { default: "Jobs" })}
+            description={tr("admin.jobs.subtitle", {
+              default: "Registered cron, queue, and direct jobs.",
+            })}
+          />
+        }
         filters={{
           schema: jobFiltersSchema,
           render: (form) => (
@@ -302,7 +312,7 @@ export function AdminJobs() {
           )}
         </SheetContent>
       </Sheet>
-    </div>
+    </AdminPage>
   );
 }
 

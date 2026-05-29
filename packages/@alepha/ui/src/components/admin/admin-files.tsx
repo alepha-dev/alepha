@@ -2,6 +2,9 @@ import * as React from "react";
 
 void React;
 
+import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { PageHeader } from "@alepha/ui/components/admin/page-header";
+import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
@@ -10,9 +13,8 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@alepha/ui/components/ui/hover-card";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { type Page, type Static, t } from "alepha";
+import { type Static, t } from "alepha";
 import type {
   AdminFileStatsController,
   FileController,
@@ -52,7 +54,6 @@ const isImage = (mimeType?: string) => Boolean(mimeType?.startsWith("image/"));
 export function AdminFiles() {
   const client = useClient<FileController>();
   const statsClient = useClient<AdminFileStatsController>();
-  const dialog = useDialog();
   const { l, tr } = useI18n();
   const toast = useToast();
   // Bumped after a successful upload to reload the bucket-stats query and the
@@ -113,56 +114,52 @@ export function AdminFiles() {
       sort?: string;
       filters?: AdminFileFilters;
     }) => {
-      const res = await client.findFiles({
+      return client.findFiles({
         query: {
           page: params.page,
           size: params.size,
           sort: params.sort,
           name: params.filters?.name || undefined,
           bucket: params.filters?.bucket || undefined,
-        } as never,
+        },
       });
-      return res as Page<FileResource>;
     },
     [client, refreshKey],
   );
 
-  const deleteFile = useAction<[FileResource, () => void], void>(
+  const deleteFile = useConfirmedAction<[FileResource, () => void]>(
     {
+      confirm: (file) => ({
+        title: tr("admin.files.deleteTitle", { default: "Delete file" }),
+        description: tr("admin.files.deleteConfirm", {
+          default: `Permanently delete "${file.name}"?`,
+          args: [file.name],
+        }),
+        destructive: true,
+      }),
       handler: async (file, refresh) => {
-        const ok = await dialog.confirm({
-          title: tr("admin.files.deleteTitle", { default: "Delete file" }),
-          description: tr("admin.files.deleteConfirm", {
-            default: `Permanently delete "${file.name}"?`,
-            args: [file.name],
-          }),
-          destructive: true,
-        });
-        if (!ok) return;
         await client.deleteFile({ params: { id: file.id } });
-        toast.success(tr("admin.files.deleted", { default: "File deleted" }));
         refresh();
       },
+      success: tr("admin.files.deleted", { default: "File deleted" }),
     },
-    [client, dialog, toast, tr],
+    [client, tr],
   );
 
-  const bulkDelete = useAction<
-    [FileResource[], { clearSelection: () => void; refresh: () => void }],
-    void
+  const bulkDelete = useConfirmedAction<
+    [FileResource[], { clearSelection: () => void; refresh: () => void }]
   >(
     {
+      confirm: (items) => ({
+        title: tr("admin.files.bulkDeleteTitle", { default: "Delete files" }),
+        description: tr("admin.files.bulkDeleteConfirm", {
+          default: `Permanently delete ${items.length} file(s)? This cannot be undone.`,
+          args: [String(items.length)],
+        }),
+        destructive: true,
+      }),
       handler: async (items, { clearSelection, refresh }) => {
         if (items.length === 0) return;
-        const ok = await dialog.confirm({
-          title: tr("admin.files.bulkDeleteTitle", { default: "Delete files" }),
-          description: tr("admin.files.bulkDeleteConfirm", {
-            default: `Permanently delete ${items.length} file(s)? This cannot be undone.`,
-            args: [String(items.length)],
-          }),
-          destructive: true,
-        });
-        if (!ok) return;
         const res = await client.deleteFiles({
           body: { ids: items.map((f) => f.id) },
         });
@@ -176,11 +173,11 @@ export function AdminFiles() {
         refresh();
       },
     },
-    [client, dialog, toast, tr],
+    [client, toast, tr],
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
+    <AdminPage>
       <input
         ref={fileInputRef}
         type="file"
@@ -191,6 +188,14 @@ export function AdminFiles() {
         className="min-h-0 flex-1"
         persistenceKey="admin.files"
         fetch={fetcher}
+        header={
+          <PageHeader
+            title={tr("admin.files.title", { default: "Files" })}
+            description={tr("admin.files.subtitle", {
+              default: "Uploaded files across storage buckets.",
+            })}
+          />
+        }
         actions={[
           {
             icon: Upload,
@@ -341,6 +346,6 @@ export function AdminFiles() {
           },
         ]}
       />
-    </div>
+    </AdminPage>
   );
 }

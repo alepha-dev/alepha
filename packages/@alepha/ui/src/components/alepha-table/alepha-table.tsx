@@ -44,6 +44,7 @@ import { cn } from "@alepha/ui/lib/utils";
 import { type Page, type TObject, t } from "alepha";
 import { ClientOnly, useAlepha } from "alepha/react";
 import { type FormModel, useForm } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
 import { Columns3, FunnelX, MoreVertical, RefreshCw, X } from "lucide-react";
 import {
   type ComponentType,
@@ -303,6 +304,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const rowKey = props.rowKey ?? defaultRowKey;
   const size = props.defaultSize ?? 20;
   const alepha = useAlepha();
+  const { tr } = useI18n();
 
   // -- Filter form (internal when `filters` is set, else legacy `form`) -----
 
@@ -828,7 +830,10 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                     }
                     className="text-muted-foreground py-8 text-center"
                   >
-                    {props.emptyMessage ?? "No results."}
+                    {props.emptyMessage ??
+                      String(
+                        tr("alephaTable.empty", { default: "No results." }),
+                      )}
                   </TableCell>
                 </TableRow>
               ) : (

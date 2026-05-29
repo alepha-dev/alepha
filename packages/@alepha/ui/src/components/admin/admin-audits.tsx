@@ -2,13 +2,14 @@ import * as React from "react";
 
 void React;
 
+import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { PageHeader } from "@alepha/ui/components/admin/page-header";
+import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import type { Page } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
-import { useAction, useClient } from "alepha/react";
+import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
 import { useCallback } from "react";
@@ -16,34 +17,31 @@ import { useCallback } from "react";
 export function AdminAudits() {
   const client = useClient<AdminAuditController>();
   const toast = useToast();
-  const dialog = useDialog();
   const { l, tr } = useI18n();
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
-      const res = await client.findAudits({ query: params as never });
-      return res as Page<AuditEntity>;
+      return client.findAudits({ query: params });
     },
     [client],
   );
 
-  const bulkDelete = useAction<
+  const bulkDelete = useConfirmedAction<
     [AuditEntity[], { clearSelection: () => void; refresh: () => void }]
   >(
     {
+      confirm: (items) => ({
+        title: tr("admin.audits.bulkDeleteTitle", {
+          default: "Delete audit entries",
+        }),
+        description: tr("admin.audits.bulkDeleteConfirm", {
+          default: `Delete ${items.length} audit record(s)? Audit logs are usually retained for compliance — this cannot be undone.`,
+          args: [String(items.length)],
+        }),
+        destructive: true,
+      }),
       handler: async (items, ctx) => {
         if (items.length === 0) return;
-        const ok = await dialog.confirm({
-          title: tr("admin.audits.bulkDeleteTitle", {
-            default: "Delete audit entries",
-          }),
-          description: tr("admin.audits.bulkDeleteConfirm", {
-            default: `Delete ${items.length} audit record(s)? Audit logs are usually retained for compliance — this cannot be undone.`,
-            args: [String(items.length)],
-          }),
-          destructive: true,
-        });
-        if (!ok) return;
         const res = await client.deleteAudits({
           body: { ids: items.map((a) => a.id) },
         });
@@ -57,13 +55,14 @@ export function AdminAudits() {
         ctx.refresh();
       },
     },
-    [client, dialog, toast, tr],
+    [client, toast, tr],
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
+    <AdminPage>
       <AlephaTable<AuditEntity>
         className="min-h-0 flex-1"
+        persistenceKey="admin.audits"
         fetch={fetcher}
         bulkActions={[
           {
@@ -76,17 +75,12 @@ export function AdminAudits() {
           },
         ]}
         header={
-          <div>
-            <h1 className="text-lg font-semibold">
-              {tr("admin.audits.title", { default: "Audit log" })}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {tr("admin.audits.subtitle", {
-                default:
-                  "Read-only history of API actions and resource changes.",
-              })}
-            </p>
-          </div>
+          <PageHeader
+            title={tr("admin.audits.title", { default: "Audit log" })}
+            description={tr("admin.audits.subtitle", {
+              default: "Read-only history of API actions and resource changes.",
+            })}
+          />
         }
         columns={{
           createdAt: {
@@ -117,9 +111,7 @@ export function AdminAudits() {
           actor: {
             label: tr("admin.audits.colActor", { default: "Actor" }),
             cell: (a) => (
-              <span className="text-sm">
-                {(a as any).userEmail ?? (a as any).userId ?? "—"}
-              </span>
+              <span className="text-sm">{a.userEmail ?? a.userId ?? "—"}</span>
             ),
           },
           status: {
@@ -134,6 +126,6 @@ export function AdminAudits() {
           },
         }}
       />
-    </div>
+    </AdminPage>
   );
 }

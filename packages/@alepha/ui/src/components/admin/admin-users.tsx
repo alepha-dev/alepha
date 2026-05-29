@@ -2,6 +2,8 @@ import * as React from "react";
 
 void React;
 
+import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { PageHeader } from "@alepha/ui/components/admin/page-header";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Avatar, AvatarFallback } from "@alepha/ui/components/ui/avatar";
@@ -14,7 +16,7 @@ import {
 } from "@alepha/ui/components/ui/popover";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { type Page, type Static, t } from "alepha";
+import { type Static, t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
@@ -125,7 +127,7 @@ export function AdminUsers(props: AdminUsersProps) {
       const preset = params.filters?.status
         ? STATUS_PRESETS[params.filters.status]
         : undefined;
-      const res = await client.findUsers({
+      return client.findUsers({
         query: {
           page: params.page,
           size: params.size,
@@ -134,9 +136,8 @@ export function AdminUsers(props: AdminUsersProps) {
           enabled: preset?.enabled,
           emailVerified: preset?.emailVerified,
           userRealmName: props.userRealmName,
-        } as never,
+        },
       });
-      return res as Page<UserEntity>;
     },
     [client, props.userRealmName],
   );
@@ -310,11 +311,19 @@ export function AdminUsers(props: AdminUsersProps) {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
+    <AdminPage>
       <AlephaTable<UserEntity>
         className="min-h-0 flex-1"
         persistenceKey="admin.users"
         fetch={fetcher}
+        header={
+          <PageHeader
+            title={tr("admin.users.title", { default: "Users" })}
+            description={tr("admin.users.subtitle", {
+              default: "Accounts, roles, and access across realms.",
+            })}
+          />
+        }
         filters={{
           schema: filtersSchema,
           render: (form) => (
@@ -522,7 +531,7 @@ export function AdminUsers(props: AdminUsersProps) {
             : []),
         ]}
       />
-    </div>
+    </AdminPage>
   );
 }
 

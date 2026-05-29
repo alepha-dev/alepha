@@ -2,13 +2,17 @@ import * as React from "react";
 
 void React;
 
+import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { PageHeader } from "@alepha/ui/components/admin/page-header";
+import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import type { Page } from "alepha";
-import type { AdminNotificationController } from "alepha/api/notifications";
-import { useAction, useClient } from "alepha/react";
+import type {
+  AdminNotificationController,
+  NotificationResource,
+} from "alepha/api/notifications";
+import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
 import { useCallback } from "react";
@@ -16,34 +20,34 @@ import { useCallback } from "react";
 export function AdminNotifications() {
   const client = useClient<AdminNotificationController>();
   const toast = useToast();
-  const dialog = useDialog();
   const { l, tr } = useI18n();
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
-      const res = await client.findNotifications({ query: params as never });
-      return res as Page<any>;
+      return client.findNotifications({ query: params });
     },
     [client],
   );
 
-  const bulkDelete = useAction<
-    [any[], { clearSelection: () => void; refresh: () => void }]
+  const bulkDelete = useConfirmedAction<
+    [
+      NotificationResource[],
+      { clearSelection: () => void; refresh: () => void },
+    ]
   >(
     {
+      confirm: (items) => ({
+        title: tr("admin.notifications.bulkDeleteTitle", {
+          default: "Delete notifications",
+        }),
+        description: tr("admin.notifications.bulkDeleteConfirm", {
+          default: `Delete ${items.length} notification record(s)? This cannot be undone.`,
+          args: [String(items.length)],
+        }),
+        destructive: true,
+      }),
       handler: async (items, ctx) => {
         if (items.length === 0) return;
-        const ok = await dialog.confirm({
-          title: tr("admin.notifications.bulkDeleteTitle", {
-            default: "Delete notifications",
-          }),
-          description: tr("admin.notifications.bulkDeleteConfirm", {
-            default: `Delete ${items.length} notification record(s)? This cannot be undone.`,
-            args: [String(items.length)],
-          }),
-          destructive: true,
-        });
-        if (!ok) return;
         const res = await client.deleteNotifications({
           body: { ids: items.map((n) => n.id) },
         });
@@ -57,13 +61,14 @@ export function AdminNotifications() {
         ctx.refresh();
       },
     },
-    [client, dialog, toast, tr],
+    [client, toast, tr],
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
-      <AlephaTable
+    <AdminPage>
+      <AlephaTable<NotificationResource>
         className="min-h-0 flex-1"
+        persistenceKey="admin.notifications"
         fetch={fetcher}
         bulkActions={[
           {
@@ -76,16 +81,14 @@ export function AdminNotifications() {
           },
         ]}
         header={
-          <div>
-            <h1 className="text-lg font-semibold">
-              {tr("admin.notifications.title", { default: "Notifications" })}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {tr("admin.notifications.subtitle", {
-                default: "Delivery log for emails, SMS, and other channels.",
-              })}
-            </p>
-          </div>
+          <PageHeader
+            title={tr("admin.notifications.title", {
+              default: "Notifications",
+            })}
+            description={tr("admin.notifications.subtitle", {
+              default: "Delivery log for emails, SMS, and other channels.",
+            })}
+          />
         }
         columns={{
           createdAt: {
@@ -97,19 +100,21 @@ export function AdminNotifications() {
               </span>
             ),
           },
-          channel: {
-            label: tr("admin.notifications.colChannel", { default: "Channel" }),
-            cell: (n) => <Badge variant="secondary">{n.channel ?? "—"}</Badge>,
+          type: {
+            label: tr("admin.notifications.colType", { default: "Type" }),
+            cell: (n) => <Badge variant="secondary">{n.type ?? "—"}</Badge>,
           },
-          recipient: {
+          contact: {
             label: tr("admin.notifications.colRecipient", {
               default: "Recipient",
             }),
-            cell: (n) => <span className="text-sm">{n.recipient ?? "—"}</span>,
+            cell: (n) => <span className="text-sm">{n.contact ?? "—"}</span>,
           },
-          subject: {
-            label: tr("admin.notifications.colSubject", { default: "Subject" }),
-            cell: (n) => <span className="text-sm">{n.subject ?? "—"}</span>,
+          template: {
+            label: tr("admin.notifications.colTemplate", {
+              default: "Template",
+            }),
+            cell: (n) => <span className="text-sm">{n.template ?? "—"}</span>,
           },
           status: {
             label: tr("admin.notifications.colStatus", { default: "Status" }),
@@ -126,6 +131,6 @@ export function AdminNotifications() {
           },
         }}
       />
-    </div>
+    </AdminPage>
   );
 }

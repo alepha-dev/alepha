@@ -2,12 +2,17 @@ import * as React from "react";
 
 void React;
 
+import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { PageHeader } from "@alepha/ui/components/admin/page-header";
+import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import type { Page } from "alepha";
-import type { AdminApiKeyController } from "alepha/api/keys";
+import type {
+  AdminApiKeyController,
+  AdminApiKeyResource,
+} from "alepha/api/keys";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
@@ -21,34 +26,32 @@ export function AdminKeys() {
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
-      const res = await client.findApiKeys({ query: params as never });
-      return res as Page<any>;
+      return client.findApiKeys({ query: params });
     },
     [client],
   );
 
-  const revoke = useAction<[any, () => void]>(
+  const revoke = useConfirmedAction<[AdminApiKeyResource, () => void]>(
     {
+      confirm: (k) => ({
+        title: tr("admin.keys.revokeTitle", { default: "Revoke API key" }),
+        description: tr("admin.keys.revokeConfirm", {
+          default: `Revoke "${k.name}"? Any apps using this key will lose access.`,
+          args: [k.name],
+        }),
+        destructive: true,
+      }),
       handler: async (k, refresh) => {
-        const ok = await dialog.confirm({
-          title: tr("admin.keys.revokeTitle", { default: "Revoke API key" }),
-          description: tr("admin.keys.revokeConfirm", {
-            default: `Revoke "${k.name}"? Any apps using this key will lose access.`,
-            args: [k.name],
-          }),
-          destructive: true,
-        });
-        if (!ok) return;
         await client.revokeApiKey({ params: { id: k.id } });
-        toast.success(tr("admin.keys.revoked", { default: "API key revoked" }));
         refresh();
       },
+      success: tr("admin.keys.revoked", { default: "API key revoked" }),
     },
-    [client, dialog, toast, tr],
+    [client, tr],
   );
 
   const bulkRevoke = useAction<
-    [any[], { clearSelection: () => void; refresh: () => void }]
+    [AdminApiKeyResource[], { clearSelection: () => void; refresh: () => void }]
   >(
     {
       handler: async (items, ctx) => {
@@ -89,9 +92,10 @@ export function AdminKeys() {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
-      <AlephaTable
+    <AdminPage>
+      <AlephaTable<AdminApiKeyResource>
         className="min-h-0 flex-1"
+        persistenceKey="admin.keys"
         fetch={fetcher}
         bulkActions={[
           {
@@ -104,36 +108,34 @@ export function AdminKeys() {
           },
         ]}
         header={
-          <div>
-            <h1 className="text-lg font-semibold">
-              {tr("admin.keys.title", { default: "API keys" })}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {tr("admin.keys.subtitle", {
-                default: "Programmatic access tokens.",
-              })}
-            </p>
-          </div>
+          <PageHeader
+            title={tr("admin.keys.title", { default: "API keys" })}
+            description={tr("admin.keys.subtitle", {
+              default: "Programmatic access tokens.",
+            })}
+          />
         }
         columns={{
           name: {
             label: tr("admin.keys.colName", { default: "Name" }),
             cell: (k) => <span className="font-medium">{k.name}</span>,
           },
-          prefix: {
+          tokenPrefix: {
             label: tr("admin.keys.colPrefix", { default: "Prefix" }),
-            cell: (k) => <code className="text-xs">{k.prefix ?? "—"}</code>,
+            cell: (k) => (
+              <code className="text-xs">{k.tokenPrefix ?? "—"}</code>
+            ),
           },
           owner: {
             label: tr("admin.keys.colOwner", { default: "Owner" }),
             cell: (k) => <span className="text-sm">{k.userId ?? "—"}</span>,
           },
-          scopes: {
-            label: tr("admin.keys.colScopes", { default: "Scopes" }),
+          roles: {
+            label: tr("admin.keys.colScopes", { default: "Roles" }),
             cell: (k) =>
-              Array.isArray(k.scopes) && k.scopes.length ? (
+              Array.isArray(k.roles) && k.roles.length ? (
                 <div className="flex flex-wrap gap-1">
-                  {k.scopes.map((s: string) => (
+                  {k.roles.map((s: string) => (
                     <Badge key={s} variant="secondary">
                       {s}
                     </Badge>
@@ -162,6 +164,6 @@ export function AdminKeys() {
           },
         ]}
       />
-    </div>
+    </AdminPage>
   );
 }
