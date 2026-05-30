@@ -428,6 +428,68 @@ describe("CloudflareAdapter", () => {
       expect(names).toEqual(["APP_SECRET", "GOOGLE_API_KEY"]);
     });
 
+    test("auto-derives PUBLIC_URL from the configured domain", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        envConfig: { adapter: "cloudflare", domain: "lore.alepha.dev" },
+      });
+
+      await fs.writeFile(
+        "/project/.env.production",
+        ["APP_SECRET=my-secret", ""].join("\n"),
+      );
+
+      const run = createMockRun();
+      await adapter.secrets(ctx, run);
+
+      const bindings = api.bindings.get("acme-portal-production") ?? [];
+      const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
+      expect(publicUrl?.text).toBe("https://lore.alepha.dev");
+    });
+
+    test("derives PUBLIC_URL for a tenant subdomain", async ({ expect }) => {
+      const { adapter, fs, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        envConfig: { adapter: "cloudflare", domain: "alepha.dev" },
+        tenant: "acme",
+      });
+
+      await fs.writeFile(
+        "/project/.env.production",
+        ["APP_SECRET=my-secret", ""].join("\n"),
+      );
+
+      const run = createMockRun();
+      await adapter.secrets(ctx, run);
+
+      const bindings = api.bindings.get("acme-portal-production") ?? [];
+      const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
+      expect(publicUrl?.text).toBe("https://acme.alepha.dev");
+    });
+
+    test("honors an explicit PUBLIC_URL over the derived one", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        envConfig: { adapter: "cloudflare", domain: "lore.alepha.dev" },
+      });
+
+      await fs.writeFile(
+        "/project/.env.production",
+        ["PUBLIC_URL=https://custom.example.com", ""].join("\n"),
+      );
+
+      const run = createMockRun();
+      await adapter.secrets(ctx, run);
+
+      const bindings = api.bindings.get("acme-portal-production") ?? [];
+      const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
+      expect(publicUrl?.text).toBe("https://custom.example.com");
+    });
+
     test("skips when no env file exists", async ({ expect }) => {
       const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {

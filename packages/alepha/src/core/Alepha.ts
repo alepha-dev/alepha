@@ -972,6 +972,33 @@ export class Alepha {
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
+   * Merge additional environment variables into the env store at runtime.
+   *
+   * Serverless entrypoints (Cloudflare Workers) receive their secrets and
+   * vars on the runtime `env` binding rather than `process.env`, so they are
+   * absent from `alepha.env` — which is frozen at `create()` from
+   * `process.env`. Call this from the entrypoint to lift the binding's string
+   * values into `alepha.env`, so `$env` and `alepha.env.*` resolve them (e.g.
+   * `PUBLIC_URL`).
+   *
+   * Only string values are lifted; non-string bindings (D1, R2, KV, queues,
+   * …) are skipped. Existing env values win, so explicit configuration is
+   * never clobbered. The env cache is cleared so subsequent `$env` reads see
+   * the merged values.
+   */
+  public loadEnv(env: Record<string, unknown>): this {
+    const incoming: Record<string, string> = {};
+    for (const [key, value] of Object.entries(env)) {
+      if (typeof value === "string") {
+        incoming[key] = value;
+      }
+    }
+    this.store.set("env", { ...incoming, ...this.env });
+    this.cacheEnv.clear();
+    return this;
+  }
+
+  /**
    * Applies environment variables to the provided schema and state object.
    *
    * It replaces also all templated $ENV inside string values.
@@ -1271,6 +1298,17 @@ export interface Env {
    * The secret key used for signing JWTs, encrypting cookies, and other security features.
    */
   APP_SECRET?: string;
+
+  /**
+   * Public-facing base URL of the deployed app (e.g. "https://lore.alepha.dev").
+   *
+   * Used to render absolute links — emails, OAuth callbacks, sitemap. On the
+   * Cloudflare platform it is auto-derived from the configured production
+   * domain and pushed as a Worker secret by `alepha platform up`; otherwise
+   * set it explicitly in `.env.<env>`. Unset → empty, and absolute-link
+   * builders fall back to relative URLs.
+   */
+  PUBLIC_URL?: string;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -653,11 +653,19 @@ const setWaitUntil = (executionCtx) => {
   }
 };
 
+// Bind the per-invocation Worker \`env\`: keep the full binding (D1, R2, KV, …)
+// in the store for providers, and lift its string values (secrets/vars like
+// PUBLIC_URL) into \`alepha.env\` so \`$env\` resolves them at runtime.
+const bindEnv = (env) => {
+  __alepha.set("cloudflare.env", env);
+  __alepha.loadEnv(env);
+};
+
 export default {
   fetch: async (request, env, executionCtx) => {
     const ctx = { req: request, res: undefined };
 
-    __alepha.set("cloudflare.env", env);
+    bindEnv(env);
     setWaitUntil(executionCtx);
 
     try {
@@ -673,7 +681,7 @@ export default {
   },
 
   scheduled: async (event, env, executionCtx) => {
-    __alepha.set("cloudflare.env", env);
+    bindEnv(env);
     setWaitUntil(executionCtx);
 
     try {
@@ -690,7 +698,7 @@ export default {
   },
 
   queue: async (batch, env, executionCtx) => {
-    __alepha.set("cloudflare.env", env);
+    bindEnv(env);
     setWaitUntil(executionCtx);
 
     try {

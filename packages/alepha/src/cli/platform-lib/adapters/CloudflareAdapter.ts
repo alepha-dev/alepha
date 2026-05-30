@@ -352,6 +352,17 @@ export class CloudflareAdapter extends PlatformAdapter {
       secrets[key] = value;
     }
 
+    // Auto-derive PUBLIC_URL from the configured domain so absolute links
+    // (emails, OAuth callbacks, sitemap) resolve at runtime — the Worker
+    // entrypoint lifts it into `alepha.env` via `loadEnv`. Honors an explicit
+    // PUBLIC_URL in `.env.<env>` (already collected above); never overrides it.
+    if (!secrets.PUBLIC_URL) {
+      const url = this.publicUrl(ctx);
+      if (url) {
+        secrets.PUBLIC_URL = url;
+      }
+    }
+
     if (Object.keys(secrets).length === 0) {
       return;
     }
@@ -439,6 +450,19 @@ export class CloudflareAdapter extends PlatformAdapter {
         },
       });
     }
+  }
+
+  /**
+   * Public base URL for this deploy, derived from the configured domain
+   * (honoring tenant subdomains). Returns undefined when no domain is set or
+   * the host is a wildcard — there's no single resolvable origin to point at.
+   */
+  protected publicUrl(ctx: PlatformContext): string | undefined {
+    const host = tenantDomain(ctx.envConfig.domain, ctx.tenant);
+    if (!host || host.includes("*")) {
+      return undefined;
+    }
+    return `https://${host}`;
   }
 
   /**

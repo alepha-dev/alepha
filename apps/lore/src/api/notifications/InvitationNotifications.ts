@@ -82,7 +82,7 @@ export class InvitationNotifications {
           Math.round((expiresAt - createdAt) / (1000 * 60 * 60 * 24)),
         );
 
-        const baseUrl = process.env.PUBLIC_URL ?? "";
+        const baseUrl = this.alepha.env.PUBLIC_URL ?? "";
         const inboxUrl = `${baseUrl}/auth/profile/invitations`;
 
         const inviterName = inviter.email
