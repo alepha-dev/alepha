@@ -380,18 +380,31 @@ export class CloudflareAdapter extends PlatformAdapter {
 
     // The key set to push, by precedence:
     //   1. `platform.secrets.keys` — explicit override in alepha.config.ts.
-    //   2. `dist/manifest.json` `env` — every key the app declares via `$env`,
-    //      captured at build time. This is the default: CI delivers secrets
-    //      through the deploy job's environment with no `.env` file, and the
-    //      manifest tells us which declared keys to read from `process.env`.
-    //   3. the `.env.<env>` file keys — legacy fallback for older artifacts
-    //      built before the manifest carried `env`.
-    // In every case the value resolves from `.env.<env>` first, then
-    // `process.env`; only declared keys are considered, so ambient runner vars
-    // (PATH, GITHUB_*, …) can never leak.
+    //   2. otherwise the UNION of:
+    //      a. `dist/manifest.json` `env` — every key the app declares via
+    //         `$env`, captured at build time (or the `.env.<env>` file keys as
+    //         a legacy fallback for artifacts built before the manifest carried
+    //         `env`). Lets CI deliver declared secrets from `process.env` with
+    //         no file on the runner.
+    //      b. `.env.<env>.local` keys — the per-deploy override layer. External
+    //         orchestrators (Alepha Rocket) write injected `config.vars` +
+    //         `config.secrets` (e.g. CLUB_CONFIG_JSON, per-tenant OAuth) here,
+    //         and those must reach the worker even though the prebuilt app
+    //         never declared them. Only `.local` is unioned, NOT the base
+    //         `.env.<env>` — so local infra creds (CLOUDFLARE_API_TOKEN, …)
+    //         can't leak in.
+    // In every case the value resolves from `.env.<env>[.local]` first, then
+    // `process.env`; ambient runner vars (PATH, GITHUB_*, …) can never leak.
     const declaredKeys = this.options?.secrets?.keys;
     const manifestKeys = await this.readManifestEnvKeys(ctx.root);
-    const keys = declaredKeys ?? manifestKeys ?? Object.keys(envVars);
+    const localKeys = Object.keys(
+      await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}.local`]),
+    );
+    const keys =
+      declaredKeys ??
+      Array.from(
+        new Set([...(manifestKeys ?? Object.keys(envVars)), ...localKeys]),
+      );
 
     // Filter out binding/build vars, VITE_* vars, and empty values
     const secrets: Record<string, string> = {};

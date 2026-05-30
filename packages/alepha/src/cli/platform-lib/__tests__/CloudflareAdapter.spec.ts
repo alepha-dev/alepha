@@ -566,6 +566,43 @@ describe("CloudflareAdapter", () => {
       ]);
     });
 
+    test("pushes per-deploy keys from .env.<env>.local even when not in the manifest", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+      // Manifest declares only APP_SECRET…
+      await fs.writeFile(
+        "/project/dist/manifest.json",
+        JSON.stringify({ env: ["APP_SECRET"] }),
+      );
+      // …but an orchestrator (Rocket) injected CLUB_CONFIG_JSON into the
+      // per-deploy override file. It must still be pushed.
+      await fs.writeFile(
+        "/project/.env.production.local",
+        ["APP_SECRET=s1", 'CLUB_CONFIG_JSON={"id":"b14"}', ""].join("\n"),
+      );
+
+      const run = createMockRun();
+      await adapter.secrets(ctx, run);
+
+      const pushed = api.secrets.get("acme-portal-production") ?? [];
+      expect(pushed.map((s) => s.name).sort()).toEqual([
+        "APP_SECRET",
+        "CLUB_CONFIG_JSON",
+      ]);
+    });
+
     test("platform.secrets.keys overrides the manifest `env` allowlist", async ({
       expect,
     }) => {

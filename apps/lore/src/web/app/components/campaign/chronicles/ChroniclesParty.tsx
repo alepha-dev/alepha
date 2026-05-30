@@ -11,6 +11,7 @@ import { useI18n } from "alepha/react/i18n";
 import { UserCircle2 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import type { chroniclesPartySchema } from "@/api/schemas/chroniclesSchemas.ts";
+import { publicFileUrl } from "../../../services/fileUrl.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import ChroniclesSection from "./ChroniclesSection.tsx";
 
@@ -73,7 +74,7 @@ const ChroniclesParty = (props: ChroniclesPartyProps) => {
                 {member.picture ? (
                   <img
                     alt={member.name}
-                    src={`/api/files/${member.picture}`}
+                    src={publicFileUrl(member.picture)}
                     className="size-8 shrink-0 rounded-full object-cover"
                   />
                 ) : (
@@ -157,7 +158,7 @@ const ChroniclesParty = (props: ChroniclesPartyProps) => {
                 {member.picture ? (
                   <img
                     alt={member.name}
-                    src={`/api/files/${member.picture}`}
+                    src={publicFileUrl(member.picture)}
                     className="size-8 shrink-0 rounded-full object-cover"
                   />
                 ) : (

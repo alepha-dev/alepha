@@ -28,6 +28,7 @@ import type { AppRouter } from "../../AppRouter.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { displayName } from "../../services/displayName.ts";
+import { publicFileUrl } from "../../services/fileUrl.ts";
 import type { I18n } from "../../services/I18n.ts";
 import QuestDifficulty from "./quest/QuestDifficulty.tsx";
 
@@ -94,7 +95,7 @@ const CampaignBoardTable = () => {
           <img
             alt="user avatar"
             className="size-6 rounded-full"
-            src={`/api/files/${user.picture}`}
+            src={publicFileUrl(user.picture)}
           />
         );
       }

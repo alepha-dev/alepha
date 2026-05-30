@@ -100,6 +100,78 @@ const attachToQuest = async (
   );
 };
 
+/** Upload a real 1×1 PNG via `updateAvatar` → avatars bucket. Returns the
+ *  user's new `picture` file id. */
+const uploadAvatar = async (page: Page): Promise<string> => {
+  return await page.evaluate(async () => {
+    const node = document.getElementById("__ssr");
+    if (!node?.textContent) throw new Error("__ssr missing");
+    const parsed = JSON.parse(node.textContent);
+    const links = parsed["alepha.server.request.apiLinks"];
+    const action = links?.actions?.updateAvatar;
+    if (!action) throw new Error("updateAvatar not in apiLinks");
+    const url = `${links.prefix ?? "/api"}${action.path}`;
+    // Minimal valid 1×1 transparent PNG (avatars bucket is image-only).
+    const b64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const form = new FormData();
+    form.append("file", new Blob([bytes], { type: "image/png" }), "a.png");
+    const r = await fetch(url, {
+      method: action.method ?? "POST",
+      credentials: "include",
+      body: form,
+    });
+    if (!r.ok) throw new Error(`avatar upload failed: ${r.status}`);
+    const u = (await r.json()) as { picture: string };
+    return u.picture;
+  });
+};
+
+/** Fetch the anonymous public route WITHOUT credentials. */
+const fetchPublic = async (page: Page, fileId: string): Promise<number> => {
+  return await page.evaluate(async (id) => {
+    const r = await fetch(`/api/public/files/${id}`);
+    return r.status;
+  }, fileId);
+};
+
+test.describe("Public file access", () => {
+  test("avatars are served anonymously; private attachments are not", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(120_000);
+
+    const email = `pub-${Date.now()}@example.com`;
+    await registerAndVerify(page, email, "GoodPassw0rd");
+    const campaignId = await createCampaignViaWizard(
+      page,
+      `Pub${Date.now()}`.slice(0, 20),
+    );
+
+    const avatarId = await uploadAvatar(page); // avatars bucket → public
+    const { fileId: attachmentId } = await upload(page, campaignId); // private
+    await attachToQuest(page, campaignId, attachmentId);
+
+    // Anonymous browser context — no auth cookie at all.
+    const anon = await browser.newContext();
+    try {
+      const anonPage = await anon.newPage();
+      await anonPage.goto(baseURL!);
+      await anonPage.waitForLoadState("domcontentloaded");
+
+      // Avatar opt-ed into `assertPublic` → served anonymously.
+      expect(await fetchPublic(anonPage, avatarId)).toBe(200);
+      // Private quest attachment must NOT leak through the public route.
+      expect(await fetchPublic(anonPage, attachmentId)).toBe(404);
+    } finally {
+      await anon.close();
+    }
+  });
+});
+
 test.describe("File download authorization", () => {
   test("non-member cannot download another user's quest attachment", async ({
     page,

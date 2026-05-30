@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PetitionController } from "@/api/controllers/PetitionController.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { displayName } from "../../../services/displayName.ts";
+import { publicFileUrl } from "../../../services/fileUrl.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import PageHeader from "../../shared/header/PageHeader.tsx";
 
@@ -530,7 +531,7 @@ const CampaignPetitionRequest = () => {
                 {userPicture ? (
                   <img
                     alt=""
-                    src={`/api/files/${userPicture}`}
+                    src={publicFileUrl(userPicture)}
                     className="size-8 shrink-0 rounded-full object-cover"
                   />
                 ) : (
@@ -560,7 +561,7 @@ const CampaignPetitionRequest = () => {
                     {campaign.icon ? (
                       <img
                         alt=""
-                        src={`/api/files/${campaign.icon}`}
+                        src={publicFileUrl(campaign.icon)}
                         className="size-full object-cover"
                       />
                     ) : (

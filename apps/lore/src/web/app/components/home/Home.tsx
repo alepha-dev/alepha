@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
 import { displayName } from "../../services/displayName.ts";
+import { publicFileUrl } from "../../services/fileUrl.ts";
 import type { I18n } from "../../services/I18n.ts";
 import PageHeader from "../shared/header/PageHeader.tsx";
 import LoreLogo from "../shared/LoreLogo.tsx";
@@ -231,7 +232,7 @@ const CampaignCard = (props: CampaignCardProps) => {
       <div className="bg-muted text-muted-foreground flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-md">
         {props.campaign.icon ? (
           <img
-            src={`/api/files/${props.campaign.icon}`}
+            src={publicFileUrl(props.campaign.icon)}
             alt=""
             className="size-full object-cover"
           />
