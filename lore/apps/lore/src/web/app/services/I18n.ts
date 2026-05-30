@@ -72,27 +72,32 @@ export class I18n {
         "folios.backlinks.title": "Connections",
         "folios.backlinks.inbound": "Linked from",
         "folios.backlinks.outbound": "Links to",
-        "folios.protected.toggle-label": "Protect this folio",
-        "folios.protected.toggle-helper":
-          "Encrypt the content with a passphrase. The server stores only ciphertext — losing the passphrase means losing the folio. Title, tags and summary stay visible to other campaign members; share the passphrase out-of-band with whoever should decrypt.",
+        "folios.protected.encrypt": "Encrypt",
+        "folios.protected.encrypt-title": "Encrypt this folio",
+        "folios.protected.encrypt-description":
+          "Set a passphrase. The content is encrypted in your browser — the server only ever stores ciphertext, and there is no recovery if you forget it. Title, tags and summary stay visible to other campaign members; share the passphrase out-of-band with whoever should decrypt.",
+        "folios.protected.encrypt-failed": "Encryption failed.",
         "folios.protected.passphrase": "Passphrase",
         "folios.protected.passphrase-confirm": "Confirm passphrase",
         "folios.protected.passphrase-mismatch": "Passphrases don't match.",
         "folios.protected.passphrase-weak":
           "Pick a passphrase of at least 8 characters.",
-        "folios.protected.passphrase-required-for-save":
-          "Type the passphrase again to save your changes.",
         "folios.protected.create-warning":
           "There is no recovery. Save this passphrase somewhere safe.",
-        "folios.protected.locked-title": "Protected folio",
+        "folios.protected.state-clear": "Clear",
+        "folios.protected.state-encrypted": "Encrypted",
+        "folios.protected.toggle-aria": "Toggle clear or encrypted view",
         "folios.protected.locked-body":
-          "This folio is end-to-end encrypted. Enter the passphrase to unlock.",
+          "This folio is end-to-end encrypted. Switch to Clear and enter the passphrase to read it.",
         "folios.protected.unlock": "Unlock",
+        "folios.protected.unlock-title": "Unlock folio",
+        "folios.protected.unlock-description":
+          "Enter the passphrase to view this folio.",
         "folios.protected.unlock-failed": "Wrong passphrase.",
+        "folios.protected.unlock-before-edit":
+          "Unlock this folio in the view before editing.",
         "folios.protected.invalid-envelope":
           "The encrypted content looks corrupt or was written by an older version.",
-        "folios.protected.unlocked-badge": "Unlocked",
-        "folios.protected.lock-now": "Lock now",
         "folios.protected.lost-passphrase-hint": "Lost the passphrase?",
         "folios.protected.delete-unrecoverable": "Delete folio",
         "folios.pin": "Pin folio",
@@ -944,28 +949,34 @@ export class I18n {
         "folios.backlinks.title": "Connexions",
         "folios.backlinks.inbound": "Référencé depuis",
         "folios.backlinks.outbound": "Référence vers",
-        "folios.protected.toggle-label": "Protéger ce folio",
-        "folios.protected.toggle-helper":
-          "Chiffrer le contenu avec une phrase secrète. Le serveur ne stocke que le texte chiffré — perdre la phrase secrète signifie perdre le folio. Le titre, les tags et le résumé restent visibles aux autres membres de la campagne ; partagez la phrase secrète hors-bande avec qui doit déchiffrer.",
+        "folios.protected.encrypt": "Chiffrer",
+        "folios.protected.encrypt-title": "Chiffrer ce folio",
+        "folios.protected.encrypt-description":
+          "Définissez une phrase secrète. Le contenu est chiffré dans votre navigateur — le serveur ne stocke que le texte chiffré, et aucune récupération n'est possible si vous l'oubliez. Le titre, les tags et le résumé restent visibles aux autres membres de la campagne ; partagez la phrase secrète hors-bande avec qui doit déchiffrer.",
+        "folios.protected.encrypt-failed": "Le chiffrement a échoué.",
         "folios.protected.passphrase": "Phrase secrète",
         "folios.protected.passphrase-confirm": "Confirmer la phrase secrète",
         "folios.protected.passphrase-mismatch":
           "Les phrases secrètes ne correspondent pas.",
         "folios.protected.passphrase-weak":
           "Choisissez une phrase secrète d'au moins 8 caractères.",
-        "folios.protected.passphrase-required-for-save":
-          "Retapez la phrase secrète pour enregistrer vos modifications.",
         "folios.protected.create-warning":
           "Aucune récupération possible. Conservez cette phrase secrète en lieu sûr.",
-        "folios.protected.locked-title": "Folio protégé",
+        "folios.protected.state-clear": "Clair",
+        "folios.protected.state-encrypted": "Chiffré",
+        "folios.protected.toggle-aria":
+          "Basculer entre l'affichage clair et chiffré",
         "folios.protected.locked-body":
-          "Ce folio est chiffré de bout en bout. Saisissez la phrase secrète pour déverrouiller.",
+          "Ce folio est chiffré de bout en bout. Passez en Clair et saisissez la phrase secrète pour le lire.",
         "folios.protected.unlock": "Déverrouiller",
+        "folios.protected.unlock-title": "Déverrouiller le folio",
+        "folios.protected.unlock-description":
+          "Saisissez la phrase secrète pour afficher ce folio.",
         "folios.protected.unlock-failed": "Phrase secrète incorrecte.",
+        "folios.protected.unlock-before-edit":
+          "Déverrouillez ce folio dans la vue avant de le modifier.",
         "folios.protected.invalid-envelope":
           "Le contenu chiffré semble corrompu ou a été écrit par une ancienne version.",
-        "folios.protected.unlocked-badge": "Déverrouillé",
-        "folios.protected.lock-now": "Verrouiller",
         "folios.protected.lost-passphrase-hint": "Phrase secrète perdue ?",
         "folios.protected.delete-unrecoverable": "Supprimer le folio",
         "folios.pin": "Épingler le folio",

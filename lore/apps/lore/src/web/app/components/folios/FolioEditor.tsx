@@ -1,17 +1,14 @@
 import { Control } from "@alepha/ui/components/control/control";
 import { ControlSelect } from "@alepha/ui/components/control-select/control-select";
 import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Label } from "@alepha/ui/components/ui/label";
-import { Switch } from "@alepha/ui/components/ui/switch";
 import { t } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { ArrowLeft, Lock, Save, ShieldCheck } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, Save } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { AppRouter } from "../../AppRouter.ts";
@@ -70,33 +67,11 @@ const FolioEditor = (props: FolioEditorProps) => {
   const isEdit = !!props.folio;
   const crypto = useInject(CryptoProvider);
 
-  // Protected flow: on create, the user opts in via the switch and types
-  // a passphrase twice. On edit of an existing protected folio, we reuse
-  // the cached session key from `FolioProtectedView` (the user already
-  // unlocked it to read); if no key is cached yet we ask for the
-  // passphrase right here before saving.
-  const [protectedMode, setProtectedMode] = useState(!!props.folio?.protected);
-  const [passphrase, setPassphrase] = useState("");
-  const [passphraseConfirm, setPassphraseConfirm] = useState("");
+  // Encryption is no longer chosen at create time. A clear folio is
+  // encrypted from the view (FolioView → FolioPassphraseDialog). The
+  // editor only re-encrypts an already-protected folio on save, reusing
+  // the session key the user established by unlocking it in the view.
   const [protectError, setProtectError] = useState<string | null>(null);
-
-  // The `useForm` handler is memoized at form-creation time, so its
-  // closure captures the *initial* protectedMode / passphrase values
-  // (both falsy). Mirror the live state into refs so the submit path
-  // sees the user's actual choice. Same pattern as the Turnstile token
-  // in `auth-register.tsx`.
-  const protectedModeRef = useRef(protectedMode);
-  const passphraseRef = useRef(passphrase);
-  const passphraseConfirmRef = useRef(passphraseConfirm);
-  useEffect(() => {
-    protectedModeRef.current = protectedMode;
-  }, [protectedMode]);
-  useEffect(() => {
-    passphraseRef.current = passphrase;
-  }, [passphrase]);
-  useEffect(() => {
-    passphraseConfirmRef.current = passphraseConfirm;
-  }, [passphraseConfirm]);
 
   // Pre-fill the editor with the *decrypted* content when editing a
   // protected folio (assumes the user already unlocked it via the view).
@@ -161,70 +136,33 @@ const FolioEditor = (props: FolioEditorProps) => {
         : (props.folio?.content ?? ""),
     },
     handler: async (data) => {
-      // Protected-mode encryption happens client-side before the request
-      // leaves the tab. The server only ever sees ciphertext.
-      const liveProtectedMode = protectedModeRef.current;
-      const livePassphrase = passphraseRef.current;
-      const livePassphraseConfirm = passphraseConfirmRef.current;
+      // Re-encrypt an already-protected folio client-side before the
+      // request leaves the tab (the server only ever sees ciphertext).
+      // Encryption reuses the session key the user established by
+      // unlocking the folio in the view; without it we can't re-encrypt,
+      // so block the save and point them back to the view to unlock.
+      const isProtected = !!props.folio?.protected;
       let contentToSend = data.content;
-      if (liveProtectedMode) {
-        if (!isEdit) {
-          if (!livePassphrase || livePassphrase !== livePassphraseConfirm) {
-            setProtectError(String(tr("folios.protected.passphrase-mismatch")));
-            return;
-          }
-          if (livePassphrase.length < 8) {
-            setProtectError(String(tr("folios.protected.passphrase-weak")));
-            return;
-          }
+      if (isProtected && props.folio) {
+        const cachedKey = getProtectedKey(props.folio.id);
+        if (!cachedKey) {
+          setProtectError(tr("folios.protected.unlock-before-edit"));
+          return;
         }
-        const cachedKey = props.folio
-          ? getProtectedKey(props.folio.id)
-          : undefined;
-        // For create: fresh salt + derive. For edit with cached key:
-        // reuse it (same passphrase as the existing envelope). For edit
-        // WITHOUT cache: require the user to re-type the passphrase
-        // here.
-        let key: CryptoKey;
-        let saltHex: string;
-        if (!isEdit) {
-          // 128-bit salt: UUID v4 yields 32 hex chars after stripping
-          // dashes. Sync, sufficient entropy for PBKDF2.
-          saltHex = crypto.randomUUID().replace(/-/g, "");
-          key = await crypto.deriveKeyFromPassphrase(livePassphrase, saltHex);
-        } else if (cachedKey) {
-          const existingEnv = JSON.parse(props.folio?.content ?? "{}") as {
-            salt?: string;
-          };
-          saltHex = existingEnv.salt ?? "";
-          if (!saltHex) {
-            setProtectError(String(tr("folios.protected.invalid-envelope")));
-            return;
-          }
-          key = cachedKey;
-        } else {
-          if (!livePassphrase) {
-            setProtectError(
-              String(tr("folios.protected.passphrase-required-for-save")),
-            );
-            return;
-          }
-          const existingEnv = JSON.parse(props.folio?.content ?? "{}") as {
-            salt?: string;
-          };
-          saltHex = existingEnv.salt ?? "";
-          if (!saltHex) {
-            setProtectError(String(tr("folios.protected.invalid-envelope")));
-            return;
-          }
-          key = await crypto.deriveKeyFromPassphrase(livePassphrase, saltHex);
+        const existingEnv = JSON.parse(props.folio.content ?? "{}") as {
+          salt?: string;
+        };
+        const saltHex = existingEnv.salt ?? "";
+        if (!saltHex) {
+          setProtectError(tr("folios.protected.invalid-envelope"));
+          return;
         }
         contentToSend = await crypto.encryptWithPassphrase(
           data.content,
-          key,
+          cachedKey,
           saltHex,
         );
-        if (props.folio) rememberProtectedKey(props.folio.id, key);
+        rememberProtectedKey(props.folio.id, cachedKey);
       }
 
       const saved =
@@ -234,24 +172,18 @@ const FolioEditor = (props: FolioEditorProps) => {
               body: {
                 ...data,
                 content: contentToSend,
-                protected: liveProtectedMode,
+                protected: isProtected,
               },
             })
           : await folioApi.create({
               body: {
                 ...data,
                 content: contentToSend,
-                protected: liveProtectedMode,
+                protected: false,
                 campaignId: campaign?.id,
                 directoryId: props.directoryId,
               },
             });
-
-      // Clear the typed passphrase from component state — it stays in
-      // the derived key (intentional, cached for the session) but the
-      // raw string shouldn't linger longer than it has to.
-      setPassphrase("");
-      setPassphraseConfirm("");
 
       // Update sidebar list
       const next = isEdit
@@ -295,7 +227,7 @@ const FolioEditor = (props: FolioEditorProps) => {
           variant="ghost"
           size="icon"
           onClick={handleBack}
-          aria-label={String(tr("folios.back"))}
+          aria-label={tr("folios.back")}
         >
           <ArrowLeft className="size-4" />
         </Button>
@@ -311,7 +243,7 @@ const FolioEditor = (props: FolioEditorProps) => {
       <form {...form.props} className="flex flex-col gap-4">
         <Control
           input={form.input.title}
-          placeholder={String(tr("folios.title-placeholder"))}
+          placeholder={tr("folios.title-placeholder")}
         />
         <ControlSelect
           input={form.input.tags}
@@ -321,80 +253,19 @@ const FolioEditor = (props: FolioEditorProps) => {
         />
         {/* Folio nesting under other folios was removed by quest #66 —
             folios live in archive directories now. The directory picker
-            lives in the new Archive UI. */}
-
-        {/* Protect-this-folio switch. Disabled in edit mode if the
-            cached session key is missing — toggling to non-protected on
-            an encrypted folio would commit ciphertext as plaintext. */}
-        <div className="bg-card border-border flex flex-col gap-3 rounded-md border p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex flex-1 items-start gap-2">
-              {protectedMode ? (
-                <ShieldCheck className="mt-0.5 size-4 text-emerald-500" />
-              ) : (
-                <Lock className="text-muted-foreground mt-0.5 size-4" />
-              )}
-              <div className="flex flex-col">
-                <Label className="text-sm font-medium">
-                  {tr("folios.protected.toggle-label")}
-                </Label>
-                <span className="text-muted-foreground text-xs">
-                  {tr("folios.protected.toggle-helper")}
-                </span>
-              </div>
-            </div>
-            <Switch
-              checked={protectedMode}
-              onCheckedChange={(v: boolean) => {
-                setProtectedMode(v);
-                setProtectError(null);
-              }}
-              disabled={isEdit}
-              aria-label={String(tr("folios.protected.toggle-label"))}
-            />
-          </div>
-          {protectedMode && !isEdit && (
-            <>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="folio-passphrase" className="text-xs">
-                  {tr("folios.protected.passphrase")}
-                </Label>
-                <Input
-                  id="folio-passphrase"
-                  type="password"
-                  autoComplete="new-password"
-                  value={passphrase}
-                  onChange={(e) => setPassphrase(e.currentTarget.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="folio-passphrase-confirm" className="text-xs">
-                  {tr("folios.protected.passphrase-confirm")}
-                </Label>
-                <Input
-                  id="folio-passphrase-confirm"
-                  type="password"
-                  autoComplete="new-password"
-                  value={passphraseConfirm}
-                  onChange={(e) => setPassphraseConfirm(e.currentTarget.value)}
-                />
-              </div>
-              <p className="text-muted-foreground text-xs italic">
-                {tr("folios.protected.create-warning")}
-              </p>
-            </>
-          )}
-          {protectError && (
-            <p className="text-destructive text-xs" role="alert">
-              {protectError}
-            </p>
-          )}
-        </div>
+            lives in the new Archive UI. Encryption moved to the view
+            (FolioView's Encrypt action); the editor only shows save-time
+            re-encryption errors for an already-protected folio. */}
+        {protectError && (
+          <p className="text-destructive text-xs" role="alert">
+            {protectError}
+          </p>
+        )}
 
         <Control
           input={form.input.content}
           area
-          placeholder={String(tr("folios.content-placeholder"))}
+          placeholder={tr("folios.content-placeholder")}
         />
 
         {props.folio?.pinned && (
