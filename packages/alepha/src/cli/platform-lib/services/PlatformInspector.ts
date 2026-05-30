@@ -6,11 +6,13 @@ import {
   type EnvironmentConfig,
   platformOptions,
 } from "../atoms/platformOptions.ts";
-import { NamingService } from "./NamingService.ts";
+import { NamingService, type Tenancy } from "./NamingService.ts";
 
 export interface ResolvedPlatformConfig {
   project: string;
   defaultEnv: string;
+  /** App tenancy mode (undefined ⇒ "none"). */
+  tenancy?: Tenancy;
   environments: Record<string, EnvironmentConfig>;
 }
 
@@ -50,6 +52,7 @@ export class PlatformInspector {
       return {
         project: this.naming.slugify(project),
         defaultEnv: opts.default ?? "production",
+        tenancy: opts.tenancy,
         environments: opts.environments as Record<string, EnvironmentConfig>,
       };
     }
@@ -61,6 +64,7 @@ export class PlatformInspector {
       return {
         project: this.naming.slugify(manifest.project),
         defaultEnv: manifest.defaultEnv ?? "production",
+        tenancy: manifest.tenancy,
         environments: manifest.environments as Record<
           string,
           EnvironmentConfig
@@ -90,6 +94,7 @@ export default defineConfig({
   protected async readManifest(root: string): Promise<{
     project: string;
     defaultEnv?: string;
+    tenancy?: Tenancy;
     environments?: Record<string, unknown>;
   } | null> {
     try {

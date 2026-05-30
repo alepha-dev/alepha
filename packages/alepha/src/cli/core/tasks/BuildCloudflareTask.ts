@@ -40,6 +40,12 @@ export interface BuildManifest {
    */
   defaultEnv: string;
   /**
+   * Multi-tenancy mode (`none` | `optional` | `required`). Captured from
+   * `platformOptions.tenancy` so the prebuilt deploy side (Rocket) can
+   * validate `--tenant` without re-evaluating `alepha.config.ts`.
+   */
+  tenancy?: "none" | "optional" | "required";
+  /**
    * Resolved `platform({ environments: ... })` map. Captured at build
    * time from the workspace's `alepha.config.ts` so the deploy side
    * doesn't need to re-evaluate the config. Each value is the same
@@ -260,6 +266,7 @@ export class BuildCloudflareTask extends BuildTask {
       version: 1,
       project: name,
       defaultEnv,
+      tenancy: ctx.platformOptions?.tenancy,
       environments,
       resources: {
         hasDatabase,

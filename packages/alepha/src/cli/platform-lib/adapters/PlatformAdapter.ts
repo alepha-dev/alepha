@@ -54,9 +54,17 @@ export interface PlatformContext {
   resources: DetectedResources;
 
   /**
-   * Resource name generator bound to this project+env.
+   * Resource name generator bound to this project+env(+tenant).
    */
   naming: NamingContext;
+
+  /**
+   * Active tenant slug for this deploy (apps with `tenancy: optional |
+   * required`), or `undefined` for a base / non-tenanted deploy. Shapes
+   * the served host (`<tenant>.<domain>`); resource names already fold it
+   * in via {@link naming}.
+   */
+  tenant?: string;
 
   /**
    * Pre-built mode. When true, the adapter's `build()` should skip the

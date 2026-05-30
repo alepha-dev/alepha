@@ -64,6 +64,7 @@ export interface BuildTaskContext {
    */
   platformOptions: {
     default?: string;
+    tenancy?: "none" | "optional" | "required";
     environments?: Record<
       string,
       {

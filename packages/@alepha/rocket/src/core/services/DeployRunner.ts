@@ -157,6 +157,7 @@ export class DeployRunner {
           resources,
           run: this.runner.run,
           prebuilt: true,
+          tenant: body.tenant,
         });
         this.orchestrator.printUpSummary(result);
         return result.domain ? `https://${result.domain}` : result.urls[0];
@@ -169,6 +170,7 @@ export class DeployRunner {
         entry,
         resources,
         run: this.runner.run,
+        tenant: body.tenant,
         confirm: async () => body.env,
       });
       return undefined;

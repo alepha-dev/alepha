@@ -24,6 +24,21 @@ export const platformOptions = $atom({
       default: t.optional(t.text()),
 
       /**
+       * Multi-tenancy mode — controls whether `--tenant <slug>` is
+       * accepted/required and how it shapes resource names + the domain.
+       *
+       * - `none` (default): single instance. `--tenant` is rejected.
+       * - `required`: every deploy needs `--tenant`; resources are named
+       *   `<tenant>-<project>-<env>` and the host becomes
+       *   `<tenant>.<domain>`. Omitting it errors.
+       * - `optional`: a base instance (no `--tenant`) plus per-tenant
+       *   instances coexist.
+       *
+       * @default "none"
+       */
+      tenancy: t.optional(t.enum(["none", "optional", "required"])),
+
+      /**
        * Secret store configuration for syncing .env secrets
        * to external providers (e.g. GitHub Actions environments).
        */

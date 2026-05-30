@@ -10,6 +10,7 @@ import {
   type PlatformStatusOutput,
   platformOptions,
   type ResolvedPlatformConfig,
+  resolveTenant,
   VercelAdapter,
 } from "alepha/cli/platform-lib";
 import { $command, EnvUtils } from "alepha/command";
@@ -36,6 +37,12 @@ export class PlatformCommand {
       t.text({
         aliases: ["e"],
         description: "Target environment",
+      }),
+    ),
+    tenant: t.optional(
+      t.text({
+        description:
+          "Tenant slug (apps with tenancy: optional | required). Names resources <tenant>-<project>-<env> and serves <tenant>.<domain>.",
       }),
     ),
     verbose: t.optional(
@@ -70,7 +77,8 @@ export class PlatformCommand {
         config,
         this.isServerless(adapterName),
       );
-      const namingCtx = this.naming.forContext(config.project, env);
+      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const namingCtx = this.naming.forContext(config.project, env, tenant);
 
       // --- Data collection ---
 
@@ -237,6 +245,7 @@ export class PlatformCommand {
 
         run,
         prebuilt: flags.prebuilt,
+        tenant: flags.tenant,
       });
 
       if (flags.json) {
@@ -298,6 +307,7 @@ export class PlatformCommand {
         resources: apps[0].resources,
 
         run,
+        tenant: flags.tenant,
         confirm: async (prompt) => {
           if (flags.yes) {
             return flags.env as string;
@@ -351,6 +361,7 @@ export class PlatformCommand {
         resources: apps[0].resources,
 
         run,
+        tenant: flags.tenant,
       });
 
       // --- JSON output ---
@@ -523,7 +534,8 @@ export class PlatformCommand {
         config,
         this.isServerless(envConfig.adapter),
       );
-      const namingCtx = this.naming.forContext(config.project, env);
+      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const namingCtx = this.naming.forContext(config.project, env, tenant);
 
       const ctx = {
         project: config.project,
@@ -534,6 +546,7 @@ export class PlatformCommand {
 
         root,
         naming: namingCtx,
+        tenant,
       };
 
       await adapter.build(ctx, run);
@@ -554,7 +567,8 @@ export class PlatformCommand {
         config,
         this.isServerless(envConfig.adapter),
       );
-      const namingCtx = this.naming.forContext(config.project, env);
+      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const namingCtx = this.naming.forContext(config.project, env, tenant);
 
       const ctx = {
         project: config.project,
@@ -565,6 +579,7 @@ export class PlatformCommand {
 
         root,
         naming: namingCtx,
+        tenant,
       };
 
       await adapter.authenticate(ctx, run);
@@ -586,7 +601,8 @@ export class PlatformCommand {
         config,
         this.isServerless(envConfig.adapter),
       );
-      const namingCtx = this.naming.forContext(config.project, env);
+      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const namingCtx = this.naming.forContext(config.project, env, tenant);
 
       const ctx = {
         project: config.project,
@@ -597,6 +613,7 @@ export class PlatformCommand {
 
         root,
         naming: namingCtx,
+        tenant,
       };
 
       await adapter.authenticate(ctx, run);

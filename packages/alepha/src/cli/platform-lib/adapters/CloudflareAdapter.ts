@@ -18,6 +18,7 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
 import { S3mini } from "s3mini";
 import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
+import { tenantDomain } from "../services/NamingService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
 import {
   type AppContext,
@@ -176,13 +177,17 @@ export class CloudflareAdapter extends PlatformAdapter {
       env.CLOUDFLARE_QUEUE_NAME = ctx.naming.queue();
     }
 
-    if (ctx.envConfig.domain) {
-      if (ctx.envConfig.domain.includes("*") && !ctx.envConfig.zone) {
+    // For a tenanted deploy the host is `<tenant>.<domain>`; otherwise the
+    // configured domain is used as-is. (V2 custom-domain override plugs in
+    // via tenantDomain's third arg.)
+    const host = tenantDomain(ctx.envConfig.domain, ctx.tenant);
+    if (host) {
+      if (host.includes("*") && !ctx.envConfig.zone) {
         throw new AlephaError(
-          `Wildcard domain "${ctx.envConfig.domain}" requires "zone" to be set in the environment config (the Cloudflare zone name, e.g. "alepha.dev").`,
+          `Wildcard domain "${host}" requires "zone" to be set in the environment config (the Cloudflare zone name, e.g. "alepha.dev").`,
         );
       }
-      env.CLOUDFLARE_DOMAIN = ctx.envConfig.domain;
+      env.CLOUDFLARE_DOMAIN = host;
       if (ctx.envConfig.zone) {
         env.CLOUDFLARE_ZONE = ctx.envConfig.zone;
       }

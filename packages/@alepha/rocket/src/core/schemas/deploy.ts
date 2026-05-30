@@ -28,6 +28,14 @@ export const createDeploySchema = t.object({
   env: t.text(),
 
   /**
+   * Tenant slug, for artifacts whose `alepha.config.ts` declares
+   * `tenancy: optional | required`. Forwarded to `alepha platform <op>
+   * --tenant <slug>`, which names resources `<tenant>-<project>-<env>`
+   * and serves `<tenant>.<domain>`. Omit for non-tenanted apps.
+   */
+  tenant: t.optional(t.text()),
+
+  /**
    * Source of the pre-built artifact. v1 supports S3-compatible buckets
    * (R2, MinIO, AWS S3). The artifact is a `tar.gz` containing `dist/`,
    * `migrations/` and optionally `alepha.config.ts`.
