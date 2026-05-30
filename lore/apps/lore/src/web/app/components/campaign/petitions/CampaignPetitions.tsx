@@ -113,17 +113,17 @@ const CampaignPetitions = (props: CampaignPetitionsProps) => {
               options={[
                 {
                   value: "pending",
-                  label: String(tr("petitions.filter.pending")),
+                  label: tr("petitions.filter.pending"),
                 },
                 {
                   value: "accepted",
-                  label: String(tr("petitions.filter.accepted")),
+                  label: tr("petitions.filter.accepted"),
                 },
                 {
                   value: "rejected",
-                  label: String(tr("petitions.filter.rejected")),
+                  label: tr("petitions.filter.rejected"),
                 },
-                { value: "all", label: String(tr("petitions.filter.all")) },
+                { value: "all", label: tr("petitions.filter.all") },
               ]}
               size="sm"
               fullWidth
@@ -138,9 +138,7 @@ const CampaignPetitions = (props: CampaignPetitionsProps) => {
                   {status === "pending"
                     ? tr("petitions.empty.pending")
                     : tr("petitions.empty.status", {
-                        args: [
-                          String(tr(`petitions.filter.${status}` as const)),
-                        ],
+                        args: [tr(`petitions.filter.${status}` as const)],
                       })}
                 </p>
               </div>

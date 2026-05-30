@@ -299,7 +299,7 @@ const ArchiveBrowser = () => {
     // user sees the result. The Input is already autoFocused by the
     // alepha-ui prompt primitive.
     const name = await dialog.prompt({
-      title: String(tr("archive.new-directory")),
+      title: tr("archive.new-directory"),
     });
     if (!name) return;
     await directoryApi.createDirectory({
@@ -395,7 +395,7 @@ const ArchiveBrowser = () => {
 
   const handleRename = async (entry: Entry) => {
     const next = await dialog.prompt({
-      title: String(tr("archive.action.rename-prompt")),
+      title: tr("archive.action.rename-prompt"),
       defaultValue: entry.name,
     });
     if (!next || next === entry.name) return;
@@ -503,7 +503,7 @@ const ArchiveBrowser = () => {
   };
 
   const handleDelete = async (entry: Entry) => {
-    const typeLabel = String(tr(`archive.type.${entry.kind}`));
+    const typeLabel = tr(`archive.type.${entry.kind}`);
     const confirmed = await dialog.confirm({
       title: String(
         tr("archive.action.delete-confirm-title", {
@@ -559,7 +559,7 @@ const ArchiveBrowser = () => {
           args: [String(selected.size)],
         }),
       ),
-      description: String(tr("archive.bulk.delete-confirm-body")),
+      description: tr("archive.bulk.delete-confirm-body"),
     });
     if (!confirmed) return;
     for (const entry of contents.entries) {
@@ -662,14 +662,14 @@ const ArchiveBrowser = () => {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder={String(tr("archive.search.placeholder"))}
+                placeholder={tr("archive.search.placeholder")}
                 className="pl-9"
               />
               {searching && (
                 <button
                   type="button"
                   onClick={() => setQuery("")}
-                  aria-label={String(tr("archive.bulk.clear"))}
+                  aria-label={tr("archive.bulk.clear")}
                   className="text-muted-foreground hover:text-foreground absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1"
                 >
                   <X className="size-4" />
@@ -688,7 +688,7 @@ const ArchiveBrowser = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      aria-label={String(tr("archive.sort.label"))}
+                      aria-label={tr("archive.sort.label")}
                     />
                   }
                 >
@@ -722,9 +722,7 @@ const ArchiveBrowser = () => {
             )}
             <DropdownMenu>
               <DropdownMenuTrigger
-                render={
-                  <Button size="sm" aria-label={String(tr("archive.create"))} />
-                }
+                render={<Button size="sm" aria-label={tr("archive.create")} />}
               >
                 <Plus className="size-4" />
               </DropdownMenuTrigger>
@@ -824,7 +822,7 @@ const ArchiveBrowser = () => {
                       <button
                         type="button"
                         onClick={() => cycleSort(field)}
-                        aria-label={String(tr("archive.sort.label"))}
+                        aria-label={tr("archive.sort.label")}
                         className="hover:text-foreground inline-flex items-center gap-1 transition-colors"
                       >
                         <span>{tr(key)}</span>
@@ -1091,7 +1089,7 @@ const ArchiveActionMenu = (props: ArchiveActionMenuProps) => {
             size="icon"
             variant="ghost"
             className="size-7"
-            aria-label={String(tr("archive.col.actions"))}
+            aria-label={tr("archive.col.actions")}
             // Stop propagation so the surrounding card's click-to-navigate
             // doesn't fire when the user just wanted the action menu.
             onClick={(ev) => ev.stopPropagation()}
@@ -1478,7 +1476,7 @@ const BulkSelectionChip = (props: {
         variant="ghost"
         className="size-6"
         onClick={props.onClear}
-        aria-label={String(tr("archive.bulk.clear"))}
+        aria-label={tr("archive.bulk.clear")}
       >
         <X className="size-3.5" />
       </Button>
@@ -1490,7 +1488,7 @@ const BulkSelectionChip = (props: {
         variant="ghost"
         className="hover:text-destructive size-7"
         onClick={props.onDelete}
-        aria-label={String(tr("archive.bulk.delete"))}
+        aria-label={tr("archive.bulk.delete")}
       >
         <Trash2 className="size-4" />
       </Button>
@@ -1499,7 +1497,7 @@ const BulkSelectionChip = (props: {
         variant="ghost"
         className="size-7"
         onClick={props.onMove}
-        aria-label={String(tr("archive.action.move"))}
+        aria-label={tr("archive.action.move")}
       >
         <Move className="size-4" />
       </Button>

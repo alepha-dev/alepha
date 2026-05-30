@@ -106,7 +106,7 @@ const QuestTagInput = (props: QuestTagInputProps) => {
           onChange={(e) => setDraft(e.currentTarget.value)}
           onKeyDown={onKey}
           onBlur={() => commit(draft)}
-          placeholder={String(tr("quest.tags.placeholder"))}
+          placeholder={tr("quest.tags.placeholder")}
           disabled={props.disabled}
           className="h-7 min-w-32 flex-1 border-0 px-1 shadow-none focus-visible:ring-0"
         />

@@ -164,10 +164,10 @@ const QuestView = (props: QuestViewProps) => {
     disabled: !questApi.abandonQuest.can(),
     onClick: async () => {
       const ok = await dialog.confirm({
-        title: String(tr("quest.view.abandon.title")),
-        description: String(tr("quest.view.abandon.confirm")),
-        confirmLabel: String(tr("quest.view.abandon.confirmButton")),
-        cancelLabel: String(tr("common.cancel")),
+        title: tr("quest.view.abandon.title"),
+        description: tr("quest.view.abandon.confirm"),
+        confirmLabel: tr("quest.view.abandon.confirmButton"),
+        cancelLabel: tr("common.cancel"),
         destructive: true,
       });
       if (!ok) return;
@@ -377,7 +377,7 @@ const QuestView = (props: QuestViewProps) => {
           {/* Description (collapsible, default expanded) */}
           <QuestViewCollapsibleBlock
             icon={<FileText className="size-5" />}
-            label={String(tr("quest.view.description"))}
+            label={tr("quest.view.description")}
             defaultOpen
           >
             <QuestDescription
@@ -395,14 +395,14 @@ const QuestView = (props: QuestViewProps) => {
               <div className="flex items-center justify-between gap-2">
                 <SectionHeader
                   icon={<ScrollText className="size-5" />}
-                  label={String(tr("quest.view.completionSummary"))}
+                  label={tr("quest.view.completionSummary")}
                 />
                 {questApi.updateQuestById.can() && (
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
-                    aria-label={String(tr("quest.view.editSummary.title"))}
+                    aria-label={tr("quest.view.editSummary.title")}
                     onClick={() => setShowEditSummary(true)}
                   >
                     <Pencil className="size-4" />
@@ -440,7 +440,7 @@ const QuestView = (props: QuestViewProps) => {
           {quest.objectives.length > 0 && (
             <QuestViewCollapsibleBlock
               icon={<ListChecks className="size-5" />}
-              label={String(tr("quest.view.objectives"))}
+              label={tr("quest.view.objectives")}
               defaultOpen
             >
               <QuestViewObjectives
@@ -458,7 +458,7 @@ const QuestView = (props: QuestViewProps) => {
             <div className="flex flex-col gap-2">
               <SectionHeader
                 icon={<Paperclip className="size-5" />}
-                label={String(tr("quest.view.attachments"))}
+                label={tr("quest.view.attachments")}
               />
               <div className="flex flex-wrap gap-2">
                 {quest.attachments.map((fileId) => (
@@ -475,7 +475,7 @@ const QuestView = (props: QuestViewProps) => {
             questApi.updateQuestNote.can() && (
               <QuestViewCollapsibleBlock
                 icon={<StickyNote className="size-5" />}
-                label={String(tr("quest.view.notes"))}
+                label={tr("quest.view.notes")}
                 defaultOpen={!!quest.note}
               >
                 <QuestViewNotes
@@ -491,7 +491,7 @@ const QuestView = (props: QuestViewProps) => {
           {/* Rewards (collapsible, default expanded) */}
           <QuestViewCollapsibleBlock
             icon={<PiggyBank className="size-5" />}
-            label={String(tr("quest.view.rewards"))}
+            label={tr("quest.view.rewards")}
             defaultOpen
           >
             <div className="flex items-center gap-2">
@@ -526,7 +526,7 @@ const QuestView = (props: QuestViewProps) => {
           {/* History (collapsible, default collapsed) */}
           <QuestViewCollapsibleBlock
             icon={<History className="size-5" />}
-            label={String(tr("quest.view.history"))}
+            label={tr("quest.view.history")}
           >
             <QuestHistory quest={quest} />
           </QuestViewCollapsibleBlock>
@@ -538,7 +538,7 @@ const QuestView = (props: QuestViewProps) => {
           {questReminderEnabled && !quest.completedAt && (
             <QuestViewCollapsibleBlock
               icon={<SettingsIcon className="size-5" />}
-              label={String(tr("quest.view.settings"))}
+              label={tr("quest.view.settings")}
             >
               <QuestViewSettings
                 quest={quest}

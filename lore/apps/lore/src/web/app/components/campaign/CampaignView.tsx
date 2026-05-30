@@ -248,7 +248,7 @@ const CampaignView = () => {
       ? router.path("campaignFolios", { params: { campaignId } })
       : undefined;
     breadcrumbs.push({
-      label: String(tr(sectionKey as never)),
+      label: tr(sectionKey as never),
       href: sectionHref,
     });
   }

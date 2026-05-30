@@ -68,7 +68,7 @@ const CampaignPetitionStatus = () => {
         }
       } catch (err: any) {
         if (!cancelled) {
-          setError(err?.message ?? String(tr("petitions.status.error")));
+          setError(err?.message ?? tr("petitions.status.error"));
         }
       }
     };

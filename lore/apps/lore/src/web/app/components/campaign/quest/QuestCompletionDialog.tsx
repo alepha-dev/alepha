@@ -52,7 +52,7 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
         <TextEditor
           value={message}
           onChange={setMessage}
-          placeholder={String(tr("quest.view.complete.placeholder"))}
+          placeholder={tr("quest.view.complete.placeholder")}
           rows={10}
         />
         <DialogFooter className="gap-2">

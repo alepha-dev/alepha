@@ -93,7 +93,7 @@ const CampaignActionsCreateButton = () => {
     }
   };
 
-  const mainLabel = String(tr("campaign.menu.create-quest"));
+  const mainLabel = tr("campaign.menu.create-quest");
 
   // Green base for both halves; the caret half drops a touch of opacity so
   // the eye reads them as one button with a divider.
@@ -122,7 +122,7 @@ const CampaignActionsCreateButton = () => {
                 <Button
                   size="icon"
                   disabled={!canCreateQuest}
-                  aria-label={String(tr("campaign.menu.create-more"))}
+                  aria-label={tr("campaign.menu.create-more")}
                   className={`${baseClass} rounded-l-none border-l border-white/20 px-2`}
                 />
               }

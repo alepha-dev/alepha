@@ -33,7 +33,7 @@ const AuthRegisterPage = (props: AuthRegisterPageProps) => {
       .catch(() => undefined);
   }, [entry, router]);
 
-  const message = entry ? String(tr(entry.messageKey as any)) : undefined;
+  const message = entry ? tr(entry.messageKey as any) : undefined;
 
   return (
     <>

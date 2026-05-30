@@ -140,7 +140,7 @@ const QuestFeatureRow = ({ row, locked, shopHref }: QuestFeatureRowProps) => {
           onCheckedChange={(value) => {
             void toggle(value);
           }}
-          aria-label={String(tr(row.labelKey))}
+          aria-label={tr(row.labelKey)}
         />
       </div>
     </CardContent>

@@ -54,7 +54,7 @@ const CampaignUpdate = (props: CampaignUpdateProps) => {
     schema: t.object({
       icon: t.optional(t.nullable(t.uuid())),
       title: t.string({
-        title: String(tr("campaign.create.name")),
+        title: tr("campaign.create.name"),
         minLength: 3,
         maxLength: 24,
       }),
@@ -104,11 +104,11 @@ const CampaignUpdate = (props: CampaignUpdateProps) => {
           icon: Tag,
         },
         preferredLanguage: {
-          label: String(tr("campaign.update.preferredLanguage.label")),
+          label: tr("campaign.update.preferredLanguage.label"),
           icon: Languages,
           select: true,
           items: LANGUAGE_OPTIONS,
-          description: String(tr("campaign.update.preferredLanguage.helper")),
+          description: tr("campaign.update.preferredLanguage.helper"),
         },
       }}
     />

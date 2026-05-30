@@ -36,18 +36,18 @@ const ChroniclesQuests = (props: ChroniclesQuestsProps) => {
   // variable. Built in-body so labels can be translated via `tr`.
   const breakdownChartConfig = {
     completed: {
-      label: String(tr("chronicles.quests.completed")),
+      label: tr("chronicles.quests.completed"),
       color: "var(--chart-1)",
     },
     remaining: {
-      label: String(tr("chronicles.quests.remaining")),
+      label: tr("chronicles.quests.remaining"),
       color: "var(--muted-foreground)",
     },
   } satisfies ChartConfig;
 
   const cycleTimeChartConfig = {
     avgHours: {
-      label: String(tr("chronicles.quests.cycleTime.avgHours")),
+      label: tr("chronicles.quests.cycleTime.avgHours"),
       color: "var(--chart-4)",
     },
   } satisfies ChartConfig;
@@ -57,26 +57,26 @@ const ChroniclesQuests = (props: ChroniclesQuestsProps) => {
     {
       key: "new",
       value: funnel.new,
-      label: String(tr("chronicles.quests.status.new")),
+      label: tr("chronicles.quests.status.new"),
       segment: "bg-muted-foreground/40",
     },
     {
       key: "accepted",
       value: funnel.accepted,
-      label: String(tr("chronicles.quests.status.accepted")),
+      label: tr("chronicles.quests.status.accepted"),
       segment: "bg-[var(--chart-4)]",
     },
     {
       key: "completed",
       value: funnel.completed,
-      label: String(tr("chronicles.quests.status.completed")),
+      label: tr("chronicles.quests.status.completed"),
       segment: "bg-[var(--chart-1)]",
     },
   ];
 
   return (
     <div className="flex flex-col gap-8">
-      <ChroniclesSection title={String(tr("chronicles.quests.status.title"))}>
+      <ChroniclesSection title={tr("chronicles.quests.status.title")}>
         {funnelTotal > 0 ? (
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-x-10 gap-y-4">
@@ -110,7 +110,7 @@ const ChroniclesQuests = (props: ChroniclesQuestsProps) => {
         )}
       </ChroniclesSection>
 
-      <ChroniclesSection title={String(tr("chronicles.quests.byZone.title"))}>
+      <ChroniclesSection title={tr("chronicles.quests.byZone.title")}>
         {byZone.length > 0 ? (
           <ChartContainer
             config={breakdownChartConfig}
@@ -145,9 +145,7 @@ const ChroniclesQuests = (props: ChroniclesQuestsProps) => {
         )}
       </ChroniclesSection>
 
-      <ChroniclesSection
-        title={String(tr("chronicles.quests.byPriority.title"))}
-      >
+      <ChroniclesSection title={tr("chronicles.quests.byPriority.title")}>
         {byPriority.length > 0 ? (
           <ChartContainer
             config={breakdownChartConfig}
@@ -182,9 +180,7 @@ const ChroniclesQuests = (props: ChroniclesQuestsProps) => {
         )}
       </ChroniclesSection>
 
-      <ChroniclesSection
-        title={String(tr("chronicles.quests.cycleTime.title"))}
-      >
+      <ChroniclesSection title={tr("chronicles.quests.cycleTime.title")}>
         {cycleTimeByPriority.length > 0 ? (
           <ChartContainer
             config={cycleTimeChartConfig}
@@ -210,7 +206,7 @@ const ChroniclesQuests = (props: ChroniclesQuestsProps) => {
         )}
       </ChroniclesSection>
 
-      <ChroniclesSection title={String(tr("chronicles.quests.aging.title"))}>
+      <ChroniclesSection title={tr("chronicles.quests.aging.title")}>
         {aging.length > 0 ? (
           <div className="divide-y divide-border">
             {aging.map((quest) => (

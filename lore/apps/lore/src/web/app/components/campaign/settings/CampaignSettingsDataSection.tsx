@@ -63,7 +63,7 @@ const CampaignSettingsDataSection = () => {
       toaster.error(
         err instanceof Error
           ? err.message
-          : String(tr("campaign.settings.data.import.error.title")),
+          : tr("campaign.settings.data.import.error.title"),
       );
     }
   };
@@ -90,7 +90,7 @@ const CampaignSettingsDataSection = () => {
       toaster.error(
         err instanceof Error
           ? err.message
-          : String(tr("campaign.settings.data.import.error.title")),
+          : tr("campaign.settings.data.import.error.title"),
       );
     } finally {
       setPreparing(false);

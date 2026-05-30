@@ -65,8 +65,8 @@ const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
 
   const handleRevert = async (revisionId: string) => {
     const confirmed = await dialog.confirm({
-      title: String(tr("folios.history.revert-confirm-title")),
-      description: String(tr("folios.history.revert-confirm-body")),
+      title: tr("folios.history.revert-confirm-title"),
+      description: tr("folios.history.revert-confirm-body"),
     });
     if (!confirmed) return;
     setBusy(true);

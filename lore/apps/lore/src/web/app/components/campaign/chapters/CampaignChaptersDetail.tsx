@@ -55,7 +55,7 @@ const CampaignChaptersDetail = (props: CampaignChaptersDetailProps) => {
         body: { title, description, tags },
       });
       props.onUpdated(updated);
-      toaster.success(String(tr("chapter.detail.saved")));
+      toaster.success(tr("chapter.detail.saved"));
     } finally {
       setSaving(false);
     }
@@ -63,7 +63,7 @@ const CampaignChaptersDetail = (props: CampaignChaptersDetailProps) => {
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(markdown);
-    toaster.success(String(tr("chapter.changelog.copied")));
+    toaster.success(tr("chapter.changelog.copied"));
   };
 
   const handleDownload = () => {

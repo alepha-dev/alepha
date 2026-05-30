@@ -83,7 +83,7 @@ const ArchiveActivityPanel = () => {
           size="sm"
           className="h-8 w-8 p-0"
           onClick={() => setOpen(true)}
-          aria-label={String(tr("folios.activity.open"))}
+          aria-label={tr("folios.activity.open")}
         >
           <History className="size-4" />
         </Button>
@@ -92,7 +92,7 @@ const ArchiveActivityPanel = () => {
           size="sm"
           className="h-8 w-8 p-0"
           onClick={() => setOpen(true)}
-          aria-label={String(tr("folios.activity.open"))}
+          aria-label={tr("folios.activity.open")}
         >
           <ChevronLeft className="size-4" />
         </Button>
@@ -116,7 +116,7 @@ const ArchiveActivityPanel = () => {
             className="h-7 w-7 p-0"
             onClick={() => void load()}
             disabled={loading}
-            aria-label={String(tr("folios.activity.refresh"))}
+            aria-label={tr("folios.activity.refresh")}
           >
             <RefreshCw
               className={`size-3.5 ${loading ? "animate-spin" : ""}`}
@@ -127,7 +127,7 @@ const ArchiveActivityPanel = () => {
             size="sm"
             className="h-7 w-7 p-0"
             onClick={() => setOpen(false)}
-            aria-label={String(tr("folios.activity.close"))}
+            aria-label={tr("folios.activity.close")}
           >
             <ChevronRight className="size-4" />
           </Button>

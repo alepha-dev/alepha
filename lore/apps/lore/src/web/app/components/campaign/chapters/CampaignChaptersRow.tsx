@@ -134,7 +134,7 @@ const CampaignChaptersRow = (props: CampaignChaptersRowProps) => {
                 e.stopPropagation();
                 props.onDelete(props.chapter.id);
               }}
-              aria-label={String(tr("chapter.delete"))}
+              aria-label={tr("chapter.delete")}
             >
               <Trash className="size-3.5" />
             </Button>

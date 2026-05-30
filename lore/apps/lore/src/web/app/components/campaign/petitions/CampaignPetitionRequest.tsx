@@ -363,7 +363,7 @@ const CampaignPetitionRequest = () => {
           },
         });
         clearDraft();
-        toaster.show(String(tr("petitions.request.success")), "success");
+        toaster.show(tr("petitions.request.success"), "success");
 
         // Sigil popup: tell the embedding page it succeeded, then close —
         // the host bundle shows the "Thanks!" toast.
@@ -396,10 +396,7 @@ const CampaignPetitionRequest = () => {
           },
         });
       } catch (err: any) {
-        toaster.show(
-          err?.message ?? String(tr("petitions.request.error")),
-          "danger",
-        );
+        toaster.show(err?.message ?? tr("petitions.request.error"), "danger");
       }
     },
   });
@@ -427,7 +424,7 @@ const CampaignPetitionRequest = () => {
           setAttachments((prev) => [...prev, result]);
         } catch (err: any) {
           toaster.show(
-            err?.message ?? String(tr("petitions.request.uploadError")),
+            err?.message ?? tr("petitions.request.uploadError"),
             "danger",
           );
         }
@@ -596,8 +593,8 @@ const CampaignPetitionRequest = () => {
               >
                 <Control
                   input={form.input.message}
-                  label={String(tr("petitions.request.messageField"))}
-                  description={String(tr("petitions.request.messageHelper"))}
+                  label={tr("petitions.request.messageField")}
+                  description={tr("petitions.request.messageHelper")}
                   area
                   autoFocus
                   rows={12}
@@ -617,7 +614,7 @@ const CampaignPetitionRequest = () => {
                   </p>
                   <div className="relative w-fit">
                     <img
-                      alt={String(tr("petitions.request.screenshot"))}
+                      alt={tr("petitions.request.screenshot")}
                       src={screenshot}
                       className="max-h-48 rounded border border-border object-contain"
                     />

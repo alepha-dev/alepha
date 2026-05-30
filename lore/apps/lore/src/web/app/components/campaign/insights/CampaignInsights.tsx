@@ -85,7 +85,7 @@ const CampaignInsights = (props: CampaignInsightsProps) => {
       // A failed range fetch leaves stale data — surface it via a toast and
       // roll the range toggle back so it matches the data actually shown.
       setRange(previous);
-      toaster.show(error?.message || String(tr("insights.error")), "danger");
+      toaster.show(error?.message || tr("insights.error"), "danger");
     } finally {
       setLoading(false);
     }

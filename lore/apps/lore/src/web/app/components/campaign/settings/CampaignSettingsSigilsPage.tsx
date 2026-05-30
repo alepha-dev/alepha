@@ -89,13 +89,13 @@ const CampaignSettingsSigilsPage = () => {
           params: { campaignId: campaign.id, id: dialogSigil.id },
           body: value,
         });
-        toaster.success(String(tr("sigils.toast.updated")));
+        toaster.success(tr("sigils.toast.updated"));
       } else {
         await sigilApi.createSigil({
           params: { campaignId: campaign.id },
           body: value,
         });
-        toaster.success(String(tr("sigils.toast.created")));
+        toaster.success(tr("sigils.toast.created"));
       }
       setDialogSigil(undefined);
       await reload();
@@ -107,7 +107,7 @@ const CampaignSettingsSigilsPage = () => {
   const copySnippet = (sigil: SigilResource) => {
     const snippet = `<script src="${origin}/sigils/${sigil.id}/embed.js"></script>`;
     void navigator.clipboard.writeText(snippet);
-    toaster.success(String(tr("sigils.toast.copied")));
+    toaster.success(tr("sigils.toast.copied"));
   };
 
   const rotateKey = async (sigil: SigilResource) => {
@@ -118,7 +118,7 @@ const CampaignSettingsSigilsPage = () => {
       });
       // No reload(): rotating only swaps the server-side secret —
       // nothing list-visible (label, origins, kinds) changes.
-      toaster.success(String(tr("sigils.toast.rotated")));
+      toaster.success(tr("sigils.toast.rotated"));
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
     }
@@ -130,7 +130,7 @@ const CampaignSettingsSigilsPage = () => {
       await sigilApi.deleteSigil({
         params: { campaignId: campaign.id, id: deleteTarget.id },
       });
-      toaster.success(String(tr("sigils.toast.deleted")));
+      toaster.success(tr("sigils.toast.deleted"));
       await reload();
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
@@ -175,7 +175,7 @@ const CampaignSettingsSigilsPage = () => {
                 onCheckedChange={(value) => {
                   void toggle(value === true);
                 }}
-                aria-label={String(tr("campaign.settings.nav.sigils"))}
+                aria-label={tr("campaign.settings.nav.sigils")}
               />
             </div>
           </CardContent>
@@ -197,7 +197,7 @@ const CampaignSettingsSigilsPage = () => {
                 onCheckedChange={(value) => {
                   void blights.toggle(value === true);
                 }}
-                aria-label={String(tr("blights.feature.title"))}
+                aria-label={tr("blights.feature.title")}
               />
             </div>
           </CardContent>
@@ -219,7 +219,7 @@ const CampaignSettingsSigilsPage = () => {
                 onCheckedChange={(value) => {
                   void beacon.toggle(value === true);
                 }}
-                aria-label={String(tr("beacon.feature.title"))}
+                aria-label={tr("beacon.feature.title")}
               />
             </div>
           </CardContent>
@@ -248,7 +248,7 @@ const CampaignSettingsSigilsPage = () => {
                 onCheckedChange={(value) => {
                   void embeddedPetitions.toggle(value === true);
                 }}
-                aria-label={String(tr("embeddedPetitions.feature.title"))}
+                aria-label={tr("embeddedPetitions.feature.title")}
               />
             </div>
           </CardContent>
@@ -350,7 +350,7 @@ const CampaignSettingsSigilsPage = () => {
                               <button
                                 type="button"
                                 className="text-muted-foreground hover:text-foreground"
-                                aria-label={String(tr("sigils.rotateKey.help"))}
+                                aria-label={tr("sigils.rotateKey.help")}
                               />
                             }
                           >

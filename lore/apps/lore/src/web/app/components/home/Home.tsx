@@ -54,8 +54,8 @@ const Home = () => {
       ? displayName(auth.user, "") || undefined
       : undefined;
   const createLabel = hasCampaigns
-    ? String(tr("home.create-campaign"))
-    : String(tr("home.start-first-campaign"));
+    ? tr("home.create-campaign")
+    : tr("home.start-first-campaign");
   const createDisabled = !!auth.user && !canCreate;
 
   useEffect(() => {
@@ -79,10 +79,10 @@ const Home = () => {
         <Hero
           createPath={createPath}
           loginPath={auth.user ? undefined : loginPath}
-          welcomeTitle={String(tr("home.title"))}
-          subtitle={String(tr("home.subtitle"))}
+          welcomeTitle={tr("home.title")}
+          subtitle={tr("home.subtitle")}
           createLabel={createLabel}
-          alreadyRegistered={String(tr("home.already-registered"))}
+          alreadyRegistered={tr("home.already-registered")}
           userName={userName}
           createDisabled={createDisabled}
           createDisabledLabel={

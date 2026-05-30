@@ -80,11 +80,11 @@ const CampaignSettingsChaptersPage = () => {
                   },
                   {
                     value: "P7D",
-                    label: String(tr("campaign.settings.chapters.duration.1w")),
+                    label: tr("campaign.settings.chapters.duration.1w"),
                   },
                   {
                     value: "P14D",
-                    label: String(tr("campaign.settings.chapters.duration.2w")),
+                    label: tr("campaign.settings.chapters.duration.2w"),
                   },
                   {
                     value: "P1M",

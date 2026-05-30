@@ -78,7 +78,7 @@ const CampaignSettingsFeatureSection = (
             onCheckedChange={(value) => {
               void props.onToggle(value);
             }}
-            aria-label={String(tr("campaign.settings.feature.enable"))}
+            aria-label={tr("campaign.settings.feature.enable")}
           />
         </CardContent>
       </Card>

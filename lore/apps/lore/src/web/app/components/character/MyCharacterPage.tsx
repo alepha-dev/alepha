@@ -90,7 +90,7 @@ const MyCharacterPage = () => {
     },
     schema: t.object({
       name: t.string({
-        title: String(tr("character.sheet.name")),
+        title: tr("character.sheet.name"),
         maxLength: 60,
       }),
       avatar: t.optional(t.nullable(t.uuid())),
@@ -202,7 +202,7 @@ const MyCharacterPage = () => {
           groups={[{ fields: ["avatar", "name", "title"] }]}
           fields={{
             avatar: {
-              label: String(tr("character.sheet.identity.avatar")),
+              label: tr("character.sheet.identity.avatar"),
               upload: {
                 accept: "image/*",
                 maxSize: 2 * 1024 * 1024,
@@ -210,11 +210,11 @@ const MyCharacterPage = () => {
               },
             },
             name: {
-              label: String(tr("character.sheet.identity.name")),
+              label: tr("character.sheet.identity.name"),
               placeholder: fallbackName,
             },
             title: {
-              label: String(tr("character.sheet.identity.title.label")),
+              label: tr("character.sheet.identity.title.label"),
               select: true,
               items: titleItems,
             },

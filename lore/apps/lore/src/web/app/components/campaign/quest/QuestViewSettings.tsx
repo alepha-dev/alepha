@@ -101,7 +101,7 @@ const QuestViewSettings = (props: QuestViewSettingsProps) => {
             onChange={handleReminderPick}
             options={REMINDER_PRESETS.map((preset) => ({
               value: preset.key,
-              label: String(tr(preset.labelKey)),
+              label: tr(preset.labelKey),
             }))}
           />
           <p className="text-muted-foreground text-xs">{nextLabel}</p>
