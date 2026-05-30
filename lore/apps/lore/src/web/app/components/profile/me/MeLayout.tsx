@@ -1,11 +1,11 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { useAuth } from "alepha/react/auth";
 import { Link, NestedView, useRouter } from "alepha/react/router";
-import { Home, User } from "lucide-react";
+import { Home } from "lucide-react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { displayName } from "../../../services/displayName.ts";
-import { publicFileUrl } from "../../../services/fileUrl.ts";
 import PageHeader from "../../shared/header/PageHeader.tsx";
+import { UserAvatar } from "../../shared/UserAvatar.tsx";
 import MeLayoutMenu from "./MeLayoutMenu.tsx";
 
 const MeLayout = () => {
@@ -17,17 +17,7 @@ const MeLayout = () => {
       <PageHeader />
       {/* Compact header */}
       <div className="flex items-center gap-4 rounded-md border border-border bg-card p-4">
-        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
-          {auth.user?.picture ? (
-            <img
-              src={publicFileUrl(auth.user.picture)}
-              alt="avatar"
-              className="size-full object-cover"
-            />
-          ) : (
-            <User className="size-5" />
-          )}
-        </div>
+        <UserAvatar fileId={auth.user?.picture} className="size-10" />
         <div className="flex flex-col">
           <span className="text-sm font-semibold">
             {displayName(auth.user)}

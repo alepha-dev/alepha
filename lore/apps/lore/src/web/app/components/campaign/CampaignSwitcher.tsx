@@ -13,12 +13,12 @@ import {
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Check, ChevronsUpDown, Home, ImageIcon, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Home, Plus } from "lucide-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
-import { publicFileUrl } from "../../services/fileUrl.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { CampaignIcon } from "../shared/CampaignIcon.tsx";
 
 const CampaignSwitcher = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -49,17 +49,10 @@ const CampaignSwitcher = () => {
               />
             }
           >
-            <div className="bg-muted text-muted-foreground flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg">
-              {campaign.icon ? (
-                <img
-                  src={publicFileUrl(campaign.icon)}
-                  alt=""
-                  className="size-full object-cover"
-                />
-              ) : (
-                <ImageIcon className="size-4" />
-              )}
-            </div>
+            <CampaignIcon
+              fileId={campaign.icon}
+              className="size-8 rounded-lg"
+            />
             <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
               <span className="truncate font-semibold">{campaign.title}</span>
             </div>
@@ -89,17 +82,7 @@ const CampaignSwitcher = () => {
                     }
                   }}
                 >
-                  <div className="bg-muted text-muted-foreground flex aspect-square size-6 shrink-0 items-center justify-center overflow-hidden rounded-md">
-                    {c.icon ? (
-                      <img
-                        src={publicFileUrl(c.icon)}
-                        alt=""
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <ImageIcon className="size-3.5" />
-                    )}
-                  </div>
+                  <CampaignIcon fileId={c.icon} className="size-6" />
                   <span className="flex-1 truncate">{c.title}</span>
                   {isActive && <Check className="size-4" />}
                 </DropdownMenuItem>

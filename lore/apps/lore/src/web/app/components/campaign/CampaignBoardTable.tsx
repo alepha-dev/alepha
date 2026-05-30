@@ -12,13 +12,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import {
-  Link2,
-  Search,
-  Signature,
-  Trash,
-  User as UserIcon,
-} from "lucide-react";
+import { Link2, Search, Signature, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { CampaignController } from "@/api/controllers/CampaignController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -28,8 +22,8 @@ import type { AppRouter } from "../../AppRouter.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { displayName } from "../../services/displayName.ts";
-import { publicFileUrl } from "../../services/fileUrl.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { UserAvatar } from "../shared/UserAvatar.tsx";
 import QuestDifficulty from "./quest/QuestDifficulty.tsx";
 
 const getPriorityColor = (priority: string) => {
@@ -88,19 +82,10 @@ const CampaignBoardTable = () => {
   }, [campaign?.id]);
 
   const renderAvatar = (userId?: string) => {
-    if (userId) {
-      const user = users.find((u) => u.id === userId);
-      if (user?.picture) {
-        return (
-          <img
-            alt="user avatar"
-            className="size-6 rounded-full"
-            src={publicFileUrl(user.picture)}
-          />
-        );
-      }
-    }
-    return <UserIcon className="size-4" />;
+    const user = userId ? users.find((u) => u.id === userId) : undefined;
+    return (
+      <UserAvatar fileId={user?.picture} className="size-6" alt="user avatar" />
+    );
   };
 
   if (!campaign) return null;

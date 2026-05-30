@@ -1,3 +1,4 @@
+import { FileImage } from "@alepha/ui/components/file-image/file-image";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useInject, useStore } from "alepha/react";
@@ -19,7 +20,6 @@ import type { UserController } from "@/api/controllers/UserController.ts";
 import type { User as UserEntity } from "@/api/entities/users.ts";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
 import { displayName } from "../../services/displayName.ts";
-import { publicFileUrl } from "../../services/fileUrl.ts";
 
 export interface MyProfileProps {
   user: UserEntity;
@@ -108,17 +108,17 @@ const MyProfile = (props: MyProfileProps) => {
           onClick={handleAvatarClick}
           className="relative size-24 shrink-0 cursor-pointer overflow-hidden rounded-full border-2 border-border bg-muted"
         >
-          {currentUser.picture ? (
-            <img
-              src={publicFileUrl(currentUser.picture)}
-              alt="avatar"
-              className="size-full object-cover"
-            />
-          ) : (
-            <div className="flex size-full items-center justify-center">
-              <User className="size-12" />
-            </div>
-          )}
+          <FileImage
+            id={currentUser.picture}
+            public
+            alt="avatar"
+            className="size-full object-cover"
+            fallback={
+              <div className="flex size-full items-center justify-center">
+                <User className="size-12" />
+              </div>
+            }
+          />
           <div className="absolute right-0 bottom-0 flex size-7 items-center justify-center rounded-full border-2 border-border bg-card">
             <Camera className="size-3.5" />
           </div>

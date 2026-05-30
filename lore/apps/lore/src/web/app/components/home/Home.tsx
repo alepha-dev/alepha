@@ -6,13 +6,13 @@ import { useInject, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { ArrowRight, ImageIcon, ScrollText, Sparkles } from "lucide-react";
+import { ArrowRight, ScrollText, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
 import { displayName } from "../../services/displayName.ts";
-import { publicFileUrl } from "../../services/fileUrl.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { CampaignIcon } from "../shared/CampaignIcon.tsx";
 import PageHeader from "../shared/header/PageHeader.tsx";
 import LoreLogo from "../shared/LoreLogo.tsx";
 
@@ -229,17 +229,7 @@ const CampaignCard = (props: CampaignCardProps) => {
       href={props.href}
       className="group hover:bg-muted/50 flex items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors"
     >
-      <div className="bg-muted text-muted-foreground flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-md">
-        {props.campaign.icon ? (
-          <img
-            src={publicFileUrl(props.campaign.icon)}
-            alt=""
-            className="size-full object-cover"
-          />
-        ) : (
-          <ImageIcon className="size-4" />
-        )}
-      </div>
+      <CampaignIcon fileId={props.campaign.icon} className="size-8" />
       <span className="line-clamp-1 flex-1 truncate font-medium">
         {props.campaign.title}
       </span>

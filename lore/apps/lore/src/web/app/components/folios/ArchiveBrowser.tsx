@@ -1,3 +1,4 @@
+import { FileImage } from "@alepha/ui/components/file-image/file-image";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Checkbox } from "@alepha/ui/components/ui/checkbox";
@@ -1232,10 +1233,9 @@ const ArchiveCard = (props: ArchiveCardProps) => {
       {e.kind !== "directory" && (
         <div className="bg-muted/30 border-border/40 flex aspect-video items-center justify-center overflow-hidden border-t">
           {isImage ? (
-            <img
-              src={`/api/files/${e.id}`}
+            <FileImage
+              id={e.id}
               alt=""
-              loading="lazy"
               className="h-full w-full object-cover"
             />
           ) : e.kind === "folio" ? (
