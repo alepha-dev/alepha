@@ -567,10 +567,28 @@ export class CliProvider {
       });
     }
 
+    // Tolerate global flags (--help, --verbose) so strict command parsing
+    // doesn't reject them — they're consumed by the onReady global pass,
+    // not by the command. Skip any whose alias the command already claims
+    // (e.g. a command with its own `verbose` flag handles it directly).
+    const claimed = new Set(flagDefs.flatMap((d) => d.aliases));
+    for (const [key, value] of Object.entries(this.getAllGlobalFlags())) {
+      if (value.aliases.some((a: string) => claimed.has(a))) continue;
+      flagDefs.push({
+        key: `__global_${key}__`,
+        aliases: value.aliases,
+        description: undefined,
+        schema: value.schema,
+      });
+    }
+
     const parsed = this.parseFlags(argv, flagDefs);
 
-    // Remove the mode flag from parsed result (it's handled separately)
+    // Remove the mode + global flags from parsed result (handled separately)
     parsed.__mode__ = undefined;
+    for (const key of Object.keys(parsed)) {
+      if (key.startsWith("__global_")) delete parsed[key];
+    }
 
     // apply manually defaults for optional properties that have defaults
     for (const [key, value] of Object.entries(schema.properties)) {
