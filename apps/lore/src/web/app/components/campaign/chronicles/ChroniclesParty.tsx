@@ -8,11 +8,10 @@ import type { Static } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { UserCircle2 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import type { chroniclesPartySchema } from "@/api/schemas/chroniclesSchemas.ts";
-import { publicFileUrl } from "../../../services/fileUrl.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { UserAvatar } from "../../shared/UserAvatar.tsx";
 import ChroniclesSection from "./ChroniclesSection.tsx";
 
 type ChroniclesParty = Static<typeof chroniclesPartySchema>;
@@ -71,15 +70,11 @@ const ChroniclesParty = (props: ChroniclesPartyProps) => {
                 <span className="text-muted-foreground w-5 shrink-0 tabular-nums">
                   {index + 1}
                 </span>
-                {member.picture ? (
-                  <img
-                    alt={member.name}
-                    src={publicFileUrl(member.picture)}
-                    className="size-8 shrink-0 rounded-full object-cover"
-                  />
-                ) : (
-                  <UserCircle2 className="text-muted-foreground size-8 shrink-0" />
-                )}
+                <UserAvatar
+                  fileId={member.picture}
+                  className="size-8"
+                  alt={member.name}
+                />
                 <span className="truncate">{member.name}</span>
                 <span className="ml-auto shrink-0 text-right tabular-nums">
                   <span className="font-semibold">
@@ -155,15 +150,11 @@ const ChroniclesParty = (props: ChroniclesPartyProps) => {
                 key={member.userId}
                 className="flex items-center gap-3 py-2 text-sm"
               >
-                {member.picture ? (
-                  <img
-                    alt={member.name}
-                    src={publicFileUrl(member.picture)}
-                    className="size-8 shrink-0 rounded-full object-cover"
-                  />
-                ) : (
-                  <UserCircle2 className="text-muted-foreground size-8 shrink-0" />
-                )}
+                <UserAvatar
+                  fileId={member.picture}
+                  className="size-8"
+                  alt={member.name}
+                />
                 <span className="truncate">{member.name}</span>
                 <span className="text-muted-foreground ml-auto shrink-0">
                   {member.lastCompletedAt

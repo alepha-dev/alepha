@@ -1,4 +1,5 @@
 import { Control } from "@alepha/ui/components/control/control";
+import { FileImage } from "@alepha/ui/components/file-image/file-image";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
@@ -8,14 +9,15 @@ import { useAuth } from "alepha/react/auth";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import { ImageIcon, Loader2, Paperclip, UserCircle2, X } from "lucide-react";
+import { Loader2, Paperclip, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { PetitionController } from "@/api/controllers/PetitionController.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { displayName } from "../../../services/displayName.ts";
-import { publicFileUrl } from "../../../services/fileUrl.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { CampaignIcon } from "../../shared/CampaignIcon.tsx";
 import PageHeader from "../../shared/header/PageHeader.tsx";
+import { UserAvatar } from "../../shared/UserAvatar.tsx";
 
 const DRAFT_STORAGE_KEY = "lor.petition.draft";
 const MAX_FILES = 10;
@@ -528,15 +530,7 @@ const CampaignPetitionRequest = () => {
           <CardContent className="px-4">
             <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
               <div className="flex min-w-0 items-center gap-3">
-                {userPicture ? (
-                  <img
-                    alt=""
-                    src={publicFileUrl(userPicture)}
-                    className="size-8 shrink-0 rounded-full object-cover"
-                  />
-                ) : (
-                  <UserCircle2 className="size-8 shrink-0 text-muted-foreground" />
-                )}
+                <UserAvatar fileId={userPicture} className="size-8" />
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-sm font-medium">
                     {userLabel}
@@ -557,17 +551,7 @@ const CampaignPetitionRequest = () => {
                       {tr("petitions.request.forCampaign")}
                     </span>
                   </div>
-                  <div className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md">
-                    {campaign.icon ? (
-                      <img
-                        alt=""
-                        src={publicFileUrl(campaign.icon)}
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <ImageIcon className="size-4" />
-                    )}
-                  </div>
+                  <CampaignIcon fileId={campaign.icon} className="size-8" />
                 </div>
               )}
             </div>
@@ -678,9 +662,9 @@ const CampaignPetitionRequest = () => {
                           className="flex items-center gap-2 rounded border border-border bg-muted/20 px-2 py-1 text-sm"
                         >
                           {isImage ? (
-                            <img
+                            <FileImage
+                              id={a.id}
                               alt=""
-                              src={`/api/files/${a.id}`}
                               className="size-10 shrink-0 rounded border border-border object-cover"
                             />
                           ) : (

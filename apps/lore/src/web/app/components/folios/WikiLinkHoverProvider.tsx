@@ -1,3 +1,4 @@
+import { FileImage } from "@alepha/ui/components/file-image/file-image";
 import { useClient } from "alepha/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
@@ -403,9 +404,9 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
       {data?.kind === "blob" && (
         <div className="flex flex-col gap-1.5">
           {data.mime?.startsWith("image/") && (
-            <img
+            <FileImage
+              id={data.fileId}
               alt={data.name}
-              src={`/api/files/${data.fileId}`}
               className="max-h-48 w-full rounded-sm border object-contain"
             />
           )}
