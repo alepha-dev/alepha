@@ -52,11 +52,27 @@ export class EnvUtils {
               const trimmedKey = key.trim();
               if (trimmedKey && !trimmedKey.startsWith("#")) {
                 let value = rest.join("=").trim();
-                // Strip matching surrounding quotes (single or double)
+                const last = value.length - 1;
                 if (
                   value.length >= 2 &&
-                  ((value[0] === '"' && value[value.length - 1] === '"') ||
-                    (value[0] === "'" && value[value.length - 1] === "'"))
+                  value[0] === '"' &&
+                  value[last] === '"'
+                ) {
+                  // Double-quoted: JSON-decode so escapes round-trip with a
+                  // `JSON.stringify`-based writer (e.g. Rocket's
+                  // `.env.<env>.local` overrides, which write JSON values like
+                  // CLUB_CONFIG_JSON). Falls back to a naive strip when the
+                  // body isn't valid JSON (e.g. a Windows path with `\`), so
+                  // simple `KEY="value"` still behaves as before.
+                  try {
+                    value = JSON.parse(value);
+                  } catch {
+                    value = value.slice(1, -1);
+                  }
+                } else if (
+                  value.length >= 2 &&
+                  value[0] === "'" &&
+                  value[last] === "'"
                 ) {
                   value = value.slice(1, -1);
                 }
