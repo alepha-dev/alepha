@@ -1,14 +1,13 @@
 import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Label } from "@alepha/ui/components/ui/label";
+import { Switch } from "@alepha/ui/components/ui/switch";
 import { CryptoProvider } from "alepha/crypto";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Lock, ShieldCheck, Trash2, Unlock } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { Lock, ShieldCheck, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { I18n } from "../../services/I18n.ts";
+import FolioPassphraseDialog from "./FolioPassphraseDialog.tsx";
 import {
   ensureProtectedKeysAutoLock,
   forgetProtectedKey,
@@ -19,34 +18,36 @@ import {
 export interface FolioProtectedViewProps {
   folio: Folio;
   /**
-   * Optional escape hatch the unlock card surfaces under the
-   * "Lost the passphrase?" hint. When provided, a destructive
-   * "Delete folio (unrecoverable)" link calls this — the parent is
-   * expected to confirm + invoke the standard delete action.
+   * Optional escape hatch surfaced under the "Lost the passphrase?" hint
+   * on the locked state. When provided, a destructive "Delete folio
+   * (unrecoverable)" link calls this — the parent confirms + deletes.
    */
   onDeleteUnrecoverable?: () => void;
 }
 
 /**
- * Render the body of a protected folio. If no in-memory key is cached
- * for this folio, shows an unlock card; on success, derives the key
- * (PBKDF2 inside `BrowserCryptoProvider`), decrypts, displays markdown.
+ * Render the body of a protected folio behind a Clear ⇄ Encrypted toggle.
  *
- * The plaintext lives only in component state — never echoed to any
- * atom, storage, or logger. The derived `CryptoKey` is cached in a
- * module-level Map (NOT a store atom) so a re-render reuses it without
- * re-prompting; the Map clears on tab close.
+ * The toggle is a *session view* control only — it never changes the
+ * folio's stored state (the content stays encrypted at rest). Flipping to
+ * Clear unlocks for viewing: if a session key is already cached it shows
+ * instantly, otherwise a passphrase dialog decrypts it (PBKDF2 inside
+ * `CryptoProvider`). Flipping to Encrypted forgets the key and re-locks.
+ *
+ * Plaintext lives only in component state — never echoed to any atom,
+ * storage, or logger. The derived `CryptoKey` is cached in a module-level
+ * Map that clears on tab close / idle.
  */
 const FolioProtectedView = (props: FolioProtectedViewProps) => {
   const { tr } = useI18n<I18n, "en">();
   const crypto = useInject(CryptoProvider);
 
-  const [passphrase, setPassphrase] = useState("");
   const [plaintext, setPlaintext] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
+  const [unlockOpen, setUnlockOpen] = useState(false);
 
-  // Try the cached key first — quietly decrypt if it's still valid.
+  // Try the cached key first — quietly decrypt if it's still valid so the
+  // toggle opens in the Clear state without re-prompting.
   useEffect(() => {
     let alive = true;
     const cached = getProtectedKey(props.folio.id);
@@ -58,7 +59,6 @@ const FolioProtectedView = (props: FolioProtectedViewProps) => {
       })
       .catch(() => {
         forgetProtectedKey(props.folio.id);
-        if (alive) setError(String(tr("folios.protected.unlock-failed")));
       })
       .finally(() => {
         if (alive) setWorking(false);
@@ -68,17 +68,23 @@ const FolioProtectedView = (props: FolioProtectedViewProps) => {
     };
   }, [props.folio.id, props.folio.content]);
 
-  const handleUnlock = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!passphrase) return;
-    setWorking(true);
-    setError(null);
+  const handleToggle = (toClear: boolean) => {
+    if (toClear) {
+      // → Clear. Already unlocked (cached key) → nothing to do; the
+      // Switch flips on via `checked`. Otherwise prompt for the passphrase.
+      if (plaintext !== null) return;
+      setUnlockOpen(true);
+    } else {
+      // → Encrypted. Drop the in-memory key + plaintext (re-lock).
+      setPlaintext(null);
+      forgetProtectedKey(props.folio.id);
+    }
+  };
+
+  const handleUnlock = async (passphrase: string): Promise<string | null> => {
+    const envelope = parseEnvelope(props.folio.content);
+    if (!envelope) return tr("folios.protected.invalid-envelope");
     try {
-      const envelope = parseEnvelope(props.folio.content);
-      if (!envelope) {
-        setError(String(tr("folios.protected.invalid-envelope")));
-        return;
-      }
       const key = await crypto.deriveKeyFromPassphrase(
         passphrase,
         envelope.salt,
@@ -88,112 +94,82 @@ const FolioProtectedView = (props: FolioProtectedViewProps) => {
         props.folio.content,
         passphrase,
       );
-      // Only cache after a successful decrypt — a bad passphrase derives
-      // a key that won't decrypt the envelope; we must not cache it.
+      // Only cache after a successful decrypt — a bad passphrase derives a
+      // key that won't decrypt the envelope; we must not cache it.
       rememberProtectedKey(props.folio.id, key);
-      // Arm the inactivity watcher the moment we have any key in memory.
-      // Idempotent — repeated unlocks don't double-install listeners.
       ensureProtectedKeysAutoLock();
       setPlaintext(out);
-      setPassphrase("");
+      return null;
     } catch {
       // Web Crypto throws DOMException("OperationError") on auth-tag
-      // mismatch; we don't distinguish — surface a generic message.
-      setError(String(tr("folios.protected.unlock-failed")));
-    } finally {
-      setWorking(false);
+      // mismatch; surface a generic message, never the plaintext.
+      return tr("folios.protected.unlock-failed");
     }
   };
 
-  const handleLock = () => {
-    setPlaintext(null);
-    forgetProtectedKey(props.folio.id);
-  };
+  const unlocked = plaintext !== null;
 
-  if (plaintext !== null) {
-    return (
-      <div className="flex flex-col gap-3">
-        <div className="text-muted-foreground flex items-center justify-end gap-2 text-xs">
-          <span className="inline-flex items-center gap-1">
-            <ShieldCheck className="size-3.5 text-emerald-500" />
-            {tr("folios.protected.unlocked-badge")}
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="border-border bg-card flex items-center justify-between gap-2 rounded-md border p-3">
+        <div className="flex items-center gap-2">
+          {unlocked ? (
+            <ShieldCheck className="size-4 text-emerald-500" />
+          ) : (
+            <Lock className="text-muted-foreground size-4" />
+          )}
+          <span className="text-sm font-medium">
+            {tr(
+              unlocked
+                ? "folios.protected.state-clear"
+                : "folios.protected.state-encrypted",
+            )}
           </span>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={handleLock}
-            className="h-6 px-2 text-xs"
-          >
-            <Lock className="size-3" />
-            {tr("folios.protected.lock-now")}
-          </Button>
         </div>
-        {plaintext ? (
+        <Switch
+          checked={unlocked}
+          onCheckedChange={handleToggle}
+          disabled={working}
+          aria-label={tr("folios.protected.toggle-aria")}
+        />
+      </div>
+
+      {unlocked ? (
+        plaintext ? (
           <MarkdownView content={plaintext} />
         ) : (
           <p className="text-muted-foreground text-sm italic">
             {tr("folios.empty-folio")}
           </p>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <form
-      onSubmit={handleUnlock}
-      className="border-border bg-card flex flex-col gap-3 rounded-md border p-4"
-    >
-      <div className="flex items-center gap-2">
-        <Lock className="text-muted-foreground size-4" />
-        <h3 className="text-sm font-semibold">
-          {tr("folios.protected.locked-title")}
-        </h3>
-      </div>
-      <p className="text-muted-foreground text-xs">
-        {tr("folios.protected.locked-body")}
-      </p>
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={`passphrase-${props.folio.id}`} className="text-xs">
-          {tr("folios.protected.passphrase")}
-        </Label>
-        <Input
-          id={`passphrase-${props.folio.id}`}
-          type="password"
-          autoComplete="off"
-          value={passphrase}
-          onChange={(e) => setPassphrase(e.currentTarget.value)}
-          disabled={working}
-        />
-      </div>
-      {error && (
-        <p className="text-destructive text-xs" role="alert">
-          {error}
-        </p>
+        )
+      ) : (
+        <div className="border-border bg-card flex flex-col gap-2 rounded-md border p-4">
+          <p className="text-muted-foreground text-xs">
+            {tr("folios.protected.locked-body")}
+          </p>
+          <p className="text-muted-foreground text-[11px] italic">
+            {tr("folios.protected.lost-passphrase-hint")}{" "}
+            <button
+              type="button"
+              onClick={() => props.onDeleteUnrecoverable?.()}
+              className="text-destructive hover:underline"
+            >
+              <Trash2 className="mr-0.5 inline size-3" />
+              {tr("folios.protected.delete-unrecoverable")}
+            </button>
+          </p>
+        </div>
       )}
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-muted-foreground text-[11px] italic">
-          {tr("folios.protected.lost-passphrase-hint")}{" "}
-          <button
-            type="button"
-            onClick={() => props.onDeleteUnrecoverable?.()}
-            className="text-destructive hover:underline"
-          >
-            <Trash2 className="mr-0.5 inline size-3" />
-            {tr("folios.protected.delete-unrecoverable")}
-          </button>
-        </p>
-        <Button
-          type="submit"
-          size="sm"
-          disabled={working || passphrase.length === 0}
-        >
-          <Unlock className="size-3.5" />
-          {tr("folios.protected.unlock")}
-        </Button>
-      </div>
-    </form>
+
+      <FolioPassphraseDialog
+        open={unlockOpen}
+        onOpenChange={setUnlockOpen}
+        title={tr("folios.protected.unlock-title")}
+        description={tr("folios.protected.unlock-description")}
+        submitLabel={tr("folios.protected.unlock")}
+        onSubmit={handleUnlock}
+      />
+    </div>
   );
 };
 

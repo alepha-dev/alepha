@@ -589,6 +589,12 @@ export class FolioController {
       // they're picked up the next time THAT folio is edited. Cheap.
       if (!isProtected) {
         await this.linkService.syncLinks(updated, content);
+      } else if (!existing.protected) {
+        // clear → protected (the view's Encrypt action): the plaintext —
+        // and the `[[links]]` parsed from it — is now ciphertext. Wipe the
+        // outbound links so the graph doesn't leak what the folio used to
+        // reference. `searchText` is already blanked above.
+        await this.linkService.syncLinks(updated, "");
       }
       // Write a revision row when the change touched anything we record
       // (content / title / tags / summary). Pin-only or

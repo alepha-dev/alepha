@@ -2,6 +2,7 @@ import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view"
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   useAction,
@@ -16,6 +17,7 @@ import {
   ChevronRight,
   History,
   ListTree,
+  Lock,
   Pencil,
   Pin,
   PinOff,
@@ -32,8 +34,13 @@ import type { I18n } from "../../services/I18n.ts";
 import { useWikiLinkRewrite } from "../shared/useWikiLinkRewrite.ts";
 import FolioBacklinksPanel from "./FolioBacklinksPanel.tsx";
 import FolioHistoryPanel from "./FolioHistoryPanel.tsx";
+import FolioPassphraseDialog from "./FolioPassphraseDialog.tsx";
 import FolioProtectedView from "./FolioProtectedView.tsx";
 import FolioTreePanel from "./FolioTreePanel.tsx";
+import {
+  ensureProtectedKeysAutoLock,
+  rememberProtectedKey,
+} from "./protectedFolioKeys.ts";
 import WikiLinkHoverProvider from "./WikiLinkHoverProvider.tsx";
 
 const TREE_OPEN_KEY = "lor.folio.view.treeOpen";
@@ -51,6 +58,8 @@ const FolioView = () => {
   const dialog = useDialog();
   const folioApi = useClient<FolioController>();
   const alepha = useAlepha();
+  const crypto = useInject(CryptoProvider);
+  const [encryptOpen, setEncryptOpen] = useState(false);
   const [folio] = useStore(currentFolioAtom);
   const [folios, setFolios] = useStore(userFoliosAtom);
   const [, setTags] = useStore(folioTagsAtom);
@@ -133,10 +142,40 @@ const FolioView = () => {
 
   const handleDelete = async () => {
     const confirmed = await dialog.confirm({
-      title: String(tr("folios.confirm-delete-title")),
-      description: String(tr("folios.confirm-delete-message")),
+      title: tr("folios.confirm-delete-title"),
+      description: tr("folios.confirm-delete-message"),
     });
     if (confirmed) await deleteAction.run();
+  };
+
+  // Encrypt a clear folio in place: derive a key from the new passphrase,
+  // encrypt the current plaintext client-side, and persist the envelope.
+  // The server clears searchText + outbound links on the clear→protected
+  // transition. Caching the key leaves the folio immediately readable.
+  const handleEncrypt = async (passphrase: string): Promise<string | null> => {
+    if (!folio) return null;
+    try {
+      const saltHex = crypto.randomUUID().replace(/-/g, "");
+      const key = await crypto.deriveKeyFromPassphrase(passphrase, saltHex);
+      const envelope = await crypto.encryptWithPassphrase(
+        folio.content,
+        key,
+        saltHex,
+      );
+      const updated = await folioApi.update({
+        params: { id: folio.id },
+        body: { protected: true, content: envelope },
+      });
+      rememberProtectedKey(updated.id, key);
+      ensureProtectedKeysAutoLock();
+      alepha.store.set(currentFolioAtom, updated as typeof folio);
+      setFolios(
+        folios.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)),
+      );
+      return null;
+    } catch {
+      return tr("folios.protected.encrypt-failed");
+    }
   };
 
   return (
@@ -257,6 +296,16 @@ const FolioView = () => {
                 <Pin className="size-4" />
               )}
             </Button>
+            {!folio.protected && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setEncryptOpen(true)}
+                aria-label={tr("folios.protected.encrypt")}
+              >
+                <Lock className="size-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -265,7 +314,7 @@ const FolioView = () => {
                   href={router.path("campaignFoliosFolioEdit", {
                     params: { campaignId, shortId: folio.shortId },
                   })}
-                  aria-label={String(tr("folios.edit"))}
+                  aria-label={tr("folios.edit")}
                 />
               }
             >
@@ -276,7 +325,7 @@ const FolioView = () => {
               size="icon"
               onClick={handleDelete}
               disabled={deleteAction.loading}
-              aria-label={String(tr("folios.delete"))}
+              aria-label={tr("folios.delete")}
             >
               <Trash2 className="size-4" />
             </Button>
@@ -325,6 +374,16 @@ const FolioView = () => {
           />
         </article>
       </div>
+
+      <FolioPassphraseDialog
+        open={encryptOpen}
+        onOpenChange={setEncryptOpen}
+        title={tr("folios.protected.encrypt-title")}
+        description={tr("folios.protected.encrypt-description")}
+        submitLabel={tr("folios.protected.encrypt")}
+        requireConfirm
+        onSubmit={handleEncrypt}
+      />
     </div>
   );
 };

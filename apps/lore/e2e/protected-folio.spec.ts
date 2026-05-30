@@ -2,24 +2,27 @@ import { expect, test } from "@playwright/test";
 import { createCampaignViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**
- * Protected folios (Lore quest #50) — end-to-end encrypted folios. The
- * core contracts under test:
+ * Protected folios (Lore quest #50) — end-to-end encrypted folios. As of
+ * the encryption-UX rework, encryption is no longer chosen at create time;
+ * a clear folio is encrypted from its view via an Encrypt action, and an
+ * encrypted folio is read through a Clear ⇄ Encrypted toggle. The core
+ * contracts under test:
  *
- *  1. Create flow: a folio created with "Protect this folio" on + a
- *     passphrase persists ciphertext server-side. The server payload
- *     for that folio's `content` is a JSON envelope, never plaintext.
- *  2. Wrong passphrase rejection: the unlock card surfaces a generic
+ *  1. Encrypt-from-view: a clear folio encrypted with a passphrase
+ *     persists ciphertext server-side. The server payload for that
+ *     folio's `content` is a JSON envelope, never plaintext.
+ *  2. Wrong passphrase rejection: the unlock dialog surfaces a generic
  *     "Wrong passphrase" error and DOESN'T leak the plaintext.
- *  3. Right passphrase round-trip: same passphrase reveals the original
- *     markdown body, including a marker we put in to make accidental
- *     plaintext leakage detectable.
+ *  3. Right passphrase round-trip: the same passphrase reveals the
+ *     original markdown body, including a marker we put in to make
+ *     accidental plaintext leakage detectable.
  *
  * Crypto runs in the browser via `BrowserCryptoProvider`. We don't mock
  * Web Crypto — Playwright's Chromium has it natively. The PBKDF2 600k
  * iterations is slow (~1s on Chromium), so test timeouts are bumped.
  */
 test.describe("Protected folio", () => {
-  test("create → fail with wrong passphrase → unlock with right one", async ({
+  test("encrypt from view → fail with wrong passphrase → unlock with right one", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -39,7 +42,7 @@ test.describe("Protected folio", () => {
     await registerAndVerify(page, email, password);
     const campaignId = await createCampaignViaWizard(page, campaignTitle);
 
-    await test.step("create a protected folio via the editor", async () => {
+    await test.step("create a clear folio via the editor", async () => {
       // Navigate via SPA — direct `page.goto('/archive/new')` from the
       // landing page lands on the campaign root for reasons that look
       // like an SSR/hydration race. Going through the Archive link is
@@ -49,8 +52,6 @@ test.describe("Protected folio", () => {
         .getByRole("link", { name: /^archive$/i })
         .first()
         .click();
-      // Quest #66 — the URL renamed /folios → /archive at the human
-      // surface; the folio detail / edit subpaths stay the same.
       await page.waitForURL(new RegExp(`/c/${campaignId}/archive`), {
         timeout: 15_000,
       });
@@ -66,30 +67,39 @@ test.describe("Protected folio", () => {
 
       // The folio title input is the one with the "Untitled" placeholder.
       await page.getByPlaceholder(/^untitled$/i).fill(folioTitle);
-
-      // Toggle "Protect this folio" — the switch is the only `role=switch`
-      // on this page.
-      await page.getByRole("switch").click();
-      await expect(page.getByLabel(/^passphrase$/i)).toBeVisible({
-        timeout: 5_000,
-      });
-
-      await page.getByLabel(/^passphrase$/i).fill(passphrase);
-      await page.getByLabel(/confirm passphrase/i).fill(passphrase);
-
-      // Content goes into the markdown textarea. With autoSave off, we
-      // need to submit explicitly via the Save button in the header.
       await page.getByPlaceholder(/start writing markdown/i).fill(folioBody);
 
+      // No encryption toggle any more — save as a clear folio, land on
+      // its view.
       await page.getByRole("button", { name: /^save$/i }).click();
       await page.waitForURL(new RegExp(`/c/${campaignId}/archive/\\d+`), {
         timeout: 30_000,
       });
     });
 
+    await test.step("encrypt the folio from its view", async () => {
+      // The header Encrypt icon-button (aria-label "Encrypt") opens the
+      // set-passphrase dialog.
+      await page
+        .getByRole("button", { name: /^encrypt$/i })
+        .first()
+        .click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible({ timeout: 5_000 });
+      await dialog.getByLabel(/^passphrase$/i).fill(passphrase);
+      await dialog.getByLabel(/confirm passphrase/i).fill(passphrase);
+      await dialog.getByRole("button", { name: /^encrypt$/i }).click();
+      // After encryption the folio is protected AND unlocked (key cached),
+      // so the body still shows the marker and the toggle reads "Clear".
+      await expect(dialog).toBeHidden({ timeout: 30_000 });
+      await expect(page.getByText(`LOOTBAG-${t}`).first()).toBeVisible({
+        timeout: 30_000,
+      });
+    });
+
     await test.step("server-stored content is an envelope, never plaintext", async () => {
       // Hit the same list endpoint the layout loader uses; assert the
-      // freshly-created folio's content shape.
+      // freshly-encrypted folio's content shape.
       const folios = (await page.evaluate(async (cid) => {
         const r = await fetch(`/api/list?campaignId=${cid}&limit=100`, {
           credentials: "include",
@@ -119,35 +129,40 @@ test.describe("Protected folio", () => {
       expect(folio!.content).not.toContain(`LOOTBAG-${t}`);
     });
 
-    await test.step("page reloads into the locked card (key not cached)", async () => {
+    await test.step("page reloads into the locked state (key not cached)", async () => {
       await page.reload();
       await page.waitForLoadState("networkidle");
-      await expect(page.getByText(/protected folio/i).first()).toBeVisible({
-        timeout: 10_000,
-      });
+      await expect(page.getByText(/end-to-end encrypted/i).first()).toBeVisible(
+        { timeout: 10_000 },
+      );
       // The plaintext marker must NOT be on the rendered page either.
       await expect(page.getByText(`LOOTBAG-${t}`)).toHaveCount(0);
     });
 
     await test.step("wrong passphrase shows generic failure, no plaintext leak", async () => {
-      const input = page.getByLabel(/^passphrase$/i);
-      await input.fill(wrongPassphrase);
-      await page.getByRole("button", { name: /^unlock$/i }).click();
-      await expect(page.getByText(/wrong passphrase/i)).toBeVisible({
+      // Flip the Clear ⇄ Encrypted toggle toward Clear → unlock dialog.
+      await page.getByRole("switch").click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible({ timeout: 5_000 });
+      await dialog.getByLabel(/^passphrase$/i).fill(wrongPassphrase);
+      await dialog.getByRole("button", { name: /^unlock$/i }).click();
+      await expect(dialog.getByText(/wrong passphrase/i)).toBeVisible({
         timeout: 30_000,
       });
       await expect(page.getByText(`LOOTBAG-${t}`)).toHaveCount(0);
     });
 
     await test.step("right passphrase reveals the original markdown", async () => {
-      const input = page.getByLabel(/^passphrase$/i);
-      await input.fill(passphrase);
-      await page.getByRole("button", { name: /^unlock$/i }).click();
+      // The unlock dialog is still open from the failed attempt.
+      const dialog = page.getByRole("dialog");
+      await dialog.getByLabel(/^passphrase$/i).fill(passphrase);
+      await dialog.getByRole("button", { name: /^unlock$/i }).click();
+      await expect(dialog).toBeHidden({ timeout: 30_000 });
       await expect(page.getByText(`LOOTBAG-${t}`).first()).toBeVisible({
         timeout: 30_000,
       });
-      // Unlocked-state markers: badge + Lock-now button.
-      await expect(page.getByText(/unlocked/i).first()).toBeVisible();
+      // Unlocked-state marker: the toggle now reads "Clear".
+      await expect(page.getByText(/^clear$/i).first()).toBeVisible();
     });
   });
 });
