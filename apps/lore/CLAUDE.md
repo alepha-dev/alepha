@@ -172,7 +172,7 @@ User-submitted bug reports / feature requests that the campaign owner triages.
 
 **Visibility / access**
 - Submit: any logged-in Lore user (no membership required), provided the campaign has `features.petitions === true`. The petition module toggle in campaign settings is the owner's opt-in/out lever.
-- List/detail/accept/reject/remove: campaign owner only (`AppSecurityProvider.assertOwner`).
+- List/detail (read): any campaign member (`assertMember`). Triage — accept/reject/remove: campaign owner only (`assertOwner`). Same read-vs-mutate split applies to Blights and Insights (members can view the inbox / crash telemetry / analytics; owner-only actions stay gated).
 
 **Where to look**
 - Entity: `src/api/entities/petitions.ts`

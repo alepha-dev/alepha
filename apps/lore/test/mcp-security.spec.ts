@@ -1224,14 +1224,15 @@ describe("MCP Security Integration", () => {
       );
       expect(isErrorResponse(revoke.data)).toBe(true);
 
-      // blight_list — owner-only.
+      // blight_list — NOT owner-gated: the crash inbox is readable by any
+      // campaign member (only sigil *management* above stays owner-only).
       const blights = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
         { name: "blight_list", arguments: { campaign: campaignId } },
         { token: memberToken },
       );
-      expect(isErrorResponse(blights.data)).toBe(true);
+      expect(isErrorResponse(blights.data)).toBe(false);
     });
 
     it("rejects sigil tools without authentication", async ({ expect }) => {
