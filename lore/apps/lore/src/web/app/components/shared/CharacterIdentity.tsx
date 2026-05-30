@@ -10,6 +10,7 @@ import type { Character } from "@/api/entities/characters.ts";
 import type { User } from "@/api/entities/users.ts";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
+import { publicFileUrl } from "@/web/app/services/fileUrl.ts";
 
 export type CharacterWithUser = Character & { user: User };
 
@@ -22,7 +23,7 @@ export const characterPictureSrc = (
   character: CharacterWithUser,
 ): string | null => {
   const fileId = character.picture ?? character.user.picture;
-  return fileId ? `/api/files/${fileId}` : null;
+  return fileId ? publicFileUrl(fileId) : null;
 };
 
 /**

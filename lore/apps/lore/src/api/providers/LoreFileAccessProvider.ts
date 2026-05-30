@@ -118,6 +118,23 @@ export class LoreFileAccessProvider extends FileAccessProvider {
   }
 
   /**
+   * Avatars and campaign icons are served anonymously through the
+   * `/public/files/:id` route (edge-cacheable). They're low-sensitivity,
+   * rendered in unauthenticated contexts, and addressed by opaque uuid —
+   * so they opt out of the default deny-all. Everything else stays private
+   * (base `assertPublic` throws NotFoundError).
+   */
+  async assertPublic(file: FileEntity): Promise<void> {
+    if (
+      file.bucket === LoreFileAccessProvider.AVATAR_BUCKET ||
+      file.bucket === LoreFileAccessProvider.CAMPAIGN_ICON_BUCKET
+    ) {
+      return;
+    }
+    return super.assertPublic(file);
+  }
+
+  /**
    * Find the petition that lists `fileId` in its `attachments` JSON array.
    * Uses a LIKE against the JSON text — petition rows are small and the
    * bucket constraint at the call site already narrows the search.

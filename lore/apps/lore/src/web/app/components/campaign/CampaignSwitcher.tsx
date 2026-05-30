@@ -17,6 +17,7 @@ import { Check, ChevronsUpDown, Home, ImageIcon, Plus } from "lucide-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
+import { publicFileUrl } from "../../services/fileUrl.ts";
 import type { I18n } from "../../services/I18n.ts";
 
 const CampaignSwitcher = () => {
@@ -51,7 +52,7 @@ const CampaignSwitcher = () => {
             <div className="bg-muted text-muted-foreground flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg">
               {campaign.icon ? (
                 <img
-                  src={`/api/files/${campaign.icon}`}
+                  src={publicFileUrl(campaign.icon)}
                   alt=""
                   className="size-full object-cover"
                 />
@@ -91,7 +92,7 @@ const CampaignSwitcher = () => {
                   <div className="bg-muted text-muted-foreground flex aspect-square size-6 shrink-0 items-center justify-center overflow-hidden rounded-md">
                     {c.icon ? (
                       <img
-                        src={`/api/files/${c.icon}`}
+                        src={publicFileUrl(c.icon)}
                         alt=""
                         className="size-full object-cover"
                       />

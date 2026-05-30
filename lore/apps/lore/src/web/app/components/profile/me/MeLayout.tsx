@@ -4,6 +4,7 @@ import { Link, NestedView, useRouter } from "alepha/react/router";
 import { Home, User } from "lucide-react";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { displayName } from "../../../services/displayName.ts";
+import { publicFileUrl } from "../../../services/fileUrl.ts";
 import PageHeader from "../../shared/header/PageHeader.tsx";
 import MeLayoutMenu from "./MeLayoutMenu.tsx";
 
@@ -19,7 +20,7 @@ const MeLayout = () => {
         <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
           {auth.user?.picture ? (
             <img
-              src={`/api/files/${auth.user.picture}`}
+              src={publicFileUrl(auth.user.picture)}
               alt="avatar"
               className="size-full object-cover"
             />

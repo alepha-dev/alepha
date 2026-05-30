@@ -19,6 +19,7 @@ import type { UserController } from "@/api/controllers/UserController.ts";
 import type { User as UserEntity } from "@/api/entities/users.ts";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
 import { displayName } from "../../services/displayName.ts";
+import { publicFileUrl } from "../../services/fileUrl.ts";
 
 export interface MyProfileProps {
   user: UserEntity;
@@ -109,7 +110,7 @@ const MyProfile = (props: MyProfileProps) => {
         >
           {currentUser.picture ? (
             <img
-              src={`/api/files/${currentUser.picture}`}
+              src={publicFileUrl(currentUser.picture)}
               alt="avatar"
               className="size-full object-cover"
             />
