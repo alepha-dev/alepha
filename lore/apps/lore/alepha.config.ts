@@ -59,67 +59,11 @@ export default defineConfig({
       ],
     }),
     () => ({
-      /**
-       * Pull a SQL dump of the production Cloudflare D1 and import it into
-       * the local on-disk SQLite that `yarn dev` reads — so dev runs against
-       * a real snapshot. `wrangler` is already a workspace dep; `sqlite3`
-       * ships with macOS and most Linux distros.
-       *
-       * Usage: `yarn alepha export:db [--env=production] [--output=...]`
-       */
-      "export:db": $command({
-        description:
-          "Export the remote D1 database into a local SQLite file (dev snapshot).",
-        flags: t.object({
-          env: t.optional(
-            t.text({
-              description: "Platform environment to pull from.",
-              default: "production",
-            }),
-          ),
-          output: t.optional(
-            t.text({
-              description:
-                "Destination SQLite file. Defaults to the dev DB path (node_modules/.alepha/sqlite.db).",
-            }),
-          ),
-          keepSql: t.optional(
-            t.boolean({
-              description: "Keep the intermediate .sql dump file.",
-            }),
-          ),
-        }),
-        handler: async ({ run, flags, root, fs }) => {
-          const env = flags.env ?? "production";
-          // NamingService convention: <project>-<env>, where <project> is the
-          // package.json name. See packages/alepha/src/cli/platform-lib/
-          // services/NamingService.ts.
-          const dbName = `${pkg.name}-${env}`;
-          const tmpDir = `${root}/node_modules/.alepha`;
-          const sqlPath = `${tmpDir}/${dbName}.sql`;
-          const dbPath = flags.output ?? `${tmpDir}/sqlite.db`;
-
-          await fs.mkdir(tmpDir, { recursive: true });
-
-          await run(
-            `wrangler d1 export ${dbName} --remote --output=${sqlPath}`,
-            { alias: `exporting D1 ${dbName} → ${sqlPath}` },
-          );
-
-          // sqlite3 < dump.sql barfs if the file already exists with a
-          // conflicting schema. Start clean.
-          await fs.rm(dbPath, { force: true });
-          // run() doesn't go through a shell, so `<` would be passed as an
-          // argument. Wrap in `sh -c` to get redirection.
-          await run(`sh -c "sqlite3 '${dbPath}' < '${sqlPath}'"`, {
-            alias: `importing dump → ${dbPath}`,
-          });
-
-          if (!flags.keepSql) {
-            await fs.rm(sqlPath, { force: true });
-          }
-        },
-      }),
+      // Pulling the production D1 into the local dev SQLite is now a
+      // baseline command: `alepha platform db export [--env] [--tenant]
+      // [--output] [--keep-sql]`. The old app-local `export:db` was
+      // promoted upstream (CloudflareAdapter.exportDb) — see Alepha quest
+      // #220.
 
       /**
        * Sync the production R2 bucket into the local dev `buckets/` dir
