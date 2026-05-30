@@ -45,17 +45,20 @@ export const platformOptions = $atom({
       secrets: t.optional(
         t.object({
           /**
-           * Explicit allowlist of worker secret key names.
+           * Explicit override of the worker secret-key allowlist.
            *
-           * When set, the deploy's `secrets` step pushes exactly these keys,
-           * resolving each value from `.env.<env>[.local]` first, then
-           * `process.env`. This lets CI deliver secrets via the job
-           * environment (no `.env` file on the runner) while keeping a safe
-           * allowlist — the runner's ambient vars (PATH, GITHUB_*, …) are
-           * never pushed.
+           * By default the deploy `secrets` step uses the build manifest's
+           * `env` list (every key the app declares via `$env`, captured at
+           * build time) as the allowlist, resolving each value from
+           * `.env.<env>[.local]` first, then `process.env`. This lets CI
+           * deliver secrets via the job environment (no `.env` file on the
+           * runner) while only ever pushing declared keys — ambient runner
+           * vars (PATH, GITHUB_*, …) can never leak.
            *
-           * Omit to keep the legacy behavior: the `.env.<env>` file is itself
-           * the allowlist (every non-excluded key in it is pushed).
+           * Set `keys` to override that auto-detected list (e.g. to narrow it,
+           * or to add a key read via `process.env` rather than `$env`). When
+           * neither this nor a manifest is present, the `.env.<env>` file is
+           * itself the allowlist (legacy fallback).
            */
           keys: t.optional(t.array(t.text())),
 

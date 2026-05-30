@@ -1,12 +1,24 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 import {
+  JsonFormatterProvider,
   LogDestinationProvider,
   LogFormatterProvider,
   MemoryDestinationProvider,
   PrettyFormatterProvider,
+  RawFormatterProvider,
 } from "../index.ts";
 import { Logger } from "../services/Logger.ts";
+
+/**
+ * Exposes the protected `formatter` getter so the runtime format override
+ * can be asserted by provider identity.
+ */
+class TestLogger extends Logger {
+  public get activeFormatter() {
+    return this.formatter;
+  }
+}
 
 describe("Logger", () => {
   const createLogger = (service = "TestService", module = "test.module") => {
@@ -290,6 +302,49 @@ describe("Logger", () => {
       expect(level1).toBe("DEBUG");
       expect(level2).toBe("DEBUG");
       expect(level1).toBe(level2); // Should be same instance/value
+    });
+  });
+
+  describe("format getter", () => {
+    const make = () => {
+      const alepha = Alepha.create({ env: { LOG_LEVEL: "info" } })
+        .with({
+          provide: LogDestinationProvider,
+          use: MemoryDestinationProvider,
+        })
+        .with({
+          provide: LogFormatterProvider,
+          use: PrettyFormatterProvider,
+        });
+      const logger = alepha.inject(TestLogger, {
+        lifetime: "transient",
+        args: ["TestService", "test.module"],
+      });
+      return { alepha, logger };
+    };
+
+    it("falls back to the register-time formatter when unset", ({ expect }) => {
+      const { logger } = make();
+      expect(logger.activeFormatter).toBeInstanceOf(PrettyFormatterProvider);
+    });
+
+    it("honors the alepha.logger.format state override (read live)", ({
+      expect,
+    }) => {
+      const { alepha, logger } = make();
+
+      alepha.store.set("alepha.logger.format", "json");
+      expect(logger.activeFormatter).toBeInstanceOf(JsonFormatterProvider);
+
+      alepha.store.set("alepha.logger.format", "raw");
+      expect(logger.activeFormatter).toBeInstanceOf(RawFormatterProvider);
+
+      alepha.store.set("alepha.logger.format", "pretty");
+      expect(logger.activeFormatter).toBeInstanceOf(PrettyFormatterProvider);
+
+      // Unknown / cleared → back to the register-time default.
+      alepha.store.set("alepha.logger.format", undefined);
+      expect(logger.activeFormatter).toBeInstanceOf(PrettyFormatterProvider);
     });
   });
 });

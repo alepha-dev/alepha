@@ -37,6 +37,26 @@ describe("Runner", () => {
     vi.clearAllMocks();
   });
 
+  test("useDynamicLogger: state overrides disable the stylish UI even with LOG_FORMAT=raw", () => {
+    // env says "raw" (stylish), but a runtime state override (what the CLI
+    // `--verbose` flag sets) must win. Asserting the *false* direction is
+    // deterministic across CI/non-CI (the dynamic-on path is gated on isCI).
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "info", LOG_FORMAT: "raw" },
+    }).with({
+      provide: LogDestinationProvider,
+      use: MemoryDestinationProvider,
+    });
+    const r = alepha.inject(Runner);
+
+    alepha.store.set("alepha.logger.format", "pretty");
+    expect(r.useDynamicLogger).toBe(false);
+
+    alepha.store.set("alepha.logger.format", undefined);
+    alepha.store.set("alepha.logger.level", "debug");
+    expect(r.useDynamicLogger).toBe(false);
+  });
+
   test("should execute a single shell command via run.sh", async () => {
     await runner.run(`echo "hello"`);
 

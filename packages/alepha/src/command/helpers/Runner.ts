@@ -78,12 +78,22 @@ export class Runner {
       return false;
     }
 
-    const logLevel = String(this.alepha.env.LOG_LEVEL || "").toLowerCase();
+    // Runtime state overrides the env defaults (e.g. the CLI `--verbose`
+    // flag sets level=debug + format=pretty), so a flag can flip the
+    // stylish task UI off without restarting with LOG_* env vars.
+    const logLevel = String(
+      this.alepha.store.get("alepha.logger.level") ??
+        this.alepha.env.LOG_LEVEL ??
+        "",
+    ).toLowerCase();
     if (logLevel === "debug" || logLevel === "trace") {
       return false;
     }
 
-    return this.alepha.env.LOG_FORMAT === "raw";
+    const format =
+      this.alepha.store.get("alepha.logger.format") ??
+      this.alepha.env.LOG_FORMAT;
+    return format === "raw";
   }
 
   /**

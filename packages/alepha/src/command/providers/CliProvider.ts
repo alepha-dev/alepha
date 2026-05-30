@@ -145,6 +145,13 @@ export class CliProvider {
       description: "Show this help message",
       schema: t.boolean(),
     },
+    verbose: {
+      // No `-v` alias — it collides with `--version` on the root command.
+      aliases: ["verbose"],
+      description:
+        "Verbose output: debug logs in plain pretty format (turns off the dynamic CLI UI).",
+      schema: t.boolean(),
+    },
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -174,6 +181,14 @@ export class CliProvider {
         })),
         { strict: false }, // Don't throw for command-specific flags
       );
+
+      // `--verbose` → flip the logger to debug + plain pretty output via
+      // state (read live by Logger + Runner). Set before the command runs
+      // so its output and task UI honor it.
+      if (globalFlags.verbose) {
+        this.alepha.store.set("alepha.logger.level", "debug");
+        this.alepha.store.set("alepha.logger.format", "pretty");
+      }
 
       if (globalFlags.help) {
         this.printHelp(command);

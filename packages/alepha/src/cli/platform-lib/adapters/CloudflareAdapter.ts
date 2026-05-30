@@ -338,7 +338,38 @@ export class CloudflareAdapter extends PlatformAdapter {
     "HYPERDRIVE_ID",
     "POSTGRES_SCHEMA",
     "NODE_ENV",
+    // Framework infra knobs (have defaults, never worker secrets). The
+    // manifest's `env` auto-list surfaces every declared `$env` key, so
+    // exclude these here to keep them out of the secret push even when a CI
+    // runner happens to set them (LOG_LEVEL, DEBUG, etc.).
+    "LOG_LEVEL",
+    "LOG_FORMAT",
+    "SERVER_HOST",
+    "SERVER_PORT",
+    "TRUST_PROXY",
+    "REACT_SSR_ENABLED",
+    "DATABASE_SYNC",
+    "DEBUG",
   ]);
+
+  /**
+   * Read the build manifest's `env` list (every key the app declares via
+   * `$env`) from `dist/manifest.json`. Used as the default worker-secret
+   * allowlist. Returns `undefined` when the manifest is absent or predates
+   * the `env` field, so the caller falls back to the `.env` file keys.
+   */
+  protected async readManifestEnvKeys(
+    root: string,
+  ): Promise<string[] | undefined> {
+    try {
+      const manifest = await this.fs.readJsonFile<Partial<BuildManifest>>(
+        this.fs.join(root, "dist", "manifest.json"),
+      );
+      return Array.isArray(manifest.env) ? manifest.env : undefined;
+    } catch {
+      return undefined;
+    }
+  }
 
   override async secrets(
     ctx: PlatformContext,
@@ -347,13 +378,20 @@ export class CloudflareAdapter extends PlatformAdapter {
     this.configureApi(ctx);
     const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
 
-    // The key set to push:
-    //   - `platform.secrets.keys` declared → that explicit allowlist. Values
-    //     resolve from the `.env.<env>` file first, then `process.env`, so CI
-    //     can deliver secrets via the job environment with no file on disk.
-    //   - omitted → legacy behavior: the `.env.<env>` file IS the allowlist.
+    // The key set to push, by precedence:
+    //   1. `platform.secrets.keys` — explicit override in alepha.config.ts.
+    //   2. `dist/manifest.json` `env` — every key the app declares via `$env`,
+    //      captured at build time. This is the default: CI delivers secrets
+    //      through the deploy job's environment with no `.env` file, and the
+    //      manifest tells us which declared keys to read from `process.env`.
+    //   3. the `.env.<env>` file keys — legacy fallback for older artifacts
+    //      built before the manifest carried `env`.
+    // In every case the value resolves from `.env.<env>` first, then
+    // `process.env`; only declared keys are considered, so ambient runner vars
+    // (PATH, GITHUB_*, …) can never leak.
     const declaredKeys = this.options?.secrets?.keys;
-    const keys = declaredKeys ?? Object.keys(envVars);
+    const manifestKeys = await this.readManifestEnvKeys(ctx.root);
+    const keys = declaredKeys ?? manifestKeys ?? Object.keys(envVars);
 
     // Filter out binding/build vars, VITE_* vars, and empty values
     const secrets: Record<string, string> = {};

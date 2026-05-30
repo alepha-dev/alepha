@@ -89,6 +89,15 @@ export interface BuildManifest {
     instanceType: string;
     maxInstances: number;
   }>;
+  /**
+   * Every env var the app declares via `$env`, captured from
+   * `alepha.dump().env` at build time. The deploy `secrets` step uses this
+   * as the worker-secret allowlist (minus build/binding vars) so CI can
+   * deliver secrets straight from `process.env` without a `.env` file —
+   * `platform.secrets.keys` overrides it when set. Empty when introspection
+   * was unavailable (older artifacts / prebuilt mode).
+   */
+  env: string[];
 }
 
 /**
@@ -262,6 +271,14 @@ export class BuildCloudflareTask extends BuildTask {
     const environments = (ctx.platformOptions?.environments ??
       {}) as BuildManifest["environments"];
 
+    // Every declared `$env` key. dump() force-instantiates the graph (no
+    // start/ready hooks), so this is the full env surface — used by the
+    // deploy `secrets` step as the worker-secret allowlist.
+    let env: string[] = [];
+    try {
+      env = Object.keys(ctx.alepha.dump().env).sort();
+    } catch {}
+
     const manifest: BuildManifest = {
       version: 1,
       project: name,
@@ -285,6 +302,7 @@ export class BuildCloudflareTask extends BuildTask {
         instanceType: c.instanceType,
         maxInstances: c.maxInstances,
       })),
+      env,
     };
 
     await this.fs.writeFile(

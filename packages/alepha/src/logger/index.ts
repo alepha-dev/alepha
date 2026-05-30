@@ -21,6 +21,7 @@ export * from "./providers/LogDestinationProvider.ts";
 export * from "./providers/LogFormatterProvider.ts";
 export * from "./providers/MemoryDestinationProvider.ts";
 export * from "./providers/PrettyFormatterProvider.ts";
+export * from "./providers/RawFormatterProvider.ts";
 export * from "./schemas/logEntrySchema.ts";
 export * from "./services/Logger.ts";
 
@@ -218,6 +219,18 @@ declare module "alepha" {
      * Current log level for the application or specific modules.
      */
     "alepha.logger.level"?: string;
+
+    /**
+     * Runtime override for the log format (`json` | `pretty` | `raw`).
+     *
+     * Unset → the formatter chosen at register time from `LOG_FORMAT`
+     * (honoring any custom `LogFormatterProvider` substitution) is used.
+     * When set, it overrides both the active formatter and the CLI's
+     * dynamic/"stylish" task UI (which is enabled only for `raw`). Set it
+     * to flip output at runtime — e.g. the CLI `--verbose` flag forces
+     * `pretty`.
+     */
+    "alepha.logger.format"?: string;
   }
 
   export interface Hooks {

@@ -6,13 +6,24 @@ import {
   type LogLevel,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { JsonFormatterProvider } from "../providers/JsonFormatterProvider.ts";
 import { LogDestinationProvider } from "../providers/LogDestinationProvider.ts";
 import { LogFormatterProvider } from "../providers/LogFormatterProvider.ts";
+import { PrettyFormatterProvider } from "../providers/PrettyFormatterProvider.ts";
+import { RawFormatterProvider } from "../providers/RawFormatterProvider.ts";
 import type { LogEntry } from "../schemas/logEntrySchema.ts";
 
 export class Logger implements LoggerInterface {
   protected readonly alepha = $inject(Alepha);
-  protected readonly formatter = $inject(LogFormatterProvider);
+  /**
+   * Formatter chosen at register time (from `LOG_FORMAT`, honoring any
+   * custom `LogFormatterProvider` substitution). Used unless a runtime
+   * `alepha.logger.format` override is set — see {@link formatter}.
+   */
+  protected readonly defaultFormatter = $inject(LogFormatterProvider);
+  protected readonly jsonFormatter = $inject(JsonFormatterProvider);
+  protected readonly prettyFormatter = $inject(PrettyFormatterProvider);
+  protected readonly rawFormatter = $inject(RawFormatterProvider);
   protected readonly destination = $inject(LogDestinationProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
@@ -49,6 +60,25 @@ export class Logger implements LoggerInterface {
       this.logLevel = this.parseLevel(this.appLogLevel, this.module);
     }
     return this.logLevel;
+  }
+
+  /**
+   * Active formatter. Honors a runtime `alepha.logger.format` override
+   * (read live, like {@link level}); otherwise falls back to the
+   * register-time {@link defaultFormatter} so custom substitutions and the
+   * `LOG_FORMAT` default keep working.
+   */
+  protected get formatter(): LogFormatterProvider {
+    switch (this.alepha.store.get("alepha.logger.format")) {
+      case "json":
+        return this.jsonFormatter;
+      case "pretty":
+        return this.prettyFormatter;
+      case "raw":
+        return this.rawFormatter;
+      default:
+        return this.defaultFormatter;
+    }
   }
 
   public parseLevel(level: string, app: string): LogLevel {

@@ -517,6 +517,95 @@ describe("CloudflareAdapter", () => {
       expect(byName.GOOGLE_CLIENT_ID).toBe("env-google");
     });
 
+    test("uses dist/manifest.json `env` as the default allowlist, resolved from process.env", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming, api } = createTestEnv();
+      // No platform.secrets.keys and no .env file → the manifest's declared
+      // env list is the allowlist. This is the CI shape.
+      const ctx = makeCtx(naming, {
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+      await fs.writeFile(
+        "/project/dist/manifest.json",
+        JSON.stringify({
+          env: [
+            "APP_SECRET",
+            "GOOGLE_CLIENT_ID",
+            "CLOUDFLARE_ZONE",
+            "LOG_LEVEL",
+          ],
+        }),
+      );
+
+      process.env.APP_SECRET = "s1";
+      process.env.GOOGLE_CLIENT_ID = "g1";
+      process.env.CLOUDFLARE_ZONE = "example.com"; // declared but EXCLUDED
+      // LOG_LEVEL is declared + ambient in the runner, but EXCLUDED (infra knob).
+      try {
+        const run = createMockRun();
+        await adapter.secrets(ctx, run);
+      } finally {
+        delete process.env.APP_SECRET;
+        delete process.env.GOOGLE_CLIENT_ID;
+        delete process.env.CLOUDFLARE_ZONE;
+      }
+
+      const pushed = api.secrets.get("acme-portal-production") ?? [];
+      expect(pushed.map((s) => s.name).sort()).toEqual([
+        "APP_SECRET",
+        "GOOGLE_CLIENT_ID",
+      ]);
+    });
+
+    test("platform.secrets.keys overrides the manifest `env` allowlist", async ({
+      expect,
+    }) => {
+      const { adapter, alepha, fs, naming, api } = createTestEnv();
+      alepha.set(platformOptions, {
+        secrets: { keys: ["APP_SECRET"] }, // narrow override
+        environments: { production: { adapter: "cloudflare" } },
+      } as any);
+
+      const ctx = makeCtx(naming, {
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+      // Manifest lists more keys, but the explicit override wins.
+      await fs.writeFile(
+        "/project/dist/manifest.json",
+        JSON.stringify({ env: ["APP_SECRET", "GOOGLE_CLIENT_ID"] }),
+      );
+
+      process.env.APP_SECRET = "s1";
+      process.env.GOOGLE_CLIENT_ID = "g1";
+      try {
+        const run = createMockRun();
+        await adapter.secrets(ctx, run);
+      } finally {
+        delete process.env.APP_SECRET;
+        delete process.env.GOOGLE_CLIENT_ID;
+      }
+
+      const pushed = api.secrets.get("acme-portal-production") ?? [];
+      expect(pushed.map((s) => s.name)).toEqual(["APP_SECRET"]);
+    });
+
     test("auto-derives PUBLIC_URL from the configured domain", async ({
       expect,
     }) => {
