@@ -59,7 +59,7 @@ declare module "alepha" {
  *
  * Uses path-style addressing (`<endpoint>/<bucket>`).
  */
-export class NodeS3BucketProvider implements FileStorageProvider {
+export class S3FileStorageProvider implements FileStorageProvider {
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);

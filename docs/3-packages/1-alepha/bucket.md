@@ -29,8 +29,8 @@ Unified file storage abstraction across multiple backends.
 
 ### Providers
 
-- [`CloudflareR2Provider`](/docs/reference-providers-cloudflarer2provider) — Cloudflare R2 storage provider.
-- [`NodeS3BucketProvider`](/docs/reference-providers-nodes3bucketprovider) — S3-compatible file storage provider for Node.js.
+- [`R2FileStorageProvider`](/docs/reference-providers-r2filestorageprovider) — Cloudflare R2 storage provider.
+- [`S3FileStorageProvider`](/docs/reference-providers-s3filestorageprovider) — S3-compatible file storage provider for Node.js.
 
 ### Environment Variables
 

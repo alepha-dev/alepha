@@ -61,7 +61,7 @@ import type { FileStorageProvider } from "./FileStorageProvider.ts";
  * // Files stored at: myapp/avatars/uuid.png, myapp/documents/uuid.pdf
  * ```
  */
-export class CloudflareR2Provider implements FileStorageProvider {
+export class R2FileStorageProvider implements FileStorageProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly crypto = $inject(CryptoProvider);

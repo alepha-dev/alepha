@@ -7,17 +7,17 @@ import {
 import { FileStorageProvider } from "./providers/FileStorageProvider.ts";
 import { LocalFileStorageProvider } from "./providers/LocalFileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "./providers/MemoryFileStorageProvider.ts";
-import { NodeS3BucketProvider } from "./providers/NodeS3BucketProvider.ts";
+import { S3FileStorageProvider } from "./providers/S3FileStorageProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./errors/FileNotFoundError.ts";
 export * from "./primitives/$bucket.ts";
-export * from "./providers/CloudflareR2Provider.ts";
 export * from "./providers/FileStorageProvider.ts";
 export * from "./providers/LocalFileStorageProvider.ts";
 export * from "./providers/MemoryFileStorageProvider.ts";
-export * from "./providers/NodeS3BucketProvider.ts";
+export * from "./providers/R2FileStorageProvider.ts";
+export * from "./providers/S3FileStorageProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ export const AlephaBucket = $module({
   variants: [
     MemoryFileStorageProvider,
     LocalFileStorageProvider,
-    NodeS3BucketProvider,
+    S3FileStorageProvider,
   ],
   register: (alepha) => {
     const useS3 = !!alepha.env.S3_ENDPOINT;
@@ -85,7 +85,7 @@ export const AlephaBucket = $module({
         alepha.isTest() || alepha.isServerless()
           ? MemoryFileStorageProvider
           : useS3
-            ? NodeS3BucketProvider
+            ? S3FileStorageProvider
             : LocalFileStorageProvider,
     });
   },

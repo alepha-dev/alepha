@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   AlephaBucket,
   FileStorageProvider,
-  NodeS3BucketProvider,
+  S3FileStorageProvider,
 } from "../index.ts";
 import {
   TestApp,
@@ -21,11 +21,11 @@ import {
 } from "./shared.ts";
 
 const alepha = Alepha.create()
-  .with({ provide: FileStorageProvider, use: NodeS3BucketProvider })
+  .with({ provide: FileStorageProvider, use: S3FileStorageProvider })
   .with(AlephaBucket)
   .with(TestApp);
 
-const provider = alepha.inject(NodeS3BucketProvider);
+const provider = alepha.inject(S3FileStorageProvider);
 
 describe("NodeS3BucketProvider", () => {
   test("should upload a file and return a fileId", async () => {

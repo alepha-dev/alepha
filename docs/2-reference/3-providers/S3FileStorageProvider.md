@@ -1,9 +1,9 @@
-# NodeS3BucketProvider
+# S3FileStorageProvider
 
 ## Import
 
 ```typescript
-import { NodeS3BucketProvider } from "alepha/bucket";
+import { S3FileStorageProvider } from "alepha/bucket";
 ```
 
 ## Overview

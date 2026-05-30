@@ -71,7 +71,7 @@ The build automatically adds the D1 binding to `wrangler.jsonc`:
 
 ## R2 Buckets
 
-If your application uses `$bucket` with `CloudflareR2Provider`, the R2 binding is added to `wrangler.jsonc` automatically.
+If your application uses `$bucket` with `R2FileStorageProvider`, the R2 binding is added to `wrangler.jsonc` automatically.
 
 ## Cron Triggers
 

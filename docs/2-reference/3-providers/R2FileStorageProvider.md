@@ -1,9 +1,9 @@
-# CloudflareR2Provider
+# R2FileStorageProvider
 
 ## Import
 
 ```typescript
-import { CloudflareR2Provider } from "alepha/bucket";
+import { R2FileStorageProvider } from "alepha/bucket";
 ```
 
 ## Overview

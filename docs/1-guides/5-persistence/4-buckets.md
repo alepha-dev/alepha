@@ -96,8 +96,8 @@ The default provider depends on the environment:
 |----------|---------|-------------|
 | `MemoryFileStorageProvider` | `alepha/bucket` | In-memory storage for testing |
 | `LocalFileStorageProvider` | `alepha/bucket` | Local filesystem storage |
-| `CloudflareR2Provider` | `alepha/bucket` | Cloudflare R2 (Workers binding) |
-| `NodeS3BucketProvider` | `alepha/bucket` | AWS S3 / Cloudflare R2 / MinIO / DigitalOcean Spaces / any S3-compatible service (Node.js, powered by `s3mini`) |
+| `R2FileStorageProvider` | `alepha/bucket` | Cloudflare R2 (Workers binding) |
+| `S3FileStorageProvider` | `alepha/bucket` | AWS S3 / Cloudflare R2 / MinIO / DigitalOcean Spaces / any S3-compatible service (Node.js, powered by `s3mini`) |
 
 ### Configuring a Provider
 
