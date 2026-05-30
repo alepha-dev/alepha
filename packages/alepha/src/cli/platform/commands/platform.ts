@@ -631,6 +631,72 @@ export class PlatformCommand {
     },
   });
 
+  protected readonly dbExport = $command({
+    name: "export",
+    description:
+      "Export the deployed database to a local snapshot (remote → local dev DB).",
+    flags: t.object({
+      ...this.envFlags.properties,
+      output: t.optional(
+        t.text({
+          description:
+            "Destination SQLite file. Defaults to the dev DB path (node_modules/.alepha/sqlite.db).",
+        }),
+      ),
+      keepSql: t.optional(
+        t.boolean({
+          description: "Keep the intermediate .sql dump file.",
+        }),
+      ),
+    }),
+    handler: async ({ flags, root, run }) => {
+      const config = await this.inspector.resolveConfig(root);
+      const env = flags.env ?? config.defaultEnv;
+      const envConfig = config.environments[env];
+      const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
+      const app = await this.resolveApp(
+        root,
+        config,
+        this.isServerless(envConfig.adapter),
+      );
+      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const namingCtx = this.naming.forContext(config.project, env, tenant);
+
+      const ctx = {
+        project: config.project,
+        env,
+        envConfig,
+        entry: app.entry,
+        resources: app.resources,
+
+        root,
+        naming: namingCtx,
+        tenant,
+      };
+
+      await adapter.authenticate(ctx, run);
+      await adapter.exportDb(ctx, run, {
+        output: flags.output,
+        keepSql: flags.keepSql,
+      });
+    },
+  });
+
+  /**
+   * `db` subgroup — operations against the *deployed* database (export,
+   * migrate). They live under `platform` (not core `alepha db`) because
+   * they need the env config, tenancy, adapter, and resource naming.
+   */
+  protected readonly db = $command({
+    name: "db",
+    description: "Deployed-database operations (export, migrate).",
+    children: [this.dbExport, this.migrate],
+    handler: async ({ help, root }) => {
+      await this.inspector.resolveConfig(root);
+      help();
+    },
+  });
+
   // -----------------------------------------------------------------------
   // Parent command
   // -----------------------------------------------------------------------
@@ -646,7 +712,7 @@ export class PlatformCommand {
       this.status,
       this.build,
       this.deploy,
-      this.migrate,
+      this.db,
       this.secretsCommand.secrets,
     ],
     handler: async ({ help, root }) => {

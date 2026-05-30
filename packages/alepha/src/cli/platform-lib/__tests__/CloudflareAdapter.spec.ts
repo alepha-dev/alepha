@@ -699,6 +699,51 @@ describe("CloudflareAdapter", () => {
       expect(api.kvNamespaces).toHaveLength(0);
     });
   });
+
+  describe("exportDb", () => {
+    test("dumps remote D1 and imports it into a local SQLite snapshot", async ({
+      expect,
+    }) => {
+      const { adapter, naming } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        resources: {
+          hasDatabase: true,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+      // Record the raw shell strings exportDb issues via run().
+      const commands: string[] = [];
+      const run: any = async (cmd: any) => {
+        if (typeof cmd === "string") commands.push(cmd);
+      };
+      run.pause = () => {};
+      run.resume = () => {};
+      run.end = () => {};
+
+      await adapter.exportDb(ctx, run, {
+        output: "/tmp/snap.db",
+        keepSql: true,
+      });
+
+      expect(
+        commands.some((c) => /^wrangler d1 export .+ --remote /.test(c)),
+      ).toBe(true);
+      expect(commands.some((c) => /sqlite3 '\/tmp\/snap\.db' < /.test(c))).toBe(
+        true,
+      );
+    });
+
+    test("refuses when no database is detected", async ({ expect }) => {
+      const { adapter, naming } = createTestEnv();
+      const ctx = makeCtx(naming); // resources.hasDatabase defaults to false
+      const run = createMockRun();
+      await expect(adapter.exportDb(ctx, run)).rejects.toThrow(/no database/i);
+    });
+  });
 });
 
 /**

@@ -22,6 +22,7 @@ import { tenantDomain } from "../services/NamingService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
 import {
   type AppContext,
+  type ExportDbOptions,
   PlatformAdapter,
   type PlatformContext,
   type PlatformState,
@@ -563,6 +564,49 @@ export class CloudflareAdapter extends PlatformAdapter {
       await this.migratePostgres(ctx, run);
     } else {
       await this.migrateD1(ctx, run);
+    }
+  }
+
+  override async exportDb(
+    ctx: PlatformContext,
+    run: RunnerMethod,
+    options: ExportDbOptions = {},
+  ): Promise<void> {
+    this.configureApi(ctx);
+    if (!ctx.resources.hasDatabase) {
+      throw new AlephaError(
+        "No database detected for this app — nothing to export.",
+      );
+    }
+    if (await this.isPostgres(ctx)) {
+      throw new AlephaError(
+        "Database export currently supports Cloudflare D1 only — Postgres/Hyperdrive export (pg_dump) is not implemented yet.",
+      );
+    }
+
+    const dbName = ctx.naming.d1();
+    const tmpDir = this.fs.join(ctx.root, "node_modules", ".alepha");
+    const sqlPath = this.fs.join(tmpDir, `${dbName}.sql`);
+    // D1 is SQLite — the natural local snapshot is the dev DB file that
+    // `yarn dev` reads, so dev runs against a real remote snapshot.
+    const dbPath = options.output ?? this.fs.join(tmpDir, "sqlite.db");
+
+    await this.fs.mkdir(tmpDir, { recursive: true });
+
+    await run(`wrangler d1 export ${dbName} --remote --output=${sqlPath}`, {
+      alias: `export D1 ${dbName} → ${sqlPath}`,
+    });
+
+    // `sqlite3 '<db>' < dump.sql` aborts if the target already holds a
+    // conflicting schema — start from a clean file. run() bypasses the
+    // shell, so wrap the `<` redirection in `sh -c`.
+    await this.fs.rm(dbPath, { force: true });
+    await run(`sh -c "sqlite3 '${dbPath}' < '${sqlPath}'"`, {
+      alias: `import dump → ${dbPath}`,
+    });
+
+    if (!options.keepSql) {
+      await this.fs.rm(sqlPath, { force: true });
     }
   }
 

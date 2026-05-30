@@ -1,7 +1,24 @@
+import { AlephaError } from "alepha";
 import type { AppEntry } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import type { EnvironmentConfig } from "../atoms/platformOptions.ts";
 import type { NamingContext } from "../services/NamingService.ts";
+
+/**
+ * Options for {@link PlatformAdapter.exportDb}.
+ */
+export interface ExportDbOptions {
+  /**
+   * Destination file for the local snapshot. Adapter-specific default —
+   * Cloudflare/D1 writes the dev SQLite at
+   * `node_modules/.alepha/sqlite.db`.
+   */
+  output?: string;
+  /**
+   * Keep the intermediate `.sql` dump instead of deleting it after import.
+   */
+  keepSql?: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Context types
@@ -153,6 +170,20 @@ export abstract class PlatformAdapter {
    * Run database migrations.
    */
   async migrate(_ctx: PlatformContext, _run: RunnerMethod): Promise<void> {}
+
+  /**
+   * Export the deployed database to a local file — the remote → local dev
+   * snapshot workflow. Adapter/dialect specific; the default refuses.
+   */
+  async exportDb(
+    _ctx: PlatformContext,
+    _run: RunnerMethod,
+    _options: ExportDbOptions = {},
+  ): Promise<void> {
+    throw new AlephaError(
+      `Database export is not supported by the '${this.constructor.name}' adapter.`,
+    );
+  }
 
   /**
    * Push runtime secrets to the deployed worker(s).

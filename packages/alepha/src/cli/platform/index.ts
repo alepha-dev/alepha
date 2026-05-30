@@ -25,9 +25,10 @@ import { SecretsCommand } from "./commands/SecretsCommand.ts";
  * - `alepha platform down`    — teardown an environment
  * - `alepha platform status`  — inspect deployed resources
  * - `alepha platform build`   — build apps locally
- * - `alepha platform deploy`  — deploy to cloud
- * - `alepha platform migrate` — run database migrations
- * - `alepha platform secrets` — manage external secret stores
+ * - `alepha platform deploy`     — deploy to cloud
+ * - `alepha platform db migrate` — run database migrations
+ * - `alepha platform db export`  — pull the deployed DB into a local snapshot
+ * - `alepha platform secrets`    — manage external secret stores
  *
  * Configuration in `alepha.config.ts`:
  *
