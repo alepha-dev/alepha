@@ -32,6 +32,22 @@ export default defineConfig({
   plugins: [
     devtools(),
     platform({
+      // Worker secret allowlist. CI delivers these via the deploy job's
+      // `env:` (no `.env.production` on the runner); the deploy `secrets`
+      // step resolves each from `.env.<env>` first, then `process.env`, and
+      // pushes exactly this set — runner-ambient vars never leak.
+      secrets: {
+        keys: [
+          "APP_SECRET",
+          "EMAIL_FROM",
+          "GITHUB_CLIENT_ID",
+          "GITHUB_CLIENT_SECRET",
+          "GOOGLE_CLIENT_ID",
+          "GOOGLE_CLIENT_SECRET",
+          "TURNSTILE_SECRET_KEY",
+          "TURNSTILE_SITE_KEY",
+        ],
+      },
       environments: {
         production: {
           domain: "lore.alepha.dev",

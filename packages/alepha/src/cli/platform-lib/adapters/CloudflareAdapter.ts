@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   $inject,
+  $state,
   Alepha,
   AlephaError,
   type Alepha as AlephaInstance,
@@ -16,6 +17,7 @@ import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 import { S3mini } from "s3mini";
+import { platformOptions } from "../atoms/platformOptions.ts";
 import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { tenantDomain } from "../services/NamingService.ts";
@@ -46,6 +48,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   protected readonly wrangler = $inject(WranglerApi);
   protected readonly runner = $inject(Runner);
   protected readonly buildTask = $inject(BuildCloudflareTask);
+  protected readonly options = $state(platformOptions);
 
   protected provisionedD1Id?: string;
   protected provisionedHyperdriveId?: string;
@@ -344,12 +347,21 @@ export class CloudflareAdapter extends PlatformAdapter {
     this.configureApi(ctx);
     const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
 
+    // The key set to push:
+    //   - `platform.secrets.keys` declared → that explicit allowlist. Values
+    //     resolve from the `.env.<env>` file first, then `process.env`, so CI
+    //     can deliver secrets via the job environment with no file on disk.
+    //   - omitted → legacy behavior: the `.env.<env>` file IS the allowlist.
+    const declaredKeys = this.options?.secrets?.keys;
+    const keys = declaredKeys ?? Object.keys(envVars);
+
     // Filter out binding/build vars, VITE_* vars, and empty values
     const secrets: Record<string, string> = {};
-    for (const [key, value] of Object.entries(envVars)) {
-      if (!value) continue;
+    for (const key of keys) {
       if (CloudflareAdapter.EXCLUDED_SECRET_KEYS.has(key)) continue;
       if (key.startsWith("VITE_")) continue;
+      const value = envVars[key] ?? process.env[key];
+      if (!value) continue;
       secrets[key] = value;
     }
 

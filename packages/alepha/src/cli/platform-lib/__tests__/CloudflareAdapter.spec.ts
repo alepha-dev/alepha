@@ -9,6 +9,7 @@ import {
 import { describe, test } from "vitest";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import type { PlatformContext } from "../adapters/PlatformAdapter.ts";
+import { platformOptions } from "../atoms/platformOptions.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { NamingService } from "../services/NamingService.ts";
 
@@ -426,6 +427,94 @@ describe("CloudflareAdapter", () => {
       const pushed = api.secrets.get("acme-portal-production") ?? [];
       const names = pushed.map((s) => s.name).sort();
       expect(names).toEqual(["APP_SECRET", "GOOGLE_API_KEY"]);
+    });
+
+    test("with platform.secrets.keys, resolves the allowlist from process.env (no .env file) and ignores ambient vars", async ({
+      expect,
+    }) => {
+      const { adapter, alepha, naming, api } = createTestEnv();
+      // Declare an explicit allowlist — the CI shape: secrets arrive via the
+      // job environment, there is no .env.production on the runner.
+      alepha.set(platformOptions, {
+        secrets: { keys: ["APP_SECRET", "GOOGLE_CLIENT_ID", "EMAIL_FROM"] },
+        environments: { production: { adapter: "cloudflare" } },
+      } as any);
+
+      const ctx = makeCtx(naming, {
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+      process.env.APP_SECRET = "from-env-secret";
+      process.env.GOOGLE_CLIENT_ID = "from-env-google";
+      // EMAIL_FROM intentionally unset → declared but unresolved, not pushed.
+      // PATH-style ambient var that must never leak into worker secrets.
+      process.env.AMBIENT_RUNNER_VAR = "leak-me-not";
+      try {
+        const run = createMockRun();
+        await adapter.secrets(ctx, run);
+      } finally {
+        delete process.env.APP_SECRET;
+        delete process.env.GOOGLE_CLIENT_ID;
+        delete process.env.AMBIENT_RUNNER_VAR;
+      }
+
+      const pushed = api.secrets.get("acme-portal-production") ?? [];
+      const names = pushed.map((s) => s.name).sort();
+      expect(names).toEqual(["APP_SECRET", "GOOGLE_CLIENT_ID"]);
+    });
+
+    test("with platform.secrets.keys, the .env file overrides process.env per key", async ({
+      expect,
+    }) => {
+      const { adapter, alepha, fs, naming, api } = createTestEnv();
+      alepha.set(platformOptions, {
+        secrets: { keys: ["APP_SECRET", "GOOGLE_CLIENT_ID"] },
+        environments: { production: { adapter: "cloudflare" } },
+      } as any);
+
+      const ctx = makeCtx(naming, {
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+      // APP_SECRET in the file → file wins. GOOGLE_CLIENT_ID only in env → env.
+      await fs.writeFile(
+        "/project/.env.production",
+        ["APP_SECRET=from-file", ""].join("\n"),
+      );
+      process.env.APP_SECRET = "from-env";
+      process.env.GOOGLE_CLIENT_ID = "env-google";
+      try {
+        const run = createMockRun();
+        await adapter.secrets(ctx, run);
+      } finally {
+        delete process.env.APP_SECRET;
+        delete process.env.GOOGLE_CLIENT_ID;
+      }
+
+      // Secret *values* land in the full binding set (api.bindings); the
+      // api.secrets projection only keeps names.
+      const bindings = api.bindings.get("acme-portal-production") ?? [];
+      const byName = Object.fromEntries(
+        bindings
+          .filter((b) => b.type === "secret_text")
+          .map((b) => [b.name, b.text]),
+      );
+      expect(byName.APP_SECRET).toBe("from-file");
+      expect(byName.GOOGLE_CLIENT_ID).toBe("env-google");
     });
 
     test("auto-derives PUBLIC_URL from the configured domain", async ({

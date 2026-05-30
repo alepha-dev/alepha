@@ -45,9 +45,24 @@ export const platformOptions = $atom({
       secrets: t.optional(
         t.object({
           /**
+           * Explicit allowlist of worker secret key names.
+           *
+           * When set, the deploy's `secrets` step pushes exactly these keys,
+           * resolving each value from `.env.<env>[.local]` first, then
+           * `process.env`. This lets CI deliver secrets via the job
+           * environment (no `.env` file on the runner) while keeping a safe
+           * allowlist — the runner's ambient vars (PATH, GITHUB_*, …) are
+           * never pushed.
+           *
+           * Omit to keep the legacy behavior: the `.env.<env>` file is itself
+           * the allowlist (every non-excluded key in it is pushed).
+           */
+          keys: t.optional(t.array(t.text())),
+
+          /**
            * Secret store backend.
            */
-          store: t.enum(["github"]),
+          store: t.optional(t.enum(["github"])),
 
           /**
            * Pattern for resolving environment names in the store.
