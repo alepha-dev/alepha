@@ -1043,8 +1043,8 @@ export class JobProvider {
     if (canRetry) {
       // Retries are sweep-driven: write the row as `scheduled` with
       // `scheduledAt = now`. The next sweep tick (every `sweepCron`,
-      // default 5 minutes) re-dispatches it. This means the first retry
-      // can land anywhere from a few seconds to ~5 minutes later — the
+      // default 15 minutes) re-dispatches it. This means the first retry
+      // can land anywhere from a few seconds to ~15 minutes later — the
       // exact moment depends on when the next sweep tick fires.
       //
       // We deliberately do NOT use exponential backoff or a local timer.

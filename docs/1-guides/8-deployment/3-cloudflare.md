@@ -118,12 +118,12 @@ This is the recommended default on Cloudflare Workers when you don't want a Queu
 
 ## Retry granularity
 
-`$job` retries are **sweep-driven** on every platform — there's no exponential backoff. When a handler fails, the row is marked `scheduled` with `scheduledAt = now`, and the next sweep tick (configured by `jobConfig.sweepCron`, default `*/5 * * * *`) picks it up.
+`$job` retries are **sweep-driven** on every platform — there's no exponential backoff. When a handler fails, the row is marked `scheduled` with `scheduledAt = now`, and the next sweep tick (configured by `jobConfig.sweepCron`, default `*/15 * * * *`) picks it up.
 
 Practically this means:
 
-- A job retried 3 times can take up to ~15 minutes total to fail terminally.
-- The first retry can happen anywhere between a few seconds and ~5 minutes after the failure, depending on when the next sweep tick fires.
+- A job retried 3 times can take up to ~45 minutes total to fail terminally.
+- The first retry can happen anywhere between a few seconds and ~15 minutes after the failure, depending on when the next sweep tick fires.
 - If you need tighter retry latency, lower `sweepCron` in your `jobConfig` atom.
 
 This is identical on Node, Docker, and Cloudflare — no platform-specific timing surprises.

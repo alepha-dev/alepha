@@ -63,8 +63,8 @@ declare module "alepha" {
  *   is overkill.
  *
  * **Retries** are sweep-driven across all modes (no exponential backoff).
- * Granularity is bounded by `sweepCron` (default 5 min). The first retry
- * may land anywhere from a few seconds to ~5 min later depending on when
+ * Granularity is bounded by `sweepCron` (default 15 min). The first retry
+ * may land anywhere from a few seconds to ~15 min later depending on when
  * the next sweep tick fires. Cron jobs that declare `retry` go through
  * the same sweep path — a transient failure no longer means waiting for
  * the next cron tick (useful for once-daily jobs).

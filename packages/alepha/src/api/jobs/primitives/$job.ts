@@ -77,8 +77,8 @@ export interface JobPrimitiveOptions<T extends TSchema = TSchema>
    * Cron-mode jobs do not retry — the next tick re-runs.
    *
    * Retries are picked up by the reconciliation sweep, so retry granularity
-   * is bounded by `sweepCron` (default 5 minutes). The first retry may run
-   * earlier than 5 minutes if the sweep tick happens sooner.
+   * is bounded by `sweepCron` (default 15 minutes). The first retry may run
+   * earlier than 15 minutes if the sweep tick happens sooner.
    */
   retry?: JobRetryOptions;
 

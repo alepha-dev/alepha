@@ -34,7 +34,7 @@ export const jobConfig = $atom({
     }),
   }),
   default: {
-    sweepCron: "*/5 * * * *",
+    sweepCron: "*/15 * * * *",
     trimCron: "0 * * * *",
     staleThreshold: 300_000,
     runTimeout: 1_800_000,
