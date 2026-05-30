@@ -1114,6 +1114,16 @@ export class Alepha {
   }
 
   public dump(): AlephaDump {
+    // Force-instantiate the graph FIRST. `$env` is lazy — a key only lands in
+    // `cacheEnv` once its owning service is constructed. `graph()` injects
+    // every registered substitution (without emitting start/ready hooks), so
+    // calling it before reading `cacheEnv` ensures `env` reflects the whole
+    // app, not just whatever happened to be instantiated already. Reading
+    // `cacheEnv` first (the old order) under-reported env on a not-yet-started
+    // app and was internally inconsistent: dump() instantiated providers for
+    // `providers` but never saw their env.
+    const providers = this.graph();
+
     const env: Record<string, AlephaDumpEnvVariable> = {};
     for (const [schema] of this.cacheEnv.entries()) {
       const ref = schema as any;
@@ -1130,7 +1140,7 @@ export class Alepha {
 
     return {
       env,
-      providers: this.graph(),
+      providers,
     };
   }
 
