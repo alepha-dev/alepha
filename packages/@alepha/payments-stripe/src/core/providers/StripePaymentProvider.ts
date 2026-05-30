@@ -8,6 +8,7 @@ import type {
   WebhookEvent,
 } from "alepha/api/payments";
 import { $cache } from "alepha/cache";
+import { DatabaseCacheProvider } from "alepha/cache/database";
 import { $logger } from "alepha/logger";
 import Stripe from "stripe";
 
@@ -34,6 +35,7 @@ export class StripePaymentProvider implements PaymentProvider {
   protected readonly customerCache = $cache<string>({
     name: "stripe:customers",
     ttl: [30, "days"],
+    provider: DatabaseCacheProvider,
   });
 
   constructor() {
