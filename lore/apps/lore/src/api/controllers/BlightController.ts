@@ -47,10 +47,12 @@ export type BlightResource = Static<typeof blightResourceSchema>;
  * Owner-facing triage surface for blights — the deduplicated uncaught
  * exceptions captured by a campaign's sigils.
  *
- * Every endpoint is owner-gated via `AppSecurityProvider.assertOwner`,
- * mirroring `PetitionController`'s owner endpoints. Blights are scoped to
- * sigils, sigils are scoped to campaigns — so blight access is resolved
- * by joining through the campaign's sigils.
+ * Read endpoints (list + count) are member-gated via
+ * `AppSecurityProvider.assertMember` so any campaign member can view the
+ * inbox; mutations (resolve/forward/delete) stay owner-only via
+ * `assertOwner`. Blights are scoped to sigils, sigils are scoped to
+ * campaigns — so blight access is resolved by joining through the
+ * campaign's sigils.
  *
  * ⚠️ SECURITY: `name`, `message`, `stack`, `sourceUrl` on a blight row are
  * 100% attacker-controlled. They are persisted verbatim and shown to the
@@ -86,7 +88,7 @@ export class BlightController {
       }),
     },
     handler: async ({ params, query, user }) => {
-      await this.security.assertOwner(params.campaignId, user);
+      await this.security.assertMember(params.campaignId, user);
 
       const sigilIds = await this.campaignSigilIds(params.campaignId);
       if (sigilIds.length === 0) {
@@ -109,7 +111,7 @@ export class BlightController {
 
   /**
    * Count of `open` blights for a campaign — feeds the sidebar badge.
-   * Owner-only.
+   * Readable by any campaign member.
    */
   countOpenBlights = $action({
     use: [$secure({ permissions: ["campaign:read"] })],
@@ -120,7 +122,7 @@ export class BlightController {
       response: t.object({ count: t.integer() }),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.campaignId, user);
+      await this.security.assertMember(params.campaignId, user);
 
       const sigilIds = await this.campaignSigilIds(params.campaignId);
       if (sigilIds.length === 0) {

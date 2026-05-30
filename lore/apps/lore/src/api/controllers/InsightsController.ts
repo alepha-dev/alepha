@@ -94,7 +94,7 @@ export class InsightsController {
       response: insightsSchema,
     },
     handler: async ({ params, query, user }): Promise<InsightsResource> => {
-      await this.security.assertOwner(params.campaignId, user);
+      await this.security.assertMember(params.campaignId, user);
 
       const range = query.range ?? "7d";
       const days = RANGE_DAYS[range] ?? 7;

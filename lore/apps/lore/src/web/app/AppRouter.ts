@@ -292,9 +292,9 @@ export class AppRouter {
         .then((r) => r.items.length)
         .catch(() => 0);
 
-      // Open-blight count for the sidebar badge. Owner-only endpoint —
-      // non-owner members get a 403 here, which `.catch` flattens to 0
-      // (they don't see the Blights entry anyway).
+      // Open-blight count for the sidebar badge. Member-readable; `.catch`
+      // keeps a transient error from blocking the whole campaign load
+      // (badge just hides).
       const openBlights = campaign.features?.blights
         ? await this.blightApi
             .countOpenBlights({ params: { campaignId: params.campaignId } })

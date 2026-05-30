@@ -303,7 +303,7 @@ describe("InsightsController", () => {
     expect(res.data.uniqueVisitors).toBe(2);
   });
 
-  it("non-owner is forbidden", async ({ expect }) => {
+  it("non-member is forbidden", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const stranger = await createTestUser(ctx);
     const campaignId = await createCampaign(ctx, owner);
@@ -315,5 +315,30 @@ describe("InsightsController", () => {
         { user: stranger },
       ),
     ).rejects.toThrow();
+  });
+
+  it("a campaign member (non-owner) can read insights", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const member = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+    await createSigil(ctx, campaignId, owner);
+
+    // Seed a non-owner character so `member` belongs to the campaign
+    // (the invitation flow is more plumbing than this test needs).
+    const charactersRepo = (ctx.campaignController as any).characters;
+    await charactersRepo.create({
+      userId: member.id,
+      campaignId,
+      xp: 0,
+      balance: 0,
+      owner: false,
+    });
+
+    // Before the fix this 403'd (owner-only) and crashed the page loader.
+    const res = await ctx.insightsController.getInsights.fetch(
+      { params: { campaignId }, query: { range: "7d" } },
+      { user: member },
+    );
+    expect(res.data).toBeDefined();
   });
 });

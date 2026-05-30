@@ -222,7 +222,8 @@ export class PetitionController {
   });
 
   /**
-   * List petitions for a campaign, filtered by status. Owner-only.
+   * List petitions for a campaign, filtered by status. Readable by any
+   * campaign member; triage (accept/reject/remove) stays owner-only.
    */
   listPetitions = $action({
     use: [$secure({ permissions: ["campaign:read"] })],
@@ -238,7 +239,7 @@ export class PetitionController {
       response: t.object({ items: t.array(petitionResourceSchema) }),
     },
     handler: async ({ params, query, user }) => {
-      await this.ensureOwner(params.campaignId, user);
+      await this.ensureMember(params.campaignId, user);
 
       const status = query.status ?? "pending";
       const where = this.petitions.createQueryWhere();
@@ -257,7 +258,8 @@ export class PetitionController {
   });
 
   /**
-   * Fetch a single petition by id, scoped to its campaign. Owner-only.
+   * Fetch a single petition by id, scoped to its campaign. Readable by
+   * any campaign member.
    */
   getPetition = $action({
     use: [$secure({ permissions: ["campaign:read"] })],
@@ -271,7 +273,7 @@ export class PetitionController {
       response: petitionResourceSchema,
     },
     handler: async ({ params, user }) => {
-      await this.ensureOwner(params.campaignId, user);
+      await this.ensureMember(params.campaignId, user);
       const petition = await this.loadPetition(
         params.campaignId,
         params.petitionId,
@@ -414,6 +416,14 @@ export class PetitionController {
    */
   protected async ensureOwner(campaignId: number, user: UserAccountToken) {
     return await this.security.assertOwner(campaignId, user);
+  }
+
+  /**
+   * Member guard. Delegates to `AppSecurityProvider.assertMember` for the
+   * read endpoints (list/detail) that any campaign member may access.
+   */
+  protected async ensureMember(campaignId: number, user: UserAccountToken) {
+    return await this.security.assertMember(campaignId, user);
   }
 
   /**
