@@ -1,17 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -21,21 +10,16 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
-import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
-  Columns3,
-  FunnelX,
   Link2,
-  MoreVertical,
-  RefreshCw,
   Search,
   Signature,
   Trash,
   User as UserIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { CampaignController } from "@/api/controllers/CampaignController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { User } from "@/api/entities/users.ts";
@@ -62,121 +46,17 @@ const getPriorityColor = (priority: string) => {
 
 const removeHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
 
-type BoardFilterValues = {
-  search?: string;
-  status?: "new" | "accepted" | "completed";
-  zone?: string;
-  tag?: string;
-};
-
-/** Per-user-per-campaign filter persistence via localStorage. The
- *  URL-state experiment from #95 was reverted in #113: URL churn on
- *  every filter change wasn't worth the share-link benefit at our
- *  scale, and the default empty filter set means most loads carry no
- *  query at all. */
-const filterStorageKey = (campaignId: number) =>
-  `lor.board.filters.${campaignId}`;
-
-/** Column visibility — same persistence pattern as filters. */
-const columnsStorageKey = (campaignId: number) =>
-  `lor.board.columns.${campaignId}`;
-
-/** Sort persistence — same pattern. */
-const sortStorageKey = (campaignId: number) => `lor.board.sort.${campaignId}`;
-
-type SortState = { field: string; direction: "asc" | "desc" } | null;
-
-const readStoredSort = (campaignId: number): SortState => {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(sortStorageKey(campaignId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      parsed &&
-      typeof parsed.field === "string" &&
-      (parsed.direction === "asc" || parsed.direction === "desc")
-    ) {
-      return parsed;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
-
-/** Canonical column order + the source of truth for "all columns".
- *  New entries get added here; the toggle menu enumerates this list. */
-const COLUMN_IDS = [
-  "status",
-  "assignedTo",
-  "title",
-  "tags",
-  "linked",
-  "priority",
-  "difficulty",
-  "zone",
-  "createdAt",
-  "updatedAt",
-] as const;
-type ColumnId = (typeof COLUMN_IDS)[number];
-
-/** Translation key per column. Used by the Columns toggle menu. */
-const COLUMN_LABEL_KEYS: Record<ColumnId, string> = {
-  status: "board.table.status",
-  assignedTo: "board.table.assigned",
-  title: "board.table.title",
-  tags: "board.table.tags",
-  linked: "board.table.linked",
-  priority: "board.table.priority",
-  difficulty: "board.table.rank",
-  zone: "board.table.zone",
-  createdAt: "board.table.created",
-  updatedAt: "board.table.updated",
-};
-
-/** Columns that start hidden — user opts in via the Columns menu. */
-const DEFAULT_HIDDEN_COLUMNS: ReadonlySet<ColumnId> = new Set(["linked"]);
-const defaultVisibleColumns = (): Set<ColumnId> =>
-  new Set(COLUMN_IDS.filter((id) => !DEFAULT_HIDDEN_COLUMNS.has(id)));
-
-const readStoredVisibleColumns = (
-  campaignId: number,
-): Set<ColumnId> | undefined => {
-  if (typeof window === "undefined") return undefined;
-  try {
-    const raw = window.localStorage.getItem(columnsStorageKey(campaignId));
-    if (!raw) return undefined;
-    const parsed = JSON.parse(raw) as string[];
-    return new Set(
-      parsed.filter((c): c is ColumnId =>
-        (COLUMN_IDS as readonly string[]).includes(c),
-      ),
-    );
-  } catch {
-    return undefined;
-  }
-};
-
-const readStoredFilters = (
-  campaignId: number,
-  knownZones: string[],
-): BoardFilterValues | undefined => {
-  if (typeof window === "undefined") return undefined;
-  try {
-    const raw = window.localStorage.getItem(filterStorageKey(campaignId));
-    if (!raw) return undefined;
-    const parsed = JSON.parse(raw) as BoardFilterValues;
-    // Drop a persisted zone that no longer exists on the campaign so
-    // we don't silently hide every quest filtering against a phantom.
-    if (parsed.zone && !knownZones.includes(parsed.zone)) {
-      parsed.zone = undefined;
-    }
-    return parsed;
-  } catch {
-    return undefined;
-  }
-};
+/**
+ * Board filter shape. Empty by default → "All statuses" (show
+ * everything on first load); AlephaTable persists the chosen values per
+ * campaign via `persistenceKey` (see #113).
+ */
+const boardFiltersSchema = t.object({
+  search: t.optional(t.string()),
+  status: t.optional(t.enum(["new", "accepted", "completed"])),
+  zone: t.optional(t.string()),
+  tag: t.optional(t.string()),
+});
 
 const CampaignBoardTable = () => {
   const alepha = useAlepha();
@@ -188,60 +68,8 @@ const CampaignBoardTable = () => {
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const [users, setUsers] = useState<Array<User>>([]);
-
-  // Hydrate from localStorage if anything is stored, otherwise empty
-  // (the "All statuses" default — show everything on first load).
-  const initialFilterValues = useMemo<BoardFilterValues>(() => {
-    if (!campaign?.id) return {};
-    return readStoredFilters(campaign.id, campaign.zones ?? []) ?? {};
-  }, [campaign?.id]);
-
-  const filters = useForm({
-    initialValues: initialFilterValues,
-    schema: t.object({
-      search: t.optional(t.string()),
-      status: t.optional(t.enum(["new", "accepted", "completed"])),
-      zone: t.optional(t.string()),
-      tag: t.optional(t.string()),
-    }),
-    handler: async () => {
-      // No-op: AlephaTable subscribes to `form:submit:success` and refetches.
-    },
-  });
-
-  // Persist filter values back to localStorage on every change. Strips
-  // empty fields so the stored blob is small and round-trips clean.
-  const filterValues = useFormState(filters, ["values"]).values as
-    | BoardFilterValues
-    | undefined;
-  useEffect(() => {
-    if (!campaign?.id || !filterValues) return;
-    const clean: BoardFilterValues = {};
-    if (filterValues.search) clean.search = filterValues.search;
-    if (filterValues.status) clean.status = filterValues.status;
-    if (filterValues.zone) clean.zone = filterValues.zone;
-    if (filterValues.tag) clean.tag = filterValues.tag;
-    try {
-      if (Object.keys(clean).length === 0) {
-        window.localStorage.removeItem(filterStorageKey(campaign.id));
-      } else {
-        window.localStorage.setItem(
-          filterStorageKey(campaign.id),
-          JSON.stringify(clean),
-        );
-      }
-    } catch {
-      // localStorage may be unavailable (private mode, quota); skip.
-    }
-  }, [
-    campaign?.id,
-    filterValues?.search,
-    filterValues?.status,
-    filterValues?.zone,
-    filterValues?.tag,
-  ]);
-
   const [knownTags, setKnownTags] = useState<string[]>([]);
+
   useEffect(() => {
     if (!campaign?.id) return;
     questApi
@@ -249,73 +77,6 @@ const CampaignBoardTable = () => {
       .then(setKnownTags)
       .catch(() => null);
   }, [campaign?.id]);
-
-  // Column visibility — default to the visible-by-default set (a few
-  // niche columns like "linked" start hidden and the user opts in).
-  // Persisted in localStorage alongside filters.
-  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnId>>(() => {
-    if (!campaign?.id) return defaultVisibleColumns();
-    return readStoredVisibleColumns(campaign.id) ?? defaultVisibleColumns();
-  });
-  useEffect(() => {
-    if (!campaign?.id || typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(
-        columnsStorageKey(campaign.id),
-        JSON.stringify([...visibleColumns]),
-      );
-    } catch {
-      // localStorage may be unavailable (private mode, quota); skip.
-    }
-  }, [campaign?.id, visibleColumns]);
-
-  const toggleColumn = (id: ColumnId) => {
-    setVisibleColumns((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const initialSort = useMemo<SortState>(
-    () => (campaign?.id ? readStoredSort(campaign.id) : null),
-    [campaign?.id],
-  );
-  const handleSortChange = (s: SortState) => {
-    if (!campaign?.id || typeof window === "undefined") return;
-    try {
-      if (s) {
-        window.localStorage.setItem(
-          sortStorageKey(campaign.id),
-          JSON.stringify(s),
-        );
-      } else {
-        window.localStorage.removeItem(sortStorageKey(campaign.id));
-      }
-    } catch {
-      // localStorage may be unavailable; skip.
-    }
-  };
-
-  // Reset = clear every filter. We `.set(undefined)` per-field instead
-  // of calling `filters.setInitialValues({})` because the latter
-  // doesn't emit `form:change` for keys it DELETES (only for keys it
-  // re-assigns), so the inputs stay visually populated and AlephaTable
-  // doesn't refetch. Explicit per-field set keeps subscribers in sync.
-  const handleResetFilters = () => {
-    filters.input.search.set(undefined);
-    filters.input.status.set(undefined);
-    filters.input.zone.set(undefined);
-    filters.input.tag.set(undefined);
-  };
-
-  // Refresh = re-fire the existing fetch with current filters. The
-  // table subscribes to `form:submit:success`, so submitting is the
-  // cheap way to trigger a re-fetch without an extra refetchKey hook.
-  const handleRefresh = () => {
-    void filters.submit();
-  };
 
   useEffect(() => {
     if (!campaign?.id) return;
@@ -349,134 +110,73 @@ const CampaignBoardTable = () => {
   }));
 
   return (
-    <div className="flex flex-1 flex-col gap-2 overflow-auto">
-      <form
-        {...filters.props}
-        className="flex flex-wrap items-end gap-2 rounded-md border bg-card p-2"
-      >
-        <div className="w-44">
-          <Control
-            input={filters.input.search}
-            label=""
-            icon={Search}
-            placeholder={tr("board.filter.search")}
-            inputProps={{ "aria-label": tr("board.filter.search") }}
-          />
-        </div>
-        <div className="w-44">
-          <Control
-            input={filters.input.status}
-            label=""
-            clearable
-            clearLabel={tr("board.filter.allStatuses")}
-            triggerClassName="w-full"
-            items={[
-              { label: "New", value: "new" },
-              { label: "Accepted", value: "accepted" },
-              { label: "Completed", value: "completed" },
-            ]}
-            inputProps={{ "aria-label": tr("board.filter.status") }}
-          />
-        </div>
-        {zoneOptions.length > 0 && (
-          <div className="w-44">
-            <Control
-              input={filters.input.zone}
-              label=""
-              clearable
-              clearLabel={tr("board.filter.allZones")}
-              triggerClassName="w-full"
-              items={zoneOptions}
-              inputProps={{ "aria-label": tr("board.filter.zone") }}
-            />
-          </div>
-        )}
-        {knownTags.length > 0 && (
-          <div className="w-44">
-            <Control
-              input={filters.input.tag}
-              label=""
-              clearable
-              clearLabel={tr("board.filter.allTags")}
-              triggerClassName="w-full"
-              items={knownTags.map((tag) => ({ label: tag, value: tag }))}
-              inputProps={{ "aria-label": tr("board.filter.tag") }}
-            />
-          </div>
-        )}
-        <div className="ml-auto flex items-end gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-9 w-9 p-0"
-                  aria-label="Columns"
-                />
-              }
-            >
-              <Columns3 className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>
-                  {tr("board.columns.title")}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {COLUMN_IDS.map((id) => (
-                  <DropdownMenuCheckboxItem
-                    key={id}
-                    checked={visibleColumns.has(id)}
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      toggleColumn(id);
-                    }}
-                  >
-                    {tr(COLUMN_LABEL_KEYS[id] as string)}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-9 w-9 p-0"
-                  aria-label="Actions"
-                />
-              }
-            >
-              <MoreVertical className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleRefresh}>
-                <RefreshCw className="size-4" />
-                {tr("board.filter.refresh")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleResetFilters}>
-                <FunnelX className="size-4" />
-                {tr("board.filter.reset")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </form>
-
+    <div className="flex flex-1 flex-col overflow-hidden">
       <AlephaTable<QuestResource>
         key={campaign.id}
         className="min-h-0 flex-1"
         defaultSize={25}
-        defaultSort={initialSort}
-        onSortChange={handleSortChange}
         emptyMessage={tr("common.noResults")}
-        form={filters}
-        autoApplyFilters
+        // AlephaTable owns the filter form + toolbar, and persists filter
+        // values, column visibility, and sort under this key (replaces the
+        // hand-rolled toolbar + localStorage that used to live here).
+        persistenceKey={`lor.board.${campaign.id}`}
+        filters={{
+          schema: boardFiltersSchema,
+          render: (form) => (
+            <>
+              <div className="w-44">
+                <Control
+                  input={form.input.search}
+                  label=""
+                  icon={Search}
+                  placeholder={tr("board.filter.search")}
+                  inputProps={{ "aria-label": tr("board.filter.search") }}
+                />
+              </div>
+              <div className="w-44">
+                <Control
+                  input={form.input.status}
+                  label=""
+                  clearable
+                  clearLabel={tr("board.filter.allStatuses")}
+                  triggerClassName="w-full"
+                  items={[
+                    { label: "New", value: "new" },
+                    { label: "Accepted", value: "accepted" },
+                    { label: "Completed", value: "completed" },
+                  ]}
+                  inputProps={{ "aria-label": tr("board.filter.status") }}
+                />
+              </div>
+              {zoneOptions.length > 0 && (
+                <div className="w-44">
+                  <Control
+                    input={form.input.zone}
+                    label=""
+                    clearable
+                    clearLabel={tr("board.filter.allZones")}
+                    triggerClassName="w-full"
+                    items={zoneOptions}
+                    inputProps={{ "aria-label": tr("board.filter.zone") }}
+                  />
+                </div>
+              )}
+              {knownTags.length > 0 && (
+                <div className="w-44">
+                  <Control
+                    input={form.input.tag}
+                    label=""
+                    clearable
+                    clearLabel={tr("board.filter.allTags")}
+                    triggerClassName="w-full"
+                    items={knownTags.map((tag) => ({ label: tag, value: tag }))}
+                    inputProps={{ "aria-label": tr("board.filter.tag") }}
+                  />
+                </div>
+              )}
+            </>
+          ),
+        }}
         fetch={async ({ page, size, sort, filters: f }) =>
           questApi.getQuests({
             params: { campaignId: campaign.id },
@@ -496,12 +196,7 @@ const CampaignBoardTable = () => {
             params: { shortId: String(quest.shortId) },
           })
         }
-        columns={((allColumns) =>
-          Object.fromEntries(
-            Object.entries(allColumns).filter(([id]) =>
-              visibleColumns.has(id as ColumnId),
-            ),
-          ) as typeof allColumns)({
+        columns={{
           status: {
             label: tr("board.table.status"),
             className: "pl-4",
@@ -570,9 +265,9 @@ const CampaignBoardTable = () => {
             cell: (quest: QuestResource) =>
               quest.tags && quest.tags.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
-                  {quest.tags.map((t: string) => (
-                    <Badge key={t} variant="outline" className="text-xs">
-                      {t}
+                  {quest.tags.map((tag: string) => (
+                    <Badge key={tag} variant="outline" className="text-xs">
+                      {tag}
                     </Badge>
                   ))}
                 </div>
@@ -582,6 +277,8 @@ const CampaignBoardTable = () => {
           },
           linked: {
             label: tr("board.table.linked"),
+            // Niche column — starts hidden; users opt in via the column picker.
+            defaultHidden: true,
             cell: (quest: QuestResource) =>
               quest.dependsOn ? (
                 <Tooltip>
@@ -646,14 +343,17 @@ const CampaignBoardTable = () => {
               </span>
             ),
           },
-        })}
+        }}
         rowActions={(quest) => [
           ...(!quest.acceptedAt && questApi.acceptQuest.can()
             ? [
                 {
                   icon: Signature,
                   label: tr("board.action.acceptQuest"),
-                  onClick: async () => {
+                  onClick: async (
+                    _quest: QuestResource,
+                    { refresh }: { refresh: () => void },
+                  ) => {
                     const updated = await questApi.acceptQuest({
                       params: { id: quest.id },
                     });
@@ -661,7 +361,7 @@ const CampaignBoardTable = () => {
                       ...(alepha.store.get(currentAssignedQuestsAtom) ?? []),
                       updated,
                     ]);
-                    await filters.submit();
+                    refresh();
                   },
                 },
               ]
@@ -672,7 +372,10 @@ const CampaignBoardTable = () => {
                   icon: Trash,
                   label: tr("board.action.deleteQuest"),
                   destructive: true,
-                  onClick: async () => {
+                  onClick: async (
+                    _quest: QuestResource,
+                    { refresh }: { refresh: () => void },
+                  ) => {
                     const confirmed = await dialog.confirm({
                       title: tr("board.confirm-delete-title"),
                       description: tr("board.confirm-delete-message"),
@@ -680,7 +383,7 @@ const CampaignBoardTable = () => {
                     });
                     if (!confirmed) return;
                     await questApi.deleteQuest({ params: { id: quest.id } });
-                    await filters.submit();
+                    refresh();
                   },
                 },
               ]
