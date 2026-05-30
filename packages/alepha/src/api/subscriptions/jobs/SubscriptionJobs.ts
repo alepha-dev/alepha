@@ -301,7 +301,7 @@ export class SubscriptionJobs {
    * Runs daily at 2 AM.
    */
   public readonly gracePeriodSweep = $job({
-    cron: "0 2 * * *",
+    cron: "0 3 * * *",
     lock: true,
     handler: async ({ now }) => {
       const settings = await this.config.getSettings();
