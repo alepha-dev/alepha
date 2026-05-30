@@ -69,7 +69,7 @@ const CampaignShopPage = (props: CampaignShopPageProps) => {
         .listFeatures({ params: { campaignId: campaign.id } })
         .then(setFeatures)
         .catch(() => null);
-      toaster.success(String(tr("shop.buy.success")));
+      toaster.success(tr("shop.buy.success"));
     } catch (err: any) {
       toaster.error(err?.message || "Failed to buy");
     } finally {

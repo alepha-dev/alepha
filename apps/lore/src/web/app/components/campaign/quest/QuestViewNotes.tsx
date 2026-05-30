@@ -47,7 +47,7 @@ const QuestViewNotes = (props: QuestViewNotesProps) => {
   return (
     <div className="flex flex-col gap-2 px-1">
       <Textarea
-        placeholder={String(tr("quest.view.notes.placeholder"))}
+        placeholder={tr("quest.view.notes.placeholder")}
         value={noteText}
         onChange={(e) => setNoteText(e.target.value)}
         rows={5}

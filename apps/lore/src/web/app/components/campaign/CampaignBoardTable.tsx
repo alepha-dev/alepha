@@ -359,8 +359,8 @@ const CampaignBoardTable = () => {
             input={filters.input.search}
             label=""
             icon={Search}
-            placeholder={String(tr("board.filter.search"))}
-            inputProps={{ "aria-label": String(tr("board.filter.search")) }}
+            placeholder={tr("board.filter.search")}
+            inputProps={{ "aria-label": tr("board.filter.search") }}
           />
         </div>
         <div className="w-44">
@@ -368,14 +368,14 @@ const CampaignBoardTable = () => {
             input={filters.input.status}
             label=""
             clearable
-            clearLabel={String(tr("board.filter.allStatuses"))}
+            clearLabel={tr("board.filter.allStatuses")}
             triggerClassName="w-full"
             items={[
               { label: "New", value: "new" },
               { label: "Accepted", value: "accepted" },
               { label: "Completed", value: "completed" },
             ]}
-            inputProps={{ "aria-label": String(tr("board.filter.status")) }}
+            inputProps={{ "aria-label": tr("board.filter.status") }}
           />
         </div>
         {zoneOptions.length > 0 && (
@@ -384,10 +384,10 @@ const CampaignBoardTable = () => {
               input={filters.input.zone}
               label=""
               clearable
-              clearLabel={String(tr("board.filter.allZones"))}
+              clearLabel={tr("board.filter.allZones")}
               triggerClassName="w-full"
               items={zoneOptions}
-              inputProps={{ "aria-label": String(tr("board.filter.zone")) }}
+              inputProps={{ "aria-label": tr("board.filter.zone") }}
             />
           </div>
         )}
@@ -397,10 +397,10 @@ const CampaignBoardTable = () => {
               input={filters.input.tag}
               label=""
               clearable
-              clearLabel={String(tr("board.filter.allTags"))}
+              clearLabel={tr("board.filter.allTags")}
               triggerClassName="w-full"
               items={knownTags.map((tag) => ({ label: tag, value: tag }))}
-              inputProps={{ "aria-label": String(tr("board.filter.tag")) }}
+              inputProps={{ "aria-label": tr("board.filter.tag") }}
             />
           </div>
         )}
@@ -474,7 +474,7 @@ const CampaignBoardTable = () => {
         defaultSize={25}
         defaultSort={initialSort}
         onSortChange={handleSortChange}
-        emptyMessage={String(tr("common.noResults"))}
+        emptyMessage={tr("common.noResults")}
         form={filters}
         autoApplyFilters
         fetch={async ({ page, size, sort, filters: f }) =>
@@ -503,7 +503,7 @@ const CampaignBoardTable = () => {
             ),
           ) as typeof allColumns)({
           status: {
-            label: String(tr("board.table.status")),
+            label: tr("board.table.status"),
             className: "pl-4",
             cell: (quest: QuestResource) => {
               const colors: Record<string, string> = {
@@ -519,7 +519,7 @@ const CampaignBoardTable = () => {
             },
           },
           assignedTo: {
-            label: String(tr("board.table.assigned")),
+            label: tr("board.table.assigned"),
             cell: (quest: QuestResource) => {
               if (!quest.acceptedBy) {
                 return <span className="text-muted-foreground">-</span>;
@@ -536,7 +536,7 @@ const CampaignBoardTable = () => {
                     </span>
                     {quest.acceptedAt && (
                       <span className="text-muted-foreground text-xs">
-                        {`${String(tr("board.table.assigned"))} ${dateFormatter.of(quest.acceptedAt).fromNow()}`}
+                        {`${tr("board.table.assigned")} ${dateFormatter.of(quest.acceptedAt).fromNow()}`}
                       </span>
                     )}
                   </TooltipContent>
@@ -545,7 +545,7 @@ const CampaignBoardTable = () => {
             },
           },
           title: {
-            label: String(tr("board.table.title")),
+            label: tr("board.table.title"),
             sortable: true,
             cell: (quest: QuestResource) => (
               <div className="flex flex-col overflow-hidden whitespace-nowrap">
@@ -566,7 +566,7 @@ const CampaignBoardTable = () => {
             ),
           },
           tags: {
-            label: String(tr("board.table.tags")),
+            label: tr("board.table.tags"),
             cell: (quest: QuestResource) =>
               quest.tags && quest.tags.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
@@ -581,7 +581,7 @@ const CampaignBoardTable = () => {
               ),
           },
           linked: {
-            label: String(tr("board.table.linked")),
+            label: tr("board.table.linked"),
             cell: (quest: QuestResource) =>
               quest.dependsOn ? (
                 <Tooltip>
@@ -603,7 +603,7 @@ const CampaignBoardTable = () => {
               ),
           },
           priority: {
-            label: String(tr("board.table.priority")),
+            label: tr("board.table.priority"),
             sortable: true,
             cell: (quest: QuestResource) => (
               <Badge
@@ -615,21 +615,21 @@ const CampaignBoardTable = () => {
             ),
           },
           difficulty: {
-            label: String(tr("board.table.rank")),
+            label: tr("board.table.rank"),
             sortable: true,
             cell: (quest: QuestResource) => (
               <QuestDifficulty difficulty={quest.difficulty} />
             ),
           },
           zone: {
-            label: String(tr("board.table.zone")),
+            label: tr("board.table.zone"),
             sortable: true,
             cell: (quest: QuestResource) => (
               <span className="text-xs">{quest.zone}</span>
             ),
           },
           createdAt: {
-            label: String(tr("board.table.created")),
+            label: tr("board.table.created"),
             sortable: true,
             cell: (quest: QuestResource) => (
               <span className="text-muted-foreground text-xs">
@@ -638,7 +638,7 @@ const CampaignBoardTable = () => {
             ),
           },
           updatedAt: {
-            label: String(tr("board.table.updated")),
+            label: tr("board.table.updated"),
             sortable: true,
             cell: (quest: QuestResource) => (
               <span className="text-muted-foreground text-xs">
@@ -652,7 +652,7 @@ const CampaignBoardTable = () => {
             ? [
                 {
                   icon: Signature,
-                  label: String(tr("board.action.acceptQuest")),
+                  label: tr("board.action.acceptQuest"),
                   onClick: async () => {
                     const updated = await questApi.acceptQuest({
                       params: { id: quest.id },
@@ -670,12 +670,12 @@ const CampaignBoardTable = () => {
             ? [
                 {
                   icon: Trash,
-                  label: String(tr("board.action.deleteQuest")),
+                  label: tr("board.action.deleteQuest"),
                   destructive: true,
                   onClick: async () => {
                     const confirmed = await dialog.confirm({
-                      title: String(tr("board.confirm-delete-title")),
-                      description: String(tr("board.confirm-delete-message")),
+                      title: tr("board.confirm-delete-title"),
+                      description: tr("board.confirm-delete-message"),
                       destructive: true,
                     });
                     if (!confirmed) return;

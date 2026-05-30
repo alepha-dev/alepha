@@ -588,7 +588,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
   const rows: Array<{ label: string; value: React.ReactNode }> = [];
 
   rows.push({
-    label: String(tr("admin.userDetail.id", { default: "ID" })),
+    label: tr("admin.userDetail.id", { default: "ID" }),
     value: (
       <div className="flex items-center gap-1">
         <code
@@ -618,7 +618,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
   });
   if (user.username) {
     rows.push({
-      label: String(tr("admin.userDetail.username", { default: "Username" })),
+      label: tr("admin.userDetail.username", { default: "Username" }),
       value: (
         <span className="block truncate" title={user.username}>
           @{user.username}
@@ -628,7 +628,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
   }
   if (user.email) {
     rows.push({
-      label: String(tr("admin.userDetail.email", { default: "Email" })),
+      label: tr("admin.userDetail.email", { default: "Email" }),
       value: (
         <a
           href={`mailto:${user.email}`}
@@ -642,7 +642,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
   }
   if (user.phoneNumber) {
     rows.push({
-      label: String(tr("admin.userDetail.phone", { default: "Phone" })),
+      label: tr("admin.userDetail.phone", { default: "Phone" }),
       value: (
         <a
           href={`tel:${user.phoneNumber}`}
@@ -654,7 +654,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
     });
   }
   rows.push({
-    label: String(tr("admin.userDetail.fieldStatus", { default: "Status" })),
+    label: tr("admin.userDetail.fieldStatus", { default: "Status" }),
     value: (
       <div className="flex flex-wrap items-center gap-1">
         <Badge variant={user.enabled ? "default" : "destructive"}>
@@ -672,7 +672,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
     ),
   });
   rows.push({
-    label: String(tr("admin.userDetail.name", { default: "Name" })),
+    label: tr("admin.userDetail.name", { default: "Name" }),
     value: (
       <span className="block truncate">
         {fullName || <span className="text-muted-foreground">—</span>}
@@ -681,12 +681,12 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
   });
   if (user.roles?.length) {
     rows.push({
-      label: String(tr("admin.userDetail.roles", { default: "Roles" })),
+      label: tr("admin.userDetail.roles", { default: "Roles" }),
       value: <span className="block">{user.roles.join(", ")}</span>,
     });
   }
   rows.push({
-    label: String(tr("admin.userDetail.lastLogin", { default: "Last login" })),
+    label: tr("admin.userDetail.lastLogin", { default: "Last login" }),
     value: (
       <span className="block">
         {user.lastLoginAt
@@ -696,7 +696,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
     ),
   });
   rows.push({
-    label: String(tr("admin.userDetail.created", { default: "Created" })),
+    label: tr("admin.userDetail.created", { default: "Created" }),
     value: (
       <span className="block">
         {String(l(user.createdAt, { date: "lll" }))}

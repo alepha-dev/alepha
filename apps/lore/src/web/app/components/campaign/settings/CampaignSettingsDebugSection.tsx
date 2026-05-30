@@ -45,13 +45,13 @@ const CampaignSettingsDebugSection = () => {
         params: { campaignId: campaign.id },
       });
       alepha.store.set(currentCampaignAtom, { ...campaign, ...next });
-      toaster.success(String(tr("campaign.settings.debug.shopReset.success")));
+      toaster.success(tr("campaign.settings.debug.shopReset.success"));
       setConfirmOpen(false);
     } catch (err) {
       toaster.error(
         err instanceof Error
           ? err.message
-          : String(tr("campaign.settings.debug.shopReset.error")),
+          : tr("campaign.settings.debug.shopReset.error"),
       );
     } finally {
       setResetting(false);

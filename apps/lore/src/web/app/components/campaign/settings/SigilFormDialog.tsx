@@ -127,7 +127,7 @@ const SigilFormDialog = (props: SigilFormDialogProps) => {
             <Input
               id="sigil-label"
               value={label}
-              placeholder={String(tr("sigils.create.labelPlaceholder"))}
+              placeholder={tr("sigils.create.labelPlaceholder")}
               onChange={(e) => setLabel(e.target.value)}
               autoFocus
             />
@@ -137,7 +137,7 @@ const SigilFormDialog = (props: SigilFormDialogProps) => {
             <Textarea
               id="sigil-origins"
               value={originsText}
-              placeholder={String(tr("sigils.create.originsPlaceholder"))}
+              placeholder={tr("sigils.create.originsPlaceholder")}
               onChange={(e) => setOriginsText(e.target.value)}
               rows={3}
             />
@@ -152,7 +152,7 @@ const SigilFormDialog = (props: SigilFormDialogProps) => {
             <Textarea
               id="sigil-excluded-paths"
               value={excludedPathsText}
-              placeholder={String(tr("sigils.create.excludedPathsPlaceholder"))}
+              placeholder={tr("sigils.create.excludedPathsPlaceholder")}
               onChange={(e) => setExcludedPathsText(e.target.value)}
               rows={3}
             />

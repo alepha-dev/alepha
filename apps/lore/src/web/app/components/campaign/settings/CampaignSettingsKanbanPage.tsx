@@ -174,7 +174,7 @@ const ColumnRow = (props: ColumnRowProps) => {
             (e.currentTarget as HTMLInputElement).blur();
           }
         }}
-        placeholder={String(tr("campaign.settings.kanban.columns.placeholder"))}
+        placeholder={tr("campaign.settings.kanban.columns.placeholder")}
         className="h-8 flex-1 text-sm"
       />
       <Button
@@ -182,7 +182,7 @@ const ColumnRow = (props: ColumnRowProps) => {
         size="sm"
         disabled={props.disabled}
         onClick={props.onDelete}
-        aria-label={String(tr("campaign.settings.kanban.columns.delete"))}
+        aria-label={tr("campaign.settings.kanban.columns.delete")}
       >
         <Trash2 className="size-3.5" />
       </Button>

@@ -71,7 +71,7 @@ const ChapterTagInput = (props: ChapterTagInputProps) => {
         onChange={(e) => setDraft(e.currentTarget.value)}
         onKeyDown={onKey}
         onBlur={() => commit(draft)}
-        placeholder={String(tr("chapter.tags.placeholder"))}
+        placeholder={tr("chapter.tags.placeholder")}
         disabled={props.disabled}
         className="h-7 min-w-32 flex-1 border-0 px-1 shadow-none focus-visible:ring-0"
       />

@@ -93,7 +93,7 @@ const CampaignBlights = (props: CampaignBlightsProps) => {
       await blightApi.resolveBlight({
         params: { campaignId: campaign.id, blightId: blight.id },
       });
-      toaster.success(String(tr("blights.toast.resolved")));
+      toaster.success(tr("blights.toast.resolved"));
       await reload();
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
@@ -128,13 +128,13 @@ const CampaignBlights = (props: CampaignBlightsProps) => {
 
   const onDelete = async (blight: BlightResource) => {
     if (!campaign) return;
-    if (!window.confirm(String(tr("blights.deleteConfirm")))) return;
+    if (!window.confirm(tr("blights.deleteConfirm"))) return;
     setBusyId(blight.id);
     try {
       await blightApi.deleteBlight({
         params: { campaignId: campaign.id, blightId: blight.id },
       });
-      toaster.success(String(tr("blights.toast.deleted")));
+      toaster.success(tr("blights.toast.deleted"));
       await reload();
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
@@ -272,7 +272,7 @@ const CampaignBlights = (props: CampaignBlightsProps) => {
                                 variant="ghost"
                                 className="h-8 w-8 p-0"
                                 disabled={busyId === blight.id}
-                                aria-label={String(tr("blights.col.actions"))}
+                                aria-label={tr("blights.col.actions")}
                               />
                             }
                           >

@@ -76,8 +76,8 @@ const QuestLog = () => {
                   onClick={toggleAll}
                   aria-label={
                     collapseSignal.collapsed
-                      ? String(tr("quest-log.expand-all" as never))
-                      : String(tr("quest-log.collapse-all" as never))
+                      ? tr("quest-log.expand-all" as never)
+                      : tr("quest-log.collapse-all" as never)
                   }
                 />
               }

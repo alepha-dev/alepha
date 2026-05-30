@@ -47,14 +47,11 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
         await petitionApi.acceptPetition({
           params: { campaignId: campaign.id, petitionId: petition.id },
         });
-        toaster.show(String(tr("petitions.acceptedToast")), "success");
+        toaster.show(tr("petitions.acceptedToast"), "success");
       }
       setQuestCreateOpen(true);
     } catch (err: any) {
-      toaster.show(
-        err?.message ?? String(tr("petitions.acceptError")),
-        "danger",
-      );
+      toaster.show(err?.message ?? tr("petitions.acceptError"), "danger");
     } finally {
       setBusy(false);
     }
@@ -71,13 +68,10 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
       await petitionApi.rejectPetition({
         params: { campaignId: campaign.id, petitionId: petition.id },
       });
-      toaster.show(String(tr("petitions.rejected")), "success");
+      toaster.show(tr("petitions.rejected"), "success");
       props.onChanged();
     } catch (err: any) {
-      toaster.show(
-        err?.message ?? String(tr("petitions.rejectError")),
-        "danger",
-      );
+      toaster.show(err?.message ?? tr("petitions.rejectError"), "danger");
     } finally {
       setBusy(false);
     }
@@ -85,8 +79,8 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
 
   const handleDelete = async () => {
     const confirmed = await dialog.confirm({
-      title: String(tr("petitions.deleteConfirmTitle")),
-      description: String(tr("petitions.deleteConfirm")),
+      title: tr("petitions.deleteConfirmTitle"),
+      description: tr("petitions.deleteConfirm"),
     });
     if (!confirmed) return;
     setBusy(true);
@@ -94,13 +88,10 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
       await petitionApi.removePetition({
         params: { campaignId: campaign.id, petitionId: petition.id },
       });
-      toaster.show(String(tr("petitions.deleted")), "success");
+      toaster.show(tr("petitions.deleted"), "success");
       props.onChanged();
     } catch (err: any) {
-      toaster.show(
-        err?.message ?? String(tr("petitions.deleteError")),
-        "danger",
-      );
+      toaster.show(err?.message ?? tr("petitions.deleteError"), "danger");
     } finally {
       setBusy(false);
     }

@@ -110,7 +110,7 @@ const HeaderConnectionsChip = () => {
       : state === "stale"
         ? "bg-muted-foreground/60"
         : "";
-  const ariaLabel = String(tr(`header.connections.state.${state}` as never));
+  const ariaLabel = tr(`header.connections.state.${state}` as never);
 
   const revoke = async (id: string) => {
     await sessionApi.revokeSession({ params: { sessionId: id } });
@@ -158,7 +158,7 @@ const HeaderConnectionsChip = () => {
             {connections.map((connection) => {
               const usedAt = connection.lastUsedAt
                 ? dt.of(connection.lastUsedAt).fromNow()
-                : String(tr("header.connections.row.never"));
+                : tr("header.connections.row.never");
               return (
                 <li
                   key={connection.id}

@@ -118,7 +118,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       {
         key: "column-new",
         kind: "new",
-        label: String(tr("kanban.column.new")),
+        label: tr("kanban.column.new"),
         dotClass: "bg-blue-500",
       },
     ];
@@ -134,7 +134,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     cols.push({
       key: "column-completed",
       kind: "completed",
-      label: String(tr("kanban.column.completed")),
+      label: tr("kanban.column.completed"),
       dotClass: "bg-green-500",
     });
     return cols;
@@ -203,12 +203,12 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     }
 
     if (fromStatus === "completed") {
-      toaster.show(String(tr("kanban.error.completedCannotMove")), "danger");
+      toaster.show(tr("kanban.error.completedCannotMove"), "danger");
       return;
     }
 
     if (fromStatus === "new" && toKind === "completed") {
-      toaster.show(String(tr("kanban.error.acceptFirst")), "warning");
+      toaster.show(tr("kanban.error.acceptFirst"), "warning");
       return;
     }
 
@@ -236,10 +236,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       }
       await reload();
     } catch (error: any) {
-      toaster.show(
-        error?.message || String(tr("kanban.error.actionFailed")),
-        "danger",
-      );
+      toaster.show(error?.message || tr("kanban.error.actionFailed"), "danger");
     }
   };
 
@@ -257,7 +254,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                 input={filterForm.input.zones}
                 label=""
                 clearable
-                clearLabel={String(tr("kanban.filter.allZones"))}
+                clearLabel={tr("kanban.filter.allZones")}
                 items={zoneOptions}
               />
             </div>
@@ -268,7 +265,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                 input={filterForm.input.tags}
                 label=""
                 clearable
-                clearLabel={String(tr("kanban.filter.allTags"))}
+                clearLabel={tr("kanban.filter.allTags")}
                 items={knownTags.map((t) => ({ value: t, label: t }))}
               />
             </div>

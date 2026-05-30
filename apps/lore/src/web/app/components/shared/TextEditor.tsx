@@ -136,7 +136,7 @@ const TextEditor = (props: TextEditorProps) => {
     <div className="border-input rounded-md border">
       <div className="border-input flex flex-wrap items-center gap-0.5 border-b px-1 py-1">
         <Btn
-          label={String(tr("editor.bold"))}
+          label={tr("editor.bold")}
           onClick={() =>
             applyAction({
               kind: "wrap",
@@ -149,7 +149,7 @@ const TextEditor = (props: TextEditorProps) => {
           <Bold className="h-4 w-4" />
         </Btn>
         <Btn
-          label={String(tr("editor.italic"))}
+          label={tr("editor.italic")}
           onClick={() =>
             applyAction({
               kind: "wrap",
@@ -162,7 +162,7 @@ const TextEditor = (props: TextEditorProps) => {
           <Italic className="h-4 w-4" />
         </Btn>
         <Btn
-          label={String(tr("editor.heading"))}
+          label={tr("editor.heading")}
           onClick={() =>
             applyAction({
               kind: "linePrefix",
@@ -174,7 +174,7 @@ const TextEditor = (props: TextEditorProps) => {
           <Heading className="h-4 w-4" />
         </Btn>
         <Btn
-          label={String(tr("editor.quote"))}
+          label={tr("editor.quote")}
           onClick={() =>
             applyAction({
               kind: "linePrefix",
@@ -186,7 +186,7 @@ const TextEditor = (props: TextEditorProps) => {
           <Quote className="h-4 w-4" />
         </Btn>
         <Btn
-          label={String(tr("editor.list"))}
+          label={tr("editor.list")}
           onClick={() =>
             applyAction({
               kind: "linePrefix",
@@ -198,7 +198,7 @@ const TextEditor = (props: TextEditorProps) => {
           <List className="h-4 w-4" />
         </Btn>
         <Btn
-          label={String(tr("editor.orderedList"))}
+          label={tr("editor.orderedList")}
           onClick={() =>
             applyAction({
               kind: "linePrefix",
@@ -210,7 +210,7 @@ const TextEditor = (props: TextEditorProps) => {
           <ListOrdered className="h-4 w-4" />
         </Btn>
         <Btn
-          label={String(tr("editor.code"))}
+          label={tr("editor.code")}
           onClick={() =>
             applyAction({
               kind: "wrap",
@@ -223,14 +223,14 @@ const TextEditor = (props: TextEditorProps) => {
           <Code className="h-4 w-4" />
         </Btn>
         <Btn
-          label={String(tr("editor.link"))}
+          label={tr("editor.link")}
           onClick={() => applyAction({ kind: "link" })}
         >
           <LinkIcon className="h-4 w-4" />
         </Btn>
         <div className="ml-auto">
           <Btn
-            label={String(tr(preview ? "editor.edit" : "editor.preview"))}
+            label={tr(preview ? "editor.edit" : "editor.preview")}
             onClick={() => setPreview((p) => !p)}
           >
             {preview ? (

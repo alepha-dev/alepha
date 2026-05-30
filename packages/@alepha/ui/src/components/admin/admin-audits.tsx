@@ -141,7 +141,7 @@ export function AdminAudits() {
                 items={[
                   {
                     value: "ok",
-                    label: String(tr("admin.audits.ok", { default: "OK" })),
+                    label: tr("admin.audits.ok", { default: "OK" }),
                   },
                   {
                     value: "failed",

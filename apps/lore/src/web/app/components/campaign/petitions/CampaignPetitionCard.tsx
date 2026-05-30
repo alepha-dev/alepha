@@ -22,7 +22,7 @@ const CampaignPetitionCard = (props: CampaignPetitionCardProps) => {
   const reporterLabel =
     petition.reporter?.name ??
     petition.reporter?.username ??
-    String(tr("petitions.unknownReporter"));
+    tr("petitions.unknownReporter");
 
   const attachmentCount = petition.attachmentUrls?.length ?? 0;
   const tags = petition.tags ?? [];

@@ -221,7 +221,7 @@ const QuestCreate = (props: QuestCreateProps) => {
                   <Button
                     type="button"
                     disabled={form.submitting}
-                    aria-label={String(tr("quest.create.submitAndAccept"))}
+                    aria-label={tr("quest.create.submitAndAccept")}
                     className="border-primary-foreground/20 -ml-px rounded-l-none border-l px-2"
                   />
                 }

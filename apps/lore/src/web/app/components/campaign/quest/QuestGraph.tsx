@@ -280,7 +280,7 @@ const QuestGraph = () => {
             campaignId={campaign.id}
             onPick={handlePick}
             chainEmpty={chain.length === 0}
-            emptyLabel={String(tr("quest.graph.empty"))}
+            emptyLabel={tr("quest.graph.empty")}
           />
         </div>
 

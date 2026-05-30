@@ -45,7 +45,7 @@ const CampaignSettingsPetitionsPage = () => {
 
   const copy = (text: string) => {
     void navigator.clipboard.writeText(text);
-    toaster.success(String(tr("petitions.integrate.copied")));
+    toaster.success(tr("petitions.integrate.copied"));
   };
 
   return (
@@ -66,17 +66,17 @@ const CampaignSettingsPetitionsPage = () => {
           </div>
 
           <CampaignSettingsPetitionsPageSnippet
-            label={String(tr("petitions.integrate.simple"))}
+            label={tr("petitions.integrate.simple")}
             code={linkSnippet}
             onCopy={() => copy(linkSnippet)}
-            copyLabel={String(tr("petitions.integrate.copy"))}
+            copyLabel={tr("petitions.integrate.copy")}
           />
 
           <CampaignSettingsPetitionsPageSnippet
-            label={String(tr("petitions.integrate.dynamic"))}
+            label={tr("petitions.integrate.dynamic")}
             code={dynamicSnippet}
             onCopy={() => copy(dynamicSnippet)}
-            copyLabel={String(tr("petitions.integrate.copy"))}
+            copyLabel={tr("petitions.integrate.copy")}
           />
         </div>
       )}

@@ -658,7 +658,7 @@ function StatusFilter({
         },
         {
           value: "active",
-          label: String(tr("admin.users.statusActive", { default: "Active" })),
+          label: tr("admin.users.statusActive", { default: "Active" }),
         },
         {
           value: "disabled",

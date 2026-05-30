@@ -40,18 +40,18 @@ const ChroniclesOverview = (props: ChroniclesOverviewProps) => {
   // Built in-body so labels can be translated via `tr`.
   const burnupChartConfig = {
     created: {
-      label: String(tr("chronicles.overview.chart.created")),
+      label: tr("chronicles.overview.chart.created"),
       color: "var(--chart-3)",
     },
     completed: {
-      label: String(tr("chronicles.overview.chart.completed")),
+      label: tr("chronicles.overview.chart.completed"),
       color: "var(--chart-1)",
     },
   } satisfies ChartConfig;
 
   const completionChartConfig = {
     rate: {
-      label: String(tr("chronicles.overview.chart.completionRate")),
+      label: tr("chronicles.overview.chart.completionRate"),
       color: "var(--chart-2)",
     },
   } satisfies ChartConfig;
@@ -67,7 +67,7 @@ const ChroniclesOverview = (props: ChroniclesOverviewProps) => {
 
   const kpiRow: ChroniclesKpi[] = [
     {
-      label: String(tr("chronicles.overview.kpi.completion")),
+      label: tr("chronicles.overview.kpi.completion"),
       value: `${completionPct}%`,
       hint: String(
         tr("chronicles.overview.kpi.completionHint", {
@@ -76,11 +76,11 @@ const ChroniclesOverview = (props: ChroniclesOverviewProps) => {
       ),
     },
     {
-      label: String(tr("chronicles.overview.kpi.open")),
+      label: tr("chronicles.overview.kpi.open"),
       value: kpis.openQuests,
     },
     {
-      label: String(tr("chronicles.overview.kpi.completedThisWeek")),
+      label: tr("chronicles.overview.kpi.completedThisWeek"),
       value: kpis.completedThisWeek,
       hint: String(
         tr("chronicles.overview.kpi.weekDeltaHint", {
@@ -89,11 +89,11 @@ const ChroniclesOverview = (props: ChroniclesOverviewProps) => {
       ),
     },
     {
-      label: String(tr("chronicles.overview.kpi.cycleTime")),
+      label: tr("chronicles.overview.kpi.cycleTime"),
       value: cycleTime,
     },
     {
-      label: String(tr("chronicles.overview.kpi.activeCharacters")),
+      label: tr("chronicles.overview.kpi.activeCharacters"),
       value: kpis.activeCharacters,
     },
   ];
@@ -101,15 +101,15 @@ const ChroniclesOverview = (props: ChroniclesOverviewProps) => {
   const attentionItems = [
     {
       count: attention.staleQuests,
-      label: String(tr("chronicles.overview.attention.stale")),
+      label: tr("chronicles.overview.attention.stale"),
     },
     {
       count: attention.unassignedQuests,
-      label: String(tr("chronicles.overview.attention.unassigned")),
+      label: tr("chronicles.overview.attention.unassigned"),
     },
     {
       count: attention.blockedQuests,
-      label: String(tr("chronicles.overview.attention.blocked")),
+      label: tr("chronicles.overview.attention.blocked"),
     },
   ].filter((item) => item.count > 0);
 
@@ -117,7 +117,7 @@ const ChroniclesOverview = (props: ChroniclesOverviewProps) => {
     <div className="flex flex-col gap-8">
       <ChroniclesKpiRow kpis={kpiRow} />
 
-      <ChroniclesSection title={String(tr("chronicles.overview.burnup.title"))}>
+      <ChroniclesSection title={tr("chronicles.overview.burnup.title")}>
         {burnup.length > 0 ? (
           <ChartContainer
             config={burnupChartConfig}
@@ -156,9 +156,7 @@ const ChroniclesOverview = (props: ChroniclesOverviewProps) => {
         )}
       </ChroniclesSection>
 
-      <ChroniclesSection
-        title={String(tr("chronicles.overview.completionRate.title"))}
-      >
+      <ChroniclesSection title={tr("chronicles.overview.completionRate.title")}>
         {completionTrend.length > 0 ? (
           <ChartContainer
             config={completionChartConfig}

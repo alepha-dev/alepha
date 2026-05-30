@@ -46,7 +46,7 @@ const QuestSummaryEditDialog = (props: QuestSummaryEditDialogProps) => {
         <TextEditor
           value={value}
           onChange={setValue}
-          placeholder={String(tr("quest.view.complete.placeholder"))}
+          placeholder={tr("quest.view.complete.placeholder")}
           rows={10}
         />
         <DialogFooter className="gap-2">

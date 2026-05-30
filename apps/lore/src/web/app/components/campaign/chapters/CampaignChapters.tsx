@@ -119,7 +119,7 @@ const CampaignChapters = () => {
       await chapterApi.deleteChapter({ params: { id } });
       await reload();
     } catch {
-      toaster.error(String(tr("chapter.delete.error")));
+      toaster.error(tr("chapter.delete.error"));
     }
   };
 
@@ -226,14 +226,14 @@ const CampaignChapters = () => {
                   <Input
                     value={startTitle}
                     onChange={(e) => setStartTitle(e.currentTarget.value)}
-                    placeholder={String(tr("chapter.start.placeholder"))}
+                    placeholder={tr("chapter.start.placeholder")}
                     autoFocus
                   />
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => void reroll()}
-                    aria-label={String(tr("chapter.start.reroll"))}
+                    aria-label={tr("chapter.start.reroll")}
                   >
                     <Dices className="size-4" />
                   </Button>

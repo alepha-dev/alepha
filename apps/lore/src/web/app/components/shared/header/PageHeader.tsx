@@ -26,7 +26,7 @@ const PageHeader = (props: PageHeaderProps) => {
             aria-label="Home"
           >
             <HomeIcon className="size-4" />
-            <span className="sr-only">{String(tr("home.title"))}</span>
+            <span className="sr-only">{tr("home.title")}</span>
           </Button>
         </div>
       )}

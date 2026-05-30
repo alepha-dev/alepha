@@ -134,7 +134,7 @@ const CampaignCreate = () => {
     return (
       <div className="bg-background flex h-screen w-full flex-col items-center justify-center">
         <PageHeader showHome={false} />
-        <BuildingScreen message={String(tr("campaign.create.building"))} />
+        <BuildingScreen message={tr("campaign.create.building")} />
       </div>
     );
   }
@@ -167,40 +167,40 @@ const CampaignCreate = () => {
               >
                 {step === 1 && (
                   <StepName
-                    title={String(tr("campaign.create.step.name"))}
-                    nameLabel={String(tr("campaign.create.name"))}
-                    nameHelper={String(tr("campaign.create.name.helper"))}
+                    title={tr("campaign.create.step.name")}
+                    nameLabel={tr("campaign.create.name")}
+                    nameHelper={tr("campaign.create.name.helper")}
                     input={form.input.title}
                   />
                 )}
                 {step === 2 && (
                   <StepLogo
-                    title={String(tr("campaign.create.step.logo"))}
-                    helper={String(tr("campaign.create.step.logo.helper"))}
+                    title={tr("campaign.create.step.logo")}
+                    helper={tr("campaign.create.step.logo.helper")}
                     input={form.input.icon}
                     disabled={form.submitting}
                   />
                 )}
                 {step === 3 && (
                   <StepModules
-                    title={String(tr("campaign.create.step.modules"))}
-                    helper={String(tr("campaign.create.step.modules.helper"))}
+                    title={tr("campaign.create.step.modules")}
+                    helper={tr("campaign.create.step.modules.helper")}
                     value={features}
                     onChange={setFeatures}
                     labels={{
-                      folios: String(tr("campaign.create.module.folios")),
+                      folios: tr("campaign.create.module.folios"),
                       foliosHelper: String(
                         tr("campaign.create.module.folios.helper"),
                       ),
-                      kanban: String(tr("campaign.create.module.kanban")),
+                      kanban: tr("campaign.create.module.kanban"),
                       kanbanHelper: String(
                         tr("campaign.create.module.kanban.helper"),
                       ),
-                      chapters: String(tr("campaign.create.module.chapters")),
+                      chapters: tr("campaign.create.module.chapters"),
                       chaptersHelper: String(
                         tr("campaign.create.module.chapters.helper"),
                       ),
-                      petitions: String(tr("campaign.create.module.petitions")),
+                      petitions: tr("campaign.create.module.petitions"),
                       petitionsHelper: String(
                         tr("campaign.create.module.petitions.helper"),
                       ),

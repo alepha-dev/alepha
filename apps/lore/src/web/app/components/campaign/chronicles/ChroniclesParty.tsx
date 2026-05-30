@@ -57,9 +57,7 @@ const ChroniclesParty = (props: ChroniclesPartyProps) => {
 
   return (
     <div className="flex flex-col gap-8">
-      <ChroniclesSection
-        title={String(tr("chronicles.party.leaderboard.title"))}
-      >
+      <ChroniclesSection title={tr("chronicles.party.leaderboard.title")}>
         {leaderboard.length > 0 ? (
           <div className="divide-y divide-border">
             {leaderboard.map((member, index) => (
@@ -112,9 +110,7 @@ const ChroniclesParty = (props: ChroniclesPartyProps) => {
         )}
       </ChroniclesSection>
 
-      <ChroniclesSection
-        title={String(tr("chronicles.party.contribution.title"))}
-      >
+      <ChroniclesSection title={tr("chronicles.party.contribution.title")}>
         {hasContribution ? (
           <ChartContainer
             config={contribConfig}
@@ -150,7 +146,7 @@ const ChroniclesParty = (props: ChroniclesPartyProps) => {
         )}
       </ChroniclesSection>
 
-      <ChroniclesSection title={String(tr("chronicles.party.idle.title"))}>
+      <ChroniclesSection title={tr("chronicles.party.idle.title")}>
         {idle.length > 0 ? (
           <div className="divide-y divide-border">
             {idle.map((member) => (
