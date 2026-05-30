@@ -54,6 +54,29 @@ export class BuildCommand {
   ];
 
   /**
+   * Value aliases accepted for `--target`.
+   *
+   * These let the CLI accept short forms (e.g. `--target cf`) that are
+   * canonicalized to a real {@link BuildTarget} before they flow into the
+   * pipeline. The enum in `flags.target` must also list the alias so it
+   * passes schema validation.
+   */
+  protected readonly targetAliases: Record<string, BuildTarget> = {
+    cf: "cloudflare",
+  };
+
+  /**
+   * Canonicalize a raw `--target` value, mapping any known alias
+   * (e.g. `cf` → `cloudflare`) to its real {@link BuildTarget}.
+   */
+  protected resolveTarget(target: string | undefined): BuildTarget | undefined {
+    if (!target) {
+      return undefined;
+    }
+    return this.targetAliases[target] ?? (target as BuildTarget);
+  }
+
+  /**
    * Resolve the effective runtime based on target and explicit runtime flag.
    *
    * Some targets force a specific runtime:
@@ -99,9 +122,9 @@ export class BuildCommand {
         }),
       ),
       target: t.optional(
-        t.enum(["bare", "docker", "vercel", "cloudflare", "static"], {
+        t.enum(["bare", "docker", "vercel", "cloudflare", "cf", "static"], {
           aliases: ["t"],
-          description: "Deployment target",
+          description: "Deployment target (cf = cloudflare)",
         }),
       ),
       runtime: t.optional(
@@ -152,24 +175,29 @@ export class BuildCommand {
       this.log.trace("Entry file found", { entry });
 
       // Resolve flags → mutate the atom (single source of truth)
-      this.alepha.store.mut(buildOptions, (current) => ({
-        ...current,
-        stats: flags.stats ?? current.stats ?? false,
-        target: flags.target ?? current.target,
-        runtime: this.resolveRuntime(
-          flags.target ?? current.target,
-          flags.runtime ?? current.runtime,
-        ),
-        ...(flags.compile !== undefined && {
-          docker: {
-            ...current.docker,
-            compile: flags.compile ? (current.docker?.compile ?? true) : false,
-          },
-        }),
-        ...(flags.sitemap && {
-          sitemap: { hostname: flags.sitemap },
-        }),
-      }));
+      this.alepha.store.mut(buildOptions, (current) => {
+        const target = this.resolveTarget(flags.target) ?? current.target;
+        return {
+          ...current,
+          stats: flags.stats ?? current.stats ?? false,
+          target,
+          runtime: this.resolveRuntime(
+            target,
+            flags.runtime ?? current.runtime,
+          ),
+          ...(flags.compile !== undefined && {
+            docker: {
+              ...current.docker,
+              compile: flags.compile
+                ? (current.docker?.compile ?? true)
+                : false,
+            },
+          }),
+          ...(flags.sitemap && {
+            sitemap: { hostname: flags.sitemap },
+          }),
+        };
+      });
 
       const options = this.options;
 
