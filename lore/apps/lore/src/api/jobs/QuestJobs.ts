@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -11,6 +11,7 @@ import { QuestNotifications } from "../notifications/QuestNotifications.ts";
 const REMINDER_BATCH = 50;
 
 export class QuestJobs {
+  protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly quests = $repository(quests);
   protected readonly campaigns = $repository(campaigns);
@@ -78,6 +79,11 @@ export class QuestJobs {
       const userById = new Map(recipients.map((u) => [u.id, u]));
       const campaignById = new Map(campaignRows.map((c) => [c.id, c]));
 
+      // Absolute base for the email link. Empty when PUBLIC_URL is unset
+      // (links degrade to relative). On Cloudflare it's auto-set from the
+      // platform domain and lifted into `alepha.env` by the Worker entrypoint.
+      const baseUrl = this.alepha.env.PUBLIC_URL ?? "";
+
       for (const quest of due) {
         try {
           if (!quest.acceptedBy || !quest.reminderInterval) continue;
@@ -104,7 +110,7 @@ export class QuestJobs {
               campaignTitle: campaign.title,
               questTitle: quest.title,
               shortId: quest.shortId,
-              questUrl: `/c/${campaign.id}/q/${quest.shortId}`,
+              questUrl: `${baseUrl}/c/${campaign.id}/q/${quest.shortId}`,
             },
           });
 
