@@ -12,6 +12,7 @@ export * from "./primitives/$bucket.ts";
 export * from "./providers/FileStorageProvider.ts";
 export * from "./providers/MemoryFileStorageProvider.ts";
 export * from "./providers/R2FileStorageProvider.ts";
+export * from "./providers/S3FileStorageProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
