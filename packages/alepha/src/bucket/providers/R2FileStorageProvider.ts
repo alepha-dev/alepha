@@ -227,6 +227,15 @@ export class R2FileStorageProvider implements FileStorageProvider {
     }
   }
 
+  public async list(bucketName: string): Promise<string[]> {
+    const r2 = this.getR2();
+    const keyPrefix = this.key(bucketName, "");
+    this.log.trace(`Listing files in '${keyPrefix}'`);
+    // Flat, single-page listing (~1000 keys). Not a search API.
+    const listed = await r2.list({ prefix: keyPrefix });
+    return listed.objects.map((object) => object.key.slice(keyPrefix.length));
+  }
+
   /**
    * Build the full R2 key: {prefix}/{bucketName}/{fileId}
    */

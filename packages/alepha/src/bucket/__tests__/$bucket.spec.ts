@@ -80,6 +80,24 @@ describe("$bucket", () => {
     expect(deleteEventCalled).toBe(true);
   });
 
+  test("should list uploaded files", async ({ expect }) => {
+    // Use a dedicated bucket so the listing is isolated from other tests
+    // sharing this app instance.
+    class ListApp {
+      files = $bucket({ name: "list-app-files" });
+    }
+    const listAlepha = Alepha.create().with(AlephaBucket).with(ListApp);
+    const app = listAlepha.inject(ListApp);
+
+    expect(await app.files.list()).toEqual([]);
+
+    const fileId = await app.files.upload(
+      new File(["x"], "x.png", { type: "image/png" }),
+    );
+
+    expect(await app.files.list()).toEqual([fileId]);
+  });
+
   test("should use many providers", async ({ expect }) => {
     class MySecondMemoryProvider extends MemoryFileStorageProvider {}
     class AnotherApp {

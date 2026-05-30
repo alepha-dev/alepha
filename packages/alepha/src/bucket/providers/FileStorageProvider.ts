@@ -49,4 +49,17 @@ export abstract class FileStorageProvider {
    * @param fileIds - Identifiers of the files to delete
    */
   abstract deleteMany(bucketName: string, fileIds: string[]): Promise<void>;
+
+  /**
+   * Lists the file identifiers stored in a bucket, like `ls` on a directory.
+   *
+   * This is a flat, unpaginated listing intended for small buckets. Providers
+   * cap the result at their natural page size (~1000 for S3/R2); anything beyond
+   * that is silently dropped. It is NOT a search API — use `alepha/api/files`
+   * when you need querying or pagination.
+   *
+   * @param bucketName - Container name
+   * @return The identifiers of the files in the bucket (empty if none).
+   */
+  abstract list(bucketName: string): Promise<string[]>;
 }

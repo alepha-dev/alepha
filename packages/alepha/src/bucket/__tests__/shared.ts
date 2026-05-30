@@ -178,6 +178,36 @@ export const testEmptyFiles = async (provider: FileStorageProvider) => {
   expect(await downloadedFile.text()).toBe("");
 };
 
+export const testListFiles = async (provider: FileStorageProvider) => {
+  const fs = getFileSystem();
+
+  // Unknown bucket lists to nothing rather than throwing.
+  expect(await provider.list("test-unknown-bucket")).toEqual([]);
+
+  // Use a declared bucket so directory-backed providers have it provisioned.
+  const a = await provider.upload(
+    TEST_DOCUMENTS_BUCKET,
+    fs.createFile({ text: "a", name: "a.txt" }),
+  );
+  const b = await provider.upload(
+    TEST_DOCUMENTS_BUCKET,
+    fs.createFile({ text: "b", name: "b.txt" }),
+  );
+
+  const ids = await provider.list(TEST_DOCUMENTS_BUCKET);
+  expect(ids).toContain(a);
+  expect(ids).toContain(b);
+
+  // Listing is scoped to the bucket — ids do not leak across buckets.
+  expect(await provider.list(TEST_IMAGES_BUCKET)).not.toContain(a);
+
+  // Deleted files drop out of the listing.
+  await provider.delete(TEST_DOCUMENTS_BUCKET, a);
+  const after = await provider.list(TEST_DOCUMENTS_BUCKET);
+  expect(after).not.toContain(a);
+  expect(after).toContain(b);
+};
+
 export const testCustomFileId = async (provider: FileStorageProvider) => {
   const file = getFileSystem().createFile({
     text: "custom id",

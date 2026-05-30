@@ -1,11 +1,13 @@
 import { Alepha } from "alepha";
-import { describe, test } from "vitest";
+import { FileSystemProvider } from "alepha/system";
+import { describe, expect, test } from "vitest";
 import {
   AlephaBucket,
   FileStorageProvider,
   S3FileStorageProvider,
 } from "../index.ts";
 import {
+  TEST_IMAGES_BUCKET,
   TestApp,
   testCustomFileId,
   testDeleteFile,
@@ -70,5 +72,22 @@ describe("NodeS3BucketProvider", () => {
 
   test("should be able to upload, stream with metadata", async () => {
     await testFileStream(provider);
+  });
+
+  test("should list files in a bucket", async () => {
+    const fs = Alepha.create().inject(FileSystemProvider);
+    const a = await provider.upload(
+      TEST_IMAGES_BUCKET,
+      fs.createFile({ text: "a", name: "a.txt" }),
+    );
+    const b = await provider.upload(
+      TEST_IMAGES_BUCKET,
+      fs.createFile({ text: "b", name: "b.txt" }),
+    );
+
+    // Shared bucket may hold files from other tests, so assert a superset.
+    const ids = await provider.list(TEST_IMAGES_BUCKET);
+    expect(ids).toContain(a);
+    expect(ids).toContain(b);
   });
 });

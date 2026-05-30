@@ -218,6 +218,15 @@ export class S3FileStorageProvider implements FileStorageProvider {
     }
   }
 
+  public async list(bucketName: string): Promise<string[]> {
+    this.log.trace(`Listing files in bucket '${bucketName}'...`);
+    const client = this.getClient(bucketName);
+    // Flat, single-page listing (~1000 keys). Not a search API.
+    const objects = await client.listObjects();
+    if (!objects) return [];
+    return objects.map((object) => object.Key);
+  }
+
   public async deleteMany(
     bucketName: string,
     fileIds: string[],

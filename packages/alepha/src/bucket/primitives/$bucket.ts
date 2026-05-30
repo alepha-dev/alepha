@@ -306,6 +306,18 @@ export class BucketPrimitive extends Primitive<BucketPrimitiveOptions> {
   }
 
   /**
+   * Lists the file identifiers stored in the bucket, like `ls` on a directory.
+   *
+   * This is a flat, unpaginated listing meant for small buckets — the result is
+   * capped at the provider's natural page size (~1000 for S3/R2) and anything
+   * beyond that is silently dropped. It is NOT a search API; reach for
+   * `alepha/api/files` when you need querying or pagination.
+   */
+  public async list(): Promise<string[]> {
+    return this.provider.list(this.name);
+  }
+
+  /**
    * Downloads a file from the bucket.
    */
   public async download(fileId: string): Promise<FileLike> {

@@ -9,6 +9,7 @@ import {
   testEmptyFiles,
   testFileExistence,
   testFileStream,
+  testListFiles,
   testNonExistentFile,
   testNonExistentFileError,
   testUploadAndExistence,
@@ -78,5 +79,9 @@ describe("MemoryFileStorageProvider", () => {
 
   test("should be able to upload, stream with metadata", async () => {
     await testFileStream(provider);
+  });
+
+  test("should list files in a bucket", async () => {
+    await testListFiles(provider);
   });
 });

@@ -80,6 +80,13 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
     }
   }
 
+  public async list(bucketName: string): Promise<string[]> {
+    const prefix = `${bucketName}/`;
+    return Object.keys(this.files)
+      .filter((key) => key.startsWith(prefix))
+      .map((key) => key.slice(prefix.length));
+  }
+
   protected createId(): string {
     return this.crypto.randomUUID();
   }

@@ -1,6 +1,6 @@
 import type * as fs from "node:fs";
 import { createReadStream } from "node:fs";
-import { mkdir, stat, unlink } from "node:fs/promises";
+import { mkdir, readdir, stat, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -170,6 +170,22 @@ export class LocalFileStorageProvider implements FileStorageProvider {
         }),
       ),
     );
+  }
+
+  public async list(bucketName: string): Promise<string[]> {
+    try {
+      const entries = await readdir(this.path(bucketName), {
+        withFileTypes: true,
+      });
+      return entries
+        .filter((entry) => entry.isFile())
+        .map((entry) => entry.name);
+    } catch (error) {
+      if (this.isErrorNoEntry(error)) {
+        return [];
+      }
+      throw new AlephaError("Error listing files", { cause: error });
+    }
   }
 
   protected stat(bucket: string, fileId: string): Promise<fs.Stats> {
