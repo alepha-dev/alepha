@@ -158,23 +158,13 @@ function AlertDialogCancel({
   variant = "outline",
   size = "default",
   ...props
-}: AlertDialogPrimitive.Close.Props & {
-  variant?: React.ComponentProps<typeof Button>["variant"];
-  size?: React.ComponentProps<typeof Button>["size"];
-}) {
+}: AlertDialogPrimitive.Close.Props &
+  Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
   return (
     <AlertDialogPrimitive.Close
       data-slot="alert-dialog-cancel"
       className={cn(className)}
-      render={
-        // Base UI's render-prop element type ends up too strict against
-        // our Button (it expects an `asChild` field that doesn't exist
-        // on Nova's Button). Cast to ReactElement so the render slot
-        // accepts our Button without complaint — runtime behaviour is
-        // unchanged because Base UI just clones whatever element we
-        // pass in.
-        (<Button variant={variant} size={size} />) as React.ReactElement
-      }
+      render={<Button variant={variant} size={size} />}
       {...props}
     />
   );

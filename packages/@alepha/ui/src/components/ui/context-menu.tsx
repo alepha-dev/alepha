@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@alepha/ui/lib/utils";
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";

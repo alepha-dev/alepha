@@ -101,15 +101,17 @@ __metadata:
     clsx: "npm:^2.1.1"
     cmdk: "npm:^1.1.1"
     date-fns: "npm:^4.4.0"
+    embla-carousel-react: "npm:^8.6.0"
     highlight.js: "npm:^11.11.1"
     input-otp: "npm:^1.4.2"
     lucide-react: "npm:^1.17.0"
     react: "npm:^19.2.6"
-    react-day-picker: "npm:^10.0.1"
+    react-day-picker: "npm:^9"
     react-dom: "npm:^19.2.6"
     react-is: "npm:^19.2.6"
     react-markdown: "npm:^10.1.0"
-    recharts: "npm:3.8.1"
+    react-resizable-panels: "npm:^4.11.2"
+    recharts: "npm:3.8.0"
     rehype-highlight: "npm:^7.0.2"
     remark-gfm: "npm:^4.0.1"
     shadcn: "npm:^4.9.0"
@@ -117,6 +119,7 @@ __metadata:
     tailwind-merge: "npm:^3.6.0"
     tw-animate-css: "npm:^1.4.0"
     typescript: "npm:^6.0.3"
+    vaul: "npm:^1.1.2"
   peerDependencies:
     alepha: 0.22.0
     react: "*"
@@ -881,9 +884,9 @@ __metadata:
   linkType: hard
 
 "@date-fns/tz@npm:^1.4.1":
-  version: 1.4.1
-  resolution: "@date-fns/tz@npm:1.4.1"
-  checksum: 10c0/9033fdc4682fe3d4d147625ce04fa88a8792653594e2de8d5a438c8f3bfc0990ee28fe773f91cac6810b06d818b5b281ae0608752ba8337257d0279ded3f019a
+  version: 1.5.0
+  resolution: "@date-fns/tz@npm:1.5.0"
+  checksum: 10c0/4ef25eedd55924938fa81b23b949a3425201597e2007f5323db54d50fc19283eca5e2a7963c3d82c99b3adf273e9ea9bc7adfd1c9076e15badd99c593a984ffa
   languageName: node
   linkType: hard
 
@@ -2744,7 +2747,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@radix-ui/react-dialog@npm:^1.1.6":
+"@radix-ui/react-dialog@npm:^1.1.1, @radix-ui/react-dialog@npm:^1.1.6":
   version: 1.1.15
   resolution: "@radix-ui/react-dialog@npm:1.1.15"
   dependencies:
@@ -3452,6 +3455,13 @@ __metadata:
   version: 0.3.0
   resolution: "@standard-schema/utils@npm:0.3.0"
   checksum: 10c0/6eb74cd13e52d5fc74054df51e37d947ef53f3ab9e02c085665dcca3c38c60ece8d735cebbdf18fbb13c775fbcb9becb3f53109b0e092a63f0f7389ce0993fd0
+  languageName: node
+  linkType: hard
+
+"@tabby_ai/hijri-converter@npm:1.0.5":
+  version: 1.0.5
+  resolution: "@tabby_ai/hijri-converter@npm:1.0.5"
+  checksum: 10c0/40044f463ff57855315c8925461942311460bb64e16706480dde98142f40bcd8e9925bb6fee401fd209397b5bb25368d1529c85b1e6c7e6216ea2085f6aaf61e
   languageName: node
   linkType: hard
 
@@ -4377,6 +4387,7 @@ __metadata:
     react-dom: "npm:^19.2.6"
     s3mini: "npm:^0.9.5"
     swagger-ui-dist: "npm:^5.32.6"
+    tailwindcss: "npm:^4.3.0"
     tsdown: "npm:^0.22.1"
     tsx: "npm:^4.22.4"
     typebox: "npm:^1.1.39"
@@ -5603,14 +5614,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"date-fns@npm:^4.1.0":
-  version: 4.1.0
-  resolution: "date-fns@npm:4.1.0"
-  checksum: 10c0/b79ff32830e6b7faa009590af6ae0fb8c3fd9ffad46d930548fbb5acf473773b4712ae887e156ba91a7b3dc30591ce0f517d69fd83bd9c38650fdc03b4e0bac8
+"date-fns-jalali@npm:4.1.0-0":
+  version: 4.1.0-0
+  resolution: "date-fns-jalali@npm:4.1.0-0"
+  checksum: 10c0/f9ad98d9f7e8e5abe0d070dc806b0c8baded2b1208626c42e92cbd2605b5171f5714d6b79b20cc2666267d821699244c9d0b5e93274106cf57d6232da77596ed
   languageName: node
   linkType: hard
 
-"date-fns@npm:^4.4.0":
+"date-fns@npm:^4.1.0, date-fns@npm:^4.4.0":
   version: 4.4.0
   resolution: "date-fns@npm:4.4.0"
   checksum: 10c0/988f0a13db183f5dfc85c36bbb6847a9c135a9225888bbea4005876ec15539a8613c21a07370a4e7ea543918d5a1cafb423c528b42cdbbde5fdfddb178126b21
@@ -6049,6 +6060,34 @@ __metadata:
   version: 1.5.344
   resolution: "electron-to-chromium@npm:1.5.344"
   checksum: 10c0/36624a59b2da4cb2bdee3085f5fc814bc0ba5830162a26f45c4b189177455869fd9d9c2e05fa28e69a45fb95c04d3e995962ff0e1658f552dcbe147a731c4f1d
+  languageName: node
+  linkType: hard
+
+"embla-carousel-react@npm:^8.6.0":
+  version: 8.6.0
+  resolution: "embla-carousel-react@npm:8.6.0"
+  dependencies:
+    embla-carousel: "npm:8.6.0"
+    embla-carousel-reactive-utils: "npm:8.6.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.1 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
+  checksum: 10c0/461b0c427a6fca62e730c7b39d08e9c55b01a2138c173d5b9ebf77ec92092a900b45ac384731c77382b48d5d65946994d3abba6e9899a66d6e16f8ddf191ed1c
+  languageName: node
+  linkType: hard
+
+"embla-carousel-reactive-utils@npm:8.6.0":
+  version: 8.6.0
+  resolution: "embla-carousel-reactive-utils@npm:8.6.0"
+  peerDependencies:
+    embla-carousel: 8.6.0
+  checksum: 10c0/33d07e6df4d8dec9b4fc95858838ea2d5e5df078039c05b2a342c05ba4979d8d18564a1c607da445fed744daf969a0b5a90124ce487a854e86ced6f0458b51e9
+  languageName: node
+  linkType: hard
+
+"embla-carousel@npm:8.6.0":
+  version: 8.6.0
+  resolution: "embla-carousel@npm:8.6.0"
+  checksum: 10c0/f4c598e7be28b70340d31ffd2bebb2472db370b0c81d9b089bf9555cf618695f35dc4a0694565c994c9ab972731123063f945aa09ff485df0df761d79c6a08ef
   languageName: node
   linkType: hard
 
@@ -10732,19 +10771,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-day-picker@npm:^10.0.1":
-  version: 10.0.1
-  resolution: "react-day-picker@npm:10.0.1"
+"react-day-picker@npm:^9":
+  version: 9.14.0
+  resolution: "react-day-picker@npm:9.14.0"
   dependencies:
     "@date-fns/tz": "npm:^1.4.1"
+    "@tabby_ai/hijri-converter": "npm:1.0.5"
     date-fns: "npm:^4.1.0"
+    date-fns-jalali: "npm:4.1.0-0"
   peerDependencies:
-    "@types/react": ">=16.8.0"
     react: ">=16.8.0"
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-  checksum: 10c0/2ca2690f5e8c22b0fd24079b68959110ec199ec7d5ac74f26cfe6dad3cadf7d781458a9a654673dd47009e4fbb8548711ec0ae048e41dd3cf1d4ede16dadad55
+  checksum: 10c0/5d26b2e8e28fb504c2ec577bda2ea26709ccab07555aada0674bd72ae38963de6f5cab135d936bb2fef935f97f73c6510657b15b936766e53d5c65811d13289a
   languageName: node
   linkType: hard
 
@@ -10849,6 +10886,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-resizable-panels@npm:^4.11.2":
+  version: 4.11.2
+  resolution: "react-resizable-panels@npm:4.11.2"
+  peerDependencies:
+    react: ^18.0.0 || ^19.0.0
+    react-dom: ^18.0.0 || ^19.0.0
+  checksum: 10c0/524b60cc40445980e3a9693cf1c6acc23491d57379bee4ccfef7dbb14ac757015a42eb932ad5fdcc9efb507bdb504a358cc79a414ce9ad3de6da8661768873e9
+  languageName: node
+  linkType: hard
+
 "react-style-singleton@npm:^2.2.2, react-style-singleton@npm:^2.2.3":
   version: 2.2.3
   resolution: "react-style-singleton@npm:2.2.3"
@@ -10923,7 +10970,30 @@ __metadata:
   languageName: node
   linkType: hard
 
-"recharts@npm:3.8.1, recharts@npm:^3.8.1":
+"recharts@npm:3.8.0":
+  version: 3.8.0
+  resolution: "recharts@npm:3.8.0"
+  dependencies:
+    "@reduxjs/toolkit": "npm:^1.9.0 || 2.x.x"
+    clsx: "npm:^2.1.1"
+    decimal.js-light: "npm:^2.5.1"
+    es-toolkit: "npm:^1.39.3"
+    eventemitter3: "npm:^5.0.1"
+    immer: "npm:^10.1.1"
+    react-redux: "npm:8.x.x || 9.x.x"
+    reselect: "npm:5.1.1"
+    tiny-invariant: "npm:^1.3.3"
+    use-sync-external-store: "npm:^1.2.2"
+    victory-vendor: "npm:^37.0.2"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    react-dom: ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    react-is: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/ae8e60202138670211a9464ecd838600803044796570281978f3d79d02c3add39d6513fd943c29d62a1bdefe01c0b98287e12a2a6685da3617257969c6ef2290
+  languageName: node
+  linkType: hard
+
+"recharts@npm:^3.8.1":
   version: 3.8.1
   resolution: "recharts@npm:3.8.1"
   dependencies:
@@ -13145,6 +13215,18 @@ __metadata:
   version: 1.1.2
   resolution: "vary@npm:1.1.2"
   checksum: 10c0/f15d588d79f3675135ba783c91a4083dcd290a2a5be9fcb6514220a1634e23df116847b1cc51f66bfb0644cf9353b2abb7815ae499bab06e46dd33c1a6bf1f4f
+  languageName: node
+  linkType: hard
+
+"vaul@npm:^1.1.2":
+  version: 1.1.2
+  resolution: "vaul@npm:1.1.2"
+  dependencies:
+    "@radix-ui/react-dialog": "npm:^1.1.1"
+  peerDependencies:
+    react: ^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc
+    react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc
+  checksum: 10c0/a6da539eb5576c0004a6b17e3673ea1db2c34e80355860131183abf53279ce025bbd016d542c345d1cc8464ad12f9dc9860949c751055d8a84961e8472a53707
   languageName: node
   linkType: hard
 

@@ -44,6 +44,7 @@ import { Toaster } from "@alepha/ui/components/ui/sonner";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
@@ -536,13 +537,15 @@ export function AppShell(props: AppShellProps) {
 
   return (
     <DialogProvider>
-      {renderBody()}
-      <Toaster />
-      {errorToaster !== false && (
-        <ActionErrorToaster
-          {...(typeof errorToaster === "object" ? errorToaster : {})}
-        />
-      )}
+      <TooltipProvider>
+        {renderBody()}
+        <Toaster />
+        {errorToaster !== false && (
+          <ActionErrorToaster
+            {...(typeof errorToaster === "object" ? errorToaster : {})}
+          />
+        )}
+      </TooltipProvider>
     </DialogProvider>
   );
 }

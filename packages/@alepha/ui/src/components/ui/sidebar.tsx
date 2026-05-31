@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@alepha/ui/components/ui/button";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Separator } from "@alepha/ui/components/ui/separator";

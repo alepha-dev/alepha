@@ -1,3 +1,5 @@
+"use client";
+
 import { useColorMode } from "alepha/react/ui";
 import {
   CircleCheckIcon,
@@ -31,6 +33,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--border-radius": "var(--radius)",
         } as React.CSSProperties
       }
+      toastOptions={{
+        classNames: {
+          toast: "cn-toast",
+        },
+      }}
       {...props}
     />
   );

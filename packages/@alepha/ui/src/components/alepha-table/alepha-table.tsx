@@ -18,9 +18,7 @@ import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
-  PaginationFirst,
   PaginationItem,
-  PaginationLast,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
@@ -900,19 +898,6 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
             <Pagination className="mx-0 w-auto justify-end">
               <PaginationContent>
                 <PaginationItem>
-                  <PaginationFirst
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (!meta.isFirst) setPage(0);
-                    }}
-                    aria-disabled={meta.isFirst}
-                    className={cn(
-                      meta.isFirst && "pointer-events-none opacity-50",
-                    )}
-                  />
-                </PaginationItem>
-                <PaginationItem>
                   <PaginationPrevious
                     href="#"
                     onClick={(e) => {
@@ -952,20 +937,6 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                     onClick={(e) => {
                       e.preventDefault();
                       if (!meta.isLast) setPage((p) => p + 1);
-                    }}
-                    aria-disabled={meta.isLast}
-                    className={cn(
-                      meta.isLast && "pointer-events-none opacity-50",
-                    )}
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationLast
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (!meta.isLast && meta.totalPages)
-                        setPage(meta.totalPages - 1);
                     }}
                     aria-disabled={meta.isLast}
                     className={cn(
