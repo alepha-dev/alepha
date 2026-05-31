@@ -88,13 +88,33 @@ export class ServerCookiesProvider {
     );
   }
 
+  /**
+   * Namespaces a cookie name with the app's `APP_NAME` (lowercased) so that
+   * two Alepha apps sharing a cookie jar do not collide.
+   *
+   * Cookies are scoped by host + path only — never by port — so two apps on
+   * `localhost:3000` and `localhost:4000` would otherwise both read/write a
+   * cookie literally named `tokens` and silently clobber each other (and,
+   * because each encrypts with its own `APP_SECRET`, the foreign cookie fails
+   * to decrypt and gets deleted, logging the user out).
+   *
+   * When `APP_NAME` is unset the name is returned unchanged, so existing
+   * single-app deployments keep their current cookie names. Same convention as
+   * the `APP_NAME` prefix used by R2 storage and server-timing.
+   */
+  protected prefixName(name: string): string {
+    const app = this.alepha.env.APP_NAME;
+    if (!app) return name;
+    return `${String(app).toLowerCase()}.${name}`;
+  }
+
   public getCookie<T extends TSchema>(
     name: string,
     options: CookiePrimitiveOptions<T>,
     contextCookies?: Cookies,
   ): Static<T> | undefined {
     const cookies = this.getCookiesFromContext(contextCookies);
-    let rawValue = cookies.req[name];
+    let rawValue = cookies.req[this.prefixName(name)];
 
     if (!rawValue) return undefined;
 
@@ -174,7 +194,7 @@ export class ServerCookiesProvider {
       cookie.maxAge = this.dateTimeProvider.duration(options.ttl).as("seconds");
     }
 
-    cookies.res[name] = cookie;
+    cookies.res[this.prefixName(name)] = cookie;
   }
 
   public deleteCookie<T extends TSchema>(
@@ -182,7 +202,7 @@ export class ServerCookiesProvider {
     contextCookies?: Cookies,
   ): void {
     const cookies = this.getCookiesFromContext(contextCookies);
-    cookies.res[name] = null;
+    cookies.res[this.prefixName(name)] = null;
   }
 
   // --- Crypto & Parsing ---

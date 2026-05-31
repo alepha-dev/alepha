@@ -232,6 +232,76 @@ describe("ServerCookiesProvider", () => {
     // Secure flag is not added in tests unless protocol is https, which is handled by the provider
   });
 
+  describe("APP_NAME namespacing", () => {
+    class TokenApp {
+      tokens = $cookie({
+        name: "tokens",
+        schema: t.object({ value: t.text() }),
+      });
+      set = $action({
+        handler: () => {
+          this.tokens.set({ value: "from-app" });
+        },
+      });
+      read = $action({
+        schema: {
+          response: t.object({ value: t.optional(t.text()) }),
+        },
+        handler: ({ cookies }) => {
+          return { value: this.tokens.get({ cookies })?.value };
+        },
+      });
+    }
+
+    const makeApp = (appName: string) =>
+      Alepha.create({
+        env: { COOKIE_SECRET: TEST_COOKIE_SECRET, APP_NAME: appName },
+      })
+        .with(AlephaServer)
+        .with(AlephaServerCookies)
+        .with(TokenApp);
+
+    test("prefixes the cookie name with the lowercased APP_NAME", async () => {
+      const appA = makeApp("AppA");
+      await appA.start();
+
+      const response = await appA.inject(TokenApp).set.fetch();
+      const setCookieHeader = response.headers.get("set-cookie");
+
+      // Cookie is written under the namespaced name, not the bare "tokens".
+      expect(setCookieHeader).toContain("appa.tokens=");
+      expect(setCookieHeader).not.toMatch(/(^|; )tokens=/);
+    });
+
+    test("two apps sharing a cookie jar do not collide", async () => {
+      const appA = makeApp("AppA");
+      const appB = makeApp("AppB");
+      await appA.start();
+      await appB.start();
+
+      // App A writes its cookie.
+      const responseA = await appA.inject(TokenApp).set.fetch();
+      const cookieA = responseA.headers
+        .get("set-cookie")!
+        .match(/appa\.tokens=([^;]*)/)![1];
+
+      // App A reads its own cookie back from the shared jar — works.
+      const incoming = `appa.tokens=${cookieA}`;
+      const readA = await appA
+        .inject(TokenApp)
+        .read.fetch({}, { request: { headers: { cookie: incoming } } });
+      expect(readA.data.value).toBe("from-app");
+
+      // App B sees the SAME jar (same host:localhost), but reads under
+      // "appb.tokens" — so App A's cookie is invisible to it. No collision,
+      // no failed-decrypt-then-delete logout.
+      const readB = await appB
+        .inject(TokenApp)
+        .read.fetch({}, { request: { headers: { cookie: incoming } } });
+      expect(readB.data.value).toBeUndefined();
+    });
+  });
+
   // test("should throw if secret is missing for secure cookies", async () => {
   // 	class AppWithMissingSecret {
   // 		badCookie = $cookie({
