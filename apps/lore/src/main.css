@@ -144,7 +144,7 @@ body::before {
 .dark body::before,
 .dark [data-sidebar="sidebar"]:not([data-mobile])::before,
 .dark [data-slot="sidebar-wrapper"]::before {
-  opacity: 0.02;
+  opacity: 0.06;
 }
 
 /* ────────────────────────────────────────────────────────────────────────
