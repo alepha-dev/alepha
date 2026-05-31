@@ -30,7 +30,7 @@
     "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.9",
     "s3mini": "^0.9.5",
-    "tsx": "^4.22.3",
+    "tsx": "^4.22.4",
     "typebox": "^1.1.39",
     "typescript": "^6.0.3",
     "vite": "^8.0.14",
@@ -57,9 +57,7 @@
     "prom-client": "^15.1.3",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "shadcn": "^4.8.3",
     "swagger-ui-dist": "^5.32.6",
-    "tailwindcss": "^4.3.0",
     "tsdown": "^0.22.1"
   },
   "peerDependencies": {

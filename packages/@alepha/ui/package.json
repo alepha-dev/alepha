@@ -67,6 +67,7 @@
     "alepha": "0.22.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "shadcn": "^4.9.0",
     "typescript": "^6.0.3"
   }
 }
