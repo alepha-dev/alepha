@@ -16,7 +16,7 @@
     "src"
   ],
   "dependencies": {
-    "protobufjs": "^8.4.2"
+    "protobufjs": "^8.5.0"
   },
   "dependenciesMeta": {
     "protobufjs": {
@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "alepha": "0.21.2",
-    "tsdown": "^0.22.0",
+    "tsdown": "^0.22.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"
   },

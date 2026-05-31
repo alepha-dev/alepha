@@ -6,7 +6,7 @@
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@tabler/icons-react": "^3.44.0",
     "alepha": "^0.21.2",
-    "fuse.js": "^7.3.0",
+    "fuse.js": "^7.4.0",
     "react": "^19.2.6"
   },
   "devDependencies": {
