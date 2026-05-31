@@ -5,7 +5,19 @@ import { $command } from "alepha/command";
 export default (alepha: Alepha) => {
   // Type-safe changelog configuration
   alepha.set(changelogOptions, {
-    ignore: ["project", "tests", "docs", "release", "task"],
+    ignore: [
+      "project",
+      "tests",
+      "docs",
+      "release",
+      "task",
+      "lore",
+      "lore/admin",
+      "lore/cli",
+      "lore/db",
+      "playground",
+      "platform-lib",
+    ],
   });
 
   return {
