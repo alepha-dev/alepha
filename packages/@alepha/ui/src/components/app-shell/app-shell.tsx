@@ -422,7 +422,7 @@ export function AppShell(props: AppShellProps) {
       }
     >
       <StatefulSidebarTrigger />
-      <Separator orientation="vertical" className="mx-2 h-4" />
+      <Separator orientation="vertical" className="mx-2" />
       {props.breadcrumbs && props.breadcrumbs.length > 0 && (
         <Breadcrumb>
           <BreadcrumbList>
@@ -517,7 +517,7 @@ export function AppShell(props: AppShellProps) {
           <SidebarInset
             className={
               variant === "inset"
-                ? "md:peer-data-[variant=inset]:overflow-hidden"
+                ? "md:peer-data-[variant=inset]:overflow-hidden border"
                 : undefined
             }
           >
