@@ -38,6 +38,7 @@ Convention-driven HTTP server with automatic validation and type inference.
 ### Providers
 
 - [`ServerHelmetProvider`](/docs/reference-providers-serverhelmetprovider) — Provides a configurable way to apply essential HTTP security headers
+- [`ServerMultipartProvider`](/docs/reference-providers-servermultipartprovider) — Parses `multipart/form-data` request bodies into route handler input.
 - [`ServerNotReadyProvider`](/docs/reference-providers-servernotreadyprovider) — On every request, this provider checks if the server is ready.
 - [`ServerProvider`](/docs/reference-providers-serverprovider) — Base server provider to handle incoming requests and route them.
 - [`ServerRouterProvider`](/docs/reference-providers-serverrouterprovider) — Main router for all routes server side.

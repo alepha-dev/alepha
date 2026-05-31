@@ -242,6 +242,21 @@ export class BucketPrimitive extends Primitive<BucketPrimitiveOptions> {
       }
     }
 
+    // A reported size of 0 means the body is a one-shot stream — real streams
+    // report 0 until fully read (see FileLike.size). Materialize it once so
+    // that (a) the maxSize check below is accurate instead of being silently
+    // bypassed, and (b) the provider AND any `bucket:file:uploaded` hook can
+    // read the same bytes without draining the stream out from under each
+    // other. Files with a known size are already random-access (Blob/Buffer
+    // backed) and need no copy. Uploads are size-capped, so this is bounded.
+    if (file.size === 0) {
+      file = this.fileSystem.createFile({
+        arrayBuffer: await file.arrayBuffer(),
+        name: file.name,
+        type: file.type,
+      });
+    }
+
     // check size in bytes, convert MB to bytes
     if (file.size > maxSize * 1024 * 1024) {
       throw new InvalidFileError(

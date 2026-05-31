@@ -1,4 +1,6 @@
 import { Buffer } from "node:buffer";
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import {
   $env,
   $hook,
@@ -175,8 +177,6 @@ export class S3FileStorageProvider implements FileStorageProvider {
       );
     }
 
-    const buffer = Buffer.from(await response.arrayBuffer());
-
     const mimeType =
       response.headers.get("content-type") ||
       this.fileDetector.getContentType(fileId);
@@ -184,11 +184,24 @@ export class S3FileStorageProvider implements FileStorageProvider {
     const metaName = response.headers.get("x-amz-meta-name");
     const name = metaName ? decodeURIComponent(metaName) : fileId;
 
+    const contentLength = response.headers.get("content-length");
+    const size = contentLength ? Number.parseInt(contentLength, 10) : 0;
+
+    // Stream the body straight through instead of buffering the whole object
+    // into memory. `response.body` is null only for a zero-byte object.
+    if (!response.body) {
+      return this.fileSystem.createFile({
+        buffer: Buffer.alloc(0),
+        name,
+        type: mimeType,
+      });
+    }
+
     return this.fileSystem.createFile({
-      buffer,
+      stream: Readable.fromWeb(response.body as unknown as NodeWebStream),
       name,
       type: mimeType,
-      size: buffer.length,
+      size,
     });
   }
 

@@ -15,6 +15,7 @@ import { $repository, type Page, RepositoryProvider } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import type { Ok } from "alepha/server";
 import { NotFoundError } from "alepha/server";
+import { FileSystemProvider } from "alepha/system";
 import { type FileEntity, files } from "../entities/files.ts";
 import type { FileQuery } from "../schemas/fileQuerySchema.ts";
 import type { FileResource } from "../schemas/fileResourceSchema.ts";
@@ -25,6 +26,7 @@ export class FileService {
   protected readonly log = $logger();
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly repositoryProvider = $inject(RepositoryProvider);
+  protected readonly fileSystem = $inject(FileSystemProvider);
   protected readonly defaultBucket = $bucket({ name: "default" });
   public readonly fileRepository = $repository(files);
 
@@ -65,18 +67,20 @@ export class FileService {
 
       const checksum = await this.calculateChecksum(file);
 
-      await this.fileRepository.create({
-        blobId: id,
-        mimeType: file.type,
-        name: file.name,
-        originalName: file.name,
-        size: file.size,
-        creator: options.user?.id,
-        creatorRealm: options.user?.realm,
-        expirationDate: this.getExpirationDate(options.ttl),
-        bucket: bucket.name,
-        checksum,
-      });
+      await this.persistBlobMetadata(bucket, id, () =>
+        this.fileRepository.create({
+          blobId: id,
+          mimeType: file.type,
+          name: file.name,
+          originalName: file.name,
+          size: file.size,
+          creator: options.user?.id,
+          creatorRealm: options.user?.realm,
+          expirationDate: this.getExpirationDate(options.ttl),
+          bucket: bucket.name,
+          checksum,
+        }),
+      );
     },
   });
 
@@ -95,15 +99,28 @@ export class FileService {
   /**
    * Calculates SHA-256 checksum of a file.
    *
+   * Reads the whole file into memory. Callers that already hold the bytes
+   * should use {@link hashBuffer} instead to avoid re-reading — re-reading a
+   * one-shot stream either yields the wrong hash or drains a stream another
+   * step still needs.
+   *
    * @param file - The file to calculate checksum for
    * @returns Hexadecimal string representation of the SHA-256 hash
    * @protected
    */
   protected async calculateChecksum(file: FileLike): Promise<string> {
-    const buffer = await file.arrayBuffer();
-    const hash = createHash("sha256");
-    hash.update(Buffer.from(buffer));
-    return hash.digest("hex");
+    return this.hashBuffer(await file.arrayBuffer());
+  }
+
+  /**
+   * Calculates the SHA-256 checksum of an already-read body.
+   *
+   * @param data - The file bytes
+   * @returns Hexadecimal string representation of the SHA-256 hash
+   * @protected
+   */
+  protected hashBuffer(data: ArrayBuffer): string {
+    return createHash("sha256").update(Buffer.from(data)).digest("hex");
   }
 
   /**
@@ -244,7 +261,20 @@ export class FileService {
   ): Promise<FileEntity> {
     const bucket = this.bucket(options.bucket);
 
-    const checksum = await this.calculateChecksum(file);
+    // Read the source exactly once. The checksum and the stored bytes are
+    // both derived from this single buffer, so a one-shot stream is never
+    // read twice — the previous code checksummed the file and then let
+    // bucket.upload read it again, which drained the stream and stored an
+    // empty blob. Uploads are size-capped (bucket maxSize / multipart
+    // limits), so buffering here is intentional and bounded.
+    const data = await file.arrayBuffer();
+    const checksum = this.hashBuffer(data);
+    file = this.fileSystem.createFile({
+      arrayBuffer: data,
+      name: file.name,
+      type: file.type,
+    });
+
     const blobId = await bucket.upload(file, { persist: false });
 
     let expirationDate: string | undefined;
@@ -256,20 +286,58 @@ export class FileService {
       expirationDate = this.getExpirationDate(bucket.options.ttl);
     }
 
-    return await this.fileRepository.create({
-      blobId: blobId,
-      mimeType: file.type,
-      name: file.name,
-      originalName: file.name,
-      size: file.size,
-      creator: options.user?.id,
-      creatorRealm: options.user?.realm,
-      creatorName: options.user?.name,
-      expirationDate,
-      bucket: bucket.name,
-      tags: options.tags,
-      checksum,
-    });
+    return await this.persistBlobMetadata(bucket, blobId, () =>
+      this.fileRepository.create({
+        blobId: blobId,
+        mimeType: file.type,
+        name: file.name,
+        originalName: file.name,
+        size: file.size,
+        creator: options.user?.id,
+        creatorRealm: options.user?.realm,
+        creatorName: options.user?.name,
+        expirationDate,
+        bucket: bucket.name,
+        tags: options.tags,
+        checksum,
+      }),
+    );
+  }
+
+  /**
+   * Persists the metadata row for an already-uploaded blob, deleting the
+   * blob if the insert fails. Uploads are not atomic: the blob is written to
+   * storage first (the row needs the returned `blobId`), so a failed insert
+   * would otherwise leak the blob — an orphaned blob with no DB row. This
+   * compensates by removing the blob, favouring the recoverable failure
+   * (a missing blob) over the worse one (a row pointing at nothing).
+   *
+   * Best-effort: cleanup runs with `skipHook` so it neither re-emits
+   * `bucket:file:deleted` nor touches the (non-existent) DB row, and a failed
+   * cleanup is logged rather than thrown. The original write error is always
+   * rethrown so callers still see the real failure.
+   *
+   * @param bucket - The bucket the blob was uploaded to
+   * @param blobId - The id returned by `bucket.upload`
+   * @param insert - Thunk performing the metadata insert
+   * @returns The created file entity
+   */
+  protected async persistBlobMetadata(
+    bucket: BucketPrimitive,
+    blobId: string,
+    insert: () => Promise<FileEntity>,
+  ): Promise<FileEntity> {
+    try {
+      return await insert();
+    } catch (error) {
+      await bucket.delete(blobId, true).catch((cleanupError) => {
+        this.log.warn(
+          `Failed to remove orphaned blob ${blobId} from bucket ${bucket.name} after a metadata write failure`,
+          cleanupError,
+        );
+      });
+      throw error;
+    }
   }
 
   /**
@@ -426,50 +494,42 @@ export class FileService {
   /**
    * Gets storage statistics including total size, file count, and breakdowns by bucket and MIME type.
    *
+   * Aggregated in SQL (`SUM`/`COUNT` + `GROUP BY`) rather than by loading
+   * every row into memory — the table can hold millions of files, and this
+   * endpoint must stay O(groups), not O(rows). Totals are derived from the
+   * per-bucket groups (every row has exactly one bucket), so no extra query
+   * is needed.
+   *
    * @returns Storage statistics with aggregated data
    */
   public async getStorageStats(): Promise<StorageStats> {
-    const allFiles = await this.fileRepository.findMany({});
+    const [byBucketRows, byMimeTypeRows] = await Promise.all([
+      this.fileRepository.aggregate({
+        select: { bucket: true, size: { sum: true, count: true } },
+        groupBy: ["bucket"],
+      }),
+      this.fileRepository.aggregate({
+        select: { mimeType: true, size: { count: true } },
+        groupBy: ["mimeType"],
+      }),
+    ]);
 
-    const totalSize = allFiles.reduce((sum, file) => sum + file.size, 0);
-    const totalFiles = allFiles.length;
+    const byBucket = byBucketRows.map((row) => ({
+      bucket: row.bucket,
+      totalSize: row.size.sum,
+      fileCount: row.size.count,
+    }));
 
-    // Group by bucket
-    const bucketMap = new Map<
-      string,
-      { totalSize: number; fileCount: number }
-    >();
-    for (const file of allFiles) {
-      const existing = bucketMap.get(file.bucket) || {
-        totalSize: 0,
-        fileCount: 0,
-      };
-      existing.totalSize += file.size;
-      existing.fileCount += 1;
-      bucketMap.set(file.bucket, existing);
-    }
-
-    // Group by MIME type
-    const mimeTypeMap = new Map<string, number>();
-    for (const file of allFiles) {
-      const existing = mimeTypeMap.get(file.mimeType) || 0;
-      mimeTypeMap.set(file.mimeType, existing + 1);
-    }
+    const byMimeType = byMimeTypeRows.map((row) => ({
+      mimeType: row.mimeType,
+      fileCount: row.size.count,
+    }));
 
     return {
-      totalSize,
-      totalFiles,
-      byBucket: Array.from(bucketMap.entries()).map(([bucket, stats]) => ({
-        bucket,
-        totalSize: stats.totalSize,
-        fileCount: stats.fileCount,
-      })),
-      byMimeType: Array.from(mimeTypeMap.entries()).map(
-        ([mimeType, fileCount]) => ({
-          mimeType,
-          fileCount,
-        }),
-      ),
+      totalSize: byBucket.reduce((sum, b) => sum + b.totalSize, 0),
+      totalFiles: byBucket.reduce((sum, b) => sum + b.fileCount, 0),
+      byBucket,
+      byMimeType,
     };
   }
 
