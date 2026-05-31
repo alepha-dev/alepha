@@ -9,7 +9,7 @@
     "typecheck": "alepha typecheck",
     "test": "alepha test",
     "build": "alepha build --stats",
-    "build&start": "alepha build && LOG_LEVEL=debug LOG_FORMAT=pretty node dist",
+    "build&start": "alepha build && LOG_LEVEL=debug LOG_FORMAT=pretty DATABASE_URL=:memory: node dist",
     "check:i18n": "alepha i18n check",
     "check:migrations": "alepha db migrations check",
     "db:generate": "alepha db migrations create",
