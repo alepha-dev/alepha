@@ -6,6 +6,8 @@ import { I18nProvider } from "./providers/I18nProvider.ts";
 
 export type { LocalizeProps } from "./components/Localize.tsx";
 export { default as Localize } from "./components/Localize.tsx";
+export type { TranslateProps } from "./components/Translate.tsx";
+export { default as Translate, Tr } from "./components/Translate.tsx";
 export * from "./hooks/useI18n.ts";
 export * from "./primitives/$dictionary.ts";
 export * from "./providers/I18nProvider.ts";
