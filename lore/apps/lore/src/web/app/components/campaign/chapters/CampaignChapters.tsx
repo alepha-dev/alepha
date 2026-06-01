@@ -291,7 +291,7 @@ const CampaignChapters = () => {
         >
           <SheetContent
             side="right"
-            className="flex w-full flex-col gap-0 overflow-auto p-0 sm:max-w-2xl"
+            className="flex w-full flex-col gap-0 overflow-auto p-0 data-[side=right]:sm:max-w-[50vw]"
           >
             <SheetHeader>
               <SheetTitle>

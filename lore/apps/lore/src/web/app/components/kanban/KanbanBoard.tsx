@@ -296,7 +296,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
         <SheetContent
           side="right"
           showCloseButton={false}
-          className="w-full p-0 sm:max-w-2xl"
+          className="w-full p-0 data-[side=right]:sm:max-w-[50vw]"
         >
           {selectedQuest && (
             <QuestView
