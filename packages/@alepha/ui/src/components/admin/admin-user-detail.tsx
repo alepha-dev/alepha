@@ -757,7 +757,8 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
             <Button
               variant="outline"
               size="sm"
-              disabled={isSelf || toggleEnabled.loading}
+              loading={toggleEnabled.loading}
+              disabled={isSelf}
               onClick={() => toggleEnabled.run()}
             >
               {user.enabled ? (
@@ -775,7 +776,8 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
             <Button
               variant="destructive"
               size="sm"
-              disabled={isSelf || deleteUser.loading}
+              loading={deleteUser.loading}
+              disabled={isSelf}
               onClick={() => deleteUser.run()}
             >
               <Trash2 className="size-4" />
@@ -945,7 +947,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
                             <Button
                               variant="destructive"
                               size="sm"
-                              disabled={removeIdentity.loading}
+                              loading={removeIdentity.loading}
                               onClick={() => removeIdentity.run(id)}
                             >
                               <Trash2 className="size-4" />
@@ -1123,7 +1125,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
             <Button
               type="submit"
               form="set-password-form"
-              disabled={passwordForm.submitting}
+              loading={passwordForm.submitting}
             >
               <Ban className="hidden" />
               {tr("admin.userDetail.savePassword", { default: "Save" })}

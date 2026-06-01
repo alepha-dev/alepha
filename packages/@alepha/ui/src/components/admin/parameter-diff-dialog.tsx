@@ -106,7 +106,7 @@ export const ParameterDiffDialog = (props: ParameterDiffDialogProps) => {
             <Button
               type="button"
               variant={props.confirm.destructive ? "destructive" : "default"}
-              disabled={props.confirm.loading}
+              loading={props.confirm.loading}
               onClick={() => props.confirm?.onConfirm()}
             >
               {props.confirm.label}

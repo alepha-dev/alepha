@@ -692,10 +692,9 @@ function BottomBar(props: BottomBarProps) {
         {!props.noSubmit && (
           <Button
             type="submit"
+            loading={props.loading}
             disabled={
-              props.disabled ||
-              props.loading ||
-              (props.disabledIfPristine && !props.dirty)
+              props.disabled || (props.disabledIfPristine && !props.dirty)
             }
           >
             {props.submitLabel ?? tr("autoForm.save", { default: "Save" })}

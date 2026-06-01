@@ -453,7 +453,8 @@ export function AuthRegister(props: AuthRegisterProps) {
                   )}
                   <Button
                     onClick={handleVerify}
-                    disabled={!canSubmitVerify || submitting}
+                    loading={submitting}
+                    disabled={!canSubmitVerify}
                   >
                     {tr("auth.register.verifySubmit", {
                       default: "Complete registration",
@@ -647,10 +648,8 @@ function FormPhase(props: {
               )}
               <Button
                 type="submit"
-                disabled={
-                  form.submitting ||
-                  (!!props.captchaSiteKey && !props.captchaToken)
-                }
+                loading={form.submitting}
+                disabled={!!props.captchaSiteKey && !props.captchaToken}
               >
                 {tr("auth.register.submit", { default: "Create account" })}
               </Button>

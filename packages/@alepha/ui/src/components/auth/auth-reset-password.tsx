@@ -199,7 +199,7 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                   input={emailForm.input.email}
                   icon={iconFor("email")}
                 />
-                <Button type="submit" disabled={emailForm.submitting}>
+                <Button type="submit" loading={emailForm.submitting}>
                   {tr("auth.reset.sendCode", {
                     default: "Send verification code",
                   })}
@@ -247,7 +247,7 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                 <Button
                   variant="ghost"
                   onClick={handleResend}
-                  disabled={submitting}
+                  loading={submitting}
                 >
                   {tr("auth.reset.resend", { default: "Resend code" })}
                 </Button>
@@ -291,7 +291,7 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                   password
                   autoComplete="new-password"
                 />
-                <Button type="submit" disabled={passwordForm.submitting}>
+                <Button type="submit" loading={passwordForm.submitting}>
                   {tr("auth.reset.setPassword", {
                     default: "Set new password",
                   })}

@@ -114,7 +114,7 @@ export const ParameterSaveDialog = (props: ParameterSaveDialogProps) => {
           </Button>
           <Button
             type="button"
-            disabled={save.loading}
+            loading={save.loading}
             onClick={() => save.run()}
           >
             {tr("admin.parameters.save", { default: "Save new version" })}

@@ -254,7 +254,7 @@ export function AuthLogin(props: AuthLoginProps) {
                 input={form.input.password}
                 password
               />
-              <Button type="submit" disabled={form.submitting}>
+              <Button type="submit" loading={form.submitting}>
                 {tr("auth.login.submit", { default: "Sign in" })}
               </Button>
               {settings.resetPasswordAllowed && (
