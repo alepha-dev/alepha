@@ -154,8 +154,13 @@ export function Segmented(props: SegmentedProps) {
           data-slot="segmented-thumb"
           className={cn(
             "bg-primary pointer-events-none absolute rounded-[calc(var(--radius)-2px)] shadow-sm",
-            animate &&
-              "transition-[transform,width,height] duration-200 ease-out",
+            // Animate only `transform` — it's GPU-composited in both browsers.
+            // Transitioning width/height forces a per-frame reflow + box-shadow
+            // repaint on the main thread, which Firefox handles poorly (visible
+            // jank); Chrome's fast-paths hide it. Width/height still update, but
+            // instantly — for equal-width segments they never change anyway, so
+            // only the slide animates.
+            animate && "transition-transform duration-200 ease-out",
           )}
           style={{
             transform: `translate(${thumb.left}px, ${thumb.top}px)`,
@@ -163,6 +168,7 @@ export function Segmented(props: SegmentedProps) {
             height: thumb.height,
             top: 0,
             left: 0,
+            willChange: "transform",
           }}
         />
       )}
