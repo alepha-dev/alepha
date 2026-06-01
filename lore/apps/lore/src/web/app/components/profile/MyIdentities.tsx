@@ -40,7 +40,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
   const { l } = useI18n();
 
   const hasPasswordIdentity = localIdentities.some(
-    (identity) => identity.provider === "usernamePassword",
+    (identity) => identity.provider === "credentials",
   );
 
   const close = () => {
@@ -68,7 +68,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
         ...prev,
         {
           id: crypto.randomUUID(),
-          provider: "usernamePassword",
+          provider: "credentials",
           providerUserId: "",
           createdAt: nowIso,
           updatedAt: nowIso,
@@ -85,14 +85,14 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 
   const providerIcon = (provider: string) => {
     if (provider === "github") return <GitBranch className="size-4" />;
-    if (provider === "usernamePassword") return <Key className="size-4" />;
+    if (provider === "credentials") return <Key className="size-4" />;
     return <User className="size-4" />;
   };
 
   const providerLabel = (provider: string) => {
     if (provider === "github") return "GitHub";
     if (provider === "google") return "Google";
-    if (provider === "usernamePassword") return "Password";
+    if (provider === "credentials") return "Password";
     return provider;
   };
 
@@ -131,7 +131,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
                 </Badge>
               </div>
               <span className="text-xs text-muted-foreground">
-                {identity.provider === "usernamePassword"
+                {identity.provider === "credentials"
                   ? identity.providerUserId
                   : `ID: ${identity.providerUserId}`}
               </span>
