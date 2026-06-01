@@ -90,12 +90,12 @@ const MyProfile = (props: MyProfileProps) => {
 
   const providerIcon = (provider: string) => {
     if (provider === "github") return <GitBranch className="size-3.5" />;
-    if (provider === "usernamePassword") return <Key className="size-3.5" />;
+    if (provider === "credentials") return <Key className="size-3.5" />;
     return <User className="size-3.5" />;
   };
 
   const providerLabel = (provider: string) => {
-    if (provider === "usernamePassword") return "Password";
+    if (provider === "credentials") return "Password";
     return provider.charAt(0).toUpperCase() + provider.slice(1);
   };
 

@@ -1,12 +1,12 @@
 import { $inject, AlephaError, t } from "alepha";
-import { identities } from "alepha/api/users";
+import { identities, UserService } from "alepha/api/users";
 import { $repository } from "alepha/orm";
-import { $secure, CryptoProvider } from "alepha/security";
+import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
 export class IdentityController {
   identities = $repository(identities);
-  crypto = $inject(CryptoProvider);
+  users = $inject(UserService);
 
   getMyIdentities = $action({
     use: [$secure({ permissions: ["identity:read"] })],
@@ -57,10 +57,13 @@ export class IdentityController {
         );
       }
 
-      // Check if usernamePassword identity already exists
+      // The realm's credentials provider is named "credentials" (see
+      // AppSecurityProvider `identities.credentials`). Login looks up that
+      // provider and reads the top-level `password` column — so the password
+      // MUST be written there, not under a custom provider / `providerData`.
       const existingIdentity = await this.identities.findOne({
         where: {
-          provider: { eq: "usernamePassword" },
+          provider: { eq: "credentials" },
           userId: { eq: user.id },
         },
       });
@@ -69,19 +72,12 @@ export class IdentityController {
         throw new AlephaError("Password identity already exists for this user");
       }
 
-      // Hash the password
-      const hashedPassword = await this.crypto.hashPassword(password);
-
-      // Create the identity. `providerUserId` is the email — the only
-      // identifier we collect.
-      await this.identities.create({
-        userId: user.id,
-        provider: "usernamePassword",
-        providerUserId: user.email,
-        providerData: {
-          password: hashedPassword,
-        },
-      });
+      // Delegate to the framework's canonical password-set flow — the same one
+      // the admin `/admin/users/:id` screen uses. It upserts a "credentials"
+      // identity with the hash in the top-level `password` column, applies the
+      // realm password policy, and audits the change, keeping `/me` in lockstep
+      // with registration, password reset, and admin.
+      await this.users.setPassword(user.id, password);
 
       return { success: true };
     },
