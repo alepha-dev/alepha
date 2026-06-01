@@ -67,7 +67,7 @@ const QuestViewDuplicateButton = (props: QuestViewDuplicateButtonProps) => {
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent
           side="right"
-          className="w-full overflow-y-auto sm:max-w-2xl"
+          className="w-full overflow-y-auto data-[side=right]:sm:max-w-[50vw]"
         >
           <SheetHeader>
             <SheetTitle>{tr("quest.view.duplicate.title")}</SheetTitle>

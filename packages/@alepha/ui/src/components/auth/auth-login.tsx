@@ -139,7 +139,12 @@ export function AuthLogin(props: AuthLoginProps) {
           password: data.password,
           realm: props.realmConfig.realmName,
         });
-        await router.push(safeRedirect(router.query.r));
+        // `force: true` recreates the whole page state so every parent-layout
+        // loader re-runs against the now-authenticated user. Without it, an
+        // SPA push to a sibling under the same layout reuses the cached layout
+        // layer and skips its loader — leaving `user`-gated bootstrap data
+        // (e.g. the campaign list) stale/empty after sign-in.
+        await router.push(safeRedirect(router.query.r), { force: true });
       } catch (err) {
         if (
           err instanceof HttpError &&

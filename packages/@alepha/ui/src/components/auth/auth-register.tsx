@@ -248,7 +248,9 @@ export function AuthRegister(props: AuthRegisterProps) {
             realm: props.realmConfig.realmName,
           });
         }
-        await router.push(redirect);
+        // `force: true` so parent-layout loaders re-run against the freshly
+        // authenticated user — see the note in auth-login.tsx.
+        await router.push(redirect, { force: true });
       } catch (err) {
         if (widgetIdRef.current && window.turnstile) {
           try {
@@ -307,7 +309,9 @@ export function AuthRegister(props: AuthRegisterProps) {
           realm: props.realmConfig.realmName,
         });
       }
-      await router.push(redirect);
+      // `force: true` so parent-layout loaders re-run against the freshly
+      // authenticated user — see the note in auth-login.tsx.
+      await router.push(redirect, { force: true });
     } catch (err) {
       setVerifyError(
         err instanceof Error

@@ -59,7 +59,7 @@ const QuestViewEditButton = (props: QuestViewEditButtonProps) => {
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent
           side="right"
-          className="flex w-full flex-col gap-0 p-0 sm:max-w-2xl"
+          className="flex w-full flex-col gap-0 p-0 data-[side=right]:sm:max-w-[50vw]"
         >
           <SheetHeader className="shrink-0">
             <SheetTitle>{tr("quest.create.update")}</SheetTitle>
