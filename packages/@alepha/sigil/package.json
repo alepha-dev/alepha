@@ -23,6 +23,8 @@
     "html2canvas-pro": "^2.0.2"
   },
   "devDependencies": {
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
     "alepha": "0.22.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

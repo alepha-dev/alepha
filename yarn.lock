@@ -91,6 +91,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/sigil@workspace:packages/@alepha/sigil"
   dependencies:
+    "@types/react": "npm:^19.2.15"
+    "@types/react-dom": "npm:^19.2.3"
     alepha: "npm:0.22.0"
     html2canvas-pro: "npm:^2.0.2"
     react: "npm:^19.2.6"
