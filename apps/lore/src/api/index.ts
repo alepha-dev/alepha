@@ -52,6 +52,7 @@ import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.
 import { QuestService } from "./services/QuestService.ts";
 import { SigilIngestSupport } from "./services/SigilIngestSupport.ts";
 import { SigilService } from "./services/SigilService.ts";
+import { VitalsIngestService } from "./services/VitalsIngestService.ts";
 
 export const LoreApi = $module({
   name: "lore.api",
@@ -92,6 +93,7 @@ export const LoreApi = $module({
     SigilIngestSupport,
     BlightIngestService,
     BeaconIngestService,
+    VitalsIngestService,
     // Controllers
     QuestController,
     CampaignController,
