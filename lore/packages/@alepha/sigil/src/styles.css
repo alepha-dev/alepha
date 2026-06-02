@@ -1,0 +1,345 @@
+/* ==========================================================================
+   @alepha/sigil — stylesheet
+   Import via: import "@alepha/sigil/styles"
+   All classes are prefixed `sigil-` to avoid collisions.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Floating action button (FAB)
+   -------------------------------------------------------------------------- */
+
+.sigil-fab {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+
+  background-color: #4f46e5;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
+}
+
+.sigil-fab:hover {
+  background-color: #4338ca;
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
+}
+
+.sigil-fab:active {
+  transform: scale(0.95);
+}
+
+.sigil-fab:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------------
+   Dialog
+   -------------------------------------------------------------------------- */
+
+.sigil-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.sigil-dialog {
+  position: relative;
+  z-index: 10001;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 0.75rem;
+  background-color: #fff;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.sigil-dialog__panel {
+  padding: 1.5rem;
+}
+
+.sigil-dialog__title {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #111827;
+}
+
+.sigil-dialog__close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 1rem;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.sigil-dialog__close:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+/* --------------------------------------------------------------------------
+   Screenshot editor
+   -------------------------------------------------------------------------- */
+
+.sigil-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sigil-editor__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sigil-editor__mode-group {
+  display: inline-flex;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.sigil-editor__mode-group .sigil-btn--mode {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+}
+
+.sigil-editor__mode-group .sigil-btn--mode:not(:last-child) {
+  border-right: 1px solid #e5e7eb;
+}
+
+.sigil-editor__canvas {
+  display: block;
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  cursor: crosshair;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+
+.sigil-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+  white-space: nowrap;
+}
+
+/* Default / ghost variant */
+.sigil-btn {
+  background-color: transparent;
+  color: #374151;
+  border-color: transparent;
+}
+
+.sigil-btn:hover {
+  background-color: #f3f4f6;
+}
+
+/* Mode toggle button */
+.sigil-btn--mode {
+  background-color: transparent;
+  color: #6b7280;
+  border-radius: 0;
+  padding: 0.3125rem 0.625rem;
+}
+
+.sigil-btn--mode:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.sigil-btn--mode.sigil-btn--active {
+  background-color: #4f46e5;
+  color: #fff;
+}
+
+/* Outline variant */
+.sigil-btn--outline {
+  border-color: #e5e7eb;
+  background-color: #fff;
+  color: #374151;
+}
+
+.sigil-btn--outline:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+/* Primary (filled indigo) */
+.sigil-btn--primary {
+  background-color: #4f46e5;
+  color: #fff;
+  border-color: transparent;
+}
+
+.sigil-btn--primary:hover {
+  background-color: #4338ca;
+}
+
+.sigil-btn--primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Danger */
+.sigil-btn--danger {
+  background-color: #ef4444;
+  color: #fff;
+  border-color: transparent;
+}
+
+.sigil-btn--danger:hover {
+  background-color: #dc2626;
+}
+
+/* --------------------------------------------------------------------------
+   Form fields
+   -------------------------------------------------------------------------- */
+
+.sigil-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sigil-field__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.sigil-input,
+.sigil-textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #111827;
+  background-color: #fff;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.sigil-input:focus,
+.sigil-textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.sigil-input::placeholder,
+.sigil-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.sigil-textarea {
+  resize: vertical;
+  min-height: 5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Toast
+   -------------------------------------------------------------------------- */
+
+.sigil-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 11000;
+
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  background-color: #111827;
+  color: #f9fafb;
+
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+
+  animation: sigil-toast-in 0.2s ease;
+}
+
+.sigil-toast--success {
+  background-color: #065f46;
+}
+
+.sigil-toast--error {
+  background-color: #7f1d1d;
+}
+
+@keyframes sigil-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
