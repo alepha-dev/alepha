@@ -56,6 +56,21 @@ export const sigilBlights = $entity({
     ),
     /** `open` | `resolved` | `quest:<questId>`. */
     status: db.default(t.string({ maxLength: 50 }), "open"),
+    /**
+     * Where the blight originated.
+     *
+     * - `"client"` — reported by the embed bundle running in the partner page's
+     *   browser (`error` / `unhandledrejection` events captured client-side).
+     * - `"server"` — injected by the partner app's own backend via the sigil
+     *   module's `server:onError` hook; the error never touched the browser.
+     *
+     * Defaults to `"client"` so all pre-existing blights (ingested before this
+     * column was added) are correctly classified.
+     */
+    origin: db.default(
+      t.enum(["client", "server"], { mode: "text" }),
+      "client",
+    ),
   }),
   indexes: [
     { columns: ["sigilId", "fingerprint"], unique: true },
