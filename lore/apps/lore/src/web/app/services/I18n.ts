@@ -219,7 +219,6 @@ export class I18n {
 
         "campaign.menu.create-quest": "Create Quest",
         "campaign.menu.create-folio": "New Folio",
-        "campaign.menu.create-petition": "New Petition",
         "campaign.menu.create-character": "New Character",
         "campaign.menu.create-more": "More create actions",
         "campaign.menu.board": "Board",
@@ -811,35 +810,6 @@ export class I18n {
         "petitions.context.title": "Context",
         "petitions.context.reporter": "Reporter",
         "petitions.description": "Description",
-        "petitions.request.title": "Submit a petition",
-        "petitions.request.description":
-          "Report a bug or request a feature. The campaign owner will review it.",
-        "petitions.request.messageField": "What's the problem or idea?",
-        "petitions.request.messageHelper":
-          "Tell us what happened or what you'd like — be as specific as you can.",
-        "petitions.request.pasteHint":
-          "Paste a screenshot (Ctrl/⌘+V) or drag files anywhere here.",
-        "petitions.request.attachments": "Attachments",
-        "petitions.request.attachmentsHelper":
-          "Screenshots, CSVs, logs (max 5 MB each, up to $1 files).",
-        "petitions.request.attach": "Attach file",
-        "petitions.request.attachmentsCount": "$1 / $2 files",
-        "petitions.request.tooManyFiles": "Too many files (max $1)",
-        "petitions.request.uploadError": "Upload failed",
-        "petitions.request.success": "Petition submitted",
-        "petitions.request.error": "Failed to submit petition",
-        "petitions.request.submit": "Submit petition",
-        "petitions.request.cancel": "Cancel",
-        "petitions.request.submittingAs": "Submitting as",
-        "petitions.request.forCampaign": "for campaign",
-        "petitions.request.screenshot": "Screenshot",
-        "petitions.request.screenshotHelper":
-          "Captured from the page you reported from. It is attached to this petition — remove it if it shows anything you'd rather not share.",
-        "petitions.request.screenshotRemove": "Remove screenshot",
-        "petitions.request.loginRequiredTitle": "Sign in to submit a petition",
-        "petitions.request.loginRequiredBody":
-          "Petitions are tied to your account so we can follow up if needed.",
-        "petitions.request.signIn": "Sign in",
 
         // Admin → Users (table head + filters)
         "admin.users.colUsername": "Username",
@@ -1069,7 +1039,6 @@ export class I18n {
 
         "campaign.menu.create-quest": "Créer quête",
         "campaign.menu.create-folio": "Nouveau folio",
-        "campaign.menu.create-petition": "Nouvelle pétition",
         "campaign.menu.create-character": "Nouveau personnage",
         "campaign.menu.create-more": "Autres actions de création",
         "campaign.menu.board": "Tableau",
@@ -1683,36 +1652,6 @@ export class I18n {
         "petitions.context.title": "Contexte",
         "petitions.context.reporter": "Auteur",
         "petitions.description": "Description",
-        "petitions.request.title": "Soumettre une pétition",
-        "petitions.request.description":
-          "Signalez un bogue ou demandez une fonctionnalité. Le propriétaire de la campagne examinera votre requête.",
-        "petitions.request.messageField": "Quel est le problème ou l'idée ?",
-        "petitions.request.messageHelper":
-          "Dites-nous ce qui s'est passé ou ce que vous aimeriez — soyez aussi précis que possible.",
-        "petitions.request.pasteHint":
-          "Collez une capture d'écran (Ctrl/⌘+V) ou glissez des fichiers ici.",
-        "petitions.request.attachments": "Pièces jointes",
-        "petitions.request.attachmentsHelper":
-          "Captures, CSV, logs (max 5 Mo chacun, jusqu'à $1 fichiers).",
-        "petitions.request.attach": "Joindre un fichier",
-        "petitions.request.attachmentsCount": "$1 / $2 fichiers",
-        "petitions.request.tooManyFiles": "Trop de fichiers (max $1)",
-        "petitions.request.uploadError": "Échec de l'envoi",
-        "petitions.request.success": "Pétition envoyée",
-        "petitions.request.error": "Échec de l'envoi de la pétition",
-        "petitions.request.submit": "Envoyer la pétition",
-        "petitions.request.cancel": "Annuler",
-        "petitions.request.submittingAs": "En tant que",
-        "petitions.request.forCampaign": "pour la campagne",
-        "petitions.request.screenshot": "Capture d'écran",
-        "petitions.request.screenshotHelper":
-          "Capturée depuis la page d'où vous avez signalé le problème. Elle sera jointe à cette pétition — retirez-la si elle montre quelque chose que vous préférez ne pas partager.",
-        "petitions.request.screenshotRemove": "Retirer la capture d'écran",
-        "petitions.request.loginRequiredTitle":
-          "Connectez-vous pour soumettre une pétition",
-        "petitions.request.loginRequiredBody":
-          "Les pétitions sont liées à votre compte pour permettre un suivi.",
-        "petitions.request.signIn": "Se connecter",
 
         // Admin → Utilisateurs (en-tête de table + filtres)
         "admin.users.colUsername": "Identifiant",
