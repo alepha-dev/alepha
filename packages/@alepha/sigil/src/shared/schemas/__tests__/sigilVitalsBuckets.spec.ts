@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { VITALS_BUCKETS, bucketIndex, METRICS } from "../sigilVitalsBuckets.ts";
+import { bucketIndex, METRICS, VITALS_BUCKETS } from "../sigilVitalsBuckets.ts";
 
 describe("sigilVitalsBuckets", () => {
   it("has ascending boundaries per metric", () => {
