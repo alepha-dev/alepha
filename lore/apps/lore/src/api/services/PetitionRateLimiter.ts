@@ -29,14 +29,21 @@ export class PetitionRateLimiter {
   static readonly ATTACHMENT_BUCKET = "petition-attachments";
 
   /**
-   * Throws when the user has already created the max allowed petitions in
-   * the last 24h. Otherwise returns silently.
+   * Throws when the caller has already created the max allowed petitions in
+   * the last 24h. The cap is keyed on the reporter email rather than a user
+   * id so it applies uniformly to first-party and (future) anonymous-sigil
+   * paths. If `email` is `undefined` the check is skipped — the caller must
+   * ensure this only happens when the submission path has its own cap
+   * (e.g. the per-sigil cap covers anonymous submits).
    */
-  async assertPetitionAllowed(userId: string): Promise<void> {
+  async assertPetitionAllowed(email: string | undefined): Promise<void> {
+    if (!email) {
+      return;
+    }
     const limit = this.options().maxPetitionsPerUserPerDay;
     const cutoff = this.dayAgoIso();
     const count = await this.petitions.count({
-      reporterUserId: { eq: userId },
+      reporterEmail: { eq: email },
       createdAt: { gte: cutoff },
     });
     if (count >= limit) {

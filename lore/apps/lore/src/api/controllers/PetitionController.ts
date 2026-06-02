@@ -93,7 +93,11 @@ export class PetitionController {
     handler: async ({ params, body, user }) => {
       await this.assertPetitionsOpen(params.campaignId);
 
-      await this.rateLimiter.assertPetitionAllowed(user.id);
+      // Resolve the reporter's verified email from the database — the JWT
+      // token only carries `id` + `roles`, not the email.
+      const reporterEmail = await this.resolveUserEmail(user);
+
+      await this.rateLimiter.assertPetitionAllowed(reporterEmail);
       await this.rateLimiter.assertSigilPetitionAllowed(body.source?.sigilId);
 
       const limits = this.rateLimiter.options();
@@ -115,7 +119,7 @@ export class PetitionController {
       const created = await this.petitions.create({
         campaignId: params.campaignId,
         shortId,
-        reporterUserId: user.id,
+        reporterEmail,
         title: body.title.slice(0, 200),
         description: body.description.slice(0, 10_000),
         status: "pending",
@@ -347,7 +351,17 @@ export class PetitionController {
 
       const campaign = await this.campaigns.findById(params.campaignId);
       const isOwner = campaign?.createdBy === user.id;
-      const isReporter = petition.reporterUserId === user.id;
+      // Reporter-access: only when the petition carries an email AND it matches
+      // the calling user's DB-verified email. Resolve from the DB so the check
+      // works regardless of what the JWT carries. If `reporterEmail` is null
+      // (anonymous sigil petition with no partner-supplied email) there is no
+      // reporter-view — only the campaign owner can see it.
+      let isReporter = false;
+      if (petition.reporterEmail != null) {
+        const callerEmail = await this.resolveUserEmail(user);
+        isReporter =
+          callerEmail != null && petition.reporterEmail === callerEmail;
+      }
 
       if (!isReporter && !isOwner) {
         throw new NotFoundError("Petition not found");
@@ -464,20 +478,19 @@ export class PetitionController {
   }
 
   /**
-   * Resolve reporter, attachment metadata, and linked-quest stubs for a batch
-   * of petitions. Single round-trip per related table to avoid N+1.
+   * Resolve attachment metadata and linked-quest stubs for a batch of
+   * petitions. Single round-trip per related table to avoid N+1.
+   *
+   * Reporter identity is carried directly on `petition.reporterEmail` — no
+   * separate user lookup is performed.
    */
   protected async toResources(rows: Petition[]): Promise<PetitionResource[]> {
     if (rows.length === 0) return [];
 
-    const userIds = [...new Set(rows.map((p) => p.reporterUserId))];
     const fileIds = [...new Set(rows.flatMap((p) => p.attachments ?? []))];
     const petitionIds = rows.map((p) => p.id);
 
-    const [reporters, fileEntities, linkedQuests] = await Promise.all([
-      userIds.length > 0
-        ? this.users.findMany({ where: { id: { inArray: userIds } } })
-        : Promise.resolve([]),
+    const [fileEntities, linkedQuests] = await Promise.all([
       fileIds.length > 0
         ? this.fileRepo.findMany({ where: { id: { inArray: fileIds } } })
         : Promise.resolve([]),
@@ -487,7 +500,6 @@ export class PetitionController {
       }),
     ]);
 
-    const reporterById = new Map(reporters.map((u) => [u.id, u]));
     const fileById = new Map(fileEntities.map((f) => [f.id, f]));
     const questsByPetition = new Map<number, typeof linkedQuests>();
     for (const q of linkedQuests) {
@@ -498,7 +510,6 @@ export class PetitionController {
     }
 
     return rows.map((p) => {
-      const reporter = reporterById.get(p.reporterUserId);
       const attachmentUrls = (p.attachments ?? []).flatMap((id) => {
         const f = fileById.get(id);
         if (!f) return [];
@@ -529,22 +540,29 @@ export class PetitionController {
       }));
       return {
         ...p,
-        reporter: reporter
-          ? {
-              id: reporter.id,
-              username: reporter.username ?? undefined,
-              name:
-                [reporter.firstName, reporter.lastName]
-                  .filter((s): s is string => !!s?.trim())
-                  .join(" ")
-                  .trim() || undefined,
-              picture: reporter.picture ?? undefined,
-            }
-          : undefined,
         attachmentUrls,
         linkedQuests: linked,
       };
     });
+  }
+
+  /**
+   * Resolve the verified email address for a logged-in user from the database.
+   * The JWT token only carries `id` and `roles`; the email must be fetched from
+   * the users table to guarantee it is the account-verified address. Returns
+   * `undefined` when the user record cannot be found or carries no email.
+   */
+  protected async resolveUserEmail(
+    user: UserAccountToken,
+  ): Promise<string | undefined> {
+    // Prefer the email already on the token when present — avoids a DB
+    // round-trip on providers that embed it (e.g. OAuth JWTs from the test
+    // harness when the full user object is injected directly).
+    if (user.email) {
+      return user.email;
+    }
+    const record = await this.users.findById(user.id);
+    return record?.email ?? undefined;
   }
 
   /**

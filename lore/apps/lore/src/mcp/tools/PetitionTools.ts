@@ -53,9 +53,7 @@ export class PetitionTools {
   }
 
   protected reporterName(petition: PetitionResource): string | undefined {
-    const reporter = petition.reporter;
-    if (!reporter) return undefined;
-    return reporter.name || reporter.username || undefined;
+    return petition.reporterEmail ?? undefined;
   }
 
   /**

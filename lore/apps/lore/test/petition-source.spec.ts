@@ -56,13 +56,17 @@ const setup = async (): Promise<TestContext> => {
 
 const createTestUser = async (
   ctx: TestContext,
-): Promise<{ id: string; roles: string[] }> => {
+): Promise<{ id: string; email: string; roles: string[] }> => {
   const fakeUser = ctx.fakeProvider.generate(userDataSchema);
   const response = await ctx.adminUserController.createUser.fetch(
     { body: { ...fakeUser, roles: ["user"] } },
     { user: adminUser },
   );
-  return { id: response.data.id, roles: response.data.roles };
+  return {
+    id: response.data.id,
+    email: response.data.email ?? fakeUser.email,
+    roles: response.data.roles,
+  };
 };
 
 const createCampaign = async (
@@ -187,5 +191,88 @@ describe("petition source field", () => {
     // A different sigil is counted separately — still allowed.
     const other = await submit(sigilB);
     expect(other.data.id).toBeGreaterThan(0);
+  });
+});
+
+describe("petition reporterEmail", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("stores the logged-in user email as reporterEmail on first-party submit", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+
+    const created = await ctx.petitionController.submitPetition.fetch(
+      {
+        params: { campaignId },
+        body: { title: "First-party bug", description: "Something broke" },
+      },
+      { user: owner },
+    );
+
+    const detail = await ctx.petitionController.getPetition.fetch(
+      { params: { campaignId, petitionId: created.data.id } },
+      { user: owner },
+    );
+    expect(detail.data.reporterEmail).toBe(owner.email);
+  });
+
+  it("grants reporter-view when user.email matches petition.reporterEmail", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const reporter = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+
+    const created = await ctx.petitionController.submitPetition.fetch(
+      {
+        params: { campaignId },
+        body: { title: "Reporter view test", description: "Check access" },
+      },
+      { user: reporter },
+    );
+
+    // The reporter can access their own petition via the /mine endpoint.
+    const view = await ctx.petitionController.getMyPetition.fetch(
+      { params: { campaignId, petitionId: created.data.id } },
+      { user: reporter },
+    );
+    expect(view.data.id).toBe(created.data.id);
+  });
+
+  it("denies reporter-view when a different logged-in user's email does not match", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const reporter = await createTestUser(ctx);
+    const outsider = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+
+    const created = await ctx.petitionController.submitPetition.fetch(
+      {
+        params: { campaignId },
+        body: { title: "Private petition", description: "Not for outsiders" },
+      },
+      { user: reporter },
+    );
+
+    // A different user (non-owner, non-reporter) gets a NotFoundError
+    // (never a 403 — avoids leaking petition existence).
+    const denied = await ctx.petitionController.getMyPetition
+      .fetch(
+        { params: { campaignId, petitionId: created.data.id } },
+        { user: outsider },
+      )
+      .catch((e) => e);
+    expect(denied).toBeInstanceOf(Error);
   });
 });

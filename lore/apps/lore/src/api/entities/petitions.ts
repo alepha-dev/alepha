@@ -2,7 +2,6 @@ import { type Static, t } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { petitionSourceSchema } from "../schemas/petitionSourceSchema.ts";
 import { campaigns } from "./campaigns.ts";
-import { users } from "./users.ts";
 
 /**
  * Petitions are user-submitted bug reports or feature requests. They land in
@@ -28,9 +27,20 @@ export const petitions = $entity({
     campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
-    reporterUserId: db.ref(t.uuid(), () => users.cols.id, {
-      onDelete: "cascade",
-    }),
+    /**
+     * Identity of the petition submitter.
+     *
+     * First-party petitions (submitted via the in-app `/c/:id/request` form by
+     * a logged-in Lore user) store that user's verified account email here.
+     * Anonymous sigil petitions submitted via an embedded widget store the
+     * partner-supplied email when one is available, or `null` when none was
+     * provided — so the field may be absent even on accepted petitions.
+     *
+     * ⚠️ SECURITY: this value is attacker-controlled on the anonymous-sigil
+     * path. Render it as escaped plain text only — never markdown or
+     * `dangerouslySetInnerHTML`. See folio #12.
+     */
+    reporterEmail: t.optional(t.string({ maxLength: 320 })),
     title: t.string({ minLength: 1, maxLength: 200 }),
     description: t.string({ maxLength: 10_000 }),
     status: t.enum(["pending", "accepted", "rejected"], { mode: "text" }),
@@ -70,7 +80,7 @@ export const petitions = $entity({
     { columns: ["campaignId", "status", "deletedAt"] },
     { columns: ["campaignId", "createdAt"] },
     { columns: ["campaignId", "shortId"], unique: true },
-    { columns: ["reporterUserId", "createdAt"] },
+    { columns: ["reporterEmail", "createdAt"] },
   ],
 });
 

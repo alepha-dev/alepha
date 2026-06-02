@@ -213,7 +213,7 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
           </section>
         )}
 
-        {petition.reporter && (
+        {petition.reporterEmail && (
           <section className="bg-muted/30 rounded border border-border p-3 text-xs">
             <h3 className="text-muted-foreground mb-2 font-medium uppercase tracking-wide">
               {tr("petitions.context.title")}
@@ -222,11 +222,9 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
               <dt className="text-muted-foreground">
                 {tr("petitions.context.reporter")}
               </dt>
-              <dd>
-                {petition.reporter.name ??
-                  petition.reporter.username ??
-                  petition.reporter.id}
-              </dd>
+              {/* reporterEmail is attacker-controlled on the anonymous-sigil
+                  path — plain text node only, never markdown or innerHTML. */}
+              <dd>{petition.reporterEmail}</dd>
             </dl>
           </section>
         )}
