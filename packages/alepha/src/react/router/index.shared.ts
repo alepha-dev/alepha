@@ -15,5 +15,6 @@ export * from "./hooks/useRouter.ts";
 export * from "./hooks/useRouterState.ts";
 export * from "./primitives/$page.ts";
 export * from "./providers/ReactPageProvider.ts";
+export * from "./providers/RootComponentsProvider.ts";
 export * from "./services/ReactPageService.ts";
 export * from "./services/ReactRouter.ts";
