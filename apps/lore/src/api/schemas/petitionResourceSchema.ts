@@ -24,21 +24,19 @@ export type PetitionLinkedQuest = Static<typeof petitionLinkedQuestSchema>;
 /**
  * Petition entity exposed to the API.
  *
- * Adds `reporter` (resolved from `reporterUserId`), `attachmentUrls` so the
- * inbox UI can render attachments without a second round-trip per file, and
- * `linkedQuests` — the quests spawned from this petition (via
- * `quests.petitionId`). Status is derived per-quest: a fresh quest is `new`
- * until accepted, `accepted` while in progress, `completed` when finished.
+ * Adds `attachmentUrls` so the inbox UI can render attachments without a
+ * second round-trip per file, and `linkedQuests` — the quests spawned from
+ * this petition (via `quests.petitionId`). Status is derived per-quest: a
+ * fresh quest is `new` until accepted, `accepted` while in progress,
+ * `completed` when finished.
+ *
+ * The reporter is identified by `reporterEmail` (inherited from the entity).
+ * First-party petitions carry the logged-in user's verified account email;
+ * anonymous sigil petitions carry the partner-supplied email or `null`.
+ * Render `reporterEmail` as escaped plain text only — it is
+ * attacker-controlled on the anonymous path. See folio #12.
  */
 export const petitionResourceSchema = t.extend(petitions.schema, {
-  reporter: t.optional(
-    t.object({
-      id: t.uuid(),
-      username: t.optional(t.string()),
-      name: t.optional(t.string()),
-      picture: t.optional(t.string()),
-    }),
-  ),
   attachmentUrls: t.optional(
     t.array(
       t.object({

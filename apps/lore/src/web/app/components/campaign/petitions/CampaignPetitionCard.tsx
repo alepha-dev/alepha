@@ -19,10 +19,10 @@ const CampaignPetitionCard = (props: CampaignPetitionCardProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
 
+  // reporterEmail is attacker-controlled on the anonymous-sigil path — render
+  // as a plain text node only (JSX interpolation escapes by default).
   const reporterLabel =
-    petition.reporter?.name ??
-    petition.reporter?.username ??
-    tr("petitions.unknownReporter");
+    petition.reporterEmail ?? tr("petitions.unknownReporter");
 
   const attachmentCount = petition.attachmentUrls?.length ?? 0;
   const tags = petition.tags ?? [];
