@@ -29,6 +29,7 @@ export const campaignFeaturesSchema = t.object({
   embeddedPetitions: t.optional(t.boolean()),
   blights: t.optional(t.boolean()),
   beacon: t.optional(t.boolean()),
+  vitals: t.optional(t.boolean()),
 });
 
 export type CampaignFeatures = Static<typeof campaignFeaturesSchema>;

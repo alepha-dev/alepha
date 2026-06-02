@@ -89,7 +89,12 @@ export class SigilIngestSupport {
    */
   async isFeatureOn(
     campaignId: number,
-    featureKey: "sigils" | "embeddedPetitions" | "blights" | "beacon",
+    featureKey:
+      | "sigils"
+      | "embeddedPetitions"
+      | "blights"
+      | "beacon"
+      | "vitals",
   ): Promise<boolean> {
     const campaign = await this.campaigns.findOne({
       where: { id: { eq: campaignId } },
