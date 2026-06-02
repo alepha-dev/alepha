@@ -1,4 +1,14 @@
 {
   "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "verbatimModuleSyntax": false,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@alepha/sigil/*": ["./src/*"]
+    }
+  },
   "include": ["src"]
 }
