@@ -22,12 +22,6 @@ export default defineConfig({
     VITE_VERSION: pkg.version,
     VITE_GIT_COMMIT: gitCommit,
     VITE_BUILD_DATE: new Date().toISOString(),
-    // Quest #90 — the Lore-self sigil id, seeded on campaign #2 by
-    // migration `0024_lore_self_sigil_seed.sql`. The `VITE_` prefix
-    // auto-exposes it to the browser bundle; `main.browser.ts` reads it
-    // and loads `/sigils/<id>/embed.js` so Lore dogfoods its own crash
-    // reporting. MUST match the fixed `id` in that migration.
-    VITE_LORE_SELF_SIGIL: "4474024c-d0bf-46d9-b8b0-a562a5d41a60",
   },
   plugins: [
     devtools(),
