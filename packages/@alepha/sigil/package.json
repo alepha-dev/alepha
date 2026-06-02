@@ -16,7 +16,11 @@
     "src"
   ],
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "browser": "./src/index.browser.ts",
+      "import": "./src/index.ts"
+    },
+    "./vitals": "./src/shared/schemas/sigilVitalsBuckets.ts",
     "./styles": "./src/styles.css"
   },
   "dependencies": {
