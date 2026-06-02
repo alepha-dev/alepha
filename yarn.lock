@@ -87,7 +87,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/sigil@workspace:packages/@alepha/sigil":
+"@alepha/sigil@workspace:*, @alepha/sigil@workspace:packages/@alepha/sigil":
   version: 0.0.0-use.local
   resolution: "@alepha/sigil@workspace:packages/@alepha/sigil"
   dependencies:
@@ -8864,6 +8864,7 @@ __metadata:
   resolution: "lore@workspace:apps/lore"
   dependencies:
     "@alepha/devtools": "workspace:*"
+    "@alepha/sigil": "workspace:*"
     "@alepha/ui": "workspace:*"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/utilities": "npm:^3.2.2"
