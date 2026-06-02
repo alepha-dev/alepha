@@ -3,12 +3,11 @@ import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter, useRouterState } from "alepha/react/router";
+import { useRouterState } from "alepha/react/router";
 import { ExternalLink, Paperclip } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { PetitionController } from "@/api/controllers/PetitionController.ts";
 import type { PetitionResource } from "@/api/schemas/petitionResourceSchema.ts";
-import type { AppRouter } from "../../../AppRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 const POLL_INTERVAL_MS = 10_000;
@@ -41,7 +40,6 @@ const PETITION_STATUS_VARIANT: Record<
  */
 const CampaignPetitionStatus = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
   const routerState = useRouterState();
   const dt = useInject(DateTimeProvider);
   const petitionApi = useClient<PetitionController>();
@@ -236,18 +234,6 @@ const CampaignPetitionStatus = () => {
           )}
         </CardContent>
       </Card>
-
-      <button
-        type="button"
-        onClick={() =>
-          router.push("campaignPetitionRequest", {
-            params: { campaignId: campaignIdParam },
-          })
-        }
-        className="text-muted-foreground hover:text-foreground self-start text-sm"
-      >
-        {tr("petitions.status.submitAnother")}
-      </button>
     </div>
   );
 };

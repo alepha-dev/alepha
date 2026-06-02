@@ -1,9 +1,8 @@
 import { type Static, t } from "alepha";
 
 /**
- * Provenance of an embedded petition submission.
+ * Provenance of a sigil petition submission.
  *
- * `null`/absent for first-party petitions (the in-app `/c/:id/request` form).
  * When a petition arrives via a sigil-embedded widget the embedding page
  * supplies this block so the campaign owner sees where it came from.
  *
@@ -14,8 +13,8 @@ import { type Static, t } from "alepha";
  * #12. `consoleTail` is also length-capped (`maxItems`) so an embedding page
  * cannot POST an arbitrarily large array.
  *
- * Shared by the `petitions` entity schema and the `submitPetition` request
- * body so the two cannot drift.
+ * Shared by the `petitions` entity schema and the `submitSigilPetition`
+ * request body so the two cannot drift.
  */
 export const petitionSourceSchema = t.object({
   sigilId: t.string({ maxLength: 100 }),

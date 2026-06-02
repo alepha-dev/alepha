@@ -1,14 +1,11 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { cn } from "@alepha/ui/lib/utils";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
-import { Inbox, Loader2, Plus } from "lucide-react";
+import { Inbox, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { PetitionController } from "@/api/controllers/PetitionController.ts";
 import type { PetitionResource } from "@/api/schemas/petitionResourceSchema.ts";
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentCampaignAtom } from "../../../atoms/currentCampaignAtom.ts";
 import { currentPetitionCountAtom } from "../../../atoms/currentPetitionCountAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -23,7 +20,6 @@ export interface CampaignPetitionsProps {
 
 const CampaignPetitions = (props: CampaignPetitionsProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
   const [campaign] = useStore(currentCampaignAtom);
   const [, setPetitionCount] = useStore(currentPetitionCountAtom);
   const petitionApi = useClient<PetitionController>();
@@ -75,13 +71,6 @@ const CampaignPetitions = (props: CampaignPetitionsProps) => {
     reload(status);
   };
 
-  const openCreate = () => {
-    if (!campaign) return;
-    router.push("campaignPetitionRequest", {
-      params: { campaignId: String(campaign.id) },
-    });
-  };
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* List + detail split */}
@@ -94,18 +83,13 @@ const CampaignPetitions = (props: CampaignPetitionsProps) => {
           )}
         >
           <div className="border-border flex flex-col gap-2 border-b p-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold">
-                  {tr("petitions.title")}
-                </h2>
-                {loading && (
-                  <Loader2 className="text-muted-foreground size-4 animate-spin" />
-                )}
-              </div>
-              <Button size="icon" variant="ghost" onClick={openCreate}>
-                <Plus className="size-4" />
-              </Button>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold">
+                {tr("petitions.title")}
+              </h2>
+              {loading && (
+                <Loader2 className="text-muted-foreground size-4 animate-spin" />
+              )}
             </div>
             <Segmented
               value={status}

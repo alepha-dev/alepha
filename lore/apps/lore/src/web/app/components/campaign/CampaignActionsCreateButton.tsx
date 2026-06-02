@@ -25,14 +25,7 @@ import { useClient, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import {
-  BookOpen,
-  ChevronDown,
-  Mail,
-  MessageSquarePlus,
-  Plus,
-  UserPlus,
-} from "lucide-react";
+import { BookOpen, ChevronDown, Mail, Plus, UserPlus } from "lucide-react";
 import { useState } from "react";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -65,9 +58,8 @@ const CampaignActionsCreateButton = () => {
   const canCreateQuest = client.createQuest.can();
   const features = campaign.features;
   const folioEnabled = features.folios;
-  const petitionEnabled = features.petitions;
   const isOwner = campaign.createdBy === auth.user?.id;
-  const hasSecondaryAction = folioEnabled || petitionEnabled || isOwner;
+  const hasSecondaryAction = folioEnabled || isOwner;
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) {
@@ -140,18 +132,6 @@ const CampaignActionsCreateButton = () => {
                 >
                   <BookOpen className="size-4" />
                   {tr("campaign.menu.create-folio")}
-                </DropdownMenuItem>
-              )}
-              {petitionEnabled && (
-                <DropdownMenuItem
-                  onClick={() =>
-                    router.push("campaignPetitionRequest", {
-                      params: { campaignId: String(campaign.id) },
-                    })
-                  }
-                >
-                  <MessageSquarePlus className="size-4" />
-                  {tr("campaign.menu.create-petition")}
                 </DropdownMenuItem>
               )}
               {isOwner && (

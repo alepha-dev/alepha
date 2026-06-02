@@ -33,9 +33,7 @@ describe("petition reporter migration safety", () => {
   const sql = readFileSync(migrationPath, "utf-8");
 
   it("backs up quest→petition links before the rebuild", () => {
-    expect(sql).toMatch(
-      /CREATE TABLE\s+`__bk_quest_petition`\s+AS\s+SELECT/is,
-    );
+    expect(sql).toMatch(/CREATE TABLE\s+`__bk_quest_petition`\s+AS\s+SELECT/is);
   });
 
   it("creates the __new_petitions scratch table", () => {

@@ -16,18 +16,27 @@ SET kinds = '["blights","beacon","vitals","petition"]'
 WHERE id = '4474024c-d0bf-46d9-b8b0-a562a5d41a60';
 --> statement-breakpoint
 
+-- Reconciliation: any campaign that previously had embeddedPetitions=true
+-- should now have petitions=true (the merged key). Idempotent data-only
+-- UPDATE — no table rebuild, D1-safe.
+UPDATE campaigns
+SET features = json_set(features, '$.petitions', json('true'))
+WHERE json_extract(features, '$.embeddedPetitions') = json('true');
+
 -- Enable the sigil-related feature flags on campaign #2.
 -- Uses json_set to set individual keys — preserves all existing feature keys.
 -- NOTE: bare `true` in SQLite json_set stores the INTEGER 1, not a JSON
 -- boolean; the features schema is t.boolean(), so we must wrap with
 -- json('true') to store a real JSON `true`.
+-- Note: petitions is already a required key (defaultCampaignFeatures) so
+-- campaign #2 already has it; the json_set is idempotent.
 UPDATE campaigns
 SET features = json_set(
   features,
-  '$.sigils',            json('true'),
-  '$.blights',           json('true'),
-  '$.beacon',            json('true'),
-  '$.vitals',            json('true'),
-  '$.embeddedPetitions', json('true')
+  '$.sigils',    json('true'),
+  '$.blights',   json('true'),
+  '$.beacon',    json('true'),
+  '$.vitals',    json('true'),
+  '$.petitions', json('true')
 )
 WHERE id = 2;

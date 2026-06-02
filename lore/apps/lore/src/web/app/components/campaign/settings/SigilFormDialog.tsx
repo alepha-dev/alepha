@@ -32,7 +32,7 @@ const KIND_META: Record<
   (typeof SIGIL_KINDS)[number],
   { labelKey: KindLabelKey; feature: string }
 > = {
-  petition: { labelKey: "sigils.kind.petition", feature: "embeddedPetitions" },
+  petition: { labelKey: "sigils.kind.petition", feature: "petitions" },
   blights: { labelKey: "sigils.kind.blights", feature: "blights" },
   beacon: { labelKey: "sigils.kind.beacon", feature: "beacon" },
   vitals: { labelKey: "sigils.kind.vitals", feature: "vitals" },

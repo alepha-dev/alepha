@@ -713,11 +713,9 @@ export class I18n {
         "blights.feature.description":
           "Collect and triage uncaught exceptions reported by sigils with the Blights capability.",
 
-        "embeddedPetitions.feature.title": "Petitions",
-        "embeddedPetitions.feature.description":
-          "Let sigils with the Petition capability open the campaign's petition form on partner sites.",
-        "embeddedPetitions.feature.requiresPetitions":
-          "Enable the Petitions module first.",
+        "petitions.feature.title": "Petitions",
+        "petitions.feature.description":
+          "Allow sigils with the Petition capability to receive feedback submissions from partner sites.",
 
         "petitions.title": "Petitions",
         "petitions.empty.pending":
@@ -725,14 +723,6 @@ export class I18n {
         "petitions.empty.status": "No $1 petitions.",
         "petitions.empty.selectOne": "Select a petition from the list",
         "petitions.back": "Back",
-        "petitions.integrate.title": "Integrate on your website",
-        "petitions.integrate.helper":
-          "Paste one of these snippets on your site so visitors can report bugs or request features. The link opens the request form for this campaign on Lore.",
-        "petitions.integrate.simple": "Plain link",
-        "petitions.integrate.dynamic":
-          "Dynamic link (auto-captures current URL/path)",
-        "petitions.integrate.copy": "Copy",
-        "petitions.integrate.copied": "Snippet copied to clipboard",
         "sigils.title": "Sigils",
         "sigils.subtitle":
           "Each sigil is a revocable identifier embedded in a single <script> line on a partner site. Scope what it can do and where it runs.",
@@ -816,7 +806,6 @@ export class I18n {
         "petitions.status.error": "Failed to load petition",
         "petitions.status.unavailableTitle": "Petition unavailable",
         "petitions.status.loading": "Loading…",
-        "petitions.status.submitAnother": "← Submit another petition",
         "petitions.unknownReporter": "unknown",
         "petitions.source.viaSigil": "via Sigil",
         "petitions.context.title": "Context",
@@ -1593,11 +1582,9 @@ export class I18n {
         "blights.feature.description":
           "Collectez et triez les exceptions non interceptées remontées par les sigils dotés de la capacité Fléaux.",
 
-        "embeddedPetitions.feature.title": "Pétitions",
-        "embeddedPetitions.feature.description":
-          "Permet aux sigils dotés de la capacité Pétition d'ouvrir le formulaire de pétition de la campagne sur les sites partenaires.",
-        "embeddedPetitions.feature.requiresPetitions":
-          "Activez d'abord le module Pétitions.",
+        "petitions.feature.title": "Pétitions",
+        "petitions.feature.description":
+          "Permet aux sigils dotés de la capacité Pétition de recevoir des soumissions depuis les sites partenaires.",
 
         "petitions.title": "Pétitions",
         "petitions.empty.pending":
@@ -1605,14 +1592,6 @@ export class I18n {
         "petitions.empty.status": "Aucune pétition $1.",
         "petitions.empty.selectOne": "Sélectionnez une pétition dans la liste",
         "petitions.back": "Retour",
-        "petitions.integrate.title": "Intégrer sur votre site",
-        "petitions.integrate.helper":
-          "Collez l'un de ces extraits sur votre site pour que vos visiteurs puissent signaler un bug ou demander une fonctionnalité. Le lien ouvre le formulaire pour cette campagne sur Lore.",
-        "petitions.integrate.simple": "Lien simple",
-        "petitions.integrate.dynamic":
-          "Lien dynamique (capture l'URL/chemin courant)",
-        "petitions.integrate.copy": "Copier",
-        "petitions.integrate.copied": "Extrait copié",
         "sigils.title": "Sigils",
         "sigils.subtitle":
           "Chaque sigil est un identifiant révocable intégré via une seule ligne <script> sur un site partenaire. Délimitez ce qu'il peut faire et où il s'exécute.",
@@ -1699,7 +1678,6 @@ export class I18n {
         "petitions.status.error": "Échec du chargement de la pétition",
         "petitions.status.unavailableTitle": "Pétition indisponible",
         "petitions.status.loading": "Chargement…",
-        "petitions.status.submitAnother": "← Soumettre une autre pétition",
         "petitions.unknownReporter": "inconnu",
         "petitions.source.viaSigil": "via Sceau",
         "petitions.context.title": "Contexte",

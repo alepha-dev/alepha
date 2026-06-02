@@ -99,7 +99,11 @@ const createSigil = async (
   const created = await ctx.sigilController.createSigil.fetch(
     {
       params: { campaignId },
-      body: { label: "origin test sigil", allowedOrigins: [ORIGIN], kinds: ["blights"] },
+      body: {
+        label: "origin test sigil",
+        allowedOrigins: [ORIGIN],
+        kinds: ["blights"],
+      },
     },
     { user },
   );
@@ -136,7 +140,11 @@ describe("SigilBlight origin column", () => {
     await ctx.blights.ingestEvent(sigil.id, ev(), "127.0.0.1");
 
     const s = ctx.blights;
-    const fp = s.fingerprint("TypeError", s.sanitizeStack(ev().stack), sigil.id);
+    const fp = s.fingerprint(
+      "TypeError",
+      s.sanitizeStack(ev().stack),
+      sigil.id,
+    );
     const row = await (s as any).blights.findOne({
       where: { sigilId: { eq: sigil.id }, fingerprint: { eq: fp } },
     });
@@ -145,7 +153,9 @@ describe("SigilBlight origin column", () => {
     expect(row.origin).toBe("client");
   });
 
-  it("persists 'server' when origin is explicitly set to server", async ({ expect }) => {
+  it("persists 'server' when origin is explicitly set to server", async ({
+    expect,
+  }) => {
     const owner = await createTestUser(ctx);
     const campaignId = await createCampaign(ctx, owner);
     const sigil = await createSigil(ctx, campaignId, owner);

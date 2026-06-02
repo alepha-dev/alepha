@@ -39,17 +39,14 @@ const CampaignSettingsSigilsPage = () => {
   const { enabled, toggle } = useCampaignFeatureToggle("sigils");
 
   // Campaign-level feature flags that gate each sigil `kind`.
-  const embeddedPetitions = useCampaignFeatureToggle("embeddedPetitions");
+  const petitions = useCampaignFeatureToggle("petitions");
   const blights = useCampaignFeatureToggle("blights");
   const beacon = useCampaignFeatureToggle("beacon");
   const featureEnabled: Record<string, boolean> = {
-    embeddedPetitions: embeddedPetitions.enabled,
+    petitions: petitions.enabled,
     blights: blights.enabled,
     beacon: beacon.enabled,
   };
-  // `petitions` is a required base feature key in `campaignFeaturesSchema`
-  // — embedded petitions need it ON as well as the parent `sigils` feature.
-  const petitionsEnabled = campaign?.features?.petitions ?? false;
 
   const [sigils, setSigils] = useState<SigilResource[]>([]);
   // `undefined` → dialog closed; `null` → create; a sigil → edit.
@@ -224,31 +221,26 @@ const CampaignSettingsSigilsPage = () => {
             </div>
           </CardContent>
 
-          {/* Petitions sub-toggle. Needs BOTH the parent `sigils` feature
-              AND the base `petitions` module ON; the helper line explains
-              the `petitions` precondition when it is missing. */}
+          {/* Petitions sub-toggle — gates the sigil petition capability
+              (`POST /sigils/:id/petition`). Requires the parent `sigils`
+              master toggle to be on. */}
           <CardContent className="flex flex-col gap-2 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
             <div className="flex flex-col gap-0.5">
               <span className="text-sm font-medium">
-                {tr("embeddedPetitions.feature.title")}
+                {tr("petitions.feature.title")}
               </span>
               <span className="text-muted-foreground text-xs">
-                {tr("embeddedPetitions.feature.description")}
+                {tr("petitions.feature.description")}
               </span>
-              {enabled && !petitionsEnabled && (
-                <span className="text-muted-foreground text-xs">
-                  {tr("embeddedPetitions.feature.requiresPetitions")}
-                </span>
-              )}
             </div>
             <div className="flex justify-start sm:justify-end">
               <Switch
-                checked={embeddedPetitions.enabled}
-                disabled={!enabled || !petitionsEnabled}
+                checked={petitions.enabled}
+                disabled={!enabled}
                 onCheckedChange={(value) => {
-                  void embeddedPetitions.toggle(value === true);
+                  void petitions.toggle(value === true);
                 }}
-                aria-label={tr("embeddedPetitions.feature.title")}
+                aria-label={tr("petitions.feature.title")}
               />
             </div>
           </CardContent>
