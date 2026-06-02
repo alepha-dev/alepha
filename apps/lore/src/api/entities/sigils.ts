@@ -10,7 +10,7 @@ import { users } from "./users.ts";
  * capability, distinct from the campaign-level `embeddedPetitions` feature
  * toggle that gates it.
  */
-export const SIGIL_KINDS = ["petition", "blights", "beacon"] as const;
+export const SIGIL_KINDS = ["petition", "blights", "beacon", "vitals"] as const;
 
 export type SigilKind = (typeof SIGIL_KINDS)[number];
 

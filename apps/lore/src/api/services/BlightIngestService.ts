@@ -144,6 +144,62 @@ export class BlightIngestService {
   }
 
   /**
+   * Ingest one crash event from the trusted server-to-server path.
+   *
+   * Unlike {@link ingestEvent}, there is no client IP available, so the
+   * per-IP novelty cap ({@link NOVELTY_CAP} new fingerprints per IP per day)
+   * is skipped entirely. The event is fingerprinted and upserted exactly as
+   * in `ingestEvent`; `origin` defaults to `"client"` if absent.
+   *
+   * @param sigilId  the resolved sigil id
+   * @param event    the crash payload (all fields untrusted)
+   * @returns `"recorded"` (always — no rate-limiting on the trusted path)
+   */
+  async ingestEventTrusted(
+    sigilId: string,
+    event: BlightEventInput & { origin?: "client" | "server" },
+  ): Promise<BlightIngestOutcome> {
+    const now = this.dateTime.nowISOString();
+
+    const name = (event.name ?? "Error").slice(0, NAME_MAX);
+    const message = (event.message ?? "").slice(0, MESSAGE_MAX);
+    const stack = this.sanitizeStack(event.stack);
+    const sourceUrl = (event.sourceUrl ?? "").slice(0, SOURCE_URL_MAX);
+    const fingerprint = this.fingerprint(name, stack, sigilId);
+    const origin = event.origin ?? "client";
+
+    // No per-IP novelty cap on the trusted path — upsert unconditionally.
+    await this.blights.upsert(
+      {
+        sigilId,
+        fingerprint,
+        name,
+        message,
+        stack,
+        sourceUrl,
+        firstSeenAt: now,
+        lastSeenAt: now,
+        count: 1,
+        recentIps: [],
+        status: "open",
+        origin,
+      },
+      {
+        target: ["sigilId", "fingerprint"],
+        set: {
+          count: sql`${this.blights.table.count} + 1`,
+          lastSeenAt: now,
+          message,
+          stack,
+          sourceUrl,
+        },
+      },
+    );
+
+    return "recorded";
+  }
+
+  /**
    * Ingest one crash event for a sigil.
    *
    * @param sigilId   the resolved sigil id

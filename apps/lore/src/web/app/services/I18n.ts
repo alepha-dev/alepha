@@ -744,6 +744,7 @@ export class I18n {
         "sigils.kind.petition": "Petitions",
         "sigils.kind.blights": "Blights",
         "sigils.kind.beacon": "Beacon",
+        "sigils.kind.vitals": "Vitals",
         "sigils.kind.locked":
           "Enable the matching campaign feature to grant this capability.",
         "sigils.features.title": "Features",
@@ -1616,6 +1617,7 @@ export class I18n {
         "sigils.kind.petition": "Pétitions",
         "sigils.kind.blights": "Blights",
         "sigils.kind.beacon": "Beacon",
+        "sigils.kind.vitals": "Vitals",
         "sigils.kind.locked":
           "Activez la fonctionnalité de campagne correspondante pour accorder cette capacité.",
         "sigils.features.title": "Fonctionnalités",

@@ -110,6 +110,100 @@ export class BeaconIngestService {
   }
 
   /**
+   * Ingest one pageview from the trusted server-to-server ingest path.
+   *
+   * Unlike {@link ingestPing}, country and visitor identity come from the
+   * request body (stamped by the partner server) rather than being derived
+   * server-side from headers/IP. No session-hash derivation is needed: if
+   * `visitor` is present it is used as-is as `sessionHash`; if absent the
+   * unique-visitor insert is skipped entirely (the partner did not supply
+   * identity information).
+   *
+   * @param sigilId  the resolved sigil id
+   * @param path     the raw page path from the partner payload
+   * @param country  ISO country code from the partner body; defaults to
+   *                 {@link COUNTRY_FALLBACK} when empty or absent
+   * @param visitor  the partner-computed daily visitor hash; when absent the
+   *                 unique-visitor row is NOT written
+   * @param date     UTC day bucket override (for testing); defaults to today
+   * @returns `"recorded"` or `"path-capped"`
+   */
+  async ingestView(
+    sigilId: string,
+    path: string | undefined,
+    country: string | undefined,
+    visitor: string | undefined,
+    date?: string,
+  ): Promise<BeaconIngestOutcome> {
+    const utcDate = date ?? this.utcDate();
+    const normalizedPath = this.normalizePath(path);
+    const safeCountry =
+      ((country ?? "") || COUNTRY_FALLBACK).slice(0, COUNTRY_MAX) ||
+      COUNTRY_FALLBACK;
+
+    // --- Unique visitor: INSERT OR IGNORE on (sigilId, date, sessionHash).
+    // The partner stamps the daily hash; if absent we skip — we have no way
+    // to derive it server-side without an IP.
+    if (visitor) {
+      await this.uniques.query((table, db) =>
+        db
+          .insert(table)
+          .values({ sigilId, date: utcDate, sessionHash: visitor })
+          .onConflictDoNothing(),
+      );
+    }
+
+    // --- Distinct-path cap: same logic as ingestPing.
+    const existingView = await this.views.findOne({
+      where: {
+        sigilId: { eq: sigilId },
+        date: { eq: utcDate },
+        country: { eq: safeCountry },
+        path: { eq: normalizedPath },
+      },
+    });
+    if (!existingView) {
+      const known = await this.views.count({
+        sigilId: { eq: sigilId },
+        date: { eq: utcDate },
+        path: { eq: normalizedPath },
+      });
+      if (known === 0) {
+        const rows = await this.database.run(
+          sql`
+            SELECT COUNT(DISTINCT ${this.views.table.path}) AS paths
+            FROM ${this.views.table}
+            WHERE ${this.views.table.sigilId} = ${sigilId}
+              AND ${this.views.table.date} = ${utcDate}
+          `,
+          t.object({ paths: t.string() }),
+        );
+        const paths = Number(rows[0]?.paths) || 0;
+        if (paths >= DISTINCT_PATH_CAP) {
+          return "path-capped";
+        }
+      }
+    }
+
+    // --- Pageview aggregate: INSERT … ON CONFLICT DO UPDATE count = count+1.
+    await this.views.upsert(
+      {
+        sigilId,
+        date: utcDate,
+        country: safeCountry,
+        path: normalizedPath,
+        count: 1,
+      },
+      {
+        target: ["sigilId", "date", "country", "path"],
+        set: { count: sql`${this.views.table.count} + 1` },
+      },
+    );
+
+    return "recorded";
+  }
+
+  /**
    * Ingest one pageview ping for a sigil.
    *
    * @param sigilId    the resolved sigil id

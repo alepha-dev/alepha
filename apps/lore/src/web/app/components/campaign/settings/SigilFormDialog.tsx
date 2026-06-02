@@ -20,7 +20,8 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 type KindLabelKey =
   | "sigils.kind.petition"
   | "sigils.kind.blights"
-  | "sigils.kind.beacon";
+  | "sigils.kind.beacon"
+  | "sigils.kind.vitals";
 
 /**
  * Per-kind UI metadata for the dialog's capability checkboxes — keyed off
@@ -34,6 +35,7 @@ const KIND_META: Record<
   petition: { labelKey: "sigils.kind.petition", feature: "embeddedPetitions" },
   blights: { labelKey: "sigils.kind.blights", feature: "blights" },
   beacon: { labelKey: "sigils.kind.beacon", feature: "beacon" },
+  vitals: { labelKey: "sigils.kind.vitals", feature: "vitals" },
 };
 
 export interface SigilFormValue {
