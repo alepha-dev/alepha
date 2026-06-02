@@ -1,3 +1,4 @@
+import { VITALS_BUCKETS } from "@alepha/sigil/vitals";
 import { Alepha, t } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -10,6 +11,7 @@ import { CampaignController } from "../src/api/controllers/CampaignController.ts
 import { InsightsController } from "../src/api/controllers/InsightsController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { VitalsIngestService } from "../src/api/services/VitalsIngestService.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -24,6 +26,7 @@ interface TestContext {
   campaignController: CampaignController;
   sigilController: SigilController;
   insightsController: InsightsController;
+  vitals: VitalsIngestService;
   fakeProvider: FakeProvider;
 }
 
@@ -52,6 +55,7 @@ const setup = async (): Promise<TestContext> => {
     campaignController: alepha.inject(CampaignController),
     sigilController: alepha.inject(SigilController),
     insightsController: alepha.inject(InsightsController),
+    vitals: alepha.inject(VitalsIngestService),
     fakeProvider: alepha.inject(FakeProvider),
   };
 };
@@ -315,6 +319,121 @@ describe("InsightsController", () => {
         { user: stranger },
       ),
     ).rejects.toThrow();
+  });
+
+  describe("vitals p75", () => {
+    it("returns lcp p75 for the campaign sigil within the window", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const campaignId = await createCampaign(ctx, owner);
+      const sigilId = await createSigil(ctx, campaignId, owner);
+
+      // Ingest: 500 (bucket 0), 2400 ×2 (bucket 2), 99999 (overflow bucket 6).
+      // Total = 4 samples. Target = ceil(0.75 × 4) = 3.
+      // Walk: bucket 0 → cum 1, bucket 2 → cum 3 ≥ 3 → p75 = boundaries[2] = 2500.
+      await ctx.vitals.ingestVitals(
+        sigilId,
+        [
+          { path: "/", metric: "lcp", value: 500 },
+          { path: "/", metric: "lcp", value: 2400 },
+          { path: "/", metric: "lcp", value: 2400 },
+          { path: "/", metric: "lcp", value: 99999 },
+        ],
+        dayUtc(0),
+      );
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { campaignId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(VITALS_BUCKETS.lcp[2]).toBe(2500);
+      expect(res.data.vitals.lcp).toBe(2500);
+    });
+
+    it("aggregates lcp p75 across two sigils in the same campaign", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const campaignId = await createCampaign(ctx, owner);
+      const sigilA = await createSigil(ctx, campaignId, owner);
+      const sigilB = await createSigil(ctx, campaignId, owner);
+
+      // Sigil A: 2 samples in bucket 0 (≤ 1000).
+      await ctx.vitals.ingestVitals(
+        sigilA,
+        [
+          { path: "/", metric: "lcp", value: 500 },
+          { path: "/", metric: "lcp", value: 800 },
+        ],
+        dayUtc(0),
+      );
+      // Sigil B: 2 samples in bucket 0 as well.
+      await ctx.vitals.ingestVitals(
+        sigilB,
+        [
+          { path: "/", metric: "lcp", value: 400 },
+          { path: "/", metric: "lcp", value: 900 },
+        ],
+        dayUtc(0),
+      );
+
+      // Combined: 4 samples all in bucket 0. Target = ceil(0.75 × 4) = 3.
+      // Bucket 0 cum = 4 ≥ 3 → p75 = boundaries[0] = 1000.
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { campaignId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(VITALS_BUCKETS.lcp[0]).toBe(1000);
+      expect(res.data.vitals.lcp).toBe(1000);
+    });
+
+    it("returns null for a metric with no data in the range", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const campaignId = await createCampaign(ctx, owner);
+      await createSigil(ctx, campaignId, owner);
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { campaignId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(res.data.vitals.lcp).toBeNull();
+      expect(res.data.vitals.cls).toBeNull();
+      expect(res.data.vitals.inp).toBeNull();
+      expect(res.data.vitals.fcp).toBeNull();
+      expect(res.data.vitals.ttfb).toBeNull();
+    });
+
+    it("returns cls ÷ 1000 (real score, not integer × 1000)", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const campaignId = await createCampaign(ctx, owner);
+      const sigilId = await createSigil(ctx, campaignId, owner);
+
+      // CLS boundaries (×1000 integers): [100, 250, …].
+      // A value of 50 (raw, meaning real CLS = 0.05) → bucket 0.
+      // One sample: total = 1, target = ceil(0.75) = 1 → p75 = boundaries[0] = 100.
+      // After ÷ 1000 the controller returns 0.1.
+      await ctx.vitals.ingestVitals(
+        sigilId,
+        [{ path: "/", metric: "cls", value: 50 }],
+        dayUtc(0),
+      );
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { campaignId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      const expectedRaw = VITALS_BUCKETS.cls[0]!;
+      expect(res.data.vitals.cls).toBeCloseTo(expectedRaw / 1000, 10);
+    });
   });
 
   it("a campaign member (non-owner) can read insights", async ({ expect }) => {

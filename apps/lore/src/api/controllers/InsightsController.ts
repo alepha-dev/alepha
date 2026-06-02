@@ -7,6 +7,7 @@ import { sigils } from "../entities/sigils.ts";
 import { sigilUniqueVisitors } from "../entities/sigilUniqueVisitors.ts";
 import { sigilViews } from "../entities/sigilViews.ts";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
+import { VitalsIngestService } from "../services/VitalsIngestService.ts";
 
 /** Supported lookback windows for the Insights dashboard. */
 const RANGE_DAYS: Record<string, number> = {
@@ -50,6 +51,29 @@ const insightsSchema = t.object({
       percentage: t.number(),
     }),
   ),
+  /**
+   * Web-Vitals p75 approximations across all campaign sigils for the window.
+   *
+   * Each value is the 75th-percentile approximation derived from histogram
+   * bucket counts. `null` means no samples were recorded for that metric in
+   * the selected range.
+   *
+   * CLS is stored as integers (value × 1000) to avoid floating-point drift;
+   * the value here has been divided by 1000 and represents the real CLS score
+   * (e.g. 0.08, not 80).
+   */
+  vitals: t.object({
+    /** Largest Contentful Paint p75, ms. */
+    lcp: t.nullable(t.number()),
+    /** Cumulative Layout Shift p75, unitless (real value, ÷1000 applied). */
+    cls: t.nullable(t.number()),
+    /** Interaction to Next Paint p75, ms. */
+    inp: t.nullable(t.number()),
+    /** First Contentful Paint p75, ms. */
+    fcp: t.nullable(t.number()),
+    /** Time to First Byte p75, ms. */
+    ttfb: t.nullable(t.number()),
+  }),
   timeline: t.array(
     t.object({
       /** UTC day, `YYYY-MM-DD`. */
@@ -78,6 +102,7 @@ export class InsightsController {
   protected database = $inject(DatabaseProvider);
   protected security = $inject(AppSecurityProvider);
   protected dt = $inject(DateTimeProvider);
+  protected vitalsService = $inject(VitalsIngestService);
   protected sigils = $repository(sigils);
   protected views = $repository(sigilViews);
   protected uniques = $repository(sigilUniqueVisitors);
@@ -108,6 +133,16 @@ export class InsightsController {
       const since = dayKey(sinceDate);
 
       const sigilIds = await this.campaignSigilIds(params.campaignId);
+
+      /** Null vitals object returned when there are no sigils or no samples. */
+      const nullVitals = {
+        lcp: null,
+        cls: null,
+        inp: null,
+        fcp: null,
+        ttfb: null,
+      };
+
       if (sigilIds.length === 0) {
         return {
           range,
@@ -116,6 +151,7 @@ export class InsightsController {
           uniqueVisitors: 0,
           topCountries: [],
           topPaths: [],
+          vitals: nullVitals,
           timeline: this.zeroTimeline(today, days),
         };
       }
@@ -215,6 +251,27 @@ export class InsightsController {
         views: byDate.get(p.date) ?? 0,
       }));
 
+      // --- Web-Vitals p75 across all campaign sigils for the window.
+      // Must aggregate bucket counts across sigils in a single query per metric
+      // (averaging per-sigil percentiles is statistically incorrect). CLS is
+      // stored as integer × 1000 to avoid floating-point drift; divide by 1000
+      // here to return the real score.
+      const vitalsOpts = { from: since, to: dayKey(today) };
+      const [lcpRaw, clsRaw, inpRaw, fcpRaw, ttfbRaw] = await Promise.all([
+        this.vitalsService.computeP75ForSigils(sigilIds, "lcp", vitalsOpts),
+        this.vitalsService.computeP75ForSigils(sigilIds, "cls", vitalsOpts),
+        this.vitalsService.computeP75ForSigils(sigilIds, "inp", vitalsOpts),
+        this.vitalsService.computeP75ForSigils(sigilIds, "fcp", vitalsOpts),
+        this.vitalsService.computeP75ForSigils(sigilIds, "ttfb", vitalsOpts),
+      ]);
+      const vitals = {
+        lcp: lcpRaw,
+        cls: clsRaw !== null ? clsRaw / 1000 : null,
+        inp: inpRaw,
+        fcp: fcpRaw,
+        ttfb: ttfbRaw,
+      };
+
       return {
         range,
         since,
@@ -222,6 +279,7 @@ export class InsightsController {
         uniqueVisitors,
         topCountries,
         topPaths,
+        vitals,
         timeline,
       };
     },

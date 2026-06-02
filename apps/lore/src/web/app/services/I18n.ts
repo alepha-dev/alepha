@@ -672,6 +672,14 @@ export class I18n {
         "insights.topPaths": "Top pages",
         "insights.empty": "No pageviews recorded in this range yet.",
         "insights.error": "Failed to load insights. Please try again.",
+        "insights.vitals.title": "Web Vitals",
+        "insights.vitals.subtitle": "75th percentile",
+        "insights.vitals.lcp": "LCP",
+        "insights.vitals.cls": "CLS",
+        "insights.vitals.inp": "INP",
+        "insights.vitals.fcp": "FCP",
+        "insights.vitals.ttfb": "TTFB",
+        "insights.vitals.empty": "—",
 
         "beacon.feature.title": "Beacons",
         "beacon.feature.description":
@@ -1544,6 +1552,14 @@ export class I18n {
         "insights.empty": "Aucune page vue enregistrée sur cette période.",
         "insights.error":
           "Échec du chargement des analyses. Veuillez réessayer.",
+        "insights.vitals.title": "Web Vitals",
+        "insights.vitals.subtitle": "75e centile",
+        "insights.vitals.lcp": "LCP",
+        "insights.vitals.cls": "CLS",
+        "insights.vitals.inp": "INP",
+        "insights.vitals.fcp": "FCP",
+        "insights.vitals.ttfb": "TTFB",
+        "insights.vitals.empty": "—",
 
         "beacon.feature.title": "Beacons",
         "beacon.feature.description":
