@@ -1,0 +1,1 @@
+ALTER TABLE `sigil_blights` ADD `origin` text DEFAULT 'client' NOT NULL;
