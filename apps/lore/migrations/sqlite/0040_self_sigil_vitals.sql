@@ -18,13 +18,16 @@ WHERE id = '4474024c-d0bf-46d9-b8b0-a562a5d41a60';
 
 -- Enable the sigil-related feature flags on campaign #2.
 -- Uses json_set to set individual keys — preserves all existing feature keys.
+-- NOTE: bare `true` in SQLite json_set stores the INTEGER 1, not a JSON
+-- boolean; the features schema is t.boolean(), so we must wrap with
+-- json('true') to store a real JSON `true`.
 UPDATE campaigns
 SET features = json_set(
   features,
-  '$.sigils',          true,
-  '$.blights',         true,
-  '$.beacon',          true,
-  '$.vitals',          true,
-  '$.embeddedPetitions', true
+  '$.sigils',            json('true'),
+  '$.blights',           json('true'),
+  '$.beacon',            json('true'),
+  '$.vitals',            json('true'),
+  '$.embeddedPetitions', json('true')
 )
 WHERE id = 2;
