@@ -21,11 +21,12 @@ import { SigilForwardProvider } from "./SigilForwardProvider.ts";
  * `dailySalt = sha256((SIGIL_IP_SALT ?? "lore-sigil") + ":" + utcDate)`.
  * The raw IP is never forwarded or stored.
  *
- * NOTE: `reporterEmail` is intentionally omitted from the petition proxy.
- * This package cannot assume the partner app uses `$secure()` / Alepha auth,
- * so there is no safe, idiomatic way to read the current session user here.
- * TODO: accept an optional `reporterEmail` field in the petition body schema
- * once partners can supply it from their own session context.
+ * NOTE: `reporterEmail` is an OPTIONAL passthrough. This package cannot assume
+ * the partner app uses `$secure()` / Alepha auth, so the proxy does not read
+ * the session itself. Instead the browser dialog — which has the partner app's
+ * user context — may include `reporterEmail` in the submitted form, and the
+ * proxy forwards it as-is. It is a contact string shown escaped to the owner,
+ * not an auth claim, so browser-supplied is acceptable.
  */
 export class SigilProxyController {
   protected readonly forward = $inject(SigilForwardProvider);
@@ -98,6 +99,7 @@ export class SigilProxyController {
     schema: {
       body: t.object({
         ...sigilPetitionFields.properties,
+        reporterEmail: t.optional(t.string({ maxLength: 320 })),
         screenshot: t.optional(t.file()),
       }),
       response: t.object({ ok: t.boolean() }),
@@ -107,7 +109,7 @@ export class SigilProxyController {
         throw new AlephaError("Sigil not configured");
       }
 
-      const { title, description, type, hostUrl, hostPath, screenshot } =
+      const { title, description, type, hostUrl, hostPath, reporterEmail, screenshot } =
         request.body;
 
       const form = new FormData();
@@ -116,6 +118,9 @@ export class SigilProxyController {
       form.set("type", type);
       form.set("hostUrl", hostUrl);
       form.set("hostPath", hostPath);
+      if (reporterEmail) {
+        form.set("reporterEmail", reporterEmail);
+      }
 
       if (screenshot) {
         /**
