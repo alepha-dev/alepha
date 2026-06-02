@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { Alepha } from "alepha";
+import { describe, expect, it } from "vitest";
 import { RootComponentsProvider } from "../RootComponentsProvider.ts";
 
 describe("RootComponentsProvider", () => {
@@ -8,6 +8,8 @@ describe("RootComponentsProvider", () => {
     const provider = alepha.inject(RootComponentsProvider);
     expect(provider.rootComponents).toEqual([]);
     provider.rootComponents.push("x" as any);
-    expect(alepha.inject(RootComponentsProvider).rootComponents).toHaveLength(1);
+    expect(alepha.inject(RootComponentsProvider).rootComponents).toHaveLength(
+      1,
+    );
   });
 });

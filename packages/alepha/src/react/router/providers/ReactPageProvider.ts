@@ -27,6 +27,7 @@ import {
   type PagePrimitive,
   type PagePrimitiveOptions,
 } from "../primitives/$page.ts";
+import { RootComponentsProvider } from "./RootComponentsProvider.ts";
 
 // -------------------------------------------------------------------------------------------------------------------
 
@@ -65,6 +66,7 @@ export class ReactPageProvider {
   protected readonly log = $logger();
   protected readonly options = $state(reactPageOptions);
   protected readonly alepha = $inject(Alepha);
+  protected readonly rootComponentsProvider = $inject(RootComponentsProvider);
   protected readonly pages: PageRoute[] = [];
   protected nextIdCursor = 0;
 
@@ -240,6 +242,7 @@ export class ReactPageProvider {
       AlephaContext.Provider,
       { value: this.alepha },
       createElement(NestedView, {}, state.layers[0]?.element),
+      ...this.rootComponentsProvider.rootComponents,
     );
 
     if (this.options.strictMode) {
