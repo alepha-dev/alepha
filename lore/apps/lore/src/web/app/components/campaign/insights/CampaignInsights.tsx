@@ -224,6 +224,47 @@ const CampaignInsights = (props: CampaignInsightsProps) => {
         </CardContent>
       </Card>
 
+      {/* Web Vitals */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between text-base">
+            <span>{tr("insights.vitals.title")}</span>
+            <span className="text-muted-foreground text-xs font-normal">
+              {tr("insights.vitals.subtitle")}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-5 gap-3">
+            {(
+              [
+                { key: "lcp", unit: "ms" },
+                { key: "cls", unit: null },
+                { key: "inp", unit: "ms" },
+                { key: "fcp", unit: "ms" },
+                { key: "ttfb", unit: "ms" },
+              ] as const
+            ).map(({ key, unit }) => {
+              const raw = data.vitals[key];
+              const display =
+                raw === null
+                  ? tr("insights.vitals.empty")
+                  : unit === "ms"
+                    ? `${raw.toLocaleString()} ms`
+                    : raw.toFixed(2);
+              return (
+                <div key={key} className="flex flex-col gap-1">
+                  <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                    {tr(`insights.vitals.${key}`)}
+                  </p>
+                  <p className="text-lg font-bold tabular-nums">{display}</p>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Top countries */}
         <Card>

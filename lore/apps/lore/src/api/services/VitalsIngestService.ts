@@ -161,6 +161,101 @@ export class VitalsIngestService {
   }
 
   /**
+   * Walk a sparse `bucket → count` map to produce a p75 approximation.
+   *
+   * Shared by {@link computeP75} and {@link computeP75ForSigils} so the
+   * bucket-walking logic lives in exactly one place.
+   *
+   * @param bucketCounts  Map of bucket index → total count.
+   * @param grandTotal    Sum of all counts (must be > 0).
+   * @param metric        Metric whose boundary table to use.
+   * @returns p75 upper-boundary value.
+   */
+  protected walkP75(
+    bucketCounts: Map<number, number>,
+    grandTotal: number,
+    metric: VitalMetric,
+  ): number {
+    const boundaries = VITALS_BUCKETS[metric];
+    const overflowIdx = boundaries.length;
+    const target = Math.ceil(0.75 * grandTotal);
+    let cumulative = 0;
+
+    for (let i = 0; i <= overflowIdx; i++) {
+      cumulative += bucketCounts.get(i) ?? 0;
+      if (cumulative >= target) {
+        return boundaries[Math.min(i, boundaries.length - 1)]!;
+      }
+    }
+
+    return boundaries[boundaries.length - 1]!;
+  }
+
+  /**
+   * Compute an approximate p75 for a given metric across a set of sigil ids.
+   *
+   * Aggregates bucket counts from all sigils in a single `WHERE sigilId IN
+   * (...)` query — the only correct way to merge percentile distributions
+   * (averaging per-sigil p75 values would be statistically wrong). Returns
+   * `null` when `sigilIds` is empty or there are no samples for the metric.
+   *
+   * @param sigilIds  Sigil ids belonging to the campaign.
+   * @param metric    One of `lcp | cls | inp | fcp | ttfb`.
+   * @param opts      Optional `from`/`to` UTC date range filters.
+   * @returns p75 approximation, or `null` if no samples exist.
+   */
+  async computeP75ForSigils(
+    sigilIds: string[],
+    metric: VitalMetric,
+    opts?: { from?: string; to?: string },
+  ): Promise<number | null> {
+    if (sigilIds.length === 0) return null;
+
+    const sigilList = sql.join(
+      sigilIds.map((id) => sql`${id}`),
+      sql`, `,
+    );
+    const fromFilter =
+      opts?.from !== undefined
+        ? sql`AND ${this.vitals.table.date} >= ${opts.from}`
+        : sql``;
+    const toFilter =
+      opts?.to !== undefined
+        ? sql`AND ${this.vitals.table.date} <= ${opts.to}`
+        : sql``;
+
+    const rows = await this.database.run(
+      sql`
+        SELECT ${this.vitals.table.bucket} AS bucket,
+               SUM(${this.vitals.table.count}) AS total
+        FROM ${this.vitals.table}
+        WHERE ${this.vitals.table.sigilId} IN (${sigilList})
+          AND ${this.vitals.table.metric} = ${metric}
+          ${fromFilter}
+          ${toFilter}
+        GROUP BY ${this.vitals.table.bucket}
+        ORDER BY ${this.vitals.table.bucket} ASC
+      `,
+      t.object({ bucket: t.string(), total: t.string() }),
+    );
+
+    if (rows.length === 0) return null;
+
+    let grandTotal = 0;
+    const bucketCounts = new Map<number, number>();
+    for (const row of rows) {
+      const b = Number(row.bucket);
+      const c = Number(row.total);
+      bucketCounts.set(b, c);
+      grandTotal += c;
+    }
+
+    if (grandTotal === 0) return null;
+
+    return this.walkP75(bucketCounts, grandTotal, metric);
+  }
+
+  /**
    * Compute an approximate p75 for a given metric from stored bucket counts.
    *
    * Aggregates `count` per bucket across the given sigil, optional path
@@ -228,23 +323,6 @@ export class VitalsIngestService {
 
     if (grandTotal === 0) return null;
 
-    // Walk ascending bucket indices until cumulative count ≥ ceil(0.75 × total).
-    const boundaries = VITALS_BUCKETS[metric];
-    const overflowIdx = boundaries.length;
-    const target = Math.ceil(0.75 * grandTotal);
-    let cumulative = 0;
-
-    for (let i = 0; i <= overflowIdx; i++) {
-      cumulative += bucketCounts.get(i) ?? 0;
-      if (cumulative >= target) {
-        // Return the upper boundary for this bucket.
-        // For the overflow bucket (i === overflowIdx), use the last defined
-        // boundary as a conservative floor.
-        return boundaries[Math.min(i, boundaries.length - 1)]!;
-      }
-    }
-
-    // Exhausted all buckets — return the last boundary as a floor.
-    return boundaries[boundaries.length - 1]!;
+    return this.walkP75(bucketCounts, grandTotal, metric);
   }
 }
