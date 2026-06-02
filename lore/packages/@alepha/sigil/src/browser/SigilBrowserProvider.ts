@@ -30,7 +30,9 @@ export class SigilBrowserProvider {
       this.queue = new SigilTelemetryQueue(send as any);
 
       (this.alepha.events as any).on("react:transition:end", (ev: any) => {
-        this.queue!.addView(ev.state?.url?.pathname ?? (location as any).pathname);
+        this.queue!.addView(
+          ev.state?.url?.pathname ?? (location as any).pathname,
+        );
       });
 
       (this.alepha.events as any).on("react:action:error", (ev: any) => {
@@ -38,7 +40,9 @@ export class SigilBrowserProvider {
       });
 
       (window as any).addEventListener("error", (e: any) => {
-        this.queue!.addError(this.toError(e.error ?? e, (location as any).href));
+        this.queue!.addError(
+          this.toError(e.error ?? e, (location as any).href),
+        );
       });
 
       (window as any).addEventListener("unhandledrejection", (e: any) => {
@@ -46,7 +50,11 @@ export class SigilBrowserProvider {
       });
 
       new SigilVitals((m) => {
-        this.queue!.addVital({ path: (location as any).pathname, metric: m.metric, value: m.value });
+        this.queue!.addVital({
+          path: (location as any).pathname,
+          metric: m.metric,
+          value: m.value,
+        });
       }).observe();
 
       (window as any).addEventListener("pagehide", () => {
