@@ -40,6 +40,7 @@ This module enables:
 - [`ReactPreloadProvider`](/docs/reference-providers-reactpreloadprovider) — Adds HTTP Link headers for preloading entry assets.
 - [`ReactServerProvider`](/docs/reference-providers-reactserverprovider) — React server provider responsible for SSR and static file serving.
 - [`ReactServerTemplateProvider`](/docs/reference-providers-reactservertemplateprovider) — Handles HTML streaming for SSR.
+- [`RootComponentsProvider`](/docs/reference-providers-rootcomponentsprovider) — Extension point letting any module contribute root-level React nodes that
 - [`SSRManifestProvider`](/docs/reference-providers-ssrmanifestprovider) — Provider for SSR manifest data used for module preloading.
 
 ### Environment Variables
