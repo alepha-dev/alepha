@@ -16,27 +16,26 @@ export type SigilKind = (typeof SIGIL_KINDS)[number];
 
 /**
  * A **sigil** is a scoped, revocable, owner-issued identifier that lets a
- * site embed Lore capabilities via one
- * `<script src=".../sigils/<id>/embed.js">` line.
+ * partner server forward telemetry and petitions to Lore via the trusted
+ * server-to-server ingest endpoints (`POST /sigils/:id/ingest`,
+ * `POST /sigils/:id/petition`).
  *
  * Two credentials live on each sigil:
  *
- * - `id` — a random, opaque identifier and the primary key. PUBLIC by
- *   design: it sits in the partner page's `<script>` tag, so it leaks
- *   nothing on its own. Stored as a `text` PRIMARY KEY column. NB: the type
- *   is `t.uuid()` rather than a free-form 16-hex string because the Alepha
+ * - `id` — a random, opaque identifier and the primary key. Server-held
+ *   secret on the trusted ingest path (the sigil UUID is the sole
+ *   credential). Stored as a `text` PRIMARY KEY column. NB: the type is
+ *   `t.uuid()` rather than a free-form 16-hex string because the Alepha
  *   SQLite model builder only honors `PRIMARY KEY` on uuid-format strings —
- *   a plain `t.string()` PK silently degrades to a non-PK column. A UUID is
- *   random and public-safe; shortening the id to 16-hex would need a paired
- *   upstream framework change and can be revisited when the issuing
- *   controller lands.
- * - `ingestKey` — a separate random secret baked into the served `.js` body
- *   and required on the unauthenticated ingestion POSTs. It is a *speed
- *   bump*, not real auth, and is rotatable WITHOUT reissuing the sigil `id`.
+ *   a plain `t.string()` PK silently degrades to a non-PK column.
+ * - `ingestKey` — a separate random secret used by legacy browser-embed
+ *   paths (retained in the schema for backward compatibility; the trusted
+ *   ingest path uses only the sigil `id`). Rotatable without reissuing the
+ *   sigil `id`.
  *
- * A sigil scopes what a site may do (`kinds`) and from where
- * (`allowedOrigins`). Deleting a sigil hard-deletes the row (the
- * `revokedAt` column is vestigial — see its field doc).
+ * A sigil scopes what a site may do (`kinds`). Deleting a sigil
+ * hard-deletes the row (the `revokedAt` column is vestigial — see its
+ * field doc).
  */
 export const sigils = $entity({
   name: "sigils",
@@ -48,9 +47,9 @@ export const sigils = $entity({
      */
     id: db.primaryKey(t.uuid()),
     /**
-     * Random secret baked into the served `.js` body, required on the
-     * unauthenticated ingestion POSTs. Distinct from the public `id` and
-     * rotatable without reissuing the sigil.
+     * Random secret — retained for backward compatibility with legacy
+     * browser-embed flows. Distinct from the public `id` and rotatable
+     * without reissuing the sigil.
      */
     ingestKey: t.string({ minLength: 1, maxLength: 128 }),
     campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
@@ -78,13 +77,11 @@ export const sigils = $entity({
       [],
     ),
     /**
-     * Glob patterns that suppress every rendered embed surface (today
-     * the petition button) on matching pages of the host site. Empty
-     * (default) → no exclusions, embed mounts everywhere.
-     *
-     * `*` matches any chars within a path segment (no `/`); `**` matches
-     * across segments. Matched against `window.location.pathname` only —
-     * no host, no query. See `SigilEmbedBundle` for the inline matcher.
+     * Glob patterns that suppress telemetry collection on matching pages
+     * of the host site. Empty (default) → no exclusions, all paths are
+     * collected. `*` matches any chars within a path segment (no `/`);
+     * `**` matches across segments. Matched against the pathname only —
+     * no host, no query. See `sigilGlobMatch` for the matcher implementation.
      */
     excludedPaths: db.default(
       t.array(t.string({ maxLength: 200 }), { maxItems: 50 }),

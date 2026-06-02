@@ -1,8 +1,6 @@
 /**
  * Match a URL pathname against a glob pattern used by sigil
- * `excludedPaths` (quest #110). Same semantics as the inline matcher
- * baked into `SigilEmbedBundle`'s served bundle — kept here as a
- * pure TS function for testing.
+ * `excludedPaths` (quest #110).
  *
  * Glob rules:
  * - `*` matches any sequence of chars WITHIN a path segment (no `/`).
@@ -11,11 +9,7 @@
  * - Matched against the pathname only — no host, no query, no hash.
  *
  * Invalid patterns (regex compile failure) return `false` rather than
- * throwing — a malformed pattern shouldn't accidentally hide the embed.
- *
- * KEEP IN SYNC with the `pathMatchesGlob` function in
- * `src/api/services/SigilEmbedBundle.ts` — the bundle template duplicates
- * the same logic so the served JS has no extra dependency.
+ * throwing — a malformed pattern shouldn't accidentally suppress the widget.
  */
 export const sigilGlobMatch = (path: string, pattern: string): boolean => {
   if (!pattern) return false;

@@ -231,7 +231,7 @@ const CampaignPetitionRequest = () => {
   //
   // FAIL CLOSED: the trusted origin is derived from the `?url=` param, which
   // is supplied by the *embedding page itself* (forwarded verbatim by the
-  // sigil redirect — see `SigilEmbedController.getRequestPage`). The sigil's
+  // sigil redirect — forwarded verbatim by the sigil redirect. The sigil's
   // authoritative server-side `allowedOrigins` array is NOT available to this
   // SPA page (the redirect forwards only `path`/`url`/`type`, and exposing it
   // would mean a new public endpoint — out of scope). So `?url=` is the only

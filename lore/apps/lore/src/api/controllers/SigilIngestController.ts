@@ -104,7 +104,7 @@ const sigilIngestBodySchema = t.object({
  * fire-and-forget, same as the embed endpoints.
  *
  * `$route` (not `$action`) — lives at the ROOT path, not under `/api`,
- * exactly like `SigilEmbedController` and `VersionController`.
+ * exactly like `VersionController`.
  */
 export class SigilIngestController {
   protected log = $logger();
