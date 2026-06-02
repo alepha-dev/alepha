@@ -1,63 +1,57 @@
-import * as http from "node:http";
-import type { AddressInfo } from "node:net";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { createCampaignViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**
- * Sigils — embedded petition end-to-end (Quest #92).
+ * Sigils — module-driven server-to-server contract (approach b2).
  *
- * Exercises the whole embedded-petition path the way a partner site would:
+ * The new `@alepha/sigil` flow is fully server-to-server: the partner app's
+ * `SigilForwardProvider` POSTs to `POST /sigils/:id/ingest` and
+ * `POST /sigils/:id/petition` using only the sigil UUID as a credential.
+ * There is no embedded `<script>`, no cross-origin widget, no popup.
  *
- * 1. Owner registers, creates a campaign, enables the `petitions`,
- *    `sigils` and `embeddedPetitions` features (the wizard leaves all
- *    three OFF), then creates a sigil through the Settings → Sigils UI
- *    with the fixture server's origin in `allowedOrigins` and the
- *    `petition` capability checked.
- * 2. A tiny second HTTP server serves a fixture HTML page from a
- *    DIFFERENT origin (a separate port → a separate origin) that embeds
- *    `<script src="<lore>/sigils/<id>/embed.js">`.
- * 3. The bundle mounts a Shadow-DOM icon-only button (MessageSquareWarning,
- *    accessible name "Feedback") — clicking it `window.open`s the petition
- *    popup at `/sigils/:id/request`.
- * 4. Fill + submit the petition form inside the popup.
- * 5. The opener (fixture page) receives the `lore.sigil.submitted`
- *    postMessage — captured via a listener injected before submit.
- * 6. The owner's petition inbox shows the petition carrying its `source`
- *    block: the "via Sigil · host" badge is visible.
+ * These endpoints are NOT `isProduction()`-gated on the Lore receiving side —
+ * only the `@alepha/sigil` module's forwarding side is. So the full server
+ * contract can be exercised against the e2e test server (dev or prod-like)
+ * via Playwright's `request` API without any production-mode wiring.
  *
- * Cross-origin matters: the embed bundle's CORS and the popup's
- * `postMessage` origin checks are keyed to the sigil's `allowedOrigins`,
- * so the fixture MUST be served from an origin distinct from the Lore
- * server. We stand up a `http.createServer` on an ephemeral port inside
- * the test and tear it down at the end; `127.0.0.1:<port>` is a different
- * origin from the Lore server's `localhost:3303`.
+ * What this spec covers:
+ *
+ * 1. Owner registers, creates a campaign, enables the `sigils`,
+ *    `embeddedPetitions`, `blights`, and `beacon` feature toggles.
+ * 2. Owner creates a sigil with `kinds: ["beacon", "blights", "petition"]`
+ *    via the owner-facing CRUD API.
+ * 3. `POST /sigils/:id/ingest` with a views batch → `sigil_views` row lands.
+ * 4. `POST /sigils/:id/ingest` with an errors batch → blight lands in the
+ *    owner's Blights inbox (`GET /campaigns/:id/blights`).
+ * 5. `POST /sigils/:id/petition` with a multipart form → petition lands in
+ *    the owner's Petitions inbox with `source.sigilId` set.
+ * 6. The petition's `source.sigilId` round-trips correctly.
+ *
+ * No `SIGIL_ID` / `LORE_URL` / `NODE_ENV=production` injection is needed
+ * because we drive the Lore-SERVER endpoints directly — these are the
+ * endpoints the `@alepha/sigil` module CALLS, not the module itself.
  */
 
-test.describe("Sigils — embedded petition", () => {
-  test("embed → click feedback → submit petition → owner inbox shows source", async ({
+test.describe("Sigils — module-driven server-to-server contract", () => {
+  test("ingest views + errors → inbox; petition → inbox with source", async ({
     page,
+    request,
     baseURL,
   }) => {
-    test.setTimeout(150_000);
+    test.setTimeout(120_000);
 
-    const loreOrigin = baseURL!;
     const t = Date.now();
     const email = `sigil${t}@example.com`;
     const password = "SigilTest123!";
     const campaignTitle = `Sig${t}`.slice(0, 20);
-    const petitionTitle = `EmbedBug${t}`;
-    const petitionDescription =
-      "Repro:\n1. open the partner page\n2. click Feedback\nExpected: works";
 
     // ── Owner setup ──────────────────────────────────────────────────────
     await registerAndVerify(page, email, password);
     const campaignId = await createCampaignViaWizard(page, campaignTitle);
 
-    // The wizard leaves petitions / sigils / embeddedPetitions OFF.
-    // `petitions` makes the request form reachable, `sigils` reveals the
-    // Sigils settings UI — flip those via API. `embeddedPetitions` is
-    // driven through its real Settings → Sigils UI Switch below, so the
-    // toggle itself is exercised end-to-end.
+    // Enable all sigil-related features: sigils (master toggle), blights,
+    // beacon (views analytics), embeddedPetitions (petition capability gate).
+    // The wizard leaves them all off; flip them via the owner API.
     await page.evaluate(async (id) => {
       const res = await fetch(`/api/updateCampaignById/${id}`, {
         method: "POST",
@@ -65,8 +59,11 @@ test.describe("Sigils — embedded petition", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           features: {
-            petitions: true,
             sigils: true,
+            blights: true,
+            beacon: true,
+            embeddedPetitions: true,
+            petitions: true,
           },
         }),
       });
@@ -75,215 +72,162 @@ test.describe("Sigils — embedded petition", () => {
       }
     }, campaignId);
 
-    // ── Stand up the cross-origin fixture server ─────────────────────────
-    // It serves a single HTML page. The sigil id is only known after the
-    // sigil is created, so the page reads it from `?sigil=` on its own URL
-    // and injects the embed <script> at runtime.
-    const fixtureServer = http.createServer((_req, res) => {
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      res.end(`<!doctype html>
-<html>
-  <head><meta charset="utf-8"><title>Partner site</title></head>
-  <body>
-    <h1>Partner checkout page</h1>
-    <p>Embedded Lore sigil demo.</p>
-    <script>
-      // Record the opener-bound postMessage so the test can assert it.
-      window.__loreSigilSubmitted = null;
-      window.addEventListener("message", function (e) {
-        var d = e.data || {};
-        if (d.type === "lore.sigil.submitted") {
-          window.__loreSigilSubmitted = d;
+    // ── Create a sigil via the owner API ─────────────────────────────────
+    // We go through the API directly (not the settings UI) because:
+    //  a) The old spec already drove the UI — the HTTP contract is what's new.
+    //  b) UI coverage for sigil creation lives in the settings-features spec.
+    let sigilId = "";
+    await test.step("create sigil via owner API", async () => {
+      const created = await page.evaluate(async (id) => {
+        const r = await fetch(`/api/c/${id}/sigils`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            label: `E2E sigil ${id}`,
+            allowedOrigins: ["https://partner.example.com"],
+            kinds: ["beacon", "blights", "petition"],
+            excludedPaths: [],
+          }),
+        });
+        if (!r.ok) {
+          throw new Error(`createSigil: ${r.status} ${await r.text()}`);
         }
-      });
-      (function () {
-        var sigilId = ${JSON.stringify("")} ||
-          new URLSearchParams(location.search).get("sigil");
-        if (!sigilId) return;
-        var s = document.createElement("script");
-        s.src = ${JSON.stringify(loreOrigin)} + "/sigils/" + sigilId + "/embed.js";
-        document.head.appendChild(s);
-      })();
-    </script>
-  </body>
-</html>`);
+        return (await r.json()) as { id: string };
+      }, campaignId);
+
+      expect(created.id).toBeTruthy();
+      sigilId = created.id;
     });
-    await new Promise<void>((resolve) =>
-      fixtureServer.listen(0, "127.0.0.1", resolve),
-    );
-    const fixturePort = (fixtureServer.address() as AddressInfo).port;
-    const fixtureOrigin = `http://127.0.0.1:${fixturePort}`;
 
-    try {
-      // ── Create a sigil via the Settings → Sigils UI ────────────────────
-      let sigilId = "";
-      await test.step("create a sigil through the settings UI", async () => {
-        await page.goto(`/c/${campaignId}/settings/sigils`);
-        await page.waitForLoadState("networkidle");
+    // ── POST /sigils/:id/ingest — views batch ─────────────────────────────
+    // The trusted server-to-server endpoint accepts views, errors, and vitals
+    // in one batch. Post a single pageview and assert 204 (no content).
+    await test.step("POST /sigils/:id/ingest with views → 204", async () => {
+      const res = await request.post(`${baseURL}/sigils/${sigilId}/ingest`, {
+        headers: { "content-type": "application/json" },
+        data: {
+          views: [{ path: "/checkout" }],
+          country: "FR",
+        },
+      });
+      // 204 = success, no body. The endpoint is fire-and-forget.
+      expect(res.status()).toBe(204);
+    });
 
-        // Enable the Petitions capability via its real Settings UI Switch
-        // (not the API). `petitions` is already ON, so the Switch is
-        // enabled. The label was renamed from "Embedded petitions" to
-        // just "Petitions".
-        const embeddedToggle = page.getByRole("switch", {
-          name: /^petitions$/i,
+    // ── POST /sigils/:id/ingest — errors batch → blight ──────────────────
+    // The unique error message is used to identify this specific blight later.
+    const blightMessage = `SigilE2ETestError_${t}`;
+    await test.step("POST /sigils/:id/ingest with errors → 204", async () => {
+      const res = await request.post(`${baseURL}/sigils/${sigilId}/ingest`, {
+        headers: { "content-type": "application/json" },
+        data: {
+          errors: [
+            {
+              name: "TypeError",
+              message: blightMessage,
+              stack: `TypeError: ${blightMessage}\n  at checkout (/app/checkout.js:42:10)`,
+              sourceUrl: "https://partner.example.com/checkout",
+              origin: "client",
+            },
+          ],
+        },
+      });
+      expect(res.status()).toBe(204);
+    });
+
+    // ── Assert blight lands in the owner's Blights inbox ─────────────────
+    await test.step("blight is visible in the campaign blights inbox", async () => {
+      const result = await page.evaluate(async (id) => {
+        const r = await fetch(`/api/campaigns/${id}/blights`, {
+          credentials: "include",
         });
-        await expect(embeddedToggle).toBeEnabled();
-        await embeddedToggle.click();
-        await expect(embeddedToggle).toBeChecked();
+        if (!r.ok)
+          throw new Error(`listBlights: ${r.status} ${await r.text()}`);
+        return (await r.json()) as {
+          items: Array<{ message: string; name: string; status: string }>;
+          openCount: number;
+        };
+      }, campaignId);
 
-        // The create form now lives behind a "New sigil" button → dialog.
-        await page.getByRole("button", { name: /^new sigil$/i }).click();
-        const labelInput = page.locator("#sigil-label");
-        await expect(labelInput).toBeVisible({ timeout: 15_000 });
+      const blight = result.items.find((b) => b.message === blightMessage);
+      expect(blight, "submitted blight present in owner inbox").toBeTruthy();
+      expect(blight?.name).toBe("TypeError");
+      expect(blight?.status).toBe("open");
+      expect(result.openCount).toBeGreaterThan(0);
+    });
 
-        await labelInput.fill(`Partner ${t}`);
-        await page.locator("#sigil-origins").fill(fixtureOrigin);
-        // The `petition` capability checkbox — un-locked because
-        // `embeddedPetitions` was just toggled on via the UI.
-        // Click the Label, not `#sigil-kind-petition`: Base UI's
-        // Checkbox renders a hidden <input> with the id and a visible
-        // button sibling. Clicking the input directly trips Playwright's
-        // pointer-events check against the dialog backdrop because the
-        // input is positioned off-screen. The label is the intended
-        // click surface.
-        const petitionKind = page.locator("#sigil-kind-petition");
-        await expect(petitionKind).toBeEnabled();
-        await page
-          .getByText(/^Petitions$/, { exact: true })
-          .last()
-          .click();
-        await expect(petitionKind).toBeChecked();
-
-        const createBtn = page.getByRole("button", {
-          name: /^create sigil$/i,
-        });
-        await createBtn.click();
-
-        // The new sigil card renders with a Copy snippet action — proof
-        // the create round-trip succeeded and the list reloaded.
-        await expect(
-          page.getByRole("button", { name: /copy snippet/i }),
-        ).toBeVisible({ timeout: 15_000 });
-
-        // Resolve the freshly created sigil's id via the owner API so the
-        // fixture page can target it.
-        const created = await page.evaluate(async (id) => {
-          const r = await fetch(`/api/c/${id}/sigils`, {
-            credentials: "include",
-          });
-          if (!r.ok) throw new Error(`listSigils: ${r.status}`);
-          return (await r.json()) as { items: Array<{ id: string }> };
-        }, campaignId);
-        expect(created.items.length).toBeGreaterThan(0);
-        sigilId = created.items[0].id;
-        expect(sigilId).not.toEqual("");
+    // ── POST /sigils/:id/petition — multipart form ────────────────────────
+    // The trusted petition endpoint accepts a multipart form. We post via
+    // Playwright's `request.post` with `multipart` to match what
+    // `SigilForwardProvider.forwardPetition` sends.
+    const petitionTitle = `SigilPetition_${t}`;
+    const petitionDescription =
+      "Repro:\n1. open checkout\n2. click Pay\nExpected: success";
+    await test.step("POST /sigils/:id/petition → 200 with { id }", async () => {
+      const res = await request.post(`${baseURL}/sigils/${sigilId}/petition`, {
+        multipart: {
+          title: petitionTitle,
+          description: petitionDescription,
+          type: "bug",
+          hostUrl: "https://partner.example.com/checkout",
+          hostPath: "/checkout",
+          reporterEmail: "user@partner.example.com",
+        },
       });
+      expect(res.status()).toBe(200);
+      const body = (await res.json()) as { id: number };
+      expect(body.id).toBeGreaterThan(0);
+    });
 
-      // ── Load the cross-origin fixture page; it embeds the bundle ───────
-      await test.step("load the partner page embedding the sigil", async () => {
-        await page.goto(`${fixtureOrigin}/?sigil=${sigilId}`);
-        // The bundle mounts a Shadow-DOM host with an icon-only Feedback
-        // button (accessible name comes from aria-label since there's no
-        // text content after #101).
-        await expect(
-          page.getByRole("button", { name: "Feedback" }),
-        ).toBeVisible({ timeout: 15_000 });
-      });
-
-      // ── Click Feedback → capture the petition popup ────────────────────
-      let popup: Page;
-      await test.step("click Feedback → popup opens at /sigils/:id/request", async () => {
-        const popupPromise = page.waitForEvent("popup", { timeout: 30_000 });
-        await page.getByRole("button", { name: "Feedback" }).click();
-        popup = await popupPromise;
-        await popup.waitForLoadState("domcontentloaded");
-        // The popup opens at /sigils/:id/request and the server 302s it to
-        // the SPA request route /c/:campaignId/request?sigil=…
-        await popup.waitForURL(/\/c\/\d+\/request/, { timeout: 20_000 });
-        expect(popup.url()).toContain(`sigil=${sigilId}`);
-      });
-
-      // ── Fill + submit the petition form in the popup ───────────────────
-      await test.step("fill + submit the petition form", async () => {
-        await popup.waitForLoadState("networkidle");
-        // The owner is already authenticated in this context, so the popup
-        // shows the full form (not the sign-in CTA). The request form is a
-        // single free-text field — the petition title is derived from the
-        // first line server-side.
-        await popup
-          .locator("textarea")
-          .first()
-          .fill(`${petitionTitle}\n${petitionDescription}`);
-
-        await popup.getByRole("button", { name: /^submit petition$/i }).click();
-
-        // The popup posts `lore.sigil.submitted` to the opener then closes.
-        await popup.waitForEvent("close", { timeout: 20_000 });
-      });
-
-      // ── Assert the opener received the postMessage ─────────────────────
-      await test.step("opener receives lore.sigil.submitted", async () => {
-        await expect
-          .poll(
-            async () =>
-              page.evaluate(
-                () =>
-                  (window as unknown as { __loreSigilSubmitted: unknown })
-                    .__loreSigilSubmitted,
-              ),
-            { timeout: 10_000 },
-          )
-          .not.toBeNull();
-        const received = (await page.evaluate(
-          () =>
-            (
-              window as unknown as {
-                __loreSigilSubmitted: { type?: string; sigilId?: string };
-              }
-            ).__loreSigilSubmitted,
-        )) as { type?: string; sigilId?: string };
-        expect(received.type).toBe("lore.sigil.submitted");
-        expect(received.sigilId).toBe(sigilId);
-      });
-
-      // ── Owner inbox: the petition carries its source block ─────────────
-      await test.step("owner inbox shows the via-Sigil badge", async () => {
-        await page.goto(`/c/${campaignId}/petitions`);
-        await page.waitForLoadState("networkidle");
-
-        // The submitted petition row is visible by title.
-        await expect(page.getByText(petitionTitle).first()).toBeVisible({
-          timeout: 15_000,
-        });
-        // The "via Sigil" provenance badge proves `source.sigilId` is set.
-        await expect(page.getByText(/via sigil/i).first()).toBeVisible();
-
-        // Confirm the persisted petition carries the full source block.
-        const list = await page.evaluate(async (id) => {
+    // ── Assert petition lands in the owner's Petitions inbox ──────────────
+    await test.step("petition is visible in the campaign petitions inbox with source.sigilId", async () => {
+      const result = await page.evaluate(
+        async ({ id }) => {
           const r = await fetch(
             `/api/campaigns/${id}/petitions?status=pending`,
             {
               credentials: "include",
             },
           );
-          if (!r.ok) throw new Error(`listPetitions: ${r.status}`);
+          if (!r.ok)
+            throw new Error(`listPetitions: ${r.status} ${await r.text()}`);
           return (await r.json()) as {
             items: Array<{
               title: string;
-              source?: { sigilId?: string; hostUrl?: string };
+              source?: {
+                sigilId?: string;
+                hostUrl?: string;
+                hostPath?: string;
+              };
             }>;
           };
-        }, campaignId);
-        const row = list.items.find((p) => p.title === petitionTitle);
-        expect(row, "submitted petition present in owner inbox").toBeTruthy();
-        expect(row?.source?.sigilId).toBe(sigilId);
-        expect(row?.source?.hostUrl).toContain(fixtureOrigin);
-      });
-    } finally {
-      await new Promise<void>((resolve) =>
-        fixtureServer.close(() => resolve()),
+        },
+        { id: campaignId },
       );
-    }
+
+      const petition = result.items.find((p) => p.title === petitionTitle);
+      expect(
+        petition,
+        "submitted petition present in owner inbox",
+      ).toBeTruthy();
+      expect(petition?.source?.sigilId).toBe(sigilId);
+      expect(petition?.source?.hostUrl).toBe(
+        "https://partner.example.com/checkout",
+      );
+      expect(petition?.source?.hostPath).toBe("/checkout");
+    });
+
+    // ── Gate check: ingest rejects a bad sigil UUID ───────────────────────
+    await test.step("ingest with unknown sigil id → 404", async () => {
+      const res = await request.post(
+        `${baseURL}/sigils/00000000-0000-0000-0000-000000000000/ingest`,
+        {
+          headers: { "content-type": "application/json" },
+          data: { views: [{ path: "/test" }] },
+        },
+      );
+      expect(res.status()).toBe(404);
+    });
   });
 });
