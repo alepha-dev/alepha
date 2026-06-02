@@ -20,12 +20,17 @@ export class SigilVitals {
    * finalized on visibilitychange→hidden.
    */
   public observe() {
-    if (typeof window === "undefined" || typeof PerformanceObserver === "undefined") return;
+    if (
+      typeof window === "undefined" ||
+      typeof PerformanceObserver === "undefined"
+    )
+      return;
 
     // FCP: paint entry "first-contentful-paint"
     this.safeObserve(["paint"], (entries) => {
       for (const e of entries) {
-        if ((e as any).name === "first-contentful-paint") this.report("fcp", e.startTime);
+        if ((e as any).name === "first-contentful-paint")
+          this.report("fcp", e.startTime);
       }
     });
 
@@ -33,7 +38,9 @@ export class SigilVitals {
     let lcp = 0;
     this.safeObserve(["largest-contentful-paint"], (entries) => {
       const last = entries[entries.length - 1];
-      if (last) lcp = (last as any).renderTime || (last as any).loadTime || last.startTime;
+      if (last)
+        lcp =
+          (last as any).renderTime || (last as any).loadTime || last.startTime;
     });
 
     // CLS: sum of layout-shift values without recent input.

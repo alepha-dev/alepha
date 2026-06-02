@@ -1,5 +1,11 @@
 type View = { path: string };
-type ErrEvt = { name: string; message: string; stack: string; sourceUrl: string; origin?: "client" };
+type ErrEvt = {
+  name: string;
+  message: string;
+  stack: string;
+  sourceUrl: string;
+  origin?: "client";
+};
 type Vital = { path: string; metric: string; value: number };
 type Envelope = { views?: View[]; errors?: ErrEvt[]; vitals?: Vital[] };
 
@@ -19,9 +25,15 @@ export class SigilTelemetryQueue {
     protected readonly opts: { debounceMs: number } = { debounceMs: 5000 },
   ) {}
 
-  addView(path: string) { this.push(this.views, { path }, 50); }
-  addError(e: ErrEvt) { this.push(this.errors, e, 20); }
-  addVital(v: Vital) { this.push(this.vitals, v, 50); }
+  addView(path: string) {
+    this.push(this.views, { path }, 50);
+  }
+  addError(e: ErrEvt) {
+    this.push(this.errors, e, 20);
+  }
+  addVital(v: Vital) {
+    this.push(this.vitals, v, 50);
+  }
 
   protected push<T>(arr: T[], item: T, cap: number) {
     if (arr.length < cap) arr.push(item);
@@ -34,8 +46,12 @@ export class SigilTelemetryQueue {
   }
 
   public async flush(): Promise<void> {
-    if (this.timer) { clearTimeout(this.timer); this.timer = null; }
-    if (!this.views.length && !this.errors.length && !this.vitals.length) return;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    if (!this.views.length && !this.errors.length && !this.vitals.length)
+      return;
     const env: Envelope = {};
     if (this.views.length) env.views = this.views.splice(0);
     if (this.errors.length) env.errors = this.errors.splice(0);
