@@ -109,8 +109,15 @@ export class SigilProxyController {
         throw new AlephaError("Sigil not configured");
       }
 
-      const { title, description, type, hostUrl, hostPath, reporterEmail, screenshot } =
-        request.body;
+      const {
+        title,
+        description,
+        type,
+        hostUrl,
+        hostPath,
+        reporterEmail,
+        screenshot,
+      } = request.body;
 
       const form = new FormData();
       form.set("title", title);
