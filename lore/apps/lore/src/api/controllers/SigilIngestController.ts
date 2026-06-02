@@ -1,8 +1,13 @@
 import { $inject, t } from "alepha";
+import { FileService } from "alepha/api/files";
 import { $logger } from "alepha/logger";
+import { $repository, $sequence } from "alepha/orm";
 import { $route, HttpError } from "alepha/server";
+import { FileSystemProvider } from "alepha/system";
+import { petitions } from "../entities/petitions.ts";
 import { BeaconIngestService } from "../services/BeaconIngestService.ts";
 import { BlightIngestService } from "../services/BlightIngestService.ts";
+import { PetitionRateLimiter } from "../services/PetitionRateLimiter.ts";
 import { SigilIngestSupport } from "../services/SigilIngestSupport.ts";
 import { SigilService } from "../services/SigilService.ts";
 import { VitalsIngestService } from "../services/VitalsIngestService.ts";
@@ -108,6 +113,17 @@ export class SigilIngestController {
   protected blights = $inject(BlightIngestService);
   protected vitals = $inject(VitalsIngestService);
   protected support = $inject(SigilIngestSupport);
+  protected petitionsRepo = $repository(petitions);
+  protected rateLimiter = $inject(PetitionRateLimiter);
+  protected fileService = $inject(FileService);
+  protected fileSystem = $inject(FileSystemProvider);
+
+  /**
+   * Shares the per-campaign shortId sequence with {@link PetitionController}.
+   * The name must match the property key used in `PetitionController`
+   * (`petitionShortId`) so both paths draw from the same counter table rows.
+   */
+  protected petitionShortId = $sequence({ name: "petitionShortId" });
 
   /**
    * `POST /sigils/:id/ingest` — batched, trusted server-to-server ingest.
@@ -207,4 +223,192 @@ export class SigilIngestController {
       reply.setStatus(204);
     },
   });
+
+  /**
+   * `POST /sigils/:id/petition` — anonymous, UUID-keyed multipart petition.
+   *
+   * The partner app's sigil proxy forwards a user-submitted form to this
+   * endpoint. There is no Lore session, no `Origin` allow-list, no CORS —
+   * the sigil UUID is the sole server-to-server credential.
+   *
+   * **Security model:**
+   * 1. Sigil resolves from `:id` — 404 if missing.
+   * 2. `features.sigils` master toggle — 403 if off.
+   * 3. `features.embeddedPetitions` — 403 if off.
+   * 4. `sigil.kinds.includes("petition")` — 403 if absent.
+   * 5. Per-sigil-per-day rate cap via {@link PetitionRateLimiter}.
+   *
+   * The petition is anonymous — `reporterEmail` comes from the forwarded form
+   * (attacker-controlled, persisted verbatim, rendered as escaped plain text
+   * only — see folio #12). No Lore user is resolved or required.
+   *
+   * If a `screenshot` file is present it is validated and stored into the
+   * `petition-attachments` bucket via {@link FileService} **without** an owner
+   * stamp (trusted server path — there is no user to attribute it to).
+   *
+   * Returns `{ id }` — the internal petition row id.
+   */
+  submitSigilPetition = $route({
+    method: "POST",
+    path: "/sigils/:id/petition",
+    schema: {
+      params: t.object({ id: t.string() }),
+      body: t.object({
+        title: t.string({ minLength: 1, maxLength: 200 }),
+        description: t.string({ minLength: 1, maxLength: 10_000 }),
+        /**
+         * Petition type hint forwarded from the form. Mapped to a `type=…` tag
+         * on the petition row so the campaign owner can filter. The petition
+         * entity has no dedicated `type` column — tags are the canonical
+         * container for this kind of metadata. If the field is absent no tag is
+         * added.
+         */
+        type: t.optional(t.enum(["bug", "feature"], { mode: "text" })),
+        /**
+         * URL of the page the form was submitted from. Stored in
+         * `source.hostUrl`. Attacker-controlled — render as escaped plain text.
+         */
+        hostUrl: t.string({ maxLength: 2000 }),
+        /**
+         * Path component of the page URL. Stored in `source.hostPath`.
+         * Attacker-controlled — render as escaped plain text.
+         */
+        hostPath: t.string({ maxLength: 2000 }),
+        /**
+         * Partner-supplied reporter email. May be absent (anonymous path).
+         * Attacker-controlled — render as escaped plain text only.
+         */
+        reporterEmail: t.optional(t.string({ maxLength: 320 })),
+        /**
+         * Optional screenshot attachment. Validated (MIME + extension + size)
+         * and stored in the `petition-attachments` bucket.
+         */
+        screenshot: t.optional(t.file()),
+      }),
+      response: t.object({ id: t.integer() }),
+    },
+    handler: async ({ params, body }) => {
+      // Gate 1 — sigil resolves.
+      const sigil = await this.sigils.findForEmbed(params.id);
+      if (!sigil) {
+        throw new HttpError({ status: 404, message: "Sigil not found" });
+      }
+
+      // Gate 2 — master toggle.
+      const sigilsOn = await this.support.isFeatureOn(
+        sigil.campaignId,
+        "sigils",
+      );
+      if (!sigilsOn) {
+        throw new HttpError({
+          status: 403,
+          message: "Sigils are disabled for this campaign",
+        });
+      }
+
+      // Gate 3 — embedded-petition capability.
+      const embeddedPetitionsOn = await this.support.isFeatureOn(
+        sigil.campaignId,
+        "embeddedPetitions",
+      );
+      if (!embeddedPetitionsOn) {
+        throw new HttpError({
+          status: 403,
+          message: "Embedded petitions are disabled for this campaign",
+        });
+      }
+
+      // Gate 4 — sigil grants "petition" kind.
+      if (!(sigil.kinds ?? []).includes("petition")) {
+        throw new HttpError({
+          status: 403,
+          message: "Sigil does not grant the petition capability",
+        });
+      }
+
+      // Gate 5 — per-sigil-per-day rate cap.
+      await this.rateLimiter.assertSigilPetitionAllowed(sigil.id);
+
+      // Optional screenshot — validate and store before creating the petition
+      // row so the file id is available for the `attachments` array. No user
+      // is passed (trusted server path — there is no Lore session), so no
+      // per-user ownership stamp is set. The `assertAttachmentsBelongToUser`
+      // check in `PetitionController` is bypassed on this path by design.
+      let attachments: string[] = [];
+      if (body.screenshot) {
+        const limits = this.rateLimiter.options();
+        const file = body.screenshot;
+
+        if (file.size > limits.maxFileSizeBytes) {
+          throw new HttpError({
+            status: 400,
+            message: `File too large (max ${Math.round(limits.maxFileSizeBytes / 1024 / 1024)} MB)`,
+          });
+        }
+
+        if (!limits.allowedMimeTypes.includes(file.type)) {
+          throw new HttpError({
+            status: 400,
+            message: `File type not allowed: ${file.type}`,
+          });
+        }
+
+        const ext = this.extractExtension(file.name);
+        if (!ext || !limits.allowedExtensions.includes(ext)) {
+          throw new HttpError({
+            status: 400,
+            message: `File extension not allowed: .${ext ?? ""}`,
+          });
+        }
+
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const reusable = this.fileSystem.createFile({
+          buffer,
+          name: file.name,
+          type: file.type,
+        });
+
+        const stored = await this.fileService.uploadFile(reusable, {
+          bucket: PetitionRateLimiter.ATTACHMENT_BUCKET,
+          // No `user` — this is the anonymous server-to-server path.
+        });
+
+        attachments = [stored.id];
+      }
+
+      // Build the `type` tag if the form supplied a type hint.
+      const tags = body.type ? [`type=${body.type}`] : [];
+
+      const shortId = await this.petitionShortId.next(String(sigil.campaignId));
+
+      const created = await this.petitionsRepo.create({
+        campaignId: sigil.campaignId,
+        shortId,
+        reporterEmail: body.reporterEmail ?? undefined,
+        title: body.title.slice(0, 200),
+        description: body.description.slice(0, 10_000),
+        status: "pending",
+        attachments,
+        tags,
+        source: {
+          sigilId: sigil.id,
+          hostUrl: body.hostUrl,
+          hostPath: body.hostPath,
+          userAgent: "",
+        },
+      });
+
+      return { id: created.id };
+    },
+  });
+
+  /**
+   * Extract the lowercased file extension from a filename.
+   * Returns `undefined` when the name has no dot or the dot is the last char.
+   */
+  protected extractExtension(name: string): string | undefined {
+    const idx = name.lastIndexOf(".");
+    if (idx < 0 || idx === name.length - 1) return undefined;
+    return name.slice(idx + 1).toLowerCase();
+  }
 }
