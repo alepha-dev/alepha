@@ -30,14 +30,12 @@ export const petitions = $entity({
     /**
      * Identity of the petition submitter.
      *
-     * First-party petitions (submitted via the in-app `/c/:id/request` form by
-     * a logged-in Lore user) store that user's verified account email here.
-     * Anonymous sigil petitions submitted via an embedded widget store the
+     * Sigil petitions submitted via an embedded widget store the
      * partner-supplied email when one is available, or `null` when none was
      * provided — so the field may be absent even on accepted petitions.
      *
-     * ⚠️ SECURITY: this value is attacker-controlled on the anonymous-sigil
-     * path. Render it as escaped plain text only — never markdown or
+     * ⚠️ SECURITY: this value is attacker-controlled (the embedding page sets
+     * it). Render it as escaped plain text only — never markdown or
      * `dangerouslySetInnerHTML`. See folio #12.
      */
     reporterEmail: t.optional(t.string({ maxLength: 320 })),
@@ -45,7 +43,7 @@ export const petitions = $entity({
     description: t.string({ maxLength: 10_000 }),
     status: t.enum(["pending", "accepted", "rejected"], { mode: "text" }),
     /**
-     * Attachment file ids (uploaded via `POST /campaigns/:id/petitions/attachments`).
+     * Attachment file ids (stored in the `petition-attachments` bucket).
      * Stored as `uuid[]` mirroring `quests.attachments`.
      */
     attachments: db.default(t.array(t.uuid()), []),
@@ -59,8 +57,7 @@ export const petitions = $entity({
       [],
     ),
     /**
-     * Provenance of an embedded submission. `null`/absent for first-party
-     * petitions (the in-app `/c/:id/request` form). When a petition arrives
+     * Provenance of a sigil petition submission. When a petition arrives
      * via a sigil-embedded widget the embedding page supplies this block so
      * the campaign owner sees where it came from.
      *

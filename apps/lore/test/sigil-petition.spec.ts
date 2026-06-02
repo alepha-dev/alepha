@@ -78,8 +78,8 @@ const createCampaign = async (
   user: { id: string; roles: string[] },
   features: {
     sigils?: boolean;
-    embeddedPetitions?: boolean;
-  } = { sigils: true, embeddedPetitions: true },
+    petitions?: boolean;
+  } = { sigils: true, petitions: true },
 ): Promise<number> => {
   const created = await ctx.campaignController.createCampaign.fetch(
     {
@@ -245,7 +245,7 @@ describe("POST /sigils/:id/petition — anonymous sigil petition endpoint", () =
     const owner = await createTestUser(ctx);
     const campaignId = await createCampaign(ctx, owner, {
       sigils: false,
-      embeddedPetitions: true,
+      petitions: true,
     });
     const sigilId = await createSigil(ctx, campaignId, owner);
 
@@ -253,13 +253,11 @@ describe("POST /sigils/:id/petition — anonymous sigil petition endpoint", () =
     expect(res.status).toBe(403);
   });
 
-  it("returns 403 when features.embeddedPetitions is off", async ({
-    expect,
-  }) => {
+  it("returns 403 when features.petitions is off", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const campaignId = await createCampaign(ctx, owner, {
       sigils: true,
-      embeddedPetitions: false,
+      petitions: false,
     });
     const sigilId = await createSigil(ctx, campaignId, owner);
 

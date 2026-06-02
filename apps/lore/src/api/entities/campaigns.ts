@@ -4,6 +4,14 @@ import { $entity, db } from "alepha/orm";
 export const campaignFeaturesSchema = t.object({
   kanban: t.boolean(),
   folios: t.boolean(),
+  /**
+   * Gates both the petition inbox (owner triage) and the sigil petition
+   * capability (`POST /sigils/:id/petition`). For sigil petitions, ALL
+   * three gates must be on: `features.sigils` (master) AND
+   * `features.petitions` AND the sigil's `kinds.includes("petition")`.
+   * Petitions arrive ONLY via the sigil in-app dialog — there is no
+   * standalone first-party submission form.
+   */
   petitions: t.boolean(),
   chapters: t.boolean(),
   /**
@@ -26,7 +34,6 @@ export const campaignFeaturesSchema = t.object({
    * switches — no paywall.
    */
   sigils: t.optional(t.boolean()),
-  embeddedPetitions: t.optional(t.boolean()),
   blights: t.optional(t.boolean()),
   beacon: t.optional(t.boolean()),
   vitals: t.optional(t.boolean()),

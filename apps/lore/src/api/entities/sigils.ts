@@ -7,7 +7,7 @@ import { users } from "./users.ts";
  * The capabilities a sigil may grant. Declared once here and reused by the
  * SigilController body schema and the Settings → Sigils UI so the literal
  * list never drifts. NB: `"petition"` is singular — it names the per-sigil
- * capability, distinct from the campaign-level `embeddedPetitions` feature
+ * capability, distinct from the campaign-level `petitions` feature
  * toggle that gates it.
  */
 export const SIGIL_KINDS = ["petition", "blights", "beacon", "vitals"] as const;

@@ -1,5 +1,6 @@
 import { $inject, t } from "alepha";
 import { FileService } from "alepha/api/files";
+import { $bucket } from "alepha/bucket";
 import { $logger } from "alepha/logger";
 import { $repository, $sequence } from "alepha/orm";
 import { $route, HttpError } from "alepha/server";
@@ -119,9 +120,19 @@ export class SigilIngestController {
   protected fileSystem = $inject(FileSystemProvider);
 
   /**
-   * Shares the per-campaign shortId sequence with {@link PetitionController}.
-   * The name must match the property key used in `PetitionController`
-   * (`petitionShortId`) so both paths draw from the same counter table rows.
+   * Bucket for petition attachments (screenshots forwarded by the sigil
+   * proxy). Size cap mirrors `petitionOptionsAtom` — the bucket-level limit
+   * acts as a hard backstop in case the controller check is bypassed.
+   */
+  protected attachmentBucket = $bucket({
+    name: PetitionRateLimiter.ATTACHMENT_BUCKET,
+    maxSize: 5,
+  });
+
+  /**
+   * Per-campaign sequence for `petitions.shortId`. Named `petitionShortId`
+   * to remain consistent with the key used in sequence-storage rows; do not
+   * rename without a data migration.
    */
   protected petitionShortId = $sequence({ name: "petitionShortId" });
 
@@ -234,7 +245,7 @@ export class SigilIngestController {
    * **Security model:**
    * 1. Sigil resolves from `:id` — 404 if missing.
    * 2. `features.sigils` master toggle — 403 if off.
-   * 3. `features.embeddedPetitions` — 403 if off.
+   * 3. `features.petitions` — 403 if off.
    * 4. `sigil.kinds.includes("petition")` — 403 if absent.
    * 5. Per-sigil-per-day rate cap via {@link PetitionRateLimiter}.
    *
@@ -306,15 +317,15 @@ export class SigilIngestController {
         });
       }
 
-      // Gate 3 — embedded-petition capability.
-      const embeddedPetitionsOn = await this.support.isFeatureOn(
+      // Gate 3 — petitions feature flag.
+      const petitionsOn = await this.support.isFeatureOn(
         sigil.campaignId,
-        "embeddedPetitions",
+        "petitions",
       );
-      if (!embeddedPetitionsOn) {
+      if (!petitionsOn) {
         throw new HttpError({
           status: 403,
-          message: "Embedded petitions are disabled for this campaign",
+          message: "Petitions are disabled for this campaign",
         });
       }
 
