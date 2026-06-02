@@ -14,6 +14,7 @@ export class SigilForwardProvider {
   protected readonly init = $hook({
     on: "start",
     handler: () => {
+      if (this.alepha.isBrowser()) return;
       const { SIGIL_ID, LORE_URL } = this.alepha.parseEnv(sigilEnv);
 
       if (!this.alepha.isProduction()) return;
