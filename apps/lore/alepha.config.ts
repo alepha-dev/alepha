@@ -55,6 +55,8 @@ export default defineConfig({
         "petitions.filter.",
         // tr(`insights.range.${r}`) — 1d/7d/30d.
         "insights.range.",
+        // tr(`insights.vitals.${key}`) — lcp/cls/inp/fcp/ttfb (Web Vitals p75 cards).
+        "insights.vitals.",
         // tr(`folios.activity.action.${action}`) — create/edit/rename/tag-change/revert.
         "folios.activity.action.",
       ],
