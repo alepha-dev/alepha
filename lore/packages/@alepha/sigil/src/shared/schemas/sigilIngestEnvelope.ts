@@ -7,7 +7,9 @@ import { t } from "alepha";
  */
 export const sigilIngestEnvelope = t.object({
   views: t.optional(
-    t.array(t.object({ path: t.string({ maxLength: 1024 }) }), { maxItems: 50 }),
+    t.array(t.object({ path: t.string({ maxLength: 1024 }) }), {
+      maxItems: 50,
+    }),
   ),
   errors: t.optional(
     t.array(
