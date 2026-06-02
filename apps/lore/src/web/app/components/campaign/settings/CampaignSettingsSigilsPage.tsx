@@ -105,7 +105,7 @@ const CampaignSettingsSigilsPage = () => {
   };
 
   const copySnippet = (sigil: SigilResource) => {
-    const snippet = `<script src="${origin}/sigils/${sigil.id}/embed.js"></script>`;
+    const snippet = `POST ${origin}/sigils/${sigil.id}/ingest`;
     void navigator.clipboard.writeText(snippet);
     toaster.success(tr("sigils.toast.copied"));
   };

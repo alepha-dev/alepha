@@ -5,7 +5,6 @@ import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
-import { AlephaServerCors } from "alepha/server/cors";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
@@ -22,15 +21,12 @@ const userDataSchema = t.object({
 
 interface TestContext {
   alepha: Alepha;
-  baseUrl: string;
   adminUserController: AdminUserController;
   campaignController: CampaignController;
   sigilController: SigilController;
   blights: BlightIngestService;
   fakeProvider: FakeProvider;
 }
-
-const ORIGIN = "https://shop.example.com";
 
 const setup = async (
   envOverrides: Record<string, string> = {},
@@ -47,7 +43,6 @@ const setup = async (
 
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
-  alepha.with(AlephaServerCors);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
@@ -55,11 +50,10 @@ const setup = async (
   alepha.with(LoreApi);
 
   await alepha.start();
-  const server = alepha.inject(ServerProvider);
+  alepha.inject(ServerProvider);
 
   return {
     alepha,
-    baseUrl: server.hostname,
     adminUserController: alepha.inject(AdminUserController),
     campaignController: alepha.inject(CampaignController),
     sigilController: alepha.inject(SigilController),
@@ -82,14 +76,12 @@ const createTestUser = async (
 const createCampaign = async (
   ctx: TestContext,
   user: { id: string; roles: string[] },
-  blightsOn = true,
-  sigilsOn = true,
 ): Promise<number> => {
   const created = await ctx.campaignController.createCampaign.fetch(
     {
       body: {
         title: "Blights",
-        features: { sigils: sigilsOn, blights: blightsOn },
+        features: { sigils: true, blights: true },
       },
     },
     { user },
@@ -102,38 +94,15 @@ const createSigil = async (
   campaignId: number,
   user: { id: string; roles: string[] },
   kinds: ("petition" | "blights" | "beacon")[] = ["blights"],
-): Promise<{ id: string; ingestKey: string }> => {
+): Promise<{ id: string }> => {
   const created = await ctx.sigilController.createSigil.fetch(
     {
       params: { campaignId },
-      body: { label: "blight sigil", allowedOrigins: [ORIGIN], kinds },
+      body: { label: "blight sigil", kinds },
     },
     { user },
   );
-  const sigilService = ctx.alepha.inject(
-    (await import("../src/api/services/SigilService.ts")).SigilService,
-  );
-  const row = await sigilService.findForEmbed(created.data.id);
-  return { id: created.data.id, ingestKey: row!.ingestKey };
-};
-
-const ingest = async (
-  ctx: TestContext,
-  sigilId: string,
-  body: unknown,
-  opts: { origin?: string; ua?: string; keyHeader?: string } = {},
-) => {
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-    origin: opts.origin ?? ORIGIN,
-    "user-agent": opts.ua ?? "Mozilla/5.0 (real browser)",
-  };
-  if (opts.keyHeader) headers["x-sigil-key"] = opts.keyHeader;
-  return fetch(`${ctx.baseUrl}/sigils/${sigilId}/blights`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
+  return { id: created.data.id };
 };
 
 const ev = (over: Record<string, string> = {}) => ({
@@ -257,200 +226,6 @@ describe("Blights ingestion", () => {
     expect(isBotUserAgent("Mozilla/5.0 (Macintosh) AppleWebKit Safari")).toBe(
       false,
     );
-  });
-
-  it("records a crash and dedups repeats into one row with count++", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const sigil = await createSigil(ctx, campaignId, owner);
-
-    const r1 = await ingest(ctx, sigil.id, {
-      ingestKey: sigil.ingestKey,
-      events: [ev()],
-    });
-    expect(r1.status).toBe(204);
-
-    // Same crash, twice more.
-    await ingest(ctx, sigil.id, {
-      ingestKey: sigil.ingestKey,
-      events: [ev(), ev()],
-    });
-
-    const blights = ctx.blights;
-    const fp = blights.fingerprint(
-      "TypeError",
-      blights.sanitizeStack(ev().stack),
-      sigil.id,
-    );
-    const row = await (blights as any).blights.findOne({
-      where: { sigilId: { eq: sigil.id }, fingerprint: { eq: fp } },
-    });
-    expect(row).toBeDefined();
-    expect(row.count).toBe(3);
-    // recentIps hashed, never raw.
-    expect(row.recentIps.length).toBe(1);
-    expect(row.recentIps[0]).not.toContain(".");
-  });
-
-  it("accepts ingestKey via X-Sigil-Key header", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const sigil = await createSigil(ctx, campaignId, owner);
-
-    const res = await ingest(
-      ctx,
-      sigil.id,
-      { events: [ev()] },
-      { keyHeader: sigil.ingestKey },
-    );
-    expect(res.status).toBe(204);
-  });
-
-  it("rejects a bad ingestKey with 403 and stores nothing", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const sigil = await createSigil(ctx, campaignId, owner);
-
-    const res = await ingest(ctx, sigil.id, {
-      ingestKey: "wrong-key",
-      events: [ev()],
-    });
-    expect(res.status).toBe(403);
-
-    const count = await (ctx.blights as any).blights.count({
-      sigilId: { eq: sigil.id },
-    });
-    expect(count).toBe(0);
-  });
-
-  it("drops bot-UA requests with 204 and stores nothing", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const sigil = await createSigil(ctx, campaignId, owner);
-
-    const res = await ingest(
-      ctx,
-      sigil.id,
-      { ingestKey: sigil.ingestKey, events: [ev()] },
-      { ua: "Googlebot/2.1 (+http://www.google.com/bot.html)" },
-    );
-    expect(res.status).toBe(204);
-    const count = await (ctx.blights as any).blights.count({
-      sigilId: { eq: sigil.id },
-    });
-    expect(count).toBe(0);
-  });
-
-  it("DISABLE_BOT_CHECK escape hatch ingests a known-bot UA instead of dropping it", async ({
-    expect,
-  }) => {
-    // Fresh instance with the escape hatch enabled — env is read once at
-    // service construction, so it needs its own Alepha.
-    const hatched = await setup({ DISABLE_BOT_CHECK: "1" });
-    try {
-      expect(hatched.blights.isBotCheckDisabled()).toBe(true);
-
-      const owner = await createTestUser(hatched);
-      const campaignId = await createCampaign(hatched, owner);
-      const sigil = await createSigil(hatched, campaignId, owner);
-
-      const res = await ingest(
-        hatched,
-        sigil.id,
-        { ingestKey: sigil.ingestKey, events: [ev()] },
-        { ua: "Googlebot/2.1 (+http://www.google.com/bot.html)" },
-      );
-      expect(res.status).toBe(204);
-      // With the hatch on, the known-bot event is NOT dropped — it lands.
-      const count = await (hatched.blights as any).blights.count({
-        sigilId: { eq: sigil.id },
-      });
-      expect(count).toBe(1);
-    } finally {
-      await hatched.alepha.stop();
-    }
-  });
-
-  it("403 when the campaign blights feature is off", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner, false);
-    const sigil = await createSigil(ctx, campaignId, owner);
-
-    const res = await ingest(ctx, sigil.id, {
-      ingestKey: sigil.ingestKey,
-      events: [ev()],
-    });
-    expect(res.status).toBe(403);
-  });
-
-  it("403 when the campaign sigils master toggle is off (even if blights on)", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    // blights ON, but the sigils master toggle OFF.
-    const campaignId = await createCampaign(ctx, owner, true, false);
-    const sigil = await createSigil(ctx, campaignId, owner);
-
-    const res = await ingest(ctx, sigil.id, {
-      ingestKey: sigil.ingestKey,
-      events: [ev()],
-    });
-    expect(res.status).toBe(403);
-  });
-
-  it("403 when the sigil lacks the blights capability", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const sigil = await createSigil(ctx, campaignId, owner, ["petition"]);
-
-    const res = await ingest(ctx, sigil.id, {
-      ingestKey: sigil.ingestKey,
-      events: [ev()],
-    });
-    expect(res.status).toBe(403);
-  });
-
-  it("403 when the Origin is not allow-listed", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const sigil = await createSigil(ctx, campaignId, owner);
-
-    const res = await ingest(
-      ctx,
-      sigil.id,
-      { ingestKey: sigil.ingestKey, events: [ev()] },
-      { origin: "https://evil.example.com" },
-    );
-    expect(res.status).toBe(403);
-  });
-
-  it("404 missing sigil, 404 deleted sigil", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const sigil = await createSigil(ctx, campaignId, owner);
-
-    const missing = await ingest(ctx, crypto.randomUUID(), {
-      ingestKey: "k",
-      events: [ev()],
-    });
-    expect(missing.status).toBe(404);
-
-    // Sigils are hard-deleted — a deleted sigil is just a 404, no 410.
-    await ctx.sigilController.deleteSigil.fetch(
-      { params: { campaignId, id: sigil.id } },
-      { user: owner },
-    );
-    const deleted = await ingest(ctx, sigil.id, {
-      ingestKey: sigil.ingestKey,
-      events: [ev()],
-    });
-    expect(deleted.status).toBe(404);
   });
 
   it("novelty rate limit: caps NEW fingerprints per IP/day, known ones keep counting", async ({

@@ -9,9 +9,8 @@ import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 
 /**
  * A sigil resource as exposed to the owner's Settings page. NB: the
- * `ingestKey` column is deliberately ABSENT — it is a secret baked into
- * the served `.js` body and the UI never needs it (the copy-snippet
- * uses only the public `id`).
+ * `ingestKey` column is deliberately ABSENT — it is a server-held secret
+ * and the UI never needs it (the copy-snippet uses only the public `id`).
  */
 const sigilResourceSchema = t.object({
   id: t.uuid(),
@@ -44,13 +43,12 @@ const sigilBodySchema = t.object({
 });
 
 /**
- * Owner-facing CRUD surface for sigils — the scoped, revocable
- * identifiers that let a site embed Lore capabilities via one
- * `<script src=".../sigils/<id>/embed.js">` line.
+ * Owner-facing CRUD surface for sigils — the scoped, revocable identifiers
+ * that let a partner server forward telemetry and petitions to Lore via
+ * the trusted server-to-server ingest endpoints.
  *
  * Every endpoint is owner-gated via `AppSecurityProvider.assertOwner`,
- * mirroring `PetitionController`'s owner endpoints. The served embed
- * script, CORS wiring, and capability ingestion live in later quests.
+ * mirroring `PetitionController`'s owner endpoints.
  */
 export class SigilController {
   protected log = $logger();

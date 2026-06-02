@@ -1,5 +1,4 @@
 import { $module } from "alepha";
-import { AlephaServerCors } from "alepha/server/cors";
 import { AdminInvitationController } from "./controllers/AdminInvitationController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
 import { BlobController } from "./controllers/BlobController.ts";
@@ -19,7 +18,6 @@ import { PetitionController } from "./controllers/PetitionController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
-import { SigilEmbedController } from "./controllers/SigilEmbedController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { UserController } from "./controllers/UserController.ts";
 import { VersionController } from "./controllers/VersionController.ts";
@@ -57,10 +55,6 @@ import { VitalsIngestService } from "./services/VitalsIngestService.ts";
 
 export const LoreApi = $module({
   name: "lore.api",
-  // The Sigils embed route applies per-sigil CORS (origin reflecting the
-  // sigil's own `allowedOrigins`); `AlephaServerCors` also auto-generates
-  // the `OPTIONS` preflight routes the future ingestion POSTs need.
-  imports: [AlephaServerCors],
   services: [
     AppSecurityProvider,
     // Substituted for the framework's `FileAccessProvider` in
@@ -113,7 +107,6 @@ export const LoreApi = $module({
     BlobController,
     PetitionController,
     SigilController,
-    SigilEmbedController,
     SigilIngestController,
     BlightController,
     InsightsController,
