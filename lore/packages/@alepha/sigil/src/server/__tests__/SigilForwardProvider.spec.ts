@@ -1,0 +1,54 @@
+import { Alepha } from "alepha";
+import { HttpClient } from "alepha/server";
+import { describe, expect, it } from "vitest";
+import { SigilForwardProvider } from "../SigilForwardProvider.ts";
+
+class RecordingHttpClient extends HttpClient {
+  public calls: Array<{ url: string; body: any }> = [];
+
+  async fetch(url: string, opts: any): Promise<any> {
+    this.calls.push({ url, body: opts?.body });
+    return { data: {}, status: 204 } as any;
+  }
+}
+
+const make = (env: Record<string, any>) =>
+  Alepha.create({
+    env: { NODE_ENV: "production", SERVER_PORT: 0, ...env },
+  }).with({
+    provide: HttpClient,
+    use: RecordingHttpClient,
+  });
+
+describe("SigilForwardProvider", () => {
+  it("is disabled without SIGIL_ID and forwards nothing", async () => {
+    const alepha = make({});
+    const fwd = alepha.inject(SigilForwardProvider);
+    await alepha.start();
+    expect(fwd.enabled()).toBe(false);
+    await fwd.forwardIngest({ views: [{ path: "/" }] }, { country: "FR" });
+    expect(
+      (alepha.inject(HttpClient) as RecordingHttpClient).calls,
+    ).toHaveLength(0);
+  });
+
+  it("forwards to LORE_URL/sigils/:id/ingest when enabled", async () => {
+    const alepha = make({ SIGIL_ID: "abc", LORE_URL: "https://lore.test" });
+    const fwd = alepha.inject(SigilForwardProvider);
+    await alepha.start();
+    expect(fwd.enabled()).toBe(true);
+    await fwd.forwardIngest({ views: [{ path: "/" }] }, { country: "FR" });
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    expect(http.calls[0].url).toBe("https://lore.test/sigils/abc/ingest");
+    expect(JSON.parse(http.calls[0].body).country).toBe("FR");
+  });
+
+  it("defaults LORE_URL to https://lore.alepha.dev", async () => {
+    const alepha = make({ SIGIL_ID: "abc" });
+    const fwd = alepha.inject(SigilForwardProvider);
+    await alepha.start();
+    await fwd.forwardIngest({ views: [] }, {});
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    expect(http.calls[0].url).toBe("https://lore.alepha.dev/sigils/abc/ingest");
+  });
+});
