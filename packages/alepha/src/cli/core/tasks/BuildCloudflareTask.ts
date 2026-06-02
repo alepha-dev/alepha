@@ -75,6 +75,14 @@ export interface BuildManifest {
    */
   crons: string[];
   /**
+   * Cloudflare email binding, captured when the app registers
+   * `CloudflareEmailProvider` at artifact-build time. The prebuilt/manifest
+   * deploy path (Alepha Rocket `--prebuilt`) has no Vite introspection, so it
+   * reads this to re-emit the `send_email` wrangler binding. Absent when the
+   * app doesn't use Cloudflare email.
+   */
+  email?: { binding: string };
+  /**
    * `$container()` descriptors — image, port, lifecycle settings.
    * Used both to populate Cloudflare Containers bindings in
    * wrangler.jsonc and (in future) to know which images Rocket should
@@ -279,6 +287,14 @@ export class BuildCloudflareTask extends BuildTask {
       env = Object.keys(ctx.alepha.dump().env).sort();
     } catch {}
 
+    // Capture the CF email binding so manifest-mode deploys (Rocket) can
+    // re-emit `send_email` — `enhanceEmail` can't introspect there.
+    let email: BuildManifest["email"];
+    try {
+      ctx.alepha.inject(CLOUDFLARE_EMAIL_PROVIDER_NAME);
+      email = { binding: SEND_EMAIL_DEFAULT_BINDING };
+    } catch {}
+
     const manifest: BuildManifest = {
       version: 1,
       project: name,
@@ -302,6 +318,7 @@ export class BuildCloudflareTask extends BuildTask {
         instanceType: c.instanceType,
         maxInstances: c.maxInstances,
       })),
+      email,
       env,
     };
 
@@ -472,25 +489,30 @@ export class BuildCloudflareTask extends BuildTask {
     ctx: BuildTaskContext,
     wrangler: WranglerConfig,
   ): void {
-    // Manifest mode doesn't capture email provider details yet. Apps
-    // using CloudflareEmailProvider would need a manifest field added.
-    // For now, skip — non-email apps and apps using non-CF providers
-    // are unaffected. TODO: add `emailProvider` to BuildManifest.
-    if (ctx.manifest || !ctx.alepha) {
-      return;
+    // Resolve the CF email binding from whichever source this build path has:
+    // - manifest/prebuilt mode (Alepha Rocket `--prebuilt`): no app boot, so
+    //   read the binding captured into the manifest at artifact-build time.
+    //   Without this the deploy silently drops `send_email` and the worker
+    //   boots with email inert (binding not found).
+    // - full Vite introspection (`ctx.alepha`, no manifest): probe for the
+    //   registered CloudflareEmailProvider.
+    let binding: string | undefined;
+    if (ctx.manifest) {
+      binding = ctx.manifest.email?.binding;
+    } else if (ctx.alepha) {
+      try {
+        ctx.alepha.inject(CLOUDFLARE_EMAIL_PROVIDER_NAME);
+        binding = SEND_EMAIL_DEFAULT_BINDING;
+      } catch {
+        // app doesn't use CloudflareEmailProvider — nothing to emit
+      }
     }
-    try {
-      ctx.alepha.inject(CLOUDFLARE_EMAIL_PROVIDER_NAME);
-    } catch {
+    if (!binding) {
       return;
     }
 
     wrangler.send_email = wrangler.send_email || [];
-    if (
-      wrangler.send_email.some(
-        (b: { name: string }) => b.name === SEND_EMAIL_DEFAULT_BINDING,
-      )
-    ) {
+    if (wrangler.send_email.some((b: { name: string }) => b.name === binding)) {
       return;
     }
 
@@ -504,9 +526,7 @@ export class BuildCloudflareTask extends BuildTask {
     // sender goes in the message `from` field (see CloudflareEmailProvider.send);
     // leaving the binding unrestricted lets the worker send to any verified
     // destination.
-    const entry: Record<string, unknown> = { name: SEND_EMAIL_DEFAULT_BINDING };
-
-    wrangler.send_email.push(entry);
+    wrangler.send_email.push({ name: binding });
   }
 
   /**
