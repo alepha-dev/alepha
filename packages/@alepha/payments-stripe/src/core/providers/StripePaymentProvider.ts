@@ -232,18 +232,39 @@ export class StripePaymentProvider implements PaymentProvider {
     await this.stripe.paymentMethods.detach(providerRef);
   }
 
+  /**
+   * Create a connected account via the **Accounts v2 API**
+   * (`POST /v2/core/accounts`) — NOT the legacy `type: "express"` account.
+   *
+   * The connected account is the merchant of record and bears everything
+   * ("we're just software", 0% application fee): it pays Stripe's processing
+   * fees (`fees_collector: "stripe"`), is liable for refunds/chargebacks
+   * (`losses_collector: "stripe"`), self-collects KYC via Stripe, and gets a
+   * full Stripe dashboard (`dashboard: "full"`). It requests the
+   * `card_payments` capability so direct charges can be created on it.
+   */
   public async createConnectAccount(opts: {
     country?: string;
     email?: string;
+    displayName?: string;
   }): Promise<{ id: string }> {
-    const account = await this.stripe.accounts.create({
-      type: "express",
-      country: opts.country ?? "FR",
-      email: opts.email,
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
+    const account = await this.stripe.v2.core.accounts.create({
+      contact_email: opts.email,
+      display_name: opts.displayName,
+      identity: { country: opts.country ?? "FR" },
+      dashboard: "full",
+      defaults: {
+        responsibilities: {
+          fees_collector: "stripe",
+          losses_collector: "stripe",
+        },
       },
+      configuration: {
+        merchant: {
+          capabilities: { card_payments: { requested: true } },
+        },
+      },
+      include: ["configuration.merchant", "requirements"],
     });
     return { id: account.id };
   }
@@ -253,11 +274,16 @@ export class StripePaymentProvider implements PaymentProvider {
     refreshUrl: string;
     returnUrl: string;
   }): Promise<{ url: string }> {
-    const link = await this.stripe.accountLinks.create({
+    const link = await this.stripe.v2.core.accountLinks.create({
       account: opts.account,
-      refresh_url: opts.refreshUrl,
-      return_url: opts.returnUrl,
-      type: "account_onboarding",
+      use_case: {
+        type: "account_onboarding",
+        account_onboarding: {
+          configurations: ["merchant"],
+          refresh_url: opts.refreshUrl,
+          return_url: opts.returnUrl,
+        },
+      },
     });
     return { url: link.url };
   }
@@ -267,11 +293,18 @@ export class StripePaymentProvider implements PaymentProvider {
     chargesEnabled: boolean;
     payoutsEnabled: boolean;
   }> {
-    const account = await this.stripe.accounts.retrieve(accountId);
+    const account = await this.stripe.v2.core.accounts.retrieve(accountId, {
+      include: ["configuration.merchant", "requirements"],
+    });
+    // v2 has no flat charges_enabled/details_submitted/payouts_enabled — derive
+    // from the merchant card_payments capability status.
+    const status =
+      account.configuration?.merchant?.capabilities?.card_payments?.status;
+    const active = status === "active";
     return {
-      detailsSubmitted: account.details_submitted ?? false,
-      chargesEnabled: account.charges_enabled ?? false,
-      payoutsEnabled: account.payouts_enabled ?? false,
+      detailsSubmitted: status != null && status !== "pending",
+      chargesEnabled: active,
+      payoutsEnabled: active,
     };
   }
 
