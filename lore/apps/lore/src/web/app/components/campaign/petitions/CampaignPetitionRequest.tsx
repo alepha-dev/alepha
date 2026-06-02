@@ -24,21 +24,8 @@ const MAX_FILES = 10;
 const MAX_TAGS = 20;
 const MAX_TAG_LENGTH = 100;
 
-/**
- * Sigil-popup provenance carried in the draft. When `sigilId` is present the
- * request form runs in "sigil popup mode": it ran a `postMessage` handshake
- * with the opener, posts a `source` block on submit, then messages the opener
- * back and closes itself.
- */
-type SigilContext = {
-  sigilId?: string;
-  hostUrl?: string;
-  hostPath?: string;
-};
-
 type DraftContext = {
   tags?: string[];
-  sigil?: SigilContext;
 };
 
 type Attachment = {
@@ -70,34 +57,9 @@ const readDraftFromQuery = (query: URLSearchParams): DraftContext => {
     tags.unshift(typeParam);
   }
 
-  const sigilId = query.get("sigil")?.trim();
   const draft: DraftContext = {};
   if (tags.length > 0) draft.tags = tags;
-  if (sigilId) {
-    // `url`/`path` are the embedding page's URL — folded into the source
-    // block (and shown to the campaign owner) verbatim.
-    draft.sigil = {
-      sigilId: sigilId.slice(0, 100),
-      hostUrl: (query.get("url") ?? "").slice(0, 2000) || undefined,
-      hostPath: (query.get("path") ?? "").slice(0, 2000) || undefined,
-    };
-  }
   return draft;
-};
-
-/** Convert a `data:` URL to a `File` so the screenshot rides as an attachment. */
-const dataUrlToFile = (dataUrl: string, name: string): File | null => {
-  try {
-    const [header, b64] = dataUrl.split(",");
-    if (!header || !b64) return null;
-    const mime = /:(.*?);/.exec(header)?.[1] ?? "image/png";
-    const bin = atob(b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new File([bytes], name, { type: mime });
-  } catch {
-    return null;
-  }
 };
 
 /**
@@ -166,33 +128,18 @@ const CampaignPetitionRequest = () => {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Sigil-popup mode: a preview of the screenshot the opener captured, and
-  // the console tail it forwarded. Both ride into the petition on submit.
-  const sigil = draft.sigil;
-  const isSigilMode = Boolean(sigil?.sigilId);
-  const [screenshot, setScreenshot] = useState<string | null>(null);
-  const [consoleTail, setConsoleTail] = useState<string[]>([]);
-
   // The submit handler is closed over by `FormModel` at first render (the
   // `useForm` `FormModel` is built once via `useMemo([])` — passing non-empty
   // `deps` would rebuild the model and wipe user-typed values). At first
-  // render the sigil draft, screenshot, console tail, attachments and tags
-  // are all still empty — they are populated asynchronously by effects.
-  // To let the frozen handler see live values, mirror everything it needs
-  // into a ref that is refreshed on every render.
+  // render the draft, attachments and tags are all still empty — they are
+  // populated asynchronously by effects. To let the frozen handler see live
+  // values, mirror everything it needs into a ref that is refreshed on every
+  // render.
   const liveRef = useRef({
-    isSigilMode,
-    sigil,
-    screenshot,
-    consoleTail,
     attachments,
     tags,
   });
   liveRef.current = {
-    isSigilMode,
-    sigil,
-    screenshot,
-    consoleTail,
     attachments,
     tags,
   };
@@ -224,75 +171,6 @@ const CampaignPetitionRequest = () => {
     };
   }, [auth.user, campaignId]);
 
-  // postMessage handshake with the sigil opener (the embedding page). We
-  // announce readiness and accept exactly one `lore.sigil.payload` message —
-  // ORIGIN-CHECKED against the embedding page's origin. The screenshot/console
-  // tail are attacker-controlled; treated as opaque data, never executed.
-  //
-  // FAIL CLOSED: the trusted origin is derived from the `?url=` param, which
-  // is supplied by the *embedding page itself* (forwarded verbatim by the
-  // sigil redirect — forwarded verbatim by the sigil redirect. The sigil's
-  // authoritative server-side `allowedOrigins` array is NOT available to this
-  // SPA page (the redirect forwards only `path`/`url`/`type`, and exposing it
-  // would mean a new public endpoint — out of scope). So `?url=` is the only
-  // origin signal we have. If it is missing or unparseable we CANNOT identify
-  // a trusted origin: in that case we must NOT run the handshake at all —
-  // never post `lore.sigil.ready` (which would advertise this popup to any
-  // window via `"*"`) and never accept an inbound payload (which would let
-  // ANY origin inject an attacker-controlled `screenshot`/`consoleTail`).
-  // The form still works as a normal petition form; only the screenshot /
-  // console-tail pre-fill is skipped (graceful degradation).
-  useEffect(() => {
-    if (!isSigilMode || !auth.user) return;
-    if (typeof window === "undefined" || !window.opener) return;
-
-    const hostUrl = sigil?.hostUrl;
-    let allowedOrigin: string | null = null;
-    if (hostUrl) {
-      try {
-        allowedOrigin = new URL(hostUrl).origin;
-      } catch {
-        allowedOrigin = null;
-      }
-    }
-
-    // No trusted origin → fail closed: skip the entire sigil handshake.
-    // Do not register the listener and do not announce readiness.
-    if (!allowedOrigin) return;
-    const trustedOrigin = allowedOrigin;
-
-    const onMessage = (event: MessageEvent) => {
-      // Only trust messages from the embedding page's own origin.
-      if (event.origin !== trustedOrigin) return;
-      const data = event.data as
-        | { type?: string; screenshot?: unknown; consoleTail?: unknown }
-        | undefined;
-      if (!data || data.type !== "lore.sigil.payload") return;
-
-      if (typeof data.screenshot === "string") {
-        setScreenshot(data.screenshot);
-      }
-      if (Array.isArray(data.consoleTail)) {
-        setConsoleTail(
-          data.consoleTail
-            .filter((v): v is string => typeof v === "string")
-            .slice(0, 50)
-            .map((v) => v.slice(0, 2000)),
-        );
-      }
-    };
-
-    window.addEventListener("message", onMessage);
-    // Tell the opener we're mounted and ready to receive the payload —
-    // targeted at the trusted origin only, never `"*"`.
-    window.opener.postMessage(
-      { type: "lore.sigil.ready", sigilId: sigil?.sigilId },
-      trustedOrigin,
-    );
-
-    return () => window.removeEventListener("message", onMessage);
-  }, [isSigilMode, auth.user, sigil?.sigilId, sigil?.hostUrl]);
-
   // One free-text field. Client schema stays looser than the server's — a
   // `minLength` here would fail TypeBox at form-construction time (empty
   // initial value). The server (`petitionBodySchema`) enforces real bounds.
@@ -304,44 +182,9 @@ const CampaignPetitionRequest = () => {
     handler: async (body) => {
       // Read live state through the ref — the handler closure itself is
       // frozen at first render, when these were all still empty.
-      const { isSigilMode, sigil, screenshot, consoleTail, attachments, tags } =
-        liveRef.current;
+      const { attachments, tags } = liveRef.current;
       try {
         const attachmentIds = attachments.map((a) => a.id);
-
-        // In sigil mode the screenshot rides along as one more attachment:
-        // upload it now (the user already saw + could remove the preview).
-        if (isSigilMode && screenshot) {
-          const file = dataUrlToFile(
-            screenshot,
-            `sigil-screenshot-${Date.now()}.png`,
-          );
-          if (file && attachmentIds.length < MAX_FILES) {
-            try {
-              const up = await petitionApi.uploadPetitionAttachment({
-                params: { campaignId },
-                body: { file },
-              });
-              attachmentIds.push(up.id);
-            } catch {
-              // A failed screenshot upload must not block the petition.
-            }
-          }
-        }
-
-        const source =
-          isSigilMode && sigil?.sigilId
-            ? {
-                sigilId: sigil.sigilId,
-                hostUrl: sigil.hostUrl ?? "",
-                hostPath: sigil.hostPath ?? "",
-                userAgent:
-                  typeof navigator !== "undefined"
-                    ? navigator.userAgent.slice(0, 1000)
-                    : "",
-                consoleTail: consoleTail.length > 0 ? consoleTail : undefined,
-              }
-            : undefined;
 
         // The reporter writes one free-text blob. Derive a short title from
         // its first non-empty line so the owner's triage inbox has a
@@ -362,35 +205,11 @@ const CampaignPetitionRequest = () => {
             // Fall back to a generic tag so nothing lands untagged in the
             // triage inbox when the form is opened without query params.
             tags: tags.length > 0 ? tags : ["feedback"],
-            source,
+            source: undefined,
           },
         });
         clearDraft();
         toaster.show(tr("petitions.request.success"), "success");
-
-        // Sigil popup: tell the embedding page it succeeded, then close —
-        // the host bundle shows the "Thanks!" toast.
-        if (isSigilMode && typeof window !== "undefined" && window.opener) {
-          // Fail closed (same threat as the handshake effect above): the
-          // target origin comes from the embedding-page-controlled `?url=`
-          // param. If it is missing/unparseable we cannot identify a trusted
-          // origin, so we do NOT broadcast the notification to `"*"` — we
-          // simply skip it and close. The petition is already saved.
-          let target: string | null = null;
-          try {
-            if (sigil?.hostUrl) target = new URL(sigil.hostUrl).origin;
-          } catch {
-            target = null;
-          }
-          if (target) {
-            window.opener.postMessage(
-              { type: "lore.sigil.submitted", sigilId: sigil?.sigilId },
-              target,
-            );
-          }
-          window.close();
-          return;
-        }
 
         await router.push("campaignPetitionStatus", {
           params: {
@@ -588,34 +407,6 @@ const CampaignPetitionRequest = () => {
                   {tr("petitions.request.pasteHint")}
                 </p>
               </div>
-
-              {isSigilMode && screenshot && (
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium">
-                    {tr("petitions.request.screenshot")}
-                  </label>
-                  <p className="text-muted-foreground text-xs">
-                    {tr("petitions.request.screenshotHelper")}
-                  </p>
-                  <div className="relative w-fit">
-                    <img
-                      alt={tr("petitions.request.screenshot")}
-                      src={screenshot}
-                      className="max-h-48 rounded border border-border object-contain"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setScreenshot(null)}
-                      aria-label={String(
-                        tr("petitions.request.screenshotRemove"),
-                      )}
-                      className="absolute right-1 top-1 rounded-full bg-background/90 p-1 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
 
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium">
