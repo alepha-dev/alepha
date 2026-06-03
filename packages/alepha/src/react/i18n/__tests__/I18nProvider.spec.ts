@@ -449,6 +449,95 @@ describe("I18nProvider", () => {
     });
   });
 
+  describe("server-side language autodetect (Accept-Language)", () => {
+    /**
+     * Injects a real, dictionary-populated `I18nProvider` and exposes the
+     * protected resolution used by the `server:onRequest` hook, so the priority
+     * (cookie → header → fallback) can be unit-tested against a true registry.
+     */
+    const setup = (AppClass: new () => unknown) => {
+      const alepha = Alepha.create().with(AlephaReactI18n);
+      alepha.inject(AppClass as any);
+      const i18n = alepha.inject(I18nProvider);
+      return {
+        i18n,
+        resolve: (cookieLang?: string, headerLang?: string): string =>
+          (i18n as any).resolveRequestLang(cookieLang, headerLang),
+      };
+    };
+
+    class App {
+      en = $dictionary({
+        lazy: async () => ({ default: { hello: "Hello" } }),
+      });
+
+      fr = $dictionary({
+        lazy: async () => ({ default: { hello: "Bonjour" } }),
+      });
+    }
+
+    test("uses the Accept-Language header when no cookie is set", ({
+      expect,
+    }) => {
+      expect(setup(App).resolve(undefined, "fr")).toBe("fr");
+    });
+
+    test("lets a manually-selected cookie win over the header", ({
+      expect,
+    }) => {
+      expect(setup(App).resolve("en", "fr")).toBe("en");
+    });
+
+    test("falls back when the header language is not registered", ({
+      expect,
+    }) => {
+      expect(setup(App).resolve(undefined, "de")).toBe("en");
+    });
+
+    test("falls back when neither cookie nor header is present", ({
+      expect,
+    }) => {
+      expect(setup(App).resolve(undefined, undefined)).toBe("en");
+    });
+
+    test("normalizes a region-qualified header to a registered base language", ({
+      expect,
+    }) => {
+      expect(setup(App).resolve(undefined, "fr-FR")).toBe("fr");
+    });
+
+    test("prefers an exact region match when one is registered", ({
+      expect,
+    }) => {
+      class RegionApp {
+        enUS = $dictionary({
+          lang: "en-US",
+          lazy: async () => ({ default: { color: "color" } }),
+        });
+
+        fr = $dictionary({
+          lazy: async () => ({ default: { color: "couleur" } }),
+        });
+      }
+
+      expect(setup(RegionApp).resolve(undefined, "en-US")).toBe("en-US");
+    });
+
+    test("ignores the header when autoDetect is disabled", ({ expect }) => {
+      const { i18n, resolve } = setup(App);
+      i18n.options.autoDetect = false;
+      expect(resolve(undefined, "fr")).toBe("en");
+    });
+
+    test("still honours a manual cookie when autoDetect is disabled", ({
+      expect,
+    }) => {
+      const { i18n, resolve } = setup(App);
+      i18n.options.autoDetect = false;
+      expect(resolve("fr", "en")).toBe("fr");
+    });
+  });
+
   test("should handle partial interpolation args", async ({ expect }) => {
     class App {
       en = $dictionary({

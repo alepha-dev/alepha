@@ -28,6 +28,15 @@ export class I18nProvider<
 
   options = {
     fallbackLang: "en",
+    /**
+     * When true (the default), the UI language for a first-time visitor (one
+     * with no `lang` cookie) is detected server-side from the `Accept-Language`
+     * header. A manually-selected language (the cookie) always takes
+     * precedence, so this never overrides an explicit user choice. Set to false
+     * to always start in `fallbackLang` regardless of the browser's preferred
+     * language.
+     */
+    autoDetect: true,
   };
 
   public dateFormat: { format: (value: Date) => string } =
@@ -54,9 +63,43 @@ export class I18nProvider<
     on: "server:onRequest",
     priority: "last",
     handler: async ({ request }) => {
-      this.alepha.store.set("alepha.react.i18n.lang", this.cookie.get(request));
+      this.alepha.store.set(
+        "alepha.react.i18n.lang",
+        this.resolveRequestLang(this.cookie.get(request), request.language),
+      );
     },
   });
+
+  /**
+   * Resolves the UI language for an incoming server request.
+   *
+   * Priority:
+   * 1. the `lang` cookie — a language the user manually selected always wins;
+   * 2. the `Accept-Language` header (when `autoDetect` is enabled) — but only
+   *    when the detected language is actually registered, so we never switch to
+   *    a locale we have no dictionary for. A region-qualified header (`en-US`)
+   *    matches an exact registration first, then its base language (`en`);
+   * 3. `fallbackLang`.
+   */
+  protected resolveRequestLang(
+    cookieLang: string | undefined,
+    headerLang: string | undefined,
+  ): string {
+    if (cookieLang) {
+      return cookieLang;
+    }
+
+    if (this.options.autoDetect && headerLang) {
+      const registered = this.languages;
+      for (const candidate of [headerLang, headerLang.split("-")[0]]) {
+        if (registered.includes(candidate)) {
+          return candidate;
+        }
+      }
+    }
+
+    return this.fallbackLang;
+  }
 
   protected readonly onStart = $hook({
     on: "start",

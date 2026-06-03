@@ -1,6 +1,6 @@
 # Localization
 
-Alepha provides `$dictionary` for registering translations and `useI18n` for accessing them in React components. Translations are lazy-loaded per language and support SSR with cookie-based language detection.
+Alepha provides `$dictionary` for registering translations and `useI18n` for accessing them in React components. Translations are lazy-loaded per language and support SSR with cookie-based language selection and `Accept-Language` autodetection.
 
 ## Setup
 
@@ -215,17 +215,34 @@ import { Localize } from "alepha/react/i18n";
 
 ## SSR Language Detection
 
-On the server, the language is determined by:
-1. The `lang` cookie value (set by `setLang`)
-2. Falls back to the configured fallback language (`"en"` by default)
+On the server, the language is resolved on each request via a server hook, so
+SSR renders use the correct language. The priority is:
 
-The language state is set on each request via a server hook, so SSR renders use the correct language.
+1. The `lang` cookie value (set by `setLang`) — a manually-selected language
+   always wins.
+2. The `Accept-Language` request header — used only for first-time visitors
+   (no cookie), and only when the detected language is actually registered. A
+   region-qualified header like `fr-FR` matches an exact registration first,
+   then its base language (`fr`).
+3. The configured fallback language (`"en"` by default).
+
+Because the cookie takes precedence, autodetection never overrides a choice the
+user made explicitly. To always start in the fallback language regardless of the
+browser's preferred language, disable it with `autoDetect` (see below).
 
 ## Configuration
 
-The fallback language defaults to `"en"`. It can be changed on the `I18nProvider`:
+The fallback language defaults to `"en"`. It can be changed on the
+`I18nProvider`:
 
 ```typescript
 const i18n = alepha.inject(I18nProvider);
 i18n.options.fallbackLang = "es";
+```
+
+`Accept-Language` autodetection is on by default. Disable it to always start in
+the fallback language for first-time visitors:
+
+```typescript
+i18n.options.autoDetect = false;
 ```
