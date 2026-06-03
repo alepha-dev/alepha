@@ -325,9 +325,18 @@ export function AuthRegister(props: AuthRegisterProps) {
     }
   };
 
-  const realmQuery = props.realmConfig.realmName
-    ? `?realm=${encodeURIComponent(props.realmConfig.realmName)}`
+  // Query appended to the "already have an account? sign in" link: the realm,
+  // plus the post-auth redirect (`?r=`) so signing in returns the user to
+  // wherever registering would have sent them (it's dropped otherwise).
+  const realmBit = props.realmConfig.realmName
+    ? `realm=${encodeURIComponent(props.realmConfig.realmName)}`
     : "";
+  const redirectBit =
+    typeof router.query.r === "string" && router.query.r
+      ? `r=${encodeURIComponent(router.query.r)}`
+      : "";
+  const loginQ = [realmBit, redirectBit].filter(Boolean).join("&");
+  const realmQuery = loginQ ? `?${loginQ}` : "";
 
   const externalMethods = props.realmConfig.authenticationMethods.filter(
     (m) => m.type !== "CREDENTIALS",
