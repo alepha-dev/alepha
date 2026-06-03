@@ -22,7 +22,9 @@ describe("SigilRoot", () => {
     expect(open).toHaveBeenCalledWith(
       "/sigil/request",
       "lore-petition",
-      "width=480,height=720",
+      expect.stringMatching(
+        /width=480,height=720,left=\d+(\.\d+)?,top=\d+(\.\d+)?/,
+      ),
     );
   });
 });
