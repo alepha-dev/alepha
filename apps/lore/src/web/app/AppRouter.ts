@@ -102,7 +102,6 @@ export class AppRouter {
       this.campaign,
       this.campaignCreate,
       this.campaignPetitionRequest,
-      this.campaignPetitionStatus,
       this.meRouter.me,
       this.notFound,
     ],
@@ -1012,27 +1011,6 @@ export class AppRouter {
     ssr: false,
     lazy: () =>
       import("./components/campaign/petitions/CampaignPetitionRequest.tsx"),
-  });
-
-  /**
-   * Reporter-facing status page for a petition. Top-level (not nested under
-   * `campaign`) so it works for users who aren't campaign members — the
-   * `getMine` endpoint enforces that only the reporter or the campaign owner
-   * can read.
-   */
-  campaignPetitionStatus = $page({
-    name: "campaignPetitionStatus",
-    path: "/c/:campaignId/p/:petitionId",
-    schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        petitionId: t.integer(),
-      }),
-    },
-    head: { title: "Petition status › Alepha Lore" },
-    ssr: false,
-    lazy: () =>
-      import("./components/campaign/petitions/CampaignPetitionStatus.tsx"),
   });
 
   notFound = $page({

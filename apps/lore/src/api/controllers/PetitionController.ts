@@ -328,46 +328,6 @@ export class PetitionController {
   });
 
   /**
-   * Reporter-facing view: returns a petition the user submitted, including
-   * the quests it spawned and their current statuses. Reporters can see
-   * progression without being campaign members — this is how an external
-   * submitter follows up on their report.
-   *
-   * Authorized when the caller is the petition's reporter OR the campaign
-   * owner; everyone else gets 404 (never 403 — avoids leaking petition
-   * existence to outsiders).
-   */
-  getMyPetition = $action({
-    use: [$secure()],
-    method: "GET",
-    path: "/campaigns/:campaignId/petitions/:petitionId/mine",
-    schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        petitionId: t.integer(),
-      }),
-      response: petitionResourceSchema,
-    },
-    handler: async ({ params, user }) => {
-      const petition = await this.loadPetition(
-        params.campaignId,
-        params.petitionId,
-      );
-
-      const campaign = await this.campaigns.findById(params.campaignId);
-      const isOwner = campaign?.createdBy === user.id;
-      const isReporter = petition.reporterUserId === user.id;
-
-      if (!isReporter && !isOwner) {
-        throw new NotFoundError("Petition not found");
-      }
-
-      const [resource] = await this.toResources([petition]);
-      return resource;
-    },
-  });
-
-  /**
    * Reject a petition — soft state transition, the row remains for audit.
    * Owner-only.
    */
