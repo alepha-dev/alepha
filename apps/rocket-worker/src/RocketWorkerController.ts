@@ -96,7 +96,7 @@ export class RocketWorkerController {
       }),
     },
     handler: async () => {
-      const container = (await this.rocket.health()) as { ok: boolean };
+      const container = await this.rocket.health();
       return { ok: true, container };
     },
   });
@@ -114,7 +114,7 @@ export class RocketWorkerController {
       response: deployResponse,
     },
     handler: async ({ body }) => {
-      return (await this.rocket.createDeploy({ body })) as never;
+      return await this.rocket.createDeploy({ body });
     },
   });
 
@@ -129,9 +129,9 @@ export class RocketWorkerController {
       response: deployResponse,
     },
     handler: async ({ params }) => {
-      return (await this.rocket.getDeploy({
+      return await this.rocket.getDeploy({
         params: { id: params.id },
-      })) as never;
+      });
     },
   });
 }
