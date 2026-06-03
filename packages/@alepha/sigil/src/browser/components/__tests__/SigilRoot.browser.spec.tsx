@@ -12,7 +12,7 @@ describe("SigilRoot", () => {
     expect(screen.getByLabelText("Feedback")).toBeTruthy();
   });
 
-  it("opens /api/sigil/request in a popup when the button is clicked", () => {
+  it("opens /sigil/request in a popup when the button is clicked", () => {
     const open = vi.fn(() => ({}) as Window);
     vi.stubGlobal("open", open);
 
@@ -20,7 +20,7 @@ describe("SigilRoot", () => {
     fireEvent.click(screen.getByLabelText("Feedback"));
 
     expect(open).toHaveBeenCalledWith(
-      "/api/sigil/request",
+      "/sigil/request",
       "lore-petition",
       "width=480,height=720",
     );

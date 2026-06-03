@@ -24,7 +24,7 @@ Telemetry is **mutualized**: pageviews, client errors, and vitals are batched
 into a single ingest call (flushed on a timer + `pagehide`).
 
 **Petitions** are first-party: the feedback button does a synchronous
-`window.open("/api/sigil/request")`; that same-origin proxy resolves the
+`window.open("/sigil/request")`; that same-origin proxy resolves the
 sigil → campaign id server-side (via `GET /sigils/:id/campaign`) and
 302-redirects to the Lore petition page `{loreOrigin}/c/:campaignId/request`,
 which requires login. The sigil id never reaches the browser, and petitions
