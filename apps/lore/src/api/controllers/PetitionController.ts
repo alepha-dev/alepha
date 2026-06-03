@@ -3,7 +3,13 @@ import { FileService, files } from "alepha/api/files";
 import { users } from "alepha/api/users";
 import { $bucket } from "alepha/bucket";
 import { $logger } from "alepha/logger";
-import { $repository, $sequence, $transactional } from "alepha/orm";
+import {
+  $repository,
+  $sequence,
+  $transactional,
+  db,
+  pageQuerySchema,
+} from "alepha/orm";
 import { $secure, type UserAccountToken } from "alepha/security";
 import {
   $action,
@@ -18,6 +24,10 @@ import { campaigns } from "../entities/campaigns.ts";
 import { type Petition, petitions } from "../entities/petitions.ts";
 import { quests } from "../entities/quests.ts";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
+import {
+  type MyPetitionResource,
+  myPetitionResourceSchema,
+} from "../schemas/myPetitionResourceSchema.ts";
 import {
   type PetitionResource,
   petitionResourceSchema,
@@ -410,6 +420,159 @@ export class PetitionController {
   });
 
   /**
+   * Reporter-facing list of the caller's OWN petitions across every campaign
+   * they submitted to (the `/me` profile page). Paginated for `AlephaTable`,
+   * with optional search / status / campaign filters. No membership needed —
+   * a petition belongs to its reporter regardless of campaign membership.
+   */
+  listMyPetitions = $action({
+    use: [$secure()],
+    method: "GET",
+    path: "/me/petitions",
+    schema: {
+      query: t.extend(pageQuerySchema, {
+        search: t.optional(t.string()),
+        status: t.optional(
+          t.enum(["pending", "accepted", "rejected", "all"], { mode: "text" }),
+        ),
+        campaignId: t.optional(t.integer()),
+      }),
+      response: db.page(myPetitionResourceSchema),
+    },
+    handler: async ({ query, user }) => {
+      const where = this.petitions.createQueryWhere();
+      where.reporterUserId = { eq: user.id };
+
+      if (query.search) {
+        where.title = { ilike: `%${query.search}%` };
+      }
+      if (query.status && query.status !== "all") {
+        where.status = { eq: query.status };
+      }
+      if (query.campaignId) {
+        where.campaignId = { eq: query.campaignId };
+      }
+
+      query.sort ??= "-createdAt";
+
+      const result = await this.petitions.paginate(
+        query,
+        { where },
+        { count: true },
+      );
+
+      return {
+        ...result,
+        content: await this.toMyResources(result.content),
+      };
+    },
+  });
+
+  /**
+   * The distinct campaigns the caller has petitions in — drives the campaign
+   * filter dropdown on the `/me` petitions page. A reporter may have petitioned
+   * campaigns they are not a member of, so this can't be derived from the
+   * user's own campaign list.
+   */
+  listMyPetitionCampaigns = $action({
+    use: [$secure()],
+    method: "GET",
+    path: "/me/petition-campaigns",
+    schema: {
+      response: t.object({
+        items: t.array(
+          t.object({
+            id: t.integer(),
+            title: t.string(),
+            icon: t.optional(t.union([t.uuid(), t.null()])),
+          }),
+        ),
+      }),
+    },
+    handler: async ({ user }) => {
+      const rows = await this.petitions.findMany({
+        where: { reporterUserId: { eq: user.id } },
+        columns: ["campaignId"],
+      });
+      const ids = [...new Set(rows.map((r) => r.campaignId))];
+      if (ids.length === 0) return { items: [] };
+
+      const camps = await this.campaigns.findMany({
+        where: { id: { inArray: ids } },
+        orderBy: [{ column: "title", direction: "asc" }],
+      });
+      return {
+        items: camps.map((c) => ({
+          id: c.id,
+          title: c.title,
+          icon: c.icon ?? null,
+        })),
+      };
+    },
+  });
+
+  /**
+   * Edit one of the caller's OWN petitions. Allowed only while the petition is
+   * still `pending` — once the owner triages it (accepted → quest, or
+   * rejected) it is locked. Reporter-only: a petition the caller didn't submit
+   * 404s (never 403 — avoids leaking existence).
+   */
+  updateMyPetition = $action({
+    use: [$secure()],
+    method: "POST",
+    path: "/me/petitions/:petitionId",
+    schema: {
+      params: t.object({ petitionId: t.integer() }),
+      body: t.object({
+        title: t.string({ minLength: 1, maxLength: 200 }),
+        description: t.string({ minLength: 1, maxLength: 10_000 }),
+        tags: t.optional(
+          t.array(t.string({ maxLength: 100 }), { maxItems: 20 }),
+        ),
+      }),
+      response: myPetitionResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const petition = await this.loadMyPetition(params.petitionId, user.id);
+      if (petition.status !== "pending") {
+        throw new BadRequestError("Only pending petitions can be edited");
+      }
+
+      await this.petitions.updateById(petition.id, {
+        title: body.title.slice(0, 200),
+        description: body.description.slice(0, 10_000),
+        tags: (body.tags ?? []).slice(0, 20),
+      });
+
+      const updated = await this.petitions.findById(petition.id);
+      const [resource] = await this.toMyResources([updated as Petition]);
+      return resource;
+    },
+  });
+
+  /**
+   * Soft-delete one of the caller's OWN petitions. Allowed only while
+   * `pending`; reporter-only (404 otherwise).
+   */
+  deleteMyPetition = $action({
+    use: [$secure()],
+    method: "DELETE",
+    path: "/me/petitions/:petitionId",
+    schema: {
+      params: t.object({ petitionId: t.integer() }),
+      response: okSchema,
+    },
+    handler: async ({ params, user }) => {
+      const petition = await this.loadMyPetition(params.petitionId, user.id);
+      if (petition.status !== "pending") {
+        throw new BadRequestError("Only pending petitions can be deleted");
+      }
+      await this.petitions.deleteById(petition.id);
+      return { ok: true };
+    },
+  });
+
+  /**
    * Owner guard. Delegates to `AppSecurityProvider.assertOwner` and returns
    * the resolved campaign for handlers that need it.
    */
@@ -550,6 +713,51 @@ export class PetitionController {
           : undefined,
         attachmentUrls,
         linkedQuests: linked,
+      };
+    });
+  }
+
+  /**
+   * Load a petition owned by the caller (its reporter). Returns 404 — not 403
+   * — when the petition is missing OR belongs to someone else, so a reporter
+   * can never probe for another user's petition ids.
+   */
+  protected async loadMyPetition(
+    petitionId: number,
+    userId: string,
+  ): Promise<Petition> {
+    const petition = await this.petitions.findOne({
+      where: { id: { eq: petitionId } },
+    });
+    if (!petition || petition.reporterUserId !== userId) {
+      throw new NotFoundError("Petition not found");
+    }
+    return petition;
+  }
+
+  /**
+   * Like {@link toResources} but joins each petition's owning campaign (title +
+   * icon) — for the reporter's cross-campaign `/me` list.
+   */
+  protected async toMyResources(
+    rows: Petition[],
+  ): Promise<MyPetitionResource[]> {
+    if (rows.length === 0) return [];
+
+    const base = await this.toResources(rows);
+    const campaignIds = [...new Set(rows.map((p) => p.campaignId))];
+    const camps = await this.campaigns.findMany({
+      where: { id: { inArray: campaignIds } },
+    });
+    const campById = new Map(camps.map((c) => [c.id, c]));
+
+    return base.map((resource) => {
+      const c = campById.get(resource.campaignId);
+      return {
+        ...resource,
+        campaign: c
+          ? { id: c.id, title: c.title, icon: c.icon ?? null }
+          : { id: resource.campaignId, title: "—", icon: null },
       };
     });
   }

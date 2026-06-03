@@ -93,6 +93,12 @@ export class MeRouter {
     },
   });
 
+  myPetitions = $page({
+    parent: this.me,
+    path: "/petitions",
+    lazy: () => import("../petitions/MyPetitions.tsx"),
+  });
+
   connections = $page({
     parent: this.me,
     path: "/connections",
