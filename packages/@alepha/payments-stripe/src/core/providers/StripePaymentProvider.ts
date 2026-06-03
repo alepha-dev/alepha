@@ -308,8 +308,7 @@ export class StripePaymentProvider implements PaymentProvider {
     };
   }
 
-  public async createCheckoutSubscription(opts: {
-    priceId: string;
+  public async createCheckoutSetup(opts: {
     successUrl: string;
     cancelUrl: string;
     customerEmail?: string;
@@ -317,8 +316,50 @@ export class StripePaymentProvider implements PaymentProvider {
     metadata?: Record<string, string>;
   }): Promise<{ url: string; sessionId: string }> {
     const session = await this.stripe.checkout.sessions.create({
+      mode: "setup",
+      currency: "eur",
+      success_url: opts.successUrl,
+      cancel_url: opts.cancelUrl,
+      customer: opts.customerId,
+      customer_email: opts.customerId ? undefined : opts.customerEmail,
+      metadata: opts.metadata,
+    });
+    if (!session.url)
+      throw new Error("Stripe Checkout session created without url");
+    return { url: session.url, sessionId: session.id };
+  }
+
+  public async createCheckoutSubscription(opts: {
+    priceId?: string;
+    priceData?: {
+      currency: string;
+      unitAmount: number;
+      interval: "month" | "year";
+      productName: string;
+    };
+    successUrl: string;
+    cancelUrl: string;
+    customerEmail?: string;
+    customerId?: string;
+    metadata?: Record<string, string>;
+  }): Promise<{ url: string; sessionId: string }> {
+    const line_items: Stripe.Checkout.SessionCreateParams["line_items"] =
+      opts.priceData
+        ? [
+            {
+              quantity: 1,
+              price_data: {
+                currency: opts.priceData.currency,
+                unit_amount: opts.priceData.unitAmount,
+                recurring: { interval: opts.priceData.interval },
+                product_data: { name: opts.priceData.productName },
+              },
+            },
+          ]
+        : [{ price: opts.priceId as string, quantity: 1 }];
+    const session = await this.stripe.checkout.sessions.create({
       mode: "subscription",
-      line_items: [{ price: opts.priceId, quantity: 1 }],
+      line_items,
       success_url: opts.successUrl,
       cancel_url: opts.cancelUrl,
       customer: opts.customerId,
