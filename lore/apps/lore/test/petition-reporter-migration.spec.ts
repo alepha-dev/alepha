@@ -13,6 +13,11 @@ import { describe, expect, it } from "vitest";
  * DROP and restores them after RENAME. This test asserts all required
  * structural invariants on the SQL file.
  *
+ * NOTE: `0039_petition_reporter_email.sql` has been reversed by
+ * `0041_petition_reporter_user_id_restore.sql`. This file continues to guard
+ * 0039's structural invariants as a historical record. See
+ * `petition-reporter-restore-migration.spec.ts` for the 0041 guard.
+ *
  * NOTE: No migration-execution helper exists in the lore test suite that can
  * run raw SQL against an in-memory DB (existing tests use the full Alepha DI
  * stack that applies all migrations on start). These are therefore structural

@@ -28,7 +28,7 @@ export const petitions = $entity({
     campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
-    reporterUserId: db.ref(t.uuid(), () => users.cols.id, {
+    reporterUserId: db.ref(t.optional(t.uuid()), () => users.cols.id, {
       onDelete: "cascade",
     }),
     title: t.string({ minLength: 1, maxLength: 200 }),
