@@ -2,6 +2,7 @@ import { type Static, t } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { petitionSourceSchema } from "../schemas/petitionSourceSchema.ts";
 import { campaigns } from "./campaigns.ts";
+import { users } from "./users.ts";
 
 /**
  * Petitions are user-submitted bug reports or feature requests. They land in
@@ -27,23 +28,14 @@ export const petitions = $entity({
     campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
-    /**
-     * Identity of the petition submitter.
-     *
-     * Sigil petitions submitted via an embedded widget store the
-     * partner-supplied email when one is available, or `null` when none was
-     * provided — so the field may be absent even on accepted petitions.
-     *
-     * ⚠️ SECURITY: this value is attacker-controlled (the embedding page sets
-     * it). Render it as escaped plain text only — never markdown or
-     * `dangerouslySetInnerHTML`. See folio #12.
-     */
-    reporterEmail: t.optional(t.string({ maxLength: 320 })),
+    reporterUserId: db.ref(t.uuid(), () => users.cols.id, {
+      onDelete: "cascade",
+    }),
     title: t.string({ minLength: 1, maxLength: 200 }),
     description: t.string({ maxLength: 10_000 }),
     status: t.enum(["pending", "accepted", "rejected"], { mode: "text" }),
     /**
-     * Attachment file ids (stored in the `petition-attachments` bucket).
+     * Attachment file ids (uploaded via `POST /campaigns/:id/petitions/attachments`).
      * Stored as `uuid[]` mirroring `quests.attachments`.
      */
     attachments: db.default(t.array(t.uuid()), []),
@@ -57,7 +49,8 @@ export const petitions = $entity({
       [],
     ),
     /**
-     * Provenance of a sigil petition submission. When a petition arrives
+     * Provenance of an embedded submission. `null`/absent for first-party
+     * petitions (the in-app `/c/:id/request` form). When a petition arrives
      * via a sigil-embedded widget the embedding page supplies this block so
      * the campaign owner sees where it came from.
      *
@@ -77,7 +70,7 @@ export const petitions = $entity({
     { columns: ["campaignId", "status", "deletedAt"] },
     { columns: ["campaignId", "createdAt"] },
     { columns: ["campaignId", "shortId"], unique: true },
-    { columns: ["reporterEmail", "createdAt"] },
+    { columns: ["reporterUserId", "createdAt"] },
   ],
 });
 

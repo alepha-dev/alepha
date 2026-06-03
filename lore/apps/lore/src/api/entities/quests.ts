@@ -71,11 +71,9 @@ export const quests = $entity({
       onDelete: "set null",
     }),
     /**
-     * Optional FK to the petition this quest was spawned from. When set, any
-     * user whose email matches `petition.reporterEmail` can see this quest's
-     * progression on the petition status page even without campaign membership.
-     * If the petition's `reporterEmail` is null (anonymous sigil submission),
-     * only the campaign owner can view the status page.
+     * Optional FK to the petition this quest was spawned from. When set, the
+     * reporter of that petition can see the quest's progression on the
+     * petition status page even if they are not a campaign member.
      */
     petitionId: db.ref(t.optional(t.integer()), () => petitions.cols.id, {
       onDelete: "set null",

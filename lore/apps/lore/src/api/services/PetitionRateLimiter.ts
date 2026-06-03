@@ -1,11 +1,12 @@
 import { $inject, Alepha, AlephaError } from "alepha";
+import { files } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, sql } from "alepha/orm";
+import { $repository } from "alepha/orm";
 import { petitionOptionsAtom } from "../atoms/petitionOptionsAtom.ts";
 import { petitions } from "../entities/petitions.ts";
 
 /**
- * Per-sigil-per-day rate cap for sigil petition submissions.
+ * Per-user / per-day caps for petitions and attachment uploads.
  *
  * Counts are derived from the database (no in-memory state) so they survive
  * process restarts and are correct across multiple workers. The trade-off is
@@ -17,6 +18,7 @@ export class PetitionRateLimiter {
   protected alepha = $inject(Alepha);
   protected dateTime = $inject(DateTimeProvider);
   protected petitions = $repository(petitions);
+  protected files = $repository(files);
 
   /**
    * Bucket name used by petition attachments. Kept here so the rate limiter
@@ -27,31 +29,38 @@ export class PetitionRateLimiter {
   static readonly ATTACHMENT_BUCKET = "petition-attachments";
 
   /**
-   * Throws when a single sigil has already submitted the max allowed
-   * petitions in the last 24h — caps the blast radius of a leaked sigil id
-   * lifted off a partner page. Counted across all users / campaigns from the
-   * `petitions.source.sigilId` JSON field (DB-derived, like the per-user cap).
-   * No-op for first-party petitions (`sigilId` is empty / undefined).
+   * Throws when the user has already created the max allowed petitions in
+   * the last 24h. Otherwise returns silently.
    */
-  async assertSigilPetitionAllowed(sigilId: string | undefined): Promise<void> {
-    if (!sigilId) {
-      return;
-    }
-    const limit = this.options().maxPetitionsPerSigilPerDay;
+  async assertPetitionAllowed(userId: string): Promise<void> {
+    const limit = this.options().maxPetitionsPerUserPerDay;
     const cutoff = this.dayAgoIso();
-    // The `createdAt` filter goes through the repository's structured where
-    // (so the ISO `cutoff` is codec-converted to the column's storage
-    // format); the `source.sigilId` match has no structured operator, so it
-    // is supplied as a raw SQL fragment in the same `and`.
     const count = await this.petitions.count({
-      and: [
-        { createdAt: { gte: cutoff } },
-        sql`json_extract(${this.petitions.table.source}, '$.sigilId') = ${sigilId}`,
-      ],
+      reporterUserId: { eq: userId },
+      createdAt: { gte: cutoff },
     });
     if (count >= limit) {
       throw new AlephaError(
-        `This sigil has reached its petition rate limit (${limit} per 24h). Try again later.`,
+        `Petition rate limit reached (${limit} per 24h). Try again later.`,
+      );
+    }
+  }
+
+  /**
+   * Throws when the user has already uploaded the max allowed attachments in
+   * the last 24h. Otherwise returns silently.
+   */
+  async assertAttachmentAllowed(userId: string): Promise<void> {
+    const limit = this.options().maxAttachmentsPerUserPerDay;
+    const cutoff = this.dayAgoIso();
+    const count = await this.files.count({
+      creator: { eq: userId },
+      bucket: { eq: PetitionRateLimiter.ATTACHMENT_BUCKET },
+      createdAt: { gte: cutoff },
+    });
+    if (count >= limit) {
+      throw new AlephaError(
+        `Attachment upload rate limit reached (${limit} per 24h). Try again later.`,
       );
     }
   }
