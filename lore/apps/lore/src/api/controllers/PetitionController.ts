@@ -471,7 +471,9 @@ export class PetitionController {
 
     const userIds = [
       ...new Set(
-        rows.map((p) => p.reporterUserId).filter((id): id is string => id != null),
+        rows
+          .map((p) => p.reporterUserId)
+          .filter((id): id is string => id != null),
       ),
     ];
     const fileIds = [...new Set(rows.flatMap((p) => p.attachments ?? []))];
