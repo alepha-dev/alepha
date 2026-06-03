@@ -8,6 +8,9 @@ class RecordingHttpClient extends HttpClient {
 
   async fetch(url: string, opts: any): Promise<any> {
     this.calls.push({ url, body: opts?.body });
+    if (url.endsWith("/campaign")) {
+      return { data: { campaignId: 7 }, status: 200 } as any;
+    }
     return { data: {}, status: 204 } as any;
   }
 }
@@ -50,5 +53,33 @@ describe("SigilForwardProvider", () => {
     await fwd.forwardIngest({ views: [] }, {});
     const http = alepha.inject(HttpClient) as RecordingHttpClient;
     expect(http.calls[0].url).toBe("https://lore.alepha.dev/sigils/abc/ingest");
+  });
+
+  it("campaignId() fetches /sigils/:id/campaign once and caches the result", async () => {
+    const alepha = make({ SIGIL_ID: "abc", LORE_URL: "https://lore.test" });
+    const fwd = alepha.inject(SigilForwardProvider);
+    await alepha.start();
+
+    expect(await fwd.campaignId()).toBe(7);
+
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    expect(http.calls).toHaveLength(1);
+    expect(http.calls[0].url).toBe("https://lore.test/sigils/abc/campaign");
+
+    // A second call does NOT refetch — the cached value is returned.
+    expect(await fwd.campaignId()).toBe(7);
+    expect(http.calls).toHaveLength(1);
+  });
+
+  it("campaignId() returns undefined when disabled", async () => {
+    const alepha = make({});
+    const fwd = alepha.inject(SigilForwardProvider);
+    await alepha.start();
+
+    expect(fwd.enabled()).toBe(false);
+    expect(await fwd.campaignId()).toBeUndefined();
+    expect(
+      (alepha.inject(HttpClient) as RecordingHttpClient).calls,
+    ).toHaveLength(0);
   });
 });
