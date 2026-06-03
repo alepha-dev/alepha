@@ -41,6 +41,7 @@ This module enables:
 - [`ReactServerProvider`](/docs/reference-providers-reactserverprovider) — React server provider responsible for SSR and static file serving.
 - [`ReactServerTemplateProvider`](/docs/reference-providers-reactservertemplateprovider) — Handles HTML streaming for SSR.
 - [`RootComponentsProvider`](/docs/reference-providers-rootcomponentsprovider) — Extension point letting any module contribute root-level React nodes that
+- [`RouterLocaleProvider`](/docs/reference-providers-routerlocaleprovider) — Generic locale path-prefix mechanism for the router.
 - [`SSRManifestProvider`](/docs/reference-providers-ssrmanifestprovider) — Provider for SSR manifest data used for module preloading.
 
 ### Environment Variables

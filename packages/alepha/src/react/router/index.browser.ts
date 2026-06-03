@@ -9,6 +9,7 @@ import { ReactBrowserProvider } from "./providers/ReactBrowserProvider.ts";
 import { ReactBrowserRendererProvider } from "./providers/ReactBrowserRendererProvider.ts";
 import { ReactBrowserRouterProvider } from "./providers/ReactBrowserRouterProvider.ts";
 import { ReactPageProvider } from "./providers/ReactPageProvider.ts";
+import { RouterLocaleProvider } from "./providers/RouterLocaleProvider.ts";
 import { ReactPageService } from "./services/ReactPageService.ts";
 import { ReactRouter } from "./services/ReactRouter.ts";
 
@@ -18,6 +19,7 @@ export * from "./index.shared.ts";
 export * from "./providers/ReactBrowserProvider.ts";
 export * from "./providers/ReactBrowserRendererProvider.ts";
 export * from "./providers/ReactBrowserRouterProvider.ts";
+export * from "./providers/RouterLocaleProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -30,6 +32,7 @@ export const AlephaReactRouter = $module({
     ReactBrowserProvider,
     ReactRouter,
     ReactBrowserRendererProvider,
+    RouterLocaleProvider,
     ReactPageService,
   ],
   register: (alepha) =>
@@ -43,5 +46,6 @@ export const AlephaReactRouter = $module({
       .with(ReactBrowserProvider)
       .with(ReactBrowserRouterProvider)
       .with(ReactBrowserRendererProvider)
+      .with(RouterLocaleProvider)
       .with(ReactRouter),
 });

@@ -1,6 +1,7 @@
 import { AlephaSigil } from "@alepha/sigil";
 import { $module } from "alepha";
 import { AlephaCrypto } from "alepha/crypto";
+import { I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
 import { CharacterInfo } from "../../api/services/CharacterInfo.ts";
 import { AppRouter } from "./AppRouter.ts";
@@ -36,5 +37,9 @@ export const LoreWebApp = $module({
   ],
   register(alepha) {
     alepha.with(CharacterInfo);
+    // Dogfood locale-prefix routing: French gets `/fr/...` URLs, English (the
+    // default) stays unprefixed. Source of truth is the URL, with hreflang
+    // alternates emitted for SEO.
+    alepha.inject(I18nProvider).options.routing = "prefix";
   },
 });

@@ -28,6 +28,7 @@ import {
   type PagePrimitiveOptions,
 } from "../primitives/$page.ts";
 import { RootComponentsProvider } from "./RootComponentsProvider.ts";
+import { RouterLocaleProvider } from "./RouterLocaleProvider.ts";
 
 // -------------------------------------------------------------------------------------------------------------------
 
@@ -67,6 +68,7 @@ export class ReactPageProvider {
   protected readonly options = $state(reactPageOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly rootComponentsProvider = $inject(RootComponentsProvider);
+  protected readonly localeProvider = $inject(RouterLocaleProvider);
   protected readonly pages: PageRoute[] = [];
   protected nextIdCursor = 0;
 
@@ -215,6 +217,12 @@ export class ReactPageProvider {
     }
 
     url = this.compile(url, options.params ?? {});
+    url = url.replace(/\/\/+/g, "/") || "/";
+
+    // Apply the active locale prefix (e.g. `/about` → `/fr/about`) to the path
+    // portion only, before any query string is appended. A no-op unless
+    // `routing: "prefix"` is enabled on the i18n module.
+    url = this.localeProvider.withPrefix(url);
 
     if (options.query) {
       const query = new URLSearchParams(options.query);
@@ -223,7 +231,7 @@ export class ReactPageProvider {
       }
     }
 
-    return url.replace(/\/\/+/g, "/") || "/";
+    return url;
   }
 
   public url(

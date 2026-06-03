@@ -209,6 +209,10 @@ export class AppRouter {
 
   home = $page({
     path: "/",
+    // Server-render the landing page (overrides the layout's `ssr: false`) so
+    // the locale-prefixed `/` and `/fr/` URLs ship real HTML + hreflang
+    // alternates to crawlers.
+    ssr: true,
     animation: (state) => {
       if (state.url.pathname === "/new-campaign") {
         return {

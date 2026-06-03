@@ -15,6 +15,7 @@ import {
 import { ReactPreloadProvider } from "./providers/ReactPreloadProvider.ts";
 import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
 import { ReactServerTemplateProvider } from "./providers/ReactServerTemplateProvider.ts";
+import { RouterLocaleProvider } from "./providers/RouterLocaleProvider.ts";
 import { SSRManifestProvider } from "./providers/SSRManifestProvider.ts";
 import { ReactPageServerService } from "./services/ReactPageServerService.ts";
 import { ReactPageService } from "./services/ReactPageService.ts";
@@ -28,6 +29,7 @@ export * from "./providers/ReactPageProvider.ts";
 export * from "./providers/ReactPreloadProvider.ts";
 export * from "./providers/ReactServerProvider.ts";
 export * from "./providers/ReactServerTemplateProvider.ts";
+export * from "./providers/RouterLocaleProvider.ts";
 export * from "./providers/SSRManifestProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -35,6 +37,11 @@ export * from "./providers/SSRManifestProvider.ts";
 declare module "alepha" {
   interface State {
     "alepha.react.router.state"?: ReactRouterState;
+    /**
+     * The active locale path-prefix (e.g. `"fr"`), when `routing: "prefix"` is
+     * enabled on the i18n module. Empty/absent for the default locale.
+     */
+    "alepha.react.router.locale"?: string;
   }
 
   interface Hooks {
@@ -124,6 +131,7 @@ export const AlephaReactRouter = $module({
     ReactRouter,
     ReactServerProvider,
     ReactServerTemplateProvider,
+    RouterLocaleProvider,
     SSRManifestProvider,
     ReactPageServerService,
   ],
@@ -143,6 +151,7 @@ export const AlephaReactRouter = $module({
       .with(ReactServerTemplateProvider)
       .with(ReactPreloadProvider)
       .with(ReactServerProvider)
+      .with(RouterLocaleProvider)
       .with(ReactPageProvider)
       .with(ReactRouter),
 });

@@ -1,6 +1,9 @@
 import { $hook, $inject, Alepha, TypeBoxError, TypeProvider, t } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+// Locale-prefix routing is optional: the router module (one-directional
+// dependency, `i18n → router`) is only consulted when it is also registered.
+import { RouterLocaleProvider } from "alepha/react/router";
 import { $cookie } from "alepha/server/cookies";
 import type { ServiceDictionary } from "../hooks/useI18n.ts";
 
@@ -26,7 +29,11 @@ export class I18nProvider<
     translations: Record<string, string>;
   }> = [];
 
-  options = {
+  options: {
+    fallbackLang: string;
+    autoDetect: boolean;
+    routing: "none" | "prefix";
+  } = {
     fallbackLang: "en",
     /**
      * When true (the default), the UI language for a first-time visitor (one
@@ -37,7 +44,34 @@ export class I18nProvider<
      * language.
      */
     autoDetect: true,
+    /**
+     * URL strategy for languages:
+     * - `"none"` (default): language lives in a cookie; URLs are not localized.
+     * - `"prefix"`: each non-default language gets a path prefix (`/fr/about`),
+     *   making every language a distinct, crawlable URL for SEO. The default
+     *   language (`fallbackLang`) stays unprefixed. Requires the router module.
+     *   The URL becomes the source of truth for language (it wins over the
+     *   cookie / `Accept-Language`), and there is no automatic redirect.
+     */
+    routing: "none",
   };
+
+  /**
+   * Lazily-resolved locale-prefix router integration. Present only when both
+   * the router module is registered AND `routing: "prefix"` was configured —
+   * otherwise i18n stays fully standalone.
+   */
+  protected localeProviderResolved = false;
+  protected localeProviderRef?: RouterLocaleProvider;
+  protected get localeProvider(): RouterLocaleProvider | undefined {
+    if (!this.localeProviderResolved) {
+      this.localeProviderResolved = true;
+      if (this.alepha.has(RouterLocaleProvider)) {
+        this.localeProviderRef = this.alepha.inject(RouterLocaleProvider);
+      }
+    }
+    return this.localeProviderRef;
+  }
 
   public dateFormat: { format: (value: Date) => string } =
     new Intl.DateTimeFormat(this.lang);
@@ -59,22 +93,61 @@ export class I18nProvider<
     this.refreshLocale();
   }
 
+  /**
+   * Configure locale-prefix routing on the router, before the SSR routes are
+   * registered (`priority: "first"` runs ahead of the router's own `configure`
+   * hook). No-op unless `routing: "prefix"` and the router module is present.
+   */
+  protected readonly onConfigure = $hook({
+    on: "configure",
+    priority: "first",
+    handler: () => {
+      const localeProvider = this.localeProvider;
+      if (this.options.routing === "prefix" && localeProvider) {
+        localeProvider.configure({
+          enabled: true,
+          defaultLocale: this.fallbackLang,
+          locales: this.languages,
+        });
+      }
+    },
+  });
+
   protected readonly onRender = $hook({
     on: "server:onRequest",
     priority: "last",
     handler: async ({ request }) => {
       this.alepha.store.set(
         "alepha.react.i18n.lang",
-        this.resolveRequestLang(this.cookie.get(request), request.language),
+        this.resolveRequestLang(
+          this.cookie.get(request),
+          request.language,
+          this.detectUrlLocale(request.url?.pathname),
+        ),
       );
     },
   });
 
   /**
+   * Detects the language carried by the request URL when `routing: "prefix"` is
+   * active. Returns the locale for any URL (the prefixed one for `/fr/...`, the
+   * default for an unprefixed path), or `undefined` when prefix routing is off.
+   */
+  protected detectUrlLocale(pathname: string | undefined): string | undefined {
+    const localeProvider = this.localeProvider;
+    if (localeProvider?.enabled && pathname) {
+      return localeProvider.detect(pathname).locale || undefined;
+    }
+    return undefined;
+  }
+
+  /**
    * Resolves the UI language for an incoming server request.
    *
    * Priority:
-   * 1. the `lang` cookie — a language the user manually selected always wins;
+   * 0. the URL locale prefix (`routing: "prefix"`) — the URL is the source of
+   *    truth and wins over everything, with no redirect;
+   * 1. the `lang` cookie — a language the user manually selected;
    * 2. the `Accept-Language` header (when `autoDetect` is enabled) — but only
    *    when the detected language is actually registered, so we never switch to
    *    a locale we have no dictionary for. A region-qualified header (`en-US`)
@@ -84,7 +157,12 @@ export class I18nProvider<
   protected resolveRequestLang(
     cookieLang: string | undefined,
     headerLang: string | undefined,
+    urlLocale?: string,
   ): string {
+    if (urlLocale) {
+      return urlLocale;
+    }
+
     if (cookieLang) {
       return cookieLang;
     }
@@ -105,10 +183,13 @@ export class I18nProvider<
     on: "start",
     handler: async () => {
       if (this.alepha.isBrowser()) {
-        // get cookie lang
-        const cookieLang = this.cookie.get();
-        if (cookieLang) {
-          this.alepha.store.set("alepha.react.i18n.lang", cookieLang);
+        // In prefix mode the URL (hydrated into the lang state by the server)
+        // is the source of truth, so the cookie must not override it.
+        if (!this.localeProvider?.enabled) {
+          const cookieLang = this.cookie.get();
+          if (cookieLang) {
+            this.alepha.store.set("alepha.react.i18n.lang", cookieLang);
+          }
         }
 
         for (const item of this.registry) {
@@ -137,26 +218,61 @@ export class I18nProvider<
     TypeProvider.setLocale(this.lang);
   }
 
-  public setLang = async (lang: string) => {
+  /**
+   * Activates a language: lazily loads its dictionaries (browser), updates the
+   * lang state, and refreshes the locale-bound formatters. Does NOT persist a
+   * cookie or navigate — that is the caller's concern.
+   */
+  protected applyLang = async (lang: string) => {
     if (this.alepha.isBrowser()) {
       for (const item of this.registry) {
-        if (lang === item.lang) {
-          if (Object.keys(item.translations).length > 0) {
-            continue; // already loaded
-          }
+        if (lang === item.lang && Object.keys(item.translations).length === 0) {
           item.translations = await item.loader();
         }
       }
-      this.cookie.set(lang);
     }
 
     this.alepha.store.set("alepha.react.i18n.lang", lang);
     this.refreshLocale();
   };
 
+  public setLang = async (lang: string) => {
+    const localeProvider = this.localeProvider;
+    if (localeProvider?.enabled) {
+      // The URL is the source of truth: switching language means navigating to
+      // the same page under the new locale prefix. Dictionaries and formatters
+      // are then activated via the resulting `alepha.react.router.locale`
+      // change (see the `mutate` hook). No cookie is written in prefix mode.
+      const { ReactRouter } = await import("alepha/react/router");
+      const router = this.alepha.inject(ReactRouter);
+      const canonical = localeProvider.detect(router.pathname).pathname;
+      await router.push(localeProvider.withPrefix(canonical, lang));
+      return;
+    }
+
+    await this.applyLang(lang);
+    if (this.alepha.isBrowser()) {
+      this.cookie.set(lang);
+    }
+  };
+
   protected readonly mutate = $hook({
     on: "state:mutate",
     handler: async ({ key, value }) => {
+      // Prefix-mode navigation changed the active locale (set by the router) →
+      // activate the matching language (loads dictionaries, refreshes
+      // formatters, and re-renders consumers via the lang state).
+      if (
+        key === "alepha.react.router.locale" &&
+        this.localeProvider?.enabled
+      ) {
+        const lang = (value as string) || this.fallbackLang;
+        if (lang !== this.lang) {
+          await this.applyLang(lang);
+        }
+        return;
+      }
+
       if (key === "alepha.react.i18n.lang" && this.alepha.isBrowser()) {
         let hasChanged = false;
         for (const item of this.registry) {

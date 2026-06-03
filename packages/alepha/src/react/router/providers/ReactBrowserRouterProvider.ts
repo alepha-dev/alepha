@@ -13,6 +13,7 @@ import {
   ReactPageProvider,
   type ReactRouterState,
 } from "./ReactPageProvider.ts";
+import { RouterLocaleProvider } from "./RouterLocaleProvider.ts";
 
 export interface BrowserRoute extends Route {
   page: PageRoute;
@@ -26,6 +27,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
   protected readonly alepha = $inject(Alepha);
   protected readonly pageApi = $inject(ReactPageProvider);
   protected readonly browserHeadProvider = $inject(BrowserHeadProvider);
+  protected readonly localeProvider = $inject(RouterLocaleProvider);
 
   public add(entry: PageRouteEntry) {
     this.pageApi.add(entry);
@@ -75,7 +77,19 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     });
 
     try {
-      const { route, params } = this.match(pathname);
+      // In locale-prefix mode the URL is the source of truth for language:
+      // strip a leading `/fr`-style segment and remember it (the i18n module
+      // reacts to this to switch dictionaries), then match on the canonical
+      // path so the single page tree still resolves. `state.url` keeps the
+      // full prefixed URL so generated links carry the prefix forward.
+      let matchPathname = pathname;
+      if (this.localeProvider.enabled) {
+        const detected = this.localeProvider.detect(pathname);
+        this.localeProvider.current = detected.locale;
+        matchPathname = detected.pathname;
+      }
+
+      const { route, params } = this.match(matchPathname);
 
       const query: Record<string, string> = {};
       if (search) {

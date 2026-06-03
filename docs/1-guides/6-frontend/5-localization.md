@@ -246,3 +246,54 @@ the fallback language for first-time visitors:
 ```typescript
 i18n.options.autoDetect = false;
 ```
+
+## Locale-prefix routing (SEO)
+
+By default the active language lives in a cookie and the URL is the same for
+every language. That is invisible to search-engine crawlers — Googlebot does not
+vary `Accept-Language` or keep cookies, so it only ever sees one language and
+cannot index the others.
+
+For multilingual SEO, enable **prefix routing**, which gives every non-default
+language its own crawlable URL:
+
+```typescript
+const i18n = alepha.inject(I18nProvider);
+i18n.options.routing = "prefix";
+```
+
+```
+/about        →  en   (default language, unprefixed)
+/fr/about     →  fr
+/de/about     →  de
+```
+
+The default language (`fallbackLang`) stays unprefixed; every other registered
+language gets a `/<lang>` path prefix. With prefix routing on:
+
+- **The URL is the source of truth for language.** `/fr/about` always renders in
+  French, regardless of cookie or `Accept-Language`. This is what makes each
+  language a stable, shareable, indexable URL.
+- **Every generated link carries the active prefix automatically** — `router.path`,
+  `router.push`, and `<Link>` all stay within the current language. No app code
+  changes are needed.
+- **`setLang(code)` navigates** to the same page under the new prefix (instead of
+  writing a cookie), so the language switcher just works.
+- **`hreflang` alternates are emitted** in the SSR `<head>` for every language
+  (plus `x-default` → the unprefixed URL), telling crawlers the pages are
+  translations of one another:
+
+  ```html
+  <link rel="alternate" hreflang="en" href="https://site.com/about" />
+  <link rel="alternate" hreflang="fr" href="https://site.com/fr/about" />
+  <link rel="alternate" hreflang="x-default" href="https://site.com/about" />
+  ```
+- **There is no automatic redirect.** An unprefixed path (`/about`) is the default
+  language by definition — visiting it never bounces a French browser to `/fr`.
+  Google's guidance discourages auto-redirecting by perceived language, and it
+  would hide content from crawlers. Use a soft "View in Français?" banner if you
+  want to nudge first-time visitors.
+
+Prefix routing requires the router module (`alepha/react/router`). Apps that are
+fully behind authentication (not indexed) generally do not need it — the
+cookie-based default is simpler there.

@@ -32,6 +32,7 @@ import {
   reactPageOptions,
 } from "./ReactPageProvider.ts";
 import { ReactServerTemplateProvider } from "./ReactServerTemplateProvider.ts";
+import { RouterLocaleProvider } from "./RouterLocaleProvider.ts";
 import { SSRManifestProvider } from "./SSRManifestProvider.ts";
 
 /**
@@ -66,6 +67,7 @@ export class ReactServerProvider {
   protected readonly serverStaticProvider = $inject(ServerStaticProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly ssrManifestProvider = $inject(SSRManifestProvider);
+  protected readonly localeProvider = $inject(RouterLocaleProvider);
 
   /**
    * Cached check for ServerLinksProvider - avoids has() lookup per request.
@@ -148,6 +150,7 @@ export class ReactServerProvider {
           ? new PipelineHandler(rawHandler, serverMiddleware)
           : rawHandler;
 
+        // Canonical (default-locale) route, served unprefixed.
         this.serverRouterProvider.createRoute({
           ...page,
           schema: undefined, // schema is handled by the page primitive provider
@@ -155,6 +158,26 @@ export class ReactServerProvider {
           path: page.match,
           handler,
         });
+
+        // Locale-prefixed variants (`/fr/about`, …) point at the SAME handler.
+        // The handler reads the active locale back out of the request URL, so
+        // no extra route param is needed and matching stays native.
+        if (this.localeProvider.enabled) {
+          for (const locale of this.localeProvider.prefixedLocales) {
+            const prefixedPath = this.localeProvider.withPrefix(
+              page.match,
+              locale,
+            );
+            this.log.debug(`+ ${prefixedPath} -> ${page.name} (${locale})`);
+            this.serverRouterProvider.createRoute({
+              ...page,
+              schema: undefined,
+              method: "GET",
+              path: prefixedPath,
+              handler,
+            });
+          }
+        }
       }
     }
   }
@@ -315,6 +338,15 @@ export class ReactServerProvider {
 
       this.log.trace("Rendering page", { name: route.name });
 
+      // Locale-prefix mode: the URL is the source of truth for language.
+      // Record the active locale so links built during SSR (`pathname()`)
+      // carry the prefix, and so hreflang alternates can be emitted.
+      if (this.localeProvider.enabled) {
+        this.localeProvider.current = this.localeProvider.detect(
+          url.pathname,
+        ).locale;
+      }
+
       // Initialize router state
       const state: ReactRouterState = {
         url,
@@ -386,7 +418,20 @@ export class ReactServerProvider {
       }
 
       // Resolve global head for early streaming (htmlAttributes only)
-      const globalHead = this.serverHeadProvider.resolveGlobalHead();
+      let globalHead = this.serverHeadProvider.resolveGlobalHead();
+
+      // In locale-prefix mode the language is known from the URL before any
+      // rendering, so stamp the correct `<html lang>` onto the early head
+      // (per-request copy — never mutate the shared global head).
+      if (this.localeProvider.enabled) {
+        globalHead = {
+          ...globalHead,
+          htmlAttributes: {
+            ...globalHead?.htmlAttributes,
+            lang: this.localeProvider.current,
+          },
+        };
+      }
 
       // Create optimized HTML stream with early head
       const htmlStream = this.templateProvider.createEarlyHtmlStream(
@@ -450,6 +495,44 @@ export class ReactServerProvider {
    * @param state - The router state
    * @returns Render result with redirect or React stream
    */
+  /**
+   * Inject SEO `hreflang` alternate links for the current route when
+   * locale-prefix routing is enabled. Each registered locale gets an absolute
+   * alternate URL (the default locale stays unprefixed), plus an `x-default`
+   * pointing at the unprefixed URL — this is what lets crawlers index every
+   * language. Also sets a best-effort `<html lang>` for the non-streaming /
+   * prerender path; the streamed path's `<html lang>` is finalized on the
+   * client (the early HTML head is flushed before the route is known).
+   *
+   * No-op unless `routing: "prefix"` is enabled on the i18n module.
+   */
+  protected injectLocaleHead(state: ReactRouterState): void {
+    if (!this.localeProvider.enabled) {
+      return;
+    }
+
+    const { origin, search } = state.url;
+    const canonical = this.localeProvider.detect(state.url.pathname).pathname;
+
+    const links = this.localeProvider.locales.map((locale) => ({
+      rel: "alternate",
+      hreflang: locale,
+      href: `${origin}${this.localeProvider.withPrefix(canonical, locale)}${search}`,
+    }));
+    links.push({
+      rel: "alternate",
+      hreflang: "x-default",
+      href: `${origin}${canonical}${search}`,
+    });
+
+    state.head ??= {};
+    state.head.link = [...(state.head.link ?? []), ...links];
+    state.head.htmlAttributes = {
+      ...state.head.htmlAttributes,
+      lang: this.localeProvider.current,
+    };
+  }
+
   protected async renderPage(
     route: PageRoute,
     state: ReactRouterState,
@@ -470,6 +553,9 @@ export class ReactServerProvider {
       state.head ??= {};
       state.head.link = [...(state.head.link ?? []), ...preloadLinks];
     }
+
+    // Inject SEO hreflang alternates for locale-prefix routing
+    this.injectLocaleHead(state);
 
     // Render React to stream
 
