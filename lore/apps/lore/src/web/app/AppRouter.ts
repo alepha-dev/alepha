@@ -101,6 +101,7 @@ export class AppRouter {
       this.resetPassword,
       this.campaign,
       this.campaignCreate,
+      this.campaignPetitionRequest,
       this.campaignPetitionStatus,
       this.meRouter.me,
       this.notFound,
@@ -995,6 +996,18 @@ export class AppRouter {
       this.alepha.store.set(campaignDirectoriesAtom, directories);
       return { folio };
     },
+  });
+
+  campaignPetitionRequest = $page({
+    name: "campaignPetitionRequest",
+    path: "/c/:campaignId/request",
+    schema: {
+      params: t.object({ campaignId: t.integer() }),
+    },
+    head: { title: "Submit a petition › Alepha Lore" },
+    ssr: false,
+    lazy: () =>
+      import("./components/campaign/petitions/CampaignPetitionRequest.tsx"),
   });
 
   /**
