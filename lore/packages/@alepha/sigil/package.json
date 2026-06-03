@@ -21,6 +21,7 @@
       "import": "./src/index.ts"
     },
     "./server": "./src/server/index.ts",
+    "./messages": "./src/shared/sigilMessages.ts",
     "./vitals": "./src/shared/schemas/sigilVitalsBuckets.ts"
   },
   "devDependencies": {

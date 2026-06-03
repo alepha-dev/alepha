@@ -1,3 +1,4 @@
+import { SIGIL_PETITION_SUBMITTED_MESSAGE } from "@alepha/sigil/messages";
 import { Control } from "@alepha/ui/components/control/control";
 import { FileImage } from "@alepha/ui/components/file-image/file-image";
 import { Button } from "@alepha/ui/components/ui/button";
@@ -209,6 +210,23 @@ const CampaignPetitionRequest = () => {
           },
         });
         clearDraft();
+
+        // Opened as the sigil feedback popup (`window.open(..., "lore-petition")`)?
+        // Tell the host page's feedback button to flash a thank-you, then close
+        // instantly instead of navigating to the in-popup status page.
+        if (
+          typeof window !== "undefined" &&
+          window.name === "lore-petition" &&
+          window.opener
+        ) {
+          window.opener.postMessage(
+            { type: SIGIL_PETITION_SUBMITTED_MESSAGE },
+            "*",
+          );
+          window.close();
+          return;
+        }
+
         toaster.show(tr("petitions.request.success"), "success");
 
         await router.push("campaignPetitionStatus", {
