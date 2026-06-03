@@ -1,3 +1,4 @@
+import { SigilForwardProvider } from "@alepha/sigil/server";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
 import { oauthOptions } from "alepha/api/oauth";
@@ -6,6 +7,7 @@ import { AlephaEmailCloudflare } from "alepha/email/cloudflare";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
 import { LoreApi } from "./api/index.ts";
 import { LoreFileAccessProvider } from "./api/providers/LoreFileAccessProvider.ts";
+import { LoreSigilForwardProvider } from "./api/providers/LoreSigilForwardProvider.ts";
 import { LoreMcp } from "./mcp/index.ts";
 import { LoreWebApp } from "./web/app/index.ts";
 
@@ -51,6 +53,17 @@ alepha.set(oauthOptions, {
 
 alepha.with(LoreApi);
 alepha.with(LoreMcp);
+
+// Lore dogfoods its own sigil, so it is BOTH the partner app and the receiver.
+// Substitute the sigil's HTTP forward provider with an in-process one BEFORE
+// `LoreWebApp` loads `AlephaSigil` (which declares `SigilForwardProvider` —
+// substituting after that point trips the DI guard). This avoids the
+// Cloudflare Worker self-call (the Worker fetching its own hostname) that made
+// `/sigil/request` 404 and silently dropped telemetry. `LoreApi` is loaded
+// first so the in-process provider's `SigilService` / `SigilIngestRunner`
+// dependencies are available.
+alepha.with({ provide: SigilForwardProvider, use: LoreSigilForwardProvider });
+
 alepha.with(LoreWebApp);
 alepha.with(LoreWebAdmin);
 

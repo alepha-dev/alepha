@@ -20,6 +20,7 @@
       "browser": "./src/index.browser.ts",
       "import": "./src/index.ts"
     },
+    "./server": "./src/server/index.ts",
     "./vitals": "./src/shared/schemas/sigilVitalsBuckets.ts"
   },
   "devDependencies": {

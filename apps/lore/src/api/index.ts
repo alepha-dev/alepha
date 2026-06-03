@@ -49,6 +49,7 @@ import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
+import { SigilIngestRunner } from "./services/SigilIngestRunner.ts";
 import { SigilIngestSupport } from "./services/SigilIngestSupport.ts";
 import { SigilService } from "./services/SigilService.ts";
 import { VitalsIngestService } from "./services/VitalsIngestService.ts";
@@ -86,6 +87,7 @@ export const LoreApi = $module({
     CampaignLimits,
     SigilService,
     SigilIngestSupport,
+    SigilIngestRunner,
     BlightIngestService,
     BeaconIngestService,
     VitalsIngestService,
