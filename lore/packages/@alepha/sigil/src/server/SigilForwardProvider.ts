@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha } from "alepha";
+import { $env, $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpClient } from "alepha/server";
 import { sigilEnv } from "../sigilEnv.ts";
@@ -11,11 +11,13 @@ export class SigilForwardProvider {
   protected readonly log = $logger();
   protected config?: { id: string; loreOrigin: string };
 
+  protected env = $env(sigilEnv);
+
   protected readonly init = $hook({
     on: "start",
     handler: () => {
       if (this.alepha.isBrowser()) return;
-      const { SIGIL_ID, LORE_URL } = this.alepha.parseEnv(sigilEnv);
+      const { SIGIL_ID, LORE_URL } = this.env;
 
       if (!this.alepha.isProduction()) return;
 

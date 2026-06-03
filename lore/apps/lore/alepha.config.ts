@@ -22,9 +22,6 @@ export default defineConfig({
     VITE_VERSION: pkg.version,
     VITE_GIT_COMMIT: gitCommit,
     VITE_BUILD_DATE: new Date().toISOString(),
-    // Server-only; consumed by @alepha/sigil via parseEnv. Never prefix with
-    // VITE_ — the browser must never see this value.
-    SIGIL_ID: "4474024c-d0bf-46d9-b8b0-a562a5d41a60",
   },
   plugins: [
     devtools(),
