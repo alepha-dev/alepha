@@ -16,6 +16,7 @@ import type { PetitionController } from "@/api/controllers/PetitionController.ts
 import type { AppRouter } from "../../../AppRouter.ts";
 import { displayName } from "../../../services/displayName.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import type { MeRouter } from "../../profile/me/MeRouter.ts";
 import { CampaignIcon } from "../../shared/CampaignIcon.tsx";
 import PageHeader from "../../shared/header/PageHeader.tsx";
 import { UserAvatar } from "../../shared/UserAvatar.tsx";
@@ -111,6 +112,7 @@ const useDraftAutofill = (campaignId: string) => {
 const CampaignPetitionRequest = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
+  const meRouter = useRouter<MeRouter>();
   const auth = useAuth();
   const petitionApi = useClient<PetitionController>();
   const toaster = useToast();
@@ -197,7 +199,7 @@ const CampaignPetitionRequest = () => {
             .map((line) => line.trim())
             .find((line) => line.length > 0) ?? message;
 
-        const { id } = await petitionApi.submitPetition({
+        await petitionApi.submitPetition({
           params: { campaignId },
           body: {
             title: firstLine.slice(0, 120),
@@ -229,12 +231,9 @@ const CampaignPetitionRequest = () => {
 
         toaster.show(tr("petitions.request.success"), "success");
 
-        await router.push("campaignPetitionStatus", {
-          params: {
-            campaignId: campaignIdParam,
-            petitionId: String(id),
-          },
-        });
+        // Land the reporter on their cross-campaign petitions list (the
+        // dedicated status page was retired in favour of /me/petitions).
+        await meRouter.push("myPetitions");
       } catch (err: any) {
         toaster.show(err?.message ?? tr("petitions.request.error"), "danger");
       }

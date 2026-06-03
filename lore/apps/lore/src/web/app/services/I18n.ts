@@ -798,22 +798,11 @@ export class I18n {
         "petitions.attachments": "Attachments",
         "petitions.linkedQuests": "Linked quests",
         "petitions.noLinkedQuests": "No quests yet — create one to start work.",
-        "petitions.status.submittedAt": "Submitted $1",
-        "petitions.status.pending": "Awaiting review from the campaign owner.",
-        "petitions.status.rejected":
-          "This petition was reviewed and won't be acted on.",
-        "petitions.status.progress": "Progress",
-        "petitions.status.acceptedNoQuests":
-          "Accepted. The owner hasn't created quests yet.",
-        "petitions.status.error": "Failed to load petition",
-        "petitions.status.unavailableTitle": "Petition unavailable",
-        "petitions.status.loading": "Loading…",
         "petitions.unknownReporter": "unknown",
         "petitions.source.viaSigil": "via Sigil",
         "petitions.context.title": "Context",
         "petitions.context.reporter": "Reporter",
         "petitions.description": "Description",
-        "petitions.status.submitAnother": "← Submit another petition",
         "petitions.request.title": "Submit a petition",
         "petitions.request.description":
           "Report a bug or request a feature. The campaign owner will review it.",
@@ -1668,23 +1657,11 @@ export class I18n {
         "petitions.linkedQuests": "Quêtes liées",
         "petitions.noLinkedQuests":
           "Aucune quête pour le moment — créez-en une pour démarrer le travail.",
-        "petitions.status.submittedAt": "Soumise $1",
-        "petitions.status.pending":
-          "En attente de la revue du propriétaire de la campagne.",
-        "petitions.status.rejected":
-          "Cette pétition a été examinée et ne sera pas traitée.",
-        "petitions.status.progress": "Avancement",
-        "petitions.status.acceptedNoQuests":
-          "Acceptée. Le propriétaire n'a pas encore créé de quêtes.",
-        "petitions.status.error": "Échec du chargement de la pétition",
-        "petitions.status.unavailableTitle": "Pétition indisponible",
-        "petitions.status.loading": "Chargement…",
         "petitions.unknownReporter": "inconnu",
         "petitions.source.viaSigil": "via Sceau",
         "petitions.context.title": "Contexte",
         "petitions.context.reporter": "Auteur",
         "petitions.description": "Description",
-        "petitions.status.submitAnother": "← Soumettre une autre pétition",
         "petitions.request.title": "Soumettre une pétition",
         "petitions.request.description":
           "Signalez un bogue ou demandez une fonctionnalité. Le propriétaire de la campagne examinera votre requête.",

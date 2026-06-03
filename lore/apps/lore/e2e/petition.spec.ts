@@ -1,7 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import {
   apiPath,
-  apiPost,
   createCampaignViaWizard,
   registerAndVerify,
 } from "./_helpers.ts";
@@ -9,19 +8,18 @@ import {
 /**
  * Petition end-to-end:
  *
- * 1. Owner registers, creates a public campaign, seeds a zone.
- * 2. Owner lands on `/c/:id/request?path=…&type=bug`, fills + submits the
- *    form, ends up on the petition status page.
- * 3. Status page shows `pending`, no linked quests.
- * 4. Owner accepts the petition via API and creates two quests linked to it
- *    (also via API — keeps the test focused on the petition <-> quest
- *    plumbing, not on the existing quest UI which is covered in quest.spec.ts).
- * 5. Owner marks one quest accepted then completed.
- * 6. Owner opens the status page, sees `accepted` petition with two linked
- *    quests in the expected states (`completed` + `new`).
+ * 1. Owner registers, creates a campaign, enables the petition module.
+ * 2. Lands on `/c/:id/request?path=…&type=bug`, fills + submits the form, and
+ *    is redirected to the reporter's cross-campaign list at `/me/petitions`
+ *    (the dedicated status page was retired in favour of this list).
+ * 3. The petition shows up there as `pending`.
+ * 4. Owner accepts the petition via API.
+ * 5. Back on `/me/petitions`, the petition now shows as `accepted`.
  *
- * Other features (quest lifecycle, campaign settings, etc.) live in their
- * own spec files. See apps/lore/CLAUDE.md for the convention.
+ * Linked-quest progression for reporters was removed with the status page; the
+ * petition <-> quest plumbing lives in the controller unit tests. Other
+ * features (quest lifecycle, etc.) have their own specs — see
+ * apps/lore/CLAUDE.md for the convention.
  */
 
 const apiPostParams = async <T>(
@@ -52,12 +50,9 @@ const apiPostParams = async <T>(
 };
 
 test.describe("Petition", () => {
-  // We exercise the full petition lifecycle as a single user — the campaign
-  // owner who also submits the petition. `getMine` permits both roles on the
-  // same petition, so the data model (1 petition → N quests, statuses
-  // surfaced) is fully covered. Cross-user visibility belongs in a unit test
-  // on the controller, not Playwright.
-  test("submit, accept, link quests, see progression", async ({ page }) => {
+  test("submit via the form, list in /me, owner accepts → status updates", async ({
+    page,
+  }) => {
     test.setTimeout(120_000);
 
     const t = Date.now();
@@ -72,9 +67,8 @@ test.describe("Petition", () => {
     await registerAndVerify(page, email, password);
     const campaignId = await createCampaignViaWizard(page, campaignTitle);
 
-    // Wizard defaults petitions OFF — flip it on for this campaign so the
-    // request form is reachable. updateCampaignById has no body schema for
-    // GET, so it's POST with { features: { petitions: true } }.
+    // Wizard defaults petitions OFF — flip it on so the request form is
+    // reachable.
     await page.evaluate(async (id) => {
       const res = await fetch(`/api/updateCampaignById/${id}`, {
         method: "POST",
@@ -86,21 +80,7 @@ test.describe("Petition", () => {
         throw new Error(`enable petitions: ${res.status} ${await res.text()}`);
     }, campaignId);
 
-    await test.step("seed a zone via createQuest", async () => {
-      await apiPost(page, "createQuest", {
-        campaignId,
-        title: `Seed${t}`,
-        description: "Seed quest so zone 'Triage' exists",
-        zone: "Triage",
-        priority: "medium",
-        difficulty: 2,
-        objectives: [],
-        attachments: [],
-      });
-    });
-
     // ── Submit a petition through the UI request form ────────────────────────
-    let petitionId = 0;
     await test.step("submit petition via the request form", async () => {
       // Land on the request URL with autofill query params the way an external
       // `<a target="_blank">` from a customer site would deliver them.
@@ -112,8 +92,7 @@ test.describe("Petition", () => {
       await page.waitForLoadState("networkidle");
 
       // The request form is a single free-text field — the petition title is
-      // derived from the first line server-side. Fill the lone textarea with
-      // the title line followed by the body.
+      // derived from the first line server-side.
       await page
         .locator("textarea")
         .first()
@@ -121,22 +100,29 @@ test.describe("Petition", () => {
 
       await page.getByRole("button", { name: /^submit petition$/i }).click();
 
-      // Successful submit redirects to /c/:id/p/:pid (the reporter status
-      // page).
-      await page.waitForURL(/\/c\/\d+\/p\/\d+/, { timeout: 15_000 });
-      petitionId = Number(page.url().match(/\/p\/(\d+)/)![1]);
-      expect(petitionId).toBeGreaterThan(0);
+      // Successful submit redirects to the reporter's /me petitions list.
+      await page.waitForURL(/\/auth\/profile\/petitions/, { timeout: 15_000 });
+      await expect(page.getByText(petitionTitle, { exact: true })).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
-    await test.step("status page shows pending, no quests yet", async () => {
-      await expect(page.getByTestId("petition-status-badge")).toContainText(
-        /pending/i,
-        { timeout: 10_000 },
-      );
-      await expect(page.getByTestId("petition-status-pending")).toBeVisible();
+    // The list no longer carries the petition id in the URL — read it back
+    // from the reporter list endpoint (most recent first).
+    const petitionId = await page.evaluate(async () => {
+      const r = await fetch("/api/me/petitions", { credentials: "include" });
+      if (!r.ok) throw new Error(`list mine: ${r.status} ${await r.text()}`);
+      const data = (await r.json()) as { content: Array<{ id: number }> };
+      return data.content[0]?.id ?? 0;
+    });
+    expect(petitionId).toBeGreaterThan(0);
+
+    await test.step("petition shows as pending in the list", async () => {
+      const row = page.getByRole("row").filter({ hasText: petitionTitle });
+      await expect(row).toContainText(/pending/i);
     });
 
-    // ── Accept the petition + create 2 quests linked to it (API) ─────────────
+    // ── Owner accepts the petition (API) ─────────────────────────────────────
     await test.step("accept the petition (API)", async () => {
       await apiPostParams(page, "acceptPetition", {
         campaignId: String(campaignId),
@@ -144,76 +130,11 @@ test.describe("Petition", () => {
       });
     });
 
-    const linkedQuestIds: number[] = [];
-    await test.step("create two quests linked to the petition", async () => {
-      for (const i of [1, 2]) {
-        const { id } = await apiPost<{ id: number }>(page, "createQuest", {
-          campaignId,
-          title: `${petitionTitle} - part ${i}`,
-          description: `<p>Work item ${i} from the petition.</p>`,
-          zone: "Triage",
-          priority: "medium",
-          difficulty: 2,
-          objectives: [],
-          attachments: [],
-          petitionId,
-        });
-        expect(id).toBeGreaterThan(0);
-        linkedQuestIds.push(id);
-      }
-      expect(linkedQuestIds).toHaveLength(2);
-    });
-
-    await test.step("accept then complete the first quest", async () => {
-      const [firstQuestId] = linkedQuestIds;
-      // QuestController.acceptQuest has no body schema, so $action infers GET.
-      // completeQuest now takes an optional `message` body, so it's POST.
-      await page.evaluate(async (id) => {
-        const accept = await fetch(`/api/acceptQuest/${id}`, {
-          method: "GET",
-          credentials: "include",
-        });
-        if (!accept.ok) {
-          throw new Error(`accept: ${accept.status} ${await accept.text()}`);
-        }
-        const complete = await fetch(`/api/completeQuest/${id}`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
-        if (!complete.ok) {
-          throw new Error(
-            `complete: ${complete.status} ${await complete.text()}`,
-          );
-        }
-      }, firstQuestId);
-    });
-
-    // ── Reporter view: petition accepted, both quests visible with status ────
-    await test.step("status page shows accepted petition with 2 linked quests", async () => {
-      await page.goto(`/c/${campaignId}/p/${petitionId}`);
+    await test.step("list reflects the accepted status", async () => {
+      await page.goto("/auth/profile/petitions");
       await page.waitForLoadState("networkidle");
-
-      await expect(page.getByTestId("petition-status-badge")).toContainText(
-        /accepted/i,
-        { timeout: 15_000 },
-      );
-
-      const linkedSection = page.getByTestId("petition-status-linked-quests");
-      await expect(linkedSection).toBeVisible();
-
-      const [firstId, secondId] = linkedQuestIds;
-      const firstRow = page.getByTestId(`petition-quest-${firstId}`);
-      const secondRow = page.getByTestId(`petition-quest-${secondId}`);
-
-      await expect(firstRow).toBeVisible();
-      await expect(secondRow).toBeVisible();
-
-      // Status attribute is the easiest assertion target — an enum stamp,
-      // not a localized label.
-      await expect(firstRow).toHaveAttribute("data-quest-status", "completed");
-      await expect(secondRow).toHaveAttribute("data-quest-status", "new");
+      const row = page.getByRole("row").filter({ hasText: petitionTitle });
+      await expect(row).toContainText(/accepted/i, { timeout: 10_000 });
     });
   });
 });
