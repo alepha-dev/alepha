@@ -4,7 +4,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { t } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
-import { useForm, useFormValues } from "alepha/react/form";
+import { useForm, useFormState, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { ArrowLeft, Save } from "lucide-react";
@@ -206,6 +206,8 @@ const FolioEditor = (props: FolioEditorProps) => {
     },
   });
 
+  const { loading: submitting } = useFormState(form, ["loading"]);
+
   const handleBack = async () => {
     if (isEdit && props.folio) {
       await router.push(
@@ -234,7 +236,7 @@ const FolioEditor = (props: FolioEditorProps) => {
         <h1 className="flex-1 text-xl font-semibold">
           {isEdit ? tr("folios.edit-folio") : tr("folios.new-folio")}
         </h1>
-        <Button type="submit" form={form.props.id} disabled={form.submitting}>
+        <Button type="submit" form={form.props.id} disabled={submitting}>
           <Save className="size-4" />
           {tr("folios.save")}
         </Button>

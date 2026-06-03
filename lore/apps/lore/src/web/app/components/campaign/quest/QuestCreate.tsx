@@ -10,7 +10,7 @@ import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { Separator } from "@alepha/ui/components/ui/separator";
 import { t } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
-import { useForm } from "alepha/react/form";
+import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
@@ -113,6 +113,8 @@ const QuestCreate = (props: QuestCreateProps) => {
     },
   });
 
+  const { loading: submitting } = useFormState(form, ["loading"]);
+
   const zones = currentCampaign?.zones || kanbanCampaign?.campaign?.zones || [];
 
   return (
@@ -201,7 +203,7 @@ const QuestCreate = (props: QuestCreateProps) => {
 
       <div className="bg-background flex shrink-0 justify-end gap-2 border-t p-4">
         {update ? (
-          <Button type="submit" disabled={form.submitting}>
+          <Button type="submit" disabled={submitting}>
             <Save className="size-4" />
             {tr("quest.create.update")}
           </Button>
@@ -209,7 +211,7 @@ const QuestCreate = (props: QuestCreateProps) => {
           <div className="flex items-stretch">
             <Button
               type="submit"
-              disabled={form.submitting}
+              disabled={submitting}
               className="rounded-r-none"
             >
               <Plus className="size-4" />
@@ -220,7 +222,7 @@ const QuestCreate = (props: QuestCreateProps) => {
                 render={
                   <Button
                     type="button"
-                    disabled={form.submitting}
+                    disabled={submitting}
                     aria-label={tr("quest.create.submitAndAccept")}
                     className="border-primary-foreground/20 -ml-px rounded-l-none border-l px-2"
                   />
