@@ -14,11 +14,23 @@ export type SigilFeedbackButtonProps = {};
  */
 export const SigilFeedbackButton = (_props: SigilFeedbackButtonProps) => {
   const openPetition = () => {
-    const popup = window.open(
-      "/sigil/request",
-      "lore-petition",
-      "width=480,height=720",
-    );
+    const width = 480;
+    const height = 720;
+    // Center on the CURRENT monitor (screenLeft/Top + innerWidth/Height),
+    // not just the primary screen — matters on multi-monitor setups.
+    const dualLeft = window.screenLeft ?? window.screenX;
+    const dualTop = window.screenTop ?? window.screenY;
+    const viewportWidth =
+      window.innerWidth ?? document.documentElement.clientWidth ?? screen.width;
+    const viewportHeight =
+      window.innerHeight ??
+      document.documentElement.clientHeight ??
+      screen.height;
+    const left = Math.max(0, dualLeft + (viewportWidth - width) / 2);
+    const top = Math.max(0, dualTop + (viewportHeight - height) / 2);
+
+    const features = `width=${width},height=${height},left=${left},top=${top}`;
+    const popup = window.open("/sigil/request", "lore-petition", features);
     if (!popup) window.open("/sigil/request", "_blank");
   };
 
