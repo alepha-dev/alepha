@@ -72,7 +72,11 @@ export class SigilForwardProvider {
       });
       this.cachedCampaignId = res.data.campaignId;
       return this.cachedCampaignId;
-    } catch {
+    } catch (error) {
+      this.log.warn(
+        `[sigil] campaign resolution failed for ${this.url("campaign")}`,
+        error,
+      );
       return undefined;
     }
   }
@@ -94,6 +98,11 @@ export class SigilForwardProvider {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...envelope, ...stamp }),
       })
-      .catch(() => {});
+      .catch((error) =>
+        this.log.warn(
+          `[sigil] telemetry forward failed for ${this.url("ingest")}`,
+          error,
+        ),
+      );
   }
 }
