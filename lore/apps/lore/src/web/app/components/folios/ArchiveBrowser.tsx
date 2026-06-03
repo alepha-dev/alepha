@@ -224,10 +224,21 @@ const ArchiveBrowser = () => {
     alepha.store.set(currentArchivePathAtom, segments);
   }, [campaignId, dirShortId, directoryApi, alepha, setAtomContents]);
 
-  // Refetch only when the URL `?dir` shifts away from what the atom
-  // already holds — typically when the user navigates between dirs
-  // inside the SPA (the route loader hydrated the first paint). Avoids
-  // double-fetching the data the loader just produced.
+  // ArchiveBrowser unmounts when a folio child route is shown (see
+  // FoliosLayout) and remounts on return. `currentArchiveContentsAtom` is a
+  // GLOBAL atom that persists across that unmount, so on return it can hold
+  // contents from the previous visit — stale if a folio was created in this
+  // directory while we were on its detail page (the parent `campaignFolios`
+  // loader does NOT re-run on child → parent nav, so it can't refresh it).
+  // A per-mount ref forces one refetch on (re)mount so the listing is always
+  // current. Was the source of a flaky e2e: create folio in deep dir →
+  // breadcrumb back → folio missing because the `matches` check below skipped
+  // the refetch on the stale-but-matching atom.
+  const fetchedThisMount = useRef(false);
+
+  // Refetch when the URL `?dir` shifts away from what the atom holds, OR on
+  // the first run after (re)mounting. The route loader hydrates the first
+  // paint; this keeps the listing fresh without a "Loading…" flash.
   //
   // Even when the cached contents match the URL dir (so we skip the
   // fetch), we MUST re-sync `currentArchivePathAtom` from the cached
@@ -239,7 +250,8 @@ const ArchiveBrowser = () => {
   useEffect(() => {
     const atomShortId = contents?.directory?.shortId;
     const matches = (atomShortId ?? undefined) === dirShortId;
-    if (!matches) {
+    if (!matches || !fetchedThisMount.current) {
+      fetchedThisMount.current = true;
       refresh();
       return;
     }
