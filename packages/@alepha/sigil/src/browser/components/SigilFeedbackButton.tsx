@@ -1,3 +1,6 @@
+import { useEffect, useRef, useState } from "react";
+import { SIGIL_PETITION_SUBMITTED_MESSAGE } from "../../shared/sigilMessages.ts";
+
 /**
  * Props for the SigilFeedbackButton component.
  */
@@ -11,8 +14,34 @@ export type SigilFeedbackButtonProps = {};
  * server-side and 302-redirects to the first-party Lore petition page, so
  * the sigil id never reaches the browser. Styled entirely inline — no
  * stylesheet dependency.
+ *
+ * When the popup submits a petition it posts a
+ * {@link SIGIL_PETITION_SUBMITTED_MESSAGE} message back to this window and
+ * closes itself; we flash a brief "thank you" pill above the button so the
+ * user gets an acknowledgement once the popup is gone.
  */
 export const SigilFeedbackButton = (_props: SigilFeedbackButtonProps) => {
+  const [showThanks, setShowThanks] = useState(false);
+  const hideTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type !== SIGIL_PETITION_SUBMITTED_MESSAGE) return;
+      setShowThanks(true);
+      if (hideTimer.current !== undefined) {
+        window.clearTimeout(hideTimer.current);
+      }
+      hideTimer.current = window.setTimeout(() => setShowThanks(false), 3000);
+    };
+    window.addEventListener("message", onMessage);
+    return () => {
+      window.removeEventListener("message", onMessage);
+      if (hideTimer.current !== undefined) {
+        window.clearTimeout(hideTimer.current);
+      }
+    };
+  }, []);
+
   const openPetition = () => {
     const width = 480;
     const height = 720;
@@ -35,45 +64,90 @@ export const SigilFeedbackButton = (_props: SigilFeedbackButtonProps) => {
   };
 
   return (
-    <button
-      type="button"
-      aria-label="Feedback"
-      onClick={openPetition}
-      style={{
-        position: "fixed",
-        bottom: 16,
-        right: 16,
-        zIndex: 2147483000,
-        width: 44,
-        height: 44,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#4f46e5",
-        color: "#fff",
-        border: 0,
-        borderRadius: 9999,
-        cursor: "pointer",
-        boxShadow: "0 4px 12px rgba(0,0,0,.25)",
-      }}
-    >
-      {/* lucide MessageSquareWarning — chat bubble with a "!" */}
-      <svg
-        aria-hidden="true"
-        xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+    <>
+      {showThanks && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            bottom: 68,
+            right: 16,
+            zIndex: 2147483000,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 12px",
+            background: "#111827",
+            color: "#fff",
+            fontFamily:
+              "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+            fontSize: 13,
+            fontWeight: 600,
+            lineHeight: 1,
+            borderRadius: 9999,
+            boxShadow: "0 4px 12px rgba(0,0,0,.25)",
+            pointerEvents: "none",
+          }}
+        >
+          {/* lucide Check */}
+          <svg
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#34d399"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+          Thank you!
+        </div>
+      )}
+      <button
+        type="button"
+        aria-label="Feedback"
+        onClick={openPetition}
+        style={{
+          position: "fixed",
+          bottom: 16,
+          right: 16,
+          zIndex: 2147483000,
+          width: 44,
+          height: 44,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#4f46e5",
+          color: "#fff",
+          border: 0,
+          borderRadius: 9999,
+          cursor: "pointer",
+          boxShadow: "0 4px 12px rgba(0,0,0,.25)",
+        }}
       >
-        <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-        <line x1="12" x2="12" y1="8" y2="12" />
-        <line x1="12" x2="12.01" y1="16" y2="16" />
-      </svg>
-    </button>
+        {/* lucide MessageSquareWarning — chat bubble with a "!" */}
+        <svg
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+          <line x1="12" x2="12" y1="8" y2="12" />
+          <line x1="12" x2="12.01" y1="16" y2="16" />
+        </svg>
+      </button>
+    </>
   );
 };
