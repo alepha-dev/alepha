@@ -193,7 +193,7 @@ export function AuthLogin(props: AuthLoginProps) {
     )?.focus();
   }, [credentialsProvider, externalMethods.length, identifierId]);
 
-  const formState = useFormState(form, ["error"]);
+  const formState = useFormState(form, ["error", "loading"]);
   const formError =
     formState.error && !(formState.error instanceof TypeBoxError)
       ? formState.error.message
@@ -254,7 +254,7 @@ export function AuthLogin(props: AuthLoginProps) {
                 input={form.input.password}
                 password
               />
-              <Button type="submit" loading={form.submitting}>
+              <Button type="submit" loading={formState.loading}>
                 {tr("auth.login.submit", { default: "Sign in" })}
               </Button>
               {settings.resetPasswordAllowed && (

@@ -45,7 +45,7 @@ import type {
 } from "alepha/api/users";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
-import { FormValidationError, useForm } from "alepha/react/form";
+import { FormValidationError, useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useQueryParams, useRouter, useRouterState } from "alepha/react/router";
 import { HttpError } from "alepha/server";
@@ -303,6 +303,9 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
       setPasswordOpen(false);
     },
   });
+  const { loading: passwordSubmitting } = useFormState(passwordForm, [
+    "loading",
+  ]);
 
   // -- Enable/disable -------------------------------------------------------
 
@@ -1125,7 +1128,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
             <Button
               type="submit"
               form="set-password-form"
-              loading={passwordForm.submitting}
+              loading={passwordSubmitting}
             >
               <Ban className="hidden" />
               {tr("admin.userDetail.savePassword", { default: "Save" })}

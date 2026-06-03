@@ -21,7 +21,7 @@ import type {
 } from "alepha/api/users";
 import { resetPasswordRequestSchema } from "alepha/api/users";
 import { useClient } from "alepha/react";
-import { useForm } from "alepha/react/form";
+import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
@@ -113,6 +113,11 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
     [state.intent, state.code],
   );
 
+  const { loading: emailSubmitting } = useFormState(emailForm, ["loading"]);
+  const { loading: passwordSubmitting } = useFormState(passwordForm, [
+    "loading",
+  ]);
+
   const handleCodeSubmit = () => {
     if (code.length === 6) {
       setState((s) => ({ ...s, step: "password", code }));
@@ -199,7 +204,7 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                   input={emailForm.input.email}
                   icon={iconFor("email")}
                 />
-                <Button type="submit" loading={emailForm.submitting}>
+                <Button type="submit" loading={emailSubmitting}>
                   {tr("auth.reset.sendCode", {
                     default: "Send verification code",
                   })}
@@ -291,7 +296,7 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                   password
                   autoComplete="new-password"
                 />
-                <Button type="submit" loading={passwordForm.submitting}>
+                <Button type="submit" loading={passwordSubmitting}>
                   {tr("auth.reset.setPassword", {
                     default: "Set new password",
                   })}

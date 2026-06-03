@@ -263,7 +263,7 @@ export function AuthRegister(props: AuthRegisterProps) {
     },
   });
 
-  const formState = useFormState(form, ["error", "values"]);
+  const formState = useFormState(form, ["error", "values", "loading"]);
   const formError =
     formState.error && !(formState.error instanceof TypeBoxError)
       ? formState.error.message
@@ -474,6 +474,7 @@ export function AuthRegister(props: AuthRegisterProps) {
                   allowed={allowed}
                   form={form}
                   formError={formError ?? queryError}
+                  loading={formState.loading}
                   passwordValue={passwordValue}
                   settings={settings}
                   realmName={props.realmConfig.realmName}
@@ -507,6 +508,7 @@ function FormPhase(props: {
   allowed: boolean;
   form: ReturnType<typeof useForm>;
   formError: string | undefined;
+  loading: boolean;
   passwordValue: string;
   settings: RealmConfig["settings"];
   realmName: string;
@@ -648,7 +650,7 @@ function FormPhase(props: {
               )}
               <Button
                 type="submit"
-                loading={form.submitting}
+                loading={props.loading}
                 disabled={!!props.captchaSiteKey && !props.captchaToken}
               >
                 {tr("auth.register.submit", { default: "Create account" })}

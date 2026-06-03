@@ -107,7 +107,8 @@ const CampaignCreate = () => {
     },
   });
 
-  const formState = useFormState(form, ["values"]);
+  const formState = useFormState(form, ["values", "loading"]);
+  const submitting = formState.loading;
   const titleValue = String(formState.values?.title ?? "").trim();
   const canAdvanceFromName = titleValue.length >= 3;
 
@@ -178,7 +179,7 @@ const CampaignCreate = () => {
                     title={tr("campaign.create.step.logo")}
                     helper={tr("campaign.create.step.logo.helper")}
                     input={form.input.icon}
-                    disabled={form.submitting}
+                    disabled={submitting}
                   />
                 )}
                 {step === 3 && (
@@ -215,7 +216,7 @@ const CampaignCreate = () => {
                   variant="ghost"
                   size="sm"
                   onClick={goBack}
-                  disabled={step === 1 || form.submitting}
+                  disabled={step === 1 || submitting}
                 >
                   <ArrowLeft className="size-4" />
                   {tr("campaign.create.back")}
@@ -249,7 +250,7 @@ const CampaignCreate = () => {
                       key="submit"
                       type="submit"
                       size="lg"
-                      disabled={form.submitting || !canAdvanceFromName}
+                      disabled={submitting || !canAdvanceFromName}
                       className="h-11 px-6"
                     >
                       <Hammer className="size-4" />

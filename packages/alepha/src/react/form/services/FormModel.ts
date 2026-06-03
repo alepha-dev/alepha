@@ -27,10 +27,6 @@ export class FormModel<T extends TObject> {
 
   public input: SchemaToInput<T>;
 
-  public get submitting(): boolean {
-    return this.submitInProgress;
-  }
-
   constructor(
     public readonly id: string,
     public readonly options: FormCtrlOptions<T>,
@@ -185,14 +181,22 @@ export class FormModel<T extends TObject> {
       return;
     }
 
-    // emit both action and form events
-    await this.alepha.events.emit("react:action:begin", {
-      type: "form",
-      id: this.id,
-    });
-    await this.alepha.events.emit("form:submit:begin", {
-      id: this.id,
-    });
+    // Lifecycle events are best-effort NOTIFICATIONS (loading spinners, toasts,
+    // analytics). A misbehaving listener must never break form state or reject
+    // submit() — hence `{ catch: true }` on every emit below. Without it, a
+    // throwing `react:action:error`/`form:submit:error` listener would skip the
+    // `form:submit:end` "loading off" signal and leave submit buttons stuck in
+    // their loading state forever.
+    await this.alepha.events.emit(
+      "react:action:begin",
+      { type: "form", id: this.id },
+      { catch: true },
+    );
+    await this.alepha.events.emit(
+      "form:submit:begin",
+      { id: this.id },
+      { catch: true },
+    );
 
     this.submitInProgress = true;
 
@@ -210,39 +214,53 @@ export class FormModel<T extends TObject> {
 
       await options.handler(values as any);
 
-      await this.alepha.events.emit("react:action:success", {
-        type: "form",
-        id: this.id,
-      });
-      await this.alepha.events.emit("form:submit:success", {
-        id: this.id,
-        values,
-      });
+      await this.alepha.events.emit(
+        "react:action:success",
+        { type: "form", id: this.id },
+        { catch: true },
+      );
+      await this.alepha.events.emit(
+        "form:submit:success",
+        { id: this.id, values },
+        { catch: true },
+      );
     } catch (error) {
       this.log.error("Form submission error:", error);
 
-      options.onError?.(error as Error);
+      // A throwing onError callback must not abort the lifecycle either.
+      try {
+        options.onError?.(error as Error);
+      } catch (handlerError) {
+        this.log.error("Form onError handler threw:", handlerError);
+      }
 
-      await this.alepha.events.emit("react:action:error", {
-        type: "form",
-        id: this.id,
-        error: error as Error,
-      });
-      await this.alepha.events.emit("form:submit:error", {
-        error: error as Error,
-        id: this.id,
-      });
+      await this.alepha.events.emit(
+        "react:action:error",
+        { type: "form", id: this.id, error: error as Error },
+        { catch: true },
+      );
+      await this.alepha.events.emit(
+        "form:submit:error",
+        { error: error as Error, id: this.id },
+        { catch: true },
+      );
     } finally {
       this.submitInProgress = false;
-    }
 
-    await this.alepha.events.emit("react:action:end", {
-      type: "form",
-      id: this.id,
-    });
-    await this.alepha.events.emit("form:submit:end", {
-      id: this.id,
-    });
+      // The "loading off" signals live in `finally` so they ALWAYS fire,
+      // even if something above threw — guaranteeing the begin/end pairing
+      // that drives submit-button loading state.
+      await this.alepha.events.emit(
+        "react:action:end",
+        { type: "form", id: this.id },
+        { catch: true },
+      );
+      await this.alepha.events.emit(
+        "form:submit:end",
+        { id: this.id },
+        { catch: true },
+      );
+    }
   };
 
   /**
