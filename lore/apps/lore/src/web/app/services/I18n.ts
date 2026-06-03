@@ -654,9 +654,8 @@ export class I18n {
         "campaign.menu.blights": "Blights",
         "campaign.menu.insights": "Insights",
 
-        "insights.title": "Insights",
-        "insights.subtitle":
-          "Privacy-first pageview analytics from your campaign's Beacon sigils.",
+        "insights.tab.analytics": "Analytics",
+        "insights.tab.performance": "Performance",
         "insights.range.1d": "Today",
         "insights.range.7d": "7 days",
         "insights.range.30d": "30 days",
@@ -680,6 +679,9 @@ export class I18n {
         "insights.vitals.fcp": "FCP",
         "insights.vitals.ttfb": "TTFB",
         "insights.vitals.empty": "—",
+        "insights.vitals.good": "Good",
+        "insights.vitals.needsImprovement": "Needs work",
+        "insights.vitals.poor": "Poor",
 
         "beacon.feature.title": "Beacons",
         "beacon.feature.description":
@@ -1519,9 +1521,8 @@ export class I18n {
         "campaign.menu.blights": "Fléaux",
         "campaign.menu.insights": "Analyses",
 
-        "insights.title": "Analyses",
-        "insights.subtitle":
-          "Statistiques de pages respectueuses de la vie privée, issues des sigils Beacon de votre campagne.",
+        "insights.tab.analytics": "Analyses",
+        "insights.tab.performance": "Performances",
         "insights.range.1d": "Aujourd'hui",
         "insights.range.7d": "7 jours",
         "insights.range.30d": "30 jours",
@@ -1546,6 +1547,9 @@ export class I18n {
         "insights.vitals.fcp": "FCP",
         "insights.vitals.ttfb": "TTFB",
         "insights.vitals.empty": "—",
+        "insights.vitals.good": "Bon",
+        "insights.vitals.needsImprovement": "À améliorer",
+        "insights.vitals.poor": "Médiocre",
 
         "beacon.feature.title": "Beacons",
         "beacon.feature.description":
