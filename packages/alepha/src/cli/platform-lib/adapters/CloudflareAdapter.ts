@@ -1016,8 +1016,10 @@ export class CloudflareAdapter extends PlatformAdapter {
       });
     }
 
-    // 5. Delete R2 bucket (must be emptied first — Cloudflare's REST DELETE
-    // rejects non-empty buckets with `BucketNotEmpty`)
+    // 5. Delete R2 bucket. An empty bucket is removed by the REST DELETE
+    // directly; only a non-empty one needs an S3 wipe first. Crucially the
+    // wipe is NOT a precondition of the delete — a wipe that can't run (no
+    // creds) must never strand an otherwise-deletable bucket.
     const needsBucket = ctx.resources.hasBucket;
     if (needsBucket) {
       const name = ctx.naming.r2();
@@ -1025,14 +1027,10 @@ export class CloudflareAdapter extends PlatformAdapter {
         name: `delete r2 ${name}`,
         handler: async () => {
           try {
-            await this.wipeR2Bucket(name, ctx);
-            await this.api.deleteR2(name);
+            await this.deleteR2Bucket(name, ctx);
           } catch (error: any) {
             const msg = String(error.message || "");
-            if (
-              msg.includes("does not exist") ||
-              msg.includes("NoSuchBucket")
-            ) {
+            if (this.isMissingBucketError(msg)) {
               this.log.debug(`Bucket ${name} not found — skipping.`);
             } else {
               this.log.warn(`Failed to delete r2 ${name}: ${msg}`);
@@ -1128,15 +1126,86 @@ export class CloudflareAdapter extends PlatformAdapter {
     await this.api.createR2(name);
   }
 
+  /** Whether a Cloudflare error message indicates the bucket is already gone. */
+  protected isMissingBucketError(msg: string): boolean {
+    return (
+      msg.includes("does not exist") ||
+      msg.includes("NoSuchBucket") ||
+      msg.includes("bucket not found")
+    );
+  }
+
+  /**
+   * Resolve S3 credentials for wiping an R2 bucket over the S3 protocol.
+   *
+   * Prefers the account's R2 S3 credentials from the environment
+   * (`S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`) — these are already
+   * provisioned for the deploy (artifact registry) and are account-scoped,
+   * so they can empty any bucket without minting anything. Returns `null`
+   * when not configured, letting the caller fall back to token minting.
+   */
+  protected resolveR2Credentials(): {
+    accessKeyId: string;
+    secretAccessKey: string;
+  } | null {
+    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+    if (accessKeyId && secretAccessKey) {
+      return { accessKeyId, secretAccessKey };
+    }
+    return null;
+  }
+
+  /**
+   * Delete an R2 bucket, emptying it first only when necessary.
+   *
+   * Cloudflare's REST `DELETE /r2/buckets/:name` succeeds on an empty bucket
+   * but rejects a non-empty one. So we attempt the delete directly (the
+   * common teardown case — no objects, no creds needed), and only on failure
+   * empty the bucket over the S3 protocol and retry. A missing bucket is a
+   * no-op, so teardown is idempotent.
+   */
+  protected async deleteR2Bucket(
+    name: string,
+    ctx: PlatformContext,
+  ): Promise<void> {
+    try {
+      await this.api.deleteR2(name);
+      return;
+    } catch (error: any) {
+      const msg = String(error.message || "");
+      if (this.isMissingBucketError(msg)) {
+        return; // already gone
+      }
+      // Most often the bucket is non-empty — empty it then retry once.
+      this.log.debug(
+        `Direct delete of r2 ${name} failed (${msg}); emptying then retrying.`,
+      );
+    }
+
+    await this.wipeR2Bucket(name, ctx);
+
+    try {
+      await this.api.deleteR2(name);
+    } catch (error: any) {
+      const msg = String(error.message || "");
+      if (this.isMissingBucketError(msg)) {
+        return;
+      }
+      throw error;
+    }
+  }
+
   /**
    * Empty an R2 bucket via the S3-compatible API.
    *
-   * Cloudflare's REST `DELETE /r2/buckets/:name` rejects non-empty buckets
-   * with `BucketNotEmpty`, and the REST API has no object-level endpoints —
-   * objects must be listed and deleted over the S3 protocol. To avoid
-   * making users pre-create R2 access keys, we mint a short-lived
-   * bucket-scoped API token using the wrangler bearer token, wipe the
-   * bucket with `s3mini`, then revoke the token.
+   * Cloudflare's REST API has no object-level endpoints — objects must be
+   * listed and deleted over the S3 protocol. We use the account's R2 S3
+   * credentials (`S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`) when present;
+   * otherwise we fall back to minting a short-lived bucket-scoped token via
+   * the CF API (requires a user-scoped `CLOUDFLARE_API_TOKEN`) and revoke it
+   * after. When neither is available the wipe is skipped with a warning —
+   * the caller still attempts the delete, which succeeds for empty buckets.
    *
    * Also aborts any pending multipart uploads — those count as bucket
    * contents from R2's perspective and would otherwise block the delete.
@@ -1145,20 +1214,40 @@ export class CloudflareAdapter extends PlatformAdapter {
     bucketName: string,
     ctx: PlatformContext,
   ): Promise<void> {
-    // `createR2Token` calls `POST /accounts/:id/tokens`, which requires
-    // `User → API Tokens → Edit` — only granted on user-level tokens.
-    // A standard account-scoped `CLOUDFLARE_API_TOKEN` 401s on that path,
-    // and the wrangler OAuth bearer doesn't carry the scope either. Without
-    // either, we can't mint the bucket-scoped S3 creds the wipe needs, so
-    // skip and leave the bucket for manual deletion in the dashboard.
-    if (!process.env.CLOUDFLARE_API_TOKEN) {
-      this.log.warn(
-        `Skipping R2 wipe for ${bucketName}: CLOUDFLARE_API_TOKEN not set. Delete the bucket manually in the Cloudflare dashboard.`,
-      );
-      return;
+    let creds = this.resolveR2Credentials();
+    let mintedTokenId: string | undefined;
+
+    if (!creds) {
+      // No env S3 creds — try minting a bucket-scoped token. This needs a
+      // user-scoped `CLOUDFLARE_API_TOKEN`; an account-scoped one (or the
+      // wrangler OAuth bearer) can't mint, so we skip rather than throw and
+      // let the caller's delete attempt proceed (fine for empty buckets).
+      if (!process.env.CLOUDFLARE_API_TOKEN) {
+        this.log.warn(
+          `Skipping R2 wipe for ${bucketName}: no S3 credentials ` +
+            `(S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY) and no ` +
+            `CLOUDFLARE_API_TOKEN to mint a bucket-scoped token. A non-empty ` +
+            `bucket must be emptied manually in the Cloudflare dashboard.`,
+        );
+        return;
+      }
+      try {
+        const tokenName = `alepha-teardown-${bucketName}-${Date.now()}`;
+        const token = await this.api.createR2Token(tokenName, bucketName);
+        mintedTokenId = token.id;
+        creds = {
+          accessKeyId: token.accessKeyId,
+          secretAccessKey: token.secretAccessKey,
+        };
+      } catch (error: any) {
+        this.log.warn(
+          `Skipping R2 wipe for ${bucketName}: could not mint an R2 token ` +
+            `(${String(error.message || "")}). Set S3_ACCESS_KEY_ID / ` +
+            `S3_SECRET_ACCESS_KEY for reliable teardown.`,
+        );
+        return;
+      }
     }
-    const tokenName = `alepha-teardown-${bucketName}-${Date.now()}`;
-    const token = await this.api.createR2Token(tokenName, bucketName);
 
     try {
       const accountId = await this.api.resolveAccountId();
@@ -1168,8 +1257,8 @@ export class CloudflareAdapter extends PlatformAdapter {
         : `${accountId}.r2.cloudflarestorage.com`;
 
       const client = new S3mini({
-        accessKeyId: token.accessKeyId,
-        secretAccessKey: token.secretAccessKey,
+        accessKeyId: creds.accessKeyId,
+        secretAccessKey: creds.secretAccessKey,
         region: "auto",
         endpoint: `https://${host}/${bucketName}`,
       });
@@ -1226,13 +1315,16 @@ export class CloudflareAdapter extends PlatformAdapter {
         this.log.info(`Emptied ${total} object(s) from bucket ${bucketName}.`);
       }
     } finally {
-      // Always revoke, even if the wipe itself failed mid-way.
-      try {
-        await this.api.deleteR2Token(token.id);
-      } catch (error: any) {
-        this.log.warn(
-          `Failed to revoke ephemeral R2 token ${token.id}: ${String(error.message || "")}`,
-        );
+      // Revoke only a token we minted here — env S3 creds are long-lived and
+      // must not be deleted. Always revoke, even if the wipe failed mid-way.
+      if (mintedTokenId) {
+        try {
+          await this.api.deleteR2Token(mintedTokenId);
+        } catch (error: any) {
+          this.log.warn(
+            `Failed to revoke ephemeral R2 token ${mintedTokenId}: ${String(error.message || "")}`,
+          );
+        }
       }
     }
   }
