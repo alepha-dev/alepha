@@ -13,7 +13,7 @@ const MeLayout = () => {
   const router = useRouter<AppRouter>();
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 overflow-auto p-4">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 overflow-auto border-x border-border bg-background p-4 pt-16">
       <PageHeader />
       {/* Compact header */}
       <div className="flex items-center gap-4 rounded-md border border-border bg-card p-4">
