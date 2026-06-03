@@ -13,7 +13,7 @@ import { SigilForwardProvider } from "./SigilForwardProvider.ts";
  * Two endpoints:
  *
  * - `POST /api/sigil/ingest` — telemetry envelope (views, errors, vitals).
- * - `GET  /api/sigil/request` — 302-redirects to the first-party Lore
+ * - `GET  /sigil/request` — 302-redirects to the first-party Lore
  *   petition page (`{loreOrigin}/c/:campaignId/request`).
  *
  * The `visitor` hash is a daily-stable, non-reversible fingerprint:
@@ -22,7 +22,7 @@ import { SigilForwardProvider } from "./SigilForwardProvider.ts";
  * The raw IP is never forwarded or stored.
  *
  * The sigil id is a server-only secret that powers telemetry; the
- * `GET /api/sigil/request` proxy resolves it to a campaign id server-side
+ * `GET /sigil/request` proxy resolves it to a campaign id server-side
  * and redirects, so the id never reaches the browser.
  */
 export class SigilProxyController {
@@ -84,23 +84,25 @@ export class SigilProxyController {
   });
 
   /**
-   * `GET /api/sigil/request`
+   * `GET /sigil/request`
    *
    * The feedback button does a synchronous same-origin
-   * `window.open("/api/sigil/request")`. This proxy resolves the configured
+   * `window.open("/sigil/request")`. This proxy resolves the configured
    * sigil → campaign id server-side and 302-redirects to the first-party
    * Lore petition page, so the sigil id never reaches the browser.
    *
-   * `$route` (not `$action`) so the endpoint lives at the ROOT path
-   * (`/api/sigil/request`) and the handler can drive `request.reply`
-   * directly to set the redirect status + `location` header.
+   * `$route` (not `$action`) so the endpoint lives at the ROOT path and the
+   * handler can drive `request.reply` directly to set the redirect status +
+   * `location` header. `$route` does NOT prefix with `/api` — that namespace
+   * is reserved for the `$action` dispatcher, which would shadow this route
+   * (a `/api/sigil/request` `$route` 404s); it must live at the root.
    *
    * Replies `404` when the provider is disabled or the campaign id cannot
    * be resolved; otherwise `302` to `{loreOrigin}/c/:campaignId/request`.
    */
   request = $route({
     method: "GET",
-    path: "/api/sigil/request",
+    path: "/sigil/request",
     handler: async (request) => {
       const { reply } = request;
 

@@ -6,7 +6,7 @@ export type SigilFeedbackButtonProps = {};
 /**
  * Floating feedback button.
  *
- * On click it synchronously opens the same-origin `/api/sigil/request`
+ * On click it synchronously opens the same-origin `/sigil/request`
  * endpoint in a popup. That endpoint resolves the sigil → campaign id
  * server-side and 302-redirects to the first-party Lore petition page, so
  * the sigil id never reaches the browser. Styled entirely inline — no
@@ -15,11 +15,11 @@ export type SigilFeedbackButtonProps = {};
 export const SigilFeedbackButton = (_props: SigilFeedbackButtonProps) => {
   const openPetition = () => {
     const popup = window.open(
-      "/api/sigil/request",
+      "/sigil/request",
       "lore-petition",
       "width=480,height=720",
     );
-    if (!popup) window.open("/api/sigil/request", "_blank");
+    if (!popup) window.open("/sigil/request", "_blank");
   };
 
   return (
