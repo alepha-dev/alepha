@@ -3,6 +3,7 @@ import {
   KeyRound,
   Mail,
   MapPinned,
+  MessageSquareWarning,
   Plug,
   RadioTower,
   ShieldCheck,
@@ -36,6 +37,12 @@ const MeLayoutMenu = () => {
         icon={<Mail className="size-4" />}
       >
         Invitations
+      </MeLayoutNavLink>
+      <MeLayoutNavLink
+        href={meRouter.path("myPetitions")}
+        icon={<MessageSquareWarning className="size-4" />}
+      >
+        Petitions
       </MeLayoutNavLink>
       <span className="hidden px-2 pt-2 text-xs text-muted-foreground md:block">
         Security
