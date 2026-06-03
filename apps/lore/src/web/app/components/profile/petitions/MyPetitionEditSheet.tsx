@@ -25,9 +25,10 @@ export interface MyPetitionEditSheetProps {
 }
 
 /**
- * Inline edit drawer for a reporter's own pending petition. Edits title,
- * description and tags via `updateMyPetition` (attachments are left as-is).
- * Opened from the row actions on {@link MyPetitions}.
+ * Inline drawer opened by clicking a row in {@link MyPetitions}. A pending
+ * petition is editable — title, description and tags via `updateMyPetition`
+ * (attachments are left as-is); a triaged (accepted/rejected) petition renders
+ * read-only.
  */
 const MyPetitionEditSheet = (props: MyPetitionEditSheetProps) => {
   const petitionApi = useClient<PetitionController>();
@@ -37,6 +38,11 @@ const MyPetitionEditSheet = (props: MyPetitionEditSheetProps) => {
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // Row click opens this drawer for any petition, but editing is pending-only
+  // (the server enforces it too). Non-pending petitions render read-only.
+  const readOnly = !props.petition || props.petition.status !== "pending";
+  const disabled = saving || readOnly;
 
   // Re-seed the form whenever a different petition is opened.
   useEffect(() => {
@@ -74,11 +80,16 @@ const MyPetitionEditSheet = (props: MyPetitionEditSheetProps) => {
       open={!!props.petition}
       onOpenChange={(open) => !open && props.onClose()}
     >
-      <SheetContent className="flex w-full flex-col gap-4 sm:max-w-lg">
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-4 data-[side=right]:sm:max-w-2xl"
+      >
         <SheetHeader>
-          <SheetTitle>Edit petition</SheetTitle>
+          <SheetTitle>{readOnly ? "Petition" : "Edit petition"}</SheetTitle>
           <SheetDescription>
-            You can edit a petition only while it is still pending.
+            {readOnly
+              ? "This petition has already been triaged and can no longer be edited."
+              : "You can edit a petition only while it is still pending."}
           </SheetDescription>
         </SheetHeader>
 
@@ -93,7 +104,7 @@ const MyPetitionEditSheet = (props: MyPetitionEditSheetProps) => {
               onChange={(e) => setTitle(e.target.value)}
               maxLength={200}
               placeholder="Short summary"
-              disabled={saving}
+              disabled={disabled}
             />
           </div>
 
@@ -111,24 +122,30 @@ const MyPetitionEditSheet = (props: MyPetitionEditSheetProps) => {
               rows={8}
               maxLength={10000}
               placeholder="Describe your request"
-              disabled={saving}
+              disabled={disabled}
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Tags</span>
-            <QuestTagInput value={tags} onChange={setTags} disabled={saving} />
+            <QuestTagInput
+              value={tags}
+              onChange={setTags}
+              disabled={disabled}
+            />
           </div>
         </div>
 
         <SheetFooter>
           <Button variant="outline" onClick={props.onClose} disabled={saving}>
-            Cancel
+            {readOnly ? "Close" : "Cancel"}
           </Button>
-          <Button onClick={save} disabled={saving}>
-            {saving && <Loader2 className="size-4 animate-spin" />}
-            Save
-          </Button>
+          {!readOnly && (
+            <Button onClick={save} disabled={saving}>
+              {saving && <Loader2 className="size-4 animate-spin" />}
+              Save
+            </Button>
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>

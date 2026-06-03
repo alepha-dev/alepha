@@ -5,12 +5,10 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
-import { useRouter } from "alepha/react/router";
-import { Pencil, Search, Trash } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Search, Trash } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { PetitionController } from "@/api/controllers/PetitionController.ts";
 import type { MyPetitionResource } from "@/api/schemas/myPetitionResourceSchema.ts";
-import type { AppRouter } from "../../../AppRouter.ts";
 import MyPetitionEditSheet from "./MyPetitionEditSheet.tsx";
 
 /**
@@ -38,7 +36,6 @@ const STATUS_VARIANT: Record<string, "secondary" | "default" | "destructive"> =
  */
 const MyPetitions = () => {
   const petitionApi = useClient<PetitionController>();
-  const router = useRouter<AppRouter>();
   const dateFormatter = useInject(DateTimeProvider);
   const dialog = useDialog();
 
@@ -48,9 +45,10 @@ const MyPetitions = () => {
   const [editing, setEditing] = useState<MyPetitionResource | undefined>(
     undefined,
   );
-  // Captured from the row action so the edit drawer can refresh the table
-  // after a successful save.
-  const refreshRef = useRef<(() => void) | undefined>(undefined);
+  // AlephaTable exposes `refresh` only through its row-action context, not via
+  // a ref. Bumping this remount key refetches after a drawer save; filters /
+  // sort survive the remount because they persist under `persistenceKey`.
+  const [tableKey, setTableKey] = useState(0);
 
   useEffect(() => {
     petitionApi
@@ -74,6 +72,7 @@ const MyPetitions = () => {
       </div>
 
       <AlephaTable<MyPetitionResource>
+        key={tableKey}
         className="min-h-0 flex-1"
         defaultSize={20}
         persistenceKey="lor.me.petitions"
@@ -134,14 +133,7 @@ const MyPetitions = () => {
             } as any,
           })
         }
-        onRowClick={(p) =>
-          router.push("campaignPetitionStatus", {
-            params: {
-              campaignId: String(p.campaignId),
-              petitionId: String(p.id),
-            },
-          })
-        }
+        onRowClick={(p) => setEditing(p)}
         columns={{
           shortId: {
             label: "#",
@@ -204,17 +196,6 @@ const MyPetitions = () => {
           p.status === "pending"
             ? [
                 {
-                  icon: Pencil,
-                  label: "Edit",
-                  onClick: (
-                    _p: MyPetitionResource,
-                    { refresh }: { refresh: () => void },
-                  ) => {
-                    refreshRef.current = refresh;
-                    setEditing(p);
-                  },
-                },
-                {
                   icon: Trash,
                   label: "Delete",
                   destructive: true,
@@ -244,7 +225,7 @@ const MyPetitions = () => {
         petition={editing}
         onClose={() => setEditing(undefined)}
         onSaved={() => {
-          refreshRef.current?.();
+          setTableKey((k) => k + 1);
           setEditing(undefined);
         }}
       />
