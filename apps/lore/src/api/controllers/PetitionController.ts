@@ -469,7 +469,11 @@ export class PetitionController {
   protected async toResources(rows: Petition[]): Promise<PetitionResource[]> {
     if (rows.length === 0) return [];
 
-    const userIds = [...new Set(rows.map((p) => p.reporterUserId))];
+    const userIds = [
+      ...new Set(
+        rows.map((p) => p.reporterUserId).filter((id): id is string => id != null),
+      ),
+    ];
     const fileIds = [...new Set(rows.flatMap((p) => p.attachments ?? []))];
     const petitionIds = rows.map((p) => p.id);
 
@@ -497,7 +501,9 @@ export class PetitionController {
     }
 
     return rows.map((p) => {
-      const reporter = reporterById.get(p.reporterUserId);
+      const reporter = p.reporterUserId
+        ? reporterById.get(p.reporterUserId)
+        : undefined;
       const attachmentUrls = (p.attachments ?? []).flatMap((id) => {
         const f = fileById.get(id);
         if (!f) return [];
