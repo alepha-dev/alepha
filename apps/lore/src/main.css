@@ -1,5 +1,4 @@
 @import "@alepha/ui/styles.css";
-@import "@alepha/sigil/styles";
 
 /* ────────────────────────────────────────────────────────────────────────
  * Page transition keyframes — referenced by `$page({ animation })` in
