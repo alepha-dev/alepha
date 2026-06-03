@@ -2,8 +2,8 @@
 
 `@alepha/sigil` wires a Lore [Sigil](https://lore.alepha.dev) into an Alepha
 app: cookieless pageview analytics (**beacon**), Web-Vitals **p75**, client &
-server error capture (**blights**), and an in-app annotated-screenshot
-**feedback** dialog (**petition**) — all behind one module import.
+server error capture (**blights**), and a floating **feedback** button that
+opens the Lore petition page (**petition**) — all behind one module import.
 
 > The package is **private** (vendor-only) and targets Alepha React apps. It
 > replaces the legacy `<script src=".../embed.js">` snippet.
@@ -21,12 +21,18 @@ browser ──(same-origin)──▶ /api/sigil/ingest ──(server→server, s
 ```
 
 Telemetry is **mutualized**: pageviews, client errors, and vitals are batched
-into a single ingest call (flushed on a timer + `pagehide`). The feedback
-petition is a separate multipart call.
+into a single ingest call (flushed on a timer + `pagehide`).
+
+**Petitions** are first-party: the feedback button does a synchronous
+`window.open("/api/sigil/request")`; that same-origin proxy resolves the
+sigil → campaign id server-side (via `GET /sigils/:id/campaign`) and
+302-redirects to the Lore petition page `{loreOrigin}/c/:campaignId/request`,
+which requires login. The sigil id never reaches the browser, and petitions
+have no DB relation to the sigil.
 
 ## Setup
 
-Two steps, plus env.
+One step, plus env.
 
 **1. Import the module** in your web module:
 
@@ -40,13 +46,7 @@ export const WebModule = $module({
 });
 ```
 
-**2. Import the styles** in your root CSS:
-
-```css
-@import "@alepha/sigil/styles";
-```
-
-**3. Set the env** (server-only):
+**2. Set the env** (server-only):
 
 | Var | Required | Notes |
 |-----|----------|-------|
@@ -59,14 +59,16 @@ Sigil is active **only when `alepha.isProduction()` and `SIGIL_ID` is set**.
 In development it is silently inert. In production without `SIGIL_ID` it logs a
 gentle warning and stays disabled (no fail-fast). The floating feedback button
 auto-mounts on every page via the framework's `RootComponentsProvider` slot —
-you don't place any JSX.
+you don't place any JSX, and there is no stylesheet to import (the button is
+inline-styled).
 
 ## What each capability needs
 
-Each capability is gated on the Lore side by the campaign's feature flags **and**
-the sigil's `kinds` (`beacon` / `blights` / `vitals` / `petition`), configured by
-the campaign owner in Lore. The module sends everything it can; Lore ignores
-capabilities a given sigil hasn't enabled.
+The **telemetry** capabilities (`beacon` / `blights` / `vitals`) are gated on the
+Lore side by the campaign's feature flags **and** the sigil's `kinds`; the module
+sends everything it can and Lore ignores capabilities a given sigil hasn't
+enabled. The **petition** button just opens the campaign's first-party request
+page, which enforces login and the campaign's `petitions` feature itself.
 
 ## Privacy
 
