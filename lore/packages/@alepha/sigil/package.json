@@ -20,11 +20,7 @@
       "browser": "./src/index.browser.ts",
       "import": "./src/index.ts"
     },
-    "./vitals": "./src/shared/schemas/sigilVitalsBuckets.ts",
-    "./styles": "./src/styles.css"
-  },
-  "dependencies": {
-    "html2canvas-pro": "^2.0.2"
+    "./vitals": "./src/shared/schemas/sigilVitalsBuckets.ts"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.2",

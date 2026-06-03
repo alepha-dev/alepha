@@ -1,19 +1,28 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { SigilRoot } from "../SigilRoot.tsx";
 
 describe("SigilRoot", () => {
-  it("opens the feedback dialog on button click", async () => {
-    render(<SigilRoot />);
-    fireEvent.click(screen.getByLabelText("Feedback"));
-    expect(await screen.findByRole("dialog")).toBeTruthy();
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-  it("closes the dialog via the close button", async () => {
+  it("renders the feedback button", () => {
+    render(<SigilRoot />);
+    expect(screen.getByLabelText("Feedback")).toBeTruthy();
+  });
+
+  it("opens /api/sigil/request in a popup when the button is clicked", () => {
+    const open = vi.fn(() => ({}) as Window);
+    vi.stubGlobal("open", open);
+
     render(<SigilRoot />);
     fireEvent.click(screen.getByLabelText("Feedback"));
-    await screen.findByRole("dialog");
-    fireEvent.click(screen.getByLabelText("Close"));
-    expect(screen.queryByRole("dialog")).toBeNull();
+
+    expect(open).toHaveBeenCalledWith(
+      "/api/sigil/request",
+      "lore-petition",
+      "width=480,height=720",
+    );
   });
 });

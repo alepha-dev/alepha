@@ -1,26 +1,51 @@
 /**
  * Props for the SigilFeedbackButton component.
  */
-export interface SigilFeedbackButtonProps {
-  /** Called when the button is clicked. */
-  onClick: () => void;
-}
+export type SigilFeedbackButtonProps = {};
 
 /**
- * Floating action button that opens the Sigil feedback dialog.
+ * Floating feedback button.
  *
- * Renders a fixed-position FAB using the `.sigil-fab` class with
- * an inline MessageSquareWarning icon (Lucide-derived path).
+ * On click it synchronously opens the same-origin `/api/sigil/request`
+ * endpoint in a popup. That endpoint resolves the sigil → campaign id
+ * server-side and 302-redirects to the first-party Lore petition page, so
+ * the sigil id never reaches the browser. Styled entirely inline — no
+ * stylesheet dependency.
  */
-export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
+export const SigilFeedbackButton = (_props: SigilFeedbackButtonProps) => {
+  const openPetition = () => {
+    const popup = window.open(
+      "/api/sigil/request",
+      "lore-petition",
+      "width=480,height=720",
+    );
+    if (!popup) window.open("/api/sigil/request", "_blank");
+  };
+
   return (
     <button
       type="button"
-      className="sigil-fab"
       aria-label="Feedback"
-      onClick={props.onClick}
+      onClick={openPetition}
+      style={{
+        position: "fixed",
+        bottom: 16,
+        right: 16,
+        zIndex: 2147483000,
+        width: 44,
+        height: 44,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#4f46e5",
+        color: "#fff",
+        border: 0,
+        borderRadius: 9999,
+        cursor: "pointer",
+        boxShadow: "0 4px 12px rgba(0,0,0,.25)",
+      }}
     >
-      {/* MessageSquareWarning icon — Lucide-derived, inline SVG */}
+      {/* lucide MessageSquareWarning — chat bubble with a "!" */}
       <svg
         aria-hidden="true"
         xmlns="http://www.w3.org/2000/svg"
@@ -33,9 +58,9 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        <path d="M12 7v4" />
-        <path d="M12 15h.01" />
+        <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+        <line x1="12" x2="12" y1="8" y2="12" />
+        <line x1="12" x2="12.01" y1="16" y2="16" />
       </svg>
     </button>
   );

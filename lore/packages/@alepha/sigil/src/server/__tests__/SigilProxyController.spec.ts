@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { ServerReply } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { SigilForwardProvider } from "../SigilForwardProvider.ts";
 import { SigilProxyController } from "../SigilProxyController.ts";
@@ -105,5 +106,35 @@ describe("SigilProxyController.ingest", () => {
 
     const fwd = alepha.inject(SigilForwardProvider) as FakeForward;
     expect(fwd.ingested[0].stamp.country).toBeUndefined();
+  });
+});
+
+describe("SigilProxyController.request", () => {
+  it("302-redirects to the Lore petition page for the resolved campaign", async () => {
+    class RedirectForward extends SigilForwardProvider {
+      enabled() {
+        return true;
+      }
+
+      loreOrigin() {
+        return "https://lore.test";
+      }
+
+      async campaignId() {
+        return 7;
+      }
+    }
+
+    const alepha = Alepha.create({
+      env: { NODE_ENV: "production", SERVER_PORT: 0, SIGIL_ID: "sig-1" },
+    }).with({ provide: SigilForwardProvider, use: RedirectForward });
+    const ctrl = alepha.inject(SigilProxyController);
+    await alepha.start();
+
+    const reply = new ServerReply();
+    await ctrl.request.run({ reply });
+
+    expect(reply.status).toBe(302);
+    expect(reply.headers.location).toBe("https://lore.test/c/7/request");
   });
 });
