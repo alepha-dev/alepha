@@ -3,6 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   InvalidCredentialsError,
+  type IssuerPrimitive,
   SecurityError,
   type UserAccount,
 } from "alepha/security";
@@ -547,18 +548,31 @@ export class ServerAuthProvider {
       return;
     }
 
-    const tokens = await issuer.createToken(user);
+    await this.establishSession(user, issuer, provider.name, cookies);
 
+    reply.redirect(redirectUri, 302);
+  }
+
+  /**
+   * Establish a local session for an already-resolved user: mint realm tokens
+   * and write the `tokens` cookie. Used by the OAuth callback and by federated
+   * (broker) login. `issuer` is the realm issuer (provider.issuer / realm).
+   */
+  public async establishSession(
+    user: UserAccount,
+    issuer: IssuerPrimitive,
+    providerName: string,
+    cookies: Cookies,
+  ): Promise<void> {
+    const tokens = await issuer.createToken(user);
     this.setTokens(
       {
         ...tokens,
         issued_at: this.dateTimeProvider.now().unix(),
-        provider: provider.name,
+        provider: providerName,
       },
       cookies,
     );
-
-    reply.redirect(redirectUri, 302);
   }
 
   /**
