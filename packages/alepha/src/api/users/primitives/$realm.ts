@@ -21,6 +21,7 @@ import {
   $authApple,
   $authCredentials,
   $authFacebook,
+  $authFederationClient,
   $authFranceConnect,
   $authGithub,
   $authGoogle,
@@ -306,6 +307,15 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     }
 
     alepha.with(() => auth);
+
+    if (identities.federated) {
+      const fed = $authFederationClient({
+        realm,
+        brokerUrl: identities.federated.brokerUrl,
+        publicKeyPem: identities.federated.publicKey,
+      });
+      alepha.with(() => ({ federationCallback: fed.callback }));
+    }
   }
 
   if (features.parameters) {
@@ -431,6 +441,22 @@ export interface RealmOptions {
     facebook?: true;
     microsoft?: true;
     franceconnect?: true;
+    /**
+     * Federated social login via a central broker (the platform).
+     *
+     * The broker performs the real OIDC dance with Google/Apple on a single
+     * shared OAuth client and hands this realm a short-lived, asymmetric-signed
+     * assertion. This realm verifies it (broker `publicKey`), links a local
+     * user, and establishes a session — no per-tenant OAuth client required.
+     */
+    federated?: {
+      /** Broker origin (assertion `iss`), e.g. https://alepha.club. */
+      brokerUrl: string;
+      /** Broker EdDSA public key (SPKI PEM) used to verify assertions. */
+      publicKey: string;
+      /** Providers to surface as broker login buttons. */
+      providers: Array<"google" | "apple">;
+    };
   };
 
   /**

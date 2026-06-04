@@ -49,6 +49,7 @@ export class RealmController {
         captchaSiteKey: settings.captchaRequired
           ? this.captchaProvider.getSiteKey()
           : undefined,
+        federated: realm.federated,
       };
     },
   });
