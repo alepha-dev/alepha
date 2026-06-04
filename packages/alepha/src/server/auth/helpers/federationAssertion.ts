@@ -59,10 +59,16 @@ export async function verifyFederationAssertion(
     issuer: opts.issuer,
     audience: opts.audience,
     algorithms: [ALG],
+    // Defense-in-depth: reject a (signature-valid) token that omits any of
+    // these, so it can't slip an unbounded lifetime or an unreplayable id.
+    requiredClaims: ["exp", "iat", "jti"],
   });
   const profile = payload.profile as FederationProfile | undefined;
   if (!profile?.sub || !profile.provider) {
     throw new Error("Federation assertion missing profile.sub/provider");
   }
-  return { profile, jti: String(payload.jti ?? "") };
+  if (!payload.jti) {
+    throw new Error("Federation assertion missing jti");
+  }
+  return { profile, jti: String(payload.jti) };
 }

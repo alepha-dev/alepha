@@ -1,4 +1,9 @@
-import { decodeJwt, exportPKCS8, generateKeyPair } from "jose";
+import {
+  decodeJwt,
+  decodeProtectedHeader,
+  exportPKCS8,
+  generateKeyPair,
+} from "jose";
 import { describe, expect, it } from "vitest";
 import { signAppleClientSecret } from "../helpers/appleClientSecret.ts";
 
@@ -20,5 +25,10 @@ describe("apple client secret", () => {
     expect(claims.sub).toBe("club.alepha.signin");
     expect(claims.aud).toBe("https://appleid.apple.com");
     expect(typeof claims.exp).toBe("number");
+
+    // Apple requires ES256 + the Key ID in the protected header.
+    const header = decodeProtectedHeader(secret);
+    expect(header.alg).toBe("ES256");
+    expect(header.kid).toBe("KEY1234567");
   });
 });
