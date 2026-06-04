@@ -1,7 +1,8 @@
-import { $context, AlephaError, t } from "alepha";
+import { AlephaError, t } from "alepha";
 import { SecurityError } from "alepha/security";
 import { $route, BadRequestError } from "alepha/server";
 import { $cookie } from "alepha/server/cookies";
+import { safeRedirectPath } from "../helpers/safeRedirectPath.ts";
 import {
   authorizationCodeGrant,
   buildAuthorizationUrl,
@@ -44,7 +45,6 @@ const ISSUERS = {
 } as const;
 
 export const $authFederationBroker = (options: FederationBrokerOptions) => {
-  const { alepha } = $context();
   const callbackPath = "/auth/federated/callback";
 
   if (!options.signingKeyPem) {
@@ -145,10 +145,7 @@ export const $authFederationBroker = (options: FederationBrokerOptions) => {
         {
           provider: query.provider,
           tenantOrigin,
-          redirectPath:
-            query.redirect && query.redirect.startsWith("/")
-              ? query.redirect
-              : "/",
+          redirectPath: safeRedirectPath(query.redirect),
           codeVerifier: usePkce ? codeVerifier : undefined,
           state,
           nonce,
@@ -172,33 +169,44 @@ export const $authFederationBroker = (options: FederationBrokerOptions) => {
     flow.del({ cookies });
 
     const provider = ctx.provider as "google" | "apple";
-    const config = await getConfig(provider);
-    const tokens = await authorizationCodeGrant(config, urlOrReq, {
-      pkceCodeVerifier: ctx.codeVerifier,
-      expectedState: ctx.state,
-      expectedNonce: ctx.nonce,
-    });
 
-    // Verified claims come from the id_token; merge Apple's one-time form_post name.
-    const claims = (tokens.claims?.() ?? {}) as Record<string, unknown>;
-    const merged = { ...rawProfile, ...claims } as Record<string, unknown>;
-    const profile: FederationProfile = {
-      provider,
-      sub: String(merged.sub),
-      email: merged.email as string | undefined,
-      email_verified:
-        typeof merged.email_verified === "string"
-          ? merged.email_verified === "true"
-          : (merged.email_verified as boolean | undefined),
-      name: merged.name as string | undefined,
-      given_name: merged.given_name as string | undefined,
-      family_name: merged.family_name as string | undefined,
-      picture: merged.picture as string | undefined,
-      is_private_email:
-        typeof merged.is_private_email === "string"
-          ? merged.is_private_email === "true"
-          : (merged.is_private_email as boolean | undefined),
-    };
+    let profile: FederationProfile;
+    try {
+      const config = await getConfig(provider);
+      const tokens = await authorizationCodeGrant(config, urlOrReq, {
+        pkceCodeVerifier: ctx.codeVerifier,
+        expectedState: ctx.state,
+        expectedNonce: ctx.nonce,
+      });
+
+      // Verified claims come from the id_token; merge Apple's one-time form_post name.
+      const claims = (tokens.claims?.() ?? {}) as Record<string, unknown>;
+      const merged = { ...rawProfile, ...claims } as Record<string, unknown>;
+      profile = {
+        provider,
+        sub: String(merged.sub),
+        email: merged.email as string | undefined,
+        email_verified:
+          typeof merged.email_verified === "string"
+            ? merged.email_verified === "true"
+            : (merged.email_verified as boolean | undefined),
+        name: merged.name as string | undefined,
+        given_name: merged.given_name as string | undefined,
+        family_name: merged.family_name as string | undefined,
+        picture: merged.picture as string | undefined,
+        is_private_email:
+          typeof merged.is_private_email === "string"
+            ? merged.is_private_email === "true"
+            : (merged.is_private_email as boolean | undefined),
+      };
+    } catch {
+      // Upstream auth failed or the user denied consent — bounce back to the
+      // tenant with an error rather than surfacing a raw 500.
+      const fail = new URL(`${ctx.tenantOrigin}${ctx.redirectPath}`);
+      fail.searchParams.set("error", "federation_failed");
+      reply.redirect(fail.toString(), 302);
+      return;
+    }
 
     const assertion = await signFederationAssertion(profile, {
       privateKeyPem: options.signingKeyPem,
@@ -261,7 +269,5 @@ export const $authFederationBroker = (options: FederationBrokerOptions) => {
     },
   });
 
-  // mark alepha as used (lint) — env-derived config is passed in by the app
-  void alepha;
   return { start, callback, callbackPost };
 };

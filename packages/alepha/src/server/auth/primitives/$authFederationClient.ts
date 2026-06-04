@@ -6,6 +6,8 @@ import {
   type VerifyAssertionOptions,
   verifyFederationAssertion,
 } from "../helpers/federationAssertion.ts";
+import { JtiReplayGuard } from "../helpers/jtiReplayGuard.ts";
+import { safeRedirectPath } from "../helpers/safeRedirectPath.ts";
 import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
 import type { LinkAccountOptions, WithLinkFn } from "./$auth.ts";
 
@@ -41,7 +43,7 @@ export interface FederationClientOptions {
 
 export const $authFederationClient = (options: FederationClientOptions) => {
   const { alepha } = $context();
-  const seenJti = new Set<string>(); // replay guard (assertions ~60s)
+  const replay = new JtiReplayGuard(); // single-use, bounded (assertions ~60s)
 
   const callback = $route({
     path: "/auth/federated/callback",
@@ -59,10 +61,9 @@ export const $authFederationClient = (options: FederationClientOptions) => {
         issuer: options.brokerUrl,
         audience,
       });
-      if (seenJti.has(jti)) {
+      if (!replay.check(jti)) {
         throw new BadRequestError("Assertion already used");
       }
-      seenJti.add(jti);
 
       if (!options.realm.link) {
         throw new BadRequestError("Realm has no link function");
@@ -70,9 +71,7 @@ export const $authFederationClient = (options: FederationClientOptions) => {
       const user = await options.realm.link(provider)(link);
       await serverAuth.establishSession(user, options.realm, provider, cookies);
 
-      const redirect =
-        query.redirect && query.redirect.startsWith("/") ? query.redirect : "/";
-      reply.redirect(redirect, 302);
+      reply.redirect(safeRedirectPath(query.redirect), 302);
     },
   });
 
