@@ -1,5 +1,4 @@
-import { $context } from "alepha";
-import { t } from "alepha";
+import { $context, t } from "alepha";
 import type { IssuerPrimitive } from "alepha/security";
 import { $route, BadRequestError } from "alepha/server";
 import {
@@ -56,21 +55,32 @@ export const $authFederationClient = (options: FederationClientOptions) => {
     handler: async ({ query, url, reply, cookies }) => {
       const serverAuth = alepha.inject(ServerAuthProvider);
       const audience = options.selfOrigin ?? `${url.protocol}//${url.host}`;
-      const { provider, jti, link } = await assertionToProfile(query.token, {
-        publicKeyPem: options.publicKeyPem,
-        issuer: options.brokerUrl,
-        audience,
-      });
-      if (!replay.check(jti)) {
-        throw new BadRequestError("Assertion already used");
+      try {
+        const { provider, jti, link } = await assertionToProfile(query.token, {
+          publicKeyPem: options.publicKeyPem,
+          issuer: options.brokerUrl,
+          audience,
+        });
+        if (!replay.check(jti)) {
+          throw new BadRequestError("Assertion already used");
+        }
+        if (!options.realm.link) {
+          throw new BadRequestError("Realm has no link function");
+        }
+        const user = await options.realm.link(provider)(link);
+        await serverAuth.establishSession(
+          user,
+          options.realm,
+          provider,
+          cookies,
+        );
+      } catch {
+        // Invalid / expired / replayed / tampered assertion (or a link
+        // refusal, e.g. unverified email) is an expected failure mode — bounce
+        // to login with an error rather than surfacing a raw 500.
+        reply.redirect("/auth/login?error=federation_failed", 302);
+        return;
       }
-
-      if (!options.realm.link) {
-        throw new BadRequestError("Realm has no link function");
-      }
-      const user = await options.realm.link(provider)(link);
-      await serverAuth.establishSession(user, options.realm, provider, cookies);
-
       reply.redirect(safeRedirectPath(query.redirect), 302);
     },
   });
