@@ -25,7 +25,10 @@ const keys = async () => {
     crv: "Ed25519",
     extractable: true,
   });
-  return { priv: await exportPKCS8(privateKey), pub: await exportSPKI(publicKey) };
+  return {
+    priv: await exportPKCS8(privateKey),
+    pub: await exportSPKI(publicKey),
+  };
 };
 
 describe("federation assertion", () => {

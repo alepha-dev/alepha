@@ -2,12 +2,11 @@ import { AlephaError, t } from "alepha";
 import { SecurityError } from "alepha/security";
 import { $route, BadRequestError } from "alepha/server";
 import { $cookie } from "alepha/server/cookies";
-import { safeRedirectPath } from "../helpers/safeRedirectPath.ts";
 import {
   authorizationCodeGrant,
   buildAuthorizationUrl,
-  calculatePKCECodeChallenge,
   type Configuration,
+  calculatePKCECodeChallenge,
   discovery,
   randomPKCECodeVerifier,
   randomState,
@@ -17,6 +16,7 @@ import {
   type FederationProfile,
   signFederationAssertion,
 } from "../helpers/federationAssertion.ts";
+import { safeRedirectPath } from "../helpers/safeRedirectPath.ts";
 
 export interface FederationBrokerProviders {
   google?: { clientId: string; clientSecret: string };
