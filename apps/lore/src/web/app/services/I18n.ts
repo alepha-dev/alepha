@@ -681,19 +681,14 @@ export class I18n {
         "beacon.feature.description":
           "Collect privacy-first pageview analytics from sigils with the Beacon capability.",
 
-        "blights.title": "Blights",
-        "blights.subtitle":
-          "Uncaught exceptions captured from your campaign's sigils, deduplicated by root cause.",
         "blights.empty":
           "No blights. Crashes captured from your sigils will appear here.",
-        "blights.empty.resolved": "No resolved blights.",
         "blights.filter.showResolved": "Show resolved",
         "blights.col.error": "Error",
         "blights.col.page": "Page",
         "blights.col.count": "Count",
         "blights.col.lastSeen": "Last seen",
         "blights.col.spread": "Spread",
-        "blights.col.actions": "Actions",
         "blights.spread.ips": "$1 IPs",
         "blights.spread.oneIp": "1 IP",
         "blights.spread.capped": "$1+ IPs",
@@ -1532,19 +1527,14 @@ export class I18n {
         "beacon.feature.description":
           "Collectez des statistiques de pages respectueuses de la vie privée depuis les sigils dotés de la capacité Beacon.",
 
-        "blights.title": "Fléaux",
-        "blights.subtitle":
-          "Exceptions non interceptées capturées par les sigils de votre campagne, dédupliquées par cause racine.",
         "blights.empty":
           "Aucun fléau. Les plantages capturés par vos sigils apparaîtront ici.",
-        "blights.empty.resolved": "Aucun fléau résolu.",
         "blights.filter.showResolved": "Afficher les résolus",
         "blights.col.error": "Erreur",
         "blights.col.page": "Page",
         "blights.col.count": "Occurrences",
         "blights.col.lastSeen": "Vu récemment",
         "blights.col.spread": "Propagation",
-        "blights.col.actions": "Actions",
         "blights.spread.ips": "$1 IPs",
         "blights.spread.oneIp": "1 IP",
         "blights.spread.capped": "$1+ IPs",
