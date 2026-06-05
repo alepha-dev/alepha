@@ -58,6 +58,8 @@ export default defineConfig({
         "folios.activity.action.",
         // tr(`blights.origin.${origin}`) — client/server crash provenance badge.
         "blights.origin.",
+        // tr(`language.${code}`) — @alepha/ui button-language picker labels.
+        "language.",
       ],
     }),
     () => ({
