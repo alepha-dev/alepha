@@ -226,4 +226,64 @@ export class SigilTools {
       };
     },
   });
+
+  blight_resolve = $tool({
+    description:
+      "Resolve (close) a blight — flips it to `resolved` so it leaves the open inbox. The row stays for audit. Owner-only. Use once the underlying crash is fixed. `blight_id` is the `id` returned by blight_list.",
+    title: "Resolve blight",
+    annotations: { readOnlyHint: false, idempotentHint: true },
+    schema: {
+      params: t.object({
+        campaign: t.optional(t.integer()),
+        campaign_name: t.optional(t.string()),
+        blight_id: t.integer({
+          description: "Blight id (the `id` field from blight_list).",
+        }),
+      }),
+      result: t.object({ ok: t.boolean() }),
+    },
+    handler: async ({ params }) => {
+      const campaignId = await this.resolveCampaignId(
+        params.campaign,
+        params.campaign_name,
+      );
+      const result = await this.blightController.resolveBlight({
+        params: { campaignId, blightId: params.blight_id },
+      });
+      return { ok: result.ok };
+    },
+  });
+
+  blight_forward = $tool({
+    description:
+      "Forward a blight to a NEW quest, then close the blight. Creates a quest from the blight (name + message as the title, stack embedded as plain text in the description), links the quest back to the blight, and flips the blight to quest-forwarded so it leaves the open inbox. Owner-only. The quest is filed under a fixed triage zone. Fails if the blight was already forwarded. `blight_id` is the `id` returned by blight_list.",
+    title: "Forward blight to quest",
+    annotations: { readOnlyHint: false, destructiveHint: false },
+    schema: {
+      params: t.object({
+        campaign: t.optional(t.integer()),
+        campaign_name: t.optional(t.string()),
+        blight_id: t.integer({
+          description: "Blight id (the `id` field from blight_list).",
+        }),
+      }),
+      result: t.object({
+        questId: t.integer(),
+        questShortId: t.integer(),
+      }),
+    },
+    handler: async ({ params }) => {
+      const campaignId = await this.resolveCampaignId(
+        params.campaign,
+        params.campaign_name,
+      );
+      const result = await this.blightController.forwardBlightToQuest({
+        params: { campaignId, blightId: params.blight_id },
+      });
+      return {
+        questId: result.questId,
+        questShortId: result.questShortId,
+      };
+    },
+  });
 }
