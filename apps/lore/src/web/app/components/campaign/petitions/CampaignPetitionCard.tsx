@@ -34,13 +34,16 @@ const CampaignPetitionCard = (props: CampaignPetitionCardProps) => {
   // it to MarkdownView / dangerouslySetInnerHTML. See folio #12.
   const source = petition.source;
   const hostLabel = (() => {
-    if (!source?.sigilId) return undefined;
+    // `hostUrl` (not `sigilId`) is the signal that a petition came through an
+    // embedded sigil button — the popup-redirect flow keeps the sigil id
+    // server-side, so a browser-built `source` never carries it.
+    if (!source?.hostUrl) return undefined;
     try {
       return new URL(source.hostUrl).host;
     } catch {
       // Malformed hostUrl — fall back to the raw value (still a plain
       // text node, still escaped) so the badge degrades gracefully.
-      return source.hostUrl || source.hostPath || source.sigilId;
+      return source.hostUrl || source.hostPath;
     }
   })();
 

@@ -22,6 +22,7 @@
     },
     "./server": "./src/server/index.ts",
     "./messages": "./src/shared/sigilMessages.ts",
+    "./context": "./src/shared/sigilPetitionContext.ts",
     "./vitals": "./src/shared/schemas/sigilVitalsBuckets.ts"
   },
   "devDependencies": {

@@ -13,6 +13,7 @@ import { useRouter, useRouterState } from "alepha/react/router";
 import { Loader2, Paperclip, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { PetitionController } from "@/api/controllers/PetitionController.ts";
+import type { PetitionSource } from "@/api/schemas/petitionSourceSchema.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { displayName } from "../../../services/displayName.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -28,6 +29,8 @@ const MAX_TAG_LENGTH = 100;
 
 type DraftContext = {
   tags?: string[];
+  /** Page-context provenance captured by the sigil button (see source schema). */
+  source?: PetitionSource;
 };
 
 type Attachment = {
@@ -61,6 +64,33 @@ const readDraftFromQuery = (query: URLSearchParams): DraftContext => {
 
   const draft: DraftContext = {};
   if (tags.length > 0) draft.tags = tags;
+
+  // Page-context provenance forwarded by the sigil button via the
+  // `/sigil/request` popup (keys defined in `@alepha/sigil/context`). `url`
+  // is the signal that this petition originated from an embedded button; the
+  // server schema (`petitionSourceSchema`) re-validates every field on submit.
+  const url = query.get("url")?.trim();
+  if (url) {
+    const source: PetitionSource = {
+      hostUrl: url,
+      hostPath: query.get("path")?.trim() || url,
+      userAgent: query.get("ua")?.trim() || "",
+    };
+    const title = query.get("title")?.trim();
+    const referrer = query.get("ref")?.trim();
+    const language = query.get("lang")?.trim();
+    const viewport = query.get("vp")?.trim();
+    const screen = query.get("scr")?.trim();
+    const timezone = query.get("tz")?.trim();
+    if (title) source.title = title;
+    if (referrer) source.referrer = referrer;
+    if (language) source.language = language;
+    if (viewport) source.viewport = viewport;
+    if (screen) source.screen = screen;
+    if (timezone) source.timezone = timezone;
+    draft.source = source;
+  }
+
   return draft;
 };
 
@@ -138,13 +168,19 @@ const CampaignPetitionRequest = () => {
   // populated asynchronously by effects. To let the frozen handler see live
   // values, mirror everything it needs into a ref that is refreshed on every
   // render.
-  const liveRef = useRef({
+  const liveRef = useRef<{
+    attachments: Attachment[];
+    tags: string[];
+    source?: PetitionSource;
+  }>({
     attachments,
     tags,
+    source: draft.source,
   });
   liveRef.current = {
     attachments,
     tags,
+    source: draft.source,
   };
 
   useEffect(() => {
@@ -185,7 +221,7 @@ const CampaignPetitionRequest = () => {
     handler: async (body) => {
       // Read live state through the ref — the handler closure itself is
       // frozen at first render, when these were all still empty.
-      const { attachments, tags } = liveRef.current;
+      const { attachments, tags, source } = liveRef.current;
       try {
         const attachmentIds = attachments.map((a) => a.id);
 
@@ -208,7 +244,7 @@ const CampaignPetitionRequest = () => {
             // Fall back to a generic tag so nothing lands untagged in the
             // triage inbox when the form is opened without query params.
             tags: tags.length > 0 ? tags : ["feedback"],
-            source: undefined,
+            source,
           },
         });
         clearDraft();
