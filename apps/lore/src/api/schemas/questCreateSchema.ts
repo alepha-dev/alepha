@@ -2,7 +2,10 @@ import { t } from "alepha";
 
 export const questCreateSchema = t.object({
   title: t.string(),
-  description: t.string({ size: "rich" }),
+  // Optional — a title-only quest is allowed (sometimes the title says it
+  // all). Defaults to "" server-side in createQuest so the NOT-NULL
+  // `quests.description` column and `sanitizeHtml` stay happy (no migration).
+  description: t.optional(t.string({ size: "rich" })),
   zone: t.string(),
   priority: t.enum(["optional", "low", "medium", "high"]),
   difficulty: t.integer({ minimum: 1, maximum: 5 }),
