@@ -86,7 +86,7 @@ describe("SigilController", () => {
     await ctx.alepha.stop();
   });
 
-  it("creates a sigil with a uuid id and a distinct ingestKey", async ({
+  it("creates a sigil with a uuid id, never exposing ingestKey", async ({
     expect,
   }) => {
     const owner = await createTestUser(ctx);
@@ -106,7 +106,7 @@ describe("SigilController", () => {
     expect(created.data.id).toMatch(/^[0-9a-f-]{36}$/);
     expect(created.data.label).toBe("shop.example.com checkout");
     expect(created.data.kinds).toEqual(["petition"]);
-    // ingestKey is a secret — never returned in the resource payload.
+    // ingestKey is a vestigial internal column — never in the resource.
     expect("ingestKey" in created.data).toBe(false);
   });
 
@@ -271,27 +271,6 @@ describe("SigilController", () => {
     expect((error as HttpError).status).toBe(404);
   });
 
-  it("rotates the ingestKey while keeping the sigil id stable", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-
-    const created = await ctx.sigilController.createSigil.fetch(
-      { params: { campaignId }, body: { label: "Rotate me" } },
-      { user: owner },
-    );
-
-    const rotated = await ctx.sigilController.rotateSigilKey.fetch(
-      { params: { campaignId, id: created.data.id } },
-      { user: owner },
-    );
-
-    // id (the public snippet credential) is untouched.
-    expect(rotated.data.id).toBe(created.data.id);
-    expect(rotated.data.ok).toBe(true);
-  });
-
   it("rejects a non-owner from every endpoint (403)", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const stranger = await createTestUser(ctx);
@@ -325,13 +304,6 @@ describe("SigilController", () => {
 
     await expectForbidden(
       ctx.sigilController.deleteSigil.fetch(
-        { params: { campaignId, id: created.data.id } },
-        { user: stranger },
-      ),
-    );
-
-    await expectForbidden(
-      ctx.sigilController.rotateSigilKey.fetch(
         { params: { campaignId, id: created.data.id } },
         { user: stranger },
       ),

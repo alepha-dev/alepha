@@ -32,7 +32,7 @@ export class LoreSigilForwardProvider extends SigilForwardProvider {
     const id = this.id();
     if (!id) return undefined;
 
-    const sigil = await this.sigils.findForEmbed(id);
+    const sigil = await this.sigils.findForIngest(id);
     return sigil?.campaignId;
   }
 

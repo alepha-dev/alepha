@@ -11,16 +11,11 @@ import {
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@alepha/ui/components/ui/hover-card";
 import { Switch } from "@alepha/ui/components/ui/switch";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { HelpCircle, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type {
   SigilController,
@@ -108,20 +103,6 @@ const CampaignSettingsSigilsPage = () => {
     const snippet = `POST ${origin}/sigils/${sigil.id}/ingest`;
     void navigator.clipboard.writeText(snippet);
     toaster.success(tr("sigils.toast.copied"));
-  };
-
-  const rotateKey = async (sigil: SigilResource) => {
-    if (!campaign) return;
-    try {
-      await sigilApi.rotateSigilKey({
-        params: { campaignId: campaign.id, id: sigil.id },
-      });
-      // No reload(): rotating only swaps the server-side secret —
-      // nothing list-visible (label, origins, kinds) changes.
-      toaster.success(tr("sigils.toast.rotated"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
   };
 
   const confirmDelete = async () => {
@@ -328,31 +309,6 @@ const CampaignSettingsSigilsPage = () => {
                   >
                     {tr("sigils.action.edit")}
                   </Button>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void rotateKey(sigil)}
-                    >
-                      {tr("sigils.action.rotateKey")}
-                    </Button>
-                    <HoverCard>
-                      <HoverCardTrigger
-                        render={
-                          <button
-                            type="button"
-                            className="text-muted-foreground hover:text-foreground"
-                            aria-label={tr("sigils.rotateKey.help")}
-                          />
-                        }
-                      >
-                        <HelpCircle className="size-4" aria-hidden />
-                      </HoverCardTrigger>
-                      <HoverCardContent className="text-xs">
-                        {tr("sigils.rotateKey.help")}
-                      </HoverCardContent>
-                    </HoverCard>
-                  </div>
                   <Button
                     variant="destructive"
                     size="sm"
