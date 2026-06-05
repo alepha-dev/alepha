@@ -294,7 +294,12 @@ const CampaignView = () => {
               >
                 <QuestLog />
               </div>
-              <div className="flex min-h-0 flex-1 flex-col overflow-auto p-2">
+              {/* QuestView owns its own scroll (`overflow-y-auto` on its
+                  body), so this wrapper must NOT also scroll — a nested
+                  `overflow-auto` here showed a spurious scrollbar even on
+                  short quests. Matches the `fullWidth` branch's no-scroll
+                  intent. */}
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
                 <NestedView />
               </div>
             </div>
