@@ -51,6 +51,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -363,10 +364,19 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
       : sort.field
     : undefined;
 
+  // Hold the latest `fetch` in a ref so it is NOT a dependency of `load`.
+  // Callers pass `fetch` inline (a new function every render), and a fetcher
+  // that writes a store atom the caller also subscribes to would otherwise
+  // self-trigger: load → atom write → caller re-render → new `fetch` → new
+  // `load` → effect re-runs → infinite loop. The ref keeps the newest closure
+  // available while `load` only re-runs on actual inputs (page/size/sort/…).
+  const fetchRef = useRef(props.fetch);
+  fetchRef.current = props.fetch;
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await props.fetch({
+      const res = await fetchRef.current({
         page,
         size,
         sort: sortParam,
@@ -386,7 +396,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     } finally {
       setLoading(false);
     }
-  }, [props.fetch, page, size, sortParam, refreshKey, form, alepha]);
+  }, [page, size, sortParam, refreshKey, form, alepha]);
 
   useEffect(() => {
     void load();
