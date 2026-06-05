@@ -82,15 +82,7 @@ const CampaignPetitions = (props: CampaignPetitionsProps) => {
             active && "hidden md:flex",
           )}
         >
-          <div className="border-border flex flex-col gap-2 border-b p-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold">
-                {tr("petitions.title")}
-              </h2>
-              {loading && (
-                <Loader2 className="text-muted-foreground size-4 animate-spin" />
-              )}
-            </div>
+          <div className="border-border flex items-center gap-2 border-b p-2">
             <Segmented
               value={status}
               onChange={(v) => setStatus(v as StatusFilter)}
@@ -112,9 +104,12 @@ const CampaignPetitions = (props: CampaignPetitionsProps) => {
               size="sm"
               fullWidth
             />
+            {loading && (
+              <Loader2 className="text-muted-foreground size-4 shrink-0 animate-spin" />
+            )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-2">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {items.length === 0 ? (
               <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
                 <Inbox className="size-8 opacity-60" />
@@ -127,17 +122,16 @@ const CampaignPetitions = (props: CampaignPetitionsProps) => {
                 </p>
               </div>
             ) : (
-              <ul className="flex flex-col gap-1.5">
+              <div className="flex flex-col">
                 {items.map((petition) => (
-                  <li key={petition.id}>
-                    <CampaignPetitionCard
-                      petition={petition}
-                      selected={petition.id === activeId}
-                      onClick={() => setActiveId(petition.id)}
-                    />
-                  </li>
+                  <CampaignPetitionCard
+                    key={petition.id}
+                    petition={petition}
+                    selected={petition.id === activeId}
+                    onClick={() => setActiveId(petition.id)}
+                  />
                 ))}
-              </ul>
+              </div>
             )}
           </div>
         </aside>

@@ -726,9 +726,7 @@ export class I18n {
         "petitions.feature.description":
           "Allow sigils with the Petition capability to receive feedback submissions from partner sites.",
 
-        "petitions.title": "Petitions",
-        "petitions.empty.pending":
-          "No pending petitions. New requests from users will appear here.",
+        "petitions.empty.pending": "No pending petitions.",
         "petitions.empty.status": "No $1 petitions.",
         "petitions.empty.selectOne": "Select a petition from the list",
         "petitions.back": "Back",
@@ -797,7 +795,6 @@ export class I18n {
         "petitions.linkedQuests": "Linked quests",
         "petitions.noLinkedQuests": "No quests yet — create one to start work.",
         "petitions.unknownReporter": "unknown",
-        "petitions.source.viaSigil": "via Sigil",
         "petitions.context.title": "Context",
         "petitions.context.reporter": "Reporter",
         "petitions.context.page": "Page URL",
@@ -1589,9 +1586,7 @@ export class I18n {
         "petitions.feature.description":
           "Permet aux sigils dotés de la capacité Pétition de recevoir des soumissions depuis les sites partenaires.",
 
-        "petitions.title": "Pétitions",
-        "petitions.empty.pending":
-          "Aucune pétition en attente. Les requêtes des utilisateurs apparaîtront ici.",
+        "petitions.empty.pending": "Aucune pétition en attente.",
         "petitions.empty.status": "Aucune pétition $1.",
         "petitions.empty.selectOne": "Sélectionnez une pétition dans la liste",
         "petitions.back": "Retour",
@@ -1662,7 +1657,6 @@ export class I18n {
         "petitions.noLinkedQuests":
           "Aucune quête pour le moment — créez-en une pour démarrer le travail.",
         "petitions.unknownReporter": "inconnu",
-        "petitions.source.viaSigil": "via Sceau",
         "petitions.context.title": "Contexte",
         "petitions.context.reporter": "Auteur",
         "petitions.context.page": "URL de la page",
