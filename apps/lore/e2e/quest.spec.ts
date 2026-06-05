@@ -271,6 +271,95 @@ test.describe("Quest", () => {
   });
 
   /**
+   * Questline picker (Lore quest #119): the dependency engine + view already
+   * exist; this covers the new UI surface — setting `dependsOn` from the quest
+   * edit form's searchable picker, then confirming the dependency persisted
+   * (the follower's view flips to "Blocked by #predecessor").
+   */
+  test("set a quest dependency via the edit-form picker", async ({ page }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `deppick${t}@example.com`;
+    const password = "DepPick123!";
+    const campaignTitle = `DP${t}`.slice(0, 20);
+
+    await registerAndVerify(page, email, password);
+    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+
+    const predecessor = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        campaignId,
+        title: `Setup${t}`,
+        description: "Predecessor",
+        zone: "Main",
+        priority: "medium",
+        difficulty: 2,
+        objectives: [],
+        attachments: [],
+      },
+    );
+    const follower = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        campaignId,
+        title: `Follow${t}`,
+        description: "Will depend on the setup",
+        zone: "Main",
+        priority: "medium",
+        difficulty: 2,
+        objectives: [],
+        attachments: [],
+      },
+    );
+
+    await page.goto(`/c/${campaignId}/q/${follower.shortId}`);
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText(`Follow${t}`).first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await test.step("open edit, pick the predecessor as dependency, save", async () => {
+      await page.getByRole("button", { name: "Edit" }).first().click();
+      // The picker trigger reads "No dependency" until one is chosen.
+      await page.getByRole("button", { name: /no dependency/i }).click();
+      const search = page.getByPlaceholder("Search quests…");
+      await search.fill(`Setup${t}`);
+      await page
+        .getByRole("option", { name: new RegExp(`#${predecessor.shortId}\\b`) })
+        .click();
+      // Trigger reflects the selection; the popover closes.
+      await expect(
+        page.getByRole("button", {
+          name: new RegExp(`#${predecessor.shortId}\\b`),
+        }),
+      ).toBeVisible({ timeout: 5_000 });
+      await expect(search).toBeHidden();
+      // Base UI parks `pointer-events: none` on <body> for a beat after a
+      // popover closes; wait for it to clear so the submit click lands.
+      await page.waitForFunction(
+        () => document.body.style.pointerEvents !== "none",
+      );
+      await page.getByRole("button", { name: /update quest/i }).click();
+      // A successful update closes the edit sheet.
+      await expect(
+        page.getByRole("dialog", { name: /update quest/i }),
+      ).toBeHidden({ timeout: 10_000 });
+    });
+
+    await test.step("follower view now shows it is blocked by the predecessor", async () => {
+      await page.goto(`/c/${campaignId}/q/${follower.shortId}`);
+      await page.waitForLoadState("networkidle");
+      await expect(
+        page.getByText(new RegExp(`blocked by.*#${predecessor.shortId}`, "i")),
+      ).toBeVisible({ timeout: 10_000 });
+    });
+  });
+
+  /**
    * Completion summary (Lore quest #56): the "Complete with summary" path
    * persists `completionMessage` on the quest, which then surfaces as a
    * "Completion Summary" section on the quest view + a single-line

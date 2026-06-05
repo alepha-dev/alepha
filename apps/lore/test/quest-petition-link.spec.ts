@@ -163,6 +163,35 @@ describe("quest ↔ petition linking", () => {
     );
   });
 
+  it("updateQuestById sets and clears dependsOn (the picker's save path)", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+    const predecessor = await createQuest(ctx, campaignId, owner);
+    const follower = await createQuest(ctx, campaignId, owner);
+
+    // Set the dependency (what the edit-form picker submits).
+    const linked = await ctx.questController.updateQuestById.fetch(
+      {
+        params: { id: follower.id },
+        body: { dependsOn: predecessor.id },
+      },
+      { user: owner },
+    );
+    expect(linked.data.dependsOn).toBe(predecessor.id);
+
+    // Clear it (the picker's "No dependency" / X path → null).
+    const cleared = await ctx.questController.updateQuestById.fetch(
+      {
+        params: { id: follower.id },
+        body: { dependsOn: null },
+      },
+      { user: owner },
+    );
+    expect(cleared.data.dependsOn ?? null).toBeNull();
+  });
+
   it("passing petitionId: null unlinks the quest", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const campaignId = await createCampaign(ctx, owner);

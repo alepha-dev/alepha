@@ -47,6 +47,7 @@ const QuestViewEditButton = (props: QuestViewEditButtonProps) => {
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0"
+              aria-label={tr("quest.view.edit")}
               onClick={() => setShowDialog(true)}
             />
           }
