@@ -71,7 +71,6 @@ export class SigilTools {
     id: string;
     campaignId: number;
     label: string;
-    allowedOrigins: string[];
     kinds: string[];
     excludedPaths: string[];
     createdAt: string;
@@ -80,7 +79,6 @@ export class SigilTools {
       id: s.id,
       campaignId: s.campaignId,
       label: s.label,
-      allowedOrigins: s.allowedOrigins,
       kinds: s.kinds,
       excludedPaths: s.excludedPaths,
       createdAt: s.createdAt,
@@ -89,7 +87,7 @@ export class SigilTools {
 
   sigil_list = $tool({
     description:
-      "List a campaign's sigils — the scoped, revocable identifiers that let partner sites embed Lore capabilities (petition form / blights crash capture / beacon) via one `<script>` tag. Owner-only. Returns id, label, allowedOrigins, kinds and createdAt. The secret `ingestKey` is never returned.",
+      "List a campaign's sigils — the scoped, revocable identifiers that let partner sites embed Lore capabilities (petition form / blights crash capture / beacon) via one `<script>` tag. Owner-only. Returns id, label, kinds and createdAt. The secret `ingestKey` is never returned.",
     title: "List sigils",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -115,7 +113,7 @@ export class SigilTools {
 
   sigil_create = $tool({
     description:
-      "Issue a new sigil for a campaign. Owner-only. `label` is a human-readable inventory name (e.g. 'shop.example.com checkout'). `allowedOrigins` is the list of scheme+host the served script may be embedded from (empty = none allow-listed yet). `kinds` is the subset of capabilities the sigil grants — any of: petition, blights, beacon. The public `id` is returned (use it in the partner's `<script>` src); the secret `ingestKey` is minted server-side and never exposed.",
+      "Issue a new sigil for a campaign. Owner-only. `label` is a human-readable inventory name (e.g. 'shop.example.com checkout'). `kinds` is the subset of capabilities the sigil grants — any of: petition, blights, beacon. The public `id` is returned (use it in the partner's `<script>` src); the secret `ingestKey` is minted server-side and never exposed.",
     title: "Create sigil",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -123,9 +121,6 @@ export class SigilTools {
         campaign: t.optional(t.integer()),
         campaign_name: t.optional(t.string()),
         label: t.string({ minLength: 1, maxLength: 200 }),
-        allowedOrigins: t.optional(
-          t.array(t.string({ maxLength: 200 }), { maxItems: 20 }),
-        ),
         kinds: t.optional(
           t.array(t.enum([...SIGIL_KINDS], { mode: "text" }), {
             maxItems: 10,
@@ -146,7 +141,6 @@ export class SigilTools {
         params: { campaignId },
         body: {
           label: params.label,
-          allowedOrigins: params.allowedOrigins,
           kinds: params.kinds,
           excludedPaths: params.excludedPaths,
         },

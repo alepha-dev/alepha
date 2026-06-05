@@ -16,7 +16,6 @@ import {
   BookOpen,
   Hammer,
   LayoutGrid,
-  MessageSquarePlus,
   Milestone,
   Tag,
 } from "lucide-react";
@@ -38,8 +37,12 @@ type FeaturesDraft = {
 };
 
 const DEFAULT_FEATURES: FeaturesDraft = {
-  // Same defaults as the spec — Folios + Kanban + Chapters opt-in by
-  // default; Petitions stays opt-in only (no accidental feedback inbox).
+  // Folios + Kanban + Chapters opt-in by default. Petitions is no longer a
+  // wizard-surfaced module — it's a Sigils sub-capability now, enabled from
+  // Settings → Sigils. We still send `petitions: false` so new campaigns
+  // start with no feedback inbox; we can't move that default into
+  // `defaultCampaignFeatures` (petitions=true there) without triggering a
+  // D1 `campaigns` table rebuild — see CLAUDE.md "Migration safety on D1".
   folios: true,
   kanban: true,
   chapters: true,
@@ -201,10 +204,6 @@ const CampaignCreate = () => {
                       chaptersHelper: String(
                         tr("campaign.create.module.chapters.helper"),
                       ),
-                      petitions: tr("campaign.create.module.petitions"),
-                      petitionsHelper: String(
-                        tr("campaign.create.module.petitions.helper"),
-                      ),
                     }}
                   />
                 )}
@@ -351,8 +350,6 @@ interface StepModulesProps {
     kanbanHelper: string;
     chapters: string;
     chaptersHelper: string;
-    petitions: string;
-    petitionsHelper: string;
   };
 }
 
@@ -387,13 +384,6 @@ const StepModules = (props: StepModulesProps) => {
           helper={props.labels.chaptersHelper}
           checked={props.value.chapters}
           onChange={() => toggle("chapters")}
-        />
-        <ModuleToggle
-          icon={MessageSquarePlus}
-          label={props.labels.petitions}
-          helper={props.labels.petitionsHelper}
-          checked={props.value.petitions}
-          onChange={() => toggle("petitions")}
         />
       </div>
     </div>

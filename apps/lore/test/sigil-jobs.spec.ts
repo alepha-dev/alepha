@@ -99,7 +99,6 @@ const createSigil = async (
       params: { campaignId },
       body: {
         label: "purge sigil",
-        allowedOrigins: ["https://shop.example.com"],
         kinds: ["blights"],
       },
     },

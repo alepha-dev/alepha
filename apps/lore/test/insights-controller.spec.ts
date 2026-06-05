@@ -92,7 +92,6 @@ async function createSigil(
       params: { campaignId },
       body: {
         label: "beacon sigil",
-        allowedOrigins: ["https://shop.example.com"],
         kinds: ["beacon"],
       },
     },

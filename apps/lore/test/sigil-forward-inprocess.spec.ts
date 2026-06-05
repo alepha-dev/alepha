@@ -121,7 +121,6 @@ const createSigil = async (
       params: { campaignId },
       body: {
         label: "inproc sigil",
-        allowedOrigins: [],
         kinds: ["beacon", "blights", "vitals"],
       },
     },

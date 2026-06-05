@@ -11,7 +11,6 @@ import {
   BookMarked,
   BookOpen,
   Flag,
-  Inbox,
   KanbanSquare,
   type LucideIcon,
   MapPin,
@@ -29,7 +28,6 @@ type RouteName =
   | "campaignSettingsZones"
   | "campaignSettingsKanban"
   | "campaignSettingsFolios"
-  | "campaignSettingsPetitions"
   | "campaignSettingsSigils"
   | "campaignSettingsChapters"
   | "campaignSettingsQuests";
@@ -40,7 +38,6 @@ type NavLabelKey =
   | "campaign.settings.nav.zones"
   | "campaign.settings.nav.kanban"
   | "campaign.settings.nav.folios"
-  | "campaign.settings.nav.petitions"
   | "campaign.settings.nav.sigils"
   | "campaign.settings.nav.chapters"
   | "campaign.settings.nav.quests";
@@ -95,11 +92,6 @@ const NAV_GROUPS: NavGroup[] = [
         route: "campaignSettingsFolios",
         labelKey: "campaign.settings.nav.folios",
         icon: BookOpen,
-      },
-      {
-        route: "campaignSettingsPetitions",
-        labelKey: "campaign.settings.nav.petitions",
-        icon: Inbox,
       },
       {
         route: "campaignSettingsSigils",

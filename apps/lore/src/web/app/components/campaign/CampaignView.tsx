@@ -76,7 +76,6 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   campaignSettingsZones: "campaign.menu.settings",
   campaignSettingsKanban: "campaign.menu.settings",
   campaignSettingsFolios: "campaign.menu.settings",
-  campaignSettingsPetitions: "campaign.menu.settings",
   campaignSettingsChapters: "campaign.menu.settings",
 };
 

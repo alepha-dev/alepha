@@ -8,12 +8,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 // settings sub-page. Per-quest toggles (questNote / questReminder /
 // questGating / questChrono) live on the Quests settings page and
 // render via a dedicated row component, not this section.
-type ModuleFeatureKey =
-  | "kanban"
-  | "folios"
-  | "petitions"
-  | "chapters"
-  | "sigils";
+type ModuleFeatureKey = "kanban" | "folios" | "chapters" | "sigils";
 
 // Compile-time guarantee that ModuleFeatureKey stays a subset of
 // CampaignFeatures keys — if a key gets renamed in the entity, the
@@ -32,13 +27,11 @@ const DESCRIPTION_KEYS: Record<
   ModuleFeatureKey,
   | "campaign.settings.feature.kanban.description"
   | "campaign.settings.feature.folios.description"
-  | "campaign.settings.feature.petitions.description"
   | "campaign.settings.feature.chapters.description"
   | "campaign.settings.feature.sigils.description"
 > = {
   kanban: "campaign.settings.feature.kanban.description",
   folios: "campaign.settings.feature.folios.description",
-  petitions: "campaign.settings.feature.petitions.description",
   chapters: "campaign.settings.feature.chapters.description",
   sigils: "campaign.settings.feature.sigils.description",
 };
@@ -47,13 +40,11 @@ const NAV_KEYS: Record<
   ModuleFeatureKey,
   | "campaign.settings.nav.kanban"
   | "campaign.settings.nav.folios"
-  | "campaign.settings.nav.petitions"
   | "campaign.settings.nav.chapters"
   | "campaign.settings.nav.sigils"
 > = {
   kanban: "campaign.settings.nav.kanban",
   folios: "campaign.settings.nav.folios",
-  petitions: "campaign.settings.nav.petitions",
   chapters: "campaign.settings.nav.chapters",
   sigils: "campaign.settings.nav.sigils",
 };

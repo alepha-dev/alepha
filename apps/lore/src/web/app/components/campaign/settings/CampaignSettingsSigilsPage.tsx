@@ -20,7 +20,7 @@ import { Switch } from "@alepha/ui/components/ui/switch";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type {
   SigilController,
@@ -28,6 +28,7 @@ import type {
 } from "@/api/controllers/SigilController.ts";
 import { currentCampaignAtom } from "@/web/app/atoms/currentCampaignAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+import CampaignSettingsFeatureSection from "./CampaignSettingsFeatureSection.tsx";
 import SigilFormDialog, { type SigilFormValue } from "./SigilFormDialog.tsx";
 import { useCampaignFeatureToggle } from "./useCampaignFeatureToggle.ts";
 
@@ -42,10 +43,12 @@ const CampaignSettingsSigilsPage = () => {
   const petitions = useCampaignFeatureToggle("petitions");
   const blights = useCampaignFeatureToggle("blights");
   const beacon = useCampaignFeatureToggle("beacon");
+  const vitals = useCampaignFeatureToggle("vitals");
   const featureEnabled: Record<string, boolean> = {
     petitions: petitions.enabled,
     blights: blights.enabled,
     beacon: beacon.enabled,
+    vitals: vitals.enabled,
   };
 
   const [sigils, setSigils] = useState<SigilResource[]>([]);
@@ -140,232 +143,227 @@ const CampaignSettingsSigilsPage = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* One merged Features card — master Sigils toggle, then the
-          per-capability sub-toggles grouped inside it (mirrors the Quests
-          settings feature card). Sub-toggles are disabled when the master
-          `sigils` feature is OFF; the Petitions sub-toggle additionally
-          needs the base `petitions` module ON. */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium">
-            {tr("sigils.features.title")}
-          </span>
-          <span className="text-muted-foreground text-xs">
-            {tr("sigils.features.subtitle")}
-          </span>
+      {/* Master Sigils toggle — same pattern as Petitions / Folios / Kanban. */}
+      <CampaignSettingsFeatureSection
+        featureKey="sigils"
+        enabled={enabled}
+        onToggle={toggle}
+      />
+
+      {/* Sub-feature blocks — only shown when the master toggle is ON. */}
+      {enabled && (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">
+              {tr("sigils.features.title")}
+            </span>
+            <span className="text-muted-foreground text-xs">
+              {tr("sigils.features.subtitle")}
+            </span>
+          </div>
+
+          <Card className="bg-card divide-y gap-0 rounded-lg border py-0">
+            {/* Petitions sub-toggle. */}
+            <CardContent className="flex flex-col gap-2 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">
+                  {tr("petitions.feature.title")}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("petitions.feature.description")}
+                </span>
+              </div>
+              <div className="flex justify-start sm:justify-end">
+                <Switch
+                  checked={petitions.enabled}
+                  onCheckedChange={(value) => {
+                    void petitions.toggle(value === true);
+                  }}
+                  aria-label={tr("petitions.feature.title")}
+                />
+              </div>
+            </CardContent>
+
+            {/* Blights sub-toggle. */}
+            <CardContent className="flex flex-col gap-2 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">
+                  {tr("blights.feature.title")}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("blights.feature.description")}
+                </span>
+              </div>
+              <div className="flex justify-start sm:justify-end">
+                <Switch
+                  checked={blights.enabled}
+                  onCheckedChange={(value) => {
+                    void blights.toggle(value === true);
+                  }}
+                  aria-label={tr("blights.feature.title")}
+                />
+              </div>
+            </CardContent>
+
+            {/* Beacons sub-toggle. */}
+            <CardContent className="flex flex-col gap-2 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">
+                  {tr("beacon.feature.title")}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("beacon.feature.description")}
+                </span>
+              </div>
+              <div className="flex justify-start sm:justify-end">
+                <Switch
+                  checked={beacon.enabled}
+                  onCheckedChange={(value) => {
+                    void beacon.toggle(value === true);
+                  }}
+                  aria-label={tr("beacon.feature.title")}
+                />
+              </div>
+            </CardContent>
+
+            {/* Vitals sub-toggle. */}
+            <CardContent className="flex flex-col gap-2 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">
+                  {tr("vitals.feature.title")}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("vitals.feature.description")}
+                </span>
+              </div>
+              <div className="flex justify-start sm:justify-end">
+                <Switch
+                  checked={vitals.enabled}
+                  onCheckedChange={(value) => {
+                    void vitals.toggle(value === true);
+                  }}
+                  aria-label={tr("vitals.feature.title")}
+                />
+              </div>
+            </CardContent>
+          </Card>
         </div>
-
-        <Card className="bg-card divide-y gap-0 rounded-lg border py-0">
-          {/* Master Sigils toggle. */}
-          <CardContent className="flex flex-col gap-2 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">
-                {tr("campaign.settings.nav.sigils")}
-              </span>
-              <span className="text-muted-foreground text-xs">
-                {tr("campaign.settings.feature.sigils.description")}
-              </span>
-            </div>
-            <div className="flex justify-start sm:justify-end">
-              <Switch
-                checked={enabled}
-                onCheckedChange={(value) => {
-                  void toggle(value === true);
-                }}
-                aria-label={tr("campaign.settings.nav.sigils")}
-              />
-            </div>
-          </CardContent>
-
-          {/* Blights sub-toggle. */}
-          <CardContent className="flex flex-col gap-2 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">
-                {tr("blights.feature.title")}
-              </span>
-              <span className="text-muted-foreground text-xs">
-                {tr("blights.feature.description")}
-              </span>
-            </div>
-            <div className="flex justify-start sm:justify-end">
-              <Switch
-                checked={blights.enabled}
-                disabled={!enabled}
-                onCheckedChange={(value) => {
-                  void blights.toggle(value === true);
-                }}
-                aria-label={tr("blights.feature.title")}
-              />
-            </div>
-          </CardContent>
-
-          {/* Beacons sub-toggle. */}
-          <CardContent className="flex flex-col gap-2 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">
-                {tr("beacon.feature.title")}
-              </span>
-              <span className="text-muted-foreground text-xs">
-                {tr("beacon.feature.description")}
-              </span>
-            </div>
-            <div className="flex justify-start sm:justify-end">
-              <Switch
-                checked={beacon.enabled}
-                disabled={!enabled}
-                onCheckedChange={(value) => {
-                  void beacon.toggle(value === true);
-                }}
-                aria-label={tr("beacon.feature.title")}
-              />
-            </div>
-          </CardContent>
-
-          {/* Petitions sub-toggle — gates the sigil petition capability
-              (`POST /sigils/:id/petition`). Requires the parent `sigils`
-              master toggle to be on. */}
-          <CardContent className="flex flex-col gap-2 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">
-                {tr("petitions.feature.title")}
-              </span>
-              <span className="text-muted-foreground text-xs">
-                {tr("petitions.feature.description")}
-              </span>
-            </div>
-            <div className="flex justify-start sm:justify-end">
-              <Switch
-                checked={petitions.enabled}
-                disabled={!enabled}
-                onCheckedChange={(value) => {
-                  void petitions.toggle(value === true);
-                }}
-                aria-label={tr("petitions.feature.title")}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      )}
 
       {enabled && (
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">{tr("sigils.title")}</span>
-              <span className="text-muted-foreground text-xs">
-                {tr("sigils.subtitle")}
-              </span>
-            </div>
-            <Button onClick={() => setDialogSigil(null)}>
-              {tr("sigils.action.new")}
-            </Button>
-          </div>
+          <Card className="bg-card divide-y gap-0 rounded-lg border py-0">
+            {/* Header row: title + subtitle + add button */}
+            <CardContent className="flex flex-col gap-2 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">
+                  {tr("sigils.title")}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("sigils.subtitle")}
+                </span>
+              </div>
+              <div className="flex justify-start sm:justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDialogSigil(null)}
+                  aria-label={tr("sigils.action.new")}
+                >
+                  <Plus className="size-4" aria-hidden />
+                </Button>
+              </div>
+            </CardContent>
 
-          {/* Sigil list */}
-          {sigils.length === 0 ? (
-            <span className="text-muted-foreground text-sm">
-              {tr("sigils.empty")}
-            </span>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {sigils.map((sigil) => (
-                <Card key={sigil.id} className="py-4 shadow">
-                  <CardContent className="flex flex-col gap-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{sigil.label}</span>
+            {/* Empty state — no sigils issued yet for this campaign. */}
+            {sigils.length === 0 && (
+              <CardContent className="px-4 py-3">
+                <span className="text-muted-foreground text-xs">
+                  {tr("sigils.empty")}
+                </span>
+              </CardContent>
+            )}
+
+            {/* Sigil rows — each separated by the card's divide-y */}
+            {sigils.map((sigil) => (
+              <CardContent
+                key={sigil.id}
+                className="flex flex-col gap-3 px-4 py-3"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{sigil.label}</span>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <span className="text-muted-foreground text-xs">
+                    {tr("sigils.card.kinds")}
+                  </span>
+                  {sigil.kinds.length === 0 ? (
+                    <span className="text-muted-foreground text-xs">
+                      {tr("sigils.card.noKinds")}
+                    </span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {sigil.kinds.map((k) => (
+                        <Badge key={k} variant="secondary">
+                          {k}
+                        </Badge>
+                      ))}
                     </div>
+                  )}
+                </div>
 
-                    <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-xs">
-                        {tr("sigils.card.origins")}
-                      </span>
-                      {sigil.allowedOrigins.length === 0 ? (
-                        <span className="text-muted-foreground text-xs">
-                          {tr("sigils.card.noOrigins")}
-                        </span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {sigil.allowedOrigins.map((o) => (
-                            <Badge key={o} variant="secondary">
-                              {o}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-xs">
-                        {tr("sigils.card.kinds")}
-                      </span>
-                      {sigil.kinds.length === 0 ? (
-                        <span className="text-muted-foreground text-xs">
-                          {tr("sigils.card.noKinds")}
-                        </span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {sigil.kinds.map((k) => (
-                            <Badge key={k} variant="secondary">
-                              {k}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copySnippet(sigil)}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copySnippet(sigil)}
+                  >
+                    {tr("sigils.action.copySnippet")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDialogSigil(sigil)}
+                  >
+                    {tr("sigils.action.edit")}
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void rotateKey(sigil)}
+                    >
+                      {tr("sigils.action.rotateKey")}
+                    </Button>
+                    <HoverCard>
+                      <HoverCardTrigger
+                        render={
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label={tr("sigils.rotateKey.help")}
+                          />
+                        }
                       >
-                        {tr("sigils.action.copySnippet")}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDialogSigil(sigil)}
-                      >
-                        {tr("sigils.action.edit")}
-                      </Button>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => void rotateKey(sigil)}
-                        >
-                          {tr("sigils.action.rotateKey")}
-                        </Button>
-                        <HoverCard>
-                          <HoverCardTrigger
-                            render={
-                              <button
-                                type="button"
-                                className="text-muted-foreground hover:text-foreground"
-                                aria-label={tr("sigils.rotateKey.help")}
-                              />
-                            }
-                          >
-                            <HelpCircle className="size-4" aria-hidden />
-                          </HoverCardTrigger>
-                          <HoverCardContent className="text-xs">
-                            {tr("sigils.rotateKey.help")}
-                          </HoverCardContent>
-                        </HoverCard>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setDeleteTarget(sigil)}
-                      >
-                        {tr("sigils.action.delete")}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                        <HelpCircle className="size-4" aria-hidden />
+                      </HoverCardTrigger>
+                      <HoverCardContent className="text-xs">
+                        {tr("sigils.rotateKey.help")}
+                      </HoverCardContent>
+                    </HoverCard>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setDeleteTarget(sigil)}
+                  >
+                    {tr("sigils.action.delete")}
+                  </Button>
+                </div>
+              </CardContent>
+            ))}
+          </Card>
         </div>
       )}
 
