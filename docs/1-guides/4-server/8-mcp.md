@@ -117,6 +117,25 @@ class TaskTools {
 
 Parameters and results are validated automatically. If validation fails, the client receives a JSON-RPC error.
 
+**Returning images or binary content:** when a tool needs to hand the client a screenshot, a chart, or any non-JSON payload, omit `schema.result` and return raw MCP content blocks instead — `{ content: [...] }`, where each block is `{ type: "text", text }`, `{ type: "image", data, mimeType }` (base64), `{ type: "audio", data, mimeType }`, or a resource link. The blocks are passed through to the client verbatim, so an image block renders inline in clients that support it.
+
+```typescript
+screenshot = $tool({
+  description: "Capture the current page as a PNG.",
+  // No `schema.result` — the handler returns content blocks directly.
+  handler: async ({ params }) => {
+    const png = await this.capture(params.url); // Buffer
+    return {
+      content: [
+        { type: "image", data: png.toString("base64"), mimeType: "image/png" },
+      ],
+    };
+  },
+});
+```
+
+A tool that declares `schema.result` always goes through the structured/JSON path, so a JSON result that happens to contain a `content` array is never mistaken for raw content.
+
 ### $resource -- Read-Only Data
 
 Resources expose data that an AI can read but not modify: configuration, documentation, database snapshots.

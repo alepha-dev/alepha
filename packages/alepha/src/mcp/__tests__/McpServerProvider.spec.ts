@@ -230,6 +230,77 @@ describe("McpServerProvider", () => {
       expect(result.content[0].text).toBe("42");
     });
 
+    test("passes raw MCP content (e.g. image) through verbatim when the tool has no output schema", async () => {
+      const alepha = Alepha.create();
+
+      class ImageTools {
+        screenshot = $tool({
+          description: "Return a tiny image",
+          // No `result` schema — handler returns raw MCP content blocks.
+          handler: async () => ({
+            content: [
+              {
+                type: "image",
+                data: "aGVsbG8=",
+                mimeType: "image/png",
+              },
+            ],
+          }),
+        });
+      }
+
+      alepha.with(AlephaMcp).with(ImageTools);
+      await alepha.start();
+
+      const provider = alepha.inject(McpServerProvider);
+      const response = await provider.handleMessage({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "screenshot", arguments: {} },
+      });
+
+      const result = response?.result as {
+        content: Array<{ type: string; data?: string; mimeType?: string }>;
+        structuredContent?: unknown;
+      };
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0].type).toBe("image");
+      expect(result.content[0].data).toBe("aGVsbG8=");
+      expect(result.content[0].mimeType).toBe("image/png");
+      // Raw content is NOT double-wrapped into a JSON text block.
+      expect(result.structuredContent).toBeUndefined();
+    });
+
+    test("a plain object result (no content array) still serializes to a JSON text block", async () => {
+      const alepha = Alepha.create();
+
+      class PlainTools {
+        info = $tool({
+          description: "Return a plain object",
+          // No `result` schema, but the object is not raw MCP content.
+          handler: async () => ({ hello: "world" }),
+        });
+      }
+
+      alepha.with(AlephaMcp).with(PlainTools);
+      await alepha.start();
+
+      const provider = alepha.inject(McpServerProvider);
+      const response = await provider.handleMessage({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "info", arguments: {} },
+      });
+
+      const result = response?.result as {
+        content: Array<{ type: string; text: string }>;
+      };
+      expect(result.content[0].type).toBe("text");
+      expect(JSON.parse(result.content[0].text)).toEqual({ hello: "world" });
+    });
+
     test("should return error for unknown tool", async () => {
       const alepha = Alepha.create();
       alepha.with(AlephaMcp);

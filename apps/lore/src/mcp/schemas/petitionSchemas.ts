@@ -23,6 +23,13 @@ const petitionLinkedQuestRefSchema = t.object({
   status: t.enum(["new", "accepted", "completed"], { mode: "text" }),
 });
 
+const petitionAttachmentRefSchema = t.object({
+  id: t.uuid(),
+  name: t.string(),
+  mimeType: t.string(),
+  size: t.number(),
+});
+
 const petitionFullSchema = t.object({
   id: t.integer(),
   shortId: t.integer(),
@@ -31,7 +38,7 @@ const petitionFullSchema = t.object({
   tags: t.array(t.string()),
   status: petitionStatusSchema,
   reporterName: t.optional(t.string()),
-  attachmentCount: t.integer(),
+  attachments: t.array(petitionAttachmentRefSchema),
   linkedQuests: t.array(petitionLinkedQuestRefSchema),
   createdAt: t.datetime(),
 });
@@ -72,6 +79,34 @@ export const petitionGetParamsSchema = t.extend(campaignParamsSchema, {
 });
 
 export const petitionGetResultSchema = petitionFullSchema;
+
+// -----------------------------------------------------------------------------
+// petition_attachment_get
+// -----------------------------------------------------------------------------
+
+export const petitionAttachmentGetParamsSchema = t.extend(
+  campaignParamsSchema,
+  {
+    id: t.optional(
+      t.integer({
+        description: "Global petition ID. Mutually exclusive with shortId.",
+      }),
+    ),
+    shortId: t.optional(
+      t.integer({
+        description:
+          "Per-campaign 1-based shortId. Requires `campaign` or `campaign_name`.",
+      }),
+    ),
+    attachmentId: t.uuid({
+      description:
+        "Attachment id to fetch — one of the `attachments[].id` values returned by petition_get.",
+    }),
+  },
+);
+
+// petition_attachment_get returns raw MCP content blocks (an `image` block for
+// images, otherwise a `text` block), so it declares no `result` schema.
 
 // -----------------------------------------------------------------------------
 // petition_accept / petition_reject

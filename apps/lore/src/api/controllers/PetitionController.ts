@@ -293,6 +293,66 @@ export class PetitionController {
   });
 
   /**
+   * Read a single petition attachment's bytes (base64) plus its metadata.
+   * Campaign-member gated, with an IDOR guard: the `attachmentId` must be one
+   * of the petition's own `attachments`. Backs the `petition_attachment_get`
+   * MCP tool, which wraps the bytes into an MCP `image` content block so an
+   * agent can actually see the screenshot. The 5 MB upload cap bounds the
+   * base64 payload (~6.7 MB).
+   */
+  getPetitionAttachment = $action({
+    use: [$secure({ permissions: ["campaign:read"] })],
+    method: "GET",
+    path: "/campaigns/:campaignId/petitions/:petitionId/attachments/:attachmentId",
+    schema: {
+      params: t.object({
+        campaignId: t.integer(),
+        petitionId: t.integer(),
+        attachmentId: t.uuid(),
+      }),
+      response: t.object({
+        id: t.uuid(),
+        name: t.string(),
+        mimeType: t.string(),
+        size: t.number(),
+        data: t.string({ description: "Base64-encoded file bytes." }),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      await this.ensureMember(params.campaignId, user);
+      const petition = await this.loadPetition(
+        params.campaignId,
+        params.petitionId,
+      );
+
+      // IDOR guard: only attachments that belong to THIS petition are
+      // readable — a member can't read an arbitrary file id this way.
+      if (!(petition.attachments ?? []).includes(params.attachmentId)) {
+        throw new NotFoundError("Attachment not found on this petition");
+      }
+
+      const file = await this.fileRepo.findOne({
+        where: { id: { eq: params.attachmentId } },
+      });
+      if (!file) {
+        throw new NotFoundError("Attachment file missing");
+      }
+
+      // The bucket stores blobs under `blobId`, not the file-row `id`.
+      const blob = await this.attachmentBucket.download(file.blobId);
+      const data = Buffer.from(await blob.arrayBuffer()).toString("base64");
+
+      return {
+        id: file.id,
+        name: file.name,
+        mimeType: file.mimeType,
+        size: file.size,
+        data,
+      };
+    },
+  });
+
+  /**
    * Accept a petition — owner declares the request valid. Status flips
    * `pending → accepted`; quests are created separately via the regular
    * `createQuest` flow, passing `petitionId` so the spawned work links back

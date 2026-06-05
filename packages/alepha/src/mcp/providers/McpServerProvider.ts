@@ -19,6 +19,7 @@ import type {
   JsonRpcRequest,
   JsonRpcResponse,
   McpCapabilities,
+  McpContent,
   McpContext,
   McpInitializeResult,
   McpPromptDescriptor,
@@ -309,6 +310,20 @@ export class McpServerProvider {
     try {
       const result = await tool.execute(args, context);
 
+      // A tool WITHOUT an output schema may return raw MCP content blocks
+      // (e.g. an `image` block) instead of JSON — used for binary payloads
+      // like attachment previews. Recognized by the CallToolResult shape
+      // (`{ content: McpContent[] }`); passed through verbatim. Tools that
+      // declare an output schema always go through the structured path
+      // below, so a JSON result that happens to carry a `content` array is
+      // never mistaken for raw content.
+      if (!tool.hasOutputSchema()) {
+        const raw = this.asRawToolContent(result);
+        if (raw) {
+          return raw;
+        }
+      }
+
       const callResult: McpToolCallResult = {
         content: [
           {
@@ -362,6 +377,46 @@ export class McpServerProvider {
         isError: true,
       };
     }
+  }
+
+  /**
+   * Recognize a tool handler's return value as a pre-built MCP tool result —
+   * i.e. it already carries a `content` array of content blocks (text, image,
+   * audio, resource, resource_link). Returns the normalized
+   * {@link McpToolCallResult} when matched, or `undefined` to fall back to the
+   * default JSON/text encoding. Only ever consulted for tools that did NOT
+   * declare an output schema (see {@link handleToolCall}).
+   */
+  protected asRawToolContent(result: unknown): McpToolCallResult | undefined {
+    if (!result || typeof result !== "object") {
+      return undefined;
+    }
+    const candidate = result as {
+      content?: unknown;
+      isError?: unknown;
+      _meta?: unknown;
+    };
+    if (!Array.isArray(candidate.content) || candidate.content.length === 0) {
+      return undefined;
+    }
+    const allBlocks = candidate.content.every(
+      (block): block is McpContent =>
+        !!block &&
+        typeof block === "object" &&
+        typeof (block as { type?: unknown }).type === "string",
+    );
+    if (!allBlocks) {
+      return undefined;
+    }
+    return {
+      content: candidate.content as McpContent[],
+      isError:
+        typeof candidate.isError === "boolean" ? candidate.isError : undefined,
+      _meta:
+        candidate._meta && typeof candidate._meta === "object"
+          ? (candidate._meta as Record<string, unknown>)
+          : undefined,
+    };
   }
 
   protected handleResourcesList(): { resources: McpResourceDescriptor[] } {
