@@ -145,6 +145,12 @@ export const questCreateParamsSchema = t.extend(campaignParamsSchema, {
         "Per-campaign shortId of a predecessor quest. While the predecessor is incomplete, `quest_accept` refuses to start this quest. Use to express 'this can't start until that one is done' (typical setup quest gating a follow-up).",
     }),
   ),
+  petition_shortId: t.optional(
+    t.integer({
+      description:
+        "Per-campaign shortId of an ACCEPTED petition to link this quest to (it then shows under that petition's 'linked quests'). Owner-only; the petition must already be accepted (accept it first via petition_accept).",
+    }),
+  ),
 });
 
 export const questCreateResultSchema = t.object({
@@ -243,6 +249,12 @@ export const questUpdateParamsSchema = t.extend(entityRefSchema, {
     t.integer({
       description:
         "Reparent the quest's predecessor to the quest with this per-campaign shortId (Questline). Pass 0 to clear the dependency. While a non-null predecessor is incomplete, `quest_accept` is blocked.",
+    }),
+  ),
+  petition_shortId: t.optional(
+    t.integer({
+      description:
+        "Link this quest to the ACCEPTED petition with this per-campaign shortId (shows under that petition's 'linked quests'). Pass 0 to clear the link. Owner-only; the petition must already be accepted.",
     }),
   ),
 });

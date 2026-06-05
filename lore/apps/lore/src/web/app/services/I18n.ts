@@ -683,7 +683,9 @@ export class I18n {
 
         "blights.empty":
           "No blights. Crashes captured from your sigils will appear here.",
-        "blights.filter.showResolved": "Show resolved",
+        "blights.filter.open": "Open",
+        "blights.filter.resolved": "Resolved",
+        "blights.filter.all": "All",
         "blights.col.error": "Error",
         "blights.col.page": "Page",
         "blights.col.count": "Count",
@@ -1537,7 +1539,9 @@ export class I18n {
 
         "blights.empty":
           "Aucun fléau. Les plantages capturés par vos sigils apparaîtront ici.",
-        "blights.filter.showResolved": "Afficher les résolus",
+        "blights.filter.open": "Ouverts",
+        "blights.filter.resolved": "Résolus",
+        "blights.filter.all": "Tous",
         "blights.col.error": "Erreur",
         "blights.col.page": "Page",
         "blights.col.count": "Occurrences",

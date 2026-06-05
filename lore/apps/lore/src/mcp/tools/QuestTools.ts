@@ -2,6 +2,7 @@ import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 import { CampaignController } from "../../api/controllers/CampaignController.ts";
+import { PetitionController } from "../../api/controllers/PetitionController.ts";
 import { QuestController } from "../../api/controllers/QuestController.ts";
 import {
   questAcceptParamsSchema,
@@ -28,6 +29,29 @@ import {
 export class QuestTools {
   protected readonly questController = $inject(QuestController);
   protected readonly campaignController = $inject(CampaignController);
+  protected readonly petitionController = $inject(PetitionController);
+
+  /**
+   * Resolve a per-campaign petition `shortId` to its global petition id, so a
+   * quest can be linked to it. Throws if no petition in the campaign carries
+   * that shortId.
+   */
+  protected async resolvePetitionId(
+    campaignId: number,
+    shortId: number,
+  ): Promise<number> {
+    const result = await this.petitionController.listPetitions({
+      params: { campaignId },
+      query: { status: "all" },
+    });
+    const found = result.items.find((p) => p.shortId === shortId);
+    if (!found) {
+      throw new NotFoundError(
+        `Petition with shortId ${shortId} not found in this campaign`,
+      );
+    }
+    return found.id;
+  }
 
   /**
    * Resolve campaign ID from params (by ID or name).
@@ -178,6 +202,14 @@ export class QuestTools {
         });
         dependsOn = pred.id;
       }
+      // Resolve `petition_shortId` → global petition id (same campaign).
+      let petitionId: number | undefined;
+      if (params.petition_shortId != null) {
+        petitionId = await this.resolvePetitionId(
+          campaignId,
+          params.petition_shortId,
+        );
+      }
       const quest = await this.questController.createQuest({
         body: {
           campaignId,
@@ -189,6 +221,7 @@ export class QuestTools {
           objectives: params.objectives,
           tags: params.tags,
           dependsOn,
+          petitionId,
         },
       });
 
@@ -358,15 +391,21 @@ export class QuestTools {
     },
     handler: async ({ params }) => {
       const id = await this.resolveQuestId(params);
+      // `dependsOn_shortId` / `petition_shortId` both resolve against the
+      // quest's OWN campaign; fetch it once if either is supplied.
+      const needsCampaign =
+        (params.dependsOn_shortId != null && params.dependsOn_shortId !== 0) ||
+        (params.petition_shortId != null && params.petition_shortId !== 0);
+      const current = needsCampaign
+        ? await this.questController.getQuestById({ params: { id } })
+        : undefined;
+
       // Translate `dependsOn_shortId` for update: 0 = clear, integer =
       // resolve to global id within the same campaign as the quest.
       let dependsOn: number | null | undefined;
       if (params.dependsOn_shortId === 0) {
         dependsOn = null;
-      } else if (params.dependsOn_shortId != null) {
-        const current = await this.questController.getQuestById({
-          params: { id },
-        });
+      } else if (params.dependsOn_shortId != null && current) {
         const pred = await this.questController.getQuestByShortId({
           params: {
             campaignId: current.campaignId,
@@ -375,6 +414,19 @@ export class QuestTools {
         });
         dependsOn = pred.id;
       }
+
+      // Translate `petition_shortId`: 0 = unlink, integer = resolve to the
+      // petition's global id within the quest's campaign.
+      let petitionId: number | null | undefined;
+      if (params.petition_shortId === 0) {
+        petitionId = null;
+      } else if (params.petition_shortId != null && current) {
+        petitionId = await this.resolvePetitionId(
+          current.campaignId,
+          params.petition_shortId,
+        );
+      }
+
       const quest = await this.questController.updateQuestById({
         params: { id },
         body: {
@@ -387,6 +439,7 @@ export class QuestTools {
           completionMessage: params.completionMessage,
           tags: params.tags,
           dependsOn,
+          petitionId,
         },
       });
 

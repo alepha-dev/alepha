@@ -859,6 +859,11 @@ export class QuestController {
           // sets it. Picking from the entity schema would emit
           // `optional<integer>` only, dropping the explicit-clear path.
           dependsOn: t.optional(t.nullable(t.integer())),
+          // `petitionId` links this quest back to an accepted petition (what
+          // the petition inbox's "linked quests" reads). `null` clears the
+          // link; integer sets it. Owner-only + accepted-petition checks in
+          // the handler, mirroring `createQuest`.
+          petitionId: t.optional(t.nullable(t.integer())),
         },
       ),
       response: questResourceSchema,
@@ -922,6 +927,35 @@ export class QuestController {
             );
           }
           patch.dependsOn = body.dependsOn;
+        }
+      }
+      // Link / unlink a petition. Same guard as `createQuest`: only the
+      // campaign owner may link, and only to a petition that exists in this
+      // campaign and is already accepted. `null` clears the link.
+      if (body.petitionId !== undefined) {
+        if (body.petitionId === null) {
+          patch.petitionId = null;
+        } else {
+          if (campaign.createdBy !== user.id) {
+            throw new ForbiddenError(
+              "Only the campaign owner can link a quest to a petition",
+            );
+          }
+          const petition = await this.petitions.findOne({
+            where: {
+              id: { eq: body.petitionId },
+              campaignId: { eq: quest.campaignId },
+            },
+          });
+          if (!petition) {
+            throw new BadRequestError("Petition not found in this campaign");
+          }
+          if (petition.status !== "accepted") {
+            throw new BadRequestError(
+              "Petition must be accepted before quests can be linked",
+            );
+          }
+          patch.petitionId = body.petitionId;
         }
       }
       if (
