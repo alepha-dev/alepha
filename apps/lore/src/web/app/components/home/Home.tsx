@@ -2,7 +2,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Separator } from "@alepha/ui/components/ui/separator";
 import { DateTimeProvider } from "alepha/datetime";
-import { useInject, useStore } from "alepha/react";
+import { ClientOnly, useInject, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -234,7 +234,10 @@ const CampaignCard = (props: CampaignCardProps) => {
         {props.campaign.title}
       </span>
       <span className="text-muted-foreground hidden text-xs sm:inline">
-        Updated {props.relativeTime}
+        {/* Home is the only SSR'd route. `fromNow()` is relative-to-now, so it
+            mismatches between the server render and client hydration (clock
+            drift / unit boundary) → React #418. Render it client-only. */}
+        Updated <ClientOnly>{props.relativeTime}</ClientOnly>
         {zones > 0 && (
           <>
             {" · "}
