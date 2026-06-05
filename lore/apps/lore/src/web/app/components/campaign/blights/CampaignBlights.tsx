@@ -10,7 +10,7 @@ import {
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Page, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { CheckCircle2, FileText, Send, Trash2 } from "lucide-react";
@@ -58,7 +58,7 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const [campaign] = useStore(currentCampaignAtom);
-  const [, setBlightCount] = useStore(currentBlightCountAtom);
+  const alepha = useAlepha();
   const blightApi = useClient<BlightController>();
   const toaster = useToast();
   const dt = useInject(DateTimeProvider);
@@ -117,7 +117,12 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
       params: { campaignId: campaign.id },
       query: { includeResolved: status !== "open" },
     });
-    setBlightCount({ count: res.openCount });
+    // Push the freshest open-count to the sidebar badge atom. Write-only:
+    // this component never reads the badge, so it must NOT subscribe to it —
+    // subscribing here (via useStore) re-rendered this component on every
+    // fetch, which (with an inline `fetch` prop) span the table into an
+    // infinite refetch loop. `store.set` updates the atom without subscribing.
+    alepha.store.set(currentBlightCountAtom, { count: res.openCount });
 
     const filtered =
       status === "resolved"
