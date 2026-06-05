@@ -354,6 +354,25 @@ const CampaignPetitionRequest = () => {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
+  // Cancelling must never push to the campaign view: that route is
+  // members-only (`assertMember`), but this form is open to ANY logged-in
+  // user (it's the external feedback channel), so a non-member reporter would
+  // 403 into the error boundary — the bug petition #7 reported. Instead:
+  // close the sigil popup (as a successful submit does), else go back, else
+  // land on the reporter's own petitions list.
+  const handleCancel = () => {
+    if (typeof window === "undefined") return;
+    if (window.name === "lore-petition") {
+      window.close();
+      return;
+    }
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    void meRouter.push("myPetitions");
+  };
+
   if (!auth.user) {
     // Anonymous: invite to log in. The draft was already persisted to
     // sessionStorage on mount, so it survives the round-trip through Google.
@@ -538,11 +557,7 @@ const CampaignPetitionRequest = () => {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() =>
-                    router.push("campaign", {
-                      params: { campaignId: campaignIdParam },
-                    })
-                  }
+                  onClick={handleCancel}
                   disabled={submitting}
                 >
                   {tr("petitions.request.cancel")}

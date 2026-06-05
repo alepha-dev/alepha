@@ -2,6 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   apiPath,
   createCampaignViaWizard,
+  newUserContext,
   registerAndVerify,
 } from "./_helpers.ts";
 
@@ -152,5 +153,59 @@ test.describe("Petition", () => {
       const row = page.getByRole("row").filter({ hasText: petitionTitle });
       await expect(row).toContainText(/accepted/i, { timeout: 10_000 });
     });
+  });
+
+  test("cancel from the request form never 403s a non-member into the error page", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    const ownerEmail = `owner${t}@example.com`;
+    const campaignTitle = `Cxl${t}`.slice(0, 20);
+
+    await registerAndVerify(page, ownerEmail, "OwnerPass123!");
+    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+
+    // Open the petition module so the request form is reachable.
+    await page.evaluate(async (id) => {
+      const res = await fetch(`/api/updateCampaignById/${id}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ features: { petitions: true } }),
+      });
+      if (!res.ok)
+        throw new Error(`enable petitions: ${res.status} ${await res.text()}`);
+    }, campaignId);
+
+    // A different logged-in user who is NOT a member of the campaign — the
+    // exact case that used to break: Cancel pushed to the members-only
+    // campaign view → 403 → "Oh no! Something went wrong" (petition #7).
+    const reporter = await newUserContext(browser, baseURL!, "reporter");
+    try {
+      await reporter.page.goto(`/c/${campaignId}/request`);
+      await reporter.page.waitForLoadState("networkidle");
+      // The free-text field confirms the form rendered for the non-member.
+      await expect(reporter.page.locator("textarea").first()).toBeVisible({
+        timeout: 15_000,
+      });
+
+      await reporter.page.getByRole("button", { name: /^cancel$/i }).click();
+      await reporter.page.waitForLoadState("networkidle");
+
+      // Must NOT land on the crash boundary, and must NOT be sitting on the
+      // members-only campaign view.
+      await expect(
+        reporter.page.getByText(/something went wrong/i),
+      ).toHaveCount(0);
+      expect(reporter.page.url()).not.toMatch(
+        new RegExp(`/c/${campaignId}(?:/|$)`),
+      );
+    } finally {
+      await reporter.ctx.close();
+    }
   });
 });
