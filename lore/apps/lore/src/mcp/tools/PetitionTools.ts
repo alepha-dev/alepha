@@ -5,6 +5,7 @@ import { CampaignController } from "../../api/controllers/CampaignController.ts"
 import { PetitionController } from "../../api/controllers/PetitionController.ts";
 import type { PetitionResource } from "../../api/schemas/petitionResourceSchema.ts";
 import {
+  petitionAttachmentGetParamsSchema,
   petitionGetParamsSchema,
   petitionGetResultSchema,
   petitionListParamsSchema,
@@ -122,7 +123,7 @@ export class PetitionTools {
 
   petition_get = $tool({
     description:
-      "Get full details of a petition by ID, including description, reporter, tags (free-form key=value pairs like type=bug, host=lore.alepha.dev, path=/foo), attachment count, and linked quests spawned from it.",
+      "Get full details of a petition by ID, including description, reporter, tags (free-form key=value pairs like type=bug, host=lore.alepha.dev, path=/foo), attachments (id/name/mimeType/size — fetch their content with petition_attachment_get), and linked quests spawned from it.",
     title: "Get petition",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -148,7 +149,12 @@ export class PetitionTools {
         tags: p.tags ?? [],
         status: p.status,
         reporterName: this.reporterName(p),
-        attachmentCount: p.attachmentUrls?.length ?? 0,
+        attachments: (p.attachmentUrls ?? []).map((a) => ({
+          id: a.id,
+          name: a.name,
+          mimeType: a.mimeType,
+          size: a.size,
+        })),
         linkedQuests: (p.linkedQuests ?? []).map((q) => ({
           id: q.id,
           shortId: q.shortId,
@@ -156,6 +162,57 @@ export class PetitionTools {
           status: q.status,
         })),
         createdAt: p.createdAt,
+      };
+    },
+  });
+
+  petition_attachment_get = $tool({
+    description:
+      "Fetch the actual content of one petition attachment. Owner/member-only. For images the bytes are returned inline as an image block — so a screenshot attached to a bug report can be viewed directly. For text-like files (txt/csv/json) the decoded text is returned; other binary types (pdf, xlsx, …) return a metadata note only. Pass `attachmentId` from a petition_get `attachments[].id`.",
+    title: "Get petition attachment",
+    annotations: { readOnlyHint: true, idempotentHint: true },
+    schema: {
+      params: petitionAttachmentGetParamsSchema,
+    },
+    handler: async ({ params }) => {
+      const campaignId = await this.resolveCampaignId(
+        params.campaign,
+        params.campaign_name,
+      );
+      const petitionId = await this.resolvePetitionId(campaignId, params);
+      const file = await this.petitionController.getPetitionAttachment({
+        params: { campaignId, petitionId, attachmentId: params.attachmentId },
+      });
+
+      if (file.mimeType.startsWith("image/")) {
+        return {
+          content: [
+            { type: "image", data: file.data, mimeType: file.mimeType },
+          ],
+        };
+      }
+
+      // Text-like payloads are decoded inline so the agent can read them;
+      // opaque binary types (pdf/xlsx/…) return metadata only.
+      if (/^(text\/|application\/(json|csv))/.test(file.mimeType)) {
+        const text = Buffer.from(file.data, "base64").toString("utf8");
+        return {
+          content: [
+            {
+              type: "text",
+              text: `${file.name} (${file.mimeType}, ${file.size} bytes):\n\n${text}`,
+            },
+          ],
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Attachment "${file.name}" is ${file.mimeType} (${file.size} bytes) — not inline-viewable here. Download it from the Lore inbox if you need the raw file.`,
+          },
+        ],
       };
     },
   });
