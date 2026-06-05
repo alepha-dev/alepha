@@ -288,9 +288,6 @@ export class I18n {
         "campaign.create.module.chapters": "Chapters — Sprints",
         "campaign.create.module.chapters.helper":
           "Time-boxed cycles that group completed quests into milestones with a recap.",
-        "campaign.create.module.petitions": "Petitions — Feedback inbox",
-        "campaign.create.module.petitions.helper":
-          "Accept bug reports and feature requests from your users. Triage and promote them to quests.",
         "campaign.create.next": "Next",
         "campaign.create.back": "Back",
         "campaign.create.building": "Forging your campaign…",
@@ -394,7 +391,6 @@ export class I18n {
         "campaign.settings.zones.never": "—",
         "campaign.settings.nav.kanban": "Kanban",
         "campaign.settings.nav.folios": "Folios",
-        "campaign.settings.nav.petitions": "Petitions",
         "campaign.settings.nav.sigils": "Sigils",
         "campaign.settings.nav.chapters": "Chapters",
         "campaign.settings.nav.quests": "Quests",
@@ -470,8 +466,6 @@ export class I18n {
         "campaign.settings.kanban.columns.delete": "Delete",
         "campaign.settings.feature.folios.description":
           "Markdown notes attached to the campaign — searchable, taggable, AI-accessible.",
-        "campaign.settings.feature.petitions.description":
-          "Let users submit bug reports and feature requests for you to triage.",
         "campaign.settings.feature.chapters.description":
           "Group quests into chapters with start / end dates and changelogs.",
         "campaign.settings.feature.sigils.description":
@@ -715,6 +709,10 @@ export class I18n {
         "blights.feature.description":
           "Collect and triage uncaught exceptions reported by sigils with the Blights capability.",
 
+        "vitals.feature.title": "Vitals",
+        "vitals.feature.description":
+          "Collect Core Web Vitals (LCP, CLS, INP, FCP, TTFB) from partner pages via sigils with the Vitals capability.",
+
         "petitions.feature.title": "Petitions",
         "petitions.feature.description":
           "Allow sigils with the Petition capability to receive feedback submissions from partner sites.",
@@ -731,9 +729,6 @@ export class I18n {
         "sigils.empty": "No sigils yet. Create one to embed Lore on a site.",
         "sigils.create.label": "Label",
         "sigils.create.labelPlaceholder": "shop.example.com checkout",
-        "sigils.create.origins": "Allowed origins",
-        "sigils.create.originsPlaceholder": "https://shop.example.com",
-        "sigils.create.originsHelper": "One origin per line (scheme + host).",
         "sigils.create.excludedPaths": "Excluded paths",
         "sigils.create.excludedPathsPlaceholder": "/contact\n/admin/**",
         "sigils.create.excludedPathsHelper":
@@ -750,8 +745,6 @@ export class I18n {
         "sigils.features.title": "Features",
         "sigils.features.subtitle":
           "Turn Sigils on, then choose which capabilities sigils may grant.",
-        "sigils.card.origins": "Allowed origins",
-        "sigils.card.noOrigins": "No origins allow-listed",
         "sigils.card.kinds": "Capabilities",
         "sigils.card.noKinds": "No capabilities",
         "sigils.action.copySnippet": "Copy snippet",
@@ -766,7 +759,7 @@ export class I18n {
         "sigils.dialog.createDescription":
           "Scope what a partner site may do and where the sigil may run.",
         "sigils.dialog.editDescription":
-          "Update the label, allowed origins and capabilities. The sigil id and ingest key are unchanged.",
+          "Update the label, excluded paths and capabilities. The sigil id and ingest key are unchanged.",
         "sigils.dialog.save": "Save changes",
         "sigils.dialog.saving": "Saving…",
         "sigils.dialog.cancel": "Cancel",
@@ -1142,9 +1135,6 @@ export class I18n {
         "campaign.create.module.chapters": "Chapitres — Cycles",
         "campaign.create.module.chapters.helper":
           "Cycles datés qui regroupent les quêtes terminées en jalons avec un récapitulatif.",
-        "campaign.create.module.petitions": "Pétitions — Boîte de feedback",
-        "campaign.create.module.petitions.helper":
-          "Recevez les bugs et demandes de vos utilisateurs. Triez et promouvez-les en quêtes.",
         "campaign.create.next": "Suivant",
         "campaign.create.back": "Retour",
         "campaign.create.building": "Forge en cours…",
@@ -1248,7 +1238,6 @@ export class I18n {
         "campaign.settings.zones.never": "—",
         "campaign.settings.nav.kanban": "Kanban",
         "campaign.settings.nav.folios": "Folios",
-        "campaign.settings.nav.petitions": "Pétitions",
         "campaign.settings.nav.sigils": "Sigils",
         "campaign.settings.nav.chapters": "Chapitres",
         "campaign.settings.nav.quests": "Quêtes",
@@ -1321,8 +1310,6 @@ export class I18n {
           "Un tableau drag & drop pour déplacer les quêtes entre Nouvelle, En cours et Terminée.",
         "campaign.settings.feature.folios.description":
           "Notes markdown rattachées à la campagne — cherchables, taguables, accessibles à l’IA.",
-        "campaign.settings.feature.petitions.description":
-          "Permet aux utilisateurs de signaler bugs et demandes de fonctionnalités.",
         "campaign.settings.feature.chapters.description":
           "Regroupez les quêtes en chapitres avec dates de début / fin et historique.",
         "campaign.settings.feature.sigils.description":
@@ -1572,6 +1559,10 @@ export class I18n {
         "blights.feature.description":
           "Collectez et triez les exceptions non interceptées remontées par les sigils dotés de la capacité Fléaux.",
 
+        "vitals.feature.title": "Vitals",
+        "vitals.feature.description":
+          "Collectez les Core Web Vitals (LCP, CLS, INP, FCP, TTFB) depuis les pages partenaires via les sigils dotés de la capacité Vitals.",
+
         "petitions.feature.title": "Pétitions",
         "petitions.feature.description":
           "Permet aux sigils dotés de la capacité Pétition de recevoir des soumissions depuis les sites partenaires.",
@@ -1589,9 +1580,6 @@ export class I18n {
           "Aucun sigil pour l'instant. Créez-en un pour intégrer Lore sur un site.",
         "sigils.create.label": "Libellé",
         "sigils.create.labelPlaceholder": "shop.example.com checkout",
-        "sigils.create.origins": "Origines autorisées",
-        "sigils.create.originsPlaceholder": "https://shop.example.com",
-        "sigils.create.originsHelper": "Une origine par ligne (schéma + hôte).",
         "sigils.create.excludedPaths": "Chemins exclus",
         "sigils.create.excludedPathsPlaceholder": "/contact\n/admin/**",
         "sigils.create.excludedPathsHelper":
@@ -1608,8 +1596,6 @@ export class I18n {
         "sigils.features.title": "Fonctionnalités",
         "sigils.features.subtitle":
           "Activez les Sigils, puis choisissez les capacités qu'ils peuvent accorder.",
-        "sigils.card.origins": "Origines autorisées",
-        "sigils.card.noOrigins": "Aucune origine autorisée",
         "sigils.card.kinds": "Capacités",
         "sigils.card.noKinds": "Aucune capacité",
         "sigils.action.copySnippet": "Copier l'extrait",
@@ -1624,7 +1610,7 @@ export class I18n {
         "sigils.dialog.createDescription":
           "Délimitez ce qu'un site partenaire peut faire et où le sigil peut s'exécuter.",
         "sigils.dialog.editDescription":
-          "Modifiez le libellé, les origines autorisées et les capacités. L'id du sigil et la clé d'ingestion restent inchangés.",
+          "Modifiez le libellé, les chemins exclus et les capacités. L'id du sigil et la clé d'ingestion restent inchangés.",
         "sigils.dialog.save": "Enregistrer",
         "sigils.dialog.saving": "Enregistrement…",
         "sigils.dialog.cancel": "Annuler",

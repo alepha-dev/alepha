@@ -81,7 +81,6 @@ const createSigil = async (
       params: { campaignId },
       body: {
         label: "vitals test sigil",
-        allowedOrigins: ["https://example.com"],
         kinds: ["beacon"],
       },
     },

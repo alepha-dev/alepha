@@ -97,7 +97,6 @@ describe("SigilController", () => {
         params: { campaignId },
         body: {
           label: "shop.example.com checkout",
-          allowedOrigins: ["https://shop.example.com"],
           kinds: ["petition"],
         },
       },
@@ -106,7 +105,6 @@ describe("SigilController", () => {
 
     expect(created.data.id).toMatch(/^[0-9a-f-]{36}$/);
     expect(created.data.label).toBe("shop.example.com checkout");
-    expect(created.data.allowedOrigins).toEqual(["https://shop.example.com"]);
     expect(created.data.kinds).toEqual(["petition"]);
     // ingestKey is a secret — never returned in the resource payload.
     expect("ingestKey" in created.data).toBe(false);
@@ -171,7 +169,7 @@ describe("SigilController", () => {
     expect((error as HttpError).status).toBe(404);
   });
 
-  it("updates a sigil's label, origins and kinds", async ({ expect }) => {
+  it("updates a sigil's label and kinds", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const campaignId = await createCampaign(ctx, owner);
 
@@ -180,7 +178,6 @@ describe("SigilController", () => {
         params: { campaignId },
         body: {
           label: "Before",
-          allowedOrigins: ["https://old.example.com"],
           kinds: ["petition"],
         },
       },
@@ -192,7 +189,6 @@ describe("SigilController", () => {
         params: { campaignId, id: created.data.id },
         body: {
           label: "After",
-          allowedOrigins: ["https://new.example.com"],
           kinds: ["blights", "beacon"],
         },
       },
@@ -202,7 +198,6 @@ describe("SigilController", () => {
     // id is the immutable public credential — never changes on update.
     expect(updated.data.id).toBe(created.data.id);
     expect(updated.data.label).toBe("After");
-    expect(updated.data.allowedOrigins).toEqual(["https://new.example.com"]);
     expect(updated.data.kinds).toEqual(["blights", "beacon"]);
     // ingestKey is a secret — never returned, never mutated by update.
     expect("ingestKey" in updated.data).toBe(false);

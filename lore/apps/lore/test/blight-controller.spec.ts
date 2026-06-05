@@ -99,7 +99,6 @@ const createSigil = async (
       params: { campaignId },
       body: {
         label: "blight sigil",
-        allowedOrigins: [ORIGIN],
         kinds: ["blights"],
       },
     },

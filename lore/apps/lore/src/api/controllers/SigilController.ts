@@ -16,7 +16,6 @@ const sigilResourceSchema = t.object({
   id: t.uuid(),
   campaignId: t.integer(),
   label: t.string(),
-  allowedOrigins: t.array(t.string()),
   kinds: t.array(t.string()),
   excludedPaths: t.array(t.string()),
   createdAt: t.datetime(),
@@ -31,9 +30,6 @@ export type SigilResource = Static<typeof sigilResourceSchema>;
 
 const sigilBodySchema = t.object({
   label: t.string({ minLength: 1, maxLength: 200 }),
-  allowedOrigins: t.optional(
-    t.array(t.string({ maxLength: 200 }), { maxItems: 20 }),
-  ),
   kinds: t.optional(
     t.array(t.enum([...SIGIL_KINDS], { mode: "text" }), { maxItems: 10 }),
   ),
@@ -76,7 +72,7 @@ export class SigilController {
       const created = await this.sigils.create({
         campaignId: params.campaignId,
         label: body.label,
-        allowedOrigins: body.allowedOrigins ?? [],
+        allowedOrigins: [],
         kinds: body.kinds ?? [],
         excludedPaths: body.excludedPaths ?? [],
         ingestKey: this.generateIngestKey(),
@@ -115,7 +111,7 @@ export class SigilController {
   });
 
   /**
-   * Update a sigil's `label` / `allowedOrigins` / `kinds`. The public
+   * Update a sigil's `label` / `kinds` / `excludedPaths`. The public
    * `id`, the secret `ingestKey`, and the `campaignId` are NOT mutable —
    * changing those three columns never reissues the sigil, so the
    * partner's `<script>` tag keeps working unchanged. Owner-only.
@@ -135,7 +131,6 @@ export class SigilController {
 
       await this.sigils.updateById(sigil.id, {
         label: body.label,
-        allowedOrigins: body.allowedOrigins ?? [],
         kinds: body.kinds ?? [],
         excludedPaths: body.excludedPaths ?? [],
       });
@@ -218,7 +213,6 @@ export class SigilController {
       id: sigil.id,
       campaignId: sigil.campaignId,
       label: sigil.label,
-      allowedOrigins: sigil.allowedOrigins ?? [],
       kinds: sigil.kinds ?? [],
       excludedPaths: sigil.excludedPaths ?? [],
       createdAt: sigil.createdAt,

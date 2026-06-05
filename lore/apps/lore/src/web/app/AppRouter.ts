@@ -542,7 +542,6 @@ export class AppRouter {
       this.campaignSettingsZones,
       this.campaignSettingsKanban,
       this.campaignSettingsFolios,
-      this.campaignSettingsPetitions,
       this.campaignSettingsSigils,
       this.campaignSettingsChapters,
       this.campaignSettingsQuests,
@@ -628,18 +627,6 @@ export class AppRouter {
     }),
     lazy: () =>
       import("./components/campaign/settings/CampaignSettingsFoliosPage.tsx"),
-  });
-
-  campaignSettingsPetitions = $page({
-    name: "campaignSettingsPetitions",
-    path: "/petitions",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Petitions`,
-    }),
-    lazy: () =>
-      import(
-        "./components/campaign/settings/CampaignSettingsPetitionsPage.tsx"
-      ),
   });
 
   campaignSettingsSigils = $page({

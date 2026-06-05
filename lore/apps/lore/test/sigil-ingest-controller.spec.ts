@@ -114,7 +114,7 @@ const createSigil = async (
   const created = await ctx.sigilController.createSigil.fetch(
     {
       params: { campaignId },
-      body: { label: "ingest sigil", allowedOrigins: [], kinds },
+      body: { label: "ingest sigil", kinds },
     },
     { user },
   );

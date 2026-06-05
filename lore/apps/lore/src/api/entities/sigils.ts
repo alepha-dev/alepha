@@ -61,8 +61,10 @@ export const sigils = $entity({
      */
     label: t.string({ minLength: 1, maxLength: 200 }),
     /**
-     * Origins (scheme + host) the sigil's served script may be embedded
-     * from. Empty means no origin has been allow-listed yet.
+     * VESTIGIAL — kept because dropping it on D1 is a cascade bomb (same
+     * precedent as `revokedAt` and `campaign.public`). Never enforced: the
+     * proxy model means Lore only ever sees server-to-server calls and never
+     * receives the real browser `Origin`. Do not add enforcement logic here.
      */
     allowedOrigins: db.default(
       t.array(t.string({ maxLength: 200 }), { maxItems: 20 }),

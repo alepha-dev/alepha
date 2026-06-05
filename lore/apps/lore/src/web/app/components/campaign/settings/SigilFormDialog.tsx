@@ -40,7 +40,6 @@ const KIND_META: Record<
 
 export interface SigilFormValue {
   label: string;
-  allowedOrigins: string[];
   kinds: SigilKind[];
   excludedPaths: string[];
 }
@@ -66,7 +65,6 @@ const SigilFormDialog = (props: SigilFormDialogProps) => {
   const isEdit = !!props.sigil;
 
   const [label, setLabel] = useState("");
-  const [originsText, setOriginsText] = useState("");
   const [excludedPathsText, setExcludedPathsText] = useState("");
   const [kinds, setKinds] = useState<SigilKind[]>([]);
   const [saving, setSaving] = useState(false);
@@ -76,27 +74,27 @@ const SigilFormDialog = (props: SigilFormDialogProps) => {
   useEffect(() => {
     if (!props.open) return;
     setLabel(props.sigil?.label ?? "");
-    setOriginsText((props.sigil?.allowedOrigins ?? []).join("\n"));
     setExcludedPathsText((props.sigil?.excludedPaths ?? []).join("\n"));
     setKinds((props.sigil?.kinds ?? []) as SigilKind[]);
     setSaving(false);
   }, [props.open, props.sigil]);
 
+  // At least one capability is gated off by a disabled campaign feature —
+  // surface the hint that explains the disabled checkboxes.
+  const hasLockedKind = SIGIL_KINDS.some(
+    (kind) => !props.featureEnabled[KIND_META[kind].feature],
+  );
+
   const submit = async () => {
     if (!label.trim()) return;
     setSaving(true);
     try {
-      const allowedOrigins = originsText
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean);
       const excludedPaths = excludedPathsText
         .split("\n")
         .map((s) => s.trim())
         .filter(Boolean);
       await props.onSubmit({
         label: label.trim(),
-        allowedOrigins,
         kinds,
         excludedPaths,
       });
@@ -133,19 +131,6 @@ const SigilFormDialog = (props: SigilFormDialogProps) => {
               onChange={(e) => setLabel(e.target.value)}
               autoFocus
             />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="sigil-origins">{tr("sigils.create.origins")}</Label>
-            <Textarea
-              id="sigil-origins"
-              value={originsText}
-              placeholder={tr("sigils.create.originsPlaceholder")}
-              onChange={(e) => setOriginsText(e.target.value)}
-              rows={3}
-            />
-            <span className="text-muted-foreground text-xs">
-              {tr("sigils.create.originsHelper")}
-            </span>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="sigil-excluded-paths">
@@ -192,14 +177,14 @@ const SigilFormDialog = (props: SigilFormDialogProps) => {
                   >
                     {tr(labelKey)}
                   </Label>
-                  {locked && (
-                    <span className="text-muted-foreground text-xs">
-                      {tr("sigils.kind.locked")}
-                    </span>
-                  )}
                 </div>
               );
             })}
+            {hasLockedKind && (
+              <span className="text-muted-foreground text-xs">
+                {tr("sigils.kind.locked")}
+              </span>
+            )}
           </div>
         </div>
 
