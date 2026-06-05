@@ -147,7 +147,9 @@ export class QuestController {
       const quest = await this.questService.createQuest(campaign, {
         campaignId: body.campaignId,
         title: body.title,
-        description: body.description,
+        // Title-only quests are allowed; default the optional description to
+        // "" so the NOT-NULL column + sanitizeHtml never see undefined.
+        description: body.description ?? "",
         zone: body.zone,
         priority: body.priority,
         difficulty: body.difficulty,
