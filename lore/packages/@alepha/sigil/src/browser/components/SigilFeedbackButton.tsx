@@ -1,5 +1,35 @@
 import { useEffect, useRef, useState } from "react";
 import { SIGIL_PETITION_SUBMITTED_MESSAGE } from "../../shared/sigilMessages.ts";
+import { SIGIL_PETITION_CONTEXT_MAX_LEN } from "../../shared/sigilPetitionContext.ts";
+
+/**
+ * Snapshot the host page's context (URL, title, referrer, UA, locale, viewport)
+ * as a query string the popup carries to the petition form. Best-effort: any
+ * field that throws or is unavailable is simply omitted. Each value is capped
+ * so a hostile/huge value can't blow out the popup URL — the server schema
+ * enforces the authoritative bounds on persist. Keys match
+ * `SIGIL_PETITION_CONTEXT_PARAMS`.
+ */
+const collectPageContext = (): string => {
+  const params = new URLSearchParams();
+  const put = (key: string, value: string | undefined | null) => {
+    if (value) params.set(key, value.slice(0, SIGIL_PETITION_CONTEXT_MAX_LEN));
+  };
+  try {
+    put("url", window.location.href);
+    put("path", window.location.pathname + window.location.search);
+    put("title", document.title);
+    put("ref", document.referrer);
+    put("ua", navigator.userAgent);
+    put("lang", navigator.language);
+    put("vp", `${window.innerWidth}x${window.innerHeight}`);
+    put("scr", `${window.screen.width}x${window.screen.height}`);
+    put("tz", Intl.DateTimeFormat().resolvedOptions().timeZone);
+  } catch {
+    // Best-effort — a missing global just means fewer context fields.
+  }
+  return params.toString();
+};
 
 /**
  * Props for the SigilFeedbackButton component.
@@ -59,8 +89,12 @@ export const SigilFeedbackButton = (_props: SigilFeedbackButtonProps) => {
     const top = Math.max(0, dualTop + (viewportHeight - height) / 2);
 
     const features = `width=${width},height=${height},left=${left},top=${top}`;
-    const popup = window.open("/sigil/request", "lore-petition", features);
-    if (!popup) window.open("/sigil/request", "_blank");
+    // Carry the host page's context to the petition form via the popup URL.
+    // The proxy whitelists these keys before redirecting to Lore.
+    const context = collectPageContext();
+    const target = context ? `/sigil/request?${context}` : "/sigil/request";
+    const popup = window.open(target, "lore-petition", features);
+    if (!popup) window.open(target, "_blank");
   };
 
   return (

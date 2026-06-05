@@ -40,19 +40,26 @@ describe("SigilRoot", () => {
     expect(screen.queryByText("Thank you!")).toBeNull();
   });
 
-  it("opens /sigil/request in a popup when the button is clicked", () => {
-    const open = vi.fn(() => ({}) as Window);
+  it("opens /sigil/request in a popup with captured page context when clicked", () => {
+    const open = vi.fn((..._args: unknown[]) => ({}) as Window);
     vi.stubGlobal("open", open);
 
     render(<SigilRoot />);
     fireEvent.click(screen.getByLabelText("Feedback"));
 
     expect(open).toHaveBeenCalledWith(
-      "/sigil/request",
+      // Now carries the host page's context as a query string.
+      expect.stringMatching(/^\/sigil\/request\?.*\burl=/),
       "lore-petition",
       expect.stringMatching(
         /width=480,height=720,left=\d+(\.\d+)?,top=\d+(\.\d+)?/,
       ),
     );
+
+    // The popup target encodes the jsdom page URL + user agent.
+    const target = open.mock.calls[0][0] as string;
+    const params = new URLSearchParams(target.split("?")[1]);
+    expect(params.get("url")).toBe(window.location.href);
+    expect(params.get("ua")).toBe(navigator.userAgent);
   });
 });

@@ -82,12 +82,14 @@ test.describe("Petition", () => {
 
     // ── Submit a petition through the UI request form ────────────────────────
     await test.step("submit petition via the request form", async () => {
-      // Land on the request URL with autofill query params the way an external
-      // `<a target="_blank">` from a customer site would deliver them.
+      // Land on the request URL with the page-context query params the way the
+      // `/sigil/request` proxy delivers them after a feedback-button click.
       await page.goto(
         `/c/${campaignId}/request?path=${encodeURIComponent(
           reportPath,
-        )}&url=${encodeURIComponent(reportUrl)}&type=bug`,
+        )}&url=${encodeURIComponent(reportUrl)}&type=bug` +
+          `&ua=${encodeURIComponent("CustomUA/9.9")}` +
+          `&tz=${encodeURIComponent("Europe/Paris")}`,
       );
       await page.waitForLoadState("networkidle");
 
@@ -109,13 +111,27 @@ test.describe("Petition", () => {
 
     // The list no longer carries the petition id in the URL — read it back
     // from the reporter list endpoint (most recent first).
-    const petitionId = await page.evaluate(async () => {
+    const latest = await page.evaluate(async () => {
       const r = await fetch("/api/me/petitions", { credentials: "include" });
       if (!r.ok) throw new Error(`list mine: ${r.status} ${await r.text()}`);
-      const data = (await r.json()) as { content: Array<{ id: number }> };
-      return data.content[0]?.id ?? 0;
+      const data = (await r.json()) as {
+        content: Array<{
+          id: number;
+          source?: { hostUrl?: string; userAgent?: string; timezone?: string };
+        }>;
+      };
+      return data.content[0] ?? null;
     });
+    const petitionId = latest?.id ?? 0;
     expect(petitionId).toBeGreaterThan(0);
+
+    // The sigil/proxy query params must be captured as the petition `source`
+    // provenance the owner sees in the inbox.
+    await test.step("captures page-context source from the request URL", () => {
+      expect(latest?.source?.hostUrl).toBe(reportUrl);
+      expect(latest?.source?.userAgent).toBe("CustomUA/9.9");
+      expect(latest?.source?.timezone).toBe("Europe/Paris");
+    });
 
     await test.step("petition shows as pending in the list", async () => {
       const row = page.getByRole("row").filter({ hasText: petitionTitle });

@@ -137,4 +137,49 @@ describe("SigilProxyController.request", () => {
     expect(reply.status).toBe(302);
     expect(reply.headers.location).toBe("https://lore.test/c/7/request");
   });
+
+  it("forwards whitelisted page-context params and drops unknown ones", async () => {
+    class RedirectForward extends SigilForwardProvider {
+      enabled() {
+        return true;
+      }
+
+      loreOrigin() {
+        return "https://lore.test";
+      }
+
+      async campaignId() {
+        return 7;
+      }
+    }
+
+    const alepha = Alepha.create({
+      env: { NODE_ENV: "production", SERVER_PORT: 0, SIGIL_ID: "sig-1" },
+    }).with({ provide: SigilForwardProvider, use: RedirectForward });
+    const ctrl = alepha.inject(SigilProxyController);
+    await alepha.start();
+
+    const reply = new ServerReply();
+    const url = new URL(
+      "https://partner.example.com/sigil/request" +
+        "?url=https%3A%2F%2Fshop.example.com%2Fcheckout" +
+        "&ua=Mozilla%2F5.0" +
+        "&tz=Europe%2FParis" +
+        "&evil=DROP%20TABLE", // not whitelisted — must be dropped
+    );
+    await ctrl.request.run({ reply, url });
+
+    expect(reply.status).toBe(302);
+    const location = new URL(reply.headers.location as string);
+    expect(location.origin + location.pathname).toBe(
+      "https://lore.test/c/7/request",
+    );
+    expect(location.searchParams.get("url")).toBe(
+      "https://shop.example.com/checkout",
+    );
+    expect(location.searchParams.get("ua")).toBe("Mozilla/5.0");
+    expect(location.searchParams.get("tz")).toBe("Europe/Paris");
+    // Whitelist only — arbitrary params never reach the Lore URL.
+    expect(location.searchParams.has("evil")).toBe(false);
+  });
 });

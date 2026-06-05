@@ -139,4 +139,49 @@ describe("petition source field", () => {
       "https://shop.example.com/checkout",
     );
   });
+
+  it("persists the full page-context source with no sigilId (sigil-button flow)", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+
+    const created = await ctx.petitionController.submitPetition.fetch(
+      {
+        params: { campaignId },
+        body: {
+          title: "Embedded bug",
+          description: "From a partner site",
+          // The sigil-button flow never carries the secret sigil id.
+          source: {
+            hostUrl: "https://shop.example.com/checkout?step=2",
+            hostPath: "/checkout?step=2",
+            title: "Checkout — Step 2",
+            referrer: "https://google.com/",
+            userAgent: "Mozilla/5.0",
+            language: "en-US",
+            viewport: "1280x720",
+            screen: "1920x1080",
+            timezone: "Europe/Paris",
+          },
+        },
+      },
+      { user: owner },
+    );
+
+    const detail = await ctx.petitionController.getPetition.fetch(
+      { params: { campaignId, petitionId: created.data.id } },
+      { user: owner },
+    );
+
+    const source = detail.data.source;
+    expect(source?.sigilId ?? null).toBeNull();
+    expect(source?.hostUrl).toBe("https://shop.example.com/checkout?step=2");
+    expect(source?.title).toBe("Checkout — Step 2");
+    expect(source?.referrer).toBe("https://google.com/");
+    expect(source?.language).toBe("en-US");
+    expect(source?.viewport).toBe("1280x720");
+    expect(source?.screen).toBe("1920x1080");
+    expect(source?.timezone).toBe("Europe/Paris");
+  });
 });

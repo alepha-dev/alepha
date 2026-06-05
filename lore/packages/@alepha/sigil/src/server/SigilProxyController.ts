@@ -3,6 +3,10 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $action, $route } from "alepha/server";
 import { sigilIngestEnvelope } from "../shared/schemas/sigilIngestEnvelope.ts";
+import {
+  SIGIL_PETITION_CONTEXT_MAX_LEN,
+  SIGIL_PETITION_CONTEXT_PARAMS,
+} from "../shared/sigilPetitionContext.ts";
 import { SigilForwardProvider } from "./SigilForwardProvider.ts";
 
 /**
@@ -117,10 +121,20 @@ export class SigilProxyController {
         return;
       }
 
-      reply.redirect(
-        `${this.forward.loreOrigin()}/c/${campaignId}/request`,
-        302,
-      );
+      // Forward ONLY the whitelisted page-context params onto the redirect,
+      // re-encoded and length-capped. A strict allow-list keeps the embedding
+      // page from smuggling arbitrary query params into the Lore URL.
+      const forwarded = new URLSearchParams();
+      for (const key of SIGIL_PETITION_CONTEXT_PARAMS) {
+        const value = request.url?.searchParams.get(key);
+        if (value) {
+          forwarded.set(key, value.slice(0, SIGIL_PETITION_CONTEXT_MAX_LEN));
+        }
+      }
+      const query = forwarded.toString();
+      const base = `${this.forward.loreOrigin()}/c/${campaignId}/request`;
+
+      reply.redirect(query ? `${base}?${query}` : base, 302);
     },
   });
 }

@@ -12,7 +12,7 @@ import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { ExternalLink, Paperclip, Plus } from "lucide-react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { PetitionController } from "@/api/controllers/PetitionController.ts";
 import type { PetitionResource } from "@/api/schemas/petitionResourceSchema.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
@@ -213,20 +213,46 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
           </section>
         )}
 
-        {petition.reporter && (
+        {(petition.reporter || petition.source) && (
           <section className="bg-muted/30 rounded border border-border p-3 text-xs">
             <h3 className="text-muted-foreground mb-2 font-medium uppercase tracking-wide">
               {tr("petitions.context.title")}
             </h3>
+            {/* Provenance fields are attacker-controlled — rendered as escaped
+                plain text only (never as links/markdown). See folio #12. */}
             <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1">
-              <dt className="text-muted-foreground">
-                {tr("petitions.context.reporter")}
-              </dt>
-              <dd>
-                {petition.reporter.name ??
-                  petition.reporter.username ??
-                  petition.reporter.id}
-              </dd>
+              {petition.reporter && (
+                <>
+                  <dt className="text-muted-foreground">
+                    {tr("petitions.context.reporter")}
+                  </dt>
+                  <dd>
+                    {petition.reporter.name ??
+                      petition.reporter.username ??
+                      petition.reporter.id}
+                  </dd>
+                </>
+              )}
+              {petition.source &&
+                (
+                  [
+                    ["petitions.context.page", petition.source.hostUrl],
+                    ["petitions.context.title2", petition.source.title],
+                    ["petitions.context.referrer", petition.source.referrer],
+                    ["petitions.context.userAgent", petition.source.userAgent],
+                    ["petitions.context.language", petition.source.language],
+                    ["petitions.context.viewport", petition.source.viewport],
+                    ["petitions.context.screen", petition.source.screen],
+                    ["petitions.context.timezone", petition.source.timezone],
+                  ] as const
+                )
+                  .filter(([, value]) => !!value)
+                  .map(([labelKey, value]) => (
+                    <Fragment key={labelKey}>
+                      <dt className="text-muted-foreground">{tr(labelKey)}</dt>
+                      <dd className="break-all">{value}</dd>
+                    </Fragment>
+                  ))}
             </dl>
           </section>
         )}
