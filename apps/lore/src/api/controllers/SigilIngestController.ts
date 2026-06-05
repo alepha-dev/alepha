@@ -73,7 +73,7 @@ export class SigilIngestController {
    * `/c/:campaignId/request`. Public + unauthenticated — the sigil UUID is
    * the sole credential, exactly like the ingest endpoint.
    *
-   * Resolution mirrors the ingest path: `SigilService.findForEmbed(:id)` →
+   * Resolution mirrors the ingest path: `SigilService.findForIngest(:id)` →
    * 404 with the same message when the sigil cannot be resolved.
    *
    * `$route` (not `$action`) — lives at the ROOT path, not under `/api`.
@@ -86,7 +86,7 @@ export class SigilIngestController {
       response: t.object({ campaignId: t.integer() }),
     },
     handler: async ({ params }) => {
-      const sigil = await this.sigils.findForEmbed(params.id);
+      const sigil = await this.sigils.findForIngest(params.id);
       if (!sigil) {
         throw new HttpError({ status: 404, message: "Sigil not found" });
       }

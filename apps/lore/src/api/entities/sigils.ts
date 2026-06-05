@@ -20,18 +20,18 @@ export type SigilKind = (typeof SIGIL_KINDS)[number];
  * server-to-server ingest endpoints (`POST /sigils/:id/ingest`,
  * `POST /sigils/:id/petition`).
  *
- * Two credentials live on each sigil:
- *
- * - `id` — a random, opaque identifier and the primary key. Server-held
- *   secret on the trusted ingest path (the sigil UUID is the sole
- *   credential). Stored as a `text` PRIMARY KEY column. NB: the type is
- *   `t.uuid()` rather than a free-form 16-hex string because the Alepha
- *   SQLite model builder only honors `PRIMARY KEY` on uuid-format strings —
- *   a plain `t.string()` PK silently degrades to a non-PK column.
- * - `ingestKey` — a separate random secret used by legacy browser-embed
- *   paths (retained in the schema for backward compatibility; the trusted
- *   ingest path uses only the sigil `id`). Rotatable without reissuing the
- *   sigil `id`.
+ * - `id` — a random, opaque identifier and the primary key. It is the
+ *   **sole credential** on the trusted server-to-server ingest path (the
+ *   sigil UUID is the only thing that authenticates `POST /sigils/:id/*`).
+ *   Stored as a `text` PRIMARY KEY column. NB: the type is `t.uuid()` rather
+ *   than a free-form 16-hex string because the Alepha SQLite model builder
+ *   only honors `PRIMARY KEY` on uuid-format strings — a plain `t.string()`
+ *   PK silently degrades to a non-PK column.
+ * - `ingestKey` — VESTIGIAL. A random secret that once gated the now-deleted
+ *   browser-embed `.js` surface (removed in "remove legacy sigil embed
+ *   surface"). No live code path reads or verifies it anymore; it is minted
+ *   on insert only to satisfy the `NOT NULL` constraint and kept in the
+ *   schema only because dropping it is a D1 cascade bomb (see `revokedAt`).
  *
  * A sigil scopes what a site may do (`kinds`). Deleting a sigil
  * hard-deletes the row (the `revokedAt` column is vestigial — see its
@@ -41,15 +41,15 @@ export const sigils = $entity({
   name: "sigils",
   schema: t.object({
     /**
-     * Random opaque identifier. PUBLIC — embedded in the partner page's
-     * `<script>` src. `text` PRIMARY KEY; see the entity-level note on why
-     * the type is `t.uuid()`.
+     * Random opaque identifier and the ingest credential — a partner server
+     * holds it and presents it as the `:id` in `POST /sigils/:id/*`. `text`
+     * PRIMARY KEY; see the entity-level note on why the type is `t.uuid()`.
      */
     id: db.primaryKey(t.uuid()),
     /**
-     * Random secret — retained for backward compatibility with legacy
-     * browser-embed flows. Distinct from the public `id` and rotatable
-     * without reissuing the sigil.
+     * VESTIGIAL secret — once gated the now-deleted browser-embed surface.
+     * Nothing reads it today; minted on insert only to satisfy `NOT NULL`.
+     * See the entity-level doc.
      */
     ingestKey: t.string({ minLength: 1, maxLength: 128 }),
     campaignId: db.ref(t.integer(), () => campaigns.cols.id, {

@@ -121,7 +121,7 @@ const createSigil = async (
   const sigilService = ctx.alepha.inject(
     (await import("../src/api/services/SigilService.ts")).SigilService,
   );
-  const row = await sigilService.findForEmbed(created.data.id);
+  const row = await sigilService.findForIngest(created.data.id);
   return { id: created.data.id, ingestKey: row!.ingestKey };
 };
 

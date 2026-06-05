@@ -49,7 +49,7 @@ export class SigilIngestRunner {
     body: SigilIngestBody,
   ): Promise<SigilIngestOutcome> {
     // Gate 1 — sigil resolves.
-    const sigil = await this.sigils.findForEmbed(sigilId);
+    const sigil = await this.sigils.findForIngest(sigilId);
     if (!sigil) {
       return "not-found";
     }
