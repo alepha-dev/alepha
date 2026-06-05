@@ -39,6 +39,7 @@ const blightResourceSchema = t.object({
   count: t.integer(),
   recentIps: t.array(t.string()),
   status: t.string(),
+  origin: t.enum(["client", "server"]),
 });
 
 export type BlightResource = Static<typeof blightResourceSchema>;
@@ -314,6 +315,7 @@ export class BlightController {
       count: b.count ?? 1,
       recentIps: b.recentIps ?? [],
       status: b.status ?? "open",
+      origin: b.origin ?? "client",
     };
   }
 }
