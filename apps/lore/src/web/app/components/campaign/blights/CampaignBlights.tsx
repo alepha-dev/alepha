@@ -37,6 +37,13 @@ export interface CampaignBlightsProps {
 }
 
 /**
+ * Mirrors `RECENT_IPS_CAP` in `BlightIngestService` — the max distinct hashed
+ * IPs retained on a blight row. At this count the spread label switches to
+ * "N+" because the bounded array may under-count the true reach.
+ */
+const RECENT_IPS_CAP = 10;
+
+/**
  * Owner-facing Blights inbox.
  *
  * ⚠️ SECURITY: `name`, `message`, `stack` and `sourceUrl` are 100%
@@ -148,6 +155,19 @@ const CampaignBlights = (props: CampaignBlightsProps) => {
     return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
   };
 
+  // `recentIps` is a privacy-preserving array of salted IP HASHES capped at
+  // RECENT_IPS_CAP (10) on ingestion — never raw IPs. The hash prefixes are
+  // meaningless to a human, so we surface only the COUNT of distinct hashes as
+  // a spread signal. At the cap we show "N+" since the true distinct count may
+  // be higher than what the bounded array retains.
+  const renderSpread = (count: number) => {
+    if (count === 0) return tr("blights.spread.none");
+    if (count === 1) return tr("blights.spread.oneIp");
+    const key =
+      count >= RECENT_IPS_CAP ? "blights.spread.capped" : "blights.spread.ips";
+    return tr(key, { args: [String(count)] });
+  };
+
   const renderStatus = (status: string) => {
     if (status === "resolved") {
       return <Badge variant="secondary">{tr("blights.status.resolved")}</Badge>;
@@ -205,9 +225,7 @@ const CampaignBlights = (props: CampaignBlightsProps) => {
                 <th className="p-2 font-medium">
                   {tr("blights.col.lastSeen")}
                 </th>
-                <th className="p-2 font-medium">
-                  {tr("blights.col.recentIps")}
-                </th>
+                <th className="p-2 font-medium">{tr("blights.col.spread")}</th>
                 <th className="p-2 text-right font-medium">
                   {tr("blights.col.actions")}
                 </th>
@@ -224,6 +242,13 @@ const CampaignBlights = (props: CampaignBlightsProps) => {
                       <div className="flex flex-wrap items-center gap-2">
                         {/* Attacker-controlled — plain text, escaped by React. */}
                         <span className="font-medium">{blight.name}</span>
+                        <Badge
+                          variant={
+                            blight.origin === "server" ? "default" : "outline"
+                          }
+                        >
+                          {tr(`blights.origin.${blight.origin}`)}
+                        </Badge>
                         {renderStatus(blight.status)}
                       </div>
                       <p className="text-muted-foreground line-clamp-2 break-words">
@@ -248,18 +273,8 @@ const CampaignBlights = (props: CampaignBlightsProps) => {
                         {dt.of(blight.lastSeenAt).fromNow()}
                       </span>
                     </td>
-                    <td className="text-muted-foreground p-2">
-                      {blight.recentIps.length === 0 ? (
-                        <span>{tr("blights.noIps")}</span>
-                      ) : (
-                        <div className="flex flex-col gap-0.5 font-mono text-xs">
-                          {blight.recentIps.slice(0, 3).map((ip) => (
-                            <span key={ip} className="truncate">
-                              {ip.slice(0, 12)}…
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                    <td className="text-muted-foreground p-2 whitespace-nowrap tabular-nums">
+                      {renderSpread(blight.recentIps.length)}
                     </td>
                     <td className="p-2">
                       <div className="flex justify-end">
