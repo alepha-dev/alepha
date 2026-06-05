@@ -912,7 +912,9 @@ export class QuestController {
       }
       if (body.dependsOn !== undefined) {
         if (body.dependsOn === null) {
-          patch.dependsOn = undefined;
+          // `null` (not `undefined`) so updateById actually clears the column —
+          // an undefined patch value is treated as "leave unchanged".
+          patch.dependsOn = null;
         } else {
           if (body.dependsOn === quest.id) {
             throw new BadRequestError("A quest cannot depend on itself");

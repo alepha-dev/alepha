@@ -16,6 +16,7 @@ import { useRouter } from "alepha/react/router";
 import {
   ChevronDown,
   FileText,
+  Link2,
   ListChecks,
   Plus,
   Save,
@@ -24,7 +25,7 @@ import {
   Tags as TagsIcon,
   Tent,
 } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Campaign } from "@/api/entities/campaigns.ts";
 import { questCreateSchema } from "@/api/schemas/questCreateSchema.ts";
@@ -36,6 +37,7 @@ import { kanbanCampaignAtom } from "@/web/app/atoms/kanbanCampaignAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import TextEditor from "../../shared/TextEditor.tsx";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
+import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
 import QuestTagInput from "./QuestTagInput.tsx";
 
 export interface QuestCreateProps {
@@ -56,9 +58,21 @@ const QuestCreate = (props: QuestCreateProps) => {
   const update = !!props.quest?.id;
   const acceptAfterCreate = useRef(false);
 
+  // `dependsOn` is a numeric quest id; managing it as local state (rather than
+  // a form field) keeps the picker's value coercion explicit and out of the
+  // nullable-integer form binding. Injected into the submit body below.
+  const [dependsOn, setDependsOn] = useState<number | null>(
+    props.quest?.dependsOn ?? null,
+  );
+  // `useForm` freezes its handler at first render (built once via useMemo),
+  // so it would close over the initial `dependsOn`. Mirror it through a ref
+  // that's refreshed every render so submit reads the picked value.
+  const dependsOnRef = useRef(dependsOn);
+  dependsOnRef.current = dependsOn;
+
   const form = useForm({
     id: "quest-create",
-    schema: t.omit(questCreateSchema, ["campaignId"]),
+    schema: t.omit(questCreateSchema, ["campaignId", "dependsOn"]),
     initialValues: {
       ...(props.quest as QuestResource),
       priority: props.quest?.priority ?? "optional",
@@ -68,7 +82,8 @@ const QuestCreate = (props: QuestCreateProps) => {
       if (props.quest?.id) {
         const resp = await questApi.updateQuestById({
           params: { id: props.quest.id },
-          body: data,
+          // `dependsOn` rides alongside the form data; null clears the link.
+          body: { ...data, dependsOn: dependsOnRef.current },
         });
         alepha.store.set(currentAssignedQuestsAtom, [
           resp,
@@ -81,7 +96,11 @@ const QuestCreate = (props: QuestCreateProps) => {
       }
 
       let quest = await questApi.createQuest({
-        body: { ...data, campaignId: props.campaign.id },
+        body: {
+          ...data,
+          campaignId: props.campaign.id,
+          dependsOn: dependsOnRef.current ?? undefined,
+        },
       });
 
       if (acceptAfterCreate.current) {
@@ -199,6 +218,22 @@ const QuestCreate = (props: QuestCreateProps) => {
           icon={ListChecks}
           custom={QuestCreateObjectives as never}
         />
+
+        <div className="flex flex-col gap-1.5">
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <Link2 className="text-muted-foreground size-4" />
+            {tr("quest.create.dependsOn")}
+          </span>
+          <QuestDependencyPicker
+            campaignId={props.campaign.id}
+            value={dependsOn}
+            onChange={setDependsOn}
+            excludeQuestId={props.quest?.id}
+          />
+          <span className="text-muted-foreground text-xs">
+            {tr("quest.create.dependsOn.helper")}
+          </span>
+        </div>
       </div>
 
       <div className="bg-background flex shrink-0 justify-end gap-2 border-t p-4">

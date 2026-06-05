@@ -255,6 +255,13 @@ export class I18n {
         "quest.create.title.helper": "Short and descriptive name",
         "quest.create.objectives": "Objectives",
         "quest.create.objectives.helper": "List of objectives for this quest",
+        "quest.create.dependsOn": "Depends on",
+        "quest.create.dependsOn.helper":
+          "This quest can't be started until the selected quest is completed.",
+        "quest.create.dependsOn.none": "No dependency",
+        "quest.create.dependsOn.search": "Search quests…",
+        "quest.create.dependsOn.empty": "No quests found",
+        "quest.create.dependsOn.clear": "Clear dependency",
         "quest.create.tags": "Tags",
         "quest.create.tags.helper":
           "Labels for the nature of the quest (bug, feat, chore…). Zone says where, tag says what kind.",
@@ -1109,6 +1116,13 @@ export class I18n {
         "quest.create.objectives": "Objectifs",
         "quest.create.objectives.helper":
           "Liste des objectifs pour cette quête",
+        "quest.create.dependsOn": "Dépend de",
+        "quest.create.dependsOn.helper":
+          "Cette quête ne peut pas démarrer tant que la quête sélectionnée n'est pas terminée.",
+        "quest.create.dependsOn.none": "Aucune dépendance",
+        "quest.create.dependsOn.search": "Rechercher des quêtes…",
+        "quest.create.dependsOn.empty": "Aucune quête trouvée",
+        "quest.create.dependsOn.clear": "Retirer la dépendance",
         "quest.create.tags": "Étiquettes",
         "quest.create.tags.helper":
           "Étiquettes décrivant la nature de la quête (bug, feat, chore…). La zone dit où, l'étiquette dit quoi.",
