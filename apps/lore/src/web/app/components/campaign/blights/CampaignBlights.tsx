@@ -37,9 +37,9 @@ export interface CampaignBlightsProps {
  */
 const RECENT_IPS_CAP = 10;
 
-/** Filter form: a single "show resolved" toggle, owned by AlephaTable. */
+/** Filter form: a status select (open / resolved / all), owned by AlephaTable. */
 const blightsFiltersSchema = t.object({
-  includeResolved: t.optional(t.boolean()),
+  status: t.optional(t.enum(["open", "resolved", "all"])),
 });
 
 /**
@@ -110,13 +110,20 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
     if (!campaign) {
       return emptyPage(page, size);
     }
+    // "open" (default) hides resolved/forwarded rows server-side; "resolved"
+    // and "all" fetch the full set, with "resolved" narrowed client-side.
+    const status = (filters?.status as string) ?? "open";
     const res = await blightApi.listBlights({
       params: { campaignId: campaign.id },
-      query: { includeResolved: Boolean(filters?.includeResolved) },
+      query: { includeResolved: status !== "open" },
     });
     setBlightCount({ count: res.openCount });
 
-    const rows = sortBlights(res.items, sort);
+    const filtered =
+      status === "resolved"
+        ? res.items.filter((b) => b.status === "resolved")
+        : res.items;
+    const rows = sortBlights(filtered, sort);
     const offset = page * size;
     const content = rows.slice(offset, offset + size);
     return {
@@ -145,11 +152,20 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
         emptyMessage={tr("blights.empty")}
         filters={{
           schema: blightsFiltersSchema,
+          initialValues: { status: "open" },
           render: (form) => (
-            <Control
-              input={form.input.includeResolved}
-              label={tr("blights.filter.showResolved")}
-            />
+            <div className="w-44">
+              <Control
+                input={form.input.status}
+                label=""
+                triggerClassName="w-full"
+                items={[
+                  { label: tr("blights.filter.open"), value: "open" },
+                  { label: tr("blights.filter.resolved"), value: "resolved" },
+                  { label: tr("blights.filter.all"), value: "all" },
+                ]}
+              />
+            </div>
           ),
         }}
         fetch={fetchBlights}
