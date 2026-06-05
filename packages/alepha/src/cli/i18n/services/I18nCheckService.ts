@@ -35,6 +35,22 @@ const KEY_DECLARATION_RE = /"([\w-]+(?:\.[\w-]+)+)"\s*:/g;
  */
 const DICTIONARY_MARKER = "$dictionary";
 
+/**
+ * Captures the module specifier of a lazily-imported dictionary, i.e. the
+ * `"./fr.ts"` in `$dictionary({ lazy: () => import("./fr.ts") })`. Apps
+ * commonly split each language into its own file so a session only ships the
+ * active locale — those key files carry no `$dictionary` marker, so without
+ * this the keys would be invisible to the check.
+ *
+ * `[^{}]*?` keeps the match inside the `$dictionary` call's own object literal
+ * (it stops at the first brace), so unrelated lazy imports in the same file —
+ * e.g. a sibling `$page({ lazy: () => import("./Page.tsx") })` or a
+ * `$dictionary` whose `lazy` returns an inline `({ default: {…} })` object —
+ * are never mistaken for dictionary key files.
+ */
+const DICTIONARY_LAZY_IMPORT_RE =
+  /\$dictionary\s*\(\s*\{[^{}]*?import\s*\(\s*["']([^"']+)["']/g;
+
 export interface I18nCheckOptions {
   root: string;
   scan: string[];
@@ -62,11 +78,11 @@ export class I18nCheckService {
    * Find unused translation keys.
    *
    * Discovery is fully static: we walk `scan` dirs, identify files
-   * that import `$dictionary` (matched via the literal substring),
-   * extract every `"a.b.c": ...` property key declared in them, then
-   * grep the remaining source files for a quoted-literal occurrence
-   * of each key. Anything matching a `dynamicPrefixes` entry is
-   * exempted.
+   * that import `$dictionary` (matched via the literal substring) plus
+   * any per-language files they lazily `import(...)`, extract every
+   * `"a.b.c": ...` property key declared across them, then grep the
+   * remaining source files for a quoted-literal occurrence of each key.
+   * Anything matching a `dynamicPrefixes` entry is exempted.
    */
   async check(options: I18nCheckOptions): Promise<I18nCheckResult> {
     const { root, scan, dynamicPrefixes, exclude } = options;
@@ -91,14 +107,31 @@ export class I18nCheckService {
       }
     }
 
+    const fileContents = new Map<string, string>();
+    for (const file of allFiles) {
+      fileContents.set(file, (await this.fs.readFile(file)).toString("utf8"));
+    }
+
+    // A file is a dictionary if it declares `$dictionary` OR it is the target
+    // of a `$dictionary({ lazy: () => import("…") })` (the split per-language
+    // key files, which carry no marker of their own). Resolving the lazy
+    // targets first lets their keys be extracted below and keeps them out of
+    // the usage corpus (their `"key": "value"` lines aren't references).
+    const dictionarySet = new Set<string>();
+    for (const [file, text] of fileContents) {
+      if (!text.includes(DICTIONARY_MARKER)) continue;
+      dictionarySet.add(file);
+      for (const m of text.matchAll(DICTIONARY_LAZY_IMPORT_RE)) {
+        const target = this.resolveImport(file, m[1], fileContents);
+        if (target) dictionarySet.add(target);
+      }
+    }
+
     const dictionaryFiles: string[] = [];
     const allKeys = new Set<string>();
-    const fileContents = new Map<string, string>();
-
-    for (const file of allFiles) {
-      const text = (await this.fs.readFile(file)).toString("utf8");
-      fileContents.set(file, text);
-      if (!text.includes(DICTIONARY_MARKER)) continue;
+    for (const file of dictionarySet) {
+      const text = fileContents.get(file);
+      if (!text) continue;
       const before = allKeys.size;
       for (const m of text.matchAll(KEY_DECLARATION_RE)) {
         allKeys.add(m[1]);
@@ -108,7 +141,6 @@ export class I18nCheckService {
 
     // Concatenate every non-dictionary file into one corpus so each
     // key is tested with a single regex run rather than O(files × keys).
-    const dictionarySet = new Set(dictionaryFiles);
     const corpusParts: string[] = [];
     let scannedFiles = 0;
     for (const [file, text] of fileContents) {
@@ -140,5 +172,27 @@ export class I18nCheckService {
       dictionaryFiles,
       unused: unused.sort(),
     };
+  }
+
+  /**
+   * Resolve a relative `import("…")` specifier from `fromFile` to an absolute
+   * path that was actually scanned. Returns `undefined` for bare/package
+   * specifiers or targets outside the scan set. Extensionless specifiers are
+   * probed against each supported source extension.
+   */
+  protected resolveImport(
+    fromFile: string,
+    spec: string,
+    files: Map<string, string>,
+  ): string | undefined {
+    if (!spec.startsWith(".")) return undefined;
+    // `join(file, "..", spec)` drops the filename then applies the relative
+    // specifier — i.e. resolves against `fromFile`'s directory.
+    const base = this.fs.join(fromFile, "..", spec);
+    if (files.has(base)) return base;
+    for (const ext of SCAN_EXTS) {
+      if (files.has(base + ext)) return base + ext;
+    }
+    return undefined;
   }
 }

@@ -109,6 +109,54 @@ ${body}
     expect(result.unused).toEqual(["home.title"]);
   });
 
+  it("extracts keys from lazily-imported per-language files", async () => {
+    await env.fs.mkdir(`${ROOT}/src/web/i18n`, { recursive: true });
+    // Marker file declares `$dictionary` but the keys live in split,
+    // markerless per-language files referenced via `lazy: () => import(...)`.
+    // A sibling `$page` lazy import must NOT be mistaken for a key file.
+    await env.fs.writeFile(
+      `${ROOT}/src/web/Router.ts`,
+      `import { $dictionary } from "alepha/react/i18n";
+export class Router {
+  fr = $dictionary({ lazy: () => import("./i18n/fr.ts"), lang: "fr" });
+  en = $dictionary({ lazy: () => import("./i18n/en.ts"), lang: "en" });
+  page = $page({ lazy: () => import("./Home.tsx") });
+}
+`,
+    );
+    await env.fs.writeFile(
+      `${ROOT}/src/web/i18n/fr.ts`,
+      `export default { "home.title": "Accueil", "home.unused": "Rien" };`,
+    );
+    await env.fs.writeFile(
+      `${ROOT}/src/web/i18n/en.ts`,
+      `export default { "home.title": "Home", "home.unused": "Nothing" };`,
+    );
+    // The only reference — `home.unused` is dead in both languages. The
+    // `"home.title": "…"` lines in the sibling language file must not count
+    // as references (key files are excluded from the usage corpus).
+    await env.fs.writeFile(
+      `${ROOT}/src/web/Home.tsx`,
+      `export const Home = () => tr("home.title");`,
+    );
+
+    const result = await env.service.check({
+      root: ROOT,
+      scan: ["src"],
+      dynamicPrefixes: [],
+      exclude: [],
+    });
+
+    expect(result.totalKeys).toBe(2);
+    expect(result.unused).toEqual(["home.unused"]);
+    // The resolved language file is treated as a dictionary; the sibling
+    // `$page` lazy import is not (it contributed no keys and stays in the
+    // usage corpus). `en.ts` is also a dictionary file but adds no *new*
+    // keys, so only the first contributor is listed.
+    expect(result.dictionaryFiles).toContain(`${ROOT}/src/web/i18n/fr.ts`);
+    expect(result.dictionaryFiles).not.toContain(`${ROOT}/src/web/Home.tsx`);
+  });
+
   it("returns totalKeys=0 when no dictionary is found", async () => {
     await env.fs.mkdir(`${ROOT}/src`, { recursive: true });
     await env.fs.writeFile(
