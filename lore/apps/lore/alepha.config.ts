@@ -56,6 +56,8 @@ export default defineConfig({
         "insights.vitals.",
         // tr(`folios.activity.action.${action}`) — create/edit/rename/tag-change/revert.
         "folios.activity.action.",
+        // tr(`blights.origin.${origin}`) — client/server crash provenance badge.
+        "blights.origin.",
       ],
     }),
     () => ({
