@@ -43,6 +43,23 @@ export class StripePaymentProvider implements PaymentProvider {
   }
 
   /**
+   * Webhook signature verification needs HMAC over the raw body. The default
+   * synchronous `constructEvent` relies on Node's synchronous `crypto`, which
+   * is absent on Cloudflare Workers / edge (workerd) — it throws there, so the
+   * webhook returns 400 and Stripe deliveries fail. A SubtleCrypto provider
+   * lets us use the async `constructEventAsync`, which works on both Node and
+   * workerd. Created lazily so construction never depends on `crypto.subtle`.
+   */
+  protected cryptoProvider?: InstanceType<typeof Stripe.CryptoProvider>;
+
+  protected getCryptoProvider(): InstanceType<typeof Stripe.CryptoProvider> {
+    if (!this.cryptoProvider) {
+      this.cryptoProvider = Stripe.createSubtleCryptoProvider();
+    }
+    return this.cryptoProvider;
+  }
+
+  /**
    * Get or create a Stripe customer for the given Alepha user ID.
    * Uses local cache first, then searches Stripe by metadata, and
    * creates a new customer if none is found.
@@ -186,10 +203,12 @@ export class StripePaymentProvider implements PaymentProvider {
     if (!signature) {
       throw new AlephaError("Missing stripe-signature header");
     }
-    const event = this.stripe.webhooks.constructEvent(
+    const event = await this.stripe.webhooks.constructEventAsync(
       body,
       signature,
       this.env.STRIPE_WEBHOOK_SECRET,
+      undefined,
+      this.getCryptoProvider(),
     );
 
     const statusMap: Record<string, string> = {
@@ -408,14 +427,16 @@ export class StripePaymentProvider implements PaymentProvider {
    * webhook secret (STRIPE_WEBHOOK_SECRET). Distinct from the Connect
    * webhook secret used in StripeConnectWebhookController.
    */
-  public constructPlatformEvent(
+  public async constructPlatformEvent(
     rawBody: string,
     signature: string,
-  ): Stripe.Event {
-    return this.stripe.webhooks.constructEvent(
+  ): Promise<Stripe.Event> {
+    return this.stripe.webhooks.constructEventAsync(
       rawBody,
       signature,
       this.env.STRIPE_WEBHOOK_SECRET,
+      undefined,
+      this.getCryptoProvider(),
     );
   }
 
