@@ -1,10 +1,13 @@
 import { t } from "alepha";
 import { $page } from "alepha/react/router";
+import { $sitemap } from "alepha/react/sitemap";
 import { $client } from "alepha/server/links";
 import type { CountApi } from "./CountApi.ts";
 
 export class AppRouter {
   countApi = $client<CountApi>();
+
+  sitemap = $sitemap({ hostname: "https://example-ssr.alepha.dev" });
 
   home = $page({
     head: {

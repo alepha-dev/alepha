@@ -1,6 +1,7 @@
-import { t } from "alepha";
+import { $env, t } from "alepha";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound } from "alepha/react/router";
+import { $sitemap } from "alepha/react/sitemap";
 import { HttpError, NotFoundError } from "alepha/server";
 import Changelog from "./components/Changelog.tsx";
 import Docs from "./components/Docs.tsx";
@@ -15,6 +16,16 @@ declare module "alepha/react/router" {
 }
 
 export class AppRouter {
+  env = $env(
+    t.object({
+      PUBLIC_URL: t.string({
+        default: "https://alepha.dev",
+      }),
+    }),
+  );
+
+  sitemap = $sitemap({ hostname: this.env.PUBLIC_URL });
+
   head = $head(() => {
     const ogTitle = "Alepha — One full-stack TypeScript framework. No glue.";
     const head: Head = {
@@ -22,7 +33,7 @@ export class AppRouter {
       titleSeparator: " | ",
       description:
         "Alepha is a full-stack TypeScript framework built for the agentic era — a clean rewrite of server, ORM, auth, queues, and React SSR for Node, Bun, and Cloudflare. No library glue.",
-      image: "https://alepha.dev/og-image.png",
+      image: `${this.env.PUBLIC_URL}/og-image.png`,
       siteName: "Alepha",
       locale: "en_US",
       type: "website",

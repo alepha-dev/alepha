@@ -19,7 +19,6 @@ import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";
 import { BuildPrerenderTask } from "../tasks/BuildPrerenderTask.ts";
 import { BuildPwaTask } from "../tasks/BuildPwaTask.ts";
 import { BuildServerTask } from "../tasks/BuildServerTask.ts";
-import { BuildSitemapTask } from "../tasks/BuildSitemapTask.ts";
 import { BuildStaticTask } from "../tasks/BuildStaticTask.ts";
 import type { BuildTaskContext } from "../tasks/BuildTask.ts";
 import { BuildVercelTask } from "../tasks/BuildVercelTask.ts";
@@ -43,7 +42,6 @@ export class BuildCommand {
     $inject(BuildClientTask),
     $inject(BuildServerTask),
     $inject(BuildAssetsTask),
-    $inject(BuildSitemapTask),
     $inject(BuildPwaTask),
     $inject(BuildPrerenderTask),
     $inject(BuildVercelTask),
@@ -153,11 +151,6 @@ export class BuildCommand {
             "Skip the bundle steps (Vite client/server + asset compression). Only regenerates target-specific deploy config (e.g. wrangler.jsonc). Use when `dist/` is already built and you just need the config refreshed.",
         }),
       ),
-      sitemap: t.optional(
-        t.text({
-          description: "Generate sitemap.xml with base URL",
-        }),
-      ),
     }),
     handler: async ({ flags, run, root }) => {
       process.env.NODE_ENV = "production";
@@ -192,9 +185,6 @@ export class BuildCommand {
                 ? (current.docker?.compile ?? true)
                 : false,
             },
-          }),
-          ...(flags.sitemap && {
-            sitemap: { hostname: flags.sitemap },
           }),
         };
       });

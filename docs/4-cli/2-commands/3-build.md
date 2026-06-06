@@ -49,7 +49,6 @@ node dist/index.js
 | `--runtime`, `-r` | JavaScript runtime: `node`, `bun`, or `workerd` |
 | `--stats` | Generate build statistics report (use `--stats=json` for JSON output) |
 | `--image`, `-i` | Build Docker image (`-i` for latest, `-i=<version>` for specific version). Requires `--target=docker` |
-| `--sitemap=<url>` | Generate sitemap.xml with the given base URL |
 
 ## Deployment Targets
 
@@ -126,20 +125,32 @@ cd dist && wrangler deploy
 
 ### Sitemap Generation
 
-```bash
-alepha build --sitemap=https://myapp.com
+Add the [`$sitemap`](/docs/packages-alepha-react-sitemap) primitive to a router. It
+serves `sitemap.xml` from your `$page` primitives — live at request time, and
+prerendered to `dist/public/sitemap.xml` at build time (so static deployments get
+the file too):
+
+```typescript
+import { $sitemap } from "alepha/react/sitemap";
+
+class AppRouter {
+  // hostname defaults to PUBLIC_URL, then "" (relative URLs)
+  sitemap = $sitemap({ hostname: "https://myapp.com" });
+}
 ```
 
-Generates `dist/public/sitemap.xml` with all your routes:
+Produces `dist/public/sitemap.xml` with all your routes:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://myapp.com/</loc>
+    <lastmod>2026-06-06</lastmod>
   </url>
   <url>
     <loc>https://myapp.com/about</loc>
+    <lastmod>2026-06-06</lastmod>
   </url>
   <!-- ... -->
 </urlset>
@@ -198,9 +209,6 @@ export default defineConfig({
       stats: true,
       vercel: true,
       client: {
-        sitemap: {
-          hostname: "https://myapp.com",
-        },
         precompress: true,  // Generate .gz and .br files
       },
     }),

@@ -4,11 +4,18 @@ import { FileSystemProvider } from "alepha/system";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 /**
- * Pre-render static pages defined in the Alepha application.
+ * Pre-render static pages and routes defined in the Alepha application.
  *
- * Queries all page primitives with `static: true` and generates
- * static HTML files for each page. Supports pages with parameterized
- * routes via `static.entries` configuration.
+ * Two passes, both writing into `dist/public`:
+ * - **pages** — every `$page` with `static: true` is rendered to an HTML file
+ *   (supports parameterized routes via `static.entries`).
+ * - **routes** — every `static` route primitive (a `$route({ static: true })`
+ *   or a `$sitemap`) is invoked in-process and its body written verbatim to
+ *   `{path}` (e.g. `sitemap.xml`, `robots.txt`).
+ *
+ * Both passes read the primitive registry and call a method on the already
+ * created primitive instances — no provider is re-injected, so this works in
+ * the build's configured-but-not-started container.
  */
 export class BuildPrerenderTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
@@ -22,7 +29,8 @@ export class BuildPrerenderTask extends BuildTask {
     }
 
     const pages = this.getStaticPages(ctx);
-    if (pages.length === 0) {
+    const routes = this.getStaticRoutePrimitives(ctx);
+    if (pages.length === 0 && routes.length === 0) {
       return;
     }
 
@@ -31,13 +39,18 @@ export class BuildPrerenderTask extends BuildTask {
     const dist = this.fs.join(ctx.root, distDir, publicDir);
 
     await ctx.run({
-      name: "pre-render pages",
+      name: "pre-render",
       handler: async () => {
         // TODO: running configure here is a temporary workaround
         if (!ctx.alepha.isConfigured()) {
           await ctx.alepha.events.emit("configure", ctx.alepha);
         }
-        await this.prerenderFromAlepha(pages, dist);
+        if (pages.length > 0) {
+          await this.prerenderFromAlepha(pages, dist);
+        }
+        if (routes.length > 0) {
+          await this.prerenderRoutes(routes, dist);
+        }
       },
     });
   }
@@ -48,6 +61,18 @@ export class BuildPrerenderTask extends BuildTask {
       const options = page.options;
       return options.static && !options.children;
     });
+  }
+
+  /**
+   * Static route primitives to snapshot: `$route({ static: true })` and every
+   * `$sitemap`. Both expose an async `prerender(): { path, body }`.
+   */
+  protected getStaticRoutePrimitives(ctx: BuildTaskContext): any[] {
+    const routes = (ctx.alepha.primitives("route") as any[]).filter(
+      (route) => route.options?.static === true,
+    );
+    const sitemaps = ctx.alepha.primitives("sitemap") as any[];
+    return [...routes, ...sitemaps];
   }
 
   protected async prerenderFromAlepha(
@@ -75,6 +100,18 @@ export class BuildPrerenderTask extends BuildTask {
     }
 
     return count;
+  }
+
+  protected async prerenderRoutes(
+    primitives: any[],
+    dist: string,
+  ): Promise<void> {
+    for (const primitive of primitives) {
+      const { path, body } = await primitive.prerender();
+      const filepath = this.fs.join(dist, path);
+      await this.fs.mkdir(dirname(filepath));
+      await this.fs.writeFile(filepath, body);
+    }
   }
 
   protected async renderFile(

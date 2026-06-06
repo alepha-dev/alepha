@@ -71,23 +71,17 @@ The `200.html` file serves as the SPA fallback for hosting providers that suppor
 
 ## Sitemap
 
-Generate a `sitemap.xml` alongside the static build:
-
-```bash
-alepha build --target=static --sitemap=https://myapp.com
-```
-
-Or in config:
+Add the `$sitemap` primitive to a router. It is prerendered to
+`dist/public/sitemap.xml` alongside the static build:
 
 ```typescript
-import { defineConfig } from "alepha/cli/config";
+import { $sitemap } from "alepha/react/sitemap";
 
-export default defineConfig({
-  build: {
-    target: "static",
-    sitemap: {
-      hostname: "https://myapp.com",
-    },
-  },
-});
+class AppRouter {
+  // hostname defaults to PUBLIC_URL, then "" (relative URLs)
+  sitemap = $sitemap({ hostname: "https://myapp.com" });
+}
 ```
+
+The sitemap lists every static `$page` (and the static entries of
+parameterized pages), excluding layout, wildcard, and `404` routes.

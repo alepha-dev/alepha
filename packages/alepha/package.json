@@ -395,6 +395,13 @@
       "import": "./src/react/router/index.ts",
       "default": "./src/react/router/index.ts"
     },
+    "./react/sitemap": {
+      "types": "./src/react/sitemap/index.ts",
+      "react-native": "./src/react/sitemap/index.browser.ts",
+      "browser": "./src/react/sitemap/index.browser.ts",
+      "import": "./src/react/sitemap/index.ts",
+      "default": "./src/react/sitemap/index.ts"
+    },
     "./react/testing": {
       "types": "./src/react/testing/index.ts",
       "import": "./src/react/testing/index.ts",
@@ -829,6 +836,13 @@
         "browser": "./dist/react/router/index.browser.js",
         "import": "./dist/react/router/index.js",
         "default": "./dist/react/router/index.js"
+      },
+      "./react/sitemap": {
+        "types": "./dist/react/sitemap/index.d.ts",
+        "react-native": "./dist/react/sitemap/index.browser.js",
+        "browser": "./dist/react/sitemap/index.browser.js",
+        "import": "./dist/react/sitemap/index.js",
+        "default": "./dist/react/sitemap/index.js"
       },
       "./react/testing": {
         "types": "./dist/react/testing/index.d.ts",

@@ -188,6 +188,14 @@ export interface ServerRoute<
    * @see ServerLoggerProvider
    */
   silent?: boolean;
+
+  /**
+   * Mark this `GET` route as prerenderable. When `true`, the build invokes the
+   * handler in-process and writes its body verbatim to `dist/public/{path}`,
+   * so the route is served as a static file (e.g. `sitemap.xml`, `robots.txt`).
+   * The route still serves live at request time for runtimes that have a server.
+   */
+  static?: boolean;
 }
 
 /**

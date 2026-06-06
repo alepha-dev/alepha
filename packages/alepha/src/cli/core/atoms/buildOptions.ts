@@ -323,18 +323,6 @@ export const buildOptions = $atom({
         offline: t.optional(t.boolean()),
       }),
     ),
-
-    /**
-     * Sitemap generation configuration.
-     */
-    sitemap: t.optional(
-      t.object({
-        /**
-         * Base URL for sitemap entries.
-         */
-        hostname: t.string(),
-      }),
-    ),
   }),
   default: {},
 });

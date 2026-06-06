@@ -6,9 +6,6 @@ import { TreeCommand } from "./scripts/gen-tree.ts";
 
 export default defineConfig({
   services: [DocsCommand, TreeCommand, LlmsCommand],
-  build: {
-    sitemap: { hostname: "https://alepha.dev" },
-  },
   env: {
     VITE_BUILD_DATE: new Date().toISOString(),
     VITE_VERSION: pkg.version,

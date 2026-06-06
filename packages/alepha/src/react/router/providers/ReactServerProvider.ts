@@ -154,6 +154,10 @@ export class ReactServerProvider {
         this.serverRouterProvider.createRoute({
           ...page,
           schema: undefined, // schema is handled by the page primitive provider
+          // A page's `static` is page-shaped (`{ entries }`) and handled by the
+          // page prerender pass — it must not leak into the route's boolean
+          // `static` snapshot flag.
+          static: undefined,
           method: "GET",
           path: page.match,
           handler,
@@ -172,6 +176,7 @@ export class ReactServerProvider {
             this.serverRouterProvider.createRoute({
               ...page,
               schema: undefined,
+              static: undefined,
               method: "GET",
               path: prefixedPath,
               handler,
