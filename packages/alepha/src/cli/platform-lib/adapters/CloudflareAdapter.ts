@@ -186,11 +186,9 @@ export class CloudflareAdapter extends PlatformAdapter {
     // via tenantDomain's third arg.)
     const host = tenantDomain(ctx.envConfig.domain, ctx.tenant);
     if (host) {
-      if (host.includes("*") && !ctx.envConfig.zone) {
-        throw new AlephaError(
-          `Wildcard domain "${host}" requires "zone" to be set in the environment config (the Cloudflare zone name, e.g. "alepha.dev").`,
-        );
-      }
+      // A wildcard host needs a CF zone for its Worker route, but `zone` is
+      // optional: when omitted the build derives it from the domain's last two
+      // labels (BuildCloudflareTask). Set it only to override that default.
       env.CLOUDFLARE_DOMAIN = host;
       if (ctx.envConfig.zone) {
         env.CLOUDFLARE_ZONE = ctx.envConfig.zone;

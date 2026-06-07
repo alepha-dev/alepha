@@ -16,6 +16,16 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 // here wouldn't match the one the workspace registered.
 const CLOUDFLARE_EMAIL_PROVIDER_NAME = "CloudflareEmailProvider";
 
+/**
+ * Best-effort Cloudflare zone (registrable domain) for a wildcard Worker route:
+ * strip the leading `*.` and any subdomain labels, keep the last two — e.g.
+ * `*.club.alepha.dev` → `alepha.dev`, `*.alepha.club` → `alepha.club`. Correct
+ * for single-label TLDs (the common case); a multi-label public suffix
+ * (`.co.uk`) or a CF subdomain zone needs an explicit `CLOUDFLARE_ZONE`.
+ */
+const deriveZone = (domain: string): string =>
+  domain.replace(/^\*\./, "").split(".").slice(-2).join(".");
+
 interface WranglerConfig {
   [key: string]: any;
 }
@@ -335,12 +345,13 @@ export class BuildCloudflareTask extends BuildTask {
     }
 
     if (domain.includes("*")) {
-      const zone = process.env.CLOUDFLARE_ZONE;
-      if (!zone) {
-        throw new Error(
-          `Wildcard domain "${domain}" requires CLOUDFLARE_ZONE to be set (the parent zone name, e.g. "alepha.dev").`,
-        );
-      }
+      // A wildcard is a Worker *Route* (not a Custom Domain), and the CF API
+      // keys routes by zone. Default the zone to the registrable domain — the
+      // last two labels of the wildcard host (`*.club.alepha.dev` → `alepha.dev`,
+      // `*.alepha.club` → `alepha.club`). Set CLOUDFLARE_ZONE explicitly only to
+      // override (a subdomain zone, or a multi-label public suffix like `.co.uk`
+      // where "last two labels" is wrong).
+      const zone = process.env.CLOUDFLARE_ZONE || deriveZone(domain);
       wrangler.routes = [
         {
           pattern: domain.endsWith("/*") ? domain : `${domain}/*`,
