@@ -24,7 +24,7 @@ import {
   type UserAccount,
   userAccountInfoSchema,
 } from "../schemas/userAccountInfoSchema.ts";
-import { JwtProvider } from "./JwtProvider.ts";
+import { JwtProvider, type SigningConfig } from "./JwtProvider.ts";
 
 export class SecurityProvider {
   protected readonly UNKNOWN_USER_NAME = "Anonymous User";
@@ -72,7 +72,9 @@ export class SecurityProvider {
     on: "start",
     handler: async () => {
       for (const realm of this.realms) {
-        if (realm.secret) {
+        if (realm.signing) {
+          await this.jwt.setSigningKey(realm.name, realm.signing);
+        } else if (realm.secret) {
           const secret =
             typeof realm.secret === "function" ? realm.secret() : realm.secret;
           this.jwt.setKeyLoader(realm.name, secret);
@@ -982,6 +984,13 @@ export interface Realm {
    * Can be also a JWKS URL.
    */
   secret?: string | JSONWebKeySet | (() => string);
+
+  /**
+   * Asymmetric signing config. When set, this realm signs its tokens with an
+   * asymmetric key and publishes the public keys via JWKS (see
+   * `JwtProvider.getJwks`). Takes precedence over `secret`.
+   */
+  signing?: SigningConfig;
 
   /**
    * Create the user account info based on the raw JWT payload.

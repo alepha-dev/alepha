@@ -16,6 +16,7 @@ import {
   type IssuerPrimitiveOptions,
   type IssuerResolver,
   SecurityProvider,
+  type SigningConfig,
 } from "alepha/security";
 import {
   $authApple,
@@ -136,6 +137,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     ...options.issuer,
     name,
     secret: options.secret ?? securityProvider.secretKey,
+    signing: options.signing,
     resolvers: customResolvers,
     roles: options.issuer?.roles ?? [
       {
@@ -404,6 +406,13 @@ export interface RealmOptions {
    * If not provided, the secret from the SecurityProvider will be used (usually from the APP_SECRET environment variable).
    */
   secret?: string;
+
+  /**
+   * Asymmetric signing config for this realm's tokens (OIDC provider mode).
+   * When set, issued tokens are signed asymmetrically and the public keys are
+   * JWKS-publishable. Default is HS256 via `secret`.
+   */
+  signing?: SigningConfig;
 
   /**
    * Issuer configuration options.

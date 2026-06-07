@@ -17,7 +17,7 @@ import type { JSONWebKeySet, JWTPayload } from "jose";
 import { currentTenantAtom } from "../atoms/currentTenantAtom.ts";
 import { SecurityError } from "../errors/SecurityError.ts";
 import type { IssuerResolver } from "../interfaces/IssuerResolver.ts";
-import { JwtProvider } from "../providers/JwtProvider.ts";
+import { JwtProvider, type SigningConfig } from "../providers/JwtProvider.ts";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
 import type { Role } from "../schemas/roleSchema.ts";
 import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
@@ -65,6 +65,13 @@ export type IssuerPrimitiveOptions = {
    * Custom resolvers (in addition to default JWT resolver).
    */
   resolvers?: IssuerResolver[];
+
+  /**
+   * Asymmetric signing config. When set, this issuer's tokens are signed with
+   * the given alg + kid and its public keys are published via JWKS. When
+   * omitted, the HS256 `secret` path is used (default, backward compatible).
+   */
+  signing?: SigningConfig;
 } & (IssuerInternal | IssuerExternal);
 
 export interface IssuerSettings {
@@ -173,6 +180,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
       name: this.name,
       profile: this.options.profile,
       secret: "jwks" in this.options ? this.options.jwks : this.options.secret,
+      signing: this.options.signing,
       roles,
       resolvers: [],
     });
