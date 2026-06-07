@@ -26,6 +26,13 @@ export const oauthClientEntity = $entity({
      */
     type: db.default(t.enum(["public", "confidential"]), "public"),
     /**
+     * First-party client: skip the consent screen. Consent exists to protect a
+     * user from THIRD-party apps requesting their data; a trusted client is the
+     * authorization server's own product (same vendor), so an authenticated
+     * user is sent straight back with a code — no "App X wants to connect" page.
+     */
+    trusted: db.default(t.boolean(), false),
+    /**
      * Scrypt hash of the client secret (confidential clients only). Null for
      * public clients. Verified via `OAuthClientService.verifySecret`.
      */

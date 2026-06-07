@@ -151,6 +151,11 @@ export class OAuthController {
         return;
       }
       const silent = query.prompt === "none";
+      // Skip the consent screen for `prompt=none` (silent SSO) AND for trusted
+      // first-party clients (the AS's own product — consent is for third-party
+      // apps). A non-silent trusted client still sends an unauthenticated user
+      // through login first; it just never shows the "wants to connect" page.
+      const skipConsent = silent || client.trusted === true;
 
       if (!user) {
         if (silent) {
@@ -169,9 +174,9 @@ export class OAuthController {
         return;
       }
 
-      if (silent) {
-        // Authenticated + prompt=none → skip the consent screen and mint the
-        // code directly (this is the club-switching silent-SSO path).
+      if (skipConsent) {
+        // Authenticated + (prompt=none OR trusted client) → skip consent and
+        // mint the code directly (silent SSO + first-party login).
         const code = await this.clients.createAuthorizationCode(
           this.options.realm,
           {
