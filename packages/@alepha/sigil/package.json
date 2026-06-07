@@ -17,8 +17,10 @@
   ],
   "exports": {
     ".": {
+      "types": "./src/index.ts",
       "browser": "./src/index.browser.ts",
-      "import": "./src/index.ts"
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
     },
     "./server": "./src/server/index.ts",
     "./messages": "./src/shared/sigilMessages.ts",
