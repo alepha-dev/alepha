@@ -129,7 +129,17 @@ export class OAuthController {
         reply.body = "redirect_uri not registered";
         return;
       }
+      const silent = query.prompt === "none";
+
       if (!user) {
+        if (silent) {
+          // Silent SSO with no IdP session → OIDC `login_required`.
+          const redirect = new URL(query.redirect_uri);
+          redirect.searchParams.set("error", "login_required");
+          if (query.state) redirect.searchParams.set("state", query.state);
+          reply.redirect(redirect.toString(), 302);
+          return;
+        }
         const returnTo = encodeURIComponent(url.pathname + url.search);
         reply.redirect(
           `${this.options.loginPath}?redirect_uri=${returnTo}`,
@@ -137,6 +147,29 @@ export class OAuthController {
         );
         return;
       }
+
+      if (silent) {
+        // Authenticated + prompt=none → skip the consent screen and mint the
+        // code directly (this is the club-switching silent-SSO path).
+        const code = await this.clients.createAuthorizationCode(
+          this.options.realm,
+          {
+            userId: user.id,
+            clientId: query.client_id,
+            redirectUri: query.redirect_uri,
+            codeChallenge: query.code_challenge,
+            scopes: query.scope ? query.scope.split(" ") : client.scopes,
+            resource: query.resource || undefined,
+            nonce: query.nonce,
+          },
+        );
+        const redirect = new URL(query.redirect_uri);
+        redirect.searchParams.set("code", code);
+        if (query.state) redirect.searchParams.set("state", query.state);
+        reply.redirect(redirect.toString(), 302);
+        return;
+      }
+
       reply.headers["content-type"] = "text/html; charset=utf-8";
       reply.body = renderConsentPage({
         clientName: client.clientName,
@@ -151,6 +184,7 @@ export class OAuthController {
           scope: query.scope ?? "",
           state: query.state ?? "",
           resource: query.resource ?? "",
+          nonce: query.nonce ?? "",
         },
       });
     },
@@ -203,6 +237,7 @@ export class OAuthController {
           codeChallenge: body.code_challenge,
           scopes: body.scope ? body.scope.split(" ") : client.scopes,
           resource: body.resource || undefined,
+          nonce: body.nonce,
         },
       );
       redirect.searchParams.set("code", code);

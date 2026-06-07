@@ -15,4 +15,5 @@ export const authorizeDecisionBodySchema = t.object({
   scope: t.optional(t.text({ maxLength: 1024 })),
   state: t.optional(t.text({ maxLength: 512 })),
   resource: t.optional(t.text({ maxLength: 2048 })),
+  nonce: t.optional(t.text({ maxLength: 512 })),
 });

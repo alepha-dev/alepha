@@ -290,6 +290,7 @@ export class OAuthClientService {
       codeChallenge: string;
       scopes: string[];
       resource?: string;
+      nonce?: string;
     },
   ): Promise<string> {
     const iat = this.dateTime.now().unix();
@@ -301,6 +302,7 @@ export class OAuthClientService {
         code_challenge: grant.codeChallenge,
         scopes: grant.scopes,
         resource: grant.resource,
+        nonce: grant.nonce,
         iat,
         exp: iat + 60,
         jti: randomUUID(),
@@ -318,7 +320,12 @@ export class OAuthClientService {
     realm: string,
     code: string,
     check: { clientId: string; redirectUri: string; codeVerifier: string },
-  ): Promise<{ userId: string; scopes: string[]; resource?: string }> {
+  ): Promise<{
+    userId: string;
+    scopes: string[];
+    resource?: string;
+    nonce?: string;
+  }> {
     const { result } = await this.jwt.parse(code, realm, {
       typ: "oauth_code",
     });
@@ -347,6 +354,7 @@ export class OAuthClientService {
       userId: payload.sub as string,
       scopes: (payload.scopes as string[]) ?? [],
       resource: payload.resource as string | undefined,
+      nonce: payload.nonce as string | undefined,
     };
   }
 }
