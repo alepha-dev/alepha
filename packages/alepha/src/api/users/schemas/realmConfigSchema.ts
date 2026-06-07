@@ -12,20 +12,6 @@ export const realmConfigSchema = t.object({
         "Public site key for the captcha widget (when settings.captchaRequired is true)",
     }),
   ),
-  /**
-   * Federated (broker) social login. When present, the login UI renders one
-   * button per provider linking to `{brokerUrl}/auth/federated/start`.
-   */
-  federated: t.optional(
-    t.object({
-      brokerUrl: t.string({
-        description: "Broker origin that performs the OIDC dance.",
-      }),
-      providers: t.array(t.union([t.const("google"), t.const("apple")]), {
-        description: "Federated providers to surface as login buttons.",
-      }),
-    }),
-  ),
 });
 
 export type RealmConfig = Static<typeof realmConfigSchema>;

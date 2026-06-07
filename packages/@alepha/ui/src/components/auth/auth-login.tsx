@@ -307,34 +307,6 @@ export function AuthLogin(props: AuthLoginProps) {
             </div>
           )}
 
-          {props.realmConfig.federated?.providers?.length ? (
-            <div className="flex flex-col gap-2">
-              {props.realmConfig.federated.providers.map((p) => {
-                const label = p.charAt(0).toUpperCase() + p.slice(1);
-                const start = new URL(
-                  `${props.realmConfig.federated!.brokerUrl}/auth/federated/start`,
-                );
-                start.searchParams.set("provider", p);
-                // tenant identified by host (the broker resolves it to a club)
-                start.searchParams.set("tenant", window.location.host);
-                start.searchParams.set("redirect", redirect ?? "/");
-                return (
-                  <Button
-                    key={p}
-                    variant="outline"
-                    render={<a href={start.toString()} />}
-                  >
-                    <BrandIcon provider={p} />
-                    {tr("auth.login.continueWith", {
-                      default: `Continue with ${label}`,
-                      args: [label],
-                    })}
-                  </Button>
-                );
-              })}
-            </div>
-          ) : null}
-
           {settings.registrationAllowed && (
             <p className="text-muted-foreground text-center text-sm">
               {tr("auth.login.noAccount", {

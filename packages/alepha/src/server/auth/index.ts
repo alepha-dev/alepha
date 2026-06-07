@@ -6,14 +6,11 @@ import { ServerAuthProvider } from "./providers/ServerAuthProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./helpers/appleClientSecret.ts";
-export * from "./helpers/federationAssertion.ts";
 export * from "./index.shared.ts";
 export * from "./primitives/$auth.ts";
 export * from "./primitives/$authApple.ts";
 export * from "./primitives/$authCredentials.ts";
 export * from "./primitives/$authFacebook.ts";
-export * from "./primitives/$authFederationBroker.ts";
-export * from "./primitives/$authFederationClient.ts";
 export * from "./primitives/$authFranceConnect.ts";
 export * from "./primitives/$authGithub.ts";
 export * from "./primitives/$authGoogle.ts";

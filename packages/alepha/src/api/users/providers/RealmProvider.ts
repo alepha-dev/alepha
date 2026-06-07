@@ -21,15 +21,6 @@ export interface Realm {
   repositories: RealmRepositories;
   settings: RealmAuthSettings;
   features: RealmFeatures;
-  /**
-   * Federated (broker) login config surfaced to the login UI, when the realm
-   * declares `identities.federated`. The broker public key is intentionally
-   * omitted — only the broker URL + provider list are client-facing.
-   */
-  federated?: {
-    brokerUrl: string;
-    providers: Array<"google" | "apple">;
-  };
   settingsParameter?: ParameterPrimitive<typeof realmAuthSettingsAtom.schema>;
   getSettings(): Promise<RealmAuthSettings>;
 }
@@ -86,12 +77,6 @@ export class RealmProvider {
         },
       },
       features,
-      federated: realmOptions.identities?.federated
-        ? {
-            brokerUrl: realmOptions.identities.federated.brokerUrl,
-            providers: realmOptions.identities.federated.providers,
-          }
-        : undefined,
       getSettings: async function () {
         if (this.settingsParameter) {
           return await this.settingsParameter.get();
