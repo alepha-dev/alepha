@@ -6,8 +6,11 @@ import {
   type CryptoKey,
   createLocalJWKSet,
   createRemoteJWKSet,
+  exportJWK,
   type FlattenedJWSInput,
+  importPKCS8,
   type JSONWebKeySet,
+  type JWK,
   type JWSHeaderParameters,
   type JWTHeaderParameters,
   type JWTPayload,
@@ -26,6 +29,7 @@ import { SecurityError } from "../errors/SecurityError.ts";
 export class JwtProvider {
   protected readonly log = $logger();
   protected readonly keystore: KeyLoaderHolder[] = [];
+  protected readonly signers = new Map<string, SignerHolder>();
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly encoder = new TextEncoder();
 
@@ -59,6 +63,60 @@ export class JwtProvider {
         keyLoader: createRemoteJWKSet(new URL(secretKeyOrJwks)),
       });
     }
+  }
+
+  /**
+   * Configure an asymmetric signing key for a realm/issuer. Tokens minted for
+   * `name` are then signed with `alg` + `kid`, and a local verify loader is
+   * registered so this process can verify its own tokens (refresh tokens,
+   * authorization codes, id_tokens). Public keys are published via `getJwks`.
+   *
+   * `privateKey` is a PKCS#8 PEM (from env). Additive: realms without a
+   * signing key keep the HS256 path untouched.
+   */
+  public async setSigningKey(
+    name: string,
+    signing: SigningConfig,
+  ): Promise<void> {
+    const key = await importPKCS8(signing.privateKey, signing.alg, {
+      extractable: true,
+    });
+    const exported = await exportJWK(key);
+    // Strip every private member so the published JWK is public-only.
+    const { d, p, q, dp, dq, qi, ...pub } = exported as Record<string, unknown>;
+    const publicJwk: JWK = {
+      ...(pub as JWK),
+      kid: signing.kid,
+      use: "sig",
+      alg: signing.alg,
+    };
+
+    this.signers.set(name, {
+      alg: signing.alg,
+      kid: signing.kid,
+      key,
+      publicJwk,
+    });
+
+    this.log.debug(`will sign + verify JWTs for '${name}'`, {
+      alg: signing.alg,
+      kid: signing.kid,
+    });
+
+    // Register a local verify loader so tokens we sign can be verified.
+    this.keystore.push({
+      name,
+      keyLoader: createLocalJWKSet({ keys: [publicJwk] }),
+    });
+  }
+
+  /**
+   * Public JWK Set for a realm/issuer configured with an asymmetric signing
+   * key. Returns an empty set for HS256 / external (URL-based) realms.
+   */
+  public async getJwks(name: string): Promise<JSONWebKeySet> {
+    const signer = this.signers.get(name);
+    return { keys: signer ? [signer.publicJwk] : [] };
   }
 
   /**
@@ -133,6 +191,21 @@ export class JwtProvider {
     keyName?: string,
     signOptions?: JwtSignOptions,
   ): Promise<string> {
+    // Asymmetric path: when a signing key is configured for this realm, sign
+    // with its alg + kid so the token verifies against the published JWKS.
+    const signerName = keyName ?? this.keystore[0]?.name;
+    const signer = signerName ? this.signers.get(signerName) : undefined;
+    if (signer) {
+      const signJwt = new SignJWT(payload);
+      signJwt.setProtectedHeader({
+        alg: signer.alg,
+        kid: signer.kid,
+        ...signOptions?.header,
+      });
+      return await signJwt.sign(signer.key);
+    }
+
+    // HS256 path (unchanged default).
     const secretKey = keyName
       ? this.keystore.find((it) => it.name === keyName)?.secretKey
       : this.keystore[0]?.secretKey;
@@ -171,6 +244,23 @@ export interface KeyLoaderHolder {
   name: string;
   keyLoader: KeyLoader;
   secretKey?: string;
+}
+
+export interface SignerHolder {
+  alg: string;
+  kid: string;
+  key: CryptoKey | KeyObject;
+  publicJwk: JWK;
+}
+
+/**
+ * Asymmetric signing config for a realm/issuer. `privateKey` is a PKCS#8 PEM
+ * (typically injected from env). EdDSA preferred; RS256 acceptable.
+ */
+export interface SigningConfig {
+  alg: "EdDSA" | "RS256";
+  privateKey: string;
+  kid: string;
 }
 
 export interface JwtSignOptions {
