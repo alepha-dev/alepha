@@ -20,6 +20,16 @@ export const oauthClientEntity = $entity({
     redirectUris: db.default(t.array(t.text({ maxLength: 2048 })), []),
     scopes: db.default(t.array(t.text({ maxLength: 64 })), []),
     realm: t.text({ maxLength: 100 }),
+    /**
+     * OAuth client type. `confidential` clients authenticate at the token
+     * endpoint with a secret; `public` clients rely on PKCE only.
+     */
+    type: db.default(t.enum(["public", "confidential"]), "public"),
+    /**
+     * Scrypt hash of the client secret (confidential clients only). Null for
+     * public clients. Verified via `OAuthClientService.verifySecret`.
+     */
+    clientSecretHash: t.optional(t.text({ maxLength: 256 })),
     source: db.default(t.text({ maxLength: 16 }), "dcr"),
     createdByUserId: t.optional(t.uuid()),
     lastUsedAt: t.optional(t.datetime()),

@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { $inject, Alepha, AlephaError } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
@@ -15,9 +16,21 @@ import {
 
 export interface RegisterClientOptions {
   realm: string;
-  clientName: string;
+  /**
+   * Explicit client id (OIDC clients registered by Platform). When omitted,
+   * a `mcp_<uuid>` id is generated (Dynamic Client Registration).
+   */
+  clientId?: string;
+  clientName?: string;
   redirectUris: string[];
-  scopes: string[];
+  scopes?: string[];
+  /**
+   * `confidential` clients require a `secret` (stored hashed) and authenticate
+   * at the token endpoint. Defaults to `public` (PKCE only).
+   */
+  type?: "public" | "confidential";
+  /** Raw secret for a confidential client; stored as a scrypt hash. */
+  secret?: string;
   source?: "dcr" | "user" | "admin";
   createdByUserId?: string;
 }
@@ -40,6 +53,7 @@ export class OAuthClientService {
   protected readonly log = $logger();
   protected readonly repo = $repository(oauthClientEntity);
   protected readonly jwt = $inject(JwtProvider);
+  protected readonly crypto = $inject(CryptoProvider);
 
   /**
    * Codes already redeemed in this process. Single-use enforcement only
@@ -146,27 +160,82 @@ export class OAuthClientService {
       throw new AlephaError("At least one redirect_uri is required");
     }
     for (const uri of options.redirectUris) {
-      if (!uri.startsWith("https://") && !uri.startsWith("http://localhost")) {
-        throw new AlephaError(`Invalid redirect_uri: ${uri}`);
-      }
+      this.assertValidRedirectUri(uri);
     }
 
-    const clientId = `mcp_${randomUUID().replace(/-/g, "")}`;
+    const type = options.type ?? "public";
+    if (type === "confidential" && !options.secret) {
+      throw new AlephaError("A confidential client requires a secret");
+    }
+
+    const clientId =
+      options.clientId ?? `mcp_${randomUUID().replace(/-/g, "")}`;
+    const clientSecretHash = options.secret
+      ? await this.crypto.hashPassword(options.secret)
+      : undefined;
+
     const client = await this.repo.create({
       clientId,
-      clientName: options.clientName || "MCP Client",
+      clientName: options.clientName || "OAuth Client",
       redirectUris: options.redirectUris,
-      scopes: options.scopes,
+      scopes: options.scopes ?? ["openid"],
       realm: options.realm,
+      type,
+      clientSecretHash,
       source: options.source ?? "dcr",
       createdByUserId: options.createdByUserId,
     });
 
     this.log.info("OAuth client registered", {
       clientId,
+      type,
       source: client.source,
     });
     return client;
+  }
+
+  /**
+   * Verify a confidential client's secret against its stored scrypt hash.
+   * Returns false for unknown/revoked/public (no-hash) clients.
+   */
+  public async verifySecret(
+    clientId: string,
+    secret: string,
+  ): Promise<boolean> {
+    const client = await this.findByClientId(clientId);
+    if (!client || client.revokedAt || !client.clientSecretHash) {
+      return false;
+    }
+    return this.crypto.verifyPassword(secret, client.clientSecretHash);
+  }
+
+  /**
+   * Validate a registered redirect_uri. https (or http://localhost) only, and
+   * at most a single `*` which must live inside the host (see
+   * `redirectUriMatches` for the matching rule).
+   */
+  protected assertValidRedirectUri(uri: string): void {
+    const stars = (uri.match(/\*/g) ?? []).length;
+    if (stars > 1) {
+      throw new AlephaError(
+        `At most one '*' wildcard is allowed in redirect_uri: ${uri}`,
+      );
+    }
+    const probe = uri.replace("*", "wildcard");
+    if (
+      !probe.startsWith("https://") &&
+      !probe.startsWith("http://localhost")
+    ) {
+      throw new AlephaError(`Invalid redirect_uri: ${uri}`);
+    }
+    if (stars === 1) {
+      const host = uri.slice(uri.indexOf("://") + 3).split("/")[0] ?? "";
+      if (!host.includes("*")) {
+        throw new AlephaError(
+          `Wildcard '*' is only allowed in the host: ${uri}`,
+        );
+      }
+    }
   }
 
   /**
@@ -182,14 +251,30 @@ export class OAuthClientService {
   }
 
   /**
-   * Exact-match redirect_uri check. OAuth 2.1 forbids substring/prefix
-   * matching — the value must equal a registered URI byte-for-byte.
+   * Redirect_uri check. A registered pattern is matched byte-exact unless it
+   * contains a single `*`, which matches exactly ONE host label (no dots).
+   * E.g. `https://*.alepha.club/auth/callback` matches
+   * `https://b14.alepha.club/auth/callback` but NOT `https://alepha.club/...`
+   * nor `https://a.b.alepha.club/...`.
    */
   public isRedirectUriAllowed(
     client: OAuthClientEntity,
     redirectUri: string,
   ): boolean {
-    return client.redirectUris.includes(redirectUri);
+    return client.redirectUris.some((pattern) =>
+      this.redirectUriMatches(pattern, redirectUri),
+    );
+  }
+
+  protected redirectUriMatches(pattern: string, candidate: string): boolean {
+    if (!pattern.includes("*")) {
+      return pattern === candidate;
+    }
+    // Escape every regex metachar (incl. the `*` and the dots), then turn the
+    // single escaped `*` into a one-label match (`[^.]+` — no dots).
+    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(`^${escaped.replace("\\*", "[^.]+")}$`);
+    return rx.test(candidate);
   }
 
   /**
