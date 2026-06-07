@@ -8,6 +8,7 @@ import {
   createRemoteJWKSet,
   exportJWK,
   type FlattenedJWSInput,
+  generateKeyPair,
   importPKCS8,
   type JSONWebKeySet,
   type JWK,
@@ -71,16 +72,21 @@ export class JwtProvider {
    * registered so this process can verify its own tokens (refresh tokens,
    * authorization codes, id_tokens). Public keys are published via `getJwks`.
    *
-   * `privateKey` is a PKCS#8 PEM (from env). Additive: realms without a
-   * signing key keep the HS256 path untouched.
+   * `privateKey` is a PKCS#8 PEM (from env). When it is empty/undefined an
+   * **ephemeral per-process keypair** is generated so dev/test work with no env
+   * key configured — the published JWKS still resolves; tokens just don't
+   * survive a restart. Additive: realms without a signing key keep the HS256
+   * path untouched.
    */
   public async setSigningKey(
     name: string,
     signing: SigningConfig,
   ): Promise<void> {
-    const key = await importPKCS8(signing.privateKey, signing.alg, {
-      extractable: true,
-    });
+    const key = signing.privateKey
+      ? await importPKCS8(signing.privateKey, signing.alg, {
+          extractable: true,
+        })
+      : (await generateKeyPair(signing.alg, { extractable: true })).privateKey;
     const exported = await exportJWK(key);
     // Strip every private member so the published JWK is public-only.
     const { d, p, q, dp, dq, qi, ...pub } = exported as Record<string, unknown>;
@@ -259,7 +265,11 @@ export interface SignerHolder {
  */
 export interface SigningConfig {
   alg: "EdDSA" | "RS256";
-  privateKey: string;
+  /**
+   * PKCS#8 PEM private key. Empty/undefined → an ephemeral per-process keypair
+   * is generated (dev/test convenience; tokens don't survive a restart).
+   */
+  privateKey?: string;
   kid: string;
 }
 
