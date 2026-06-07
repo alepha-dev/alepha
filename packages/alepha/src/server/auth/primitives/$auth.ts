@@ -478,12 +478,12 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
         );
       };
 
-      // Defer OIDC discovery in serverless/dev to avoid cold start penalty
-      if (this.alepha.isServerless() || !this.alepha.isProduction()) {
-        this.oauthInitializer = discoverOidc;
-      } else {
-        this.oauthConfig = await discoverOidc();
-      }
+      // OIDC discovery is always lazy (resolved on first auth-flow use via the
+      // `oauthConfiguration` getter). It must never be a hard boot dependency:
+      // a relying party has to boot even when its IdP is briefly unreachable
+      // (cross-service start order, deploys), and deferring also avoids the
+      // serverless cold-start fetch.
+      this.oauthInitializer = discoverOidc;
     }
 
     if ("oauth" in this.options) {
