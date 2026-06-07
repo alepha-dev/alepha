@@ -1,3 +1,61 @@
+## [0.23.0] - 2026-06-06
+
+### Features
+
+- **sitemap**: runtime $sitemap primitive + static-route prerendering (`05dbebe8`)
+- **mcp**: resolve + forward-to-quest blights from the Lore MCP (`e3e56053`)
+- **quests**: set quest dependencies from the UI (`9885315f`)
+- **quests**: make the quest description optional (`36a96eaa`)
+- **cli/i18n**: resolve lazily-imported per-language dictionary files (`ec3e40d7`)
+- **mcp**: link quests to petitions from the Lore MCP (`f3f9b9b0`)
+- **sigil**: capture host-page context on petition submissions (`7c7d2bde`)
+- **mcp**: view petition attachments inline via the Lore MCP (`0ff00fa8`)
+- **ui**: federated provider buttons link to the auth broker (`2e569bc1`)
+- **auth**: $realm identities.federated wiring + realm-config exposure (`8c486d33`)
+- **auth**: $authFederationClient (verify assertion -> link -> session) (`0741de42`)
+- **auth**: $authFederationBroker (OIDC broker emitting signed assertion) (`a4924d6c`)
+- **auth**: on-demand Apple ES256 client-secret signer (`e1256d73`)
+- **auth**: federation assertion sign/verify (EdDSA) (`f5af450a`)
+- **react/router**: URL path-prefix i18n routing for SEO (`216037e7`)
+- **payments-stripe**: add setup-mode checkout + inline subscription price_data (`445ba268`)
+- **sigil**: close the petition popup on submit + thank-you on the button (`b726814f`)
+- **sigil**: center the petition popup on the current monitor (`868d0be3`)
+- **react/i18n**: autodetect language from Accept-Language header (`f7ce001b`)
+- **sigil**: integrate SIGIL_ID into environment configuration (`287a90cc`)
+- **sigil**: assemble AlephaSigil module (`d79105e0`)
+- **sigil**: feedback button + annotated petition dialog (`3c0b2d85`)
+- **sigil**: port ScreenshotEditor + styles (`dba6caf8`)
+- **sigil**: browser telemetry bootstrap (`99150293`)
+- **sigil**: web-vitals collector (`f1d8fff6`)
+- **sigil**: telemetry batching queue (`ff210865`)
+- **sigil**: forward server:onError to blights (`8f3ab026`)
+- **sigil**: petition proxy forwards optional reporterEmail (`a5aa7238`)
+- **sigil**: proxy controller (ingest + petition) (`6c4b9007`)
+- **stripe**: update to Accounts v2 API for connected account creation (`8f8df71f`)
+- **sigil**: SigilForwardProvider with activation rule (`66e458d2`)
+- **sigil**: shared ingest/petition/vitals schemas (`081c7b22`)
+- **sigil**: env schema (`b8a17e68`)
+- **react**: export RootComponentsProvider (`12496a91`)
+- **react**: render rootComponents slot in ReactPageProvider.root (`acce0f2e`)
+- **react**: add RootComponentsProvider slot (`b01aa7c9`)
+
+### Bug Fixes
+
+- **payments-stripe**: edge-safe webhook signature verification (`acdc0c29`)
+- **ui**: AlephaTable treats `fetch` as a latest-wins data source (`38b4aba9`)
+- **blights**: stop the inbox infinite render loop at its source (`6c43b11f`)
+- **quest**: remove spurious scrollbar on the quest view (`5e563edf`)
+- **home**: render the campaign 'updated' time client-only (React #418) (`58ee31a1`)
+- **petitions**: Cancel on the request form no longer 403s into the error page (`554b4a57`)
+- **i18n**: exempt dynamic language.* keys from the unused-key check (`7770f34b`)
+- **ui**: forward the ?r= redirect from register to the sign-in link (`2e504874`)
+- **platform**: R2 teardown deletes buckets reliably on `down` (`efc67af7`)
+- **sigil**: resolve + forward in-process for Lore's own sigil (`70e043c3`)
+- **sigil**: serve petition redirect at root /sigil/request, not /api (`b8008911`)
+- **react/form**: submit buttons no longer stick in loading state (`f7f8ddb3`)
+- **cli**: emit send_email binding in prebuilt/manifest cloudflare deploys (`045e09fb`)
+- **react**: avoid react/router self-import in RootComponentsProvider test (build circular dep) (`39253d71`)
+
 ## [0.22.0] - 2026-05-31
 
 ### Features
