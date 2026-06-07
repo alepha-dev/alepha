@@ -1,11 +1,13 @@
 import { $atom, $inject, $state, t } from "alepha";
 import { $logger } from "alepha/logger";
+import { JwtProvider } from "alepha/security";
 import { $route } from "alepha/server";
 import { renderConsentPage } from "../helpers/consentPage.ts";
 import {
   buildAuthorizationServerMetadata,
   buildProtectedResourceMetadata,
 } from "../helpers/oauthMetadata.ts";
+import { buildOpenIdConfiguration } from "../helpers/oidcMetadata.ts";
 import { authorizeDecisionBodySchema } from "../schemas/authorizeDecisionBodySchema.ts";
 import { authorizeQuerySchema } from "../schemas/authorizeQuerySchema.ts";
 import { registerClientBodySchema } from "../schemas/registerClientBodySchema.ts";
@@ -39,6 +41,7 @@ export class OAuthController {
   protected readonly log = $logger();
   protected readonly options = $state(oauthOptions);
   protected readonly clients = $inject(OAuthClientService);
+  protected readonly jwt = $inject(JwtProvider);
 
   /**
    * Absolute origin of the current request, e.g. https://app.com.
@@ -67,6 +70,24 @@ export class OAuthController {
       reply.body = JSON.stringify(
         buildProtectedResourceMetadata(base, `${base}${this.options.resource}`),
       );
+    },
+  });
+
+  openidConfiguration = $route({
+    method: "GET",
+    path: "/.well-known/openid-configuration",
+    handler: ({ url, reply }) => {
+      reply.headers["content-type"] = "application/json";
+      reply.body = JSON.stringify(buildOpenIdConfiguration(this.baseUrl(url)));
+    },
+  });
+
+  jwks = $route({
+    method: "GET",
+    path: "/oauth/jwks",
+    handler: async ({ reply }) => {
+      reply.headers["content-type"] = "application/json";
+      reply.body = JSON.stringify(await this.jwt.getJwks(this.options.realm));
     },
   });
 
@@ -257,10 +278,29 @@ export class OAuthController {
     path: "/oauth/token",
     schema: { body: tokenRequestBodySchema },
     use: [],
-    handler: async ({ body, reply }) => {
+    handler: async ({ body, url, reply }) => {
       reply.headers["content-type"] = "application/json";
       try {
         if (body.grant_type === "authorization_code") {
+          const client = await this.clients.findByClientId(
+            body.client_id ?? "",
+          );
+          if (!client || client.revokedAt) {
+            reply.status = 400;
+            reply.body = JSON.stringify({ error: "invalid_client" });
+            return;
+          }
+          if (client.type === "confidential") {
+            const ok = await this.clients.verifySecret(
+              client.clientId,
+              body.client_secret ?? "",
+            );
+            if (!ok) {
+              reply.status = 401;
+              reply.body = JSON.stringify({ error: "invalid_client" });
+              return;
+            }
+          }
           const grant = await this.clients.consumeAuthorizationCode(
             this.options.realm,
             body.code ?? "",
@@ -274,13 +314,25 @@ export class OAuthController {
             this.options.realm,
             { ...grant, clientId: body.client_id ?? "" },
           );
-          reply.body = JSON.stringify({
+          const response: Record<string, unknown> = {
             access_token: tokens.access_token,
             token_type: "Bearer",
             expires_in: tokens.expires_in,
             refresh_token: tokens.refresh_token,
             scope: grant.scopes.join(" "),
-          });
+          };
+          if (grant.scopes.includes("openid")) {
+            response.id_token = await this.clients.issueIdToken(
+              this.options.realm,
+              {
+                userId: grant.userId,
+                clientId: body.client_id ?? "",
+                issuer: this.baseUrl(url),
+                nonce: grant.nonce,
+              },
+            );
+          }
+          reply.body = JSON.stringify(response);
           return;
         }
 

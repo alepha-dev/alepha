@@ -123,6 +123,43 @@ export class OAuthClientService {
   }
 
   /**
+   * Mint an OIDC `id_token` for a consumed grant, signed by the realm's issuer
+   * key (asymmetric when configured). Claims: iss, sub, aud (client_id), exp,
+   * iat, nonce (when present), email, name.
+   */
+  public async issueIdToken(
+    realm: string,
+    params: {
+      userId: string;
+      clientId: string;
+      issuer: string;
+      nonce?: string;
+    },
+  ): Promise<string> {
+    const entry = this.issuers.get(realm);
+    if (!entry) {
+      throw new AlephaError(`No issuer registered for realm '${realm}'`);
+    }
+    const user = await entry.loadUser(params.userId);
+    const iat = this.dateTime.now().unix();
+    const exp = iat + entry.issuer.accessTokenExpiration.asSeconds();
+    return this.jwt.create(
+      {
+        iss: params.issuer,
+        sub: user.id,
+        aud: params.clientId,
+        exp,
+        iat,
+        ...(params.nonce ? { nonce: params.nonce } : {}),
+        email: user.email,
+        name: user.name,
+      },
+      realm,
+      { header: { typ: "JWT" } },
+    );
+  }
+
+  /**
    * Exchange a refresh token for a fresh access token (OAuth 2.1
    * `refresh_token` grant), using the issuer registered for `realm`. Lets an
    * MCP client stay connected for the refresh token's full lifetime without

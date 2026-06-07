@@ -13,4 +13,5 @@ export const tokenRequestBodySchema = t.object({
   redirect_uri: t.optional(t.text({ maxLength: 2048 })),
   code_verifier: t.optional(t.text({ maxLength: 256 })),
   refresh_token: t.optional(t.text({ maxLength: 4096 })),
+  client_secret: t.optional(t.text({ maxLength: 512 })),
 });
