@@ -23,4 +23,5 @@ It can be internal (with a secret) or external (with a JWKS).
 | `settings` | `IssuerSettings` | No | Issuer settings. |
 | `profile` | `Object` | No | Parse the JWT payload to create a user account info. |
 | `resolvers` | `IssuerResolver[]` | No | Custom resolvers (in addition to default JWT resolver). |
+| `signing` | `SigningConfig` | No | Asymmetric signing config |
 

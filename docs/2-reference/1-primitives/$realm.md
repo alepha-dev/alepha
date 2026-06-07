@@ -25,6 +25,7 @@ Environment Variables:
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `secret` | `string` | No | Secret key for signing tokens |
+| `signing` | `SigningConfig` | No | Asymmetric signing config for this realm's tokens (OIDC provider mode) |
 | `issuer` | `Partial&lt;IssuerPrimitiveOptions&gt;` | No | Issuer configuration options |
 | `entities` | `Object` | No | Override entities. |
 | `settings` | `Partial&lt;RealmAuthSettings&gt;` | No |  |

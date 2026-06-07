@@ -55,9 +55,10 @@ export function AdminFiles() {
   const statsClient = useClient<AdminFileStatsController>();
   const { l, tr } = useI18n();
   const toast = useToast();
-  // Bumped after a successful upload to reload the bucket-stats query and the
-  // table fetcher (which both list it in their deps). Row/bulk actions reload
-  // via the table's own ctx.refresh() and don't touch this.
+  // Bumped after a successful upload to reload the bucket-stats query (which
+  // lists it in its deps) and the table (via AlephaTable's `refreshSignal`
+  // prop). Row/bulk actions reload via the table's own ctx.refresh() and
+  // don't touch this.
   const [refreshKey, setRefreshKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,7 +124,7 @@ export function AdminFiles() {
         },
       });
     },
-    [client, refreshKey],
+    [client],
   );
 
   const deleteFile = useConfirmedAction<[FileResource, () => void]>(
@@ -187,6 +188,7 @@ export function AdminFiles() {
         className="min-h-0 flex-1"
         persistenceKey="admin.files"
         fetch={fetcher}
+        refreshSignal={refreshKey}
         actions={[
           {
             icon: Upload,

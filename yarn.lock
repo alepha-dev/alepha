@@ -10482,6 +10482,7 @@ __metadata:
   resolution: "playground@workspace:apps/playground"
   dependencies:
     "@alepha/ui": "workspace:^"
+    "@playwright/test": "npm:^1.60.0"
     "@tailwindcss/vite": "npm:^4.3.0"
     alepha: "workspace:^"
     lucide-react: "npm:^1.17.0"

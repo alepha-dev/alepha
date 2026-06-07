@@ -185,6 +185,15 @@ export interface AlephaTableProps<T> {
    */
   pollMs?: number;
   /**
+   * External refetch trigger. Bump this value (e.g. from a `useState`
+   * counter) after a mutation performed *outside* the table — such as a
+   * toolbar upload action — to make the table reload. Row/bulk actions
+   * already get `ctx.refresh()`; this is the escape hatch for everything
+   * else. Changing it resets to page 0 and refetches; the initial value
+   * is ignored (the table fetches on mount regardless).
+   */
+  refreshSignal?: number | string;
+  /**
    * High-level filter form. AlephaTable owns the `useForm`, renders the
    * inputs inside a `<form>` in the toolbar, and refetches on
    * submit/change.
@@ -420,6 +429,17 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     refresh();
     setTimeout(() => setIsRefreshing(false), 1000);
   }, [refresh]);
+
+  // React to the external `refreshSignal` prop. The first render seeds the
+  // ref without refetching (the mount effect already loads); every later
+  // change triggers a refresh. Kept separate from `load`'s deps so an inline
+  // `fetch` closure can't self-trigger a loop (see `fetchRef` above).
+  const refreshSignalRef = useRef(props.refreshSignal);
+  useEffect(() => {
+    if (refreshSignalRef.current === props.refreshSignal) return;
+    refreshSignalRef.current = props.refreshSignal;
+    refresh();
+  }, [props.refreshSignal, refresh]);
 
   const resetFilters = useCallback(() => {
     if (!form || !props.filters) return;
