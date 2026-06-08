@@ -154,7 +154,18 @@ describe("OAuthController authorize + token", () => {
     });
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get("location")?.startsWith("/login")).toBe(true);
+    const location = resp.headers.get("location") ?? "";
+    expect(location.startsWith("/login")).toBe(true);
+    // The return URL must be handed to the login page as `redirect` — the param
+    // the framework login UI actually reads — so sign-in can resume the
+    // authorize request. `redirect_uri` (the OAuth client callback name) is NOT
+    // read by the login UI and would silently drop the IdP continuation.
+    const loginQuery = new URLSearchParams(location.split("?").slice(1).join("?"));
+    expect(loginQuery.has("redirect")).toBe(true);
+    expect(loginQuery.has("redirect_uri")).toBe(false);
+    const returnTo = loginQuery.get("redirect") ?? "";
+    expect(returnTo.startsWith("/oauth/authorize?")).toBe(true);
+    expect(returnTo).toContain(`client_id=${clientId}`);
   });
 
   it("rejects authorize requests with an unknown client_id", async ({

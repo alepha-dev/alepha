@@ -166,11 +166,14 @@ export class OAuthController {
           reply.redirect(redirect.toString(), 302);
           return;
         }
+        // Hand the login page its post-auth return URL as `redirect` — the
+        // param the framework login UI reads (and the convention apps use for
+        // protected-route bounces). NOT `redirect_uri`: that name collides with
+        // the OAuth client callback and, more importantly, the login page never
+        // reads it, so the IdP continuation (and any downstream client) would be
+        // silently dropped after sign-in.
         const returnTo = encodeURIComponent(url.pathname + url.search);
-        reply.redirect(
-          `${this.options.loginPath}?redirect_uri=${returnTo}`,
-          302,
-        );
+        reply.redirect(`${this.options.loginPath}?redirect=${returnTo}`, 302);
         return;
       }
 
