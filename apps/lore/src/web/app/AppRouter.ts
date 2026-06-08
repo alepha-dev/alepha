@@ -117,7 +117,9 @@ export class AppRouter {
     },
     errorHandler: (error, state) => {
       if (HttpError.is(error, 401) && state.url.pathname !== "/auth/login") {
-        return new Redirection(`/auth/login?r=${state.url.pathname}`);
+        return new Redirection(
+          `/auth/login?redirect=${encodeURIComponent(state.url.pathname)}`,
+        );
       }
 
       if (!this.alepha.isProduction()) {
@@ -159,18 +161,20 @@ export class AppRouter {
     loader: async ({ query }) => {
       // OAuth bridge. The Alepha OAuth `authorize` endpoint redirects
       // unauthenticated users here with `?redirect_uri=`, but `AuthLogin`
-      // reads `?r=` and SPA-pushes to it after sign-in — and an SPA push
+      // reads `?redirect` and SPA-pushes to it after sign-in — and an SPA push
       // cannot reach the server-rendered `/oauth/authorize` route.
-      // Translate the param and aim `?r=` at the `/oauth/continue` bridge
+      // Translate the param and aim `?redirect` at the `/oauth/continue` bridge
       // page, which hard-navigates back into `authorize` once authenticated.
       const redirectUri = query.redirect_uri;
       if (
         typeof redirectUri === "string" &&
         redirectUri.startsWith("/oauth/authorize") &&
-        !query.r
+        !query.redirect
       ) {
         const bridge = `/oauth/continue?to=${encodeURIComponent(redirectUri)}`;
-        throw new Redirection(`/auth/login?r=${encodeURIComponent(bridge)}`);
+        throw new Redirection(
+          `/auth/login?redirect=${encodeURIComponent(bridge)}`,
+        );
       }
       const realmConfig = await this.realmApi.getRealmConfig();
       return { realmConfig };

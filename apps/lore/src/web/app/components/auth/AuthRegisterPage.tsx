@@ -22,11 +22,11 @@ const AuthRegisterPage = (props: AuthRegisterPageProps) => {
 
   useEffect(() => {
     if (!entry) return;
-    if (router.query.r) return;
+    if (router.query.redirect) return;
     const url = new URL(window.location.href);
-    url.searchParams.set("r", entry.redirectTo);
+    url.searchParams.set("redirect", entry.redirectTo);
     // `router.push` with `replace: true` updates both the URL and the router's
-    // own query state, so `router.query.r` reads the seeded value on the
+    // own query state, so `router.query.redirect` reads the seeded value on the
     // re-render. `history.replaceState` alone leaves `router.query` stale.
     router
       .push(url.pathname + url.search, { replace: true })
