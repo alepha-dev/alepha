@@ -113,6 +113,14 @@ export interface AuthRegisterProps {
    * "Before creating a campaign, create an account."
    */
   message?: ReactNode;
+  /**
+   * Where the "Cancel" button abandons to. Defaults to "/". This is
+   * intentionally decoupled from the post-auth `?redirect=` target: cancelling
+   * an unauthenticated registration must land somewhere public (home), not the
+   * protected destination the user was *heading* to — which would only bounce
+   * them back to this page.
+   */
+  cancelPath?: string;
 }
 
 type Phase = "form" | "verification";
@@ -128,7 +136,7 @@ export function AuthRegister(props: AuthRegisterProps) {
   const userCtrl = useClient<UserController>();
   const router = useRouter();
   const { tr } = useI18n();
-  const redirect = router.query.r || "/";
+  const redirect = router.query.redirect || "/";
   // Surface upstream auth errors (e.g. failed OAuth callback redirects with
   // `?error=...`) — same pattern as AuthLogin. Without this the user lands on
   // a fresh-looking registration page with no clue why.
@@ -326,14 +334,14 @@ export function AuthRegister(props: AuthRegisterProps) {
   };
 
   // Query appended to the "already have an account? sign in" link: the realm,
-  // plus the post-auth redirect (`?r=`) so signing in returns the user to
-  // wherever registering would have sent them (it's dropped otherwise).
+  // plus the post-auth redirect (`?redirect=`) so signing in returns the user
+  // to wherever registering would have sent them (it's dropped otherwise).
   const realmBit = props.realmConfig.realmName
     ? `realm=${encodeURIComponent(props.realmConfig.realmName)}`
     : "";
   const redirectBit =
-    typeof router.query.r === "string" && router.query.r
-      ? `r=${encodeURIComponent(router.query.r)}`
+    typeof router.query.redirect === "string" && router.query.redirect
+      ? `redirect=${encodeURIComponent(router.query.redirect)}`
       : "";
   const loginQ = [realmBit, redirectBit].filter(Boolean).join("&");
   const realmQuery = loginQ ? `?${loginQ}` : "";
@@ -505,7 +513,7 @@ export function AuthRegister(props: AuthRegisterProps) {
         </CardContent>
       </Card>
       {!isVerifying && (
-        <Button variant="ghost" render={<a href={redirect} />}>
+        <Button variant="ghost" render={<a href={props.cancelPath ?? "/"} />}>
           {tr("auth.register.cancel", { default: "Cancel" })}
         </Button>
       )}

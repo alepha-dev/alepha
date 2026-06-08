@@ -55,7 +55,7 @@ export interface AuthLoginProps {
 }
 
 /**
- * Filter the `?r=` query param to a safe in-app destination:
+ * Filter the `?redirect=` query param to a safe in-app destination:
  * - Only accept same-origin absolute paths (must start with a single `/`).
  * - Reject `//evil.com` / full URLs (open-redirect surface).
  * - Reject `/auth/*` to avoid bouncing the user back into the auth flow.
@@ -71,7 +71,7 @@ export function AuthLogin(props: AuthLoginProps) {
   const auth = useAuth();
   const router = useRouter();
   const { tr } = useI18n();
-  const redirect = safeRedirect(router.query.r);
+  const redirect = safeRedirect(router.query.redirect);
   const error = router.query.error;
 
   const credentialsProvider = props.realmConfig.authenticationMethods.find(
@@ -144,7 +144,9 @@ export function AuthLogin(props: AuthLoginProps) {
         // SPA push to a sibling under the same layout reuses the cached layout
         // layer and skips its loader — leaving `user`-gated bootstrap data
         // (e.g. the campaign list) stale/empty after sign-in.
-        await router.push(safeRedirect(router.query.r), { force: true });
+        await router.push(safeRedirect(router.query.redirect), {
+          force: true,
+        });
       } catch (err) {
         if (
           err instanceof HttpError &&

@@ -61,7 +61,7 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [code, setCode] = useState("");
-  const redirect = router.query.r || "/";
+  const redirect = router.query.redirect || "/";
 
   const settings = props.realmConfig.settings;
   const allowed = settings?.resetPasswordAllowed !== false;
