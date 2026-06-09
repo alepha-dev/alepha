@@ -414,13 +414,15 @@ export class BuildCloudflareTask extends BuildTask {
 
     const [dbName, id] = url.replace("d1://", "").replace("d1:", "").split(":");
     const binding = BuildCloudflareTask.D1_BINDING;
-    const jurisdiction = process.env.CLOUDFLARE_JURISDICTION;
+    // No `jurisdiction` here: unlike r2_buckets, the wrangler D1 binding schema
+    // has no jurisdiction field (it warns on the unexpected key). D1 data
+    // residency is fixed when the database is created — see CloudflareApi —
+    // and the binding just references it by `database_id`.
     wrangler.d1_databases = wrangler.d1_databases || [];
     wrangler.d1_databases.push({
       binding,
       database_name: dbName,
       database_id: id,
-      ...(jurisdiction ? { jurisdiction } : {}),
     });
     wrangler.vars ??= {};
     wrangler.vars.DATABASE_URL = `d1://${binding}`;
