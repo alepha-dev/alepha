@@ -13,6 +13,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider } from "alepha/lock";
 import { $logger } from "alepha/logger";
 import { $repository, RepositoryProvider } from "alepha/orm";
+import { currentTenantAtom, currentUserAtom } from "alepha/security";
 import { $topic } from "alepha/topic";
 import { type Parameter, parameters } from "../entities/parameters.ts";
 import type { ParameterPrimitive } from "../primitives/$parameter.ts";
@@ -64,7 +65,35 @@ export class ParameterProvider {
   protected _instanceId: string | undefined;
 
   /**
-   * In-memory cache of registered parameter primitives.
+   * Resolve the active tenant for cache keying — MIRRORS the Repository's
+   * `resolveOrganizationValue` (tenant atom → user org) so the in-memory
+   * value caches partition exactly the way the DB rows do. Returns a sentinel
+   * for the org-less (single-tenant / no-request) case.
+   *
+   * Why this matters: the DB table is now org-scoped, but these process-global
+   * Maps are keyed by parameter NAME — without folding the org into the key, a
+   * pooled multi-tenant worker would hand org A's cached `club.settings` to a
+   * request for org B. (Cross-instance topic sync + the `ready` preload run
+   * with no request atom → the sentinel key; they refresh only org-less rows,
+   * leaving per-org caches to lazy-load + the immediate local update on `set`.
+   * That is bounded staleness, never a cross-tenant read.)
+   */
+  protected orgKey(): string {
+    const tenant = this.alepha.store.get(currentTenantAtom);
+    if (tenant?.id) return tenant.id;
+    const user = this.alepha.store.get(currentUserAtom);
+    return user?.organization ?? "~global";
+  }
+
+  /** Per-org cache key for the value caches (`${org}:${name}`). */
+  protected cacheKey(name: string): string {
+    return `${this.orgKey()}:${name}`;
+  }
+
+  /**
+   * In-memory cache of registered parameter primitives. Keyed by NAME only —
+   * the `$parameter` definition (schema + default) is identical for every
+   * tenant; only the stored VALUE is per-org (see the value caches below).
    */
   protected readonly primitives = new Map<string, ParameterPrimitive<any>>();
 
@@ -170,27 +199,28 @@ export class ParameterProvider {
    * Checks if a cached next version has become current.
    */
   public async get(name: string): Promise<unknown> {
-    if (!this.loaded.has(name)) {
-      if (!this.loadPromises.has(name)) {
-        this.loadPromises.set(name, this.doLoad(name));
+    const ck = this.cacheKey(name);
+    if (!this.loaded.has(ck)) {
+      if (!this.loadPromises.has(ck)) {
+        this.loadPromises.set(ck, this.doLoad(name));
       }
-      await this.loadPromises.get(name);
+      await this.loadPromises.get(ck);
     }
 
     // Check if cached next has become current
-    const cachedNext = this.cachedNext.get(name);
+    const cachedNext = this.cachedNext.get(ck);
     if (cachedNext) {
       const now = this.dateTimeProvider.now().toDate();
       if (new Date(cachedNext.activationDate) <= now) {
-        this.cachedCurrent.set(name, cachedNext.content);
-        this.cachedNext.delete(name);
+        this.cachedCurrent.set(ck, cachedNext.content);
+        this.cachedNext.delete(ck);
         this.reloadNextInBackground(name);
       }
     }
 
     const param = this.primitives.get(name);
-    return this.cachedCurrent.has(name)
-      ? this.cachedCurrent.get(name)
+    return this.cachedCurrent.has(ck)
+      ? this.cachedCurrent.get(ck)
       : param?.options.default;
   }
 
@@ -213,15 +243,16 @@ export class ParameterProvider {
     });
 
     // Update local cache
+    const ck = this.cacheKey(name);
     const now = this.dateTimeProvider.now().toDate();
     if (!options.activationDate || options.activationDate <= now) {
-      const prev = this.cachedCurrent.get(name);
-      this.cachedCurrent.set(name, value);
+      const prev = this.cachedCurrent.get(ck);
+      this.cachedCurrent.set(ck, value);
       if (JSON.stringify(prev) !== JSON.stringify(value)) {
         this.notifySubscribers(name);
       }
     } else {
-      this.cachedNext.set(name, {
+      this.cachedNext.set(ck, {
         content: value,
         activationDate: options.activationDate.toISOString(),
       });
@@ -233,12 +264,13 @@ export class ParameterProvider {
    * Returns an unsubscribe function.
    */
   public sub(name: string, fn: (v: unknown) => void): () => void {
-    if (!this.subscribers.has(name)) {
-      this.subscribers.set(name, []);
+    const ck = this.cacheKey(name);
+    if (!this.subscribers.has(ck)) {
+      this.subscribers.set(ck, []);
     }
-    this.subscribers.get(name)!.push(fn);
+    this.subscribers.get(ck)!.push(fn);
     return () => {
-      const subs = this.subscribers.get(name);
+      const subs = this.subscribers.get(ck);
       if (subs) {
         const idx = subs.indexOf(fn);
         if (idx >= 0) {
@@ -253,8 +285,9 @@ export class ParameterProvider {
    * Deduplicates concurrent calls via shared promise.
    */
   public async load(name: string): Promise<void> {
-    this.loadPromises.set(name, this.doLoad(name));
-    await this.loadPromises.get(name);
+    const ck = this.cacheKey(name);
+    this.loadPromises.set(ck, this.doLoad(name));
+    await this.loadPromises.get(ck);
   }
 
   /**
@@ -262,8 +295,9 @@ export class ParameterProvider {
    * Synchronous access for admin API.
    */
   public getCachedCurrentContent(name: string): unknown {
-    if (this.cachedCurrent.has(name)) {
-      return this.cachedCurrent.get(name);
+    const ck = this.cacheKey(name);
+    if (this.cachedCurrent.has(ck)) {
+      return this.cachedCurrent.get(ck);
     }
     const param = this.primitives.get(name);
     return param?.options.default;
@@ -273,7 +307,7 @@ export class ParameterProvider {
    * Whether the parameter is using its default value (no DB value loaded).
    */
   public isUsingDefault(name: string): boolean {
-    return !this.cachedCurrent.has(name);
+    return !this.cachedCurrent.has(this.cacheKey(name));
   }
 
   // ---------------------------------------------------------------------------
@@ -510,12 +544,7 @@ export class ParameterProvider {
    */
   public async delete(name: string): Promise<void> {
     await this.repo.deleteMany({ name: { eq: name } });
-    this.cachedCurrent.delete(name);
-    this.cachedNext.delete(name);
-    this.loaded.delete(name);
-    this.loadPromises.delete(name);
-    this.loadGeneration.delete(name);
-    this.migrationChecked.delete(name);
+    this.evictCaches(name);
     this.log.info("Parameter deleted", { name });
   }
 
@@ -526,15 +555,21 @@ export class ParameterProvider {
     if (names.length === 0) return [];
     await this.repo.deleteMany({ name: { inArray: names } });
     for (const name of names) {
-      this.cachedCurrent.delete(name);
-      this.cachedNext.delete(name);
-      this.loaded.delete(name);
-      this.loadPromises.delete(name);
-      this.loadGeneration.delete(name);
-      this.migrationChecked.delete(name);
+      this.evictCaches(name);
     }
     this.log.info("Parameters deleted", { count: names.length });
     return names;
+  }
+
+  /** Drop every per-org value cache entry for `name` in the active org. */
+  protected evictCaches(name: string): void {
+    const ck = this.cacheKey(name);
+    this.cachedCurrent.delete(ck);
+    this.cachedNext.delete(ck);
+    this.loaded.delete(ck);
+    this.loadPromises.delete(ck);
+    this.loadGeneration.delete(ck);
+    this.migrationChecked.delete(ck);
   }
 
   /**
@@ -684,18 +719,21 @@ export class ParameterProvider {
    * Fetches current and next from database, updates cache.
    */
   protected async doLoad(name: string): Promise<void> {
-    const gen = (this.loadGeneration.get(name) ?? 0) + 1;
-    this.loadGeneration.set(name, gen);
+    // Snapshot the org-scoped cache key at call time: the whole load runs in
+    // one request context, so the atom (hence `ck`) is stable here.
+    const ck = this.cacheKey(name);
+    const gen = (this.loadGeneration.get(ck) ?? 0) + 1;
+    this.loadGeneration.set(ck, gen);
 
     const { current, next } = await this.loadCurrentAndNext(name);
     const schemaHash = this.schemaHashes.get(name) ?? "";
 
     // Superseded by a newer load — discard results
-    if (this.loadGeneration.get(name) !== gen) return;
+    if (this.loadGeneration.get(ck) !== gen) return;
 
     // Check if migration is needed
-    if (current && !this.migrationChecked.has(name)) {
-      this.migrationChecked.add(name);
+    if (current && !this.migrationChecked.has(ck)) {
+      this.migrationChecked.add(ck);
       const migration = this.migrateValue(
         name,
         current.content,
@@ -717,46 +755,46 @@ export class ParameterProvider {
         // Reload after migration to get the new current
         const updated = await this.loadCurrentAndNext(name);
         if (updated.current) {
-          this.cachedCurrent.set(name, updated.current.content);
+          this.cachedCurrent.set(ck, updated.current.content);
         } else {
-          this.cachedCurrent.delete(name);
+          this.cachedCurrent.delete(ck);
         }
         if (updated.next) {
-          this.cachedNext.set(name, {
+          this.cachedNext.set(ck, {
             content: updated.next.content,
             activationDate: updated.next.activationDate,
           });
         } else {
-          this.cachedNext.delete(name);
+          this.cachedNext.delete(ck);
         }
-        this.loaded.add(name);
-        this.loadPromises.delete(name);
+        this.loaded.add(ck);
+        this.loadPromises.delete(ck);
         this.notifySubscribers(name);
         return;
       }
     }
 
-    const prev = this.cachedCurrent.get(name);
-    const hadPrev = this.cachedCurrent.has(name);
+    const prev = this.cachedCurrent.get(ck);
+    const hadPrev = this.cachedCurrent.has(ck);
     if (current) {
-      this.cachedCurrent.set(name, current.content);
+      this.cachedCurrent.set(ck, current.content);
     } else {
-      this.cachedCurrent.delete(name);
+      this.cachedCurrent.delete(ck);
     }
     if (next) {
-      this.cachedNext.set(name, {
+      this.cachedNext.set(ck, {
         content: next.content,
         activationDate: next.activationDate,
       });
     } else {
-      this.cachedNext.delete(name);
+      this.cachedNext.delete(ck);
     }
-    this.loaded.add(name);
-    this.loadPromises.delete(name);
+    this.loaded.add(ck);
+    this.loadPromises.delete(ck);
 
     if (
       hadPrev &&
-      JSON.stringify(prev) !== JSON.stringify(this.cachedCurrent.get(name))
+      JSON.stringify(prev) !== JSON.stringify(this.cachedCurrent.get(ck))
     ) {
       this.notifySubscribers(name);
     }
@@ -905,15 +943,16 @@ export class ParameterProvider {
    * Reload next version info in background (non-blocking).
    */
   protected reloadNextInBackground(name: string): void {
+    const ck = this.cacheKey(name);
     this.loadCurrentAndNext(name)
       .then(({ next }) => {
         if (next) {
-          this.cachedNext.set(name, {
+          this.cachedNext.set(ck, {
             content: next.content,
             activationDate: next.activationDate,
           });
         } else {
-          this.cachedNext.delete(name);
+          this.cachedNext.delete(ck);
         }
       })
       .catch((err) => {
@@ -928,11 +967,12 @@ export class ParameterProvider {
    * Notify all subscribers of a value change.
    */
   protected notifySubscribers(name: string): void {
-    const subs = this.subscribers.get(name);
+    const ck = this.cacheKey(name);
+    const subs = this.subscribers.get(ck);
     if (!subs) return;
     const param = this.primitives.get(name);
-    const value = this.cachedCurrent.has(name)
-      ? this.cachedCurrent.get(name)
+    const value = this.cachedCurrent.has(ck)
+      ? this.cachedCurrent.get(ck)
       : param?.options.default;
     for (const fn of subs) {
       fn(value);

@@ -309,6 +309,13 @@
       "when": 1780862260443,
       "tag": "0043_windy_wild_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1781045760288,
+      "tag": "0044_opposite_scalphunter",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { currentTenantAtom } from "alepha/security";
 import { describe, expect, it } from "vitest";
 import {
   $parameter,
@@ -979,8 +980,9 @@ describe("Schema migration", () => {
     config.param.sub((v) => received.push(v));
 
     // Now save a value with old schema hash to trigger migration
-    // Reset migrationChecked to allow re-migration
-    (provider as any).migrationChecked.delete("migrate.notify.sub");
+    // Reset migrationChecked to allow re-migration. The value caches are now
+    // keyed `${org}:${name}` — no org atom in this test → the `~global` org.
+    (provider as any).migrationChecked.delete("~global:migrate.notify.sub");
     await provider.save(
       "migrate.notify.sub",
       { name: "alice" },
@@ -1654,7 +1656,8 @@ describe("set with scheduled activation", () => {
 
     // cachedNext should be populated
     const providerAny = provider as any;
-    const cachedNext = providerAny.cachedNext.get("set.sched.cache");
+    // Value caches are keyed `${org}:${name}`; no org atom here → `~global`.
+    const cachedNext = providerAny.cachedNext.get("~global:set.sched.cache");
     expect(cachedNext).not.toBeUndefined();
     expect(cachedNext.content).toEqual({
       enableBeta: true,
@@ -2244,5 +2247,56 @@ describe("set idempotency", () => {
     await config.features.set({ enableBeta: true, maxUploadSize: 100 });
 
     expect(received.length).toBe(0);
+  });
+});
+
+describe("$parameter multi-tenant isolation", () => {
+  it("partitions stored values + caches by the active org (no cross-tenant read/write)", async () => {
+    class AppConfig {
+      settings = $parameter({
+        name: "club.settings",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 1 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const orgA = "00000000-0000-0000-0000-0000000000aa";
+    const orgB = "00000000-0000-0000-0000-0000000000bb";
+
+    // Org A writes its own value.
+    alepha.store.set(currentTenantAtom, { id: orgA });
+    await config.settings.set({ enableBeta: true, maxUploadSize: 10 });
+    expect(await config.settings.get()).toEqual({
+      enableBeta: true,
+      maxUploadSize: 10,
+    });
+
+    // Org B sees ONLY its default — never org A's value (the bug this fixes).
+    alepha.store.set(currentTenantAtom, { id: orgB });
+    expect(await config.settings.get()).toEqual({
+      enableBeta: false,
+      maxUploadSize: 1,
+    });
+
+    // Org B writes its own; org A is untouched.
+    await config.settings.set({ enableBeta: false, maxUploadSize: 99 });
+    expect(await config.settings.get()).toEqual({
+      enableBeta: false,
+      maxUploadSize: 99,
+    });
+
+    alepha.store.set(currentTenantAtom, { id: orgA });
+    expect(await config.settings.get()).toEqual({
+      enableBeta: true,
+      maxUploadSize: 10,
+    });
+
+    await alepha.stop();
   });
 });
