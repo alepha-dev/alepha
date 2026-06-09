@@ -935,8 +935,6 @@ describe("CloudflareAdapter", () => {
       const run: any = async (cmd: any) => {
         if (typeof cmd === "string") commands.push(cmd);
       };
-      run.pause = () => {};
-      run.resume = () => {};
       run.end = () => {};
 
       await adapter.exportDb(ctx, run, {
@@ -977,8 +975,6 @@ function createMockRun(): any {
       await task.handler();
     }
   };
-  run.pause = () => {};
-  run.resume = () => {};
   run.end = () => {};
   return run;
 }

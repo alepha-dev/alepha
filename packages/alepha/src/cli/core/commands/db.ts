@@ -1,5 +1,5 @@
 import { $inject, AlephaError, t } from "alepha";
-import { $command, Runner } from "alepha/command";
+import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import type {
   DatabaseProvider,
@@ -28,7 +28,6 @@ export class DbCommand {
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly entryProvider = $inject(AppEntryProvider);
   protected readonly viteUtil = $inject(ViteUtils);
-  protected readonly runner = $inject(Runner);
 
   /**
    * Check if database migrations are up to date.
@@ -278,10 +277,6 @@ export class DbCommand {
         handler: async () => {
           process.env.MIGRATE = "true";
 
-          if (this.runner.useDynamicLogger) {
-            process.env.LOG_LEVEL = "warn";
-          }
-
           const alepha = await this.viteUtil.runAlepha({
             entry,
             mode: "production",
@@ -291,21 +286,6 @@ export class DbCommand {
         },
       });
     },
-
-    //   await run({
-    //     name: `db migrate (${mode || "development"})`,
-    //     handler: async () => {
-    //       await this.utils.exec(`tsx ${entry.server}`, {
-    //         capture: this.runner.useDynamicLogger,
-    //         env: {
-    //           ...process.env,
-    //           NODE_ENV: "production",
-    //           MIGRATE: "true",
-    //         },
-    //       });
-    //     },
-    //   });
-    // },
   });
 
   /**

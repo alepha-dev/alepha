@@ -50,8 +50,6 @@ describe("BuildDockerTask", () => {
     run.rm = async () => "";
     run.cp = async () => "";
     run.end = () => {};
-    run.pause = () => {};
-    run.resume = () => {};
     return run;
   };
 

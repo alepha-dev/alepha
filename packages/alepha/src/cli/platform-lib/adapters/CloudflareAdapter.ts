@@ -82,13 +82,11 @@ export class CloudflareAdapter extends PlatformAdapter {
     command: string,
     options: Parameters<ShellProvider["run"]>[1] = {},
   ) {
-    const capture = options.capture;
-    const output = await this.shell.run(command, {
-      ...options,
-      capture: capture ?? this.runner.useDynamicLogger,
-    });
+    const output = await this.shell.run(command, options);
 
-    if (capture && !this.runner.useDynamicLogger) {
+    // When the caller captured the output, echo it to the log so the user
+    // still sees it (uncaptured commands stream straight to the terminal).
+    if (options.capture) {
       this.log.info(output);
     }
 
@@ -104,7 +102,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     await run({
       name: "authenticate",
       handler: async () => {
-        await this.wrangler.ensureInstalled(ctx.root, run);
+        await this.wrangler.ensureInstalled(ctx.root);
 
         // Always validate the token — refresh tokens can expire between runs
         // even when the cache TTL hasn't elapsed.
@@ -117,9 +115,7 @@ export class CloudflareAdapter extends PlatformAdapter {
         }
 
         if (needsLogin) {
-          run.pause();
           await this.wrangler.login();
-          run.resume();
         }
 
         // Skip account resolution if cache is fresh

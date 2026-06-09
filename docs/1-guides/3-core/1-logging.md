@@ -90,13 +90,18 @@ Set via the `LOG_FORMAT` environment variable.
 
 | Value | Description | Provider |
 |-------|-------------|----------|
-| `pretty` | Colored, human-readable output with timestamps | `PrettyFormatterProvider` |
+| `pretty` | Colored, human-readable output with timestamps, module and context | `PrettyFormatterProvider` |
+| `cli` | Compact output for CLI sessions: `HH:MM:SS L message {json}` (no module/context) | `CliFormatterProvider` |
 | `json` | Structured JSON, one object per line | `JsonFormatterProvider` |
-| `raw` | Plain message text, no metadata | `RawFormatterProvider` |
+| `raw` | Plain message text, no metadata (best for piping) | `RawFormatterProvider` |
 
 If `LOG_FORMAT` is not set:
 - **Production** (non-browser): defaults to `json`
 - **Everything else**: defaults to `pretty`
+
+The `alepha` and `create-alepha` CLIs default to `cli`. Pass `--verbose` to a
+CLI command to switch to `pretty` at `trace` level when you need module/context
+and the framework's internal logs.
 
 ## Log Entry Structure
 

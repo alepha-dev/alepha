@@ -7,12 +7,6 @@ import { MemoryShellProvider } from "alepha/system";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { Runner } from "../index.ts";
 
-class TestRunner extends Runner {
-  public override get useDynamicLogger() {
-    return true;
-  }
-}
-
 describe("Runner", () => {
   let mockLogger: MemoryDestinationProvider;
   let mockShell: MemoryShellProvider;
@@ -35,26 +29,6 @@ describe("Runner", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
-
-  test("useDynamicLogger: state overrides disable the stylish UI even with LOG_FORMAT=raw", () => {
-    // env says "raw" (stylish), but a runtime state override (what the CLI
-    // `--verbose` flag sets) must win. Asserting the *false* direction is
-    // deterministic across CI/non-CI (the dynamic-on path is gated on isCI).
-    const alepha = Alepha.create({
-      env: { LOG_LEVEL: "info", LOG_FORMAT: "raw" },
-    }).with({
-      provide: LogDestinationProvider,
-      use: MemoryDestinationProvider,
-    });
-    const r = alepha.inject(Runner);
-
-    alepha.store.set("alepha.logger.format", "pretty");
-    expect(r.useDynamicLogger).toBe(false);
-
-    alepha.store.set("alepha.logger.format", undefined);
-    alepha.store.set("alepha.logger.level", "debug");
-    expect(r.useDynamicLogger).toBe(false);
   });
 
   test("should execute a single shell command via run.sh", async () => {
@@ -135,19 +109,18 @@ describe("Runner", () => {
     );
   });
 
-  test("summary() should print a formatted table of executed tasks", async () => {
+  test("end() should print a total-time summary line after tasks run", async () => {
     await runner.run(`echo "Task 1"`);
     await runner.run("A slightly longer task name", () => {});
 
+    mockLogger.clear();
     runner.end();
 
-    const logs = mockLogger.logs
-      .slice(4)
-      .map((l) => l.message)
-      .join("\n");
+    const messages = mockLogger.logs.map((l) => l.message);
+    expect(messages.some((m) => m.startsWith("Total time:"))).toBe(true);
   });
 
-  test("summary() should not print a table if no tasks were run", () => {
+  test("end() should print nothing if no tasks were run", () => {
     runner.end();
 
     const logs = mockLogger.logs.map((l) => l.message);
@@ -195,91 +168,18 @@ describe("Runner", () => {
     expect(mockLogger.logs[1].message).toMatch(/^Finished 'clean' after/);
   });
 
-  test("should reset firstTaskStarted with PrettyPrint (LOG_FORMAT=raw)", async () => {
-    // Use TestRunner to force useDynamicLogger=true (bypasses isCI check)
-    const alepha = Alepha.create({
-      env: {
-        LOG_LEVEL: "info",
-        LOG_FORMAT: "raw",
-      },
-    })
-      .with({ provide: LogDestinationProvider, use: MemoryDestinationProvider })
-      .with({ provide: Runner, use: TestRunner });
+  test("should log start and finish for duplicate task names in one command", async () => {
+    runner.startCommand("cli", "verify");
+    await runner.run("clean", () => {});
+    await runner.run("lint", () => {});
+    await runner.run("typecheck", () => {});
+    await runner.run("clean", () => {}); // Same name as first task
+    runner.end();
 
-    const prettyRunner = alepha.inject(Runner);
-
-    // Capture stdout to verify PrettyPrint output
-    const output: string[] = [];
-    const originalWrite = process.stdout.write.bind(process.stdout);
-    process.stdout.write = (chunk: any) => {
-      output.push(String(chunk));
-      return true;
-    };
-
-    try {
-      // Run command A
-      prettyRunner.startCommand("cli", "commandA");
-      await prettyRunner.run("task A", () => {});
-      prettyRunner.end();
-
-      // Verify command A header was printed
-      expect(output.some((line) => line.includes("cli commandA"))).toBe(true);
-
-      // Clear output for command B
-      output.length = 0;
-
-      // Run command B - should get its own header
-      prettyRunner.startCommand("cli", "commandB");
-      await prettyRunner.run("task B", () => {});
-      prettyRunner.end();
-
-      // Verify command B header was printed (not reusing A's state)
-      expect(output.some((line) => line.includes("cli commandB"))).toBe(true);
-    } finally {
-      process.stdout.write = originalWrite;
-    }
-  });
-
-  test("should display duplicate task names in same command with PrettyPrint", async () => {
-    // Use TestRunner to force useDynamicLogger=true (bypasses isCI check)
-    const alepha = Alepha.create({
-      env: {
-        LOG_LEVEL: "info",
-        LOG_FORMAT: "raw",
-      },
-    })
-      .with({ provide: LogDestinationProvider, use: MemoryDestinationProvider })
-      .with({ provide: Runner, use: TestRunner });
-
-    const prettyRunner = alepha.inject(Runner);
-
-    // Capture stdout to verify PrettyPrint output
-    const output: string[] = [];
-    const originalWrite = process.stdout.write.bind(process.stdout);
-    process.stdout.write = (chunk: any) => {
-      output.push(String(chunk));
-      return true;
-    };
-
-    try {
-      // Run command with duplicate task names (like "alepha verify" does with "clean")
-      prettyRunner.startCommand("cli", "verify");
-      await prettyRunner.run("clean", () => {});
-      await prettyRunner.run("lint", () => {});
-      await prettyRunner.run("typecheck", () => {});
-      await prettyRunner.run("clean", () => {}); // Same name as first task
-      prettyRunner.end();
-
-      // Count occurrences of "clean" in output (should appear twice)
-      const fullOutput = output.join("");
-      const cleanMatches = fullOutput.match(/clean/g) || [];
-      expect(cleanMatches.length).toBeGreaterThanOrEqual(2);
-
-      // Verify all tasks were logged
-      expect(fullOutput).toContain("lint");
-      expect(fullOutput).toContain("typecheck");
-    } finally {
-      process.stdout.write = originalWrite;
-    }
+    const messages = mockLogger.logs.map((l) => l.message).join("\n");
+    const cleanStarts = messages.match(/Starting 'clean'/g) ?? [];
+    expect(cleanStarts.length).toBe(2);
+    expect(messages).toContain("Starting 'lint' ...");
+    expect(messages).toContain("Starting 'typecheck' ...");
   });
 });

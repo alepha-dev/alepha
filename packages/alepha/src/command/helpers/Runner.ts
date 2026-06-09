@@ -4,7 +4,6 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { ShellProvider } from "alepha/system";
 import { CommandError } from "../errors/CommandError.ts";
-import { PrettyPrint } from "./PrettyPrint.ts";
 
 export type Task = {
   name: string;
@@ -43,80 +42,43 @@ export interface RunnerMethod {
    * > But can be called manually if needed to print more stuff before the command ends.
    */
   end: () => void;
-
-  /**
-   * Pause the spinner so external processes can write to stdout directly.
-   */
-  pause: () => void;
-
-  /**
-   * Resume the spinner after a pause.
-   */
-  resume: () => void;
 }
 
+/**
+ * Runs CLI tasks (shell commands or functions) and logs their lifecycle.
+ *
+ * Output is intentionally plain and verbose: every task logs a
+ * `Starting …` / `Finished … after Ns` line through the standard logger,
+ * and shelled commands **stream** their stdout/stderr straight to the
+ * terminal (`capture: false`) so tool output — `vite build` warnings,
+ * Biome diagnostics, nested `alepha` subcommands — is visible live.
+ */
 export class Runner {
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected timers: Timer[] = [];
   protected readonly startTime: number = this.dateTime.nowMillis();
-  protected readonly prettyPrint = $inject(PrettyPrint);
   protected readonly alepha = $inject(Alepha);
   protected readonly shell = $inject(ShellProvider);
   public readonly run: RunnerMethod;
-  protected cliName = "";
-  protected commandName = "";
-  protected firstTaskStarted = false;
-  protected taskCounter = 0;
 
   constructor() {
     this.run = this.createRunMethod();
   }
 
-  public get useDynamicLogger() {
-    if (this.alepha.isCI() || this.alepha.env.CLAUDECODE) {
-      return false;
-    }
-
-    // Runtime state overrides the env defaults (e.g. the CLI `--verbose`
-    // flag sets level=debug + format=pretty), so a flag can flip the
-    // stylish task UI off without restarting with LOG_* env vars.
-    const logLevel = String(
-      this.alepha.store.get("alepha.logger.level") ??
-        this.alepha.env.LOG_LEVEL ??
-        "",
-    ).toLowerCase();
-    if (logLevel === "debug" || logLevel === "trace") {
-      return false;
-    }
-
-    const format =
-      this.alepha.store.get("alepha.logger.format") ??
-      this.alepha.env.LOG_FORMAT;
-    return format === "raw";
-  }
-
   /**
-   * Start a new command session with header (for pretty print mode)
+   * Start a new command session.
+   *
+   * Retained for API compatibility (the CLI calls it before each command);
+   * task lifecycle is now logged statelessly, so there is nothing to reset.
    */
-  public startCommand(cliName: string, commandName: string): void {
-    this.cliName = cliName;
-    this.commandName = commandName;
-    this.firstTaskStarted = false;
-    this.taskCounter = 0;
-  }
+  public startCommand(_cliName: string, _commandName: string): void {}
 
   protected createRunMethod() {
     const runFn: RunnerMethod = async (
       cmd: string | Task | Array<string | Task>,
       options?: RunOptions | (() => any),
     ) => {
-      if (this.useDynamicLogger && !this.firstTaskStarted) {
-        this.prettyPrint.startCommand(this.cliName, this.commandName);
-      }
-
-      this.firstTaskStarted = true;
-
       const root =
         typeof options === "object" && options.root ? options.root : undefined;
 
@@ -185,12 +147,6 @@ export class Runner {
     };
 
     runFn.end = () => this.end();
-    runFn.pause = () => {
-      if (this.useDynamicLogger) this.prettyPrint.pause();
-    };
-    runFn.resume = () => {
-      if (this.useDynamicLogger) this.prettyPrint.resume();
-    };
 
     return runFn;
   }
@@ -199,7 +155,9 @@ export class Runner {
     cmd: string,
     opts: { root?: string } = {},
   ): Promise<string> {
-    return this.shell.run(cmd, { root: opts.root, capture: true });
+    // Stream output straight to the terminal (capture: false) so the user
+    // sees tool output live. The returned string is therefore empty.
+    return this.shell.run(cmd, { root: opts.root, capture: false });
   }
 
   /**
@@ -220,21 +178,13 @@ export class Runner {
    * Prints a summary of all executed tasks and their durations.
    */
   public end(): void {
-    if (this.useDynamicLogger && this.firstTaskStarted) {
-      this.prettyPrint.endCommand();
-      return;
-    }
-
-    // Non-dynamic mode: use logging
     if (this.timers.length === 0) return;
 
-    this.log.info("");
     const totalTime = (
       (this.dateTime.nowMillis() - this.startTime) /
       1000
     ).toFixed(1);
     this.log.info(`Total time: ${totalTime}s`);
-    this.log.info(``);
 
     // clear timers after rendering
     this.timers = [];
@@ -242,25 +192,18 @@ export class Runner {
 
   protected async executeTask(task: Task): Promise<string> {
     const now = this.dateTime.nowMillis();
-    const taskId = `task-${++this.taskCounter}`; // Use unique counter-based ID
 
-    // Setup dynamic logger
-    if (this.useDynamicLogger) {
-      this.prettyPrint.startSpinner(taskId, task.name);
-    } else {
-      this.log.info(`Starting '${task.name}' ...`);
-    }
+    this.log.info(`Starting '${task.name}' ...`);
 
     let stdout = "";
 
     try {
       stdout = String((await task.handler()) ?? "");
     } catch (error) {
-      // Clear spinner and show error
-      if (this.useDynamicLogger) {
-        this.prettyPrint.error(taskId, task.name);
-      }
-      if (error instanceof Error && "stdout" in error) {
+      // Streamed tasks have already printed their output live; this only
+      // surfaces output from handlers that captured it internally (capture:
+      // true) before throwing.
+      if (error instanceof Error && "stdout" in error && error.stdout) {
         this.log.info(`\n\n${error.stdout}`);
       }
       throw new CommandError(`Task '${task.name}' failed`, { cause: error });
@@ -272,14 +215,8 @@ export class Runner {
 
     const message =
       stdout && !stdout.includes("\n") ? stdout.trim() : undefined;
-
-    // Clear spinner and show completion
-    if (this.useDynamicLogger) {
-      this.prettyPrint.success(taskId, task.name, `${duration}s`, message);
-    } else {
-      const suffix = message ? ` - ${message}` : "";
-      this.log.info(`Finished '${task.name}' after ${duration}s${suffix}`);
-    }
+    const suffix = message ? ` - ${message}` : "";
+    this.log.info(`Finished '${task.name}' after ${duration}s${suffix}`);
 
     this.timers.push({
       name: task.name,
@@ -287,27 +224,5 @@ export class Runner {
     });
 
     return stdout;
-  }
-
-  protected renderTable(data: string[][]): void {
-    if (data.length === 0) return;
-
-    const col1Width = Math.max(...data.map(([col1]) => col1.length), 7);
-    const col2Width = Math.max(...data.map(([, col2]) => col2.length), 8);
-
-    const divider = `+${"-".repeat(col1Width + 2)}+${"-".repeat(
-      col2Width + 2,
-    )}+`;
-    this.log.info(divider);
-    this.log.info(
-      `| ${"Command".padEnd(col1Width)} | ${"Duration".padEnd(col2Width)} |`,
-    );
-    this.log.info(divider);
-    for (const [col1, col2] of data) {
-      this.log.info(
-        `| ${col1.padEnd(col1Width)} | ${col2.padEnd(col2Width)} |`,
-      );
-    }
-    this.log.info(divider);
   }
 }

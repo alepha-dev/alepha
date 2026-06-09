@@ -1,6 +1,5 @@
 import { $inject } from "alepha";
 import { AlephaCliUtils, PackageManagerUtils } from "alepha/cli";
-import { Runner, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { ShellProvider } from "alepha/system";
 
@@ -16,19 +15,16 @@ export class WranglerApi {
   protected readonly shell = $inject(ShellProvider);
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly pm = $inject(PackageManagerUtils);
-  protected readonly runner = $inject(Runner);
 
   protected async runShell(
     command: string,
     options: Parameters<ShellProvider["run"]>[1] = {},
   ) {
-    const capture = options.capture;
-    const output = await this.shell.run(command, {
-      ...options,
-      capture: capture ?? this.runner.useDynamicLogger,
-    });
+    const output = await this.shell.run(command, options);
 
-    if (capture && !this.runner.useDynamicLogger) {
+    // When the caller captured the output, echo it to the log so the user
+    // still sees it (uncaptured commands stream straight to the terminal).
+    if (options.capture) {
       this.log.info(output);
     }
 
@@ -42,16 +38,11 @@ export class WranglerApi {
   /**
    * Ensure wrangler is installed in the project.
    */
-  public async ensureInstalled(root: string, run: RunnerMethod): Promise<void> {
+  public async ensureInstalled(root: string): Promise<void> {
     await this.pm.ensureDependency(root, "wrangler", {
       dev: true,
       exec: async (cmd, opts) => {
-        run.pause();
-        try {
-          await this.utils.exec(cmd, opts);
-        } finally {
-          run.resume();
-        }
+        await this.utils.exec(cmd, opts);
       },
     });
   }

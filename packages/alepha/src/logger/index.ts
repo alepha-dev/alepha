@@ -1,5 +1,6 @@
 import { $module, type Static, t } from "alepha";
 import { $logger } from "./primitives/$logger.ts";
+import { CliFormatterProvider } from "./providers/CliFormatterProvider.ts";
 import { ConsoleColorProvider } from "./providers/ConsoleColorProvider.ts";
 import { ConsoleDestinationProvider } from "./providers/ConsoleDestinationProvider.ts";
 import { JsonFormatterProvider } from "./providers/JsonFormatterProvider.ts";
@@ -14,6 +15,7 @@ import { Logger } from "./services/Logger.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./primitives/$logger.ts";
+export * from "./providers/CliFormatterProvider.ts";
 export * from "./providers/ConsoleColorProvider.ts";
 export * from "./providers/ConsoleDestinationProvider.ts";
 export * from "./providers/JsonFormatterProvider.ts";
@@ -34,6 +36,7 @@ export * from "./services/Logger.ts";
  * - Global logger access
  * - JSON format
  * - Pretty colored output
+ * - Compact CLI format
  * - Raw text format
  * - Console destination
  * - Memory destination (for devtools)
@@ -52,6 +55,7 @@ export const AlephaLogger = $module({
     JsonFormatterProvider,
     PrettyFormatterProvider,
     RawFormatterProvider,
+    CliFormatterProvider,
   ],
   register: (alepha) => {
     const env = alepha.parseEnv(envSchema);
@@ -106,6 +110,9 @@ export const AlephaLogger = $module({
         }
         if (logFormat === "raw") {
           return RawFormatterProvider;
+        }
+        if (logFormat === "cli") {
+          return CliFormatterProvider;
         }
         return PrettyFormatterProvider;
       }
@@ -198,11 +205,12 @@ Level can be set for a specific module:
   /**
    * Built-in log formats.
    * - "json" - JSON format, useful for structured logging and log aggregation. {@link JsonFormatterProvider}
-   * - "pretty" - Simple text format, human-readable, with colors. {@link PrettyFormatterProvider}
-   * - "raw" - Raw format, no formatting, just the message. {@link RawFormatterProvider}
+   * - "pretty" - Full text format, human-readable, with colors and module/context. {@link PrettyFormatterProvider}
+   * - "cli" - Compact format for CLI sessions: time, level initial, message, json. {@link CliFormatterProvider}
+   * - "raw" - Raw format, no formatting, just the message (best for piping). {@link RawFormatterProvider}
    */
   LOG_FORMAT: t.optional(
-    t.enum(["json", "pretty", "raw"], {
+    t.enum(["json", "pretty", "raw", "cli"], {
       description: "Default log format for the application.",
       lowercase: true,
     }),

@@ -149,7 +149,7 @@ export class CliProvider {
       // No `-v` alias — it collides with `--version` on the root command.
       aliases: ["verbose"],
       description:
-        "Verbose output: debug logs in plain pretty format (turns off the dynamic CLI UI).",
+        "Verbose output: trace-level logs (framework internals) in pretty format. Task output already streams by default.",
       schema: t.boolean(),
     },
   };
@@ -182,11 +182,17 @@ export class CliProvider {
         { strict: false }, // Don't throw for command-specific flags
       );
 
-      // `--verbose` → flip the logger to debug + plain pretty output via
-      // state (read live by Logger + Runner). Set before the command runs
-      // so its output and task UI honor it.
-      if (globalFlags.verbose) {
-        this.alepha.store.set("alepha.logger.level", "debug");
+      // `--verbose` → raise the logger to trace + pretty format via state
+      // (read live by Logger). Task output already streams to the terminal;
+      // this additionally surfaces the framework's own trace/debug logs.
+      //
+      // An agent session (Claude Code sets CLAUDECODE) implies verbose: the
+      // compact `cli` format is tuned for a human watching a terminal, but an
+      // agent benefits from the full module/context and internal logs — same
+      // as if `--verbose` were passed.
+      const verbose = globalFlags.verbose || !!this.alepha.env.CLAUDECODE;
+      if (verbose) {
+        this.alepha.store.set("alepha.logger.level", "trace");
         this.alepha.store.set("alepha.logger.format", "pretty");
       }
 
@@ -981,6 +987,11 @@ export class CliProvider {
    *                  If omitted, shows general CLI help with all commands.
    */
   public printHelp(command?: CommandPrimitive<any>): void {
+    // Help is a document, not a log stream: render bare lines (no timestamp
+    // or level prefix). Embedded colors live in the message itself, so they
+    // survive the `raw` formatter.
+    this.alepha.store.set("alepha.logger.format", "raw");
+
     const cliName = this.name || "cli";
     const c = this.color;
     this.log.info(""); // Newline

@@ -1,6 +1,6 @@
 import { $inject, Alepha } from "alepha";
 import { AlephaCliUtils } from "alepha/cli";
-import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
+import { EnvUtils, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";
@@ -31,7 +31,6 @@ export class VercelAdapter extends PlatformAdapter {
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly api = $inject(VercelApi);
   protected readonly vercelCli = $inject(VercelCli);
-  protected readonly runner = $inject(Runner);
 
   /**
    * Vars that should not be pushed as env vars.
@@ -43,13 +42,11 @@ export class VercelAdapter extends PlatformAdapter {
     command: string,
     options: Parameters<ShellProvider["run"]>[1] = {},
   ) {
-    const capture = options.capture;
-    const output = await this.shell.run(command, {
-      ...options,
-      capture: capture ?? this.runner.useDynamicLogger,
-    });
+    const output = await this.shell.run(command, options);
 
-    if (capture && !this.runner.useDynamicLogger) {
+    // When the caller captured the output, echo it to the log so the user
+    // still sees it (uncaptured commands stream straight to the terminal).
+    if (options.capture) {
       this.log.info(output);
     }
 
@@ -64,7 +61,7 @@ export class VercelAdapter extends PlatformAdapter {
     await run({
       name: "authenticate",
       handler: async () => {
-        await this.vercelCli.ensureInstalled(ctx.root, run);
+        await this.vercelCli.ensureInstalled(ctx.root);
 
         let needsLogin = false;
 
@@ -76,9 +73,7 @@ export class VercelAdapter extends PlatformAdapter {
         }
 
         if (needsLogin) {
-          run.pause();
           await this.vercelCli.login();
-          run.resume();
         }
 
         if (await this.cache.isLoginFresh(ctx.root, "vercel")) {

@@ -6,6 +6,7 @@ import {
   type LogLevel,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { CliFormatterProvider } from "../providers/CliFormatterProvider.ts";
 import { JsonFormatterProvider } from "../providers/JsonFormatterProvider.ts";
 import { LogDestinationProvider } from "../providers/LogDestinationProvider.ts";
 import { LogFormatterProvider } from "../providers/LogFormatterProvider.ts";
@@ -24,6 +25,7 @@ export class Logger implements LoggerInterface {
   protected readonly jsonFormatter = $inject(JsonFormatterProvider);
   protected readonly prettyFormatter = $inject(PrettyFormatterProvider);
   protected readonly rawFormatter = $inject(RawFormatterProvider);
+  protected readonly cliFormatter = $inject(CliFormatterProvider);
   protected readonly destination = $inject(LogDestinationProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
@@ -76,6 +78,8 @@ export class Logger implements LoggerInterface {
         return this.prettyFormatter;
       case "raw":
         return this.rawFormatter;
+      case "cli":
+        return this.cliFormatter;
       default:
         return this.defaultFormatter;
     }

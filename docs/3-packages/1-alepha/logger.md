@@ -16,6 +16,7 @@ Configurable logging with multiple outputs.
 - Global logger access
 - JSON format
 - Pretty colored output
+- Compact CLI format
 - Raw text format
 - Console destination
 - Memory destination (for devtools)
@@ -27,3 +28,7 @@ Configurable logging with multiple outputs.
 ### Primitives
 
 - [`$logger`](/docs/reference-primitives-$logger) — Create a logger.
+
+### Providers
+
+- [`CliFormatterProvider`](/docs/reference-providers-cliformatterprovider) — Compact formatter for CLI output.

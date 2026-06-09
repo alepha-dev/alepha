@@ -2,7 +2,6 @@ import { homedir, platform } from "node:os";
 import { join } from "node:path";
 import { $inject, AlephaError } from "alepha";
 import { AlephaCliUtils, PackageManagerUtils } from "alepha/cli";
-import { Runner, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
@@ -18,19 +17,16 @@ export class VercelCli {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly pm = $inject(PackageManagerUtils);
-  protected readonly runner = $inject(Runner);
 
   protected async runShell(
     command: string,
     options: Parameters<ShellProvider["run"]>[1] = {},
   ) {
-    const capture = options.capture;
-    const output = await this.shell.run(command, {
-      ...options,
-      capture: capture ?? this.runner.useDynamicLogger,
-    });
+    const output = await this.shell.run(command, options);
 
-    if (capture && !this.runner.useDynamicLogger) {
+    // When the caller captured the output, echo it to the log so the user
+    // still sees it (uncaptured commands stream straight to the terminal).
+    if (options.capture) {
       this.log.info(output);
     }
 
@@ -44,16 +40,11 @@ export class VercelCli {
   /**
    * Ensure vercel CLI is installed in the project.
    */
-  public async ensureInstalled(root: string, run: RunnerMethod): Promise<void> {
+  public async ensureInstalled(root: string): Promise<void> {
     await this.pm.ensureDependency(root, "vercel", {
       dev: true,
       exec: async (cmd, opts) => {
-        run.pause();
-        try {
-          await this.utils.exec(cmd, opts);
-        } finally {
-          run.resume();
-        }
+        await this.utils.exec(cmd, opts);
       },
     });
   }

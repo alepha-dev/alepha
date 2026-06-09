@@ -479,8 +479,6 @@ function createMockRun(): any {
       await task.handler();
     }
   };
-  run.pause = () => {};
-  run.resume = () => {};
   run.end = () => {};
   return run;
 }

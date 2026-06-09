@@ -10,7 +10,6 @@ import {
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import { PrettyAsker } from "./PrettyAsker.ts";
 
 export interface AskOptions<T extends TSchema = TString> {
   /**
@@ -51,11 +50,18 @@ export interface AskMethod {
   outro: (message: string) => void;
 }
 
+/**
+ * Reads interactive input from the terminal using plain readline prompts.
+ *
+ * One straightforward code path: questions are printed through the logger
+ * and answers are read with Node's `readline`. No raw-mode cursor control,
+ * no ANSI framing — output stays greppable and works the same in a TTY,
+ * under CI, or when piped.
+ */
 export class Asker {
   protected readonly log = $logger();
   public readonly ask: AskMethod;
   protected readonly alepha = $inject(Alepha);
-  protected readonly pretty = $inject(PrettyAsker);
 
   constructor() {
     this.ask = this.createAskMethod();
@@ -70,9 +76,6 @@ export class Asker {
     };
 
     askFn.permission = async (question: string) => {
-      if (this.pretty.enabled) {
-        return this.pretty.confirm(question);
-      }
       const response = await this.prompt(`${question} [Y/n]`, {
         schema: t.enum(["Y", "y", "n", "no", "yes"], { default: "Y" }),
       });
@@ -80,60 +83,17 @@ export class Asker {
     };
 
     askFn.intro = (title: string) => {
-      if (this.pretty.enabled) {
-        this.pretty.intro(title);
-      }
+      this.log.info(title);
     };
 
     askFn.outro = (message: string) => {
-      if (this.pretty.enabled) {
-        this.pretty.outro(message);
-      }
+      if (message) this.log.info(message);
     };
 
     return askFn;
   }
 
   protected async prompt<T extends TSchema = TString>(
-    question: string,
-    options: AskOptions<T>,
-  ): Promise<Static<T>> {
-    if (this.pretty.enabled) {
-      return this.prettyPrompt(question, options);
-    }
-    return this.plainPrompt(question, options);
-  }
-
-  /**
-   * Pretty mode: delegate to PrettyAsker based on schema type.
-   */
-  protected async prettyPrompt<T extends TSchema = TString>(
-    question: string,
-    options: AskOptions<T>,
-  ): Promise<Static<T>> {
-    const schema = options.schema as any;
-
-    // Enum schema → arrow-key select
-    if (schema?.enum && Array.isArray(schema.enum)) {
-      const value = await this.pretty.select(question, schema.enum);
-      if (options.validate) {
-        options.validate(value as Static<T>);
-      }
-      return value as Static<T>;
-    }
-
-    // Text/other schema → text input
-    const value = await this.pretty.text(question, schema);
-    if (options.validate) {
-      options.validate(value as Static<T>);
-    }
-    return value as Static<T>;
-  }
-
-  /**
-   * Plain mode: readline-based prompts (CI, Claude Code, debug).
-   */
-  protected async plainPrompt<T extends TSchema = TString>(
     question: string,
     options: AskOptions<T>,
   ): Promise<Static<T>> {

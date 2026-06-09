@@ -4,13 +4,7 @@ import {
   MemoryDestinationProvider,
 } from "alepha/logger";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { Asker, PrettyAsker } from "../index.ts";
-
-class DisabledPrettyAsker extends PrettyAsker {
-  public override get enabled(): boolean {
-    return false;
-  }
-}
+import { Asker } from "../index.ts";
 
 describe("Asker", () => {
   let alepha: Alepha;
@@ -45,7 +39,6 @@ describe("Asker", () => {
         provide: LogDestinationProvider,
         use: MemoryDestinationProvider,
       })
-      .with({ provide: PrettyAsker, use: DisabledPrettyAsker })
       .with(Asker);
 
     asker = alepha.inject(Asker);
