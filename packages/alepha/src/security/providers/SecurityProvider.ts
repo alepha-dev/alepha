@@ -315,6 +315,10 @@ export class SecurityProvider {
     const username = this.getUsernameFromPayload(payload);
     const picture = this.getPictureFromPayload(payload);
     const name = this.getNameFromPayload(payload);
+    const firstName =
+      typeof payload.given_name === "string" ? payload.given_name : undefined;
+    const lastName =
+      typeof payload.family_name === "string" ? payload.family_name : undefined;
     const organization = this.getOrganizationFromPayload(payload);
     const rolesFromSystem = this.getRoles(realmName);
     const roles = rolesFromPayload
@@ -334,6 +338,8 @@ export class SecurityProvider {
       id,
       roles,
       name,
+      firstName,
+      lastName,
       email,
       username,
       picture,

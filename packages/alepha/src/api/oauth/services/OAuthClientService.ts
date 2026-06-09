@@ -14,6 +14,15 @@ import {
   oauthClientEntity,
 } from "../entities/oauthClientEntity.ts";
 
+/**
+ * The user projection a realm's `loadUser` hands to the OAuth module —
+ * a `UserAccount` plus the OIDC profile extras the id_token mints
+ * (`email_verified`; `firstName`/`lastName` map to `given_name`/`family_name`).
+ */
+export interface OidcIssuerUser extends UserAccount {
+  emailVerified?: boolean;
+}
+
 export interface RegisterClientOptions {
   realm: string;
   /**
@@ -74,7 +83,7 @@ export class OAuthClientService {
     string,
     {
       issuer: IssuerPrimitive;
-      loadUser: (userId: string) => Promise<UserAccount>;
+      loadUser: (userId: string) => Promise<OidcIssuerUser>;
     }
   >();
 
@@ -85,7 +94,7 @@ export class OAuthClientService {
   public registerIssuer(
     realm: string,
     issuer: IssuerPrimitive,
-    loadUser: (userId: string) => Promise<UserAccount>,
+    loadUser: (userId: string) => Promise<OidcIssuerUser>,
   ): void {
     this.issuers.set(realm, { issuer, loadUser });
   }
@@ -127,7 +136,9 @@ export class OAuthClientService {
   /**
    * Mint an OIDC `id_token` for a consumed grant, signed by the realm's issuer
    * key (asymmetric when configured). Claims: iss, sub, aud (client_id), exp,
-   * iat, nonce (when present), email, name.
+   * iat, nonce (when present), plus the standard profile claims the loader
+   * provides: email, email_verified, name, given_name, family_name,
+   * preferred_username, picture.
    */
   public async issueIdToken(
     realm: string,
@@ -153,8 +164,15 @@ export class OAuthClientService {
         exp,
         iat,
         ...(params.nonce ? { nonce: params.nonce } : {}),
-        email: user.email,
-        name: user.name,
+        ...(user.email ? { email: user.email } : {}),
+        ...(user.emailVerified !== undefined
+          ? { email_verified: user.emailVerified }
+          : {}),
+        ...(user.name ? { name: user.name } : {}),
+        ...(user.firstName ? { given_name: user.firstName } : {}),
+        ...(user.lastName ? { family_name: user.lastName } : {}),
+        ...(user.username ? { preferred_username: user.username } : {}),
+        ...(user.picture ? { picture: user.picture } : {}),
       },
       realm,
       { header: { typ: "JWT" } },

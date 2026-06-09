@@ -193,6 +193,16 @@ export class RegistrationService {
       throw new BadRequestError("Phone number is required");
     }
 
+    if (
+      realmSettings?.firstNameLastName === "required" &&
+      (!body.firstName?.trim() || !body.lastName?.trim())
+    ) {
+      this.log.debug("Registration rejected: first/last name required", {
+        userRealmName,
+      });
+      throw new BadRequestError("First name and last name are required");
+    }
+
     // In "email" mode, derive the username from the email *now* so that
     // checkUserAvailability picks it up too, the DB unique index sees a
     // concrete value, and the persisted intent already carries the final

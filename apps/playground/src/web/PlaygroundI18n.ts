@@ -67,6 +67,8 @@ export class PlaygroundI18n {
         "auth.register.disabled":
           "L'inscription n'est pas disponible. Contacte ton administrateur.",
         "auth.register.backToSignIn": "Retour à la connexion",
+        "auth.register.firstName": "Prénom",
+        "auth.register.lastName": "Nom",
         "auth.register.username": "Nom d'utilisateur",
         "auth.register.email": "Email",
         "auth.register.phone": "Téléphone",

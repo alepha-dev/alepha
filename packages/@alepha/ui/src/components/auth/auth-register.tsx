@@ -201,6 +201,8 @@ export function AuthRegister(props: AuthRegisterProps) {
 
   const schema = useMemo(() => {
     const s = t.object({
+      firstName: t.optional(t.text({ trim: true, maxLength: 100 })),
+      lastName: t.optional(t.text({ trim: true, maxLength: 100 })),
       username: t.optional(
         t.text({ trim: true, pattern: settings.usernameRegExp }),
       ),
@@ -211,6 +213,9 @@ export function AuthRegister(props: AuthRegisterProps) {
       }),
     });
     const required = s.required as string[];
+    if (settings.firstNameLastName === "required") {
+      required.push("firstName", "lastName");
+    }
     if (settings.username === "required") required.push("username");
     if (settings.email === "required") required.push("email");
     if (settings.phoneNumber === "required") required.push("phoneNumber");
@@ -224,6 +229,8 @@ export function AuthRegister(props: AuthRegisterProps) {
         const intent = await userCtrl.createRegistrationIntent({
           query: { userRealmName: props.realmConfig.realmName },
           body: {
+            firstName: data.firstName,
+            lastName: data.lastName,
             username: data.username,
             email: data.email,
             phoneNumber: data.phoneNumber,
@@ -279,6 +286,7 @@ export function AuthRegister(props: AuthRegisterProps) {
   const passwordValue = String(formState.values?.password ?? "");
 
   const firstFieldId =
+    (settings.firstNameLastName !== "none" && form.input.firstName?.props.id) ||
     (settings.username !== "none" &&
       settings.username !== "email" &&
       form.input.username?.props.id) ||
@@ -593,6 +601,26 @@ function FormPhase(props: {
           )}
           {credentialsProvider && (
             <form {...form.props} className="flex flex-col gap-4">
+              {settings.firstNameLastName !== "none" &&
+                form.input.firstName &&
+                form.input.lastName && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Control
+                      label={tr("auth.register.firstName", {
+                        default: "First name",
+                      })}
+                      input={form.input.firstName}
+                      autoComplete="given-name"
+                    />
+                    <Control
+                      label={tr("auth.register.lastName", {
+                        default: "Last name",
+                      })}
+                      input={form.input.lastName}
+                      autoComplete="family-name"
+                    />
+                  </div>
+                )}
               {settings.username !== "none" &&
                 settings.username !== "email" &&
                 form.input.username && (

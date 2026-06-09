@@ -12,6 +12,18 @@ export const userAccountInfoSchema = t.object({
     }),
   ),
 
+  firstName: t.optional(
+    t.text({
+      description: "Given name of the user (OIDC `given_name`).",
+    }),
+  ),
+
+  lastName: t.optional(
+    t.text({
+      description: "Family name of the user (OIDC `family_name`).",
+    }),
+  ),
+
   email: t.optional(
     t.text({
       description: "Email address of the user.",
