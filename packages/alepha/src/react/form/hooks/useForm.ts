@@ -62,6 +62,21 @@ export const useForm = <T extends TObject>(
     });
   }, deps);
 
+  // The model is memoized once, but callers' handlers close over
+  // render-scoped state ("const [rows, setRows] = useState(...)" then
+  // "handler: () => onNext(rows)"). Invoking the mount-time closure submits
+  // the INITIAL state — edits silently vanish. Keep the callbacks fresh on
+  // every commit so submit always sees the latest render's closures.
+  useEffect(() => {
+    Object.assign(form.options, {
+      handler: options.handler,
+      onError: options.onError,
+      onChange: options.onChange,
+      onReset: options.onReset,
+      onCreateField: options.onCreateField,
+    });
+  });
+
   useEffect(() => {
     // Reference inequality alone is unsafe: callers commonly build the
     // `initialValues` object inline at the top of their render, which yields
