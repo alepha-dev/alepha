@@ -472,6 +472,10 @@ function Combobox(props: ComboboxProps) {
               // Match the native <SelectTrigger> shape so single- and
               // multi-select look identical.
               "h-8 w-full justify-between rounded-lg font-normal",
+              // …and its surface: the outline Button paints bg-background
+              // (grey on a white card); SelectTrigger is transparent in
+              // light and input/30 in dark.
+              "border-input bg-transparent hover:bg-transparent aria-expanded:bg-transparent dark:bg-input/30 dark:hover:bg-input/50 dark:aria-expanded:bg-input/50",
               selected.length === 0 && "text-muted-foreground",
             )}
           />
