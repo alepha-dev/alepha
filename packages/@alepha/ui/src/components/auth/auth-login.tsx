@@ -201,9 +201,19 @@ export function AuthLogin(props: AuthLoginProps) {
       ? formState.error.message
       : undefined;
   const showDivider = credentialsProvider && externalMethods.length > 0;
-  const realmQuery = props.realmConfig.realmName
-    ? `?realm=${encodeURIComponent(props.realmConfig.realmName)}`
+  // Propagate BOTH realm and the post-auth redirect to the register / reset
+  // links — dropping `redirect` here strands a user who signs up mid-flow
+  // (e.g. an OIDC authorize continuation) on the home page. Mirrors the
+  // login-link construction in auth-register.
+  const realmBit = props.realmConfig.realmName
+    ? `realm=${encodeURIComponent(props.realmConfig.realmName)}`
     : "";
+  const redirectBit =
+    typeof router.query.redirect === "string" && router.query.redirect
+      ? `redirect=${encodeURIComponent(router.query.redirect)}`
+      : "";
+  const linkQ = [realmBit, redirectBit].filter(Boolean).join("&");
+  const realmQuery = linkQ ? `?${linkQ}` : "";
 
   const variant = props.variant ?? "centered";
 

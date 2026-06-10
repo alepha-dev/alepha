@@ -65,9 +65,18 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
 
   const settings = props.realmConfig.settings;
   const allowed = settings?.resetPasswordAllowed !== false;
-  const realmQuery = props.realmConfig.realmName
-    ? `?realm=${encodeURIComponent(props.realmConfig.realmName)}`
+  // Keep BOTH realm and the post-auth redirect on the "back to sign in"
+  // links so a reset started mid-flow (OIDC continuation) resumes after
+  // login. Mirrors auth-login / auth-register.
+  const realmBit = props.realmConfig.realmName
+    ? `realm=${encodeURIComponent(props.realmConfig.realmName)}`
     : "";
+  const redirectBit =
+    typeof router.query.redirect === "string" && router.query.redirect
+      ? `redirect=${encodeURIComponent(router.query.redirect)}`
+      : "";
+  const linkQ = [realmBit, redirectBit].filter(Boolean).join("&");
+  const realmQuery = linkQ ? `?${linkQ}` : "";
 
   const emailForm = useForm({
     schema: resetPasswordRequestSchema,
