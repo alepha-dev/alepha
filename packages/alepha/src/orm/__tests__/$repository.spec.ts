@@ -4,6 +4,7 @@ import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testAllTypes,
   testBasicCrud,
+  testConditionsWithSiblings,
   testCrudWithTimestamps,
   testMultipleOperators,
   testOrderByModes,
@@ -61,6 +62,17 @@ describe("$repository", () => {
     });
     it("should fire hooks for all operations (postgres)", async () => {
       await testRepositoryHooks(Alepha.create().with(AlephaOrmPostgres));
+    });
+  });
+
+  describe("or/and with sibling conditions", () => {
+    it("should AND-combine or/and with sibling field conditions (sqlite)", async () => {
+      await testConditionsWithSiblings(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      );
+    });
+    it("should AND-combine or/and with sibling field conditions (postgres)", async () => {
+      await testConditionsWithSiblings(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 

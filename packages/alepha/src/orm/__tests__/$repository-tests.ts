@@ -1653,3 +1653,55 @@ export const testPagination = async (alepha: Alepha) => {
   // Clean up
   await app.users.clear({ force: true });
 };
+
+// ============================================================================
+// testConditionsWithSiblings — `or`/`and` keys must AND-combine with their
+// sibling field conditions, not short-circuit the whole where (the early
+// `return or(...)` in QueryManager used to DROP every other key).
+// ============================================================================
+
+const orSiblingsEntity = $entity({
+  name: "test_or_siblings",
+  schema: t.object({
+    id: db.primaryKey(),
+    name: t.text(),
+    age: t.number(),
+  }),
+});
+
+class ConditionsWithSiblingsApp {
+  repository = $repository(orSiblingsEntity);
+}
+
+export const testConditionsWithSiblings = async (alepha: Alepha) => {
+  const app = alepha.inject(ConditionsWithSiblingsApp);
+  await alepha.start();
+
+  await app.repository.create({ name: "Alice", age: 20 });
+  await app.repository.create({ name: "Bob", age: 25 });
+  await app.repository.create({ name: "Alice", age: 40 });
+  await app.repository.create({ name: "Eve", age: 40 });
+
+  // `or` next to a field condition: name must still constrain the result.
+  const orResults = await app.repository.findMany({
+    where: {
+      name: { eq: "Alice" },
+      or: [{ age: { lt: 22 } }, { age: { gt: 35 } }],
+    },
+  });
+  expect(orResults).toHaveLength(2);
+  expect(orResults.every((r) => r.name === "Alice")).toBe(true);
+
+  // `and` next to a field condition behaves the same way.
+  const andResults = await app.repository.findMany({
+    where: {
+      name: { eq: "Alice" },
+      and: [{ age: { gte: 18 } }, { age: { lte: 25 } }],
+    },
+  });
+  expect(andResults).toHaveLength(1);
+  expect(andResults[0].age).toBe(20);
+
+  // Clean up
+  await app.repository.clear({ force: true });
+};

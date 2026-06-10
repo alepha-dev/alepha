@@ -136,12 +136,23 @@ export class QueryManager {
             })
             .filter((it) => it != null);
 
+          // Combine with the sibling conditions instead of returning early —
+          // an early return here silently DROPPED every other key of the
+          // where (e.g. `{ userId: {...}, or: [...] }` matched ALL users).
           if (key === "and") {
-            return and(...operations);
+            const combined = and(...operations);
+            if (combined) {
+              conditions.push(combined);
+            }
+            continue;
           }
 
           if (key === "or") {
-            return or(...operations);
+            const combined = or(...operations);
+            if (combined) {
+              conditions.push(combined);
+            }
+            continue;
           }
         }
 
