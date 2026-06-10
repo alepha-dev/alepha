@@ -339,6 +339,18 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
     // `viska.club.alepha.dev` even when the user belongs to both.
     const tenant = this.alepha.store.get(currentTenantAtom)?.id;
 
+    // Resilient display name: compose from first/last when the caller didn't
+    // provide one (credentials users register with first+last but no `name`),
+    // and carry the OIDC given/family claims so consumers can re-derive it —
+    // otherwise such users surface as "Anonymous User".
+    const composedName =
+      user.name ??
+      ([user.firstName, user.lastName]
+        .filter((s): s is string => !!s?.trim())
+        .join(" ")
+        .trim() ||
+        undefined);
+
     const access_token = await this.jwt.create(
       {
         // jwt
@@ -348,7 +360,9 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         aud: this.name,
         sid, // session id, if available
         // oidc
-        name: user.name,
+        name: composedName,
+        given_name: user.firstName,
+        family_name: user.lastName,
         email: user.email,
         preferred_username: user.username,
         picture: user.picture,
