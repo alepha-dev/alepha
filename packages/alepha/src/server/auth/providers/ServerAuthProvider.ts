@@ -155,30 +155,31 @@ export class ServerAuthProvider {
       response: userinfoResponseSchema,
     },
     handler: async ({ user, headers, cookies }) => {
-      const tokens = this.getTokens(cookies);
-      if (tokens) {
-        const provider = this.provider(tokens);
-        if (!("issuer" in provider.options)) {
-          const user = await provider.user(tokens);
-          const api = await this.serverLinksProvider.getUserApiLinks({
-            authorization: headers.authorization,
-            user,
-          });
-          return {
-            api,
-            user,
-          };
+      // Prefer the REQUEST's resolved user (the currentUserAtom): global
+      // `server:onRequest` hooks may have rewritten it — e.g. per-org role
+      // resolution on a multi-tenant relying party. Re-deriving from the raw
+      // tokens here would silently drop those roles, so the token path is
+      // only a FALLBACK for sessions whose resolvers don't populate the atom
+      // (plain external OAuth2/OIDC providers without an internal issuer).
+      let resolved = user;
+      if (!resolved) {
+        const tokens = this.getTokens(cookies);
+        if (tokens) {
+          const provider = this.provider(tokens);
+          if (!("issuer" in provider.options)) {
+            resolved = await provider.user(tokens);
+          }
         }
       }
 
       const api = await this.serverLinksProvider.getUserApiLinks({
         authorization: headers.authorization,
-        user,
+        user: resolved,
       });
 
       return {
         api,
-        user,
+        user: resolved,
       };
     },
   });
