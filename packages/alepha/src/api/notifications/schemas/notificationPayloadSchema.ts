@@ -8,6 +8,8 @@ export const notificationPayloadSchema = t.object({
   category: t.optional(t.text()),
   critical: t.optional(t.boolean()),
   sensitive: t.optional(t.boolean()),
+  /** Recipient language (e.g. "fr" or "fr-FR") used to pick `translations`. */
+  lang: t.optional(t.text()),
 });
 
 export type NotificationPayload = Static<typeof notificationPayloadSchema>;

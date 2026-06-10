@@ -25,6 +25,25 @@ export class UserNotifications {
 			<p>Best regards,<br>The Team</p>
 		`,
     },
+    translations: {
+      fr: {
+        email: {
+          subject: "Réinitialisez votre mot de passe",
+          body: (it) => `
+				<h1>Réinitialisez votre mot de passe</h1>
+				<p>Bonjour,</p>
+				<p>Nous avons reçu une demande de réinitialisation de votre mot de passe. Utilisez le code ci-dessous pour confirmer votre identité :</p>
+				<p style="margin: 30px 0; text-align: center;">
+					<span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; font-family: monospace; background-color: #f5f5f5; padding: 16px 24px; border-radius: 8px; display: inline-block;">
+						${it.code}
+					</span>
+				</p>
+				<p>Ce code expire dans ${it.expiresInMinutes} minutes.</p>
+				<p>Si vous n'avez pas demandé de réinitialisation, vous pouvez ignorer cet e-mail : votre mot de passe restera inchangé.</p>
+			`,
+        },
+      },
+    },
     schema: t.object({
       email: t.string({ format: "email" }),
       code: t.string(),
@@ -53,6 +72,25 @@ export class UserNotifications {
 			<p>If you did not create an account, please ignore this email.</p>
 			<p>Best regards,<br>The Team</p>
 		`,
+    },
+    translations: {
+      fr: {
+        email: {
+          subject: "Vérifiez votre adresse e-mail",
+          body: (it) => `
+				<h1>Vérifiez votre adresse e-mail</h1>
+				<p>Bonjour,</p>
+				<p>Merci de votre inscription ! Utilisez le code ci-dessous pour vérifier votre adresse e-mail :</p>
+				<p style="margin: 30px 0; text-align: center;">
+					<span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; font-family: monospace; background-color: #f5f5f5; padding: 16px 24px; border-radius: 8px; display: inline-block;">
+						${it.code}
+					</span>
+				</p>
+				<p>Ce code expire dans ${it.expiresInMinutes} minutes.</p>
+				<p>Si vous n'avez pas créé de compte, ignorez cet e-mail.</p>
+			`,
+        },
+      },
     },
     schema: t.object({
       email: t.string({ format: "email" }),
@@ -125,6 +163,20 @@ export class UserNotifications {
 				<p>If this wasn't you, someone may be trying to access your account. We recommend changing your password as soon as possible.</p>
 				<p>Best regards,<br>The Team</p>
 			`,
+    },
+    translations: {
+      fr: {
+        email: {
+          subject: "Compte temporairement verrouillé",
+          body: (it) => `
+					<h1>Compte temporairement verrouillé</h1>
+					<p>Bonjour,</p>
+					<p>Votre compte a été temporairement verrouillé suite à un trop grand nombre de tentatives de connexion échouées.</p>
+					<p>Si c'était bien vous, patientez ${it.lockoutMinutes} minutes avant de réessayer. Mot de passe oublié ? Utilisez la réinitialisation de mot de passe.</p>
+					<p>Si ce n'était pas vous, quelqu'un essaie peut-être d'accéder à votre compte. Nous vous recommandons de changer votre mot de passe au plus vite.</p>
+				`,
+        },
+      },
     },
     schema: t.object({
       email: t.string({ format: "email" }),
