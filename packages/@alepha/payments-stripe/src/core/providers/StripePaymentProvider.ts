@@ -216,9 +216,32 @@ export class StripePaymentProvider implements PaymentProvider {
       "payment_intent.amount_capturable_updated": "authorized",
       "payment_intent.payment_failed": "failed",
       "payment_intent.canceled": "failed",
+      // Checkout-session events are the only reliable capture signal when
+      // the session's PaymentIntent is created lazily (Stripe Checkout on
+      // CONNECTED accounts): the stored intent ref is the session id, and
+      // `payment_intent.succeeded` alone would never match it.
+      "checkout.session.completed": "captured",
+      "checkout.session.expired": "failed",
     };
 
     const status = statusMap[event.type] ?? event.type;
+    const object = event.data.object as { object: string; id: string };
+
+    if (object.object === "checkout.session") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      return {
+        // The stored ref is the PI when it existed at creation, the session
+        // id otherwise (lazy PI) — surface both and let the service match.
+        providerRef: session.id,
+        providerRefAlt:
+          typeof session.payment_intent === "string"
+            ? session.payment_intent
+            : undefined,
+        status,
+        raw: event,
+      };
+    }
+
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
 
     return {

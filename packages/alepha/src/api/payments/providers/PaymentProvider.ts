@@ -11,6 +11,14 @@ export interface RefundResult {
 
 export interface WebhookEvent {
   providerRef: string;
+  /**
+   * Secondary reference to try when `providerRef` matches no stored intent.
+   * Checkout-session events carry BOTH a session id and a PaymentIntent id,
+   * while the stored intent ref is whichever existed at session-creation
+   * time (the PI when eager, the session id when the PSP creates the PI
+   * lazily — e.g. Stripe Checkout on connected accounts).
+   */
+  providerRefAlt?: string;
   status: string;
   raw: unknown;
 }

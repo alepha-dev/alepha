@@ -114,10 +114,19 @@ export class PaymentService {
    */
   public async handleWebhook(request: Request): Promise<void> {
     const event = await this.provider.parseWebhook(request);
-    const intents = await this.intentRepo.findMany({
+    let intents = await this.intentRepo.findMany({
       where: { providerRef: { eq: event.providerRef } },
       limit: 1,
     });
+
+    // Session events reference two PSP objects (session + PaymentIntent);
+    // the stored ref is whichever existed at creation time — try the other.
+    if (intents.length === 0 && event.providerRefAlt) {
+      intents = await this.intentRepo.findMany({
+        where: { providerRef: { eq: event.providerRefAlt } },
+        limit: 1,
+      });
+    }
 
     if (intents.length === 0) {
       this.log.warn(`Webhook for unknown providerRef: ${event.providerRef}`);
