@@ -267,10 +267,26 @@ export class StripePaymentProvider implements PaymentProvider {
     email?: string;
     displayName?: string;
   }): Promise<{ id: string }> {
-    const account = await this.stripe.v2.core.accounts.create({
+    // FR/EU platforms (PSD2, verified empirically 2026-06-11 on the Stripe
+    // sandbox): creating a v2 account WITH a merchant configuration requires
+    // the identity-bearing fields to ride a v2 ACCOUNT TOKEN — a direct
+    // create fails with `account_token_required` ("Connect platforms based
+    // in FR can only update certain identity information on a v2 account
+    // with a merchant configuration via account tokens"). The working shape:
+    //  - the TOKEN carries contact_email + display_name + entity_type
+    //    (assumed "company"; the hosted onboarding re-confirms it);
+    //  - `identity.country` is NOT tokenizable (per the account-tokens doc)
+    //    and goes DIRECTLY on the create — and it is required for the
+    //    entity_type/merchant configuration to apply.
+    const token = await this.stripe.v2.core.accountTokens.create({
       contact_email: opts.email,
       display_name: opts.displayName,
-      identity: { country: opts.country ?? "FR" },
+      identity: { entity_type: "company" },
+    });
+
+    const account = await this.stripe.v2.core.accounts.create({
+      account_token: token.id,
+      identity: { country: (opts.country ?? "FR").toLowerCase() },
       dashboard: "full",
       defaults: {
         responsibilities: {
@@ -285,6 +301,7 @@ export class StripePaymentProvider implements PaymentProvider {
       },
       include: ["configuration.merchant", "requirements"],
     });
+
     return { id: account.id };
   }
 
