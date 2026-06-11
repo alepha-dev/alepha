@@ -479,7 +479,17 @@ export function AppShell(props: AppShellProps) {
       <SidebarProvider
         open={!collapsed}
         onOpenChange={(o: boolean) => setCollapsed(!o)}
-        className={props.fill ? "min-h-0 h-full" : undefined}
+        // `fill` = a parent owns the height (e.g. a full-width banner above
+        // the shell). The desktop sidebar is `fixed inset-y-0 h-svh` (pinned
+        // to the VIEWPORT), so it would overlap whatever sits above the
+        // shell — re-anchor it to this wrapper instead (absolute within the
+        // now-relative provider, height from the wrapper). The arbitrary
+        // selectors out-specify the base `.fixed`/`.h-svh` utilities.
+        className={
+          props.fill
+            ? "relative min-h-0 h-full [&_[data-slot=sidebar-container]]:absolute [&_[data-slot=sidebar-container]]:h-auto"
+            : undefined
+        }
       >
         <Sidebar collapsible="icon" variant={variant}>
           <SidebarHeader>{props.brand}</SidebarHeader>
