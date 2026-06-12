@@ -3,6 +3,10 @@ import * as React from "react";
 void React;
 
 import { BrandIcon } from "@alepha/ui/components/brand-icon/brand-icon";
+import {
+  TurnstileWidget,
+  type TurnstileWidgetHandle,
+} from "@alepha/ui/components/captcha/turnstile-widget";
 import { Control } from "@alepha/ui/components/control/control";
 import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
 import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
@@ -36,61 +40,6 @@ import {
   useRef,
   useState,
 } from "react";
-
-/**
- * Cloudflare Turnstile loader — idempotent across remounts.
- * Resolves once the global `window.turnstile` is ready.
- */
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (
-        container: HTMLElement,
-        opts: {
-          sitekey: string;
-          callback: (token: string) => void;
-          "error-callback"?: () => void;
-          "expired-callback"?: () => void;
-          theme?: "light" | "dark" | "auto";
-        },
-      ) => string;
-      reset: (widgetId: string) => void;
-      remove: (widgetId: string) => void;
-    };
-  }
-}
-
-let turnstileLoader: Promise<void> | undefined;
-const loadTurnstile = (): Promise<void> => {
-  if (turnstileLoader) return turnstileLoader;
-  turnstileLoader = new Promise<void>((resolve, reject) => {
-    if (typeof window === "undefined") return resolve();
-    if (window.turnstile) return resolve();
-    const existing = document.querySelector<HTMLScriptElement>(
-      'script[data-turnstile="1"]',
-    );
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () => {
-        turnstileLoader = undefined;
-        reject(new Error("Turnstile script failed to load"));
-      });
-      return;
-    }
-    const s = document.createElement("script");
-    s.src =
-      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-    s.async = true;
-    s.dataset.turnstile = "1";
-    s.onload = () => resolve();
-    s.onerror = () => {
-      turnstileLoader = undefined;
-      reject(new Error("Turnstile script failed to load"));
-    };
-    document.head.appendChild(s);
-  });
-  return turnstileLoader;
-};
 
 export interface AuthRegisterProps {
   /**
@@ -151,8 +100,7 @@ export function AuthRegister(props: AuthRegisterProps) {
 
   const captchaSiteKey = props.realmConfig.captchaSiteKey;
   const [captchaToken, setCaptchaToken] = useState<string | undefined>();
-  const captchaRef = useRef<HTMLDivElement | null>(null);
-  const widgetIdRef = useRef<string | undefined>(undefined);
+  const captchaRef = useRef<TurnstileWidgetHandle | null>(null);
   // The `useForm` handler is memoized at form-create time, so it closes over
   // the *initial* `captchaToken` (undefined). Mirror the latest value into a
   // ref the handler can read at submission time.
@@ -160,38 +108,6 @@ export function AuthRegister(props: AuthRegisterProps) {
   useEffect(() => {
     captchaTokenRef.current = captchaToken;
   }, [captchaToken]);
-
-  useEffect(() => {
-    if (!captchaSiteKey || state.phase !== "form") return;
-    const el = captchaRef.current;
-    if (!el) return;
-    setCaptchaToken(undefined);
-    let disposed = false;
-    loadTurnstile()
-      .then(() => {
-        if (disposed || !window.turnstile || !el) return;
-        widgetIdRef.current = window.turnstile.render(el, {
-          sitekey: captchaSiteKey,
-          theme: document.documentElement.classList.contains("dark")
-            ? "dark"
-            : "light",
-          callback: (token) => setCaptchaToken(token),
-          "expired-callback": () => setCaptchaToken(undefined),
-          "error-callback": () => setCaptchaToken(undefined),
-        });
-      })
-      .catch(() => setCaptchaToken(undefined));
-    return () => {
-      disposed = true;
-      const id = widgetIdRef.current;
-      if (id && window.turnstile) {
-        try {
-          window.turnstile.remove(id);
-        } catch {}
-      }
-      widgetIdRef.current = undefined;
-    };
-  }, [captchaSiteKey, state.phase]);
 
   const credentialsProvider = props.realmConfig.authenticationMethods.find(
     (it) => it.type === "CREDENTIALS",
@@ -267,12 +183,9 @@ export function AuthRegister(props: AuthRegisterProps) {
         // authenticated user — see the note in auth-login.tsx.
         await router.push(redirect, { force: true });
       } catch (err) {
-        if (widgetIdRef.current && window.turnstile) {
-          try {
-            window.turnstile.reset(widgetIdRef.current);
-          } catch {}
-        }
-        setCaptchaToken(undefined);
+        // Turnstile tokens are single-use — force a fresh challenge so the
+        // user can retry after a server-side failure.
+        captchaRef.current?.reset();
         throw err;
       }
     },
@@ -513,6 +426,7 @@ export function AuthRegister(props: AuthRegisterProps) {
                   captchaSiteKey={captchaSiteKey}
                   captchaToken={captchaToken}
                   captchaRef={captchaRef}
+                  onCaptchaToken={setCaptchaToken}
                   message={props.message}
                 />
               )}
@@ -546,7 +460,8 @@ function FormPhase(props: {
   auth: ReturnType<typeof useAuth>;
   captchaSiteKey?: string;
   captchaToken?: string;
-  captchaRef: React.RefObject<HTMLDivElement | null>;
+  captchaRef: React.RefObject<TurnstileWidgetHandle | null>;
+  onCaptchaToken: (token: string | undefined) => void;
   message?: ReactNode;
 }) {
   const { tr } = useI18n();
@@ -687,9 +602,10 @@ function FormPhase(props: {
                 />
               )}
               {props.captchaSiteKey && (
-                <div
+                <TurnstileWidget
                   ref={props.captchaRef}
-                  data-testid="captcha"
+                  siteKey={props.captchaSiteKey}
+                  onToken={props.onCaptchaToken}
                   className="flex justify-center"
                 />
               )}
