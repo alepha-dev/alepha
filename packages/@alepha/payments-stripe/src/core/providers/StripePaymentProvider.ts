@@ -15,6 +15,14 @@ import Stripe from "stripe";
 const envSchema = t.object({
   STRIPE_SECRET_KEY: t.string(),
   STRIPE_WEBHOOK_SECRET: t.string(),
+  /**
+   * Signing secret of the `connect: true` webhook endpoint (events emitted
+   * BY CONNECTED ACCOUNTS — direct charges, Checkout on a connected
+   * account). Distinct from STRIPE_WEBHOOK_SECRET, which signs the
+   * platform-account endpoint. Optional: platforms without Connect (or
+   * before the endpoint is declared) simply can't parse connect webhooks.
+   */
+  STRIPE_CONNECT_WEBHOOK_SECRET: t.optional(t.string()),
 });
 
 declare module "alepha" {
@@ -198,6 +206,35 @@ export class StripePaymentProvider implements PaymentProvider {
   }
 
   public async parseWebhook(request: Request): Promise<WebhookEvent> {
+    return this.verifyAndMapWebhook(request, this.env.STRIPE_WEBHOOK_SECRET);
+  }
+
+  /** Whether the connected-accounts webhook endpoint is configured. */
+  public get hasConnectWebhookSecret(): boolean {
+    return Boolean(this.env.STRIPE_CONNECT_WEBHOOK_SECRET);
+  }
+
+  /**
+   * Parse a webhook delivered by the `connect: true` endpoint (events
+   * emitted by CONNECTED accounts). Same mapping as `parseWebhook`, but
+   * verified with STRIPE_CONNECT_WEBHOOK_SECRET — Stripe signs each
+   * endpoint with its own secret. The returned `account` (acct_…) tells a
+   * multi-tenant consumer WHICH connected account emitted the event.
+   */
+  public async parseConnectWebhook(request: Request): Promise<WebhookEvent> {
+    const secret = this.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+    if (!secret) {
+      throw new AlephaError(
+        "STRIPE_CONNECT_WEBHOOK_SECRET is not configured — declare the connect webhook endpoint first",
+      );
+    }
+    return this.verifyAndMapWebhook(request, secret);
+  }
+
+  protected async verifyAndMapWebhook(
+    request: Request,
+    secret: string,
+  ): Promise<WebhookEvent> {
     const body = await request.text();
     const signature = request.headers.get("stripe-signature");
     if (!signature) {
@@ -206,7 +243,7 @@ export class StripePaymentProvider implements PaymentProvider {
     const event = await this.stripe.webhooks.constructEventAsync(
       body,
       signature,
-      this.env.STRIPE_WEBHOOK_SECRET,
+      secret,
       undefined,
       this.getCryptoProvider(),
     );
@@ -225,6 +262,8 @@ export class StripePaymentProvider implements PaymentProvider {
     };
 
     const status = statusMap[event.type] ?? event.type;
+    // Present on events delivered by a `connect: true` endpoint.
+    const account = (event as { account?: string }).account;
     const object = event.data.object as { object: string; id: string };
 
     if (object.object === "checkout.session") {
@@ -238,6 +277,7 @@ export class StripePaymentProvider implements PaymentProvider {
             ? session.payment_intent
             : undefined,
         status,
+        account,
         raw: event,
       };
     }
@@ -247,6 +287,7 @@ export class StripePaymentProvider implements PaymentProvider {
     return {
       providerRef: paymentIntent.id,
       status,
+      account,
       raw: event,
     };
   }

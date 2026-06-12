@@ -9,7 +9,10 @@ import {
 } from "../entities/paymentIntents.ts";
 import { type RefundEntity, refunds } from "../entities/refunds.ts";
 import { PaymentError } from "../errors/PaymentError.ts";
-import { PaymentProvider } from "../providers/PaymentProvider.ts";
+import {
+  PaymentProvider,
+  type WebhookEvent,
+} from "../providers/PaymentProvider.ts";
 
 export class PaymentService {
   protected readonly alepha = $inject(Alepha);
@@ -114,6 +117,16 @@ export class PaymentService {
    */
   public async handleWebhook(request: Request): Promise<void> {
     const event = await this.provider.parseWebhook(request);
+    await this.handleParsedWebhook(event);
+  }
+
+  /**
+   * Resolve an already-parsed webhook event to its stored intent and apply
+   * it. Split from `handleWebhook` so callers that parse with a DIFFERENT
+   * verification path (e.g. a connected-accounts endpoint that must first
+   * route the event to a tenant) can reuse the matching + transition logic.
+   */
+  public async handleParsedWebhook(event: WebhookEvent): Promise<void> {
     let intents = await this.intentRepo.findMany({
       where: { providerRef: { eq: event.providerRef } },
       limit: 1,

@@ -20,6 +20,13 @@ export interface WebhookEvent {
    */
   providerRefAlt?: string;
   status: string;
+  /**
+   * PSP account that emitted the event, when delivered by a
+   * connected-accounts endpoint (Stripe: `acct_…` on `connect: true`
+   * endpoints). Lets multi-tenant consumers route the event to the right
+   * tenant before resolving the intent.
+   */
+  account?: string;
   raw: unknown;
 }
 
