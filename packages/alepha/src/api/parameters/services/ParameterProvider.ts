@@ -116,6 +116,33 @@ export class ParameterProvider {
   protected readonly loaded = new Set<string>();
 
   /**
+   * Epoch millis of the last successful load (or local set) per cache key.
+   * Drives the serverless revalidation TTL (see `revalidateAfterMs`).
+   */
+  protected readonly loadedAt = new Map<string, number>();
+
+  /**
+   * How long a cached value may serve before `get()` re-reads the DB.
+   *
+   * The in-memory caches are PER ISOLATE. On serverless runtimes
+   * (Cloudflare Workers) many isolates serve the same app and the
+   * cross-instance `syncTopic` rides the queue provider — in-memory by
+   * default, so a `set()` handled by one isolate never reaches the others:
+   * without a TTL they serve the stale value until they are recycled.
+   *
+   * Defaults: 30 s on serverless, 0 (= never revalidate, the historical
+   * behaviour) elsewhere. Override with the `PARAMETERS_CACHE_TTL_MS` env.
+   */
+  protected get revalidateAfterMs(): number {
+    const raw = this.alepha.env.PARAMETERS_CACHE_TTL_MS as
+      | string
+      | number
+      | undefined;
+    if (raw !== undefined && raw !== "") return Number(raw);
+    return this.alepha.isServerless() ? 30_000 : 0;
+  }
+
+  /**
    * Shared promises for deduplicating concurrent load() calls.
    */
   protected readonly loadPromises = new Map<string, Promise<void>>();
@@ -200,7 +227,7 @@ export class ParameterProvider {
    */
   public async get(name: string): Promise<unknown> {
     const ck = this.cacheKey(name);
-    if (!this.loaded.has(ck)) {
+    if (!this.loaded.has(ck) || this.isStale(ck)) {
       if (!this.loadPromises.has(ck)) {
         this.loadPromises.set(ck, this.doLoad(name));
       }
@@ -257,6 +284,18 @@ export class ParameterProvider {
         activationDate: options.activationDate.toISOString(),
       });
     }
+    // The writer is by definition fresh — restart its revalidation window.
+    this.loadedAt.set(ck, this.dateTimeProvider.nowMillis());
+  }
+
+  /** Whether the cached value outlived the revalidation TTL. */
+  protected isStale(ck: string): boolean {
+    const ttl = this.revalidateAfterMs;
+    if (ttl <= 0) return false;
+    const at = this.loadedAt.get(ck);
+    return at === undefined
+      ? true
+      : this.dateTimeProvider.nowMillis() - at > ttl;
   }
 
   /**
@@ -768,6 +807,7 @@ export class ParameterProvider {
           this.cachedNext.delete(ck);
         }
         this.loaded.add(ck);
+        this.loadedAt.set(ck, this.dateTimeProvider.nowMillis());
         this.loadPromises.delete(ck);
         this.notifySubscribers(name);
         return;
@@ -790,6 +830,7 @@ export class ParameterProvider {
       this.cachedNext.delete(ck);
     }
     this.loaded.add(ck);
+    this.loadedAt.set(ck, this.dateTimeProvider.nowMillis());
     this.loadPromises.delete(ck);
 
     if (

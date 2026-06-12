@@ -2299,4 +2299,91 @@ describe("$parameter multi-tenant isolation", () => {
 
     await alepha.stop();
   });
+
+  it("revalidates a stale cache after PARAMETERS_CACHE_TTL_MS (cross-isolate write)", async () => {
+    class AppConfig {
+      flags = $parameter({
+        name: "app.ttlRevalidation.flags",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 1 },
+      });
+    }
+
+    // Writes a new version to the DB WITHOUT touching this instance's
+    // in-memory cache — exactly what a `set()` handled by ANOTHER worker
+    // isolate looks like from here (the sync topic rides the in-memory
+    // queue, so it never crosses isolates).
+    class TestableProvider extends ParameterProvider {
+      writeBehindCache(name: string, value: Record<string, unknown>) {
+        return this.save(name, value, this.schemaHashes.get(name) ?? "", {});
+      }
+    }
+
+    const alepha = Alepha.create({
+      env: { ...process.env, PARAMETERS_CACHE_TTL_MS: "50" },
+    });
+    alepha.with({ provide: ParameterProvider, use: TestableProvider });
+    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    await config.flags.set({ enableBeta: false, maxUploadSize: 1 });
+    expect((await config.flags.get()).enableBeta).toBe(false);
+
+    const provider = alepha.inject(ParameterProvider) as TestableProvider;
+    await provider.writeBehindCache("app.ttlRevalidation.flags", {
+      enableBeta: true,
+      maxUploadSize: 2,
+    });
+
+    // Within the TTL the (stale) cache still serves.
+    expect((await config.flags.get()).enableBeta).toBe(false);
+
+    // Past the TTL, get() re-reads the DB and converges.
+    await new Promise((r) => setTimeout(r, 80));
+    expect((await config.flags.get()).enableBeta).toBe(true);
+
+    await alepha.stop();
+  });
+
+  it("keeps the historical never-revalidate behaviour when the TTL is 0", async () => {
+    class AppConfig {
+      flags = $parameter({
+        name: "app.ttlZero.flags",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 1 },
+      });
+    }
+
+    class TestableProvider extends ParameterProvider {
+      writeBehindCache(name: string, value: Record<string, unknown>) {
+        return this.save(name, value, this.schemaHashes.get(name) ?? "", {});
+      }
+    }
+
+    const alepha = Alepha.create({
+      env: { ...process.env, PARAMETERS_CACHE_TTL_MS: "0" },
+    });
+    alepha.with({ provide: ParameterProvider, use: TestableProvider });
+    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    await config.flags.set({ enableBeta: false, maxUploadSize: 1 });
+
+    const provider = alepha.inject(ParameterProvider) as TestableProvider;
+    await provider.writeBehindCache("app.ttlZero.flags", {
+      enableBeta: true,
+      maxUploadSize: 2,
+    });
+
+    await new Promise((r) => setTimeout(r, 80));
+    expect((await config.flags.get()).enableBeta).toBe(false);
+
+    await alepha.stop();
+  });
 });
