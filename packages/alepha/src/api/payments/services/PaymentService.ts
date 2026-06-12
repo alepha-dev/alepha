@@ -82,7 +82,17 @@ export class PaymentService {
     returnUrl: string,
     authorize?: boolean,
     userId?: string,
-    options?: { stripeAccount?: string; applicationFeeAmount?: number },
+    options?: {
+      stripeAccount?: string;
+      applicationFeeAmount?: number;
+      /**
+       * Pre-fills the payer's email on the PSP checkout page. Useful when
+       * the session runs on a sub-account (Stripe connected account) where
+       * no customer object exists — without it the hosted checkout makes
+       * the payer retype an address the platform already knows.
+       */
+      customerEmail?: string;
+    },
   ): Promise<{ url: string; intentId: string }> {
     const intent = await this.getIntent(intentId);
     this.assertStatus(intent, "created", "createSession");
@@ -102,6 +112,7 @@ export class PaymentService {
       authorize,
       stripeAccount: options?.stripeAccount,
       applicationFeeAmount: options?.applicationFeeAmount,
+      customerEmail: options?.customerEmail,
     });
 
     await this.intentRepo.updateById(intent.id, {
@@ -147,6 +158,21 @@ export class PaymentService {
     }
 
     const intent = intents[0];
+
+    // Session events put the session id in `providerRef` and the (lazily
+    // created) PaymentIntent in `providerRefAlt`. When the stored ref is
+    // still the session id, upgrade it to the PI as soon as an event
+    // reveals it — refunds can only target the PI, never the session.
+    if (
+      event.providerRefAlt &&
+      intent.providerRef === event.providerRef &&
+      event.providerRefAlt !== event.providerRef
+    ) {
+      await this.intentRepo.updateById(intent.id, {
+        providerRef: event.providerRefAlt,
+      });
+    }
+
     await this.handleWebhookEvent(intent.id, event.status, event.raw);
   }
 
@@ -279,6 +305,14 @@ export class PaymentService {
     intentId: string,
     amount: number,
     reason?: string,
+    options: {
+      /**
+       * PSP sub-account holding the charge (Stripe connected account) —
+       * required to refund payments that were created with the same option,
+       * e.g. direct charges on a club's connected account.
+       */
+      stripeAccount?: string;
+    } = {},
   ): Promise<RefundEntity> {
     const intent = await this.getIntent(intentId);
 
@@ -310,6 +344,7 @@ export class PaymentService {
       const result = await this.provider.refundPayment(
         intent.providerRef,
         amount,
+        options,
       );
       refundProviderRef = result.providerRef;
     }

@@ -102,11 +102,16 @@ export class StripePaymentProvider implements PaymentProvider {
       authorize?: boolean;
       stripeAccount?: string;
       applicationFeeAmount?: number;
+      customerEmail?: string;
     },
   ): Promise<CreateSessionResult> {
-    const customer = intent.userId
-      ? await this.getOrCreateCustomer(intent.userId)
-      : undefined;
+    // Customer objects live on the PLATFORM account — they don't exist on a
+    // connected account, so sessions created there (direct charges) must
+    // not reference one. `customer_email` carries the pre-fill instead.
+    const customer =
+      intent.userId && !options.stripeAccount
+        ? await this.getOrCreateCustomer(intent.userId)
+        : undefined;
 
     const paymentIntentData: Stripe.Checkout.SessionCreateParams["payment_intent_data"] =
       options.authorize ? { capture_method: "manual" } : {};
@@ -118,6 +123,8 @@ export class StripePaymentProvider implements PaymentProvider {
       {
         mode: "payment",
         customer,
+        // Mutually exclusive with `customer` per Stripe's API.
+        customer_email: customer ? undefined : options.customerEmail,
         line_items: [
           {
             price_data: {

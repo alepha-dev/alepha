@@ -51,6 +51,8 @@ export abstract class PaymentProvider {
       authorize?: boolean;
       stripeAccount?: string;
       applicationFeeAmount?: number;
+      /** Pre-fill the payer's email on the hosted checkout page. */
+      customerEmail?: string;
     },
   ): Promise<CreateSessionResult>;
 
@@ -71,6 +73,7 @@ export abstract class PaymentProvider {
   abstract refundPayment(
     providerRef: string,
     amount: number,
+    options?: { stripeAccount?: string },
   ): Promise<RefundResult>;
 
   /**
