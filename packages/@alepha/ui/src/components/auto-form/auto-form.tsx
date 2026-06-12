@@ -549,16 +549,20 @@ function GroupBlock(props: GroupBlockProps) {
         ...override,
       };
       // i18nPrefix: fill label/description from the dictionary when neither
-      // the override nor the schema already provides one. `default: ""` →
-      // a missing key yields "" → falsy → the Control falls back to
-      // `schema.title ?? prettyName(field)`, preserving current behaviour.
+      // the override nor the schema already provides one. A missing key
+      // makes `tr` echo the key back (an empty `default` is falsy, so the
+      // provider can't substitute it) — guard with `!== key` so an absent
+      // entry leaves the Control to fall back to `schema.title ??
+      // prettyName(field)`, preserving current behaviour.
       if (props.i18nPrefix && merged.label === undefined) {
-        const label = tr(`${props.i18nPrefix}.${name}`, { default: "" });
-        if (label) merged.label = label;
+        const key = `${props.i18nPrefix}.${name}`;
+        const label = tr(key, { default: "" });
+        if (label && label !== key) merged.label = label;
       }
       if (props.i18nPrefix && merged.description === undefined) {
-        const desc = tr(`${props.i18nPrefix}.${name}.desc`, { default: "" });
-        if (desc) merged.description = desc;
+        const key = `${props.i18nPrefix}.${name}.desc`;
+        const desc = tr(key, { default: "" });
+        if (desc && desc !== key) merged.description = desc;
       }
       return { name, input, props: merged };
     })
