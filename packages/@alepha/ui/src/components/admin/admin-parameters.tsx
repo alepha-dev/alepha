@@ -372,8 +372,14 @@ interface TreeNodeViewProps {
 
 const TreeNodeView = (props: TreeNodeViewProps) => {
   const { node } = props;
+  const { tr } = useI18n();
   const [open, setOpen] = useState(true);
   const isActive = node.isLeaf && props.selected === node.path;
+  // Translatable label keyed by the full dotted path
+  // (`parameters.courts.pricing`, `parameters.courts`), falling back to the
+  // English title-case of the last segment when the app has no dictionary
+  // entry — so a parameters tree always renders, localized or not.
+  const label = tr(`parameters.${node.path}`, { default: labelOf(node.name) });
   const indent = props.depth * 12;
 
   if (node.isLeaf) {
@@ -388,7 +394,7 @@ const TreeNodeView = (props: TreeNodeViewProps) => {
         )}
       >
         <FileCog className="size-3.5 shrink-0 opacity-60" />
-        <span className="truncate">{labelOf(node.name)}</span>
+        <span className="truncate">{label}</span>
       </button>
     );
   }
@@ -403,7 +409,7 @@ const TreeNodeView = (props: TreeNodeViewProps) => {
         <ChevronRight
           className={cn("size-3.5 transition-transform", open && "rotate-90")}
         />
-        <span className="truncate">{labelOf(node.path)}</span>
+        <span className="truncate">{label}</span>
       </button>
       {open &&
         node.children.map((child) => (
@@ -624,12 +630,22 @@ const ParameterEditorForm = (props: ParameterEditorFormProps) => {
     },
     [props.name, props.schemaHash],
   );
-  const title = useMemo(() => labelOf(props.name), [props.name]);
+  const title = useMemo(
+    () => tr(`parameters.${props.name}`, { default: labelOf(props.name) }),
+    [props.name, tr],
+  );
   const breadcrumb = useMemo(() => {
     const parts = props.name.split(".");
     parts.pop();
-    return parts.join(" / ");
-  }, [props.name]);
+    // Translate each ancestor folder by its cumulative path
+    // (`parameters.courts`), falling back to the raw segment.
+    return parts
+      .map((segment, i) => {
+        const path = parts.slice(0, i + 1).join(".");
+        return tr(`parameters.${path}`, { default: segment });
+      })
+      .join(" / ");
+  }, [props.name, tr]);
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -641,6 +657,7 @@ const ParameterEditorForm = (props: ParameterEditorFormProps) => {
         icon="cog"
         title={title}
         description={breadcrumb || undefined}
+        i18nPrefix={`parameters.${props.name}`}
         headerAction={
           props.currentVersion != null ? (
             <Badge variant="secondary">v{props.currentVersion}</Badge>

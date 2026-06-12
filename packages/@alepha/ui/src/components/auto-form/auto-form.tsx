@@ -167,6 +167,18 @@ export interface AutoFormProps<T extends TObject> {
   >;
 
   /**
+   * Localize field labels the schema doesn't carry. When set, each field's
+   * label is resolved from the app dictionary via
+   * `tr(\`${i18nPrefix}.${fieldName}\`)` and its description via
+   * `tr(\`${i18nPrefix}.${fieldName}.desc\`)`, falling back to the
+   * schema-derived label/description when the key is absent. Lets a generic
+   * AutoForm (e.g. the parameters admin, whose schemas rarely set `title`)
+   * render translated labels without per-schema annotations. Explicit
+   * `fields[name].label` overrides still win.
+   */
+  i18nPrefix?: string;
+
+  /**
    * Submit button label.
    */
   submitLabel?: string;
@@ -380,6 +392,7 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
             disabled={props.disabled}
             throttle={props.throttle}
             fields={props.fields}
+            i18nPrefix={props.i18nPrefix}
             multiGroup={resolvedGroups.length > 1}
             layout={props.layout ?? "stack"}
             gridClassName={props.gridClassName}
@@ -510,6 +523,7 @@ interface GroupBlockProps {
   group: AutoFormGroup;
   inputs: Record<string, never>;
   fields?: Partial<Record<string, Partial<Omit<ControlProps, "input">>>>;
+  i18nPrefix?: string;
   disabled?: boolean;
   throttle?: number;
   multiGroup?: boolean;
@@ -519,6 +533,7 @@ interface GroupBlockProps {
 
 function GroupBlock(props: GroupBlockProps) {
   const { group } = props;
+  const { tr } = useI18n();
   const Icon = group.icon ? iconFor(group.icon) : undefined;
 
   const items = group.fields
@@ -533,6 +548,18 @@ function GroupBlock(props: GroupBlockProps) {
         ...fromMap,
         ...override,
       };
+      // i18nPrefix: fill label/description from the dictionary when neither
+      // the override nor the schema already provides one. `default: ""` →
+      // a missing key yields "" → falsy → the Control falls back to
+      // `schema.title ?? prettyName(field)`, preserving current behaviour.
+      if (props.i18nPrefix && merged.label === undefined) {
+        const label = tr(`${props.i18nPrefix}.${name}`, { default: "" });
+        if (label) merged.label = label;
+      }
+      if (props.i18nPrefix && merged.description === undefined) {
+        const desc = tr(`${props.i18nPrefix}.${name}.desc`, { default: "" });
+        if (desc) merged.description = desc;
+      }
       return { name, input, props: merged };
     })
     .filter(Boolean) as Array<{
