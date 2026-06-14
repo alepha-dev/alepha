@@ -9,7 +9,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { t } from "alepha";
-import { useClient, useStore } from "alepha/react";
+import { useAlepha, useClient, useStore } from "alepha/react";
 import { useFieldValue, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2 } from "lucide-react";
@@ -18,6 +18,8 @@ import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Campaign } from "@/api/entities/campaigns.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
+import { currentCampaignCharacterAtom } from "../../atoms/currentCampaignCharacterAtom.ts";
 import {
   kanbanCampaignAtom,
   kanbanReloadAtom,
@@ -46,6 +48,7 @@ export interface KanbanBoardProps {
 
 const KanbanBoard = (props: KanbanBoardProps) => {
   const { campaign, quests: initialQuests } = props;
+  const alepha = useAlepha();
   const [quests, setQuests] = useState<QuestResource[]>(initialQuests);
   const [loading, setLoading] = useState(false);
   const zoneOptions = useMemo(
@@ -232,7 +235,22 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           body: { kanbanColumn: toSubColumn },
         });
       } else if (fromStatus === "accepted" && toKind === "completed") {
-        await questApi.completeQuest({ params: { id: quest.id }, body: {} });
+        // completeQuest awards XP/gold server-side and returns the updated
+        // character. Push it into the character atom (and drop the quest from
+        // the assigned list) so the XP bar + level-up animation react — exactly
+        // as QuestView does on the normal completion path. Without this the
+        // reward is persisted but the UI never shows it (petition #10).
+        const { character } = await questApi.completeQuest({
+          params: { id: quest.id },
+          body: {},
+        });
+        alepha.store.set(currentCampaignCharacterAtom, character);
+        alepha.store.set(
+          currentAssignedQuestsAtom,
+          (alepha.store.get(currentAssignedQuestsAtom) ?? []).filter(
+            (q) => q.id !== quest.id,
+          ),
+        );
       }
       await reload();
     } catch (error: any) {
