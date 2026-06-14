@@ -316,6 +316,13 @@
       "when": 1781045760288,
       "tag": "0044_opposite_scalphunter",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "6",
+      "when": 1781441081665,
+      "tag": "0045_light_electro",
+      "breakpoints": true
     }
   ]
 }

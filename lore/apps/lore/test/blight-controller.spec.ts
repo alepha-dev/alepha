@@ -295,6 +295,101 @@ describe("BlightController", () => {
     expect(after.data.items).toHaveLength(0);
   });
 
+  it("listBlights returns the campaign sigils for the filter dropdown", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+    const sigilId = await createSigil(ctx, campaignId, owner);
+
+    const res = await ctx.blightController.listBlights.fetch(
+      { params: { campaignId }, query: {} },
+      { user: owner },
+    );
+    expect(res.data.sigils).toHaveLength(1);
+    expect(res.data.sigils[0].id).toBe(sigilId);
+    expect(res.data.sigils[0].label).toBe("blight sigil");
+  });
+
+  it("mass-deletes selected blights and ignores stray ids", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+    const sigilId = await createSigil(ctx, campaignId, owner);
+    await seedBlights(ctx, sigilId, [1, 2, 3]);
+
+    const list = await ctx.blightController.listBlights.fetch(
+      { params: { campaignId }, query: {} },
+      { user: owner },
+    );
+    const ids = list.data.items.map((b) => b.id);
+
+    // Delete two of three, plus a stray id that belongs to no campaign sigil —
+    // the stray is silently skipped (the sigilId filter is the guard).
+    const res = await ctx.blightController.deleteBlights.fetch(
+      { params: { campaignId }, body: { ids: [ids[0], ids[1], 999_999] } },
+      { user: owner },
+    );
+    expect(res.data.deleted).toBe(2);
+
+    const after = await ctx.blightController.listBlights.fetch(
+      { params: { campaignId }, query: { includeResolved: true } },
+      { user: owner },
+    );
+    expect(after.data.items.map((b) => b.id)).toEqual([ids[2]]);
+  });
+
+  it("creates, lists, and deletes blight ignore rules", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+
+    const created = await ctx.blightController.createBlightRule.fetch(
+      { params: { campaignId }, body: { pattern: "  Unknown club  " } },
+      { user: owner },
+    );
+    // Pattern is trimmed.
+    expect(created.data.pattern).toBe("Unknown club");
+
+    const list = await ctx.blightController.listBlightRules.fetch(
+      { params: { campaignId } },
+      { user: owner },
+    );
+    expect(list.data.items.map((r) => r.pattern)).toEqual(["Unknown club"]);
+
+    await ctx.blightController.deleteBlightRule.fetch(
+      { params: { campaignId, ruleId: created.data.id } },
+      { user: owner },
+    );
+
+    const after = await ctx.blightController.listBlightRules.fetch(
+      { params: { campaignId } },
+      { user: owner },
+    );
+    expect(after.data.items).toHaveLength(0);
+
+    // Deleting a now-missing rule 404s.
+    await expect(
+      ctx.blightController.deleteBlightRule.fetch(
+        { params: { campaignId, ruleId: created.data.id } },
+        { user: owner },
+      ),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("rule mutations are owner-only", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const stranger = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+
+    await expect(
+      ctx.blightController.createBlightRule.fetch(
+        { params: { campaignId }, body: { pattern: "x" } },
+        { user: stranger },
+      ),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+
   it("non-owner gets 403 on every endpoint", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const stranger = await createTestUser(ctx);
@@ -339,6 +434,13 @@ describe("BlightController", () => {
     await expect(
       ctx.blightController.deleteBlight.fetch(
         { params: { campaignId, blightId } },
+        { user: stranger },
+      ),
+    ).rejects.toMatchObject({ status: 403 });
+
+    await expect(
+      ctx.blightController.deleteBlights.fetch(
+        { params: { campaignId }, body: { ids: [blightId] } },
         { user: stranger },
       ),
     ).rejects.toMatchObject({ status: 403 });

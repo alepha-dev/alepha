@@ -35,6 +35,7 @@ import { ArchiveDirectoryService } from "./services/ArchiveDirectoryService.ts";
 import { ArchiveNameService } from "./services/ArchiveNameService.ts";
 import { BeaconIngestService } from "./services/BeaconIngestService.ts";
 import { BlightIngestService } from "./services/BlightIngestService.ts";
+import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { CampaignLimits } from "./services/CampaignLimits.ts";
 import { CharacterInfo } from "./services/CharacterInfo.ts";
 import { FeaturePaywallService } from "./services/FeaturePaywallService.ts";
@@ -89,6 +90,7 @@ export const LoreApi = $module({
     SigilIngestSupport,
     SigilIngestRunner,
     BlightIngestService,
+    BlightRuleService,
     BeaconIngestService,
     VitalsIngestService,
     // Controllers

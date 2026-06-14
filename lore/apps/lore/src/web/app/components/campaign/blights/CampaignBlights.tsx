@@ -13,7 +13,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { CheckCircle2, FileText, Send, Trash2 } from "lucide-react";
+import { Ban, CheckCircle2, FileText, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type {
   BlightController,
@@ -24,6 +24,7 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";
 import { currentCampaignAtom } from "../../../atoms/currentCampaignAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import CampaignBlightRulesDialog from "./CampaignBlightRulesDialog.tsx";
 
 export interface CampaignBlightsProps {
   items: BlightResource[];
@@ -37,9 +38,14 @@ export interface CampaignBlightsProps {
  */
 const RECENT_IPS_CAP = 10;
 
-/** Filter form: a status select (open / resolved / all), owned by AlephaTable. */
+/**
+ * Filter form, owned by AlephaTable: a status select (open / resolved / all)
+ * and a sigil select (`"all"` or a sigil id). Both filters are applied
+ * client-side over the already-fetched list.
+ */
 const blightsFiltersSchema = t.object({
   status: t.optional(t.enum(["open", "resolved", "all"])),
+  sigilId: t.optional(t.string()),
 });
 
 /**
@@ -64,6 +70,13 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
   const dt = useInject(DateTimeProvider);
 
   const [stackView, setStackView] = useState<BlightResource | null>(null);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  // Sigil options for the "filter by sigil" dropdown, hydrated from the list
+  // response so members (who can't hit the owner-only sigil list) still get
+  // the filter populated.
+  const [sigilOptions, setSigilOptions] = useState<
+    { id: string; label: string }[]
+  >([]);
 
   // `recentIps` is a privacy-preserving array of salted IP HASHES capped at
   // RECENT_IPS_CAP (10) on ingestion — never raw IPs. The hash prefixes are
@@ -123,11 +136,17 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
     // fetch, which (with an inline `fetch` prop) span the table into an
     // infinite refetch loop. `store.set` updates the atom without subscribing.
     alepha.store.set(currentBlightCountAtom, { count: res.openCount });
+    setSigilOptions(res.sigils);
 
-    const filtered =
+    const sigilId = (filters?.sigilId as string) ?? "all";
+    const statusFiltered =
       status === "resolved"
         ? res.items.filter((b) => b.status === "resolved")
         : res.items;
+    const filtered =
+      sigilId === "all"
+        ? statusFiltered
+        : statusFiltered.filter((b) => b.sigilId === sigilId);
     const rows = sortBlights(filtered, sort);
     const offset = page * size;
     const content = rows.slice(offset, offset + size);
@@ -157,23 +176,82 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
         emptyMessage={tr("blights.empty")}
         filters={{
           schema: blightsFiltersSchema,
-          initialValues: { status: "open" },
+          initialValues: { status: "open", sigilId: "all" },
           render: (form) => (
-            <div className="w-44">
-              <Control
-                input={form.input.status}
-                label=""
-                triggerClassName="w-full"
-                items={[
-                  { label: tr("blights.filter.open"), value: "open" },
-                  { label: tr("blights.filter.resolved"), value: "resolved" },
-                  { label: tr("blights.filter.all"), value: "all" },
-                ]}
-              />
+            <div className="flex gap-2">
+              <div className="w-44">
+                <Control
+                  input={form.input.status}
+                  label=""
+                  triggerClassName="w-full"
+                  items={[
+                    { label: tr("blights.filter.open"), value: "open" },
+                    { label: tr("blights.filter.resolved"), value: "resolved" },
+                    { label: tr("blights.filter.all"), value: "all" },
+                  ]}
+                />
+              </div>
+              <div className="w-52">
+                <Control
+                  input={form.input.sigilId}
+                  label=""
+                  triggerClassName="w-full"
+                  items={[
+                    { label: tr("blights.filter.allSigils"), value: "all" },
+                    ...sigilOptions.map((s) => ({
+                      label: s.label,
+                      value: s.id,
+                    })),
+                  ]}
+                />
+              </div>
             </div>
           ),
         }}
         fetch={fetchBlights}
+        actions={[
+          {
+            icon: Ban,
+            label: tr("blights.rules.title"),
+            onClick: () => setRulesOpen(true),
+          },
+        ]}
+        bulkActions={[
+          {
+            icon: Trash2,
+            label: tr("blights.action.deleteSelected"),
+            destructive: true,
+            onClick: async (selected, { refresh, clearSelection }) => {
+              if (!campaign || selected.length === 0) return;
+              if (
+                !window.confirm(
+                  tr("blights.deleteSelectedConfirm", {
+                    args: [String(selected.length)],
+                  }),
+                )
+              ) {
+                return;
+              }
+              try {
+                const res = await blightApi.deleteBlights({
+                  params: { campaignId: campaign.id },
+                  body: { ids: selected.map((b) => b.id) },
+                });
+                toaster.success(
+                  tr("blights.toast.deletedMany", {
+                    args: [String(res.deleted)],
+                  }),
+                );
+                clearSelection();
+                refresh();
+              } catch (error) {
+                toaster.error(
+                  error instanceof Error ? error.message : String(error),
+                );
+              }
+            },
+          },
+        ]}
         columns={{
           error: {
             label: tr("blights.col.error"),
@@ -363,6 +441,14 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
           </pre>
         </DialogContent>
       </Dialog>
+
+      {campaign && (
+        <CampaignBlightRulesDialog
+          open={rulesOpen}
+          campaignId={campaign.id}
+          onOpenChange={setRulesOpen}
+        />
+      )}
     </div>
   );
 };

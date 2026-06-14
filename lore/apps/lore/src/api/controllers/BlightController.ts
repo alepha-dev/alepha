@@ -8,6 +8,7 @@ import {
   NotFoundError,
   okSchema,
 } from "alepha/server";
+import type { BlightIgnoreRule } from "../entities/blightIgnoreRules.ts";
 import {
   QUEST_STATUS_PREFIX,
   type SigilBlight,
@@ -15,6 +16,7 @@ import {
 } from "../entities/sigilBlights.ts";
 import { sigils } from "../entities/sigils.ts";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
+import { BlightRuleService } from "../services/BlightRuleService.ts";
 import { QuestService } from "../services/QuestService.ts";
 
 /** Zone every blight-forwarded quest is filed under — predictable triage. */
@@ -45,6 +47,26 @@ const blightResourceSchema = t.object({
 export type BlightResource = Static<typeof blightResourceSchema>;
 
 /**
+ * A sigil reduced to what the inbox's "filter by sigil" dropdown needs —
+ * id + label. Returned alongside the blight list (rather than via the
+ * owner-only `SigilController.listSigils`) so any campaign member viewing the
+ * inbox can populate the filter.
+ */
+const blightSigilSchema = t.object({
+  id: t.uuid(),
+  label: t.string(),
+});
+
+/** A campaign-wide blight ignore rule as exposed to the owner. */
+const blightRuleResourceSchema = t.object({
+  id: t.integer(),
+  pattern: t.string(),
+  createdAt: t.string(),
+});
+
+export type BlightRuleResource = Static<typeof blightRuleResourceSchema>;
+
+/**
  * Owner-facing triage surface for blights — the deduplicated uncaught
  * exceptions captured by a campaign's sigils.
  *
@@ -68,6 +90,7 @@ export class BlightController {
   protected sigils = $repository(sigils);
   protected security = $inject(AppSecurityProvider);
   protected questService = $inject(QuestService);
+  protected ruleService = $inject(BlightRuleService);
 
   /**
    * List blights for a campaign, newest-spread first (`count` desc).
@@ -86,14 +109,28 @@ export class BlightController {
       response: t.object({
         items: t.array(blightResourceSchema),
         openCount: t.integer(),
+        sigils: t.array(blightSigilSchema),
       }),
     },
     handler: async ({ params, query, user }) => {
       await this.security.assertMember(params.campaignId, user);
 
-      const sigilIds = await this.campaignSigilIds(params.campaignId);
+      // All campaign sigils — both the join key for the blight query and the
+      // source of the inbox's "filter by sigil" dropdown options.
+      const campaignSigils = await this.sigils.findMany(
+        {
+          where: { campaignId: { eq: params.campaignId } },
+          orderBy: [{ column: "createdAt", direction: "desc" }],
+        },
+        { force: true },
+      );
+      const sigilOptions = campaignSigils.map((s) => ({
+        id: s.id,
+        label: s.label,
+      }));
+      const sigilIds = campaignSigils.map((s) => s.id);
       if (sigilIds.length === 0) {
-        return { items: [], openCount: 0 };
+        return { items: [], openCount: 0, sigils: [] };
       }
 
       const all = await this.blights.findMany({
@@ -106,7 +143,11 @@ export class BlightController {
         ? all
         : all.filter((b) => b.status === "open");
 
-      return { items: items.map((b) => this.toResource(b)), openCount };
+      return {
+        items: items.map((b) => this.toResource(b)),
+        openCount,
+        sigils: sigilOptions,
+      };
     },
   });
 
@@ -268,6 +309,121 @@ export class BlightController {
   });
 
   /**
+   * Mass-delete blights by id. Each id is validated to belong to one of the
+   * campaign's sigils (the `sigilId` filter is the cross-campaign guard), so
+   * stray ids are silently skipped rather than leaking or 404-ing the whole
+   * batch. Owner-only. Returns how many rows were actually removed.
+   */
+  deleteBlights = $action({
+    use: [$secure({ permissions: ["campaign:delete"] })],
+    method: "DELETE",
+    path: "/campaigns/:campaignId/blights",
+    schema: {
+      params: t.object({ campaignId: t.integer() }),
+      body: t.object({
+        ids: t.array(t.integer(), { minItems: 1, maxItems: 200 }),
+      }),
+      response: t.object({ deleted: t.integer() }),
+    },
+    handler: async ({ params, body, user }) => {
+      await this.security.assertOwner(params.campaignId, user);
+      const sigilIds = await this.campaignSigilIds(params.campaignId);
+      if (sigilIds.length === 0) {
+        return { deleted: 0 };
+      }
+      const rows = await this.blights.findMany({
+        where: {
+          id: { inArray: body.ids },
+          sigilId: { inArray: sigilIds },
+        },
+      });
+      for (const row of rows) {
+        await this.blights.deleteById(row.id);
+      }
+      return { deleted: rows.length };
+    },
+  });
+
+  /**
+   * List the campaign's blight ignore rules — the message substrings that
+   * drop matching crashes at ingestion. Readable by any campaign member (the
+   * inbox surfaces them in the rules dialog); mutations stay owner-only.
+   */
+  listBlightRules = $action({
+    use: [$secure({ permissions: ["campaign:read"] })],
+    method: "GET",
+    path: "/campaigns/:campaignId/blights/rules",
+    schema: {
+      params: t.object({ campaignId: t.integer() }),
+      response: t.object({ items: t.array(blightRuleResourceSchema) }),
+    },
+    handler: async ({ params, user }) => {
+      await this.security.assertMember(params.campaignId, user);
+      const rules = await this.ruleService.listForCampaign(params.campaignId);
+      return { items: rules.map((r) => this.toRuleResource(r)) };
+    },
+  });
+
+  /**
+   * Add a blight ignore rule. The `pattern` is a case-insensitive substring
+   * matched against an incoming crash's `message`; matching events are dropped
+   * at ingestion going forward (existing rows are untouched — use mass-delete
+   * to clear them). Owner-only.
+   */
+  createBlightRule = $action({
+    use: [$secure({ permissions: ["campaign:update"] })],
+    method: "POST",
+    path: "/campaigns/:campaignId/blights/rules",
+    schema: {
+      params: t.object({ campaignId: t.integer() }),
+      body: t.object({
+        pattern: t.string({ minLength: 1, maxLength: 200 }),
+      }),
+      response: blightRuleResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      await this.security.assertOwner(params.campaignId, user);
+      const pattern = body.pattern.trim();
+      if (pattern.length === 0) {
+        throw new BadRequestError("Pattern must not be empty");
+      }
+      const rule = await this.ruleService.create(
+        params.campaignId,
+        pattern,
+        user.id,
+      );
+      return this.toRuleResource(rule);
+    },
+  });
+
+  /**
+   * Delete a blight ignore rule. Owner-only.
+   */
+  deleteBlightRule = $action({
+    use: [$secure({ permissions: ["campaign:update"] })],
+    method: "DELETE",
+    path: "/campaigns/:campaignId/blights/rules/:ruleId",
+    schema: {
+      params: t.object({
+        campaignId: t.integer(),
+        ruleId: t.integer(),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params, user }) => {
+      await this.security.assertOwner(params.campaignId, user);
+      const ok = await this.ruleService.deleteForCampaign(
+        params.campaignId,
+        params.ruleId,
+      );
+      if (!ok) {
+        throw new NotFoundError("Rule not found");
+      }
+      return { ok: true };
+    },
+  });
+
+  /**
    * Resolve the ids of every sigil belonging to a campaign — the join key
    * between campaign-scoped requests and sigil-scoped blight rows.
    * Revoked sigils are included: their historical blights stay visible.
@@ -316,6 +472,14 @@ export class BlightController {
       recentIps: b.recentIps ?? [],
       status: b.status ?? "open",
       origin: b.origin ?? "client",
+    };
+  }
+
+  protected toRuleResource(r: BlightIgnoreRule): BlightRuleResource {
+    return {
+      id: r.id,
+      pattern: r.pattern,
+      createdAt: r.createdAt,
     };
   }
 }
