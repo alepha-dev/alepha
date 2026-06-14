@@ -2,7 +2,7 @@ import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { cn } from "@alepha/ui/lib/utils";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Inbox, Loader2 } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { PetitionController } from "@/api/controllers/PetitionController.ts";
 import type { PetitionResource } from "@/api/schemas/petitionResourceSchema.ts";
@@ -26,34 +26,30 @@ const CampaignPetitions = (props: CampaignPetitionsProps) => {
 
   const [status, setStatus] = useState<StatusFilter>("pending");
   const [items, setItems] = useState<PetitionResource[]>(props.items ?? []);
-  const [loading, setLoading] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(
     props.items?.[0]?.id ?? null,
   );
 
+  // No loading indicator on purpose: the status switch refetches in ~300ms and
+  // a spinner next to the segmented control reads as flicker (petition #11).
   const reload = async (next: StatusFilter = status) => {
     if (!campaign) return;
-    setLoading(true);
-    try {
-      const res = await petitionApi.listPetitions({
-        params: { campaignId: campaign.id },
-        query: { status: next },
-      });
-      setItems(res.items);
-      setActiveId(res.items[0]?.id ?? null);
-      if (next === "pending") {
-        setPetitionCount({ count: res.items.length });
-      } else {
-        petitionApi
-          .listPetitions({
-            params: { campaignId: campaign.id },
-            query: { status: "pending" },
-          })
-          .then((r) => setPetitionCount({ count: r.items.length }))
-          .catch(() => {});
-      }
-    } finally {
-      setLoading(false);
+    const res = await petitionApi.listPetitions({
+      params: { campaignId: campaign.id },
+      query: { status: next },
+    });
+    setItems(res.items);
+    setActiveId(res.items[0]?.id ?? null);
+    if (next === "pending") {
+      setPetitionCount({ count: res.items.length });
+    } else {
+      petitionApi
+        .listPetitions({
+          params: { campaignId: campaign.id },
+          query: { status: "pending" },
+        })
+        .then((r) => setPetitionCount({ count: r.items.length }))
+        .catch(() => {});
     }
   };
 
@@ -104,9 +100,6 @@ const CampaignPetitions = (props: CampaignPetitionsProps) => {
               size="sm"
               fullWidth
             />
-            {loading && (
-              <Loader2 className="text-muted-foreground size-4 shrink-0 animate-spin" />
-            )}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
