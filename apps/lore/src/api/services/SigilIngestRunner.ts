@@ -3,6 +3,7 @@ import { $logger } from "alepha/logger";
 import type { SigilIngestBody } from "../schemas/sigilIngestBody.ts";
 import { BeaconIngestService } from "./BeaconIngestService.ts";
 import { BlightIngestService } from "./BlightIngestService.ts";
+import { BlightRuleService } from "./BlightRuleService.ts";
 import { SigilIngestSupport } from "./SigilIngestSupport.ts";
 import { SigilService } from "./SigilService.ts";
 import { VitalsIngestService } from "./VitalsIngestService.ts";
@@ -38,6 +39,7 @@ export class SigilIngestRunner {
   protected sigils = $inject(SigilService);
   protected beacons = $inject(BeaconIngestService);
   protected blights = $inject(BlightIngestService);
+  protected blightRules = $inject(BlightRuleService);
   protected vitals = $inject(VitalsIngestService);
   protected support = $inject(SigilIngestSupport);
 
@@ -91,7 +93,15 @@ export class SigilIngestRunner {
         "blights",
       );
       if (blightsOn && kinds.includes("blights")) {
+        // Campaign-wide ignore rules are loaded once per batch (not per
+        // error) — a muted message is dropped before it reaches the inbox.
+        // Future-only by design: rules filter ingest, they never retro-purge
+        // rows already captured.
+        const rules = await this.blightRules.listForCampaign(sigil.campaignId);
         for (const error of body.errors) {
+          if (this.blightRules.matches(error.message ?? "", rules)) {
+            continue;
+          }
           try {
             await this.blights.ingestEventTrusted(sigil.id, error);
           } catch (err) {

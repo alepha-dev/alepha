@@ -7,6 +7,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { AlephaServerCors } from "alepha/server/cors";
 import { afterEach, beforeEach, describe, it } from "vitest";
+import { BlightController } from "../src/api/controllers/BlightController.ts";
 import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { LoreApi } from "../src/api/index.ts";
@@ -204,6 +205,46 @@ describe("SigilIngestController — POST /sigils/:id/ingest", () => {
     expect(vitalRows.length).toBe(1);
     expect(vitalRows[0].metric).toBe("lcp");
     expect(vitalRows[0].path).toBe("/home");
+  });
+
+  it("drops ingested errors whose message matches a campaign ignore rule", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+    const sigil = await createSigil(ctx, campaignId, owner, ["blights"]);
+
+    // Mute any "Unknown club: …" crash campaign-wide.
+    const blightController = ctx.alepha.inject(BlightController);
+    await blightController.createBlightRule.fetch(
+      { params: { campaignId }, body: { pattern: "Unknown club" } },
+      { user: owner },
+    );
+
+    const res = await post(ctx, sigil.id, {
+      errors: [
+        // Matches the rule (case-insensitive) → dropped.
+        {
+          name: "HttpError",
+          message: "unknown CLUB: bondy-padel/1",
+          origin: "server",
+        },
+        // No match → recorded.
+        {
+          name: "TypeError",
+          message: "real bug",
+          stack: "TypeError: real bug\n  at f (https://x/app.js:1:1)",
+          origin: "server",
+        },
+      ],
+    });
+    expect(res.status).toBe(204);
+
+    const blightRows = await (ctx.blights as any).blights.findMany({
+      where: { sigilId: { eq: sigil.id } },
+    });
+    expect(blightRows.length).toBe(1);
+    expect(blightRows[0].message).toBe("real bug");
   });
 
   it("404 for an unknown sigil id", async ({ expect }) => {
