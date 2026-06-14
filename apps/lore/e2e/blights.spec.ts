@@ -127,10 +127,14 @@ test.describe("Blights", () => {
     // Close the dialog (Escape).
     await page.keyboard.press("Escape");
 
-    // Mass delete: select all rows, confirm, inbox empties.
-    page.on("dialog", (dialog) => dialog.accept());
+    // Mass delete: select all rows, click the pill action, confirm in the
+    // in-app AlertDialog (useDialog — never window.confirm), inbox empties.
     await page.getByLabel("Select all rows").click();
     await page.getByRole("button", { name: "Delete selected" }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Delete", exact: true })
+      .click();
 
     await expect(page.getByText(/No blights\./i)).toBeVisible({
       timeout: 10_000,

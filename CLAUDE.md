@@ -232,6 +232,7 @@ yarn w @package-name typecheck && yarn w @package-name test
 - Event names follow pattern: `namespace:action:status`
 - **IMPORTANT**: NEVER use the `private` keyword in class members. Use `protected` instead for all access control
 - **IMPORTANT**: NEVER use `vi.mock()` or `vi.spyOn()` - use Alepha's service substitution with `.with()` and Memory providers instead
+- **IMPORTANT**: NEVER use `window.confirm()` / `window.alert()` / `window.prompt()` in UI code. Use the imperative dialog API from `@alepha/ui/components/use-dialog/use-dialog`: `const dialog = useDialog();` then `await dialog.confirm({ title, description?, confirmLabel?, cancelLabel?, destructive? })` (returns `Promise<boolean>`), `dialog.alert(...)`, or `dialog.prompt(...)`. `<DialogProvider>` is already mounted in `apps/lore`'s `Layout.tsx`.
 - **IMPORTANT**: NEVER use single-line JSDoc comments. Always use multi-line format:
   ```typescript
   // Bad
