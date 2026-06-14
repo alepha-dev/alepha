@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Page, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -67,6 +68,7 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
   const alepha = useAlepha();
   const blightApi = useClient<BlightController>();
   const toaster = useToast();
+  const dialog = useDialog();
   const dt = useInject(DateTimeProvider);
 
   const [stackView, setStackView] = useState<BlightResource | null>(null);
@@ -223,15 +225,15 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
             destructive: true,
             onClick: async (selected, { refresh, clearSelection }) => {
               if (!campaign || selected.length === 0) return;
-              if (
-                !window.confirm(
-                  tr("blights.deleteSelectedConfirm", {
-                    args: [String(selected.length)],
-                  }),
-                )
-              ) {
-                return;
-              }
+              const ok = await dialog.confirm({
+                title: tr("blights.deleteSelectedConfirm", {
+                  args: [String(selected.length)],
+                }) as string,
+                confirmLabel: tr("blights.action.delete"),
+                cancelLabel: tr("common.cancel"),
+                destructive: true,
+              });
+              if (!ok) return;
               try {
                 const res = await blightApi.deleteBlights({
                   params: { campaignId: campaign.id },
@@ -401,7 +403,13 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
                 { refresh }: { refresh: () => void },
               ) => {
                 if (!campaign) return;
-                if (!window.confirm(tr("blights.deleteConfirm"))) return;
+                const ok = await dialog.confirm({
+                  title: tr("blights.deleteConfirm"),
+                  confirmLabel: tr("blights.action.delete"),
+                  cancelLabel: tr("common.cancel"),
+                  destructive: true,
+                });
+                if (!ok) return;
                 try {
                   await blightApi.deleteBlight({
                     params: { campaignId: campaign.id, blightId: blight.id },
