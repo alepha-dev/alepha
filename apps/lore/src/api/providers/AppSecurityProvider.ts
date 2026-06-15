@@ -106,6 +106,35 @@ export class AppSecurityProvider {
   }
 
   /**
+   * Non-throwing **literal** membership check — `true` when the caller created
+   * the campaign or holds a character in it.
+   *
+   * Unlike {@link assertMember}, this deliberately does NOT honor the
+   * `user.ownership` privileged-identity bypass: that bypass governs *access*
+   * (a privileged admin may read member-gated data), whereas this answers
+   * "does the caller *belong* to this campaign?". Used to branch on membership
+   * (e.g. exempting members from the petition rate limit), not to gate access.
+   */
+  async isMember(campaignId: number, user: UserAccountToken): Promise<boolean> {
+    const campaign = await this.campaigns.findOne({
+      where: { id: { eq: campaignId } },
+    });
+    if (!campaign) {
+      return false;
+    }
+    if (campaign.createdBy === user.id) {
+      return true;
+    }
+    const character = await this.characters.findOne({
+      where: {
+        campaignId: { eq: campaignId },
+        userId: { eq: user.id },
+      },
+    });
+    return !!character;
+  }
+
+  /**
    * Owner-only gate. Requires the caller to be the campaign creator (or a
    * privileged identity with `user.ownership === false`). Use for
    * destructive or campaign-configuration endpoints: delete campaign,

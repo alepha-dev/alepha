@@ -90,6 +90,10 @@ export class PetitionController {
    * (`features.petitions === true`). Membership is NOT required — petitions
    * are explicitly the "outside-the-team feedback channel". The petition
    * module toggle is the campaign owner's only opt-in/out lever.
+   *
+   * The per-user daily rate limit applies only to NON-members: owners and
+   * members belong to the campaign and submit without limit. Exceeding the
+   * limit yields a 429 (whose message survives to the client), not a 500.
    */
   submitPetition = $action({
     use: [$secure(), $transactional()],
@@ -103,7 +107,12 @@ export class PetitionController {
     handler: async ({ params, body, user }) => {
       await this.assertPetitionsOpen(params.campaignId);
 
-      await this.rateLimiter.assertPetitionAllowed(user.id);
+      // The petition rate limit only throttles outsiders — petitions are the
+      // "outside-the-team feedback channel". Campaign owners/members belong to
+      // the campaign and submit without limit.
+      if (!(await this.security.isMember(params.campaignId, user))) {
+        await this.rateLimiter.assertPetitionAllowed(user.id);
+      }
 
       const limits = this.rateLimiter.options();
       const attachments = body.attachments ?? [];
@@ -186,7 +195,11 @@ export class PetitionController {
     },
     handler: async ({ params, body, user }) => {
       await this.assertPetitionsOpen(params.campaignId);
-      await this.rateLimiter.assertAttachmentAllowed(user.id);
+      // Members are exempt from the upload throttle too (same rationale as
+      // submitPetition) — the limit is an outsider control.
+      if (!(await this.security.isMember(params.campaignId, user))) {
+        await this.rateLimiter.assertAttachmentAllowed(user.id);
+      }
 
       const limits = this.rateLimiter.options();
       const file = body.file;
