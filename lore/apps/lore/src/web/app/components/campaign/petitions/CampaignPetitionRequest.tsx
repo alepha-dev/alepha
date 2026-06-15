@@ -379,26 +379,28 @@ const CampaignPetitionRequest = () => {
     return (
       <>
         <PageHeader />
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 pt-16">
-          <Card className="shadow">
-            <CardContent className="flex flex-col gap-4">
-              <h1 className="text-xl font-semibold">
-                {tr("petitions.request.loginRequiredTitle")}
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                {tr("petitions.request.loginRequiredBody")}
-              </p>
-              <Button
-                onClick={() =>
-                  router.push("login", {
-                    query: { r: window.location.pathname },
-                  })
-                }
-              >
-                {tr("petitions.request.signIn")}
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 pt-16">
+            <Card className="shadow">
+              <CardContent className="flex flex-col gap-4">
+                <h1 className="text-xl font-semibold">
+                  {tr("petitions.request.loginRequiredTitle")}
+                </h1>
+                <p className="text-muted-foreground text-sm">
+                  {tr("petitions.request.loginRequiredBody")}
+                </p>
+                <Button
+                  onClick={() =>
+                    router.push("login", {
+                      query: { r: window.location.pathname },
+                    })
+                  }
+                >
+                  {tr("petitions.request.signIn")}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </>
     );
@@ -410,166 +412,170 @@ const CampaignPetitionRequest = () => {
   return (
     <>
       <PageHeader />
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 pt-16">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-bold">{tr("petitions.request.title")}</h1>
-          <p className="text-muted-foreground text-sm">
-            {tr("petitions.request.description")}
-          </p>
-        </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 pt-16">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-xl font-bold">
+              {tr("petitions.request.title")}
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              {tr("petitions.request.description")}
+            </p>
+          </div>
 
-        <Card className="py-4 shadow">
-          <CardContent className="px-4">
-            <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
-              <div className="flex min-w-0 items-center gap-3">
-                <UserAvatar fileId={userPicture} className="size-8" />
-                <div className="flex min-w-0 flex-col">
-                  <span className="truncate text-sm font-medium">
-                    {userLabel}
-                  </span>
-                  <span className="text-muted-foreground truncate text-xs">
-                    {tr("petitions.request.submittingAs")}
-                  </span>
-                </div>
-              </div>
-
-              {campaign && (
+          <Card className="py-4 shadow">
+            <CardContent className="px-4">
+              <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex min-w-0 flex-col items-end text-right">
+                  <UserAvatar fileId={userPicture} className="size-8" />
+                  <div className="flex min-w-0 flex-col">
                     <span className="truncate text-sm font-medium">
-                      {campaign.title}
+                      {userLabel}
                     </span>
                     <span className="text-muted-foreground truncate text-xs">
-                      {tr("petitions.request.forCampaign")}
+                      {tr("petitions.request.submittingAs")}
                     </span>
                   </div>
-                  <CampaignIcon fileId={campaign.icon} className="size-8" />
                 </div>
-              )}
-            </div>
 
-            <form {...form.props} className="flex flex-col gap-4">
-              {/* Single free-text field. It doubles as a paste/drop target
-                  for screenshots — global paste works regardless of focus,
-                  this just makes dragging files discoverable. */}
-              {/* biome-ignore lint/a11y/noStaticElementInteractions: file-attachment drop zone — the textarea inside is the real control, drag handlers are a progressive enhancement */}
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragging(true);
-                }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragging(false);
-                  onFilePicked(e.dataTransfer.files);
-                }}
-                className={`flex flex-col gap-1 rounded-md ${
-                  dragging ? "ring-2 ring-primary ring-offset-2" : ""
-                }`}
-              >
-                <Control
-                  input={form.input.message}
-                  label={tr("petitions.request.messageField")}
-                  description={tr("petitions.request.messageHelper")}
-                  area
-                  autoFocus
-                  rows={12}
-                />
-                <p className="text-muted-foreground text-xs">
-                  {tr("petitions.request.pasteHint")}
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">
-                  {tr("petitions.request.attachments")}
-                </label>
-                <p className="text-muted-foreground text-xs">
-                  {tr("petitions.request.attachmentsHelper")}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    ref={inputRef}
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => onFilePicked(e.target.files)}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploading || attachments.length >= MAX_FILES}
-                    onClick={() => inputRef.current?.click()}
-                  >
-                    {uploading ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Paperclip className="size-4" />
-                    )}
-                    {tr("petitions.request.attach")}
-                  </Button>
-                  <span className="text-muted-foreground text-xs">
-                    {tr("petitions.request.attachmentsCount", {
-                      args: [String(attachments.length), String(MAX_FILES)],
-                    })}
-                  </span>
-                </div>
-                {attachments.length > 0 && (
-                  <ul className="flex flex-col gap-1">
-                    {attachments.map((a) => {
-                      const isImage = a.mimeType?.startsWith("image/");
-                      return (
-                        <li
-                          key={a.id}
-                          className="flex items-center gap-2 rounded border border-border bg-muted/20 px-2 py-1 text-sm"
-                        >
-                          {isImage ? (
-                            <FileImage
-                              id={a.id}
-                              alt=""
-                              className="size-10 shrink-0 rounded border border-border object-cover"
-                            />
-                          ) : (
-                            <Paperclip className="size-3.5 shrink-0" />
-                          )}
-                          <span className="truncate flex-1">{a.name}</span>
-                          <span className="text-muted-foreground text-xs">
-                            {Math.round(a.size / 1024)} KB
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeAttachment(a.id)}
-                            className="hover:text-foreground text-muted-foreground"
-                            aria-label="remove"
-                          >
-                            <X className="size-3.5" />
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                {campaign && (
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex min-w-0 flex-col items-end text-right">
+                      <span className="truncate text-sm font-medium">
+                        {campaign.title}
+                      </span>
+                      <span className="text-muted-foreground truncate text-xs">
+                        {tr("petitions.request.forCampaign")}
+                      </span>
+                    </div>
+                    <CampaignIcon fileId={campaign.icon} className="size-8" />
+                  </div>
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={handleCancel}
-                  disabled={submitting}
+              <form {...form.props} className="flex flex-col gap-4">
+                {/* Single free-text field. It doubles as a paste/drop target
+                  for screenshots — global paste works regardless of focus,
+                  this just makes dragging files discoverable. */}
+                {/* biome-ignore lint/a11y/noStaticElementInteractions: file-attachment drop zone — the textarea inside is the real control, drag handlers are a progressive enhancement */}
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragging(false);
+                    onFilePicked(e.dataTransfer.files);
+                  }}
+                  className={`flex flex-col gap-1 rounded-md ${
+                    dragging ? "ring-2 ring-primary ring-offset-2" : ""
+                  }`}
                 >
-                  {tr("petitions.request.cancel")}
-                </Button>
-                <Button type="submit" disabled={submitting || uploading}>
-                  {submitting && <Loader2 className="size-4 animate-spin" />}
-                  {tr("petitions.request.submit")}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                  <Control
+                    input={form.input.message}
+                    label={tr("petitions.request.messageField")}
+                    description={tr("petitions.request.messageHelper")}
+                    area
+                    autoFocus
+                    rows={12}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    {tr("petitions.request.pasteHint")}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">
+                    {tr("petitions.request.attachments")}
+                  </label>
+                  <p className="text-muted-foreground text-xs">
+                    {tr("petitions.request.attachmentsHelper")}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      ref={inputRef}
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => onFilePicked(e.target.files)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploading || attachments.length >= MAX_FILES}
+                      onClick={() => inputRef.current?.click()}
+                    >
+                      {uploading ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Paperclip className="size-4" />
+                      )}
+                      {tr("petitions.request.attach")}
+                    </Button>
+                    <span className="text-muted-foreground text-xs">
+                      {tr("petitions.request.attachmentsCount", {
+                        args: [String(attachments.length), String(MAX_FILES)],
+                      })}
+                    </span>
+                  </div>
+                  {attachments.length > 0 && (
+                    <ul className="flex flex-col gap-1">
+                      {attachments.map((a) => {
+                        const isImage = a.mimeType?.startsWith("image/");
+                        return (
+                          <li
+                            key={a.id}
+                            className="flex items-center gap-2 rounded border border-border bg-muted/20 px-2 py-1 text-sm"
+                          >
+                            {isImage ? (
+                              <FileImage
+                                id={a.id}
+                                alt=""
+                                className="size-10 shrink-0 rounded border border-border object-cover"
+                              />
+                            ) : (
+                              <Paperclip className="size-3.5 shrink-0" />
+                            )}
+                            <span className="truncate flex-1">{a.name}</span>
+                            <span className="text-muted-foreground text-xs">
+                              {Math.round(a.size / 1024)} KB
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeAttachment(a.id)}
+                              className="hover:text-foreground text-muted-foreground"
+                              aria-label="remove"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleCancel}
+                    disabled={submitting}
+                  >
+                    {tr("petitions.request.cancel")}
+                  </Button>
+                  <Button type="submit" disabled={submitting || uploading}>
+                    {submitting && <Loader2 className="size-4 animate-spin" />}
+                    {tr("petitions.request.submit")}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </>
   );

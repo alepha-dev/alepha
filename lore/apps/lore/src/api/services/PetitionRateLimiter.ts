@@ -1,7 +1,8 @@
-import { $inject, Alepha, AlephaError } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { files } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
+import { HttpError } from "alepha/server";
 import { petitionOptionsAtom } from "../atoms/petitionOptionsAtom.ts";
 import { petitions } from "../entities/petitions.ts";
 
@@ -40,9 +41,13 @@ export class PetitionRateLimiter {
       createdAt: { gte: cutoff },
     });
     if (count >= limit) {
-      throw new AlephaError(
-        `Petition rate limit reached (${limit} per 24h). Try again later.`,
-      );
+      // 429 (not a bare AlephaError → 500): a 4xx keeps its message through to
+      // the client, so the user sees the real reason instead of the generic
+      // "Internal Server Error" that production substitutes for any 5xx.
+      throw new HttpError({
+        status: 429,
+        message: `Petition rate limit reached (${limit} per 24h). Try again later.`,
+      });
     }
   }
 
@@ -59,9 +64,10 @@ export class PetitionRateLimiter {
       createdAt: { gte: cutoff },
     });
     if (count >= limit) {
-      throw new AlephaError(
-        `Attachment upload rate limit reached (${limit} per 24h). Try again later.`,
-      );
+      throw new HttpError({
+        status: 429,
+        message: `Attachment upload rate limit reached (${limit} per 24h). Try again later.`,
+      });
     }
   }
 
