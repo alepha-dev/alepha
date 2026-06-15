@@ -106,19 +106,23 @@ const MyProfile = (props: MyProfileProps) => {
         <button
           type="button"
           onClick={handleAvatarClick}
-          className="relative size-24 shrink-0 cursor-pointer overflow-hidden rounded-full border-2 border-border bg-muted"
+          className="relative size-24 shrink-0 cursor-pointer"
         >
-          <FileImage
-            id={currentUser.picture}
-            public
-            alt="avatar"
-            className="size-full object-cover"
-            fallback={
-              <div className="flex size-full items-center justify-center">
-                <User className="size-12" />
-              </div>
-            }
-          />
+          {/* Only the image is clipped to a circle; the camera badge lives
+              outside this wrapper so the round mask can't crop it. */}
+          <div className="size-full overflow-hidden rounded-full border-2 border-border bg-muted">
+            <FileImage
+              id={currentUser.picture}
+              public
+              alt="avatar"
+              className="size-full object-cover"
+              fallback={
+                <div className="flex size-full items-center justify-center">
+                  <User className="size-12" />
+                </div>
+              }
+            />
+          </div>
           <div className="absolute right-0 bottom-0 flex size-7 items-center justify-center rounded-full border-2 border-border bg-card">
             <Camera className="size-3.5" />
           </div>

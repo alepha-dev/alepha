@@ -111,11 +111,12 @@ const createSigil = async (
     "blights",
     "vitals",
   ],
+  excludedPaths: string[] = [],
 ): Promise<{ id: string; ingestKey: string }> => {
   const created = await ctx.sigilController.createSigil.fetch(
     {
       params: { campaignId },
-      body: { label: "ingest sigil", kinds },
+      body: { label: "ingest sigil", kinds, excludedPaths },
     },
     { user },
   );
@@ -252,6 +253,29 @@ describe("SigilIngestController — POST /sigils/:id/ingest", () => {
       views: [{ path: "/x" }],
     });
     expect(res.status).toBe(404);
+  });
+
+  it("GET /sigils/:id/campaign returns the campaign id and excludedPaths", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+    const sigil = await createSigil(
+      ctx,
+      campaignId,
+      owner,
+      ["petition"],
+      ["/c/*/request", "/admin/**"],
+    );
+
+    const res = await fetch(`${ctx.baseUrl}/sigils/${sigil.id}/campaign`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      campaignId: number;
+      excludedPaths: string[];
+    };
+    expect(body.campaignId).toBe(campaignId);
+    expect(body.excludedPaths).toEqual(["/c/*/request", "/admin/**"]);
   });
 
   it("403 when the campaign sigils master toggle is off", async ({

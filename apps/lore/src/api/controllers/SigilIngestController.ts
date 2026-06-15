@@ -73,6 +73,11 @@ export class SigilIngestController {
    * `/c/:campaignId/request`. Public + unauthenticated — the sigil UUID is
    * the sole credential, exactly like the ingest endpoint.
    *
+   * Also returns the sigil's `excludedPaths` so the embed can suppress the
+   * petition button on matching host pages. The `@alepha/sigil` server
+   * proxy (`GET /sigil/config`) reads these via {@link SigilForwardProvider}
+   * and relays them to the browser without ever exposing the sigil id.
+   *
    * Resolution mirrors the ingest path: `SigilService.findForIngest(:id)` →
    * 404 with the same message when the sigil cannot be resolved.
    *
@@ -83,14 +88,20 @@ export class SigilIngestController {
     path: "/sigils/:id/campaign",
     schema: {
       params: t.object({ id: t.string() }),
-      response: t.object({ campaignId: t.integer() }),
+      response: t.object({
+        campaignId: t.integer(),
+        excludedPaths: t.array(t.string()),
+      }),
     },
     handler: async ({ params }) => {
       const sigil = await this.sigils.findForIngest(params.id);
       if (!sigil) {
         throw new HttpError({ status: 404, message: "Sigil not found" });
       }
-      return { campaignId: sigil.campaignId };
+      return {
+        campaignId: sigil.campaignId,
+        excludedPaths: sigil.excludedPaths ?? [],
+      };
     },
   });
 }

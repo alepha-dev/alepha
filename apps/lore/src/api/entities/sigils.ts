@@ -79,11 +79,16 @@ export const sigils = $entity({
       [],
     ),
     /**
-     * Glob patterns that suppress telemetry collection on matching pages
-     * of the host site. Empty (default) → no exclusions, all paths are
-     * collected. `*` matches any chars within a path segment (no `/`);
-     * `**` matches across segments. Matched against the pathname only —
-     * no host, no query. See `sigilGlobMatch` for the matcher implementation.
+     * Glob patterns that suppress the embed's **petition button** on matching
+     * pages of the host site (NOT telemetry — views/blights/vitals are always
+     * collected). Empty (default) → button shown everywhere. `*` matches any
+     * chars within a path segment (no `/`); `**` matches across segments.
+     * Matched against the pathname only — no host, no query.
+     *
+     * Delivered to the embed via `GET /sigils/:id/campaign` → the
+     * `@alepha/sigil` `GET /sigil/config` proxy → `SigilRoot`, which hides
+     * `SigilFeedbackButton` when the current pathname matches. The matcher is
+     * `sigilAnyGlobMatch` in `@alepha/sigil/src/shared/sigilGlobMatch.ts`.
      */
     excludedPaths: db.default(
       t.array(t.string({ maxLength: 200 }), { maxItems: 50 }),

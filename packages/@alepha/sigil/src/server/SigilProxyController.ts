@@ -88,6 +88,30 @@ export class SigilProxyController {
   });
 
   /**
+   * `GET /api/sigil/config`
+   *
+   * Same-origin config the browser embed reads on mount. Currently relays the
+   * configured sigil's `excludedPaths` (resolved server-side via
+   * {@link SigilForwardProvider}) so `SigilRoot` can suppress the petition
+   * button on matching host pages. The sigil id never reaches the browser —
+   * only the (non-secret) glob list does. Returns an empty list when the
+   * provider is disabled.
+   */
+  config = $action({
+    method: "GET",
+    path: "/sigil/config",
+    schema: {
+      response: t.object({ excludedPaths: t.array(t.string()) }),
+    },
+    handler: async () => {
+      if (!this.forward.enabled()) {
+        return { excludedPaths: [] };
+      }
+      return { excludedPaths: await this.forward.excludedPaths() };
+    },
+  });
+
+  /**
    * `GET /sigil/request`
    *
    * The feedback button does a synchronous same-origin
