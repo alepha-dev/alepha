@@ -1,11 +1,29 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SIGIL_PETITION_SUBMITTED_MESSAGE } from "../../../shared/sigilMessages.ts";
 import { SigilRoot } from "../SigilRoot.tsx";
 
+const stubConfigFetch = (excludedPaths: string[]) => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ excludedPaths }),
+    })),
+  );
+};
+
 describe("SigilRoot", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    // Reset the SPA location so path-based tests stay independent.
+    window.history.pushState({}, "", "/");
   });
 
   it("renders the feedback button", () => {
@@ -38,6 +56,41 @@ describe("SigilRoot", () => {
     });
 
     expect(screen.queryByText("Thank you!")).toBeNull();
+  });
+
+  it("hides the feedback button on a path matching an excluded glob", async () => {
+    stubConfigFetch(["/c/*/request"]);
+    window.history.pushState({}, "", "/c/2/request");
+
+    render(<SigilRoot />);
+
+    await waitFor(() => expect(screen.queryByLabelText("Feedback")).toBeNull());
+  });
+
+  it("keeps the feedback button on a non-excluded path", async () => {
+    stubConfigFetch(["/c/*/request"]);
+    window.history.pushState({}, "", "/home");
+
+    render(<SigilRoot />);
+    // Flush the config fetch + state update.
+    await act(async () => {});
+
+    expect(screen.getByLabelText("Feedback")).toBeTruthy();
+  });
+
+  it("re-hides the button when navigating to an excluded path (SPA pushState)", async () => {
+    stubConfigFetch(["/c/*/request"]);
+    window.history.pushState({}, "", "/home");
+
+    render(<SigilRoot />);
+    await act(async () => {});
+    expect(screen.getByLabelText("Feedback")).toBeTruthy();
+
+    act(() => {
+      window.history.pushState({}, "", "/c/2/request");
+    });
+
+    await waitFor(() => expect(screen.queryByLabelText("Feedback")).toBeNull());
   });
 
   it("opens /sigil/request in a popup with captured page context when clicked", () => {

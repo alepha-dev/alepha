@@ -12,10 +12,13 @@ export class SigilForwardProvider {
   protected config?: { id: string; loreOrigin: string };
 
   /**
-   * Lazily-resolved campaign id for the configured sigil. Cached after the
-   * first successful lookup so {@link campaignId} only hits Lore once.
+   * Lazily-resolved sigil → campaign mapping plus the sigil's `excludedPaths`.
+   * Both come from a single `GET /sigils/:id/campaign` lookup and are cached
+   * after the first success so {@link campaignId} / {@link excludedPaths} only
+   * hit Lore once.
    */
   protected cachedCampaignId?: number;
+  protected cachedExcludedPaths?: string[];
 
   protected env = $env(sigilEnv);
 
@@ -54,30 +57,55 @@ export class SigilForwardProvider {
   }
 
   /**
-   * Resolve the campaign id for the configured sigil by calling Lore's
-   * `GET {loreOrigin}/sigils/:id/campaign` endpoint. The result is cached
-   * after the first successful lookup so subsequent calls do not refetch.
+   * Resolve the campaign id for the configured sigil. Backed by the shared
+   * {@link resolve} lookup, cached after the first success.
    *
    * Returns `undefined` when the provider is disabled or the lookup fails —
    * the sigil id (a server-only secret) is never exposed to the browser.
    */
   public async campaignId(): Promise<number | undefined> {
-    if (!this.config) return undefined;
-    if (this.cachedCampaignId !== undefined) return this.cachedCampaignId;
+    await this.resolve();
+    return this.cachedCampaignId;
+  }
+
+  /**
+   * The configured sigil's `excludedPaths` — the glob patterns on which the
+   * embed (e.g. the petition button) is suppressed. Backed by the same shared
+   * {@link resolve} lookup as {@link campaignId}, so reading both only hits
+   * Lore once. Returns `[]` when the provider is disabled or the lookup fails.
+   */
+  public async excludedPaths(): Promise<string[]> {
+    await this.resolve();
+    return this.cachedExcludedPaths ?? [];
+  }
+
+  /**
+   * One-shot resolution of the sigil → `{ campaignId, excludedPaths }` mapping
+   * via Lore's `GET {loreOrigin}/sigils/:id/campaign` endpoint. No-op when the
+   * provider is disabled or the values are already cached, so the lookup fires
+   * at most once regardless of how many accessors call it.
+   */
+  protected async resolve(): Promise<void> {
+    if (!this.config) return;
+    if (this.cachedCampaignId !== undefined) return;
 
     try {
       const res = await this.http.fetch(this.url("campaign"), {
         method: "GET",
-        schema: { response: t.object({ campaignId: t.integer() }) },
+        schema: {
+          response: t.object({
+            campaignId: t.integer(),
+            excludedPaths: t.optional(t.array(t.string())),
+          }),
+        },
       });
       this.cachedCampaignId = res.data.campaignId;
-      return this.cachedCampaignId;
+      this.cachedExcludedPaths = res.data.excludedPaths ?? [];
     } catch (error) {
       this.log.warn(
         `[sigil] campaign resolution failed for ${this.url("campaign")}`,
         error,
       );
-      return undefined;
     }
   }
 

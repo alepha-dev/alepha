@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  sigilAnyGlobMatch,
-  sigilGlobMatch,
-} from "../src/api/services/sigilGlobMatch.ts";
+import { sigilAnyGlobMatch, sigilGlobMatch } from "../sigilGlobMatch.ts";
 
 describe("sigilGlobMatch — sigil excludedPaths matcher (#110)", () => {
   it("exact match", () => {

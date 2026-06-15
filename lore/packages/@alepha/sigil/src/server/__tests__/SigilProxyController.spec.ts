@@ -109,6 +109,50 @@ describe("SigilProxyController.ingest", () => {
   });
 });
 
+describe("SigilProxyController.config", () => {
+  it("relays the configured sigil's excludedPaths (no sigil id leaked)", async () => {
+    class ConfigForward extends SigilForwardProvider {
+      enabled() {
+        return true;
+      }
+
+      async excludedPaths() {
+        return ["/c/*/request", "/admin/**"];
+      }
+    }
+
+    const alepha = Alepha.create({
+      env: { NODE_ENV: "production", SERVER_PORT: 0, SIGIL_ID: "sig-1" },
+    }).with({ provide: SigilForwardProvider, use: ConfigForward });
+    const ctrl = alepha.inject(SigilProxyController);
+    await alepha.start();
+
+    const result = await ctrl.config.run({});
+    expect(result.excludedPaths).toEqual(["/c/*/request", "/admin/**"]);
+  });
+
+  it("returns an empty list when the provider is disabled", async () => {
+    class DisabledForward extends SigilForwardProvider {
+      enabled() {
+        return false;
+      }
+
+      async excludedPaths() {
+        return ["/should-not-be-reached"];
+      }
+    }
+
+    const alepha = Alepha.create({
+      env: { NODE_ENV: "production", SERVER_PORT: 0 },
+    }).with({ provide: SigilForwardProvider, use: DisabledForward });
+    const ctrl = alepha.inject(SigilProxyController);
+    await alepha.start();
+
+    const result = await ctrl.config.run({});
+    expect(result.excludedPaths).toEqual([]);
+  });
+});
+
 describe("SigilProxyController.request", () => {
   it("302-redirects to the Lore petition page for the resolved campaign", async () => {
     class RedirectForward extends SigilForwardProvider {
