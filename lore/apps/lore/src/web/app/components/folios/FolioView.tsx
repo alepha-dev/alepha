@@ -1,6 +1,13 @@
 import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@alepha/ui/components/ui/dropdown-menu";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
@@ -18,6 +25,7 @@ import {
   History,
   ListTree,
   Lock,
+  MoreVertical,
   Pencil,
   Pin,
   PinOff,
@@ -279,33 +287,9 @@ const FolioView = () => {
             <h1 className="flex-1 text-3xl font-bold tracking-tight">
               {folio.title}
             </h1>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => pinAction.run()}
-              disabled={pinAction.loading}
-              aria-label={String(
-                tr(folio.pinned ? "folios.unpin" : "folios.pin"),
-              )}
-              aria-pressed={folio.pinned}
-              className={folio.pinned ? "text-primary" : undefined}
-            >
-              {folio.pinned ? (
-                <PinOff className="size-4" />
-              ) : (
-                <Pin className="size-4" />
-              )}
-            </Button>
-            {!folio.protected && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setEncryptOpen(true)}
-                aria-label={tr("folios.protected.encrypt")}
-              >
-                <Lock className="size-4" />
-              </Button>
-            )}
+            {/* Edit stays a first-class, always-visible action. Everything
+                else (pin, encrypt, delete) folds into the `…` menu so the
+                header reads as one primary action — petition #16. */}
             <Button
               variant="ghost"
               size="icon"
@@ -320,15 +304,47 @@ const FolioView = () => {
             >
               <Pencil className="size-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleDelete}
-              disabled={deleteAction.loading}
-              aria-label={tr("folios.delete")}
-            >
-              <Trash2 className="size-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={tr("folios.more-actions")}
+                  />
+                }
+              >
+                <MoreVertical className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => pinAction.run()}
+                  disabled={pinAction.loading}
+                >
+                  {folio.pinned ? (
+                    <PinOff className="size-4" />
+                  ) : (
+                    <Pin className="size-4" />
+                  )}
+                  {tr(folio.pinned ? "folios.unpin" : "folios.pin")}
+                </DropdownMenuItem>
+                {!folio.protected && (
+                  <DropdownMenuItem onClick={() => setEncryptOpen(true)}>
+                    <Lock className="size-4" />
+                    {tr("folios.protected.encrypt")}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={deleteAction.loading}
+                >
+                  <Trash2 className="size-4" />
+                  {tr("folios.delete")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">

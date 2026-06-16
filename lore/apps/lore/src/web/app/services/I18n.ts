@@ -102,6 +102,7 @@ export class I18n {
         "folios.protected.delete-unrecoverable": "Delete folio",
         "folios.pin": "Pin folio",
         "folios.unpin": "Unpin folio",
+        "folios.more-actions": "More actions",
         "folios.token-estimate": "~$1 tokens",
         "folios.pin-cap-warning":
           "Pinned folios share an 8K-char budget — this folio plus the rest is over the cap.",
@@ -165,6 +166,7 @@ export class I18n {
           "This creates a new revision with the prior content. The current version stays in history so you can undo the revert.",
         "folios.history.pin": "Pin this revision",
         "folios.history.unpin": "Unpin this revision",
+        "folios.history.actions": "Revision actions",
         "folios.history.pinned-badge": "Pinned",
         "folios.history.diff-before": "Before",
         "folios.history.diff-after": "After",
@@ -958,6 +960,7 @@ export class I18n {
         "folios.protected.delete-unrecoverable": "Supprimer le folio",
         "folios.pin": "Épingler le folio",
         "folios.unpin": "Désépingler le folio",
+        "folios.more-actions": "Plus d'actions",
         "folios.token-estimate": "~$1 jetons",
         "folios.pin-cap-warning":
           "Les folios épinglés partagent un budget de 8K caractères — ce folio et les autres dépassent la limite.",
@@ -1021,6 +1024,7 @@ export class I18n {
           "Cela crée une nouvelle révision avec l'ancien contenu. La version actuelle reste dans l'historique — vous pourrez annuler la restauration.",
         "folios.history.pin": "Épingler cette révision",
         "folios.history.unpin": "Désépingler cette révision",
+        "folios.history.actions": "Actions de la révision",
         "folios.history.pinned-badge": "Épinglée",
         "folios.history.diff-before": "Avant",
         "folios.history.diff-after": "Après",

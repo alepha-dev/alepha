@@ -78,10 +78,15 @@ test.describe("Protected folio", () => {
     });
 
     await test.step("encrypt the folio from its view", async () => {
-      // The header Encrypt icon-button (aria-label "Encrypt") opens the
+      // Encrypt now lives in the header "…" (More actions) dropdown
+      // (petition #16): open the menu, then pick Encrypt, which opens the
       // set-passphrase dialog.
       await page
-        .getByRole("button", { name: /^encrypt$/i })
+        .getByRole("button", { name: /more actions/i })
+        .first()
+        .click();
+      await page
+        .getByRole("menuitem", { name: /^encrypt$/i })
         .first()
         .click();
       const dialog = page.getByRole("dialog");
