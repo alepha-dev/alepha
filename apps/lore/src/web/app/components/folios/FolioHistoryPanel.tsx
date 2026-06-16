@@ -1,10 +1,28 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@alepha/ui/components/ui/dropdown-menu";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { cn } from "@alepha/ui/lib/utils";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { History as HistoryIcon, Pin, PinOff, RotateCcw } from "lucide-react";
+import {
+  ChevronRight,
+  Clock,
+  FilePlus2,
+  MoreVertical,
+  Pencil,
+  Pin,
+  PinOff,
+  RotateCcw,
+  Tag,
+  Type,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioRevision } from "@/api/entities/folioRevisions.ts";
@@ -27,11 +45,33 @@ const ActionLabel = (props: { action: FolioRevision["action"] }) => {
   }
 };
 
+const actionIcon = (action: FolioRevision["action"]) => {
+  switch (action) {
+    case "create":
+      return <FilePlus2 className="size-4" />;
+    case "edit":
+      return <Pencil className="size-4" />;
+    case "rename":
+      return <Type className="size-4" />;
+    case "tag-change":
+      return <Tag className="size-4" />;
+    case "revert":
+      return <RotateCcw className="size-4" />;
+  }
+};
+
 interface FolioHistoryPanelProps {
   folio: Folio;
   onReverted: (folio: Folio) => void;
 }
 
+/**
+ * Folio revision history, styled as a flush "history bar" — one square row
+ * per revision in a single bordered stack, mirroring the Admin → Parameters
+ * History bar (`@alepha/ui` `parameter-history-item`). The whole row toggles
+ * the before/after diff; the `…` menu (Pin / Revert) stops propagation so it
+ * never toggles the row. Petition #15.
+ */
 const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
@@ -93,83 +133,130 @@ const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
 
   return (
     <section>
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-        <HistoryIcon className="size-4" />
+      <h3 className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide">
         {tr("folios.history.title")}
-      </h2>
-      <ul className="flex flex-col gap-2">
+      </h3>
+      <div className="bg-card divide-border overflow-hidden rounded-md border divide-y">
         {revisions.map((revision, index) => {
           const isExpanded = expandedId === revision.id;
           // Diff against the next-older revision so the user sees what
-          // *this* edit changed. The oldest entry has nothing to compare
-          // against — show the snapshot alone.
+          // *this* edit changed. The newest entry (index 0) cannot be
+          // reverted onto itself.
           const previous = revisions[index + 1];
+          const isNewest = index === 0;
+          const toggle = () => setExpandedId(isExpanded ? null : revision.id);
           return (
-            <li
-              key={revision.id}
-              className="bg-card border-border flex flex-col gap-2 rounded-md border p-3 text-xs"
-            >
-              <header className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="text-[10px]">
-                  <ActionLabel action={revision.action} />
-                </Badge>
-                <span className="text-muted-foreground">
-                  {dt.of(revision.at).fromNow()}
+            <div key={revision.id}>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={toggle}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggle();
+                  }
+                }}
+                className="hover:bg-accent/50 flex cursor-pointer select-none items-center gap-2 px-3 py-2.5 transition-colors"
+              >
+                <span className="text-muted-foreground flex size-4 shrink-0 items-center justify-center">
+                  {actionIcon(revision.action)}
                 </span>
-                {revision.pinned && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    <Pin className="mr-1 size-3" />
-                    {tr("folios.history.pinned-badge")}
-                  </Badge>
-                )}
-                <div className="ml-auto flex items-center gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      setExpandedId(isExpanded ? null : revision.id)
-                    }
-                  >
-                    {isExpanded ? "−" : "+"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handlePinToggle(revision)}
-                    aria-label={String(
-                      tr(
-                        revision.pinned
-                          ? "folios.history.unpin"
-                          : "folios.history.pin",
-                      ),
+                <div className="ml-1 flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="text-sm font-medium leading-tight">
+                    <ActionLabel action={revision.action} />
+                  </span>
+                  <span className="text-muted-foreground flex items-center gap-1 text-xs leading-tight">
+                    <Clock className="size-3 shrink-0" />
+                    {dt.of(revision.at).fromNow()}
+                    {revision.pinned && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <Pin className="size-3 shrink-0" />
+                        {tr("folios.history.pinned-badge")}
+                      </>
                     )}
-                  >
-                    {revision.pinned ? (
-                      <PinOff className="size-3.5" />
-                    ) : (
-                      <Pin className="size-3.5" />
-                    )}
-                  </Button>
-                  {index > 0 && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleRevert(revision.id)}
-                      disabled={busy}
-                    >
-                      <RotateCcw className="mr-1 size-3" />
-                      {tr("folios.history.revert")}
-                    </Button>
-                  )}
+                  </span>
                 </div>
-              </header>
-              {isExpanded && (
-                <DiffView revision={revision} previous={previous} />
-              )}
-            </li>
+
+                {/* Actions: intercept clicks so the menu never toggles the row. */}
+                <div
+                  className="shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-6"
+                          aria-label={tr("folios.history.actions")}
+                        />
+                      }
+                    >
+                      <MoreVertical className="size-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handlePinToggle(revision)}
+                      >
+                        {revision.pinned ? (
+                          <PinOff className="size-4" />
+                        ) : (
+                          <Pin className="size-4" />
+                        )}
+                        {tr(
+                          revision.pinned
+                            ? "folios.history.unpin"
+                            : "folios.history.pin",
+                        )}
+                      </DropdownMenuItem>
+                      {!isNewest && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleRevert(revision.id)}
+                            disabled={busy}
+                          >
+                            <RotateCcw className="size-4" />
+                            {tr("folios.history.revert")}
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <span className="text-muted-foreground flex size-4 shrink-0 items-center justify-center">
+                  <ChevronRight
+                    className={cn(
+                      "size-4 transition-transform duration-200",
+                      isExpanded && "rotate-90",
+                    )}
+                  />
+                </span>
+              </div>
+
+              {/* Animated collapse: grid-rows 0fr→1fr interpolates height
+                  without measuring. Body stays mounted so it transitions. */}
+              <div
+                className={cn(
+                  "grid transition-[grid-template-rows] duration-200 ease-out",
+                  isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                )}
+              >
+                <div className="overflow-hidden">
+                  <div className="border-t px-3 py-2.5">
+                    <DiffView revision={revision} previous={previous} />
+                  </div>
+                </div>
+              </div>
+            </div>
           );
         })}
-      </ul>
+      </div>
     </section>
   );
 };

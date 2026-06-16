@@ -8,7 +8,7 @@ import {
   Folder,
   FolderOpen,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DirectoryController } from "@/api/controllers/DirectoryController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
@@ -57,11 +57,17 @@ const FolioTreePanel = ({
   const [loading, setLoading] = useState(
     folios.length === 0 && dirs.length === 0,
   );
-  // Collapsed state per directory id. Initialized after data is
-  // available to collapse every directory EXCEPT the ancestors of the
-  // current folio — that path stays auto-expanded so the user sees
-  // where they are without scrolling. User toggles override.
+  // Collapsed state per directory id. Seeded ONCE (see the init effect
+  // below) to collapse every directory EXCEPT the ancestors of the
+  // current folio; afterwards it is sticky — navigation only expands the
+  // new folio's ancestor path, it never re-collapses what the user (or a
+  // prior navigation) left open. User toggles override.
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Guards the one-time default-collapse. Without it the seed re-ran on
+  // every folio→folio navigation (the route loader hands the panel fresh
+  // `folios`/`dirs` references each time), collapsing directories the
+  // user had open — petition #14.
+  const initializedRef = useRef(false);
 
   useEffect(() => {
     // Atoms hot — skip the network entirely.
@@ -96,11 +102,10 @@ const FolioTreePanel = ({
     setDirs,
   ]);
 
-  // Compute the ancestor chain of the current folio's directory and
-  // collapse every other directory by default. Re-runs whenever the
-  // folio identity, the folio list, or the directory list changes —
-  // covers the case where data lands later via the fallback fetch.
-  useEffect(() => {
+  // Ancestor chain of the current folio's directory (root → leaf). Drives
+  // both the one-time seed and the per-navigation "expand the path I just
+  // opened" behavior below.
+  const ancestorDirIds = useMemo(() => {
     const typedDirs = dirs as DirectoryNode[];
     const dirById = new Map(typedDirs.map((d) => [d.id, d]));
     const current = folios.find((f) => f.id === currentFolioId);
@@ -112,12 +117,40 @@ const FolioTreePanel = ({
       ancestors.add(cursor);
       cursor = dirById.get(cursor)?.parentId;
     }
+    return ancestors;
+  }, [currentFolioId, folios, dirs]);
+
+  // One-time seed: as soon as data is available, collapse every directory
+  // EXCEPT the current folio's ancestor path so the first view is focused.
+  // Runs once (guarded) — the per-navigation effect takes over after.
+  useEffect(() => {
+    if (initializedRef.current) return;
+    const typedDirs = dirs as DirectoryNode[];
+    if (typedDirs.length === 0 && folios.length === 0) return; // await data
+    initializedRef.current = true;
     const defaultCollapsed = new Set<string>();
     for (const d of typedDirs) {
-      if (!ancestors.has(d.id)) defaultCollapsed.add(d.id);
+      if (!ancestorDirIds.has(d.id)) defaultCollapsed.add(d.id);
     }
     setCollapsed(defaultCollapsed);
-  }, [currentFolioId, folios, dirs]);
+  }, [ancestorDirIds, dirs, folios]);
+
+  // On each later navigation, only EXPAND the new folio's ancestor path
+  // (so the highlighted leaf is visible) — never collapse anything else.
+  // This is what keeps `features` open when you jump from features/FolioX
+  // to a root-level FolioY (petition #14).
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    if (ancestorDirIds.size === 0) return;
+    setCollapsed((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      for (const id of ancestorDirIds) {
+        if (next.delete(id)) changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [ancestorDirIds]);
 
   // Build adjacency: directory id → child dirs + child folios. Root
   // bucket keyed on the special string `__root__`.
