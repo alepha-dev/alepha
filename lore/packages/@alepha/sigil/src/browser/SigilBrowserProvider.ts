@@ -1,4 +1,6 @@
 import { $hook, $inject, Alepha } from "alepha";
+import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
+import type { SigilFeature } from "../shared/sigilFeatures.ts";
 import { SigilTelemetryQueue } from "./SigilTelemetryQueue.ts";
 import { SigilVitals } from "./SigilVitals.ts";
 
@@ -6,6 +8,12 @@ import { SigilVitals } from "./SigilVitals.ts";
  * Browser bootstrap: subscribes to framework hooks, batches telemetry, and
  * posts the mutualised envelope to the same-origin /api/sigil/ingest proxy.
  * No secret needed here. Active in production + browser only.
+ *
+ * Each capability is gated by {@link sigilClientAtom}'s `features` (the
+ * SSR-hydrated config): a disabled bucket is never collected, so a sigil scoped
+ * to e.g. blights-only never emits view/vitals pings. Feature checks are read
+ * lazily (per event) since the atom is hydrated on `ready`, after this `start`
+ * hook attaches the listeners.
  */
 export class SigilBrowserProvider {
   protected readonly alepha = $inject(Alepha);
@@ -30,26 +38,31 @@ export class SigilBrowserProvider {
       this.queue = new SigilTelemetryQueue(send as any);
 
       (this.alepha.events as any).on("react:transition:end", (ev: any) => {
+        if (!this.has("beacon")) return;
         this.queue!.addView(
           ev.state?.url?.pathname ?? (location as any).pathname,
         );
       });
 
       (this.alepha.events as any).on("react:action:error", (ev: any) => {
+        if (!this.has("blights")) return;
         this.queue!.addError(this.toError(ev.error, (location as any).href));
       });
 
       (window as any).addEventListener("error", (e: any) => {
+        if (!this.has("blights")) return;
         this.queue!.addError(
           this.toError(e.error ?? e, (location as any).href),
         );
       });
 
       (window as any).addEventListener("unhandledrejection", (e: any) => {
+        if (!this.has("blights")) return;
         this.queue!.addError(this.toError(e.reason, (location as any).href));
       });
 
       new SigilVitals((m) => {
+        if (!this.has("vitals")) return;
         this.queue!.addVital({
           path: (location as any).pathname,
           metric: m.metric,
@@ -67,7 +80,13 @@ export class SigilBrowserProvider {
         }
       });
 
-      this.queue.addView((location as any).pathname);
+      // The initial pageview is deferred to `react:browser:render` (fires once,
+      // after atom hydration) so it respects the hydrated feature flags instead
+      // of the pre-hydration default.
+      (this.alepha.events as any).on("react:browser:render", () => {
+        if (!this.has("beacon")) return;
+        this.queue!.addView((location as any).pathname);
+      });
     },
   });
 
@@ -77,6 +96,16 @@ export class SigilBrowserProvider {
    */
   public debugPendingViews(): string[] {
     return this.queue?.pendingViews() ?? [];
+  }
+
+  /**
+   * Whether `feature` is enabled in the hydrated client config. Read lazily so
+   * navigations/errors after hydration see the real flags; the pre-hydration
+   * window falls back to the atom default (all on) and is backstopped by the
+   * proxy's server-side feature filter.
+   */
+  protected has(feature: SigilFeature): boolean {
+    return this.alepha.store.get(sigilClientAtom).features.includes(feature);
   }
 
   /**

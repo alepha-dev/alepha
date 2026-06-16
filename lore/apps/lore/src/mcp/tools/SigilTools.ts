@@ -4,7 +4,6 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { BlightController } from "../../api/controllers/BlightController.ts";
 import { CampaignController } from "../../api/controllers/CampaignController.ts";
 import { SigilController } from "../../api/controllers/SigilController.ts";
-import { SIGIL_KINDS } from "../../api/entities/sigils.ts";
 import { blightSchema, sigilSchema } from "../schemas/index.ts";
 
 /**
@@ -71,23 +70,19 @@ export class SigilTools {
     id: string;
     campaignId: number;
     label: string;
-    kinds: string[];
-    excludedPaths: string[];
     createdAt: string;
   }) {
     return {
       id: s.id,
       campaignId: s.campaignId,
       label: s.label,
-      kinds: s.kinds,
-      excludedPaths: s.excludedPaths,
       createdAt: s.createdAt,
     };
   }
 
   sigil_list = $tool({
     description:
-      "List a campaign's sigils — the scoped, revocable identifiers that let partner sites embed Lore capabilities (petition form / blights crash capture / beacon) via one `<script>` tag. Owner-only. Returns id, label, kinds and createdAt. The secret `ingestKey` is never returned.",
+      "List a campaign's sigils — the scoped, revocable identifiers a partner app uses (as its `SIGIL_ID`) to embed Lore capabilities (petition button / blights crash capture / beacon / vitals). Owner-only. Returns id, label and createdAt. The secret `ingestKey` is never returned.",
     title: "List sigils",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -113,7 +108,7 @@ export class SigilTools {
 
   sigil_create = $tool({
     description:
-      "Issue a new sigil for a campaign. Owner-only. `label` is a human-readable inventory name (e.g. 'shop.example.com checkout'). `kinds` is the subset of capabilities the sigil grants — any of: petition, blights, beacon. The public `id` is returned (use it in the partner's `<script>` src); the secret `ingestKey` is minted server-side and never exposed.",
+      "Issue a new sigil for a campaign. Owner-only. `label` is a human-readable inventory name (e.g. 'shop.example.com checkout'). The public `id` is returned — set it as the partner app's `SIGIL_ID`; which capabilities run is chosen there via `SIGIL_FEATURES`. The secret `ingestKey` is minted server-side and never exposed.",
     title: "Create sigil",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -121,14 +116,6 @@ export class SigilTools {
         campaign: t.optional(t.integer()),
         campaign_name: t.optional(t.string()),
         label: t.string({ minLength: 1, maxLength: 200 }),
-        kinds: t.optional(
-          t.array(t.enum([...SIGIL_KINDS], { mode: "text" }), {
-            maxItems: 10,
-          }),
-        ),
-        excludedPaths: t.optional(
-          t.array(t.string({ maxLength: 200 }), { maxItems: 50 }),
-        ),
       }),
       result: sigilSchema,
     },
@@ -139,11 +126,7 @@ export class SigilTools {
       );
       const s = await this.sigilController.createSigil({
         params: { campaignId },
-        body: {
-          label: params.label,
-          kinds: params.kinds,
-          excludedPaths: params.excludedPaths,
-        },
+        body: { label: params.label },
       });
       return this.toSigilResource(s);
     },

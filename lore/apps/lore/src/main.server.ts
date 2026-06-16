@@ -1,4 +1,4 @@
-import { SigilForwardProvider } from "@alepha/sigil/server";
+import { SigilForwardProvider, sigilOptions } from "@alepha/sigil/server";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
 import { oauthOptions } from "alepha/api/oauth";
@@ -63,6 +63,14 @@ alepha.with(LoreMcp);
 // first so the in-process provider's `SigilService` / `SigilIngestRunner`
 // dependencies are available.
 alepha.with({ provide: SigilForwardProvider, use: LoreSigilForwardProvider });
+
+// Lore embeds its own sigil — suppress the feedback button on the petition
+// request page itself (the button there would just point back at the same
+// form). SIGIL_ID / SIGIL_FEATURES come from env; this only adds the path
+// filter. Set server-side (the secret-bearing options atom never reaches the
+// browser); the per-request publisher copies excludedPaths into the public
+// client atom for the embed.
+alepha.set(sigilOptions, { excludedPaths: ["/c/*/request"] });
 
 alepha.with(LoreWebApp);
 alepha.with(LoreWebAdmin);

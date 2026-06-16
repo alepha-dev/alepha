@@ -10,4 +10,7 @@
  * with the Lore receiver (same process), to resolve + forward in-process
  * instead of over HTTP (a Cloudflare Worker cannot fetch its own hostname).
  */
+export * from "../shared/sigilClientAtom.ts";
+export * from "../shared/sigilFeatures.ts";
+export * from "../shared/sigilOptionsAtom.ts";
 export * from "./SigilForwardProvider.ts";

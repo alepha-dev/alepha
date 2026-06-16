@@ -987,8 +987,6 @@ describe("MCP Security Integration", () => {
     interface SigilResource {
       id: string;
       label: string;
-      kinds: string[];
-      allowedOrigins: string[];
     }
 
     it("owner can create, list, and delete sigils — ingestKey never exposed", async ({
@@ -1013,8 +1011,6 @@ describe("MCP Security Integration", () => {
           arguments: {
             campaign: campaignId,
             label: "shop.example.com checkout",
-            allowedOrigins: ["https://shop.example.com"],
-            kinds: ["petition", "blights"],
           },
         },
         { token },
@@ -1022,7 +1018,6 @@ describe("MCP Security Integration", () => {
       expect(isErrorResponse(createResult.data)).toBe(false);
       const created = parseToolPayload<SigilResource>(createResult.data);
       expect(created.label).toBe("shop.example.com checkout");
-      expect(created.kinds.sort()).toEqual(["blights", "petition"]);
       // The secret must never leave the server.
       expect(createResult.data.result?.content?.[0]?.text).not.toContain(
         "ingestKey",

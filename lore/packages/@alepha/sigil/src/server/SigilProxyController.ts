@@ -81,33 +81,25 @@ export class SigilProxyController {
       const dailySalt = this.crypto.hash(`${saltSecret}:${utcDate}`);
       const visitor = this.crypto.hash(`${sigilId}:${ip}:${ua}:${dailySalt}`);
 
-      await this.forward.forwardIngest(request.body, { country, visitor });
+      // Server-side defense-in-depth: drop any bucket whose feature is off,
+      // even though the client already filters before sending. Bucket→feature:
+      // views→beacon, errors→blights, vitals→vitals.
+      const features = this.forward.features();
+      const filtered: typeof request.body = {
+        ...(features.includes("beacon") ? { views: request.body.views } : {}),
+        ...(features.includes("blights")
+          ? { errors: request.body.errors }
+          : {}),
+        ...(features.includes("vitals") ? { vitals: request.body.vitals } : {}),
+      };
+
+      if (!filtered.views && !filtered.errors && !filtered.vitals) {
+        return { ok: true };
+      }
+
+      await this.forward.forwardIngest(filtered, { country, visitor });
 
       return { ok: true };
-    },
-  });
-
-  /**
-   * `GET /api/sigil/config`
-   *
-   * Same-origin config the browser embed reads on mount. Currently relays the
-   * configured sigil's `excludedPaths` (resolved server-side via
-   * {@link SigilForwardProvider}) so `SigilRoot` can suppress the petition
-   * button on matching host pages. The sigil id never reaches the browser —
-   * only the (non-secret) glob list does. Returns an empty list when the
-   * provider is disabled.
-   */
-  config = $action({
-    method: "GET",
-    path: "/sigil/config",
-    schema: {
-      response: t.object({ excludedPaths: t.array(t.string()) }),
-    },
-    handler: async () => {
-      if (!this.forward.enabled()) {
-        return { excludedPaths: [] };
-      }
-      return { excludedPaths: await this.forward.excludedPaths() };
     },
   });
 

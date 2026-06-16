@@ -107,49 +107,49 @@ describe("SigilProxyController.ingest", () => {
     const fwd = alepha.inject(SigilForwardProvider) as FakeForward;
     expect(fwd.ingested[0].stamp.country).toBeUndefined();
   });
-});
 
-describe("SigilProxyController.config", () => {
-  it("relays the configured sigil's excludedPaths (no sigil id leaked)", async () => {
-    class ConfigForward extends SigilForwardProvider {
+  it("drops buckets whose feature is disabled before forwarding", async () => {
+    class FilteredForward extends SigilForwardProvider {
+      public ingested: Array<{ env: any; stamp: any }> = [];
+
       enabled() {
         return true;
       }
 
-      async excludedPaths() {
-        return ["/c/*/request", "/admin/**"];
+      id() {
+        return "sig-1";
+      }
+
+      features() {
+        return ["blights" as const];
+      }
+
+      async forwardIngest(env: any, stamp: any) {
+        this.ingested.push({ env, stamp });
       }
     }
 
     const alepha = Alepha.create({
       env: { NODE_ENV: "production", SERVER_PORT: 0, SIGIL_ID: "sig-1" },
-    }).with({ provide: SigilForwardProvider, use: ConfigForward });
+    }).with({ provide: SigilForwardProvider, use: FilteredForward });
     const ctrl = alepha.inject(SigilProxyController);
     await alepha.start();
 
-    const result = await ctrl.config.run({});
-    expect(result.excludedPaths).toEqual(["/c/*/request", "/admin/**"]);
-  });
+    await ctrl.ingest.run({
+      body: {
+        views: [{ path: "/" }],
+        errors: [{ name: "E", message: "m", stack: "", sourceUrl: "" }],
+        vitals: [{ path: "/", metric: "lcp", value: 1 }],
+      },
+      headers: {},
+    });
 
-  it("returns an empty list when the provider is disabled", async () => {
-    class DisabledForward extends SigilForwardProvider {
-      enabled() {
-        return false;
-      }
-
-      async excludedPaths() {
-        return ["/should-not-be-reached"];
-      }
-    }
-
-    const alepha = Alepha.create({
-      env: { NODE_ENV: "production", SERVER_PORT: 0 },
-    }).with({ provide: SigilForwardProvider, use: DisabledForward });
-    const ctrl = alepha.inject(SigilProxyController);
-    await alepha.start();
-
-    const result = await ctrl.config.run({});
-    expect(result.excludedPaths).toEqual([]);
+    const fwd = alepha.inject(SigilForwardProvider) as FilteredForward;
+    expect(fwd.ingested).toHaveLength(1);
+    // Only the blights bucket survives the feature filter.
+    expect(fwd.ingested[0].env.errors).toBeDefined();
+    expect(fwd.ingested[0].env.views).toBeUndefined();
+    expect(fwd.ingested[0].env.vitals).toBeUndefined();
   });
 });
 

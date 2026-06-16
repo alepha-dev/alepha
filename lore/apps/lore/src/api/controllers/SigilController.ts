@@ -17,8 +17,6 @@ const sigilResourceSchema = t.object({
   id: t.uuid(),
   campaignId: t.integer(),
   label: t.string(),
-  kinds: t.array(t.string()),
-  excludedPaths: t.array(t.string()),
   createdAt: t.datetime(),
 });
 
@@ -32,11 +30,13 @@ export type SigilResource = Static<typeof sigilResourceSchema>;
 
 const sigilBodySchema = t.object({
   label: t.string({ minLength: 1, maxLength: 200 }),
+  /**
+   * Server-side authorization kinds. Not exposed in the UI / MCP (a sigil is
+   * just a named id there); omitting it grants ALL kinds. Kept on the API for
+   * programmatic callers that want to scope a sigil's ingest gate.
+   */
   kinds: t.optional(
     t.array(t.enum([...SIGIL_KINDS], { mode: "text" }), { maxItems: 10 }),
-  ),
-  excludedPaths: t.optional(
-    t.array(t.string({ maxLength: 200 }), { maxItems: 50 }),
   ),
 });
 
@@ -76,8 +76,10 @@ export class SigilController {
         campaignId: params.campaignId,
         label: body.label,
         allowedOrigins: [],
-        kinds: body.kinds ?? [],
-        excludedPaths: body.excludedPaths ?? [],
+        // Capabilities are no longer scoped per-sigil in the UI — the partner
+        // app picks features via `SIGIL_FEATURES`. Omitted `kinds` grants ALL;
+        // campaign features + the partner env do the real gating.
+        kinds: body.kinds ?? [...SIGIL_KINDS],
         ingestKey: this.generateIngestKey(),
         createdBy: user.id,
       });
@@ -114,10 +116,9 @@ export class SigilController {
   });
 
   /**
-   * Update a sigil's `label` / `kinds` / `excludedPaths`. The `id` and
-   * `campaignId` are NOT mutable — the `id` is the ingest credential, so it
-   * never changes here and the partner's existing ingest calls keep working.
-   * Owner-only.
+   * Rename a sigil (its `label`). The `id` and `campaignId` are NOT mutable —
+   * the `id` is the ingest credential, so it never changes here and the
+   * partner's existing ingest calls keep working. Owner-only.
    */
   updateSigil = $action({
     use: [$secure({ permissions: ["campaign:update"] })],
@@ -132,11 +133,7 @@ export class SigilController {
       await this.security.assertOwner(params.campaignId, user);
       const sigil = await this.loadSigil(params.campaignId, params.id);
 
-      await this.sigils.updateById(sigil.id, {
-        label: body.label,
-        kinds: body.kinds ?? [],
-        excludedPaths: body.excludedPaths ?? [],
-      });
+      await this.sigils.updateById(sigil.id, { label: body.label });
 
       const updated = await this.loadSigil(params.campaignId, params.id);
       return this.toResource(updated);
@@ -193,8 +190,6 @@ export class SigilController {
       id: sigil.id,
       campaignId: sigil.campaignId,
       label: sigil.label,
-      kinds: sigil.kinds ?? [],
-      excludedPaths: sigil.excludedPaths ?? [],
       createdAt: sigil.createdAt,
     };
   }

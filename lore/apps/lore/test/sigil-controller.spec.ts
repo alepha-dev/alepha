@@ -95,17 +95,13 @@ describe("SigilController", () => {
     const created = await ctx.sigilController.createSigil.fetch(
       {
         params: { campaignId },
-        body: {
-          label: "shop.example.com checkout",
-          kinds: ["petition"],
-        },
+        body: { label: "shop.example.com checkout" },
       },
       { user: owner },
     );
 
     expect(created.data.id).toMatch(/^[0-9a-f-]{36}$/);
     expect(created.data.label).toBe("shop.example.com checkout");
-    expect(created.data.kinds).toEqual(["petition"]);
     // ingestKey is a vestigial internal column — never in the resource.
     expect("ingestKey" in created.data).toBe(false);
   });
@@ -169,28 +165,19 @@ describe("SigilController", () => {
     expect((error as HttpError).status).toBe(404);
   });
 
-  it("updates a sigil's label and kinds", async ({ expect }) => {
+  it("renames a sigil (label), keeping the id stable", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const campaignId = await createCampaign(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
-      {
-        params: { campaignId },
-        body: {
-          label: "Before",
-          kinds: ["petition"],
-        },
-      },
+      { params: { campaignId }, body: { label: "Before" } },
       { user: owner },
     );
 
     const updated = await ctx.sigilController.updateSigil.fetch(
       {
         params: { campaignId, id: created.data.id },
-        body: {
-          label: "After",
-          kinds: ["blights", "beacon"],
-        },
+        body: { label: "After" },
       },
       { user: owner },
     );
@@ -198,7 +185,6 @@ describe("SigilController", () => {
     // id is the immutable public credential — never changes on update.
     expect(updated.data.id).toBe(created.data.id);
     expect(updated.data.label).toBe("After");
-    expect(updated.data.kinds).toEqual(["blights", "beacon"]);
     // ingestKey is a secret — never returned, never mutated by update.
     expect("ingestKey" in updated.data).toBe(false);
 
@@ -209,7 +195,6 @@ describe("SigilController", () => {
     );
     const row = list.data.items.find((s) => s.id === created.data.id);
     expect(row?.label).toBe("After");
-    expect(row?.kinds).toEqual(["blights", "beacon"]);
   });
 
   it("rejects a non-owner from update and delete (403)", async ({ expect }) => {

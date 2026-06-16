@@ -106,18 +106,16 @@ const createSigil = async (
   ctx: TestContext,
   campaignId: number,
   user: { id: string; roles: string[] },
+  // `kinds` stays on the controller body for programmatic callers (the UI omits
+  // it → all). Pass a subset to exercise the runner's server-side kind gate.
   kinds: ("petition" | "blights" | "beacon" | "vitals")[] = [
     "beacon",
     "blights",
     "vitals",
   ],
-  excludedPaths: string[] = [],
 ): Promise<{ id: string; ingestKey: string }> => {
   const created = await ctx.sigilController.createSigil.fetch(
-    {
-      params: { campaignId },
-      body: { label: "ingest sigil", kinds, excludedPaths },
-    },
+    { params: { campaignId }, body: { label: "ingest sigil", kinds } },
     { user },
   );
   const sigilService = ctx.alepha.inject(
@@ -255,27 +253,17 @@ describe("SigilIngestController — POST /sigils/:id/ingest", () => {
     expect(res.status).toBe(404);
   });
 
-  it("GET /sigils/:id/campaign returns the campaign id and excludedPaths", async ({
+  it("GET /sigils/:id/campaign resolves to the campaign id", async ({
     expect,
   }) => {
     const owner = await createTestUser(ctx);
     const campaignId = await createCampaign(ctx, owner);
-    const sigil = await createSigil(
-      ctx,
-      campaignId,
-      owner,
-      ["petition"],
-      ["/c/*/request", "/admin/**"],
-    );
+    const sigil = await createSigil(ctx, campaignId, owner);
 
     const res = await fetch(`${ctx.baseUrl}/sigils/${sigil.id}/campaign`);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      campaignId: number;
-      excludedPaths: string[];
-    };
+    const body = (await res.json()) as { campaignId: number };
     expect(body.campaignId).toBe(campaignId);
-    expect(body.excludedPaths).toEqual(["/c/*/request", "/admin/**"]);
   });
 
   it("403 when the campaign sigils master toggle is off", async ({
