@@ -14,4 +14,10 @@ export const sigilEnv = t.object({
       description: "Override Lore origin. Default https://lore.alepha.dev",
     }),
   ),
+  SIGIL_FEATURES: t.optional(
+    t.text({
+      description:
+        "Comma-separated enabled features (petition,blights,beacon,vitals). Absent = all enabled; acts purely as a filter.",
+    }),
+  ),
 });

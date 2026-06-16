@@ -6,9 +6,14 @@ import { SigilBrowserProvider } from "./browser/SigilBrowserProvider.ts";
 import { SigilForwardProvider } from "./server/SigilForwardProvider.ts";
 import { SigilProxyController } from "./server/SigilProxyController.ts";
 import { SigilServerErrors } from "./server/SigilServerErrors.ts";
+import { sigilClientAtom } from "./shared/sigilClientAtom.ts";
+import { sigilOptions } from "./shared/sigilOptionsAtom.ts";
 
 export * from "./browser/components/SigilRoot.tsx";
 export * from "./server/SigilForwardProvider.ts";
+export * from "./shared/sigilClientAtom.ts";
+export * from "./shared/sigilFeatures.ts";
+export * from "./shared/sigilOptionsAtom.ts";
 export * from "./sigilEnv.ts";
 
 /**
@@ -21,6 +26,7 @@ export * from "./sigilEnv.ts";
  */
 export const AlephaSigil = $module({
   name: "alepha.sigil",
+  atoms: [sigilOptions, sigilClientAtom],
   services: [
     RootComponentsProvider,
     SigilForwardProvider,

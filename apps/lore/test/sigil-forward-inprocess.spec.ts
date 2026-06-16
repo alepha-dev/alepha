@@ -1,4 +1,4 @@
-import { SigilForwardProvider } from "@alepha/sigil/server";
+import { SigilForwardProvider, sigilOptions } from "@alepha/sigil/server";
 import { Alepha, t } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -19,14 +19,17 @@ import { BlightIngestService } from "../src/api/services/BlightIngestService.ts"
  * own Cloudflare hostname). It must resolve the campaign and forward telemetry
  * WITHOUT any HTTP, directly against Lore's own services.
  *
- * The base provider only sets its `config` (sigil id + lore origin) in a
- * production `start` hook. We don't run in production here, so a tiny test
+ * The base provider only populates its `sigilOptions` (sigil id + lore origin)
+ * in a production `start` hook. We don't run in production here, so a tiny test
  * subclass exposes a `configure()` to set it after the sigil exists — exactly
  * the state the provider is in once booted in prod with `SIGIL_ID` set.
  */
 class TestLoreSigilForwardProvider extends LoreSigilForwardProvider {
   public configure(id: string): void {
-    this.config = { id, loreOrigin: "https://lore.alepha.dev" };
+    this.alepha.store.set(sigilOptions, {
+      id,
+      loreOrigin: "https://lore.alepha.dev",
+    });
   }
 }
 

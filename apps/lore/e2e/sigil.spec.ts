@@ -64,12 +64,7 @@ test.describe("Sigils — telemetry server-to-server contract", () => {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            label: `E2E sigil ${id}`,
-            allowedOrigins: ["https://partner.example.com"],
-            kinds: ["beacon", "blights"],
-            excludedPaths: ["/admin/**"],
-          }),
+          body: JSON.stringify({ label: `E2E sigil ${id}` }),
         });
         if (!r.ok) {
           throw new Error(`createSigil: ${r.status} ${await r.text()}`);
@@ -131,17 +126,11 @@ test.describe("Sigils — telemetry server-to-server contract", () => {
     });
 
     // ── GET /sigils/:id/campaign — the petition-popup resolver ────────────
-    await test.step("GET /sigils/:id/campaign resolves campaign id + excludedPaths", async () => {
+    await test.step("GET /sigils/:id/campaign resolves to the campaign id", async () => {
       const res = await request.get(`${baseURL}/sigils/${sigilId}/campaign`);
       expect(res.status()).toBe(200);
-      const body = (await res.json()) as {
-        campaignId: number;
-        excludedPaths: string[];
-      };
+      const body = (await res.json()) as { campaignId: number };
       expect(body.campaignId).toBe(campaignId);
-      // The resolver relays excludedPaths so the embed can suppress the
-      // petition button on matching host pages.
-      expect(body.excludedPaths).toEqual(["/admin/**"]);
     });
 
     // ── Gate check: unknown sigil UUID → 404 ──────────────────────────────

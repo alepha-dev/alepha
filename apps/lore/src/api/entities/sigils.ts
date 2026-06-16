@@ -71,24 +71,22 @@ export const sigils = $entity({
       [],
     ),
     /**
-     * Capabilities this sigil grants — a subset of
-     * `["petition", "blights", "beacon"]`.
+     * Server-side authorization gate — the capability buckets this sigil's
+     * ingest endpoint will accept (subset of `SIGIL_KINDS`). No longer scoped
+     * per-sigil in the UI: `SigilController.createSigil` sets it to ALL kinds,
+     * and the partner app narrows what's actually sent via `SIGIL_FEATURES`.
+     * Kept as defense-in-depth alongside the campaign-level `features` toggle.
      */
     kinds: db.default(
       t.array(t.string({ maxLength: 50 }), { maxItems: 10 }),
       [],
     ),
     /**
-     * Glob patterns that suppress the embed's **petition button** on matching
-     * pages of the host site (NOT telemetry — views/blights/vitals are always
-     * collected). Empty (default) → button shown everywhere. `*` matches any
-     * chars within a path segment (no `/`); `**` matches across segments.
-     * Matched against the pathname only — no host, no query.
-     *
-     * Delivered to the embed via `GET /sigils/:id/campaign` → the
-     * `@alepha/sigil` `GET /sigil/config` proxy → `SigilRoot`, which hides
-     * `SigilFeedbackButton` when the current pathname matches. The matcher is
-     * `sigilAnyGlobMatch` in `@alepha/sigil/src/shared/sigilGlobMatch.ts`.
+     * VESTIGIAL — kept only because dropping a `sigils` column is a D1 cascade
+     * bomb (see `revokedAt`). Path-based suppression of the embed's petition
+     * button is now **host-app config** (`@alepha/sigil`'s `sigilOptions`
+     * atom / `SIGIL_FEATURES`), not per-sigil Lore state. Nothing reads this
+     * column anymore; new rows default to `[]`. Do not remove.
      */
     excludedPaths: db.default(
       t.array(t.string({ maxLength: 200 }), { maxItems: 50 }),

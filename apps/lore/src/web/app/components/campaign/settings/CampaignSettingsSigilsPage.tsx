@@ -8,14 +8,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@alepha/ui/components/ui/alert-dialog";
-import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Switch } from "@alepha/ui/components/ui/switch";
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Plus } from "lucide-react";
+import { Copy, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type {
   SigilController,
@@ -24,39 +24,26 @@ import type {
 import { currentCampaignAtom } from "@/web/app/atoms/currentCampaignAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import CampaignSettingsFeatureSection from "./CampaignSettingsFeatureSection.tsx";
-import SigilFormDialog, { type SigilFormValue } from "./SigilFormDialog.tsx";
 import { useCampaignFeatureToggle } from "./useCampaignFeatureToggle.ts";
 
 const CampaignSettingsSigilsPage = () => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
+  const dialog = useDialog();
   const sigilApi = useClient<SigilController>();
   const [campaign] = useStore(currentCampaignAtom);
   const { enabled, toggle } = useCampaignFeatureToggle("sigils");
 
-  // Campaign-level feature flags that gate each sigil `kind`.
+  // Campaign-level feature gates — the server-side authorization that decides
+  // what each sigil's ingest endpoint accepts. (Which capabilities a given
+  // partner app actually runs is chosen there via `SIGIL_FEATURES`.)
   const petitions = useCampaignFeatureToggle("petitions");
   const blights = useCampaignFeatureToggle("blights");
   const beacon = useCampaignFeatureToggle("beacon");
   const vitals = useCampaignFeatureToggle("vitals");
-  const featureEnabled: Record<string, boolean> = {
-    petitions: petitions.enabled,
-    blights: blights.enabled,
-    beacon: beacon.enabled,
-    vitals: vitals.enabled,
-  };
 
   const [sigils, setSigils] = useState<SigilResource[]>([]);
-  // `undefined` → dialog closed; `null` → create; a sigil → edit.
-  const [dialogSigil, setDialogSigil] = useState<
-    SigilResource | null | undefined
-  >(undefined);
   const [deleteTarget, setDeleteTarget] = useState<SigilResource | null>(null);
-
-  // During SSR there is no `window`; fall back to an empty origin so the
-  // copy-snippet shows a relative `<script src>` — corrected to the real
-  // origin once the page hydrates in the browser.
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   const reload = useCallback(async () => {
     if (!campaign) return;
@@ -76,32 +63,29 @@ const CampaignSettingsSigilsPage = () => {
     }
   }, [campaign, enabled, reload]);
 
-  const submitDialog = async (value: SigilFormValue) => {
+  const createSigil = async () => {
     if (!campaign) return;
+    const label = await dialog.prompt({
+      title: tr("sigils.action.new"),
+      label: tr("sigils.create.label"),
+      placeholder: tr("sigils.create.labelPlaceholder"),
+      confirmLabel: tr("sigils.create.submit"),
+    });
+    if (!label?.trim()) return;
     try {
-      if (dialogSigil) {
-        await sigilApi.updateSigil({
-          params: { campaignId: campaign.id, id: dialogSigil.id },
-          body: value,
-        });
-        toaster.success(tr("sigils.toast.updated"));
-      } else {
-        await sigilApi.createSigil({
-          params: { campaignId: campaign.id },
-          body: value,
-        });
-        toaster.success(tr("sigils.toast.created"));
-      }
-      setDialogSigil(undefined);
+      await sigilApi.createSigil({
+        params: { campaignId: campaign.id },
+        body: { label: label.trim() },
+      });
+      toaster.success(tr("sigils.toast.created"));
       await reload();
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
     }
   };
 
-  const copySnippet = (sigil: SigilResource) => {
-    const snippet = `POST ${origin}/sigils/${sigil.id}/ingest`;
-    void navigator.clipboard.writeText(snippet);
+  const copyId = (sigil: SigilResource) => {
+    void navigator.clipboard.writeText(sigil.id);
     toaster.success(tr("sigils.toast.copied"));
   };
 
@@ -248,7 +232,7 @@ const CampaignSettingsSigilsPage = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setDialogSigil(null)}
+                  onClick={() => void createSigil()}
                   aria-label={tr("sigils.action.new")}
                 >
                   <Plus className="size-4" aria-hidden />
@@ -265,73 +249,45 @@ const CampaignSettingsSigilsPage = () => {
               </CardContent>
             )}
 
-            {/* Sigil rows — each separated by the card's divide-y */}
+            {/* Sigil rows — Name, UUID (copy), Delete. */}
             {sigils.map((sigil) => (
               <CardContent
                 key={sigil.id}
-                className="flex flex-col gap-3 px-4 py-3"
+                className="flex items-center gap-3 px-4 py-3"
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{sigil.label}</span>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <span className="text-muted-foreground text-xs">
-                    {tr("sigils.card.kinds")}
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="truncate text-sm font-medium">
+                    {sigil.label}
                   </span>
-                  {sigil.kinds.length === 0 ? (
-                    <span className="text-muted-foreground text-xs">
-                      {tr("sigils.card.noKinds")}
-                    </span>
-                  ) : (
-                    <div className="flex flex-wrap gap-1">
-                      {sigil.kinds.map((k) => (
-                        <Badge key={k} variant="secondary">
-                          {k}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    <code className="text-muted-foreground truncate font-mono text-xs">
+                      {sigil.id}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-6 shrink-0"
+                      onClick={() => copyId(sigil)}
+                      aria-label={tr("sigils.action.copyId")}
+                    >
+                      <Copy className="size-3.5" aria-hidden />
+                    </Button>
+                  </div>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copySnippet(sigil)}
-                  >
-                    {tr("sigils.action.copySnippet")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDialogSigil(sigil)}
-                  >
-                    {tr("sigils.action.edit")}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setDeleteTarget(sigil)}
-                  >
-                    {tr("sigils.action.delete")}
-                  </Button>
-                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-destructive shrink-0"
+                  onClick={() => setDeleteTarget(sigil)}
+                  aria-label={tr("sigils.action.delete")}
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </Button>
               </CardContent>
             ))}
           </Card>
         </div>
       )}
-
-      <SigilFormDialog
-        open={dialogSigil !== undefined}
-        sigil={dialogSigil ?? undefined}
-        featureEnabled={featureEnabled}
-        onOpenChange={(open) => {
-          if (!open) setDialogSigil(undefined);
-        }}
-        onSubmit={submitDialog}
-      />
 
       <AlertDialog
         open={deleteTarget !== null}

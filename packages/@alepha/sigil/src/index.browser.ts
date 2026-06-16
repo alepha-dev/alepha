@@ -3,8 +3,11 @@ import { RootComponentsProvider } from "alepha/react/router";
 import { createElement } from "react";
 import { SigilRoot } from "./browser/components/SigilRoot.tsx";
 import { SigilBrowserProvider } from "./browser/SigilBrowserProvider.ts";
+import { sigilClientAtom } from "./shared/sigilClientAtom.ts";
 
 export * from "./browser/components/SigilRoot.tsx";
+export * from "./shared/sigilClientAtom.ts";
+export * from "./shared/sigilFeatures.ts";
 export * from "./sigilEnv.ts";
 
 /**
@@ -21,6 +24,7 @@ export * from "./sigilEnv.ts";
  */
 export const AlephaSigil = $module({
   name: "alepha.sigil",
+  atoms: [sigilClientAtom],
   services: [RootComponentsProvider, SigilBrowserProvider],
   register: (alepha) => {
     if (!alepha.isProduction()) return;

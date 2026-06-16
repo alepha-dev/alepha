@@ -9,10 +9,7 @@ class RecordingHttpClient extends HttpClient {
   async fetch(url: string, opts: any): Promise<any> {
     this.calls.push({ url, body: opts?.body });
     if (url.endsWith("/campaign")) {
-      return {
-        data: { campaignId: 7, excludedPaths: ["/c/*/request"] },
-        status: 200,
-      } as any;
+      return { data: { campaignId: 7 }, status: 200 } as any;
     }
     return { data: {}, status: 204 } as any;
   }
@@ -74,31 +71,22 @@ describe("SigilForwardProvider", () => {
     expect(http.calls).toHaveLength(1);
   });
 
-  it("excludedPaths() resolves from /campaign and shares the cached lookup", async () => {
-    const alepha = make({ SIGIL_ID: "abc", LORE_URL: "https://lore.test" });
+  it("features() defaults to all when SIGIL_FEATURES is unset", async () => {
+    const alepha = make({ SIGIL_ID: "abc" });
     const fwd = alepha.inject(SigilForwardProvider);
     await alepha.start();
 
-    expect(await fwd.excludedPaths()).toEqual(["/c/*/request"]);
-
-    const http = alepha.inject(HttpClient) as RecordingHttpClient;
-    expect(http.calls).toHaveLength(1);
-
-    // campaignId() reuses the same cached resolution — no second fetch.
-    expect(await fwd.campaignId()).toBe(7);
-    expect(http.calls).toHaveLength(1);
+    expect(fwd.features().sort()).toEqual(
+      ["beacon", "blights", "petition", "vitals"].sort(),
+    );
   });
 
-  it("excludedPaths() returns [] when disabled and fetches nothing", async () => {
-    const alepha = make({});
+  it("features() filters to the SIGIL_FEATURES allow-list", async () => {
+    const alepha = make({ SIGIL_ID: "abc", SIGIL_FEATURES: "blights, beacon" });
     const fwd = alepha.inject(SigilForwardProvider);
     await alepha.start();
 
-    expect(fwd.enabled()).toBe(false);
-    expect(await fwd.excludedPaths()).toEqual([]);
-    expect(
-      (alepha.inject(HttpClient) as RecordingHttpClient).calls,
-    ).toHaveLength(0);
+    expect(fwd.features().sort()).toEqual(["beacon", "blights"].sort());
   });
 
   it("campaignId() returns undefined when disabled", async () => {

@@ -9,8 +9,6 @@ export const sigilSchema = t.object({
   id: t.uuid(),
   campaignId: t.integer(),
   label: t.string(),
-  kinds: t.array(t.string()),
-  excludedPaths: t.array(t.string()),
   createdAt: t.string(),
 });
 
