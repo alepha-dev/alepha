@@ -16,6 +16,7 @@ import { useRouter } from "alepha/react/router";
 import {
   ChevronDown,
   FileText,
+  Hourglass,
   Link2,
   ListChecks,
   Plus,
@@ -38,6 +39,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import TextEditor from "../../shared/TextEditor.tsx";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
+import QuestEstimateInput from "./QuestEstimateInput.tsx";
 import QuestTagInput from "./QuestTagInput.tsx";
 
 export interface QuestCreateProps {
@@ -194,6 +196,14 @@ const QuestCreate = (props: QuestCreateProps) => {
             )}
           />
         </div>
+
+        <Control
+          label={tr("quest.create.estimate")}
+          description={tr("quest.create.estimate.helper")}
+          input={form.input.estimateMinutes}
+          icon={Hourglass}
+          custom={QuestEstimateInput as never}
+        />
 
         <Control
           label={tr("quest.create.tags")}

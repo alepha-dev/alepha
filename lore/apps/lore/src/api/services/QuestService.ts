@@ -60,6 +60,8 @@ export interface CreateQuestInput {
   zone: string;
   priority?: Quest["priority"];
   difficulty?: number;
+  /** Optional glanceable time estimate in minutes; `null`/`undefined` = none. */
+  estimateMinutes?: number | null;
   objectives?: Array<{ id?: number; title: string; completed: boolean }>;
   attachments?: string[];
   tags?: string[];
@@ -155,6 +157,7 @@ export class QuestService {
       zone: input.zone,
       priority: input.priority ?? "medium",
       difficulty: input.difficulty ?? 2,
+      estimateMinutes: input.estimateMinutes ?? undefined,
       objectives: this.ensureObjectiveIds(input.objectives ?? []),
       attachments: input.attachments ?? [],
       tags: normalizeQuestTags(input.tags ?? []),
