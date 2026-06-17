@@ -264,6 +264,12 @@ export class I18n {
         "quest.create.dependsOn.search": "Search quests…",
         "quest.create.dependsOn.empty": "No quests found",
         "quest.create.dependsOn.clear": "Clear dependency",
+        "quest.create.estimate": "Estimate",
+        "quest.create.estimate.helper":
+          "Roughly how long this might take — shown in the questlog so you can grab one that fits the time you have.",
+        "quest.create.estimate.custom": "Custom…",
+        "quest.create.estimate.minutes": "min",
+        "quest.create.estimate.clear": "Clear estimate",
         "quest.create.tags": "Tags",
         "quest.create.tags.helper":
           "Labels for the nature of the quest (bug, feat, chore…). Zone says where, tag says what kind.",
@@ -586,6 +592,7 @@ export class I18n {
         "quest.view.timer.description":
           "Time tracking is active for this quest.",
 
+        "quest.item.estimate": "Estimated time",
         "quest.item.bonus": "Bonus",
         "quest.item.bonus.description": "This quest is optional.",
         "quest.item.highPriority": "High Priority !",
@@ -1115,6 +1122,12 @@ export class I18n {
         "quest.create.dependsOn.search": "Rechercher des quêtes…",
         "quest.create.dependsOn.empty": "Aucune quête trouvée",
         "quest.create.dependsOn.clear": "Retirer la dépendance",
+        "quest.create.estimate": "Estimation",
+        "quest.create.estimate.helper":
+          "Combien de temps cela pourrait prendre — affiché dans le journal pour choisir une quête qui rentre dans le temps dont vous disposez.",
+        "quest.create.estimate.custom": "Personnalisé…",
+        "quest.create.estimate.minutes": "min",
+        "quest.create.estimate.clear": "Effacer l'estimation",
         "quest.create.tags": "Étiquettes",
         "quest.create.tags.helper":
           "Étiquettes décrivant la nature de la quête (bug, feat, chore…). La zone dit où, l'étiquette dit quoi.",
@@ -1435,6 +1448,7 @@ export class I18n {
         "quest.view.timer.description":
           "Le suivi du temps est actif pour cette quête.",
 
+        "quest.item.estimate": "Temps estimé",
         "quest.item.bonus": "Bonus",
         "quest.item.bonus.description": "Cette quête est optionnelle.",
         "quest.item.highPriority": "Priorité haute !",

@@ -38,6 +38,7 @@ test.describe("Quest", () => {
       zone: "Main",
       priority: "medium",
       difficulty: 3,
+      estimateMinutes: 30,
       objectives: [],
       attachments: [],
     });
@@ -48,6 +49,11 @@ test.describe("Quest", () => {
       await page.goto(`/c/${campaignId}/q/${shortId}`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(questTitle).first()).toBeVisible({
+        timeout: 10_000,
+      });
+      // The optional time estimate (30m) renders as a glanceable `~30m`
+      // badge in the quest view header.
+      await expect(page.getByText(/~30m/).first()).toBeVisible({
         timeout: 10_000,
       });
     });

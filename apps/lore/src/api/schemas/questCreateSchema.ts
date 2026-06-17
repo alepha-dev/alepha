@@ -9,6 +9,12 @@ export const questCreateSchema = t.object({
   zone: t.string(),
   priority: t.enum(["optional", "low", "medium", "high"]),
   difficulty: t.integer({ minimum: 1, maximum: 5 }),
+  /**
+   * Optional, glanceable time estimate in minutes (motivation aid, surfaced
+   * as a `~15m` pill in the questlog). `null` clears it on update, a positive
+   * integer sets it, omit to leave unchanged. Not tied to rewards.
+   */
+  estimateMinutes: t.optional(t.nullable(t.integer({ minimum: 1 }))),
   campaignId: t.integer(),
   objectives: t.optional(
     t.array(

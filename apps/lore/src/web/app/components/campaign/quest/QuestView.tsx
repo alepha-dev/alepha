@@ -11,6 +11,7 @@ import {
   Circle,
   FileText,
   History,
+  Hourglass,
   Link2,
   ListChecks,
   Paperclip,
@@ -49,6 +50,7 @@ import QuestViewNotes from "./QuestViewNotes.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
 import QuestViewSettings from "./QuestViewSettings.tsx";
 import QuestViewTimer from "./QuestViewTimer.tsx";
+import { formatEstimate } from "./questEstimate.ts";
 
 export interface QuestViewProps {
   quest: QuestResource;
@@ -238,6 +240,17 @@ const QuestView = (props: QuestViewProps) => {
                 </div>
               )}
             </div>
+
+            {quest.estimateMinutes != null && (
+              <Badge
+                variant="secondary"
+                className="text-muted-foreground shrink-0 gap-1"
+                title={tr("quest.item.estimate")}
+              >
+                <Hourglass className="size-3" />~
+                {formatEstimate(quest.estimateMinutes)}
+              </Badge>
+            )}
 
             <Badge
               variant="secondary"

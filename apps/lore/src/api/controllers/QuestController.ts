@@ -153,6 +153,12 @@ export class QuestController {
         zone: body.zone,
         priority: body.priority,
         difficulty: body.difficulty,
+        // `t.nullable` skips the schema's `minimum: 1`, so guard here: a
+        // non-positive estimate is stored as none (the UI can't produce it).
+        estimateMinutes:
+          body.estimateMinutes && body.estimateMinutes > 0
+            ? body.estimateMinutes
+            : undefined,
         objectives: body.objectives,
         attachments: body.attachments,
         tags: body.tags,
@@ -866,6 +872,10 @@ export class QuestController {
           // link; integer sets it. Owner-only + accepted-petition checks in
           // the handler, mirroring `createQuest`.
           petitionId: t.optional(t.nullable(t.integer())),
+          // Optional time estimate (minutes). `null` clears the column,
+          // integer sets it; the generic `patch = { ...body }` spread below
+          // applies it as-is (set / clear / leave-unchanged).
+          estimateMinutes: t.optional(t.nullable(t.integer({ minimum: 1 }))),
         },
       ),
       response: questResourceSchema,
