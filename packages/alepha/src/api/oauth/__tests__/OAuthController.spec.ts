@@ -231,3 +231,131 @@ describe("OAuthController authorize + token", () => {
     expect(body.error).toBe("unsupported_grant_type");
   });
 });
+
+describe("OAuthController refresh_token grant", () => {
+  /**
+   * Boot a server with a **session-backed** issuer (like the platform IdP
+   * realm, which wires `onCreateSession`/`onRefreshSession` via
+   * `alepha/api/users`). Token-only issuers can't refresh through the endpoint
+   * (the old access token isn't carried), so a session store is required to
+   * exercise the refresh grant end-to-end.
+   */
+  const boot = async () => {
+    const sessions = new Map<string, string>(); // refresh_token -> userId
+
+    class App {
+      issuer = $issuer({
+        name: "users",
+        secret: "test-secret",
+        settings: {
+          onCreateSession: async (user) => {
+            const refreshToken = randomUUID();
+            sessions.set(refreshToken, user.id);
+            return { refreshToken, sessionId: randomUUID() };
+          },
+          onRefreshSession: async (refreshToken) => {
+            const userId = sessions.get(refreshToken);
+            if (!userId) throw new Error("unknown refresh token");
+            return {
+              user: { id: userId, roles: [] } as UserAccount,
+              expiresIn: 3600,
+            };
+          },
+        },
+      });
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const service = alepha.inject(OAuthClientService);
+    service.registerIssuer(
+      "users",
+      app.issuer,
+      async (id) => ({ id, roles: [] }) as UserAccount,
+    );
+
+    const { hostname } = alepha.inject(ServerProvider);
+    return { hostname, service };
+  };
+
+  const registerClient = async (
+    hostname: string,
+    redirectUri: string,
+  ): Promise<string> => {
+    const resp = await fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Test Client",
+        redirect_uris: [redirectUri],
+      }),
+    });
+    const body = (await resp.json()) as Record<string, string>;
+    return body.client_id;
+  };
+
+  it("re-mints an id_token on the refresh grant for openid clients", async ({
+    expect,
+  }) => {
+    const { hostname, service } = await boot();
+    const redirectUri = "https://claude.ai/api/mcp/auth_callback";
+    const clientId = await registerClient(hostname, redirectUri);
+
+    const verifier = "the-code-verifier-value-1234567890";
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+    const userId = randomUUID();
+
+    // 1) authorization_code exchange → access + refresh + id token.
+    const code = await service.createAuthorizationCode("users", {
+      userId,
+      clientId,
+      redirectUri,
+      codeChallenge: challenge,
+      scopes: ["openid"],
+    });
+    const tokenResp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+      }).toString(),
+    });
+    expect(tokenResp.status).toBe(200);
+    const tokenBody = (await tokenResp.json()) as Record<string, string>;
+    expect(typeof tokenBody.refresh_token).toBe("string");
+    expect(typeof tokenBody.id_token).toBe("string");
+
+    // 2) refresh_token grant — MUST return a fresh id_token so an id_token-based
+    //    relying party (the stateless Club RP forwards the id_token as Bearer)
+    //    actually renews its identity, not just the access token.
+    const refreshResp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: tokenBody.refresh_token,
+        client_id: clientId,
+      }).toString(),
+    });
+    expect(refreshResp.status).toBe(200);
+    const refreshBody = (await refreshResp.json()) as Record<string, string>;
+    expect(typeof refreshBody.access_token).toBe("string");
+    expect(refreshBody.token_type).toBe("Bearer");
+    expect(typeof refreshBody.id_token).toBe("string");
+  });
+});

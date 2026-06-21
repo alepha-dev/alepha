@@ -346,12 +346,29 @@ export class OAuthController {
             this.options.realm,
             body.refresh_token ?? "",
           );
-          reply.body = JSON.stringify({
+          const response: Record<string, unknown> = {
             access_token: tokens.access_token,
             token_type: "Bearer",
             expires_in: tokens.expires_in,
             refresh_token: tokens.refresh_token,
-          });
+          };
+          // Re-mint an OIDC `id_token` so id_token-based relying parties (e.g. a
+          // stateless OIDC RP that forwards the id_token as the request Bearer)
+          // actually renew their identity on refresh — without it the RP keeps
+          // forwarding the now-expired id_token and every call 401s. Per OIDC
+          // Core §12.2 the refreshed id_token carries no `nonce`; `sub` is
+          // unchanged. Requires `client_id` to set the `aud`.
+          if (body.client_id) {
+            response.id_token = await this.clients.issueIdToken(
+              this.options.realm,
+              {
+                userId: tokens.userId,
+                clientId: body.client_id,
+                issuer: this.baseUrl(url),
+              },
+            );
+          }
+          reply.body = JSON.stringify(response);
           return;
         }
 
