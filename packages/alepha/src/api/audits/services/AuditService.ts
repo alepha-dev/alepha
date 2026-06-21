@@ -17,6 +17,14 @@ export interface AuditTypeDefinition {
   type: string;
   description?: string;
   actions: string[];
+
+  /**
+   * Dedicated retention (in days) for this audit type.
+   *
+   * Overrides the global default applied by the cleanup job. `0` keeps entries
+   * forever. When `undefined`, the global default retention applies.
+   */
+  retentionDays?: number;
 }
 
 /**
@@ -314,22 +322,86 @@ export class AuditService {
   }
 
   /**
-   * Delete old audit entries (for retention policy).
+   * Delete audit entries created before the given date (retention policy).
+   *
+   * @returns number of deleted entries.
    */
   public async deleteOlderThan(date: Date): Promise<number> {
     this.log.info("Deleting old audit entries", { olderThan: date });
 
-    const old = await this.repo.findMany({
-      where: { createdAt: { lt: date.toISOString() } },
+    const deleted = await this.repo.deleteMany({
+      createdAt: { lt: date.toISOString() },
     });
 
-    for (const entry of old) {
-      await this.repo.deleteById(entry.id);
+    this.log.info("Old audit entries deleted", { count: deleted.length });
+
+    return deleted.length;
+  }
+
+  /**
+   * Delete audit entries that have outlived their retention window.
+   *
+   * Each registered audit type that declares a dedicated `retentionDays` is
+   * pruned using its own window; every other type — including unregistered or
+   * legacy types — falls back to `defaultRetentionDays`. A retention of `0`
+   * (per-type or default) keeps that scope forever.
+   *
+   * `now` is injected rather than read from the clock so the policy is
+   * deterministic and testable.
+   *
+   * @param now - reference "now" used to compute cutoff dates.
+   * @param defaultRetentionDays - global default for types without an override.
+   * @returns total number of deleted entries.
+   */
+  public async deleteExpired(
+    now: Date,
+    defaultRetentionDays: number,
+  ): Promise<number> {
+    const dayMs = 24 * 60 * 60 * 1000;
+    const cutoff = (days: number): string =>
+      new Date(now.getTime() - days * dayMs).toISOString();
+
+    // Audit types carrying their own retention window.
+    const overrides = this.getRegisteredTypes().filter(
+      (type) => type.retentionDays !== undefined,
+    );
+
+    let deleted = 0;
+
+    // 1) Per-type dedicated retention.
+    for (const type of overrides) {
+      const days = type.retentionDays as number;
+      if (days <= 0) {
+        continue; // keep this type forever
+      }
+      const ids = await this.repo.deleteMany({
+        type: { eq: type.type },
+        createdAt: { lt: cutoff(days) },
+      });
+      deleted += ids.length;
     }
 
-    this.log.info("Old audit entries deleted", { count: old.length });
+    // 2) Global default for every other type.
+    if (defaultRetentionDays > 0) {
+      const overriddenTypes = overrides.map((type) => type.type);
+      const ids =
+        overriddenTypes.length > 0
+          ? await this.repo.deleteMany({
+              type: { notInArray: overriddenTypes },
+              createdAt: { lt: cutoff(defaultRetentionDays) },
+            })
+          : await this.repo.deleteMany({
+              createdAt: { lt: cutoff(defaultRetentionDays) },
+            });
+      deleted += ids.length;
+    }
 
-    return old.length;
+    this.log.info("Expired audit entries deleted", {
+      count: deleted,
+      defaultRetentionDays,
+    });
+
+    return deleted;
   }
 }
 

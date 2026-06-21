@@ -22,6 +22,22 @@ export interface AuditPrimitiveOptions {
    * List of allowed actions for this audit type.
    */
   actions: string[];
+
+  /**
+   * Number of days entries of this audit type are retained before the periodic
+   * cleanup job deletes them.
+   *
+   * Overrides the global default retention (see `auditOptions.retentionDays` in
+   * `AuditParameters`). Set to `0` to keep this type's entries forever,
+   * regardless of the global default. When omitted, the global default applies.
+   *
+   * @example
+   * ```ts
+   * // Keep security audits for two years, ignoring the global default.
+   * $audit({ type: "security", actions: ["login"], retentionDays: 730 });
+   * ```
+   */
+  retentionDays?: number;
 }
 
 /**
@@ -75,6 +91,13 @@ export class AuditPrimitive extends Primitive<AuditPrimitiveOptions> {
   }
 
   /**
+   * The dedicated retention (in days) for this audit type, if set.
+   */
+  public get retentionDays(): number | undefined {
+    return this.options.retentionDays;
+  }
+
+  /**
    * Log an audit event for this type.
    */
   public async log(
@@ -113,6 +136,7 @@ export class AuditPrimitive extends Primitive<AuditPrimitiveOptions> {
       type: this.options.type,
       description: this.options.description,
       actions: this.options.actions,
+      retentionDays: this.options.retentionDays,
     };
     this.auditService.registerType(definition);
   }

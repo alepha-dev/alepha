@@ -1,7 +1,17 @@
 import { Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
-import { AlephaApiAudits, AuditService } from "../index.ts";
+import { AlephaApiAudits, AuditService, audits } from "../index.ts";
+
+/**
+ * Direct repository access so retention tests can backdate `createdAt` (which
+ * the public `create` API does not expose).
+ */
+class Db {
+  audits = $repository(audits);
+}
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -11,6 +21,11 @@ const setup = async () => {
   alepha.with(AlephaOrmPostgres);
   alepha.with(AlephaApiAudits);
 
+  // Inject before start: the container locks once started, so test-only
+  // services (Db) must be registered first.
+  const db = alepha.inject(Db);
+  const time = alepha.inject(DateTimeProvider);
+
   await alepha.start();
 
   const auditService = alepha.inject(AuditService);
@@ -18,6 +33,8 @@ const setup = async () => {
   return {
     alepha,
     auditService,
+    db,
+    time,
   };
 };
 
@@ -400,6 +417,127 @@ describe("alepha/api/audits - AuditService", () => {
       expect(retrieved.id).toBe(created.id);
       expect(retrieved.type).toBe("test");
       expect(retrieved.action).toBe("getById");
+    });
+  });
+
+  describe("deleteExpired", () => {
+    // Cutoffs are always computed from `now`, so backdating entries keeps the
+    // delete window in the past — concurrent test files' recent rows are safe.
+    const countByType = async (db: Db, type: string): Promise<number> =>
+      (await db.audits.findMany({ where: { type: { eq: type } } })).length;
+
+    it("deletes entries older than the default retention", async ({
+      expect,
+    }) => {
+      const { auditService, db, time } = await setup();
+      const type = "av-default";
+
+      await db.audits.deleteMany({ type: { eq: type } });
+      await db.audits.create({
+        type,
+        action: "old",
+        createdAt: time.now().subtract(200, "day").toISOString(),
+      });
+      await db.audits.create({
+        type,
+        action: "recent",
+        createdAt: time.nowISOString(),
+      });
+
+      const deleted = await auditService.deleteExpired(time.now().toDate(), 90);
+
+      expect(deleted).toBeGreaterThanOrEqual(1);
+      expect(await countByType(db, type)).toBe(1);
+    });
+
+    it("keeps entries within the default retention window", async ({
+      expect,
+    }) => {
+      const { auditService, db, time } = await setup();
+      const type = "av-within";
+
+      await db.audits.deleteMany({ type: { eq: type } });
+      await db.audits.create({
+        type,
+        action: "x",
+        createdAt: time.now().subtract(10, "day").toISOString(),
+      });
+
+      await auditService.deleteExpired(time.now().toDate(), 90);
+
+      expect(await countByType(db, type)).toBe(1);
+    });
+
+    it("applies a type's dedicated retention over the default", async ({
+      expect,
+    }) => {
+      const { auditService, db, time } = await setup();
+
+      auditService.registerType({
+        type: "av-short",
+        actions: ["x"],
+        retentionDays: 7,
+      });
+
+      await db.audits.deleteMany({ type: { eq: "av-short" } });
+      await db.audits.deleteMany({ type: { eq: "av-long" } });
+
+      // 30 days old: beyond the 7-day override, within the 90-day default.
+      await db.audits.create({
+        type: "av-short",
+        action: "x",
+        createdAt: time.now().subtract(30, "day").toISOString(),
+      });
+      await db.audits.create({
+        type: "av-long",
+        action: "x",
+        createdAt: time.now().subtract(30, "day").toISOString(),
+      });
+
+      await auditService.deleteExpired(time.now().toDate(), 90);
+
+      expect(await countByType(db, "av-short")).toBe(0);
+      expect(await countByType(db, "av-long")).toBe(1);
+    });
+
+    it("keeps a type forever when its retention is 0", async ({ expect }) => {
+      const { auditService, db, time } = await setup();
+
+      auditService.registerType({
+        type: "av-permanent",
+        actions: ["x"],
+        retentionDays: 0,
+      });
+
+      await db.audits.deleteMany({ type: { eq: "av-permanent" } });
+      await db.audits.create({
+        type: "av-permanent",
+        action: "x",
+        createdAt: time.now().subtract(5000, "day").toISOString(),
+      });
+
+      await auditService.deleteExpired(time.now().toDate(), 90);
+
+      expect(await countByType(db, "av-permanent")).toBe(1);
+    });
+
+    it("disables cleanup when the default retention is 0", async ({
+      expect,
+    }) => {
+      const { auditService, db, time } = await setup();
+      const type = "av-disabled";
+
+      await db.audits.deleteMany({ type: { eq: type } });
+      await db.audits.create({
+        type,
+        action: "x",
+        createdAt: time.now().subtract(5000, "day").toISOString(),
+      });
+
+      const deleted = await auditService.deleteExpired(time.now().toDate(), 0);
+
+      expect(deleted).toBe(0);
+      expect(await countByType(db, type)).toBe(1);
     });
   });
 });

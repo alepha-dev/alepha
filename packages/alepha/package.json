@@ -22,7 +22,6 @@
   ],
   "dependencies": {
     "@biomejs/biome": "^2.4.16",
-    "@cloudflare/containers": "^0.3.5",
     "@redis/client": "^6.0.0",
     "@vitejs/plugin-react": "^6.0.2",
     "dayjs": "^1.11.21",
@@ -256,12 +255,6 @@
       "types": "./src/command/index.ts",
       "import": "./src/command/index.ts",
       "default": "./src/command/index.ts"
-    },
-    "./container": {
-      "types": "./src/container/core/index.ts",
-      "workerd": "./src/container/core/index.workerd.ts",
-      "import": "./src/container/core/index.ts",
-      "default": "./src/container/core/index.ts"
     },
     ".": {
       "types": "./src/core/index.ts",
@@ -698,12 +691,6 @@
         "types": "./dist/command/index.d.ts",
         "import": "./dist/command/index.js",
         "default": "./dist/command/index.js"
-      },
-      "./container": {
-        "types": "./dist/container/core/index.d.ts",
-        "workerd": "./dist/container/core/index.workerd.js",
-        "import": "./dist/container/core/index.js",
-        "default": "./dist/container/core/index.js"
       },
       ".": {
         "types": "./dist/core/index.d.ts",
