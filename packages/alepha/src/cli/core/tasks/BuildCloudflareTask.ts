@@ -1,7 +1,6 @@
 import { basename } from "node:path";
 import { $inject } from "alepha";
 import { KV_DEFAULT_BINDING } from "alepha/cache";
-import type { ContainerPrimitive } from "alepha/container";
 import { SEND_EMAIL_DEFAULT_BINDING } from "alepha/email/cloudflare";
 import { QUEUE_DEFAULT_BINDING } from "alepha/queue";
 import type { CronProvider, WorkerdCronProvider } from "alepha/scheduler";
@@ -92,21 +91,6 @@ export interface BuildManifest {
    * app doesn't use Cloudflare email.
    */
   email?: { binding: string };
-  /**
-   * `$container()` descriptors — image, port, lifecycle settings.
-   * Used both to populate Cloudflare Containers bindings in
-   * wrangler.jsonc and (in future) to know which images Rocket should
-   * pull on the deploy side.
-   */
-  containers: Array<{
-    name: string;
-    className: string;
-    image: string;
-    port: number;
-    sleepAfter: string;
-    instanceType: string;
-    maxInstances: number;
-  }>;
   /**
    * Every env var the app declares via `$env`, captured from
    * `alepha.dump().env` at build time. The deploy `secrets` step uses this
@@ -200,7 +184,6 @@ export class BuildCloudflareTask extends BuildTask {
     this.enhanceKV(wrangler);
     this.enhanceQueue(wrangler);
     this.enhanceEmail(ctx, wrangler);
-    const containers = this.enhanceContainers(ctx, wrangler);
 
     await this.fs.writeFile(
       this.fs.join(root, distDir, "wrangler.jsonc"),
@@ -212,9 +195,9 @@ export class BuildCloudflareTask extends BuildTask {
     // re-emitting the same data we just read — skip to avoid a redundant
     // write and to keep the original manifest as the canonical record.
     if (!ctx.manifest) {
-      await this.writeManifest(ctx, root, distDir, name, containers);
+      await this.writeManifest(ctx, root, distDir, name);
     }
-    await this.writeWorkerEntryPoint(root, distDir, containers);
+    await this.writeWorkerEntryPoint(root, distDir);
   }
 
   /**
@@ -229,7 +212,6 @@ export class BuildCloudflareTask extends BuildTask {
     root: string,
     distDir: string,
     name: string,
-    containers: ContainerDescriptor[],
   ): Promise<void> {
     // Discover the same primitive shapes the enhance* methods read.
     // Errors are silently swallowed — an absent primitive class just
@@ -319,15 +301,6 @@ export class BuildCloudflareTask extends BuildTask {
         hasCron: crons.length > 0,
       },
       crons,
-      containers: containers.map((c) => ({
-        name: c.name,
-        className: c.className,
-        image: c.image,
-        port: c.port,
-        sleepAfter: c.sleepAfter,
-        instanceType: c.instanceType,
-        maxInstances: c.maxInstances,
-      })),
       email,
       env,
     };
@@ -542,154 +515,10 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler.send_email.push({ name: binding });
   }
 
-  /**
-   * Discover `$container` primitives and emit the matching Cloudflare
-   * Containers bindings, Durable Object bindings, and migrations into
-   * `wrangler.jsonc`. The DO class declarations are added later, when
-   * the worker entry point is written.
-   *
-   * Returns the list of container descriptors so
-   * `writeWorkerEntryPoint` can emit `export class <NAME> extends
-   * Container` declarations referencing them.
-   */
-  protected discoverContainers(ctx: BuildTaskContext): ContainerDescriptor[] {
-    // String key, not the `$container` factory. The build task runs in
-    // the CLI's Node realm, while the workspace's entry module is
-    // loaded by Vite — two separate module copies of
-    // `alepha/container`. Looking up by `$container[KIND]` (a class
-    // reference) would dereference the CLI's ContainerPrimitive class,
-    // which never matches the workspace's. The string form iterates
-    // the registry by class name and survives the dual-realm — same
-    // pattern used for `$bucket`, `$queue`, `scheduler` below.
-    const primitives = ctx.alepha.primitives(
-      "container",
-    ) as ContainerPrimitive[];
-    return primitives.map((p) => ({
-      name: p.name.toUpperCase(),
-      className: p.name
-        .split(/[^a-zA-Z0-9]/)
-        .filter(Boolean)
-        .map((s) => s[0]!.toUpperCase() + s.slice(1))
-        .join(""),
-      image: p.options.image,
-      port: p.options.port ?? 3000,
-      sleepAfter:
-        typeof p.options.sleepAfter === "string" ? p.options.sleepAfter : "15m",
-      // `lite` is the post-GA name for what `$container` historically
-      // called `dev`. Default to `lite` here and rewrite any
-      // explicit `dev` to it on the way out — wrangler warns
-      // otherwise.
-      instanceType:
-        p.options.instanceType === "dev"
-          ? "lite"
-          : (p.options.instanceType ?? "lite"),
-      maxInstances: p.options.maxInstances ?? 5,
-      envVars: p.options.envVars,
-    }));
-  }
-
-  /**
-   * Expand a short image ref (e.g. `alepha-rocket:0.1.0`) into the
-   * fully-qualified `registry.cloudflare.com/<account>/<image>:<tag>`
-   * URL that wrangler validates at deploy time.
-   *
-   * Cloudflare Containers only pulls from `registry.cloudflare.com`;
-   * wrangler accepts either a Dockerfile path or a fully-qualified
-   * registry URL in the `image` field — not a bare DockerHub-style
-   * name. We let `$container({ image })` callers write the short
-   * form (it matches what `wrangler containers push <local>` accepts
-   * + matches the local docker tag) and rewrite to the CF registry
-   * URL here.
-   *
-   * Pass-through cases:
-   *   - already a full URL: starts with `registry.cloudflare.com/`
-   *     or contains a scheme/`://`
-   *   - looks like a Dockerfile path: starts with `./` or `/`
-   */
-  protected resolveContainerImage(image: string): string {
-    if (
-      image.startsWith("./") ||
-      image.startsWith("/") ||
-      image.startsWith("registry.cloudflare.com/") ||
-      image.includes("://")
-    ) {
-      return image;
-    }
-    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-    if (!accountId) {
-      // No account id — leave the short form and let wrangler error
-      // out with a clearer message. This branch fires only in dry
-      // builds where the env isn't wired (e.g. `alepha build` without
-      // `alepha platform up` around it).
-      return image;
-    }
-    return `registry.cloudflare.com/${accountId}/${image}`;
-  }
-
-  protected enhanceContainers(
-    ctx: BuildTaskContext,
-    wrangler: WranglerConfig,
-  ): ContainerDescriptor[] {
-    const descriptors: ContainerDescriptor[] = ctx.manifest
-      ? (ctx.manifest.containers as ContainerDescriptor[])
-      : this.discoverContainers(ctx);
-    if (descriptors.length === 0) {
-      return [];
-    }
-
-    wrangler.containers = wrangler.containers || [];
-    wrangler.durable_objects = wrangler.durable_objects || {};
-    wrangler.durable_objects.bindings = wrangler.durable_objects.bindings || [];
-    wrangler.migrations = wrangler.migrations || [];
-
-    const newSqliteClasses: string[] = [];
-    for (const d of descriptors) {
-      wrangler.containers.push({
-        class_name: d.className,
-        image: this.resolveContainerImage(d.image),
-        instance_type: d.instanceType,
-        max_instances: d.maxInstances,
-      });
-      wrangler.durable_objects.bindings.push({
-        name: d.name,
-        class_name: d.className,
-      });
-      newSqliteClasses.push(d.className);
-    }
-
-    if (newSqliteClasses.length > 0) {
-      wrangler.migrations.push({
-        tag: "containers-v1",
-        new_sqlite_classes: newSqliteClasses,
-      });
-    }
-
-    return descriptors;
-  }
-
   protected async writeWorkerEntryPoint(
     root: string,
     distDir: string,
-    containers: ContainerDescriptor[] = [],
   ): Promise<void> {
-    // Extend `globalThis.__alepha_CloudflareContainer` instead of
-    // importing `@cloudflare/containers` directly. The entry is
-    // written AFTER Vite, so any bare specifier in here survives to
-    // workerd (which has `no_bundle: true`) and 10021's out. The
-    // global is set by a side-effect in `alepha/container`'s
-    // workerd entry, which Vite has already inlined into
-    // `./index.js`. ESM evaluates top-level imports before the
-    // module body, so by the time the `extends` expression below is
-    // evaluated, the global is set.
-    const containerDeclarations = containers
-      .map((c) => {
-        const envVars = c.envVars
-          ? `  envVars = ${JSON.stringify(c.envVars)};\n`
-          : "";
-        return `export class ${c.className} extends globalThis.__alepha_CloudflareContainer {\n  defaultPort = ${c.port};\n  sleepAfter = "${c.sleepAfter}";\n${envVars}}`;
-      })
-      .join("\n\n");
-
     const workerCode = `
 import "./index.js";
 
@@ -771,32 +600,9 @@ export default {
 };
 `.trim();
 
-    const containerBlock =
-      containers.length > 0 ? `${containerDeclarations}\n\n` : "";
-
     await this.fs.writeFile(
       this.fs.join(root, distDir, "main.cloudflare.js"),
-      `${this.warningComment}\n${containerBlock}${workerCode}`.trim(),
+      `${this.warningComment}\n${workerCode}`.trim(),
     );
   }
-}
-
-interface ContainerDescriptor {
-  name: string;
-  className: string;
-  image: string;
-  port: number;
-  sleepAfter: string;
-  /**
-   * Cloudflare Containers instance class.
-   *
-   * `dev` is the wrangler-pre-GA name; the platform accepts it but
-   * emits a deprecation warning telling you to use `lite`. We
-   * silently translate at write time (see `discoverContainers`
-   * default + `enhanceContainers` write) so older
-   * `$container({ instanceType: "dev" })` declarations keep working.
-   */
-  instanceType: "dev" | "lite" | "basic" | "standard";
-  maxInstances: number;
-  envVars?: Record<string, string>;
 }
