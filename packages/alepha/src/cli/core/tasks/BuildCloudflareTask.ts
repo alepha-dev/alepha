@@ -178,6 +178,7 @@ export class BuildCloudflareTask extends BuildTask {
     };
 
     this.enhanceDomain(wrangler);
+    this.enhanceServices(wrangler);
     this.enhanceCron(ctx, wrangler);
     this.enhanceDatabase(wrangler);
     this.enhanceR2(wrangler);
@@ -311,6 +312,21 @@ export class BuildCloudflareTask extends BuildTask {
     );
   }
 
+  /** Worker-to-worker service bindings, from CLOUDFLARE_SERVICES (JSON). */
+  protected enhanceServices(wrangler: WranglerConfig): void {
+    const raw = process.env.CLOUDFLARE_SERVICES;
+    if (!raw) {
+      return;
+    }
+    const services = JSON.parse(raw) as Array<{
+      binding: string;
+      service: string;
+    }>;
+    if (services.length > 0) {
+      (wrangler as { services?: unknown }).services = services;
+    }
+  }
+
   protected enhanceDomain(wrangler: WranglerConfig): void {
     const domain = process.env.CLOUDFLARE_DOMAIN;
     if (!domain) {
@@ -329,6 +345,22 @@ export class BuildCloudflareTask extends BuildTask {
         {
           pattern: domain.endsWith("/*") ? domain : `${domain}/*`,
           zone_name: zone,
+        },
+      ];
+      return;
+    }
+
+    // An explicit CLOUDFLARE_ZONE forces a zone *Route* for a non-wildcard
+    // host too. Needed when the host is ALSO covered by another Worker's
+    // wildcard route on the same zone: Cloudflare evaluates Routes before
+    // Custom Domains, but among routes the most specific pattern wins — so
+    // `app.club.alepha.dev/*` beats the pooled `*.club.alepha.dev/*`, while a
+    // Custom Domain on that host would lose to the wildcard route entirely.
+    if (process.env.CLOUDFLARE_ZONE) {
+      wrangler.routes = [
+        {
+          pattern: `${domain}/*`,
+          zone_name: process.env.CLOUDFLARE_ZONE,
         },
       ];
       return;

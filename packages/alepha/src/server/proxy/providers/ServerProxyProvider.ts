@@ -86,6 +86,11 @@ export class ServerProxyProvider {
         headers: request.headers,
       });
 
+      // Note: `beforeRequest` may set `requestInit.fetcher` to a Cloudflare
+      // service binding — a NATIVE workerd RequestInit field that routes the
+      // subrequest through that Worker (same-zone subrequests to a host
+      // served by another Worker's route would bypass it and 522). Node's
+      // fetch ignores the unknown field.
       const response = await fetch(requestInit.url, requestInit);
 
       request.reply.status = response.status;

@@ -1,5 +1,7 @@
 import { Button, buttonVariants } from "@alepha/ui/components/ui/button";
 import { cn } from "@alepha/ui/lib/utils";
+import { useI18n } from "alepha/react/i18n";
+import { enUS, es, fr } from "date-fns/locale";
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -12,6 +14,12 @@ import {
   getDefaultClassNames,
   type Locale,
 } from "react-day-picker";
+
+// Map Alepha's active language to a date-fns locale so month names and
+// weekday headers render translated by default (consumers can still override
+// via the `locale` prop). Unmapped languages fall back to react-day-picker's
+// own default (en-US).
+const LOCALE_BY_LANG: Record<string, Locale> = { fr, es, en: enUS };
 
 function Calendar({
   className,
@@ -27,6 +35,8 @@ function Calendar({
   buttonVariant?: React.ComponentProps<typeof Button>["variant"];
 }) {
   const defaultClassNames = getDefaultClassNames();
+  const { lang } = useI18n();
+  const resolvedLocale = locale ?? LOCALE_BY_LANG[lang];
 
   return (
     <DayPicker
@@ -38,10 +48,10 @@ function Calendar({
         className,
       )}
       captionLayout={captionLayout}
-      locale={locale}
+      locale={resolvedLocale}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString(locale?.code, { month: "short" }),
+          date.toLocaleString(resolvedLocale?.code, { month: "short" }),
         ...formatters,
       }}
       classNames={{
@@ -166,7 +176,7 @@ function Calendar({
           );
         },
         DayButton: ({ ...props }) => (
-          <CalendarDayButton locale={locale} {...props} />
+          <CalendarDayButton locale={resolvedLocale} {...props} />
         ),
         WeekNumber: ({ children, ...props }) => {
           return (

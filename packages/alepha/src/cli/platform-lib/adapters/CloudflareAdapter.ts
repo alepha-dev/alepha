@@ -195,6 +195,11 @@ export class CloudflareAdapter extends PlatformAdapter {
       env.CLOUDFLARE_JURISDICTION = ctx.envConfig.jurisdiction;
     }
 
+    // Worker-to-worker service bindings (see EnvironmentConfig.services).
+    if (ctx.envConfig.services?.length) {
+      env.CLOUDFLARE_SERVICES = JSON.stringify(ctx.envConfig.services);
+    }
+
     // Two paths:
     //  - `--prebuilt`: in-process call to BuildCloudflareTask. Reads
     //    `dist/manifest.json` for resources/crons/containers, reads

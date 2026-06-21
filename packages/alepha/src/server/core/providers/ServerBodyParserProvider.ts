@@ -51,6 +51,14 @@ export class ServerBodyParserProvider {
         return; // already parsed
       }
 
+      // No body schema → this route consumes the body itself (raw handlers,
+      // reverse proxies). Leave the underlying stream untouched: wrapping the
+      // node Readable below locks it, so a later reader would get an empty
+      // (drained) stream.
+      if (!route.schema?.body) {
+        return;
+      }
+
       let stream: ReadableStream | undefined;
 
       if (request.raw.web?.req.body) {

@@ -257,6 +257,39 @@ export class OAuthClientService {
   }
 
   /**
+   * Idempotently align a registered client's redirect_uri allowlist with the
+   * given list. No-op when the client is unknown or the list already matches —
+   * safe to call from post-deploy seeders (allowlist changes ship as code, and
+   * `register` alone would leave existing rows stale).
+   */
+  public async updateRedirectUris(
+    clientId: string,
+    redirectUris: string[],
+  ): Promise<void> {
+    if (redirectUris.length === 0) {
+      throw new AlephaError("At least one redirect_uri is required");
+    }
+    for (const uri of redirectUris) {
+      this.assertValidRedirectUri(uri);
+    }
+    const client = await this.findByClientId(clientId);
+    if (!client) {
+      return;
+    }
+    if (
+      client.redirectUris.length === redirectUris.length &&
+      client.redirectUris.every((uri, i) => uri === redirectUris[i])
+    ) {
+      return;
+    }
+    await this.repo.updateById(client.id, { redirectUris });
+    this.log.info("OAuth client redirect_uris updated", {
+      clientId,
+      redirectUris,
+    });
+  }
+
+  /**
    * Verify a confidential client's secret against its stored scrypt hash.
    * Returns false for unknown/revoked/public (no-hash) clients.
    */

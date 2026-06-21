@@ -12,6 +12,13 @@ export class SigilServerErrors {
     on: "server:onError",
     handler: async ({ route, error }) => {
       if (!this.forward.enabled()) return;
+      // Don't forward EXPECTED HTTP auth errors to the blights inbox: 401
+      // (UnauthorizedError) and 403 (ForbiddenError / SecurityError) are routine
+      // logged-out / under-privileged hits, not crashes — forwarding them buries
+      // real blights under noise. Genuine 5xx and uncaught exceptions (no status)
+      // still report.
+      const status = (error as { status?: number } | undefined)?.status;
+      if (status === 401 || status === 403) return;
       await this.forward.forwardIngest(
         {
           errors: [

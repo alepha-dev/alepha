@@ -102,10 +102,30 @@ export const platformOptions = $atom({
           /**
            * Cloudflare zone name (e.g. "alepha.dev") that owns `domain`.
            *
-           * Required when `domain` contains a wildcard (`*`). Ignored for
-           * plain custom domains, which Cloudflare resolves automatically.
+           * Required when `domain` contains a wildcard (`*`). For a plain
+           * host, setting `zone` switches the binding from a Custom Domain to
+           * a zone *Route* (`domain/*`) — needed when another Worker holds a
+           * wildcard route covering the host (routes win by specificity,
+           * while a Custom Domain would lose to the wildcard route).
            */
           zone: t.optional(t.text()),
+          /**
+           * Worker-to-worker service bindings, e.g.
+           * `[{ binding: "CLUB", service: "club-staging" }]`.
+           *
+           * Exposed on the runtime `env` (Alepha store key `cloudflare.env`).
+           * Use a binding to fetch() a sibling Worker on the same zone —
+           * plain subrequests to a host served by a same-zone Worker route
+           * bypass the route and 522.
+           */
+          services: t.optional(
+            t.array(
+              t.object({
+                binding: t.text(),
+                service: t.text(),
+              }),
+            ),
+          ),
           /**
            * Cloudflare data jurisdiction for R2 buckets and D1 databases.
            * - "eu": data stays within the EU
@@ -143,4 +163,5 @@ export interface EnvironmentConfig {
   vars?: Record<string, string>;
   jurisdiction?: "eu" | "fedramp";
   accountId?: string;
+  services?: Array<{ binding: string; service: string }>;
 }

@@ -58,7 +58,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 export interface NavigationProgressOptions {
   /**
@@ -223,9 +223,16 @@ function SidebarNavItem(props: { item: NavItem }) {
   const { item } = props;
   const children = item.children;
   const isGroup = !!children && children.length > 0;
-  const [open, setOpen] = useState(
-    item.defaultOpen ?? (isGroup ? hasActiveDescendant(item) : false),
-  );
+  const hasActive = isGroup && hasActiveDescendant(item);
+  const [open, setOpen] = useState(item.defaultOpen ?? hasActive);
+  // Reveal a collapsed group when navigation makes one of its descendants
+  // active — SPA nav, spotlight (⌘K), breadcrumb, or a deep-link that doesn't
+  // remount this item (useState's initializer runs only at mount, so without
+  // this the group stays stuck closed and the active page is hidden — petition
+  // #4). Only OPENS; never auto-collapses, so a manual toggle is preserved.
+  useEffect(() => {
+    if (hasActive) setOpen(true);
+  }, [hasActive]);
 
   if (!isGroup) {
     // Disabled rows render with a muted, dashed-border treatment plus a
