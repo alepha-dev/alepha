@@ -151,6 +151,12 @@ export const questCreateParamsSchema = t.extend(campaignParamsSchema, {
         "Per-campaign shortId of an ACCEPTED petition to link this quest to (it then shows under that petition's 'linked quests'). Owner-only; the petition must already be accepted (accept it first via petition_accept).",
     }),
   ),
+  accept: t.optional(
+    t.boolean({
+      description:
+        "Immediately accept (assign to yourself) the quest right after it is created — the MCP equivalent of the UI's 'Create and accept' button, so an agent about to work the quest skips a separate quest_accept round-trip. Defaults to false. Best-effort: if the quest can't be accepted yet (e.g. it depends on an incomplete predecessor) it is still created and left in the 'new' lane, with `acceptNote` explaining why.",
+    }),
+  ),
 });
 
 export const questCreateResultSchema = t.object({
@@ -158,6 +164,13 @@ export const questCreateResultSchema = t.object({
   shortId: t.integer(),
   title: t.string(),
   createdAt: t.datetime(),
+  // Present (and `accept: true` was requested) when the accept landed —
+  // the quest is in the 'accepted' lane, assigned to the caller.
+  acceptedAt: t.optional(t.datetime()),
+  // Present when `accept: true` was requested but the accept was refused
+  // (e.g. blocked by an incomplete predecessor). The quest is still
+  // created; this explains why it stayed in the 'new' lane.
+  acceptNote: t.optional(t.string()),
 });
 
 // -----------------------------------------------------------------------------

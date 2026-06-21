@@ -181,7 +181,8 @@ export class QuestTools {
    * Create a new quest.
    */
   quest_create = $tool({
-    description: "Create a new quest in the campaign.",
+    description:
+      "Create a new quest in the campaign. Pass `accept: true` to also accept it (assign it to yourself) in the same call — skips a separate quest_accept round-trip.",
     title: "Create quest",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -225,11 +226,37 @@ export class QuestTools {
         },
       });
 
+      // `accept: true` mirrors the UI's "Create and accept" split button:
+      // chain an accept onto the create so an agent about to work the quest
+      // skips a second quest_accept round-trip. Best-effort and non-atomic
+      // (same as the UI, which fires two sequential calls): if the accept is
+      // refused — the only realistic case on a brand-new quest is a
+      // questline gate, i.e. `dependsOn` points at an incomplete predecessor
+      // — the quest stays created and we surface the reason in `acceptNote`
+      // instead of failing the whole tool call.
+      let acceptedAt: string | undefined;
+      let acceptNote: string | undefined;
+      if (params.accept) {
+        try {
+          const accepted = await this.questController.acceptQuest({
+            params: { id: quest.id },
+          });
+          acceptedAt = accepted.acceptedAt;
+        } catch (error) {
+          acceptNote =
+            error instanceof Error
+              ? error.message
+              : "Quest created, but it could not be accepted.";
+        }
+      }
+
       return {
         id: quest.id,
         shortId: quest.shortId,
         title: quest.title,
         createdAt: quest.createdAt,
+        acceptedAt,
+        acceptNote,
       };
     },
   });
