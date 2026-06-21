@@ -73,20 +73,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/rocket@workspace:*, @alepha/rocket@workspace:packages/@alepha/rocket":
-  version: 0.0.0-use.local
-  resolution: "@alepha/rocket@workspace:packages/@alepha/rocket"
-  dependencies:
-    "@biomejs/biome": "npm:^2.4.16"
-    alepha: "npm:0.23.0"
-    s3mini: "npm:^0.9.5"
-    typescript: "npm:^6.0.3"
-    vitest: "npm:^4.1.7"
-  peerDependencies:
-    alepha: 0.23.0
-  languageName: unknown
-  linkType: soft
-
 "@alepha/sigil@workspace:*, @alepha/sigil@workspace:packages/@alepha/sigil":
   version: 0.0.0-use.local
   resolution: "@alepha/sigil@workspace:packages/@alepha/sigil"
@@ -759,13 +745,6 @@ __metadata:
   bin:
     specificity: bin/cli.js
   checksum: 10c0/c5f4e04e0bca0d2202598207a5eb0733c8109d12a68a329caa26373bec598d99db5bb785b8865fefa00fc01b08c6068138807ceb11a948fe15e904ed6cf4ba72
-  languageName: node
-  linkType: hard
-
-"@cloudflare/containers@npm:^0.3.5":
-  version: 0.3.5
-  resolution: "@cloudflare/containers@npm:0.3.5"
-  checksum: 10c0/ab72a9bf1eb006b44832ed824deee277270e15dca11dd4809d7dce754db9c567799e73c25922ba45720489794efa1f97ce304feedc686e21345eb9ed6ded20d0
   languageName: node
   linkType: hard
 
@@ -4381,7 +4360,6 @@ __metadata:
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
     "@biomejs/biome": "npm:^2.4.16"
-    "@cloudflare/containers": "npm:^0.3.5"
     "@cloudflare/workers-types": "npm:^4.20260531.1"
     "@electric-sql/pglite": "npm:^0.4.6"
     "@faker-js/faker": "npm:^10.4.0"
@@ -11269,28 +11247,6 @@ __metadata:
   checksum: 10c0/4614e4292356cafade0b6031527eea9bc90f2372a22c012313be1dcc69a3b90c7338158b414539be863fa95bfcb2ddcd0587be696841af4e6679d85e62c060c7
   languageName: node
   linkType: hard
-
-"rocket-worker@workspace:apps/rocket-worker":
-  version: 0.0.0-use.local
-  resolution: "rocket-worker@workspace:apps/rocket-worker"
-  dependencies:
-    "@alepha/rocket": "workspace:*"
-    alepha: "workspace:*"
-    vite: "npm:^8.0.14"
-    wrangler: "npm:^4.95.0"
-  languageName: unknown
-  linkType: soft
-
-"rocket@workspace:apps/rocket":
-  version: 0.0.0-use.local
-  resolution: "rocket@workspace:apps/rocket"
-  dependencies:
-    "@alepha/rocket": "workspace:*"
-    alepha: "workspace:*"
-    vite: "npm:^8.0.14"
-    wrangler: "npm:^4.95.0"
-  languageName: unknown
-  linkType: soft
 
 "rolldown-plugin-dts@npm:^0.25.1":
   version: 0.25.2

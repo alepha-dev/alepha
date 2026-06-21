@@ -17,6 +17,7 @@ Create an audit type primitive.
 | `type` | `string` | Yes | Unique audit type identifier (e.g., "auth", "payment", "order"). |
 | `description` | `string` | No | Human-readable description of this audit type. |
 | `actions` | `string[]` | Yes | List of allowed actions for this audit type. |
+| `retentionDays` | `number` | No | Number of days entries of this audit type are retained before the periodic cleanup job deletes them |
 
 ## Examples
 
