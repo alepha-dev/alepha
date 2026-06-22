@@ -49,12 +49,26 @@ export interface SegmentedProps
   name?: string;
 }
 
+// Outer-box height + text per size — picked so the control lines up
+// pixel-for-pixel with a `<Button>` of the same size token (xs h-6, sm h-7,
+// md=Button-default h-8, lg h-9). The box owns the height (border-box, so the
+// `p-0.5` + 1px border are included) and the segments stretch to fill it.
 const sizeClass: Record<NonNullable<SegmentedProps["size"]>, string> = {
-  xs: "h-7 text-xs px-2",
-  sm: "h-8 text-xs px-2.5",
-  md: "h-9 text-sm px-3",
-  lg: "h-10 text-sm px-4",
-  xl: "h-11 text-base px-5",
+  xs: "h-6 text-xs",
+  sm: "h-7 text-[0.8rem]",
+  md: "h-8 text-sm",
+  lg: "h-9 text-sm",
+  xl: "h-11 text-base",
+};
+
+// Horizontal padding per size, applied to each segment (height comes from the
+// stretched box, not the segment).
+const itemPadClass: Record<NonNullable<SegmentedProps["size"]>, string> = {
+  xs: "px-2",
+  sm: "px-2.5",
+  md: "px-3",
+  lg: "px-4",
+  xl: "px-5",
 };
 
 interface ThumbRect {
@@ -141,7 +155,8 @@ export function Segmented(props: SegmentedProps) {
       aria-disabled={disabled || undefined}
       data-slot="segmented"
       className={cn(
-        "border-input bg-muted/40 relative inline-flex items-center rounded-md border p-1",
+        "border-input bg-muted/40 relative box-border inline-flex items-stretch rounded-md border p-0.5",
+        sizeClass[size],
         fullWidth && "flex w-full",
         disabled && "opacity-50",
         className,
@@ -198,7 +213,7 @@ export function Segmented(props: SegmentedProps) {
               "relative z-10 inline-flex min-w-0 items-center justify-center rounded-[calc(var(--radius)-2px)] font-medium whitespace-nowrap",
               "transition-colors duration-150 ease-in-out",
               "focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-[3px]",
-              sizeClass[size],
+              itemPadClass[size],
               active
                 ? "text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
