@@ -71,6 +71,13 @@
       "when": 1781046151123,
       "tag": "0009_late_boom_boom",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1782223807737,
+      "tag": "0010_great_paladin",
+      "breakpoints": true
     }
   ]
 }
