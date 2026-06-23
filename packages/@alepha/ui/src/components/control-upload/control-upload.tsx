@@ -113,8 +113,6 @@ export function ControlUpload(props: ControlUploadProps) {
    * fall back to a stub entry pointing at `/api/files/:id` and let the
    * `<img>` `onError` swap to the generic file chip.
    */
-  // biome-ignore lint/correctness/useExhaustiveDependencies: we only care about
-  // value-content changes.
   useEffect(() => {
     const ids: string[] = props.multi
       ? Array.isArray(value)
