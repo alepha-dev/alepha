@@ -243,12 +243,16 @@ export class EntityPrimitive<T extends TObject = TObject> {
     return this.options.schema;
   }
 
+  protected _insertSchema?: TObjectInsert<T>;
   get insertSchema(): TObjectInsert<T> {
-    return insertSchema(this.options.schema);
+    this._insertSchema ??= insertSchema(this.options.schema);
+    return this._insertSchema;
   }
 
+  protected _updateSchema?: TObjectUpdate<T>;
   get updateSchema(): TObjectUpdate<T> {
-    return updateSchema(this.options.schema);
+    this._updateSchema ??= updateSchema(this.options.schema);
+    return this._updateSchema;
   }
 }
 

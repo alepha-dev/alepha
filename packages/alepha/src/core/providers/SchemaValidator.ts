@@ -6,7 +6,10 @@ import { $hook } from "../primitives/$hook.ts";
 import { type Static, t } from "./TypeProvider.ts";
 
 export class SchemaValidator {
-  protected cache = new Map<TSchema, Validator>();
+  // WeakMap allows GC of compiled validators when their schema key is no longer
+  // referenced elsewhere (e.g. dynamically-created schemas from join queries).
+  // Static singleton schemas (entity schemas) stay cached as long as reachable.
+  protected cache = new WeakMap<object, Validator>();
   protected useEval: boolean = true;
 
   /**

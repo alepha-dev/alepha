@@ -430,27 +430,25 @@ export abstract class Repository<T extends TObject> {
         schema = t.pick(schema, columns);
       }
 
+      // Build joinedSchema once per query (not per row) to avoid SchemaValidator
+      // cache growth — each buildSchemaWithJoins() produces a fresh schema object.
+      const joinedSchema = joins.length
+        ? this.relationManager.buildSchemaWithJoins(schema, joins)
+        : null;
+
       if (joins.length) {
-        rows = rows.map((row: any) => {
-          // Clone schema for each row to avoid mutation
-          const rowSchema = { ...schema, properties: { ...schema.properties } };
-          return this.relationManager.mapRowWithJoins(
+        rows = rows.map((row: any) =>
+          this.relationManager.mapRowWithJoins(
             row[this.tableName],
             row,
-            rowSchema,
+            schema,
             joins,
-          );
-        });
+          ),
+        );
       }
 
       rows = rows.map((row) => {
-        // For joined queries, build a schema that includes all nested joins
-        if (joins.length) {
-          const joinedSchema = this.relationManager.buildSchemaWithJoins(
-            schema,
-            joins,
-          );
-          // Clean the row with the full joined schema (including nested relations)
+        if (joinedSchema) {
           return this.cleanWithJoins(row, joinedSchema, joins);
         }
         return this.clean(row, schema);
