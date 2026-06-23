@@ -29,6 +29,16 @@ export const jobExecutionEntity = $entity({
     jobName: t.text(),
     key: t.optional(t.nullable(t.text())),
 
+    /**
+     * Owning tenant for this execution, when it was pushed in (or for) a tenant
+     * context. Used to org-scope tenant-facing views — notably the notification
+     * admin list, which is backed by this outbox. Nullable: cron / global / non-
+     * tenant pushes carry none. Deliberately NOT `db.organization()`: the job
+     * worker + sweep must see every org's rows, so this stays a plain,
+     * non-auto-scoping column rather than an auto-filtered one.
+     */
+    organizationId: t.optional(t.nullable(t.uuid())),
+
     status: db.default(
       t.enum(["pending", "running", "scheduled", "ok", "error", "cancelled"]),
       "pending",

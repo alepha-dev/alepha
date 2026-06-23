@@ -1,7 +1,7 @@
-import { $inject, t } from "alepha";
+import { $inject, Alepha, t } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
+import { $secure, currentTenantAtom } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 import { NotificationJobs } from "../jobs/NotificationJobs.ts";
 import { notificationDetailResourceSchema } from "../schemas/notificationDetailResourceSchema.ts";
@@ -11,11 +11,28 @@ import { notificationResourceSchema } from "../schemas/notificationResourceSchem
 export class AdminNotificationController {
   protected readonly url: string = "/notifications";
   protected readonly group: string = "admin:notifications";
+  protected readonly alepha = $inject(Alepha);
   protected readonly notificationJobs = $inject(NotificationJobs);
   protected readonly executions = $repository(jobExecutionEntity);
 
   protected get jobName(): string {
     return this.notificationJobs.sendNotification.name;
+  }
+
+  /**
+   * The tenant this request is acting in, when multi-tenant. The notification
+   * outbox (`job_executions`) is shared across tenants in a pooled worker, so
+   * every read/delete here is scoped to this org to prevent cross-tenant access.
+   * Undefined in single-tenant apps → no extra filter (all rows are this app's).
+   */
+  protected get organizationId(): string | undefined {
+    return this.alepha.store.get(currentTenantAtom)?.id;
+  }
+
+  /** True when `exec` belongs to the acting tenant (or the app is single-tenant). */
+  protected sameTenant(exec: { organizationId?: string | null }): boolean {
+    const org = this.organizationId;
+    return !org || exec.organizationId === org;
   }
 
   public readonly findNotifications = $action({
@@ -30,6 +47,10 @@ export class AdminNotificationController {
       query.sort ??= "-createdAt";
       const where = this.executions.createQueryWhere();
       where.jobName = { eq: this.jobName };
+      const org = this.organizationId;
+      if (org) {
+        where.organizationId = { eq: org };
+      }
       const page = await this.executions.paginate(
         query,
         { where },
@@ -54,7 +75,7 @@ export class AdminNotificationController {
     },
     handler: async ({ params }) => {
       const exec = await this.executions.findById(params.id);
-      if (!exec || exec.jobName !== this.jobName) {
+      if (!exec || exec.jobName !== this.jobName || !this.sameTenant(exec)) {
         throw new NotFoundError(`Notification not found: ${params.id}`);
       }
       return this.toDetailResource(exec) as any;
@@ -75,7 +96,7 @@ export class AdminNotificationController {
     },
     handler: async ({ params }) => {
       const exec = await this.executions.findById(params.id);
-      if (!exec || exec.jobName !== this.jobName) {
+      if (!exec || exec.jobName !== this.jobName || !this.sameTenant(exec)) {
         throw new NotFoundError(`Notification not found: ${params.id}`);
       }
       await this.executions.deleteById(params.id);
@@ -99,10 +120,13 @@ export class AdminNotificationController {
     },
     handler: async ({ body }) => {
       // Constrain to this job's executions so an admin can't delete arbitrary
-      // job rows through this endpoint.
+      // job rows through this endpoint — and, when multi-tenant, to this org so
+      // one club can't delete another club's notification records.
+      const org = this.organizationId;
       const deleted = await this.executions.deleteMany({
         id: { inArray: body.ids },
         jobName: { eq: this.jobName },
+        ...(org ? { organizationId: { eq: org } } : {}),
       });
       return { deleted: deleted.map(String) };
     },

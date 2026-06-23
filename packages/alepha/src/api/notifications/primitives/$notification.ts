@@ -7,6 +7,7 @@ import {
   type StaticEncode,
   type TObject,
 } from "alepha";
+import { currentTenantAtom } from "alepha/security";
 import { NotificationJobs } from "../jobs/NotificationJobs.ts";
 
 /**
@@ -87,10 +88,18 @@ export class NotificationPrimitive<T extends TObject> extends Primitive<
   }
 
   public async push(options: NotificationPushOptions<T>) {
-    const pushOpts = this.options.critical
-      ? ({ priority: "critical" } as const)
-      : undefined;
     const lang = this.resolveLang(options.lang);
+    // Tag the outbox row with the owning tenant so the notification admin list
+    // stays org-scoped (the outbox is shared by every tenant in a pooled
+    // worker). Explicit `organizationId` wins (cron sweeps run out of request
+    // context and pass the subject's org); otherwise fall back to the tenant
+    // resolved for the current request.
+    const organizationId =
+      options.organizationId ?? this.alepha.store.get(currentTenantAtom)?.id;
+    const pushOpts = {
+      ...(this.options.critical ? ({ priority: "critical" } as const) : {}),
+      organizationId,
+    };
 
     if (this.options.email) {
       await this.notificationJobs.sendNotification.push(
@@ -139,6 +148,13 @@ export interface NotificationPushOptions<T extends TObject> {
   contact: string;
   /** Recipient language (e.g. "fr"); defaults to the current request's. */
   lang?: string;
+  /**
+   * Owning tenant for this notification. Defaults to the tenant resolved for
+   * the current request. Pass it explicitly when sending from a context with no
+   * request tenant — e.g. a cron sweep that fans out across clubs (use the
+   * subject entity's `organizationId`) — so the row stays correctly org-scoped.
+   */
+  organizationId?: string;
 }
 
 export interface NotificationMessage<T extends TObject> {

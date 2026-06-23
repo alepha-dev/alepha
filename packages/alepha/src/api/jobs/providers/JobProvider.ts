@@ -49,6 +49,13 @@ export interface PushOptions {
   scheduledAt?: Date;
   triggeredBy?: string;
   triggeredByName?: string;
+  /**
+   * Owning tenant for this execution. Persisted on the row so tenant-facing
+   * views (e.g. the notification admin list) can org-scope it. Plumbed through
+   * verbatim — callers in a tenant context pass it explicitly (the resolved
+   * tenant), cron/global pushes leave it undefined.
+   */
+  organizationId?: string;
 }
 
 export interface PushManyItem<T extends TSchema = TSchema> {
@@ -625,6 +632,7 @@ export class JobProvider {
         scheduledAt,
         triggeredBy: options.triggeredBy,
         triggeredByName: options.triggeredByName,
+        organizationId: options.organizationId,
       });
       if (status === "pending") {
         await this.dispatch(name, execution.id);
@@ -643,6 +651,7 @@ export class JobProvider {
       scheduledAt,
       triggeredBy: options?.triggeredBy,
       triggeredByName: options?.triggeredByName,
+      organizationId: options?.organizationId,
     });
 
     if (status === "pending") {
