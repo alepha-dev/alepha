@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { campaignParamsSchema, prioritySchema } from "./commonSchemas.ts";
 
 // -----------------------------------------------------------------------------
@@ -10,26 +10,26 @@ import { campaignParamsSchema, prioritySchema } from "./commonSchemas.ts";
  * Carries enough for the agent to decide whether to drill down with
  * `quest_get`, but not the description body or objectives.
  */
-const questOrientationRefSchema = t.object({
-  id: t.integer(),
-  shortId: t.integer(),
-  title: t.string(),
-  zone: t.string(),
+const questOrientationRefSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  zone: z.string(),
   priority: prioritySchema,
-  difficulty: t.integer(),
+  difficulty: z.integer(),
 });
 
 // -----------------------------------------------------------------------------
 // campaign_list
 // -----------------------------------------------------------------------------
 
-export const campaignListResultSchema = t.object({
-  campaigns: t.array(
-    t.object({
-      id: t.integer(),
-      title: t.string(),
-      public: t.boolean(),
-      isOwner: t.boolean(),
+export const campaignListResultSchema = z.object({
+  campaigns: z.array(
+    z.object({
+      id: z.integer(),
+      title: z.string(),
+      public: z.boolean(),
+      isOwner: z.boolean(),
     }),
   ),
 });
@@ -40,20 +40,20 @@ export const campaignListResultSchema = t.object({
 
 export const campaignInfoParamsSchema = campaignParamsSchema;
 
-export const campaignInfoResultSchema = t.object({
-  id: t.integer(),
-  title: t.string(),
-  public: t.boolean(),
-  zones: t.array(t.string()),
-  createdAt: t.datetime(),
-  activeQuests: t.array(questOrientationRefSchema),
-  character: t.optional(
-    t.object({
-      xp: t.integer(),
-      balance: t.integer(),
-      owner: t.boolean(),
-    }),
-  ),
+export const campaignInfoResultSchema = z.object({
+  id: z.integer(),
+  title: z.string(),
+  public: z.boolean(),
+  zones: z.array(z.string()),
+  createdAt: z.datetime(),
+  activeQuests: z.array(questOrientationRefSchema),
+  character: z
+    .object({
+      xp: z.integer(),
+      balance: z.integer(),
+      owner: z.boolean(),
+    })
+    .optional(),
 });
 
 // -----------------------------------------------------------------------------
@@ -74,40 +74,40 @@ export const campaignContextParamsSchema = campaignParamsSchema;
  * - `summary` is reserved for Phase 3 of the "Folios as Claude's memory"
  *   feature; until that lands the field stays optional and unset.
  */
-const folioIndexEntrySchema = t.object({
-  shortId: t.integer(),
-  title: t.string(),
-  tags: t.array(t.string()),
-  updatedAt: t.string(),
-  summary: t.optional(t.string()),
+const folioIndexEntrySchema = z.object({
+  shortId: z.integer(),
+  title: z.string(),
+  tags: z.array(z.string()),
+  updatedAt: z.string(),
+  summary: z.string().optional(),
 });
 
-export const campaignContextResultSchema = t.object({
-  id: t.integer(),
-  title: t.string(),
-  public: t.boolean(),
-  zones: t.array(t.string()),
-  createdAt: t.datetime(),
+export const campaignContextResultSchema = z.object({
+  id: z.integer(),
+  title: z.string(),
+  public: z.boolean(),
+  zones: z.array(z.string()),
+  createdAt: z.datetime(),
   /**
    * Quests the calling user has accepted and not yet completed. Matches the
    * `campaign_info` semantic — "what is the user currently working on" — so
    * agents pick up the same signal humans see in the campaign board.
    */
-  activeQuests: t.array(questOrientationRefSchema),
+  activeQuests: z.array(questOrientationRefSchema),
   /**
    * The calling user's folios in this campaign, newest-updated first. Bodies
    * are intentionally omitted — call `folio_get` only after deciding what's
    * relevant from this index.
    */
-  folios: t.object({
+  folios: z.object({
     /** Number of entries returned (≤ 30). */
-    shown: t.integer(),
+    shown: z.integer(),
     /**
      * `true` if the index was capped at the limit — the agent should call
      * `folio_list` (optionally with a `tag` filter) to see the rest.
      */
-    capped: t.boolean(),
-    items: t.array(folioIndexEntrySchema),
+    capped: z.boolean(),
+    items: z.array(folioIndexEntrySchema),
   }),
   /**
    * Full content of pinned folios — the campaign's CLAUDE.md / AGENTS.md
@@ -116,18 +116,18 @@ export const campaignContextResultSchema = t.object({
    * Protected (encrypted) folios are excluded since their content is
    * opaque ciphertext.
    */
-  pinnedFolios: t.array(
-    t.object({
-      id: t.uuid(),
-      shortId: t.integer(),
-      title: t.string(),
-      content: t.string(),
+  pinnedFolios: z.array(
+    z.object({
+      id: z.uuid(),
+      shortId: z.integer(),
+      title: z.string(),
+      content: z.string(),
       /**
        * When set, the folio's content exceeded the per-call cap and was
        * truncated to this many characters. Renderers may show a
        * "truncated" badge so the agent knows to `folio_get` for the rest.
        */
-      truncatedAt: t.optional(t.integer()),
+      truncatedAt: z.integer().optional(),
     }),
   ),
   /**
@@ -135,19 +135,19 @@ export const campaignContextResultSchema = t.object({
    * pinned folio was dropped from the response. The agent can fall back
    * to `folio_get` on the dropped ones, or the user can unpin some.
    */
-  pinnedFoliosTruncated: t.boolean(),
+  pinnedFoliosTruncated: z.boolean(),
   /**
    * Calling user's character in this campaign (XP, gold/silver balance,
    * owner flag). Omitted on public campaigns where the caller has no
    * character yet.
    */
-  character: t.optional(
-    t.object({
-      xp: t.integer(),
-      balance: t.integer(),
-      owner: t.boolean(),
-    }),
-  ),
+  character: z
+    .object({
+      xp: z.integer(),
+      balance: z.integer(),
+      owner: z.boolean(),
+    })
+    .optional(),
   /**
    * ISO 639-1 code (e.g. "fr", "ja") the owner picked as the preferred
    * language for AI-generated content. When set, agents should write
@@ -155,5 +155,5 @@ export const campaignContextResultSchema = t.object({
    * unless the user explicitly asks for another. Absent = no
    * preference; fall back to the conversation language.
    */
-  preferredLanguage: t.optional(t.string()),
+  preferredLanguage: z.string().optional(),
 });

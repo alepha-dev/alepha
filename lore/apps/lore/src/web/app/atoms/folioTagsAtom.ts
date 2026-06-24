@@ -1,7 +1,7 @@
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 
 export const folioTagsAtom = $atom({
   name: "lor.folio.tags",
-  schema: t.array(t.string()),
+  schema: z.array(z.string()),
   default: [],
 });

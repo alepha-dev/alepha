@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
 /**
  * Normalized shape every parser produces. The controller writes from this
@@ -8,47 +8,49 @@ import { type Static, t } from "alepha";
  * userId, chapter title → chapterId) happens in the controller using
  * per-campaign lookups.
  */
-export const importRowSchema = t.object({
+export const importRowSchema = z.object({
   /** 1-based data row number (header is row 0). Used for error/warning reporting. */
-  rowIndex: t.integer({ minimum: 1 }),
-  writeMode: t.union([t.const("upsert"), t.const("create")]),
+  rowIndex: z.integer().min(1),
+  writeMode: z.union([z.const("upsert"), z.const("create")]),
   /** Empty string when absent. */
-  shortId: t.string(),
-  title: t.string(),
-  description: t.string(),
-  zone: t.string(),
-  priority: t.enum(["optional", "low", "medium", "high"], { mode: "text" }),
-  difficulty: t.integer({ minimum: 1, maximum: 5 }),
+  shortId: z.string(),
+  title: z.string(),
+  description: z.string(),
+  zone: z.string(),
+  priority: z
+    .enum(["optional", "low", "medium", "high"])
+    .meta({ mode: "text" }),
+  difficulty: z.integer().min(1).max(5),
   /** Empty when null/unset. */
-  kanbanColumn: t.string(),
+  kanbanColumn: z.string(),
   /** Chapter title (exact match). Empty when null/unset. */
-  chapter: t.string(),
+  chapter: z.string(),
   /** Emails. Empty when null/unset. */
-  createdBy: t.string(),
-  acceptedBy: t.string(),
-  completedBy: t.string(),
+  createdBy: z.string(),
+  acceptedBy: z.string(),
+  completedBy: z.string(),
   /** ISO datetimes. Empty when null/unset. */
-  createdAt: t.string(),
-  acceptedAt: t.string(),
-  completedAt: t.string(),
+  createdAt: z.string(),
+  acceptedAt: z.string(),
+  completedAt: z.string(),
   /** Array of `{ title, completed }`. Empty array on omission. */
-  objectives: t.array(t.object({ title: t.string(), completed: t.boolean() })),
+  objectives: z.array(z.object({ title: z.string(), completed: z.boolean() })),
 });
 export type ImportRow = Static<typeof importRowSchema>;
 
-export const importIssueSchema = t.object({
-  row: t.integer({ minimum: 1 }),
-  message: t.string(),
+export const importIssueSchema = z.object({
+  row: z.integer().min(1),
+  message: z.string(),
 });
 export type ImportIssue = Static<typeof importIssueSchema>;
 
-export const importResultSchema = t.object({
-  format: t.enum(["alepha-lore", "trello"], { mode: "text" }),
-  totalRows: t.integer({ minimum: 0 }),
-  created: t.integer({ minimum: 0 }),
-  updated: t.integer({ minimum: 0 }),
-  skipped: t.integer({ minimum: 0 }),
-  errors: t.array(importIssueSchema),
-  warnings: t.array(importIssueSchema),
+export const importResultSchema = z.object({
+  format: z.enum(["alepha-lore", "trello"]).meta({ mode: "text" }),
+  totalRows: z.integer().min(0),
+  created: z.integer().min(0),
+  updated: z.integer().min(0),
+  skipped: z.integer().min(0),
+  errors: z.array(importIssueSchema),
+  warnings: z.array(importIssueSchema),
 });
 export type ImportResult = Static<typeof importResultSchema>;

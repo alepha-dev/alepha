@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
 import { questSourceSchema } from "../schemas/questSourceSchema.ts";
@@ -8,23 +8,25 @@ import { petitions } from "./petitions.ts";
 
 export const quests = $entity({
   name: "quests",
-  schema: t.object({
-    id: db.primaryKey(t.integer()),
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
     /**
      * Per-campaign sequential id, 1-based. Stable user-facing reference used
      * in URLs (`/c/:campaignId/q/:shortId`) and UI display ("#42"). Allocated
      * by `$sequence(scope=campaignId)` on insert. The global `id` remains the
      * canonical PK for foreign keys and stable MCP/agent references.
      */
-    shortId: t.integer({ minimum: 1 }),
+    shortId: z.integer().min(1),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     deletedAt: db.deletedAt(),
-    title: t.string(),
-    description: t.string({ size: "rich" }),
-    zone: t.string(),
-    priority: t.enum(["optional", "low", "medium", "high"], { mode: "text" }),
-    difficulty: t.integer({ minimum: 1, maximum: 5 }),
+    title: z.string(),
+    description: z.string().meta({ size: "rich" }),
+    zone: z.string(),
+    priority: z
+      .enum(["optional", "low", "medium", "high"])
+      .meta({ mode: "text" }),
+    difficulty: z.integer().min(1).max(5),
     /**
      * Optional, glanceable time estimate in minutes — "how long might this
      * take". A motivation aid surfaced in the questlog as a small `~15m`
@@ -34,9 +36,9 @@ export const quests = $entity({
      * means no estimate. Stored as raw minutes; the UI offers coarse presets
      * (5m…1d, where 1d = one 480-minute workday) plus a custom input.
      */
-    estimateMinutes: t.optional(t.integer({ minimum: 1 })),
-    acceptedAt: t.optional(t.datetime()),
-    completedAt: t.optional(t.datetime()),
+    estimateMinutes: z.integer().min(1).optional(),
+    acceptedAt: z.datetime().optional(),
+    completedAt: z.datetime().optional(),
     /**
      * Free-form summary set when the quest closes — what was actually
      * done. Editable post-completion via `updateQuest` (campaign memory
@@ -44,40 +46,40 @@ export const quests = $entity({
      * history timeline preview, and returned by MCP `quest_get` /
      * `campaign_context` so future agents can read prior summaries.
      */
-    completionMessage: t.optional(t.string({ size: "rich" })),
+    completionMessage: z.string().meta({ size: "rich" }).optional(),
     /**
      * Set whenever `completionMessage` is written or edited. Lets the UI
      * show an "edited <time> ago" hint so amendments are visible rather
      * than silently rewriting history.
      */
-    completionMessageUpdatedAt: t.optional(t.datetime()),
+    completionMessageUpdatedAt: z.datetime().optional(),
     /**
      * Kanban sub-column the quest sits in while `status === "accepted"`.
      * Only used when the campaign's `kanban` feature is on. Free-form text
      * that must match one of the campaign's configured `kanbanColumns`.
      * Cleared when the quest moves back to "New" or forward to "Completed".
      */
-    kanbanColumn: t.optional(t.string()),
+    kanbanColumn: z.string().optional(),
     objectives: db.default(
-      t.array(
-        t.object({
+      z.array(
+        z.object({
           /**
            * Per-quest integer identifier, stable across reorders / edits.
            * Optional because legacy rows pre-date this field — the controller
            * lazily backfills (id = index) on first write that touches the
            * objectives array. New objectives get `max(existing) + 1`.
            */
-          id: t.optional(t.integer({ minimum: 0 })),
-          title: t.string(),
-          completed: t.boolean(),
+          id: z.integer().min(0).optional(),
+          title: z.string(),
+          completed: z.boolean(),
         }),
       ),
       [],
     ),
-    campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
+    campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
-    chapterId: db.ref(t.optional(t.integer()), () => chapters.cols.id, {
+    chapterId: db.ref(z.integer().optional(), () => chapters.cols.id, {
       onDelete: "set null",
     }),
     /**
@@ -85,41 +87,42 @@ export const quests = $entity({
      * reporter of that petition can see the quest's progression on the
      * petition status page even if they are not a campaign member.
      */
-    petitionId: db.ref(t.optional(t.integer()), () => petitions.cols.id, {
+    petitionId: db.ref(z.integer().optional(), () => petitions.cols.id, {
       onDelete: "set null",
     }),
-    createdBy: db.ref(t.uuid(), () => users.cols.id, {
+    createdBy: db.ref(z.uuid(), () => users.cols.id, {
       onDelete: "cascade",
     }),
-    acceptedBy: db.ref(t.optional(t.uuid()), () => users.cols.id, {
+    acceptedBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),
-    completedBy: db.ref(t.optional(t.uuid()), () => users.cols.id, {
+    completedBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),
-    history: t.array(
-      t.object({
-        at: t.datetime(),
-        by: t.uuid(),
-        action: t.enum([
-          "updated",
-          "assigned",
-          "unassigned",
-          "objective_completed",
-          "reminder_sent",
-        ]),
-        /**
-         * For `objective_completed` entries — the id of the toggled
-         * objective. Optional for legacy history rows that pre-date
-         * this field. When set, unchecking the matching objective
-         * removes this exact row instead of appending a noisy "still
-         * unchecked" event (see quest #23 — "History Spam").
-         */
-        objectiveId: t.optional(t.integer({ minimum: 0 })),
-      }),
-      { default: [] },
-    ),
-    note: db.default(t.string({ size: "rich" }), ""),
+    history: z
+      .array(
+        z.object({
+          at: z.datetime(),
+          by: z.uuid(),
+          action: z.enum([
+            "updated",
+            "assigned",
+            "unassigned",
+            "objective_completed",
+            "reminder_sent",
+          ]),
+          /**
+           * For `objective_completed` entries — the id of the toggled
+           * objective. Optional for legacy history rows that pre-date
+           * this field. When set, unchecking the matching objective
+           * removes this exact row instead of appending a noisy "still
+           * unchecked" event (see quest #23 — "History Spam").
+           */
+          objectiveId: z.integer().min(0).optional(),
+        }),
+      )
+      .default([]),
+    note: db.default(z.string().meta({ size: "rich" }), ""),
     /**
      * Opt-in periodic reminder for the quest's assignee
      * (`acceptedBy`). One of the three cadence presets the UI offers.
@@ -127,9 +130,10 @@ export const quests = $entity({
      * completion or abandonment. The sweep maps the enum to a duration
      * via `REMINDER_INTERVAL_MS` to advance `reminderNextAt`.
      */
-    reminderInterval: t.optional(
-      t.enum(["daily", "weekly", "monthly"], { mode: "text" }),
-    ),
+    reminderInterval: z
+      .enum(["daily", "weekly", "monthly"])
+      .meta({ mode: "text" })
+      .optional(),
     /**
      * Timestamp at which the next reminder email should fire. Maintained
      * by `setQuestReminder` (set to now + interval on enable) and the
@@ -137,17 +141,17 @@ export const quests = $entity({
      * `undefined` when no reminder is configured or when the quest is
      * completed/abandoned.
      */
-    reminderNextAt: t.optional(t.datetime()),
+    reminderNextAt: z.datetime().optional(),
     timerSessions: db.default(
-      t.array(
-        t.object({
-          startedAt: t.datetime(),
-          stoppedAt: t.optional(t.datetime()),
+      z.array(
+        z.object({
+          startedAt: z.datetime(),
+          stoppedAt: z.datetime().optional(),
         }),
       ),
       [],
     ),
-    attachments: db.default(t.array(t.uuid()), []),
+    attachments: db.default(z.array(z.uuid()), []),
     /**
      * Free-form labels for the **nature** of the quest (`bug`, `feat`,
      * `chore`, `regression`, …) — orthogonal to `zone`, which labels the
@@ -155,7 +159,7 @@ export const quests = $entity({
      * (trimmed, lowercased, deduped). Filter via `like '%"value"%'` on
      * the serialized blob — mirrors the folio tag pattern.
      */
-    tags: db.default(t.array(t.string()), []),
+    tags: db.default(z.array(z.string()), []),
     /**
      * Optional predecessor quest in the same campaign. While the
      * predecessor's `completedAt` is null, `acceptQuest` refuses to
@@ -164,7 +168,7 @@ export const quests = $entity({
      * SET NULL so deleting the predecessor doesn't cascade-wipe its
      * dependents (those keep going as standalone quests).
      */
-    dependsOn: db.ref(t.optional(t.integer()), () => quests.cols.id, {
+    dependsOn: db.ref(z.integer().optional(), () => quests.cols.id, {
       onDelete: "set null",
     }),
     /**
@@ -174,20 +178,20 @@ export const quests = $entity({
      * Quest Gating feature; the schema is always present so the column
      * doesn't need a later migration.
      */
-    recommendedLevel: t.optional(t.integer({ minimum: 1 })),
+    recommendedLevel: z.integer().min(1).optional(),
     /**
      * Hard level gating — when set, characters below this level cannot
      * accept the quest (server-enforced). Same UI gating as
      * `recommendedLevel`.
      */
-    requiredLevel: t.optional(t.integer({ minimum: 1 })),
+    requiredLevel: z.integer().min(1).optional(),
     /**
      * Provenance for quests spawned by an automated source (currently the
      * Blights inbox forward-to-quest action). Absent for hand-authored
      * quests. Opaque JSON — adding fields to `questSourceSchema` never
      * needs a migration. See `questSourceSchema`.
      */
-    source: t.optional(questSourceSchema),
+    source: questSourceSchema.optional(),
   }),
   indexes: [
     {
@@ -227,11 +231,7 @@ export const REMINDER_INTERVAL_MS: Record<ReminderInterval, number> = {
   monthly: 30 * DAY_MS,
 };
 
-export const REMINDER_INTERVAL_VALUES: readonly ReminderInterval[] = [
-  "daily",
-  "weekly",
-  "monthly",
-];
+export const REMINDER_INTERVAL_VALUES = ["daily", "weekly", "monthly"] as const;
 
 /**
  * Normalize a tag list: trim, lowercase, dedupe (preserve first occurrence

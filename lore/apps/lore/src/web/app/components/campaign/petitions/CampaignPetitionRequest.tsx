@@ -4,7 +4,7 @@ import { FileImage } from "@alepha/ui/components/file-image/file-image";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useForm, useFormState } from "alepha/react/form";
@@ -214,8 +214,8 @@ const CampaignPetitionRequest = () => {
   // `minLength` here would fail TypeBox at form-construction time (empty
   // initial value). The server (`petitionBodySchema`) enforces real bounds.
   const form = useForm({
-    schema: t.object({
-      message: t.string({ maxLength: 10_000 }),
+    schema: z.object({
+      message: z.string().max(10_000),
     }),
     initialValues: { message: "" },
     handler: async (body) => {

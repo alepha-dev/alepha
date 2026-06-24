@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 import { BlightController } from "../../api/controllers/BlightController.ts";
@@ -86,11 +86,11 @@ export class SigilTools {
     title: "List sigils",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
       }),
-      result: t.object({ sigils: t.array(sigilSchema) }),
+      result: z.object({ sigils: z.array(sigilSchema) }),
     },
     handler: async ({ params }) => {
       const campaignId = await this.resolveCampaignId(
@@ -112,10 +112,10 @@ export class SigilTools {
     title: "Create sigil",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        label: t.string({ minLength: 1, maxLength: 200 }),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        label: z.string().min(1).max(200),
       }),
       result: sigilSchema,
     },
@@ -142,12 +142,12 @@ export class SigilTools {
       idempotentHint: true,
     },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        id: t.uuid({ description: "The sigil's public id (from sigil_list)." }),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        id: z.uuid().describe("The sigil's public id (from sigil_list)."),
       }),
-      result: t.object({ ok: t.boolean() }),
+      result: z.object({ ok: z.boolean() }),
     },
     handler: async ({ params }) => {
       const campaignId = await this.resolveCampaignId(
@@ -167,19 +167,19 @@ export class SigilTools {
     title: "List blights",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        include_resolved: t.optional(
-          t.boolean({
-            description:
-              "Also return resolved and quest-forwarded blights. Default false (open only).",
-          }),
-        ),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        include_resolved: z
+          .boolean()
+          .describe(
+            "Also return resolved and quest-forwarded blights. Default false (open only).",
+          )
+          .optional(),
       }),
-      result: t.object({
-        blights: t.array(blightSchema),
-        openCount: t.integer(),
+      result: z.object({
+        blights: z.array(blightSchema),
+        openCount: z.integer(),
       }),
     },
     handler: async ({ params }) => {
@@ -216,14 +216,14 @@ export class SigilTools {
     title: "Resolve blight",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        blight_id: t.integer({
-          description: "Blight id (the `id` field from blight_list).",
-        }),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        blight_id: z
+          .integer()
+          .describe("Blight id (the `id` field from blight_list)."),
       }),
-      result: t.object({ ok: t.boolean() }),
+      result: z.object({ ok: z.boolean() }),
     },
     handler: async ({ params }) => {
       const campaignId = await this.resolveCampaignId(
@@ -243,16 +243,16 @@ export class SigilTools {
     title: "Forward blight to quest",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        blight_id: t.integer({
-          description: "Blight id (the `id` field from blight_list).",
-        }),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        blight_id: z
+          .integer()
+          .describe("Blight id (the `id` field from blight_list)."),
       }),
-      result: t.object({
-        questId: t.integer(),
-        questShortId: t.integer(),
+      result: z.object({
+        questId: z.integer(),
+        questShortId: z.integer(),
       }),
     },
     handler: async ({ params }) => {

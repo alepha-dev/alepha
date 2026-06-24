@@ -1,44 +1,45 @@
-import { t } from "alepha";
+import { z } from "alepha";
 
 /**
  * Mutualized telemetry envelope the browser POSTs to the same-origin proxy.
  * The proxy stamps `country` + `visitor` server-side before forwarding to
  * Lore — the browser never sets them.
  */
-export const sigilIngestEnvelope = t.object({
-  views: t.optional(
-    t.array(t.object({ path: t.string({ maxLength: 1024 }) }), {
-      maxItems: 50,
-    }),
-  ),
-  errors: t.optional(
-    t.array(
-      t.object({
-        name: t.string({ maxLength: 200 }),
-        message: t.string({ maxLength: 2000 }),
-        stack: t.string({ maxLength: 4096 }),
-        sourceUrl: t.string({ maxLength: 2000 }),
-        origin: t.optional(t.enum(["client", "server"], { mode: "text" })),
+export const sigilIngestEnvelope = z.object({
+  views: z
+    .array(z.object({ path: z.string().max(1024) }))
+    .max(50)
+    .optional(),
+  errors: z
+    .array(
+      z.object({
+        name: z.string().max(200),
+        message: z.string().max(2000),
+        stack: z.string().max(4096),
+        sourceUrl: z.string().max(2000),
+        origin: z.enum(["client", "server"]).meta({ mode: "text" }).optional(),
       }),
-      { maxItems: 20 },
-    ),
-  ),
-  vitals: t.optional(
-    t.array(
-      t.object({
-        path: t.string({ maxLength: 1024 }),
-        metric: t.enum(["lcp", "cls", "inp", "fcp", "ttfb"], { mode: "text" }),
-        value: t.number(),
+    )
+    .max(20)
+    .optional(),
+  vitals: z
+    .array(
+      z.object({
+        path: z.string().max(1024),
+        metric: z
+          .enum(["lcp", "cls", "inp", "fcp", "ttfb"])
+          .meta({ mode: "text" }),
+        value: z.number(),
       }),
-      { maxItems: 50 },
-    ),
-  ),
+    )
+    .max(50)
+    .optional(),
 });
 
 /**
  * What Lore receives: the envelope plus server-stamped country + visitor.
  */
-export const sigilIngestForwarded = t.extend(sigilIngestEnvelope, {
-  country: t.optional(t.string({ maxLength: 8 })),
-  visitor: t.optional(t.string({ maxLength: 128 })),
+export const sigilIngestForwarded = sigilIngestEnvelope.extend({
+  country: z.string().max(8).optional(),
+  visitor: z.string().max(128).optional(),
 });

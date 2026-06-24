@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $action, $route } from "alepha/server";
@@ -47,13 +47,13 @@ export class SigilProxyController {
     path: "/sigil/ingest",
     schema: {
       body: sigilIngestEnvelope,
-      headers: t.object({
-        "cf-ipcountry": t.optional(t.string()),
-        "cf-connecting-ip": t.optional(t.string()),
-        "x-forwarded-for": t.optional(t.string()),
-        "user-agent": t.optional(t.string()),
+      headers: z.object({
+        "cf-ipcountry": z.string().optional(),
+        "cf-connecting-ip": z.string().optional(),
+        "x-forwarded-for": z.string().optional(),
+        "user-agent": z.string().optional(),
       }),
-      response: t.object({ ok: t.boolean() }),
+      response: z.object({ ok: z.boolean() }),
     },
     handler: async (request) => {
       if (!this.forward.enabled()) {

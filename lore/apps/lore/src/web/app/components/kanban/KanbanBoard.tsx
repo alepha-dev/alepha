@@ -8,7 +8,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useFieldValue, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -56,9 +56,9 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     [campaign.zones],
   );
   const filterForm = useForm({
-    schema: t.object({
-      zones: t.array(t.text()),
-      tags: t.array(t.text()),
+    schema: z.object({
+      zones: z.array(z.text()),
+      tags: z.array(z.text()),
     }),
     initialValues: { zones: [] as string[], tags: [] as string[] },
     handler: async () => {},

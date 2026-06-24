@@ -9,7 +9,7 @@ import {
 } from "@alepha/ui/components/ui/dialog";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { type Page, t } from "alepha";
+import { type Page, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -44,9 +44,9 @@ const RECENT_IPS_CAP = 10;
  * and a sigil select (`"all"` or a sigil id). Both filters are applied
  * client-side over the already-fetched list.
  */
-const blightsFiltersSchema = t.object({
-  status: t.optional(t.enum(["open", "resolved", "all"])),
-  sigilId: t.optional(t.string()),
+const blightsFiltersSchema = z.object({
+  status: z.enum(["open", "resolved", "all"]).optional(),
+  sigilId: z.string().optional(),
 });
 
 /**

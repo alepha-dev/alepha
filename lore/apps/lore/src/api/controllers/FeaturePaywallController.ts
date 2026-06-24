@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $repository, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
@@ -8,19 +8,19 @@ import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { FeaturePaywallService } from "../services/FeaturePaywallService.ts";
 import { FeatureRegistry } from "../services/FeatureRegistry.ts";
 
-const featureSchema = t.object({
-  key: t.string(),
-  label: t.string(),
-  description: t.string(),
-  price: t.integer({ minimum: 0 }),
-  unlocked: t.boolean(),
-  sponsoredBy: t.optional(
-    t.object({
-      characterId: t.integer(),
-      price: t.integer({ minimum: 0 }),
-      at: t.datetime(),
-    }),
-  ),
+const featureSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  description: z.string(),
+  price: z.integer().min(0),
+  unlocked: z.boolean(),
+  sponsoredBy: z
+    .object({
+      characterId: z.integer(),
+      price: z.integer().min(0),
+      at: z.datetime(),
+    })
+    .optional(),
 });
 
 export class FeaturePaywallController {
@@ -42,8 +42,8 @@ export class FeaturePaywallController {
     path: "/campaigns/:campaignId/features",
     use: [$secure({ permissions: ["campaign:read"] })],
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      response: t.array(featureSchema),
+      params: z.object({ campaignId: z.integer() }),
+      response: z.array(featureSchema),
     },
     handler: async ({ params, user }) => {
       const { campaign } = await this.security.assertMember(
@@ -81,8 +81,8 @@ export class FeaturePaywallController {
     path: "/campaigns/:campaignId/features/reset",
     use: [$secure({ permissions: ["campaign:update"] }), $transactional()],
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
       }),
       response: campaigns.schema,
     },
@@ -109,11 +109,11 @@ export class FeaturePaywallController {
     path: "/campaigns/:campaignId/features/:featureKey/buy",
     use: [$secure({ permissions: ["campaign:read"] }), $transactional()],
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        featureKey: t.string(),
+      params: z.object({
+        campaignId: z.integer(),
+        featureKey: z.string(),
       }),
-      response: t.object({
+      response: z.object({
         campaign: campaigns.schema,
         character: characters.schema,
       }),

@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
 /**
  * Body schema for the sigil telemetry ingest batch.
@@ -14,62 +14,62 @@ import { type Static, t } from "alepha";
  * Length constraints mirror the `@alepha/sigil` schemas but are declared
  * locally to avoid importing from `@alepha/sigil` (that barrel pulls React).
  */
-export const sigilIngestBodySchema = t.object({
+export const sigilIngestBodySchema = z.object({
   /**
    * Pageview hits. Each item carries the path the user visited.
    * The `beacon` capability gate must pass for these to be recorded.
    */
-  views: t.optional(
-    t.array(
-      t.object({
-        path: t.string({ maxLength: 5_000 }),
+  views: z
+    .array(
+      z.object({
+        path: z.string().max(5_000),
       }),
-      { maxItems: 50 },
-    ),
-  ),
+    )
+    .max(50)
+    .optional(),
   /**
    * Crash / error events. Each item carries name, message, stack, and
    * optional sourceUrl. The `blights` capability gate must pass.
    */
-  errors: t.optional(
-    t.array(
-      t.object({
-        name: t.optional(t.string({ maxLength: 500 })),
-        message: t.optional(t.string({ maxLength: 5_000 })),
-        stack: t.optional(t.string({ maxLength: 20_000 })),
-        sourceUrl: t.optional(t.string({ maxLength: 5_000 })),
-        origin: t.optional(t.enum(["client", "server"], { mode: "text" })),
+  errors: z
+    .array(
+      z.object({
+        name: z.string().max(500).optional(),
+        message: z.string().max(5_000).optional(),
+        stack: z.string().max(20_000).optional(),
+        sourceUrl: z.string().max(5_000).optional(),
+        origin: z.enum(["client", "server"]).meta({ mode: "text" }).optional(),
       }),
-      { maxItems: 20 },
-    ),
-  ),
+    )
+    .max(20)
+    .optional(),
   /**
    * Web-Vitals samples. Each item carries path, metric name, and raw value.
    * The `vitals` capability gate must pass.
    */
-  vitals: t.optional(
-    t.array(
-      t.object({
-        path: t.string({ maxLength: 5_000 }),
-        metric: t.string({ maxLength: 50 }),
-        value: t.number(),
+  vitals: z
+    .array(
+      z.object({
+        path: z.string().max(5_000),
+        metric: z.string().max(50),
+        value: z.number(),
       }),
-      { maxItems: 100 },
-    ),
-  ),
+    )
+    .max(100)
+    .optional(),
   /**
    * ISO 3166-1 alpha-2 country code stamped by the caller (e.g. from
    * `cf-ipcountry`, GeoIP, or a CDN header). Defaults to `"ZZ"` when absent.
    * Applied to all views in the batch.
    */
-  country: t.optional(t.string({ maxLength: 8 })),
+  country: z.string().max(8).optional(),
   /**
    * Caller-computed daily visitor hash. When present it is stored as-is as
    * `sessionHash` in `sigil_unique_visitors` (the caller already derived the
    * day-scoped hash from the visitor's IP + UA). When absent, the
    * unique-visitor insert is skipped.
    */
-  visitor: t.optional(t.string({ maxLength: 256 })),
+  visitor: z.string().max(256).optional(),
 });
 
 export type SigilIngestBody = Static<typeof sigilIngestBodySchema>;

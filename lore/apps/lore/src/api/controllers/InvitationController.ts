@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
@@ -6,9 +6,9 @@ import { createInvitationSchema } from "../schemas/createInvitationSchema.ts";
 import { invitationResourceSchema } from "../schemas/invitationResourceSchema.ts";
 import { InvitationService } from "../services/InvitationService.ts";
 
-const inboxItemSchema = t.extend(invitationResourceSchema, {
-  campaignTitle: t.string(),
-  inviterName: t.optional(t.string()),
+const inboxItemSchema = invitationResourceSchema.extend({
+  campaignTitle: z.string(),
+  inviterName: z.string().optional(),
 });
 
 export class InvitationController {
@@ -43,8 +43,8 @@ export class InvitationController {
     use: [$secure()],
     description: "List pending invitations for a campaign the caller owns",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      response: t.array(invitationResourceSchema),
+      params: z.object({ campaignId: z.integer() }),
+      response: z.array(invitationResourceSchema),
     },
     handler: async ({ params, user }) => {
       await this.security.assertOwner(params.campaignId, user as any);
@@ -66,7 +66,7 @@ export class InvitationController {
     use: [$secure()],
     description: "List pending invitations addressed to the current user",
     schema: {
-      response: t.array(inboxItemSchema),
+      response: z.array(inboxItemSchema),
     },
     handler: ({ user }) => this.invitationService.listForUser(user),
   });
@@ -82,10 +82,10 @@ export class InvitationController {
     use: [$secure()],
     description: "Accept a pending invitation addressed to the current user",
     schema: {
-      params: t.object({ id: t.uuid() }),
-      response: t.object({
-        ok: t.boolean(),
-        campaignId: t.string(),
+      params: z.object({ id: z.uuid() }),
+      response: z.object({
+        ok: z.boolean(),
+        campaignId: z.string(),
       }),
     },
     handler: async ({ params, user }) => {
@@ -104,7 +104,7 @@ export class InvitationController {
     use: [$secure()],
     description: "Decline a pending invitation addressed to the current user",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: okSchema,
     },
     handler: async ({ params, user }) => {

@@ -1,4 +1,4 @@
-import { $env, $inject, t } from "alepha";
+import { $env, $inject, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
@@ -45,9 +45,9 @@ export class SigilIngestSupport {
    *   tidiness.
    */
   protected env = $env(
-    t.object({
-      SIGIL_IP_SALT: t.optional(t.text()),
-      DISABLE_BOT_CHECK: t.optional(t.text()),
+    z.object({
+      SIGIL_IP_SALT: z.text().optional(),
+      DISABLE_BOT_CHECK: z.text().optional(),
     }),
   );
 

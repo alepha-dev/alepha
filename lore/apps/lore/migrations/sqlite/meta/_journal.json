@@ -337,6 +337,13 @@
       "when": 1782223419937,
       "tag": "0047_curvy_brood",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "6",
+      "when": 1782320974521,
+      "tag": "0048_clammy_jack_power",
+      "breakpoints": true
     }
   ]
 }

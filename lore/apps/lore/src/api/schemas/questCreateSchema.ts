@@ -1,49 +1,53 @@
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const questCreateSchema = t.object({
-  title: t.string(),
+export const questCreateSchema = z.object({
+  title: z.string(),
   // Optional — a title-only quest is allowed (sometimes the title says it
   // all). Defaults to "" server-side in createQuest so the NOT-NULL
   // `quests.description` column and `sanitizeHtml` stay happy (no migration).
-  description: t.optional(t.string({ size: "rich" })),
-  zone: t.string(),
-  priority: t.enum(["optional", "low", "medium", "high"]),
-  difficulty: t.integer({ minimum: 1, maximum: 5 }),
+  description: z.string().meta({ size: "rich" }).optional(),
+  zone: z.string(),
+  priority: z.enum(["optional", "low", "medium", "high"]),
+  difficulty: z.integer().min(1).max(5),
   /**
    * Optional, glanceable time estimate in minutes (motivation aid, surfaced
    * as a `~15m` pill in the questlog). `null` clears it on update, a positive
    * integer sets it, omit to leave unchanged. Not tied to rewards.
+   *
+   * No `.min(1)` here on purpose: the handler treats any non-positive value as
+   * "no estimate" (the UI can't produce one), so `0` is accepted and normalized
+   * to none rather than rejected.
    */
-  estimateMinutes: t.optional(t.nullable(t.integer({ minimum: 1 }))),
-  campaignId: t.integer(),
-  objectives: t.optional(
-    t.array(
-      t.object({
-        title: t.string(),
-        completed: t.boolean(),
+  estimateMinutes: z.integer().nullable().optional(),
+  campaignId: z.integer(),
+  objectives: z
+    .array(
+      z.object({
+        title: z.string(),
+        completed: z.boolean(),
       }),
-      { default: [] },
-    ),
-  ),
-  attachments: t.optional(t.array(t.uuid(), { default: [] })),
+    )
+    .default([])
+    .optional(),
+  attachments: z.array(z.uuid()).default([]).optional(),
   /**
    * Free-form labels for the nature of the quest (`bug`, `feat`, `chore`,
    * …). Normalized server-side (trim, lowercase, dedupe). Orthogonal to
    * `zone` which labels the module / scope.
    */
-  tags: t.optional(t.array(t.string(), { default: [] })),
+  tags: z.array(z.string()).default([]).optional(),
   /**
    * Optional petition this quest was spawned from. When set, the quest is
    * linked back to the petition so its reporter can follow progression.
    * Validated at handler time: the petition must belong to the same campaign,
    * be in `accepted` state, and the caller must be the campaign owner.
    */
-  petitionId: t.optional(t.integer()),
+  petitionId: z.integer().optional(),
   /**
    * Optional predecessor quest. Validated server-side: must belong to the
    * same campaign and cannot point at the quest itself. While the
    * predecessor's `completedAt` is null, `acceptQuest` refuses to start
    * this quest.
    */
-  dependsOn: t.optional(t.nullable(t.integer())),
+  dependsOn: z.integer().nullable().optional(),
 });

@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { $bucket } from "alepha/bucket";
 import { DateTimeProvider } from "alepha/datetime";
@@ -153,7 +153,7 @@ export class QuestController {
         zone: body.zone,
         priority: body.priority,
         difficulty: body.difficulty,
-        // `t.nullable` skips the schema's `minimum: 1`, so guard here: a
+        // `z.nullable` skips the schema's `minimum: 1`, so guard here: a
         // non-positive estimate is stored as none (the UI can't produce it).
         estimateMinutes:
           body.estimateMinutes && body.estimateMinutes > 0
@@ -175,12 +175,12 @@ export class QuestController {
     use: [$secure({ permissions: ["quest:create"] })],
     path: "/quests/attachments",
     schema: {
-      body: t.object({
-        file: t.file(),
+      body: z.object({
+        file: z.file(),
       }),
-      response: t.object({
-        fileId: t.uuid(),
-        url: t.string(),
+      response: z.object({
+        fileId: z.uuid(),
+        url: z.string(),
       }),
     },
     handler: async ({ body, user }) => {
@@ -198,11 +198,11 @@ export class QuestController {
   addAttachment = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
-        fileId: t.uuid(),
+      body: z.object({
+        fileId: z.uuid(),
       }),
       response: questResourceSchema,
     },
@@ -231,9 +231,9 @@ export class QuestController {
   removeAttachment = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
-        fileId: t.uuid(),
+      params: z.object({
+        id: z.integer(),
+        fileId: z.uuid(),
       }),
       response: questResourceSchema,
     },
@@ -267,15 +267,15 @@ export class QuestController {
   getQuests = $action({
     use: [$secure({ permissions: ["quest:read"] })],
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
       }),
-      query: t.extend(pageQuerySchema, {
-        status: t.optional(t.enum(["new", "accepted", "completed"])),
-        search: t.optional(t.string()),
-        chapterId: t.optional(t.integer()),
-        zone: t.optional(t.string()),
-        tag: t.optional(t.string()),
+      query: pageQuerySchema.extend({
+        status: z.enum(["new", "accepted", "completed"]).optional(),
+        search: z.string().optional(),
+        chapterId: z.integer().optional(),
+        zone: z.string().optional(),
+        tag: z.string().optional(),
       }),
       response: db.page(questResourceSchema),
     },
@@ -358,14 +358,14 @@ export class QuestController {
     use: [$secure({ permissions: ["quest:read"] })],
     path: "/campaigns/:campaignId/quests/graph",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      response: t.array(
-        t.object({
-          id: t.integer(),
-          shortId: t.integer(),
-          title: t.string(),
-          status: t.enum(["new", "accepted", "completed"]),
-          dependsOn: t.optional(t.integer()),
+      params: z.object({ campaignId: z.integer() }),
+      response: z.array(
+        z.object({
+          id: z.integer(),
+          shortId: z.integer(),
+          title: z.string(),
+          status: z.enum(["new", "accepted", "completed"]),
+          dependsOn: z.integer().optional(),
         }),
       ),
     },
@@ -399,22 +399,22 @@ export class QuestController {
   getQuestLine = $action({
     use: [$secure({ permissions: ["quest:read"] })],
     schema: {
-      params: t.object({ id: t.integer() }),
-      response: t.object({
-        predecessor: t.optional(
-          t.object({
-            id: t.integer(),
-            shortId: t.integer(),
-            title: t.string(),
-            completedAt: t.optional(t.datetime()),
-          }),
-        ),
-        dependents: t.array(
-          t.object({
-            id: t.integer(),
-            shortId: t.integer(),
-            title: t.string(),
-            completedAt: t.optional(t.datetime()),
+      params: z.object({ id: z.integer() }),
+      response: z.object({
+        predecessor: z
+          .object({
+            id: z.integer(),
+            shortId: z.integer(),
+            title: z.string(),
+            completedAt: z.datetime().optional(),
+          })
+          .optional(),
+        dependents: z.array(
+          z.object({
+            id: z.integer(),
+            shortId: z.integer(),
+            title: z.string(),
+            completedAt: z.datetime().optional(),
           }),
         ),
       }),
@@ -465,8 +465,8 @@ export class QuestController {
     use: [$secure({ permissions: ["quest:read"] })],
     description: "Return the distinct set of tags used in a campaign.",
     schema: {
-      query: t.object({ campaignId: t.integer() }),
-      response: t.array(t.string()),
+      query: z.object({ campaignId: z.integer() }),
+      response: z.array(z.string()),
     },
     handler: async ({ query, user }) => {
       await this.security.assertMember(query.campaignId, user);
@@ -485,8 +485,8 @@ export class QuestController {
   abandonQuest = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: questResourceSchema,
     },
@@ -522,8 +522,8 @@ export class QuestController {
   acceptQuest = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: questResourceSchema,
     },
@@ -602,11 +602,11 @@ export class QuestController {
   setQuestKanbanColumn = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
-        kanbanColumn: t.string(),
+      body: z.object({
+        kanbanColumn: z.string(),
       }),
       response: questResourceSchema,
     },
@@ -643,13 +643,14 @@ export class QuestController {
   setQuestReminder = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
-        interval: t.nullable(
-          t.enum([...REMINDER_INTERVAL_VALUES], { mode: "text" }),
-        ),
+      body: z.object({
+        interval: z
+          .enum(REMINDER_INTERVAL_VALUES)
+          .meta({ mode: "text" })
+          .nullable(),
       }),
       response: questResourceSchema,
     },
@@ -702,19 +703,19 @@ export class QuestController {
   completeQuest = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
+      body: z.object({
         /**
          * Optional summary of what was actually done to close the quest.
          * Stored on the quest row, surfaced in the UI completed-state and
          * exposed to LLM agents via MCP. Write-once: only persisted on the
          * accepted → completed transition.
          */
-        message: t.optional(t.string({ size: "rich" })),
+        message: z.string().meta({ size: "rich" }).optional(),
       }),
-      response: t.extend(questResourceSchema, {
+      response: questResourceSchema.extend({
         character: characters.schema,
       }),
     },
@@ -800,8 +801,8 @@ export class QuestController {
   getQuestById = $action({
     use: [$secure({ permissions: ["quest:read"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: questResourceSchema,
     },
@@ -822,9 +823,9 @@ export class QuestController {
     use: [$secure({ permissions: ["quest:read"] })],
     path: "/campaigns/:campaignId/quests/:shortId",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        shortId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
+        shortId: z.integer(),
       }),
       response: questResourceSchema,
     },
@@ -845,39 +846,37 @@ export class QuestController {
   updateQuestById = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.extend(
-        t.partial(
-          t.pick(quests.schema, [
-            "title",
-            "description",
-            "zone",
-            "difficulty",
-            "priority",
-            "objectives",
-            "attachments",
-            "completionMessage",
-            "tags",
-          ]),
-        ),
-        {
+      body: quests.schema
+        .pick({
+          title: true,
+          description: true,
+          zone: true,
+          difficulty: true,
+          priority: true,
+          objectives: true,
+          attachments: true,
+          completionMessage: true,
+          tags: true,
+        })
+        .partial()
+        .extend({
           // `dependsOn` is special-cased: `null` clears the link, integer
           // sets it. Picking from the entity schema would emit
           // `optional<integer>` only, dropping the explicit-clear path.
-          dependsOn: t.optional(t.nullable(t.integer())),
+          dependsOn: z.integer().nullable().optional(),
           // `petitionId` links this quest back to an accepted petition (what
           // the petition inbox's "linked quests" reads). `null` clears the
           // link; integer sets it. Owner-only + accepted-petition checks in
           // the handler, mirroring `createQuest`.
-          petitionId: t.optional(t.nullable(t.integer())),
+          petitionId: z.integer().nullable().optional(),
           // Optional time estimate (minutes). `null` clears the column,
           // integer sets it; the generic `patch = { ...body }` spread below
           // applies it as-is (set / clear / leave-unchanged).
-          estimateMinutes: t.optional(t.nullable(t.integer({ minimum: 1 }))),
-        },
-      ),
+          estimateMinutes: z.integer().min(1).nullable().optional(),
+        }),
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
@@ -1000,16 +999,16 @@ export class QuestController {
   completeObjective = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
+      body: z.object({
         /**
          * Per-quest objective id (see `ensureObjectiveIds`). The UI gets
          * these ids back from `mapQuestToResource` — legacy quests are
          * lazily normalized so this value is always defined client-side.
          */
-        objectiveId: t.integer({ minimum: 0 }),
+        objectiveId: z.integer().min(0),
       }),
       response: questResourceSchema,
     },
@@ -1068,14 +1067,14 @@ export class QuestController {
   updateQuestObjectives = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
-        objectives: t.array(
-          t.object({
-            title: t.string(),
-            completed: t.boolean(),
+      body: z.object({
+        objectives: z.array(
+          z.object({
+            title: z.string(),
+            completed: z.boolean(),
           }),
         ),
       }),
@@ -1119,8 +1118,8 @@ export class QuestController {
   deleteQuest = $action({
     use: [$secure({ permissions: ["quest:delete"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: okSchema,
     },
@@ -1164,11 +1163,11 @@ export class QuestController {
   moveQuestToZone = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
-        newZone: t.string(),
+      body: z.object({
+        newZone: z.string(),
       }),
       response: questResourceSchema,
     },
@@ -1209,11 +1208,11 @@ export class QuestController {
   updateQuestNote = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
-        note: t.string({ size: "rich" }),
+      body: z.object({
+        note: z.string().meta({ size: "rich" }),
       }),
       response: questResourceSchema,
     },
@@ -1240,8 +1239,8 @@ export class QuestController {
   startTimer = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: questResourceSchema,
     },
@@ -1279,8 +1278,8 @@ export class QuestController {
   stopTimer = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: questResourceSchema,
     },

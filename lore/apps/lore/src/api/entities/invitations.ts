@@ -1,24 +1,24 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
 
 export const invitations = $entity({
   name: "invitations",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    invitedBy: db.ref(t.uuid(), () => users.cols.id, { onDelete: "cascade" }),
-    email: t.string({ format: "email" }),
-    resourceType: t.text({ minLength: 1, maxLength: 100 }),
-    resourceId: t.text({ minLength: 1, maxLength: 255 }),
-    status: t.enum(["pending", "accepted", "declined", "expired", "revoked"]),
-    roles: t.optional(t.array(t.text())),
-    metadata: t.optional(t.record(t.text(), t.any())),
-    expiresAt: t.datetime(),
-    resolvedAt: t.optional(t.datetime()),
-    resolvedBy: t.optional(db.ref(t.uuid(), () => users.cols.id)),
+    invitedBy: db.ref(z.uuid(), () => users.cols.id, { onDelete: "cascade" }),
+    email: z.string().meta({ format: "email" }),
+    resourceType: z.text({ minLength: 1, maxLength: 100 }),
+    resourceId: z.text({ minLength: 1, maxLength: 255 }),
+    status: z.enum(["pending", "accepted", "declined", "expired", "revoked"]),
+    roles: z.array(z.text()).optional(),
+    metadata: z.record(z.text(), z.any()).optional(),
+    expiresAt: z.datetime(),
+    resolvedAt: z.datetime().optional(),
+    resolvedBy: db.ref(z.uuid(), () => users.cols.id).optional(),
   }),
   indexes: [
     { columns: ["email", "status"] },

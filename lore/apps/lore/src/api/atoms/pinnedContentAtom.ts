@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 /**
  * Token budget for pinned folio bodies surfaced in `campaign_context`.
@@ -15,9 +15,9 @@ export const pinnedContentAtom = $atom({
   name: "lore.folio.pinnedContent",
   description:
     "Cap for total characters of pinned folio bodies in campaign_context.",
-  schema: t.object({
+  schema: z.object({
     /** Max characters across all pinned folios surfaced in campaign_context. */
-    maxChars: t.integer({ minimum: 256, default: 8192 }),
+    maxChars: z.integer().min(256).default(8192),
   }),
   default: {
     maxChars: 8192,

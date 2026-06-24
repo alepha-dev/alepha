@@ -82,3 +82,5 @@ export function AppAdminLayout() {
     </div>
   );
 }
+
+export default AppAdminLayout;

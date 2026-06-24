@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { $parameter } from "alepha/api/parameters";
 
 /**
@@ -14,11 +14,11 @@ export class CampaignLimits {
     name: "lore.campaign.limits",
     description:
       "Per-user / per-campaign hard caps. Bump for power users without a redeploy.",
-    schema: t.object({
-      maxCampaignsPerUser: t.integer({ minimum: 1, maximum: 10_000 }),
-      maxMembersPerCampaign: t.integer({ minimum: 1, maximum: 10_000 }),
-      maxQuestsPerCampaign: t.integer({ minimum: 1, maximum: 100_000 }),
-      maxChaptersPerCampaign: t.integer({ minimum: 1, maximum: 1_000 }),
+    schema: z.object({
+      maxCampaignsPerUser: z.integer().min(1).max(10_000),
+      maxMembersPerCampaign: z.integer().min(1).max(10_000),
+      maxQuestsPerCampaign: z.integer().min(1).max(100_000),
+      maxChaptersPerCampaign: z.integer().min(1).max(1_000),
     }),
     default: {
       maxCampaignsPerUser: 10,

@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { sigils } from "./sigils.ts";
 
@@ -27,35 +27,32 @@ import { sigils } from "./sigils.ts";
  */
 export const sigilBlights = $entity({
   name: "sigil_blights",
-  schema: t.object({
-    id: db.primaryKey(t.integer()),
-    sigilId: db.ref(t.uuid(), () => sigils.cols.id, {
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
+    sigilId: db.ref(z.uuid(), () => sigils.cols.id, {
       onDelete: "cascade",
     }),
     /** `sha256(errorName + ":" + firstStackLine + ":" + sigilId)`. */
-    fingerprint: t.string({ minLength: 1, maxLength: 128 }),
+    fingerprint: z.string().min(1).max(128),
     /** Error constructor name, e.g. "TypeError". Attacker-controlled. */
-    name: t.string({ maxLength: 200 }),
+    name: z.string().max(200),
     /** Error message. Attacker-controlled. */
-    message: t.string({ maxLength: 2_000 }),
+    message: z.string().max(2_000),
     /** Sanitized stack trace, truncated at 4 KB. Attacker-controlled. */
-    stack: db.default(t.string({ maxLength: 4_096 }), ""),
+    stack: db.default(z.string().max(4_096), ""),
     /** Page URL the blight was thrown on. Attacker-controlled. */
-    sourceUrl: db.default(t.string({ maxLength: 2_000 }), ""),
-    firstSeenAt: t.string(),
-    lastSeenAt: t.string(),
+    sourceUrl: db.default(z.string().max(2_000), ""),
+    firstSeenAt: z.string(),
+    lastSeenAt: z.string(),
     /** Incident count — how widely the blight has spread. */
-    count: db.default(t.integer({ minimum: 1 }), 1),
+    count: db.default(z.integer().min(1), 1),
     /**
      * Up to 10 hashed IPs (`sha256(ip + daily_salt)`) — breadth of spread.
      * NEVER raw IPs.
      */
-    recentIps: db.default(
-      t.array(t.string({ maxLength: 128 }), { maxItems: 10 }),
-      [],
-    ),
+    recentIps: db.default(z.array(z.string().max(128)).max(10), []),
     /** `open` | `resolved` | `quest:<questId>`. */
-    status: db.default(t.string({ maxLength: 50 }), "open"),
+    status: db.default(z.string().max(50), "open"),
     /**
      * Where the blight originated.
      *
@@ -68,7 +65,7 @@ export const sigilBlights = $entity({
      * column was added) are correctly classified.
      */
     origin: db.default(
-      t.enum(["client", "server"], { mode: "text" }),
+      z.enum(["client", "server"]).meta({ mode: "text" }),
       "client",
     ),
   }),

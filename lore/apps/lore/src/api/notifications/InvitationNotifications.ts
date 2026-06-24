@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha, t } from "alepha";
+import { $hook, $inject, Alepha, z } from "alepha";
 import { $notification } from "alepha/api/notifications";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
@@ -51,12 +51,12 @@ export class InvitationNotifications {
       `;
       },
     },
-    schema: t.object({
-      campaignTitle: t.string(),
-      inviterName: t.string(),
-      invitedEmail: t.string(),
-      inboxUrl: t.string(),
-      expiresInDays: t.number(),
+    schema: z.object({
+      campaignTitle: z.string(),
+      inviterName: z.string(),
+      invitedEmail: z.string(),
+      inboxUrl: z.string(),
+      expiresInDays: z.number(),
     }),
   });
 

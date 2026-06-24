@@ -1,98 +1,98 @@
-import { t } from "alepha";
+import { z } from "alepha";
 
 /**
  * Response schemas for the three Chronicles dashboard endpoints. Shared by
  * `CampaignStatsController`, its tests, and the frontend page loaders.
  */
 
-export const chroniclesOverviewSchema = t.object({
-  kpis: t.object({
-    totalQuests: t.integer(),
-    completedQuests: t.integer(),
-    openQuests: t.integer(),
-    completedThisWeek: t.integer(),
-    completedLastWeek: t.integer(),
-    avgCycleTimeHours: t.number(),
-    activeCharacters: t.integer(),
+export const chroniclesOverviewSchema = z.object({
+  kpis: z.object({
+    totalQuests: z.integer(),
+    completedQuests: z.integer(),
+    openQuests: z.integer(),
+    completedThisWeek: z.integer(),
+    completedLastWeek: z.integer(),
+    avgCycleTimeHours: z.number(),
+    activeCharacters: z.integer(),
   }),
   // Cumulative created vs completed, one point per day, oldest first.
-  burnup: t.array(
-    t.object({
-      date: t.string(),
-      created: t.integer(),
-      completed: t.integer(),
+  burnup: z.array(
+    z.object({
+      date: z.string(),
+      created: z.integer(),
+      completed: z.integer(),
     }),
   ),
   // Weekly completion rate (cumulative completed / cumulative created * 100).
-  completionTrend: t.array(t.object({ date: t.string(), rate: t.number() })),
-  attention: t.object({
-    staleQuests: t.integer(),
-    unassignedQuests: t.integer(),
-    blockedQuests: t.integer(),
+  completionTrend: z.array(z.object({ date: z.string(), rate: z.number() })),
+  attention: z.object({
+    staleQuests: z.integer(),
+    unassignedQuests: z.integer(),
+    blockedQuests: z.integer(),
   }),
 });
 
-export const chroniclesQuestsSchema = t.object({
-  funnel: t.object({
-    new: t.integer(),
-    accepted: t.integer(),
-    completed: t.integer(),
+export const chroniclesQuestsSchema = z.object({
+  funnel: z.object({
+    new: z.integer(),
+    accepted: z.integer(),
+    completed: z.integer(),
   }),
-  byZone: t.array(
-    t.object({
-      zone: t.string(),
-      completed: t.integer(),
-      remaining: t.integer(),
+  byZone: z.array(
+    z.object({
+      zone: z.string(),
+      completed: z.integer(),
+      remaining: z.integer(),
     }),
   ),
-  byPriority: t.array(
-    t.object({
-      priority: t.string(),
-      completed: t.integer(),
-      remaining: t.integer(),
+  byPriority: z.array(
+    z.object({
+      priority: z.string(),
+      completed: z.integer(),
+      remaining: z.integer(),
     }),
   ),
-  cycleTimeByPriority: t.array(
-    t.object({ priority: t.string(), avgHours: t.number() }),
+  cycleTimeByPriority: z.array(
+    z.object({ priority: z.string(), avgHours: z.number() }),
   ),
   // Oldest still-open (accepted, not completed) quests — actionable list.
-  aging: t.array(
-    t.object({
-      shortId: t.integer(),
-      title: t.string(),
-      zone: t.string(),
-      priority: t.string(),
-      ageDays: t.integer(),
+  aging: z.array(
+    z.object({
+      shortId: z.integer(),
+      title: z.string(),
+      zone: z.string(),
+      priority: z.string(),
+      ageDays: z.integer(),
     }),
   ),
 });
 
-export const chroniclesPartySchema = t.object({
-  leaderboard: t.array(
-    t.object({
-      userId: t.string(),
-      name: t.string(),
-      picture: t.optional(t.string()),
-      questsCompleted: t.integer(),
-      xp: t.integer(),
-      gold: t.integer(),
+export const chroniclesPartySchema = z.object({
+  leaderboard: z.array(
+    z.object({
+      userId: z.string(),
+      name: z.string(),
+      picture: z.string().optional(),
+      questsCompleted: z.integer(),
+      xp: z.integer(),
+      gold: z.integer(),
     }),
   ),
   // Top contributors' names — drives the dynamic stacked-area ChartConfig.
-  contributors: t.array(t.string()),
+  contributors: z.array(z.string()),
   // Weekly completions; `counts` keyed by contributor name (from `contributors`).
-  contribution: t.array(
-    t.object({
-      date: t.string(),
-      counts: t.record(t.text(), t.integer()),
+  contribution: z.array(
+    z.object({
+      date: z.string(),
+      counts: z.record(z.text(), z.integer()),
     }),
   ),
-  idle: t.array(
-    t.object({
-      userId: t.string(),
-      name: t.string(),
-      picture: t.optional(t.string()),
-      lastCompletedAt: t.optional(t.string()),
+  idle: z.array(
+    z.object({
+      userId: z.string(),
+      name: z.string(),
+      picture: z.string().optional(),
+      lastCompletedAt: z.string().optional(),
     }),
   ),
 });

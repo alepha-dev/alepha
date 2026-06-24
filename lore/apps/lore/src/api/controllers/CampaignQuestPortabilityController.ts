@@ -1,4 +1,4 @@
-import { $inject, AlephaError, t } from "alepha";
+import { $inject, AlephaError, z } from "alepha";
 import { RealmProvider } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
@@ -37,8 +37,8 @@ export class CampaignQuestPortabilityController {
     method: "GET",
     path: "/campaigns/:id/quests/export",
     schema: {
-      params: t.object({ id: t.integer() }),
-      response: t.file(),
+      params: z.object({ id: z.integer() }),
+      response: z.file(),
     },
     handler: async ({ params, user }) => {
       await this.security.assertMember(params.id, user);
@@ -144,8 +144,8 @@ export class CampaignQuestPortabilityController {
     method: "POST",
     path: "/campaigns/:id/quests/import",
     schema: {
-      params: t.object({ id: t.integer() }),
-      body: t.object({ file: t.file() }),
+      params: z.object({ id: z.integer() }),
+      body: z.object({ file: z.file() }),
       response: importResultSchema,
     },
     handler: async ({ params, body, user }) => {

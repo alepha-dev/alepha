@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { FileService, files } from "alepha/api/files";
 import { users } from "alepha/api/users";
 import { $bucket } from "alepha/bucket";
@@ -35,18 +35,18 @@ import {
 import { petitionSourceSchema } from "../schemas/petitionSourceSchema.ts";
 import { PetitionRateLimiter } from "../services/PetitionRateLimiter.ts";
 
-const petitionBodySchema = t.object({
-  title: t.string({ minLength: 1, maxLength: 200 }),
-  description: t.string({ minLength: 1, maxLength: 10_000 }),
-  attachments: t.optional(t.array(t.uuid())),
-  tags: t.optional(t.array(t.string({ maxLength: 100 }), { maxItems: 20 })),
+const petitionBodySchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(10_000),
+  attachments: z.array(z.uuid()).optional(),
+  tags: z.array(z.string().max(100)).max(20).optional(),
   /**
    * Provenance of an embedded submission. Absent for first-party petitions.
    * The fields are attacker-controlled (set by the embedding page) — they
    * are persisted verbatim and must only ever be rendered as escaped plain
    * text. See `petitions.source` + folio #12.
    */
-  source: t.optional(petitionSourceSchema),
+  source: petitionSourceSchema.optional(),
 });
 
 /**
@@ -100,9 +100,9 @@ export class PetitionController {
     method: "POST",
     path: "/campaigns/:campaignId/petitions",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
+      params: z.object({ campaignId: z.integer() }),
       body: petitionBodySchema,
-      response: t.object({ id: t.integer() }),
+      response: z.object({ id: z.integer() }),
     },
     handler: async ({ params, body, user }) => {
       await this.assertPetitionsOpen(params.campaignId);
@@ -159,10 +159,10 @@ export class PetitionController {
     method: "GET",
     path: "/campaigns/:campaignId/petitions/context",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      response: t.object({
-        title: t.string(),
-        icon: t.optional(t.union([t.uuid(), t.null()])),
+      params: z.object({ campaignId: z.integer() }),
+      response: z.object({
+        title: z.string(),
+        icon: z.union([z.uuid(), z.null()]).optional(),
       }),
     },
     handler: async ({ params }) => {
@@ -182,15 +182,15 @@ export class PetitionController {
     method: "POST",
     path: "/campaigns/:campaignId/petitions/attachments",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      body: t.object({
-        file: t.file(),
+      params: z.object({ campaignId: z.integer() }),
+      body: z.object({
+        file: z.file(),
       }),
-      response: t.object({
-        id: t.uuid(),
-        name: t.string(),
-        size: t.number(),
-        mimeType: t.string(),
+      response: z.object({
+        id: z.uuid(),
+        name: z.string(),
+        size: z.number(),
+        mimeType: z.string(),
       }),
     },
     handler: async ({ params, body, user }) => {
@@ -252,13 +252,14 @@ export class PetitionController {
     method: "GET",
     path: "/campaigns/:campaignId/petitions",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      query: t.object({
-        status: t.optional(
-          t.enum(["pending", "accepted", "rejected", "all"], { mode: "text" }),
-        ),
+      params: z.object({ campaignId: z.integer() }),
+      query: z.object({
+        status: z
+          .enum(["pending", "accepted", "rejected", "all"])
+          .meta({ mode: "text" })
+          .optional(),
       }),
-      response: t.object({ items: t.array(petitionResourceSchema) }),
+      response: z.object({ items: z.array(petitionResourceSchema) }),
     },
     handler: async ({ params, query, user }) => {
       await this.ensureMember(params.campaignId, user);
@@ -288,9 +289,9 @@ export class PetitionController {
     method: "GET",
     path: "/campaigns/:campaignId/petitions/:petitionId",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        petitionId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
+        petitionId: z.integer(),
       }),
       response: petitionResourceSchema,
     },
@@ -318,17 +319,17 @@ export class PetitionController {
     method: "GET",
     path: "/campaigns/:campaignId/petitions/:petitionId/attachments/:attachmentId",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        petitionId: t.integer(),
-        attachmentId: t.uuid(),
+      params: z.object({
+        campaignId: z.integer(),
+        petitionId: z.integer(),
+        attachmentId: z.uuid(),
       }),
-      response: t.object({
-        id: t.uuid(),
-        name: t.string(),
-        mimeType: t.string(),
-        size: t.number(),
-        data: t.string({ description: "Base64-encoded file bytes." }),
+      response: z.object({
+        id: z.uuid(),
+        name: z.string(),
+        mimeType: z.string(),
+        size: z.number(),
+        data: z.string().describe("Base64-encoded file bytes."),
       }),
     },
     handler: async ({ params, user }) => {
@@ -378,9 +379,9 @@ export class PetitionController {
     method: "POST",
     path: "/campaigns/:campaignId/petitions/:petitionId/accept",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        petitionId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
+        petitionId: z.integer(),
       }),
       response: okSchema,
     },
@@ -409,9 +410,9 @@ export class PetitionController {
     method: "POST",
     path: "/campaigns/:campaignId/petitions/:petitionId/reject",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        petitionId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
+        petitionId: z.integer(),
       }),
       response: okSchema,
     },
@@ -435,9 +436,9 @@ export class PetitionController {
     method: "DELETE",
     path: "/campaigns/:campaignId/petitions/:petitionId",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        petitionId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
+        petitionId: z.integer(),
       }),
       response: okSchema,
     },
@@ -463,12 +464,13 @@ export class PetitionController {
     method: "GET",
     path: "/me/petitions",
     schema: {
-      query: t.extend(pageQuerySchema, {
-        search: t.optional(t.string()),
-        status: t.optional(
-          t.enum(["pending", "accepted", "rejected", "all"], { mode: "text" }),
-        ),
-        campaignId: t.optional(t.integer()),
+      query: pageQuerySchema.extend({
+        search: z.string().optional(),
+        status: z
+          .enum(["pending", "accepted", "rejected", "all"])
+          .meta({ mode: "text" })
+          .optional(),
+        campaignId: z.integer().optional(),
       }),
       response: db.page(myPetitionResourceSchema),
     },
@@ -512,12 +514,12 @@ export class PetitionController {
     method: "GET",
     path: "/me/petition-campaigns",
     schema: {
-      response: t.object({
-        items: t.array(
-          t.object({
-            id: t.integer(),
-            title: t.string(),
-            icon: t.optional(t.union([t.uuid(), t.null()])),
+      response: z.object({
+        items: z.array(
+          z.object({
+            id: z.integer(),
+            title: z.string(),
+            icon: z.union([z.uuid(), z.null()]).optional(),
           }),
         ),
       }),
@@ -555,13 +557,11 @@ export class PetitionController {
     method: "POST",
     path: "/me/petitions/:petitionId",
     schema: {
-      params: t.object({ petitionId: t.integer() }),
-      body: t.object({
-        title: t.string({ minLength: 1, maxLength: 200 }),
-        description: t.string({ minLength: 1, maxLength: 10_000 }),
-        tags: t.optional(
-          t.array(t.string({ maxLength: 100 }), { maxItems: 20 }),
-        ),
+      params: z.object({ petitionId: z.integer() }),
+      body: z.object({
+        title: z.string().min(1).max(200),
+        description: z.string().min(1).max(10_000),
+        tags: z.array(z.string().max(100)).max(20).optional(),
       }),
       response: myPetitionResourceSchema,
     },
@@ -592,7 +592,7 @@ export class PetitionController {
     method: "DELETE",
     path: "/me/petitions/:petitionId",
     schema: {
-      params: t.object({ petitionId: t.integer() }),
+      params: z.object({ petitionId: z.integer() }),
       response: okSchema,
     },
     handler: async ({ params, user }) => {

@@ -1,4 +1,4 @@
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 
 /**
  * Number of `open` (un-triaged) blights for the current campaign.
@@ -13,8 +13,8 @@ import { $atom, t } from "alepha";
  */
 export const currentBlightCountAtom = $atom({
   name: "lor.current.blight_count",
-  schema: t.object({
-    count: t.integer(),
+  schema: z.object({
+    count: z.integer(),
   }),
   default: { count: 0 },
 });

@@ -1,4 +1,4 @@
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 import { campaigns } from "@/api/entities/campaigns.ts";
 
 /**
@@ -12,13 +12,13 @@ import { campaigns } from "@/api/entities/campaigns.ts";
  */
 export const userCampaignsAtom = $atom({
   name: "lor.user.campaigns",
-  schema: t.optional(
-    t.object({
-      campaigns: t.array(campaigns.schema),
-      totalCount: t.integer(),
-      ownedCount: t.integer(),
-      maxCampaigns: t.integer(),
-      canCreate: t.boolean(),
-    }),
-  ),
+  schema: z
+    .object({
+      campaigns: z.array(campaigns.schema),
+      totalCount: z.integer(),
+      ownedCount: z.integer(),
+      maxCampaigns: z.integer(),
+      canCreate: z.boolean(),
+    })
+    .optional(),
 });

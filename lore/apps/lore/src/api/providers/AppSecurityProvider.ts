@@ -1,4 +1,4 @@
-import { $env, t } from "alepha";
+import { $env, z } from "alepha";
 import { $realm } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
@@ -11,17 +11,17 @@ export class AppSecurityProvider {
   characters = $repository(characters);
 
   env = $env(
-    t.object({
-      ADMIN_EMAIL: t.optional(t.email()),
+    z.object({
+      ADMIN_EMAIL: z.email().optional(),
       // When set, lore registers `TurnstileCaptchaProvider` in `main.server.ts`
       // and the register flow gates on a Turnstile token. When absent, the
       // realm advertises `captchaRequired: false` so the client doesn't try to
       // render a widget it can't satisfy.
-      TURNSTILE_SITE_KEY: t.optional(t.text()),
+      TURNSTILE_SITE_KEY: z.text().optional(),
       // Per-IP registration cap. Defaults to the framework default (10).
       // E2E test env bumps this to 1000 so a single localhost IP doesn't
       // burn through the limit while the suite runs.
-      REGISTRATION_IP_MAX_ATTEMPTS: t.optional(t.integer({ minimum: 1 })),
+      REGISTRATION_IP_MAX_ATTEMPTS: z.integer().min(1).optional(),
     }),
   );
 

@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { sigils } from "./sigils.ts";
 
@@ -33,21 +33,21 @@ import { sigils } from "./sigils.ts";
  */
 export const sigilVitals = $entity({
   name: "sigil_vitals",
-  schema: t.object({
-    id: db.primaryKey(t.integer()),
-    sigilId: db.ref(t.uuid(), () => sigils.cols.id, {
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
+    sigilId: db.ref(z.uuid(), () => sigils.cols.id, {
       onDelete: "cascade",
     }),
     /** UTC day bucket, `YYYY-MM-DD`. */
-    date: t.string({ minLength: 10, maxLength: 10 }),
+    date: z.string().min(10).max(10),
     /** Page path, query + fragment stripped. */
-    path: t.string({ minLength: 1, maxLength: 1_024 }),
+    path: z.string().min(1).max(1_024),
     /** Core Web Vitals metric identifier. */
-    metric: t.enum(["lcp", "cls", "inp", "fcp", "ttfb"], { mode: "text" }),
+    metric: z.enum(["lcp", "cls", "inp", "fcp", "ttfb"]).meta({ mode: "text" }),
     /** Non-negative histogram bucket index. */
-    bucket: t.integer({ minimum: 0 }),
+    bucket: z.integer().min(0),
     /** Sample count for this `(sigilId, date, path, metric, bucket)` tuple. */
-    count: db.default(t.integer({ minimum: 1 }), 1),
+    count: db.default(z.integer().min(1), 1),
   }),
   indexes: [
     {

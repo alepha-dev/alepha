@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 import { SIGIL_FEATURES } from "./sigilFeatures.ts";
 
 /**
@@ -16,9 +16,9 @@ export const sigilClientAtom = $atom({
   name: "alepha.sigil.client",
   description:
     "Public sigil config sent to the browser: enabled features + excluded paths. Never contains the id.",
-  schema: t.object({
-    features: t.array(t.string()),
-    excludedPaths: t.array(t.string()),
+  schema: z.object({
+    features: z.array(z.string()),
+    excludedPaths: z.array(z.string()),
   }),
   default: { features: [...SIGIL_FEATURES], excludedPaths: [] },
 });

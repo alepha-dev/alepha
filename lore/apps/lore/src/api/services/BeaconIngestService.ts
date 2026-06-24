@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { sigilUniqueVisitors } from "../entities/sigilUniqueVisitors.ts";
@@ -176,7 +176,7 @@ export class BeaconIngestService {
             WHERE ${this.views.table.sigilId} = ${sigilId}
               AND ${this.views.table.date} = ${utcDate}
           `,
-          t.object({ paths: t.string() }),
+          z.object({ paths: z.coerce.number() }),
         );
         const paths = Number(rows[0]?.paths) || 0;
         if (paths >= DISTINCT_PATH_CAP) {
@@ -267,11 +267,11 @@ export class BeaconIngestService {
       if (known === 0) {
         // Use DatabaseProvider.run — the raw-SQL aggregation path proven on
         // Cloudflare D1 by CampaignStatsController / InsightsController.
-        // The previous `Repository.query(() => sql`…`, t.integer())` form
+        // The previous `Repository.query(() => sql`…`, z.integer())` form
         // returned an EMPTY array on D1 (it works on the in-memory SQLite
         // used by the test suite — hence undetected), so `[{ paths }]`
         // destructured `undefined` and threw, aborting ingestPing before
-        // the view upsert. The aggregate is typed `t.string()` and coerced
+        // the view upsert. The aggregate is typed `z.string()` and coerced
         // with `Number()` — matching how the Insights controller decodes
         // its COUNT/SUM columns — and `rows[0]?.` guards an empty result.
         const rows = await this.database.run(
@@ -281,7 +281,7 @@ export class BeaconIngestService {
             WHERE ${this.views.table.sigilId} = ${sigilId}
               AND ${this.views.table.date} = ${date}
           `,
-          t.object({ paths: t.string() }),
+          z.object({ paths: z.coerce.number() }),
         );
         const paths = Number(rows[0]?.paths) || 0;
         if (paths >= DISTINCT_PATH_CAP) {

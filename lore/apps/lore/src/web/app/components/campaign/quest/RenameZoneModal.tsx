@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -36,7 +36,7 @@ const RenameZoneForm = (props: RenameZoneFormProps) => {
 
   const form = useForm({
     initialValues: { zoneName: props.zoneName },
-    schema: t.object({ zoneName: t.string({ minLength: 1 }) }),
+    schema: z.object({ zoneName: z.string().min(1) }),
     handler: async (data) => {
       if (!campaign) return;
       await campaignApi.renameZone({

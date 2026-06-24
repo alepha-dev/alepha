@@ -1,25 +1,25 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { archiveDirectories } from "./archiveDirectories.ts";
 import { campaigns } from "./campaigns.ts";
 
 export const folios = $entity({
   name: "folios",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     /**
      * Per-campaign sequential id, 1-based. Used in URLs
      * (`/c/:campaignId/folios/:shortId`) and UI display. Allocated by
      * `$sequence(scope=campaignId)` on insert. The global UUID `id` remains
      * the canonical PK.
      */
-    shortId: t.integer({ minimum: 1 }),
+    shortId: z.integer().min(1),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
+    campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
-    title: t.string({ minLength: 1, maxLength: 200 }),
+    title: z.string().min(1).max(200),
     /**
      * When `true` the folio's `content` field is a passphrase-encrypted
      * JSON envelope produced client-side by `BrowserCryptoProvider`. The
@@ -28,9 +28,9 @@ export const folios = $entity({
      * mode (ciphertext is not indexable) and the editor takes a
      * different path to render / save.
      */
-    protected: db.default(t.boolean(), false),
-    content: db.default(t.string(), ""),
-    tags: db.default(t.array(t.string()), []),
+    protected: db.default(z.boolean(), false),
+    content: db.default(z.string(), ""),
+    tags: db.default(z.array(z.string()), []),
     /**
      * Pin a folio so it sorts to the top of the campaign's folio list AND
      * (when not protected) has its full content surfaced by
@@ -38,7 +38,7 @@ export const folios = $entity({
      * Per-campaign (one shared pin set per campaign, since folios are
      * campaign-shared since quest #65). Default false.
      */
-    pinned: db.default(t.boolean(), false),
+    pinned: db.default(z.boolean(), false),
     /**
      * Archive directory the folio lives in. `undefined` means "campaign
      * root". Replaces the old self-FK `parentId` from quest #45 — folios
@@ -46,11 +46,9 @@ export const folios = $entity({
      * (quest #66 - Archive module). Cascade-delete on directory removal:
      * wiping a directory wipes everything in it, including its folios.
      */
-    directoryId: db.ref(
-      t.optional(t.uuid()),
-      () => archiveDirectories.cols.id,
-      { onDelete: "cascade" },
-    ),
+    directoryId: db.ref(z.uuid().optional(), () => archiveDirectories.cols.id, {
+      onDelete: "cascade",
+    }),
     /**
      * 1-2 sentence agent-readable summary (~200 chars). Filled by MCP tools
      * (`folio_create` / `folio_update`) so `campaign_context` can return a
@@ -58,12 +56,12 @@ export const folios = $entity({
      * Web users may leave it empty — `campaign_context` then falls back to
      * the title.
      */
-    summary: db.default(t.string({ maxLength: 500 }), ""),
+    summary: db.default(z.string().max(500), ""),
     /**
      * Lowercased concatenation of `title + " " + tags + " " + summary + " " + content`.
      * Populated on every create/update for cheap `LIKE` search on D1/SQLite.
      */
-    searchText: db.default(t.string(), ""),
+    searchText: db.default(z.string(), ""),
   }),
   indexes: [
     { columns: ["campaignId", "updatedAt"] },

@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import {
   campaignParamsSchema,
   entityRefSchema,
@@ -24,58 +24,51 @@ const DESCRIPTION_DESCRIPTION =
 // quest_list
 // -----------------------------------------------------------------------------
 
-export const questListParamsSchema = t.extend(campaignParamsSchema, {
-  status: t.optional(
-    t.enum(["new", "accepted", "completed"], {
-      description: "Filter by quest status",
-    }),
-  ),
-  search: t.optional(
-    t.string({
-      description: "Search quests by title",
-    }),
-  ),
-  tag: t.optional(
-    t.string({
-      description:
-        "Filter by a single tag (exact match against normalized — trimmed/lowercased — values). Call `quest_tags` first to discover what tags exist in the campaign.",
-    }),
-  ),
-  limit: t.optional(
-    t.integer({
-      description: "Maximum number of quests to return (default: 20)",
-      minimum: 1,
-      maximum: 100,
-    }),
-  ),
-  offset: t.optional(
-    t.integer({
-      description: "Number of quests to skip for pagination",
-      minimum: 0,
-    }),
-  ),
+export const questListParamsSchema = campaignParamsSchema.extend({
+  status: z
+    .enum(["new", "accepted", "completed"])
+    .describe("Filter by quest status")
+    .optional(),
+  search: z.string().describe("Search quests by title").optional(),
+  tag: z
+    .string()
+    .describe(
+      "Filter by a single tag (exact match against normalized — trimmed/lowercased — values). Call `quest_tags` first to discover what tags exist in the campaign.",
+    )
+    .optional(),
+  limit: z
+    .integer()
+    .min(1)
+    .max(100)
+    .describe("Maximum number of quests to return (default: 20)")
+    .optional(),
+  offset: z
+    .integer()
+    .min(0)
+    .describe("Number of quests to skip for pagination")
+    .optional(),
 });
 
-export const questListResultSchema = t.object({
-  quests: t.array(
-    t.object({
-      id: t.integer(),
-      shortId: t.integer(),
-      title: t.string(),
-      description: t.string(),
-      zone: t.string(),
+export const questListResultSchema = z.object({
+  quests: z.array(
+    z.object({
+      id: z.integer(),
+      shortId: z.integer(),
+      title: z.string(),
+      description: z.string(),
+      zone: z.string(),
       priority: prioritySchema,
-      difficulty: t.integer(),
+      difficulty: z.integer(),
       status: questStatusSchema,
-      objectives: t.array(objectiveSchema),
-      tags: t.array(t.string()),
-      createdAt: t.datetime(),
-      acceptedAt: t.optional(t.datetime()),
-      completedAt: t.optional(t.datetime()),
+      objectives: z.array(objectiveSchema),
+      tags: z.array(z.string()),
+      createdAt: z.datetime(),
+      acceptedAt: z.datetime().optional(),
+      completedAt: z.datetime().optional(),
     }),
   ),
-  total: t.integer(),
-  hasMore: t.boolean(),
+  total: z.integer(),
+  hasMore: z.boolean(),
 });
 
 // -----------------------------------------------------------------------------
@@ -84,93 +77,82 @@ export const questListResultSchema = t.object({
 
 export const questGetParamsSchema = entityRefSchema;
 
-export const questGetResultSchema = t.object({
-  id: t.integer(),
-  shortId: t.integer(),
-  title: t.string(),
-  description: t.string(),
-  zone: t.string(),
+export const questGetResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  description: z.string(),
+  zone: z.string(),
   priority: prioritySchema,
-  difficulty: t.integer(),
+  difficulty: z.integer(),
   status: questStatusSchema,
-  objectives: t.array(objectiveSchema),
-  campaignId: t.integer(),
-  chapterId: t.optional(t.integer()),
-  createdAt: t.datetime(),
-  updatedAt: t.datetime(),
-  acceptedAt: t.optional(t.datetime()),
-  completedAt: t.optional(t.datetime()),
-  completionMessage: t.optional(t.string()),
-  completionMessageUpdatedAt: t.optional(t.datetime()),
-  tags: t.array(t.string()),
-  dependsOn_shortId: t.optional(t.integer()),
+  objectives: z.array(objectiveSchema),
+  campaignId: z.integer(),
+  chapterId: z.integer().optional(),
+  createdAt: z.datetime(),
+  updatedAt: z.datetime(),
+  acceptedAt: z.datetime().optional(),
+  completedAt: z.datetime().optional(),
+  completionMessage: z.string().optional(),
+  completionMessageUpdatedAt: z.datetime().optional(),
+  tags: z.array(z.string()),
+  dependsOn_shortId: z.integer().optional(),
 });
 
 // -----------------------------------------------------------------------------
 // quest_create
 // -----------------------------------------------------------------------------
 
-export const questCreateParamsSchema = t.extend(campaignParamsSchema, {
-  title: t.string({
-    description: "Quest title",
-  }),
-  description: t.string({
-    description: DESCRIPTION_DESCRIPTION,
-  }),
-  zone: t.string({
-    description: ZONE_DESCRIPTION,
-  }),
-  priority: t.enum(["optional", "low", "medium", "high"], {
-    description: PRIORITY_DESCRIPTION,
-  }),
-  difficulty: t.integer({
-    description: DIFFICULTY_DESCRIPTION,
-    minimum: 1,
-    maximum: 5,
-  }),
-  objectives: t.optional(
-    t.array(objectiveSchema, {
-      description: "List of objectives/subquests",
-    }),
-  ),
-  tags: t.optional(
-    t.array(t.string(), {
-      description:
-        "Free-form labels for the **nature** of the quest (`bug`, `feat`, `chore`, `regression`, `quick-win`, …). Orthogonal to `zone` which labels the **module / scope**. Normalized server-side (trim, lowercase, dedupe). Reuse existing tags when possible — call `quest_tags` first.",
-    }),
-  ),
-  dependsOn_shortId: t.optional(
-    t.integer({
-      description:
-        "Per-campaign shortId of a predecessor quest. While the predecessor is incomplete, `quest_accept` refuses to start this quest. Use to express 'this can't start until that one is done' (typical setup quest gating a follow-up).",
-    }),
-  ),
-  petition_shortId: t.optional(
-    t.integer({
-      description:
-        "Per-campaign shortId of an ACCEPTED petition to link this quest to (it then shows under that petition's 'linked quests'). Owner-only; the petition must already be accepted (accept it first via petition_accept).",
-    }),
-  ),
-  accept: t.optional(
-    t.boolean({
-      description:
-        "Immediately accept (assign to yourself) the quest right after it is created — the MCP equivalent of the UI's 'Create and accept' button, so an agent about to work the quest skips a separate quest_accept round-trip. Defaults to false. Best-effort: if the quest can't be accepted yet (e.g. it depends on an incomplete predecessor) it is still created and left in the 'new' lane, with `acceptNote` explaining why.",
-    }),
-  ),
+export const questCreateParamsSchema = campaignParamsSchema.extend({
+  title: z.string().describe("Quest title"),
+  description: z.string().describe(DESCRIPTION_DESCRIPTION),
+  zone: z.string().describe(ZONE_DESCRIPTION),
+  priority: z
+    .enum(["optional", "low", "medium", "high"])
+    .describe(PRIORITY_DESCRIPTION),
+  difficulty: z.integer().min(1).max(5).describe(DIFFICULTY_DESCRIPTION),
+  objectives: z
+    .array(objectiveSchema)
+    .describe("List of objectives/subquests")
+    .optional(),
+  tags: z
+    .array(z.string())
+    .describe(
+      "Free-form labels for the **nature** of the quest (`bug`, `feat`, `chore`, `regression`, `quick-win`, …). Orthogonal to `zone` which labels the **module / scope**. Normalized server-side (trim, lowercase, dedupe). Reuse existing tags when possible — call `quest_tags` first.",
+    )
+    .optional(),
+  dependsOn_shortId: z
+    .integer()
+    .describe(
+      "Per-campaign shortId of a predecessor quest. While the predecessor is incomplete, `quest_accept` refuses to start this quest. Use to express 'this can't start until that one is done' (typical setup quest gating a follow-up).",
+    )
+    .optional(),
+  petition_shortId: z
+    .integer()
+    .describe(
+      "Per-campaign shortId of an ACCEPTED petition to link this quest to (it then shows under that petition's 'linked quests'). Owner-only; the petition must already be accepted (accept it first via petition_accept).",
+    )
+    .optional(),
+  accept: z
+    .boolean()
+    .describe(
+      "Immediately accept (assign to yourself) the quest right after it is created — the MCP equivalent of the UI's 'Create and accept' button, so an agent about to work the quest skips a separate quest_accept round-trip. Defaults to false. Best-effort: if the quest can't be accepted yet (e.g. it depends on an incomplete predecessor) it is still created and left in the 'new' lane, with `acceptNote` explaining why.",
+    )
+    .optional(),
 });
 
-export const questCreateResultSchema = t.object({
-  id: t.integer(),
-  shortId: t.integer(),
-  title: t.string(),
-  createdAt: t.datetime(),
+export const questCreateResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  createdAt: z.datetime(),
   // Present (and `accept: true` was requested) when the accept landed —
   // the quest is in the 'accepted' lane, assigned to the caller.
-  acceptedAt: t.optional(t.datetime()),
+  acceptedAt: z.datetime().optional(),
   // Present when `accept: true` was requested but the accept was refused
   // (e.g. blocked by an incomplete predecessor). The quest is still
   // created; this explains why it stayed in the 'new' lane.
-  acceptNote: t.optional(t.string()),
+  acceptNote: z.string().optional(),
 });
 
 // -----------------------------------------------------------------------------
@@ -179,104 +161,90 @@ export const questCreateResultSchema = t.object({
 
 export const questAcceptParamsSchema = entityRefSchema;
 
-export const questAcceptResultSchema = t.object({
-  id: t.integer(),
-  shortId: t.integer(),
-  title: t.string(),
-  acceptedAt: t.datetime(),
+export const questAcceptResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  acceptedAt: z.datetime(),
 });
 
 // -----------------------------------------------------------------------------
 // quest_complete
 // -----------------------------------------------------------------------------
 
-export const questCompleteParamsSchema = t.extend(entityRefSchema, {
-  message: t.optional(
-    t.string({
-      description:
-        "Optional summary of what was accomplished — files touched, decisions made, anything a future reader (human or AI) would need to understand why this quest is closed. Markdown supported. Strongly encouraged: leave a trail so the next session has context.",
-    }),
-  ),
+export const questCompleteParamsSchema = entityRefSchema.extend({
+  message: z
+    .string()
+    .describe(
+      "Optional summary of what was accomplished — files touched, decisions made, anything a future reader (human or AI) would need to understand why this quest is closed. Markdown supported. Strongly encouraged: leave a trail so the next session has context.",
+    )
+    .optional(),
 });
 
-export const questCompleteResultSchema = t.object({
-  id: t.integer(),
-  shortId: t.integer(),
-  title: t.string(),
-  completedAt: t.datetime(),
-  xpEarned: t.optional(t.integer()),
-  moneyEarned: t.optional(t.integer()),
+export const questCompleteResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  completedAt: z.datetime(),
+  xpEarned: z.integer().optional(),
+  moneyEarned: z.integer().optional(),
 });
 
 // -----------------------------------------------------------------------------
 // quest_update
 // -----------------------------------------------------------------------------
 
-export const questUpdateParamsSchema = t.extend(entityRefSchema, {
-  title: t.optional(
-    t.string({
-      description: "New quest title",
-    }),
-  ),
-  description: t.optional(
-    t.string({
-      description: `New ${DESCRIPTION_DESCRIPTION}`,
-    }),
-  ),
-  zone: t.optional(
-    t.string({
-      description: `New ${ZONE_DESCRIPTION}`,
-    }),
-  ),
-  priority: t.optional(
-    t.enum(["optional", "low", "medium", "high"], {
-      description: `New ${PRIORITY_DESCRIPTION}`,
-    }),
-  ),
-  difficulty: t.optional(
-    t.integer({
-      description: `New ${DIFFICULTY_DESCRIPTION}`,
-      minimum: 1,
-      maximum: 5,
-    }),
-  ),
-  objectives: t.optional(
-    t.array(objectiveSchema, {
-      description:
-        "Updated list of objectives. Pass the full new array (it REPLACES the existing one — omitted objectives will be deleted). Omit this field entirely to leave objectives unchanged.",
-    }),
-  ),
-  completionMessage: t.optional(
-    t.string({
-      description:
-        "Rewrite the post-completion summary. Allowed on already-completed quests (the only field that is — other edits stay frozen). Pass an empty string to clear. Markdown supported.",
-    }),
-  ),
-  tags: t.optional(
-    t.array(t.string(), {
-      description:
-        "Replace the quest's tags. Normalized server-side (trim, lowercase, dedupe). Pass an empty array to clear. Call `quest_tags` to discover existing tags.",
-    }),
-  ),
-  dependsOn_shortId: t.optional(
-    t.integer({
-      description:
-        "Reparent the quest's predecessor to the quest with this per-campaign shortId (Questline). Pass 0 to clear the dependency. While a non-null predecessor is incomplete, `quest_accept` is blocked.",
-    }),
-  ),
-  petition_shortId: t.optional(
-    t.integer({
-      description:
-        "Link this quest to the ACCEPTED petition with this per-campaign shortId (shows under that petition's 'linked quests'). Pass 0 to clear the link. Owner-only; the petition must already be accepted.",
-    }),
-  ),
+export const questUpdateParamsSchema = entityRefSchema.extend({
+  title: z.string().describe("New quest title").optional(),
+  description: z.string().describe(`New ${DESCRIPTION_DESCRIPTION}`).optional(),
+  zone: z.string().describe(`New ${ZONE_DESCRIPTION}`).optional(),
+  priority: z
+    .enum(["optional", "low", "medium", "high"])
+    .describe(`New ${PRIORITY_DESCRIPTION}`)
+    .optional(),
+  difficulty: z
+    .integer()
+    .min(1)
+    .max(5)
+    .describe(`New ${DIFFICULTY_DESCRIPTION}`)
+    .optional(),
+  objectives: z
+    .array(objectiveSchema)
+    .describe(
+      "Updated list of objectives. Pass the full new array (it REPLACES the existing one — omitted objectives will be deleted). Omit this field entirely to leave objectives unchanged.",
+    )
+    .optional(),
+  completionMessage: z
+    .string()
+    .describe(
+      "Rewrite the post-completion summary. Allowed on already-completed quests (the only field that is — other edits stay frozen). Pass an empty string to clear. Markdown supported.",
+    )
+    .optional(),
+  tags: z
+    .array(z.string())
+    .describe(
+      "Replace the quest's tags. Normalized server-side (trim, lowercase, dedupe). Pass an empty array to clear. Call `quest_tags` to discover existing tags.",
+    )
+    .optional(),
+  dependsOn_shortId: z
+    .integer()
+    .describe(
+      "Reparent the quest's predecessor to the quest with this per-campaign shortId (Questline). Pass 0 to clear the dependency. While a non-null predecessor is incomplete, `quest_accept` is blocked.",
+    )
+    .optional(),
+  petition_shortId: z
+    .integer()
+    .describe(
+      "Link this quest to the ACCEPTED petition with this per-campaign shortId (shows under that petition's 'linked quests'). Pass 0 to clear the link. Owner-only; the petition must already be accepted.",
+    )
+    .optional(),
 });
 
-export const questUpdateResultSchema = t.object({
-  id: t.integer(),
-  shortId: t.integer(),
-  title: t.string(),
-  updatedAt: t.datetime(),
+export const questUpdateResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  updatedAt: z.datetime(),
 });
 
 // -----------------------------------------------------------------------------
@@ -285,8 +253,8 @@ export const questUpdateResultSchema = t.object({
 
 export const questTagsParamsSchema = campaignParamsSchema;
 
-export const questTagsResultSchema = t.object({
-  tags: t.array(t.string()),
+export const questTagsResultSchema = z.object({
+  tags: z.array(z.string()),
 });
 
 // -----------------------------------------------------------------------------
@@ -295,6 +263,6 @@ export const questTagsResultSchema = t.object({
 
 export const questDeleteParamsSchema = entityRefSchema;
 
-export const questDeleteResultSchema = t.object({
-  ok: t.boolean(),
+export const questDeleteResultSchema = z.object({
+  ok: z.boolean(),
 });

@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { $route } from "alepha/server";
 
 /**
@@ -22,10 +22,10 @@ export class VersionController {
     method: "GET",
     path: "/version",
     schema: {
-      response: t.object({
-        version: t.string(),
-        commit: t.string(),
-        buildDate: t.string(),
+      response: z.object({
+        version: z.string(),
+        commit: z.string(),
+        buildDate: z.string(),
       }),
     },
     handler: () => ({

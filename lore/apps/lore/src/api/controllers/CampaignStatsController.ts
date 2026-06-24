@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
@@ -43,8 +43,8 @@ export class CampaignStatsController {
       }),
     ],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: chroniclesOverviewSchema,
     },
@@ -96,13 +96,13 @@ export class CampaignStatsController {
 					WHERE ${this.quests.table.campaignId} = ${params.id}
 						AND ${this.quests.table.deletedAt} IS NULL
 				`,
-        t.object({
-          total_quests: t.string(),
-          completed_quests: t.string(),
-          open_quests: t.string(),
-          completed_this_week: t.string(),
-          completed_last_week: t.string(),
-          avg_cycle_time_hours: t.string(),
+        z.object({
+          total_quests: z.coerce.number(),
+          completed_quests: z.coerce.number(),
+          open_quests: z.coerce.number(),
+          completed_this_week: z.coerce.number(),
+          completed_last_week: z.coerce.number(),
+          avg_cycle_time_hours: z.coerce.number(),
         }),
       );
 
@@ -112,8 +112,8 @@ export class CampaignStatsController {
 					FROM ${this.characters.table}
 					WHERE ${this.characters.table.campaignId} = ${params.id}
 				`,
-        t.object({
-          active_characters: t.string(),
+        z.object({
+          active_characters: z.coerce.number(),
         }),
       );
 
@@ -138,9 +138,9 @@ export class CampaignStatsController {
 						AND ${this.quests.table.deletedAt} IS NULL
 					GROUP BY ${createdAtDay}
 				`,
-        t.object({
-          date: t.string(),
-          count: t.string(),
+        z.object({
+          date: z.string(),
+          count: z.coerce.number(),
         }),
       );
 
@@ -156,9 +156,9 @@ export class CampaignStatsController {
 						AND ${this.quests.table.completedAt} IS NOT NULL
 					GROUP BY ${completedAtDay}
 				`,
-        t.object({
-          date: t.string(),
-          count: t.string(),
+        z.object({
+          date: z.string(),
+          count: z.coerce.number(),
         }),
       );
 
@@ -229,10 +229,10 @@ export class CampaignStatsController {
 					WHERE ${this.quests.table.campaignId} = ${params.id}
 						AND ${this.quests.table.deletedAt} IS NULL
 				`,
-        t.object({
-          stale_quests: t.string(),
-          unassigned_quests: t.string(),
-          blocked_quests: t.string(),
+        z.object({
+          stale_quests: z.coerce.number(),
+          unassigned_quests: z.coerce.number(),
+          blocked_quests: z.coerce.number(),
         }),
       );
 
@@ -268,8 +268,8 @@ export class CampaignStatsController {
       }),
     ],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: chroniclesQuestsSchema,
     },
@@ -309,10 +309,10 @@ export class CampaignStatsController {
 					WHERE ${this.quests.table.campaignId} = ${params.id}
 						AND ${this.quests.table.deletedAt} IS NULL
 				`,
-        t.object({
-          new_count: t.string(),
-          accepted_count: t.string(),
-          completed_count: t.string(),
+        z.object({
+          new_count: z.coerce.number(),
+          accepted_count: z.coerce.number(),
+          completed_count: z.coerce.number(),
         }),
       );
 
@@ -339,10 +339,10 @@ export class CampaignStatsController {
 					) DESC
 					LIMIT 8
 				`,
-        t.object({
-          zone: t.string(),
-          completed: t.string(),
-          remaining: t.string(),
+        z.object({
+          zone: z.string(),
+          completed: z.coerce.number(),
+          remaining: z.coerce.number(),
         }),
       );
 
@@ -365,10 +365,10 @@ export class CampaignStatsController {
 					GROUP BY ${this.quests.table.priority}
 					ORDER BY ${priorityOrder}
 				`,
-        t.object({
-          priority: t.string(),
-          completed: t.string(),
-          remaining: t.string(),
+        z.object({
+          priority: z.string(),
+          completed: z.coerce.number(),
+          remaining: z.coerce.number(),
         }),
       );
 
@@ -392,9 +392,9 @@ export class CampaignStatsController {
 					GROUP BY ${this.quests.table.priority}
 					ORDER BY ${priorityOrder}
 				`,
-        t.object({
-          priority: t.string(),
-          avg_hours: t.string(),
+        z.object({
+          priority: z.string(),
+          avg_hours: z.coerce.number(),
         }),
       );
 
@@ -420,12 +420,12 @@ export class CampaignStatsController {
 					ORDER BY ${this.quests.table.acceptedAt} ASC
 					LIMIT 10
 				`,
-        t.object({
-          short_id: t.string(),
-          title: t.string(),
-          zone: t.optional(t.string()),
-          priority: t.string(),
-          accepted_at: t.string(),
+        z.object({
+          short_id: z.coerce.number(),
+          title: z.string(),
+          zone: z.string().nullish(),
+          priority: z.string(),
+          accepted_at: z.union([z.string(), z.number()]),
         }),
       );
 
@@ -474,8 +474,8 @@ export class CampaignStatsController {
       }),
     ],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: chroniclesPartySchema,
     },
@@ -527,13 +527,13 @@ export class CampaignStatsController {
 					WHERE ${this.characters.table.campaignId} = ${params.id}
 					ORDER BY quests_completed DESC, ${this.characters.table.xp} DESC
 				`,
-        t.object({
-          user_id: t.string(),
-          name: t.optional(t.string()),
-          picture: t.optional(t.string()),
-          xp: t.string(),
-          gold: t.string(),
-          quests_completed: t.string(),
+        z.object({
+          user_id: z.string(),
+          name: z.string().nullish(),
+          picture: z.string().nullish(),
+          xp: z.coerce.number(),
+          gold: z.coerce.number(),
+          quests_completed: z.coerce.number(),
         }),
       );
 
@@ -577,10 +577,10 @@ export class CampaignStatsController {
 						AND ${this.quests.table.completedAt} >= ${weeksAgo}
 					GROUP BY week, ${this.quests.table.completedBy}
 				`,
-        t.object({
-          week: t.string(),
-          completed_by: t.optional(t.string()),
-          count: t.string(),
+        z.object({
+          week: z.string(),
+          completed_by: z.string().nullish(),
+          count: z.coerce.number(),
         }),
       );
 
@@ -624,9 +624,9 @@ export class CampaignStatsController {
 						AND ${this.quests.table.deletedAt} IS NULL
 					GROUP BY ${this.quests.table.completedBy}
 				`,
-        t.object({
-          completed_by: t.optional(t.string()),
-          last_completed_at: t.optional(t.string()),
+        z.object({
+          completed_by: z.string().nullish(),
+          last_completed_at: z.union([z.string(), z.number()]).nullish(),
         }),
       );
 

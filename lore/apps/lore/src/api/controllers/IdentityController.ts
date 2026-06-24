@@ -1,4 +1,4 @@
-import { $inject, AlephaError, t } from "alepha";
+import { $inject, AlephaError, z } from "alepha";
 import { identities, UserService } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -11,13 +11,13 @@ export class IdentityController {
   getMyIdentities = $action({
     use: [$secure({ permissions: ["identity:read"] })],
     schema: {
-      response: t.array(
-        t.object({
-          id: t.uuid(),
-          provider: t.string(),
-          providerUserId: t.optional(t.string()),
-          createdAt: t.datetime(),
-          updatedAt: t.datetime(),
+      response: z.array(
+        z.object({
+          id: z.uuid(),
+          provider: z.string(),
+          providerUserId: z.string().optional(),
+          createdAt: z.datetime(),
+          updatedAt: z.datetime(),
         }),
       ),
     },
@@ -39,11 +39,11 @@ export class IdentityController {
   setPassword = $action({
     use: [$secure({ permissions: ["identity:update"] })],
     schema: {
-      body: t.object({
-        password: t.string({ minLength: 6, maxLength: 128 }),
+      body: z.object({
+        password: z.string().min(6).max(128),
       }),
-      response: t.object({
-        success: t.boolean(),
+      response: z.object({
+        success: z.boolean(),
       }),
     },
     handler: async ({ user, body }) => {

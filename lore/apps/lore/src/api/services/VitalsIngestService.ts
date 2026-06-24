@@ -4,7 +4,7 @@ import {
   VITALS_BUCKETS,
   type VitalMetric,
 } from "@alepha/sigil/vitals";
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { sigilVitals } from "../entities/sigilVitals.ts";
 import { SigilIngestSupport } from "./SigilIngestSupport.ts";
@@ -131,7 +131,7 @@ export class VitalsIngestService {
               WHERE ${this.vitals.table.sigilId} = ${sigilId}
                 AND ${this.vitals.table.date} = ${utcDate}
             `,
-            t.object({ paths: t.string() }),
+            z.object({ paths: z.coerce.number() }),
           );
           const paths = Number(rows[0]?.paths) || 0;
           pathAllowed.set(path, paths < DISTINCT_PATH_CAP);
@@ -236,7 +236,7 @@ export class VitalsIngestService {
         GROUP BY ${this.vitals.table.bucket}
         ORDER BY ${this.vitals.table.bucket} ASC
       `,
-      t.object({ bucket: t.string(), total: t.string() }),
+      z.object({ bucket: z.coerce.number(), total: z.coerce.number() }),
     );
 
     if (rows.length === 0) return null;
@@ -306,7 +306,7 @@ export class VitalsIngestService {
         GROUP BY ${this.vitals.table.bucket}
         ORDER BY ${this.vitals.table.bucket} ASC
       `,
-      t.object({ bucket: t.string(), total: t.string() }),
+      z.object({ bucket: z.coerce.number(), total: z.coerce.number() }),
     );
 
     if (rows.length === 0) return null;

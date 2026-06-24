@@ -1,19 +1,19 @@
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 import { campaigns } from "@/api/entities/campaigns.ts";
 
 export const kanbanCampaignAtom = $atom({
   name: "lor.kanban.campaign",
-  schema: t.optional(
-    t.object({
+  schema: z
+    .object({
       campaign: campaigns.schema,
-    }),
-  ),
+    })
+    .optional(),
 });
 
 export const kanbanReloadAtom = $atom({
   name: "lor.kanban.reload",
-  schema: t.object({
-    key: t.integer(),
+  schema: z.object({
+    key: z.integer(),
   }),
   default: { key: 0 },
 });

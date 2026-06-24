@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { campaignParamsSchema } from "./commonSchemas.ts";
 
 // -----------------------------------------------------------------------------
@@ -7,16 +7,16 @@ import { campaignParamsSchema } from "./commonSchemas.ts";
 
 export const chapterListParamsSchema = campaignParamsSchema;
 
-export const chapterListResultSchema = t.object({
-  chapters: t.array(
-    t.object({
-      id: t.integer(),
-      number: t.integer(),
-      title: t.string(),
-      description: t.string(),
-      questCount: t.integer(),
-      closedAt: t.optional(t.datetime()),
-      createdAt: t.datetime(),
+export const chapterListResultSchema = z.object({
+  chapters: z.array(
+    z.object({
+      id: z.integer(),
+      number: z.integer(),
+      title: z.string(),
+      description: z.string(),
+      questCount: z.integer(),
+      closedAt: z.datetime().optional(),
+      createdAt: z.datetime(),
     }),
   ),
 });
@@ -25,103 +25,87 @@ export const chapterListResultSchema = t.object({
 // chapter_start
 // -----------------------------------------------------------------------------
 
-export const chapterStartParamsSchema = t.extend(campaignParamsSchema, {
-  title: t.optional(
-    t.string({
-      description:
-        "Chapter title (optional, defaults to 'Chapter N' if omitted)",
-    }),
-  ),
-  description: t.optional(
-    t.string({
-      description: "Chapter description",
-    }),
-  ),
+export const chapterStartParamsSchema = campaignParamsSchema.extend({
+  title: z
+    .string()
+    .describe("Chapter title (optional, defaults to 'Chapter N' if omitted)")
+    .optional(),
+  description: z.string().describe("Chapter description").optional(),
 });
 
-export const chapterStartResultSchema = t.object({
-  id: t.integer(),
-  number: t.integer(),
-  title: t.string(),
-  createdAt: t.datetime(),
+export const chapterStartResultSchema = z.object({
+  id: z.integer(),
+  number: z.integer(),
+  title: z.string(),
+  createdAt: z.datetime(),
 });
 
 // -----------------------------------------------------------------------------
 // chapter_close
 // -----------------------------------------------------------------------------
 
-export const chapterCloseParamsSchema = t.object({
-  id: t.optional(
-    t.integer({
-      description: "Global chapter ID. Mutually exclusive with `number`.",
-    }),
-  ),
-  number: t.optional(
-    t.integer({
-      description:
-        "Per-campaign chapter number ('Chapter 3'). Requires `campaign` or `campaign_name`.",
-    }),
-  ),
-  campaign: t.optional(
-    t.integer({
-      description: "Campaign ID — required when using `number`.",
-    }),
-  ),
-  campaign_name: t.optional(
-    t.string({
-      description:
-        "Campaign name (case-insensitive) — alternative to `campaign`.",
-    }),
-  ),
-  title: t.optional(
-    t.string({
-      description:
-        "New title for the chapter (optional, keeps current if omitted)",
-    }),
-  ),
+export const chapterCloseParamsSchema = z.object({
+  id: z
+    .integer()
+    .describe("Global chapter ID. Mutually exclusive with `number`.")
+    .optional(),
+  number: z
+    .integer()
+    .describe(
+      "Per-campaign chapter number ('Chapter 3'). Requires `campaign` or `campaign_name`.",
+    )
+    .optional(),
+  campaign: z
+    .integer()
+    .describe("Campaign ID — required when using `number`.")
+    .optional(),
+  campaign_name: z
+    .string()
+    .describe("Campaign name (case-insensitive) — alternative to `campaign`.")
+    .optional(),
+  title: z
+    .string()
+    .describe("New title for the chapter (optional, keeps current if omitted)")
+    .optional(),
 });
 
-export const chapterCloseResultSchema = t.object({
-  id: t.integer(),
-  number: t.integer(),
-  title: t.string(),
-  closedAt: t.datetime(),
+export const chapterCloseResultSchema = z.object({
+  id: z.integer(),
+  number: z.integer(),
+  title: z.string(),
+  closedAt: z.datetime(),
 });
 
 // -----------------------------------------------------------------------------
 // chapter_changelog
 // -----------------------------------------------------------------------------
 
-export const chapterChangelogParamsSchema = t.object({
-  id: t.optional(
-    t.integer({
-      description: "Global chapter ID. Mutually exclusive with `number`.",
-    }),
-  ),
-  number: t.optional(
-    t.integer({
-      description:
-        "Per-campaign chapter number ('Chapter 3'). Requires `campaign` or `campaign_name`.",
-    }),
-  ),
-  campaign: t.optional(
-    t.integer({
-      description: "Campaign ID — required when using `number`.",
-    }),
-  ),
-  campaign_name: t.optional(
-    t.string({
-      description:
-        "Campaign name (case-insensitive) — alternative to `campaign`.",
-    }),
-  ),
+export const chapterChangelogParamsSchema = z.object({
+  id: z
+    .integer()
+    .describe("Global chapter ID. Mutually exclusive with `number`.")
+    .optional(),
+  number: z
+    .integer()
+    .describe(
+      "Per-campaign chapter number ('Chapter 3'). Requires `campaign` or `campaign_name`.",
+    )
+    .optional(),
+  campaign: z
+    .integer()
+    .describe("Campaign ID — required when using `number`.")
+    .optional(),
+  campaign_name: z
+    .string()
+    .describe("Campaign name (case-insensitive) — alternative to `campaign`.")
+    .optional(),
 });
 
-export const chapterChangelogResultSchema = t.object({
-  markdown: t.string(),
-  stats: t.object({
-    questCount: t.integer(),
-    zoneCount: t.integer(),
-    contributorCount: t.integer(),
+export const chapterChangelogResultSchema = z.object({
+  markdown: z.string(),
+  stats: z.object({
+    questCount: z.integer(),
+    zoneCount: z.integer(),
+    contributorCount: z.integer(),
   }),
 });

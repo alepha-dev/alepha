@@ -1,6 +1,6 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useForm } from "alepha/react/form";
@@ -88,13 +88,13 @@ const MyCharacterPage = () => {
       avatar: character?.picture ?? user?.picture ?? null,
       title: character?.equippedTitle ?? NO_TITLE,
     },
-    schema: t.object({
-      name: t.string({
-        title: tr("character.sheet.name"),
-        maxLength: 60,
-      }),
-      avatar: t.optional(t.nullable(t.uuid())),
-      title: t.optional(t.string()),
+    schema: z.object({
+      name: z
+        .string()
+        .max(60)
+        .meta({ title: tr("character.sheet.name") }),
+      avatar: z.uuid().nullable().optional(),
+      title: z.string().optional(),
     }),
     handler: async (values) => {
       if (!campaign) return;

@@ -1,12 +1,12 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { oauthClientEntity } from "alepha/api/oauth";
 import { sessions } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
-export const userSession = t.extend(sessions.schema, {
-  current: t.boolean(),
+export const userSession = sessions.schema.extend({
+  current: z.boolean(),
 });
 
 export type UserSession = Static<typeof userSession>;
@@ -16,22 +16,22 @@ export type UserSession = Static<typeof userSession>;
  * (an MCP client such as Claude), with the client name resolved and the
  * refresh token deliberately omitted.
  */
-export const oauthConnection = t.object({
-  id: t.string(),
-  clientId: t.string(),
-  clientName: t.string(),
-  createdAt: t.datetime(),
-  lastUsedAt: t.optional(t.datetime()),
-  expiresAt: t.datetime(),
-  ip: t.optional(t.string()),
-  userAgent: t.optional(
-    t.object({
-      os: t.string(),
-      browser: t.string(),
-      device: t.enum(["MOBILE", "DESKTOP", "TABLET"]),
-    }),
-  ),
-  current: t.boolean(),
+export const oauthConnection = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  clientName: z.string(),
+  createdAt: z.datetime(),
+  lastUsedAt: z.datetime().optional(),
+  expiresAt: z.datetime(),
+  ip: z.string().optional(),
+  userAgent: z
+    .object({
+      os: z.string(),
+      browser: z.string(),
+      device: z.enum(["MOBILE", "DESKTOP", "TABLET"]),
+    })
+    .optional(),
+  current: z.boolean(),
 });
 
 export type OAuthConnection = Static<typeof oauthConnection>;
@@ -48,7 +48,7 @@ export class SessionController {
   getMyConnections = $action({
     use: [$secure({ permissions: ["session:read"] })],
     schema: {
-      response: t.array(oauthConnection),
+      response: z.array(oauthConnection),
     },
     handler: async ({ user }) => {
       const rows = await this.sessions.findMany({
@@ -95,7 +95,7 @@ export class SessionController {
   getMySessions = $action({
     use: [$secure({ permissions: ["session:read"] })],
     schema: {
-      response: t.array(userSession),
+      response: z.array(userSession),
     },
     handler: async ({ user }) => {
       const userSessions = await this.sessions.findMany({
@@ -116,10 +116,10 @@ export class SessionController {
   revokeSession = $action({
     use: [$secure({ permissions: ["session:delete"] })],
     schema: {
-      params: t.object({
-        sessionId: t.string(),
+      params: z.object({
+        sessionId: z.string(),
       }),
-      response: t.void(),
+      response: z.void(),
     },
     handler: async ({ params, user }) => {
       const session = await this.sessions.getOne({
@@ -136,7 +136,7 @@ export class SessionController {
   revokeAllSessions = $action({
     use: [$secure({ permissions: ["session:delete"] })],
     schema: {
-      response: t.void(),
+      response: z.void(),
     },
     handler: async ({ user }) => {
       await this.sessions.deleteMany({

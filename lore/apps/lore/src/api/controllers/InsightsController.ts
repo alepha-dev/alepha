@@ -1,4 +1,4 @@
-import { $inject, type Static, t } from "alepha";
+import { $inject, type Static, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -28,27 +28,27 @@ const TOP_N = 10;
  * trustworthy headline metric is `uniqueVisitors`. The UI labels the views
  * card accordingly.
  */
-const insightsSchema = t.object({
-  range: t.enum(["1d", "7d", "30d"]),
+const insightsSchema = z.object({
+  range: z.enum(["1d", "7d", "30d"]),
   /** First UTC day included in the window, `YYYY-MM-DD`. */
-  since: t.string(),
+  since: z.string(),
   /** Best-effort raw pageview count. Inflatable — see entity note. */
-  totalViews: t.integer(),
+  totalViews: z.integer(),
   /** Abuse-resistant headline metric: distinct daily session hashes. */
-  uniqueVisitors: t.integer(),
-  topCountries: t.array(
-    t.object({
+  uniqueVisitors: z.integer(),
+  topCountries: z.array(
+    z.object({
       /** ISO-3166 alpha-2, or `ZZ` for unknown. */
-      country: t.string(),
-      count: t.integer(),
+      country: z.string(),
+      count: z.integer(),
     }),
   ),
-  topPaths: t.array(
-    t.object({
-      path: t.string(),
-      count: t.integer(),
+  topPaths: z.array(
+    z.object({
+      path: z.string(),
+      count: z.integer(),
       /** Share of `totalViews`, rounded to a whole percent. */
-      percentage: t.number(),
+      percentage: z.number(),
     }),
   ),
   /**
@@ -62,23 +62,23 @@ const insightsSchema = t.object({
    * the value here has been divided by 1000 and represents the real CLS score
    * (e.g. 0.08, not 80).
    */
-  vitals: t.object({
+  vitals: z.object({
     /** Largest Contentful Paint p75, ms. */
-    lcp: t.nullable(t.number()),
+    lcp: z.number().nullable(),
     /** Cumulative Layout Shift p75, unitless (real value, ÷1000 applied). */
-    cls: t.nullable(t.number()),
+    cls: z.number().nullable(),
     /** Interaction to Next Paint p75, ms. */
-    inp: t.nullable(t.number()),
+    inp: z.number().nullable(),
     /** First Contentful Paint p75, ms. */
-    fcp: t.nullable(t.number()),
+    fcp: z.number().nullable(),
     /** Time to First Byte p75, ms. */
-    ttfb: t.nullable(t.number()),
+    ttfb: z.number().nullable(),
   }),
-  timeline: t.array(
-    t.object({
+  timeline: z.array(
+    z.object({
       /** UTC day, `YYYY-MM-DD`. */
-      date: t.string(),
-      views: t.integer(),
+      date: z.string(),
+      views: z.integer(),
     }),
   ),
 });
@@ -112,9 +112,9 @@ export class InsightsController {
     method: "GET",
     path: "/campaigns/:campaignId/insights",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      query: t.object({
-        range: t.optional(t.enum(["1d", "7d", "30d"])),
+      params: z.object({ campaignId: z.integer() }),
+      query: z.object({
+        range: z.enum(["1d", "7d", "30d"]).optional(),
       }),
       response: insightsSchema,
     },
@@ -169,7 +169,7 @@ export class InsightsController {
           WHERE ${this.views.table.sigilId} IN (${sigilList})
             AND ${this.views.table.date} >= ${since}
         `,
-        t.object({ total: t.string() }),
+        z.object({ total: z.coerce.number() }),
       );
       const totalViews = Number(totals?.total) || 0;
 
@@ -184,7 +184,7 @@ export class InsightsController {
           WHERE ${this.uniques.table.sigilId} IN (${sigilList})
             AND ${this.uniques.table.date} >= ${since}
         `,
-        t.object({ uniques: t.string() }),
+        z.object({ uniques: z.coerce.number() }),
       );
       const uniqueVisitors = Number(uniqueAgg?.uniques) || 0;
 
@@ -200,7 +200,7 @@ export class InsightsController {
           ORDER BY count DESC
           LIMIT ${TOP_N}
         `,
-        t.object({ country: t.string(), count: t.string() }),
+        z.object({ country: z.string(), count: z.coerce.number() }),
       );
       const topCountries = countryRows.map((r) => ({
         country: r.country,
@@ -219,7 +219,7 @@ export class InsightsController {
           ORDER BY count DESC
           LIMIT ${TOP_N}
         `,
-        t.object({ path: t.string(), count: t.string() }),
+        z.object({ path: z.string(), count: z.coerce.number() }),
       );
       const topPaths = pathRows.map((r) => {
         const count = Number(r.count) || 0;
@@ -241,7 +241,7 @@ export class InsightsController {
             AND ${this.views.table.date} >= ${since}
           GROUP BY ${this.views.table.date}
         `,
-        t.object({ date: t.string(), count: t.string() }),
+        z.object({ date: z.string(), count: z.coerce.number() }),
       );
       const byDate = new Map(
         timelineRows.map((r) => [r.date, Number(r.count) || 0]),

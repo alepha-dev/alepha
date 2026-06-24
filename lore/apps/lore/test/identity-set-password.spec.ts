@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { oauthOptions } from "alepha/api/oauth";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -29,9 +29,9 @@ import { LoreMcp } from "../src/mcp/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
-const userDataSchema = t.object({
-  username: t.string(),
-  email: t.email(),
+const userDataSchema = z.object({
+  username: z.string(),
+  email: z.email(),
 });
 
 interface TestContext {

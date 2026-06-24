@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
 /**
  * Provenance of a quest that was spawned from an automated source rather
@@ -12,13 +12,13 @@ import { type Static, t } from "alepha";
  * (a nullable column add, never a table rebuild). New fields can be added
  * to this schema without a migration.
  */
-export const questSourceSchema = t.object({
+export const questSourceSchema = z.object({
   /**
    * The `sigil_blights` row this quest was forwarded from. Set by the
    * Blights inbox forward-to-quest action; the matching blight carries
    * `status = "quest:<questId>"` so the link is bidirectional.
    */
-  sigilBlightId: t.optional(t.integer()),
+  sigilBlightId: z.integer().optional(),
 });
 
 export type QuestSource = Static<typeof questSourceSchema>;

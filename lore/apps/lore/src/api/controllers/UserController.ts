@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { UserBuckets, users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
@@ -27,8 +27,8 @@ export class UserController {
   updateAvatar = $action({
     use: [$secure({ permissions: ["user:update"] })],
     schema: {
-      body: t.object({
-        file: t.file(),
+      body: z.object({
+        file: z.file(),
       }),
       response: users.schema,
     },

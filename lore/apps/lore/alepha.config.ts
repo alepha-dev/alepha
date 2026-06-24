@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { t } from "alepha";
+import { z } from "alepha";
 import { defineConfig } from "alepha/cli/config";
 import { devtools } from "alepha/cli/devtools";
 import { i18n } from "alepha/cli/i18n";
@@ -86,8 +86,8 @@ export default defineConfig({
       "export:r2": $command({
         description:
           "Copy the remote R2 bucket into the local dev buckets/ dir (rclone-backed).",
-        flags: t.object({
-          env: t.optional(t.text({ description: "Platform env." })),
+        flags: z.object({
+          env: z.text({ description: "Platform env." }).optional(),
         }),
         handler: async ({ run, flags, root, fs }) => {
           try {

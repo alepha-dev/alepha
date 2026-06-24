@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { $notification } from "alepha/api/notifications";
 
 /**
@@ -46,12 +46,12 @@ export class QuestNotifications {
       `;
       },
     },
-    schema: t.object({
-      recipientName: t.string(),
-      campaignTitle: t.string(),
-      questTitle: t.string(),
-      shortId: t.integer(),
-      questUrl: t.string(),
+    schema: z.object({
+      recipientName: z.string(),
+      campaignTitle: z.string(),
+      questTitle: z.string(),
+      shortId: z.integer(),
+      questUrl: z.string(),
     }),
   });
 }

@@ -1,7 +1,7 @@
 import { Control } from "@alepha/ui/components/control/control";
 import { ControlSelect } from "@alepha/ui/components/control-select/control-select";
 import { Button } from "@alepha/ui/components/ui/button";
-import { t } from "alepha";
+import { z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useForm, useFormState, useFormValues } from "alepha/react/form";
@@ -37,21 +37,19 @@ interface FolioEditorProps {
   directoryId?: string;
 }
 
-const folioFormSchema = t.object({
-  title: t.string({
-    maxLength: 200,
-    title: "Title",
-  }),
-  tags: t.array(t.string(), {
-    title: "Tags",
-    description:
+const folioFormSchema = z.object({
+  title: z.string().max(200).meta({ title: "Title" }),
+  tags: z
+    .array(z.string())
+    .meta({ title: "Tags" })
+    .describe(
       "Press Enter or comma to add a tag. Reuse existing ones when you can.",
-  }),
-  content: t.string({
-    title: "Content",
-    description: "Markdown is rendered when viewing.",
-    default: "",
-  }),
+    ),
+  content: z
+    .string()
+    .meta({ title: "Content" })
+    .describe("Markdown is rendered when viewing.")
+    .default(""),
 });
 
 const FolioEditor = (props: FolioEditorProps) => {
@@ -180,7 +178,8 @@ const FolioEditor = (props: FolioEditorProps) => {
                 ...data,
                 content: contentToSend,
                 protected: false,
-                campaignId: campaign?.id,
+                // A folio is always created within the active campaign.
+                campaignId: campaign!.id,
                 directoryId: props.directoryId,
               },
             });

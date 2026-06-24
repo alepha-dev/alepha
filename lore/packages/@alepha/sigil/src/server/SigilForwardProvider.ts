@@ -1,4 +1,4 @@
-import { $env, $hook, $inject, Alepha, t } from "alepha";
+import { $env, $hook, $inject, Alepha, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpClient } from "alepha/server";
 import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
@@ -118,7 +118,7 @@ export class SigilForwardProvider {
     try {
       const res = await this.http.fetch(this.url("campaign"), {
         method: "GET",
-        schema: { response: t.object({ campaignId: t.integer() }) },
+        schema: { response: z.object({ campaignId: z.integer() }) },
       });
       this.cachedCampaignId = res.data.campaignId;
       return this.cachedCampaignId;

@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { FileAccessProvider, type FileEntity } from "alepha/api/files";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
@@ -10,9 +10,9 @@ import { quests } from "../entities/quests.ts";
 import { PetitionRateLimiter } from "../services/PetitionRateLimiter.ts";
 import { AppSecurityProvider } from "./AppSecurityProvider.ts";
 
-const attachmentLookupSchema = t.object({
-  id: t.integer(),
-  campaignId: t.integer(),
+const attachmentLookupSchema = z.object({
+  id: z.integer(),
+  campaignId: z.integer(),
 });
 
 /**

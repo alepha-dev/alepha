@@ -1,12 +1,12 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const createInvitationSchema = t.object({
-  email: t.string({ format: "email" }),
-  resourceType: t.text({ minLength: 1, maxLength: 100 }),
-  resourceId: t.text({ minLength: 1, maxLength: 255 }),
-  roles: t.optional(t.array(t.text())),
-  metadata: t.optional(t.record(t.text(), t.any())),
+export const createInvitationSchema = z.object({
+  email: z.string().meta({ format: "email" }),
+  resourceType: z.text({ minLength: 1, maxLength: 100 }),
+  resourceId: z.text({ minLength: 1, maxLength: 255 }),
+  roles: z.array(z.text()).optional(),
+  metadata: z.record(z.text(), z.any()).optional(),
 });
 
 export type CreateInvitation = Static<typeof createInvitationSchema>;

@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -19,9 +19,9 @@ import { LoreMcp } from "../src/mcp/index.ts";
 // new quest is gated behind an incomplete predecessor), the quest is still
 // created and the tool reports why it stayed unaccepted instead of erroring.
 
-const userDataSchema = t.object({
-  username: t.string(),
-  email: t.email(),
+const userDataSchema = z.object({
+  username: z.string(),
+  email: z.email(),
 });
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };

@@ -1,4 +1,4 @@
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 
 /**
  * Number of `pending` (un-triaged) petitions for the current campaign.
@@ -12,8 +12,8 @@ import { $atom, t } from "alepha";
  */
 export const currentPetitionCountAtom = $atom({
   name: "lor.current.petition_count",
-  schema: t.object({
-    count: t.integer(),
+  schema: z.object({
+    count: z.integer(),
   }),
   default: { count: 0 },
 });

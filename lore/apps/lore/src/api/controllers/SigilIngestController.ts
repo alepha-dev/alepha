@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $route, HttpError } from "alepha/server";
 import { sigilIngestBodySchema } from "../schemas/sigilIngestBody.ts";
 import { SigilIngestRunner } from "../services/SigilIngestRunner.ts";
@@ -45,7 +45,7 @@ export class SigilIngestController {
     method: "POST",
     path: "/sigils/:id/ingest",
     schema: {
-      params: t.object({ id: t.string() }),
+      params: z.object({ id: z.string() }),
       body: sigilIngestBodySchema,
     },
     handler: async (request) => {
@@ -82,8 +82,8 @@ export class SigilIngestController {
     method: "GET",
     path: "/sigils/:id/campaign",
     schema: {
-      params: t.object({ id: t.string() }),
-      response: t.object({ campaignId: t.integer() }),
+      params: z.object({ id: z.string() }),
+      response: z.object({ campaignId: z.integer() }),
     },
     handler: async ({ params }) => {
       const sigil = await this.sigils.findForIngest(params.id);

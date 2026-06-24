@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { campaigns } from "./campaigns.ts";
 
@@ -15,17 +15,17 @@ import { campaigns } from "./campaigns.ts";
  */
 export const archiveDirectories = $entity({
   name: "archive_directories",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     /**
      * Per-campaign sequential id, 1-based. Powers the human-readable
      * `/c/:campaignId/archive/d/:shortId` URL and the MCP shortId form.
      * Allocated by `$sequence(scope=campaignId)` on insert.
      */
-    shortId: t.integer({ minimum: 1 }),
+    shortId: z.integer().min(1),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
+    campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
     /**
@@ -35,10 +35,10 @@ export const archiveDirectories = $entity({
      * table). Cycle prevention is service-side; the schema doesn't
      * enforce it.
      */
-    parentId: db.ref(t.optional(t.uuid()), () => archiveDirectories.cols.id, {
+    parentId: db.ref(z.uuid().optional(), () => archiveDirectories.cols.id, {
       onDelete: "cascade",
     }),
-    name: t.string({ minLength: 1, maxLength: 200 }),
+    name: z.string().min(1).max(200),
   }),
   indexes: [
     { columns: ["campaignId", "shortId"], unique: true },

@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -18,9 +18,9 @@ import { LoreMcp } from "../src/mcp/index.ts";
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
 // Schema for generating fake user data
-const userDataSchema = t.object({
-  username: t.string(),
-  email: t.email(),
+const userDataSchema = z.object({
+  username: z.string(),
+  email: z.email(),
 });
 
 interface TestContext {

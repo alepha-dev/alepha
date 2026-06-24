@@ -1,9 +1,9 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-export const campaignFeaturesSchema = t.object({
-  kanban: t.boolean(),
-  folios: t.boolean(),
+export const campaignFeaturesSchema = z.object({
+  kanban: z.boolean(),
+  folios: z.boolean(),
   /**
    * Gates both the petition inbox (owner triage) and the sigil petition
    * capability (`POST /sigils/:id/petition`). For sigil petitions, ALL
@@ -12,8 +12,8 @@ export const campaignFeaturesSchema = t.object({
    * Petitions arrive ONLY via the sigil in-app dialog — there is no
    * standalone first-party submission form.
    */
-  petitions: t.boolean(),
-  chapters: t.boolean(),
+  petitions: z.boolean(),
+  chapters: z.boolean(),
   /**
    * Per-quest feature toggles. All default OFF for new campaigns —
    * keeps the quest view minimal until the owner opts in. Reminder
@@ -21,10 +21,10 @@ export const campaignFeaturesSchema = t.object({
    * `buyFeature` action flips them to ON post-purchase (hybrid
    * "Shop unlocks AND defaults the toggle to ON" pattern).
    */
-  questNote: t.optional(t.boolean()),
-  questReminder: t.optional(t.boolean()),
-  questGating: t.optional(t.boolean()),
-  questChrono: t.optional(t.boolean()),
+  questNote: z.boolean().optional(),
+  questReminder: z.boolean().optional(),
+  questGating: z.boolean().optional(),
+  questChrono: z.boolean().optional(),
   /**
    * Sigils module toggles. Like the per-quest toggles above, these are
    * intentionally optional and absent from `defaultCampaignFeatures` —
@@ -33,10 +33,10 @@ export const campaignFeaturesSchema = t.object({
    * `false` via the `useCampaignFeatureToggle` hook. Plain module on/off
    * switches — no paywall.
    */
-  sigils: t.optional(t.boolean()),
-  blights: t.optional(t.boolean()),
-  beacon: t.optional(t.boolean()),
-  vitals: t.optional(t.boolean()),
+  sigils: z.boolean().optional(),
+  blights: z.boolean().optional(),
+  beacon: z.boolean().optional(),
+  vitals: z.boolean().optional(),
 });
 
 export type CampaignFeatures = Static<typeof campaignFeaturesSchema>;
@@ -61,16 +61,13 @@ export const defaultCampaignFeatures: CampaignFeatures = {
 
 export const campaigns = $entity({
   name: "campaigns",
-  schema: t.object({
-    id: db.primaryKey(t.integer()),
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     deletedAt: db.deletedAt(),
-    title: t.string({
-      minLength: 3,
-      maxLength: 24,
-    }),
-    createdBy: t.uuid(),
+    title: z.string().min(3).max(24),
+    createdBy: z.uuid(),
     /**
      * @deprecated — the public-campaign feature was removed. Column is kept
      * in the schema to avoid a Drizzle/D1 rebuild migration (which would
@@ -78,15 +75,15 @@ export const campaigns = $entity({
      * writes this field. Future PR can drop it with a hand-written safe
      * `ALTER TABLE ... DROP COLUMN`.
      */
-    public: t.optional(t.boolean()),
-    icon: t.optional(t.uuid()),
-    zones: db.default(t.array(t.string()), []),
+    public: z.boolean().optional(),
+    icon: z.uuid().optional(),
+    zones: db.default(z.array(z.string()), []),
     features: db.default(campaignFeaturesSchema, defaultCampaignFeatures),
     /**
      * ISO 8601 duration (e.g. "P14D", "P1M") for auto-closing chapters.
      * `null`/absent means chapters close manually only.
      */
-    chapterDuration: t.optional(t.string()),
+    chapterDuration: z.string().optional(),
     /**
      * ISO 639-1 code (e.g. "en", "fr", "ja") the campaign owner picks as
      * the preferred language for AI-generated content. Does NOT affect
@@ -96,14 +93,14 @@ export const campaigns = $entity({
      * `null`/absent means no preference; agents fall back to their
      * default behavior (typically English).
      */
-    preferredLanguage: t.optional(t.string()),
+    preferredLanguage: z.string().optional(),
     /**
      * Blights retention window, in days. A daily purge cron deletes `open`
      * blights whose `lastSeenAt` is older than this many days (resolved and
      * `quest:`-forwarded blights are kept as audit trail). `null`/absent
      * means fall back to the global 30-day default.
      *
-     * NB: declared as `t.optional` with NO `db.default(...)` ON PURPOSE.
+     * NB: declared as `z.optional` with NO `db.default(...)` ON PURPOSE.
      * Adding a Drizzle column DEFAULT triggers a `campaigns` table rebuild
      * on D1 (`DROP TABLE campaigns`) which cascade-wipes child rows — see
      * CLAUDE.md "Migration safety on D1". An optional, default-less column
@@ -111,7 +108,7 @@ export const campaigns = $entity({
      * The 30-day fallback lives in the purge cron (`campaign.retentionDays
      * ?? 30`), not in the column DEFAULT.
      */
-    retentionDays: t.optional(t.integer({ minimum: 1, maximum: 3_650 })),
+    retentionDays: z.integer().min(1).max(3_650).optional(),
     /**
      * Sub-columns rendered between "New" and "Completed" on the Kanban board.
      * Only meaningful when `features.kanban` is on. Capped at 5 columns by
@@ -119,10 +116,7 @@ export const campaigns = $entity({
      * accepted quests keep a coherent column to live in.
      */
     kanbanColumns: db.default(
-      t.array(t.string({ minLength: 1, maxLength: 24 }), {
-        minItems: 1,
-        maxItems: 5,
-      }),
+      z.array(z.string().min(1).max(24)).min(1).max(5),
       ["In Progress"],
     ),
     /**
@@ -130,19 +124,19 @@ export const campaigns = $entity({
      * "Character — vision and economy"). Append-only: once a feature is
      * unlocked it stays unlocked, even when the sponsor leaves the campaign.
      */
-    unlockedFeatures: db.default(t.array(t.string()), []),
+    unlockedFeatures: db.default(z.array(z.string()), []),
     /**
      * Audit log of paywall unlocks — one entry per unlock. Powers the
      * "Sponsored by Alice on 2026-04-12" credit line shown on each feature
      * tile + as a Chronicles event. Append-only.
      */
     unlockHistory: db.default(
-      t.array(
-        t.object({
-          feature: t.string(),
-          characterId: t.integer(),
-          price: t.integer({ minimum: 0 }),
-          at: t.datetime(),
+      z.array(
+        z.object({
+          feature: z.string(),
+          characterId: z.integer(),
+          price: z.integer().min(0),
+          at: z.datetime(),
         }),
       ),
       [],
