@@ -1,4 +1,4 @@
-import { $inject, SchemaValidator, type TObject, t } from "alepha";
+import { $inject, SchemaValidator, type TObject } from "alepha";
 import { getTableName, type SQL, sql } from "drizzle-orm";
 import type { PgSelectBase, PgTableWithColumns } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
@@ -124,7 +124,7 @@ export class PgRelationManager {
       }
 
       // Make the join optional (left joins may return null)
-      schema.properties[join.key] = t.optional(joinSchema);
+      schema.properties[join.key] = joinSchema.optional();
     }
 
     return schema;

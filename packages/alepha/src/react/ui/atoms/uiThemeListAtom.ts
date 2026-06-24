@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 /**
  * Available themes the user can pick from. Apps populate this atom on boot
@@ -11,22 +11,22 @@ import { $atom, type Static, t } from "alepha";
  */
 export const uiThemeListAtom = $atom({
   name: "alepha.react.ui.themes",
-  schema: t.array(
-    t.object({
+  schema: z.array(
+    z.object({
       /** Stable id stored in `uiAtom.theme`. Mapped to a CSS class on `<html>`. */
-      id: t.string(),
+      id: z.string(),
       /** Human-readable label shown in the picker. */
-      label: t.string(),
+      label: z.string(),
       /**
        * Optional 4-color preview swatch in 2×2 order (TL, TR, BL, BR). Any
        * CSS-valid color string.
        */
-      swatch: t.optional(t.array(t.string(), { minItems: 4, maxItems: 4 })),
+      swatch: z.array(z.string()).min(4).max(4).optional(),
       /**
        * Optional stylesheet URL (typically Google Fonts) loaded lazily when
        * the theme is selected.
        */
-      fontHref: t.optional(t.string()),
+      fontHref: z.string().optional(),
     }),
   ),
   default: [{ id: "default", label: "Default" }],

@@ -1,19 +1,19 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const adminApiKeyResourceSchema = t.object({
-  id: t.uuid(),
-  userId: t.uuid(),
-  name: t.string(),
-  description: t.optional(t.string()),
-  tokenPrefix: t.string(),
-  tokenSuffix: t.string(),
-  roles: t.array(t.string()),
-  createdAt: t.datetime(),
-  lastUsedAt: t.optional(t.datetime()),
-  lastUsedIp: t.optional(t.string()),
-  expiresAt: t.optional(t.datetime()),
-  revokedAt: t.optional(t.datetime()),
-  usageCount: t.integer(),
+export const adminApiKeyResourceSchema = z.object({
+  id: z.uuid(),
+  userId: z.uuid(),
+  name: z.string(),
+  description: z.string().optional(),
+  tokenPrefix: z.string(),
+  tokenSuffix: z.string(),
+  roles: z.array(z.string()),
+  createdAt: z.datetime(),
+  lastUsedAt: z.datetime().optional(),
+  lastUsedIp: z.string().optional(),
+  expiresAt: z.datetime().optional(),
+  revokedAt: z.datetime().optional(),
+  usageCount: z.integer(),
 });
 
 export type AdminApiKeyResource = Static<typeof adminApiKeyResourceSchema>;

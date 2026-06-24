@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 /**
  * Dev options atom for CLI dev command.
@@ -9,11 +9,11 @@ import { $atom, type Static, t } from "alepha";
 export const devOptions = $atom({
   name: "alepha.cli.dev.options",
   description: "Dev configuration options",
-  schema: t.object({
+  schema: z.object({
     /**
      * Disable Vite React plugin.
      */
-    noViteReactPlugin: t.optional(t.boolean({ default: false })),
+    noViteReactPlugin: z.boolean().default(false).optional(),
   }),
   default: {},
 });

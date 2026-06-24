@@ -1,4 +1,4 @@
-import { $inject, Alepha, AlephaError, type TSchema, t } from "alepha";
+import { $inject, Alepha, AlephaError, type TSchema, z } from "alepha";
 import { $logger } from "alepha/logger";
 import type {
   CloudflareAccount,
@@ -128,7 +128,7 @@ export class CloudflareApi {
     }
 
     const res = await this.fetch<CloudflareAccount[]>("/accounts", {
-      schema: t.array(cloudflareAccountSchema),
+      schema: z.array(cloudflareAccountSchema),
     });
 
     if (res.length === 0) {
@@ -443,7 +443,7 @@ export class CloudflareApi {
     const accountId = await this.resolveAccountId();
     return await this.fetch<CloudflareSecret[]>(
       `/accounts/${accountId}/workers/scripts/${scriptName}/secrets`,
-      { schema: t.array(cloudflareSecretSchema) },
+      { schema: z.array(cloudflareSecretSchema) },
     );
   }
 
@@ -635,7 +635,7 @@ export class CloudflareApi {
       }
 
       const validated = this.alepha.codec.validate(
-        t.array(itemSchema),
+        z.array(itemSchema),
         json.result,
       ) as T[];
       results.push(...validated);
@@ -673,7 +673,7 @@ export class CloudflareApi {
       const res = await this.fetch<Record<string, unknown>>(path, { query });
       const items = (res[itemsKey] as unknown[]) ?? [];
       const validated = this.alepha.codec.validate(
-        t.array(itemSchema),
+        z.array(itemSchema),
         items,
       ) as T[];
       results.push(...validated);

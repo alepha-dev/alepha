@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 /**
@@ -13,41 +13,30 @@ import { $entity, db } from "alepha/orm";
  */
 export const cacheEntries = $entity({
   name: "cache_entries",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
 
     createdAt: db.createdAt(),
 
-    container: t.text({
+    container: z.text({
       description: "Cache container name, set by the $cache primitive.",
     }),
 
-    cacheKey: t.text({
+    cacheKey: z.text({
       description: "Per-container key chosen by the caller.",
     }),
 
-    value: t.optional(
-      // No maxLength: cache values are arbitrary-sized (especially when
-      // `compress: true` is enabled on the $cache primitive, which can
-      // produce blobs well above the default 255-char `t.text()` cap). This
-      // resolves to TEXT in both Postgres and SQLite, which have no
-      // practical length limit either.
-      t.string({
-        description: "Base64-encoded bytes. Used by set/get.",
-      }),
-    ),
+    value: z
+      .string()
+      .describe("Base64-encoded bytes. Used by set/get.")
+      .optional(),
 
-    count: t.optional(
-      t.integer({
-        description: "Counter value. Used by atomic incr().",
-      }),
-    ),
+    count: z
+      .integer()
+      .describe("Counter value. Used by atomic incr().")
+      .optional(),
 
-    expiresAt: t.optional(
-      t.datetime({
-        description: "Null means no expiration.",
-      }),
-    ),
+    expiresAt: z.datetime().describe("Null means no expiration.").optional(),
   }),
   indexes: [{ columns: ["container", "cacheKey"], unique: true }, "expiresAt"],
 });

@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 /**
  * Deployment target for the build output.
@@ -32,14 +32,14 @@ export type BuildRuntime = "node" | "bun" | "workerd";
 export const buildOptions = $atom({
   name: "alepha.cli.build.options",
   description: "Build configuration options",
-  schema: t.object({
+  schema: z.object({
     /**
      * Generate build stats report.
      *
      * - `true` - Generate a static HTML report
      * - `"json"` - Generate a JSON report
      */
-    stats: t.optional(t.union([t.boolean(), t.enum(["json"])])),
+    stats: z.union([z.boolean(), z.enum(["json"])]).optional(),
 
     /**
      * Deployment target for the build output.
@@ -48,9 +48,9 @@ export const buildOptions = $atom({
      * - `vercel` - Generate Vercel deployment configuration (forces node runtime)
      * - `cloudflare` - Generate Cloudflare Workers configuration (forces workerd runtime)
      */
-    target: t.optional(
-      t.enum(["bare", "docker", "vercel", "cloudflare", "static"]),
-    ),
+    target: z
+      .enum(["bare", "docker", "vercel", "cloudflare", "static"])
+      .optional(),
 
     /**
      * JavaScript runtime for the build output.
@@ -63,28 +63,28 @@ export const buildOptions = $atom({
      * - `cloudflare` always uses `workerd`
      * - `vercel` always uses `node`
      */
-    runtime: t.optional(t.enum(["node", "bun", "workerd"])),
+    runtime: z.enum(["node", "bun", "workerd"]).optional(),
 
     /**
      * Output directory configuration.
      */
-    output: t.optional(
-      t.object({
+    output: z
+      .object({
         /**
          * Root dist directory.
          *
          * @default "dist"
          */
-        dist: t.optional(t.string({ default: "dist" })),
+        dist: z.string().default("dist").optional(),
 
         /**
          * Public/client subdirectory.
          *
          * @default "public"
          */
-        public: t.optional(t.string({ default: "public" })),
-      }),
-    ),
+        public: z.string().default("public").optional(),
+      })
+      .optional(),
 
     /**
      * Vercel-specific deployment configuration.
@@ -92,25 +92,25 @@ export const buildOptions = $atom({
      * Note: Set `target: "vercel"` to enable Vercel deployment.
      * This object is only for additional configuration.
      */
-    vercel: t.optional(
-      t.object({
-        projectName: t.optional(t.string()),
-        orgId: t.optional(t.string()),
-        projectId: t.optional(t.string()),
-        config: t.optional(
-          t.object({
-            crons: t.optional(
-              t.array(
-                t.object({
-                  path: t.string(),
-                  schedule: t.string(),
+    vercel: z
+      .object({
+        projectName: z.string().optional(),
+        orgId: z.string().optional(),
+        projectId: z.string().optional(),
+        config: z
+          .object({
+            crons: z
+              .array(
+                z.object({
+                  path: z.string(),
+                  schedule: z.string(),
                 }),
-              ),
-            ),
-          }),
-        ),
-      }),
-    ),
+              )
+              .optional(),
+          })
+          .optional(),
+      })
+      .optional(),
 
     /**
      * Cloudflare-specific deployment configuration.
@@ -118,11 +118,11 @@ export const buildOptions = $atom({
      * Note: Set `target: "cloudflare"` to enable Cloudflare deployment.
      * This object is only for additional configuration.
      */
-    cloudflare: t.optional(
-      t.object({
-        config: t.optional(t.json()),
-      }),
-    ),
+    cloudflare: z
+      .object({
+        config: z.json().optional(),
+      })
+      .optional(),
 
     /**
      * Docker-specific deployment configuration.
@@ -130,15 +130,15 @@ export const buildOptions = $atom({
      * Note: Set `target: "docker"` to enable Docker deployment.
      * This object is only for additional configuration.
      */
-    docker: t.optional(
-      t.object({
+    docker: z
+      .object({
         /**
          * Base image for the Dockerfile (FROM instruction).
          *
          * @default "node:24-alpine" for node runtime
          * @default "oven/bun:alpine" for bun runtime
          */
-        from: t.optional(t.string()),
+        from: z.string().optional(),
 
         /**
          * Command to run in the Docker container.
@@ -146,7 +146,7 @@ export const buildOptions = $atom({
          * @default "node" for node runtime
          * @default "bun" for bun runtime
          */
-        command: t.optional(t.string()),
+        command: z.string().optional(),
 
         /**
          * Extra packages to install globally in the generated image.
@@ -161,13 +161,13 @@ export const buildOptions = $atom({
          *
          * @example install: ["wrangler"]
          */
-        install: t.optional(t.array(t.string())),
+        install: z.array(z.string()).optional(),
 
         /**
          * Docker build options (used when --image flag is passed).
          */
-        image: t.optional(
-          t.object({
+        image: z
+          .object({
             /**
              * Default image tag (name without version).
              *
@@ -179,14 +179,14 @@ export const buildOptions = $atom({
              * @example "myproject/myapp"
              * @example "ghcr.io/myorg/myapp"
              */
-            tag: t.string(),
+            tag: z.string(),
 
             /**
              * Additional arguments to pass to `docker build`.
              *
              * @example '--platform linux/amd64 --no-cache'
              */
-            args: t.optional(t.string()),
+            args: z.string().optional(),
 
             /**
              * Auto-add OCI standard labels (revision, created, version).
@@ -196,9 +196,9 @@ export const buildOptions = $atom({
              * - org.opencontainers.image.created (build timestamp)
              * - org.opencontainers.image.version (from image tag)
              */
-            oci: t.optional(t.boolean()),
-          }),
-        ),
+            oci: z.boolean().optional(),
+          })
+          .optional(),
 
         /**
          * Compile the server entry to a single static binary using
@@ -215,10 +215,10 @@ export const buildOptions = $atom({
          *
          * Pass `true` to enable with defaults, or an object to override.
          */
-        compile: t.optional(
-          t.union([
-            t.boolean(),
-            t.object({
+        compile: z
+          .union([
+            z.boolean(),
+            z.object({
               /**
                * Bun target triple, e.g. `bun-linux-x64-musl`,
                * `bun-linux-arm64-musl`, or `bun-linux-x64-modern-musl`
@@ -226,34 +226,34 @@ export const buildOptions = $atom({
                *
                * @default derived from host arch — always linux-musl.
                */
-              target: t.optional(t.string()),
+              target: z.string().optional(),
 
               /**
                * Base image for the generated Dockerfile.
                *
                * @default "gcr.io/distroless/static-debian12"
                */
-              base: t.optional(t.string()),
+              base: z.string().optional(),
 
               /**
                * Minify the compiled output.
                *
                * @default true
                */
-              minify: t.optional(t.boolean()),
+              minify: z.boolean().optional(),
             }),
-          ]),
-        ),
-      }),
-    ),
+          ])
+          .optional(),
+      })
+      .optional(),
 
     /**
      * Static site deployment configuration.
      *
      * Note: Set `target: "static"` to enable static site generation.
      */
-    static: t.optional(
-      t.object({
+    static: z
+      .object({
         /**
          * Surge domain for deployment.
          *
@@ -263,9 +263,9 @@ export const buildOptions = $atom({
          * @example "my-app.surge.sh"
          * @example "my-custom-domain.com"
          */
-        domain: t.optional(t.string()),
-      }),
-    ),
+        domain: z.string().optional(),
+      })
+      .optional(),
 
     /**
      * PWA (Progressive Web App) configuration.
@@ -273,33 +273,33 @@ export const buildOptions = $atom({
      * Generates a web app manifest and enables installability.
      * Requires a client-side bundle (React).
      */
-    pwa: t.optional(
-      t.object({
+    pwa: z
+      .object({
         /**
          * Full application name displayed on the splash screen
          * and in the OS app switcher.
          */
-        name: t.string(),
+        name: z.string(),
 
         /**
          * Short name displayed on the home screen icon.
          * Falls back to `name` if omitted.
          */
-        shortName: t.optional(t.string()),
+        shortName: z.string().optional(),
 
         /**
          * Theme color used for the browser toolbar and OS chrome.
          *
          * @default "#ffffff"
          */
-        themeColor: t.optional(t.string()),
+        themeColor: z.string().optional(),
 
         /**
          * Background color for the splash screen.
          *
          * @default "#ffffff"
          */
-        backgroundColor: t.optional(t.string()),
+        backgroundColor: z.string().optional(),
 
         /**
          * Display mode for the installed PWA.
@@ -311,18 +311,18 @@ export const buildOptions = $atom({
          *
          * @default "standalone"
          */
-        display: t.optional(
-          t.enum(["standalone", "fullscreen", "minimal-ui", "browser"]),
-        ),
+        display: z
+          .enum(["standalone", "fullscreen", "minimal-ui", "browser"])
+          .optional(),
 
         /**
          * Enable offline support via service worker.
          *
          * TODO: Not yet implemented.
          */
-        offline: t.optional(t.boolean()),
-      }),
-    ),
+        offline: z.boolean().optional(),
+      })
+      .optional(),
   }),
   default: {},
 });

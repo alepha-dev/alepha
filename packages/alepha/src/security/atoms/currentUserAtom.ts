@@ -1,4 +1,4 @@
-import { $atom, t } from "alepha";
+import { $atom } from "alepha";
 import { userAccountInfoSchema } from "../schemas/userAccountInfoSchema.ts";
 
 /**
@@ -9,5 +9,5 @@ import { userAccountInfoSchema } from "../schemas/userAccountInfoSchema.ts";
  */
 export const currentUserAtom = $atom({
   name: "alepha.security.user",
-  schema: t.optional(userAccountInfoSchema),
+  schema: userAccountInfoSchema.optional(),
 });

@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 /**
@@ -31,18 +31,15 @@ import { $entity, db } from "alepha/orm";
  */
 export const sigilBlightRate = $entity({
   name: "sigil_blight_rate",
-  schema: t.object({
-    id: db.primaryKey(t.integer()),
-    sigilId: t.uuid(),
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
+    sigilId: z.uuid(),
     /** `sha256(ip + daily_salt)`. NEVER a raw IP. */
-    ipHash: t.string({ minLength: 1, maxLength: 128 }),
+    ipHash: z.string().min(1).max(128),
     /** UTC day bucket, `YYYY-MM-DD`. */
-    date: t.string({ minLength: 10, maxLength: 10 }),
+    date: z.string().min(10).max(10),
     /** Distinct fingerprints first seen today from this IP, capped at 10. */
-    fingerprints: db.default(
-      t.array(t.string({ maxLength: 128 }), { maxItems: 10 }),
-      [],
-    ),
+    fingerprints: db.default(z.array(z.string().max(128)).max(10), []),
   }),
   indexes: [{ columns: ["sigilId", "ipHash", "date"], unique: true }],
 });

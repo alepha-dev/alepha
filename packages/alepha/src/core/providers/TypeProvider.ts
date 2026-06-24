@@ -1,743 +1,89 @@
-import type {
-  TAny,
-  TArray,
-  TArrayOptions,
-  TBoolean,
-  TInteger,
-  TInterface,
-  TKeysToIndexer,
-  TNull,
-  TNumber,
-  TNumberOptions,
-  TObject,
-  TObjectOptions,
-  TOmit,
-  TOptionalAdd,
-  TPartial,
-  TPick,
-  TProperties,
-  TRecord,
-  TSchema,
-  TSchemaOptions,
-  TString,
-  TStringOptions,
-  TUnion,
-  TUnsafe,
-} from "typebox";
-import { Type } from "typebox";
-import Format from "typebox/format";
-import { Settings } from "typebox/system";
-import { OPTIONS } from "../constants/OPTIONS.ts";
-import type { TypeBoxError } from "../errors/TypeBoxError.ts";
-import { isTypeFile, type TFile, type TStream } from "../helpers/FileLike.ts";
-
-export { Format, Type };
-
-// https://github.com/sinclairzx81/typebox/blob/main/changelog/1.1.0.md
-Settings.Set({ correctiveParse: true });
-
-export type {
-  StaticDecode,
-  StaticDecode as Static,
-  StaticEncode,
-  TAny,
-  TArray,
-  TBigInt,
-  TBoolean,
-  TInteger,
-  TKeysToIndexer,
-  TNull,
-  TNumber,
-  TNumberOptions,
-  TObject,
-  TObjectOptions,
-  TOptional,
-  TOptionalAdd,
-  TPick,
-  TProperties,
-  TRecord,
-  TSchema,
-  TString,
-  TStringOptions,
-  TTuple,
-  TUnion,
-  TUnsafe,
-  TVoid,
-} from "typebox";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export class TypeGuard {
-  // -------------------------------------------------------------------------------------------------------------------
-  isBigInt = (value: TSchema): value is TString =>
-    Type.IsString(value) && "format" in value && value.format === "bigint";
-  isUUID = (value: TSchema): value is TString =>
-    Type.IsString(value) && "format" in value && value.format === "uuid";
-  isObject = Type.IsObject;
-  isNumber = Type.IsNumber;
-  isString = Type.IsString;
-  isBoolean = Type.IsBoolean;
-  isAny = Type.IsAny;
-  isArray = Type.IsArray;
-  isOptional = Type.IsOptional;
-  isUnion = Type.IsUnion;
-  isInteger = Type.IsInteger;
-  isNull = Type.IsNull;
-  isUndefined = Type.IsUndefined;
-  isUnsafe = Type.IsUnsafe;
-  isRecord = Type.IsRecord;
-  isTuple = Type.IsTuple;
-  isVoid = Type.IsVoid;
-  isLiteral = Type.IsLiteral;
-  isSchema = Type.IsSchema;
-  isScalar = (schema: TSchema): boolean =>
-    this.isString(schema) ||
-    this.isNumber(schema) ||
-    this.isInteger(schema) ||
-    this.isBoolean(schema);
-  // -------------------------------------------------------------------------------------------------------------------
-  isFile = isTypeFile;
-  isDateTime = (schema: unknown) => {
-    return t.schema.isString(schema) && schema.format === "date-time";
-  };
-  isDate = (schema: unknown) => {
-    return t.schema.isString(schema) && schema.format === "date";
-  };
-  isTime = (schema: unknown) => {
-    return t.schema.isString(schema) && schema.format === "time";
-  };
-  isDuration = (schema: unknown) => {
-    return t.schema.isString(schema) && schema.format === "duration";
-  };
-}
-
-declare module "typebox" {
-  interface TString {
-    format?: string;
-    minLength?: number;
-    maxLength?: number;
-  }
-
-  interface TNumber {
-    format?: "int64";
-  }
-}
-
-export class TypeProvider {
-  static format = Format;
-
-  static {
-    Format.Set("bigint", (value: string | number) =>
-      TypeProvider.isValidBigInt(value),
-    );
-  }
-
-  static translateError(error: TypeBoxError, _locale?: string): string {
-    return error.cause.message;
-  }
-
-  static setLocale(_locale: string) {}
-
-  static isValidBigInt(value: string | number) {
-    if (typeof value === "number") {
-      return Number.isInteger(value);
-    }
-
-    // Reject empty or whitespace-only strings
-    if (!value.trim()) return false;
-    // Regex: optional minus, then digits only
-    if (!/^-?\d+$/.test(value)) return false;
-
-    try {
-      BigInt(value); // Will throw if invalid
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Default maximum length for strings.
-   *
-   * It can be set to a larger value:
-   * ```ts
-   * TypeProvider.DEFAULT_STRING_MAX_LENGTH = 1000000;
-   * TypeProvider.DEFAULT_STRING_MAX_LENGTH = undefined; // no limit (not recommended)
-   * ```
-   */
-  static DEFAULT_STRING_MAX_LENGTH: number | undefined = 255;
-
-  /**
-   * Maximum length for short strings, such as names or titles.
-   */
-  static DEFAULT_SHORT_STRING_MAX_LENGTH: number | undefined = 64;
-
-  /**
-   * Maximum length for long strings, such as descriptions or comments.
-   * It can be overridden in the string options.
-   *
-   * It can be set to a larger value:
-   * ```ts
-   * TypeProvider.DEFAULT_LONG_STRING_MAX_LENGTH = 2048;
-   * ```
-   */
-  static DEFAULT_LONG_STRING_MAX_LENGTH: number | undefined = 1024;
-
-  /**
-   * Maximum length for rich strings, such as HTML or Markdown.
-   * This is a large value to accommodate rich text content.
-   * > It's also the maximum length of PG's TEXT type.
-   *
-   * It can be overridden in the string options.
-   *
-   * It can be set to a larger value:
-   * ```ts
-   * TypeProvider.DEFAULT_RICH_STRING_MAX_LENGTH = 1000000;
-   * ```
-   */
-  static DEFAULT_RICH_STRING_MAX_LENGTH: number | undefined = 65535;
-
-  /**
-   * Maximum number of items in an array.
-   * This is a default value to prevent excessive memory usage.
-   * It can be overridden in the array options.
-   */
-  static DEFAULT_ARRAY_MAX_ITEMS = 1000;
-
-  // -------------------------------------------------------------------------------------------------------------------
-  public raw = Type; // typebox reference
-  public any = Type.Any;
-  public void = Type.Void;
-  public undefined = Type.Undefined;
-  public record = Type.Record;
-  public union = Type.Union;
-  public tuple = Type.Tuple;
-  public null = Type.Null;
-  public const = Type.Literal;
-  public options = Type.Options;
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Type guards to check the type of schema.
-   * This is not a runtime type check, but a compile-time type guard.
-   *
-   * @example
-   * ```ts
-   * if (t.schema.isString(schema)) {
-   *   // schema is TString
-   * }
-   * ```
-   */
-  public readonly schema = new TypeGuard();
-
-  // -------------------------------------------------------------------------------------------------------------------
-
-  public extend<T extends TSchema[], U extends TProperties>(
-    schema: [...T],
-    properties: U,
-    options?: TSchemaOptions,
-  ): TInterface<T, U>;
-  public extend<T extends TObject, U extends TProperties>(
-    schema: T,
-    properties: U,
-    options?: TSchemaOptions,
-  ): TInterface<[T], U>;
-  public extend(
-    schema: TSchema | TSchema[],
-    properties: Record<string, any>,
-    options?: TSchemaOptions,
-  ): any {
-    return Type.Interface(
-      Array.isArray(schema) ? schema : [schema],
-      properties,
-      {
-        additionalProperties: false,
-        ...options,
-      },
-    );
-  }
-
-  public pick<T extends TObject, Indexer extends PropertyKey[]>(
-    schema: T,
-    keys: [...Indexer],
-    options?: TObjectOptions,
-  ): TPick<T, TKeysToIndexer<Indexer>> {
-    return Type.Pick(schema, keys, {
-      additionalProperties: false,
-      ...options,
-    });
-  }
-
-  public omit<T extends TObject, Indexer extends PropertyKey[]>(
-    schema: T,
-    keys: [...Indexer],
-    options?: TObjectOptions,
-  ): TOmit<T, TKeysToIndexer<Indexer>> {
-    return Type.Omit(schema, keys, {
-      additionalProperties: false,
-      ...options,
-    });
-  }
-
-  public partial<T extends TSchema>(
-    schema: T,
-    options?: TSchemaOptions,
-  ): TPartial<T> {
-    return Type.Partial(schema, {
-      additionalProperties: false,
-      ...options,
-    });
-  }
-
-  /**
-   * Create a schema for an object.
-   * By default, additional properties are not allowed.
-   *
-   * @example
-   * ```ts
-   * const userSchema = t.object({
-   *   id: t.integer(),
-   *   name: t.string(),
-   * });
-   * ```
-   */
-  public object<T extends TProperties>(
-    properties: T,
-    options?: TObjectOptions,
-  ): TObject<T> {
-    return Type.Object(properties, {
-      additionalProperties: false,
-      ...options,
-    });
-  }
-
-  /**
-   * Create a schema for an array.
-   * By default, the maximum number of items is limited to prevent excessive memory usage.
-   *
-   * @see TypeProvider.DEFAULT_ARRAY_MAX_ITEMS
-   */
-  public array<T extends TSchema>(
-    schema: T,
-    options?: TArrayOptions,
-  ): TArray<T> {
-    return Type.Array(schema, {
-      maxItems: TypeProvider.DEFAULT_ARRAY_MAX_ITEMS,
-      ...options,
-    });
-  }
-
-  /**
-   * Create a schema for a string.
-   * For db or input fields, consider using `t.text()` instead, which has length limits.
-   *
-   * If you need a string with specific format (e.g. email, uuid), consider using the corresponding method (e.g. `t.email()`, `t.uuid()`).
-   */
-  public string(options: TStringOptions = {}): TString {
-    return Type.String({
-      ...options,
-    });
-  }
-
-  /**
-   * Create a schema for a string with length limits.
-   * For internal strings without length limits, consider using `t.string()` instead.
-   *
-   * Default size is "regular", which has a max length of 255 characters.
-   */
-  public text(options: TTextOptions = {}): TString {
-    const { size, ...rest } = options;
-    const maxLength =
-      size === "short"
-        ? TypeProvider.DEFAULT_SHORT_STRING_MAX_LENGTH
-        : size === "long"
-          ? TypeProvider.DEFAULT_LONG_STRING_MAX_LENGTH
-          : size === "rich"
-            ? TypeProvider.DEFAULT_RICH_STRING_MAX_LENGTH
-            : TypeProvider.DEFAULT_STRING_MAX_LENGTH;
-
-    return Type.String({
-      maxLength,
-      "~options": {
-        trim: options.trim ?? true,
-        lowercase: options.lowercase ?? false,
-      },
-      ...rest,
-    });
-  }
-
-  /**
-   * Create a schema for a JSON object.
-   * This is a record with string keys and any values.
-   */
-  public json<T = any>(options?: TSchemaOptions): TRecord<string, TAny> {
-    return t.record(t.text(), t.any(), options);
-  }
-
-  /**
-   * Create a schema for a boolean.
-   */
-  public boolean(options?: TSchemaOptions): TBoolean {
-    return Type.Boolean({
-      ...options,
-    });
-  }
-
-  /**
-   * Create a schema for a number.
-   */
-  public number(options?: TNumberOptions): TNumber {
-    return Type.Number({
-      ...options,
-    });
-  }
-
-  /**
-   * Create a schema for an integer.
-   */
-  public integer(options?: TNumberOptions): TInteger {
-    return Type.Integer({
-      ...options,
-    });
-  }
-
-  public int32(options?: TNumberOptions): TInteger {
-    return Type.Integer({
-      minimum: -2147483648,
-      maximum: 2147483647,
-      ...options,
-    });
-  }
-
-  /**
-   * Mimic a signed 64-bit integer.
-   *
-   * This is NOT a true int64, as JavaScript cannot represent all int64 values.
-   * It is a number that is an integer and between -9007199254740991 and 9007199254740991.
-   * Use `t.bigint()` for true int64 values represented as strings.
-   */
-  public int64(options?: TNumberOptions): TNumber {
-    return Type.Number({
-      format: "int64",
-      multipleOf: 1,
-      minimum: -9007199254740991,
-      maximum: 9007199254740991,
-      ...options,
-    });
-  }
-
-  /**
-   * Make a schema optional.
-   */
-  public optional<T extends TSchema>(schema: T): TOptionalAdd<T> {
-    return Type.Optional(schema);
-  }
-
-  /**
-   * Make a schema nullable.
-   */
-  public nullable<T extends TSchema>(
-    schema: T,
-    options?: TObjectOptions,
-  ): TUnion<[TNull, T]> {
-    return Type.Union([Type.Null(), schema], options);
-  }
-
-  /**
-   * Create a schema that maps all properties of an object schema to nullable.
-   */
-  public nullify = (schema: TSchema, options?: TObjectOptions): TSchema =>
-    Type.Mapped(
-      Type.Identifier("K"),
-      Type.KeyOf(schema),
-      Type.Ref("K"),
-      Type.Union([Type.Index(schema, Type.Ref("K")), Type.Null()]),
-      options,
-    );
-
-  /**
-   * Create a schema for a string enum.
-   *
-   * By default, this creates a real PostgreSQL ENUM type in the database.
-   * Use `{ mode: "text" }` to store as a TEXT column instead.
-   *
-   * @example
-   * ```ts
-   * // PostgreSQL ENUM type (default)
-   * status: t.enum(["pending", "active", "archived"])
-   *
-   * // TEXT column
-   * status: t.enum(["pending", "active", "archived"], { mode: "text" })
-   *
-   * // Shared enum name across tables
-   * status: t.enum(["enabled", "disabled"], { name: "shared_status_enum" })
-   * ```
-   */
-  public enum<T extends string[]>(
-    values: [...T],
-    options?: TEnumOptions,
-  ): TUnsafe<T[number]> {
-    const { mode, name, ...textOptions } = options ?? {};
-
-    const schema = Type.Unsafe<T[number]>(
-      t.text({
-        enum: values,
-        pattern: values.map((v) => `^${v}$`).join("|"),
-        ...textOptions,
-      }),
-    );
-
-    if (mode === "text") {
-      Object.assign(schema, { mode: "text" });
-    } else {
-      Object.assign(schema, { enumName: name });
-    }
-
-    return schema;
-  }
-
-  // -------------------------------------------------------------------------------------------------------------------
-
-  // Codec types
-
-  /**
-   * Create a schema for a bigint represented as a string.
-   * This is a string that validates bigint format (e.g. "123456789").
-   */
-  public bigint(options?: TStringOptions) {
-    return t.string({
-      ...options,
-      format: "bigint",
-    });
-  }
-
-  /**
-   * Create a schema for a URL represented as a string.
-   */
-  public url(options?: TStringOptions) {
-    return this.string({
-      ...options,
-      format: "url",
-    });
-  }
-
-  /**
-   * Create a schema for binary data represented as a base64 string.
-   */
-  public binary(options: TStringOptions = {}) {
-    return this.string({
-      ...options,
-      format: "binary",
-    });
-  }
-
-  /**
-   * Create a schema for uuid.
-   */
-  public uuid(options?: TStringOptions): TString {
-    return this.string({
-      ...options,
-      format: "uuid",
-    });
-  }
-
-  /**
-   * Create a schema for a file-like object.
-   *
-   * File like mimics the File API in browsers, but is adapted to work in Node.js as well.
-   *
-   * Implementation of file-like objects is handled by "alepha/file" package.
-   */
-  public file(options?: { maxSize?: number }): TFile {
-    return Type.Unsafe(
-      Type.Any({
-        [OPTIONS]: options,
-        format: "binary",
-      }),
-    );
-  }
-
-  /**
-   * @experimental
-   */
-  public stream(): TStream {
-    return Type.Unsafe(
-      Type.Any({
-        format: "stream",
-        type: "string",
-      }),
-    );
-  }
-
-  // -------------------------------------------------------------------------------------------------------------------
-  // Exotic types
-
-  public email(options?: TStringOptions): TString {
-    return this.text({
-      ...options,
-      format: "email",
-      trim: true,
-      lowercase: true,
-    });
-  }
-
-  public e164(options?: TStringOptions): TString {
-    return this.text({
-      ...options,
-      description: "Phone number in E.164 format, e.g. +1234567890.",
-      pattern: "^\\+[1-9]\\d{1,14}$",
-    });
-  }
-
-  public bcp47(options?: TStringOptions): TString {
-    return this.text({
-      ...options,
-      description: "BCP 47 language tag, e.g. en, en-US, fr, fr-CA.",
-      pattern: "^[a-z]{2,3}(?:-[A-Z]{2})?$",
-    });
-  }
-
-  /**
-   * Create a schema for short text, such as names or titles.
-   * Default max length is 64 characters.
-   */
-  public shortText(options?: TStringOptions): TString {
-    return this.text({
-      size: "short",
-      ...options,
-    });
-  }
-
-  /**
-   * Create a schema for long text, such as descriptions or comments.
-   * Default max length is 1024 characters.
-   */
-  public longText(options?: TStringOptions): TString {
-    return this.text({
-      size: "long",
-      ...options,
-    });
-  }
-
-  /**
-   * Create a schema for rich text, such as HTML or Markdown.
-   * Default max length is 65535 characters.
-   */
-  public richText(options?: TStringOptions): TString {
-    return this.text({
-      size: "rich",
-      ...options,
-    });
-  }
-
-  /**
-   * Create a schema for a constant case string e.g. LIKE_THIS.
-   */
-  public constantCase = (options?: TStringOptions) =>
-    this.text({
-      pattern: "^[A-Z_-]+$",
-      ...options,
-    });
-
-  /**
-   * Create a schema for an object with a value and label.
-   */
-  public valueLabel = (options?: TObjectOptions) =>
-    this.object(
-      {
-        value: this.constantCase({
-          description: "Machine-readable value.",
-        }),
-        label: this.text({
-          description: "Human-readable label.",
-        }),
-        description: this.optional(
-          this.text({
-            description: "Description of the value.",
-            size: "long",
-          }),
-        ),
-      },
-      options,
-    );
-
-  public datetime = (options?: TStringOptions) =>
-    t.text({
-      ...options,
-      format: "date-time",
-    });
-
-  public date = (options?: TStringOptions) =>
-    t.text({
-      ...options,
-      format: "date",
-    });
-
-  public time = (options?: TStringOptions) =>
-    t.text({
-      ...options,
-      format: "time",
-    });
-
-  public duration = (options?: TStringOptions) =>
-    t.text({
-      ...options,
-      format: "duration",
-    });
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
+/**
+ * TypeProvider — now a thin compatibility shim over `z` (zod 4).
+ *
+ * typebox is gone. `t` is just `z`, and the legacy `T*` type names are
+ * re-aliased to their zod equivalents so existing call-sites keep compiling
+ * while they are migrated to `z` / `Infer`.
+ */
+import { z as zod } from "zod";
+import type { TFile, TStream } from "../helpers/FileLike.ts";
+import {
+  type Infer,
+  type NumberOptions,
+  type SchemaOptions,
+  type StringOptions,
+  type TextOptions,
+  type ZObject,
+  type ZType,
+  z,
+} from "./ZodProvider.ts";
+
+export type { TFile, TStream };
+
+/** Re-export the `z` provider (the canonical alepha zod) for relative imports. */
+export { z };
+
+/** Raw zod namespace (legacy `Type` escape hatch). */
+export const Type = zod;
+
+// ---------------------------------------------------------------------------
+// Legacy type-name aliases (typebox -> zod)
+// ---------------------------------------------------------------------------
+
+export type Static<T extends ZType> = Infer<T>;
+export type StaticDecode<T extends ZType> = Infer<T>;
+export type StaticEncode<T extends ZType> = Infer<T>;
+
+export type TSchema = ZType;
+export type TObject<T extends zod.ZodRawShape = any> = ZObject<T>;
+export type TProperties = zod.ZodRawShape;
+export type TString = zod.ZodString;
+export type TNumber = zod.ZodNumber;
+export type TInteger = zod.ZodNumber;
+export type TBoolean = zod.ZodBoolean;
+export type TArray<T extends ZType = ZType> = zod.ZodArray<T>;
+export type TUnion<_T extends ZType[] = ZType[]> = zod.ZodUnion;
+export type TRecord = zod.ZodRecord<any, any>;
+export type TTuple = ZType;
+export type TNull = zod.ZodNull;
+export type TAny = zod.ZodAny;
+export type TVoid = zod.ZodVoid;
+export type TBigInt = zod.ZodString;
+export type TUnsafe<_T = unknown> = ZType;
+export type TOptional<T extends ZType = ZType> = zod.ZodOptional<T>;
+export type TOptionalAdd<T extends ZType = ZType> = zod.ZodOptional<T>;
+export type TPick<T extends ZObject = ZObject, _K = unknown> = T;
+export type TOmit<T extends ZObject = ZObject, _K = unknown> = T;
+export type TPartial<_T extends ZObject = ZObject> = ZObject;
+export type TInterface<_T = unknown, _U = unknown> = ZObject;
+export type TKeysToIndexer<_T = unknown> = any;
+
+export type TSchemaOptions = SchemaOptions;
+export type TStringOptions = StringOptions;
+export type TNumberOptions = NumberOptions;
+export type TObjectOptions = SchemaOptions;
+export type TArrayOptions = SchemaOptions;
 export type TextLength = "short" | "regular" | "long" | "rich";
-
-export interface TEnumOptions extends TTextOptions {
-  /**
-   * Storage mode for the enum.
-   *
-   * - `"text"` — stores as a TEXT column in the database.
-   * - When omitted, creates a real PostgreSQL ENUM type.
-   */
+export type TTextOptions = TextOptions;
+export interface TEnumOptions extends TextOptions {
+  /** `"text"` = TEXT column; omitted = a real PostgreSQL ENUM type. */
   mode?: "text";
-
-  /**
-   * Custom name for the PostgreSQL ENUM type.
-   *
-   * Use this to share the same enum type across multiple tables.
-   * If not specified, the name is auto-generated from the table and column names.
-   */
+  /** Custom PG ENUM type name (shared across tables). */
   name?: string;
 }
 
-export interface TTextOptions extends TStringOptions {
-  /**
-   * Predefined size of the text.
-   *
-   * - `short` - short text, such as names or titles. Default max length is 64 characters.
-   * - `regular` - regular text, such as single-line input. Default max length is 255 characters.
-   * - `long` - long text, such as descriptions or comments. Default max length is 1024 characters.
-   * - `rich` - rich text, such as HTML or Markdown. Default max length is 65535 characters.
-   *
-   * You can override the default max length by specifying `maxLength` in the options.
-   *
-   * @default "regular"
-   */
-  size?: TextLength;
-
-  /**
-   * Trim whitespace from both ends of the string.
-   *
-   * @default true
-   */
-  trim?: boolean;
-
-  /**
-   * Convert the string to lowercase.
-   *
-   * @default false
-   */
-  lowercase?: boolean;
+/** Legacy `TypeProvider` — kept for its static config knobs. */
+export class TypeProvider {
+  static DEFAULT_STRING_MAX_LENGTH: number | undefined = 255;
+  static DEFAULT_SHORT_STRING_MAX_LENGTH: number | undefined = 64;
+  static DEFAULT_LONG_STRING_MAX_LENGTH: number | undefined = 1024;
+  static DEFAULT_RICH_STRING_MAX_LENGTH: number | undefined = 65535;
+  static DEFAULT_ARRAY_MAX_ITEMS = 1000;
+  static translateError = (error: { message?: string }, _locale?: string) =>
+    error.message ?? "";
+  static setLocale = (_locale: string) => {};
+  static isValidBigInt = (value: string | number) =>
+    typeof value === "number"
+      ? Number.isInteger(value)
+      : /^-?\d+$/.test(value.trim());
 }
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export const t: TypeProvider = new TypeProvider();

@@ -1,14 +1,14 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 /**
  * Audit severity levels for categorizing events.
  */
-export const auditSeveritySchema = t.enum(["info", "warning", "critical"], {
-  default: "info",
-  description: "Severity level of the audit event",
-});
+export const auditSeveritySchema = z
+  .enum(["info", "warning", "critical"])
+  .describe("Severity level of the audit event")
+  .default("info");
 
 export type AuditSeverity = Static<typeof auditSeveritySchema>;
 
@@ -23,8 +23,8 @@ export type AuditSeverity = Static<typeof auditSeveritySchema>;
  */
 export const audits = $entity({
   name: "audits",
-  schema: t.object({
-    id: db.primaryKey(t.bigint()),
+  schema: z.object({
+    id: db.primaryKey(z.bigint()),
     createdAt: db.createdAt(),
     organizationId: db.organization(),
 
@@ -32,14 +32,14 @@ export const audits = $entity({
      * Audit event type (e.g., "auth", "user", "payment", "system").
      * Used for categorizing and filtering audit events.
      */
-    type: t.text({
+    type: z.text({
       description: "Audit event type (e.g., auth, user, payment, system)",
     }),
 
     /**
      * Specific action performed (e.g., "login", "logout", "create", "update", "delete").
      */
-    action: t.text({
+    action: z.text({
       description: "Specific action performed (e.g., login, create, update)",
     }),
 
@@ -51,67 +51,67 @@ export const audits = $entity({
     /**
      * User ID who performed the action (null for system events).
      */
-    userId: t.optional(t.uuid()),
+    userId: z.uuid().optional(),
 
     /**
      * User realm for multi-tenant support.
      */
-    userRealm: t.optional(t.text()),
+    userRealm: z.text().optional(),
 
     /**
      * User email at the time of the event (denormalized for history).
      */
-    userEmail: t.optional(t.email()),
+    userEmail: z.email().optional(),
 
     /**
      * Resource type affected (e.g., "user", "order", "file").
      */
-    resourceType: t.optional(t.text()),
+    resourceType: z.text().optional(),
 
     /**
      * Resource ID affected.
      */
-    resourceId: t.optional(t.text()),
+    resourceId: z.text().optional(),
 
     /**
      * Human-readable description of the event.
      */
-    description: t.optional(t.text()),
+    description: z.text().optional(),
 
     /**
      * Additional metadata/context as JSON.
      */
-    metadata: t.optional(t.json()),
+    metadata: z.json().optional(),
 
     /**
      * Client IP address.
      */
-    ipAddress: t.optional(t.text()),
+    ipAddress: z.text().optional(),
 
     /**
      * Client user agent.
      */
-    userAgent: t.optional(t.text()),
+    userAgent: z.text().optional(),
 
     /**
      * Session ID if applicable.
      */
-    sessionId: t.optional(t.uuid()),
+    sessionId: z.uuid().optional(),
 
     /**
      * Request ID for correlation.
      */
-    requestId: t.optional(t.text()),
+    requestId: z.text().optional(),
 
     /**
      * Whether the action was successful.
      */
-    success: db.default(t.boolean(), true),
+    success: db.default(z.boolean(), true),
 
     /**
      * Error message if the action failed.
      */
-    errorMessage: t.optional(t.text()),
+    errorMessage: z.text().optional(),
   }),
   indexes: [
     "createdAt",

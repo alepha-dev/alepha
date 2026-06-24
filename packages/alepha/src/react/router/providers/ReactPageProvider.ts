@@ -5,10 +5,11 @@ import {
   $state,
   Alepha,
   AlephaError,
+  coerceObject,
   OPTIONS,
   PipelineHandler,
   type TSchema,
-  t,
+  z,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -35,11 +36,11 @@ import { RouterLocaleProvider } from "./RouterLocaleProvider.ts";
 export const reactPageOptions = $atom({
   name: "alepha.react.page.options",
   description: "Configuration options for the React page provider.",
-  schema: t.object({
+  schema: z.object({
     /**
      * Enable React StrictMode wrapper.
      */
-    strictMode: t.boolean({ default: true }),
+    strictMode: z.boolean().default(true),
     /**
      * RegExp pattern (as string) to detect file-like URLs (e.g. /hello.txt, /wp-login.php).
      * When a request hits the catch-all wildcard route and matches this pattern,
@@ -49,7 +50,7 @@ export const reactPageOptions = $atom({
      *
      * @default "\\.[a-zA-Z0-9]{1,10}$"
      */
-    staticFilePattern: t.string(),
+    staticFilePattern: z.string(),
   }),
   default: {
     strictMode: true,
@@ -264,15 +265,16 @@ export class ReactPageProvider {
     schema?: TSchema,
     value?: any,
   ): any => {
-    if (t.schema.isObject(schema) && typeof value === "object") {
+    if (z.schema.isObject(schema) && typeof value === "object") {
       for (const key in schema.properties) {
-        if (
-          t.schema.isObject(schema.properties[key]) &&
-          typeof value[key] === "string"
-        ) {
+        // Peel optional/nullable/default wrappers so a field declared as
+        // `z.object(...).optional()` is still recognised as an object whose
+        // JSON-encoded query value needs parsing.
+        const propSchema = z.schema.unwrap(schema.properties[key]);
+        if (z.schema.isObject(propSchema) && typeof value[key] === "string") {
           try {
             value[key] = this.alepha.codec.decode(
-              schema.properties[key],
+              propSchema,
               decodeURIComponent(value[key]),
             );
           } catch (e) {
@@ -313,7 +315,13 @@ export class ReactPageProvider {
       try {
         this.convertStringObjectToObject(route.schema?.query, state.query);
         config.query = route.schema?.query
-          ? this.alepha.codec.decode(route.schema.query, state.query)
+          ? this.alepha.codec.decode(
+              route.schema.query,
+              // Query params arrive as strings from the URL; coerce declared
+              // scalar fields (number/integer/boolean) to their schema type
+              // before strict validation, mirroring the HTTP server boundary.
+              coerceObject(route.schema.query, state.query),
+            )
           : {};
       } catch (e) {
         it.error = e instanceof Error ? e : new Error(String(e));
@@ -322,7 +330,13 @@ export class ReactPageProvider {
 
       try {
         config.params = route.schema?.params
-          ? this.alepha.codec.decode(route.schema.params, state.params)
+          ? this.alepha.codec.decode(
+              route.schema.params,
+              // URL path params arrive as strings; coerce declared scalar
+              // fields (number/integer/boolean) to their schema type before
+              // strict validation, mirroring `query` above and the HTTP server.
+              coerceObject(route.schema.params, state.params),
+            )
           : {};
       } catch (e) {
         it.error = e instanceof Error ? e : new Error(String(e));

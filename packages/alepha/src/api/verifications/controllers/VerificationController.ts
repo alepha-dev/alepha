@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
 import { requestVerificationCodeResponseSchema } from "../schemas/requestVerificationCodeResponseSchema.ts";
 import { validateVerificationCodeResponseSchema } from "../schemas/validateVerificationCodeResponseSchema.ts";
@@ -16,11 +16,11 @@ export class VerificationController {
     group: this.group,
     method: "POST",
     schema: {
-      params: t.object({
+      params: z.object({
         type: verificationTypeEnumSchema,
       }),
-      body: t.object({
-        target: t.text(),
+      body: z.object({
+        target: z.text(),
       }),
       response: requestVerificationCodeResponseSchema,
     },
@@ -37,12 +37,12 @@ export class VerificationController {
     group: this.group,
     method: "POST",
     schema: {
-      params: t.object({
+      params: z.object({
         type: verificationTypeEnumSchema,
       }),
-      body: t.object({
-        target: t.text(),
-        token: t.text({
+      body: z.object({
+        target: z.text(),
+        token: z.text({
           description:
             "The verification token (6-digit code for phone, UUID for email).",
         }),

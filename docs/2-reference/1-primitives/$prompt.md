@@ -31,9 +31,9 @@ interaction patterns.
 class Prompts {
   greeting = $prompt({
     description: "Generate a personalized greeting",
-    args: t.object({
-      name: t.text({ description: "Name of the person to greet" }),
-      style: t.optional(t.enum(["formal", "casual"])),
+    args: z.object({
+      name: z.text({ description: "Name of the person to greet" }),
+      style: z.enum(["formal", "casual"]).optional(),
     }),
     handler: async ({ args }) => [
       {
@@ -47,9 +47,9 @@ class Prompts {
 
   codeReview = $prompt({
     description: "Request a code review",
-    args: t.object({
-      code: t.text({ description: "The code to review" }),
-      language: t.text({ description: "Programming language" }),
+    args: z.object({
+      code: z.text({ description: "The code to review" }),
+      language: z.text({ description: "Programming language" }),
     }),
     handler: async ({ args }) => [
       {

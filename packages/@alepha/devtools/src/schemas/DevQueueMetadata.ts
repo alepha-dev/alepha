@@ -1,10 +1,10 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const devQueueMetadataSchema = t.object({
-  name: t.text(),
-  description: t.optional(t.text()),
-  schema: t.optional(t.any()),
-  provider: t.text(),
+export const devQueueMetadataSchema = z.object({
+  name: z.text(),
+  description: z.text().optional(),
+  schema: z.any().optional(),
+  provider: z.text(),
 });
 
 export type DevQueueMetadata = Static<typeof devQueueMetadataSchema>;

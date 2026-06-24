@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { $notification } from "alepha/api/notifications";
 
 /**
@@ -7,7 +7,7 @@ import { $notification } from "alepha/api/notifications";
 export class PlaygroundNotifications {
   public readonly welcomeEmail = $notification({
     category: "onboarding",
-    schema: t.object({ username: t.text() }),
+    schema: z.object({ username: z.text() }),
     email: {
       subject: "Welcome to the Alepha playground!",
       body: (v) => `Hello ${v.username}, welcome aboard.`,
@@ -18,7 +18,7 @@ export class PlaygroundNotifications {
     category: "security",
     critical: true,
     sensitive: true,
-    schema: t.object({ username: t.text(), link: t.text() }),
+    schema: z.object({ username: z.text(), link: z.text() }),
     email: {
       subject: "Reset your password",
       body: (v) => `${v.username}, reset here: ${v.link}`,
@@ -27,7 +27,7 @@ export class PlaygroundNotifications {
 
   public readonly marketingBlast = $notification({
     category: "marketing",
-    schema: t.object({ campaign: t.text() }),
+    schema: z.object({ campaign: z.text() }),
     email: {
       subject: "News from Alepha",
       body: (v) => `Check out the latest: ${v.campaign}`,

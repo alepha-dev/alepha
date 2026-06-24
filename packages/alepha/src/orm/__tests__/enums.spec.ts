@@ -1,74 +1,78 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $entity, $repository, DrizzleKitProvider, db } from "../core/index.ts";
 import { AlephaOrmPostgres } from "../postgres/index.ts";
 
-// Test 1: t.enum with mode: "text" (should map to TEXT column)
+// Test 1: z.enum with mode: "text" (should map to TEXT column)
 const textEnumEntity = $entity({
   name: "text_enum_test",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    status: t.enum(["pending", "active", "archived"], { mode: "text" }),
-    role: t.enum(["user", "admin", "moderator"], { mode: "text" }),
+    status: z.enum(["pending", "active", "archived"]).meta({ mode: "text" }),
+    role: z.enum(["user", "admin", "moderator"]).meta({ mode: "text" }),
   }),
 });
 
-// Test 2: t.enum without mode (should create real PG ENUM type)
+// Test 2: z.enum without mode (should create real PG ENUM type)
 const pgEnumEntity = $entity({
   name: "pg_enum_test",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    status: t.enum(["draft", "published", "deleted"]),
-    priority: t.enum(["low", "medium", "high"]),
+    status: z.enum(["draft", "published", "deleted"]),
+    priority: z.enum(["low", "medium", "high"]),
   }),
 });
 
 // Test 3: Mixed text and pg enum in the same table
 const mixedEnumEntity = $entity({
   name: "mixed_enum_test",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    textStatus: t.enum(["open", "closed"], { mode: "text" }),
-    pgStatus: t.enum(["new", "in_progress", "done"]),
+    textStatus: z.enum(["open", "closed"]).meta({ mode: "text" }),
+    pgStatus: z.enum(["new", "in_progress", "done"]),
   }),
 });
 
 // Test 4: Shared enum with custom name across two tables
 const sharedEnumEntity1 = $entity({
   name: "shared_enum_test_1",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    status: t.enum(["enabled", "disabled"], { name: "shared_status_enum" }),
+    status: z
+      .enum(["enabled", "disabled"])
+      .meta({ name: "shared_status_enum" }),
   }),
 });
 
 const sharedEnumEntity2 = $entity({
   name: "shared_enum_test_2",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    status: t.enum(["enabled", "disabled"], { name: "shared_status_enum" }),
+    status: z
+      .enum(["enabled", "disabled"])
+      .meta({ name: "shared_status_enum" }),
   }),
 });
 
 // Test 5: Conflicting enum - same name but different values (should throw error)
 const conflictEnumEntity1 = $entity({
   name: "conflict_enum_test_1",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    status: t.enum(["a", "b", "c"], { name: "conflict_status_enum" }),
+    status: z.enum(["a", "b", "c"]).meta({ name: "conflict_status_enum" }),
   }),
 });
 
 const conflictEnumEntity2 = $entity({
   name: "conflict_enum_test_2",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    status: t.enum(["a", "b", "d"], { name: "conflict_status_enum" }), // Different value!
+    status: z.enum(["a", "b", "d"]).meta({ name: "conflict_status_enum" }), // Different value!
   }),
 });
 
-describe("enums - t.enum with mode: 'text' (TEXT column)", () => {
-  it("should create TEXT columns for t.enum fields with mode: 'text'", async () => {
+describe("enums - z.enum with mode: 'text' (TEXT column)", () => {
+  it("should create TEXT columns for z.enum fields with mode: 'text'", async () => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);
 
     class App {
@@ -117,8 +121,8 @@ describe("enums - t.enum with mode: 'text' (TEXT column)", () => {
   });
 });
 
-describe("enums - t.enum (real PG ENUM type)", () => {
-  it("should create real PostgreSQL ENUM types for t.enum fields", async () => {
+describe("enums - z.enum (real PG ENUM type)", () => {
+  it("should create real PostgreSQL ENUM types for z.enum fields", async () => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);
 
     class App {
@@ -137,7 +141,7 @@ describe("enums - t.enum (real PG ENUM type)", () => {
 
     expect(sql).toContainEqual(expect.stringContaining("CREATE TABLE"));
     expect(sql).toContainEqual(expect.stringContaining("pg_enum_test"));
-    // t.enum without mode should create real ENUM types
+    // z.enum without mode should create real ENUM types
     expect(
       sql.some((s) => s.includes("CREATE TYPE") || s.includes("DO $$ BEGIN")),
     ).toBe(true);

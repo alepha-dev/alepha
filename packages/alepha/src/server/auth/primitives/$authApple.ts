@@ -1,4 +1,4 @@
-import { $context, AlephaError, t } from "alepha";
+import { $context, AlephaError, z } from "alepha";
 import type { IssuerPrimitive } from "alepha/security";
 import type { OAuth2Profile } from "../providers/ServerAuthProvider.ts";
 import {
@@ -45,19 +45,19 @@ export const $authApple = (
   const { alepha } = $context();
 
   const env = alepha.parseEnv(
-    t.object({
-      APPLE_CLIENT_ID: t.optional(
-        t.text({
+    z.object({
+      APPLE_CLIENT_ID: z
+        .text({
           description:
             "The Service ID obtained from the Apple Developer Console.",
-        }),
-      ),
-      APPLE_CLIENT_SECRET: t.optional(
-        t.text({
+        })
+        .optional(),
+      APPLE_CLIENT_SECRET: z
+        .text({
           description:
             "The signed ES256 JWT client secret generated from your Apple private key.",
-        }),
-      ),
+        })
+        .optional(),
     }),
   );
 

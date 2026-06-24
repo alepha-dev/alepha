@@ -1,4 +1,4 @@
-import { $inject, Alepha, t } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { files } from "alepha/api/files";
 import { users } from "alepha/api/users";
 import { $bucket } from "alepha/bucket";
@@ -53,14 +53,14 @@ export class CampaignController {
   createCampaign = $action({
     use: [$secure({ permissions: ["campaign:create"] })],
     schema: {
-      body: t.extend(t.pick(campaigns.insertSchema, ["title", "icon"]), {
+      body: campaigns.insertSchema.pick({ title: true, icon: true }).extend({
         /**
          * Subset of module toggles to override at creation time. Anything
          * omitted falls back to `defaultCampaignFeatures`. Lets the wizard
          * surface a "select modules" step without forcing the client to
          * resend the full feature payload.
          */
-        features: t.optional(t.partial(campaignFeaturesSchema)),
+        features: campaignFeaturesSchema.partial().optional(),
       }),
       response: campaigns.schema,
     },
@@ -125,7 +125,7 @@ export class CampaignController {
     description: "Get all campaigns for the authenticated user",
     schema: {
       query: pageQuerySchema,
-      response: t.array(campaigns.schema),
+      response: z.array(campaigns.schema),
     },
     handler: async ({ user, query }) => {
       const userCharacters = await this.characters.findMany({
@@ -157,12 +157,12 @@ export class CampaignController {
   getHomeOverview = $action({
     use: [$secure({ permissions: ["campaign:read"] })],
     schema: {
-      response: t.object({
-        campaigns: t.array(campaigns.schema),
-        totalCount: t.integer(),
-        ownedCount: t.integer(),
-        maxCampaigns: t.integer(),
-        canCreate: t.boolean(),
+      response: z.object({
+        campaigns: z.array(campaigns.schema),
+        totalCount: z.integer(),
+        ownedCount: z.integer(),
+        maxCampaigns: z.integer(),
+        canCreate: z.boolean(),
       }),
     },
     handler: async ({ user }) => {
@@ -209,10 +209,10 @@ export class CampaignController {
   getCampaignUsers = $action({
     use: [$secure({ permissions: ["campaign:read"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      response: t.array(users.schema),
+      response: z.array(users.schema),
     },
     handler: async ({ params, user }) => {
       await this.security.assertMember(params.id, user);
@@ -233,25 +233,18 @@ export class CampaignController {
   updateCampaignById = $action({
     use: [$secure({ permissions: ["campaign:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
-        title: t.optional(
-          t.string({
-            minLength: 3,
-            maxLength: 24,
-          }),
-        ),
-        icon: t.optional(t.nullable(t.uuid())),
-        features: t.optional(t.partial(campaignFeaturesSchema)),
-        chapterDuration: t.optional(t.nullable(t.string())),
-        preferredLanguage: t.optional(t.nullable(t.string({ maxLength: 8 }))),
+      body: z.object({
+        title: z.string().min(3).max(24).optional(),
+        icon: z.uuid().nullable().optional(),
+        features: campaignFeaturesSchema.partial().optional(),
+        chapterDuration: z.string().nullable().optional(),
+        preferredLanguage: z.string().max(8).nullable().optional(),
         // Blights retention window in days (Quest #90). `null` clears the
         // override → the purge cron falls back to the global 30-day default.
-        retentionDays: t.optional(
-          t.nullable(t.integer({ minimum: 1, maximum: 3_650 })),
-        ),
+        retentionDays: z.integer().min(1).max(3_650).nullable().optional(),
       }),
       response: campaigns.schema,
     },
@@ -319,18 +312,18 @@ export class CampaignController {
   getCampaignById = $action({
     use: [$secure({ permissions: ["campaign:read"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      response: t.extend(campaigns.schema, {
-        character: t.optional(characters.schema),
-        quests: t.array(questResourceSchema),
+      response: campaigns.schema.extend({
+        character: characters.schema.optional(),
+        quests: z.array(questResourceSchema),
         /**
          * Total number of characters in this campaign (including the
          * viewer). Drives the conditional sidebar reveal of the Roster
          * page — it only appears when the campaign has at least 2.
          */
-        characterCount: t.integer(),
+        characterCount: z.integer(),
       }),
     },
     handler: async ({ params, user }) => {
@@ -374,11 +367,11 @@ export class CampaignController {
       }),
     ],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      response: t.array(
-        t.extend(characters.schema, {
+      response: z.array(
+        characters.schema.extend({
           user: users.schema,
         }),
       ),
@@ -433,8 +426,8 @@ export class CampaignController {
   deleteCampaignById = $action({
     use: [$secure({ permissions: ["campaign:delete"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: okSchema,
     },
@@ -456,8 +449,8 @@ export class CampaignController {
   leaveCampaign = $action({
     use: [$secure({ permissions: ["campaign:read"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: okSchema,
     },
@@ -510,14 +503,14 @@ export class CampaignController {
   getZones = $action({
     use: [$secure({ permissions: ["campaign:read"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      response: t.array(
-        t.object({
-          name: t.string(),
-          questCount: t.integer(),
-          firstQuestAt: t.optional(t.string()),
+      response: z.array(
+        z.object({
+          name: z.string(),
+          questCount: z.integer(),
+          firstQuestAt: z.string().optional(),
         }),
       ),
     },
@@ -565,12 +558,12 @@ export class CampaignController {
   renameZone = $action({
     use: [$secure({ permissions: ["campaign:update"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
-        oldZoneName: t.string(),
-        newZoneName: t.string({ minLength: 1 }),
+      body: z.object({
+        oldZoneName: z.string(),
+        newZoneName: z.string().min(1),
       }),
       response: okSchema,
     },
@@ -610,11 +603,11 @@ export class CampaignController {
   addKanbanColumn = $action({
     use: [$secure({ permissions: ["campaign:update"] })],
     schema: {
-      params: t.object({ id: t.integer() }),
-      body: t.object({
-        name: t.string({ minLength: 1, maxLength: 24 }),
+      params: z.object({ id: z.integer() }),
+      body: z.object({
+        name: z.string().min(1).max(24),
       }),
-      response: t.array(t.string()),
+      response: z.array(z.string()),
     },
     handler: async ({ params, body, user }) => {
       const { campaign } = await this.security.assertOwner(params.id, user);
@@ -640,12 +633,12 @@ export class CampaignController {
   renameKanbanColumn = $action({
     use: [$secure({ permissions: ["campaign:update"] })],
     schema: {
-      params: t.object({ id: t.integer() }),
-      body: t.object({
-        oldName: t.string(),
-        newName: t.string({ minLength: 1, maxLength: 24 }),
+      params: z.object({ id: z.integer() }),
+      body: z.object({
+        oldName: z.string(),
+        newName: z.string().min(1).max(24),
       }),
-      response: t.array(t.string()),
+      response: z.array(z.string()),
     },
     handler: async ({ params, body, user }) => {
       const { campaign } = await this.security.assertOwner(params.id, user);
@@ -679,9 +672,9 @@ export class CampaignController {
   deleteKanbanColumn = $action({
     use: [$secure({ permissions: ["campaign:update"] })],
     schema: {
-      params: t.object({ id: t.integer() }),
-      body: t.object({ name: t.string() }),
-      response: t.array(t.string()),
+      params: z.object({ id: z.integer() }),
+      body: z.object({ name: z.string() }),
+      response: z.array(z.string()),
     },
     handler: async ({ params, body, user }) => {
       const { campaign } = await this.security.assertOwner(params.id, user);
@@ -713,11 +706,11 @@ export class CampaignController {
   reorderKanbanColumns = $action({
     use: [$secure({ permissions: ["campaign:update"] })],
     schema: {
-      params: t.object({ id: t.integer() }),
-      body: t.object({
-        columns: t.array(t.string(), { minItems: 1, maxItems: 5 }),
+      params: z.object({ id: z.integer() }),
+      body: z.object({
+        columns: z.array(z.string()).min(1).max(5),
       }),
-      response: t.array(t.string()),
+      response: z.array(z.string()),
     },
     handler: async ({ params, body, user }) => {
       const { campaign } = await this.security.assertOwner(params.id, user);

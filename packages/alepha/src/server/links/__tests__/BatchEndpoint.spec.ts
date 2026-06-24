@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 import { ServerLinksProvider } from "../index.ts";
@@ -9,13 +9,13 @@ describe("POST /api/_batch", () => {
   }) => {
     class App {
       ping = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: () => "pong",
       });
       echo = $action({
         schema: {
-          body: t.object({ message: t.text() }),
-          response: t.text(),
+          body: z.object({ message: z.text() }),
+          response: z.text(),
         },
         handler: ({ body }) => body.message,
       });
@@ -56,7 +56,7 @@ describe("POST /api/_batch", () => {
   }) => {
     class App {
       ping = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: () => "pong",
       });
     }
@@ -91,14 +91,14 @@ describe("POST /api/_batch", () => {
   }) => {
     class App {
       slow = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => {
           await new Promise((resolve) => setTimeout(resolve, 50));
           return "slow";
         },
       });
       fast = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: () => "fast",
       });
     }
@@ -159,8 +159,8 @@ describe("POST /api/_batch", () => {
       getUser = $action({
         path: "/users/:id",
         schema: {
-          params: t.object({ id: t.text() }),
-          response: t.object({ id: t.text(), name: t.text() }),
+          params: z.object({ id: z.text() }),
+          response: z.object({ id: z.text(), name: z.text() }),
         },
         handler: ({ params }) => ({ id: params.id, name: `User ${params.id}` }),
       });

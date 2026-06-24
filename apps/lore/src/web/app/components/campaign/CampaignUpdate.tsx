@@ -1,5 +1,5 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useAlepha, useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -51,14 +51,14 @@ const CampaignUpdate = (props: CampaignUpdateProps) => {
       title: props.campaign.title,
       preferredLanguage: props.campaign.preferredLanguage ?? NO_LANG,
     },
-    schema: t.object({
-      icon: t.optional(t.nullable(t.uuid())),
-      title: t.string({
-        title: tr("campaign.create.name"),
-        minLength: 3,
-        maxLength: 24,
-      }),
-      preferredLanguage: t.optional(t.string()),
+    schema: z.object({
+      icon: z.uuid().nullable().optional(),
+      title: z
+        .string()
+        .min(3)
+        .max(24)
+        .meta({ title: tr("campaign.create.name") }),
+      preferredLanguage: z.string().optional(),
     }),
     handler: async (values) => {
       const lang = values.preferredLanguage;

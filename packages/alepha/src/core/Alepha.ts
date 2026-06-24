@@ -1,4 +1,3 @@
-import type { Record, Static, TObject } from "typebox";
 import { KIND } from "./constants/KIND.ts";
 import { MODULE } from "./constants/MODULE.ts";
 import { OPTIONS } from "./constants/OPTIONS.ts";
@@ -6,6 +5,7 @@ import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
+import { coerceObject } from "./helpers/coerceStrings.ts";
 import { Primitive } from "./helpers/primitive.ts";
 import { __alephaRef } from "./helpers/ref.ts";
 import type { Async } from "./interfaces/Async.ts";
@@ -24,7 +24,12 @@ import { AlsProvider, type StateScope } from "./providers/AlsProvider.ts";
 import { CodecManager } from "./providers/CodecManager.ts";
 import { EventManager } from "./providers/EventManager.ts";
 import { StateManager } from "./providers/StateManager.ts";
-import type { TSchema } from "./providers/TypeProvider.ts";
+import {
+  type Static,
+  type TObject,
+  type TSchema,
+  z,
+} from "./providers/TypeProvider.ts";
 
 /**
  * Core container of the Alepha framework.
@@ -86,8 +91,8 @@ import type { TSchema } from "./providers/TypeProvider.ts";
  * // But you should use $env() primitive to get typed values from the environment.
  * class App {
  *   env = $env(
- *     t.object({
- *  	   MY_VAR: t.text(),
+ *     z.object({
+ *  	   MY_VAR: z.text(),
  *     })
  *   );
  * }
@@ -1011,7 +1016,12 @@ export class Alepha {
       return this.cacheEnv.get(schema) as Static<T>;
     }
 
-    const config = this.codec.validate(schema, this.env) as Record<string, any>;
+    // Env vars are strings on the wire — coerce declared fields to their
+    // schema types (boolean/number) before strict validation.
+    const config = this.codec.validate(
+      schema,
+      coerceObject(schema, this.env),
+    ) as Record<string, any>;
 
     // Sort keys longest-first to prevent substring collisions
     // (e.g. $PORT must not match inside $PORT_NAME).
@@ -1127,13 +1137,25 @@ export class Alepha {
     const env: Record<string, AlephaDumpEnvVariable> = {};
     for (const [schema] of this.cacheEnv.entries()) {
       const ref = schema as any;
-      for (const [key, value] of Object.entries(ref.properties)) {
+      // zod object: `.properties` aliases `.shape`; `required` field names come
+      // from `z.schema.requiredKeys` (zod has no `.required` array — that name
+      // is the `.required()` method). Metadata (description/enum/default) lives
+      // on the unwrapped inner schema, under `.meta()`.
+      const shape = (ref.properties ?? {}) as Record<string, TSchema>;
+      const required = new Set(z.schema.requiredKeys(ref));
+      for (const [key, value] of Object.entries(shape)) {
         const prop = value as any;
+        const inner = z.schema.unwrap(prop) as any;
+        const enumValues = z.schema.isEnum(inner)
+          ? z.schema.enumValues(inner)
+          : undefined;
         env[key] = {
-          description: prop.description,
-          default: prop.default,
-          required: ref.required?.includes(key) ?? undefined,
-          enum: prop.enum ? ([...prop.enum] as Array<string>) : undefined,
+          description: inner?.description ?? prop?.description,
+          default: z.schema.getDefault(prop) as string | undefined,
+          required: required.has(key) ? true : undefined,
+          enum: enumValues?.length
+            ? ([...enumValues] as Array<string>)
+            : undefined,
         };
       }
     }
@@ -1347,8 +1369,8 @@ export interface State {
    *   db = $inject(DatabaseProvider);
    *   alepha = $inject(Alepha);
    *   env = $env(
-   *     t.object({
-   *       MIGRATE: t.optional(t.boolean()),
+   *     z.object({
+   *       MIGRATE: z.boolean().optional(),
    *     }),
    *   );
    *

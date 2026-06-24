@@ -1,35 +1,35 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const planDefinitionSchema = t.object({
+export const planDefinitionSchema = z.object({
   /**
    * Unique plan identifier (e.g., "free", "starter", "pro", "enterprise").
    */
-  id: t.string({ minLength: 1, maxLength: 50 }),
+  id: z.string().min(1).max(50),
 
   /**
    * Display name (e.g., "Pro Plan").
    */
-  name: t.string(),
+  name: z.string(),
 
   /**
    * Optional description.
    */
-  description: t.optional(t.string()),
+  description: z.string().optional(),
 
   /**
    * Whether this plan is available for new subscriptions.
    */
-  available: t.boolean({ default: true }),
+  available: z.boolean().default(true),
 
   /**
    * Pricing per billing interval.
    * Multiple entries for monthly/yearly.
    */
-  pricing: t.array(
-    t.object({
-      interval: t.enum(["monthly", "yearly"]),
-      amount: t.integer({ minimum: 0 }),
-      currency: t.string({ minLength: 3, maxLength: 3 }),
+  pricing: z.array(
+    z.object({
+      interval: z.enum(["monthly", "yearly"]),
+      amount: z.integer().min(0),
+      currency: z.string().min(3).max(3),
     }),
   ),
 
@@ -37,35 +37,35 @@ export const planDefinitionSchema = t.object({
    * Trial configuration for this plan.
    * Overrides global settings.trialDays if set.
    */
-  trial: t.optional(
-    t.object({
-      days: t.integer({ minimum: 0, maximum: 365 }),
-      requirePaymentMethod: t.boolean({ default: false }),
-    }),
-  ),
+  trial: z
+    .object({
+      days: z.integer().min(0).max(365),
+      requirePaymentMethod: z.boolean().default(false),
+    })
+    .optional(),
 
   /**
    * Feature entitlements. Boolean flags for feature access.
    * Checked via SubscriptionService.can("feature-name").
    */
-  features: t.array(t.string()),
+  features: z.array(z.string()),
 
   /**
    * Usage limits. Numeric caps on resources.
    * Checked via SubscriptionService.limit("resource-name").
    * -1 = unlimited.
    */
-  limits: t.record(t.text(), t.integer()),
+  limits: z.record(z.text(), z.integer()),
 
   /**
    * Sort order for display (lower = first).
    */
-  order: t.integer({ default: 0 }),
+  order: z.integer().default(0),
 
   /**
    * Metadata for app-specific plan data.
    */
-  metadata: t.optional(t.record(t.text(), t.any())),
+  metadata: z.record(z.text(), z.any()).optional(),
 });
 
 export type PlanDefinition = Static<typeof planDefinitionSchema>;

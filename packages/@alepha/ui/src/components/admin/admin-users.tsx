@@ -15,7 +15,7 @@ import {
 } from "@alepha/ui/components/ui/popover";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
@@ -57,13 +57,13 @@ export interface AdminUsersProps {
 // across renders — AlephaTable's internal `useForm` only captures it
 // once and a fresh reference per render would harmlessly re-anchor the
 // form initialization but is wasteful.
-const filtersSchema = t.object({
-  search: t.optional(t.string()),
+const filtersSchema = z.object({
+  search: z.string().optional(),
   // "" = All status, "verified" = Active + emailVerified, "active" =
   // enabled, "disabled" = !enabled. Stored as a free-form string (not
   // enum) so unknown values from old persisted state simply fall back
   // to "All status" instead of throwing on schema validation.
-  status: t.optional(t.string()),
+  status: z.string().optional(),
 });
 type AdminUserFilters = Static<typeof filtersSchema>;
 
@@ -670,3 +670,5 @@ function StatusFilter({
     />
   );
 }
+
+export default AdminUsers;

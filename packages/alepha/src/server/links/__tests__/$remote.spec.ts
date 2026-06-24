@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 import {
@@ -16,8 +16,8 @@ describe("$remote", () => {
     class App {
       ping = $action({
         schema: {
-          response: t.object({
-            pong: t.boolean(),
+          response: z.object({
+            pong: z.boolean(),
           }),
         },
         handler: () => {

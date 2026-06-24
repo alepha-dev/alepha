@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
-import type { TObject, TSchema } from "alepha";
+import { type TObject, type TSchema, z } from "alepha";
 import { useAlepha } from "alepha/react";
 import {
   type BaseInputField,
@@ -189,7 +189,7 @@ const buildFieldInput = (
 ): BaseInputField => ({
   schema: itemSchema.properties[fieldName],
   path: `${parent.path}/${index}/${fieldName}`,
-  required: itemSchema.required?.includes(fieldName) ?? false,
+  required: z.schema.requiredKeys(itemSchema).includes(fieldName),
   form: parent.form,
   initialValue: itemValue?.[fieldName],
   props: {
@@ -248,8 +248,11 @@ export function ControlArray(props: ControlArrayProps) {
     let value: unknown;
     if (objectItemSchema) {
       value = {};
-      for (const [k, p] of Object.entries(objectItemSchema.properties)) {
-        if ("default" in p) (value as Record<string, unknown>)[k] = p.default;
+      for (const [k, p] of Object.entries(
+        objectItemSchema.properties as Record<string, TSchema>,
+      )) {
+        const def = z.schema.getDefault(p);
+        if (def !== undefined) (value as Record<string, unknown>)[k] = def;
       }
     } else {
       value = "";

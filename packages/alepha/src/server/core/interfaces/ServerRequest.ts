@@ -7,7 +7,7 @@ import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import type {
   Async,
   PipelineHandler,
-  Static,
+  SchemaOutput,
   StreamLike,
   TArray,
   TFile,
@@ -43,19 +43,13 @@ export interface RequestConfigSchema {
 export interface ServerRequestConfig<
   TConfig extends RequestConfigSchema = RequestConfigSchema,
 > {
-  body: TConfig["body"] extends TRequestBody ? Static<TConfig["body"]> : any;
+  body: SchemaOutput<TConfig["body"], any>;
 
-  headers: TConfig["headers"] extends TObject
-    ? Static<TConfig["headers"]>
-    : Record<string, string>;
+  headers: SchemaOutput<TConfig["headers"], Record<string, string>>;
 
-  params: TConfig["params"] extends TObject
-    ? Static<TConfig["params"]>
-    : Record<string, string>;
+  params: SchemaOutput<TConfig["params"], Record<string, string>>;
 
-  query: TConfig["query"] extends TObject
-    ? Static<TConfig["query"]>
-    : Record<string, any>;
+  query: SchemaOutput<TConfig["query"], Record<string, any>>;
 }
 
 export type ServerRequestConfigEntry<
@@ -212,9 +206,7 @@ export type ServerRouteInput<
 
 export type ServerResponseBody<
   TConfig extends RequestConfigSchema = RequestConfigSchema,
-> = TConfig["response"] extends TResponseBody
-  ? Static<TConfig["response"]>
-  : ResponseBodyType;
+> = SchemaOutput<TConfig["response"], ResponseBodyType>;
 
 export type ResponseKind = "json" | "text" | "void" | "file" | "any";
 

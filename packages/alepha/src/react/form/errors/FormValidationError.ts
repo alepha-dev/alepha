@@ -10,8 +10,6 @@ export class FormValidationError extends TypeBoxError {
     super({
       message: options.message,
       instancePath: options.path,
-      schemaPath: "",
-      keyword: "not",
       params: {},
     });
   }

@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { invitationQuerySchema } from "../schemas/invitationQuerySchema.ts";
@@ -20,7 +20,7 @@ export class AdminInvitationController {
     description: "Find invitations with pagination and filtering",
     schema: {
       query: invitationQuerySchema,
-      response: t.page(invitationResourceSchema),
+      response: z.page(invitationResourceSchema),
     },
     handler: ({ query }) => this.invitationService.findInvitations(query),
   });
@@ -34,8 +34,8 @@ export class AdminInvitationController {
     use: [$secure({ permissions: ["admin:invitation:read"] })],
     description: "Get an invitation by ID",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
       response: invitationResourceSchema,
     },
@@ -52,8 +52,8 @@ export class AdminInvitationController {
     use: [$secure({ permissions: ["admin:invitation:delete"] })],
     description: "Revoke a pending invitation",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
       response: okSchema,
     },
@@ -73,8 +73,8 @@ export class AdminInvitationController {
     use: [$secure({ permissions: ["admin:invitation:delete"] })],
     description: "Delete an invitation",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
       response: okSchema,
     },

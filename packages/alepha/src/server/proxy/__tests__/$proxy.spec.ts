@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { $proxy } from "../index.ts";
@@ -8,17 +8,17 @@ describe("$proxy", () => {
     class App {
       hello = $action({
         schema: {
-          headers: t.object({
-            prefix: t.optional(t.text()),
+          headers: z.object({
+            prefix: z.text().optional(),
           }),
-          query: t.object({
-            transform: t.optional(t.enum(["uppercase"])),
+          query: z.object({
+            transform: z.enum(["uppercase"]).optional(),
           }),
-          body: t.object({
-            name: t.text(),
+          body: z.object({
+            name: z.text(),
           }),
-          response: t.object({
-            message: t.text(),
+          response: z.object({
+            message: z.text(),
           }),
         },
         handler: ({ body, query, headers, reply }) => {

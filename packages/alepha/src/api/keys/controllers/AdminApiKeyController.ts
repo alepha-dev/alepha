@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { adminApiKeyQuerySchema } from "../schemas/adminApiKeyQuerySchema.ts";
@@ -24,7 +24,7 @@ export class AdminApiKeyController {
     description: "Find API keys with pagination and filtering",
     schema: {
       query: adminApiKeyQuerySchema,
-      response: t.page(adminApiKeyResourceSchema),
+      response: z.page(adminApiKeyResourceSchema),
     },
     handler: ({ query }) => {
       const { userId, includeRevoked, ...pagination } = query;
@@ -45,8 +45,8 @@ export class AdminApiKeyController {
     use: [$secure({ permissions: ["admin:api-key:read"] })],
     description: "Get an API key by ID",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
       response: adminApiKeyResourceSchema,
     },
@@ -63,8 +63,8 @@ export class AdminApiKeyController {
     use: [$secure({ permissions: ["admin:api-key:delete"] })],
     description: "Revoke an API key",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
       response: okSchema,
     },
@@ -84,11 +84,11 @@ export class AdminApiKeyController {
     use: [$secure({ permissions: ["admin:api-key:delete"] })],
     description: "Revoke many API keys",
     schema: {
-      body: t.object({
-        ids: t.array(t.uuid(), { minItems: 1, maxItems: 1000 }),
+      body: z.object({
+        ids: z.array(z.uuid()).min(1).max(1000),
       }),
-      response: t.object({
-        revoked: t.array(t.uuid()),
+      response: z.object({
+        revoked: z.array(z.uuid()),
       }),
     },
     handler: async ({ body }) => {

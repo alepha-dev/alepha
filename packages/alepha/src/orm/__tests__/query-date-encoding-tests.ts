@@ -1,4 +1,4 @@
-import { type Alepha, t } from "alepha";
+import { type Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { expect } from "vitest";
 import { $entity, $repository, db } from "../core/index.ts";
@@ -10,11 +10,11 @@ import { $entity, $repository, db } from "../core/index.ts";
 export const testDateFiltersWithDayjs = async (alepha: Alepha) => {
   const Entity = $entity({
     name: "events",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      name: t.text(),
+      name: z.text(),
       eventDate: db.createdAt(),
-      scheduledFor: t.optional(t.datetime()),
+      scheduledFor: z.datetime().optional(),
     }),
   });
 
@@ -118,10 +118,10 @@ export const testDateFiltersWithDayjs = async (alepha: Alepha) => {
 export const testMixedDateFormats = async (alepha: Alepha) => {
   const Entity = $entity({
     name: "tasks",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      title: t.text(),
-      dueDate: t.optional(t.datetime()),
+      title: z.text(),
+      dueDate: z.datetime().optional(),
     }),
   });
 
@@ -165,11 +165,11 @@ export const testMixedDateFormats = async (alepha: Alepha) => {
 export const testDateComparisonsInComplexQueries = async (alepha: Alepha) => {
   const Entity = $entity({
     name: "appointments",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      patientName: t.text(),
-      appointmentDate: t.datetime(),
-      status: t.text(),
+      patientName: z.text(),
+      appointmentDate: z.datetime(),
+      status: z.text(),
     }),
   });
 
@@ -238,10 +238,10 @@ export const testDateComparisonsInComplexQueries = async (alepha: Alepha) => {
 export const testNullDateValues = async (alepha: Alepha) => {
   const Entity = $entity({
     name: "projects",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      name: t.text(),
-      completedAt: t.optional(t.datetime()),
+      name: z.text(),
+      completedAt: z.datetime().optional(),
     }),
   });
 
@@ -283,10 +283,10 @@ export const testNullDateValues = async (alepha: Alepha) => {
 export const testDateEncodingWithNotInArray = async (alepha: Alepha) => {
   const Entity = $entity({
     name: "events",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      name: t.text(),
-      date: t.datetime(),
+      name: z.text(),
+      date: z.datetime(),
     }),
   });
 

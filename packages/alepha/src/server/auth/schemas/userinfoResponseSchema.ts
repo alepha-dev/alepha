@@ -1,9 +1,9 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { userAccountInfoSchema } from "alepha/security";
 import { apiRegistryResponseSchema } from "alepha/server/links";
 
-export const userinfoResponseSchema = t.object({
-  user: t.optional(userAccountInfoSchema),
+export const userinfoResponseSchema = z.object({
+  user: userAccountInfoSchema.optional(),
   api: apiRegistryResponseSchema,
 });
 

@@ -1,10 +1,10 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
 /**
  * Parameter names list response schema.
  */
-export const parameterNamesResponseSchema = t.object({
-  names: t.array(t.text()),
+export const parameterNamesResponseSchema = z.object({
+  names: z.array(z.text()),
 });
 
 export type ParameterNamesResponse = Static<

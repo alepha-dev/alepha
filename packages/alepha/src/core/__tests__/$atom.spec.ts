@@ -2,13 +2,13 @@ import { Alepha, type State } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $atom } from "../primitives/$atom.ts";
 import { $state } from "../primitives/$state.ts";
-import { t } from "../providers/TypeProvider.ts";
+import { z } from "../providers/TypeProvider.ts";
 
 describe("$atom", () => {
   const count = $atom({
     name: "count",
-    schema: t.object({
-      value: t.number(),
+    schema: z.object({
+      value: z.number(),
     }),
     default: {
       value: 0,

@@ -158,3 +158,5 @@ export function AdminKeys() {
     </AdminPage>
   );
 }
+
+export default AdminKeys;

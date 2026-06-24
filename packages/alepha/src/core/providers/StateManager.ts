@@ -1,4 +1,3 @@
-import type { TObject } from "typebox";
 import type { State as AlephaState } from "../Alepha.ts";
 import {
   Atom,
@@ -9,7 +8,7 @@ import { $inject } from "../primitives/$inject.ts";
 import { AlsProvider, type StateScope } from "./AlsProvider.ts";
 import { EventManager } from "./EventManager.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
-import type { Static } from "./TypeProvider.ts";
+import type { Static, TObject } from "./TypeProvider.ts";
 
 export interface AtomWithValue {
   atom: Atom;

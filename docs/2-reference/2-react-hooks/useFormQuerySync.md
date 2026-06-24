@@ -30,6 +30,6 @@ navigable via back/forward.
 
 ## Examples
 
-const form = useForm({ schema: t.object({ status: t.string(), q: t.string() }) });
+const form = useForm({ schema: z.object({ status: z.string(), q: z.string() }) });
 useFormQuerySync(form, { keys: ["status", "q"] });
 

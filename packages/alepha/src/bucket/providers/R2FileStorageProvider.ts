@@ -6,7 +6,7 @@ import {
   Alepha,
   AlephaError,
   type FileLike,
-  t,
+  z,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
@@ -66,13 +66,11 @@ export class R2FileStorageProvider implements FileStorageProvider {
   protected readonly log = $logger();
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly env = $env(
-    t.object({
+    z.object({
       /**
        * The actual R2 bucket name in Cloudflare.
        */
-      R2_BUCKET_NAME: t.string({
-        description: "R2 bucket name in Cloudflare",
-      }),
+      R2_BUCKET_NAME: z.string().describe("R2 bucket name in Cloudflare"),
     }),
   );
 

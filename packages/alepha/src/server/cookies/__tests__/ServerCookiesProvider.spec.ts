@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, expect, test } from "vitest";
 import { $cookie, AlephaServerCookies } from "../index.ts";
@@ -12,27 +12,27 @@ class CookieTestApp {
   // 1. Basic Cookie
   session = $cookie({
     name: "session",
-    schema: t.object({ userId: t.number(), role: t.text() }),
+    schema: z.object({ userId: z.number(), role: z.text() }),
   });
 
   // 2. Signed Cookie
   signed = $cookie({
     name: "signed_session",
-    schema: t.text(),
+    schema: z.text(),
     sign: true,
   });
 
   // 3. Encrypted Cookie
   encrypted = $cookie({
     name: "encrypted_secret",
-    schema: t.object({ apiKey: t.text() }),
+    schema: z.object({ apiKey: z.text() }),
     encrypt: true,
   });
 
   // 4. Compressed, Signed, and Encrypted Cookie with TTL
   secure_all = $cookie({
     name: "ultra_secure",
-    schema: t.object({ data: t.text() }),
+    schema: z.object({ data: z.text() }),
     compress: true,
     sign: true,
     encrypt: true,
@@ -42,11 +42,11 @@ class CookieTestApp {
   // An action to test the cookie functionality in a request cycle
   cookie_test = $action({
     schema: {
-      response: t.object({
-        incomingSession: t.optional(this.session.options.schema),
-        reqCookies: t.object({
-          req: t.record(t.text(), t.text()),
-          res: t.record(t.text(), t.any()),
+      response: z.object({
+        incomingSession: this.session.options.schema.optional(),
+        reqCookies: z.object({
+          req: z.record(z.text(), z.text()),
+          res: z.record(z.text(), z.any()),
         }),
       }),
     },
@@ -198,7 +198,7 @@ describe("ServerCookiesProvider", () => {
     class AttrApp {
       advanced = $cookie({
         name: "advanced",
-        schema: t.text(),
+        schema: z.text(),
         path: "/admin",
         ttl: [30, "minutes"],
         httpOnly: true,
@@ -236,7 +236,7 @@ describe("ServerCookiesProvider", () => {
     class TokenApp {
       tokens = $cookie({
         name: "tokens",
-        schema: t.object({ value: t.text() }),
+        schema: z.object({ value: z.text() }),
       });
       set = $action({
         handler: () => {
@@ -245,7 +245,7 @@ describe("ServerCookiesProvider", () => {
       });
       read = $action({
         schema: {
-          response: t.object({ value: t.optional(t.text()) }),
+          response: z.object({ value: z.text().optional() }),
         },
         handler: ({ cookies }) => {
           return { value: this.tokens.get({ cookies })?.value };
@@ -306,7 +306,7 @@ describe("ServerCookiesProvider", () => {
   // 	class AppWithMissingSecret {
   // 		badCookie = $cookie({
   // 			name: "bad",
-  // 			schema: t.text(),
+  // 			schema: z.text(),
   // 			sign: true,
   // 		});
   // 	}

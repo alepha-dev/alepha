@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 /**
@@ -12,8 +12,8 @@ import { $entity, db } from "alepha/orm";
  */
 export const parameters = $entity({
   name: "parameters",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
 
@@ -32,60 +32,60 @@ export const parameters = $entity({
      * Configuration name using dot notation for tree hierarchy.
      * Examples: "app.features", "app.pricing.tiers", "system.limits"
      */
-    name: t.text(),
+    name: z.text(),
 
     /**
      * The configuration content as JSON.
      */
-    content: t.json(),
+    content: z.json(),
 
     /**
      * Schema version hash for detecting schema changes.
      * Used for auto-migration when schema evolves.
      */
-    schemaHash: t.text(),
+    schemaHash: z.text(),
 
     /**
      * When this version should become active.
      * Default is immediate (now).
      */
-    activationDate: t.datetime(),
+    activationDate: z.datetime(),
 
     /**
      * Version number for this configuration.
      * Auto-incremented per config name.
      */
-    version: t.integer(),
+    version: z.integer(),
 
     /**
      * Optional description of changes in this version.
      */
-    changeDescription: t.optional(t.text()),
+    changeDescription: z.text().optional(),
 
     /**
      * Optional tags for filtering/categorization.
      */
-    tags: t.optional(t.array(t.text())),
+    tags: z.array(z.text()).optional(),
 
     /**
      * Creator user ID (if available).
      */
-    creatorId: t.optional(t.uuid()),
+    creatorId: z.uuid().optional(),
 
     /**
      * Creator display name for audit trail.
      */
-    creatorName: t.optional(t.text()),
+    creatorName: z.text().optional(),
 
     /**
      * Previous content before this change (for rollback reference).
      */
-    previousContent: t.optional(t.json()),
+    previousContent: z.json().optional(),
 
     /**
      * Migration log if schema changed.
      */
-    migrationLog: t.optional(t.text()),
+    migrationLog: z.text().optional(),
   }),
   indexes: [
     { columns: ["organizationId", "name", "activationDate"] },

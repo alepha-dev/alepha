@@ -60,9 +60,9 @@ const createTestUser = async (
   ctx: TestContext,
 ): Promise<{ id: string; roles: string[] }> => {
   const fake = ctx.fakeProvider.generate(
-    (await import("alepha")).t.object({
-      username: (await import("alepha")).t.string(),
-      email: (await import("alepha")).t.email(),
+    (await import("alepha")).z.object({
+      username: (await import("alepha")).z.string(),
+      email: (await import("alepha")).z.email(),
     }),
   );
   const response = await ctx.adminUserController.createUser.fetch(

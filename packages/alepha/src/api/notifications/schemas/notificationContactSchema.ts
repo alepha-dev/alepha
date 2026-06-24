@@ -1,11 +1,11 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const notificationContactSchema = t.object({
-  email: t.optional(t.email()),
-  phoneNumber: t.optional(t.e164()),
-  firstName: t.optional(t.shortText()),
-  lastName: t.optional(t.text({ size: "short" })),
-  language: t.optional(t.bcp47()),
+export const notificationContactSchema = z.object({
+  email: z.email().optional(),
+  phoneNumber: z.e164().optional(),
+  firstName: z.shortText().optional(),
+  lastName: z.text({ size: "short" }).optional(),
+  language: z.bcp47().optional(),
 });
 
 export type NotificationContact = Static<typeof notificationContactSchema>;

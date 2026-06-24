@@ -9,7 +9,7 @@ import {
   KIND,
   Primitive,
   type Static,
-  t,
+  z,
 } from "alepha";
 import {
   type DateTime,
@@ -73,12 +73,12 @@ export type SchedulerPrimitiveOptions = {
  */
 export const schedulerOptions = $atom({
   name: "alepha.scheduler.options",
-  schema: t.object({
-    prefix: t.optional(
-      t.text({
+  schema: z.object({
+    prefix: z
+      .text({
         description: "Prefix for scheduler lock keys.",
-      }),
-    ),
+      })
+      .optional(),
   }),
   default: {},
 });

@@ -1,37 +1,37 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 export const jobConfig = $atom({
   name: "alepha.jobs",
   description: "Configuration for the $job primitive.",
-  schema: t.object({
-    sweepCron: t.text({
+  schema: z.object({
+    sweepCron: z.text({
       description:
         "Cron expression for the sweep tick. Must be minute-granular at minimum (cron resolution). On Cloudflare Workers this expression is emitted into wrangler.jsonc by the build.",
     }),
-    trimCron: t.text({
+    trimCron: z.text({
       description:
         "Cron expression for the ring-buffer trim tick (per-job keepLastSuccess/keepLastError enforcement). Decoupled from `sweepCron` because trim is bounded by job execution rate, not retry latency — running it every sweep is wasted work for most apps.",
     }),
-    staleThreshold: t.integer({
-      description: "Pending age (ms) before the sweep re-dispatches it.",
-    }),
-    runTimeout: t.integer({
-      description:
+    staleThreshold: z
+      .integer()
+      .describe("Pending age (ms) before the sweep re-dispatches it."),
+    runTimeout: z
+      .integer()
+      .describe(
         "Running age (ms) before assumed crash (fallback when no per-job timeout).",
-    }),
-    keepLastSuccess: t.integer({
-      description:
+      ),
+    keepLastSuccess: z
+      .integer()
+      .describe(
         "Max successful rows to keep per job. Set 0 to disable and delete on success.",
-    }),
-    keepLastError: t.integer({
-      description: "Max error rows to keep per job.",
-    }),
-    logMaxEntries: t.integer({
-      description: "Max log entries captured per execution.",
-    }),
-    drainTimeout: t.integer({
-      description: "Max time (ms) to wait for in-flight jobs during shutdown.",
-    }),
+      ),
+    keepLastError: z.integer().describe("Max error rows to keep per job."),
+    logMaxEntries: z
+      .integer()
+      .describe("Max log entries captured per execution."),
+    drainTimeout: z
+      .integer()
+      .describe("Max time (ms) to wait for in-flight jobs during shutdown."),
   }),
   default: {
     sweepCron: "*/15 * * * *",

@@ -2,7 +2,7 @@ import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Input } from "@alepha/ui/components/ui/input";
-import { jsonSchemaToTypeBox, t } from "alepha";
+import { jsonSchemaToZod, z } from "alepha";
 import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useRouter, useRouterState } from "alepha/react/router";
@@ -11,13 +11,13 @@ import { Database, Plus, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TreeView, type TreeViewNode } from "../shared/TreeView.tsx";
 
-const EMPTY_SCHEMA = t.object({});
+const EMPTY_SCHEMA = z.object({});
 
 const toTypeBoxSchema = (jsonSchema: any): any => {
   if (!jsonSchema) return null;
   try {
-    const converted = jsonSchemaToTypeBox(jsonSchema);
-    if (converted?.properties) return converted;
+    const converted = jsonSchemaToZod(jsonSchema);
+    if (converted && z.schema.isObject(converted)) return converted;
   } catch {
     // ignore
   }

@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $route, type ServerReply } from "alepha/server";
 import { MemoryPaymentProvider } from "../providers/MemoryPaymentProvider.ts";
 import { PaymentProvider } from "../providers/PaymentProvider.ts";
@@ -152,8 +152,8 @@ export class MockCheckoutController {
     method: "GET",
     path: `${this.url}/:id`,
     schema: {
-      params: t.object({ id: t.uuid() }),
-      query: t.object({ returnUrl: t.optional(t.text({ size: "rich" })) }),
+      params: z.object({ id: z.uuid() }),
+      query: z.object({ returnUrl: z.text({ size: "rich" }).optional() }),
     },
     handler: async ({ params, query, reply }) => {
       if (!this.isMemoryProvider()) return this.forbidden(reply);
@@ -171,8 +171,8 @@ export class MockCheckoutController {
     method: "POST",
     path: `${this.url}/:id/confirm`,
     schema: {
-      params: t.object({ id: t.uuid() }),
-      body: t.object({ returnUrl: t.optional(t.text({ size: "rich" })) }),
+      params: z.object({ id: z.uuid() }),
+      body: z.object({ returnUrl: z.text({ size: "rich" }).optional() }),
     },
     handler: async ({ params, body, reply }) => {
       if (!this.isMemoryProvider()) return this.forbidden(reply);
@@ -185,8 +185,8 @@ export class MockCheckoutController {
     method: "POST",
     path: `${this.url}/:id/cancel`,
     schema: {
-      params: t.object({ id: t.uuid() }),
-      body: t.object({ returnUrl: t.optional(t.text({ size: "rich" })) }),
+      params: z.object({ id: z.uuid() }),
+      body: z.object({ returnUrl: z.text({ size: "rich" }).optional() }),
     },
     handler: async ({ params, body, reply }) => {
       if (!this.isMemoryProvider()) return this.forbidden(reply);

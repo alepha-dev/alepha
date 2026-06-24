@@ -1,4 +1,4 @@
-import { $inject, $state, AlephaError, t } from "alepha";
+import { $inject, $state, AlephaError, z } from "alepha";
 import { type AppEntry, AppEntryProvider, ViteBuildProvider } from "alepha/cli";
 import {
   CloudflareAdapter,
@@ -32,30 +32,25 @@ export class PlatformCommand {
   /**
    * Common flags for env targeting.
    */
-  protected readonly envFlags = t.object({
-    env: t.optional(
-      t.text({
+  protected readonly envFlags = z.object({
+    env: z
+      .text({
         aliases: ["e"],
         description: "Target environment",
-      }),
-    ),
-    tenant: t.optional(
-      t.text({
+      })
+      .optional(),
+    tenant: z
+      .text({
         description:
           "Tenant slug (apps with tenancy: optional | required). Names resources <tenant>-<project>-<env> and serves <tenant>.<domain>.",
-      }),
-    ),
-    verbose: t.optional(
-      t.boolean({
-        aliases: ["v"],
-        description: "Verbose output",
-      }),
-    ),
-    json: t.optional(
-      t.boolean({
-        description: "Output as JSON",
-      }),
-    ),
+      })
+      .optional(),
+    verbose: z
+      .boolean()
+      .meta({ aliases: ["v"] })
+      .describe("Verbose output")
+      .optional(),
+    json: z.boolean().describe("Output as JSON").optional(),
   });
 
   // -----------------------------------------------------------------------
@@ -215,14 +210,14 @@ export class PlatformCommand {
     name: "up",
     mode: "production",
     description: "Build, migrate, and deploy",
-    flags: t.object({
+    flags: z.object({
       ...this.envFlags.properties,
-      prebuilt: t.optional(
-        t.boolean({
-          description:
-            "Pre-built mode. Skips the Vite bundle steps; only regenerates the target deploy config (wrangler.jsonc) so it reflects current bindings and per-tenant overrides. Use when `dist/` is already produced upstream (e.g. inside Alepha Rocket).",
-        }),
-      ),
+      prebuilt: z
+        .boolean()
+        .describe(
+          "Pre-built mode. Skips the Vite bundle steps; only regenerates the target deploy config (wrangler.jsonc) so it reflects current bindings and per-tenant overrides. Use when `dist/` is already produced upstream (e.g. inside Alepha Rocket).",
+        )
+        .optional(),
     }),
     handler: async ({ flags, root, run }) => {
       process.env.NODE_ENV = "production";
@@ -275,15 +270,15 @@ export class PlatformCommand {
   protected readonly down = $command({
     name: "down",
     description: "Tear down an environment",
-    flags: t.object({
+    flags: z.object({
       ...this.envFlags.properties,
-      yes: t.optional(
-        t.boolean({
-          aliases: ["y"],
-          description:
-            "Skip the interactive confirmation. Required for non-interactive callers (CI, Alepha Rocket). The caller is responsible for not invoking this accidentally — there's no second chance.",
-        }),
-      ),
+      yes: z
+        .boolean()
+        .meta({ aliases: ["y"] })
+        .describe(
+          "Skip the interactive confirmation. Required for non-interactive callers (CI, Alepha Rocket). The caller is responsible for not invoking this accidentally — there's no second chance.",
+        )
+        .optional(),
     }),
     handler: async ({ flags, root, run, ask }) => {
       if (!flags.env) {
@@ -635,19 +630,18 @@ export class PlatformCommand {
     name: "export",
     description:
       "Export the deployed database to a local snapshot (remote → local dev DB).",
-    flags: t.object({
+    flags: z.object({
       ...this.envFlags.properties,
-      output: t.optional(
-        t.text({
+      output: z
+        .text({
           description:
             "Destination SQLite file. Defaults to the dev DB path (node_modules/.alepha/sqlite.db).",
-        }),
-      ),
-      keepSql: t.optional(
-        t.boolean({
-          description: "Keep the intermediate .sql dump file.",
-        }),
-      ),
+        })
+        .optional(),
+      keepSql: z
+        .boolean()
+        .describe("Keep the intermediate .sql dump file.")
+        .optional(),
     }),
     handler: async ({ flags, root, run }) => {
       const config = await this.inspector.resolveConfig(root);

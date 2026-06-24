@@ -8,7 +8,7 @@ import {
   type StaticEncode,
   type TObject,
   type TSchema,
-  t,
+  z,
 } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -427,7 +427,9 @@ export abstract class Repository<T extends TObject> {
 
       let schema: TObject = this.entity.schema;
       if (columns) {
-        schema = t.pick(schema, columns);
+        schema = schema.pick(
+          Object.fromEntries(columns.map((c) => [c, true])) as never,
+        ) as TObject;
       }
 
       // Build joinedSchema once per query (not per row) to avoid SchemaValidator
@@ -1558,7 +1560,7 @@ export abstract class Repository<T extends TObject> {
   ): PgInsertValue<PgTableWithColumns<SchemaToTableConfig<T>>> {
     const schema = insert
       ? this.entity.insertSchema // insert
-      : (t.partial(this.entity.updateSchema) as TObject); // update
+      : (this.entity.updateSchema.partial() as TObject); // update
 
     // Extract raw SQL expressions before codec validation — TypeBox would
     // reject them since they aren't plain values of the declared type
@@ -1580,7 +1582,20 @@ export abstract class Repository<T extends TObject> {
       unknown
     >;
 
-    return { ...encoded, ...sqlValues } as PgInsertValue<
+    // On UPDATE, only persist the fields the caller explicitly provided.
+    // Validating against a (partial) schema re-applies every field's default —
+    // zod's `ZodDefault` fills in its default whenever the key is ABSENT — which
+    // would clobber unrelated existing columns (e.g. an unrelated `status` update
+    // resetting `dunningAttempt` back to its default 0). Inserts still want the
+    // injected defaults, so the filtering is update-only.
+    const result = insert
+      ? encoded
+      : Object.keys(scalarData).reduce<Record<string, unknown>>((acc, key) => {
+          acc[key] = encoded[key];
+          return acc;
+        }, {});
+
+    return { ...result, ...sqlValues } as PgInsertValue<
       PgTableWithColumns<SchemaToTableConfig<T>>
     >;
   }
@@ -1593,13 +1608,24 @@ export abstract class Repository<T extends TObject> {
     schema: T,
   ): Static<T> {
     for (const key of Object.keys(schema.properties)) {
-      const value = schema.properties[key];
+      const prop = schema.properties[key];
+      // Unwrap optional/nullable so format detection works on the base type.
+      const value = z.schema.unwrap(prop);
+
+      // An optional field maps to a NULLABLE column; the driver returns `null`
+      // for an empty column. Normalize to "absent" so it satisfies the
+      // optional schema and the `T | undefined` contract (the schema only
+      // accepts `undefined`, not `null`).
+      if (row[key] === null && z.schema.isOptional(prop)) {
+        delete row[key];
+        continue;
+      }
 
       // convert PG date-time and date to ISO strings
       if (typeof row[key] === "string") {
-        if (t.schema.isDateTime(value)) {
+        if (z.schema.isDateTime(value)) {
           row[key] = this.dateTimeProvider.of(row[key]).toISOString();
-        } else if (t.schema.isDate(value)) {
+        } else if (z.schema.isDate(value)) {
           row[key] = this.dateTimeProvider
             .of(`${row[key]}T00:00:00Z`)
             .toISOString()
@@ -1607,9 +1633,15 @@ export abstract class Repository<T extends TObject> {
         }
       }
 
-      // convert BigInt to string
-      if (typeof row[key] === "bigint" && t.schema.isBigInt(value)) {
-        row[key] = row[key].toString();
+      // convert BigInt to string for `z.bigint()` (string-format) columns.
+      // Postgres bigint columns hand back a JS `bigint`; the SQLite builder maps
+      // a bigint primary key to an integer column that returns a plain `number`.
+      // Both must become a string to satisfy the string-typed bigint schema.
+      if (
+        (typeof row[key] === "bigint" || typeof row[key] === "number") &&
+        z.schema.isBigInt(value)
+      ) {
+        row[key] = String(row[key]);
       }
     }
 
@@ -1709,7 +1741,7 @@ export abstract class Repository<T extends TObject> {
   protected getWhereId(id: string | number): PgQueryWhere<T> {
     return {
       [this.id.key]: {
-        eq: t.schema.isString(this.id.type) ? String(id) : Number(id),
+        eq: z.schema.isString(this.id.type) ? String(id) : Number(id),
       },
     } as PgQueryWhere<T>;
   }

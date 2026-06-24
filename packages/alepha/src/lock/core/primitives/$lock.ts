@@ -9,7 +9,7 @@ import {
   type Middleware,
   Primitive,
   type Static,
-  t,
+  z,
 } from "alepha";
 import {
   type DateTime,
@@ -378,8 +378,8 @@ export interface LockPrimitiveOptions<TFunc extends AsyncFn> {
  */
 export const lockOptions = $atom({
   name: "alepha.lock.options",
-  schema: t.object({
-    prefixKey: t.text({
+  schema: z.object({
+    prefixKey: z.text({
       default: "",
       description: "Prefix for all lock keys.",
     }),
@@ -427,8 +427,8 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
     name: `${this.settings.prefixKey}lock:end`,
     provider: LockTopicProvider,
     schema: {
-      payload: t.object({
-        name: t.text(),
+      payload: z.object({
+        name: z.text(),
       }),
     },
   });

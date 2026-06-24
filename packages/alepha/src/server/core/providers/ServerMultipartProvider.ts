@@ -8,7 +8,7 @@ import {
   type FileLike,
   isTypeFile,
   type Static,
-  t,
+  z,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpError, isMultipart, type ServerRoute } from "alepha/server";
@@ -20,22 +20,22 @@ import { HttpError, isMultipart, type ServerRoute } from "alepha/server";
  */
 export const multipartOptions = $atom({
   name: "alepha.server.multipart.options",
-  schema: t.object({
-    limit: t.integer({
-      default: 10_000_000, // 10MB total
-      min: 0,
-      description: "Maximum total size of multipart request body in bytes.",
-    }),
-    fileLimit: t.integer({
-      default: 5_000_000, // 5MB per file
-      min: 0,
-      description: "Maximum size of a single file in bytes.",
-    }),
-    fileCount: t.integer({
-      default: 10,
-      min: 1,
-      description: "Maximum number of files allowed in a single request.",
-    }),
+  schema: z.object({
+    limit: z
+      .integer()
+      .meta({ min: 0 })
+      .describe("Maximum total size of multipart request body in bytes.")
+      .default(10_000_000),
+    fileLimit: z
+      .integer()
+      .meta({ min: 0 })
+      .describe("Maximum size of a single file in bytes.")
+      .default(5_000_000),
+    fileCount: z
+      .integer()
+      .meta({ min: 1 })
+      .describe("Maximum number of files allowed in a single request.")
+      .default(10),
   }),
   default: {
     limit: 10_000_000,
@@ -162,9 +162,9 @@ export class ServerMultipartProvider {
     let fileCount = 0;
     let totalSize = 0;
 
-    if (route.schema?.body && t.schema.isObject(route.schema.body)) {
+    if (route.schema?.body && z.schema.isObject(route.schema.body)) {
       for (const [key, value] of Object.entries(route.schema.body.properties)) {
-        if (!t.schema.isSchema(value)) {
+        if (!z.schema.isSchema(value)) {
           continue;
         }
 

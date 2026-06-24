@@ -1,5 +1,5 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -24,8 +24,8 @@ const CampaignSettingsChaptersPage = () => {
     initialValues: {
       chapterDuration: campaign?.chapterDuration ?? DURATION_SENTINEL_MANUAL,
     },
-    schema: t.object({
-      chapterDuration: t.optional(t.string()),
+    schema: z.object({
+      chapterDuration: z.string().optional(),
     }),
     handler: async (values) => {
       if (!campaign) return;

@@ -24,8 +24,8 @@ class App {
   log = $logger();
 
   // program expect a var env "HELLO" as string to works
-  env = $env(t.object({
-    HELLO: t.text()
+  env = $env(z.object({
+    HELLO: z.text()
   }));
 
   sayHello = () => this.log.info("Hello ${this.env.HELLO}")

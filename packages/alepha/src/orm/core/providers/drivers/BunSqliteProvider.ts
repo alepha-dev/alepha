@@ -9,7 +9,7 @@ import {
   $state,
   AlephaError,
   type Static,
-  t,
+  z,
 } from "alepha";
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import type { PgDatabase } from "drizzle-orm/pg-core";
@@ -26,13 +26,13 @@ const envSchema = databaseEnvSchema;
  */
 export const bunSqliteOptions = $atom({
   name: "alepha.postgres.bun-sqlite.options",
-  schema: t.object({
-    path: t.optional(
-      t.string({
-        description:
-          "Filepath or :memory:. If empty, provider will use DATABASE_URL from env.",
-      }),
-    ),
+  schema: z.object({
+    path: z
+      .string()
+      .describe(
+        "Filepath or :memory:. If empty, provider will use DATABASE_URL from env.",
+      )
+      .optional(),
   }),
   default: {},
 });

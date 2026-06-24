@@ -6,7 +6,7 @@ import {
   Primitive,
   type TObject,
   type TSchema,
-  t,
+  z,
 } from "alepha";
 import type {
   McpContext,
@@ -40,11 +40,11 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
  *   add = $tool({
  *     description: "Add two numbers together",
  *     schema: {
- *       params: t.object({
- *         a: t.number(),
- *         b: t.number(),
+ *       params: z.object({
+ *         a: z.number(),
+ *         b: z.number(),
  *       }),
- *       result: t.number(),
+ *       result: z.number(),
  *     },
  *     handler: async ({ params }) => {
  *       return params.a + params.b;
@@ -54,10 +54,10 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
  *   greet = $tool({
  *     description: "Generate a greeting message",
  *     schema: {
- *       params: t.object({
- *         name: t.text(),
+ *       params: z.object({
+ *         name: z.text(),
  *       }),
- *       result: t.text(),
+ *       result: z.text(),
  *     },
  *     handler: async ({ params }) => {
  *       return `Hello, ${params.name}!`;
@@ -267,94 +267,35 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
     schema: TObject,
     options?: { root?: boolean },
   ): McpJsonSchema {
-    const properties: Record<string, unknown> = {};
-    const required: string[] = [];
-
-    for (const [key, propSchema] of Object.entries(schema.properties)) {
-      properties[key] = this.propertyToJsonSchema(propSchema as TSchema);
-
-      // Check if property is required (not optional)
-      if (!t.schema.isOptional(propSchema as TSchema)) {
-        required.push(key);
-      }
+    let json: any;
+    try {
+      json = z.toJSONSchema(schema as any);
+    } catch {
+      json = { type: "object", properties: {}, required: [] };
     }
 
-    const result: McpJsonSchema = {
-      type: "object",
-      properties,
-      required,
-    };
-
-    // Annotate the dialect on the root schema only (avoid noise on nested
-    // sub-schemas where MCP doesn't expect $schema).
-    if (options?.root !== false) {
-      result.$schema = "https://json-schema.org/draft/2020-12/schema";
+    // Annotate the 2020-12 dialect on the root schema only (avoid noise on
+    // nested sub-schemas where MCP doesn't expect $schema).
+    if (options?.root === false) {
+      json.$schema = undefined;
+    } else {
+      json.$schema = "https://json-schema.org/draft/2020-12/schema";
     }
 
-    return result;
+    return json as McpJsonSchema;
   }
 
   /**
-   * Convert a single property schema to JSON Schema format.
+   * Convert a single property schema to JSON Schema format (zod-native).
    */
   protected propertyToJsonSchema(schema: TSchema): Record<string, unknown> {
-    const result: Record<string, unknown> = {};
-
-    // Check for description on all types
-    if ("description" in schema) {
-      result.description = schema.description;
+    try {
+      const json: any = z.toJSONSchema(schema as any);
+      json.$schema = undefined;
+      return json;
+    } catch {
+      return { type: "string" };
     }
-
-    if (t.schema.isString(schema)) {
-      result.type = "string";
-      if ("minLength" in schema) result.minLength = schema.minLength;
-      if ("maxLength" in schema) result.maxLength = schema.maxLength;
-      if ("pattern" in schema) result.pattern = schema.pattern;
-      if ("enum" in schema) result.enum = schema.enum;
-    } else if (t.schema.isNumber(schema)) {
-      result.type = "number";
-      if ("minimum" in schema) result.minimum = schema.minimum;
-      if ("maximum" in schema) result.maximum = schema.maximum;
-    } else if (t.schema.isInteger(schema)) {
-      result.type = "integer";
-      if ("minimum" in schema) result.minimum = schema.minimum;
-      if ("maximum" in schema) result.maximum = schema.maximum;
-    } else if (t.schema.isBoolean(schema)) {
-      result.type = "boolean";
-    } else if (t.schema.isArray(schema)) {
-      result.type = "array";
-      if ("items" in schema) {
-        result.items = this.propertyToJsonSchema(schema.items as TSchema);
-      }
-    } else if (t.schema.isObject(schema)) {
-      Object.assign(result, this.schemaToJsonSchema(schema, { root: false }));
-    } else if (t.schema.isUnsafe(schema) || t.schema.isOptional(schema)) {
-      // Handle Unsafe types (like t.enum) and optional wrappers by checking the underlying type property
-      const schemaAny = schema as { type?: string; enum?: unknown[] };
-      if (schemaAny.type === "string") {
-        result.type = "string";
-        if ("enum" in schema) result.enum = schema.enum;
-        if ("pattern" in schema) result.pattern = schema.pattern;
-      } else if (schemaAny.type === "number") {
-        result.type = "number";
-      } else if (schemaAny.type === "integer") {
-        result.type = "integer";
-      } else if (schemaAny.type === "boolean") {
-        result.type = "boolean";
-      } else if (schemaAny.type === "array") {
-        result.type = "array";
-      } else if (schemaAny.type === "object") {
-        result.type = "object";
-      } else {
-        // Fallback
-        result.type = "string";
-      }
-    } else {
-      // Fallback for other types
-      result.type = "string";
-    }
-
-    return result;
   }
 }
 

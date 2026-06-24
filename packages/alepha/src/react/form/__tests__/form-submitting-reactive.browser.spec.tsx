@@ -1,5 +1,5 @@
 import { fireEvent, render, waitFor } from "@testing-library/react";
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import { describe, it } from "vitest";
@@ -30,7 +30,7 @@ describe("useFormState loading drives the submit button", () => {
     const Form = () => {
       const form = useForm({
         id: "async",
-        schema: t.object({ name: t.string({ minLength: 1 }) }),
+        schema: z.object({ name: z.string().min(1) }),
         initialValues: { name: "ok" },
         handler: () => new Promise<void>((r) => (release = r)),
       });
@@ -66,9 +66,9 @@ describe("useFormState loading drives the submit button", () => {
     const Form = () => {
       const form = useForm({
         id: "login",
-        schema: t.object({
-          identifier: t.string({ minLength: 1 }),
-          password: t.string({ minLength: 6 }),
+        schema: z.object({
+          identifier: z.string().min(1),
+          password: z.string().min(6),
         }),
         handler: async () => {},
       });

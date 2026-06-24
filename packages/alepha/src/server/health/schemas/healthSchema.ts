@@ -1,8 +1,8 @@
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const healthSchema = t.object({
-  message: t.text(),
-  uptime: t.number(),
-  date: t.datetime(),
-  ready: t.boolean(),
+export const healthSchema = z.object({
+  message: z.text(),
+  uptime: z.number(),
+  date: z.datetime(),
+  ready: z.boolean(),
 });

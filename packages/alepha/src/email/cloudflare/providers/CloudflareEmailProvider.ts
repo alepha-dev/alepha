@@ -1,4 +1,4 @@
-import { $env, $hook, $inject, Alepha, AlephaError, t } from "alepha";
+import { $env, $hook, $inject, Alepha, AlephaError, z } from "alepha";
 import {
   EmailError,
   type EmailProvider,
@@ -23,13 +23,13 @@ export const SEND_EMAIL_DEFAULT_BINDING = "SEND_EMAIL";
  * set it. `send()` re-checks at call time and throws a clear error if
  * it's missing then.
  */
-const envSchema = t.object({
-  EMAIL_FROM: t.optional(
-    t.text({
+const envSchema = z.object({
+  EMAIL_FROM: z
+    .text({
       description:
         "Default sender (a verified sender address). Accepts a bare address or an RFC 5322 display-name form, e.g. `Lore <noreply@lore.alepha.dev>`.",
-    }),
-  ),
+    })
+    .optional(),
 });
 
 /**

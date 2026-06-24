@@ -1,4 +1,4 @@
-import { $inject, Alepha, type Service, t } from "alepha";
+import { $inject, Alepha, type Service, z } from "alepha";
 import {
   $consumer,
   $queue,
@@ -9,9 +9,9 @@ import {
 } from "alepha/queue";
 import { expect } from "vitest";
 
-export const payloadSchema = t.object({
-  id: t.text(),
-  count: t.integer(),
+export const payloadSchema = z.object({
+  id: z.text(),
+  count: z.integer(),
 });
 
 export const queueList: Record<string, string[]> = {};
@@ -81,7 +81,7 @@ export const testQueueHasConsumer = async (
   let count = 0;
   class A {
     q = $queue({
-      schema: t.object({ n: t.integer() }),
+      schema: z.object({ n: z.integer() }),
       handler: async ({ payload }) => {
         count += payload.n;
       },
@@ -107,7 +107,7 @@ export const testQueueKillWorkerSleep = async (
   let count = 0;
   class A {
     q = $queue({
-      schema: t.object({}),
+      schema: z.object({}),
     });
     c = $consumer({
       queue: this.q,

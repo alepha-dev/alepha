@@ -1,4 +1,4 @@
-import { Alepha, AlephaError, t } from "alepha";
+import { Alepha, AlephaError, z } from "alepha";
 import { LinkProvider, ServerLinksProvider } from "alepha/server/links";
 import { describe, test } from "vitest";
 import { $sse } from "../index.ts";
@@ -8,9 +8,9 @@ describe("$sse", () => {
     class Api {
       events = $sse({
         schema: {
-          data: t.object({
-            type: t.text(),
-            message: t.text(),
+          data: z.object({
+            type: z.text(),
+            message: z.text(),
           }),
         },
         handler: async ({ emit, close }) => {
@@ -40,8 +40,8 @@ describe("$sse", () => {
     class Api {
       notifications = $sse({
         schema: {
-          data: t.object({
-            id: t.number(),
+          data: z.object({
+            id: z.number(),
           }),
         },
         handler: async ({ close }) => {
@@ -65,8 +65,8 @@ describe("$sse", () => {
       feed = $sse({
         path: "/custom/feed",
         schema: {
-          data: t.object({
-            value: t.text(),
+          data: z.object({
+            value: z.text(),
           }),
         },
         handler: async ({ close }) => {
@@ -86,11 +86,11 @@ describe("$sse", () => {
     class Api {
       stream = $sse({
         schema: {
-          params: t.object({
-            id: t.text(),
+          params: z.object({
+            id: z.text(),
           }),
-          data: t.object({
-            value: t.text(),
+          data: z.object({
+            value: z.text(),
           }),
         },
         handler: async ({ params, emit, close }) => {
@@ -118,8 +118,8 @@ describe("$sse", () => {
     class Api {
       events = $sse({
         schema: {
-          data: t.object({
-            seq: t.number(),
+          data: z.object({
+            seq: z.number(),
           }),
         },
         handler: async ({ emit, close }) => {
@@ -153,8 +153,8 @@ describe("$sse", () => {
     class Api {
       failing = $sse({
         schema: {
-          data: t.object({
-            value: t.text(),
+          data: z.object({
+            value: z.text(),
           }),
         },
         handler: async ({ emit }) => {
@@ -182,8 +182,8 @@ describe("$sse", () => {
     class Api {
       autoClose = $sse({
         schema: {
-          data: t.object({
-            n: t.number(),
+          data: z.object({
+            n: z.number(),
           }),
         },
         handler: async ({ emit }) => {
@@ -210,8 +210,8 @@ describe("$sse", () => {
     class Api {
       ticker = $sse({
         schema: {
-          data: t.object({
-            tick: t.number(),
+          data: z.object({
+            tick: z.number(),
           }),
         },
         handler: async ({ emit, close }) => {
@@ -238,8 +238,8 @@ describe("$sse", () => {
       disabled = $sse({
         disabled: true,
         schema: {
-          data: t.object({
-            value: t.text(),
+          data: z.object({
+            value: z.text(),
           }),
         },
         handler: async ({ close }) => {
@@ -261,8 +261,8 @@ describe("$sse", () => {
     class Api {
       chat = $sse({
         schema: {
-          body: t.object({ prompt: t.text() }),
-          data: t.object({ token: t.text() }),
+          body: z.object({ prompt: z.text() }),
+          data: z.object({ token: z.text() }),
         },
         handler: async ({ body, emit }) => {
           emit({ token: "Hello" });
@@ -291,8 +291,8 @@ describe("$sse", () => {
     class Api {
       chat = $sse({
         schema: {
-          body: t.object({ prompt: t.text() }),
-          data: t.object({ token: t.text() }),
+          body: z.object({ prompt: z.text() }),
+          data: z.object({ token: z.text() }),
         },
         handler: async ({ body, emit }) => {
           emit({ token: body.prompt });

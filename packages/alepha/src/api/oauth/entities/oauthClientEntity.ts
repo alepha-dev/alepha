@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 /**
@@ -11,36 +11,36 @@ import { $entity, db } from "alepha/orm";
  */
 export const oauthClientEntity = $entity({
   name: "oauth_clients",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    clientId: t.text({ maxLength: 64 }),
-    clientName: t.text({ maxLength: 200 }),
-    redirectUris: db.default(t.array(t.text({ maxLength: 2048 })), []),
-    scopes: db.default(t.array(t.text({ maxLength: 64 })), []),
-    realm: t.text({ maxLength: 100 }),
+    clientId: z.text({ maxLength: 64 }),
+    clientName: z.text({ maxLength: 200 }),
+    redirectUris: db.default(z.array(z.text({ maxLength: 2048 })), []),
+    scopes: db.default(z.array(z.text({ maxLength: 64 })), []),
+    realm: z.text({ maxLength: 100 }),
     /**
      * OAuth client type. `confidential` clients authenticate at the token
      * endpoint with a secret; `public` clients rely on PKCE only.
      */
-    type: db.default(t.enum(["public", "confidential"]), "public"),
+    type: db.default(z.enum(["public", "confidential"]), "public"),
     /**
      * First-party client: skip the consent screen. Consent exists to protect a
      * user from THIRD-party apps requesting their data; a trusted client is the
      * authorization server's own product (same vendor), so an authenticated
      * user is sent straight back with a code — no "App X wants to connect" page.
      */
-    trusted: db.default(t.boolean(), false),
+    trusted: db.default(z.boolean(), false),
     /**
      * Scrypt hash of the client secret (confidential clients only). Null for
      * public clients. Verified via `OAuthClientService.verifySecret`.
      */
-    clientSecretHash: t.optional(t.text({ maxLength: 256 })),
-    source: db.default(t.text({ maxLength: 16 }), "dcr"),
-    createdByUserId: t.optional(t.uuid()),
-    lastUsedAt: t.optional(t.datetime()),
-    revokedAt: t.optional(t.datetime()),
+    clientSecretHash: z.text({ maxLength: 256 }).optional(),
+    source: db.default(z.text({ maxLength: 16 }), "dcr"),
+    createdByUserId: z.uuid().optional(),
+    lastUsedAt: z.datetime().optional(),
+    revokedAt: z.datetime().optional(),
   }),
   indexes: [{ columns: ["clientId"], unique: true }],
 });

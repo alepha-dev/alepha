@@ -1,5 +1,5 @@
 import { fireEvent, render } from "@testing-library/react";
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
@@ -31,13 +31,13 @@ describe("useForm", () => {
     const Form = () => {
       const form = useForm({
         id: "test",
-        schema: t.object({
-          str: t.text(),
-          int: t.integer(),
-          nested: t.object({
-            str: t.text(),
-            another: t.object({
-              level: t.text(),
+        schema: z.object({
+          str: z.text(),
+          int: z.integer(),
+          nested: z.object({
+            str: z.text(),
+            another: z.object({
+              level: z.text(),
             }),
           }),
         }),
@@ -107,14 +107,14 @@ describe("useForm", () => {
     const Form = () => {
       const form = useForm({
         id: "types-test",
-        schema: t.object({
-          name: t.text(),
-          address: t.object({
-            street: t.text(),
-            city: t.text(),
-            country: t.object({
-              code: t.text(),
-              name: t.text(),
+        schema: z.object({
+          name: z.text(),
+          address: z.object({
+            street: z.text(),
+            city: z.text(),
+            country: z.object({
+              code: z.text(),
+              name: z.text(),
             }),
           }),
         }),
@@ -156,12 +156,12 @@ describe("useForm", () => {
     const Form = () => {
       const form = useForm({
         id: "array-test",
-        schema: t.object({
-          tags: t.array(t.text()),
-          contacts: t.array(
-            t.object({
-              name: t.text(),
-              email: t.text(),
+        schema: z.object({
+          tags: z.array(z.text()),
+          contacts: z.array(
+            z.object({
+              name: z.text(),
+              email: z.text(),
             }),
           ),
         }),
@@ -209,8 +209,8 @@ describe("useForm", () => {
     const Form = () => {
       const form = useForm({
         id: "array-set-test",
-        schema: t.object({
-          tags: t.array(t.text()),
+        schema: z.object({
+          tags: z.array(z.text()),
         }),
         handler: (values) => {
           calls.push(values);
@@ -251,11 +251,11 @@ describe("useForm", () => {
     const Form = () => {
       const form = useForm({
         id: "array-objects-test",
-        schema: t.object({
-          contacts: t.array(
-            t.object({
-              name: t.text(),
-              email: t.text(),
+        schema: z.object({
+          contacts: z.array(
+            z.object({
+              name: z.text(),
+              email: z.text(),
             }),
           ),
         }),
@@ -308,18 +308,18 @@ describe("useForm", () => {
     const Form = () => {
       const form = useForm({
         id: "complex-test",
-        schema: t.object({
-          company: t.object({
-            name: t.text(),
-            address: t.object({
-              street: t.text(),
-              city: t.text(),
+        schema: z.object({
+          company: z.object({
+            name: z.text(),
+            address: z.object({
+              street: z.text(),
+              city: z.text(),
             }),
           }),
-          employees: t.array(
-            t.object({
-              name: t.text(),
-              role: t.text(),
+          employees: z.array(
+            z.object({
+              name: z.text(),
+              role: z.text(),
             }),
           ),
         }),
@@ -401,8 +401,8 @@ describe("useForm", () => {
 
       const form = useForm({
         id: "reset-test",
-        schema: t.object({
-          name: t.text(),
+        schema: z.object({
+          name: z.text(),
         }),
         initialValues: saved,
         handler: async (values) => {
@@ -497,9 +497,9 @@ describe("useForm — initialValues stability", () => {
     const Form = () => {
       const form = useForm({
         id: "stability-test",
-        schema: t.object({
-          title: t.text(),
-          priority: t.text(),
+        schema: z.object({
+          title: z.text(),
+          priority: z.text(),
         }),
         // Fresh object reference every render, identical content.
         initialValues: {
@@ -564,7 +564,7 @@ describe("useForm — initialValues stability", () => {
     const Form = () => {
       const form = useForm({
         id: "stress-test",
-        schema: t.object({ value: t.text() }),
+        schema: z.object({ value: z.text() }),
         initialValues: { value: "" },
         handler: (values) => {
           calls.push(values);
@@ -618,9 +618,9 @@ describe("useForm — initialValues stability", () => {
     const Form = () => {
       const form = useForm({
         id: "nested-test",
-        schema: t.object({
-          title: t.text(),
-          meta: t.object({ priority: t.text(), difficulty: t.integer() }),
+        schema: z.object({
+          title: z.text(),
+          meta: z.object({ priority: z.text(), difficulty: z.integer() }),
         }),
         // Both the outer literal AND the nested `meta` are fresh references.
         initialValues: {
@@ -680,9 +680,9 @@ describe("useForm — initialValues stability", () => {
     const Form = () => {
       const form = useForm({
         id: "array-init-test",
-        schema: t.object({
-          title: t.text(),
-          tags: t.array(t.text()),
+        schema: z.object({
+          title: z.text(),
+          tags: z.array(z.text()),
         }),
         // Fresh empty array reference every render — the QuestCreate case
         // for `objectives: []`.
@@ -740,7 +740,7 @@ describe("useForm — initialValues stability", () => {
     const Form = ({ target }: { target: { name: string } }) => {
       const form = useForm({
         id: "swap-test",
-        schema: t.object({ name: t.text() }),
+        schema: z.object({ name: z.text() }),
         initialValues: target,
         handler: () => {},
       });
@@ -793,7 +793,7 @@ describe("useForm — initialValues stability", () => {
     const Form = ({ initial }: { initial?: { name: string } }) => {
       const form = useForm({
         id: "toggle-init-test",
-        schema: t.object({ name: t.text() }),
+        schema: z.object({ name: z.text() }),
         initialValues: initial,
         handler: () => {},
       });
@@ -856,7 +856,7 @@ describe("useForm — initialValues stability", () => {
     const Form = () => {
       const form = useForm({
         id: "burst-test",
-        schema: t.object({ value: t.text() }),
+        schema: z.object({ value: z.text() }),
         initialValues: {},
         handler: () => {},
       });

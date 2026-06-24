@@ -1,13 +1,13 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const mrrSchema = t.object({
-  total: t.integer(),
-  byPlan: t.record(t.text(), t.integer()),
-  growth: t.integer(),
-  newMrr: t.integer(),
-  expansionMrr: t.integer(),
-  contractionMrr: t.integer(),
-  churnMrr: t.integer(),
+export const mrrSchema = z.object({
+  total: z.integer(),
+  byPlan: z.record(z.text(), z.integer()),
+  growth: z.integer(),
+  newMrr: z.integer(),
+  expansionMrr: z.integer(),
+  contractionMrr: z.integer(),
+  churnMrr: z.integer(),
 });
 
 export type MrrData = Static<typeof mrrSchema>;

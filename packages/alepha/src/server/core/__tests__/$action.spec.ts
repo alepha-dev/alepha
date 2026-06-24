@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import { describe, test } from "vitest";
 import { $action } from "../index.ts";
@@ -8,14 +8,14 @@ describe("$action", () => {
     class Api {
       hello = $action({
         schema: {
-          params: t.object({
-            name: t.text(),
+          params: z.object({
+            name: z.text(),
           }),
-          query: t.object({
-            transform: t.optional(t.enum(["uppercase"])),
+          query: z.object({
+            transform: z.enum(["uppercase"]).optional(),
           }),
-          response: t.object({
-            message: t.text(),
+          response: z.object({
+            message: z.text(),
           }),
         },
         handler: ({ params, query }) => {
@@ -91,7 +91,7 @@ describe("$action", () => {
     class TestApp {
       test = $action({
         schema: {
-          response: t.void(), // force no response
+          response: z.void(), // force no response
         },
         handler: () => {},
       });
@@ -113,7 +113,7 @@ describe("$action", () => {
     class TestApp {
       test = $action({
         schema: {
-          response: t.json(),
+          response: z.json(),
         },
         handler: () => ({
           ok: true,
@@ -136,7 +136,7 @@ describe("$action", () => {
     class TestApp {
       test = $action({
         schema: {
-          response: t.file(), // expect a file response
+          response: z.file(), // expect a file response
         },
         handler: () =>
           fileSystem.createFile({
@@ -164,10 +164,10 @@ describe("$action", () => {
     class TestApp {
       test = $action({
         schema: {
-          body: t.object({
-            extra: t.text(),
+          body: z.object({
+            extra: z.text(),
           }),
-          response: t.string(),
+          response: z.string(),
         },
         handler: ({ body }) => JSON.stringify(body),
       });

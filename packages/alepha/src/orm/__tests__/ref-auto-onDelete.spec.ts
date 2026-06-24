@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $entity, $repository, db } from "../core/index.ts";
 import { AlephaOrmPostgres } from "../postgres/index.ts";
@@ -6,32 +6,32 @@ import { AlephaOrmPostgres } from "../postgres/index.ts";
 describe("db.ref - automatic onDelete behavior", () => {
   const categories = $entity({
     name: "categories",
-    schema: t.object({
+    schema: z.object({
       id: db.identityPrimaryKey(),
       __v: db.version(),
-      name: t.text(),
+      name: z.text(),
     }),
   });
 
   const products = $entity({
     name: "products",
-    schema: t.object({
+    schema: z.object({
       id: db.identityPrimaryKey(),
       __v: db.version(),
-      name: t.text(),
+      name: z.text(),
       // Optional reference - should automatically set onDelete: "set null"
-      categoryId: db.ref(t.optional(t.integer()), () => categories.cols.id),
+      categoryId: db.ref(z.integer().optional(), () => categories.cols.id),
     }),
   });
 
   const orders = $entity({
     name: "orders",
-    schema: t.object({
+    schema: z.object({
       id: db.identityPrimaryKey(),
       __v: db.version(),
-      orderNumber: t.text(),
+      orderNumber: z.text(),
       // Required reference - should automatically set onDelete: "cascade"
-      productId: db.ref(t.integer(), () => products.cols.id),
+      productId: db.ref(z.integer(), () => products.cols.id),
     }),
   });
 
@@ -104,22 +104,22 @@ describe("db.ref - automatic onDelete behavior", () => {
     // Test that explicit actions are not overridden by auto behavior
     const customCategories = $entity({
       name: "custom_categories",
-      schema: t.object({
+      schema: z.object({
         id: db.identityPrimaryKey(),
         __v: db.version(),
-        name: t.text(),
+        name: z.text(),
       }),
     });
 
     const customProducts = $entity({
       name: "custom_products",
-      schema: t.object({
+      schema: z.object({
         id: db.identityPrimaryKey(),
         __v: db.version(),
-        name: t.text(),
+        name: z.text(),
         // Optional reference but explicitly set to cascade
         categoryId: db.ref(
-          t.optional(t.integer()),
+          z.integer().optional(),
           () => customCategories.cols.id,
           {
             onDelete: "cascade",

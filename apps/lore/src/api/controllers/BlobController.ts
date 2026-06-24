@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { FileController, files } from "alepha/api/files";
 import { $bucket } from "alepha/bucket";
 import { $repository, $transactional } from "alepha/orm";
@@ -11,19 +11,19 @@ import {
   ArchiveBlobService,
 } from "../services/ArchiveBlobService.ts";
 
-const hydratedBlobSchema = t.object({
-  id: t.uuid(),
-  shortId: t.integer(),
-  campaignId: t.integer(),
-  directoryId: t.optional(t.uuid()),
-  name: t.string(),
-  createdAt: t.string(),
-  updatedAt: t.string(),
-  size: t.number(),
-  mimeType: t.string(),
-  sha256: t.optional(t.string()),
-  originalName: t.optional(t.string()),
-  tags: t.optional(t.array(t.string())),
+const hydratedBlobSchema = z.object({
+  id: z.uuid(),
+  shortId: z.integer(),
+  campaignId: z.integer(),
+  directoryId: z.uuid().optional(),
+  name: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  size: z.number(),
+  mimeType: z.string(),
+  sha256: z.string().optional(),
+  originalName: z.string().optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 /**
@@ -95,9 +95,9 @@ export class BlobController {
     path: "/campaigns/:campaignId/archive/blobs/by-short-id/:shortId",
     description: "Look up an archive blob by per-campaign shortId.",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        shortId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
+        shortId: z.integer(),
       }),
       response: hydratedBlobSchema,
     },
@@ -119,11 +119,11 @@ export class BlobController {
     path: "/campaigns/:campaignId/archive/blobs",
     description: "List blobs in a campaign (optionally filtered by directory).",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      query: t.object({
-        directoryId: t.optional(t.uuid()),
+      params: z.object({ campaignId: z.integer() }),
+      query: z.object({
+        directoryId: z.uuid().optional(),
       }),
-      response: t.array(hydratedBlobSchema),
+      response: z.array(hydratedBlobSchema),
     },
     handler: async ({ params, query, user }) => {
       await this.security.assertMember(params.campaignId, user);
@@ -144,7 +144,7 @@ export class BlobController {
     description:
       "Get a single archive blob (metadata only — use framework download for bytes).",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: hydratedBlobSchema,
     },
     handler: async ({ params, user }) => {
@@ -163,11 +163,11 @@ export class BlobController {
     description:
       "Register an Archive blob on top of an already-uploaded framework file.",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      body: t.object({
-        fileId: t.uuid(),
-        name: t.string({ minLength: 1, maxLength: 200 }),
-        directoryId: t.optional(t.uuid()),
+      params: z.object({ campaignId: z.integer() }),
+      body: z.object({
+        fileId: z.uuid(),
+        name: z.string().min(1).max(200),
+        directoryId: z.uuid().optional(),
       }),
       response: archiveBlobs.schema,
     },
@@ -187,8 +187,8 @@ export class BlobController {
     path: "/archive/blobs/:id/rename",
     description: "Rename an archive blob.",
     schema: {
-      params: t.object({ id: t.uuid() }),
-      body: t.object({ name: t.string({ minLength: 1, maxLength: 200 }) }),
+      params: z.object({ id: z.uuid() }),
+      body: z.object({ name: z.string().min(1).max(200) }),
       response: archiveBlobs.schema,
     },
     handler: async ({ params, body, user }) => {
@@ -204,8 +204,8 @@ export class BlobController {
     path: "/archive/blobs/:id/move",
     description: "Move an archive blob to a new directory (or to root).",
     schema: {
-      params: t.object({ id: t.uuid() }),
-      body: t.object({ directoryId: t.optional(t.uuid()) }),
+      params: z.object({ id: z.uuid() }),
+      body: z.object({ directoryId: z.uuid().optional() }),
       response: archiveBlobs.schema,
     },
     handler: async ({ params, body, user }) => {
@@ -221,7 +221,7 @@ export class BlobController {
     path: "/archive/blobs/:id",
     description: "Delete an archive blob (and reclaim framework storage).",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: okSchema,
     },
     handler: async ({ params, user }) => {

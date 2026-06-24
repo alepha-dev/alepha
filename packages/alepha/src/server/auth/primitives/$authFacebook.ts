@@ -1,4 +1,4 @@
-import { $context, AlephaError, t } from "alepha";
+import { $context, AlephaError, z } from "alepha";
 import type { IssuerPrimitive } from "alepha/security";
 import type { OAuth2Profile } from "../providers/ServerAuthProvider.ts";
 import {
@@ -25,18 +25,18 @@ export const $authFacebook = (
   const { alepha } = $context();
 
   const env = alepha.parseEnv(
-    t.object({
-      FACEBOOK_CLIENT_ID: t.optional(
-        t.text({
+    z.object({
+      FACEBOOK_CLIENT_ID: z
+        .text({
           description: "The App ID obtained from the Meta Developer Console.",
-        }),
-      ),
-      FACEBOOK_CLIENT_SECRET: t.optional(
-        t.text({
+        })
+        .optional(),
+      FACEBOOK_CLIENT_SECRET: z
+        .text({
           description:
             "The App Secret obtained from the Meta Developer Console.",
-        }),
-      ),
+        })
+        .optional(),
     }),
   );
 

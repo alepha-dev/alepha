@@ -64,7 +64,7 @@ export const platform = (options: PlatformOptions) => {
   // places. Honors an explicit env override and any non-production-only
   // setup (we don't override prod-set values).
   if (!process.env.PUBLIC_URL) {
-    const productionDomain = options.environments?.production?.domain;
+    const productionDomain = options?.environments?.production?.domain;
     if (productionDomain) {
       process.env.PUBLIC_URL = `https://${productionDomain}`;
     }

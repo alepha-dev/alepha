@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 /**
  * Server-side sigil configuration — the single source of truth that replaces
@@ -18,11 +18,11 @@ export const sigilOptions = $atom({
   name: "alepha.sigil.options",
   description:
     "Server-side sigil config: id + loreOrigin + features + excludedPaths. Never serialized — holds the secret id.",
-  schema: t.object({
-    id: t.optional(t.string()),
-    loreOrigin: t.optional(t.string()),
-    features: t.optional(t.array(t.string())),
-    excludedPaths: t.optional(t.array(t.string())),
+  schema: z.object({
+    id: z.string().optional(),
+    loreOrigin: z.string().optional(),
+    features: z.array(z.string()).optional(),
+    excludedPaths: z.array(z.string()).optional(),
   }),
   default: {},
 });

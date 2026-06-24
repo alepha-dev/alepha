@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 /**
  * Platform deployment configuration atom.
@@ -9,19 +9,19 @@ import { $atom, type Static, t } from "alepha";
 export const platformOptions = $atom({
   name: "alepha.cli.platform.options",
   description: "Platform deployment configuration",
-  schema: t.optional(
-    t.object({
+  schema: z
+    .object({
       /**
        * Project name override. Defaults to root package.json "name".
        */
-      name: t.optional(t.text()),
+      name: z.text().optional(),
 
       /**
        * Default environment when --env is omitted.
        *
        * @default "production"
        */
-      default: t.optional(t.text()),
+      default: z.text().optional(),
 
       /**
        * Multi-tenancy mode — controls whether `--tenant <slug>` is
@@ -36,14 +36,14 @@ export const platformOptions = $atom({
        *
        * @default "none"
        */
-      tenancy: t.optional(t.enum(["none", "optional", "required"])),
+      tenancy: z.enum(["none", "optional", "required"]).optional(),
 
       /**
        * Secret store configuration for syncing .env secrets
        * to external providers (e.g. GitHub Actions environments).
        */
-      secrets: t.optional(
-        t.object({
+      secrets: z
+        .object({
           /**
            * Explicit override of the worker secret-key allowlist.
            *
@@ -60,12 +60,12 @@ export const platformOptions = $atom({
            * neither this nor a manifest is present, the `.env.<env>` file is
            * itself the allowlist (legacy fallback).
            */
-          keys: t.optional(t.array(t.text())),
+          keys: z.array(z.text()).optional(),
 
           /**
            * Secret store backend.
            */
-          store: t.optional(t.enum(["github"])),
+          store: z.enum(["github"]).optional(),
 
           /**
            * Pattern for resolving environment names in the store.
@@ -73,20 +73,20 @@ export const platformOptions = $atom({
            *
            * @default "{project}-{env}"
            */
-          environmentPattern: t.optional(t.text()),
-        }),
-      ),
+          environmentPattern: z.text().optional(),
+        })
+        .optional(),
 
       /**
        * Named environments with their adapter and configuration.
        */
-      environments: t.record(
-        t.text({
+      environments: z.record(
+        z.text({
           description:
             "Environment name (e.g. 'production', 'staging', 'preview'). Used in resource naming and selected via --env.",
         }),
-        t.object({
-          adapter: t.enum(["cloudflare", "vercel"]),
+        z.object({
+          adapter: z.enum(["cloudflare", "vercel"]),
           /**
            * Custom domain for the deployed worker (e.g. "api.example.com").
            *
@@ -98,7 +98,7 @@ export const platformOptions = $atom({
            * Wildcard patterns require `zone` to be set, and the wildcard DNS
            * record must already exist (proxied) in the Cloudflare zone.
            */
-          domain: t.optional(t.text()),
+          domain: z.text().optional(),
           /**
            * Cloudflare zone name (e.g. "alepha.dev") that owns `domain`.
            *
@@ -108,7 +108,7 @@ export const platformOptions = $atom({
            * wildcard route covering the host (routes win by specificity,
            * while a Custom Domain would lose to the wildcard route).
            */
-          zone: t.optional(t.text()),
+          zone: z.text().optional(),
           /**
            * Worker-to-worker service bindings, e.g.
            * `[{ binding: "CLUB", service: "club-staging" }]`.
@@ -118,14 +118,14 @@ export const platformOptions = $atom({
            * plain subrequests to a host served by a same-zone Worker route
            * bypass the route and 522.
            */
-          services: t.optional(
-            t.array(
-              t.object({
-                binding: t.text(),
-                service: t.text(),
+          services: z
+            .array(
+              z.object({
+                binding: z.text(),
+                service: z.text(),
               }),
-            ),
-          ),
+            )
+            .optional(),
           /**
            * Cloudflare data jurisdiction for R2 buckets and D1 databases.
            * - "eu": data stays within the EU
@@ -133,7 +133,7 @@ export const platformOptions = $atom({
            *
            * Omit for the default (global) jurisdiction.
            */
-          jurisdiction: t.optional(t.enum(["eu", "fedramp"])),
+          jurisdiction: z.enum(["eu", "fedramp"]).optional(),
           /**
            * Cloudflare account ID to deploy into.
            *
@@ -141,11 +141,11 @@ export const platformOptions = $atom({
            * token's account when the token is scoped to exactly one.
            * Required when the token has access to multiple accounts.
            */
-          accountId: t.optional(t.text()),
+          accountId: z.text().optional(),
         }),
       ),
-    }),
-  ),
+    })
+    .optional(),
 });
 
 /**

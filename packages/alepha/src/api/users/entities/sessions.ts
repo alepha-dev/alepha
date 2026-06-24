@@ -1,16 +1,16 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { users } from "./users.ts";
 
 export const sessions = $entity({
   name: "sessions",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    refreshToken: t.uuid(),
-    userId: db.ref(t.uuid(), () => users.cols.id),
+    refreshToken: z.uuid(),
+    userId: db.ref(z.uuid(), () => users.cols.id),
     /**
      * OAuth client this session was minted for, when it was created via the
      * OAuth 2.1 authorization flow — the `client_id` of an `oauth_clients`
@@ -18,28 +18,28 @@ export const sessions = $entity({
      * key: `sessions` is a core entity and must not depend on the optional
      * OAuth module's table; the join to `oauth_clients` is done at query time.
      */
-    clientId: t.optional(t.text({ maxLength: 64 })),
-    expiresAt: t.datetime(),
+    clientId: z.text({ maxLength: 64 }).optional(),
+    expiresAt: z.datetime(),
     /**
      * Last time the session was used to refresh an access token.
      * Used by realm `refreshToken.expirationIdle` to invalidate idle sessions.
      * `null` on existing rows pre-migration — falls back to `createdAt`.
      */
-    lastUsedAt: t.optional(t.datetime()),
-    ip: t.optional(t.text()),
+    lastUsedAt: z.datetime().optional(),
+    ip: z.text().optional(),
     /**
      * ISO 3166-1 alpha-2 country code derived from the request geo headers
      * (`cf-ipcountry` on Cloudflare, CDN equivalents elsewhere) at login time.
      * `null` on pre-migration rows and where geo isn't available.
      */
-    country: t.optional(t.text({ maxLength: 2 })),
-    userAgent: t.optional(
-      t.object({
-        os: t.text(),
-        browser: t.text(),
-        device: t.enum(["MOBILE", "DESKTOP", "TABLET"]),
-      }),
-    ),
+    country: z.text({ maxLength: 2 }).optional(),
+    userAgent: z
+      .object({
+        os: z.text(),
+        browser: z.text(),
+        device: z.enum(["MOBILE", "DESKTOP", "TABLET"]),
+      })
+      .optional(),
   }),
   indexes: ["userId", "expiresAt", { column: "refreshToken", unique: true }],
 });

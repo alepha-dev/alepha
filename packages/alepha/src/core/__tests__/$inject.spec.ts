@@ -6,7 +6,7 @@ import {
   CircularDependencyError,
   type Service,
   TypeBoxError,
-  t,
+  z,
 } from "alepha";
 import { describe, expect, it } from "vitest";
 import { MissingContextError } from "../errors/MissingContextError.ts";
@@ -53,9 +53,9 @@ describe("$env", () => {
   it("should inject environment variables correctly", () => {
     class A {
       env = $env(
-        t.object({
-          N1: t.text(),
-          N2: t.text({ default: "$N1" }),
+        z.object({
+          N1: z.text(),
+          N2: z.text({ default: "$N1" }),
         }),
       );
     }

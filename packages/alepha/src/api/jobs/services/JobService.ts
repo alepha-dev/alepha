@@ -1,4 +1,4 @@
-import { $inject, Alepha, AlephaError, t } from "alepha";
+import { $inject, Alepha, AlephaError, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository, sql } from "alepha/orm";
 import { NotFoundError } from "alepha/server";
@@ -66,11 +66,11 @@ export class JobService {
         WHERE ${e.status} IN ('ok', 'error')
         GROUP BY ${e.jobName}, ${e.status}
       `,
-      t.object({
-        job_name: t.string(),
-        status: t.string(),
-        count: t.string(),
-        last_run: t.optional(t.nullable(t.union([t.string(), t.number()]))),
+      z.object({
+        job_name: z.string(),
+        status: z.string(),
+        count: z.string(),
+        last_run: z.union([z.string(), z.number()]).nullable().optional(),
       }),
     );
 

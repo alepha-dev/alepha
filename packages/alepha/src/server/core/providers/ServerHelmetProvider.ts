@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $state, Alepha, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, Alepha, type Static, z } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -7,30 +7,29 @@ import { $atom, $hook, $inject, $state, Alepha, type Static, t } from "alepha";
  */
 export const helmetOptions = $atom({
   name: "alepha.server.helmet.options",
-  schema: t.object({
-    disabled: t.optional(
-      t.boolean({
-        description: "Disable security headers entirely.",
-      }),
-    ),
-    isSecure: t.optional(t.boolean()),
-    strictTransportSecurity: t.optional(
-      t.object({
-        maxAge: t.optional(t.number()),
-        includeSubDomains: t.optional(t.boolean()),
-        preload: t.optional(t.boolean()),
-      }),
-    ),
-    xContentTypeOptions: t.optional(t.boolean()),
-    xFrameOptions: t.optional(t.enum(["DENY", "SAMEORIGIN"])),
-    xXssProtection: t.optional(t.boolean()),
-    contentSecurityPolicy: t.optional(
-      t.object({
-        directives: t.record(t.string(), t.any()),
-      }),
-    ),
-    referrerPolicy: t.optional(
-      t.enum([
+  schema: z.object({
+    disabled: z
+      .boolean()
+      .describe("Disable security headers entirely.")
+      .optional(),
+    isSecure: z.boolean().optional(),
+    strictTransportSecurity: z
+      .object({
+        maxAge: z.number().optional(),
+        includeSubDomains: z.boolean().optional(),
+        preload: z.boolean().optional(),
+      })
+      .optional(),
+    xContentTypeOptions: z.boolean().optional(),
+    xFrameOptions: z.enum(["DENY", "SAMEORIGIN"]).optional(),
+    xXssProtection: z.boolean().optional(),
+    contentSecurityPolicy: z
+      .object({
+        directives: z.record(z.string(), z.any()),
+      })
+      .optional(),
+    referrerPolicy: z
+      .enum([
         "no-referrer",
         "no-referrer-when-downgrade",
         "origin",
@@ -39,8 +38,8 @@ export const helmetOptions = $atom({
         "strict-origin",
         "strict-origin-when-cross-origin",
         "unsafe-url",
-      ]),
-    ),
+      ])
+      .optional(),
   }),
   default: {
     strictTransportSecurity: { maxAge: 15552000, includeSubDomains: true },

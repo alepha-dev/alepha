@@ -1,4 +1,4 @@
-import { $inject, Alepha, t } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import { $repository } from "alepha/orm";
 import { $secure, currentTenantAtom } from "alepha/security";
@@ -41,7 +41,7 @@ export class AdminNotificationController {
     use: [$secure({ permissions: ["admin:notification:read"] })],
     schema: {
       query: notificationQuerySchema,
-      response: t.page(notificationResourceSchema),
+      response: z.page(notificationResourceSchema),
     },
     handler: async ({ query }) => {
       query.sort ??= "-createdAt";
@@ -68,8 +68,8 @@ export class AdminNotificationController {
     group: this.group,
     use: [$secure({ permissions: ["admin:notification:read"] })],
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
       response: notificationDetailResourceSchema,
     },
@@ -89,8 +89,8 @@ export class AdminNotificationController {
     use: [$secure({ permissions: ["admin:notification:delete"] })],
     description: "Delete a notification record",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
       response: okSchema,
     },
@@ -111,11 +111,11 @@ export class AdminNotificationController {
     use: [$secure({ permissions: ["admin:notification:delete"] })],
     description: "Delete many notification records in one call",
     schema: {
-      body: t.object({
-        ids: t.array(t.uuid(), { minItems: 1, maxItems: 1000 }),
+      body: z.object({
+        ids: z.array(z.uuid()).min(1).max(1000),
       }),
-      response: t.object({
-        deleted: t.array(t.uuid()),
+      response: z.object({
+        deleted: z.array(z.uuid()),
       }),
     },
     handler: async ({ body }) => {

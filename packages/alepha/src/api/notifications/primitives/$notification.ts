@@ -22,7 +22,7 @@ import { NotificationJobs } from "../jobs/NotificationJobs.ts";
  *   welcomeEmail = $notification({
  *     name: "welcome-email",
  *     category: "onboarding",
- *     schema: t.object({ username: t.text(), activationLink: t.text() }),
+ *     schema: z.object({ username: z.text(), activationLink: z.text() }),
  *     email: {
  *       subject: "Welcome to our platform!",
  *       body: (vars) => `Hello ${vars.username}, click: ${vars.activationLink}`

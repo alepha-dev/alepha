@@ -1,12 +1,12 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { verificationTypeEnumSchema } from "../schemas/verificationTypeEnumSchema.ts";
 
 export const verifications = $entity({
   name: "verification",
-  schema: t.object({
-    id: db.primaryKey(t.bigint()),
+  schema: z.object({
+    id: db.primaryKey(z.bigint()),
 
     createdAt: db.createdAt(),
 
@@ -16,32 +16,31 @@ export const verifications = $entity({
 
     type: verificationTypeEnumSchema,
 
-    target: t.text({
+    target: z.text({
       description: "Can be a phone (E.164 format) or email address",
     }),
 
     purpose: db.default(
-      t.text({
+      z.text({
         description:
           "Logical purpose bucket (e.g. 'default', 'password-reset'). Scopes the cooldown and daily-limit checks so unrelated flows that share the same (type, target) — most notably email verification and password reset — don't collide.",
       }),
       "default",
     ),
 
-    code: t.text({
+    code: z.text({
       description: "Hashed verification token (n-digit code or UUID)",
     }),
 
-    verifiedAt: t.optional(
-      t.datetime({
-        description: "When it was successfully verified",
-      }),
-    ),
+    verifiedAt: z
+      .datetime()
+      .describe("When it was successfully verified")
+      .optional(),
 
     attempts: db.default(
-      t.integer({
-        description: "Number of failed attempts (to prevent brute-force)",
-      }),
+      z
+        .integer()
+        .describe("Number of failed attempts (to prevent brute-force)"),
       0,
     ),
   }),

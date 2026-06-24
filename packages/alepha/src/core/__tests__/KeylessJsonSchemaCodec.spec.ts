@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, test } from "vitest";
 import { KeylessJsonSchemaCodec } from "../providers/KeylessJsonSchemaCodec.ts";
 
@@ -7,11 +7,11 @@ describe("KeylessJsonSchemaCodec", () => {
     test("should encode and decode primitive types", async ({ expect }) => {
       const alepha = Alepha.create();
 
-      const userSchema = t.object({
-        name: t.text(),
-        age: t.integer(),
-        active: t.boolean(),
-        score: t.number(),
+      const userSchema = z.object({
+        name: z.text(),
+        age: z.integer(),
+        active: z.boolean(),
+        score: z.number(),
       });
 
       const data = {
@@ -39,11 +39,11 @@ describe("KeylessJsonSchemaCodec", () => {
     test("should produce smaller output than JSON", async ({ expect }) => {
       const alepha = Alepha.create();
 
-      const userSchema = t.object({
-        username: t.text(),
-        email: t.text(),
-        age: t.integer(),
-        isVerified: t.boolean(),
+      const userSchema = z.object({
+        username: z.text(),
+        email: z.text(),
+        age: z.integer(),
+        isVerified: z.boolean(),
       });
 
       const data = {
@@ -81,11 +81,11 @@ describe("KeylessJsonSchemaCodec", () => {
     test("should handle bigint values as strings", async ({ expect }) => {
       const alepha = Alepha.create();
 
-      // In Alepha, t.bigint() is a string type with format "bigint"
+      // In Alepha, z.bigint() is a string type with format "bigint"
       // It represents large integers as strings to avoid precision loss
-      const schema = t.object({
-        id: t.bigint(),
-        name: t.text(),
+      const schema = z.object({
+        id: z.bigint(),
+        name: z.text(),
       });
 
       const data = {
@@ -114,12 +114,12 @@ describe("KeylessJsonSchemaCodec", () => {
     test("should handle nested objects", async ({ expect }) => {
       const alepha = Alepha.create();
 
-      const schema = t.object({
-        user: t.object({
-          name: t.text(),
-          profile: t.object({
-            bio: t.text(),
-            age: t.integer(),
+      const schema = z.object({
+        user: z.object({
+          name: z.text(),
+          profile: z.object({
+            bio: z.text(),
+            age: z.integer(),
           }),
         }),
       });
@@ -154,9 +154,9 @@ describe("KeylessJsonSchemaCodec", () => {
     test("should handle arrays of primitives", async ({ expect }) => {
       const alepha = Alepha.create();
 
-      const schema = t.object({
-        tags: t.array(t.text()),
-        scores: t.array(t.number()),
+      const schema = z.object({
+        tags: z.array(z.text()),
+        scores: z.array(z.number()),
       });
 
       const data = {
@@ -179,17 +179,17 @@ describe("KeylessJsonSchemaCodec", () => {
     test("should handle arrays of objects", async ({ expect }) => {
       const alepha = Alepha.create();
 
-      const schema = t.object({
-        users: t.array(
-          t.object({
-            name: t.text(),
-            age: t.integer(),
+      const schema = z.object({
+        users: z.array(
+          z.object({
+            name: z.text(),
+            age: z.integer(),
           }),
         ),
-        socialProfiles: t.array(
-          t.object({
-            platform: t.text(),
-            username: t.text(),
+        socialProfiles: z.array(
+          z.object({
+            platform: z.text(),
+            username: z.text(),
           }),
         ),
       });
@@ -227,9 +227,9 @@ describe("KeylessJsonSchemaCodec", () => {
     test("should handle optional fields", async ({ expect }) => {
       const alepha = Alepha.create();
 
-      const schema = t.object({
-        name: t.text(),
-        bio: t.optional(t.text()),
+      const schema = z.object({
+        name: z.text(),
+        bio: z.text().optional(),
       });
 
       const dataWithBio = {
@@ -266,9 +266,9 @@ describe("KeylessJsonSchemaCodec", () => {
     test("should handle nullable fields", async ({ expect }) => {
       const alepha = Alepha.create();
 
-      const schema = t.object({
-        name: t.text(),
-        deletedAt: t.nullable(t.datetime()),
+      const schema = z.object({
+        name: z.text(),
+        deletedAt: z.datetime().nullable(),
       });
 
       const activeUser = {
@@ -308,9 +308,9 @@ describe("KeylessJsonSchemaCodec", () => {
     test("should handle enum values", async ({ expect }) => {
       const alepha = Alepha.create();
 
-      const schema = t.object({
-        status: t.enum(["ACTIVE", "INACTIVE", "PENDING"]),
-        name: t.text(),
+      const schema = z.object({
+        status: z.enum(["ACTIVE", "INACTIVE", "PENDING"]),
+        name: z.text(),
       });
 
       const data = {
@@ -335,9 +335,9 @@ describe("KeylessJsonSchemaCodec", () => {
     test("should encode and decode binary format", async ({ expect }) => {
       const alepha = Alepha.create();
 
-      const schema = t.object({
-        name: t.text(),
-        age: t.integer(),
+      const schema = z.object({
+        name: z.text(),
+        age: z.integer(),
       });
 
       const data = {
@@ -364,16 +364,16 @@ describe("KeylessJsonSchemaCodec", () => {
     test("should handle complex nested structures", async ({ expect }) => {
       const alepha = Alepha.create();
 
-      const schema = t.object({
-        user: t.object({
-          id: t.text(),
-          profile: t.object({
-            name: t.text(),
-            age: t.nullable(t.integer()),
-            tags: t.array(t.text()),
+      const schema = z.object({
+        user: z.object({
+          id: z.text(),
+          profile: z.object({
+            name: z.text(),
+            age: z.integer().nullable(),
+            tags: z.array(z.text()),
           }),
         }),
-        status: t.enum(["ACTIVE", "INACTIVE"]),
+        status: z.enum(["ACTIVE", "INACTIVE"]),
       });
 
       const data = {
@@ -406,88 +406,88 @@ describe("KeylessJsonSchemaCodec", () => {
       const alepha = Alepha.create();
 
       // Comprehensive schema with all supported types
-      const comprehensiveSchema = t.object({
+      const comprehensiveSchema = z.object({
         // Primitive types
-        id: t.integer(),
-        uuid: t.uuid(),
-        name: t.text(),
-        email: t.text(),
-        score: t.number(),
-        isActive: t.boolean(),
-        bigNumber: t.bigint(),
+        id: z.integer(),
+        uuid: z.uuid(),
+        name: z.text(),
+        email: z.text(),
+        score: z.number(),
+        isActive: z.boolean(),
+        bigNumber: z.bigint(),
 
         // Date/time types (stored as strings)
-        createdAt: t.datetime(),
-        updatedAt: t.datetime(),
+        createdAt: z.datetime(),
+        updatedAt: z.datetime(),
 
         // Enum type
-        status: t.enum(["ACTIVE", "INACTIVE", "PENDING"]),
-        role: t.enum(["USER", "ADMIN", "MODERATOR"]),
+        status: z.enum(["ACTIVE", "INACTIVE", "PENDING"]),
+        role: z.enum(["USER", "ADMIN", "MODERATOR"]),
 
         // Optional fields
-        nickname: t.optional(t.text()),
-        bio: t.optional(t.text()),
+        nickname: z.text().optional(),
+        bio: z.text().optional(),
 
         // Nullable fields
-        deletedAt: t.nullable(t.datetime()),
-        lastLoginAt: t.nullable(t.datetime()),
+        deletedAt: z.datetime().nullable(),
+        lastLoginAt: z.datetime().nullable(),
 
         // Arrays of primitives
-        tags: t.array(t.text()),
-        scores: t.array(t.number()),
-        flags: t.array(t.boolean()),
+        tags: z.array(z.text()),
+        scores: z.array(z.number()),
+        flags: z.array(z.boolean()),
 
         // Nested object
-        profile: t.object({
-          firstName: t.text(),
-          lastName: t.text(),
-          age: t.integer(),
+        profile: z.object({
+          firstName: z.text(),
+          lastName: z.text(),
+          age: z.integer(),
         }),
 
         // Deeply nested objects
-        settings: t.object({
-          theme: t.text(),
-          preferences: t.object({
-            notifications: t.boolean(),
-            emailAlerts: t.boolean(),
-            language: t.text(),
+        settings: z.object({
+          theme: z.text(),
+          preferences: z.object({
+            notifications: z.boolean(),
+            emailAlerts: z.boolean(),
+            language: z.text(),
           }),
         }),
 
         // Arrays of objects
-        contacts: t.array(
-          t.object({
-            type: t.text(),
-            value: t.text(),
+        contacts: z.array(
+          z.object({
+            type: z.text(),
+            value: z.text(),
           }),
         ),
 
         // Nested arrays of objects
-        socialProfiles: t.array(
-          t.object({
-            platform: t.text(),
-            username: t.text(),
-            verified: t.boolean(),
+        socialProfiles: z.array(
+          z.object({
+            platform: z.text(),
+            username: z.text(),
+            verified: z.boolean(),
           }),
         ),
 
         // Optional nested object
-        address: t.optional(
-          t.object({
-            street: t.text(),
-            city: t.text(),
-            country: t.text(),
-            postalCode: t.text(),
-          }),
-        ),
+        address: z
+          .object({
+            street: z.text(),
+            city: z.text(),
+            country: z.text(),
+            postalCode: z.text(),
+          })
+          .optional(),
 
         // Nullable nested object
-        company: t.nullable(
-          t.object({
-            name: t.text(),
-            position: t.text(),
-          }),
-        ),
+        company: z
+          .object({
+            name: z.text(),
+            position: z.text(),
+          })
+          .nullable(),
       });
 
       const fullData = {
@@ -628,10 +628,10 @@ describe("KeylessJsonSchemaCodec", () => {
       // Force safe mode (no Function compilation)
       codec.configure({ useFunctionCompilation: false });
 
-      const schema = t.object({
-        name: t.text(),
-        age: t.integer(),
-        active: t.boolean(),
+      const schema = z.object({
+        name: z.text(),
+        age: z.integer(),
+        active: z.boolean(),
       });
 
       const data = {
@@ -653,12 +653,12 @@ describe("KeylessJsonSchemaCodec", () => {
 
       codec.configure({ useFunctionCompilation: false });
 
-      const schema = t.object({
-        user: t.object({
-          name: t.text(),
-          profile: t.object({
-            bio: t.text(),
-            age: t.integer(),
+      const schema = z.object({
+        user: z.object({
+          name: z.text(),
+          profile: z.object({
+            bio: z.text(),
+            age: z.integer(),
           }),
         }),
       });
@@ -686,11 +686,11 @@ describe("KeylessJsonSchemaCodec", () => {
 
       codec.configure({ useFunctionCompilation: false });
 
-      const schema = t.object({
-        users: t.array(
-          t.object({
-            name: t.text(),
-            age: t.integer(),
+      const schema = z.object({
+        users: z.array(
+          z.object({
+            name: z.text(),
+            age: z.integer(),
           }),
         ),
       });
@@ -713,9 +713,9 @@ describe("KeylessJsonSchemaCodec", () => {
 
       codec.configure({ useFunctionCompilation: false });
 
-      const schema = t.object({
-        name: t.text(),
-        bio: t.optional(t.text()),
+      const schema = z.object({
+        name: z.text(),
+        bio: z.text().optional(),
       });
 
       // With optional field
@@ -741,9 +741,9 @@ describe("KeylessJsonSchemaCodec", () => {
 
       codec.configure({ useFunctionCompilation: false });
 
-      const schema = t.object({
-        name: t.text(),
-        deletedAt: t.nullable(t.datetime()),
+      const schema = z.object({
+        name: z.text(),
+        deletedAt: z.datetime().nullable(),
       });
 
       // With null value
@@ -771,10 +771,10 @@ describe("KeylessJsonSchemaCodec", () => {
       // Force compiled mode
       codec.configure({ useFunctionCompilation: true });
 
-      const schema = t.object({
-        name: t.text(),
-        age: t.integer(),
-        active: t.boolean(),
+      const schema = z.object({
+        name: z.text(),
+        age: z.integer(),
+        active: z.boolean(),
       });
 
       const data = {
@@ -801,13 +801,13 @@ describe("KeylessJsonSchemaCodec", () => {
       const codecCompiled = alepha2.inject(KeylessJsonSchemaCodec);
       codecCompiled.configure({ useFunctionCompilation: true });
 
-      const schema = t.object({
-        user: t.object({
-          name: t.text(),
-          age: t.integer(),
+      const schema = z.object({
+        user: z.object({
+          name: z.text(),
+          age: z.integer(),
         }),
-        tags: t.array(t.text()),
-        active: t.boolean(),
+        tags: z.array(z.text()),
+        active: z.boolean(),
       });
 
       const data = {
@@ -842,7 +842,7 @@ describe("KeylessJsonSchemaCodec", () => {
       });
 
       // Test that configuration works by encoding/decoding
-      const schema = t.object({ name: t.text() });
+      const schema = z.object({ name: z.text() });
       const data = { name: "test" };
 
       const encoded = codec.encodeToString(schema, data);
@@ -857,7 +857,7 @@ describe("KeylessJsonSchemaCodec", () => {
       const alepha = Alepha.create();
       const codec = alepha.inject(KeylessJsonSchemaCodec);
 
-      const schema = t.object({ name: t.text() });
+      const schema = z.object({ name: z.text() });
       const data = { name: "test" };
 
       // Use compiled mode first

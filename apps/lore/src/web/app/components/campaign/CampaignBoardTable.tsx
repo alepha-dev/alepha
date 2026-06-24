@@ -7,7 +7,7 @@ import {
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { t } from "alepha";
+import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -46,11 +46,11 @@ const removeHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
  * everything on first load); AlephaTable persists the chosen values per
  * campaign via `persistenceKey` (see #113).
  */
-const boardFiltersSchema = t.object({
-  search: t.optional(t.string()),
-  status: t.optional(t.enum(["new", "accepted", "completed"])),
-  zone: t.optional(t.string()),
-  tag: t.optional(t.string()),
+const boardFiltersSchema = z.object({
+  search: z.string().optional(),
+  status: z.enum(["new", "accepted", "completed"]).optional(),
+  zone: z.string().optional(),
+  tag: z.string().optional(),
 });
 
 const CampaignBoardTable = () => {

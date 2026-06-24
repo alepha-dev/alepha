@@ -6,7 +6,7 @@ import {
   Alepha,
   type Static,
   type TSchema,
-  t,
+  z,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -25,22 +25,25 @@ import { QueueProvider } from "./QueueProvider.ts";
  */
 export const queueWorkerOptions = $atom({
   name: "alepha.queue.worker.options",
-  schema: t.object({
-    interval: t.integer({
-      default: 1000,
-      description:
+  schema: z.object({
+    interval: z
+      .integer()
+      .describe(
         "Interval in milliseconds to wait before checking for new messages.",
-    }),
-    maxInterval: t.integer({
-      default: 32000,
-      description:
+      )
+      .default(1000),
+    maxInterval: z
+      .integer()
+      .describe(
         "Maximum interval in milliseconds to wait before checking for new messages.",
-    }),
-    concurrency: t.integer({
-      default: 1,
-      description:
+      )
+      .default(32000),
+    concurrency: z
+      .integer()
+      .describe(
         "Number of workers to run concurrently. Useful only if you are doing a lot of I/O.",
-    }),
+      )
+      .default(1),
   }),
   default: {
     interval: 1000,

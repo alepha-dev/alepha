@@ -29,10 +29,10 @@ import {
  *   userActivity = $topic({
  *     name: "user-activity",
  *     schema: {
- *       payload: t.object({
- *         userId: t.text(),
- *         action: t.enum(["login", "logout", "purchase"]),
- *         timestamp: t.number()
+ *       payload: z.object({
+ *         userId: z.text(),
+ *         action: z.enum(["login", "logout", "purchase"]),
+ *         timestamp: z.number()
  *       })
  *     },
  *     handler: async (message) => {
@@ -158,17 +158,17 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
    * @example
    * ```ts
    * {
-   *   payload: t.object({
-   *     eventId: t.text(),
-   *     eventType: t.enum(["created", "updated"]),
-   *     data: t.record(t.text(), t.any()),
-   *     timestamp: t.number(),
-   *     userId: t.optional(t.text())
+   *   payload: z.object({
+   *     eventId: z.text(),
+   *     eventType: z.enum(["created", "updated"]),
+   *     data: z.record(z.text(), z.any()),
+   *     timestamp: z.number(),
+   *     userId: z.text().optional()
    *   }),
-   *   headers: t.optional(t.object({
-   *     source: t.text(),
-   *     correlationId: t.text()
-   *   }))
+   *   headers: z.object({
+   *     source: z.text(),
+   *     correlationId: z.text()
+   *   }).optional()
    * }
    * ```
    */

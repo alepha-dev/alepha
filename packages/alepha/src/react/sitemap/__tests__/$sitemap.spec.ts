@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { ServerRouterProvider } from "alepha/server";
@@ -35,7 +35,7 @@ describe("$sitemap", () => {
 
     blog = $page({
       path: "/blog/:slug",
-      schema: { params: t.object({ slug: t.text() }) },
+      schema: { params: z.object({ slug: z.text() }) },
       static: { entries: [{ params: { slug: "hello" } }] },
       component: () => "post",
     });

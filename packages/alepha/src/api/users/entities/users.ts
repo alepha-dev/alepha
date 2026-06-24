@@ -1,39 +1,39 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db, sql } from "alepha/orm";
 
 export const DEFAULT_USER_REALM_NAME = "default";
 
 export const users = $entity({
   name: "users",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
 
-    realm: db.default(t.text(), DEFAULT_USER_REALM_NAME),
+    realm: db.default(z.text(), DEFAULT_USER_REALM_NAME),
 
-    username: t.optional(
-      t.shortText({
+    username: z
+      .shortText({
         minLength: 3,
         maxLength: 30,
         // pattern is handled at the realm settings level
-      }),
-    ),
+      })
+      .optional(),
 
-    email: t.optional(t.string({ format: "email" })),
+    email: z.string().meta({ format: "email" }).optional(),
 
-    phoneNumber: t.optional(t.e164()),
+    phoneNumber: z.e164().optional(),
 
-    roles: db.default(t.array(t.string()), []),
-    firstName: t.optional(t.string()),
-    lastName: t.optional(t.string()),
-    picture: t.optional(t.string()),
-    enabled: db.default(t.boolean(), true),
+    roles: db.default(z.array(z.string()), []),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    picture: z.string().optional(),
+    enabled: db.default(z.boolean(), true),
 
-    emailVerified: db.default(t.boolean(), false),
+    emailVerified: db.default(z.boolean(), false),
 
-    lastLoginAt: t.optional(t.datetime()),
+    lastLoginAt: z.datetime().optional(),
 
     organizationId: db.organization(),
   }),

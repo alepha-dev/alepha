@@ -1,36 +1,36 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const permissionSchema = t.object({
-  name: t.text({
+export const permissionSchema = z.object({
+  name: z.text({
     description: "Name of the permission.",
   }),
 
-  group: t.optional(
-    t.text({
+  group: z
+    .text({
       description: "Group of the permission.",
-    }),
-  ),
+    })
+    .optional(),
 
-  description: t.optional(
-    t.text({
+  description: z
+    .text({
       description: "Describe the permission.",
-    }),
-  ),
+    })
+    .optional(),
 
   // HTTP Only
 
-  method: t.optional(
-    t.text({
+  method: z
+    .text({
       description: "HTTP method of the permission. When available.",
-    }),
-  ),
+    })
+    .optional(),
 
-  path: t.optional(
-    t.text({
+  path: z
+    .text({
       description: "Pathname of the permission. When available.",
-    }),
-  ),
+    })
+    .optional(),
 });
 
 export type Permission = Static<typeof permissionSchema>;

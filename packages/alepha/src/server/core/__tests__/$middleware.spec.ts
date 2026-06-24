@@ -1,4 +1,4 @@
-import { Alepha, createMiddleware, t } from "alepha";
+import { Alepha, createMiddleware, z } from "alepha";
 import { describe, test } from "vitest";
 import { $action, $middleware, $route, ServerProvider } from "../index.ts";
 
@@ -26,7 +26,7 @@ describe("$middleware", () => {
       });
 
       hello = $action({
-        schema: { response: t.object({ message: t.text() }) },
+        schema: { response: z.object({ message: z.text() }) },
         handler: () => {
           log.push("handler");
           return { message: "hello" };
@@ -55,7 +55,7 @@ describe("$middleware", () => {
       });
 
       hello = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: () => {
           log.push("handler");
           return "ok";
@@ -83,7 +83,7 @@ describe("$middleware", () => {
       });
 
       hello = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: () => {
           log.push("handler");
           return "ok";
@@ -110,7 +110,7 @@ describe("$middleware", () => {
       });
 
       getAction = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: () => {
           log.push("get");
           return "ok";
@@ -120,8 +120,8 @@ describe("$middleware", () => {
       postAction = $action({
         method: "POST",
         schema: {
-          body: t.object({ value: t.text() }),
-          response: t.text(),
+          body: z.object({ value: z.text() }),
+          response: z.text(),
         },
         handler: () => {
           log.push("post");
@@ -154,7 +154,7 @@ describe("$middleware", () => {
 
       health = $action({
         path: "/health",
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: () => {
           log.push("health");
           return "ok";
@@ -162,7 +162,7 @@ describe("$middleware", () => {
       });
 
       hello = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: () => {
           log.push("hello");
           return "ok";
@@ -193,7 +193,7 @@ describe("$middleware", () => {
 
       hello = $action({
         use: [$track(log, "local")],
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: () => {
           log.push("handler");
           return "ok";

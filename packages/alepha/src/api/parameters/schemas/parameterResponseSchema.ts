@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import type { Static } from "alepha";
 import { parameters } from "../entities/parameters.ts";
 import { parameterCreatorSummarySchema } from "./parameterCreatorSummarySchema.ts";
 import { parameterStatusSchema } from "./parameterStatusSchema.ts";
@@ -11,9 +11,9 @@ import { parameterStatusSchema } from "./parameterStatusSchema.ts";
  * `creator` is embedded on read via a best-effort left join on `creatorId`
  * (see `parameterCreatorSummarySchema`); it is not a stored column.
  */
-export const parameterResponseSchema = t.extend(parameters.schema, {
+export const parameterResponseSchema = parameters.schema.extend({
   status: parameterStatusSchema,
-  creator: t.optional(parameterCreatorSummarySchema),
+  creator: parameterCreatorSummarySchema.optional(),
 });
 
 export type ParameterResponse = Static<typeof parameterResponseSchema>;

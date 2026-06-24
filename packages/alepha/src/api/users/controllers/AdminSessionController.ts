@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { sessionQuerySchema } from "../schemas/sessionQuerySchema.ts";
@@ -19,10 +19,10 @@ export class AdminSessionController {
     use: [$secure({ permissions: ["admin:session:read"] })],
     description: "Find sessions with pagination and filtering",
     schema: {
-      query: t.extend(sessionQuerySchema, {
-        userRealmName: t.optional(t.string()),
+      query: sessionQuerySchema.extend({
+        userRealmName: z.string().optional(),
       }),
-      response: t.page(sessionResourceSchema),
+      response: z.page(sessionResourceSchema),
     },
     handler: ({ query }) => {
       const { userRealmName, ...q } = query;
@@ -39,11 +39,11 @@ export class AdminSessionController {
     use: [$secure({ permissions: ["admin:session:read"] })],
     description: "Get a session by ID",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
       response: sessionResourceSchema,
     },
@@ -61,11 +61,11 @@ export class AdminSessionController {
     use: [$secure({ permissions: ["admin:session:delete"] })],
     description: "Delete a session",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
       response: okSchema,
     },
@@ -85,14 +85,14 @@ export class AdminSessionController {
     use: [$secure({ permissions: ["admin:session:delete"] })],
     description: "Delete many sessions",
     schema: {
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
-      body: t.object({
-        ids: t.array(t.uuid(), { minItems: 1, maxItems: 1000 }),
+      body: z.object({
+        ids: z.array(z.uuid()).min(1).max(1000),
       }),
-      response: t.object({
-        deleted: t.array(t.string()),
+      response: z.object({
+        deleted: z.array(z.string()),
       }),
     },
     handler: async ({ body, query }) => {

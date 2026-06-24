@@ -1,18 +1,13 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const okSchema = t.object(
-  {
-    ok: t.boolean({ description: "True when operation succeed" }),
-    id: t.optional(t.union([t.text(), t.integer()])),
-    count: t.optional(
-      t.number({ description: "Number of resources affected" }),
-    ),
-  },
-  {
-    title: "Ok",
-    description: "Generic response after a successful operation on a resource",
-  },
-);
+export const okSchema = z
+  .object({
+    ok: z.boolean().describe("True when operation succeed"),
+    id: z.union([z.text(), z.integer()]).optional(),
+    count: z.number().describe("Number of resources affected").optional(),
+  })
+  .meta({ title: "Ok" })
+  .describe("Generic response after a successful operation on a resource");
 
 export type Ok = Static<typeof okSchema>;

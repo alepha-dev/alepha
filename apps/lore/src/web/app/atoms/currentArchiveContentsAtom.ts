@@ -1,4 +1,4 @@
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 
 /**
  * Pre-fetched contents of the current Archive directory — populated by
@@ -13,42 +13,42 @@ import { $atom, t } from "alepha";
  * loose (optional fields) so the atom doesn't break when a future
  * field is added to the controller.
  */
-const entrySchema = t.object({
-  kind: t.enum(["directory", "folio", "blob"]),
-  id: t.string(),
-  shortId: t.integer(),
-  name: t.string(),
-  updatedAt: t.string(),
-  tags: t.optional(t.array(t.string())),
-  protected: t.optional(t.boolean()),
-  pinned: t.optional(t.boolean()),
-  summary: t.optional(t.string()),
-  size: t.optional(t.number()),
-  mimeType: t.optional(t.string()),
+const entrySchema = z.object({
+  kind: z.enum(["directory", "folio", "blob"]),
+  id: z.string(),
+  shortId: z.integer(),
+  name: z.string(),
+  updatedAt: z.string(),
+  tags: z.array(z.string()).optional(),
+  protected: z.boolean().optional(),
+  pinned: z.boolean().optional(),
+  summary: z.string().optional(),
+  size: z.number().optional(),
+  mimeType: z.string().optional(),
 });
 
 export const currentArchiveContentsAtom = $atom({
   name: "lore.archive.currentContents",
   description: "Pre-fetched Archive directory contents for the current route.",
-  schema: t.optional(
-    t.object({
-      directory: t.optional(
-        t.object({
-          id: t.string(),
-          shortId: t.integer(),
-          name: t.string(),
-          parentId: t.optional(t.string()),
+  schema: z
+    .object({
+      directory: z
+        .object({
+          id: z.string(),
+          shortId: z.integer(),
+          name: z.string(),
+          parentId: z.string().optional(),
+        })
+        .optional(),
+      breadcrumb: z.array(
+        z.object({
+          id: z.string(),
+          shortId: z.integer(),
+          name: z.string(),
         }),
       ),
-      breadcrumb: t.array(
-        t.object({
-          id: t.string(),
-          shortId: t.integer(),
-          name: t.string(),
-        }),
-      ),
-      entries: t.array(entrySchema),
-    }),
-  ),
+      entries: z.array(entrySchema),
+    })
+    .optional(),
   default: undefined,
 });

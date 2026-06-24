@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 /**
  * Vendor configuration atom.
@@ -9,21 +9,21 @@ import { $atom, type Static, t } from "alepha";
 export const vendorOptions = $atom({
   name: "alepha.cli.vendor.options",
   description: "Vendor synchronization configuration",
-  schema: t.optional(
-    t.object({
+  schema: z
+    .object({
       /**
        * Git remote URL.
        *
        * @default "git@github.com:feunard/alepha.git"
        */
-      remote: t.optional(t.text()),
+      remote: z.text().optional(),
 
       /**
        * Branch to sync from.
        *
        * @default "main"
        */
-      branch: t.optional(t.text()),
+      branch: z.text().optional(),
 
       /**
        * Parent directory holding the vendored packages in the local project.
@@ -33,16 +33,16 @@ export const vendorOptions = $atom({
        *
        * @default ".vendor"
        */
-      dir: t.optional(t.text()),
+      dir: z.text().optional(),
 
       /**
        * Package directory names under `dir` to sync.
        *
        * @example ["alepha", "@alepha/payments-stripe"]
        */
-      packages: t.array(t.text()),
-    }),
-  ),
+      packages: z.array(z.text()),
+    })
+    .optional(),
 });
 
 /**

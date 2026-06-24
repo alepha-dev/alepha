@@ -328,7 +328,7 @@ export class DocsCommand {
       if (!content.includes("$env(")) return [];
 
       const schemaMatch = content.match(
-        /const\s+envSchema\s*=\s*t\.object\(\{([\s\S]*?)\}\);/,
+        /const\s+envSchema\s*=\s*z\.object\(\{([\s\S]*?)\}\);/,
       );
       if (!schemaMatch) return [];
 
@@ -348,14 +348,18 @@ export class DocsCommand {
           next ? start + name.length + (next.index ?? 0) : undefined,
         );
 
-        const isOptional = field.includes("t.optional(");
-        const typeMatch = isOptional
-          ? field.match(/t\.optional\(\s*t\.(\w+)/)
-          : field.match(/:\s*t\.(\w+)/);
+        // zod-idiomatic syntax: optional is a `.optional()` suffix, the type is
+        // `: z.<type>(...)`, and description/default are chained methods.
+        const isOptional = field.includes(".optional(");
+        const typeMatch = field.match(/:\s*z\.(\w+)/);
         if (!typeMatch) continue;
 
-        const descMatch = field.match(/description:\s*["']([^"']+)["']/);
-        const defaultMatch = field.match(/default:\s*([^,\n}]+)/);
+        const descMatch =
+          field.match(/\.describe\(\s*["']([^"']+)["']/) ??
+          field.match(/description:\s*["']([^"']+)["']/);
+        const defaultMatch =
+          field.match(/\.default\(\s*([^)]+)\)/) ??
+          field.match(/default:\s*([^,\n}]+)/);
         let defaultValue = defaultMatch?.[1]?.trim();
         if (defaultValue)
           defaultValue = defaultValue.replace(/^["']|["']$/g, "");

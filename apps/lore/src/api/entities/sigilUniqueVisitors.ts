@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { sigils } from "./sigils.ts";
 
@@ -28,18 +28,18 @@ import { sigils } from "./sigils.ts";
  */
 export const sigilUniqueVisitors = $entity({
   name: "sigil_unique_visitors",
-  schema: t.object({
-    id: db.primaryKey(t.integer()),
-    sigilId: db.ref(t.uuid(), () => sigils.cols.id, {
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
+    sigilId: db.ref(z.uuid(), () => sigils.cols.id, {
       onDelete: "cascade",
     }),
     /** UTC day bucket, `YYYY-MM-DD`. */
-    date: t.string({ minLength: 10, maxLength: 10 }),
+    date: z.string().min(10).max(10),
     /**
      * `sha256(sigilId + ip + userAgent + daily_salt)` — server-derived,
      * day-scoped. NEVER a raw IP, never client-supplied.
      */
-    sessionHash: t.string({ minLength: 1, maxLength: 128 }),
+    sessionHash: z.string().min(1).max(128),
   }),
   indexes: [
     { columns: ["sigilId", "date", "sessionHash"], unique: true },

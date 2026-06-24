@@ -1,9 +1,9 @@
-import { type Static, t } from "alepha";
+import type { Static } from "alepha";
 import { userAccountInfoSchema } from "alepha/security";
 import { apiRegistryResponseSchema } from "alepha/server/links";
 import { tokensSchema } from "./tokensSchema.ts";
 
-export const tokenResponseSchema = t.extend(tokensSchema, {
+export const tokenResponseSchema = tokensSchema.extend({
   user: userAccountInfoSchema,
   api: apiRegistryResponseSchema,
 });

@@ -1,16 +1,16 @@
-import { type Alepha, t } from "alepha";
+import { type Alepha, z } from "alepha";
 import { expect } from "vitest";
 import { $entity, $repository, db } from "../core/index.ts";
 
 const TestEntity = $entity({
   name: "test_validation",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    name: t.text(),
-    age: t.number(),
-    status: t.text(),
+    name: z.text(),
+    age: z.number(),
+    status: z.text(),
   }),
 });
 

@@ -1,11 +1,11 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const devSchedulerMetadataSchema = t.object({
-  name: t.text(),
-  description: t.optional(t.text()),
-  cron: t.optional(t.text()),
-  interval: t.optional(t.any()),
-  lock: t.optional(t.boolean()),
+export const devSchedulerMetadataSchema = z.object({
+  name: z.text(),
+  description: z.text().optional(),
+  cron: z.text().optional(),
+  interval: z.any().optional(),
+  lock: z.boolean().optional(),
 });
 
 export type DevSchedulerMetadata = Static<typeof devSchedulerMetadataSchema>;

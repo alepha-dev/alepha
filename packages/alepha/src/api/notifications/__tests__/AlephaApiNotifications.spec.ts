@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { AlephaApiJobs, JobProvider } from "alepha/api/jobs";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
@@ -29,7 +29,7 @@ describe("AlephaApiNotifications — runs without AlephaApiJobsQueue", () => {
     class Templates {
       readonly welcome = $notification({
         name: "welcome-email",
-        schema: t.object({ name: t.text() }),
+        schema: z.object({ name: z.text() }),
         email: {
           subject: "Welcome",
           body: (vars) => `Hello ${vars.name}`,

@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { folios } from "../entities/folios.ts";
 
 /**
@@ -11,31 +11,31 @@ import { folios } from "../entities/folios.ts";
  * title, which is often ambiguous once paths are in use. Quest refs and
  * folios living at campaign root come back without `path`.
  */
-const folioRefPathSchema = t.array(
-  t.object({
-    shortId: t.integer(),
-    name: t.string(),
+const folioRefPathSchema = z.array(
+  z.object({
+    shortId: z.integer(),
+    name: z.string(),
   }),
 );
 
-export const folioLinksSchema = t.object({
-  outbound: t.array(
-    t.object({
-      kind: t.enum(["folio", "quest", "blob"]),
-      shortId: t.integer(),
+export const folioLinksSchema = z.object({
+  outbound: z.array(
+    z.object({
+      kind: z.enum(["folio", "quest", "blob"]),
+      shortId: z.integer(),
       // For folios and quests this is the entity title. For blobs it's
       // the Archive display name (e.g. "diagram.png").
-      title: t.string(),
-      path: t.optional(folioRefPathSchema),
+      title: z.string(),
+      path: folioRefPathSchema.optional(),
     }),
   ),
   // Inbound is always folio→folio (only folios contain `[[...]]`).
-  inbound: t.array(
-    t.object({
-      kind: t.enum(["folio"]),
-      shortId: t.integer(),
-      title: t.string(),
-      path: t.optional(folioRefPathSchema),
+  inbound: z.array(
+    z.object({
+      kind: z.enum(["folio"]),
+      shortId: z.integer(),
+      title: z.string(),
+      path: folioRefPathSchema.optional(),
     }),
   ),
 });
@@ -55,16 +55,16 @@ export const folioLinksSchema = t.object({
  * Same shape archive directories carry on `listContents`. Empty
  * array when the folio lives at the campaign root.
  */
-export const folioPathSchema = t.array(
-  t.object({
-    shortId: t.integer(),
-    name: t.string(),
+export const folioPathSchema = z.array(
+  z.object({
+    shortId: z.integer(),
+    name: z.string(),
   }),
 );
 
-export const folioMetadataSchema = t.object({
-  links: t.optional(folioLinksSchema),
-  path: t.optional(folioPathSchema),
+export const folioMetadataSchema = z.object({
+  links: folioLinksSchema.optional(),
+  path: folioPathSchema.optional(),
 });
 
 /**
@@ -74,8 +74,8 @@ export const folioMetadataSchema = t.object({
  * (e.g. `getByShortId?withLinks=true`); `list`/`get`/`create`/`update`
  * return the bare entity.
  */
-export const folioResourceSchema = t.extend(folios.schema, {
-  metadata: t.optional(folioMetadataSchema),
+export const folioResourceSchema = folios.schema.extend({
+  metadata: folioMetadataSchema.optional(),
 });
 
 export type FolioLinks = Static<typeof folioLinksSchema>;

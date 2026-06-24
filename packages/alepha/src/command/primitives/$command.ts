@@ -8,7 +8,7 @@ import {
   type Static,
   type TObject,
   type TSchema,
-  t,
+  z,
 } from "alepha";
 import type { AskMethod } from "../helpers/Asker.ts";
 import type { RunnerMethod } from "../helpers/Runner.ts";
@@ -74,9 +74,9 @@ export interface CommandPrimitiveOptions<
    * @example
    * ```ts
    * $command({
-   *   env: t.object({
-   *     VERCEL_TOKEN: t.text({ description: "Vercel API token" }),
-   *     VERCEL_ORG_ID: t.optional(t.text({ description: "Organization ID" })),
+   *   env: z.object({
+   *     VERCEL_TOKEN: z.text({ description: "Vercel API token" }),
+   *     VERCEL_ORG_ID: z.text({ description: "Organization ID" }).optional(),
    *   }),
    *   handler: async ({ env }) => {
    *     // env.VERCEL_TOKEN is typed & guaranteed to exist
@@ -91,16 +91,16 @@ export interface CommandPrimitiveOptions<
    * An optional TypeBox schema defining the arguments for the command.
    *
    * @example
-   * args: t.text()
+   * args: z.text()
    * my-cli command <arg1: string>
    *
-   * args: t.optional(t.text())
+   * args: z.text().optional()
    * my-cli command [arg1: string]
    *
-   * args: t.tuple([t.text(), t.number()])
+   * args: z.tuple([z.text(), z.number()])
    * my-cli command <arg1: string> <arg2: number>
    *
-   * args: t.tuple([t.text(), t.optional(t.number())])
+   * args: z.tuple([z.text(), z.number().optional()])
    * my-cli command <arg1: string> [arg2: number]
    */
   args?: A;
@@ -254,8 +254,8 @@ export class CommandPrimitive<
   A extends TSchema = TSchema,
   E extends TObject = TObject,
 > extends Primitive<CommandPrimitiveOptions<T, A, E>> {
-  public readonly flags = this.options.flags ?? t.object({});
-  public readonly env = this.options.env ?? t.object({});
+  public readonly flags = this.options.flags ?? z.object({});
+  public readonly env = this.options.env ?? z.object({});
   public readonly aliases = this.options.aliases ?? [];
 
   protected onInit() {

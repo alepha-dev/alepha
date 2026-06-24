@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 /**
  * Devtools configuration atom.
@@ -8,16 +8,16 @@ import { $atom, type Static, t } from "alepha";
 export const devtoolsOptions = $atom({
   name: "alepha.cli.devtools.options",
   description: "Devtools plugin configuration",
-  schema: t.optional(
-    t.object({
+  schema: z
+    .object({
       /**
        * Hide the floating devtools button in the browser.
        *
        * The devtools UI is still accessible at `/__devtools/`.
        */
-      hideButton: t.optional(t.boolean({ default: false })),
-    }),
-  ),
+      hideButton: z.boolean().default(false).optional(),
+    })
+    .optional(),
 });
 
 /**

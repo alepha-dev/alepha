@@ -10,12 +10,12 @@ import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
  *
  * @example
  * ```tsx
- * import { t } from "alepha";
+ * import { z } from "alepha";
  *
  * const form = useForm({
- *   schema: t.object({
- *     username: t.text(),
- *     password: t.text(),
+ *   schema: z.object({
+ *     username: z.text(),
+ *     password: z.text(),
  *   }),
  *   handler: (values) => {
  *     console.log("Form submitted with values:", values);

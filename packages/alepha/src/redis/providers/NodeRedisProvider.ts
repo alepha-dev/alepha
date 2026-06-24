@@ -11,13 +11,13 @@ import {
   Alepha,
   AlephaError,
   type Static,
-  t,
+  z,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import { RedisProvider, type RedisSetOptions } from "./RedisProvider.ts";
 
-const envSchema = t.object({
-  REDIS_URL: t.text({
+const envSchema = z.object({
+  REDIS_URL: z.text({
     default: "redis://localhost:6379",
     description: "Redis connection URL",
   }),

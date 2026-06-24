@@ -1,4 +1,4 @@
-import { $inject, Alepha, type TObject, type TSchema, t } from "alepha";
+import { $inject, Alepha, type TObject, type TSchema, z } from "alepha";
 import { $bucket } from "alepha/bucket";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
@@ -334,9 +334,9 @@ export class DevToolsMetadataProvider {
 
   protected getColumnType(field: TSchema): string {
     // Handle optional/nullable wrappers (unions with null)
-    if (t.schema.isUnion(field) && (field as any).anyOf) {
+    if (z.schema.isUnion(field) && (field as any).anyOf) {
       const types = (field as any).anyOf as TSchema[];
-      const nonNull = types.find((type) => !t.schema.isNull(type));
+      const nonNull = types.find((type) => !z.schema.isNull(type));
       if (nonNull) {
         return this.getColumnType(nonNull);
       }
@@ -344,9 +344,9 @@ export class DevToolsMetadataProvider {
 
     const f = field as any;
 
-    // Check for enum (t.enum wraps in Unsafe with type=string and enum array)
+    // Check for enum (z.enum wraps in Unsafe with type=string and enum array)
     if (
-      t.schema.isUnsafe(field) &&
+      z.schema.isUnsafe(field) &&
       f.type === "string" &&
       Array.isArray(f.enum)
     ) {
@@ -354,7 +354,7 @@ export class DevToolsMetadataProvider {
     }
 
     // Use TypeBox's type guards
-    if (t.schema.isString(field)) {
+    if (z.schema.isString(field)) {
       if (f.enum) return "enum";
       if (f.format === "uuid") return "uuid";
       if (f.format === "date-time") return "datetime";
@@ -362,20 +362,20 @@ export class DevToolsMetadataProvider {
       if (f.format === "bigint") return "bigint";
       return "text";
     }
-    if (t.schema.isInteger(field)) return "integer";
-    if (t.schema.isNumber(field)) return "number";
-    if (t.schema.isBoolean(field)) return "boolean";
-    if (t.schema.isArray(field)) return "array";
-    if (t.schema.isObject(field)) return "json";
-    if (t.schema.isLiteral(field)) return "literal";
+    if (z.schema.isInteger(field)) return "integer";
+    if (z.schema.isNumber(field)) return "number";
+    if (z.schema.isBoolean(field)) return "boolean";
+    if (z.schema.isArray(field)) return "array";
+    if (z.schema.isObject(field)) return "json";
+    if (z.schema.isLiteral(field)) return "literal";
 
     return "unknown";
   }
 
   protected isNullable(field: TSchema): boolean {
-    if (t.schema.isUnion(field) && (field as any).anyOf) {
+    if (z.schema.isUnion(field) && (field as any).anyOf) {
       const types = (field as any).anyOf as TSchema[];
-      return types.some((type) => t.schema.isNull(type));
+      return types.some((type) => z.schema.isNull(type));
     }
     return false;
   }

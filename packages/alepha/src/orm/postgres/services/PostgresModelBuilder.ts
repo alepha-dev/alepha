@@ -1,4 +1,4 @@
-import { AlephaError, type TObject, type TSchema, t } from "alepha";
+import { AlephaError, type TObject, z } from "alepha";
 import {
   type EntityPrimitive,
   type FromSchema,
@@ -165,80 +165,88 @@ export class PostgresModelBuilder extends ModelBuilder {
     enums: Map<string, unknown>,
     tables: Map<string, unknown>,
   ): FromSchema<T> => {
-    return Object.entries(schema.properties).reduce<Partial<FromSchema<T>>>(
-      (columns, [key, value]) => {
-        let col = this.mapFieldToColumn(tableName, key, value, nsp, enums);
+    return Object.entries(schema.properties as Record<string, any>).reduce<
+      Partial<FromSchema<T>>
+    >((columns, [key, value]) => {
+      let col = this.mapFieldToColumn(tableName, key, value, nsp, enums);
 
-        if ("default" in value && value.default != null) {
-          col = col.default(value.default as any);
-        }
+      const defaultValue = z.schema.getDefault(value);
+      if (defaultValue != null) {
+        col = col.default(defaultValue as any);
+      }
 
-        if (PG_PRIMARY_KEY in value) {
-          col = col.primaryKey();
-        }
+      if (PG_PRIMARY_KEY in value) {
+        col = col.primaryKey();
+      }
 
-        if (PG_REF in value) {
-          const config = value[PG_REF] as PgRefOptions;
-          col = col.references(() => {
-            const ref = config.ref();
-            const table = tables.get(
-              ref.entity.name,
-            ) as PgTableWithColumns<any>;
+      if (PG_REF in value) {
+        const config = value[PG_REF] as PgRefOptions;
+        col = col.references(() => {
+          const ref = config.ref();
+          const table = tables.get(ref.entity.name) as PgTableWithColumns<any>;
 
-            if (!table) {
-              throw new AlephaError(
-                `Referenced table ${ref.entity.name} not found for ${tableName}.${key}`,
-              );
-            }
+          if (!table) {
+            throw new AlephaError(
+              `Referenced table ${ref.entity.name} not found for ${tableName}.${key}`,
+            );
+          }
 
-            const target = table[ref.name];
-            if (!target) {
-              throw new AlephaError(
-                `Referenced column ${ref.name} not found in table ${ref.entity.name} for ${tableName}.${key}`,
-              );
-            }
+          const target = table[ref.name];
+          if (!target) {
+            throw new AlephaError(
+              `Referenced column ${ref.name} not found in table ${ref.entity.name} for ${tableName}.${key}`,
+            );
+          }
 
-            return target;
-          }, config.actions);
-        }
+          return target;
+        }, config.actions);
+      }
 
-        if (PG_GENERATED in value) {
-          const gen = value[PG_GENERATED] as PgGeneratedOptions;
-          col = col.generatedAlwaysAs(gen.expression);
-        }
+      if (PG_GENERATED in value) {
+        const gen = value[PG_GENERATED] as PgGeneratedOptions;
+        col = col.generatedAlwaysAs(gen.expression);
+      }
 
-        if (schema.required?.includes(key)) {
-          col = col.notNull();
-        }
+      if (z.schema.requiredKeys(schema).includes(key)) {
+        col = col.notNull();
+      }
 
-        (columns as Record<string, unknown>)[key] = col;
-        return columns;
-      },
-      {},
-    ) as FromSchema<T>;
+      (columns as Record<string, unknown>)[key] = col;
+      return columns;
+    }, {}) as FromSchema<T>;
   };
 
   mapFieldToColumn = (
     tableName: string,
     fieldName: string,
-    value: TSchema,
+    value: any,
     nsp: PgSchema,
     enums: Map<string, any>,
   ) => {
     const key = this.toColumnName(fieldName);
 
-    if (
-      // is nullish ?
-      "anyOf" in value &&
-      Array.isArray(value.anyOf) &&
-      value.anyOf.length === 2 &&
-      value.anyOf.some((it: TSchema) => t.schema.isNull(it))
-    ) {
-      // then, remove nullish
-      value = value.anyOf.find((it: TSchema) => !t.schema.isNull(it))!;
+    // Peel optional / nullable / default wrappers to the underlying type.
+    value = z.schema.unwrap(value);
+
+    // `z.int64()` is a safe-integer with format "int64" → Postgres bigint
+    // (stored as a JS number). Must be checked before the plain-integer branch
+    // below, otherwise it maps to int4 and overflows past 2_147_483_647.
+    if (z.schema.isInteger(value) && z.schema.format(value) === "int64") {
+      if (PG_IDENTITY in value) {
+        const options = value[PG_IDENTITY] as PgIdentityOptions;
+        if (options.mode === "byDefault") {
+          return pg
+            .bigint(key, { mode: "number" })
+            .generatedByDefaultAsIdentity(options);
+        }
+        return pg
+          .bigint(key, { mode: "number" })
+          .generatedAlwaysAsIdentity(options);
+      }
+      return pg.bigint(key, { mode: "number" });
     }
 
-    if (t.schema.isInteger(value)) {
+    if (z.schema.isInteger(value)) {
       if (PG_SERIAL in value) {
         return pg.serial(key);
       }
@@ -254,7 +262,7 @@ export class PostgresModelBuilder extends ModelBuilder {
       return pg.integer(key);
     }
 
-    if (t.schema.isBigInt(value)) {
+    if (z.schema.isBigInt(value)) {
       if (PG_IDENTITY in value) {
         const options = value[PG_IDENTITY] as PgIdentityOptions;
         if (options.mode === "byDefault") {
@@ -270,7 +278,7 @@ export class PostgresModelBuilder extends ModelBuilder {
       return pg.bigint(key, { mode: "bigint" });
     }
 
-    if (t.schema.isNumber(value)) {
+    if (z.schema.isNumber(value)) {
       if (PG_IDENTITY in value) {
         const options = value[PG_IDENTITY] as PgIdentityOptions;
         if (options.mode === "byDefault") {
@@ -283,79 +291,84 @@ export class PostgresModelBuilder extends ModelBuilder {
           .generatedAlwaysAsIdentity(options);
       }
 
-      if (value.format === "int64") {
+      if (z.schema.format(value) === "int64") {
         return pg.bigint(key, { mode: "number" });
       }
 
-      return pg.numeric(key);
+      // Native float column — drizzle returns a JS number. `numeric` would
+      // hand back a string, which strict `z.number()` validation rejects.
+      return pg.doublePrecision(key);
     }
 
-    const isTypeEnum = (value: any): value is { enum: any[] } =>
-      t.schema.isUnsafe(value) &&
-      "type" in value &&
-      value.type === "string" &&
-      "enum" in value &&
-      Array.isArray(value.enum);
-
-    if (t.schema.isString(value) && !isTypeEnum(value)) {
+    if (z.schema.isString(value) && !z.schema.isEnum(value)) {
       return this.mapStringToColumn(key, value);
     }
 
-    if (t.schema.isBoolean(value)) {
+    if (z.schema.isBoolean(value)) {
       return pg.boolean(key);
     }
 
-    if (t.schema.isObject(value)) {
+    if (z.schema.isObject(value)) {
       return schema(key, value);
     }
 
-    if (t.schema.isRecord(value)) {
+    if (z.schema.isRecord(value)) {
       return schema(key, value);
     }
 
-    if (t.schema.isArray(value)) {
-      if (t.schema.isObject(value.items)) {
+    if (z.schema.isArray(value)) {
+      const items = value.items;
+      if (z.schema.isObject(items)) {
         return schema(key, value);
       }
-      if (t.schema.isRecord(value.items)) {
+      if (z.schema.isRecord(items)) {
         return schema(key, value);
       }
-      if (t.schema.isString(value.items)) {
+      if (z.schema.isString(items)) {
         return pg.text(key).array();
       }
-      if (t.schema.isInteger(value.items)) {
+      if (z.schema.isInteger(items)) {
         return pg.integer(key).array();
       }
-      if (t.schema.isNumber(value.items)) {
-        return pg.numeric(key).array();
+      if (z.schema.isNumber(items)) {
+        // doublePrecision returns JS numbers; `numeric` hands back strings,
+        // which strict `z.number()` element validation rejects (mirrors the
+        // scalar-number column choice above).
+        return pg.doublePrecision(key).array();
       }
-      if (t.schema.isBoolean(value.items)) {
+      if (z.schema.isBoolean(items)) {
         return pg.boolean(key).array();
       }
-      if (isTypeEnum(value.items)) {
+      if (z.schema.isEnum(items)) {
         return pg.text(key).array();
       }
     }
 
     // Enum handling
-    if (isTypeEnum(value)) {
-      if (!value.enum.every((it) => typeof it === "string")) {
+    if (z.schema.isEnum(value)) {
+      const enumVals = z.schema.enumValues(value);
+      if (!enumVals.every((it) => typeof it === "string")) {
         throw new AlephaError(
           `Enum for ${fieldName} must be an array of strings, got ${JSON.stringify(
-            value.enum,
+            enumVals,
           )}`,
         );
       }
 
-      // SQL Enum (default for t.enum unless mode: "text")
-      if ((value as any).mode !== "text") {
-        const enumName = (value as any).enumName ?? `${tableName}_${key}_enum`;
+      const enumMeta = (value.meta?.() ?? {}) as {
+        mode?: string;
+        name?: string;
+      };
+
+      // SQL Enum (default for z.enum unless mode: "text")
+      if (enumMeta.mode !== "text") {
+        const enumName = enumMeta.name ?? `${tableName}_${key}_enum`;
 
         if (enums.has(enumName)) {
           const values = (
             enums.get(enumName) as PgEnum<[string]>
           ).enumValues.join(",");
-          const newValues = value.enum.join(",");
+          const newValues = enumVals.join(",");
           if (values !== newValues) {
             throw new AlephaError(
               `Enum name conflict for ${enumName}: [${values}] vs [${newValues}]`,
@@ -363,7 +376,7 @@ export class PostgresModelBuilder extends ModelBuilder {
           }
         }
 
-        enums.set(enumName, nsp.enum(enumName, value.enum as [string]));
+        enums.set(enumName, nsp.enum(enumName, enumVals as [string]));
 
         return enums.get(enumName)(key);
       }
@@ -383,37 +396,37 @@ export class PostgresModelBuilder extends ModelBuilder {
    * @param key The key of the field.
    * @param value The value of the field.
    */
-  mapStringToColumn = (key: string, value: TSchema) => {
-    if ("format" in value) {
-      if (value.format === "uuid") {
-        if (PG_PRIMARY_KEY in value) {
-          return this.getPrimaryKeyUUID(key);
-        }
+  mapStringToColumn = (key: string, value: any) => {
+    const format = z.schema.format(value);
 
-        return pg.uuid(key);
+    if (format === "uuid") {
+      if (PG_PRIMARY_KEY in value) {
+        return this.getPrimaryKeyUUID(key);
       }
 
-      if (value.format === "byte") {
-        return byte(key);
-      }
+      return pg.uuid(key);
+    }
 
-      if (value.format === "date-time") {
-        if (PG_CREATED_AT in value) {
-          return pg
-            .timestamp(key, { mode: "string", withTimezone: true })
-            .defaultNow();
-        }
-        if (PG_UPDATED_AT in value) {
-          return pg
-            .timestamp(key, { mode: "string", withTimezone: true })
-            .defaultNow();
-        }
-        return pg.timestamp(key, { mode: "string", withTimezone: true });
-      }
+    if (format === "binary") {
+      return byte(key);
+    }
 
-      if (value.format === "date") {
-        return pg.date(key, { mode: "string" });
+    if (format === "date-time") {
+      if (PG_CREATED_AT in value) {
+        return pg
+          .timestamp(key, { mode: "string", withTimezone: true })
+          .defaultNow();
       }
+      if (PG_UPDATED_AT in value) {
+        return pg
+          .timestamp(key, { mode: "string", withTimezone: true })
+          .defaultNow();
+      }
+      return pg.timestamp(key, { mode: "string", withTimezone: true });
+    }
+
+    if (format === "date") {
+      return pg.date(key, { mode: "string" });
     }
 
     return pg.text(key);

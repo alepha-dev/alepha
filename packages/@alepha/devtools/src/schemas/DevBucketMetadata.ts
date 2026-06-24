@@ -1,11 +1,11 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const devBucketMetadataSchema = t.object({
-  name: t.text(),
-  description: t.optional(t.text()),
-  mimeTypes: t.optional(t.array(t.text())),
-  maxSize: t.optional(t.number()),
-  provider: t.text(),
+export const devBucketMetadataSchema = z.object({
+  name: z.text(),
+  description: z.text().optional(),
+  mimeTypes: z.array(z.text()).optional(),
+  maxSize: z.number().optional(),
+  provider: z.text(),
 });
 
 export type DevBucketMetadata = Static<typeof devBucketMetadataSchema>;

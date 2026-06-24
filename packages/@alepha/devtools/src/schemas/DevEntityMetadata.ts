@@ -1,56 +1,56 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const devEntityColumnSchema = t.object({
-  name: t.text(),
-  type: t.text(),
-  nullable: t.boolean(),
-  primaryKey: t.boolean(),
-  identity: t.boolean(),
-  createdAt: t.boolean(),
-  updatedAt: t.boolean(),
-  deletedAt: t.boolean(),
-  version: t.boolean(),
-  hasDefault: t.boolean(),
-  ref: t.optional(
-    t.object({
-      entity: t.text(),
-      column: t.text(),
-      onUpdate: t.optional(t.text()),
-      onDelete: t.optional(t.text()),
-    }),
-  ),
+export const devEntityColumnSchema = z.object({
+  name: z.text(),
+  type: z.text(),
+  nullable: z.boolean(),
+  primaryKey: z.boolean(),
+  identity: z.boolean(),
+  createdAt: z.boolean(),
+  updatedAt: z.boolean(),
+  deletedAt: z.boolean(),
+  version: z.boolean(),
+  hasDefault: z.boolean(),
+  ref: z
+    .object({
+      entity: z.text(),
+      column: z.text(),
+      onUpdate: z.text().optional(),
+      onDelete: z.text().optional(),
+    })
+    .optional(),
 });
 
-export const devEntityIndexSchema = t.object({
-  name: t.optional(t.text()),
-  columns: t.array(t.text()),
-  unique: t.boolean(),
+export const devEntityIndexSchema = z.object({
+  name: z.text().optional(),
+  columns: z.array(z.text()),
+  unique: z.boolean(),
 });
 
-export const devEntityForeignKeySchema = t.object({
-  name: t.optional(t.text()),
-  columns: t.array(t.text()),
-  foreignEntity: t.text(),
-  foreignColumns: t.array(t.text()),
+export const devEntityForeignKeySchema = z.object({
+  name: z.text().optional(),
+  columns: z.array(z.text()),
+  foreignEntity: z.text(),
+  foreignColumns: z.array(z.text()),
 });
 
-export const devEntityConstraintSchema = t.object({
-  name: t.optional(t.text()),
-  columns: t.array(t.text()),
-  unique: t.boolean(),
-  hasCheck: t.boolean(),
+export const devEntityConstraintSchema = z.object({
+  name: z.text().optional(),
+  columns: z.array(z.text()),
+  unique: z.boolean(),
+  hasCheck: z.boolean(),
 });
 
-export const devEntityMetadataSchema = t.object({
-  name: t.text(),
-  provider: t.text(),
-  columns: t.array(devEntityColumnSchema),
-  indexes: t.array(devEntityIndexSchema),
-  foreignKeys: t.array(devEntityForeignKeySchema),
-  constraints: t.array(devEntityConstraintSchema),
-  schema: t.optional(t.any()),
-  insertSchema: t.optional(t.any()),
-  updateSchema: t.optional(t.any()),
+export const devEntityMetadataSchema = z.object({
+  name: z.text(),
+  provider: z.text(),
+  columns: z.array(devEntityColumnSchema),
+  indexes: z.array(devEntityIndexSchema),
+  foreignKeys: z.array(devEntityForeignKeySchema),
+  constraints: z.array(devEntityConstraintSchema),
+  schema: z.any().optional(),
+  insertSchema: z.any().optional(),
+  updateSchema: z.any().optional(),
 });
 
 export type DevEntityColumn = Static<typeof devEntityColumnSchema>;

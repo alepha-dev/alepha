@@ -1,4 +1,4 @@
-import { Alepha, createMiddleware, t } from "alepha";
+import { Alepha, createMiddleware, z } from "alepha";
 import { describe, test } from "vitest";
 import { $route, ServerProvider } from "../index.ts";
 
@@ -28,14 +28,14 @@ describe("$route", () => {
       $route = $route({
         path: "/hello",
         schema: {
-          query: t.object({
-            a: t.optional(t.text()),
-            b: t.optional(t.array(t.text())),
-            c: t.optional(
-              t.object({
-                d: t.text(),
-              }),
-            ),
+          query: z.object({
+            a: z.text().optional(),
+            b: z.array(z.text()).optional(),
+            c: z
+              .object({
+                d: z.text(),
+              })
+              .optional(),
           }),
         },
         handler: ({ query }) => JSON.stringify({ query }),

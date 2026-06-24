@@ -1,4 +1,4 @@
-import { $env, $hook, $inject, AlephaError, t } from "alepha";
+import { $env, $hook, $inject, AlephaError, z } from "alepha";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
@@ -49,10 +49,8 @@ export interface D1ExecResult {
 export class CloudflareD1Provider extends DatabaseProvider {
   protected readonly builder = $inject(SqliteModelBuilder);
   protected readonly env = $env(
-    t.object({
-      DATABASE_URL: t.string({
-        description: "Expect to be 'd1://binding'",
-      }),
+    z.object({
+      DATABASE_URL: z.string().describe("Expect to be 'd1://binding'"),
     }),
   );
 

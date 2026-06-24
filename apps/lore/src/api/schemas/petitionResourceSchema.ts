@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { petitions } from "../entities/petitions.ts";
 
 /**
@@ -7,16 +7,16 @@ import { petitions } from "../entities/petitions.ts";
  * to render quest progression — full quest details live behind their own
  * endpoint.
  */
-export const petitionLinkedQuestSchema = t.object({
-  id: t.integer(),
-  shortId: t.integer(),
-  title: t.string(),
-  status: t.enum(["new", "accepted", "completed"], { mode: "text" }),
-  difficulty: t.integer(),
-  priority: t.string(),
-  zone: t.string(),
-  acceptedAt: t.optional(t.datetime()),
-  completedAt: t.optional(t.datetime()),
+export const petitionLinkedQuestSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  status: z.enum(["new", "accepted", "completed"]).meta({ mode: "text" }),
+  difficulty: z.integer(),
+  priority: z.string(),
+  zone: z.string(),
+  acceptedAt: z.datetime().optional(),
+  completedAt: z.datetime().optional(),
 });
 
 export type PetitionLinkedQuest = Static<typeof petitionLinkedQuestSchema>;
@@ -30,27 +30,27 @@ export type PetitionLinkedQuest = Static<typeof petitionLinkedQuestSchema>;
  * `quests.petitionId`). Status is derived per-quest: a fresh quest is `new`
  * until accepted, `accepted` while in progress, `completed` when finished.
  */
-export const petitionResourceSchema = t.extend(petitions.schema, {
-  reporter: t.optional(
-    t.object({
-      id: t.uuid(),
-      username: t.optional(t.string()),
-      name: t.optional(t.string()),
-      picture: t.optional(t.string()),
-    }),
-  ),
-  attachmentUrls: t.optional(
-    t.array(
-      t.object({
-        id: t.uuid(),
-        name: t.string(),
-        url: t.string(),
-        mimeType: t.string(),
-        size: t.number(),
+export const petitionResourceSchema = petitions.schema.extend({
+  reporter: z
+    .object({
+      id: z.uuid(),
+      username: z.string().optional(),
+      name: z.string().optional(),
+      picture: z.string().optional(),
+    })
+    .optional(),
+  attachmentUrls: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        name: z.string(),
+        url: z.string(),
+        mimeType: z.string(),
+        size: z.number(),
       }),
-    ),
-  ),
-  linkedQuests: t.optional(t.array(petitionLinkedQuestSchema)),
+    )
+    .optional(),
+  linkedQuests: z.array(petitionLinkedQuestSchema).optional(),
 });
 
 export type PetitionResource = Static<typeof petitionResourceSchema>;

@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $action, AlephaServer, ServerProvider } from "alepha/server";
 import { describe, test } from "vitest";
 import { multipartOptions } from "../providers/ServerMultipartProvider.ts";
@@ -6,10 +6,10 @@ import { multipartOptions } from "../providers/ServerMultipartProvider.ts";
 class App {
   upload = $action({
     schema: {
-      body: t.object({
-        file: t.file(),
+      body: z.object({
+        file: z.file(),
       }),
-      response: t.text(),
+      response: z.text(),
     },
     handler: ({ body }) => {
       return `${body.file.name} (${body.file.size}b, ${body.file.type})`;
@@ -52,8 +52,8 @@ describe("ServerMultipartProvider", () => {
     class TextApp {
       upload = $action({
         schema: {
-          body: t.object({ file: t.file() }),
-          response: t.text(),
+          body: z.object({ file: z.file() }),
+          response: z.text(),
         },
         handler: async ({ body }) => body.file.text(),
       });
@@ -78,8 +78,8 @@ describe("ServerMultipartProvider", () => {
     class BufferApp {
       upload = $action({
         schema: {
-          body: t.object({ file: t.file() }),
-          response: t.text(),
+          body: z.object({ file: z.file() }),
+          response: z.text(),
         },
         handler: async ({ body }) => {
           const ab = await body.file.arrayBuffer();
@@ -104,8 +104,8 @@ describe("ServerMultipartProvider", () => {
     class BinaryApp {
       upload = $action({
         schema: {
-          body: t.object({ file: t.file() }),
-          response: t.text(),
+          body: z.object({ file: z.file() }),
+          response: z.text(),
         },
         handler: async ({ body }) => {
           const ab = await body.file.arrayBuffer();
@@ -145,12 +145,12 @@ describe("ServerMultipartProvider", () => {
     class MixedApp {
       upload = $action({
         schema: {
-          body: t.object({
-            name: t.text(),
-            description: t.text(),
-            file: t.file(),
+          body: z.object({
+            name: z.text(),
+            description: z.text(),
+            file: z.file(),
           }),
-          response: t.text(),
+          response: z.text(),
         },
         handler: ({ body }) =>
           `${body.name}: ${body.description} (${body.file.size}b)`,
@@ -177,8 +177,8 @@ describe("ServerMultipartProvider", () => {
     class PathApp {
       upload = $action({
         schema: {
-          body: t.object({ file: t.file() }),
-          response: t.text(),
+          body: z.object({ file: z.file() }),
+          response: z.text(),
         },
         handler: ({ body }) => String(body.file.filepath ?? "none"),
       });
@@ -231,11 +231,11 @@ describe("ServerMultipartProvider - Size Limits", () => {
     class MultiFileApp {
       upload = $action({
         schema: {
-          body: t.object({
-            file1: t.file(),
-            file2: t.file(),
+          body: z.object({
+            file1: z.file(),
+            file2: z.file(),
           }),
-          response: t.text(),
+          response: z.text(),
         },
         handler: () => "ok",
       });
@@ -273,12 +273,12 @@ describe("ServerMultipartProvider - Size Limits", () => {
     class ManyFilesApp {
       upload = $action({
         schema: {
-          body: t.object({
-            file1: t.file(),
-            file2: t.file(),
-            file3: t.file(),
+          body: z.object({
+            file1: z.file(),
+            file2: z.file(),
+            file3: z.file(),
           }),
-          response: t.text(),
+          response: z.text(),
         },
         handler: () => "ok",
       });
@@ -383,14 +383,14 @@ describe("ServerMultipartProvider - Size Limits", () => {
     class TextAndFilesApp {
       upload = $action({
         schema: {
-          body: t.object({
-            field1: t.text(),
-            field2: t.text(),
-            field3: t.text(),
-            file1: t.file(),
-            file2: t.file(),
+          body: z.object({
+            field1: z.text(),
+            field2: z.text(),
+            field3: z.text(),
+            file1: z.file(),
+            file2: z.file(),
           }),
-          response: t.text(),
+          response: z.text(),
         },
         handler: () => "success",
       });

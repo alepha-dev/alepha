@@ -24,11 +24,11 @@ export interface RemotePrimitiveOptions {
    * @example
    * ```ts
    * import { $remote } from "alepha/server";
-   * import { $inject, t } from "alepha";
+   * import { $inject, z } from "alepha";
    *
    * class App {
-   *   env = $env(t.object({
-   *     REMOTE_URL: t.text({default: "http://localhost:3000"}),
+   *   env = $env(z.object({
+   *     REMOTE_URL: z.text({default: "http://localhost:3000"}),
    *   }));
    *   remote = $remote({
    *     url: this.env.REMOTE_URL,

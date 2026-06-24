@@ -1,18 +1,18 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { subscriptions } from "./subscriptions.ts";
 
 export const subscriptionEvents = $entity({
   name: "subscription_events",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
-    subscriptionId: db.ref(t.uuid(), () => subscriptions.cols.id, {
+    subscriptionId: db.ref(z.uuid(), () => subscriptions.cols.id, {
       onDelete: "cascade",
     }),
     organizationId: db.organization(),
 
-    type: t.enum([
+    type: z.enum([
       "created",
       "trial_started",
       "trial_ended",
@@ -31,18 +31,18 @@ export const subscriptionEvents = $entity({
     ]),
 
     // Context
-    previousStatus: t.optional(t.string()),
-    newStatus: t.optional(t.string()),
-    previousPlanId: t.optional(t.string()),
-    newPlanId: t.optional(t.string()),
-    paymentIntentId: t.optional(t.uuid()),
-    amount: t.optional(t.integer()),
-    currency: t.optional(t.string()),
+    previousStatus: z.string().optional(),
+    newStatus: z.string().optional(),
+    previousPlanId: z.string().optional(),
+    newPlanId: z.string().optional(),
+    paymentIntentId: z.uuid().optional(),
+    amount: z.integer().optional(),
+    currency: z.string().optional(),
 
     // Who / why
-    triggeredBy: t.optional(t.string()),
-    userId: t.optional(t.uuid()),
-    note: t.optional(t.string()),
+    triggeredBy: z.string().optional(),
+    userId: z.uuid().optional(),
+    note: z.string().optional(),
   }),
   indexes: [
     { columns: ["subscriptionId", "createdAt"] },

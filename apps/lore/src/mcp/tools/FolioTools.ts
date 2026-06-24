@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 import { CampaignController } from "../../api/controllers/CampaignController.ts";
@@ -137,14 +137,14 @@ export class FolioTools {
       idempotentHint: true,
     },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        tag: t.optional(t.string()),
-        limit: t.optional(t.integer({ minimum: 1, maximum: 100, default: 20 })),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        tag: z.string().optional(),
+        limit: z.integer().min(1).max(100).default(20).optional(),
       }),
-      result: t.object({
-        folios: t.array(folioRefSchema),
+      result: z.object({
+        folios: z.array(folioRefSchema),
       }),
     },
     handler: async ({ params }) => {
@@ -177,22 +177,22 @@ export class FolioTools {
       idempotentHint: true,
     },
     schema: {
-      params: t.object({
-        query: t.string({ minLength: 1 }),
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        tag: t.optional(t.string()),
-        limit: t.optional(t.integer({ minimum: 1, maximum: 50, default: 10 })),
+      params: z.object({
+        query: z.string().min(1),
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        tag: z.string().optional(),
+        limit: z.integer().min(1).max(50).default(10).optional(),
       }),
-      result: t.object({
-        results: t.array(
-          t.object({
-            id: t.uuid(),
-            shortId: t.integer(),
-            title: t.string(),
-            tags: t.array(t.string()),
-            snippet: t.string(),
-            updatedAt: t.string(),
+      result: z.object({
+        results: z.array(
+          z.object({
+            id: z.uuid(),
+            shortId: z.integer(),
+            title: z.string(),
+            tags: z.array(z.string()),
+            snippet: z.string(),
+            updatedAt: z.string(),
           }),
         ),
       }),
@@ -232,11 +232,11 @@ export class FolioTools {
       idempotentHint: true,
     },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
       }),
-      result: t.object({ tags: t.array(t.string()) }),
+      result: z.object({ tags: z.array(z.string()) }),
     },
     handler: async ({ params }) => {
       const campaignId = await this.resolveCampaignId(
@@ -288,31 +288,31 @@ export class FolioTools {
     title: "Create folio",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        title: t.string({ minLength: 1, maxLength: 200 }),
-        content: t.optional(t.string()),
-        tags: t.optional(t.array(t.string())),
-        summary: t.optional(
-          t.string({
-            maxLength: 500,
-            description:
-              "1-2 sentence description of what the folio is for. Surfaced via `campaign_context`. Strongly recommended — without it, agents must fetch the body to orient.",
-          }),
-        ),
-        directory_shortId: t.optional(
-          t.integer({
-            description:
-              "Place the folio in this archive directory (by per-campaign shortId). Omit to create at the campaign root. Directories come from the Archive module (#66) — list available ones via `directory_list`.",
-          }),
-        ),
-        pinned: t.optional(
-          t.boolean({
-            description:
-              "Pin the folio. Pinned folios sort to the top of `folio_list` AND have their full content surfaced in `campaign_context` — they're the per-campaign equivalent of CLAUDE.md / AGENTS.md. Per-campaign pin (one shared pin set per campaign). Use sparingly: the 8K-char total budget across all pinned folios is consumed every time an agent calls `campaign_context`.",
-          }),
-        ),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        title: z.string().min(1).max(200),
+        content: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        summary: z
+          .string()
+          .max(500)
+          .describe(
+            "1-2 sentence description of what the folio is for. Surfaced via `campaign_context`. Strongly recommended — without it, agents must fetch the body to orient.",
+          )
+          .optional(),
+        directory_shortId: z
+          .integer()
+          .describe(
+            "Place the folio in this archive directory (by per-campaign shortId). Omit to create at the campaign root. Directories come from the Archive module (#66) — list available ones via `directory_list`.",
+          )
+          .optional(),
+        pinned: z
+          .boolean()
+          .describe(
+            "Pin the folio. Pinned folios sort to the top of `folio_list` AND have their full content surfaced in `campaign_context` — they're the per-campaign equivalent of CLAUDE.md / AGENTS.md. Per-campaign pin (one shared pin set per campaign). Use sparingly: the 8K-char total budget across all pinned folios is consumed every time an agent calls `campaign_context`.",
+          )
+          .optional(),
       }),
       result: folioFullSchema,
     },
@@ -355,29 +355,29 @@ export class FolioTools {
     title: "Update folio",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
-      params: t.extend(folioRefParamsSchema, {
-        title: t.optional(t.string({ minLength: 1, maxLength: 200 })),
-        content: t.optional(t.string()),
-        tags: t.optional(t.array(t.string())),
-        summary: t.optional(
-          t.string({
-            maxLength: 500,
-            description:
-              "Updated 1-2 sentence description. Omit to keep the existing one.",
-          }),
-        ),
-        directory_shortId: t.optional(
-          t.integer({
-            description:
-              "Move the folio into this archive directory (per-campaign shortId). Omit to leave the directory untouched. Pass 0 to move the folio to the campaign root.",
-          }),
-        ),
-        pinned: t.optional(
-          t.boolean({
-            description:
-              "Pin or unpin the folio. Pinned folios surface their full content in `campaign_context` (capped at 8K chars total across all pinned). Omit to leave the current state untouched.",
-          }),
-        ),
+      params: folioRefParamsSchema.extend({
+        title: z.string().min(1).max(200).optional(),
+        content: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        summary: z
+          .string()
+          .max(500)
+          .describe(
+            "Updated 1-2 sentence description. Omit to keep the existing one.",
+          )
+          .optional(),
+        directory_shortId: z
+          .integer()
+          .describe(
+            "Move the folio into this archive directory (per-campaign shortId). Omit to leave the directory untouched. Pass 0 to move the folio to the campaign root.",
+          )
+          .optional(),
+        pinned: z
+          .boolean()
+          .describe(
+            "Pin or unpin the folio. Pinned folios surface their full content in `campaign_context` (capped at 8K chars total across all pinned). Omit to leave the current state untouched.",
+          )
+          .optional(),
       }),
       result: folioFullSchema,
     },
@@ -432,24 +432,24 @@ export class FolioTools {
     },
     schema: {
       params: folioRefParamsSchema,
-      result: t.object({
-        revisions: t.array(
-          t.object({
-            id: t.uuid(),
-            at: t.string(),
-            byUserId: t.optional(t.uuid()),
-            action: t.enum([
+      result: z.object({
+        revisions: z.array(
+          z.object({
+            id: z.uuid(),
+            at: z.string(),
+            byUserId: z.uuid().optional(),
+            action: z.enum([
               "create",
               "edit",
               "rename",
               "tag-change",
               "revert",
             ]),
-            titleSnapshot: t.string(),
-            tagsSnapshot: t.array(t.string()),
-            summarySnapshot: t.string(),
-            contentSnapshot: t.string(),
-            pinned: t.boolean(),
+            titleSnapshot: z.string(),
+            tagsSnapshot: z.array(z.string()),
+            summarySnapshot: z.string(),
+            contentSnapshot: z.string(),
+            pinned: z.boolean(),
           }),
         ),
       }),
@@ -484,10 +484,8 @@ export class FolioTools {
       destructiveHint: false,
     },
     schema: {
-      params: t.extend(folioRefParamsSchema, {
-        revisionId: t.uuid({
-          description: "Revision UUID, from `folio_history`.",
-        }),
+      params: folioRefParamsSchema.extend({
+        revisionId: z.uuid().describe("Revision UUID, from `folio_history`."),
       }),
       result: folioFullSchema,
     },
@@ -515,23 +513,23 @@ export class FolioTools {
     title: "Tidy stale folio path links",
     annotations: { destructiveHint: false, idempotentHint: true },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        dryRun: t.optional(t.boolean()),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        dryRun: z.boolean().optional(),
       }),
-      result: t.object({
-        scanned: t.integer(),
-        rewritten: t.integer(),
-        dryRun: t.boolean(),
-        changes: t.array(
-          t.object({
-            folioShortId: t.integer(),
-            tokens: t.array(
-              t.object({
-                before: t.string(),
-                after: t.string(),
-                count: t.integer(),
+      result: z.object({
+        scanned: z.integer(),
+        rewritten: z.integer(),
+        dryRun: z.boolean(),
+        changes: z.array(
+          z.object({
+            folioShortId: z.integer(),
+            tokens: z.array(
+              z.object({
+                before: z.string(),
+                after: z.string(),
+                count: z.integer(),
               }),
             ),
           }),
@@ -565,7 +563,7 @@ export class FolioTools {
     },
     schema: {
       params: folioRefParamsSchema,
-      result: t.object({ ok: t.boolean() }),
+      result: z.object({ ok: z.boolean() }),
     },
     handler: async ({ params }) => {
       const id = await this.resolveFolioId(params);

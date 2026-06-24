@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $state, Alepha, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, Alepha, type Static, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { RedisProvider, RedisSubscriberProvider } from "alepha/redis";
 import {
@@ -16,8 +16,8 @@ import {
  */
 export const redisTopicOptions = $atom({
   name: "alepha.topic.redis.options",
-  schema: t.object({
-    prefix: t.text({
+  schema: z.object({
+    prefix: z.text({
       default: "topic",
       description: "Prefix for all topic channels in Redis.",
     }),

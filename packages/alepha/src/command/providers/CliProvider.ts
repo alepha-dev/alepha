@@ -12,7 +12,7 @@ import {
   type TSchema,
   type TUnion,
   TypeBoxError,
-  t,
+  z,
 } from "alepha";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { CommandError } from "../errors/CommandError.ts";
@@ -27,12 +27,12 @@ import {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const envSchema = t.object({
-  CLI_NAME: t.text({
+const envSchema = z.object({
+  CLI_NAME: z.text({
     default: "cli",
     description: "Name of the CLI application.",
   }),
-  CLI_DESCRIPTION: t.text({
+  CLI_DESCRIPTION: z.text({
     default: "",
     description: "Description of the CLI application.",
   }),
@@ -47,22 +47,16 @@ declare module "alepha" {
  */
 export const cliOptions = $atom({
   name: "alepha.command.cli.options",
-  schema: t.object({
-    name: t.optional(
-      t.string({
-        description: "Name of the CLI application.",
-      }),
-    ),
-    description: t.optional(
-      t.string({
-        description: "Description of the CLI application.",
-      }),
-    ),
-    argv: t.optional(
-      t.array(t.string(), {
-        description: "Command line arguments to parse.",
-      }),
-    ),
+  schema: z.object({
+    name: z.string().describe("Name of the CLI application.").optional(),
+    description: z
+      .string()
+      .describe("Description of the CLI application.")
+      .optional(),
+    argv: z
+      .array(z.string())
+      .describe("Command line arguments to parse.")
+      .optional(),
   }),
   default: {},
 });
@@ -94,7 +88,7 @@ declare module "alepha" {
  *   build = $command({
  *     name: "build",
  *     description: "Build the project",
- *     flags: t.object({ watch: t.optional(t.boolean()) }),
+ *     flags: z.object({ watch: z.boolean().optional() }),
  *     handler: async ({ flags }) => { ... }
  *   });
  * }
@@ -143,14 +137,14 @@ export class CliProvider {
     help: {
       aliases: ["h", "help"],
       description: "Show this help message",
-      schema: t.boolean(),
+      schema: z.boolean(),
     },
     verbose: {
       // No `-v` alias — it collides with `--version` on the root command.
       aliases: ["verbose"],
       description:
         "Verbose output: trace-level logs (framework internals) in pretty format. Task output already streams by default.",
-      schema: t.boolean(),
+      schema: z.boolean(),
     },
   };
 
@@ -538,6 +532,42 @@ export class CliProvider {
     return { ...this.globalFlags };
   }
 
+  /**
+   * Read a schema's metadata (`title`, `description`, `aliases`, `alias`, …).
+   *
+   * Under zod these options live on the schema's `.meta()` registry rather than
+   * as direct properties (typebox), and they sit on the INNER schema — so any
+   * optional / nullable / default wrappers are peeled first.
+   */
+  protected schemaMeta(schema: TSchema | undefined): Record<string, any> {
+    if (!schema) return {};
+    const base = z.schema.unwrap(schema) as any;
+    return (typeof base?.meta === "function" ? base.meta() : undefined) ?? {};
+  }
+
+  /**
+   * Build flag definitions (key, aliases, description, schema) from a flags
+   * object schema. Centralises the metadata reading so every call-site (parsing,
+   * arg-splitting, help) extracts aliases/descriptions the same way.
+   */
+  protected extractFlagDefs(schema: TObject): Array<{
+    key: string;
+    aliases: string[];
+    description?: string;
+    schema: TSchema;
+  }> {
+    return Object.entries(schema.properties).map(([key, value]) => {
+      const meta = this.schemaMeta(value as TSchema);
+      const extra: string[] = meta.aliases ?? (meta.alias ? [meta.alias] : []);
+      return {
+        key,
+        aliases: [key, ...extra],
+        description: meta.description,
+        schema: value as TSchema,
+      };
+    });
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Parsing (Flags, Args, Env)
   // ─────────────────────────────────────────────────────────────────────────────
@@ -551,17 +581,7 @@ export class CliProvider {
     options: { modeEnabled?: boolean } = {},
   ): Record<string, any> {
     const { modeEnabled = false } = options;
-    const flagDefs = Object.entries(schema.properties).map(([key, value]) => ({
-      key,
-      aliases: [
-        key,
-        ...((value as any).aliases ??
-          ((value as any).alias ? [(value as any).alias] : undefined) ??
-          []),
-      ],
-      description: (value as any).description,
-      schema: value,
-    }));
+    const flagDefs = this.extractFlagDefs(schema);
 
     // Add mode flags if mode is enabled (they're parsed elsewhere by parseModeFlag)
     if (modeEnabled) {
@@ -569,7 +589,7 @@ export class CliProvider {
         key: "__mode__",
         aliases: ["mode", "m"],
         description: undefined,
-        schema: t.string(),
+        schema: z.string(),
       });
     }
 
@@ -597,11 +617,13 @@ export class CliProvider {
     }
 
     // apply manually defaults for optional properties that have defaults
-    for (const [key, value] of Object.entries(schema.properties)) {
-      if (!(key in parsed) && t.schema.isOptional(value)) {
-        const innerSchema = value;
-        if (innerSchema && "default" in innerSchema) {
-          parsed[key] = innerSchema.default;
+    for (const [key, value] of Object.entries(
+      schema.properties as Record<string, TSchema>,
+    )) {
+      if (!(key in parsed)) {
+        const def = z.schema.getDefault(value);
+        if (def !== undefined) {
+          parsed[key] = def;
         }
       }
     }
@@ -628,17 +650,22 @@ export class CliProvider {
     const result: Record<string, any> = {};
     const missing: string[] = [];
 
-    for (const [key, propSchema] of Object.entries(schema.properties)) {
+    for (const [key, propSchema] of Object.entries(
+      schema.properties as Record<string, TSchema>,
+    )) {
       const value = process.env[key];
 
       if (value !== undefined) {
         result[key] = value;
-      } else if ("default" in propSchema) {
-        result[key] = propSchema.default;
-      } else if (t.schema.isOptional(propSchema)) {
-        // Optional with no default — leave undefined
       } else {
-        missing.push(key);
+        const def = z.schema.getDefault(propSchema);
+        if (def !== undefined) {
+          result[key] = def;
+        } else if (z.schema.isOptional(propSchema)) {
+          // Optional with no default — leave undefined
+        } else {
+          missing.push(key);
+        }
       }
     }
 
@@ -717,7 +744,7 @@ export class CliProvider {
       if (!arg.startsWith("-")) continue;
 
       const [rawKey, ...valueParts] = arg.replace(/^-{1,2}/, "").split("=");
-      let value = valueParts.join("=");
+      const value = valueParts.join("=");
 
       const def = flagDefs.find((d) => d.aliases.includes(rawKey));
       if (!def) {
@@ -727,12 +754,16 @@ export class CliProvider {
         continue;
       }
 
+      // Resolve the underlying schema (peel optional/nullable/default) so flags
+      // like `z.boolean().optional()` are still recognised as booleans.
+      const base = z.schema.unwrap(def.schema);
+
       // Check if schema is a union containing boolean (allows flag without value)
       const isUnionWithBoolean =
-        t.schema.isUnion(def.schema) &&
-        (def.schema as TUnion).anyOf.some((s) => t.schema.isBoolean(s));
+        z.schema.isUnion(base) &&
+        (base as TUnion).anyOf.some((s) => z.schema.isBoolean(s));
 
-      if (t.schema.isBoolean(def.schema)) {
+      if (z.schema.isBoolean(base)) {
         result[def.key] = true;
       } else if (isUnionWithBoolean && !value) {
         // Union with boolean: --flag without value → true
@@ -747,29 +778,12 @@ export class CliProvider {
         }
       } else if (value) {
         // Value provided via --flag=value syntax
-        try {
-          if (t.schema.isObject(def.schema) || t.schema.isArray(def.schema)) {
-            result[def.key] = JSON.parse(value);
-          } else {
-            result[def.key] = value;
-          }
-        } catch {
-          throw new CommandError(`Invalid JSON value for flag --${rawKey}`);
-        }
+        result[def.key] = this.castFlagValue(value, base, rawKey);
       } else {
         // Check for space-separated value: --flag value
         const nextArg = argv[i + 1];
         if (nextArg && !nextArg.startsWith("-")) {
-          value = nextArg;
-          try {
-            if (t.schema.isObject(def.schema) || t.schema.isArray(def.schema)) {
-              result[def.key] = JSON.parse(value);
-            } else {
-              result[def.key] = value;
-            }
-          } catch {
-            throw new CommandError(`Invalid JSON value for flag --${rawKey}`);
-          }
+          result[def.key] = this.castFlagValue(nextArg, base, rawKey);
         } else {
           throw new CommandError(`Flag --${rawKey} requires a value.`);
         }
@@ -777,6 +791,29 @@ export class CliProvider {
     }
 
     return result;
+  }
+
+  /**
+   * Convert a raw flag value string into the value its schema expects.
+   *
+   * zod no longer coerces, so scalar values (number / integer / boolean) are
+   * cast + validated via {@link parseArgumentValue} (same path as positional
+   * args); object / array / record values are JSON-parsed. `schema` is expected
+   * to already be unwrapped of optional/nullable/default.
+   */
+  protected castFlagValue(value: string, schema: TSchema, rawKey: string): any {
+    if (
+      z.schema.isObject(schema) ||
+      z.schema.isArray(schema) ||
+      z.schema.isRecord(schema)
+    ) {
+      try {
+        return JSON.parse(value);
+      } catch {
+        throw new CommandError(`Invalid JSON value for flag --${rawKey}`);
+      }
+    }
+    return this.parseArgumentValue(value, schema);
   }
 
   /**
@@ -800,18 +837,17 @@ export class CliProvider {
       const def = flagDefs.find((d) => d.aliases.includes(rawKey));
       if (!def) continue;
 
+      // Peel optional/nullable/default so boolean flags are recognised.
+      const base = z.schema.unwrap(def.schema);
+
       // Check if schema is a union containing boolean
       const isUnionWithBoolean =
-        t.schema.isUnion(def.schema) &&
-        (def.schema as TUnion).anyOf.some((s) => t.schema.isBoolean(s));
+        z.schema.isUnion(base) &&
+        (base as TUnion).anyOf.some((s) => z.schema.isBoolean(s));
 
       // If not a boolean flag and no = value, the next arg is consumed as the value
       // Exception: union with boolean can work without a value
-      if (
-        !t.schema.isBoolean(def.schema) &&
-        !isUnionWithBoolean &&
-        !hasEqualValue
-      ) {
+      if (!z.schema.isBoolean(base) && !isUnionWithBoolean && !hasEqualValue) {
         const nextArg = argv[i + 1];
         if (nextArg && !nextArg.startsWith("-")) {
           consumed.add(i + 1);
@@ -839,18 +875,7 @@ export class CliProvider {
     }
 
     // Get indices consumed by flags (including space-separated values)
-    const flagDefs = flagSchema
-      ? Object.entries(flagSchema.properties).map(([key, value]) => ({
-          key,
-          aliases: [
-            key,
-            ...((value as any).aliases ??
-              ((value as any).alias ? [(value as any).alias] : undefined) ??
-              []),
-          ],
-          schema: value as TSchema,
-        }))
-      : [];
+    const flagDefs = flagSchema ? this.extractFlagDefs(flagSchema) : [];
     const consumedIndices = this.getFlagConsumedIndices(argv, flagDefs);
 
     // Extract positional arguments (non-flag arguments that aren't consumed as flag values)
@@ -861,21 +886,21 @@ export class CliProvider {
     const argsOnly = isRootCommand ? positionalArgs : positionalArgs.slice(1);
 
     try {
-      if (t.schema.isOptional(schema)) {
-        // Handle optional args: t.optional(t.text())
+      if (z.schema.isOptional(schema)) {
+        // Handle optional args: z.text().optional()
         if (argsOnly.length === 0) {
           return undefined;
         }
         return this.parseArgumentValue(argsOnly[0], schema);
-      } else if (t.schema.isTuple(schema) && schema.items) {
-        // Handle tuple args: t.tuple([t.text(), t.number()])
+      } else if (z.schema.isTuple(schema) && schema.items) {
+        // Handle tuple args: z.tuple([z.text(), z.number()])
         const result: any[] = [];
         const items = schema.items;
         for (let i = 0; i < items.length; i++) {
           const itemSchema = items[i];
           if (i < argsOnly.length) {
             result.push(this.parseArgumentValue(argsOnly[i], itemSchema));
-          } else if (t.schema.isOptional(itemSchema)) {
+          } else if (z.schema.isOptional(itemSchema)) {
             result.push(undefined);
           } else {
             throw new CommandError(
@@ -885,7 +910,7 @@ export class CliProvider {
         }
         return result;
       } else {
-        // Handle single arg: t.text(), t.number(), etc.
+        // Handle single arg: z.text(), z.number(), etc.
         if (argsOnly.length === 0) {
           throw new CommandError("Missing required argument");
         }
@@ -903,22 +928,22 @@ export class CliProvider {
    * Convert a string argument value to the appropriate type based on schema
    */
   protected parseArgumentValue(value: string, schema: TSchema): any {
-    if (t.schema.isString(schema)) {
+    if (z.schema.isString(schema)) {
       return value;
     }
 
-    if (t.schema.isNumber(schema) || t.schema.isInteger(schema)) {
+    if (z.schema.isNumber(schema) || z.schema.isInteger(schema)) {
       const num = Number(value);
       if (Number.isNaN(num)) {
         throw new CommandError(`Expected number, got "${value}"`);
       }
-      if (t.schema.isInteger(schema) && !Number.isInteger(num)) {
+      if (z.schema.isInteger(schema) && !Number.isInteger(num)) {
         throw new CommandError(`Expected integer, got "${value}"`);
       }
       return num;
     }
 
-    if (t.schema.isBoolean(schema)) {
+    if (z.schema.isBoolean(schema)) {
       const lower = value.toLowerCase();
       if (lower === "true" || lower === "1") return true;
       if (lower === "false" || lower === "0") return false;
@@ -941,18 +966,18 @@ export class CliProvider {
       return "";
     }
 
-    if (t.schema.isOptional(schema)) {
+    if (z.schema.isOptional(schema)) {
       const typeName = this.getTypeName(schema);
-      const key = "title" in schema ? (schema as any).title : "arg1";
+      const key = this.schemaMeta(schema).title ?? "arg1";
       return ` [${key}${typeName}]`;
     }
 
-    if (t.schema.isTuple(schema) && schema.items) {
+    if (z.schema.isTuple(schema) && schema.items) {
       const items = schema.items;
       const args = items.map((item, index) => {
         const argName = `arg${index + 1}`;
         const typeName = this.getTypeName(item);
-        if (t.schema.isOptional(item)) {
+        if (z.schema.isOptional(item)) {
           return `[${argName}${typeName}]`;
         }
         return `<${argName}${typeName}>`;
@@ -961,7 +986,7 @@ export class CliProvider {
     }
 
     const typeName = this.getTypeName(schema);
-    const key = "title" in schema ? (schema as any).title : "arg1";
+    const key = this.schemaMeta(schema).title ?? "arg1";
     return ` <${key}${typeName}>`;
   }
 
@@ -971,11 +996,15 @@ export class CliProvider {
   protected getTypeName(schema: TSchema): string {
     if (!schema) return "";
 
-    // Check TypeBox type guards first
-    if (t.schema.isString(schema)) return "";
-    if (t.schema.isNumber(schema)) return ": number";
-    if (t.schema.isInteger(schema)) return ": integer";
-    if (t.schema.isBoolean(schema)) return ": boolean";
+    // Peel optional/nullable/default before inspecting the scalar type.
+    const base = z.schema.unwrap(schema);
+
+    // Order matters: under zod an integer IS a number (format "safeint"), so the
+    // narrower integer check must come before the number check.
+    if (z.schema.isString(base)) return "";
+    if (z.schema.isInteger(base)) return ": integer";
+    if (z.schema.isNumber(base)) return ": number";
+    if (z.schema.isBoolean(base)) return ": boolean";
 
     return "";
   }
@@ -1039,16 +1068,9 @@ export class CliProvider {
       this.log.info(c.set("WHITE_BOLD", "Flags:"));
 
       const flags = [
-        ...Object.entries(command.flags.properties).map(([key, value]) => ({
-          key,
-          schema: value,
-          aliases: [
-            key,
-            ...((value as any).aliases ??
-              ((value as any).alias ? [(value as any).alias] : [])),
-          ],
-          description: (value as any).description,
-        })),
+        // Read aliases/description from the schema's `.meta()` registry (zod),
+        // not as direct schema properties (typebox) — see extractFlagDefs.
+        ...this.extractFlagDefs(command.flags),
         // Add --mode flag if command has mode option enabled
         ...(command.options.mode
           ? [
@@ -1059,7 +1081,7 @@ export class CliProvider {
                   typeof command.options.mode === "string"
                     ? `Environment mode - loads .env.{mode} (default: ${command.options.mode})`
                     : "Environment mode (e.g., production, staging) - loads .env.{mode}",
-                schema: t.string() as TSchema,
+                schema: z.string() as TSchema,
               },
             ]
           : []),
@@ -1093,7 +1115,7 @@ export class CliProvider {
         this.log.info(c.set("WHITE_BOLD", "Env:"));
         const maxEnvLength = Math.max(...envVars.map(([key]) => key.length));
         for (const [key, schema] of envVars) {
-          const isOptional = t.schema.isOptional(schema as TSchema);
+          const isOptional = z.schema.isOptional(schema as TSchema);
           const description = (schema as any).description ?? "";
           const optionalStr = isOptional
             ? c.set("GREY_DARK", " (optional)")
@@ -1140,18 +1162,10 @@ export class CliProvider {
 
       // In general help, also show root command flags
       const rootCommand = this.commands.find((cmd) => cmd.name === "");
+      // Read aliases/description from the schema's `.meta()` registry (zod),
+      // not as direct schema properties (typebox) — see extractFlagDefs.
       const rootFlags = rootCommand
-        ? Object.entries(rootCommand.flags.properties).map(([key, value]) => ({
-            key,
-            aliases: [
-              key,
-              ...((value as any).aliases ??
-                ((value as any).alias ? [(value as any).alias] : undefined) ??
-                []),
-            ],
-            description: (value as any).description,
-            schema: value as TSchema,
-          }))
+        ? this.extractFlagDefs(rootCommand.flags)
         : [];
 
       const globalFlags = [
@@ -1182,18 +1196,18 @@ export class CliProvider {
 
     const c = this.color;
 
-    if (t.schema.isOptional(schema)) {
+    if (z.schema.isOptional(schema)) {
       const typeName = this.getTypeName(schema);
-      const key = "title" in schema ? (schema as any).title : "arg1";
+      const key = this.schemaMeta(schema).title ?? "arg1";
       return ` ${c.set("GREY_DARK", `[${key}${typeName}]`)}`;
     }
 
-    if (t.schema.isTuple(schema) && schema.items) {
+    if (z.schema.isTuple(schema) && schema.items) {
       const items = schema.items;
       const args = items.map((item, index) => {
         const argName = `arg${index + 1}`;
         const typeName = this.getTypeName(item);
-        if (t.schema.isOptional(item)) {
+        if (z.schema.isOptional(item)) {
           return c.set("GREY_DARK", `[${argName}${typeName}]`);
         }
         return c.set("CYAN", `<${argName}${typeName}>`);
@@ -1202,7 +1216,7 @@ export class CliProvider {
     }
 
     const typeName = this.getTypeName(schema);
-    const key = "title" in schema ? (schema as any).title : "arg1";
+    const key = this.schemaMeta(schema).title ?? "arg1";
     return ` ${c.set("CYAN", `<${key}${typeName}>`)}`;
   }
 
@@ -1309,30 +1323,27 @@ export class CliProvider {
   protected getEnumValues(schema: TSchema): string[] | undefined {
     if (!schema) return undefined;
 
-    // Check if schema has an enum property (t.enum creates schemas with this)
-    if (
-      "enum" in schema &&
-      Array.isArray(schema.enum) &&
-      schema.enum.every((v) => typeof v === "string")
-    ) {
-      return schema.enum as string[];
+    const base = z.schema.unwrap(schema);
+
+    // A zod enum (`z.enum`).
+    if (z.schema.isEnum(base)) {
+      const values = z.schema.enumValues(base);
+      return values.length > 0 && values.every((v) => typeof v === "string")
+        ? values
+        : undefined;
     }
 
-    // Also check for union of string literals (alternative enum representation)
-    if (t.schema.isUnion(schema)) {
-      const union = schema as TUnion;
+    // A union of string literals (alternative enum representation).
+    if (z.schema.isUnion(base)) {
+      const variants = (base as any).anyOf ?? [];
       const values: string[] = [];
 
-      for (const variant of union.anyOf) {
-        // Check if the variant is a string literal (has const property)
-        if (
-          t.schema.isString(variant) &&
-          "const" in variant &&
-          typeof variant.const === "string"
-        ) {
-          values.push(variant.const);
+      for (const variant of variants) {
+        const value = (variant as any).value; // zod literal value
+        if (z.schema.isLiteral(variant) && typeof value === "string") {
+          values.push(value);
         } else {
-          // Not all variants are string literals, not a simple enum
+          // Not all variants are string literals, not a simple enum.
           return undefined;
         }
       }

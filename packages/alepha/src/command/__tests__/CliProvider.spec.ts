@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $command } from "../primitives/$command.ts";
 import { CliProvider } from "../providers/CliProvider.ts";
@@ -30,19 +30,12 @@ class TestCliProvider extends CliProvider {
 
   /**
    * Extract flag definitions from a command's flags schema (for testing printHelp logic).
+   *
+   * Delegates to the real `extractFlagDefs`, which reads aliases/description from
+   * the schema's `.meta()` registry (zod) — under typebox these were direct
+   * schema properties, but strict-zod stores them in metadata.
    */
-  public testExtractFlagDefs(flagsSchema: any) {
-    return Object.entries(flagsSchema.properties).map(([key, value]) => ({
-      key,
-      schema: value,
-      aliases: [
-        key,
-        ...((value as any).aliases ??
-          ((value as any).alias ? [(value as any).alias] : [])),
-      ],
-      description: (value as any).description,
-    }));
-  }
+  public testExtractFlagDefs = this.extractFlagDefs.bind(this);
 
   /**
    * Format aliases array into flag string (e.g., "-t, --target").
@@ -71,7 +64,7 @@ describe("CliProvider", () => {
     it("should parse boolean flags", () => {
       const cli = createTestCli();
       const flagDefs = [
-        { key: "verbose", aliases: ["v", "verbose"], schema: t.boolean() },
+        { key: "verbose", aliases: ["v", "verbose"], schema: z.boolean() },
       ];
 
       const result = cli.testParseFlags(["--verbose"], flagDefs);
@@ -81,7 +74,7 @@ describe("CliProvider", () => {
     it("should parse short boolean flags", () => {
       const cli = createTestCli();
       const flagDefs = [
-        { key: "verbose", aliases: ["v", "verbose"], schema: t.boolean() },
+        { key: "verbose", aliases: ["v", "verbose"], schema: z.boolean() },
       ];
 
       const result = cli.testParseFlags(["-v"], flagDefs);
@@ -91,7 +84,7 @@ describe("CliProvider", () => {
     it("should parse string flags with = syntax", () => {
       const cli = createTestCli();
       const flagDefs = [
-        { key: "name", aliases: ["n", "name"], schema: t.string() },
+        { key: "name", aliases: ["n", "name"], schema: z.string() },
       ];
 
       const result = cli.testParseFlags(["--name=hello"], flagDefs);
@@ -101,7 +94,7 @@ describe("CliProvider", () => {
     it("should parse string flags with space syntax", () => {
       const cli = createTestCli();
       const flagDefs = [
-        { key: "name", aliases: ["n", "name"], schema: t.string() },
+        { key: "name", aliases: ["n", "name"], schema: z.string() },
       ];
 
       const result = cli.testParseFlags(["--name", "hello"], flagDefs);
@@ -111,7 +104,7 @@ describe("CliProvider", () => {
     it("should parse JSON object flags", () => {
       const cli = createTestCli();
       const flagDefs = [
-        { key: "config", aliases: ["config"], schema: t.object({}) },
+        { key: "config", aliases: ["config"], schema: z.object({}) },
       ];
 
       const result = cli.testParseFlags(
@@ -124,7 +117,7 @@ describe("CliProvider", () => {
     it("should parse JSON array flags", () => {
       const cli = createTestCli();
       const flagDefs = [
-        { key: "items", aliases: ["items"], schema: t.array(t.string()) },
+        { key: "items", aliases: ["items"], schema: z.array(z.string()) },
       ];
 
       const result = cli.testParseFlags(["--items", '["a","b"]'], flagDefs);
@@ -134,7 +127,7 @@ describe("CliProvider", () => {
     it("should throw on unknown flags", () => {
       const cli = createTestCli();
       const flagDefs = [
-        { key: "known", aliases: ["known"], schema: t.boolean() },
+        { key: "known", aliases: ["known"], schema: z.boolean() },
       ];
 
       expect(() =>
@@ -144,7 +137,7 @@ describe("CliProvider", () => {
 
     it("should throw on missing required value", () => {
       const cli = createTestCli();
-      const flagDefs = [{ key: "name", aliases: ["name"], schema: t.string() }];
+      const flagDefs = [{ key: "name", aliases: ["name"], schema: z.string() }];
 
       expect(() => cli.testParseFlags(["--name"], flagDefs)).toThrow(
         "requires a value",
@@ -154,7 +147,7 @@ describe("CliProvider", () => {
     it("should throw on invalid JSON", () => {
       const cli = createTestCli();
       const flagDefs = [
-        { key: "config", aliases: ["config"], schema: t.object({}) },
+        { key: "config", aliases: ["config"], schema: z.object({}) },
       ];
 
       expect(() =>
@@ -168,7 +161,7 @@ describe("CliProvider", () => {
         {
           key: "image",
           aliases: ["i", "image"],
-          schema: t.union([t.boolean(), t.text()]),
+          schema: z.union([z.boolean(), z.text()]),
         },
       ];
 
@@ -182,7 +175,7 @@ describe("CliProvider", () => {
         {
           key: "image",
           aliases: ["i", "image"],
-          schema: t.union([t.boolean(), t.text()]),
+          schema: z.union([z.boolean(), z.text()]),
         },
       ];
 
@@ -196,7 +189,7 @@ describe("CliProvider", () => {
         {
           key: "image",
           aliases: ["i", "image"],
-          schema: t.union([t.boolean(), t.text()]),
+          schema: z.union([z.boolean(), z.text()]),
         },
       ];
 
@@ -210,9 +203,9 @@ describe("CliProvider", () => {
         {
           key: "image",
           aliases: ["i", "image"],
-          schema: t.union([t.boolean(), t.text()]),
+          schema: z.union([z.boolean(), z.text()]),
         },
-        { key: "verbose", aliases: ["v", "verbose"], schema: t.boolean() },
+        { key: "verbose", aliases: ["v", "verbose"], schema: z.boolean() },
       ];
 
       const result = cli.testParseFlags(["-i", "-v"], flagDefs);
@@ -226,7 +219,7 @@ describe("CliProvider", () => {
         {
           key: "image",
           aliases: ["i", "image"],
-          schema: t.union([t.boolean(), t.text()]),
+          schema: z.union([z.boolean(), z.text()]),
         },
       ];
 
@@ -240,9 +233,9 @@ describe("CliProvider", () => {
         {
           key: "image",
           aliases: ["i", "image"],
-          schema: t.union([t.boolean(), t.text()]),
+          schema: z.union([z.boolean(), z.text()]),
         },
-        { key: "verbose", aliases: ["v", "verbose"], schema: t.boolean() },
+        { key: "verbose", aliases: ["v", "verbose"], schema: z.boolean() },
       ];
 
       const result = cli.testParseFlags(["-v", "-i"], flagDefs);
@@ -256,7 +249,7 @@ describe("CliProvider", () => {
         {
           key: "image",
           aliases: ["i", "image"],
-          schema: t.union([t.boolean(), t.text()]),
+          schema: z.union([z.boolean(), z.text()]),
         },
       ];
 
@@ -273,7 +266,7 @@ describe("CliProvider", () => {
         {
           key: "image",
           aliases: ["i", "image"],
-          schema: t.union([t.boolean(), t.text()]),
+          schema: z.union([z.boolean(), z.text()]),
         },
       ];
 
@@ -292,49 +285,49 @@ describe("CliProvider", () => {
   describe("parseArgumentValue", () => {
     it("should parse string values", () => {
       const cli = createTestCli();
-      expect(cli.testParseArgumentValue("hello", t.string())).toBe("hello");
+      expect(cli.testParseArgumentValue("hello", z.string())).toBe("hello");
     });
 
     it("should parse number values", () => {
       const cli = createTestCli();
-      expect(cli.testParseArgumentValue("42", t.number())).toBe(42);
-      expect(cli.testParseArgumentValue("3.14", t.number())).toBe(3.14);
+      expect(cli.testParseArgumentValue("42", z.number())).toBe(42);
+      expect(cli.testParseArgumentValue("3.14", z.number())).toBe(3.14);
     });
 
     it("should throw on invalid number", () => {
       const cli = createTestCli();
-      expect(() => cli.testParseArgumentValue("abc", t.number())).toThrow(
+      expect(() => cli.testParseArgumentValue("abc", z.number())).toThrow(
         "Expected number",
       );
     });
 
     it("should parse integer values", () => {
       const cli = createTestCli();
-      expect(cli.testParseArgumentValue("42", t.integer())).toBe(42);
+      expect(cli.testParseArgumentValue("42", z.integer())).toBe(42);
     });
 
     it("should throw on non-integer for integer schema", () => {
       const cli = createTestCli();
-      expect(() => cli.testParseArgumentValue("3.14", t.integer())).toThrow(
+      expect(() => cli.testParseArgumentValue("3.14", z.integer())).toThrow(
         "Expected integer",
       );
     });
 
     it("should parse boolean true values", () => {
       const cli = createTestCli();
-      expect(cli.testParseArgumentValue("true", t.boolean())).toBe(true);
-      expect(cli.testParseArgumentValue("1", t.boolean())).toBe(true);
+      expect(cli.testParseArgumentValue("true", z.boolean())).toBe(true);
+      expect(cli.testParseArgumentValue("1", z.boolean())).toBe(true);
     });
 
     it("should parse boolean false values", () => {
       const cli = createTestCli();
-      expect(cli.testParseArgumentValue("false", t.boolean())).toBe(false);
-      expect(cli.testParseArgumentValue("0", t.boolean())).toBe(false);
+      expect(cli.testParseArgumentValue("false", z.boolean())).toBe(false);
+      expect(cli.testParseArgumentValue("0", z.boolean())).toBe(false);
     });
 
     it("should throw on invalid boolean", () => {
       const cli = createTestCli();
-      expect(() => cli.testParseArgumentValue("yes", t.boolean())).toThrow(
+      expect(() => cli.testParseArgumentValue("yes", z.boolean())).toThrow(
         "Expected boolean",
       );
     });
@@ -354,25 +347,25 @@ describe("CliProvider", () => {
 
     it("should parse optional args when present", () => {
       const cli = createTestCli();
-      const schema = t.optional(t.string());
+      const schema = z.string().optional();
       expect(cli.testParseCommandArgs(["hello"], schema, true)).toBe("hello");
     });
 
     it("should return undefined for optional args when missing", () => {
       const cli = createTestCli();
-      const schema = t.optional(t.string());
+      const schema = z.string().optional();
       expect(cli.testParseCommandArgs([], schema, true)).toBeUndefined();
     });
 
     it("should parse required args", () => {
       const cli = createTestCli();
-      const schema = t.string();
+      const schema = z.string();
       expect(cli.testParseCommandArgs(["hello"], schema, true)).toBe("hello");
     });
 
     it("should throw on missing required args", () => {
       const cli = createTestCli();
-      const schema = t.string();
+      const schema = z.string();
       expect(() => cli.testParseCommandArgs([], schema, true)).toThrow(
         "Missing required argument",
       );
@@ -380,22 +373,22 @@ describe("CliProvider", () => {
 
     it("should parse tuple args", () => {
       const cli = createTestCli();
-      const schema = t.tuple([t.string(), t.number()]);
+      const schema = z.tuple([z.string(), z.number()]);
       const result = cli.testParseCommandArgs(["hello", "42"], schema, true);
       expect(result).toEqual(["hello", 42]);
     });
 
     it("should handle optional tuple items", () => {
       const cli = createTestCli();
-      const schema = t.tuple([t.string(), t.optional(t.number())]);
+      const schema = z.tuple([z.string(), z.number().optional()]);
       const result = cli.testParseCommandArgs(["hello"], schema, true);
       expect(result).toEqual(["hello", undefined]);
     });
 
     it("should skip flags when parsing args", () => {
       const cli = createTestCli();
-      const schema = t.string();
-      const flags = t.object({ verbose: t.optional(t.boolean()) });
+      const schema = z.string();
+      const flags = z.object({ verbose: z.boolean().optional() });
       const result = cli.testParseCommandArgs(
         ["--verbose", "hello"],
         schema,
@@ -407,8 +400,8 @@ describe("CliProvider", () => {
 
     it("should skip flag values when parsing args", () => {
       const cli = createTestCli();
-      const schema = t.string();
-      const flags = t.object({ name: t.optional(t.string()) });
+      const schema = z.string();
+      const flags = z.object({ name: z.string().optional() });
       const result = cli.testParseCommandArgs(
         ["--name", "ignored", "actual"],
         schema,
@@ -482,7 +475,7 @@ describe("CliProvider", () => {
       class TestCommands {
         build = $command({
           name: "build",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
       }
@@ -499,7 +492,7 @@ describe("CliProvider", () => {
       class TestCommands {
         deployVercel = $command({
           name: "deploy:vercel",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
       }
@@ -561,7 +554,7 @@ describe("CliProvider", () => {
     it("should mark flag indices as consumed", () => {
       const cli = createTestCli();
       const flagDefs = [
-        { key: "verbose", aliases: ["v", "verbose"], schema: t.boolean() },
+        { key: "verbose", aliases: ["v", "verbose"], schema: z.boolean() },
       ];
 
       const result = cli.testGetFlagConsumedIndices(["--verbose"], flagDefs);
@@ -570,7 +563,7 @@ describe("CliProvider", () => {
 
     it("should mark flag value indices as consumed", () => {
       const cli = createTestCli();
-      const flagDefs = [{ key: "name", aliases: ["name"], schema: t.string() }];
+      const flagDefs = [{ key: "name", aliases: ["name"], schema: z.string() }];
 
       const result = cli.testGetFlagConsumedIndices(
         ["--name", "value", "arg"],
@@ -583,7 +576,7 @@ describe("CliProvider", () => {
 
     it("should not consume next arg for --flag=value syntax", () => {
       const cli = createTestCli();
-      const flagDefs = [{ key: "name", aliases: ["name"], schema: t.string() }];
+      const flagDefs = [{ key: "name", aliases: ["name"], schema: z.string() }];
 
       const result = cli.testGetFlagConsumedIndices(
         ["--name=value", "arg"],
@@ -599,7 +592,7 @@ describe("CliProvider", () => {
         {
           key: "image",
           aliases: ["i", "image"],
-          schema: t.union([t.boolean(), t.text()]),
+          schema: z.union([z.boolean(), z.text()]),
         },
       ];
 
@@ -618,9 +611,9 @@ describe("CliProvider", () => {
         {
           key: "image",
           aliases: ["i", "image"],
-          schema: t.union([t.boolean(), t.text()]),
+          schema: z.union([z.boolean(), z.text()]),
         },
-        { key: "verbose", aliases: ["v", "verbose"], schema: t.boolean() },
+        { key: "verbose", aliases: ["v", "verbose"], schema: z.boolean() },
       ];
 
       const result = cli.testGetFlagConsumedIndices(["-i", "-v"], flagDefs);
@@ -634,7 +627,7 @@ describe("CliProvider", () => {
         {
           key: "image",
           aliases: ["i", "image"],
-          schema: t.union([t.boolean(), t.text()]),
+          schema: z.union([z.boolean(), z.text()]),
         },
       ];
 
@@ -656,19 +649,19 @@ describe("CliProvider", () => {
 
     it("should generate optional arg usage", () => {
       const cli = createTestCli();
-      const schema = t.optional(t.string({ title: "path" }));
+      const schema = z.string().meta({ title: "path" }).optional();
       expect(cli.testGenerateArgsUsage(schema)).toBe(" [path]");
     });
 
     it("should generate required arg usage", () => {
       const cli = createTestCli();
-      const schema = t.string({ title: "path" });
+      const schema = z.string().meta({ title: "path" });
       expect(cli.testGenerateArgsUsage(schema)).toBe(" <path>");
     });
 
     it("should generate tuple arg usage", () => {
       const cli = createTestCli();
-      const schema = t.tuple([t.string(), t.optional(t.number())]);
+      const schema = z.tuple([z.string(), z.number().optional()]);
       const result = cli.testGenerateArgsUsage(schema);
       expect(result).toContain("<arg1>");
       expect(result).toContain("[arg2");
@@ -676,19 +669,19 @@ describe("CliProvider", () => {
 
     it("should include type for numbers", () => {
       const cli = createTestCli();
-      const schema = t.number({ title: "count" });
+      const schema = z.number().meta({ title: "count" });
       expect(cli.testGenerateArgsUsage(schema)).toBe(" <count: number>");
     });
 
     it("should include type for integers", () => {
       const cli = createTestCli();
-      const schema = t.integer({ title: "port" });
+      const schema = z.integer().meta({ title: "port" });
       expect(cli.testGenerateArgsUsage(schema)).toBe(" <port: integer>");
     });
 
     it("should include type for booleans", () => {
       const cli = createTestCli();
-      const schema = t.boolean({ title: "force" });
+      const schema = z.boolean().meta({ title: "force" });
       expect(cli.testGenerateArgsUsage(schema)).toBe(" <force: boolean>");
     });
   });
@@ -700,22 +693,22 @@ describe("CliProvider", () => {
   describe("getTypeName", () => {
     it("should return empty for string", () => {
       const cli = createTestCli();
-      expect(cli.testGetTypeName(t.string())).toBe("");
+      expect(cli.testGetTypeName(z.string())).toBe("");
     });
 
     it("should return ': number' for number", () => {
       const cli = createTestCli();
-      expect(cli.testGetTypeName(t.number())).toBe(": number");
+      expect(cli.testGetTypeName(z.number())).toBe(": number");
     });
 
     it("should return ': integer' for integer", () => {
       const cli = createTestCli();
-      expect(cli.testGetTypeName(t.integer())).toBe(": integer");
+      expect(cli.testGetTypeName(z.integer())).toBe(": integer");
     });
 
     it("should return ': boolean' for boolean", () => {
       const cli = createTestCli();
-      expect(cli.testGetTypeName(t.boolean())).toBe(": boolean");
+      expect(cli.testGetTypeName(z.boolean())).toBe(": boolean");
     });
   });
 
@@ -731,21 +724,21 @@ describe("CliProvider", () => {
 
     it("should generate colored optional arg usage", () => {
       const cli = createTestCli();
-      const schema = t.optional(t.string({ title: "path" }));
+      const schema = z.string().meta({ title: "path" }).optional();
       const result = cli.testGenerateColoredArgsUsage(schema);
       expect(result).toContain("[path]");
     });
 
     it("should generate colored required arg usage", () => {
       const cli = createTestCli();
-      const schema = t.string({ title: "path" });
+      const schema = z.string().meta({ title: "path" });
       const result = cli.testGenerateColoredArgsUsage(schema);
       expect(result).toContain("<path>");
     });
 
     it("should generate colored tuple arg usage", () => {
       const cli = createTestCli();
-      const schema = t.tuple([t.string(), t.optional(t.number())]);
+      const schema = z.tuple([z.string(), z.number().optional()]);
       const result = cli.testGenerateColoredArgsUsage(schema);
       expect(result).toContain("<arg1>");
       expect(result).toContain("[arg2");
@@ -766,7 +759,7 @@ describe("CliProvider", () => {
       class TestCommands {
         test = $command({
           name: "test",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
       }
@@ -782,7 +775,7 @@ describe("CliProvider", () => {
         test = $command({
           name: "test",
           aliases: ["t"],
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
       }
@@ -808,12 +801,12 @@ describe("CliProvider", () => {
       class TestCommands {
         preBuild = $command({
           name: "prebuild",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
         build = $command({
           name: "build",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
       }
@@ -835,12 +828,12 @@ describe("CliProvider", () => {
       class TestCommands {
         build = $command({
           name: "build",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
         postBuild = $command({
           name: "postbuild",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
       }
@@ -861,12 +854,12 @@ describe("CliProvider", () => {
       class TestCommands {
         build = $command({
           name: "build",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
         test = $command({
           name: "test",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
       }
@@ -882,12 +875,12 @@ describe("CliProvider", () => {
       class TestCommands {
         deployVercel = $command({
           name: "vercel",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
         deploy = $command({
           name: "deploy",
-          flags: t.object({}),
+          flags: z.object({}),
           children: [this.deployVercel],
           handler: async () => {},
         });
@@ -911,7 +904,7 @@ describe("CliProvider", () => {
       class TestCommands {
         build = $command({
           name: "build",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
       }
@@ -927,12 +920,12 @@ describe("CliProvider", () => {
       class TestCommands {
         deployVercel = $command({
           name: "vercel",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
         deploy = $command({
           name: "deploy",
-          flags: t.object({}),
+          flags: z.object({}),
           children: [this.deployVercel],
           handler: async () => {},
         });
@@ -955,7 +948,7 @@ describe("CliProvider", () => {
       class TestCommands {
         build = $command({
           name: "build",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
       }
@@ -971,12 +964,12 @@ describe("CliProvider", () => {
       class TestCommands {
         deployVercel = $command({
           name: "vercel",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
         deploy = $command({
           name: "deploy",
-          flags: t.object({}),
+          flags: z.object({}),
           children: [this.deployVercel],
           handler: async () => {},
         });
@@ -1000,7 +993,7 @@ describe("CliProvider", () => {
         build = $command({
           name: "build",
           description: "Build the project",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
       }
@@ -1017,8 +1010,8 @@ describe("CliProvider", () => {
         build = $command({
           name: "build",
           description: "Build the project",
-          flags: t.object({
-            watch: t.optional(t.boolean({ description: "Watch for changes" })),
+          flags: z.object({
+            watch: z.boolean().describe("Watch for changes").optional(),
           }),
           handler: async () => {},
         });
@@ -1036,13 +1029,13 @@ describe("CliProvider", () => {
         deployVercel = $command({
           name: "vercel",
           description: "Deploy to Vercel",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
         deploy = $command({
           name: "deploy",
           description: "Deploy commands",
-          flags: t.object({}),
+          flags: z.object({}),
           children: [this.deployVercel],
           handler: async () => {},
         });
@@ -1060,10 +1053,10 @@ describe("CliProvider", () => {
         deploy = $command({
           name: "deploy",
           description: "Deploy to production",
-          flags: t.object({}),
-          env: t.object({
-            API_KEY: t.string({ description: "API key for deployment" }),
-            REGION: t.optional(t.string({ description: "Target region" })),
+          flags: z.object({}),
+          env: z.object({
+            API_KEY: z.string().describe("API key for deployment"),
+            REGION: z.string().describe("Target region").optional(),
           }),
           handler: async () => {},
         });
@@ -1081,7 +1074,7 @@ describe("CliProvider", () => {
         build = $command({
           name: "build",
           description: "Build for environment",
-          flags: t.object({}),
+          flags: z.object({}),
           mode: "development",
           handler: async () => {},
         });
@@ -1099,8 +1092,8 @@ describe("CliProvider", () => {
         greet = $command({
           name: "greet",
           description: "Greet someone",
-          flags: t.object({}),
-          args: t.string({ title: "name" }),
+          flags: z.object({}),
+          args: z.string().meta({ title: "name" }),
           handler: async () => {},
         });
       }
@@ -1117,14 +1110,14 @@ describe("CliProvider", () => {
         visible = $command({
           name: "visible",
           description: "Visible command",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
         hidden = $command({
           name: "hidden",
           description: "Hidden command",
           hide: true,
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
       }
@@ -1139,24 +1132,18 @@ describe("CliProvider", () => {
     it("should include flag aliases in help output", () => {
       const cli = createTestCli();
 
-      const flagsSchema = t.object({
-        target: t.optional(
-          t.enum(["bare", "docker", "vercel"], {
-            aliases: ["t"],
-            description: "Deployment target",
-          }),
-        ),
-        runtime: t.optional(
-          t.enum(["node", "bun"], {
-            alias: "r", // singular alias
-            description: "JavaScript runtime",
-          }),
-        ),
-        verbose: t.optional(
-          t.boolean({
-            description: "Verbose output",
-          }),
-        ),
+      const flagsSchema = z.object({
+        target: z
+          .enum(["bare", "docker", "vercel"])
+          .meta({ aliases: ["t"] })
+          .describe("Deployment target")
+          .optional(),
+        runtime: z
+          .enum(["node", "bun"])
+          .meta({ alias: "r" })
+          .describe("JavaScript runtime")
+          .optional(),
+        verbose: z.boolean().describe("Verbose output").optional(),
       });
 
       const flagDefs = cli.testExtractFlagDefs(flagsSchema);
@@ -1185,9 +1172,9 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("getEnumValues", () => {
-    it("should extract values from t.enum schema", () => {
+    it("should extract values from z.enum schema", () => {
       const cli = createTestCli();
-      const schema = t.enum(["yarn", "npm", "pnpm", "bun"]);
+      const schema = z.enum(["yarn", "npm", "pnpm", "bun"]);
 
       const values = cli.testGetEnumValues(schema);
 
@@ -1197,10 +1184,10 @@ describe("CliProvider", () => {
     it("should return undefined for non-enum schemas", () => {
       const cli = createTestCli();
 
-      expect(cli.testGetEnumValues(t.string())).toBeUndefined();
-      expect(cli.testGetEnumValues(t.boolean())).toBeUndefined();
-      expect(cli.testGetEnumValues(t.number())).toBeUndefined();
-      expect(cli.testGetEnumValues(t.object({}))).toBeUndefined();
+      expect(cli.testGetEnumValues(z.string())).toBeUndefined();
+      expect(cli.testGetEnumValues(z.boolean())).toBeUndefined();
+      expect(cli.testGetEnumValues(z.number())).toBeUndefined();
+      expect(cli.testGetEnumValues(z.object({}))).toBeUndefined();
     });
 
     it("should return undefined for empty or undefined schema", () => {
@@ -1217,7 +1204,7 @@ describe("CliProvider", () => {
   describe("formatFlagDescription", () => {
     it("should append enum values to description", () => {
       const cli = createTestCli();
-      const schema = t.enum(["yarn", "npm", "pnpm", "bun"]);
+      const schema = z.enum(["yarn", "npm", "pnpm", "bun"]);
 
       const result = cli.testFormatFlagDescription(
         "Package manager to use",
@@ -1233,7 +1220,7 @@ describe("CliProvider", () => {
 
     it("should return only enum values when description is empty", () => {
       const cli = createTestCli();
-      const schema = t.enum(["a", "b", "c"]);
+      const schema = z.enum(["a", "b", "c"]);
 
       const result = cli.testFormatFlagDescription(undefined, schema);
 
@@ -1245,10 +1232,10 @@ describe("CliProvider", () => {
     it("should return original description for non-enum schemas", () => {
       const cli = createTestCli();
 
-      expect(cli.testFormatFlagDescription("A string flag", t.string())).toBe(
+      expect(cli.testFormatFlagDescription("A string flag", z.string())).toBe(
         "A string flag",
       );
-      expect(cli.testFormatFlagDescription("A boolean flag", t.boolean())).toBe(
+      expect(cli.testFormatFlagDescription("A boolean flag", z.boolean())).toBe(
         "A boolean flag",
       );
     });
@@ -1256,7 +1243,7 @@ describe("CliProvider", () => {
     it("should return empty string when no description and no enum", () => {
       const cli = createTestCli();
 
-      expect(cli.testFormatFlagDescription(undefined, t.string())).toBe("");
+      expect(cli.testFormatFlagDescription(undefined, z.string())).toBe("");
     });
   });
 
@@ -1269,12 +1256,12 @@ describe("CliProvider", () => {
       class TestCommands {
         build = $command({
           name: "build",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
         test = $command({
           name: "test",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async () => {},
         });
       }
@@ -1299,8 +1286,8 @@ describe("CliProvider", () => {
   describe("parseCommandEnv", () => {
     it("should use default value for required field with default when env var is missing", () => {
       const cli = createTestCli();
-      const schema = t.object({
-        MY_VAR: t.text({ default: "fallback" }),
+      const schema = z.object({
+        MY_VAR: z.text({ default: "fallback" }),
       });
 
       delete process.env.MY_VAR;
@@ -1310,8 +1297,8 @@ describe("CliProvider", () => {
 
     it("should prefer env var over default when both exist", () => {
       const cli = createTestCli();
-      const schema = t.object({
-        MY_VAR: t.text({ default: "fallback" }),
+      const schema = z.object({
+        MY_VAR: z.text({ default: "fallback" }),
       });
 
       process.env.MY_VAR = "from-env";
@@ -1325,8 +1312,8 @@ describe("CliProvider", () => {
 
     it("should throw for required field without default when env var is missing", () => {
       const cli = createTestCli();
-      const schema = t.object({
-        MY_VAR: t.text(),
+      const schema = z.object({
+        MY_VAR: z.text(),
       });
 
       delete process.env.MY_VAR;
@@ -1347,8 +1334,8 @@ describe("CliProvider", () => {
       class TestCommands {
         build = $command({
           name: "build",
-          flags: t.object({
-            watch: t.optional(t.boolean()),
+          flags: z.object({
+            watch: z.boolean().optional(),
           }),
           handler: async ({ flags }) => {
             capturedFlags = flags;
@@ -1371,8 +1358,8 @@ describe("CliProvider", () => {
       class TestCommands {
         greet = $command({
           name: "greet",
-          flags: t.object({
-            name: t.optional(t.string()),
+          flags: z.object({
+            name: z.string().optional(),
           }),
           handler: async ({ flags }) => {
             capturedFlags = flags;
@@ -1395,7 +1382,7 @@ describe("CliProvider", () => {
       class TestCommands {
         init = $command({
           name: "init",
-          flags: t.object({}),
+          flags: z.object({}),
           handler: async ({ root }) => {
             capturedRoot = root;
           },
@@ -1417,8 +1404,8 @@ describe("CliProvider", () => {
       class TestCommands {
         greet = $command({
           name: "greet",
-          flags: t.object({}),
-          args: t.string(),
+          flags: z.object({}),
+          args: z.string(),
           handler: async ({ args }) => {
             capturedArgs = args;
           },

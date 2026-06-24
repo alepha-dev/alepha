@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { describe, it } from "vitest";
 import { FormModel } from "../services/FormModel.ts";
@@ -21,7 +21,7 @@ describe("FormModel.submit loading pairing", () => {
         "f1",
         {
           id: "f1",
-          schema: t.object({ email: t.text(), password: t.text() }),
+          schema: z.object({ email: z.text(), password: z.text() }),
           handler: () => {},
           initialValues: {}, // both required fields missing → decode throws
         },

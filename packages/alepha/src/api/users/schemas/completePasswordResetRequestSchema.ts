@@ -1,5 +1,5 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
 /**
  * Request schema for completing a password reset.
@@ -7,17 +7,13 @@ import { t } from "alepha";
  * Requires the intent ID from Phase 1, the verification code,
  * and the new password.
  */
-export const completePasswordResetRequestSchema = t.object({
-  intentId: t.uuid({
-    description: "The intent ID from createPasswordResetIntent",
-  }),
-  code: t.string({
-    description: "6-digit verification code sent via email",
-  }),
-  newPassword: t.string({
-    minLength: 8,
-    description: "New password (minimum 8 characters)",
-  }),
+export const completePasswordResetRequestSchema = z.object({
+  intentId: z.uuid().describe("The intent ID from createPasswordResetIntent"),
+  code: z.string().describe("6-digit verification code sent via email"),
+  newPassword: z
+    .string()
+    .min(8)
+    .describe("New password (minimum 8 characters)"),
 });
 
 export type CompletePasswordResetRequest = Static<

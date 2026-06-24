@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, expect, test } from "vitest";
 import {
   $prompt,
@@ -19,11 +19,11 @@ describe("MCP Integration", () => {
       add = $tool({
         description: "Add two numbers",
         schema: {
-          params: t.object({
-            a: t.number(),
-            b: t.number(),
+          params: z.object({
+            a: z.number(),
+            b: z.number(),
           }),
-          result: t.number(),
+          result: z.number(),
         },
         handler: async ({ params }) => params.a + params.b,
       });
@@ -168,10 +168,10 @@ describe("MCP Integration", () => {
       codeReview = $prompt({
         name: "code-review",
         description: "Request a code review for the given code",
-        args: t.object({
-          language: t.text({ description: "Programming language" }),
-          code: t.text({ description: "Code to review" }),
-          focus: t.optional(t.text({ description: "Focus areas for review" })),
+        args: z.object({
+          language: z.text({ description: "Programming language" }),
+          code: z.text({ description: "Code to review" }),
+          focus: z.text({ description: "Focus areas for review" }).optional(),
         }),
         handler: async ({ args }) => {
           const messages = [
@@ -281,12 +281,12 @@ describe("MCP Integration", () => {
       calculator = $tool({
         description: "Basic calculator",
         schema: {
-          params: t.object({
-            op: t.enum(["add", "sub", "mul", "div"]),
-            a: t.number(),
-            b: t.number(),
+          params: z.object({
+            op: z.enum(["add", "sub", "mul", "div"]),
+            a: z.number(),
+            b: z.number(),
           }),
-          result: t.number(),
+          result: z.number(),
         },
         handler: async ({ params }) => {
           switch (params.op) {
@@ -305,8 +305,8 @@ describe("MCP Integration", () => {
       echo = $tool({
         description: "Echo the input",
         schema: {
-          params: t.object({ message: t.text() }),
-          result: t.text(),
+          params: z.object({ message: z.text() }),
+          result: z.text(),
         },
         handler: async ({ params }) => params.message,
       });
@@ -324,7 +324,7 @@ describe("MCP Integration", () => {
       // Prompts
       greeting = $prompt({
         description: "Generate a greeting",
-        args: t.object({ name: t.text() }),
+        args: z.object({ name: z.text() }),
         handler: async ({ args }) => [
           { role: "user", content: `Say hello to ${args.name}` },
         ],

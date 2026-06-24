@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { $hook, $inject, $state, Alepha, AlephaError, t } from "alepha";
+import { $hook, $inject, $state, Alepha, AlephaError, z } from "alepha";
 import { $logger } from "alepha/logger";
 import type { SecurityProvider, UserAccountToken } from "alepha/security";
 import {
@@ -154,14 +154,14 @@ export class ServerLinksProvider {
     method: "POST",
     path: "/api/_links/schemas",
     schema: {
-      body: t.object({
-        actions: t.array(t.text()),
+      body: z.object({
+        actions: z.array(z.text()),
       }),
-      response: t.record(
-        t.text(),
-        t.object({
-          body: t.optional(t.string()),
-          response: t.optional(t.string()),
+      response: z.record(
+        z.text(),
+        z.object({
+          body: z.string().optional(),
+          response: z.string().optional(),
         }),
       ),
     },
@@ -198,20 +198,20 @@ export class ServerLinksProvider {
     method: "POST",
     path: "/api/_batch",
     schema: {
-      body: t.array(
-        t.object({
-          action: t.text(),
-          params: t.optional(t.record(t.text(), t.any())),
-          query: t.optional(t.record(t.text(), t.any())),
-          body: t.optional(t.record(t.text(), t.any())),
+      body: z.array(
+        z.object({
+          action: z.text(),
+          params: z.record(z.text(), z.any()).optional(),
+          query: z.record(z.text(), z.any()).optional(),
+          body: z.record(z.text(), z.any()).optional(),
         }),
       ),
-      response: t.array(
-        t.object({
-          action: t.text(),
-          status: t.integer(),
-          data: t.optional(t.any()),
-          error: t.optional(t.text()),
+      response: z.array(
+        z.object({
+          action: z.text(),
+          status: z.integer(),
+          data: z.any().optional(),
+          error: z.text().optional(),
         }),
       ),
     },

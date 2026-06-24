@@ -1,4 +1,4 @@
-import { $hook, Alepha, t } from "alepha";
+import { $hook, Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { $batch, AlephaBatch } from "../index.ts";
@@ -33,7 +33,7 @@ describe("Batch startup buffering", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 10, // Would normally trigger flush at 10 items
         maxDuration: [1, "second"],
         handler: mockHandler,
@@ -108,7 +108,7 @@ describe("Batch startup buffering", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 100,
         maxDuration: [100, "milliseconds"], // Short timeout
         handler: mockHandler,
@@ -161,7 +161,7 @@ describe("Batch startup buffering", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 100,
         maxDuration: [1, "second"],
         handler: mockHandler,
@@ -210,7 +210,7 @@ describe("Batch startup buffering", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.object({ partition: t.text(), value: t.text() }),
+        schema: z.object({ partition: z.text(), value: z.text() }),
         maxSize: 5,
         partitionBy: (item) => item.partition,
         handler: mockHandler,
@@ -287,7 +287,7 @@ describe("Batch startup buffering", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 3,
         maxDuration: [500, "milliseconds"],
         handler: mockHandler,
@@ -344,7 +344,7 @@ describe("Batch startup buffering", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 10,
         handler: mockHandler,
       });
@@ -384,7 +384,7 @@ describe("Batch startup buffering", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 5,
         maxDuration: [10, "seconds"], // Long timeout so it doesn't interfere
         handler: mockHandler,
@@ -426,7 +426,7 @@ describe("Batch startup buffering", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 10,
         handler: mockHandler,
       });

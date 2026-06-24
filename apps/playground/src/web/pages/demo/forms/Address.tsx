@@ -1,6 +1,6 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 
 const COUNTRIES = [
@@ -13,35 +13,37 @@ const COUNTRIES = [
   { value: "JP", label: "Japan" },
 ];
 
-const schema = t.object({
-  fullName: t.string({
+const schema = z.object({
+  fullName: z.string().meta({
     title: "Full name",
     $control: { autoComplete: "name", width: 100 },
   }),
-  street: t.string({
+  street: z.string().meta({
     title: "Street address",
     $control: { autoComplete: "address-line1", width: 100 },
   }),
-  street2: t.optional(
-    t.string({
+  street2: z
+    .string()
+    .meta({
       title: "Apartment, suite, etc.",
       $control: { autoComplete: "address-line2", width: 100 },
-    }),
-  ),
-  city: t.string({
-    $control: { autoComplete: "address-level2", width: 50 },
-  }),
-  region: t.optional(
-    t.string({
+    })
+    .optional(),
+  city: z
+    .string()
+    .meta({ $control: { autoComplete: "address-level2", width: 50 } }),
+  region: z
+    .string()
+    .meta({
       title: "State / Region",
       $control: { autoComplete: "address-level1", width: 50 },
-    }),
-  ),
-  postalCode: t.string({
+    })
+    .optional(),
+  postalCode: z.string().meta({
     title: "Postal code",
     $control: { autoComplete: "postal-code", width: 33 },
   }),
-  country: t.string({
+  country: z.string().meta({
     $control: {
       autoComplete: "country",
       items: COUNTRIES,

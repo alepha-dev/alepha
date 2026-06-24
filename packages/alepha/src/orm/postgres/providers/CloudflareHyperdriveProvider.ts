@@ -1,4 +1,4 @@
-import { $env, $hook, $inject, AlephaError, t } from "alepha";
+import { $env, $hook, $inject, AlephaError, z } from "alepha";
 import { DatabaseProvider, type SQLLike } from "alepha/orm";
 import { sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
@@ -18,11 +18,9 @@ import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
 export class CloudflareHyperdriveProvider extends DatabaseProvider {
   protected readonly builder = $inject(PostgresModelBuilder);
   protected readonly env = $env(
-    t.object({
-      DATABASE_URL: t.string({
-        description: "Expect to be 'hyperdrive://BINDING'",
-      }),
-      POSTGRES_SCHEMA: t.optional(t.text()),
+    z.object({
+      DATABASE_URL: z.string().describe("Expect to be 'hyperdrive://BINDING'"),
+      POSTGRES_SCHEMA: z.text().optional(),
     }),
   );
 

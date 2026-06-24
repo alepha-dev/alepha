@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 import { BlobController } from "../../api/controllers/BlobController.ts";
@@ -69,22 +69,22 @@ export class ArchiveTools {
     title: "List archive directory contents",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        directory_shortId: t.optional(t.integer()),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        directory_shortId: z.integer().optional(),
       }),
-      result: t.object({
-        directory_shortId: t.optional(t.integer()),
-        breadcrumb: t.array(
-          t.object({ shortId: t.integer(), name: t.string() }),
+      result: z.object({
+        directory_shortId: z.integer().optional(),
+        breadcrumb: z.array(
+          z.object({ shortId: z.integer(), name: z.string() }),
         ),
-        entries: t.array(
-          t.object({
-            kind: t.enum(["directory", "folio", "blob"]),
-            shortId: t.integer(),
-            name: t.string(),
-            updatedAt: t.string(),
+        entries: z.array(
+          z.object({
+            kind: z.enum(["directory", "folio", "blob"]),
+            shortId: z.integer(),
+            name: z.string(),
+            updatedAt: z.string(),
           }),
         ),
       }),
@@ -124,16 +124,16 @@ export class ArchiveTools {
     title: "Create archive directory",
     annotations: { destructiveHint: false },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        name: t.string({ minLength: 1, maxLength: 200 }),
-        parent_shortId: t.optional(t.integer()),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        name: z.string().min(1).max(200),
+        parent_shortId: z.integer().optional(),
       }),
-      result: t.object({
-        id: t.uuid(),
-        shortId: t.integer(),
-        name: t.string(),
+      result: z.object({
+        id: z.uuid(),
+        shortId: z.integer(),
+        name: z.string(),
       }),
     },
     handler: async ({ params }) => {
@@ -162,13 +162,13 @@ export class ArchiveTools {
     title: "Rename archive directory",
     annotations: { idempotentHint: true, destructiveHint: false },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        directory_shortId: t.integer(),
-        name: t.string({ minLength: 1, maxLength: 200 }),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        directory_shortId: z.integer(),
+        name: z.string().min(1).max(200),
       }),
-      result: t.object({ shortId: t.integer(), name: t.string() }),
+      result: z.object({ shortId: z.integer(), name: z.string() }),
     },
     handler: async ({ params }) => {
       const campaignId = await this.resolveCampaignId(
@@ -194,13 +194,13 @@ export class ArchiveTools {
     title: "Move archive directory",
     annotations: { idempotentHint: true, destructiveHint: false },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        directory_shortId: t.integer(),
-        new_parent_shortId: t.optional(t.integer()),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        directory_shortId: z.integer(),
+        new_parent_shortId: z.integer().optional(),
       }),
-      result: t.object({ shortId: t.integer(), name: t.string() }),
+      result: z.object({ shortId: z.integer(), name: z.string() }),
     },
     handler: async ({ params }) => {
       const campaignId = await this.resolveCampaignId(
@@ -230,13 +230,13 @@ export class ArchiveTools {
     title: "Delete archive directory",
     annotations: { destructiveHint: true },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        directory_shortId: t.integer(),
-        cascade: t.optional(t.boolean()),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        directory_shortId: z.integer(),
+        cascade: z.boolean().optional(),
       }),
-      result: t.object({ ok: t.boolean() }),
+      result: z.object({ ok: z.boolean() }),
     },
     handler: async ({ params }) => {
       const campaignId = await this.resolveCampaignId(
@@ -272,21 +272,21 @@ export class ArchiveTools {
     title: "List archive blobs",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        directory_shortId: t.optional(t.integer()),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        directory_shortId: z.integer().optional(),
       }),
-      result: t.object({
-        blobs: t.array(
-          t.object({
-            shortId: t.integer(),
-            name: t.string(),
-            size: t.number(),
-            mimeType: t.string(),
-            sha256: t.optional(t.string()),
-            originalName: t.optional(t.string()),
-            updatedAt: t.string(),
+      result: z.object({
+        blobs: z.array(
+          z.object({
+            shortId: z.integer(),
+            name: z.string(),
+            size: z.number(),
+            mimeType: z.string(),
+            sha256: z.string().optional(),
+            originalName: z.string().optional(),
+            updatedAt: z.string(),
           }),
         ),
       }),
@@ -323,13 +323,13 @@ export class ArchiveTools {
     title: "Rename archive blob",
     annotations: { idempotentHint: true, destructiveHint: false },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        blob_shortId: t.integer(),
-        name: t.string({ minLength: 1, maxLength: 200 }),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        blob_shortId: z.integer(),
+        name: z.string().min(1).max(200),
       }),
-      result: t.object({ shortId: t.integer(), name: t.string() }),
+      result: z.object({ shortId: z.integer(), name: z.string() }),
     },
     handler: async ({ params }) => {
       const campaignId = await this.resolveCampaignId(
@@ -353,13 +353,13 @@ export class ArchiveTools {
     title: "Move archive blob",
     annotations: { idempotentHint: true, destructiveHint: false },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        blob_shortId: t.integer(),
-        new_directory_shortId: t.optional(t.integer()),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        blob_shortId: z.integer(),
+        new_directory_shortId: z.integer().optional(),
       }),
-      result: t.object({ shortId: t.integer(), name: t.string() }),
+      result: z.object({ shortId: z.integer(), name: z.string() }),
     },
     handler: async ({ params }) => {
       const campaignId = await this.resolveCampaignId(
@@ -387,12 +387,12 @@ export class ArchiveTools {
     title: "Delete archive blob",
     annotations: { destructiveHint: true },
     schema: {
-      params: t.object({
-        campaign: t.optional(t.integer()),
-        campaign_name: t.optional(t.string()),
-        blob_shortId: t.integer(),
+      params: z.object({
+        campaign: z.integer().optional(),
+        campaign_name: z.string().optional(),
+        blob_shortId: z.integer(),
       }),
-      result: t.object({ ok: t.boolean() }),
+      result: z.object({ ok: z.boolean() }),
     },
     handler: async ({ params }) => {
       const campaignId = await this.resolveCampaignId(

@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { petitionSourceSchema } from "../schemas/petitionSourceSchema.ts";
 import { campaigns } from "./campaigns.ts";
@@ -15,39 +15,36 @@ import { users } from "./users.ts";
  */
 export const petitions = $entity({
   name: "petitions",
-  schema: t.object({
-    id: db.primaryKey(t.integer()),
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
     /**
      * Per-campaign sequential id, 1-based. Stable user-facing reference used
      * in MCP responses and UI display ("#5"). Allocated by
      * `$sequence(scope=campaignId)` on insert.
      */
-    shortId: t.integer({ minimum: 1 }),
+    shortId: z.integer().min(1),
     createdAt: db.createdAt(),
     deletedAt: db.deletedAt(),
-    campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
+    campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
-    reporterUserId: db.ref(t.optional(t.uuid()), () => users.cols.id, {
+    reporterUserId: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "cascade",
     }),
-    title: t.string({ minLength: 1, maxLength: 200 }),
-    description: t.string({ maxLength: 10_000 }),
-    status: t.enum(["pending", "accepted", "rejected"], { mode: "text" }),
+    title: z.string().min(1).max(200),
+    description: z.string().max(10_000),
+    status: z.enum(["pending", "accepted", "rejected"]).meta({ mode: "text" }),
     /**
      * Attachment file ids (uploaded via `POST /campaigns/:id/petitions/attachments`).
      * Stored as `uuid[]` mirroring `quests.attachments`.
      */
-    attachments: db.default(t.array(t.uuid()), []),
+    attachments: db.default(z.array(z.uuid()), []),
     /**
      * Free-form tags. The `key=value` convention is documentation, not law —
      * common keys: `type=bug|feature`, `host=lore.alepha.dev`, `path=/foo`,
      * `severity=high`. Used for inbox filtering and reporting context.
      */
-    tags: db.default(
-      t.array(t.string({ maxLength: 100 }), { maxItems: 20 }),
-      [],
-    ),
+    tags: db.default(z.array(z.string().max(100)).max(20), []),
     /**
      * Provenance of an embedded submission. `null`/absent for first-party
      * petitions (the in-app `/c/:id/request` form). When a petition arrives
@@ -64,7 +61,7 @@ export const petitions = $entity({
      *
      * Shape lives in `petitionSourceSchema` (shared with the request body).
      */
-    source: t.optional(petitionSourceSchema),
+    source: petitionSourceSchema.optional(),
   }),
   indexes: [
     { columns: ["campaignId", "status", "deletedAt"] },

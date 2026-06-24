@@ -1,4 +1,4 @@
-import { $context, AlephaError, t } from "alepha";
+import { $context, AlephaError, z } from "alepha";
 import type { IssuerPrimitive } from "alepha/security";
 import {
   $auth,
@@ -36,25 +36,25 @@ export const $authMicrosoft = (
   const { alepha } = $context();
 
   const env = alepha.parseEnv(
-    t.object({
-      MICROSOFT_CLIENT_ID: t.optional(
-        t.text({
+    z.object({
+      MICROSOFT_CLIENT_ID: z
+        .text({
           description:
             "The application (client) ID obtained from the Azure Portal.",
-        }),
-      ),
-      MICROSOFT_CLIENT_SECRET: t.optional(
-        t.text({
+        })
+        .optional(),
+      MICROSOFT_CLIENT_SECRET: z
+        .text({
           description:
             "The client secret value obtained from the Azure Portal.",
-        }),
-      ),
-      MICROSOFT_TENANT_ID: t.optional(
-        t.text({
+        })
+        .optional(),
+      MICROSOFT_TENANT_ID: z
+        .text({
           description:
             "The Azure AD tenant ID or 'common' for multi-tenant. Defaults to 'common'.",
-        }),
-      ),
+        })
+        .optional(),
     }),
   );
 

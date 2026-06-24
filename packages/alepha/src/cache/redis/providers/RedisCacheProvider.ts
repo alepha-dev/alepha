@@ -1,4 +1,4 @@
-import { $atom, $inject, $state, Alepha, type Static, t } from "alepha";
+import { $atom, $inject, $state, Alepha, type Static, z } from "alepha";
 import { CacheProvider } from "alepha/cache";
 import { $logger } from "alepha/logger";
 import { RedisProvider } from "alepha/redis";
@@ -10,13 +10,13 @@ import { RedisProvider } from "alepha/redis";
  */
 export const redisCacheOptions = $atom({
   name: "alepha.cache.redis.options",
-  schema: t.object({
-    prefix: t.optional(
-      t.text({
+  schema: z.object({
+    prefix: z
+      .text({
         description:
           "Prefix for all cache keys in Redis. Useful for testing or multi-tenant applications.",
-      }),
-    ),
+      })
+      .optional(),
   }),
   default: {},
 });

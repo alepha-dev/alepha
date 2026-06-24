@@ -1,4 +1,4 @@
-import { Alepha, createMiddleware, t } from "alepha";
+import { Alepha, createMiddleware, z } from "alepha";
 import { describe, expect, test } from "vitest";
 import {
   $consumer,
@@ -21,9 +21,9 @@ const $track = (log: string[], tag: string) =>
       },
   });
 
-const payloadSchema = t.object({
-  id: t.text(),
-  count: t.integer(),
+const payloadSchema = z.object({
+  id: z.text(),
+  count: z.integer(),
 });
 
 describe("$consumer middleware", () => {

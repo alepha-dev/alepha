@@ -1,4 +1,4 @@
-import { $env, t } from "alepha";
+import { $env, z } from "alepha";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound } from "alepha/react/router";
 import { $sitemap } from "alepha/react/sitemap";
@@ -17,10 +17,8 @@ declare module "alepha/react/router" {
 
 export class AppRouter {
   env = $env(
-    t.object({
-      PUBLIC_URL: t.string({
-        default: "https://alepha.dev",
-      }),
+    z.object({
+      PUBLIC_URL: z.string().default("https://alepha.dev"),
     }),
   );
 
@@ -117,8 +115,8 @@ export class AppRouter {
     path: "/docs/:slug",
     component: Docs,
     schema: {
-      params: t.object({
-        slug: t.text(),
+      params: z.object({
+        slug: z.text(),
       }),
     },
     static: {

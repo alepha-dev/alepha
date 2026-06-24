@@ -1,4 +1,4 @@
-import { $inject, type Static, t } from "alepha";
+import { $inject, type Static, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -28,20 +28,20 @@ const BLIGHT_ZONE = "Blights";
  * `name`, `message`, `stack` and `sourceUrl` as escaped plain text only
  * (attacker-controlled — see folio #12 + the entity-level note).
  */
-const blightResourceSchema = t.object({
-  id: t.integer(),
-  sigilId: t.uuid(),
-  fingerprint: t.string(),
-  name: t.string(),
-  message: t.string(),
-  stack: t.string(),
-  sourceUrl: t.string(),
-  firstSeenAt: t.string(),
-  lastSeenAt: t.string(),
-  count: t.integer(),
-  recentIps: t.array(t.string()),
-  status: t.string(),
-  origin: t.enum(["client", "server"]),
+const blightResourceSchema = z.object({
+  id: z.integer(),
+  sigilId: z.uuid(),
+  fingerprint: z.string(),
+  name: z.string(),
+  message: z.string(),
+  stack: z.string(),
+  sourceUrl: z.string(),
+  firstSeenAt: z.string(),
+  lastSeenAt: z.string(),
+  count: z.integer(),
+  recentIps: z.array(z.string()),
+  status: z.string(),
+  origin: z.enum(["client", "server"]),
 });
 
 export type BlightResource = Static<typeof blightResourceSchema>;
@@ -52,16 +52,16 @@ export type BlightResource = Static<typeof blightResourceSchema>;
  * owner-only `SigilController.listSigils`) so any campaign member viewing the
  * inbox can populate the filter.
  */
-const blightSigilSchema = t.object({
-  id: t.uuid(),
-  label: t.string(),
+const blightSigilSchema = z.object({
+  id: z.uuid(),
+  label: z.string(),
 });
 
 /** A campaign-wide blight ignore rule as exposed to the owner. */
-const blightRuleResourceSchema = t.object({
-  id: t.integer(),
-  pattern: t.string(),
-  createdAt: t.string(),
+const blightRuleResourceSchema = z.object({
+  id: z.integer(),
+  pattern: z.string(),
+  createdAt: z.string(),
 });
 
 export type BlightRuleResource = Static<typeof blightRuleResourceSchema>;
@@ -102,14 +102,14 @@ export class BlightController {
     method: "GET",
     path: "/campaigns/:campaignId/blights",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      query: t.object({
-        includeResolved: t.optional(t.boolean()),
+      params: z.object({ campaignId: z.integer() }),
+      query: z.object({
+        includeResolved: z.boolean().optional(),
       }),
-      response: t.object({
-        items: t.array(blightResourceSchema),
-        openCount: t.integer(),
-        sigils: t.array(blightSigilSchema),
+      response: z.object({
+        items: z.array(blightResourceSchema),
+        openCount: z.integer(),
+        sigils: z.array(blightSigilSchema),
       }),
     },
     handler: async ({ params, query, user }) => {
@@ -160,8 +160,8 @@ export class BlightController {
     method: "GET",
     path: "/campaigns/:campaignId/blights/count",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      response: t.object({ count: t.integer() }),
+      params: z.object({ campaignId: z.integer() }),
+      response: z.object({ count: z.integer() }),
     },
     handler: async ({ params, user }) => {
       await this.security.assertMember(params.campaignId, user);
@@ -186,9 +186,9 @@ export class BlightController {
     method: "POST",
     path: "/campaigns/:campaignId/blights/:blightId/resolve",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        blightId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
+        blightId: z.integer(),
       }),
       response: okSchema,
     },
@@ -212,11 +212,11 @@ export class BlightController {
     method: "POST",
     path: "/campaigns/:campaignId/blights/:blightId/forward",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        blightId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
+        blightId: z.integer(),
       }),
-      response: t.object({ questId: t.integer(), questShortId: t.integer() }),
+      response: z.object({ questId: z.integer(), questShortId: z.integer() }),
     },
     handler: async ({ params, user }) => {
       const { campaign } = await this.security.assertOwner(
@@ -294,9 +294,9 @@ export class BlightController {
     method: "DELETE",
     path: "/campaigns/:campaignId/blights/:blightId",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        blightId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
+        blightId: z.integer(),
       }),
       response: okSchema,
     },
@@ -319,11 +319,11 @@ export class BlightController {
     method: "DELETE",
     path: "/campaigns/:campaignId/blights",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      body: t.object({
-        ids: t.array(t.integer(), { minItems: 1, maxItems: 200 }),
+      params: z.object({ campaignId: z.integer() }),
+      body: z.object({
+        ids: z.array(z.integer()).min(1).max(200),
       }),
-      response: t.object({ deleted: t.integer() }),
+      response: z.object({ deleted: z.integer() }),
     },
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.campaignId, user);
@@ -354,8 +354,8 @@ export class BlightController {
     method: "GET",
     path: "/campaigns/:campaignId/blights/rules",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      response: t.object({ items: t.array(blightRuleResourceSchema) }),
+      params: z.object({ campaignId: z.integer() }),
+      response: z.object({ items: z.array(blightRuleResourceSchema) }),
     },
     handler: async ({ params, user }) => {
       await this.security.assertMember(params.campaignId, user);
@@ -375,9 +375,9 @@ export class BlightController {
     method: "POST",
     path: "/campaigns/:campaignId/blights/rules",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      body: t.object({
-        pattern: t.string({ minLength: 1, maxLength: 200 }),
+      params: z.object({ campaignId: z.integer() }),
+      body: z.object({
+        pattern: z.string().min(1).max(200),
       }),
       response: blightRuleResourceSchema,
     },
@@ -404,9 +404,9 @@ export class BlightController {
     method: "DELETE",
     path: "/campaigns/:campaignId/blights/rules/:ruleId",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        ruleId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
+        ruleId: z.integer(),
       }),
       response: okSchema,
     },

@@ -1,36 +1,18 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const registerSchema = t.object({
-  username: t.string({
-    minLength: 3,
-    maxLength: 20,
-    pattern: /^[a-zA-Z0-9_]+$/,
-    description: "Username for the new account",
-  }),
-  email: t.email({
-    description: "Email address for the new account",
-  }),
-  password: t.string({
-    minLength: 8,
-    description: "Password for the new account",
-  }),
-  confirmPassword: t.string({
-    minLength: 8,
-    description: "Confirmation of the password",
-  }),
-  firstName: t.optional(
-    t.string({
-      maxLength: 100,
-      description: "User's first name",
-    }),
-  ),
-  lastName: t.optional(
-    t.string({
-      maxLength: 100,
-      description: "User's last name",
-    }),
-  ),
+export const registerSchema = z.object({
+  username: z
+    .string()
+    .min(3)
+    .max(20)
+    .regex(/^[a-zA-Z0-9_]+$/)
+    .describe("Username for the new account"),
+  email: z.email().describe("Email address for the new account"),
+  password: z.string().min(8).describe("Password for the new account"),
+  confirmPassword: z.string().min(8).describe("Confirmation of the password"),
+  firstName: z.string().max(100).describe("User's first name").optional(),
+  lastName: z.string().max(100).describe("User's last name").optional(),
 });
 
 export type RegisterInput = Static<typeof registerSchema>;

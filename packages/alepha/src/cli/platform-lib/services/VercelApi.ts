@@ -1,4 +1,4 @@
-import { $inject, Alepha, AlephaError, type TSchema, t } from "alepha";
+import { $inject, Alepha, AlephaError, type TSchema, z } from "alepha";
 import { $logger } from "alepha/logger";
 import type {
   VercelDeployment,
@@ -51,7 +51,7 @@ export class VercelApi {
   public async listProjects(): Promise<VercelProject[]> {
     const res = await this.fetch<{ projects: VercelProject[] }>(
       "/v10/projects",
-      { schema: t.object({ projects: t.array(vercelProjectSchema) }) },
+      { schema: z.object({ projects: z.array(vercelProjectSchema) }) },
     );
     return res.projects;
   }
@@ -114,7 +114,7 @@ export class VercelApi {
       "/v6/deployments",
       {
         query,
-        schema: t.object({ deployments: t.array(vercelDeploymentSchema) }),
+        schema: z.object({ deployments: z.array(vercelDeploymentSchema) }),
       },
     );
     return res.deployments;
@@ -129,7 +129,7 @@ export class VercelApi {
       `/v10/projects/${encodeURIComponent(projectId)}/env`,
       {
         query: { decrypt: "true" },
-        schema: t.object({ envs: t.array(vercelEnvVarSchema) }),
+        schema: z.object({ envs: z.array(vercelEnvVarSchema) }),
       },
     );
     return res.envs;

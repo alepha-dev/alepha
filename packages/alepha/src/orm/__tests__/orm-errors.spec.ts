@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 import {
   $entity,
@@ -34,10 +34,10 @@ describe("Database Error Tests", () => {
   // Parent entity (referenced by child)
   const parents = $entity({
     name: "error_test_parents",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      name: t.text(),
-      email: t.text(),
+      name: z.text(),
+      email: z.text(),
     }),
     indexes: [{ column: "email", unique: true }],
   });
@@ -45,10 +45,10 @@ describe("Database Error Tests", () => {
   // Child entity (references parent) - using RESTRICT (no cascade) to test FK errors
   const children = $entity({
     name: "error_test_children",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      parentId: t.integer(), // Plain integer, no db.ref() to avoid cascade
-      name: t.text(),
+      parentId: z.integer(), // Plain integer, no db.ref() to avoid cascade
+      name: z.text(),
     }),
     foreignKeys: [
       {
@@ -61,10 +61,10 @@ describe("Database Error Tests", () => {
   // Entity with required fields for NOT NULL tests
   const requiredFields = $entity({
     name: "error_test_required",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      requiredName: t.text(), // NOT NULL by default
-      optionalNote: t.optional(t.text()), // Nullable
+      requiredName: z.text(), // NOT NULL by default
+      optionalNote: z.text().optional(), // Nullable
     }),
   });
 

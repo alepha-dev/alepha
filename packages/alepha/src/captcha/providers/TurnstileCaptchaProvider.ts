@@ -1,4 +1,4 @@
-import { $context, AlephaError, t } from "alepha";
+import { $context, AlephaError, z } from "alepha";
 import { $logger } from "alepha/logger";
 import type { CaptchaProvider } from "./CaptchaProvider.ts";
 
@@ -70,12 +70,12 @@ export class TurnstileCaptchaProvider implements CaptchaProvider {
     const { alepha } = $context();
 
     const env = alepha.parseEnv(
-      t.object({
-        TURNSTILE_SECRET_KEY: t.text({
+      z.object({
+        TURNSTILE_SECRET_KEY: z.text({
           description:
             "The secret key from the Cloudflare Turnstile dashboard.",
         }),
-        TURNSTILE_SITE_KEY: t.text({
+        TURNSTILE_SITE_KEY: z.text({
           description:
             "The public site key from the Cloudflare Turnstile dashboard, rendered on the client.",
         }),

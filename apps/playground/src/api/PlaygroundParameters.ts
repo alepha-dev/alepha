@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { $parameter } from "alepha/api/parameters";
 
 /**
@@ -8,10 +8,10 @@ export class PlaygroundParameters {
   public readonly features = $parameter({
     name: "app.features",
     description: "Feature flags for the playground app.",
-    schema: t.object({
-      enableBeta: t.boolean(),
-      enableExperimentalJobs: t.boolean(),
-      enableDarkMode: t.boolean(),
+    schema: z.object({
+      enableBeta: z.boolean(),
+      enableExperimentalJobs: z.boolean(),
+      enableDarkMode: z.boolean(),
     }),
     default: {
       enableBeta: false,
@@ -23,10 +23,10 @@ export class PlaygroundParameters {
   public readonly limits = $parameter({
     name: "app.limits",
     description: "Hard limits applied across the app.",
-    schema: t.object({
-      maxUploadSize: t.integer({ description: "Max upload size in bytes" }),
-      maxJobsPerUser: t.integer(),
-      maxNotificationsPerHour: t.integer(),
+    schema: z.object({
+      maxUploadSize: z.integer().describe("Max upload size in bytes"),
+      maxJobsPerUser: z.integer(),
+      maxNotificationsPerHour: z.integer(),
     }),
     default: {
       maxUploadSize: 10 * 1024 * 1024,
@@ -38,12 +38,12 @@ export class PlaygroundParameters {
   public readonly pricingTiers = $parameter({
     name: "app.pricing.tiers",
     description: "Subscription tier configuration.",
-    schema: t.object({
-      free: t.object({ maxProjects: t.integer(), maxUsers: t.integer() }),
-      pro: t.object({ maxProjects: t.integer(), maxUsers: t.integer() }),
-      enterprise: t.object({
-        maxProjects: t.integer(),
-        maxUsers: t.integer(),
+    schema: z.object({
+      free: z.object({ maxProjects: z.integer(), maxUsers: z.integer() }),
+      pro: z.object({ maxProjects: z.integer(), maxUsers: z.integer() }),
+      enterprise: z.object({
+        maxProjects: z.integer(),
+        maxUsers: z.integer(),
       }),
     }),
     default: {
@@ -56,10 +56,10 @@ export class PlaygroundParameters {
   public readonly branding = $parameter({
     name: "app.branding",
     description: "Product branding applied in emails and headers.",
-    schema: t.object({
-      productName: t.text(),
-      supportEmail: t.text({ format: "email" }),
-      primaryColor: t.text(),
+    schema: z.object({
+      productName: z.text(),
+      supportEmail: z.text({ format: "email" }),
+      primaryColor: z.text(),
     }),
     default: {
       productName: "Alepha Playground",

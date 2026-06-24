@@ -1,9 +1,9 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 import { paymentMethods } from "../entities/paymentMethods.ts";
 
-export const addPaymentMethodSchema = t.object({
-  token: t.text(),
+export const addPaymentMethodSchema = z.object({
+  token: z.text(),
 });
 
 export type AddPaymentMethod = Static<typeof addPaymentMethodSchema>;

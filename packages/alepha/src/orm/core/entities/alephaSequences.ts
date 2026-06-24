@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity } from "../primitives/$entity.ts";
 import { db } from "../providers/DatabaseTypeProvider.ts";
 
@@ -16,25 +16,25 @@ import { db } from "../providers/DatabaseTypeProvider.ts";
  */
 export const alephaSequences = $entity({
   name: "alepha_sequences",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
 
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
 
-    name: t.text({
+    name: z.text({
       description: "Sequence primitive name (from $sequence's property key).",
     }),
 
-    scope: t.text({
+    scope: z.text({
       description:
         "Caller-provided sub-scope. Defaults to 'default' for the unscoped form.",
       default: "default",
     }),
 
-    value: t.integer({
-      description: "Current counter value, advanced atomically on each call.",
-    }),
+    value: z
+      .integer()
+      .describe("Current counter value, advanced atomically on each call."),
   }),
   indexes: [{ columns: ["name", "scope"], unique: true }],
 });

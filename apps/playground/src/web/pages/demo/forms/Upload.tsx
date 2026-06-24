@@ -1,34 +1,37 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 
-const schema = t.object({
-  avatar: t.optional(
-    t.string({
+const schema = z.object({
+  avatar: z
+    .string()
+    .meta({
       title: "Avatar",
-      description: "Single image, max 1 MB. Stored as a UUID in the form.",
       $control: {
         upload: { accept: "image/*", maxSize: 1_000_000 },
       },
-    }),
-  ),
-  attachments: t.optional(
-    t.array(t.string(), {
+    })
+    .describe("Single image, max 1 MB. Stored as a UUID in the form.")
+    .optional(),
+  attachments: z
+    .array(z.string())
+    .meta({
       title: "Attachments",
-      description: "Drag-drop several files at once.",
       $control: {
         upload: { multi: true },
       },
-    }),
-  ),
-  resume: t.optional(
-    t.string({
+    })
+    .describe("Drag-drop several files at once.")
+    .optional(),
+  resume: z
+    .string()
+    .meta({
       title: "Resume",
-      description: "PDFs only.",
       $control: { upload: { accept: ".pdf,application/pdf" } },
-    }),
-  ),
+    })
+    .describe("PDFs only.")
+    .optional(),
 });
 
 const UploadDemo = () => {

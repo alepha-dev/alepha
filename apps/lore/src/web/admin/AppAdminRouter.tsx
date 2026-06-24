@@ -1,14 +1,5 @@
-import { AdminAudits } from "@alepha/ui/components/admin/admin-audits";
-import { AdminFiles } from "@alepha/ui/components/admin/admin-files";
-import { AdminJobs } from "@alepha/ui/components/admin/admin-jobs";
-import { AdminKeys } from "@alepha/ui/components/admin/admin-keys";
-import { AdminNotifications } from "@alepha/ui/components/admin/admin-notifications";
-import { AdminParameters } from "@alepha/ui/components/admin/admin-parameters";
-import { AdminSessions } from "@alepha/ui/components/admin/admin-sessions";
-import { AdminUserDetail } from "@alepha/ui/components/admin/admin-user-detail";
-import { AdminUsers } from "@alepha/ui/components/admin/admin-users";
 import { navPage } from "@alepha/ui/components/nav-shell/nav-page";
-import { t } from "alepha";
+import { z } from "alepha";
 import { $page, Redirection } from "alepha/react/router";
 import { $secure } from "alepha/security";
 import {
@@ -21,7 +12,6 @@ import {
   Timer,
   UsersIcon,
 } from "lucide-react";
-import { AppAdminLayout } from "./AppAdminLayout.tsx";
 
 /**
  * Admin shell routes. Each leaf is declared with `navPage`, which co-locates
@@ -29,6 +19,9 @@ import { AppAdminLayout } from "./AppAdminLayout.tsx";
  * gate) and its `nav` metadata (label / icon / group / order). The sidebar and
  * breadcrumbs are derived from this tree by `<NavShell>` in AppAdminLayout —
  * there is no separate hand-maintained nav list.
+ *
+ * Every page component is `lazy`-imported so the admin area is code-split out
+ * of the main bundle and each page loads on demand.
  */
 export class AppAdminRouter {
   adminLayout = $page({
@@ -44,7 +37,7 @@ export class AppAdminRouter {
       }
       return {};
     },
-    component: AppAdminLayout,
+    lazy: () => import("./AppAdminLayout.tsx"),
   });
 
   adminUsers = navPage({
@@ -52,7 +45,7 @@ export class AppAdminRouter {
     head: { title: "Users" },
     permission: "admin:user:read",
     nav: { label: "Users", icon: <UsersIcon />, group: "Identity", order: 1 },
-    component: AdminUsers,
+    lazy: () => import("@alepha/ui/components/admin/admin-users"),
     props: () => ({
       defaultHiddenColumns: ["firstName", "lastName"] as const,
     }),
@@ -66,11 +59,11 @@ export class AppAdminRouter {
     // No `nav` → secured route, but not a sidebar entry. Breadcrumb label
     // falls back to `head.title`.
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
     },
-    component: AdminUserDetail,
+    lazy: () => import("@alepha/ui/components/admin/admin-user-detail"),
     parent: this.adminLayout,
   });
 
@@ -84,7 +77,7 @@ export class AppAdminRouter {
       group: "Identity",
       order: 2,
     },
-    component: AdminSessions,
+    lazy: () => import("@alepha/ui/components/admin/admin-sessions"),
     parent: this.adminLayout,
   });
 
@@ -99,7 +92,7 @@ export class AppAdminRouter {
       order: 3,
       keywords: ["tokens", "credentials"],
     },
-    component: AdminKeys,
+    lazy: () => import("@alepha/ui/components/admin/admin-keys"),
     parent: this.adminLayout,
   });
 
@@ -108,7 +101,7 @@ export class AppAdminRouter {
     head: { title: "Jobs" },
     permission: "admin:job:read",
     nav: { label: "Jobs", icon: <Timer />, group: "Operations", order: 4 },
-    component: AdminJobs,
+    lazy: () => import("@alepha/ui/components/admin/admin-jobs"),
     parent: this.adminLayout,
   });
 
@@ -122,7 +115,7 @@ export class AppAdminRouter {
       group: "Operations",
       order: 5,
     },
-    component: AdminNotifications,
+    lazy: () => import("@alepha/ui/components/admin/admin-notifications"),
     parent: this.adminLayout,
   });
 
@@ -136,7 +129,7 @@ export class AppAdminRouter {
       group: "Operations",
       order: 6,
     },
-    component: AdminAudits,
+    lazy: () => import("@alepha/ui/components/admin/admin-audits"),
     parent: this.adminLayout,
   });
 
@@ -145,7 +138,7 @@ export class AppAdminRouter {
     head: { title: "Files" },
     permission: "admin:file:read",
     nav: { label: "Files", icon: <Files />, group: "Operations", order: 7 },
-    component: AdminFiles,
+    lazy: () => import("@alepha/ui/components/admin/admin-files"),
     parent: this.adminLayout,
   });
 
@@ -160,7 +153,7 @@ export class AppAdminRouter {
       order: 8,
       keywords: ["settings", "config", "configuration"],
     },
-    component: AdminParameters,
+    lazy: () => import("@alepha/ui/components/admin/admin-parameters"),
     parent: this.adminLayout,
   });
 }

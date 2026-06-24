@@ -1,5 +1,5 @@
 import type { Alepha } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 import { sql } from "drizzle-orm";
 import { expect } from "vitest";
 import { $entity, $repository, db } from "../core/index.ts";
@@ -10,80 +10,80 @@ import { $entity, $repository, db } from "../core/index.ts";
 
 const countries = $entity({
   name: "countries",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.text(),
-    code: t.text(),
+    name: z.text(),
+    code: z.text(),
   }),
 });
 
 const cities = $entity({
   name: "cities",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    countryId: db.ref(t.integer(), () => countries.cols.id),
-    name: t.text(),
-    population: t.optional(t.integer()),
+    countryId: db.ref(z.integer(), () => countries.cols.id),
+    name: z.text(),
+    population: z.integer().optional(),
   }),
 });
 
 const users = $entity({
   name: "users",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.text(),
-    email: t.text(),
-    cityId: db.ref(t.optional(t.integer()), () => cities.cols.id),
-    managerId: db.ref(t.optional(t.integer()), () => users.cols.id),
+    name: z.text(),
+    email: z.text(),
+    cityId: db.ref(z.integer().optional(), () => cities.cols.id),
+    managerId: db.ref(z.integer().optional(), () => users.cols.id),
   }),
 });
 
 const profiles = $entity({
   name: "profiles",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    userId: db.ref(t.integer(), () => users.cols.id),
-    bio: t.text(),
-    website: t.optional(t.text()),
+    userId: db.ref(z.integer(), () => users.cols.id),
+    bio: z.text(),
+    website: z.text().optional(),
   }),
 });
 
 const posts = $entity({
   name: "posts",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    authorId: db.ref(t.integer(), () => users.cols.id),
-    title: t.text(),
-    content: t.text(),
+    authorId: db.ref(z.integer(), () => users.cols.id),
+    title: z.text(),
+    content: z.text(),
     publishedAt: db.createdAt(),
   }),
 });
 
 const comments = $entity({
   name: "comments",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    postId: db.ref(t.integer(), () => posts.cols.id),
-    authorId: db.ref(t.integer(), () => users.cols.id),
-    content: t.text(),
+    postId: db.ref(z.integer(), () => posts.cols.id),
+    authorId: db.ref(z.integer(), () => users.cols.id),
+    content: z.text(),
     createdAt: db.createdAt(),
   }),
 });
 
 const tags = $entity({
   name: "tags",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.text(),
+    name: z.text(),
   }),
 });
 
 const postTags = $entity({
   name: "post_tags",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    postId: db.ref(t.integer(), () => posts.cols.id),
-    tagId: db.ref(t.integer(), () => tags.cols.id),
+    postId: db.ref(z.integer(), () => posts.cols.id),
+    tagId: db.ref(z.integer(), () => tags.cols.id),
   }),
 });
 

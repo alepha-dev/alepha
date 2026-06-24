@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
 /**
  * Base database environment schema.
@@ -13,8 +13,8 @@ import { type Static, t } from "alepha";
  * - `d1://BINDING_NAME` — Cloudflare D1
  * - `hyperdrive://BINDING_NAME` — Cloudflare Hyperdrive
  */
-export const databaseEnvSchema = t.object({
-  DATABASE_URL: t.optional(t.text()),
+export const databaseEnvSchema = z.object({
+  DATABASE_URL: z.text().optional(),
 
   /**
    * Enable or disable push-based schema synchronization (drizzle-kit push).
@@ -23,7 +23,7 @@ export const databaseEnvSchema = t.object({
    * Set to `false` in development to skip automatic schema sync
    * (e.g. when managing migrations manually).
    */
-  DATABASE_SYNC: t.optional(t.boolean()),
+  DATABASE_SYNC: z.boolean().optional(),
 });
 
 declare module "alepha" {

@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { $entity } from "../core/primitives/$entity.ts";
@@ -36,10 +36,10 @@ describe("ModelBuilder", () => {
     it("should build a basic table", () => {
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          name: t.text(),
-          email: t.email(),
+          name: z.text(),
+          email: z.email(),
         }),
       });
 
@@ -53,10 +53,10 @@ describe("ModelBuilder", () => {
     it("should build table with single column index", () => {
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          email: t.email(),
-          username: t.text(),
+          email: z.email(),
+          username: z.text(),
         }),
         indexes: ["email", "username"],
       });
@@ -71,10 +71,10 @@ describe("ModelBuilder", () => {
     it("should build table with unique index", () => {
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          email: t.email(),
-          username: t.text(),
+          email: z.email(),
+          username: z.text(),
         }),
         indexes: [
           {
@@ -95,11 +95,11 @@ describe("ModelBuilder", () => {
     it("should build table with composite index", () => {
       const entity = $entity({
         name: "posts",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          userId: t.text(),
-          createdAt: t.string({ format: "date-time" }),
-          title: t.text(),
+          userId: z.text(),
+          createdAt: z.string().meta({ format: "date-time" }),
+          title: z.text(),
         }),
         indexes: [
           {
@@ -119,10 +119,10 @@ describe("ModelBuilder", () => {
     it("should build table with unique composite index", () => {
       const entity = $entity({
         name: "user_roles",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          userId: t.text(),
-          roleId: t.text(),
+          userId: z.text(),
+          roleId: z.text(),
         }),
         indexes: [
           {
@@ -144,9 +144,9 @@ describe("ModelBuilder", () => {
       // First create the users table
       const usersEntity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          name: t.text(),
+          name: z.text(),
         }),
       });
 
@@ -157,10 +157,10 @@ describe("ModelBuilder", () => {
       // Then create posts table with foreign key
       const postsEntity = $entity({
         name: "posts",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          userId: t.text(),
-          title: t.text(),
+          userId: z.text(),
+          title: z.text(),
         }),
         foreignKeys: [
           {
@@ -181,10 +181,10 @@ describe("ModelBuilder", () => {
     it("should build table with unique constraint", () => {
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          email: t.email(),
-          username: t.text(),
+          email: z.email(),
+          username: z.text(),
         }),
         constraints: [
           {
@@ -205,9 +205,9 @@ describe("ModelBuilder", () => {
     it("should build table with check constraint", () => {
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          age: t.integer(),
+          age: z.integer(),
         }),
         constraints: [
           {
@@ -228,11 +228,11 @@ describe("ModelBuilder", () => {
     it("should build table with composite unique constraint", () => {
       const entity = $entity({
         name: "user_settings",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          userId: t.text(),
-          settingKey: t.text(),
-          settingValue: t.text(),
+          userId: z.text(),
+          settingKey: z.text(),
+          settingValue: z.text(),
         }),
         constraints: [
           {
@@ -255,9 +255,9 @@ describe("ModelBuilder", () => {
 
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          name: t.text(),
+          name: z.text(),
         }),
         config: customConfig,
       });
@@ -275,9 +275,9 @@ describe("ModelBuilder", () => {
       // Create referenced table first
       const rolesEntity = $entity({
         name: "roles",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          name: t.text(),
+          name: z.text(),
         }),
       });
 
@@ -287,13 +287,13 @@ describe("ModelBuilder", () => {
 
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          email: t.email(),
-          username: t.text(),
-          age: t.integer(),
-          roleId: t.text(),
-          createdAt: t.string({ format: "date-time" }),
+          email: z.email(),
+          username: z.text(),
+          age: z.integer(),
+          roleId: z.text(),
+          createdAt: z.string().meta({ format: "date-time" }),
         }),
         indexes: [
           "email",
@@ -337,11 +337,11 @@ describe("ModelBuilder", () => {
     it("should convert camelCase to snake_case for column names", () => {
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          firstName: t.text(),
-          lastName: t.text(),
-          emailAddress: t.email(),
+          firstName: z.text(),
+          lastName: z.text(),
+          emailAddress: z.email(),
         }),
         indexes: ["firstName", "lastName"],
       });
@@ -357,9 +357,9 @@ describe("ModelBuilder", () => {
     it("should build table with plain bigint column", () => {
       const entity = $entity({
         name: "counters",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          totalViews: t.bigint(),
+          totalViews: z.bigint(),
         }),
       });
 
@@ -375,9 +375,9 @@ describe("ModelBuilder", () => {
     it("should use correct column name for identity primary key", () => {
       const entity = $entity({
         name: "events",
-        schema: t.object({
+        schema: z.object({
           eventId: db.identityPrimaryKey(),
-          name: t.text(),
+          name: z.text(),
         }),
       });
 
@@ -394,10 +394,10 @@ describe("ModelBuilder", () => {
     it("should build table with expression-based index", () => {
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          realm: t.text(),
-          username: t.text(),
+          realm: z.text(),
+          username: z.text(),
         }),
         indexes: [
           {
@@ -418,9 +418,9 @@ describe("ModelBuilder", () => {
     it("should build table with expression-only index", () => {
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          email: t.email(),
+          email: z.email(),
         }),
         indexes: [
           {
@@ -439,9 +439,9 @@ describe("ModelBuilder", () => {
     it("should not recreate table if it already exists", () => {
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          name: t.text(),
+          name: z.text(),
         }),
       });
 
@@ -478,10 +478,10 @@ describe("ModelBuilder", () => {
     it("should build a basic table", () => {
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          name: t.text(),
-          email: t.email(),
+          name: z.text(),
+          email: z.email(),
         }),
       });
 
@@ -495,10 +495,10 @@ describe("ModelBuilder", () => {
     it("should build table with indexes", () => {
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          email: t.email(),
-          username: t.text(),
+          email: z.email(),
+          username: z.text(),
         }),
         indexes: [
           "email",
@@ -519,10 +519,10 @@ describe("ModelBuilder", () => {
     it("should build table with composite index", () => {
       const entity = $entity({
         name: "posts",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          userId: t.text(),
-          createdAt: t.string({ format: "date-time" }),
+          userId: z.text(),
+          createdAt: z.string().meta({ format: "date-time" }),
         }),
         indexes: [
           {
@@ -543,9 +543,9 @@ describe("ModelBuilder", () => {
       // First create the users table
       const usersEntity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          name: t.text(),
+          name: z.text(),
         }),
       });
 
@@ -556,10 +556,10 @@ describe("ModelBuilder", () => {
       // Then create posts table with foreign key
       const postsEntity = $entity({
         name: "posts",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          userId: t.text(),
-          title: t.text(),
+          userId: z.text(),
+          title: z.text(),
         }),
         foreignKeys: [
           {
@@ -579,11 +579,11 @@ describe("ModelBuilder", () => {
     it("should build table with constraints", () => {
       const entity = $entity({
         name: "products",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          name: t.text(),
-          sku: t.text(),
-          price: t.number(),
+          name: z.text(),
+          sku: z.text(),
+          price: z.number(),
         }),
         constraints: [
           {
@@ -609,10 +609,10 @@ describe("ModelBuilder", () => {
     it("should build table with expression-based index", () => {
       const entity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          realm: t.text(),
-          username: t.text(),
+          realm: z.text(),
+          username: z.text(),
         }),
         indexes: [
           {
@@ -642,11 +642,11 @@ describe("ModelBuilder", () => {
     it("should build table with all options combined", () => {
       const entity = $entity({
         name: "complex_table",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          name: t.text(),
-          email: t.email(),
-          status: t.text(),
+          name: z.text(),
+          email: z.email(),
+          status: z.text(),
         }),
         indexes: [
           "name",
@@ -694,18 +694,18 @@ describe("ModelBuilder", () => {
     it("should enforce type-safe foreign key references", () => {
       const roleEntity = $entity({
         name: "roles",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          name: t.string(),
+          name: z.string(),
         }),
       });
 
       const userEntity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          email: t.email(),
-          roleId: t.integer(),
+          email: z.email(),
+          roleId: z.integer(),
         }),
         foreignKeys: [
           {
@@ -738,27 +738,27 @@ describe("ModelBuilder", () => {
     it("should support multiple foreign key references", () => {
       const categoryEntity = $entity({
         name: "categories",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          name: t.string(),
+          name: z.string(),
         }),
       });
 
       const userEntity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          username: t.string(),
+          username: z.string(),
         }),
       });
 
       const postEntity = $entity({
         name: "posts",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          title: t.string(),
-          userId: t.integer(),
-          categoryId: t.integer(),
+          title: z.string(),
+          userId: z.integer(),
+          categoryId: z.integer(),
         }),
         foreignKeys: [
           {
@@ -791,20 +791,20 @@ describe("ModelBuilder", () => {
     it("should support composite foreign keys", () => {
       const tenantEntity = $entity({
         name: "tenants",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          code: t.string(),
-          name: t.string(),
+          code: z.string(),
+          name: z.string(),
         }),
       });
 
       const userEntity = $entity({
         name: "users",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          tenantId: t.integer(),
-          tenantCode: t.string(),
-          username: t.string(),
+          tenantId: z.integer(),
+          tenantCode: z.string(),
+          username: z.string(),
         }),
         foreignKeys: [
           {
@@ -833,18 +833,18 @@ describe("ModelBuilder", () => {
     it("should maintain referential integrity through EntityColumn", () => {
       const entity1 = $entity({
         name: "entity1",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          value: t.string(),
+          value: z.string(),
         }),
       });
 
       const entity2 = $entity({
         name: "entity2",
-        schema: t.object({
+        schema: z.object({
           id: db.primaryKey(),
-          entity1Id: t.integer(),
-          entity1Value: t.string(),
+          entity1Id: z.integer(),
+          entity1Value: z.string(),
         }),
         foreignKeys: [
           {

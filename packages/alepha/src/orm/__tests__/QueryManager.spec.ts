@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import type { SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import {
@@ -20,10 +20,10 @@ const testTable = pgTable("test", {
   active: boolean("active"),
 });
 
-const testSchema = t.object({
-  age: t.number(),
-  name: t.text(),
-  active: t.boolean(),
+const testSchema = z.object({
+  age: z.number(),
+  name: z.text(),
+  active: z.boolean(),
 });
 
 const col = (key: string) => (testTable as any)[key] as PgColumn;

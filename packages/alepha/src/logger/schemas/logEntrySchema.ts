@@ -1,16 +1,16 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const logEntrySchema = t.object({
-  level: t.enum(["SILENT", "TRACE", "DEBUG", "INFO", "WARN", "ERROR"]),
-  message: t.text({
+export const logEntrySchema = z.object({
+  level: z.enum(["SILENT", "TRACE", "DEBUG", "INFO", "WARN", "ERROR"]),
+  message: z.text({
     size: "rich",
   }),
-  service: t.text(),
-  module: t.text(),
-  context: t.optional(t.text()),
-  app: t.optional(t.text()),
-  data: t.optional(t.any()),
-  timestamp: t.number(),
+  service: z.text(),
+  module: z.text(),
+  context: z.text().optional(),
+  app: z.text().optional(),
+  data: z.any().optional(),
+  timestamp: z.number(),
 });
 
 export type LogEntry = Static<typeof logEntrySchema>;

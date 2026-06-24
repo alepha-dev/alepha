@@ -1,4 +1,4 @@
-import { Alepha, OPTIONS, t } from "alepha";
+import { Alepha, OPTIONS, z } from "alepha";
 import { $cache } from "alepha/cache";
 import type { FC } from "react";
 import { beforeEach, describe, test, vi } from "vitest";
@@ -60,12 +60,12 @@ describe("$page primitive tests", () => {
       user = $page({
         path: "/user/:id",
         schema: {
-          params: t.object({
-            id: t.text(),
+          params: z.object({
+            id: z.text(),
           }),
-          query: t.object({
-            tab: t.text({ default: "profile" }),
-            sort: t.optional(t.text()),
+          query: z.object({
+            tab: z.text({ default: "profile" }),
+            sort: z.text().optional(),
           }),
         },
         loader: ({ params, query }) => ({ params, query }),
@@ -144,8 +144,8 @@ describe("$page primitive tests", () => {
       async = $page({
         path: "/async/:id",
         schema: {
-          params: t.object({
-            id: t.text(),
+          params: z.object({
+            id: z.text(),
           }),
         },
         loader: async ({ params }) => {
@@ -343,8 +343,8 @@ describe("$page primitive tests", () => {
       staticWithEntries = $page({
         path: "/static/:id",
         schema: {
-          params: t.object({
-            id: t.text(),
+          params: z.object({
+            id: z.text(),
           }),
         },
         static: {
@@ -515,18 +515,18 @@ describe("$page primitive tests", () => {
       complex = $page({
         path: "/complex/:userId",
         schema: {
-          params: t.object({
-            userId: t.text(),
+          params: z.object({
+            userId: z.text(),
           }),
-          query: t.object({
-            filters: t.optional(
-              t.object({
-                status: t.text({ default: "active" }),
-                category: t.optional(t.text()),
-              }),
-            ),
-            page: t.number({ default: 1 }),
-            limit: t.number({ default: 10 }),
+          query: z.object({
+            filters: z
+              .object({
+                status: z.text({ default: "active" }),
+                category: z.text().optional(),
+              })
+              .optional(),
+            page: z.number().default(1),
+            limit: z.number().default(10),
           }),
         },
         loader: ({ params, query }) => ({

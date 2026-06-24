@@ -39,7 +39,7 @@ import {
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
 import { cn } from "@alepha/ui/lib/utils";
-import { type Page, type TObject, t } from "alepha";
+import { type Page, type TObject, z } from "alepha";
 import { ClientOnly, useAlepha } from "alepha/react";
 import { type FormModel, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -269,7 +269,7 @@ export interface AlephaTableProps<T> {
 const defaultRowKey = (item: unknown): string =>
   String((item as { id?: unknown })?.id ?? Math.random());
 
-const EMPTY_FILTERS_SCHEMA = t.object({}) as TObject;
+const EMPTY_FILTERS_SCHEMA = z.object({}) as TObject;
 
 /** Synchronous localStorage read. Returns undefined on miss or error. */
 const readPersisted = <V,>(key: string, suffix: string): V | undefined => {

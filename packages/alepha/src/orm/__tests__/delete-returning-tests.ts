@@ -1,4 +1,4 @@
-import { type Alepha, t } from "alepha";
+import { type Alepha, z } from "alepha";
 import { expect } from "vitest";
 import { DbEntityNotFoundError } from "../core/errors/DbEntityNotFoundError.ts";
 import { $entity, $repository } from "../core/index.ts";
@@ -6,21 +6,21 @@ import { db } from "../core/providers/DatabaseTypeProvider.ts";
 
 const userEntity = $entity({
   name: "users",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.string(),
-    email: t.email(),
-    active: t.boolean(),
+    name: z.string(),
+    email: z.email(),
+    active: z.boolean(),
   }),
 });
 
 const postEntity = $entity({
   name: "posts",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    userId: t.integer(),
-    title: t.string(),
-    content: t.text(),
+    userId: z.integer(),
+    title: z.string(),
+    content: z.text(),
   }),
 });
 
@@ -171,9 +171,9 @@ export const testDeleteReturning = async (alepha: Alepha) => {
 
 const softEntity = $entity({
   name: "soft_delete_items",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.string(),
+    name: z.string(),
     deletedAt: db.deletedAt(),
   }),
 });

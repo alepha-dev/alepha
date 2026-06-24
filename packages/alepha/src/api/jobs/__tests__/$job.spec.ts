@@ -1,4 +1,4 @@
-import { Alepha, AlephaError, t } from "alepha";
+import { Alepha, AlephaError, z } from "alepha";
 import { LockProvider, MemoryLockProvider } from "alepha/lock";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
@@ -50,7 +50,7 @@ describe("$job — registration validation", () => {
     class App {
       bad = $job({
         cron: "* * * * *",
-        schema: t.object({ id: t.text() }),
+        schema: z.object({ id: z.text() }),
         handler: async () => {},
       });
     }
@@ -172,7 +172,7 @@ describe("$job — queue mode (outbox)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
-        schema: t.object({ n: t.integer() }),
+        schema: z.object({ n: z.integer() }),
         handler: async ({ payload }) => {
           received = payload;
         },
@@ -196,7 +196,7 @@ describe("$job — queue mode (outbox)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
-        schema: t.object({ n: t.integer() }),
+        schema: z.object({ n: z.integer() }),
         record: "all",
         handler: async () => {},
       });
@@ -219,7 +219,7 @@ describe("$job — queue mode (outbox)", () => {
     const alepha = makeApp();
     class App {
       work = $job({
-        schema: t.object({ v: t.integer() }),
+        schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
     }
@@ -246,7 +246,7 @@ describe("$job — queue mode (outbox)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
-        schema: t.object({ v: t.integer() }),
+        schema: z.object({ v: z.integer() }),
         handler: async () => {
           calls++;
         },
@@ -271,7 +271,7 @@ describe("$job — queue mode (outbox)", () => {
     const seen: number[] = [];
     class App {
       work = $job({
-        schema: t.object({ n: t.integer() }),
+        schema: z.object({ n: z.integer() }),
         handler: async ({ payload }) => {
           seen.push(payload.n);
         },
@@ -301,7 +301,7 @@ describe("$job — queue mode (outbox)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
-        schema: t.object({ v: t.integer() }),
+        schema: z.object({ v: z.integer() }),
         retry: { retries: 2 },
         handler: async () => {
           attempts++;
@@ -336,7 +336,7 @@ describe("$job — queue mode (outbox)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
-        schema: t.object({ v: t.integer() }),
+        schema: z.object({ v: z.integer() }),
         // no retry config → 1 attempt
         handler: async () => {
           throw new Error("dead");
@@ -365,7 +365,7 @@ describe("$job — cancel", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
-        schema: t.object({ v: t.integer() }),
+        schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
     }
@@ -393,7 +393,7 @@ describe("$job — admin service", () => {
         handler: async () => {},
       });
       queueB = $job({
-        schema: t.object({ v: t.integer() }),
+        schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
     }
@@ -417,7 +417,7 @@ describe("$job — admin service", () => {
     const alepha = makeAppDirect();
     class App {
       worker = $job({
-        schema: t.object({ v: t.integer() }),
+        schema: z.object({ v: z.integer() }),
         handler: async () => {},
       });
     }
@@ -443,7 +443,7 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
-        schema: t.object({ n: t.integer() }),
+        schema: z.object({ n: z.integer() }),
         handler: async ({ payload }) => {
           received = payload;
         },
@@ -477,7 +477,7 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
-        schema: t.object({ n: t.integer() }),
+        schema: z.object({ n: z.integer() }),
         retry: { retries: 2 },
         handler: async () => {
           throw new Error("nope");
@@ -616,7 +616,7 @@ describe("$job — retry semantics", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       work = $job({
-        schema: t.object({ v: t.integer() }),
+        schema: z.object({ v: z.integer() }),
         retry: { retries: 2 },
         handler: async () => {
           attempts++;
@@ -675,7 +675,7 @@ describe("$job — cancel race", () => {
     class App {
       executions = $repository(jobExecutionEntity);
       slow = $job({
-        schema: t.object({ v: t.integer() }),
+        schema: z.object({ v: z.integer() }),
         retry: { retries: 0 },
         handler: async ({ signal }) => {
           // Wait for cancellation, then throw — without the guard this throw
@@ -784,7 +784,7 @@ describe("$job — dispatchMany (queue mode)", () => {
     const alepha = makeApp();
     class App {
       bulk = $job({
-        schema: t.object({ n: t.integer() }),
+        schema: z.object({ n: z.integer() }),
         handler: async () => {},
       });
     }
@@ -828,7 +828,7 @@ describe("$job — admin resource shape", () => {
     const alepha = makeApp();
     class App {
       work = $job({
-        schema: t.object({ v: t.integer() }),
+        schema: z.object({ v: z.integer() }),
         priority: "high",
         record: "all",
         handler: async () => {},

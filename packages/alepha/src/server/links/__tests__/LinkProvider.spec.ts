@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 import { LinkProvider, ServerLinksProvider } from "../index.ts";
@@ -6,8 +6,8 @@ import { LinkProvider, ServerLinksProvider } from "../index.ts";
 class App {
   ping = $action({
     schema: {
-      response: t.object({
-        pong: t.boolean(),
+      response: z.object({
+        pong: z.boolean(),
       }),
     },
     handler: () => {
@@ -70,7 +70,7 @@ describe("LinkProvider", () => {
     class GetApp {
       getUsers = $action({
         path: "/users",
-        schema: { response: t.array(t.text()) },
+        schema: { response: z.array(z.text()) },
         handler: () => ["user1"],
       });
     }
@@ -92,8 +92,8 @@ describe("LinkProvider", () => {
         method: "POST",
         path: "/users",
         schema: {
-          body: t.object({ name: t.text() }),
-          response: t.text(),
+          body: z.object({ name: z.text() }),
+          response: z.text(),
         },
         handler: ({ body }) => body.name,
       });
@@ -116,15 +116,15 @@ describe("LinkProvider", () => {
     class SchemaApp {
       getUser = $action({
         path: "/users/:id",
-        schema: { response: t.object({ id: t.integer(), name: t.text() }) },
+        schema: { response: z.object({ id: z.integer(), name: z.text() }) },
         handler: () => ({ id: 1, name: "John" }),
       });
       updateUser = $action({
         method: "PUT",
         path: "/users/:id",
         schema: {
-          body: t.object({ name: t.text() }),
-          response: t.object({ id: t.integer(), name: t.text() }),
+          body: z.object({ name: z.text() }),
+          response: z.object({ id: z.integer(), name: z.text() }),
         },
         handler: () => ({ id: 1, name: "John" }),
       });

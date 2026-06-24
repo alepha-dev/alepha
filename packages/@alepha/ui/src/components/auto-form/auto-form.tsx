@@ -38,7 +38,7 @@ import { AlertCircle, RotateCcw, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 /**
- * Detect a `t.string()` schema (incl. optional/nullable wrappers) so the
+ * Detect a `z.string()` schema (incl. optional/nullable wrappers) so the
  * auto-save effect can skip keystroke commits on text fields.
  */
 function isStringSchema(schema: unknown): boolean {

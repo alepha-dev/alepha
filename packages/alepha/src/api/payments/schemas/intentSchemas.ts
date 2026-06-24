@@ -1,56 +1,56 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 import { pageQuerySchema } from "alepha/orm";
 import { paymentIntents } from "../entities/paymentIntents.ts";
 
-export const createIntentSchema = t.object({
-  amount: t.integer({ minimum: 1 }),
-  currency: t.text({ size: "short" }),
-  metadata: t.optional(t.json()),
-  paymentMethodId: t.optional(t.uuid()),
+export const createIntentSchema = z.object({
+  amount: z.integer().min(1),
+  currency: z.text({ size: "short" }),
+  metadata: z.json().optional(),
+  paymentMethodId: z.uuid().optional(),
 });
 
 export type CreateIntent = Static<typeof createIntentSchema>;
 
-export const createCheckoutSchema = t.object({
-  intentId: t.uuid(),
-  returnUrl: t.text(),
-  authorize: t.optional(t.boolean()),
+export const createCheckoutSchema = z.object({
+  intentId: z.uuid(),
+  returnUrl: z.text(),
+  authorize: z.boolean().optional(),
 });
 
 export type CreateCheckout = Static<typeof createCheckoutSchema>;
 
-export const checkoutResponseSchema = t.object({
-  url: t.text(),
-  intentId: t.text(),
+export const checkoutResponseSchema = z.object({
+  url: z.text(),
+  intentId: z.text(),
 });
 
 export type CheckoutResponse = Static<typeof checkoutResponseSchema>;
 
-export const captureIntentSchema = t.object({
-  amount: t.optional(t.integer({ minimum: 1 })),
+export const captureIntentSchema = z.object({
+  amount: z.integer().min(1).optional(),
 });
 
 export type CaptureIntent = Static<typeof captureIntentSchema>;
 
-export const refundIntentSchema = t.object({
-  amount: t.integer({ minimum: 1 }),
-  reason: t.optional(t.text()),
+export const refundIntentSchema = z.object({
+  amount: z.integer().min(1),
+  reason: z.text().optional(),
 });
 
 export type RefundIntent = Static<typeof refundIntentSchema>;
 
-export const recordCashSchema = t.object({
-  amount: t.integer({ minimum: 1 }),
-  currency: t.text({ size: "short" }),
-  metadata: t.optional(t.json()),
+export const recordCashSchema = z.object({
+  amount: z.integer().min(1),
+  currency: z.text({ size: "short" }),
+  metadata: z.json().optional(),
 });
 
 export type RecordCash = Static<typeof recordCashSchema>;
 
-export const intentQuerySchema = t.extend(pageQuerySchema, {
-  status: t.optional(t.text({ description: "Filter by status" })),
-  userId: t.optional(t.uuid({ description: "Filter by user ID" })),
+export const intentQuerySchema = pageQuerySchema.extend({
+  status: z.text({ description: "Filter by status" }).optional(),
+  userId: z.uuid().describe("Filter by user ID").optional(),
 });
 
 export type IntentQuery = Static<typeof intentQuerySchema>;

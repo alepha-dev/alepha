@@ -1,4 +1,4 @@
-import { $inject, Alepha, t } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { $command, CliProvider } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { version } from "../alephaPackageJson.ts";
@@ -14,13 +14,12 @@ export class RootCommand {
    */
   public readonly root = $command({
     root: true,
-    flags: t.object({
-      version: t.optional(
-        t.boolean({
-          description: "Show Alepha CLI version",
-          aliases: ["v"],
-        }),
-      ),
+    flags: z.object({
+      version: z
+        .boolean()
+        .meta({ aliases: ["v"] })
+        .describe("Show Alepha CLI version")
+        .optional(),
     }),
     handler: async ({ flags }) => {
       if (flags.version) {

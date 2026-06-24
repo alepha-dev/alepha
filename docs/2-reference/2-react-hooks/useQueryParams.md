@@ -23,7 +23,7 @@ button steps back through previous values.
 ## Examples
 
 const [params, setParams] = useQueryParams(
-  t.object({ tab: t.optional(t.string()) }),
+  z.object({ tab: z.string().optional() }),
   { format: "querystring" },
 );
 // params.tab reads from `?tab=…`; setParams({ tab: "security" }) writes it.

@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { campaigns } from "./campaigns.ts";
 import { users } from "./users.ts";
@@ -23,9 +23,9 @@ export type SigilKind = (typeof SIGIL_KINDS)[number];
  * - `id` — a random, opaque identifier and the primary key. It is the
  *   **sole credential** on the trusted server-to-server ingest path (the
  *   sigil UUID is the only thing that authenticates `POST /sigils/:id/*`).
- *   Stored as a `text` PRIMARY KEY column. NB: the type is `t.uuid()` rather
+ *   Stored as a `text` PRIMARY KEY column. NB: the type is `z.uuid()` rather
  *   than a free-form 16-hex string because the Alepha SQLite model builder
- *   only honors `PRIMARY KEY` on uuid-format strings — a plain `t.string()`
+ *   only honors `PRIMARY KEY` on uuid-format strings — a plain `z.string()`
  *   PK silently degrades to a non-PK column.
  * - `ingestKey` — VESTIGIAL. A random secret that once gated the now-deleted
  *   browser-embed `.js` surface (removed in "remove legacy sigil embed
@@ -39,37 +39,34 @@ export type SigilKind = (typeof SIGIL_KINDS)[number];
  */
 export const sigils = $entity({
   name: "sigils",
-  schema: t.object({
+  schema: z.object({
     /**
      * Random opaque identifier and the ingest credential — a partner server
      * holds it and presents it as the `:id` in `POST /sigils/:id/*`. `text`
-     * PRIMARY KEY; see the entity-level note on why the type is `t.uuid()`.
+     * PRIMARY KEY; see the entity-level note on why the type is `z.uuid()`.
      */
-    id: db.primaryKey(t.uuid()),
+    id: db.primaryKey(z.uuid()),
     /**
      * VESTIGIAL secret — once gated the now-deleted browser-embed surface.
      * Nothing reads it today; minted on insert only to satisfy `NOT NULL`.
      * See the entity-level doc.
      */
-    ingestKey: t.string({ minLength: 1, maxLength: 128 }),
-    campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
+    ingestKey: z.string().min(1).max(128),
+    campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
     /**
      * Human-readable label for the owner's inventory, e.g.
      * "shop.example.com checkout".
      */
-    label: t.string({ minLength: 1, maxLength: 200 }),
+    label: z.string().min(1).max(200),
     /**
      * VESTIGIAL — kept because dropping it on D1 is a cascade bomb (same
      * precedent as `revokedAt` and `campaign.public`). Never enforced: the
      * proxy model means Lore only ever sees server-to-server calls and never
      * receives the real browser `Origin`. Do not add enforcement logic here.
      */
-    allowedOrigins: db.default(
-      t.array(t.string({ maxLength: 200 }), { maxItems: 20 }),
-      [],
-    ),
+    allowedOrigins: db.default(z.array(z.string().max(200)).max(20), []),
     /**
      * Server-side authorization gate — the capability buckets this sigil's
      * ingest endpoint will accept (subset of `SIGIL_KINDS`). No longer scoped
@@ -77,10 +74,7 @@ export const sigils = $entity({
      * and the partner app narrows what's actually sent via `SIGIL_FEATURES`.
      * Kept as defense-in-depth alongside the campaign-level `features` toggle.
      */
-    kinds: db.default(
-      t.array(t.string({ maxLength: 50 }), { maxItems: 10 }),
-      [],
-    ),
+    kinds: db.default(z.array(z.string().max(50)).max(10), []),
     /**
      * VESTIGIAL — kept only because dropping a `sigils` column is a D1 cascade
      * bomb (see `revokedAt`). Path-based suppression of the embed's petition
@@ -88,16 +82,13 @@ export const sigils = $entity({
      * atom / `SIGIL_FEATURES`), not per-sigil Lore state. Nothing reads this
      * column anymore; new rows default to `[]`. Do not remove.
      */
-    excludedPaths: db.default(
-      t.array(t.string({ maxLength: 200 }), { maxItems: 50 }),
-      [],
-    ),
+    excludedPaths: db.default(z.array(z.string().max(200)).max(50), []),
     /**
      * The user who issued the sigil. NULLABLE on purpose: a future
      * migration-seeded "Lore-self" sigil (#90) has no human creator and
      * must still be a valid row.
      */
-    createdBy: db.ref(t.optional(t.uuid()), () => users.cols.id),
+    createdBy: db.ref(z.uuid().optional(), () => users.cols.id),
     createdAt: db.createdAt(),
     /**
      * VESTIGIAL — kept only because dropping it is a D1 cascade bomb.

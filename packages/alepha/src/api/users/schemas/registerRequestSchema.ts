@@ -1,62 +1,40 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
 /**
  * Schema for user registration request body.
  * Password is always required, other fields depend on realm settings.
  */
-export const registerRequestSchema = t.object({
+export const registerRequestSchema = z.object({
   // Password is always required
-  password: t.string({
-    minLength: 8,
-    description: "Password for the account",
-  }),
+  password: z.string().min(8).describe("Password for the account"),
 
   // Identity fields (requirements depend on realm settings)
-  username: t.optional(
-    t.string({
-      minLength: 3,
-      description: "Unique username for the account",
-    }),
-  ),
+  username: z
+    .string()
+    .min(3)
+    .describe("Unique username for the account")
+    .optional(),
 
   // Optional contact fields
-  email: t.optional(
-    t.string({
-      format: "email",
-      description: "User's email address",
-    }),
-  ),
-  phoneNumber: t.optional(
-    t.string({
-      description: "User's phone number",
-    }),
-  ),
+  email: z
+    .string()
+    .meta({ format: "email" })
+    .describe("User's email address")
+    .optional(),
+  phoneNumber: z.string().describe("User's phone number").optional(),
 
   // Optional user profile fields
-  firstName: t.optional(
-    t.string({
-      description: "User's first name",
-    }),
-  ),
-  lastName: t.optional(
-    t.string({
-      description: "User's last name",
-    }),
-  ),
-  picture: t.optional(
-    t.string({
-      description: "User's profile picture URL",
-    }),
-  ),
+  firstName: z.string().describe("User's first name").optional(),
+  lastName: z.string().describe("User's last name").optional(),
+  picture: z.string().describe("User's profile picture URL").optional(),
 
   // Captcha token — required when the realm has `captchaRequired: true`.
   // Validated at intent creation (before any verification email is sent).
-  captchaToken: t.optional(
-    t.string({
-      description: "Captcha response token (if captcha is required)",
-    }),
-  ),
+  captchaToken: z
+    .string()
+    .describe("Captcha response token (if captcha is required)")
+    .optional(),
 });
 
 export type RegisterRequest = Static<typeof registerRequestSchema>;

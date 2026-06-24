@@ -1,21 +1,21 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const subscriptionStatsSchema = t.object({
-  total: t.integer(),
-  trialing: t.integer(),
-  active: t.integer(),
-  pastDue: t.integer(),
-  suspended: t.integer(),
-  cancelled: t.integer(),
-  expired: t.integer(),
-  trialConversionRate: t.number(),
-  churnRate: t.number(),
-  byPlan: t.record(
-    t.text(),
-    t.object({
-      active: t.integer(),
-      trialing: t.integer(),
-      total: t.integer(),
+export const subscriptionStatsSchema = z.object({
+  total: z.integer(),
+  trialing: z.integer(),
+  active: z.integer(),
+  pastDue: z.integer(),
+  suspended: z.integer(),
+  cancelled: z.integer(),
+  expired: z.integer(),
+  trialConversionRate: z.number(),
+  churnRate: z.number(),
+  byPlan: z.record(
+    z.text(),
+    z.object({
+      active: z.integer(),
+      trialing: z.integer(),
+      total: z.integer(),
     }),
   ),
 });

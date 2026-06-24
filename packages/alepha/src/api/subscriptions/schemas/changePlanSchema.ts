@@ -1,9 +1,9 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const changePlanSchema = t.object({
-  planId: t.string(),
-  interval: t.optional(t.enum(["monthly", "yearly"])),
-  immediate: t.optional(t.boolean()),
+export const changePlanSchema = z.object({
+  planId: z.string(),
+  interval: z.enum(["monthly", "yearly"]).optional(),
+  immediate: z.boolean().optional(),
 });
 
 export type ChangePlan = Static<typeof changePlanSchema>;

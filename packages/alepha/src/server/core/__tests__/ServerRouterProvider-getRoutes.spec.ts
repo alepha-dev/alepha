@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, it } from "vitest";
 import { $action, $route, ServerRouterProvider } from "../index.ts";
 
@@ -11,13 +11,13 @@ describe("ServerRouterProvider - getRoutes", () => {
     class TestApp {
       action1 = $action({
         path: "/users",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       action2 = $action({
         path: "/posts",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
@@ -41,19 +41,19 @@ describe("ServerRouterProvider - getRoutes", () => {
     class TestApp {
       users = $action({
         path: "/users",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       userDetail = $action({
         path: "/users/:id",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       posts = $action({
         path: "/posts",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
@@ -85,13 +85,13 @@ describe("ServerRouterProvider - getRoutes", () => {
     class TestApp {
       users = $action({
         path: "/users",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       posts = $action({
         path: "/posts",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
     }
@@ -112,7 +112,7 @@ describe("ServerRouterProvider - getRoutes", () => {
     class TestApp {
       users = $action({
         path: "/users",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
     }
@@ -133,13 +133,13 @@ describe("ServerRouterProvider - getRoutes", () => {
     class TestApp {
       apiInfo = $action({
         path: "/api-info",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       apiUsers = $action({
         path: "/api-users",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
@@ -166,25 +166,25 @@ describe("ServerRouterProvider - getRoutes", () => {
     class TestApp {
       level1 = $action({
         path: "/v1/users",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       level2 = $action({
         path: "/v1/users/:id/posts",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       level3 = $action({
         path: "/v1/users/:id/posts/:postId/comments",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       v2 = $action({
         path: "/v2/users",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
     }
@@ -209,19 +209,19 @@ describe("ServerRouterProvider - getRoutes", () => {
     class TestApp {
       health = $route({
         path: "/health",
-        schema: { response: t.object({ status: t.string() }) },
+        schema: { response: z.object({ status: z.string() }) },
         handler: () => ({ status: "ok" }),
       });
 
       about = $route({
         path: "/about",
-        schema: { response: t.object({ name: t.string() }) },
+        schema: { response: z.object({ name: z.string() }) },
         handler: () => ({ name: "app" }),
       });
 
       users = $action({
         path: "/users",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
     }
@@ -240,13 +240,13 @@ describe("ServerRouterProvider - getRoutes", () => {
     class TestApp {
       publicApi = $action({
         path: "/public/info",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       adminApi = $action({
         path: "/admin/users",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
@@ -276,21 +276,21 @@ describe("ServerRouterProvider - getRoutes", () => {
       getUsers = $action({
         method: "GET",
         path: "/users",
-        schema: { response: t.array(t.object({ id: t.integer() })) },
+        schema: { response: z.array(z.object({ id: z.integer() })) },
         handler: () => [],
       });
 
       createUser = $action({
         method: "POST",
         path: "/users",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       updateUser = $action({
         method: "PATCH",
         path: "/users/:id",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
     }
@@ -312,13 +312,13 @@ describe("ServerRouterProvider - getRoutes", () => {
     class TestApp {
       users = $action({
         path: "/users",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       users2 = $action({
         path: "/Users",
-        schema: { response: t.object({ id: t.integer() }) },
+        schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
     }

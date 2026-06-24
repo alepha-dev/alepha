@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $action, $route, AlephaServer, ServerProvider } from "../index.ts";
 
 // -------------------------------------------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ describe("BunHttpServerProvider", () => {
         method: "GET",
         path: "/hello",
         schema: {
-          response: t.object({ message: t.text() }),
+          response: z.object({ message: z.text() }),
         },
         handler: async () => {
           return { message: "Hello from Bun!" };
@@ -83,8 +83,8 @@ describe("BunHttpServerProvider", () => {
         method: "POST",
         path: "/echo",
         schema: {
-          body: t.object({ input: t.text() }),
-          response: t.object({ output: t.text() }),
+          body: z.object({ input: z.text() }),
+          response: z.object({ output: z.text() }),
         },
         handler: async ({ body }) => {
           return { output: body.input };
@@ -125,8 +125,8 @@ describe("BunHttpServerProvider", () => {
         method: "GET",
         path: "/users/:id",
         schema: {
-          params: t.object({ id: t.text() }),
-          response: t.object({ id: t.text() }),
+          params: z.object({ id: z.text() }),
+          response: z.object({ id: z.text() }),
         },
         handler: async ({ params }) => {
           return { id: params.id };

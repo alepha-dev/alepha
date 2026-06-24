@@ -123,3 +123,5 @@ export function AdminNotifications() {
     </AdminPage>
   );
 }
+
+export default AdminNotifications;

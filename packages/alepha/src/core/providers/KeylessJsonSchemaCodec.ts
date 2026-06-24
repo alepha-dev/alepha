@@ -1,7 +1,7 @@
-import type { TArray, TObject, TSchema, TUnion } from "typebox";
 import { $hook } from "../primitives/$hook.ts";
 import { SchemaCodec } from "./SchemaCodec.ts";
-import { type Static, t } from "./TypeProvider.ts";
+import type { TArray, TObject, TSchema, TUnion } from "./TypeProvider.ts";
+import { type Static, z } from "./TypeProvider.ts";
 
 // =============================================================================
 // Keyless JSON Codec
@@ -195,21 +195,21 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return value;
     }
 
-    if (t.schema.isBigInt(schema)) {
+    if (z.schema.isBigInt(schema)) {
       return `${value}n`;
     }
 
-    if (t.schema.isArray(schema)) {
+    if (z.schema.isArray(schema)) {
       const arrSchema = schema as TArray;
       if (!Array.isArray(value)) return value;
 
-      if (t.schema.isScalar(arrSchema.items)) {
+      if (z.schema.isScalar(arrSchema.items)) {
         return value;
       }
       return value.map((e) => this.interpretEncode(arrSchema.items, e));
     }
 
-    if (t.schema.isObject(schema)) {
+    if (z.schema.isObject(schema)) {
       const result: any[] = [];
       for (const { key, isOpt, isNullable, inner } of this.getObjectFields(
         schema as TObject,
@@ -227,7 +227,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return result;
     }
 
-    if (t.schema.isOptional(schema) || t.schema.isUnion(schema)) {
+    if (z.schema.isOptional(schema) || z.schema.isUnion(schema)) {
       const inner = this.unwrap(schema);
       if (this.isNullable(schema)) {
         return value !== null ? this.interpretEncode(inner, value) : null;
@@ -250,16 +250,16 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return ctx.arr[ctx.i++];
     }
 
-    if (t.schema.isBigInt(schema)) {
+    if (z.schema.isBigInt(schema)) {
       return BigInt(ctx.arr[ctx.i++].slice(0, -1));
     }
 
-    if (t.schema.isArray(schema)) {
+    if (z.schema.isArray(schema)) {
       const arrSchema = schema as TArray;
       const arr = ctx.arr[ctx.i++];
       if (!Array.isArray(arr)) return arr;
 
-      if (t.schema.isObject(arrSchema.items)) {
+      if (z.schema.isObject(arrSchema.items)) {
         return arr.map((e) =>
           this.interpretDecodeFromValue(arrSchema.items, e),
         );
@@ -267,7 +267,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return arr;
     }
 
-    if (t.schema.isObject(schema)) {
+    if (z.schema.isObject(schema)) {
       const result: Record<string, any> = {};
 
       for (const { key, isOpt, isNullable, inner } of this.getObjectFields(
@@ -290,7 +290,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return result;
     }
 
-    if (t.schema.isOptional(schema) || t.schema.isUnion(schema)) {
+    if (z.schema.isOptional(schema) || z.schema.isUnion(schema)) {
       const inner = this.unwrap(schema);
       const val = ctx.arr[ctx.i++];
 
@@ -298,7 +298,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
         return this.isNullable(schema) ? null : undefined;
       }
 
-      if (t.schema.isObject(inner) || t.schema.isArray(inner)) {
+      if (z.schema.isObject(inner) || z.schema.isArray(inner)) {
         return this.interpretDecodeFromValue(inner, val);
       }
 
@@ -313,14 +313,14 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return value;
     }
 
-    if (t.schema.isBigInt(schema)) {
+    if (z.schema.isBigInt(schema)) {
       return BigInt(value.slice(0, -1));
     }
 
-    if (t.schema.isArray(schema)) {
+    if (z.schema.isArray(schema)) {
       if (!Array.isArray(value)) return value;
       const arrSchema = schema as TArray;
-      if (t.schema.isObject(arrSchema.items)) {
+      if (z.schema.isObject(arrSchema.items)) {
         return value.map((e) =>
           this.interpretDecodeFromValue(arrSchema.items, e),
         );
@@ -328,7 +328,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return value;
     }
 
-    if (t.schema.isObject(schema)) {
+    if (z.schema.isObject(schema)) {
       const objSchema = schema as TObject;
       const props = objSchema.properties as Record<string, TSchema>;
       const keys = Object.keys(props);
@@ -337,7 +337,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       for (let idx = 0; idx < keys.length; idx++) {
         const k = keys[idx];
         const prop = props[k];
-        const isOpt = t.schema.isOptional(prop);
+        const isOpt = z.schema.isOptional(prop);
         const inner = this.unwrap(prop);
         const v = value[idx];
 
@@ -346,9 +346,9 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
           continue;
         }
 
-        if (t.schema.isObject(inner)) {
+        if (z.schema.isObject(inner)) {
           result[k] = this.interpretDecodeFromValue(inner, v);
-        } else if (t.schema.isBigInt(inner)) {
+        } else if (z.schema.isBigInt(inner)) {
           result[k] = BigInt(v.slice(0, -1));
         } else {
           result[k] = v;
@@ -370,20 +370,20 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return ve;
     }
 
-    if (t.schema.isBigInt(schema)) {
+    if (z.schema.isBigInt(schema)) {
       return `${ve}+'n'`;
     }
 
-    if (t.schema.isArray(schema)) {
+    if (z.schema.isArray(schema)) {
       const arrSchema = schema as TArray;
       const itemEnc = this.genEnc(arrSchema.items, "e");
-      if (t.schema.isScalar(arrSchema.items)) {
+      if (z.schema.isScalar(arrSchema.items)) {
         return ve;
       }
       return `${ve}.map(e=>${itemEnc})`;
     }
 
-    if (t.schema.isObject(schema)) {
+    if (z.schema.isObject(schema)) {
       const parts: string[] = [];
       for (const { key, isOpt, isNullable, inner } of this.getObjectFields(
         schema as TObject,
@@ -404,7 +404,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return `[${parts.join(",")}]`;
     }
 
-    if (t.schema.isOptional(schema) || t.schema.isUnion(schema)) {
+    if (z.schema.isOptional(schema) || z.schema.isUnion(schema)) {
       const inner = this.unwrap(schema);
       const innerEnc = this.genEnc(inner, ve);
       if (this.isNullable(schema)) {
@@ -427,21 +427,21 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return { code: "", result: "a[i++]" };
     }
 
-    if (t.schema.isBigInt(schema)) {
+    if (z.schema.isBigInt(schema)) {
       return { code: "", result: "BigInt(a[i++].slice(0,-1))" };
     }
 
-    if (t.schema.isArray(schema)) {
+    if (z.schema.isArray(schema)) {
       const arrSchema = schema as TArray;
       // Check if array items need transformation (objects)
-      if (t.schema.isObject(arrSchema.items)) {
+      if (z.schema.isObject(arrSchema.items)) {
         const itemTransform = this.genDecFromValue(arrSchema.items, "e");
         return { code: "", result: `a[i++].map(e=>${itemTransform})` };
       }
       return { code: "", result: "a[i++]" };
     }
 
-    if (t.schema.isObject(schema)) {
+    if (z.schema.isObject(schema)) {
       const fields = this.getObjectFields(schema as TObject);
 
       // Check if simple (all required primitives)
@@ -449,8 +449,8 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
         ({ isOpt, isNullable, inner }) =>
           !isOpt &&
           !isNullable &&
-          !t.schema.isObject(inner) &&
-          !t.schema.isArray(inner),
+          !z.schema.isObject(inner) &&
+          !z.schema.isArray(inner),
       );
 
       if (simple) {
@@ -469,13 +469,13 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
         } else if (isNullable) {
           const nested = this.genDecFromValue(inner, "t");
           code += `{const t=a[i++];if(t===null){${v}[${sk}]=null;}else{${v}[${sk}]=${nested};}}`;
-        } else if (t.schema.isObject(inner)) {
+        } else if (z.schema.isObject(inner)) {
           const nested = this.genDecFromValue(inner, "a[i++]");
           code += `${v}[${sk}]=${nested};`;
-        } else if (t.schema.isArray(inner)) {
+        } else if (z.schema.isArray(inner)) {
           // Handle arrays - check if items need transformation
           const arrSchema = inner as TArray;
-          if (t.schema.isObject(arrSchema.items)) {
+          if (z.schema.isObject(arrSchema.items)) {
             const itemTransform = this.genDecFromValue(arrSchema.items, "e");
             code += `${v}[${sk}]=a[i++].map(e=>${itemTransform});`;
           } else {
@@ -489,7 +489,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return { code, result: v };
     }
 
-    if (t.schema.isOptional(schema) || t.schema.isUnion(schema)) {
+    if (z.schema.isOptional(schema) || z.schema.isUnion(schema)) {
       const inner = this.unwrap(schema);
       const innerDec = this.genDec(inner);
       const nullVal = this.isNullable(schema) ? "null" : "undefined";
@@ -506,18 +506,18 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     if (this.isLeaf(schema)) {
       return expr;
     }
-    if (t.schema.isBigInt(schema)) {
+    if (z.schema.isBigInt(schema)) {
       return `BigInt(${expr}.slice(0,-1))`;
     }
-    if (t.schema.isArray(schema)) {
+    if (z.schema.isArray(schema)) {
       const items = schema.items as TSchema;
-      if (t.schema.isObject(items) || t.schema.isBigInt(items)) {
+      if (z.schema.isObject(items) || z.schema.isBigInt(items)) {
         const v = this.nextVar();
         return `${expr}.map(${v}=>${this.genDecFromValue(items, v)})`;
       }
       return expr;
     }
-    if (t.schema.isObject(schema)) {
+    if (z.schema.isObject(schema)) {
       const objSchema = schema as TObject;
       const props = objSchema.properties as Record<string, TSchema>;
       const keys = Object.keys(props);
@@ -526,10 +526,10 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
         const inner = this.unwrap(props[k]);
         const innerExpr = `${v}[${idx}]`;
         const sk = JSON.stringify(k);
-        if (t.schema.isObject(inner)) {
+        if (z.schema.isObject(inner)) {
           return `${sk}:${this.genDecFromValue(inner, innerExpr)}`;
         }
-        if (t.schema.isBigInt(inner)) {
+        if (z.schema.isBigInt(inner)) {
           return `${sk}:BigInt(${innerExpr}.slice(0,-1))`;
         }
         return `${sk}:${innerExpr}`;
@@ -544,7 +544,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   // ===========================================================================
 
   protected isLeaf(schema: TSchema): boolean {
-    return t.schema.isScalar(schema) || this.isEnum(schema);
+    return z.schema.isScalar(schema) || this.isEnum(schema);
   }
 
   protected getObjectFields(schema: TObject): Array<{
@@ -554,12 +554,12 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     inner: TSchema;
   }> {
     const props = schema.properties as Record<string, TSchema>;
-    const req = new Set((schema.required as string[]) || []);
+    const req = new Set(z.schema.requiredKeys(schema));
     return Object.keys(props).map((key) => {
       const ps = props[key];
       return {
         key,
-        isOpt: !req.has(key) || t.schema.isOptional(ps),
+        isOpt: !req.has(key) || z.schema.isOptional(ps),
         isNullable: this.isNullable(ps),
         inner: this.unwrap(ps),
       };
@@ -575,26 +575,51 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   }
 
   protected isNullable(schema: TSchema): boolean {
-    if (!t.schema.isUnion(schema)) return false;
-    const unionSchema = schema as TUnion;
-    return unionSchema.anyOf?.some((s: TSchema) => t.schema.isNull(s)) ?? false;
+    // zod represents `z.nullable(x)` as a `ZodNullable` wrapper (and
+    // `z.nullable(x).optional()` nests it inside a `ZodOptional`), so walk the
+    // optional/nullable wrapper chain rather than only inspecting a union.
+    let cur: any = schema;
+    while (cur) {
+      if (z.schema.isNullable(cur)) return true;
+      if (z.schema.isOptional(cur) && typeof cur.unwrap === "function") {
+        cur = cur.unwrap();
+        continue;
+      }
+      break;
+    }
+    // typebox-era nullable was a union `[schema, null]`.
+    if (z.schema.isUnion(schema)) {
+      const unionSchema = schema as TUnion;
+      return unionSchema.anyOf?.some((s: any) => z.schema.isNull(s)) ?? false;
+    }
+    return false;
   }
 
   protected unwrap(schema: TSchema): TSchema {
-    if ("anyOf" in schema && Array.isArray((schema as TUnion).anyOf)) {
-      const unionSchema = schema as TUnion;
-      return (
-        unionSchema.anyOf.find((s: TSchema) => !t.schema.isNull(s)) || schema
-      );
+    // Peel zod optional/nullable/default wrappers (`z.optional`, `z.nullable`).
+    // Without this the codec recurses forever on an optional field: the local
+    // unwrap only knew the typebox union representation and returned the same
+    // `ZodOptional` schema unchanged.
+    const peeled = z.schema.unwrap(schema);
+    // typebox-era nullable union `[schema, null]` — pick the first non-null.
+    if (z.schema.isUnion(peeled)) {
+      const unionSchema = peeled as TUnion;
+      if (Array.isArray(unionSchema.anyOf)) {
+        return (
+          (unionSchema.anyOf.find(
+            (s: any) => !z.schema.isNull(s),
+          ) as TSchema) || peeled
+        );
+      }
     }
-    return schema;
+    return peeled;
   }
 
   /**
    * Reconstruct an object from a parsed array (for when input is already parsed).
    */
   protected reconstructObject(schema: TSchema, arr: any[]): any {
-    if (!t.schema.isObject(schema)) return arr;
+    if (!z.schema.isObject(schema)) return arr;
 
     const result: Record<string, any> = {};
     let i = 0;
@@ -606,7 +631,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
 
       if (isOpt) {
         if (val !== null) {
-          result[key] = t.schema.isObject(inner)
+          result[key] = z.schema.isObject(inner)
             ? this.reconstructObject(inner, val)
             : val;
         }
@@ -614,11 +639,11 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
         result[key] =
           val === null
             ? null
-            : t.schema.isObject(inner)
+            : z.schema.isObject(inner)
               ? this.reconstructObject(inner, val)
               : val;
       } else {
-        result[key] = t.schema.isObject(inner)
+        result[key] = z.schema.isObject(inner)
           ? this.reconstructObject(inner, val)
           : val;
       }

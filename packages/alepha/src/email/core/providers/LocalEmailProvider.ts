@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $state, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, type Static, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import { EmailError } from "../errors/EmailError.ts";
@@ -11,10 +11,10 @@ import type { EmailProvider, EmailSendOptions } from "./EmailProvider.ts";
  */
 export const localEmailOptions = $atom({
   name: "alepha.email.local.options",
-  schema: t.object({
-    directory: t.string({
-      description: "Directory path where email files will be stored",
-    }),
+  schema: z.object({
+    directory: z
+      .string()
+      .describe("Directory path where email files will be stored"),
   }),
   default: {
     directory: "node_modules/.alepha/emails",

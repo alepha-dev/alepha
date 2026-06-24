@@ -1,4 +1,4 @@
-import { $hook, $inject, $state, Alepha, t } from "alepha";
+import { $hook, $inject, $state, Alepha, z } from "alepha";
 import { localEmailOptions } from "alepha/email";
 import { $logger, MemoryDestinationProvider } from "alepha/logger";
 import { RepositoryProvider } from "alepha/orm";
@@ -63,12 +63,12 @@ export class DevToolsProvider {
     path: "/__devtools/api/atoms",
     silent: true,
     schema: {
-      body: t.object({
-        name: t.text(),
-        value: t.any(),
+      body: z.object({
+        name: z.text(),
+        value: z.any(),
       }),
-      response: t.object({
-        success: t.boolean(),
+      response: z.object({
+        success: z.boolean(),
       }),
     },
     handler: ({ body }) => {
@@ -93,18 +93,18 @@ export class DevToolsProvider {
     path: "/__devtools/api/logs",
     silent: true,
     schema: {
-      query: t.object({
-        level: t.optional(t.text()),
-        type: t.optional(t.text()),
-        module: t.optional(t.text()),
-        search: t.optional(t.text()),
-        since: t.optional(t.text()),
-        limit: t.optional(t.text()),
-        offset: t.optional(t.text()),
+      query: z.object({
+        level: z.text().optional(),
+        type: z.text().optional(),
+        module: z.text().optional(),
+        search: z.text().optional(),
+        since: z.text().optional(),
+        limit: z.text().optional(),
+        offset: z.text().optional(),
       }),
-      response: t.object({
-        logs: t.array(t.any()),
-        total: t.integer(),
+      response: z.object({
+        logs: z.array(z.any()),
+        total: z.integer(),
       }),
     },
     handler: ({ query }) => {
@@ -179,13 +179,13 @@ export class DevToolsProvider {
     path: "/__devtools/api/emails",
     silent: true,
     schema: {
-      response: t.object({
-        emails: t.array(
-          t.object({
-            to: t.text(),
-            subject: t.text(),
-            body: t.string(),
-            sentAt: t.text(),
+      response: z.object({
+        emails: z.array(
+          z.object({
+            to: z.text(),
+            subject: z.text(),
+            body: z.string(),
+            sentAt: z.text(),
           }),
         ),
       }),
@@ -237,12 +237,12 @@ export class DevToolsProvider {
     path: "/__devtools/api/sms",
     silent: true,
     schema: {
-      response: t.object({
-        messages: t.array(
-          t.object({
-            to: t.text(),
-            message: t.string(),
-            sentAt: t.text(),
+      response: z.object({
+        messages: z.array(
+          z.object({
+            to: z.text(),
+            message: z.string(),
+            sentAt: z.text(),
           }),
         ),
       }),
@@ -289,13 +289,13 @@ export class DevToolsProvider {
     path: "/__devtools/api/db/:entity/records",
     silent: true,
     schema: {
-      params: t.object({ entity: t.text() }),
-      query: t.object({
-        page: t.optional(t.text()),
-        size: t.optional(t.text()),
-        sort: t.optional(t.text()),
+      params: z.object({ entity: z.text() }),
+      query: z.object({
+        page: z.text().optional(),
+        size: z.text().optional(),
+        sort: z.text().optional(),
       }),
-      response: t.record(t.text(), t.any()),
+      response: z.record(z.text(), z.any()),
     },
     handler: async ({ params, query }) => {
       const repo = this.getRepository(params.entity);
@@ -320,9 +320,9 @@ export class DevToolsProvider {
     path: "/__devtools/api/db/:entity/records",
     silent: true,
     schema: {
-      params: t.object({ entity: t.text() }),
-      body: t.record(t.text(), t.any()),
-      response: t.record(t.text(), t.any()),
+      params: z.object({ entity: z.text() }),
+      body: z.record(z.text(), z.any()),
+      response: z.record(z.text(), z.any()),
     },
     handler: async ({ params, body }) => {
       const repo = this.getRepository(params.entity);
@@ -338,9 +338,9 @@ export class DevToolsProvider {
     path: "/__devtools/api/db/:entity/records/:id",
     silent: true,
     schema: {
-      params: t.object({ entity: t.text(), id: t.text() }),
-      body: t.record(t.text(), t.any()),
-      response: t.record(t.text(), t.any()),
+      params: z.object({ entity: z.text(), id: z.text() }),
+      body: z.record(z.text(), z.any()),
+      response: z.record(z.text(), z.any()),
     },
     handler: async ({ params, body }) => {
       const repo = this.getRepository(params.entity);
@@ -358,8 +358,8 @@ export class DevToolsProvider {
     path: "/__devtools/api/db/:entity/records/:id",
     silent: true,
     schema: {
-      params: t.object({ entity: t.text(), id: t.text() }),
-      response: t.record(t.text(), t.any()),
+      params: z.object({ entity: z.text(), id: z.text() }),
+      response: z.record(z.text(), z.any()),
     },
     handler: async ({ params }) => {
       const repo = this.getRepository(params.entity);

@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { $notification } from "alepha/api/notifications";
 
 export class UserNotifications {
@@ -44,10 +44,10 @@ export class UserNotifications {
         },
       },
     },
-    schema: t.object({
-      email: t.string({ format: "email" }),
-      code: t.string(),
-      expiresInMinutes: t.number(),
+    schema: z.object({
+      email: z.string().meta({ format: "email" }),
+      code: z.string(),
+      expiresInMinutes: z.number(),
     }),
   });
 
@@ -92,10 +92,10 @@ export class UserNotifications {
         },
       },
     },
-    schema: t.object({
-      email: t.string({ format: "email" }),
-      code: t.string(),
-      expiresInMinutes: t.number(),
+    schema: z.object({
+      email: z.string().meta({ format: "email" }),
+      code: z.string(),
+      expiresInMinutes: z.number(),
     }),
   });
 
@@ -109,10 +109,10 @@ export class UserNotifications {
       message: (it) =>
         `Your verification code is: ${it.code}. This code expires in ${it.expiresInMinutes} minutes.`,
     },
-    schema: t.object({
-      phoneNumber: t.string(),
-      code: t.string(),
-      expiresInMinutes: t.number(),
+    schema: z.object({
+      phoneNumber: z.string(),
+      code: z.string(),
+      expiresInMinutes: z.number(),
     }),
   });
 
@@ -140,10 +140,10 @@ export class UserNotifications {
 			<p>Best regards,<br>The Team</p>
 		`,
     },
-    schema: t.object({
-      email: t.string({ format: "email" }),
-      resetUrl: t.string(),
-      expiresInMinutes: t.number(),
+    schema: z.object({
+      email: z.string().meta({ format: "email" }),
+      resetUrl: z.string(),
+      expiresInMinutes: z.number(),
     }),
   });
 
@@ -178,9 +178,9 @@ export class UserNotifications {
         },
       },
     },
-    schema: t.object({
-      email: t.string({ format: "email" }),
-      lockoutMinutes: t.number(),
+    schema: z.object({
+      email: z.string().meta({ format: "email" }),
+      lockoutMinutes: z.number(),
     }),
   });
 
@@ -208,10 +208,10 @@ export class UserNotifications {
 			<p>Best regards,<br>The Team</p>
 		`,
     },
-    schema: t.object({
-      email: t.string({ format: "email" }),
-      verifyUrl: t.string(),
-      expiresInMinutes: t.number(),
+    schema: z.object({
+      email: z.string().meta({ format: "email" }),
+      verifyUrl: z.string(),
+      expiresInMinutes: z.number(),
     }),
   });
 }

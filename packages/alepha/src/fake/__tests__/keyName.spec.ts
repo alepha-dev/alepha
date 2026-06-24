@@ -1,20 +1,20 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { describe, test } from "vitest";
 import { FakeProvider } from "../providers/FakeProvider.ts";
 
 describe("FakeProvider - Key Name Intelligence", () => {
   test("generates contextual data based on key names", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
-      firstName: t.text(),
-      lastName: t.text(),
-      email: t.text(),
-      age: t.integer(),
-      phone: t.text(),
-      address: t.text(),
-      city: t.text(),
-      company: t.text(),
-      username: t.text(),
+    const schema = z.object({
+      firstName: z.text(),
+      lastName: z.text(),
+      email: z.text(),
+      age: z.integer(),
+      phone: z.text(),
+      address: z.text(),
+      city: z.text(),
+      company: z.text(),
+      username: z.text(),
     });
 
     const result = fake.generate(schema);
@@ -40,11 +40,11 @@ describe("FakeProvider - Key Name Intelligence", () => {
 
   test("format takes precedence over key name", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
+    const schema = z.object({
       // Even though key is "email", format: uuid should generate UUID
-      email: t.uuid(),
+      email: z.uuid(),
       // Even though key is "id", format: email should generate email
-      id: t.email(),
+      id: z.email(),
     });
 
     const result = fake.generate(schema);
@@ -60,9 +60,9 @@ describe("FakeProvider - Key Name Intelligence", () => {
 
   test("enum values ignore key name context", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
+    const schema = z.object({
       // Even though key is "email", enum should pick from values
-      email: t.enum(["user1", "user2", "user3"]),
+      email: z.enum(["user1", "user2", "user3"]),
     });
 
     const result = fake.generate(schema);
@@ -74,24 +74,24 @@ describe("FakeProvider - Key Name Intelligence", () => {
 
   test("generates realistic user profiles", ({ expect }) => {
     const fake = new FakeProvider().configure({ seed: 67890 });
-    const userSchema = t.object({
-      firstName: t.shortText(),
-      lastName: t.shortText(),
-      fullName: t.text(),
-      email: t.text(),
-      username: t.text(),
-      age: t.integer(),
-      bio: t.longText(),
-      avatar: t.text(),
-      website: t.text(),
-      jobTitle: t.text(),
-      company: t.text(),
-      address: t.text(),
-      city: t.text(),
-      state: t.text(),
-      country: t.text(),
-      zipCode: t.text(),
-      phone: t.text(),
+    const userSchema = z.object({
+      firstName: z.shortText(),
+      lastName: z.shortText(),
+      fullName: z.text(),
+      email: z.text(),
+      username: z.text(),
+      age: z.integer(),
+      bio: z.longText(),
+      avatar: z.text(),
+      website: z.text(),
+      jobTitle: z.text(),
+      company: z.text(),
+      address: z.text(),
+      city: z.text(),
+      state: z.text(),
+      country: z.text(),
+      zipCode: z.text(),
+      phone: z.text(),
     });
 
     const user = fake.generate(userSchema);
@@ -122,13 +122,13 @@ describe("FakeProvider - Key Name Intelligence", () => {
 
   test("numeric key names influence generation", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
-      age: t.integer(),
-      year: t.integer(),
-      month: t.integer(),
-      day: t.integer(),
-      price: t.number(),
-      amount: t.number(),
+    const schema = z.object({
+      age: z.integer(),
+      year: z.integer(),
+      month: z.integer(),
+      day: z.integer(),
+      price: z.number(),
+      amount: z.number(),
     });
 
     const result = fake.generate(schema);

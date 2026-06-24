@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha, t } from "alepha";
+import { $hook, $inject, Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
@@ -79,14 +79,14 @@ export class ServerAuthProvider {
     ttl: [15, "minutes"],
     httpOnly: true,
     encrypt: true,
-    schema: t.object({
-      provider: t.text(),
-      realm: t.optional(t.text()),
-      codeVerifier: t.optional(t.text({ size: "long" })),
-      redirectUri: t.optional(t.text({ size: "long" })),
-      loginUri: t.optional(t.text({ size: "long" })),
-      state: t.optional(t.text()),
-      nonce: t.optional(t.text()),
+    schema: z.object({
+      provider: z.text(),
+      realm: z.text().optional(),
+      codeVerifier: z.text({ size: "long" }).optional(),
+      redirectUri: z.text({ size: "long" }).optional(),
+      loginUri: z.text({ size: "long" }).optional(),
+      state: z.text().optional(),
+      nonce: z.text().optional(),
     }),
   });
 
@@ -191,20 +191,20 @@ export class ServerAuthProvider {
     path: alephaServerAuthRoutes.refresh,
     method: "POST",
     schema: {
-      query: t.object({
-        provider: t.text(),
+      query: z.object({
+        provider: z.text(),
       }),
-      body: t.object({
-        refresh_token: t.text({
+      body: z.object({
+        refresh_token: z.text({
           size: "rich",
         }),
-        access_token: t.optional(
-          t.text({
+        access_token: z
+          .text({
             size: "rich",
             description:
               "Required if provider has stateless refresh token on credentials mode",
-          }),
-        ),
+          })
+          .optional(),
       }),
       response: tokensSchema,
     },
@@ -230,15 +230,15 @@ export class ServerAuthProvider {
     path: alephaServerAuthRoutes.token,
     method: "POST",
     schema: {
-      query: t.object({
-        provider: t.text(),
-        realm: t.optional(
-          t.text({ description: "Realm name for multi-realm setups" }),
-        ),
+      query: z.object({
+        provider: z.text(),
+        realm: z
+          .text({ description: "Realm name for multi-realm setups" })
+          .optional(),
       }),
-      body: t.object({
-        username: t.text(),
-        password: t.text(),
+      body: z.object({
+        username: z.text(),
+        password: z.text(),
       }),
       response: tokenResponseSchema,
     },
@@ -306,12 +306,12 @@ export class ServerAuthProvider {
   public readonly login = $route({
     path: alephaServerAuthRoutes.login,
     schema: {
-      query: t.object({
-        provider: t.text(),
-        realm: t.optional(
-          t.text({ description: "Realm name for multi-realm setups" }),
-        ),
-        redirect_uri: t.optional(t.text({ size: "rich" })),
+      query: z.object({
+        provider: z.text(),
+        realm: z
+          .text({ description: "Realm name for multi-realm setups" })
+          .optional(),
+        redirect_uri: z.text({ size: "rich" }).optional(),
       }),
     },
     handler: async ({ query, url, reply, headers }) => {
@@ -606,8 +606,8 @@ export class ServerAuthProvider {
     path: alephaServerAuthRoutes.logout,
     method: "POST",
     schema: {
-      query: t.object({
-        post_logout_redirect_uri: t.optional(t.text()),
+      query: z.object({
+        post_logout_redirect_uri: z.text().optional(),
       }),
     },
     handler: async ({ query, reply, cookies }) => {

@@ -8,7 +8,7 @@ import {
 } from "@alepha/ui/components/control/control";
 import { spanClass, widthFor } from "@alepha/ui/components/control-base/grid";
 import { Button } from "@alepha/ui/components/ui/button";
-import type { TObject } from "alepha";
+import { type TObject, z } from "alepha";
 import {
   type BaseInputField,
   type ObjectInputField,
@@ -73,7 +73,9 @@ export function ControlObject(props: ControlObjectProps) {
     error: form.error,
   });
 
-  const schema = props.input.schema as TObject;
+  // The field schema may be wrapped (optional/nullable/default); peel to the
+  // ZodObject so `.properties` (→ `.shape`) resolves.
+  const schema = z.schema.unwrap(props.input.schema) as TObject;
   if (!schema?.properties) return null;
 
   // ── Init / clear ────────────────────────────────────────────────

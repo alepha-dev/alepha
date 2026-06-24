@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createPagination, pageSchema, t } from "../index.ts";
+import { createPagination, pageSchema, z } from "../index.ts";
 
 describe("Pagination (Core)", () => {
   it("should create pagination from any array", () => {
@@ -63,9 +63,9 @@ describe("Pagination (Core)", () => {
   });
 
   it("should create page schema", () => {
-    const itemSchema = t.object({
-      id: t.integer(),
-      name: t.text(),
+    const itemSchema = z.object({
+      id: z.integer(),
+      name: z.text(),
     });
 
     const schema = pageSchema(itemSchema);

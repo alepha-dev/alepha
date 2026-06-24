@@ -1,27 +1,27 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { quests } from "../entities/quests.ts";
 
 /**
  * Quest status derived from acceptedAt / completedAt.
  */
-export const questStatusSchema = t.enum(["new", "accepted", "completed"]);
+export const questStatusSchema = z.enum(["new", "accepted", "completed"]);
 
 /**
  * Computed metadata attached to every quest resource.
  */
-export const questMetadataSchema = t.object({
+export const questMetadataSchema = z.object({
   status: questStatusSchema,
-  objectivesProgress: t.object({
-    completed: t.integer(),
-    total: t.integer(),
+  objectivesProgress: z.object({
+    completed: z.integer(),
+    total: z.integer(),
   }),
-  totalTimeSpent: t.integer(),
+  totalTimeSpent: z.integer(),
 });
 
 /**
  * Quest entity + server-computed metadata.
  */
-export const questResourceSchema = t.extend(quests.schema, {
+export const questResourceSchema = quests.schema.extend({
   metadata: questMetadataSchema,
 });
 

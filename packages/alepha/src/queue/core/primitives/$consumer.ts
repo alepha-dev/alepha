@@ -32,10 +32,10 @@ import type { QueuePrimitive } from "./$queue.ts";
  * class EmailService {
  *   emailQueue = $queue({
  *     name: "emails",
- *     schema: t.object({
- *       to: t.text(),
- *       subject: t.text(),
- *       body: t.text()
+ *     schema: z.object({
+ *       to: z.text(),
+ *       subject: z.text(),
+ *       body: z.text()
  *     })
  *   });
  *
@@ -87,7 +87,7 @@ export interface ConsumerPrimitiveOptions<T extends TSchema>
    * // First, define a queue
    * emailQueue = $queue({
    *   name: "emails",
-   *   schema: t.object({ to: t.text(), subject: t.text() })
+   *   schema: z.object({ to: z.text(), subject: z.text() })
    * });
    *
    * // Then, create a consumer for that queue

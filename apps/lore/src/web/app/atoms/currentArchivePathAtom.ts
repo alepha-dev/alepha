@@ -1,4 +1,4 @@
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 
 /**
  * Breadcrumb segments contributed by the Archive routes — appended to
@@ -22,10 +22,10 @@ export const currentArchivePathAtom = $atom({
   name: "lore.archive.currentPath",
   description:
     "Breadcrumb segments after Archive (directories + optional folio leaf).",
-  schema: t.array(
-    t.object({
-      name: t.string(),
-      shortId: t.optional(t.integer()),
+  schema: z.array(
+    z.object({
+      name: z.string(),
+      shortId: z.integer().optional(),
     }),
   ),
   default: [],

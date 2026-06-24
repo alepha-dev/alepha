@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { completePasswordResetRequestSchema } from "../schemas/completePasswordResetRequestSchema.ts";
@@ -63,11 +63,11 @@ export class UserController {
     method: "POST",
     path: `${this.url}/password-reset`,
     schema: {
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
-      body: t.object({
-        email: t.email(),
+      body: z.object({
+        email: z.email(),
       }),
       response: passwordResetIntentResponseSchema,
     },
@@ -105,15 +105,15 @@ export class UserController {
     path: "/users/password-reset/request",
     group: this.group,
     schema: {
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
-      body: t.object({
-        email: t.email(),
+      body: z.object({
+        email: z.email(),
       }),
-      response: t.object({
-        success: t.boolean(),
-        message: t.string(),
+      response: z.object({
+        success: z.boolean(),
+        message: z.string(),
       }),
     },
     handler: async ({ body, query }) => {
@@ -137,14 +137,14 @@ export class UserController {
     path: "/users/password-reset/validate",
     group: this.group,
     schema: {
-      query: t.object({
-        email: t.email(),
-        token: t.string(),
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        email: z.email(),
+        token: z.string(),
+        userRealmName: z.string().optional(),
       }),
-      response: t.object({
-        valid: t.boolean(),
-        email: t.optional(t.email()),
+      response: z.object({
+        valid: z.boolean(),
+        email: z.email().optional(),
       }),
     },
     handler: async ({ query }) => {
@@ -173,17 +173,17 @@ export class UserController {
     path: "/users/password-reset/reset",
     group: this.group,
     schema: {
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
-      body: t.object({
-        email: t.email(),
-        token: t.string(),
-        newPassword: t.string({ minLength: 8 }),
+      body: z.object({
+        email: z.email(),
+        token: z.string(),
+        newPassword: z.string().min(8),
       }),
-      response: t.object({
-        success: t.boolean(),
-        message: t.string(),
+      response: z.object({
+        success: z.boolean(),
+        message: z.string(),
       }),
     },
     handler: async ({ body, query }) => {
@@ -211,22 +211,22 @@ export class UserController {
     path: "/users/email-verification/request",
     group: this.group,
     schema: {
-      query: t.object({
-        userRealmName: t.optional(t.string()),
-        method: t.optional(
-          t.enum(["code", "link"], {
-            default: "code",
-            description:
-              'Verification method: "code" sends a 6-digit code, "link" sends a clickable verification link. When using "link", configure verifyEmailUrl in realm settings.',
-          }),
-        ),
+      query: z.object({
+        userRealmName: z.string().optional(),
+        method: z
+          .enum(["code", "link"])
+          .describe(
+            'Verification method: "code" sends a 6-digit code, "link" sends a clickable verification link. When using "link", configure verifyEmailUrl in realm settings.',
+          )
+          .default("code")
+          .optional(),
       }),
-      body: t.object({
-        email: t.email(),
+      body: z.object({
+        email: z.email(),
       }),
-      response: t.object({
-        success: t.boolean(),
-        message: t.string(),
+      response: z.object({
+        success: z.boolean(),
+        message: z.string(),
       }),
     },
     handler: async ({ body, query }) => {
@@ -255,16 +255,16 @@ export class UserController {
     path: "/users/email-verification/verify",
     group: this.group,
     schema: {
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
-      body: t.object({
-        email: t.email(),
-        token: t.string(),
+      body: z.object({
+        email: z.email(),
+        token: z.string(),
       }),
-      response: t.object({
-        success: t.boolean(),
-        message: t.string(),
+      response: z.object({
+        success: z.boolean(),
+        message: z.string(),
       }),
     },
     handler: async ({ body, query }) => {
@@ -289,12 +289,12 @@ export class UserController {
     group: this.group,
     use: [$secure()],
     schema: {
-      query: t.object({
-        email: t.email(),
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        email: z.email(),
+        userRealmName: z.string().optional(),
       }),
-      response: t.object({
-        verified: t.boolean(),
+      response: z.object({
+        verified: z.boolean(),
       }),
     },
     handler: async ({ query }) => {

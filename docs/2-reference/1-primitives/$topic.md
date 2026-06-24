@@ -34,10 +34,10 @@ class NotificationService {
   userActivity = $topic({
     name: "user-activity",
     schema: {
-      payload: t.object({
-        userId: t.text(),
-        action: t.enum(["login", "logout", "purchase"]),
-        timestamp: t.number()
+      payload: z.object({
+        userId: z.text(),
+        action: z.enum(["login", "logout", "purchase"]),
+        timestamp: z.number()
       })
     },
     handler: async (message) => {

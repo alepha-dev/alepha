@@ -1,5 +1,5 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
 /**
  * Slim view of the session's owner — embedded by the admin listing so the
@@ -7,32 +7,32 @@ import { t } from "alepha";
  * back via a left join, so it's optional (a session whose user was deleted
  * still returns; `user` is undefined).
  */
-export const sessionUserSummarySchema = t.object({
-  id: t.uuid(),
-  email: t.optional(t.string({ format: "email" })),
-  username: t.optional(t.shortText({ minLength: 3, maxLength: 30 })),
-  firstName: t.optional(t.string()),
-  lastName: t.optional(t.string()),
+export const sessionUserSummarySchema = z.object({
+  id: z.uuid(),
+  email: z.string().meta({ format: "email" }).optional(),
+  username: z.shortText({ minLength: 3, maxLength: 30 }).optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
 });
 
-export const sessionResourceSchema = t.object({
-  id: t.uuid(),
-  version: t.number(),
-  createdAt: t.datetime(),
-  updatedAt: t.datetime(),
-  refreshToken: t.uuid(),
-  userId: t.uuid(),
-  expiresAt: t.datetime(),
-  ip: t.optional(t.string()),
-  country: t.optional(t.string()),
-  userAgent: t.optional(
-    t.object({
-      os: t.string(),
-      browser: t.string(),
-      device: t.enum(["MOBILE", "DESKTOP", "TABLET"]),
-    }),
-  ),
-  user: t.optional(sessionUserSummarySchema),
+export const sessionResourceSchema = z.object({
+  id: z.uuid(),
+  version: z.number(),
+  createdAt: z.datetime(),
+  updatedAt: z.datetime(),
+  refreshToken: z.uuid(),
+  userId: z.uuid(),
+  expiresAt: z.datetime(),
+  ip: z.string().optional(),
+  country: z.string().optional(),
+  userAgent: z
+    .object({
+      os: z.string(),
+      browser: z.string(),
+      device: z.enum(["MOBILE", "DESKTOP", "TABLET"]),
+    })
+    .optional(),
+  user: sessionUserSummarySchema.optional(),
 });
 
 export type SessionResource = Static<typeof sessionResourceSchema>;

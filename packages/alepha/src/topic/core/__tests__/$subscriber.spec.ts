@@ -1,4 +1,4 @@
-import { Alepha, createMiddleware, t } from "alepha";
+import { Alepha, createMiddleware, z } from "alepha";
 import { describe, expect, test } from "vitest";
 import {
   $subscriber,
@@ -21,9 +21,9 @@ const $track = (log: string[], tag: string) =>
   });
 
 const eventSchema = {
-  payload: t.object({
-    id: t.text(),
-    action: t.text(),
+  payload: z.object({
+    id: z.text(),
+    action: z.text(),
   }),
 };
 

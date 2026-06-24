@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, ForbiddenError, NotFoundError } from "alepha/server";
@@ -22,18 +22,18 @@ export class CharacterController {
   listAchievements = $action({
     use: [$secure({ permissions: ["character:read"] })],
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
       }),
-      response: t.array(
-        t.object({
-          key: t.string(),
-          label: t.string(),
-          description: t.string(),
-          icon: t.string(),
-          target: t.integer({ minimum: 1 }),
-          current: t.integer({ minimum: 0 }),
-          earned: t.boolean(),
+      response: z.array(
+        z.object({
+          key: z.string(),
+          label: z.string(),
+          description: z.string(),
+          icon: z.string(),
+          target: z.integer().min(1),
+          current: z.integer().min(0),
+          earned: z.boolean(),
         }),
       ),
     },
@@ -89,16 +89,16 @@ export class CharacterController {
   getMyCharacters = $action({
     use: [$secure({ permissions: ["character:read"] })],
     schema: {
-      response: t.array(
-        t.object({
-          id: t.integer(),
-          campaignId: t.integer(),
-          campaignTitle: t.string(),
-          xp: t.integer(),
-          balance: t.integer(),
-          owner: t.optional(t.boolean()),
-          createdAt: t.datetime(),
-          updatedAt: t.datetime(),
+      response: z.array(
+        z.object({
+          id: z.integer(),
+          campaignId: z.integer(),
+          campaignTitle: z.string(),
+          xp: z.integer(),
+          balance: z.integer(),
+          owner: z.boolean().optional(),
+          createdAt: z.datetime(),
+          updatedAt: z.datetime(),
         }),
       ),
     },
@@ -152,15 +152,13 @@ export class CharacterController {
   updateMyCharacter = $action({
     use: [$secure({ permissions: ["character:write"] })],
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
       }),
-      body: t.object({
-        alias: t.optional(
-          t.nullable(t.string({ minLength: 1, maxLength: 60 })),
-        ),
-        picture: t.optional(t.nullable(t.uuid())),
-        equippedTitle: t.optional(t.nullable(t.string())),
+      body: z.object({
+        alias: z.string().min(1).max(60).nullable().optional(),
+        picture: z.uuid().nullable().optional(),
+        equippedTitle: z.string().nullable().optional(),
       }),
       response: characters.schema,
     },

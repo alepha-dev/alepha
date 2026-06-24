@@ -1,11 +1,11 @@
-import { Type, t } from "alepha";
+import { Type, z } from "alepha";
 import { describe, test } from "vitest";
 import { FakeProvider } from "../providers/FakeProvider.ts";
 
 describe("FakeProvider", () => {
   test("generates string values", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.string();
+    const schema = z.string();
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("string");
@@ -15,26 +15,26 @@ describe("FakeProvider", () => {
   test("generates text with size constraints", ({ expect }) => {
     const fake = new FakeProvider();
 
-    const shortText = fake.generate(t.shortText());
+    const shortText = fake.generate(z.shortText());
     expect(typeof shortText).toBe("string");
     expect(shortText.length).toBeLessThanOrEqual(64);
 
-    const regularText = fake.generate(t.text());
+    const regularText = fake.generate(z.text());
     expect(typeof regularText).toBe("string");
     expect(regularText.length).toBeLessThanOrEqual(255);
 
-    const longText = fake.generate(t.longText());
+    const longText = fake.generate(z.longText());
     expect(typeof longText).toBe("string");
     expect(longText.length).toBeLessThanOrEqual(1024);
 
-    const richText = fake.generate(t.richText());
+    const richText = fake.generate(z.richText());
     expect(typeof richText).toBe("string");
     expect(richText.length).toBeLessThanOrEqual(65535);
   });
 
   test("generates number values", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.number();
+    const schema = z.number();
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("number");
@@ -42,7 +42,7 @@ describe("FakeProvider", () => {
 
   test("generates number with constraints", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.number({ minimum: 10, maximum: 20 });
+    const schema = z.number().min(10).max(20);
     const result = fake.generate(schema);
 
     expect(result).toBeGreaterThanOrEqual(10);
@@ -51,7 +51,7 @@ describe("FakeProvider", () => {
 
   test("generates integer values", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.integer();
+    const schema = z.integer();
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("number");
@@ -60,7 +60,7 @@ describe("FakeProvider", () => {
 
   test("generates integer with constraints", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.integer({ minimum: 5, maximum: 15 });
+    const schema = z.integer().min(5).max(15);
     const result = fake.generate(schema);
 
     expect(Number.isInteger(result)).toBe(true);
@@ -70,7 +70,7 @@ describe("FakeProvider", () => {
 
   test("generates boolean values", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.boolean();
+    const schema = z.boolean();
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("boolean");
@@ -78,7 +78,7 @@ describe("FakeProvider", () => {
 
   test("generates UUID", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.uuid();
+    const schema = z.uuid();
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("string");
@@ -89,7 +89,7 @@ describe("FakeProvider", () => {
 
   test("generates email", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.email();
+    const schema = z.email();
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("string");
@@ -98,7 +98,7 @@ describe("FakeProvider", () => {
 
   test("generates URL", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.string({ format: "url" });
+    const schema = z.string().meta({ format: "url" });
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("string");
@@ -107,7 +107,7 @@ describe("FakeProvider", () => {
 
   test("generates bigint", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.string({ format: "bigint" });
+    const schema = z.string().meta({ format: "bigint" });
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("string");
@@ -116,7 +116,7 @@ describe("FakeProvider", () => {
 
   test("generates E.164 phone number", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.e164();
+    const schema = z.e164();
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("string");
@@ -125,7 +125,7 @@ describe("FakeProvider", () => {
 
   test("generates BCP 47 language tag", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.bcp47();
+    const schema = z.bcp47();
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("string");
@@ -134,7 +134,7 @@ describe("FakeProvider", () => {
 
   test("generates constantCase string", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.constantCase();
+    const schema = z.constantCase();
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("string");
@@ -143,7 +143,7 @@ describe("FakeProvider", () => {
 
   test("generates enum values", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.enum(["red", "green", "blue"]);
+    const schema = z.enum(["red", "green", "blue"]);
     const result = fake.generate(schema);
 
     expect(["red", "green", "blue"]).toContain(result);
@@ -151,9 +151,9 @@ describe("FakeProvider", () => {
 
   test("generates array of values", ({ expect }) => {
     const fake = new FakeProvider();
-    // Note: Alepha's t.array() sets maxItems: 1000 by default
+    // Note: Alepha's z.array() sets maxItems: 1000 by default
     // FakeProvider caps it to maxArrayLength (default 20)
-    const schema = t.array(t.string());
+    const schema = z.array(z.string());
     const result = fake.generate(schema);
 
     expect(Array.isArray(result)).toBe(true);
@@ -166,7 +166,7 @@ describe("FakeProvider", () => {
 
   test("generates array with size constraints", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.array(t.number(), { minItems: 3, maxItems: 7 });
+    const schema = z.array(z.number()).min(3).max(7);
 
     // Generate multiple times to verify constraints are respected
     const results = Array.from({ length: 20 }, () => fake.generate(schema));
@@ -184,11 +184,11 @@ describe("FakeProvider", () => {
 
   test("generates object with properties", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
-      id: t.uuid(),
-      name: t.text(),
-      age: t.integer(),
-      active: t.boolean(),
+    const schema = z.object({
+      id: z.uuid(),
+      name: z.text(),
+      age: z.integer(),
+      active: z.boolean(),
     });
     const result = fake.generate(schema);
 
@@ -205,14 +205,14 @@ describe("FakeProvider", () => {
 
   test("generates nested objects", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
-      user: t.object({
-        name: t.text(),
-        email: t.email(),
+    const schema = z.object({
+      user: z.object({
+        name: z.text(),
+        email: z.email(),
       }),
-      settings: t.object({
-        theme: t.enum(["light", "dark"]),
-        notifications: t.boolean(),
+      settings: z.object({
+        theme: z.enum(["light", "dark"]),
+        notifications: z.boolean(),
       }),
     });
     const result = fake.generate(schema);
@@ -228,9 +228,9 @@ describe("FakeProvider", () => {
 
   test("generates optional values", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
-      required: t.text(),
-      optional: t.optional(t.text()),
+    const schema = z.object({
+      required: z.text(),
+      optional: z.text().optional(),
     });
 
     // Generate multiple times to check both defined and undefined cases
@@ -252,9 +252,9 @@ describe("FakeProvider", () => {
 
   test("generates nullable values", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
-      required: t.text(),
-      nullable: t.nullable(t.text()),
+    const schema = z.object({
+      required: z.text(),
+      nullable: z.text().nullable(),
     });
 
     // Generate multiple times to check both null and non-null cases
@@ -276,7 +276,7 @@ describe("FakeProvider", () => {
 
   test("generates union types", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.union([t.string(), t.number(), t.boolean()]);
+    const schema = z.union([z.string(), z.number(), z.boolean()]);
     const result = fake.generate(schema);
 
     const validTypes = ["string", "number", "boolean"];
@@ -285,7 +285,7 @@ describe("FakeProvider", () => {
 
   test("generates record types", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.record(t.string(), t.number());
+    const schema = z.record(z.string(), z.number());
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("object");
@@ -299,7 +299,7 @@ describe("FakeProvider", () => {
 
   test("generates tuple types", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.tuple([t.string(), t.number(), t.boolean()]);
+    const schema = z.tuple([z.string(), z.number(), z.boolean()]);
     const result = fake.generate(schema);
 
     expect(Array.isArray(result)).toBe(true);
@@ -311,7 +311,7 @@ describe("FakeProvider", () => {
 
   test("generates literal values", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.const("ACTIVE");
+    const schema = z.const("ACTIVE");
     const result = fake.generate(schema);
 
     expect(result).toBe("ACTIVE");
@@ -319,7 +319,7 @@ describe("FakeProvider", () => {
 
   test("generates null", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.null();
+    const schema = z.null();
     const result = fake.generate(schema);
 
     expect(result).toBeNull();
@@ -327,7 +327,7 @@ describe("FakeProvider", () => {
 
   test("generates undefined", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.undefined();
+    const schema = z.undefined();
     const result = fake.generate(schema);
 
     expect(result).toBeUndefined();
@@ -335,7 +335,7 @@ describe("FakeProvider", () => {
 
   test("generates void as undefined", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.void();
+    const schema = z.void();
     const result = fake.generate(schema);
 
     expect(result).toBeUndefined();
@@ -343,7 +343,7 @@ describe("FakeProvider", () => {
 
   test("generates any type", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.any();
+    const schema = z.any();
     const result = fake.generate(schema);
 
     const validTypes = ["string", "number", "boolean"];
@@ -352,9 +352,9 @@ describe("FakeProvider", () => {
 
   test("generateMany produces multiple values", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
-      id: t.uuid(),
-      name: t.text(),
+    const schema = z.object({
+      id: z.uuid(),
+      name: z.text(),
     });
     const results = fake.generateMany(schema, 5);
 
@@ -367,10 +367,10 @@ describe("FakeProvider", () => {
   });
 
   test("uses seed for deterministic generation", ({ expect }) => {
-    const schema = t.object({
-      id: t.uuid(),
-      name: t.text(),
-      age: t.integer(),
+    const schema = z.object({
+      id: z.uuid(),
+      name: z.text(),
+      age: z.integer(),
     });
 
     // Generate with same seed - should produce same results
@@ -391,7 +391,7 @@ describe("FakeProvider", () => {
 
   test("generates different values without seed", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.uuid();
+    const schema = z.uuid();
 
     const result1 = fake.generate(schema);
     const result2 = fake.generate(schema);
@@ -402,18 +402,18 @@ describe("FakeProvider", () => {
 
   test("complex nested schema", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
-      id: t.uuid(),
-      user: t.object({
-        name: t.shortText(),
-        email: t.email(),
-        age: t.integer({ minimum: 18, maximum: 99 }),
-        phone: t.optional(t.e164()),
+    const schema = z.object({
+      id: z.uuid(),
+      user: z.object({
+        name: z.shortText(),
+        email: z.email(),
+        age: z.integer().min(18).max(99),
+        phone: z.e164().optional(),
       }),
-      tags: t.array(t.enum(["urgent", "important", "review"])),
-      metadata: t.record(t.string(), t.any()),
-      status: t.enum(["active", "inactive", "pending"]),
-      createdAt: t.string({ format: "date-time" }),
+      tags: z.array(z.enum(["urgent", "important", "review"])),
+      metadata: z.record(z.string(), z.any()),
+      status: z.enum(["active", "inactive", "pending"]),
+      createdAt: z.string().meta({ format: "date-time" }),
     });
 
     const result = fake.generate(schema);
@@ -434,7 +434,7 @@ describe("FakeProvider", () => {
 
   test("valueLabel pattern", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.valueLabel();
+    const schema = z.valueLabel();
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("object");
@@ -448,18 +448,18 @@ describe("FakeProvider", () => {
 
   test("context-aware generation for string fields", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
-      email: t.string(),
-      firstName: t.string(),
-      lastName: t.string(),
-      name: t.string(),
-      username: t.string(),
-      phone: t.string(),
-      address: t.string(),
-      city: t.string(),
-      country: t.string(),
-      company: t.string(),
-      url: t.string(),
+    const schema = z.object({
+      email: z.string(),
+      firstName: z.string(),
+      lastName: z.string(),
+      name: z.string(),
+      username: z.string(),
+      phone: z.string(),
+      address: z.string(),
+      city: z.string(),
+      country: z.string(),
+      company: z.string(),
+      url: z.string(),
     });
     const result = fake.generate(schema);
 
@@ -480,13 +480,13 @@ describe("FakeProvider", () => {
     expect,
   }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
-      user_name: t.string(),
-      first_name: t.string(),
-      last_name: t.string(),
-      full_name: t.string(),
-      phone_number: t.string(),
-      email_address: t.string(),
+    const schema = z.object({
+      user_name: z.string(),
+      first_name: z.string(),
+      last_name: z.string(),
+      full_name: z.string(),
+      phone_number: z.string(),
+      email_address: z.string(),
     });
     const result = fake.generate(schema);
 
@@ -502,11 +502,11 @@ describe("FakeProvider", () => {
     expect,
   }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
-      "user-name": t.string(),
-      "first-name": t.string(),
-      "last-name": t.string(),
-      "e-mail": t.string(),
+    const schema = z.object({
+      "user-name": z.string(),
+      "first-name": z.string(),
+      "last-name": z.string(),
+      "e-mail": z.string(),
     });
     const result = fake.generate(schema);
 
@@ -518,13 +518,13 @@ describe("FakeProvider", () => {
 
   test("context-aware generation for number fields", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
-      age: t.integer(),
-      year: t.integer(),
-      month: t.integer(),
-      day: t.integer(),
-      price: t.number(),
-      user_age: t.integer(),
+    const schema = z.object({
+      age: z.integer(),
+      year: z.integer(),
+      month: z.integer(),
+      day: z.integer(),
+      price: z.number(),
+      user_age: z.integer(),
     });
     const result = fake.generate(schema);
 
@@ -542,9 +542,9 @@ describe("FakeProvider", () => {
 
   test("context-aware generation respects explicit formats", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
+    const schema = z.object({
       // Even though field is named "email", the uuid format takes precedence
-      email: t.uuid(),
+      email: z.uuid(),
     });
     const result = fake.generate(schema);
 
@@ -555,9 +555,9 @@ describe("FakeProvider", () => {
 
   test("context-aware generation respects enum values", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.object({
+    const schema = z.object({
       // Even though field is named "username", the enum takes precedence
-      username: t.enum(["admin", "user", "guest"]),
+      username: z.enum(["admin", "user", "guest"]),
     });
     const result = fake.generate(schema);
 
@@ -567,7 +567,7 @@ describe("FakeProvider", () => {
   test("respects optionalProbability option", ({ expect }) => {
     // With probability 0, optional should never be undefined
     const fakeNever = new FakeProvider().configure({ optionalProbability: 0 });
-    const schema = t.object({ value: t.optional(t.string()) });
+    const schema = z.object({ value: z.string().optional() });
     const resultsNever = Array.from({ length: 20 }, () =>
       fakeNever.generate(schema),
     );
@@ -584,7 +584,7 @@ describe("FakeProvider", () => {
   test("respects nullableProbability option", ({ expect }) => {
     // With probability 0, nullable should never be null
     const fakeNever = new FakeProvider().configure({ nullableProbability: 0 });
-    const schema = t.object({ value: t.nullable(t.string()) });
+    const schema = z.object({ value: z.string().nullable() });
     const resultsNever = Array.from({ length: 20 }, () =>
       fakeNever.generate(schema),
     );
@@ -601,7 +601,7 @@ describe("FakeProvider", () => {
   test("respects maxArrayLength option", ({ expect }) => {
     // With maxArrayLength: 10, arrays should not exceed 10 items
     const fake = new FakeProvider().configure({ maxArrayLength: 10 });
-    const schema = t.array(t.number(), { minItems: 1, maxItems: 100 });
+    const schema = z.array(z.number()).min(1).max(100);
     const results = Array.from({ length: 20 }, () => fake.generate(schema));
 
     for (const result of results) {
@@ -611,12 +611,12 @@ describe("FakeProvider", () => {
 
   test("respects defaultArrayLength option", ({ expect }) => {
     // With defaultArrayLength: 3, arrays without maxItems should default to 3
-    // Note: Use TypeBox directly since Alepha's t.array() always sets maxItems: 1000
+    // Note: Use TypeBox directly since Alepha's z.array() always sets maxItems: 1000
     const fake = new FakeProvider().configure({
       defaultArrayLength: 3,
       maxArrayLength: 100,
     });
-    const schema = Type.Array(Type.Number()); // No minItems/maxItems
+    const schema = Type.array(Type.number()); // No minItems/maxItems
     const results = Array.from({ length: 20 }, () => fake.generate(schema));
 
     for (const result of results) {
@@ -628,14 +628,14 @@ describe("FakeProvider", () => {
     const fake = new FakeProvider().configure({
       defaultRecordEntries: { min: 5, max: 5 },
     });
-    const schema = t.record(t.string(), t.number());
+    const schema = z.record(z.string(), z.number());
     const result = fake.generate(schema);
 
     expect(Object.keys(result).length).toBe(5);
   });
 
   test("configure() reseeds faker when seed changes", ({ expect }) => {
-    const schema = t.uuid();
+    const schema = z.uuid();
     const fake = new FakeProvider();
 
     // Generate with default seed

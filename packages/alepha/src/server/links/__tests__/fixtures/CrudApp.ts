@@ -1,9 +1,9 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $action, NotFoundError } from "alepha/server";
 
-export const userSchema = t.object({
-  id: t.integer(),
-  name: t.text(),
+export const userSchema = z.object({
+  id: z.integer(),
+  name: z.text(),
 });
 
 export type User = Static<typeof userSchema>;
@@ -20,11 +20,11 @@ export class CrudApp {
   findById = $action({
     path: "/users/:id",
     schema: {
-      headers: t.object({
-        uppercase: t.optional(t.boolean()),
+      headers: z.object({
+        uppercase: z.boolean().optional(),
       }),
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: userSchema,
     },
@@ -43,10 +43,10 @@ export class CrudApp {
   findAll = $action({
     path: "/users",
     schema: {
-      query: t.object({
-        name: t.optional(t.text()),
+      query: z.object({
+        name: z.text().optional(),
       }),
-      response: t.array(userSchema),
+      response: z.array(userSchema),
     },
     handler: ({ query }) => {
       const name = query.name;
@@ -61,10 +61,10 @@ export class CrudApp {
     method: "DELETE",
     path: "/users/:id",
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      response: t.void(),
+      response: z.void(),
     },
     handler: async ({ params }) => {
       const user = await this.findById.run({ params });
@@ -76,11 +76,11 @@ export class CrudApp {
     method: "PUT",
     path: "/users/:id",
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
-        name: t.text(),
+      body: z.object({
+        name: z.text(),
       }),
       response: userSchema,
     },
@@ -95,8 +95,8 @@ export class CrudApp {
   create = $action({
     path: "/users",
     schema: {
-      body: t.object({
-        name: t.text(),
+      body: z.object({
+        name: z.text(),
       }),
       response: userSchema,
     },
@@ -113,7 +113,7 @@ export class CrudApp {
 
   internalError = $action({
     schema: {
-      response: t.void(),
+      response: z.void(),
     },
     handler: () => {
       throw new Error("Oops");

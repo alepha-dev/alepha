@@ -1,73 +1,65 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 
-const profileSchema = t.object({
-  username: t.string({
-    minLength: 2,
-    maxLength: 32,
-    description: "Display name shown across the app.",
-    $control: { icon: "user" },
-  }),
-  email: t.string({
-    format: "email",
-    description: "We'll never share your address.",
-  }),
-  password: t.optional(
-    t.string({
-      description: "At least 8 characters.",
-    }),
-  ),
-  bio: t.optional(
-    t.string({
-      maxLength: 600,
-      description: "A short description (auto-textarea kicks in over 256).",
-    }),
-  ),
-  age: t.optional(t.integer({ minimum: 0, maximum: 130 })),
-  newsletter: t.boolean({ default: false }),
-  role: t.enum(["admin", "editor", "viewer"], { default: "viewer" }),
+const profileSchema = z.object({
+  username: z
+    .string()
+    .min(2)
+    .max(32)
+    .meta({ $control: { icon: "user" } })
+    .describe("Display name shown across the app."),
+  email: z
+    .string()
+    .meta({ format: "email" })
+    .describe("We'll never share your address."),
+  password: z.string().describe("At least 8 characters.").optional(),
+  bio: z
+    .string()
+    .max(600)
+    .describe("A short description (auto-textarea kicks in over 256).")
+    .optional(),
+  age: z.integer().min(0).max(130).optional(),
+  newsletter: z.boolean().default(false),
+  role: z.enum(["admin", "editor", "viewer"]).default("viewer"),
   // Function $control — only visible when role === admin
-  apiToken: t.optional(
-    t.string({
-      description:
-        "Only visible when role is admin (driven by $control function).",
+  apiToken: z
+    .string()
+    .meta({
       $control: ({ form }) => {
         const role = (form.currentValues as { role?: string }).role;
         if (role !== "admin") return false;
         return { icon: "key", password: true };
       },
-    }),
-  ),
+    })
+    .describe("Only visible when role is admin (driven by $control function).")
+    .optional(),
   // Object subgroup — with description
-  address: t.optional(
-    t.object(
-      {
-        street: t.string({ description: "Street and number." }),
-        city: t.string(),
-        zip: t.string({
-          pattern: "^[0-9A-Za-z -]{2,12}$",
-          description: "ZIP / postal code.",
-        }),
-      },
-      {
-        title: "Address",
-        description: "Optional postal address. Use the + button to add one.",
-      },
-    ),
-  ),
+  address: z
+    .object({
+      street: z.string().describe("Street and number."),
+      city: z.string(),
+      zip: z
+        .string()
+        .regex(/^[0-9A-Za-z -]{2,12}$/)
+        .describe("ZIP / postal code."),
+    })
+    .meta({ title: "Address" })
+    .describe("Optional postal address. Use the + button to add one.")
+    .optional(),
   // Array of objects with description, custom delete confirmation, custom tab name.
   // The array auto-switches to tabs mode once items > 4 OR contain nested fields.
-  contacts: t.array(
-    t.object({
-      label: t.string(),
-      value: t.string({ format: "email" }),
-    }),
-    {
+  contacts: z
+    .array(
+      z.object({
+        label: z.string(),
+        value: z.string().meta({ format: "email" }),
+      }),
+    )
+    .max(6)
+    .meta({
       title: "Contacts",
-      description: "Add up to 6 ways to reach you.",
-      maxItems: 6,
       $control: {
         arrayProps: {
           confirmDelete: {
@@ -78,15 +70,14 @@ const profileSchema = t.object({
             (value as { label?: string })?.label || `Contact #${i + 1}`,
         },
       },
-    },
-  ),
+    })
+    .describe("Add up to 6 ways to reach you."),
   // Tags = array of primitive strings with description
-  tags: t.optional(
-    t.array(t.string(), {
-      title: "Tags",
-      description: "Free-form tag list.",
-    }),
-  ),
+  tags: z
+    .array(z.string())
+    .meta({ title: "Tags" })
+    .describe("Free-form tag list.")
+    .optional(),
 });
 
 const AutoFormDemo = () => {

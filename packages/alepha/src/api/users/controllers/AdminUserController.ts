@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure, SecurityProvider } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { createUserSchema } from "../schemas/createUserSchema.ts";
@@ -23,14 +23,14 @@ export class AdminUserController {
     use: [$secure({ permissions: ["admin:user:read"] })],
     description: "List roles available in a realm",
     schema: {
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
-      response: t.array(
-        t.object({
-          name: t.string(),
-          default: t.optional(t.boolean()),
-          description: t.optional(t.string()),
+      response: z.array(
+        z.object({
+          name: z.string(),
+          default: z.boolean().optional(),
+          description: z.string().optional(),
         }),
       ),
     },
@@ -53,10 +53,10 @@ export class AdminUserController {
     use: [$secure({ permissions: ["admin:user:read"] })],
     description: "Find users with pagination and filtering",
     schema: {
-      query: t.extend(userQuerySchema, {
-        userRealmName: t.optional(t.string()),
+      query: userQuerySchema.extend({
+        userRealmName: z.string().optional(),
       }),
-      response: t.page(userResourceSchema),
+      response: z.page(userResourceSchema),
     },
     handler: ({ query }) => {
       const { userRealmName, ...q } = query;
@@ -73,11 +73,11 @@ export class AdminUserController {
     use: [$secure({ permissions: ["admin:user:read"] })],
     description: "Get a user by ID",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
       response: userResourceSchema,
     },
@@ -95,8 +95,8 @@ export class AdminUserController {
     use: [$secure({ permissions: ["admin:user:create"] })],
     description: "Create a new user",
     schema: {
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
       body: createUserSchema,
       response: userResourceSchema,
@@ -115,11 +115,11 @@ export class AdminUserController {
     use: [$secure({ permissions: ["admin:user:update"] })],
     description: "Update a user",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
       body: updateUserSchema,
       response: userResourceSchema,
@@ -140,14 +140,14 @@ export class AdminUserController {
     use: [$secure({ permissions: ["admin:user:update"] })],
     description: "Set a user's password",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
-      body: t.object({
-        password: t.string({ minLength: 1 }),
+      body: z.object({
+        password: z.string().min(1),
       }),
       response: okSchema,
     },
@@ -171,11 +171,11 @@ export class AdminUserController {
     use: [$secure({ permissions: ["admin:user:delete"] })],
     description: "Delete a user",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
       response: okSchema,
     },
@@ -197,14 +197,14 @@ export class AdminUserController {
     use: [$secure({ permissions: ["admin:user:delete"] })],
     description: "Delete many users",
     schema: {
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
-      body: t.object({
-        ids: t.array(t.uuid(), { minItems: 1, maxItems: 1000 }),
+      body: z.object({
+        ids: z.array(z.uuid()).min(1).max(1000),
       }),
-      response: t.object({
-        deleted: t.array(t.uuid()),
+      response: z.object({
+        deleted: z.array(z.uuid()),
       }),
     },
     handler: async ({ body, query }) => {

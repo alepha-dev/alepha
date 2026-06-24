@@ -1,13 +1,13 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const loginSchema = t.object({
-  username: t.text({
+export const loginSchema = z.object({
+  username: z.text({
     minLength: 3,
     maxLength: 100,
     description: "Username or email address for login",
   }),
-  password: t.text({
+  password: z.text({
     minLength: 8,
     description: "User password",
   }),

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { $inject, Alepha, t } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $issuer, $secure, AlephaSecurity } from "alepha/security";
 import { $action, AlephaServer } from "alepha/server";
@@ -212,7 +212,7 @@ describe("ApiKeyService", () => {
       protected = $action({
         use: [$secure()],
         schema: {
-          response: t.object({ userId: t.string() }),
+          response: z.object({ userId: z.string() }),
         },
         handler: (request) => {
           return { userId: request.user.id };

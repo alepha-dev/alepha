@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $entity, $repository, DatabaseProvider, db } from "alepha/orm";
 import { BunPostgresProvider } from "../providers/BunPostgresProvider.ts";
 
@@ -7,12 +7,12 @@ import { BunPostgresProvider } from "../providers/BunPostgresProvider.ts";
 
 const users = $entity({
   name: "users",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    name: t.text(),
-    role: db.default(t.text(), "user"),
+    name: z.text(),
+    role: db.default(z.text(), "user"),
   }),
   indexes: [{ column: "name", unique: true }],
 });

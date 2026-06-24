@@ -10,7 +10,7 @@ import {
   OPTIONS,
   PipelineHandler,
   type Static,
-  t,
+  z,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import { ServerHeadProvider } from "alepha/react/head";
@@ -686,13 +686,13 @@ export class ReactServerProvider {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const envSchema = t.object({
-  REACT_SSR_ENABLED: t.optional(
-    t.boolean({
-      description:
-        "Enable or disable server-side rendering (SSR) for React pages. When set to false, pages are rendered client-side only.",
-    }),
-  ),
+const envSchema = z.object({
+  REACT_SSR_ENABLED: z
+    .boolean()
+    .describe(
+      "Enable or disable server-side rendering (SSR) for React pages. When set to false, pages are rendered client-side only.",
+    )
+    .optional(),
 });
 
 declare module "alepha" {
@@ -713,13 +713,11 @@ export const DEFAULT_STATIC_FILE_PATTERN = "\\.[a-zA-Z0-9]{1,10}$";
 
 export const reactServerOptions = $atom({
   name: "alepha.react.server.options",
-  schema: t.object({
-    publicDir: t.string(),
-    staticServer: t.object({
-      disabled: t.boolean(),
-      path: t.string({
-        description: "URL path where static files will be served.",
-      }),
+  schema: z.object({
+    publicDir: z.string(),
+    staticServer: z.object({
+      disabled: z.boolean(),
+      path: z.string().describe("URL path where static files will be served."),
     }),
   }),
   default: {

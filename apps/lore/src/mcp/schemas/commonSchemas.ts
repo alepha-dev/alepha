@@ -1,19 +1,19 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { questStatusSchema } from "../../api/schemas/questResourceSchema.ts";
 
 /**
  * Quest priority levels.
  */
-export const prioritySchema = t.enum(["optional", "low", "medium", "high"]);
+export const prioritySchema = z.enum(["optional", "low", "medium", "high"]);
 
 export { questStatusSchema };
 
 /**
  * Quest objective.
  */
-export const objectiveSchema = t.object({
-  title: t.string(),
-  completed: t.boolean(),
+export const objectiveSchema = z.object({
+  title: z.string(),
+  completed: z.boolean(),
 });
 
 /**
@@ -21,19 +21,19 @@ export const objectiveSchema = t.object({
  * Either campaign ID or campaign_name must be provided. If both are passed,
  * `campaign` (the ID) wins.
  */
-export const campaignParamsSchema = t.object({
-  campaign: t.optional(
-    t.integer({
-      description:
-        "Campaign ID. Required if campaign_name is not provided. Takes precedence if both are provided.",
-    }),
-  ),
-  campaign_name: t.optional(
-    t.string({
-      description:
-        "Campaign name (campaign title). Case-insensitive. Required if campaign is not provided. Ignored when campaign is also provided.",
-    }),
-  ),
+export const campaignParamsSchema = z.object({
+  campaign: z
+    .integer()
+    .describe(
+      "Campaign ID. Required if campaign_name is not provided. Takes precedence if both are provided.",
+    )
+    .optional(),
+  campaign_name: z
+    .string()
+    .describe(
+      "Campaign name (campaign title). Case-insensitive. Required if campaign is not provided. Ignored when campaign is also provided.",
+    )
+    .optional(),
 });
 
 /**
@@ -46,28 +46,27 @@ export const campaignParamsSchema = t.object({
  *
  * Exactly one of `id` or `shortId` must be provided.
  */
-export const entityRefSchema = t.object({
-  id: t.optional(
-    t.integer({
-      description:
-        "Global entity ID (stable across sessions/campaigns). Mutually exclusive with shortId.",
-    }),
-  ),
-  shortId: t.optional(
-    t.integer({
-      description:
-        "Per-campaign 1-based shortId (the '#12' you see in URLs and UI). Requires `campaign` or `campaign_name` to disambiguate.",
-    }),
-  ),
-  campaign: t.optional(
-    t.integer({
-      description: "Campaign ID — required when using `shortId`.",
-    }),
-  ),
-  campaign_name: t.optional(
-    t.string({
-      description:
-        "Campaign name (case-insensitive) — required when using `shortId` if `campaign` not provided.",
-    }),
-  ),
+export const entityRefSchema = z.object({
+  id: z
+    .integer()
+    .describe(
+      "Global entity ID (stable across sessions/campaigns). Mutually exclusive with shortId.",
+    )
+    .optional(),
+  shortId: z
+    .integer()
+    .describe(
+      "Per-campaign 1-based shortId (the '#12' you see in URLs and UI). Requires `campaign` or `campaign_name` to disambiguate.",
+    )
+    .optional(),
+  campaign: z
+    .integer()
+    .describe("Campaign ID — required when using `shortId`.")
+    .optional(),
+  campaign_name: z
+    .string()
+    .describe(
+      "Campaign name (case-insensitive) — required when using `shortId` if `campaign` not provided.",
+    )
+    .optional(),
 });

@@ -1,40 +1,46 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 
-const schema = t.object({
-  cardholder: t.string({
+const schema = z.object({
+  cardholder: z.string().meta({
     title: "Name on card",
     $control: { autoComplete: "cc-name", width: 100 },
   }),
-  cardNumber: t.string({
-    title: "Card number",
-    pattern: "^[0-9 ]+$",
-    $control: {
-      autoComplete: "cc-number",
-      placeholder: "1234 5678 9012 3456",
-      width: 100,
-    },
-  }),
-  expiry: t.string({
-    title: "Expiration",
-    pattern: "^[0-9]{2}/[0-9]{2}$",
-    $control: {
-      autoComplete: "cc-exp",
-      placeholder: "MM/YY",
-      width: 50,
-    },
-  }),
-  cvc: t.string({
-    title: "CVC",
-    pattern: "^[0-9]{3,4}$",
-    $control: {
-      autoComplete: "cc-csc",
-      placeholder: "123",
-      width: 50,
-    },
-  }),
+  cardNumber: z
+    .string()
+    .regex(/^[0-9 ]+$/)
+    .meta({
+      title: "Card number",
+      $control: {
+        autoComplete: "cc-number",
+        placeholder: "1234 5678 9012 3456",
+        width: 100,
+      },
+    }),
+  expiry: z
+    .string()
+    .regex(/^[0-9]{2}\/[0-9]{2}$/)
+    .meta({
+      title: "Expiration",
+      $control: {
+        autoComplete: "cc-exp",
+        placeholder: "MM/YY",
+        width: 50,
+      },
+    }),
+  cvc: z
+    .string()
+    .regex(/^[0-9]{3,4}$/)
+    .meta({
+      title: "CVC",
+      $control: {
+        autoComplete: "cc-csc",
+        placeholder: "123",
+        width: 50,
+      },
+    }),
 });
 
 const PaymentForm = () => {

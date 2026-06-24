@@ -26,9 +26,9 @@ import { ParameterProvider } from "../services/ParameterProvider.ts";
  * class AppConfig {
  *   features = $parameter({
  *     name: "app.features.flags",
- *     schema: t.object({
- *       enableBeta: t.boolean(),
- *       maxUploadSize: t.number()
+ *     schema: z.object({
+ *       enableBeta: z.boolean(),
+ *       maxUploadSize: z.number()
  *     }),
  *     default: { enableBeta: false, maxUploadSize: 10485760 }
  *   });

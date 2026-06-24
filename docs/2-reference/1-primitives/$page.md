@@ -71,8 +71,8 @@ Simple page with data fetching
 const userProfile = $page({
   path: "/users/:id",
   schema: {
-    params: t.object({ id: t.integer() }),
-    query: t.object({ tab: t.optional(t.text()) })
+    params: z.object({ id: z.integer() }),
+    query: z.object({ tab: z.text().optional() })
   },
   loader: async ({ params }) => {
     const user = await userApi.getUser(params.id);

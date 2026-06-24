@@ -1,22 +1,22 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 export const logs = $entity({
   name: "logs",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    level: t.enum(["TRACE", "DEBUG", "INFO", "WARN", "ERROR"], {
-      mode: "text",
-    }),
-    message: t.text({
+    level: z
+      .enum(["TRACE", "DEBUG", "INFO", "WARN", "ERROR"])
+      .meta({ mode: "text" }),
+    message: z.text({
       size: "rich",
     }),
-    service: t.text(),
-    module: t.text(),
-    context: t.optional(t.text()),
-    app: t.optional(t.text()),
-    data: t.optional(t.json()),
-    timestamp: t.integer(),
+    service: z.text(),
+    module: z.text(),
+    context: z.text().optional(),
+    app: z.text().optional(),
+    data: z.json().optional(),
+    timestamp: z.integer(),
   }),
 });
 

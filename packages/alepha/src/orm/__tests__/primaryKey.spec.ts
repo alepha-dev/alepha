@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 import { DbError } from "../core/errors/DbError.ts";
 import { $entity, $repository, db } from "../core/index.ts";
@@ -10,7 +10,7 @@ describe("primaryKey", () => {
       identity = $repository(
         $entity({
           name: "identity",
-          schema: t.object({
+          schema: z.object({
             id: db.identityPrimaryKey({
               mode: "always",
               minValue: 2147483646,
@@ -38,7 +38,7 @@ describe("primaryKey", () => {
       big = $repository(
         $entity({
           name: "big",
-          schema: t.object({
+          schema: z.object({
             id: db.bigIdentityPrimaryKey({
               mode: "always",
               minValue: 2147483646,
@@ -70,7 +70,7 @@ describe("primaryKey", () => {
       uuid = $repository(
         $entity({
           name: "uuid",
-          schema: t.object({
+          schema: z.object({
             id: db.uuidPrimaryKey(),
           }),
         }),

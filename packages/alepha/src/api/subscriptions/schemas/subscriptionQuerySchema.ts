@@ -1,19 +1,19 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { pageQuerySchema } from "alepha/orm";
 
-export const subscriptionQuerySchema = t.extend(pageQuerySchema, {
-  status: t.optional(
-    t.enum([
+export const subscriptionQuerySchema = pageQuerySchema.extend({
+  status: z
+    .enum([
       "trialing",
       "active",
       "past_due",
       "suspended",
       "cancelled",
       "expired",
-    ]),
-  ),
-  planId: t.optional(t.string()),
-  organizationId: t.optional(t.uuid()),
+    ])
+    .optional(),
+  planId: z.string().optional(),
+  organizationId: z.uuid().optional(),
 });
 
 export type SubscriptionQuery = Static<typeof subscriptionQuerySchema>;

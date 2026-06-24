@@ -1,4 +1,4 @@
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 
 /**
  * Flat list of every directory in the current campaign — what
@@ -10,12 +10,12 @@ import { $atom, t } from "alepha";
  */
 export const campaignDirectoriesAtom = $atom({
   name: "lor.campaign.directories",
-  schema: t.array(
-    t.object({
-      id: t.uuid(),
-      shortId: t.integer(),
-      name: t.string(),
-      parentId: t.optional(t.uuid()),
+  schema: z.array(
+    z.object({
+      id: z.uuid(),
+      shortId: z.integer(),
+      name: z.string(),
+      parentId: z.uuid().optional(),
     }),
   ),
   default: [],

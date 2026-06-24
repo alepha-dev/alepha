@@ -1,5 +1,5 @@
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const revokeApiKeyResponseSchema = t.object({
-  ok: t.boolean(),
+export const revokeApiKeyResponseSchema = z.object({
+  ok: z.boolean(),
 });

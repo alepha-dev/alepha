@@ -1,4 +1,4 @@
-import { $atom, $env, $hook, $state, type Static, t } from "alepha";
+import { $atom, $env, $hook, $state, type Static, z } from "alepha";
 import {
   EmailError,
   type EmailProvider,
@@ -13,35 +13,32 @@ import nodemailer from "nodemailer";
 /**
  * Environment variables for nodemailer configuration
  */
-const envSchema = t.object({
-  EMAIL_HOST: t.optional(
-    t.text({
+const envSchema = z.object({
+  EMAIL_HOST: z
+    .text({
       description: "SMTP server host",
-    }),
-  ),
-  EMAIL_PORT: t.number({
-    default: 587,
-    description: "SMTP server port",
-  }),
-  EMAIL_USER: t.optional(
-    t.text({
+    })
+    .optional(),
+  EMAIL_PORT: z.number().describe("SMTP server port").default(587),
+  EMAIL_USER: z
+    .text({
       description: "SMTP authentication username",
-    }),
-  ),
-  EMAIL_PASS: t.optional(
-    t.text({
+    })
+    .optional(),
+  EMAIL_PASS: z
+    .text({
       description: "SMTP authentication password",
-    }),
-  ),
-  EMAIL_FROM: t.optional(
-    t.text({
+    })
+    .optional(),
+  EMAIL_FROM: z
+    .text({
       description: "Default from email address",
-    }),
-  ),
-  EMAIL_SECURE: t.boolean({
-    default: false,
-    description: "Use secure connection (TLS)",
-  }),
+    })
+    .optional(),
+  EMAIL_SECURE: z
+    .boolean()
+    .describe("Use secure connection (TLS)")
+    .default(false),
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -51,32 +48,24 @@ const envSchema = t.object({
  */
 export const nodemailerEmailOptions = $atom({
   name: "alepha.email.nodemailer.options",
-  schema: t.object({
-    pool: t.optional(
-      t.boolean({
-        description: "Enable connection pooling",
-      }),
-    ),
-    maxConnections: t.optional(
-      t.number({
-        description: "Maximum number of connections in pool",
-      }),
-    ),
-    maxMessages: t.optional(
-      t.number({
-        description: "Maximum messages per connection",
-      }),
-    ),
-    rateDelta: t.optional(
-      t.number({
-        description: "Time in milliseconds between message sends",
-      }),
-    ),
-    rateLimit: t.optional(
-      t.number({
-        description: "Maximum number of messages per rateDelta",
-      }),
-    ),
+  schema: z.object({
+    pool: z.boolean().describe("Enable connection pooling").optional(),
+    maxConnections: z
+      .number()
+      .describe("Maximum number of connections in pool")
+      .optional(),
+    maxMessages: z
+      .number()
+      .describe("Maximum messages per connection")
+      .optional(),
+    rateDelta: z
+      .number()
+      .describe("Time in milliseconds between message sends")
+      .optional(),
+    rateLimit: z
+      .number()
+      .describe("Maximum number of messages per rateDelta")
+      .optional(),
   }),
   default: {},
 });

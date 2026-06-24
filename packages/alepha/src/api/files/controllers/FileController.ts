@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { $etag } from "alepha/server/etag";
@@ -28,7 +28,7 @@ export class FileController {
     description: "List files with filtering and pagination",
     schema: {
       query: fileQuerySchema,
-      response: t.page(fileResourceSchema),
+      response: z.page(fileResourceSchema),
     },
     handler: ({ query }) => this.fileService.findFiles(query),
   });
@@ -44,8 +44,8 @@ export class FileController {
     use: [$secure({ permissions: ["admin:file:delete"] })],
     description: "Delete a file",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
       response: okSchema,
     },
@@ -63,11 +63,11 @@ export class FileController {
     use: [$secure({ permissions: ["admin:file:delete"] })],
     description: "Delete many files",
     schema: {
-      body: t.object({
-        ids: t.array(t.uuid(), { minItems: 1, maxItems: 1000 }),
+      body: z.object({
+        ids: z.array(z.uuid()).min(1).max(1000),
       }),
-      response: t.object({
-        deleted: t.array(t.string()),
+      response: z.object({
+        deleted: z.array(z.string()),
       }),
     },
     handler: async ({ body }) => {
@@ -87,12 +87,12 @@ export class FileController {
     use: [$secure({ permissions: ["file:create"] })],
     description: "Upload a new file",
     schema: {
-      body: t.object({
-        file: t.file(),
+      body: z.object({
+        file: z.file(),
       }),
-      query: t.object({
-        expirationDate: t.optional(t.datetime()),
-        bucket: t.optional(t.string()),
+      query: z.object({
+        expirationDate: z.datetime().optional(),
+        bucket: z.string().optional(),
       }),
       response: fileResourceSchema,
     },
@@ -114,13 +114,13 @@ export class FileController {
     use: [$secure({ permissions: ["admin:file:update"] })],
     description: "Update file metadata",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      body: t.object({
-        name: t.optional(t.string()),
-        tags: t.optional(t.array(t.string())),
-        expirationDate: t.optional(t.datetime()),
+      body: z.object({
+        name: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        expirationDate: z.datetime().optional(),
       }),
       response: fileResourceSchema,
     },
@@ -153,10 +153,10 @@ export class FileController {
       }),
     ],
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      response: t.file(),
+      response: z.file(),
     },
     handler: async ({ params, user }) => {
       const file = await this.fileService.getFileById(params.id);
@@ -193,10 +193,10 @@ export class FileController {
       }),
     ],
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      response: t.file(),
+      response: z.file(),
     },
     handler: async ({ params }) => {
       const file = await this.fileService.getFileById(params.id);

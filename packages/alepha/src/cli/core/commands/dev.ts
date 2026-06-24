@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { $inject, $state, Alepha, t } from "alepha";
+import { $inject, $state, Alepha, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -33,13 +33,13 @@ export class DevCommand {
     name: "dev",
     mode: true,
     description: "Run the project in development mode",
-    flags: t.object({
-      only: t.optional(
-        t.string({
-          description:
-            "Run only specific apps (comma-separated: --only api,companion)",
-        }),
-      ),
+    flags: z.object({
+      only: z
+        .string()
+        .describe(
+          "Run only specific apps (comma-separated: --only api,companion)",
+        )
+        .optional(),
     }),
     handler: async ({ root, flags }) => {
       const apps = await this.discoverApps(root);

@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
@@ -11,28 +11,25 @@ export class TestCommand {
     name: "test",
     description:
       "Run tests using Vitest. Pass a filter to run only matching specs, e.g. `alepha test user` or `alepha test test/auth.spec.ts`",
-    args: t.optional(
-      t.text({
+    args: z
+      .text({
         title: "filter",
         description: "Only run spec files whose path matches this string",
-      }),
-    ),
-    flags: t.object({
-      config: t.optional(
-        t.string({
-          description: "Path to Vitest config file",
-          alias: "c",
-        }),
-      ),
+      })
+      .optional(),
+    flags: z.object({
+      config: z
+        .string()
+        .meta({ alias: "c" })
+        .describe("Path to Vitest config file")
+        .optional(),
     }),
-    env: t.object({
-      VITEST_ARGS: t.optional(
-        t.string({
-          default: "",
-          description:
-            "Additional arguments to pass to Vitest. E.g., --coverage",
-        }),
-      ),
+    env: z.object({
+      VITEST_ARGS: z
+        .string()
+        .describe("Additional arguments to pass to Vitest. E.g., --coverage")
+        .default("")
+        .optional(),
     }),
     handler: async ({ run, root, flags, env, args }) => {
       await this.scaffolder.ensureConfig(root, {

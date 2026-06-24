@@ -2,10 +2,11 @@ import type { TArray } from "alepha";
 import {
   $inject,
   Alepha,
+  coerceObject,
   type Static,
   type TObject,
   type TSchema,
-  t,
+  z,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import type { InputHTMLAttributes } from "react";
@@ -45,7 +46,7 @@ export class FormModel<T extends TObject> {
       // run on whatever's provided; missing fields stay undefined and only the
       // full schema is enforced at submit time.
       const decoded = this.alepha.codec.decode(
-        t.partial(options.schema),
+        options.schema.partial(),
         options.initialValues,
       ) as Record<string, any>;
       Object.assign(this.values, decoded);
@@ -60,36 +61,48 @@ export class FormModel<T extends TObject> {
   }
 
   /**
-   * Extract default values from a TypeBox schema.
-   * Recursively handles nested objects.
+   * Extract default values from a zod object schema.
+   * Recursively handles nested objects, unwrapping optional/nullable/default.
    */
   protected extractSchemaDefaults(
     schema: TObject,
     prefix: string = "",
   ): Record<string, any> {
     const defaults: Record<string, any> = {};
+    const shape = (schema as any).shape as Record<string, any> | undefined;
 
-    if (!schema.properties) {
+    if (!shape) {
       return defaults;
     }
 
-    for (const [key, propSchema] of Object.entries(schema.properties)) {
+    for (const [key, propSchema] of Object.entries(shape)) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
 
-      if ("default" in propSchema && propSchema.default !== undefined) {
-        defaults[fullKey] = propSchema.default;
-      } else if (
-        propSchema &&
-        "type" in propSchema &&
-        propSchema.type === "object" &&
-        "properties" in propSchema
-      ) {
+      // Unwrap optional / nullable / default wrappers to surface a default
+      // value and any nested object schema.
+      let inner: any = propSchema;
+      let defaultValue: unknown;
+      while (inner) {
+        if (z.schema.isDefault(inner)) {
+          const dv = inner._zod.def.defaultValue;
+          defaultValue = typeof dv === "function" ? dv() : dv;
+          break;
+        }
+        if (z.schema.isOptional(inner) || z.schema.isNullable(inner)) {
+          inner = inner.unwrap();
+          continue;
+        }
+        break;
+      }
+
+      if (defaultValue !== undefined) {
+        defaults[fullKey] = defaultValue;
+      } else if (z.schema.isObject(inner)) {
         // Recursively extract defaults from nested objects
-        const nestedDefaults = this.extractSchemaDefaults(
-          propSchema as TObject,
-          fullKey,
+        Object.assign(
+          defaults,
+          this.extractSchemaDefaults(inner as TObject, fullKey),
         );
-        Object.assign(defaults, nestedDefaults);
       }
     }
 
@@ -116,7 +129,7 @@ export class FormModel<T extends TObject> {
     // Same partial-decode rationale as the constructor — initial values may be
     // incomplete; full schema is enforced only at submit time.
     const decoded = this.alepha.codec.decode(
-      t.partial(this.options.schema),
+      this.options.schema.partial(),
       values,
     ) as Record<string, any>;
 
@@ -205,11 +218,14 @@ export class FormModel<T extends TObject> {
     try {
       let values: Record<string, any> = this.restructureValues(this.values);
 
-      if (t.schema.isSchema(options.schema)) {
-        values = this.alepha.codec.decode(options.schema, values) as Record<
-          string,
-          any
-        >;
+      if (z.schema.isSchema(options.schema)) {
+        // HTML form controls produce strings; coerce them to the schema's
+        // scalar types (number/boolean) at this string boundary before strict
+        // decoding — otherwise a `z.number()` field would reject its "42" input.
+        values = this.alepha.codec.decode(
+          options.schema,
+          coerceObject(options.schema, values),
+        ) as Record<string, any>;
       }
 
       await options.handler(values as any);
@@ -321,13 +337,13 @@ export class FormModel<T extends TObject> {
     const parent = context.parent || "";
     return new Proxy<SchemaToInput<T>>({} as SchemaToInput<T>, {
       get: (_, prop: string) => {
-        if (!options.schema || !t.schema.isObject(schema)) {
+        if (!options.schema || !z.schema.isObject(schema)) {
           return {};
         }
 
         if (prop in schema.properties) {
           // // it's a nested object, create another proxy
-          // if (t.schema.isObject(schema.properties[prop])) {
+          // if (z.schema.isObject(schema.properties[prop])) {
           //   return this.createProxyFromSchema(
           //     options,
           //     schema.properties[prop],
@@ -342,7 +358,7 @@ export class FormModel<T extends TObject> {
             prop as keyof Static<T> & string,
             options,
             schema,
-            schema.required?.includes(prop as string) || false,
+            z.schema.requiredKeys(schema).includes(prop as string) || false,
             context,
           );
         }
@@ -361,8 +377,8 @@ export class FormModel<T extends TObject> {
     },
   ): BaseInputField {
     const parent = context.parent || "";
-    const field = schema.properties?.[name];
-    if (!field) {
+    const rawField = schema.properties?.[name];
+    if (!rawField) {
       return {
         path: "",
         required,
@@ -373,8 +389,12 @@ export class FormModel<T extends TObject> {
         form: this,
       };
     }
+    // Peel optional/nullable/default wrappers so the structural guards below
+    // (`isObject`/`isArray`/`isString`/…, `.maxLength`, format) see the real
+    // schema. Optionality is tracked separately via `isRequired`/`required`.
+    const field = z.schema.unwrap(rawField) as typeof rawField;
 
-    const isRequired = schema.required?.includes(name) ?? false;
+    const isRequired = z.schema.requiredKeys(schema).includes(name) ?? false;
     const key = parent ? `${parent}.${name}` : name;
     const path = `/${key.replaceAll(".", "/")}`;
 
@@ -401,7 +421,7 @@ export class FormModel<T extends TObject> {
     attr.id = `${this.id}-${key}`;
     (attr as any)["data-testid"] = attr.id;
 
-    if (t.schema.isString(field)) {
+    if (z.schema.isString(field)) {
       if (field.maxLength != null) {
         attr.maxLength = Number(field.maxLength);
       }
@@ -419,7 +439,7 @@ export class FormModel<T extends TObject> {
       attr["aria-label"] = field.description;
     }
 
-    if (t.schema.isInteger(field) || t.schema.isNumber(field)) {
+    if (z.schema.isInteger(field) || z.schema.isNumber(field)) {
       attr.type = "number";
     } else if (name === "password") {
       attr.type = "password";
@@ -427,19 +447,19 @@ export class FormModel<T extends TObject> {
       attr.type = "email";
     } else if (name === "url") {
       attr.type = "url";
-    } else if (t.schema.isString(field)) {
-      if (field.format === "binary") {
+    } else if (z.schema.isString(field)) {
+      if (z.schema.format(field) === "binary") {
         attr.type = "file";
-      } else if (field.format === "date") {
+      } else if (z.schema.format(field) === "date") {
         attr.type = "date";
-      } else if (field.format === "time") {
+      } else if (z.schema.format(field) === "time") {
         attr.type = "time";
-      } else if (field.format === "date-time") {
+      } else if (z.schema.format(field) === "date-time") {
         attr.type = "datetime-local";
       } else {
         attr.type = "text";
       }
-    } else if (t.schema.isBoolean(field)) {
+    } else if (z.schema.isBoolean(field)) {
       attr.type = "checkbox";
     }
 
@@ -449,7 +469,7 @@ export class FormModel<T extends TObject> {
     }
 
     // if type = object, add items: { [key: string]: InputField }
-    if (t.schema.isObject(field)) {
+    if (z.schema.isObject(field)) {
       return {
         path,
         props: attr,
@@ -466,7 +486,7 @@ export class FormModel<T extends TObject> {
     }
 
     // if type = array, add items: InputField[]
-    if (t.schema.isArray(field)) {
+    if (z.schema.isArray(field)) {
       return {
         path,
         props: attr,
@@ -506,14 +526,14 @@ export class FormModel<T extends TObject> {
     }
     if (input instanceof File) {
       // for file inputs, return the File object directly
-      if (t.schema.isString(schema) && schema.format === "binary") {
+      if (z.schema.isString(schema) && z.schema.format(schema) === "binary") {
         return input;
       }
       // for now, ignore other formats
       return null;
     }
 
-    if (t.schema.isBoolean(schema)) {
+    if (z.schema.isBoolean(schema)) {
       // Handle string representations from Select components (Yes/No dropdown)
       if (input === "true") return true;
       if (input === "false") return false;
@@ -523,19 +543,19 @@ export class FormModel<T extends TObject> {
       return !!input;
     }
 
-    if (t.schema.isNumber(schema)) {
+    if (z.schema.isNumber(schema)) {
       const num = Number(input);
       return Number.isNaN(num) ? null : num;
     }
 
-    if (t.schema.isString(schema)) {
-      if (schema.format === "date") {
+    if (z.schema.isString(schema)) {
+      if (z.schema.format(schema) === "date") {
         return new Date(input).toISOString().slice(0, 10); // For date input
       }
-      if (schema.format === "time") {
+      if (z.schema.format(schema) === "time") {
         return new Date(`1970-01-01T${input}`).toISOString().slice(11, 16); // For time input
       }
-      if (schema.format === "date-time") {
+      if (z.schema.format(schema) === "date-time") {
         return new Date(input).toISOString(); // For datetime-local input
       }
       return String(input);

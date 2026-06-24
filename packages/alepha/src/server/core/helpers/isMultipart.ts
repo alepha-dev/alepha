@@ -1,3 +1,4 @@
+import { z } from "alepha";
 import type { RequestConfigSchema } from "../interfaces/ServerRequest.ts";
 
 /**
@@ -18,7 +19,7 @@ export const isMultipart = (options: {
   if (options.schema?.body && "properties" in options.schema.body) {
     const properties: Record<string, any> = options.schema.body.properties;
     for (const key in properties) {
-      if (properties[key].format === "binary") {
+      if (z.schema.format(properties[key]) === "binary") {
         return true;
       }
     }

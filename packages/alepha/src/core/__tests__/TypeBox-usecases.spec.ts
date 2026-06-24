@@ -1,16 +1,16 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 
 describe("TypeBox Use Cases", () => {
-  it("should remove property when omitted in schema with t.interface()", () => {
-    const entity = t.object({
-      id: t.integer(),
-      name: t.string(),
-      retryCount: t.optional(t.nullable(t.integer())),
+  it("should remove property when omitted in schema with z.interface()", () => {
+    const entity = z.object({
+      id: z.integer(),
+      name: z.string(),
+      retryCount: z.integer().nullable().optional(),
     });
 
-    const testPageSchema = t.object({
-      content: t.array(t.extend(t.omit(entity, ["retryCount"]), {})),
+    const testPageSchema = z.object({
+      content: z.array(entity.omit({ retryCount: true }).extend({})),
     });
 
     const testObject = {

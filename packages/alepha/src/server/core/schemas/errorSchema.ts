@@ -1,36 +1,31 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const errorSchema = t.object(
-  {
-    error: t.text({ description: "HTTP error name" }),
-    status: t.integer({
-      description: "HTTP status code",
-    }),
-    message: t.text({
+export const errorSchema = z
+  .object({
+    error: z.text({ description: "HTTP error name" }),
+    status: z.integer().describe("HTTP status code"),
+    message: z.text({
       description: "Short text which describe the error",
       size: "rich",
     }),
-    details: t.optional(
-      t.text({
+    details: z
+      .text({
         description: "Detailed description of the error",
         size: "rich",
-      }),
-    ),
-    requestId: t.optional(t.text()),
-    cause: t.optional(
-      t.object({
-        name: t.text(),
-        message: t.text({
+      })
+      .optional(),
+    requestId: z.text().optional(),
+    cause: z
+      .object({
+        name: z.text(),
+        message: z.text({
           description: "Cause Error message",
           size: "rich",
         }),
-      }),
-    ),
-  },
-  {
-    title: "HttpError",
-    description: "Generic response after a failed operation",
-  },
-);
+      })
+      .optional(),
+  })
+  .meta({ title: "HttpError" })
+  .describe("Generic response after a failed operation");
 
 export type ErrorSchema = Static<typeof errorSchema>;

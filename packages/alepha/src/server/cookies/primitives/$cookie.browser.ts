@@ -31,7 +31,7 @@ import type {
  * class ClientCookies {
  *   preferences = $cookie({
  *     name: "user-prefs",
- *     schema: t.object({ theme: t.text(), language: t.text() }),
+ *     schema: z.object({ theme: z.text(), language: z.text() }),
  *     ttl: [30, "days"]
  *   });
  *

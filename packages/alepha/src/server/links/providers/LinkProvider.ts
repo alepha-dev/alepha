@@ -1,4 +1,4 @@
-import { $inject, $state, Alepha, AlephaError, type Async, t } from "alepha";
+import { $inject, $state, Alepha, AlephaError, type Async, z } from "alepha";
 import { $logger } from "alepha/logger";
 import type { SecureOptions } from "alepha/security";
 import {
@@ -348,8 +348,8 @@ export class LinkProvider {
       // schema is not used in the client,
       // we assume that TypeScript will check
       schema: {
-        body: t.any(),
-        response: t.any(),
+        body: z.any(),
+        response: z.any(),
       },
     };
 

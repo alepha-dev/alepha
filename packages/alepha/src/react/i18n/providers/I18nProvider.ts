@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha, TypeBoxError, TypeProvider, t } from "alepha";
+import { $hook, $inject, Alepha, TypeBoxError, TypeProvider, z } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 // Locale-prefix routing is optional: the router module (one-directional
@@ -17,7 +17,7 @@ export class I18nProvider<
 
   protected cookie = $cookie({
     name: "lang",
-    schema: t.text(),
+    schema: z.text(),
     ttl: [1, "year"],
   });
 

@@ -2,8 +2,9 @@ import {
   type TNull,
   type TObject,
   type TOptional,
+  type TSchema,
   type TUnion,
-  t,
+  z,
 } from "alepha";
 import { PG_GENERATED } from "../constants/PG_SYMBOLS.ts";
 
@@ -17,13 +18,11 @@ import { PG_GENERATED } from "../constants/PG_SYMBOLS.ts";
  * After:  { name?: string | null; age: number; }
  */
 export type TObjectUpdate<T extends TObject> = TObject<{
-  [K in keyof T["properties"] as T["properties"][K] extends {
-    [PG_GENERATED]: any;
-  }
+  [K in keyof T["shape"] as T["shape"][K] extends { [PG_GENERATED]: any }
     ? never
-    : K]: T["properties"][K] extends TOptional<infer U>
+    : K]: T["shape"][K] extends TOptional<infer U extends TSchema>
     ? TOptional<TUnion<[U, TNull]>>
-    : T["properties"][K];
+    : T["shape"][K];
 }>;
 
 export const updateSchema = <T extends TObject>(
@@ -31,25 +30,20 @@ export const updateSchema = <T extends TObject>(
 ): TObjectUpdate<T> => {
   const newProperties: Record<string, any> = {};
 
-  for (const key in schema.properties) {
-    const prop = schema.properties[key];
+  for (const key in schema.shape) {
+    const prop = schema.shape[key];
 
     // Skip generated columns — they are computed by the database
     if (PG_GENERATED in prop) {
       continue;
     }
 
-    if (t.schema.isOptional(prop)) {
-      newProperties[key] = t.optional(t.union([prop, t.null()]));
+    if (z.schema.isOptional(prop)) {
+      newProperties[key] = z.union([prop, z.null()]).optional();
     } else {
       newProperties[key] = prop;
     }
   }
 
-  return t.object(
-    newProperties,
-    "options" in schema && typeof schema.options === "object"
-      ? { ...schema.options }
-      : {},
-  ) as TObjectUpdate<T>;
+  return z.object(newProperties) as unknown as TObjectUpdate<T>;
 };

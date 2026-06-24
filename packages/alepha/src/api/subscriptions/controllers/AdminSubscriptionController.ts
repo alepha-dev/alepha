@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { cancelSubscriptionSchema } from "../schemas/cancelSubscriptionSchema.ts";
@@ -26,7 +26,7 @@ export class AdminSubscriptionController {
     description: "Find subscriptions with pagination and filtering",
     schema: {
       query: subscriptionQuerySchema,
-      response: t.page(subscriptionResourceSchema),
+      response: z.page(subscriptionResourceSchema),
     },
     handler: ({ query }) => this.service.findSubscriptions(query),
   });
@@ -40,7 +40,7 @@ export class AdminSubscriptionController {
     use: [$secure({ permissions: ["admin:subscription:read"] })],
     description: "Get a subscription by ID",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: subscriptionResourceSchema,
     },
     handler: ({ params }) => this.service.getSubscription(params.id),
@@ -69,10 +69,10 @@ export class AdminSubscriptionController {
     use: [$secure({ permissions: ["admin:subscription:read"] })],
     description: "Get revenue data from recent subscription events",
     schema: {
-      query: t.object({
-        days: t.optional(t.integer({ minimum: 1, maximum: 365 })),
+      query: z.object({
+        days: z.integer().min(1).max(365).optional(),
       }),
-      response: t.object({ total: t.integer(), count: t.integer() }),
+      response: z.object({ total: z.integer(), count: z.integer() }),
     },
     handler: ({ query }) => this.service.getRevenue(query.days),
   });
@@ -136,7 +136,7 @@ export class AdminSubscriptionController {
     use: [$secure({ permissions: ["admin:subscription:update"] })],
     description: "Force a plan change for a subscription",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       body: changePlanSchema,
       response: subscriptionResourceSchema,
     },
@@ -158,7 +158,7 @@ export class AdminSubscriptionController {
     use: [$secure({ permissions: ["admin:subscription:update"] })],
     description: "Force cancel a subscription",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       body: cancelSubscriptionSchema,
       response: okSchema,
     },
@@ -181,7 +181,7 @@ export class AdminSubscriptionController {
     use: [$secure({ permissions: ["admin:subscription:update"] })],
     description: "Reactivate a suspended subscription",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: okSchema,
     },
     handler: async ({ params }) => {
@@ -200,8 +200,8 @@ export class AdminSubscriptionController {
     use: [$secure({ permissions: ["admin:subscription:update"] })],
     description: "Extend the trial period for a subscription",
     schema: {
-      params: t.object({ id: t.uuid() }),
-      body: t.object({ days: t.integer({ minimum: 1, maximum: 365 }) }),
+      params: z.object({ id: z.uuid() }),
+      body: z.object({ days: z.integer().min(1).max(365) }),
       response: okSchema,
     },
     handler: async ({ params, body }) => {

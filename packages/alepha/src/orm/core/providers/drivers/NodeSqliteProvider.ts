@@ -9,7 +9,7 @@ import {
   $state,
   AlephaError,
   type Static,
-  t,
+  z,
 } from "alepha";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { BetterSQLiteSession } from "drizzle-orm/better-sqlite3/session";
@@ -50,13 +50,13 @@ const envSchema = databaseEnvSchema;
  */
 export const nodeSqliteOptions = $atom({
   name: "alepha.postgres.node-sqlite.options",
-  schema: t.object({
-    path: t.optional(
-      t.string({
-        description:
-          "Filepath or :memory:. If empty, provider will use DATABASE_URL from env.",
-      }),
-    ),
+  schema: z.object({
+    path: z
+      .string()
+      .describe(
+        "Filepath or :memory:. If empty, provider will use DATABASE_URL from env.",
+      )
+      .optional(),
   }),
   default: {},
 });

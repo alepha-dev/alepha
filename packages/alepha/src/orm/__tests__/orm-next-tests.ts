@@ -1,4 +1,4 @@
-import { type Alepha, t } from "alepha";
+import { type Alepha, z } from "alepha";
 import { sql } from "drizzle-orm";
 import { expect } from "vitest";
 import { PG_GENERATED } from "../core/constants/PG_SYMBOLS.ts";
@@ -10,11 +10,11 @@ import { $entity, $repository, db, pgAttr } from "../core/index.ts";
 
 const orderEntity = $entity({
   name: "orders",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    category: t.text(),
-    amount: t.number(),
-    status: t.text(),
+    category: z.text(),
+    amount: z.number(),
+    status: z.text(),
   }),
 });
 
@@ -25,10 +25,10 @@ const orderEntity = $entity({
 export const testPartialIndex = async (alepha: Alepha) => {
   const entity = $entity({
     name: "items_partial_idx",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      email: t.text(),
-      active: t.boolean(),
+      email: z.text(),
+      active: z.boolean(),
     }),
     indexes: [
       {
@@ -62,11 +62,11 @@ export const testPartialIndex = async (alepha: Alepha) => {
 export const testPartialCompositeIndex = async (alepha: Alepha) => {
   const entity = $entity({
     name: "items_partial_comp_idx",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      category: t.text(),
-      name: t.text(),
-      active: t.boolean(),
+      category: z.text(),
+      name: z.text(),
+      active: z.boolean(),
     }),
     indexes: [
       {
@@ -100,18 +100,18 @@ export const testPartialCompositeIndex = async (alepha: Alepha) => {
 export const testExistsSubquery = async (alepha: Alepha) => {
   const parentEntity = $entity({
     name: "parents_exist",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      name: t.text(),
+      name: z.text(),
     }),
   });
 
   const childEntity = $entity({
     name: "children_exist",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      parentId: t.integer(),
-      label: t.text(),
+      parentId: z.integer(),
+      label: z.text(),
     }),
   });
 
@@ -268,11 +268,11 @@ export const testAggregateOrderByDotNotation = async (alepha: Alepha) => {
 export const testGeneratedColumnSqlite = async (alepha: Alepha) => {
   const entity = $entity({
     name: "generated_col",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      firstName: t.text(),
-      lastName: t.text(),
-      fullName: pgAttr(t.text(), PG_GENERATED, {
+      firstName: z.text(),
+      lastName: z.text(),
+      fullName: pgAttr(z.text(), PG_GENERATED, {
         expression: sql`first_name || ' ' || last_name`,
         mode: "virtual",
       }),
@@ -303,11 +303,11 @@ export const testGeneratedColumnSqlite = async (alepha: Alepha) => {
 export const testGeneratedColumnPostgres = async (alepha: Alepha) => {
   const entity = $entity({
     name: "generated_col_pg",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      firstName: t.text(),
-      lastName: t.text(),
-      fullName: pgAttr(t.text(), PG_GENERATED, {
+      firstName: z.text(),
+      lastName: z.text(),
+      fullName: pgAttr(z.text(), PG_GENERATED, {
         expression: sql`first_name || ' ' || last_name`,
         mode: "stored",
       }),
@@ -338,11 +338,11 @@ export const testGeneratedColumnExcludedFromInsertSchema = async (
 ) => {
   const entity = $entity({
     name: "generated_schema_test",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      a: t.text(),
-      b: t.text(),
-      computed: pgAttr(t.text(), PG_GENERATED, {
+      a: z.text(),
+      b: z.text(),
+      computed: pgAttr(z.text(), PG_GENERATED, {
         expression: sql`a || b`,
         mode: "virtual",
       }),

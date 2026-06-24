@@ -1,4 +1,4 @@
-import { $inject, $state, Alepha, AlephaError, t } from "alepha";
+import { $inject, $state, Alepha, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import {
@@ -113,44 +113,41 @@ export class BuildCommand {
     name: "build",
     mode: "production",
     description: "Build the project for production",
-    flags: t.object({
-      stats: t.optional(
-        t.union([t.boolean(), t.enum(["json"])], {
-          description: "Generate build stats report",
-        }),
-      ),
-      target: t.optional(
-        t.enum(["bare", "docker", "vercel", "cloudflare", "cf", "static"], {
-          aliases: ["t"],
-          description: "Deployment target (cf = cloudflare)",
-        }),
-      ),
-      runtime: t.optional(
-        t.enum(["node", "bun", "workerd"], {
-          aliases: ["r"],
-          description: "JavaScript runtime",
-        }),
-      ),
-      image: t.optional(
-        t.union([t.boolean(), t.text()], {
-          aliases: ["i"],
-          description:
-            "Build Docker image. Use -i for latest, -i=<version> for specific version",
-        }),
-      ),
-      compile: t.optional(
-        t.boolean({
-          aliases: ["c"],
-          description:
-            "Compile server to a single static binary (requires --target=docker --runtime=bun)",
-        }),
-      ),
-      prebuilt: t.optional(
-        t.boolean({
-          description:
-            "Skip the bundle steps (Vite client/server + asset compression). Only regenerates target-specific deploy config (e.g. wrangler.jsonc). Use when `dist/` is already built and you just need the config refreshed.",
-        }),
-      ),
+    flags: z.object({
+      stats: z
+        .union([z.boolean(), z.enum(["json"])])
+        .describe("Generate build stats report")
+        .optional(),
+      target: z
+        .enum(["bare", "docker", "vercel", "cloudflare", "cf", "static"])
+        .meta({ aliases: ["t"] })
+        .describe("Deployment target (cf = cloudflare)")
+        .optional(),
+      runtime: z
+        .enum(["node", "bun", "workerd"])
+        .meta({ aliases: ["r"] })
+        .describe("JavaScript runtime")
+        .optional(),
+      image: z
+        .union([z.boolean(), z.text()])
+        .meta({ aliases: ["i"] })
+        .describe(
+          "Build Docker image. Use -i for latest, -i=<version> for specific version",
+        )
+        .optional(),
+      compile: z
+        .boolean()
+        .meta({ aliases: ["c"] })
+        .describe(
+          "Compile server to a single static binary (requires --target=docker --runtime=bun)",
+        )
+        .optional(),
+      prebuilt: z
+        .boolean()
+        .describe(
+          "Skip the bundle steps (Vite client/server + asset compression). Only regenerates target-specific deploy config (e.g. wrangler.jsonc). Use when `dist/` is already built and you just need the config refreshed.",
+        )
+        .optional(),
     }),
     handler: async ({ flags, run, root }) => {
       process.env.NODE_ENV = "production";

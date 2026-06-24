@@ -1,8 +1,8 @@
-import { $inject, Alepha, CodecManager, TypeBoxError, t } from "alepha";
-import type { TSchema } from "typebox";
+import { $inject, Alepha, CodecManager, TypeBoxError, z } from "alepha";
 import { describe, expect, it } from "vitest";
 import { JsonSchemaCodec } from "../providers/JsonSchemaCodec.ts";
 import { SchemaCodec } from "../providers/SchemaCodec.ts";
+import type { TSchema } from "../providers/TypeProvider.ts";
 
 describe("CodecManager", () => {
   describe("initialization", () => {
@@ -93,9 +93,9 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        name: t.text(),
-        age: t.integer(),
+      const schema = z.object({
+        name: z.text(),
+        age: z.integer(),
       });
 
       const result = codecManager.encode(schema, {
@@ -110,12 +110,12 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        user: t.object({
-          name: t.text(),
-          address: t.object({
-            city: t.text(),
-            zip: t.text(),
+      const schema = z.object({
+        user: z.object({
+          name: z.text(),
+          address: z.object({
+            city: z.text(),
+            zip: z.text(),
           }),
         }),
       });
@@ -145,8 +145,8 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        items: t.array(t.text()),
+      const schema = z.object({
+        items: z.array(z.text()),
       });
 
       const result = codecManager.encode(schema, {
@@ -160,9 +160,9 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        value: t.text(),
-        flag: t.boolean(),
+      const schema = z.object({
+        value: z.text(),
+        flag: z.boolean(),
       });
 
       const result = codecManager.encode(schema, { value: "test", flag: true });
@@ -174,8 +174,8 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        bigNum: t.bigint(),
+      const schema = z.object({
+        bigNum: z.bigint(),
       });
 
       const result = codecManager.encode(schema, { bigNum: "123456789" });
@@ -187,9 +187,9 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        required: t.text(),
-        optional: t.optional(t.text()),
+      const schema = z.object({
+        required: z.text(),
+        optional: z.text().optional(),
       });
 
       const result = codecManager.encode(schema, { required: "value" });
@@ -203,9 +203,9 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        name: t.text(),
-        age: t.integer(),
+      const schema = z.object({
+        name: z.text(),
+        age: z.integer(),
       });
 
       const result = codecManager.encode(
@@ -222,11 +222,11 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        items: t.array(
-          t.object({
-            id: t.integer(),
-            name: t.text(),
+      const schema = z.object({
+        items: z.array(
+          z.object({
+            id: z.integer(),
+            name: z.text(),
           }),
         ),
       });
@@ -253,8 +253,8 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        name: t.text(),
+      const schema = z.object({
+        name: z.text(),
       });
 
       const result = codecManager.encode(
@@ -273,9 +273,9 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        name: t.text(),
-        count: t.integer(),
+      const schema = z.object({
+        name: z.text(),
+        count: z.integer(),
       });
 
       const original = { name: "Test", count: 42 };
@@ -306,7 +306,7 @@ describe("CodecManager", () => {
       const codecManager = alepha.codec;
       codecManager.register({ name: "custom", codec: new CustomCodec() });
 
-      const schema = t.object({ value: t.text() });
+      const schema = z.object({ value: z.text() });
       const result = codecManager.encode(
         schema,
         { value: "test" },
@@ -320,7 +320,7 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({ value: t.text() });
+      const schema = z.object({ value: z.text() });
 
       expect(() =>
         codecManager.encode(schema, { value: "test" }, { encoder: "missing" }),
@@ -333,9 +333,9 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        name: t.text(),
-        age: t.integer(),
+      const schema = z.object({
+        name: z.text(),
+        age: z.integer(),
       });
 
       const result = codecManager.decode(schema, {
@@ -350,9 +350,9 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        name: t.text(),
-        age: t.integer(),
+      const schema = z.object({
+        name: z.text(),
+        age: z.integer(),
       });
 
       const result = codecManager.decode(schema, '{"name":"John","age":30}');
@@ -364,8 +364,8 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        name: t.text(),
+      const schema = z.object({
+        name: z.text(),
       });
 
       const binary = new TextEncoder().encode('{"name":"John"}');
@@ -378,9 +378,9 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        count: t.integer(),
-        price: t.number(),
+      const schema = z.object({
+        count: z.integer(),
+        price: z.number(),
       });
 
       const result = codecManager.decode(schema, {
@@ -396,8 +396,8 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        bigNum: t.bigint(),
+      const schema = z.object({
+        bigNum: z.bigint(),
       });
 
       const result = codecManager.decode(schema, { bigNum: "123456789" });
@@ -409,9 +409,9 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        name: t.text(),
-        role: t.text({ default: "user" }),
+      const schema = z.object({
+        name: z.text(),
+        role: z.text({ default: "user" }),
       });
 
       const decoded = codecManager.decode(schema, { name: "John" });
@@ -424,8 +424,8 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        name: t.text({ trim: true }),
+      const schema = z.object({
+        name: z.text({ trim: true }),
       });
 
       const decoded = codecManager.decode(schema, { name: "  John  " });
@@ -434,18 +434,26 @@ describe("CodecManager", () => {
       expect(result.name).toBe("John");
     });
 
-    it("should convert null to undefined for non-nullable fields during validation", () => {
+    it("should reject null for a non-nullable optional field (no null->undefined coercion)", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        required: t.text(),
-        optional: t.optional(t.text()),
+      const schema = z.object({
+        required: z.text(),
+        optional: z.text().optional(),
       });
+
+      // Strict zod: an optional field accepts `undefined`, not `null`.
+      expect(() =>
+        codecManager.decode(schema, {
+          required: "value",
+          optional: null,
+        }),
+      ).toThrow();
 
       const decoded = codecManager.decode(schema, {
         required: "value",
-        optional: null,
+        optional: undefined,
       });
       const result = codecManager.validate(schema, decoded);
 
@@ -456,8 +464,8 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        age: t.integer(),
+      const schema = z.object({
+        age: z.integer(),
       });
 
       expect(() =>
@@ -469,11 +477,11 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        items: t.array(
-          t.object({
-            id: t.integer(),
-            name: t.text(),
+      const schema = z.object({
+        items: z.array(
+          z.object({
+            id: z.integer(),
+            name: z.text(),
           }),
         ),
       });
@@ -521,7 +529,7 @@ describe("CodecManager", () => {
       const codecManager = alepha.codec;
       codecManager.register({ name: "custom", codec: new CustomCodec() });
 
-      const schema = t.object({ value: t.text() });
+      const schema = z.object({ value: z.text() });
       const result = codecManager.decode(
         schema,
         { value: "test" },
@@ -537,15 +545,15 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        user: t.object({
-          id: t.integer(),
-          name: t.text(),
-          email: t.text(),
-          active: t.boolean(),
+      const schema = z.object({
+        user: z.object({
+          id: z.integer(),
+          name: z.text(),
+          email: z.text(),
+          active: z.boolean(),
         }),
-        tags: t.array(t.text()),
-        count: t.bigint(),
+        tags: z.array(z.text()),
+        count: z.bigint(),
       });
 
       const original = {
@@ -577,9 +585,9 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        data: t.text(),
-        value: t.integer(),
+      const schema = z.object({
+        data: z.text(),
+        value: z.integer(),
       });
 
       const original = { data: "test", value: 42 };
@@ -656,27 +664,33 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        nullable: t.nullable(t.text()),
-        optional: t.optional(t.text()),
+      const schema = z.object({
+        nullable: z.text().nullable(),
+        optional: z.text().optional(),
       });
 
       const decoded = codecManager.decode(schema, {
         nullable: null,
-        optional: null,
+        optional: undefined,
       });
       const result = codecManager.validate(schema, decoded);
 
       expect(result.nullable).toBeNull();
       expect(result.optional).toBeUndefined();
+
+      // Strict zod: `null` on the non-nullable optional field is rejected
+      // (no null->undefined coercion in the validator).
+      expect(() =>
+        codecManager.decode(schema, { nullable: null, optional: null }),
+      ).toThrow();
     });
 
     it("should handle array preprocessing during validation", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        items: t.array(t.text({ trim: true })),
+      const schema = z.object({
+        items: z.array(z.text({ trim: true })),
       });
 
       const decoded = codecManager.decode(schema, {
@@ -687,13 +701,13 @@ describe("CodecManager", () => {
       expect(result.items).toEqual(["a", "b", "c"]);
     });
 
-    it("should remove undefined values from objects during validation", () => {
+    it("should keep an explicit undefined optional key present during validation", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        a: t.text(),
-        b: t.optional(t.text()),
+      const schema = z.object({
+        a: z.text(),
+        b: z.text().optional(),
       });
 
       const decoded = codecManager.decode(schema, {
@@ -702,8 +716,11 @@ describe("CodecManager", () => {
       });
       const result = codecManager.validate(schema, decoded);
 
+      // Strict zod: no deleteUndefined — an explicitly-undefined optional key
+      // is preserved (toEqual ignores undefined props, so it still matches).
       expect(result).toEqual({ a: "value" });
-      expect("b" in result).toBe(false);
+      expect(result.b).toBeUndefined();
+      expect("b" in result).toBe(true);
     });
   });
 
@@ -712,8 +729,8 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        age: t.integer({ minimum: 0, maximum: 150 }),
+      const schema = z.object({
+        age: z.integer().min(0).max(150),
       });
 
       expect(() => codecManager.encode(schema, { age: 200 })).toThrow(
@@ -725,8 +742,10 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({
-        email: t.text({ format: "email" }),
+      // A real format-validating schema (`z.email()`); `z.text({ format })` is
+      // only a metadata tag now and does not enforce the format.
+      const schema = z.object({
+        email: z.email(),
       });
 
       expect(() =>
@@ -738,7 +757,7 @@ describe("CodecManager", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
-      const schema = t.object({ value: t.text() });
+      const schema = z.object({ value: z.text() });
 
       expect(() => codecManager.decode(schema, "{ invalid json }")).toThrow();
     });

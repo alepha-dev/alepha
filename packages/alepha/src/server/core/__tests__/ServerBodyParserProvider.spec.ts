@@ -1,5 +1,5 @@
 import { brotliCompressSync, deflateSync, gzipSync } from "node:zlib";
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, it } from "vitest";
 import { $action, HttpError } from "../index.ts";
 import {
@@ -14,11 +14,11 @@ describe("ServerBodyParserProvider", () => {
     class TestApp {
       json = $action({
         schema: {
-          body: t.object({
-            message: t.text(),
+          body: z.object({
+            message: z.text(),
           }),
-          response: t.object({
-            received: t.text(),
+          response: z.object({
+            received: z.text(),
           }),
         },
         handler: ({ body }) => ({ received: body.message }),
@@ -45,9 +45,9 @@ describe("ServerBodyParserProvider", () => {
     class TestApp {
       text = $action({
         schema: {
-          body: t.text(),
-          response: t.object({
-            received: t.text(),
+          body: z.text(),
+          response: z.object({
+            received: z.text(),
           }),
         },
         handler: ({ body }) => ({ received: body }),
@@ -74,13 +74,13 @@ describe("ServerBodyParserProvider", () => {
     class TestApp {
       test = $action({
         schema: {
-          body: t.object({
-            message: t.text({
+          body: z.object({
+            message: z.text({
               maxLength: 1_000_000,
             }),
           }),
-          response: t.object({
-            received: t.text(),
+          response: z.object({
+            received: z.text(),
           }),
         },
         handler: ({ body }) => {
@@ -305,7 +305,7 @@ describe("ServerBodyParserProvider", () => {
       },
     });
 
-    const result = await parser.parse(stream, {}, t.object({}));
+    const result = await parser.parse(stream, {}, z.object({}));
     expect(result).toBeUndefined();
   });
 
@@ -356,7 +356,7 @@ describe("ServerBodyParserProvider", () => {
     const result = await parser.parse(
       stream,
       { "content-type": "application/octet-stream" },
-      t.object({}),
+      z.object({}),
     );
     expect(result).toBeUndefined();
   });

@@ -1,8 +1,8 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const devModuleMetadataSchema = t.object({
-  name: t.text(),
-  providers: t.array(t.text()),
+export const devModuleMetadataSchema = z.object({
+  name: z.text(),
+  providers: z.array(z.text()),
 });
 
 export type DevModuleMetadata = Static<typeof devModuleMetadataSchema>;

@@ -1,27 +1,21 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 
-const schema = t.object({
-  birthday: t.string({
-    format: "date",
-    title: "Birthday",
-    description: "Date-only — shadcn Calendar via react-day-picker.",
-    $control: { width: 50 },
-  }),
-  meetingAt: t.string({
-    format: "date-time",
-    title: "Meeting at",
-    description: "Date + native time picker.",
-    $control: { width: 50 },
-  }),
-  alarm: t.string({
-    format: "time",
-    title: "Alarm",
-    description: "Time-only — native input.",
-    $control: { width: 50 },
-  }),
+const schema = z.object({
+  birthday: z
+    .string()
+    .meta({ format: "date", title: "Birthday", $control: { width: 50 } })
+    .describe("Date-only — shadcn Calendar via react-day-picker."),
+  meetingAt: z
+    .string()
+    .meta({ format: "date-time", title: "Meeting at", $control: { width: 50 } })
+    .describe("Date + native time picker."),
+  alarm: z
+    .string()
+    .meta({ format: "time", title: "Alarm", $control: { width: 50 } })
+    .describe("Time-only — native input."),
 });
 
 const DatesForm = () => {

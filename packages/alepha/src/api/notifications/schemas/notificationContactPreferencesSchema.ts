@@ -1,8 +1,8 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const notificationContactPreferencesSchema = t.object({
-  language: t.optional(t.text()),
-  exclude: t.array(t.text()),
+export const notificationContactPreferencesSchema = z.object({
+  language: z.text().optional(),
+  exclude: z.array(z.text()),
 });
 
 export type NotificationContactPreferences = Static<

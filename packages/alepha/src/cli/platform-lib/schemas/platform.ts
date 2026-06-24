@@ -1,42 +1,42 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
 // ---------------------------------------------------------------------------
 // Status output
 // ---------------------------------------------------------------------------
 
-export const platformStatusWorkerSchema = t.object({
-  name: t.string(),
-  exists: t.boolean(),
-  id: t.optional(t.string()),
-  detail: t.optional(t.string()),
-  version: t.optional(t.string()),
-  tag: t.optional(t.string()),
-  createdAt: t.optional(t.string()),
+export const platformStatusWorkerSchema = z.object({
+  name: z.string(),
+  exists: z.boolean(),
+  id: z.string().optional(),
+  detail: z.string().optional(),
+  version: z.string().optional(),
+  tag: z.string().optional(),
+  createdAt: z.string().optional(),
 });
 
-export const platformStatusResourceSchema = t.object({
-  name: t.string(),
-  exists: t.boolean(),
-  id: t.optional(t.string()),
-  detail: t.optional(t.string()),
+export const platformStatusResourceSchema = z.object({
+  name: z.string(),
+  exists: z.boolean(),
+  id: z.string().optional(),
+  detail: z.string().optional(),
 });
 
-export const platformStatusSecretSchema = t.object({
-  name: t.string(),
-  deployed: t.boolean(),
+export const platformStatusSecretSchema = z.object({
+  name: z.string(),
+  deployed: z.boolean(),
 });
 
-export const platformStatusSchema = t.object({
-  project: t.string(),
-  env: t.string(),
-  adapter: t.string(),
-  workers: t.array(platformStatusWorkerSchema),
-  databases: t.array(platformStatusResourceSchema),
-  buckets: t.array(platformStatusResourceSchema),
-  kvNamespaces: t.array(platformStatusResourceSchema),
-  queues: t.array(platformStatusResourceSchema),
-  secrets: t.array(platformStatusSecretSchema),
+export const platformStatusSchema = z.object({
+  project: z.string(),
+  env: z.string(),
+  adapter: z.string(),
+  workers: z.array(platformStatusWorkerSchema),
+  databases: z.array(platformStatusResourceSchema),
+  buckets: z.array(platformStatusResourceSchema),
+  kvNamespaces: z.array(platformStatusResourceSchema),
+  queues: z.array(platformStatusResourceSchema),
+  secrets: z.array(platformStatusSecretSchema),
 });
 
 export type PlatformStatusOutput = Static<typeof platformStatusSchema>;
@@ -45,39 +45,39 @@ export type PlatformStatusOutput = Static<typeof platformStatusSchema>;
 // Plan output
 // ---------------------------------------------------------------------------
 
-export const platformPlanAppResourcesSchema = t.object({
-  hasDatabase: t.boolean(),
-  hasBucket: t.boolean(),
-  hasKV: t.boolean(),
-  hasQueue: t.boolean(),
-  hasCron: t.boolean(),
+export const platformPlanAppResourcesSchema = z.object({
+  hasDatabase: z.boolean(),
+  hasBucket: z.boolean(),
+  hasKV: z.boolean(),
+  hasQueue: z.boolean(),
+  hasCron: z.boolean(),
 });
 
-export const platformPlanAppSchema = t.object({
-  name: t.string(),
-  path: t.string(),
+export const platformPlanAppSchema = z.object({
+  name: z.string(),
+  path: z.string(),
   resources: platformPlanAppResourcesSchema,
 });
 
-export const platformPlanEnvironmentSchema = t.object({
-  adapter: t.string(),
-  domain: t.optional(t.string()),
-  zone: t.optional(t.string()),
+export const platformPlanEnvironmentSchema = z.object({
+  adapter: z.string(),
+  domain: z.string().optional(),
+  zone: z.string().optional(),
 });
 
-export const platformPlanResourceSchema = t.object({
-  label: t.string(),
-  value: t.string(),
+export const platformPlanResourceSchema = z.object({
+  label: z.string(),
+  value: z.string(),
 });
 
-export const platformPlanSchema = t.object({
-  project: t.string(),
-  env: t.string(),
-  mode: t.enum(["monorepo", "standalone"]),
-  apps: t.array(platformPlanAppSchema),
-  environments: t.record(t.string(), platformPlanEnvironmentSchema),
-  resources: t.array(platformPlanResourceSchema),
-  secretCount: t.number(),
+export const platformPlanSchema = z.object({
+  project: z.string(),
+  env: z.string(),
+  mode: z.enum(["monorepo", "standalone"]),
+  apps: z.array(platformPlanAppSchema),
+  environments: z.record(z.string(), platformPlanEnvironmentSchema),
+  resources: z.array(platformPlanResourceSchema),
+  secretCount: z.number(),
 });
 
 export type PlatformPlanOutput = Static<typeof platformPlanSchema>;

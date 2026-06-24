@@ -1,4 +1,4 @@
-import { Alepha, type Middleware, OPTIONS, t } from "alepha";
+import { Alepha, type Middleware, OPTIONS, z } from "alepha";
 import { $action } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { $swagger, ServerSwaggerProvider } from "../index.ts";
@@ -26,8 +26,8 @@ class App {
   internal = $action({
     hide: true,
     schema: {
-      response: t.object({
-        message: t.text(),
+      response: z.object({
+        message: z.text(),
       }),
     },
     handler: async () => {
@@ -40,8 +40,8 @@ class App {
   api = $action({
     hide: true,
     schema: {
-      response: t.object({
-        message: t.text(),
+      response: z.object({
+        message: z.text(),
       }),
     },
     handler: async () => {
@@ -53,7 +53,7 @@ class App {
 
   text = $action({
     schema: {
-      response: t.text(),
+      response: z.text(),
     },
     handler: async () => {
       return "Hello world";
@@ -66,24 +66,21 @@ class App {
     description: "Hello world",
     group: "app",
     schema: {
-      params: t.object({
-        name: t.text(),
+      params: z.object({
+        name: z.text(),
       }),
-      query: t.object({
-        age: t.optional(t.number()),
+      query: z.object({
+        age: z.number().optional(),
       }),
-      body: t.object({
-        name: t.text(),
+      body: z.object({
+        name: z.text(),
       }),
-      response: t.object(
-        {
-          message: t.text(),
-        },
-        {
-          title: "HelloResponse",
-          description: "Hello response",
-        },
-      ),
+      response: z
+        .object({
+          message: z.text(),
+        })
+        .meta({ title: "HelloResponse" })
+        .describe("Hello response"),
     },
     handler: async (req) => {
       return {
@@ -229,7 +226,7 @@ describe("security", () => {
       secured = $action({
         use: [fakeSecure()],
         schema: {
-          response: t.object({ ok: t.boolean() }),
+          response: z.object({ ok: z.boolean() }),
         },
         handler: async () => ({ ok: true }),
       });
@@ -256,7 +253,7 @@ describe("security", () => {
     class UnsecuredApp {
       open = $action({
         schema: {
-          response: t.object({ ok: t.boolean() }),
+          response: z.object({ ok: z.boolean() }),
         },
         handler: async () => ({ ok: true }),
       });
@@ -274,12 +271,12 @@ describe("security", () => {
   it("should add securitySchemes when at least one action is secured", () => {
     class MixedApp {
       open = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
       secured = $action({
         use: [fakeSecure()],
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -304,11 +301,11 @@ describe("query parameters", () => {
     class QueryApp {
       search = $action({
         schema: {
-          query: t.object({
-            q: t.text(),
-            page: t.optional(t.number()),
+          query: z.object({
+            q: z.text(),
+            page: z.number().optional(),
           }),
-          response: t.object({ results: t.array(t.text()) }),
+          response: z.object({ results: z.array(z.text()) }),
         },
         handler: async () => ({ results: [] }),
       });
@@ -330,11 +327,11 @@ describe("query parameters", () => {
       fetch = $action({
         name: "fetchItems",
         schema: {
-          query: t.object({
-            id: t.text(),
-            type: t.text(),
+          query: z.object({
+            id: z.text(),
+            type: z.text(),
           }),
-          response: t.object({ ok: t.boolean() }),
+          response: z.object({ ok: z.boolean() }),
         },
         handler: async () => ({ ok: true }),
       });
@@ -359,8 +356,8 @@ describe("error responses", () => {
     class BodyApp {
       create = $action({
         schema: {
-          body: t.object({ name: t.text() }),
-          response: t.object({ id: t.text() }),
+          body: z.object({ name: z.text() }),
+          response: z.object({ id: z.text() }),
         },
         handler: async () => ({ id: "1" }),
       });
@@ -377,8 +374,8 @@ describe("error responses", () => {
     class QueryApp {
       search = $action({
         schema: {
-          query: t.object({ q: t.text() }),
-          response: t.text(),
+          query: z.object({ q: z.text() }),
+          response: z.text(),
         },
         handler: async () => "ok",
       });
@@ -396,8 +393,8 @@ describe("error responses", () => {
       getById = $action({
         path: "/items/:id",
         schema: {
-          params: t.object({ id: t.text() }),
-          response: t.object({ name: t.text() }),
+          params: z.object({ id: z.text() }),
+          response: z.object({ name: z.text() }),
         },
         handler: async () => ({ name: "item" }),
       });
@@ -414,7 +411,7 @@ describe("error responses", () => {
     class NoValidationApp {
       ping = $action({
         schema: {
-          response: t.text(),
+          response: z.text(),
         },
         handler: async () => "pong",
       });
@@ -432,8 +429,8 @@ describe("error responses", () => {
       create = $action({
         use: [fakeSecure()],
         schema: {
-          body: t.object({ name: t.text() }),
-          response: t.object({ id: t.text() }),
+          body: z.object({ name: z.text() }),
+          response: z.object({ id: z.text() }),
         },
         handler: async () => ({ id: "1" }),
       });
@@ -457,7 +454,7 @@ describe("response types", () => {
     class ObjApp {
       get = $action({
         name: "getObj",
-        schema: { response: t.object({ a: t.text() }) },
+        schema: { response: z.object({ a: z.text() }) },
         handler: async () => ({ a: "b" }),
       });
     }
@@ -472,7 +469,7 @@ describe("response types", () => {
   it("should handle array response as application/json", () => {
     class ArrayApp {
       list = $action({
-        schema: { response: t.array(t.text()) },
+        schema: { response: z.array(z.text()) },
         handler: async () => ["a"],
       });
     }
@@ -487,7 +484,7 @@ describe("response types", () => {
   it("should handle string response as text/plain", () => {
     class StrApp {
       getText = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -502,7 +499,7 @@ describe("response types", () => {
   it("should handle number response as application/json", () => {
     class NumApp {
       count = $action({
-        schema: { response: t.number() as any },
+        schema: { response: z.number() as any },
         handler: async () => 42 as any,
       });
     }
@@ -518,7 +515,7 @@ describe("response types", () => {
   it("should handle integer response as application/json", () => {
     class IntApp {
       countInt = $action({
-        schema: { response: t.integer() as any },
+        schema: { response: z.integer() as any },
         handler: async () => 42 as any,
       });
     }
@@ -534,7 +531,7 @@ describe("response types", () => {
   it("should handle boolean response as application/json", () => {
     class BoolApp {
       check = $action({
-        schema: { response: t.boolean() as any },
+        schema: { response: z.boolean() as any },
         handler: async () => true as any,
       });
     }
@@ -550,7 +547,7 @@ describe("response types", () => {
   it("should handle file response as application/octet-stream", () => {
     class FileApp {
       download = $action({
-        schema: { response: t.file() as any },
+        schema: { response: z.file() as any },
         handler: async () => new Blob([]) as any,
       });
     }
@@ -587,12 +584,12 @@ describe("hide and excludeTags", () => {
   it("should exclude actions with hide: true", () => {
     class HideApp {
       visible = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
       hidden = $action({
         hide: true,
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -608,12 +605,12 @@ describe("hide and excludeTags", () => {
     class TagApp {
       pub = $action({
         group: "public",
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
       internal = $action({
         group: "internal",
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -634,7 +631,7 @@ describe("rewrite", () => {
   it("should allow rewriting the OpenAPI document", () => {
     class RewriteApp {
       hello = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -661,11 +658,11 @@ describe("multipart", () => {
     class UploadApp {
       upload = $action({
         schema: {
-          body: t.object({
-            file: t.file(),
-            name: t.text(),
+          body: z.object({
+            file: z.file(),
+            name: z.text(),
           }),
-          response: t.object({ ok: t.boolean() }),
+          response: z.object({ ok: z.boolean() }),
         },
         handler: async () => ({ ok: true }),
       });
@@ -683,8 +680,8 @@ describe("multipart", () => {
     class JsonBodyApp {
       create = $action({
         schema: {
-          body: t.object({ name: t.text() }),
-          response: t.object({ ok: t.boolean() }),
+          body: z.object({ name: z.text() }),
+          response: z.object({ ok: z.boolean() }),
         },
         handler: async () => ({ ok: true }),
       });
@@ -708,8 +705,8 @@ describe("array body", () => {
     class ArrayBodyApp {
       batch = $action({
         schema: {
-          body: t.array(t.object({ id: t.text() })),
-          response: t.object({ count: t.number() }),
+          body: z.array(z.object({ id: z.text() })),
+          response: z.object({ count: z.number() }),
         },
         handler: async () => ({ count: 0 }),
       });
@@ -733,7 +730,7 @@ describe("$ref schemas", () => {
     class RefApp {
       getItem = $action({
         schema: {
-          response: t.object({ id: t.text() }, { title: "ItemResponse" }),
+          response: z.object({ id: z.text() }).meta({ title: "ItemResponse" }),
         },
         handler: async () => ({ id: "1" }),
       });
@@ -755,7 +752,7 @@ describe("$ref schemas", () => {
     class InlineApp {
       getInline = $action({
         schema: {
-          response: t.object({ id: t.text() }),
+          response: z.object({ id: z.text() }),
         },
         handler: async () => ({ id: "1" }),
       });
@@ -792,10 +789,10 @@ describe("path params", () => {
       getItem = $action({
         path: "/items/:id",
         schema: {
-          params: t.object({
-            id: t.text({ description: "The item identifier" }),
+          params: z.object({
+            id: z.text({ description: "The item identifier" }),
           }),
-          response: t.text(),
+          response: z.text(),
         },
         handler: async () => "ok",
       });
@@ -878,14 +875,14 @@ describe("removePrivateFields", () => {
 describe("isBodyMultipart", () => {
   it("should return true when body contains file type", () => {
     const swagger = alepha.inject(ServerSwaggerProvider);
-    const schema = t.object({ file: t.file(), name: t.text() });
+    const schema = z.object({ file: z.file(), name: z.text() });
 
     expect(swagger.isBodyMultipart(schema)).toBe(true);
   });
 
   it("should return false when body has no file type", () => {
     const swagger = alepha.inject(ServerSwaggerProvider);
-    const schema = t.object({ name: t.text(), age: t.number() });
+    const schema = z.object({ name: z.text(), age: z.number() });
 
     expect(swagger.isBodyMultipart(schema)).toBe(false);
   });
@@ -899,7 +896,7 @@ describe("disabled", () => {
   it("should not generate spec when disabled", () => {
     class DisabledApp {
       hello = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
       docs = $swagger({ disabled: true, ui: false });
@@ -920,7 +917,7 @@ describe("default info", () => {
   it("should use default info when not provided", () => {
     class DefaultApp {
       hello = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -944,7 +941,7 @@ describe("tags", () => {
     class TagApp {
       hello = $action({
         group: "admin:users",
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -967,7 +964,7 @@ describe("summary and description", () => {
       hello = $action({
         summary: "Say hello",
         description: "Returns a greeting",
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -1009,7 +1006,7 @@ describe("deprecated", () => {
     class DeprecatedApp {
       old = $action({
         deprecated: true,
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -1024,7 +1021,7 @@ describe("deprecated", () => {
   it("should not include deprecated field when not set", () => {
     class NormalApp {
       current = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -1040,7 +1037,7 @@ describe("deprecated", () => {
     class NotDeprecatedApp {
       active = $action({
         deprecated: false,
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -1061,7 +1058,7 @@ describe("servers", () => {
   it("should auto-populate servers from hostname", () => {
     class ServerApp {
       hello = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -1077,7 +1074,7 @@ describe("servers", () => {
   it("should use custom servers when provided", () => {
     class CustomServerApp {
       hello = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -1105,7 +1102,7 @@ describe("response descriptions", () => {
   it("should use 'OK' for 200 responses", () => {
     class OkApp {
       hello = $action({
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -1138,8 +1135,8 @@ describe("response descriptions", () => {
     class CreatedApp {
       create = $action({
         schema: {
-          body: t.object({ name: t.text() }),
-          response: { 201: t.object({ id: t.text() }) } as any,
+          body: z.object({ name: z.text() }),
+          response: { 201: z.object({ id: z.text() }) } as any,
         },
         handler: async () => ({ id: "1" }) as any,
       });
@@ -1163,7 +1160,7 @@ describe("security scheme description", () => {
     class AuthApp {
       secured = $action({
         use: [fakeSecure()],
-        schema: { response: t.text() },
+        schema: { response: z.text() },
         handler: async () => "ok",
       });
     }
@@ -1186,10 +1183,10 @@ describe("examples", () => {
     class ExampleQueryApp {
       search = $action({
         schema: {
-          query: t.object({
-            q: t.text({ examples: ["hello world"] }),
+          query: z.object({
+            q: z.text({ examples: ["hello world"] }),
           }),
-          response: t.text(),
+          response: z.text(),
         },
         handler: async () => "ok",
       });
@@ -1206,10 +1203,10 @@ describe("examples", () => {
     class DefaultQueryApp {
       search = $action({
         schema: {
-          query: t.object({
-            page: t.number({ default: 1 }),
+          query: z.object({
+            page: z.number().default(1),
           }),
-          response: t.text(),
+          response: z.text(),
         },
         handler: async () => "ok",
       });
@@ -1227,10 +1224,10 @@ describe("examples", () => {
       getUser = $action({
         path: "/users/:id",
         schema: {
-          params: t.object({
-            id: t.text({ examples: ["usr_abc123"] }),
+          params: z.object({
+            id: z.text({ examples: ["usr_abc123"] }),
           }),
-          response: t.text(),
+          response: z.text(),
         },
         handler: async () => "ok",
       });
@@ -1247,10 +1244,10 @@ describe("examples", () => {
     class NoExampleApp {
       search = $action({
         schema: {
-          query: t.object({
-            q: t.text(),
+          query: z.object({
+            q: z.text(),
           }),
-          response: t.text(),
+          response: z.text(),
         },
         handler: async () => "ok",
       });

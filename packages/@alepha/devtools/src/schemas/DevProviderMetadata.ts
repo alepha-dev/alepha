@@ -1,10 +1,10 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const devProviderMetadataSchema = t.object({
-  name: t.text(),
-  module: t.optional(t.text()),
-  dependencies: t.array(t.text()),
-  aliases: t.optional(t.array(t.text())),
+export const devProviderMetadataSchema = z.object({
+  name: z.text(),
+  module: z.text().optional(),
+  dependencies: z.array(z.text()),
+  aliases: z.array(z.text()).optional(),
 });
 
 export type DevProviderMetadata = Static<typeof devProviderMetadataSchema>;

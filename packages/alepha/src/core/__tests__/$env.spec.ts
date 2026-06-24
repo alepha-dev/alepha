@@ -1,12 +1,12 @@
-import { $env, $inject, Alepha, AlephaError, TypeBoxError, t } from "alepha";
+import { $env, $inject, Alepha, AlephaError, TypeBoxError, z } from "alepha";
 import { describe, expect, it } from "vitest";
 
 describe("$env", () => {
   it("should parse env variables from Alepha config", () => {
     class App {
       env = $env(
-        t.object({
-          PORT: t.text(),
+        z.object({
+          PORT: z.text(),
         }),
       );
     }
@@ -18,8 +18,8 @@ describe("$env", () => {
   it("should apply default values when var is missing", () => {
     class App {
       env = $env(
-        t.object({
-          HOST: t.text({ default: "localhost" }),
+        z.object({
+          HOST: z.text({ default: "localhost" }),
         }),
       );
     }
@@ -31,9 +31,9 @@ describe("$env", () => {
   it("should interpolate env references", () => {
     class App {
       env = $env(
-        t.object({
-          BASE: t.text(),
-          URL: t.text({ default: "$BASE/api" }),
+        z.object({
+          BASE: z.text(),
+          URL: z.text({ default: "$BASE/api" }),
         }),
       );
     }
@@ -47,8 +47,8 @@ describe("$env", () => {
   it("should throw TypeBoxError when required var is missing", () => {
     class App {
       env = $env(
-        t.object({
-          REQUIRED: t.text(),
+        z.object({
+          REQUIRED: z.text(),
         }),
       );
     }
@@ -58,14 +58,14 @@ describe("$env", () => {
 
   it("should throw AlephaError for non-TObject schema", () => {
     class App {
-      env = $env(t.text() as any);
+      env = $env(z.text() as any);
     }
 
     expect(() => Alepha.create().inject(App)).toThrow(AlephaError);
   });
 
   it("should share parsed env across services", () => {
-    const schema = t.object({ KEY: t.text() });
+    const schema = z.object({ KEY: z.text() });
 
     class A {
       env = $env(schema);
@@ -113,7 +113,7 @@ describe("$env", () => {
 
     it("is resolvable through $env after merge", () => {
       class App {
-        env = $env(t.object({ PUBLIC_URL: t.text({ default: "" }) }));
+        env = $env(z.object({ PUBLIC_URL: z.text({ default: "" }) }));
       }
 
       const alepha = Alepha.create();

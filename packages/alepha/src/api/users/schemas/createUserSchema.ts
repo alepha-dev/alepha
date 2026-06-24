@@ -1,6 +1,6 @@
-import { type Static, t } from "alepha";
+import type { Static } from "alepha";
 import { users } from "../entities/users.ts";
 
-export const createUserSchema = t.omit(users.insertSchema, ["realm"]);
+export const createUserSchema = users.insertSchema.omit({ realm: true });
 
 export type CreateUser = Static<typeof createUserSchema>;

@@ -1,4 +1,4 @@
-import { $hook, Alepha, t } from "alepha";
+import { $hook, Alepha, z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
 import { $page } from "alepha/react/router";
 import { $action, HttpClient, ServerProvider } from "alepha/server";
@@ -8,9 +8,9 @@ import { describe, it } from "vitest";
 describe("React SSR Integration", () => {
   const tasks = $entity({
     name: "tasks",
-    schema: t.object({
-      id: db.primaryKey(t.uuid()),
-      name: t.text(),
+    schema: z.object({
+      id: db.primaryKey(z.uuid()),
+      name: z.text(),
     }),
   });
   class Api {
@@ -30,7 +30,7 @@ describe("React SSR Integration", () => {
 
     tasks = $action({
       schema: {
-        response: t.array(this.repository.entity.schema),
+        response: z.array(this.repository.entity.schema),
       },
       handler: async () => {
         return this.repository.findMany();

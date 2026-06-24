@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useAction } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -45,9 +45,9 @@ export const ParameterSaveDialog = (props: ParameterSaveDialogProps) => {
   const { tr } = useI18n();
   const form = useForm(
     {
-      schema: t.object({
-        tags: t.optional(t.array(t.string())),
-        activationDate: t.optional(t.string({ format: "date-time" })),
+      schema: z.object({
+        tags: z.array(z.string()).optional(),
+        activationDate: z.string().meta({ format: "date-time" }).optional(),
       }),
       initialValues: { tags: props.initialTags ?? [] },
       handler: async () => {},

@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { folios } from "./folios.ts";
 
@@ -21,10 +21,10 @@ import { folios } from "./folios.ts";
  */
 export const folioLinks = $entity({
   name: "folio_links",
-  schema: t.object({
-    id: db.primaryKey(t.integer()),
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
     createdAt: db.createdAt(),
-    fromId: db.ref(t.uuid(), () => folios.cols.id, {
+    fromId: db.ref(z.uuid(), () => folios.cols.id, {
       onDelete: "cascade",
     }),
     /**
@@ -34,7 +34,7 @@ export const folioLinks = $entity({
      * key and we want a single column shape across types). Caller resolves
      * via the appropriate repository keyed on `targetType`.
      */
-    toId: t.string(),
+    toId: z.string(),
     /**
      * Discriminator for the target table. Defaults to `folio` so pre-Lore
      * #57 rows stay valid without a backfill. Add new types by extending
@@ -44,7 +44,7 @@ export const folioLinks = $entity({
      * this enum is a code-only change, no migration needed.
      */
     targetType: db.default(
-      t.enum(["folio", "quest", "blob"], { mode: "text" }),
+      z.enum(["folio", "quest", "blob"]).meta({ mode: "text" }),
       "folio",
     ),
   }),

@@ -1,6 +1,6 @@
 import { devMetadataSchema } from "@alepha/devtools";
 import { Input } from "@alepha/ui/components/ui/input";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useInject } from "alepha/react";
 import { useQueryParams } from "alepha/react/router";
 import { HttpClient } from "alepha/server";
@@ -13,9 +13,9 @@ import { DevPanelPage } from "./panels/DevPanelPage.tsx";
 import { DevPanelQueue } from "./panels/DevPanelQueue.tsx";
 import { DevPanelTopic } from "./panels/DevPanelTopic.tsx";
 
-const querySchema = t.object({
-  selected: t.optional(t.text()),
-  open: t.optional(t.text()),
+const querySchema = z.object({
+  selected: z.text().optional(),
+  open: z.text().optional(),
 });
 
 const buildTree = (metadata: any): TreeNode[] => {

@@ -1,13 +1,13 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
 // ---------------------------------------------------------------------------
 // Account
 // ---------------------------------------------------------------------------
 
-export const cloudflareAccountSchema = t.object({
-  id: t.string(),
-  name: t.string(),
+export const cloudflareAccountSchema = z.object({
+  id: z.string(),
+  name: z.string(),
 });
 
 export type CloudflareAccount = Static<typeof cloudflareAccountSchema>;
@@ -16,9 +16,9 @@ export type CloudflareAccount = Static<typeof cloudflareAccountSchema>;
 // D1
 // ---------------------------------------------------------------------------
 
-export const cloudflareD1Schema = t.object({
-  uuid: t.string(),
-  name: t.string(),
+export const cloudflareD1Schema = z.object({
+  uuid: z.string(),
+  name: z.string(),
 });
 
 export type CloudflareD1 = Static<typeof cloudflareD1Schema>;
@@ -27,9 +27,9 @@ export type CloudflareD1 = Static<typeof cloudflareD1Schema>;
 // KV
 // ---------------------------------------------------------------------------
 
-export const cloudflareKVSchema = t.object({
-  id: t.string(),
-  title: t.string(),
+export const cloudflareKVSchema = z.object({
+  id: z.string(),
+  title: z.string(),
 });
 
 export type CloudflareKV = Static<typeof cloudflareKVSchema>;
@@ -38,32 +38,32 @@ export type CloudflareKV = Static<typeof cloudflareKVSchema>;
 // R2
 // ---------------------------------------------------------------------------
 
-export const cloudflareR2Schema = t.object({
-  name: t.string(),
-  creation_date: t.optional(t.string()),
+export const cloudflareR2Schema = z.object({
+  name: z.string(),
+  creation_date: z.string().optional(),
 });
 
 export type CloudflareR2 = Static<typeof cloudflareR2Schema>;
 
-export const cloudflareR2ListSchema = t.object({
-  buckets: t.array(cloudflareR2Schema),
+export const cloudflareR2ListSchema = z.object({
+  buckets: z.array(cloudflareR2Schema),
 });
 
 // ---------------------------------------------------------------------------
 // Queue
 // ---------------------------------------------------------------------------
 
-export const cloudflareQueueSchema = t.object({
-  queue_id: t.string(),
-  queue_name: t.string(),
+export const cloudflareQueueSchema = z.object({
+  queue_id: z.string(),
+  queue_name: z.string(),
 });
 
 export type CloudflareQueue = Static<typeof cloudflareQueueSchema>;
 
-export const cloudflareQueueConsumerSchema = t.object({
-  consumer_id: t.string(),
-  service: t.string(),
-  environment: t.optional(t.string()),
+export const cloudflareQueueConsumerSchema = z.object({
+  consumer_id: z.string(),
+  service: z.string(),
+  environment: z.string().optional(),
 });
 
 export type CloudflareQueueConsumer = Static<
@@ -74,13 +74,13 @@ export type CloudflareQueueConsumer = Static<
 // Hyperdrive
 // ---------------------------------------------------------------------------
 
-export const cloudflareHyperdriveOriginSchema = t.object({
-  host: t.string(),
+export const cloudflareHyperdriveOriginSchema = z.object({
+  host: z.string(),
 });
 
-export const cloudflareHyperdriveSchema = t.object({
-  id: t.string(),
-  name: t.string(),
+export const cloudflareHyperdriveSchema = z.object({
+  id: z.string(),
+  name: z.string(),
   origin: cloudflareHyperdriveOriginSchema,
 });
 
@@ -90,10 +90,10 @@ export type CloudflareHyperdrive = Static<typeof cloudflareHyperdriveSchema>;
 // Worker
 // ---------------------------------------------------------------------------
 
-export const cloudflareWorkerSchema = t.object({
-  id: t.string(),
-  created_on: t.string(),
-  modified_on: t.string(),
+export const cloudflareWorkerSchema = z.object({
+  id: z.string(),
+  created_on: z.string(),
+  modified_on: z.string(),
 });
 
 export type CloudflareWorker = Static<typeof cloudflareWorkerSchema>;
@@ -102,48 +102,48 @@ export type CloudflareWorker = Static<typeof cloudflareWorkerSchema>;
 // Deployment
 // ---------------------------------------------------------------------------
 
-export const cloudflareDeploymentVersionSchema = t.object({
-  version_id: t.string(),
-  percentage: t.number(),
+export const cloudflareDeploymentVersionSchema = z.object({
+  version_id: z.string(),
+  percentage: z.number(),
 });
 
-export const cloudflareDeploymentSchema = t.object({
-  id: t.string(),
-  versions: t.array(cloudflareDeploymentVersionSchema),
-  created_on: t.string(),
+export const cloudflareDeploymentSchema = z.object({
+  id: z.string(),
+  versions: z.array(cloudflareDeploymentVersionSchema),
+  created_on: z.string(),
 });
 
 export type CloudflareDeployment = Static<typeof cloudflareDeploymentSchema>;
 
-export const cloudflareDeploymentListSchema = t.object({
-  deployments: t.array(cloudflareDeploymentSchema),
+export const cloudflareDeploymentListSchema = z.object({
+  deployments: z.array(cloudflareDeploymentSchema),
 });
 
 // ---------------------------------------------------------------------------
 // Version
 // ---------------------------------------------------------------------------
 
-export const cloudflareVersionSchema = t.object({
-  id: t.string(),
-  metadata: t.object({
-    created_on: t.string(),
+export const cloudflareVersionSchema = z.object({
+  id: z.string(),
+  metadata: z.object({
+    created_on: z.string(),
   }),
-  annotations: t.optional(t.record(t.string(), t.string())),
+  annotations: z.record(z.string(), z.string()).optional(),
 });
 
 export type CloudflareVersion = Static<typeof cloudflareVersionSchema>;
 
-export const cloudflareVersionListSchema = t.object({
-  items: t.array(cloudflareVersionSchema),
+export const cloudflareVersionListSchema = z.object({
+  items: z.array(cloudflareVersionSchema),
 });
 
 // ---------------------------------------------------------------------------
 // Secret
 // ---------------------------------------------------------------------------
 
-export const cloudflareSecretSchema = t.object({
-  name: t.string(),
-  type: t.string(),
+export const cloudflareSecretSchema = z.object({
+  name: z.string(),
+  type: z.string(),
 });
 
 export type CloudflareSecret = Static<typeof cloudflareSecretSchema>;
@@ -152,18 +152,18 @@ export type CloudflareSecret = Static<typeof cloudflareSecretSchema>;
 // Request bodies
 // ---------------------------------------------------------------------------
 
-export const createD1BodySchema = t.object({
-  name: t.string(),
-  primary_location_hint: t.optional(t.string()),
-  jurisdiction: t.optional(t.string()),
+export const createD1BodySchema = z.object({
+  name: z.string(),
+  primary_location_hint: z.string().optional(),
+  jurisdiction: z.string().optional(),
 });
 
-export const createKVBodySchema = t.object({
-  title: t.string(),
+export const createKVBodySchema = z.object({
+  title: z.string(),
 });
 
-export const createR2BodySchema = t.object({
-  name: t.string(),
+export const createR2BodySchema = z.object({
+  name: z.string(),
 });
 
 // ---------------------------------------------------------------------------
@@ -171,56 +171,56 @@ export const createR2BodySchema = t.object({
 // minted from a wrangler bearer token, revoked immediately after use)
 // ---------------------------------------------------------------------------
 
-export const cloudflareR2TokenSchema = t.object({
-  id: t.string(),
-  accessKeyId: t.string(),
-  secretAccessKey: t.string(),
+export const cloudflareR2TokenSchema = z.object({
+  id: z.string(),
+  accessKeyId: z.string(),
+  secretAccessKey: z.string(),
 });
 
 export type CloudflareR2Token = Static<typeof cloudflareR2TokenSchema>;
 
-export const createR2TokenBodySchema = t.object({
-  name: t.string(),
-  policies: t.array(
-    t.object({
-      effect: t.string(),
-      permissions: t.array(t.string()),
-      buckets: t.optional(t.array(t.string())),
+export const createR2TokenBodySchema = z.object({
+  name: z.string(),
+  policies: z.array(
+    z.object({
+      effect: z.string(),
+      permissions: z.array(z.string()),
+      buckets: z.array(z.string()).optional(),
     }),
   ),
 });
 
-export const createQueueBodySchema = t.object({
-  queue_name: t.string(),
+export const createQueueBodySchema = z.object({
+  queue_name: z.string(),
 });
 
-export const createHyperdriveOriginSchema = t.object({
-  scheme: t.string(),
-  host: t.string(),
-  port: t.number(),
-  database: t.string(),
-  user: t.string(),
-  password: t.string(),
+export const createHyperdriveOriginSchema = z.object({
+  scheme: z.string(),
+  host: z.string(),
+  port: z.number(),
+  database: z.string(),
+  user: z.string(),
+  password: z.string(),
 });
 
-export const createHyperdriveBodySchema = t.object({
-  name: t.string(),
+export const createHyperdriveBodySchema = z.object({
+  name: z.string(),
   origin: createHyperdriveOriginSchema,
 });
 
-export const putSecretBodySchema = t.object({
-  name: t.string(),
-  text: t.string(),
-  type: t.string(),
+export const putSecretBodySchema = z.object({
+  name: z.string(),
+  text: z.string(),
+  type: z.string(),
 });
 
 // ---------------------------------------------------------------------------
 // API envelope
 // ---------------------------------------------------------------------------
 
-export const cloudflareApiErrorSchema = t.object({
-  code: t.number(),
-  message: t.string(),
+export const cloudflareApiErrorSchema = z.object({
+  code: z.number(),
+  message: z.string(),
 });
 
 export type CloudflareApiError = Static<typeof cloudflareApiErrorSchema>;

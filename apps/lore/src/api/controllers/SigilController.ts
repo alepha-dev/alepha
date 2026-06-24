@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { $inject, type Static, t } from "alepha";
+import { $inject, type Static, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -13,11 +13,11 @@ import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
  * gates nothing, and the UI never needs it (the copy-snippet and the ingest
  * path both key off the `id`).
  */
-const sigilResourceSchema = t.object({
-  id: t.uuid(),
-  campaignId: t.integer(),
-  label: t.string(),
-  createdAt: t.datetime(),
+const sigilResourceSchema = z.object({
+  id: z.uuid(),
+  campaignId: z.integer(),
+  label: z.string(),
+  createdAt: z.datetime(),
 });
 
 /**
@@ -28,16 +28,17 @@ const sigilResourceSchema = t.object({
  */
 export type SigilResource = Static<typeof sigilResourceSchema>;
 
-const sigilBodySchema = t.object({
-  label: t.string({ minLength: 1, maxLength: 200 }),
+const sigilBodySchema = z.object({
+  label: z.string().min(1).max(200),
   /**
    * Server-side authorization kinds. Not exposed in the UI / MCP (a sigil is
    * just a named id there); omitting it grants ALL kinds. Kept on the API for
    * programmatic callers that want to scope a sigil's ingest gate.
    */
-  kinds: t.optional(
-    t.array(t.enum([...SIGIL_KINDS], { mode: "text" }), { maxItems: 10 }),
-  ),
+  kinds: z
+    .array(z.enum([...SIGIL_KINDS]).meta({ mode: "text" }))
+    .max(10)
+    .optional(),
 });
 
 /**
@@ -65,7 +66,7 @@ export class SigilController {
     method: "POST",
     path: "/c/:campaignId/sigils",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
+      params: z.object({ campaignId: z.integer() }),
       body: sigilBodySchema,
       response: sigilResourceSchema,
     },
@@ -100,8 +101,8 @@ export class SigilController {
     method: "GET",
     path: "/c/:campaignId/sigils",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      response: t.object({ items: t.array(sigilResourceSchema) }),
+      params: z.object({ campaignId: z.integer() }),
+      response: z.object({ items: z.array(sigilResourceSchema) }),
     },
     handler: async ({ params, user }) => {
       await this.security.assertOwner(params.campaignId, user);
@@ -125,7 +126,7 @@ export class SigilController {
     method: "PATCH",
     path: "/c/:campaignId/sigils/:id",
     schema: {
-      params: t.object({ campaignId: t.integer(), id: t.uuid() }),
+      params: z.object({ campaignId: z.integer(), id: z.uuid() }),
       body: sigilBodySchema,
       response: sigilResourceSchema,
     },
@@ -151,7 +152,7 @@ export class SigilController {
     method: "DELETE",
     path: "/c/:campaignId/sigils/:id",
     schema: {
-      params: t.object({ campaignId: t.integer(), id: t.uuid() }),
+      params: z.object({ campaignId: z.integer(), id: z.uuid() }),
       response: okSchema,
     },
     handler: async ({ params, user }) => {

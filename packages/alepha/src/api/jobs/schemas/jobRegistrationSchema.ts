@@ -1,24 +1,25 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const jobRegistrationSchema = t.object({
-  name: t.text(),
-  description: t.optional(t.text()),
-  type: t.enum(["cron", "queue", "direct"], {
-    description:
+export const jobRegistrationSchema = z.object({
+  name: z.text(),
+  description: z.text().optional(),
+  type: z
+    .enum(["cron", "queue", "direct"])
+    .describe(
       "Effective runtime mode. 'cron' = scheduled. 'queue' = push-driven, dispatched via AlephaApiJobsQueue. 'direct' = push-driven, processed in-process (no queue infrastructure loaded), with the sweep as the safety net.",
-  }),
-  priority: t.enum(["critical", "high", "normal", "low"]),
-  cron: t.optional(t.text()),
-  timeout: t.optional(t.text()),
-  retry: t.optional(
-    t.object({
-      retries: t.integer(),
-    }),
-  ),
-  recent: t.object({
-    ok: t.integer(),
-    error: t.integer(),
-    lastRun: t.optional(t.datetime()),
+    ),
+  priority: z.enum(["critical", "high", "normal", "low"]),
+  cron: z.text().optional(),
+  timeout: z.text().optional(),
+  retry: z
+    .object({
+      retries: z.integer(),
+    })
+    .optional(),
+  recent: z.object({
+    ok: z.integer(),
+    error: z.integer(),
+    lastRun: z.datetime().optional(),
   }),
 });
 

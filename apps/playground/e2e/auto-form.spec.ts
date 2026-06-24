@@ -54,8 +54,10 @@ test.describe("AutoForm demo — schema-driven flow", () => {
     await username.blur();
     await page.getByRole("button", { name: "Save" }).click();
 
-    // inline message under the field
-    await expect(page.getByRole("alert").first()).toContainText(/fewer than 2/);
+    // inline message under the field (zod's standard "Too small" phrasing)
+    await expect(page.getByRole("alert").first()).toContainText(
+      /2 characters/i,
+    );
     // form-level error icon in the bottom bar
     await expect(
       page.getByRole("button", { name: "Form errors" }),

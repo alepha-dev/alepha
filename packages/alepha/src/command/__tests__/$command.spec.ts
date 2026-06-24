@@ -1,4 +1,4 @@
-import { Alepha, AlephaError, t } from "alepha";
+import { Alepha, AlephaError, z } from "alepha";
 import {
   LogDestinationProvider,
   MemoryDestinationProvider,
@@ -21,20 +21,18 @@ describe("$command", () => {
       greet = $command({
         description: "A simple greeting command.",
         aliases: ["g"],
-        flags: t.object({
-          name: t.text({ description: "Name to greet." }),
-          times: t.optional(t.integer({ default: 1 })),
+        flags: z.object({
+          name: z.text({ description: "Name to greet." }),
+          times: z.integer().default(1).optional(),
         }),
         handler: mockHandlers.greet,
       });
 
       deploy = $command({
         description: "Deploys the application.",
-        flags: t.object({
-          production: t.optional(
-            t.boolean({ description: "Deploy to production." }),
-          ),
-          "api-key": t.text({
+        flags: z.object({
+          production: z.boolean().describe("Deploy to production.").optional(),
+          "api-key": z.text({
             description: "API key for deployment.",
             aliases: ["key"],
           }),
@@ -240,8 +238,8 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command",
-          flags: t.object({
-            output: t.text({ alias: "o" }),
+          flags: z.object({
+            output: z.text({ alias: "o" }),
           }),
           handler: mockHandler,
         });
@@ -263,10 +261,10 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with JSON flag",
-          flags: t.object({
-            data: t.object({
-              name: t.string(),
-              age: t.number(),
+          flags: z.object({
+            data: z.object({
+              name: z.string(),
+              age: z.number(),
             }),
           }),
           handler: mockHandler,
@@ -290,8 +288,8 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with array flag",
-          flags: t.object({
-            items: t.array(t.string()),
+          flags: z.object({
+            items: z.array(z.string()),
           }),
           handler: mockHandler,
         });
@@ -340,9 +338,12 @@ describe("$command", () => {
     });
 
     test("should throw a CommandError for invalid flag types", async () => {
+      // Strict-zod: flag values are cast + validated via parseArgumentValue
+      // (same path as positional args), which rejects non-numeric integer flags
+      // up front rather than deferring to the (typebox-style) decode message.
       await expect(() =>
         setupTestCommands(["greet", "--name=Test", "--times=not-a-number"]),
-      ).rejects.toThrow("Invalid flag: /times must be integer");
+      ).rejects.toThrow('Expected number, got "not-a-number"');
     });
   });
 
@@ -392,7 +393,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with string arg",
-          args: t.text(),
+          args: z.text(),
           handler: mockHandler,
         });
       }
@@ -412,7 +413,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with number arg",
-          args: t.number(),
+          args: z.number(),
           handler: mockHandler,
         });
       }
@@ -429,7 +430,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with integer arg",
-          args: t.integer(),
+          args: z.integer(),
           handler: mockHandler,
         });
       }
@@ -446,7 +447,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with boolean arg",
-          args: t.boolean(),
+          args: z.boolean(),
           handler: mockHandler,
         });
       }
@@ -467,7 +468,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with optional string arg",
-          args: t.optional(t.text()),
+          args: z.text().optional(),
           handler: mockHandler,
         });
       }
@@ -486,7 +487,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with optional string arg",
-          args: t.optional(t.text()),
+          args: z.text().optional(),
           handler: mockHandler,
         });
       }
@@ -503,7 +504,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with tuple args",
-          args: t.tuple([t.text(), t.number()]),
+          args: z.tuple([z.text(), z.number()]),
           handler: mockHandler,
         });
       }
@@ -522,7 +523,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with tuple containing optional arg",
-          args: t.tuple([t.text(), t.optional(t.number())]),
+          args: z.tuple([z.text(), z.number().optional()]),
           handler: mockHandler,
         });
       }
@@ -539,10 +540,10 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with args and flags",
-          flags: t.object({
-            verbose: t.optional(t.boolean()),
+          flags: z.object({
+            verbose: z.boolean().optional(),
           }),
-          args: t.tuple([t.text(), t.number()]),
+          args: z.tuple([z.text(), z.number()]),
           handler: mockHandler,
         });
       }
@@ -563,10 +564,10 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with args and space-separated flags",
-          flags: t.object({
-            output: t.text(),
+          flags: z.object({
+            output: z.text(),
           }),
-          args: t.text(),
+          args: z.text(),
           handler: mockHandler,
         });
       }
@@ -587,11 +588,11 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with tuple args and space-separated flags",
-          flags: t.object({
-            config: t.text(),
-            verbose: t.optional(t.boolean()),
+          flags: z.object({
+            config: z.text(),
+            verbose: z.boolean().optional(),
           }),
-          args: t.tuple([t.text(), t.number()]),
+          args: z.tuple([z.text(), z.number()]),
           handler: mockHandler,
         });
       }
@@ -631,7 +632,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with required arg",
-          args: t.text(),
+          args: z.text(),
           handler: vi.fn(),
         });
       }
@@ -645,7 +646,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with number arg",
-          args: t.number(),
+          args: z.number(),
           handler: vi.fn(),
         });
       }
@@ -659,7 +660,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with integer arg",
-          args: t.integer(),
+          args: z.integer(),
           handler: vi.fn(),
         });
       }
@@ -673,7 +674,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with boolean arg",
-          args: t.boolean(),
+          args: z.boolean(),
           handler: vi.fn(),
         });
       }
@@ -687,7 +688,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with tuple args",
-          args: t.tuple([t.text(), t.number()]),
+          args: z.tuple([z.text(), z.number()]),
           handler: vi.fn(),
         });
       }
@@ -706,7 +707,7 @@ describe("$command", () => {
         root = $command({
           name: "",
           description: "Root command with string arg",
-          args: t.text(),
+          args: z.text(),
           handler: mockHandler,
         });
       }
@@ -725,7 +726,7 @@ describe("$command", () => {
         root = $command({
           name: "",
           description: "Root command with optional arg",
-          args: t.optional(t.text()),
+          args: z.text().optional(),
           handler: mockHandler,
         });
       }
@@ -743,7 +744,7 @@ describe("$command", () => {
         root = $command({
           name: "",
           description: "Root command with optional arg",
-          args: t.optional(t.text()),
+          args: z.text().optional(),
           handler: mockHandler,
         });
       }
@@ -761,7 +762,7 @@ describe("$command", () => {
         root = $command({
           name: "",
           description: "Root command with tuple args",
-          args: t.tuple([t.text(), t.number()]),
+          args: z.tuple([z.text(), z.number()]),
           handler: mockHandler,
         });
       }
@@ -779,10 +780,10 @@ describe("$command", () => {
         root = $command({
           name: "",
           description: "Root command with args and flags",
-          flags: t.object({
-            verbose: t.optional(t.boolean()),
+          flags: z.object({
+            verbose: z.boolean().optional(),
           }),
-          args: t.text(),
+          args: z.text(),
           handler: mockHandler,
         });
       }
@@ -804,10 +805,10 @@ describe("$command", () => {
         root = $command({
           name: "",
           description: "Root command with space-separated flags",
-          flags: t.object({
-            config: t.text(),
+          flags: z.object({
+            config: z.text(),
           }),
-          args: t.text(),
+          args: z.text(),
           handler: mockHandler,
         });
       }
@@ -827,7 +828,7 @@ describe("$command", () => {
         root = $command({
           name: "",
           description: "Root command with required arg",
-          args: t.text(),
+          args: z.text(),
           handler: vi.fn(),
         });
       }
@@ -846,16 +847,14 @@ describe("$command", () => {
         root = $command({
           name: "",
           description: "Root command",
-          flags: t.object({
-            verbose: t.optional(
-              t.boolean({ description: "Enable verbose output." }),
-            ),
-            config: t.optional(
-              t.text({
+          flags: z.object({
+            verbose: z.boolean().describe("Enable verbose output.").optional(),
+            config: z
+              .text({
                 description: "Path to config file.",
                 alias: "c",
-              }),
-            ),
+              })
+              .optional(),
           }),
           handler: mockRootHandler,
         });
@@ -886,9 +885,9 @@ describe("$command", () => {
         root = $command({
           name: "",
           description: "Root command",
-          flags: t.object({
-            verbose: t.optional(t.boolean({ description: "Verbose mode." })),
-            output: t.text({ description: "Output file." }),
+          flags: z.object({
+            verbose: z.boolean().describe("Verbose mode.").optional(),
+            output: z.text({ description: "Output file." }),
           }),
           handler: mockRootHandler,
         });
@@ -912,7 +911,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with string arg",
-          args: t.text(),
+          args: z.text(),
           handler: vi.fn(),
         });
       }
@@ -936,7 +935,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with optional arg",
-          args: t.optional(t.text()),
+          args: z.text().optional(),
           handler: vi.fn(),
         });
       }
@@ -960,7 +959,7 @@ describe("$command", () => {
       class TestCommand {
         cmd = $command({
           description: "Test command with tuple args",
-          args: t.tuple([t.text(), t.optional(t.number())]),
+          args: z.tuple([z.text(), z.number().optional()]),
           handler: vi.fn(),
         });
       }
@@ -1081,8 +1080,8 @@ describe("$command", () => {
         child = $command({
           name: "vercel",
           description: "Deploy to Vercel",
-          flags: t.object({
-            prod: t.optional(t.boolean()),
+          flags: z.object({
+            prod: z.boolean().optional(),
           }),
           handler: mockHandler,
         });
@@ -1110,7 +1109,7 @@ describe("$command", () => {
         child = $command({
           name: "surge",
           description: "Deploy to Surge",
-          args: t.optional(t.text()),
+          args: z.text().optional(),
           handler: mockHandler,
         });
 
@@ -1250,8 +1249,8 @@ describe("$command", () => {
       class TestCommands {
         cmd = $command({
           name: "test",
-          env: t.object({
-            MY_TOKEN: t.text({ description: "API token" }),
+          env: z.object({
+            MY_TOKEN: z.text({ description: "API token" }),
           }),
           handler: ({ env }) => {
             receivedEnv = env;
@@ -1274,8 +1273,8 @@ describe("$command", () => {
       class TestCommands {
         cmd = $command({
           name: "test",
-          env: t.object({
-            REQUIRED_VAR: t.text({ description: "Required variable" }),
+          env: z.object({
+            REQUIRED_VAR: z.text({ description: "Required variable" }),
           }),
           handler: vi.fn(),
         });
@@ -1295,8 +1294,8 @@ describe("$command", () => {
       class TestCommands {
         cmd = $command({
           name: "test",
-          env: t.object({
-            OPTIONAL_VAR: t.optional(t.text({ description: "Optional" })),
+          env: z.object({
+            OPTIONAL_VAR: z.text({ description: "Optional" }).optional(),
           }),
           handler: ({ env }) => {
             receivedEnv = env;
@@ -1317,8 +1316,8 @@ describe("$command", () => {
       class TestCommands {
         cmd = $command({
           name: "test",
-          env: t.object({
-            MY_VAR: t.optional(t.text({ default: "default_value" })),
+          env: z.object({
+            MY_VAR: z.text({ default: "default_value" }).optional(),
           }),
           handler: ({ env }) => {
             receivedEnv = env;
@@ -1337,9 +1336,9 @@ describe("$command", () => {
       class TestCommands {
         cmd = $command({
           name: "test",
-          env: t.object({
-            API_TOKEN: t.text({ description: "API token for authentication" }),
-            ORG_ID: t.optional(t.text({ description: "Organization ID" })),
+          env: z.object({
+            API_TOKEN: z.text({ description: "API token for authentication" }),
+            ORG_ID: z.text({ description: "Organization ID" }).optional(),
           }),
           handler: vi.fn(),
         });
@@ -1368,9 +1367,9 @@ describe("$command", () => {
       class TestCommands {
         cmd = $command({
           name: "test",
-          env: t.object({
-            VAR_ONE: t.text(),
-            VAR_TWO: t.text(),
+          env: z.object({
+            VAR_ONE: z.text(),
+            VAR_TWO: z.text(),
           }),
           handler: vi.fn(),
         });

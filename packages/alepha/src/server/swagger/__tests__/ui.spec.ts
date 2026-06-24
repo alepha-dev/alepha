@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, test } from "vitest";
 import { $swagger } from "../index.ts";
@@ -16,8 +16,8 @@ class App {
 
   hello = $action({
     schema: {
-      response: t.object({
-        message: t.text(),
+      response: z.object({
+        message: z.text(),
       }),
     },
     handler: async () => {

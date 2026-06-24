@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, expect, test } from "vitest";
 import {
   $prompt,
@@ -16,8 +16,8 @@ describe("$prompt primitive", () => {
     class Prompts {
       greeting = $prompt({
         description: "Generate a greeting",
-        args: t.object({
-          name: t.text(),
+        args: z.object({
+          name: z.text(),
         }),
         handler: async ({ args }) => [
           { role: "user", content: `Say hello to ${args.name}` },
@@ -63,9 +63,9 @@ describe("$prompt primitive", () => {
     class Prompts {
       review = $prompt({
         description: "Request a code review",
-        args: t.object({
-          code: t.text(),
-          language: t.text(),
+        args: z.object({
+          code: z.text(),
+          language: z.text(),
         }),
         handler: async ({ args }) => [
           {
@@ -99,9 +99,9 @@ describe("$prompt primitive", () => {
     class Prompts {
       typed = $prompt({
         description: "Typed prompt",
-        args: t.object({
-          name: t.text(),
-          count: t.number(),
+        args: z.object({
+          name: z.text(),
+          count: z.number(),
         }),
         handler: async ({ args }) => [
           {
@@ -129,8 +129,8 @@ describe("$prompt primitive", () => {
     class Prompts {
       validated = $prompt({
         description: "Validated prompt",
-        args: t.object({
-          required: t.text(),
+        args: z.object({
+          required: z.text(),
         }),
         handler: async ({ args }) => [{ role: "user", content: args.required }],
       });
@@ -172,8 +172,8 @@ describe("$prompt primitive", () => {
     class Prompts {
       conversation = $prompt({
         description: "Multi-turn prompt",
-        args: t.object({
-          topic: t.text(),
+        args: z.object({
+          topic: z.text(),
         }),
         handler: async ({ args }) => [
           { role: "user", content: `Let's discuss ${args.topic}` },
@@ -206,11 +206,9 @@ describe("$prompt primitive", () => {
       complex = $prompt({
         name: "complex-prompt",
         description: "A complex prompt with args",
-        args: t.object({
-          required: t.text({ description: "A required argument" }),
-          optional: t.optional(
-            t.number({ description: "An optional argument" }),
-          ),
+        args: z.object({
+          required: z.text({ description: "A required argument" }),
+          optional: z.number().describe("An optional argument").optional(),
         }),
         handler: async () => [{ role: "user", content: "test" }],
       });
@@ -288,9 +286,9 @@ describe("$prompt primitive", () => {
     class Prompts {
       optional = $prompt({
         description: "Prompt with optional args",
-        args: t.object({
-          name: t.text(),
-          style: t.optional(t.enum(["formal", "casual"])),
+        args: z.object({
+          name: z.text(),
+          style: z.enum(["formal", "casual"]).optional(),
         }),
         handler: async ({ args }) => [
           {
@@ -432,8 +430,8 @@ describe("$prompt primitive", () => {
     class Prompts {
       rolePrompt = $prompt({
         description: "Role-based prompt",
-        args: t.object({
-          task: t.text(),
+        args: z.object({
+          task: z.text(),
         }),
         handler: async ({ args, context }) => {
           const authContext = context?.data as AuthContext | undefined;

@@ -1,4 +1,4 @@
-import { $atom, $state, type Static, t } from "alepha";
+import { $atom, $state, type Static, z } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -7,7 +7,7 @@ import { $atom, $state, type Static, t } from "alepha";
  */
 export const auditOptions = $atom({
   name: "alepha.api.audits.options",
-  schema: t.object({
+  schema: z.object({
     /**
      * Default number of days audit entries are retained before the periodic
      * cleanup job ({@link AuditJobs}) deletes them.
@@ -16,12 +16,13 @@ export const auditOptions = $atom({
      * `retentionDays`. Set to `0` to disable automatic cleanup of those types
      * entirely (keep them forever).
      */
-    retentionDays: t.integer({
-      description:
+    retentionDays: z
+      .integer()
+      .min(0)
+      .describe(
         "Default days to retain audit entries before cleanup. 0 disables cleanup.",
-      minimum: 0,
-      default: 90,
-    }),
+      )
+      .default(90),
   }),
   default: {
     retentionDays: 90,

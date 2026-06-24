@@ -1,15 +1,12 @@
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 
 export const invitationConfigAtom = $atom({
   name: "alepha.api.invitations.config",
-  schema: t.object({
-    expirationDays: t.integer({ minimum: 1, maximum: 90 }),
-    maxPendingPerResource: t.integer({ minimum: 1, maximum: 500 }),
-    maxPendingPerInviter: t.integer({
-      minimum: 1,
-      maximum: 1000,
-    }),
-    purgeDays: t.integer({ minimum: 0, maximum: 365 }),
+  schema: z.object({
+    expirationDays: z.integer().min(1).max(90),
+    maxPendingPerResource: z.integer().min(1).max(500),
+    maxPendingPerInviter: z.integer().min(1).max(1000),
+    purgeDays: z.integer().min(0).max(365),
   }),
   default: {
     expirationDays: 7,

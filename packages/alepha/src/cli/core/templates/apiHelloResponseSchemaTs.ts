@@ -1,9 +1,9 @@
 export const apiHelloResponseSchemaTs = () => {
-  return `import { type Static, t } from "alepha";
+  return `import { type Static, z } from "alepha";
 
-export const helloResponseSchema = t.object({
-  appName: t.text(),
-  serverTime: t.datetime(),
+export const helloResponseSchema = z.object({
+  appName: z.text(),
+  serverTime: z.datetime(),
 });
 
 export type HelloResponse = Static<typeof helloResponseSchema>;

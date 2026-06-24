@@ -1,27 +1,23 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const registrationIntentResponseSchema = t.object({
-  intentId: t.uuid({
-    description: "Unique identifier for the registration intent",
-  }),
-  expectCaptcha: t.boolean({
-    description: "Whether captcha verification is required",
-  }),
-  captchaSiteKey: t.optional(
-    t.string({
-      description:
-        "Public site key the client should render (when expectCaptcha is true)",
-    }),
-  ),
-  expectEmailVerification: t.boolean({
-    description: "Whether email verification is required",
-  }),
-  expectPhoneVerification: t.boolean({
-    description: "Whether phone verification is required",
-  }),
-  expiresAt: t.datetime({
-    description: "When the registration intent expires",
-  }),
+export const registrationIntentResponseSchema = z.object({
+  intentId: z.uuid().describe("Unique identifier for the registration intent"),
+  expectCaptcha: z
+    .boolean()
+    .describe("Whether captcha verification is required"),
+  captchaSiteKey: z
+    .string()
+    .describe(
+      "Public site key the client should render (when expectCaptcha is true)",
+    )
+    .optional(),
+  expectEmailVerification: z
+    .boolean()
+    .describe("Whether email verification is required"),
+  expectPhoneVerification: z
+    .boolean()
+    .describe("Whether phone verification is required"),
+  expiresAt: z.datetime().describe("When the registration intent expires"),
 });
 
 export type RegistrationIntentResponse = Static<

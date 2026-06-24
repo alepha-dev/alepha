@@ -12,7 +12,7 @@ import {
   AlephaError,
   type FileLike,
   type Static,
-  t,
+  z,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
@@ -28,10 +28,10 @@ import type { FileStorageProvider } from "./FileStorageProvider.ts";
  */
 export const localFileStorageOptions = $atom({
   name: "alepha.bucket.local.options",
-  schema: t.object({
-    storagePath: t.string({
-      description: "Directory path where files will be stored",
-    }),
+  schema: z.object({
+    storagePath: z
+      .string()
+      .describe("Directory path where files will be stored"),
   }),
   default: {
     storagePath: "node_modules/.alepha/buckets",

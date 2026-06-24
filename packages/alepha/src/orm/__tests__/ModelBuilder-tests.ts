@@ -1,5 +1,5 @@
 import type { Alepha } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 import { sql } from "drizzle-orm";
 import { expect } from "vitest";
 import { $entity, $repository } from "../core/index.ts";
@@ -11,10 +11,10 @@ import { db } from "../core/providers/DatabaseTypeProvider.ts";
 
 const roleEntity = $entity({
   name: "roles",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.string(),
-    description: t.optional(t.string()),
+    name: z.string(),
+    description: z.string().optional(),
   }),
   indexes: ["name"],
   constraints: [
@@ -28,13 +28,13 @@ const roleEntity = $entity({
 
 const userEntity = $entity({
   name: "users",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    email: t.email(),
-    username: t.string(),
-    age: t.integer(),
-    roleId: t.integer(),
-    status: t.string(),
+    email: z.email(),
+    username: z.string(),
+    age: z.integer(),
+    roleId: z.integer(),
+    status: z.string(),
   }),
   indexes: [
     "email",
@@ -70,14 +70,14 @@ const userEntity = $entity({
 
 const postEntity = $entity({
   name: "posts",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    userId: t.integer(),
-    title: t.string(),
-    content: t.text(),
-    published: t.boolean(),
-    views: t.integer(),
-    tags: t.optional(t.array(t.string())),
+    userId: z.integer(),
+    title: z.string(),
+    content: z.text(),
+    published: z.boolean(),
+    views: z.integer(),
+    tags: z.array(z.string()).optional(),
   }),
   indexes: [
     "title",
@@ -309,9 +309,9 @@ export const testModelBuilderFeatures = async (alepha: Alepha) => {
 export const testCustomConfig = async (alepha: Alepha) => {
   const customEntity = $entity({
     name: "custom_table",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      data: t.string(),
+      data: z.string(),
     }),
     config: (self) => {
       return [];
@@ -341,9 +341,9 @@ export const testCustomConfig = async (alepha: Alepha) => {
 export const testComplexRelationships = async (alepha: Alepha) => {
   const categoryEntity = $entity({
     name: "categories",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      name: t.string(),
+      name: z.string(),
     }),
     indexes: [
       {
@@ -355,11 +355,11 @@ export const testComplexRelationships = async (alepha: Alepha) => {
 
   const productEntity = $entity({
     name: "products",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      name: t.string(),
-      categoryId: t.integer(),
-      price: t.number(),
+      name: z.string(),
+      categoryId: z.integer(),
+      price: z.number(),
     }),
     indexes: [
       "name",
@@ -429,10 +429,10 @@ export const testComplexRelationships = async (alepha: Alepha) => {
 
 const usersWithLowerIndex = $entity({
   name: "users_lower",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    realm: t.text(),
-    username: t.text(),
+    realm: z.text(),
+    username: z.text(),
   }),
   indexes: [
     {

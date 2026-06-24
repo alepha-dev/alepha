@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $issuer, $permission, $secure, AlephaSecurity } from "alepha/security";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
@@ -73,7 +73,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         publicAction = $action({
-          schema: { response: t.text() },
+          schema: { response: z.text() },
           handler: () => "PUBLIC",
         });
         issuer = $issuer({
@@ -103,7 +103,7 @@ describe("ServerLinksProvider", () => {
       class App {
         securedAction = $action({
           use: [$secure()],
-          schema: { response: t.text() },
+          schema: { response: z.text() },
           handler: () => "SECURED",
         });
         issuer = $issuer({
@@ -132,7 +132,7 @@ describe("ServerLinksProvider", () => {
       class App {
         securedAction = $action({
           use: [$secure()],
-          schema: { response: t.text() },
+          schema: { response: z.text() },
           handler: () => "SECURED",
         });
         issuer = $issuer({
@@ -163,12 +163,12 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         publicAction = $action({
-          schema: { response: t.text() },
+          schema: { response: z.text() },
           handler: () => "PUBLIC",
         });
         securedAction = $action({
           use: [$secure()],
-          schema: { response: t.text() },
+          schema: { response: z.text() },
           handler: () => "SECURED",
         });
         issuer = $issuer({
@@ -198,12 +198,12 @@ describe("ServerLinksProvider", () => {
       class App {
         adminOnly = $action({
           use: [$secure({ permissions: ["admin:manage"] })],
-          schema: { response: t.text() },
+          schema: { response: z.text() },
           handler: () => "ADMIN",
         });
         userAction = $action({
           use: [$secure({ permissions: ["user:read"] })],
-          schema: { response: t.text() },
+          schema: { response: z.text() },
           handler: () => "USER",
         });
         issuer = $issuer({
@@ -246,7 +246,7 @@ describe("ServerLinksProvider", () => {
       class App {
         authOnly = $action({
           use: [$secure()],
-          schema: { response: t.text() },
+          schema: { response: z.text() },
           handler: () => "AUTH_ONLY",
         });
         issuer = $issuer({
@@ -279,15 +279,15 @@ describe("ServerLinksProvider", () => {
       class App {
         getUsers = $action({
           path: "/users",
-          schema: { response: t.array(t.text()) },
+          schema: { response: z.array(z.text()) },
           handler: () => ["user1", "user2"],
         });
         createUser = $action({
           path: "/users",
           use: [$secure()],
           schema: {
-            body: t.object({ name: t.text() }),
-            response: t.text(),
+            body: z.object({ name: z.text() }),
+            response: z.text(),
           },
           handler: ({ body }) => body.name,
         });
@@ -296,8 +296,8 @@ describe("ServerLinksProvider", () => {
           path: "/users/:id",
           use: [$secure()],
           schema: {
-            params: t.object({ id: t.text() }),
-            response: t.void(),
+            params: z.object({ id: z.text() }),
+            response: z.void(),
           },
           handler: () => {},
         });
@@ -328,7 +328,7 @@ describe("ServerLinksProvider", () => {
       class App {
         getUsers = $action({
           path: "/users",
-          schema: { response: t.array(t.text()) },
+          schema: { response: z.array(z.text()) },
           handler: () => [],
         });
         teamManagement = $permission({
@@ -371,8 +371,8 @@ describe("ServerLinksProvider", () => {
       class App {
         ping = $action({
           schema: {
-            body: t.object({ message: t.text() }),
-            response: t.object({ pong: t.boolean() }),
+            body: z.object({ message: z.text() }),
+            response: z.object({ pong: z.boolean() }),
           },
           handler: () => ({ pong: true }),
         });
@@ -402,7 +402,7 @@ describe("ServerLinksProvider", () => {
     it("should return empty for unknown actions", async ({ expect }) => {
       class App {
         ping = $action({
-          schema: { response: t.text() },
+          schema: { response: z.text() },
           handler: () => "pong",
         });
       }
@@ -428,16 +428,16 @@ describe("ServerLinksProvider", () => {
       class App {
         publicAction = $action({
           schema: {
-            body: t.object({ name: t.text() }),
-            response: t.text(),
+            body: z.object({ name: z.text() }),
+            response: z.text(),
           },
           handler: () => "PUBLIC",
         });
         securedAction = $action({
           use: [$secure()],
           schema: {
-            body: t.object({ secret: t.text() }),
-            response: t.text(),
+            body: z.object({ secret: z.text() }),
+            response: z.text(),
           },
           handler: () => "SECURED",
         });
@@ -541,7 +541,7 @@ describe("ServerLinksProvider", () => {
     it("should serve cached response on second request", async ({ expect }) => {
       class App {
         ping = $action({
-          schema: { response: t.text() },
+          schema: { response: z.text() },
           handler: () => "pong",
         });
       }

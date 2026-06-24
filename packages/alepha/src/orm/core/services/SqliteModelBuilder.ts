@@ -4,8 +4,7 @@ import {
   type Static,
   type TObject,
   type TSchema,
-  type TString,
-  t,
+  z,
 } from "alepha";
 import { type BuildColumns, sql } from "drizzle-orm";
 import * as pg from "drizzle-orm/sqlite-core";
@@ -115,13 +114,14 @@ export class SqliteModelBuilder extends ModelBuilder {
     enums: Map<string, unknown>,
     tables: Map<string, unknown>,
   ): SchemaToSqliteBuilder<T> => {
-    return Object.entries(schema.properties).reduce<
+    return Object.entries(schema.properties as Record<string, any>).reduce<
       Partial<SchemaToSqliteBuilder<T>>
     >((columns, [key, value]) => {
       let col = this.mapFieldToSqliteColumn(tableName, key, value, enums);
 
-      if ("default" in value && value.default != null) {
-        col = col.default(value.default as any);
+      const defaultValue = z.schema.getDefault(value);
+      if (defaultValue != null) {
+        col = col.default(defaultValue as any);
       }
 
       if (PG_PRIMARY_KEY in value) {
@@ -160,7 +160,7 @@ export class SqliteModelBuilder extends ModelBuilder {
         });
       }
 
-      if (schema.required?.includes(key)) {
+      if (z.schema.requiredKeys(schema).includes(key)) {
         col = col.notNull();
       }
 
@@ -172,23 +172,15 @@ export class SqliteModelBuilder extends ModelBuilder {
   mapFieldToSqliteColumn = (
     tableName: string,
     fieldName: string,
-    value: TSchema,
+    value: any,
     enums: Map<string, any>,
   ) => {
     const key = this.toColumnName(fieldName);
 
-    if (
-      // is nullish ?
-      "anyOf" in value &&
-      Array.isArray(value.anyOf) &&
-      value.anyOf.length === 2 &&
-      value.anyOf.some((it: TSchema) => t.schema.isNull(it))
-    ) {
-      // then, remove nullish
-      value = value.anyOf.find((it: TSchema) => !t.schema.isNull(it))!;
-    }
+    // Peel optional / nullable / default wrappers to the underlying type.
+    value = z.schema.unwrap(value);
 
-    if (t.schema.isInteger(value)) {
+    if (z.schema.isInteger(value)) {
       if (PG_SERIAL in value || PG_IDENTITY in value) {
         return pg
           .integer(key, { mode: "number" })
@@ -198,7 +190,7 @@ export class SqliteModelBuilder extends ModelBuilder {
       return pg.integer(key);
     }
 
-    if (t.schema.isBigInt(value)) {
+    if (z.schema.isBigInt(value)) {
       if (PG_PRIMARY_KEY in value || PG_IDENTITY in value) {
         return pg
           .integer(key, { mode: "number" })
@@ -208,66 +200,64 @@ export class SqliteModelBuilder extends ModelBuilder {
       return pg.integer(key, { mode: "number" });
     }
 
-    if (t.schema.isNumber(value)) {
+    if (z.schema.isNumber(value)) {
       if (PG_IDENTITY in value) {
         return pg
           .integer(key, { mode: "number" })
           .primaryKey({ autoIncrement: true });
       }
 
-      return pg.numeric(key);
+      // Native real column — returns a JS number (sqlite `numeric` yields a
+      // string, which strict `z.number()` validation rejects).
+      return pg.real(key);
     }
 
-    if (t.schema.isString(value)) {
+    if (z.schema.isString(value)) {
       return this.mapStringToSqliteColumn(key, value);
     }
 
-    if (t.schema.isBoolean(value)) {
+    if (z.schema.isBoolean(value)) {
       return this.sqliteBool(key, value);
     }
 
-    if (t.schema.isObject(value)) {
+    if (z.schema.isObject(value)) {
       return this.sqliteJson(key, value);
     }
 
-    if (t.schema.isRecord(value)) {
+    if (z.schema.isRecord(value)) {
       return this.sqliteJson(key, value);
     }
 
-    if (t.schema.isAny(value)) {
+    if (z.schema.isAny(value)) {
       return this.sqliteJson(key, value);
     }
 
-    if (t.schema.isArray(value)) {
-      if (t.schema.isObject(value.items)) {
+    if (z.schema.isArray(value)) {
+      if (z.schema.isObject(value.items)) {
         return this.sqliteJson(key, value);
       }
-      if (t.schema.isRecord(value.items)) {
+      if (z.schema.isRecord(value.items)) {
         return this.sqliteJson(key, value);
       }
-      if (t.schema.isAny(value.items)) {
+      if (z.schema.isAny(value.items)) {
         return this.sqliteJson(key, value);
       }
-      if (t.schema.isString(value.items)) {
+      if (z.schema.isString(value.items)) {
         return this.sqliteJson(key, value);
       }
-      if (t.schema.isInteger(value.items)) {
+      if (z.schema.isInteger(value.items)) {
         return this.sqliteJson(key, value);
       }
-      if (t.schema.isNumber(value.items)) {
+      if (z.schema.isNumber(value.items)) {
         return this.sqliteJson(key, value);
       }
-      if (t.schema.isBoolean(value.items)) {
+      if (z.schema.isBoolean(value.items)) {
         return this.sqliteJson(key, value);
       }
     }
 
-    if (
-      t.schema.isUnsafe(value) &&
-      "type" in value &&
-      value.type === "string"
-    ) {
-      return this.mapStringToSqliteColumn(key, value as any);
+    if (z.schema.isEnum(value)) {
+      return this.mapStringToSqliteColumn(key, value);
     }
 
     throw new AlephaError(
@@ -275,8 +265,8 @@ export class SqliteModelBuilder extends ModelBuilder {
     );
   };
 
-  mapStringToSqliteColumn = (key: string, value: TString) => {
-    if (value.format === "uuid") {
+  mapStringToSqliteColumn = (key: string, value: any) => {
+    if (z.schema.format(value) === "uuid") {
       if (PG_PRIMARY_KEY in value) {
         return pg
           .text(key)
@@ -287,11 +277,11 @@ export class SqliteModelBuilder extends ModelBuilder {
       return pg.text(key);
     }
 
-    if (value.format === "byte") {
+    if (z.schema.format(value) === "binary") {
       return this.sqliteJson(key, value);
     }
 
-    if (value.format === "date-time") {
+    if (z.schema.format(value) === "date-time") {
       if (PG_CREATED_AT in value) {
         return this.sqliteDateTime(key, {}).default(
           sql`(unixepoch('subsec') * 1000)`,
@@ -305,7 +295,7 @@ export class SqliteModelBuilder extends ModelBuilder {
       return this.sqliteDateTime(key, {});
     }
 
-    if (value.format === "date") {
+    if (z.schema.format(value) === "date") {
       return this.sqliteDate(key, {});
     }
 

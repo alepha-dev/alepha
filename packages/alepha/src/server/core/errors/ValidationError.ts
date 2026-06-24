@@ -7,9 +7,12 @@ export class ValidationError extends HttpError {
     let details: string | undefined;
 
     if (cause instanceof TypeBoxError) {
-      fullMessage = `${message}: ${cause.cause.message}`;
-      if (cause.cause.instancePath) {
-        details = cause.cause.instancePath;
+      const path = cause.cause.instancePath;
+      fullMessage = `${message}: ${cause.cause.message}${
+        path ? ` (${path})` : ""
+      }`;
+      if (path) {
+        details = path;
       }
     }
 

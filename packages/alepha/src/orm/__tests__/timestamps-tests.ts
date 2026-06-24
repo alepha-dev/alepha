@@ -1,4 +1,4 @@
-import { type Alepha, t } from "alepha";
+import { type Alepha, z } from "alepha";
 import { expect } from "vitest";
 import { $entity, $repository } from "../core/index.ts";
 import { db } from "../core/providers/DatabaseTypeProvider.ts";
@@ -14,11 +14,11 @@ const parseDate = (dateValue: any): Date => {
 
 const articleEntity = $entity({
   name: "articles",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    title: t.string(),
-    content: t.text(),
-    status: t.string(),
+    title: z.string(),
+    content: z.text(),
+    status: z.string(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
   }),
@@ -34,13 +34,13 @@ const articleEntity = $entity({
 
 const userActivityEntity = $entity({
   name: "user_activities",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    userId: t.integer(),
-    action: t.string(),
-    metadata: t.optional(t.record(t.string(), t.any())),
+    userId: z.integer(),
+    action: z.string(),
+    metadata: z.record(z.string(), z.any()).optional(),
     createdAt: db.createdAt(),
-    updatedAt: t.optional(db.updatedAt()),
+    updatedAt: db.updatedAt().optional(),
   }),
 });
 
@@ -271,12 +271,12 @@ export const testTimestampIndexes = async (alepha: Alepha) => {
 export const testTimestampFormats = async (alepha: Alepha) => {
   const eventEntity = $entity({
     name: "events",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      name: t.string(),
+      name: z.string(),
       startTime: db.createdAt(),
-      endTime: t.optional(db.updatedAt()),
-      scheduledAt: t.string(),
+      endTime: db.updatedAt().optional(),
+      scheduledAt: z.string(),
     }),
   });
 

@@ -1,4 +1,4 @@
-import { $module, type Static, t } from "alepha";
+import { $module, type Static, z } from "alepha";
 import { $logger } from "./primitives/$logger.ts";
 import { CliFormatterProvider } from "./providers/CliFormatterProvider.ts";
 import { ConsoleColorProvider } from "./providers/ConsoleColorProvider.ts";
@@ -158,7 +158,7 @@ export const AlephaLogger = $module({
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const envSchema = t.object({
+const envSchema = z.object({
   /**
    * Enable debug logging for specific modules using the `debug` package convention.
    *
@@ -168,12 +168,12 @@ const envSchema = t.object({
    * DEBUG=alepha:orm:* # Enable debug logging for alepha.orm modules
    * DEBUG=* # Enable debug logging for all modules
    */
-  DEBUG: t.optional(
-    t.text({
+  DEBUG: z
+    .text({
       description:
         "Enable debug logging for specific modules using the debug package convention. Example: DEBUG=alepha:*",
-    }),
-  ),
+    })
+    .optional(),
 
   /**
    * Default log level for the application.
@@ -191,16 +191,16 @@ const envSchema = t.object({
    * LOG_LEVEL=my.module.name:debug,info # Set debug level for my.module.name and info for all other modules
    * LOG_LEVEL=alepha:trace, info # Set trace level for all alepha modules and info for all other modules
    */
-  LOG_LEVEL: t.optional(
-    t.text({
+  LOG_LEVEL: z
+    .text({
       description: `Application log level on startup.
 Levels are: trace, debug, info, warn, error, silent
 Level can be set for a specific module:
 "my.module.name:debug,info" -> Set debug level for my.module.name and info for all other modules
 "alepha:trace,info" -> Set trace level for all alepha modules and info for all other modules`,
       lowercase: true,
-    }),
-  ),
+    })
+    .optional(),
 
   /**
    * Built-in log formats.
@@ -209,12 +209,11 @@ Level can be set for a specific module:
    * - "cli" - Compact format for CLI sessions: time, level initial, message, json. {@link CliFormatterProvider}
    * - "raw" - Raw format, no formatting, just the message (best for piping). {@link RawFormatterProvider}
    */
-  LOG_FORMAT: t.optional(
-    t.enum(["json", "pretty", "raw", "cli"], {
-      description: "Default log format for the application.",
-      lowercase: true,
-    }),
-  ),
+  LOG_FORMAT: z
+    .enum(["json", "pretty", "raw", "cli"])
+    .meta({ lowercase: true })
+    .describe("Default log format for the application.")
+    .optional(),
 });
 
 // ---------------------------------------------------------------------------------------------------------------------

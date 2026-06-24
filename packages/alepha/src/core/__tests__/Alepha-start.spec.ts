@@ -1,4 +1,4 @@
-import { $env, $hook, $inject, Alepha, ContainerLockedError, t } from "alepha";
+import { $env, $hook, $inject, Alepha, ContainerLockedError, z } from "alepha";
 import { describe, expect, it } from "vitest";
 
 describe("Alepha#start", () => {
@@ -19,8 +19,8 @@ describe("Alepha#start", () => {
     class A {
       a = "a";
       e = $env(
-        t.object({
-          HELLO: t.text(),
+        z.object({
+          HELLO: z.text(),
         }),
       );
     }

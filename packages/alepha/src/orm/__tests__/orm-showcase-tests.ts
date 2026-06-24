@@ -1,5 +1,5 @@
 import type { Alepha } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 import { expect } from "vitest";
 import { $entity, $repository, db } from "../core/index.ts";
 
@@ -9,21 +9,21 @@ import { $entity, $repository, db } from "../core/index.ts";
 
 const teams = $entity({
   name: "teams",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.text(),
-    country: t.text(),
+    name: z.text(),
+    country: z.text(),
   }),
 });
 
 const players = $entity({
   name: "players",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    teamId: db.ref(t.optional(t.integer()), () => teams.cols.id),
-    name: t.text(),
-    position: t.text(),
-    goals: db.default(t.integer(), 0),
+    teamId: db.ref(z.integer().optional(), () => teams.cols.id),
+    name: z.text(),
+    position: z.text(),
+    goals: db.default(z.integer(), 0),
   }),
 });
 

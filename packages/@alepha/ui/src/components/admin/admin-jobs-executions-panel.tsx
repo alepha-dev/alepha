@@ -2,7 +2,7 @@ import { JobStatusBadge } from "@alepha/ui/components/admin/admin-jobs-status-ba
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
-import { type Page, type Static, t } from "alepha";
+import { type Page, type Static, z } from "alepha";
 import type { AdminJobController, JobExecutionResource } from "alepha/api/jobs";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -11,8 +11,8 @@ import { useCallback } from "react";
 
 const EXEC_POLL_MS = 10_000;
 
-const execFiltersSchema = t.object({
-  status: t.optional(t.string()),
+const execFiltersSchema = z.object({
+  status: z.string().optional(),
 });
 type ExecFilters = Static<typeof execFiltersSchema>;
 

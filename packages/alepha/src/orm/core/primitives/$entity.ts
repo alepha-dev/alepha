@@ -13,15 +13,15 @@ import { type TObjectUpdate, updateSchema } from "../schemas/updateSchema.ts";
  *
  * @example
  * ```ts
- * import { t } from "alepha";
+ * import { z } from "alepha";
  * import { $entity } from "alepha/orm";
  *
  * const userEntity = $entity({
  *   name: "users",
- *   schema: t.object({
+ *   schema: z.object({
  *     id: pg.primaryKey(),
- *     name: t.text(),
- *     email: t.email(),
+ *     name: z.text(),
+ *     email: z.email(),
  *   }),
  * });
  * ```

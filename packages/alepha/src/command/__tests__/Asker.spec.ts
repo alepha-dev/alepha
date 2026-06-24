@@ -1,4 +1,4 @@
-import { Alepha, AlephaError, t } from "alepha";
+import { Alepha, AlephaError, z } from "alepha";
 import {
   LogDestinationProvider,
   MemoryDestinationProvider,
@@ -65,7 +65,7 @@ describe("Asker", () => {
     const { question, close } = mockPromptInterface(["abc", "41"]);
 
     const result = await asker.ask("Enter a number", {
-      schema: t.number(),
+      schema: z.number(),
     });
 
     expect(result).toBe(41);
@@ -78,7 +78,7 @@ describe("Asker", () => {
     const { question, close } = mockPromptInterface([""]);
 
     const result = await asker.ask("What is your favorite color?", {
-      schema: t.text({ default: "blue" }),
+      schema: z.text({ default: "blue" }),
     });
 
     expect(result).toBe("blue");
@@ -90,7 +90,7 @@ describe("Asker", () => {
     const { question, close } = mockPromptInterface(["wrong", "right"]);
 
     const result = await asker.ask("Provide the secret", {
-      schema: t.text(),
+      schema: z.text(),
       validate: (value) => {
         if (value !== "right") {
           throw new AlephaError("Invalid secret");
@@ -113,7 +113,7 @@ describe("Asker", () => {
 
     await expect(
       asker.ask("Trigger failure", {
-        schema: t.text(),
+        schema: z.text(),
         validate: () => {
           throw unexpectedError;
         },

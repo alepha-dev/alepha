@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { AdminApiKeyController, ApiKeyController } from "alepha/api/keys";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
@@ -15,9 +15,9 @@ import { $realm, AlephaApiUsers } from "../index.ts";
 const adminUser = { id: randomUUID(), roles: ["admin"] };
 
 // Schema for generating fake user data
-const userDataSchema = t.object({
-  username: t.string(),
-  email: t.email(),
+const userDataSchema = z.object({
+  username: z.string(),
+  email: z.email(),
 });
 
 const setup = async () => {
@@ -44,9 +44,9 @@ const setup = async () => {
       group: "profile",
       use: [$secure()],
       schema: {
-        response: t.object({
-          userId: t.string(),
-          roles: t.array(t.string()),
+        response: z.object({
+          userId: z.string(),
+          roles: z.array(z.string()),
         }),
       },
       handler: (request) => ({
@@ -62,10 +62,10 @@ const setup = async () => {
       group: "admin:stats",
       use: [$secure({ permissions: ["admin:stats"] })],
       schema: {
-        response: t.object({
-          message: t.string(),
-          adminId: t.string(),
-          roles: t.array(t.string()),
+        response: z.object({
+          message: z.string(),
+          adminId: z.string(),
+          roles: z.array(z.string()),
         }),
       },
       handler: (request) => ({

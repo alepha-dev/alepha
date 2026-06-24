@@ -2,6 +2,7 @@ import * as React from "react";
 
 void React;
 
+import { z } from "alepha";
 import type { BaseInputField } from "alepha/react/form";
 
 /**
@@ -17,37 +18,28 @@ import type { BaseInputField } from "alepha/react/form";
  */
 export const widthFor = (input: BaseInputField, override?: number): number => {
   if (override) return override;
-  const schema = input.schema as {
-    type?: string;
+  // Peel optional/nullable/default wrappers; `$control` rides on `.meta()`.
+  const schema = z.schema.unwrap(input.schema) as {
     maxLength?: number;
-    items?: { type?: string; properties?: unknown };
-    properties?: unknown;
-    $control?: {
-      width?: number;
-      area?: boolean;
-      file?: boolean;
-      upload?: unknown;
+    element?: unknown;
+    meta?: () => {
+      $control?: {
+        width?: number;
+        area?: boolean;
+        file?: boolean;
+        upload?: unknown;
+      };
     };
   };
-  if (typeof schema.$control?.width === "number") return schema.$control.width;
-  if (
-    schema.$control?.area ||
-    schema.$control?.file ||
-    schema.$control?.upload
-  ) {
-    return 100;
-  }
-  if ((schema.maxLength ?? 0) >= 256) return 100;
-  if (schema.type === "object" && schema.properties) return 100;
-  if (schema.type === "array") {
-    if (schema.items?.properties) return 100;
-    if (
-      schema.items?.type === "string" ||
-      schema.items?.type === "number" ||
-      schema.items?.type === "integer"
-    ) {
-      return 66;
-    }
+  const control = schema?.meta?.()?.$control;
+  if (typeof control?.width === "number") return control.width;
+  if (control?.area || control?.file || control?.upload) return 100;
+  if ((schema?.maxLength ?? 0) >= 256) return 100;
+  if (z.schema.isObject(schema)) return 100;
+  if (z.schema.isArray(schema)) {
+    const element = z.schema.unwrap(schema.element);
+    if (z.schema.isObject(element)) return 100;
+    if (z.schema.isString(element) || z.schema.isNumber(element)) return 66;
     return 100;
   }
   return 33;

@@ -1,16 +1,22 @@
-import type { TLocalizedValidationError } from "typebox/error";
+/** Minimal validation-error shape (decoupled from any schema lib). */
+export interface ValidationErrorLike {
+  message: string;
+  instancePath?: string;
+  params?: unknown;
+}
+
 import { AlephaError } from "./AlephaError.ts";
 
 export class TypeBoxError extends AlephaError {
   name = "TypeBoxError";
 
-  public readonly cause: TLocalizedValidationError;
+  public readonly cause: ValidationErrorLike;
   public readonly value: {
     path: string;
     message: string;
   };
 
-  constructor(error: TLocalizedValidationError) {
+  constructor(error: ValidationErrorLike) {
     super(
       `Invalid input: ${error.message}${error.instancePath ? ` at ${error.instancePath}` : ""}`,
       {
@@ -25,7 +31,7 @@ export class TypeBoxError extends AlephaError {
       };
     } else {
       this.value = {
-        path: error.instancePath,
+        path: error.instancePath ?? "",
         message: error.message,
       };
     }

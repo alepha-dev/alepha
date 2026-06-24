@@ -1,4 +1,4 @@
-import { $inject, $state, AlephaError, t } from "alepha";
+import { $inject, $state, AlephaError, z } from "alepha";
 import {
   GitHubSecretStore,
   NamingService,
@@ -20,13 +20,13 @@ export class SecretsCommand {
   protected readonly filter = $inject(SecretFilterService);
   protected readonly color = $inject(ConsoleColorProvider);
 
-  protected readonly envFlags = t.object({
-    env: t.optional(
-      t.text({
+  protected readonly envFlags = z.object({
+    env: z
+      .text({
         aliases: ["e"],
         description: "Target environment",
-      }),
-    ),
+      })
+      .optional(),
   });
 
   // -----------------------------------------------------------------------
@@ -38,19 +38,19 @@ export class SecretsCommand {
     aliases: ["ls"],
     description:
       "List secret names stored in the remote store for an environment (values are never returned). Use --format=gha to emit a ready-to-paste GitHub Actions env: block.",
-    flags: t.object({
-      env: t.optional(
-        t.text({
+    flags: z.object({
+      env: z
+        .text({
           aliases: ["e"],
           description: "Target environment",
-        }),
-      ),
-      format: t.optional(
-        t.text({
+        })
+        .optional(),
+      format: z
+        .text({
           aliases: ["f"],
           description: "Output format: table (default), gha",
-        }),
-      ),
+        })
+        .optional(),
     }),
     handler: async ({ flags, root, run }) => {
       const config = await this.inspector.resolveConfig(root);
@@ -182,18 +182,17 @@ export class SecretsCommand {
     name: "apply",
     description:
       "Push secrets from local .env.<env> to the remote store (one upsert per key). Use --dry-run to preview. Existing remote keys not present locally are left untouched — this command never deletes.",
-    flags: t.object({
-      env: t.optional(
-        t.text({
+    flags: z.object({
+      env: z
+        .text({
           aliases: ["e"],
           description: "Target environment",
-        }),
-      ),
-      "dry-run": t.optional(
-        t.boolean({
-          description: "Preview changes without pushing",
-        }),
-      ),
+        })
+        .optional(),
+      "dry-run": z
+        .boolean()
+        .describe("Preview changes without pushing")
+        .optional(),
     }),
     handler: async ({ flags, root, run }) => {
       const config = await this.inspector.resolveConfig(root);

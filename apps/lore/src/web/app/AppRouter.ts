@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha, t } from "alepha";
+import { $hook, $inject, Alepha, z } from "alepha";
 import type { RealmController } from "alepha/api/users";
 import { ReactAuth } from "alepha/react/auth";
 import { $head, type Head } from "alepha/react/head";
@@ -254,8 +254,8 @@ export class AppRouter {
     ],
     path: "/c/:campaignId",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
       }),
     },
     head: (props) => {
@@ -666,8 +666,8 @@ export class AppRouter {
   campaignQuest = $page({
     path: "/q/:shortId",
     schema: {
-      params: t.object({
-        shortId: t.integer(),
+      params: z.object({
+        shortId: z.integer(),
       }),
     },
     head: (props, previous) => {
@@ -731,8 +731,8 @@ export class AppRouter {
     name: "campaignQuestGraph",
     path: "/q/:shortId/graph",
     schema: {
-      params: t.object({
-        shortId: t.integer(),
+      params: z.object({
+        shortId: z.integer(),
       }),
     },
     head: (props, previous) => {
@@ -886,7 +886,7 @@ export class AppRouter {
     name: "campaignFoliosFolio",
     path: "/:shortId",
     schema: {
-      params: t.object({ shortId: t.integer() }),
+      params: z.object({ shortId: z.integer() }),
     },
     head: (props, previous) => {
       const folio = (
@@ -946,7 +946,7 @@ export class AppRouter {
     name: "campaignFoliosFolioEdit",
     path: "/:shortId/edit",
     schema: {
-      params: t.object({ shortId: t.integer() }),
+      params: z.object({ shortId: z.integer() }),
     },
     head: (props, previous) => {
       const folio = (
@@ -996,7 +996,7 @@ export class AppRouter {
     name: "campaignPetitionRequest",
     path: "/c/:campaignId/request",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
+      params: z.object({ campaignId: z.integer() }),
     },
     head: { title: "Submit a petition › Alepha Lore" },
     ssr: false,

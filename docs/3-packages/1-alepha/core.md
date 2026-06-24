@@ -44,3 +44,4 @@ Foundation of the entire framework with dependency injection and lifecycle manag
 - [`CodecManager`](/docs/reference-providers-codecmanager) — CodecManager manages multiple codec formats and provides a unified interface
 - [`Json`](/docs/reference-providers-json) — Mimics the JSON global object with stringify and parse methods.
 - [`KeylessJsonSchemaCodec`](/docs/reference-providers-keylessjsonschemacodec) — KeylessJsonSchemaCodec provides schema-driven JSON encoding without keys.
+- [`SchemaValidator`](/docs/reference-providers-schemavalidator) — Validates + coerces a value against a zod schema.

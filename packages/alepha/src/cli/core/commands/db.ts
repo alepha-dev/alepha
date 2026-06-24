@@ -1,4 +1,4 @@
-import { $inject, AlephaError, t } from "alepha";
+import { $inject, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import type {
@@ -12,13 +12,13 @@ import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 
-const drizzleCommandFlags = t.object({
-  provider: t.optional(
-    t.text({
+const drizzleCommandFlags = z.object({
+  provider: z
+    .text({
       description:
         "Database provider name to target (e.g., 'postgres', 'sqlite')",
-    }),
-  ),
+    })
+    .optional(),
 });
 
 export class DbCommand {
@@ -36,12 +36,12 @@ export class DbCommand {
     name: "check",
     mode: true,
     description: "Check if migration files are up to date",
-    args: t.optional(
-      t.text({
+    args: z
+      .text({
         title: "path",
         description: "Path to the Alepha server entry file",
-      }),
-    ),
+      })
+      .optional(),
     flags: drizzleCommandFlags,
     handler: async ({ args, root }) => {
       const rootDir = root;
@@ -128,24 +128,24 @@ export class DbCommand {
     name: "create",
     mode: true,
     description: "Generate migration files from current schema",
-    args: t.optional(
-      t.text({
+    args: z
+      .text({
         title: "path",
         description: "Path to the Alepha server entry file",
-      }),
-    ),
-    flags: t.extend(drizzleCommandFlags, {
-      custom: t.optional(
-        t.boolean({
-          description:
-            "Generate an empty migration file for custom SQL (e.g., for data migrations or manual adjustments)",
-        }),
-      ),
-      name: t.optional(
-        t.text({
+      })
+      .optional(),
+    flags: drizzleCommandFlags.extend({
+      custom: z
+        .boolean()
+        .describe(
+          "Generate an empty migration file for custom SQL (e.g., for data migrations or manual adjustments)",
+        )
+        .optional(),
+      name: z
+        .text({
           description: "Name for the generated migration file",
-        }),
-      ),
+        })
+        .optional(),
     }),
     handler: async ({ args, flags, root }) => {
       const parts: string[] = [];
@@ -172,18 +172,17 @@ export class DbCommand {
     name: "push",
     mode: true,
     description: "Push database schema changes directly to the database",
-    args: t.optional(
-      t.text({
+    args: z
+      .text({
         title: "path",
         description: "Path to the Alepha server entry file",
-      }),
-    ),
-    flags: t.extend(drizzleCommandFlags, {
-      dryRun: t.optional(
-        t.boolean({
-          description: "Preview SQL statements without executing them",
-        }),
-      ),
+      })
+      .optional(),
+    flags: drizzleCommandFlags.extend({
+      dryRun: z
+        .boolean()
+        .describe("Preview SQL statements without executing them")
+        .optional(),
     }),
     handler: async ({ root, args, flags }) => {
       if (flags.dryRun) {
@@ -262,12 +261,12 @@ export class DbCommand {
     name: "apply",
     mode: true,
     description: "Apply pending migrations to the database",
-    args: t.optional(
-      t.text({
+    args: z
+      .text({
         title: "path",
         description: "Path to the Alepha server entry file",
-      }),
-    ),
+      })
+      .optional(),
     flags: drizzleCommandFlags,
     handler: async ({ root, run, mode }) => {
       const entry = await this.entryProvider.getAppEntry(root);
@@ -295,12 +294,12 @@ export class DbCommand {
     name: "studio",
     mode: true,
     description: "Launch Drizzle Studio database browser",
-    args: t.optional(
-      t.text({
+    args: z
+      .text({
         title: "path",
         description: "Path to the Alepha server entry file",
-      }),
-    ),
+      })
+      .optional(),
     flags: drizzleCommandFlags,
     handler: async ({ root, args, flags }) => {
       await this.runDrizzleKitCommand({

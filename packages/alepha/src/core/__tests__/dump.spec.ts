@@ -1,4 +1,4 @@
-import { $env, $module, Alepha, t } from "alepha";
+import { $env, $module, Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 
 describe("Alepha.dump", () => {
@@ -10,9 +10,9 @@ describe("Alepha.dump", () => {
   it("reports env from a registered service that was never injected", () => {
     class SecretService {
       env = $env(
-        t.object({
-          MY_SECRET: t.optional(t.text({ description: "a secret" })),
-          MY_FLAG: t.optional(t.enum(["on", "off"])),
+        z.object({
+          MY_SECRET: z.text({ description: "a secret" }).optional(),
+          MY_FLAG: z.enum(["on", "off"]).optional(),
         }),
       );
     }
@@ -32,10 +32,10 @@ describe("Alepha.dump", () => {
 
   it("captures env from multiple independent services in one pass", () => {
     class A {
-      env = $env(t.object({ A_KEY: t.optional(t.text()) }));
+      env = $env(z.object({ A_KEY: z.text().optional() }));
     }
     class B {
-      env = $env(t.object({ B_KEY: t.optional(t.text()) }));
+      env = $env(z.object({ B_KEY: z.text().optional() }));
     }
 
     const Mod = $module({ name: "ab", services: [A, B] });

@@ -8,12 +8,12 @@ import type { FormModel } from "alepha/react/form";
  *
  * 1. **Object** — static configuration baked into the schema:
  *    ```ts
- *    t.string({ $control: { password: true, icon: "key" } })
+ *    z.string({ $control: { password: true, icon: "key" } })
  *    ```
  *
  * 2. **Function** — dynamic, computed from current form state:
  *    ```ts
- *    t.string({
+ *    z.string({
  *      $control: ({ form, value }) => {
  *        if (form.currentValues.kind !== "advanced") return false; // hide
  *        return { items: () => fetchOptions(form.currentValues.kind) };
@@ -197,8 +197,8 @@ export const resolveSchemaControl = (
   return {};
 };
 
-declare module "typebox" {
-  interface TSchemaOptions {
+declare module "alepha" {
+  interface SchemaOptions {
     /**
      * UI metadata read by `<Control>` from `@alepha/ui`. See
      * {@link SchemaControl}.

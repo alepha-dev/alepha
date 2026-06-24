@@ -1,22 +1,22 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const devEnvMetadataSchema = t.object({
+export const devEnvMetadataSchema = z.object({
   /**
    * The property name in the service where $env is defined
    */
-  propertyKey: t.text(),
+  propertyKey: z.text(),
   /**
    * The schema for the environment variables (TypeBox/JSON Schema)
    */
-  schema: t.any(),
+  schema: z.any(),
   /**
    * The parsed values from the environment
    */
-  values: t.record(t.text(), t.any()),
+  values: z.record(z.text(), z.any()),
   /**
    * The service class name where this $env is defined
    */
-  serviceName: t.optional(t.text()),
+  serviceName: z.text().optional(),
 });
 
 export type DevEnvMetadata = Static<typeof devEnvMetadataSchema>;

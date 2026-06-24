@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
 import { $repository, $sequence, $transactional } from "alepha/orm";
@@ -27,18 +27,18 @@ import {
 } from "../services/FolioHistoryService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 
-const idParamsSchema = t.object({ id: t.uuid() });
+const idParamsSchema = z.object({ id: z.uuid() });
 
-const folioListQuerySchema = t.object({
-  limit: t.optional(t.integer({ minimum: 1, maximum: 100, default: 50 })),
-  offset: t.optional(t.integer({ minimum: 0, default: 0 })),
-  tag: t.optional(t.string()),
-  q: t.optional(t.string()),
-  campaignId: t.integer(),
+const folioListQuerySchema = z.object({
+  limit: z.integer().min(1).max(100).default(50).optional(),
+  offset: z.integer().min(0).default(0).optional(),
+  tag: z.string().optional(),
+  q: z.string().optional(),
+  campaignId: z.integer(),
 });
 
-const tagListQuerySchema = t.object({
-  campaignId: t.integer(),
+const tagListQuerySchema = z.object({
+  campaignId: z.integer(),
 });
 
 export class FolioController {
@@ -71,7 +71,7 @@ export class FolioController {
     description: "List the campaign's folios (newest first).",
     schema: {
       query: folioListQuerySchema,
-      response: t.array(folios.schema),
+      response: z.array(folios.schema),
     },
     handler: async ({ query, user }) => {
       await this.security.assertMember(query.campaignId, user);
@@ -105,7 +105,7 @@ export class FolioController {
     description: "Return the distinct set of tags used in the campaign.",
     schema: {
       query: tagListQuerySchema,
-      response: t.array(t.string()),
+      response: z.array(z.string()),
     },
     handler: async ({ query, user }) => {
       await this.security.assertMember(query.campaignId, user);
@@ -126,18 +126,18 @@ export class FolioController {
     description: "Get a single folio by its per-campaign shortId.",
     path: "/campaigns/:campaignId/folios/:shortId",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        shortId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
+        shortId: z.integer(),
       }),
       // `withLinks=true` attaches the resolved [[wiki-link]] index in
       // the same response. `withPath=true` attaches the folio's
       // directory chain (root → … → direct parent) — used by the
       // Archive UI to render the AppShell breadcrumb without a
       // separate `listAllDirectories` round-trip.
-      query: t.object({
-        withLinks: t.optional(t.boolean()),
-        withPath: t.optional(t.boolean()),
+      query: z.object({
+        withLinks: z.boolean().optional(),
+        withPath: z.boolean().optional(),
       }),
       response: folioResourceSchema,
     },
@@ -398,27 +398,27 @@ export class FolioController {
     use: [$secure({ permissions: ["folio:write"] }), $transactional()],
     description: "Create a new folio.",
     schema: {
-      body: t.object({
-        title: t.string({ minLength: 1, maxLength: 200 }),
-        content: t.optional(t.string()),
-        tags: t.optional(t.array(t.string())),
-        summary: t.optional(t.string({ maxLength: 500 })),
-        campaignId: t.integer(),
+      body: z.object({
+        title: z.string().min(1).max(200),
+        content: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        summary: z.string().max(500).optional(),
+        campaignId: z.integer(),
         /**
          * Archive directory the folio lives in. `null` / omitted →
          * campaign root. See quest [[#66]] — folios no longer nest in
          * other folios, they sit in archive directories.
          */
-        directoryId: t.optional(t.nullable(t.uuid())),
+        directoryId: z.uuid().nullable().optional(),
         /**
          * When true the body's `content` is a `BrowserCryptoProvider`
          * envelope. The server doesn't try to inspect it; we just skip
          * the `searchText` indexing so we don't leak a hash of the
          * plaintext through LIKE matches.
          */
-        protected: t.optional(t.boolean()),
+        protected: z.boolean().optional(),
         /** Pin the folio on creation. Defaults to false. */
-        pinned: t.optional(t.boolean()),
+        pinned: z.boolean().optional(),
       }),
       response: folios.schema,
     },
@@ -512,24 +512,24 @@ export class FolioController {
     description: "Update a folio.",
     schema: {
       params: idParamsSchema,
-      body: t.object({
-        title: t.optional(t.string({ minLength: 1, maxLength: 200 })),
-        content: t.optional(t.string()),
-        tags: t.optional(t.array(t.string())),
-        summary: t.optional(t.string({ maxLength: 500 })),
+      body: z.object({
+        title: z.string().min(1).max(200).optional(),
+        content: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        summary: z.string().max(500).optional(),
         /**
          * Move the folio to a different archive directory. `null` →
          * campaign root; `undefined` → leave untouched.
          */
-        directoryId: t.optional(t.nullable(t.uuid())),
+        directoryId: z.uuid().nullable().optional(),
         /**
          * Toggle protected state. Caller is responsible for sending the
          * new `content` shape that matches (plaintext markdown when
          * false, crypto envelope when true).
          */
-        protected: t.optional(t.boolean()),
+        protected: z.boolean().optional(),
         /** Pin/unpin the folio. Omitted leaves the current state. */
-        pinned: t.optional(t.boolean()),
+        pinned: z.boolean().optional(),
       }),
       response: folios.schema,
     },
@@ -657,25 +657,24 @@ export class FolioController {
     description:
       "Recent folio activity in a campaign (revisions across all folios, newest first).",
     schema: {
-      query: t.object({
-        campaignId: t.integer(),
-        limit: t.optional(t.integer({ minimum: 1, maximum: 100 })),
+      query: z.object({
+        campaignId: z.integer(),
+        limit: z.integer().min(1).max(100).optional(),
       }),
-      response: t.object({
-        items: t.array(
-          t.object({
-            id: t.uuid(),
-            at: t.string(),
-            action: t.enum(
-              ["create", "edit", "rename", "tag-change", "revert"],
-              { mode: "text" },
-            ),
-            byUserId: t.optional(t.uuid()),
-            byUsername: t.optional(t.string()),
-            byAvatarUrl: t.optional(t.string()),
-            folioId: t.uuid(),
-            folioShortId: t.integer(),
-            folioTitle: t.string(),
+      response: z.object({
+        items: z.array(
+          z.object({
+            id: z.uuid(),
+            at: z.string(),
+            action: z
+              .enum(["create", "edit", "rename", "tag-change", "revert"])
+              .meta({ mode: "text" }),
+            byUserId: z.uuid().optional(),
+            byUsername: z.string().optional(),
+            byAvatarUrl: z.string().optional(),
+            folioId: z.uuid(),
+            folioShortId: z.integer(),
+            folioTitle: z.string(),
           }),
         ),
       }),
@@ -744,7 +743,7 @@ export class FolioController {
     description: "List the revision history of a folio (newest first).",
     schema: {
       params: idParamsSchema,
-      response: t.array(folioRevisions.schema),
+      response: z.array(folioRevisions.schema),
     },
     handler: async ({ params, user }) => {
       const folio = await this.folios.findOne({
@@ -767,9 +766,9 @@ export class FolioController {
     path: "/folios/:id/history/:revisionId/revert",
     description: "Revert a folio to a prior revision (creates a new revision).",
     schema: {
-      params: t.object({
-        id: t.uuid(),
-        revisionId: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
+        revisionId: z.uuid(),
       }),
       response: folios.schema,
     },
@@ -821,11 +820,11 @@ export class FolioController {
     path: "/folios/:id/history/:revisionId/pin",
     description: "Toggle pin on a folio revision.",
     schema: {
-      params: t.object({
-        id: t.uuid(),
-        revisionId: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
+        revisionId: z.uuid(),
       }),
-      body: t.object({ pinned: t.boolean() }),
+      body: z.object({ pinned: z.boolean() }),
       response: okSchema,
     },
     handler: async ({ params, body, user }) => {

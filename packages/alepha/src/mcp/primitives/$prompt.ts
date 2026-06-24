@@ -6,7 +6,7 @@ import {
   Primitive,
   type Static,
   type TObject,
-  t,
+  z,
 } from "alepha";
 import type {
   McpContext,
@@ -32,9 +32,9 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
  * class Prompts {
  *   greeting = $prompt({
  *     description: "Generate a personalized greeting",
- *     args: t.object({
- *       name: t.text({ description: "Name of the person to greet" }),
- *       style: t.optional(t.enum(["formal", "casual"])),
+ *     args: z.object({
+ *       name: z.text({ description: "Name of the person to greet" }),
+ *       style: z.enum(["formal", "casual"]).optional(),
  *     }),
  *     handler: async ({ args }) => [
  *       {
@@ -48,9 +48,9 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
  *
  *   codeReview = $prompt({
  *     description: "Request a code review",
- *     args: t.object({
- *       code: t.text({ description: "The code to review" }),
- *       language: t.text({ description: "Programming language" }),
+ *     args: z.object({
+ *       code: z.text({ description: "The code to review" }),
+ *       language: z.text({ description: "Programming language" }),
  *     }),
  *     handler: async ({ args }) => [
  *       {
@@ -190,11 +190,13 @@ export class PromptPrimitive<T extends TObject> extends Primitive<
     const args: McpPromptArgument[] = [];
 
     for (const [name, propSchema] of Object.entries(schema.properties)) {
-      const prop = propSchema as Record<string, unknown>;
+      // The description lives on the inner schema; peel optional/nullable/default
+      // wrappers so `z.number({ description }).optional()` still surfaces it.
+      const prop = z.schema.unwrap(propSchema) as Record<string, unknown>;
       args.push({
         name,
         description: prop.description as string | undefined,
-        required: !t.schema.isOptional(propSchema),
+        required: !z.schema.isOptional(propSchema),
       });
     }
 

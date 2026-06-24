@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $repository, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
@@ -32,34 +32,34 @@ export class DirectoryController {
     path: "/campaigns/:campaignId/archive/contents",
     description: "List directories + folios + blobs in a directory (or root).",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      query: t.object({
-        parentId: t.optional(t.uuid()),
+      params: z.object({ campaignId: z.integer() }),
+      query: z.object({
+        parentId: z.uuid().optional(),
       }),
-      response: t.object({
-        directory: t.optional(archiveDirectories.schema),
-        breadcrumb: t.array(
-          t.object({
-            id: t.uuid(),
-            shortId: t.integer(),
-            name: t.string(),
+      response: z.object({
+        directory: archiveDirectories.schema.optional(),
+        breadcrumb: z.array(
+          z.object({
+            id: z.uuid(),
+            shortId: z.integer(),
+            name: z.string(),
           }),
         ),
-        entries: t.array(
-          t.object({
-            kind: t.enum(["directory", "folio", "blob"]),
-            id: t.string(),
-            shortId: t.integer(),
-            name: t.string(),
-            updatedAt: t.string(),
+        entries: z.array(
+          z.object({
+            kind: z.enum(["directory", "folio", "blob"]),
+            id: z.string(),
+            shortId: z.integer(),
+            name: z.string(),
+            updatedAt: z.string(),
             // Folio extras (omitted on directory + blob)
-            tags: t.optional(t.array(t.string())),
-            protected: t.optional(t.boolean()),
-            pinned: t.optional(t.boolean()),
-            summary: t.optional(t.string()),
+            tags: z.array(z.string()).optional(),
+            protected: z.boolean().optional(),
+            pinned: z.boolean().optional(),
+            summary: z.string().optional(),
             // Blob extras (omitted on directory + folio)
-            size: t.optional(t.number()),
-            mimeType: t.optional(t.string()),
+            size: z.number().optional(),
+            mimeType: z.string().optional(),
           }),
         ),
       }),
@@ -167,21 +167,21 @@ export class DirectoryController {
     description:
       "Search folios + blobs + directories by name (and folio body).",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      query: t.object({ q: t.string({ minLength: 1 }) }),
-      response: t.object({
-        entries: t.array(
-          t.object({
-            kind: t.enum(["directory", "folio", "blob"]),
-            id: t.string(),
-            shortId: t.integer(),
-            name: t.string(),
-            updatedAt: t.string(),
-            tags: t.optional(t.array(t.string())),
-            pinned: t.optional(t.boolean()),
-            protected: t.optional(t.boolean()),
-            summary: t.optional(t.string()),
-            size: t.optional(t.number()),
+      params: z.object({ campaignId: z.integer() }),
+      query: z.object({ q: z.string().min(1) }),
+      response: z.object({
+        entries: z.array(
+          z.object({
+            kind: z.enum(["directory", "folio", "blob"]),
+            id: z.string(),
+            shortId: z.integer(),
+            name: z.string(),
+            updatedAt: z.string(),
+            tags: z.array(z.string()).optional(),
+            pinned: z.boolean().optional(),
+            protected: z.boolean().optional(),
+            summary: z.string().optional(),
+            size: z.number().optional(),
           }),
         ),
       }),
@@ -260,13 +260,13 @@ export class DirectoryController {
     path: "/campaigns/:campaignId/archive/directories",
     description: "Flat list of every archive directory in the campaign.",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      response: t.array(
-        t.object({
-          id: t.uuid(),
-          shortId: t.integer(),
-          name: t.string(),
-          parentId: t.optional(t.uuid()),
+      params: z.object({ campaignId: z.integer() }),
+      response: z.array(
+        z.object({
+          id: z.uuid(),
+          shortId: z.integer(),
+          name: z.string(),
+          parentId: z.uuid().optional(),
         }),
       ),
     },
@@ -297,9 +297,9 @@ export class DirectoryController {
     path: "/campaigns/:campaignId/archive/directories/:shortId",
     description: "Look up an archive directory by per-campaign shortId.",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
-        shortId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
+        shortId: z.integer(),
       }),
       response: archiveDirectories.schema,
     },
@@ -319,10 +319,10 @@ export class DirectoryController {
     path: "/campaigns/:campaignId/archive/directories",
     description: "Create a new archive directory.",
     schema: {
-      params: t.object({ campaignId: t.integer() }),
-      body: t.object({
-        name: t.string({ minLength: 1, maxLength: 200 }),
-        parentId: t.optional(t.uuid()),
+      params: z.object({ campaignId: z.integer() }),
+      body: z.object({
+        name: z.string().min(1).max(200),
+        parentId: z.uuid().optional(),
       }),
       response: archiveDirectories.schema,
     },
@@ -341,8 +341,8 @@ export class DirectoryController {
     path: "/archive/directories/:id/rename",
     description: "Rename an archive directory.",
     schema: {
-      params: t.object({ id: t.uuid() }),
-      body: t.object({ name: t.string({ minLength: 1, maxLength: 200 }) }),
+      params: z.object({ id: z.uuid() }),
+      body: z.object({ name: z.string().min(1).max(200) }),
       response: archiveDirectories.schema,
     },
     handler: async ({ params, body, user }) => {
@@ -358,10 +358,10 @@ export class DirectoryController {
     path: "/archive/directories/:id/move",
     description: "Move an archive directory under a new parent (or to root).",
     schema: {
-      params: t.object({ id: t.uuid() }),
-      body: t.object({
+      params: z.object({ id: z.uuid() }),
+      body: z.object({
         // null/omitted → move to campaign root.
-        parentId: t.optional(t.uuid()),
+        parentId: z.uuid().optional(),
       }),
       response: archiveDirectories.schema,
     },
@@ -379,8 +379,8 @@ export class DirectoryController {
     description:
       "Delete an archive directory. Pass cascade=true for non-empty.",
     schema: {
-      params: t.object({ id: t.uuid() }),
-      query: t.object({ cascade: t.optional(t.boolean()) }),
+      params: z.object({ id: z.uuid() }),
+      query: z.object({ cascade: z.boolean().optional() }),
       response: okSchema,
     },
     handler: async ({ params, query, user }) => {

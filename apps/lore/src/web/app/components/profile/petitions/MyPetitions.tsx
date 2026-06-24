@@ -2,7 +2,7 @@ import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { t } from "alepha";
+import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
 import { Search, Trash } from "lucide-react";
@@ -16,10 +16,10 @@ import MyPetitionEditSheet from "./MyPetitionEditSheet.tsx";
  * (search + status + a cross-campaign "campaign" filter). `campaignId` is a
  * string in the form (Control values are strings) and coerced on fetch.
  */
-const myPetitionsFiltersSchema = t.object({
-  search: t.optional(t.string()),
-  status: t.optional(t.enum(["pending", "accepted", "rejected"])),
-  campaignId: t.optional(t.string()),
+const myPetitionsFiltersSchema = z.object({
+  search: z.string().optional(),
+  status: z.enum(["pending", "accepted", "rejected"]).optional(),
+  campaignId: z.string().optional(),
 });
 
 const STATUS_VARIANT: Record<string, "secondary" | "default" | "destructive"> =

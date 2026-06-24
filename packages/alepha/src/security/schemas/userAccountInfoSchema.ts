@@ -1,73 +1,71 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const userAccountInfoSchema = t.object({
-  id: t.text({
+export const userAccountInfoSchema = z.object({
+  id: z.text({
     description: "Unique identifier for the user.",
   }),
 
-  name: t.optional(
-    t.text({
+  name: z
+    .text({
       description: "Full name of the user.",
-    }),
-  ),
+    })
+    .optional(),
 
-  firstName: t.optional(
-    t.text({
+  firstName: z
+    .text({
       description: "Given name of the user (OIDC `given_name`).",
-    }),
-  ),
+    })
+    .optional(),
 
-  lastName: t.optional(
-    t.text({
+  lastName: z
+    .text({
       description: "Family name of the user (OIDC `family_name`).",
-    }),
-  ),
+    })
+    .optional(),
 
-  email: t.optional(
-    t.text({
+  email: z
+    .text({
       description: "Email address of the user.",
       format: "email",
-    }),
-  ),
+    })
+    .optional(),
 
-  username: t.optional(
-    t.text({
+  username: z
+    .text({
       description: "Preferred username of the user.",
-    }),
-  ),
+    })
+    .optional(),
 
-  picture: t.optional(
-    t.text({
+  picture: z
+    .text({
       description: "URL to the user's profile picture.",
-    }),
-  ),
+    })
+    .optional(),
 
-  sessionId: t.optional(
-    t.text({
+  sessionId: z
+    .text({
       description: "Session identifier for the user, if applicable.",
-    }),
-  ),
+    })
+    .optional(),
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  organization: t.optional(
-    t.uuid({
-      description: "Organization the user belongs to.",
-    }),
-  ),
+  organization: z
+    .uuid()
+    .describe("Organization the user belongs to.")
+    .optional(),
 
-  roles: t.optional(
-    t.array(t.text(), {
-      description: "List of roles assigned to the user.",
-    }),
-  ),
+  roles: z
+    .array(z.text())
+    .describe("List of roles assigned to the user.")
+    .optional(),
 
-  realm: t.optional(
-    t.text({
+  realm: z
+    .text({
       description: "The realm (issuer) the user was authenticated from.",
-    }),
-  ),
+    })
+    .optional(),
 });
 
 export type UserAccount = Static<typeof userAccountInfoSchema>;

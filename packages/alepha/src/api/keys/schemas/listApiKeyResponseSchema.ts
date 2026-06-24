@@ -1,16 +1,16 @@
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const listApiKeyItemSchema = t.object({
-  id: t.uuid(),
-  name: t.string(),
-  tokenPrefix: t.string(),
-  tokenSuffix: t.string(),
-  roles: t.array(t.string()),
-  createdAt: t.datetime(),
-  lastUsedAt: t.optional(t.datetime()),
-  lastUsedIp: t.optional(t.string()),
-  expiresAt: t.optional(t.datetime()),
-  usageCount: t.integer(),
+export const listApiKeyItemSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  tokenPrefix: z.string(),
+  tokenSuffix: z.string(),
+  roles: z.array(z.string()),
+  createdAt: z.datetime(),
+  lastUsedAt: z.datetime().optional(),
+  lastUsedIp: z.string().optional(),
+  expiresAt: z.datetime().optional(),
+  usageCount: z.integer(),
 });
 
-export const listApiKeyResponseSchema = t.array(listApiKeyItemSchema);
+export const listApiKeyResponseSchema = z.array(listApiKeyItemSchema);

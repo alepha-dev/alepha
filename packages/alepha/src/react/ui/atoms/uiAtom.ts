@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 /**
  * Persisted UI state — color mode, theme palette, sidebar collapsed state, etc.
@@ -8,14 +8,14 @@ import { $atom, type Static, t } from "alepha";
  */
 export const uiAtom = $atom({
   name: "alepha.react.ui",
-  schema: t.object({
+  schema: z.object({
     /** Color mode preference. `"system"` follows the OS-level setting. */
-    mode: t.enum(["light", "dark", "system"]),
+    mode: z.enum(["light", "dark", "system"]),
     /** Theme palette name. UI consumers map this to a CSS class on the root. */
-    theme: t.string(),
+    theme: z.string(),
     /** Sidebar UI state. */
-    sidebar: t.object({
-      collapsed: t.boolean(),
+    sidebar: z.object({
+      collapsed: z.boolean(),
     }),
   }),
   default: {

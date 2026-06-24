@@ -40,7 +40,7 @@ describe("<Localize/>", () => {
 
   // it("should format typebox error", async () => {
   //   const { render, i18n, alepha } = setup();
-  //   const boom = async () => alepha.codec.decode(t.number(), "..");
+  //   const boom = async () => alepha.codec.decode(z.number(), "..");
   //   const error = await boom().catch((err) => err);
   //   expect(render(<Localize value={error} />)).toBe("must be number");
   //   await i18n.setLang("fr");

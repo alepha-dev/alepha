@@ -1,15 +1,15 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 import { pageQuerySchema } from "alepha/orm";
 
-export const fileQuerySchema = t.extend(pageQuerySchema, {
-  bucket: t.optional(t.string()),
-  tags: t.optional(t.array(t.string())),
-  name: t.optional(t.string()),
-  mimeType: t.optional(t.string()),
-  creator: t.optional(t.uuid()),
-  createdAfter: t.optional(t.datetime()),
-  createdBefore: t.optional(t.datetime()),
+export const fileQuerySchema = pageQuerySchema.extend({
+  bucket: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  name: z.string().optional(),
+  mimeType: z.string().optional(),
+  creator: z.uuid().optional(),
+  createdAfter: z.datetime().optional(),
+  createdBefore: z.datetime().optional(),
 });
 
 export type FileQuery = Static<typeof fileQuerySchema>;

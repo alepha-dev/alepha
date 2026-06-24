@@ -1,10 +1,10 @@
-import { $env, $hook, $inject, Alepha, t } from "alepha";
+import { $env, $hook, $inject, Alepha, z } from "alepha";
 import { $logger } from "alepha/logger";
 
 export const DEFAULT_SECRET_KEY_VALUE = "change-me-in-production";
 
-export const alephaSecretEnvSchema = t.object({
-  APP_SECRET: t.text({
+export const alephaSecretEnvSchema = z.object({
+  APP_SECRET: z.text({
     default: DEFAULT_SECRET_KEY_VALUE,
     description:
       "The secret key used for signing JWTs, encrypting cookies, and other security features.",

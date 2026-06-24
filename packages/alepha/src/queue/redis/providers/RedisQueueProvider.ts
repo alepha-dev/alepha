@@ -1,4 +1,4 @@
-import { $atom, $inject, $state, type Static, t } from "alepha";
+import { $atom, $inject, $state, type Static, z } from "alepha";
 import type { QueueProvider } from "alepha/queue";
 import { RedisProvider } from "alepha/redis";
 
@@ -9,8 +9,8 @@ import { RedisProvider } from "alepha/redis";
  */
 export const redisQueueOptions = $atom({
   name: "alepha.queue.redis.options",
-  schema: t.object({
-    prefix: t.text({
+  schema: z.object({
+    prefix: z.text({
       default: "queue",
       description: "Prefix for all queue keys in Redis.",
     }),

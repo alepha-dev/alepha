@@ -1,4 +1,4 @@
-import { $inject, Alepha, t } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 import { pinnedContentAtom } from "../../api/atoms/pinnedContentAtom.ts";
@@ -73,7 +73,7 @@ export class CampaignTools {
       idempotentHint: true,
     },
     schema: {
-      params: t.object({}),
+      params: z.object({}),
       result: campaignListResultSchema,
     },
     handler: async () => {

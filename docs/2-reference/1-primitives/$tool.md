@@ -38,11 +38,11 @@ class CalculatorTools {
   add = $tool({
     description: "Add two numbers together",
     schema: {
-      params: t.object({
-        a: t.number(),
-        b: t.number(),
+      params: z.object({
+        a: z.number(),
+        b: z.number(),
       }),
-      result: t.number(),
+      result: z.number(),
     },
     handler: async ({ params }) => {
       return params.a + params.b;
@@ -52,10 +52,10 @@ class CalculatorTools {
   greet = $tool({
     description: "Generate a greeting message",
     schema: {
-      params: t.object({
-        name: t.text(),
+      params: z.object({
+        name: z.text(),
       }),
-      result: t.text(),
+      result: z.text(),
     },
     handler: async ({ params }) => {
       return `Hello, ${params.name}!`;

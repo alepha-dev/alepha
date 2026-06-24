@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
@@ -33,7 +33,7 @@ export class AdminAuditController {
     description: "Find audit entries with filtering and pagination",
     schema: {
       query: auditQuerySchema,
-      response: t.page(auditResourceSchema),
+      response: z.page(auditResourceSchema),
     },
     handler: ({ query }) => this.auditService.find(query),
   });
@@ -47,8 +47,8 @@ export class AdminAuditController {
     use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Get a single audit entry by ID",
     schema: {
-      params: t.object({
-        id: t.text(),
+      params: z.object({
+        id: z.text(),
       }),
       response: auditResourceSchema,
     },
@@ -66,11 +66,11 @@ export class AdminAuditController {
     use: [$secure({ permissions: ["admin:audit:delete"] })],
     description: "Delete many audit entries",
     schema: {
-      body: t.object({
-        ids: t.array(t.text(), { minItems: 1, maxItems: 1000 }),
+      body: z.object({
+        ids: z.array(z.text()).min(1).max(1000),
       }),
-      response: t.object({
-        deleted: t.array(t.text()),
+      response: z.object({
+        deleted: z.array(z.text()),
       }),
     },
     handler: async ({ body }) => {
@@ -107,11 +107,11 @@ export class AdminAuditController {
     use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Get audit entries for a specific user",
     schema: {
-      params: t.object({
-        userId: t.uuid(),
+      params: z.object({
+        userId: z.uuid(),
       }),
-      query: t.omit(auditQuerySchema, ["userId"]),
-      response: t.page(auditResourceSchema),
+      query: auditQuerySchema.omit({ userId: true }),
+      response: z.page(auditResourceSchema),
     },
     handler: ({ params, query }) =>
       this.auditService.findByUser(params.userId, query),
@@ -126,12 +126,12 @@ export class AdminAuditController {
     use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Get audit entries for a specific resource",
     schema: {
-      params: t.object({
-        resourceType: t.text(),
-        resourceId: t.text(),
+      params: z.object({
+        resourceType: z.text(),
+        resourceId: z.text(),
       }),
-      query: t.omit(auditQuerySchema, ["resourceType", "resourceId"]),
-      response: t.page(auditResourceSchema),
+      query: auditQuerySchema.omit({ resourceType: true, resourceId: true }),
+      response: z.page(auditResourceSchema),
     },
     handler: ({ params, query }) =>
       this.auditService.findByResource(
@@ -150,21 +150,21 @@ export class AdminAuditController {
     use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Get audit statistics for a time period",
     schema: {
-      query: t.object({
-        from: t.optional(t.datetime()),
-        to: t.optional(t.datetime()),
-        userRealm: t.optional(t.text()),
+      query: z.object({
+        from: z.datetime().optional(),
+        to: z.datetime().optional(),
+        userRealm: z.text().optional(),
       }),
-      response: t.object({
-        total: t.integer(),
-        byType: t.record(t.text(), t.integer()),
-        bySeverity: t.object({
-          info: t.integer(),
-          warning: t.integer(),
-          critical: t.integer(),
+      response: z.object({
+        total: z.integer(),
+        byType: z.record(z.text(), z.integer()),
+        bySeverity: z.object({
+          info: z.integer(),
+          warning: z.integer(),
+          critical: z.integer(),
         }),
-        successRate: t.number(),
-        recentFailures: t.array(auditResourceSchema),
+        successRate: z.number(),
+        recentFailures: z.array(auditResourceSchema),
       }),
     },
     handler: ({ query }) =>
@@ -184,7 +184,7 @@ export class AdminAuditController {
     use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "List distinct action names present in the audit log",
     schema: {
-      response: t.array(t.text()),
+      response: z.array(z.text()),
     },
     handler: () => this.auditService.getDistinctActions(),
   });
@@ -198,11 +198,11 @@ export class AdminAuditController {
     use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Get all registered audit types",
     schema: {
-      response: t.array(
-        t.object({
-          type: t.text(),
-          description: t.optional(t.text()),
-          actions: t.array(t.text()),
+      response: z.array(
+        z.object({
+          type: z.text(),
+          description: z.text().optional(),
+          actions: z.array(z.text()),
         }),
       ),
     },
@@ -218,11 +218,11 @@ export class AdminAuditController {
     use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Get distinct values for audit filters",
     schema: {
-      response: t.object({
-        types: t.array(t.text()),
-        actions: t.array(t.text()),
-        resourceTypes: t.array(t.text()),
-        userRealms: t.array(t.text()),
+      response: z.object({
+        types: z.array(z.text()),
+        actions: z.array(z.text()),
+        resourceTypes: z.array(z.text()),
+        userRealms: z.array(z.text()),
       }),
     },
     handler: async () => {

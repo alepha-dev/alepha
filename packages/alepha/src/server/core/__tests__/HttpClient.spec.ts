@@ -21,7 +21,7 @@ describe("HttpClient", () => {
     const client = alepha.with(TestApp).inject(HttpClient);
     await alepha.start();
 
-    const resp = await client.fetch<string>(
+    const resp = await client.fetch(
       `${alepha.inject(ServerProvider).hostname}`,
     );
 
@@ -43,7 +43,7 @@ describe("HttpClient", () => {
     await alepha.start();
 
     const resp = await client
-      .fetch<string>(`${alepha.inject(ServerProvider).hostname}`)
+      .fetch(`${alepha.inject(ServerProvider).hostname}`)
       .catch((e) => e);
 
     expect(resp).toBeInstanceOf(HttpError);

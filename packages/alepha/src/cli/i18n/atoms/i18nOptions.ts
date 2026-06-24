@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 /**
  * i18n CLI configuration atom.
@@ -9,15 +9,15 @@ import { $atom, type Static, t } from "alepha";
 export const i18nOptions = $atom({
   name: "alepha.cli.i18n.options",
   description: "i18n unused-key check configuration",
-  schema: t.optional(
-    t.object({
+  schema: z
+    .object({
       /**
        * Directories (relative to the project root) to scan both for
        * `$dictionary(...)` declarations and for translation key usage.
        *
        * @default ["src"]
        */
-      scan: t.optional(t.array(t.text())),
+      scan: z.array(z.text()).optional(),
 
       /**
        * Key prefixes that are constructed at runtime (e.g. via template
@@ -30,7 +30,7 @@ export const i18nOptions = $atom({
        *
        * @default []
        */
-      dynamicPrefixes: t.optional(t.array(t.text())),
+      dynamicPrefixes: z.array(z.text()).optional(),
 
       /**
        * Additional path substrings (matched against the full file
@@ -40,9 +40,9 @@ export const i18nOptions = $atom({
        *
        * @default []
        */
-      exclude: t.optional(t.array(t.text())),
-    }),
-  ),
+      exclude: z.array(z.text()).optional(),
+    })
+    .optional(),
 });
 
 /**

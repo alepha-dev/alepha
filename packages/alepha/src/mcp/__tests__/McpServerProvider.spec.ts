@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, expect, test } from "vitest";
 import {
   $prompt,
@@ -163,13 +163,13 @@ describe("McpServerProvider", () => {
       class Calculator {
         add = $tool({
           description: "Add numbers",
-          schema: { params: t.object({ a: t.number(), b: t.number() }) },
+          schema: { params: z.object({ a: z.number(), b: z.number() }) },
           handler: async ({ params }) => params.a + params.b,
         });
 
         subtract = $tool({
           description: "Subtract numbers",
-          schema: { params: t.object({ a: t.number(), b: t.number() }) },
+          schema: { params: z.object({ a: z.number(), b: z.number() }) },
           handler: async ({ params }) => params.a - params.b,
         });
       }
@@ -201,8 +201,8 @@ describe("McpServerProvider", () => {
         multiply = $tool({
           description: "Multiply",
           schema: {
-            params: t.object({ a: t.number(), b: t.number() }),
-            result: t.number(),
+            params: z.object({ a: z.number(), b: z.number() }),
+            result: z.number(),
           },
           handler: async ({ params }) => params.a * params.b,
         });
@@ -482,7 +482,7 @@ describe("McpServerProvider", () => {
       class Prompts {
         greeting = $prompt({
           description: "Generate greeting",
-          args: t.object({ name: t.text() }),
+          args: z.object({ name: z.text() }),
           handler: async () => [],
         });
 
@@ -516,7 +516,7 @@ describe("McpServerProvider", () => {
       class Prompts {
         greeting = $prompt({
           description: "Generate greeting",
-          args: t.object({ name: t.text() }),
+          args: z.object({ name: z.text() }),
           handler: async ({ args }) => [
             { role: "user", content: `Say hello to ${args.name}` },
           ],
@@ -662,8 +662,8 @@ describe("McpServerProvider", () => {
         contextTool = $tool({
           description: "Tool that receives context",
           schema: {
-            params: t.object({ value: t.text() }),
-            result: t.text(),
+            params: z.object({ value: z.text() }),
+            result: z.text(),
           },
           handler: async ({ params, context }) => {
             receivedContext = context;
@@ -748,7 +748,7 @@ describe("McpServerProvider", () => {
       class Prompts {
         contextPrompt = $prompt({
           description: "Prompt that receives context",
-          args: t.object({ name: t.text() }),
+          args: z.object({ name: z.text() }),
           handler: async ({ args, context }) => {
             receivedContext = context;
             return [{ role: "user", content: `Hello ${args.name}` }];
@@ -819,7 +819,7 @@ describe("McpServerProvider", () => {
       class Tools {
         protected = $tool({
           description: "Protected tool",
-          schema: { result: t.text() },
+          schema: { result: z.text() },
           handler: async ({ context }) => {
             const auth = context?.headers?.authorization;
             if (!auth?.toString().startsWith("Bearer ")) {

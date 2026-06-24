@@ -59,17 +59,17 @@ class UserController {
   getUsers = $action({
     path: "/users",
     schema: {
-      query: t.object({
-        page: t.optional(t.number({ default: 1 })),
-        limit: t.optional(t.number({ default: 10 }))
+      query: z.object({
+        page: z.number({ default: 1 }).optional(),
+        limit: z.number({ default: 10 }).optional()
       }),
-      response: t.object({
-        users: t.array(t.object({
-          id: t.text(),
-          name: t.text(),
-          email: t.text()
+      response: z.object({
+        users: z.array(z.object({
+          id: z.text(),
+          name: z.text(),
+          email: z.text()
         })),
-        total: t.number()
+        total: z.number()
       })
     },
     handler: async ({ query }) => {
@@ -82,11 +82,11 @@ class UserController {
     method: "POST",
     path: "/users",
     schema: {
-      body: t.object({
-        name: t.text(),
-        email: t.text({ format: "email" })
+      body: z.object({
+        name: z.text(),
+        email: z.text({ format: "email" })
       }),
-      response: t.object({ id: t.text(), name: t.text() })
+      response: z.object({ id: z.text(), name: z.text() })
     },
     handler: async ({ body }) => {
       return await this.userService.create(body);

@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 import {
   $entity,
@@ -28,22 +28,22 @@ describe("SQL Injection Security Tests", () => {
   // Define test entities with various column types
   const users = $entity({
     name: "users",
-    schema: t.object({
+    schema: z.object({
       id: db.primaryKey(),
-      username: t.text(),
-      email: t.text(),
-      age: t.integer(),
-      profile: t.object({
-        bio: t.text(),
-        settings: t.object({
-          theme: t.text(),
-          notifications: t.boolean(),
+      username: z.text(),
+      email: z.text(),
+      age: z.integer(),
+      profile: z.object({
+        bio: z.text(),
+        settings: z.object({
+          theme: z.text(),
+          notifications: z.boolean(),
         }),
       }),
-      tags: t.array(t.text()),
-      metadata: t.object({
-        permissions: t.array(t.text()),
-        lastLogin: t.optional(t.text()),
+      tags: z.array(z.text()),
+      metadata: z.object({
+        permissions: z.array(z.text()),
+        lastLogin: z.text().optional(),
       }),
     }),
   });
@@ -405,7 +405,7 @@ describe("SQL Injection Security Tests", () => {
           // Using parameterized queries should be safe
           const result = await app.users.query(
             (t) => sql`SELECT * FROM ${t} WHERE ${t.username} = ${payload}`,
-            t.pick(users.schema, ["username"]),
+            users.schema.pick({ username: true }),
           );
 
           // Should treat payload as a literal value
@@ -434,7 +434,7 @@ describe("SQL Injection Security Tests", () => {
           const result = await app.users.query(
             (t) =>
               sql`SELECT * FROM ${t} WHERE ${t.username} LIKE ${`%${payload}%`}`,
-            t.pick(users.schema, ["username"]),
+            users.schema.pick({ username: true }),
           );
 
           expect(result).toEqual([]);
@@ -581,7 +581,7 @@ describe("SQL Injection Security Tests", () => {
         for (const payload of sqlInjectionPayloads) {
           const result = await app.users.query(
             (t) => sql`SELECT * FROM ${t} WHERE ${t.username} = ${payload}`,
-            t.pick(users.schema, ["username"]),
+            users.schema.pick({ username: true }),
           );
 
           expect(result).toEqual([]);

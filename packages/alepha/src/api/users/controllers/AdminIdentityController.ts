@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { identityQuerySchema } from "../schemas/identityQuerySchema.ts";
@@ -19,10 +19,10 @@ export class AdminIdentityController {
     use: [$secure({ permissions: ["admin:identity:read"] })],
     description: "Find identities with pagination and filtering",
     schema: {
-      query: t.extend(identityQuerySchema, {
-        userRealmName: t.optional(t.string()),
+      query: identityQuerySchema.extend({
+        userRealmName: z.string().optional(),
       }),
-      response: t.page(identityResourceSchema),
+      response: z.page(identityResourceSchema),
     },
     handler: ({ query }) => {
       const { userRealmName, ...q } = query;
@@ -39,11 +39,11 @@ export class AdminIdentityController {
     use: [$secure({ permissions: ["admin:identity:read"] })],
     description: "Get an identity by ID",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
       response: identityResourceSchema,
     },
@@ -61,11 +61,11 @@ export class AdminIdentityController {
     use: [$secure({ permissions: ["admin:identity:delete"] })],
     description: "Delete an identity",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      query: t.object({
-        userRealmName: t.optional(t.string()),
+      query: z.object({
+        userRealmName: z.string().optional(),
       }),
       response: okSchema,
     },

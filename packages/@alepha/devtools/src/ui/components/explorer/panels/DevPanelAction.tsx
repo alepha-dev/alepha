@@ -12,7 +12,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
-import { jsonSchemaToTypeBox, t } from "alepha";
+import { jsonSchemaToZod, z } from "alepha";
 import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { HttpClient } from "alepha/server";
@@ -32,13 +32,13 @@ const methodVariant = (
   }
 };
 
-const EMPTY_SCHEMA = t.object({});
+const EMPTY_SCHEMA = z.object({});
 
 const toTypeBoxObject = (jsonSchema: any): any => {
   if (!jsonSchema) return null;
   try {
-    const converted = jsonSchemaToTypeBox(jsonSchema);
-    if (converted?.properties) return converted;
+    const converted = jsonSchemaToZod(jsonSchema);
+    if (converted && z.schema.isObject(converted)) return converted;
   } catch {
     // Schema conversion failed
   }

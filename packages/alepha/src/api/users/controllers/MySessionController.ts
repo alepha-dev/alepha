@@ -1,4 +1,4 @@
-import { $inject, type Static, t } from "alepha";
+import { $inject, type Static, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 import { RealmProvider } from "../providers/RealmProvider.ts";
@@ -8,21 +8,21 @@ import { RealmProvider } from "../providers/RealmProvider.ts";
  * omitted (returning it would let any XSS exfiltrate a long-lived
  * credential); `current` flags the session backing the calling request.
  */
-export const mySessionSchema = t.object({
-  id: t.uuid(),
-  createdAt: t.datetime(),
-  expiresAt: t.datetime(),
-  lastUsedAt: t.optional(t.datetime()),
-  ip: t.optional(t.string()),
-  country: t.optional(t.string()),
-  userAgent: t.optional(
-    t.object({
-      os: t.string(),
-      browser: t.string(),
-      device: t.enum(["MOBILE", "DESKTOP", "TABLET"]),
-    }),
-  ),
-  current: t.boolean(),
+export const mySessionSchema = z.object({
+  id: z.uuid(),
+  createdAt: z.datetime(),
+  expiresAt: z.datetime(),
+  lastUsedAt: z.datetime().optional(),
+  ip: z.string().optional(),
+  country: z.string().optional(),
+  userAgent: z
+    .object({
+      os: z.string(),
+      browser: z.string(),
+      device: z.enum(["MOBILE", "DESKTOP", "TABLET"]),
+    })
+    .optional(),
+  current: z.boolean(),
 });
 
 export type MySession = Static<typeof mySessionSchema>;
@@ -70,7 +70,7 @@ export class MySessionController {
     use: [$secure()],
     description: "List the caller's active sessions",
     schema: {
-      response: t.array(mySessionSchema),
+      response: z.array(mySessionSchema),
     },
     handler: async ({ user }) => {
       const rows = await this.sessions(user.realm).findMany({
@@ -87,8 +87,8 @@ export class MySessionController {
     use: [$secure()],
     description: "Revoke one of the caller's sessions",
     schema: {
-      params: t.object({ id: t.uuid() }),
-      response: t.object({ ok: t.boolean() }),
+      params: z.object({ id: z.uuid() }),
+      response: z.object({ ok: z.boolean() }),
     },
     handler: async ({ params, user }) => {
       const repo = this.sessions(user.realm);
@@ -108,7 +108,7 @@ export class MySessionController {
     use: [$secure()],
     description: "Revoke every caller session except the current one",
     schema: {
-      response: t.object({ revoked: t.integer() }),
+      response: z.object({ revoked: z.integer() }),
     },
     handler: async ({ user }) => {
       const repo = this.sessions(user.realm);

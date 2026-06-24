@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $state, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, type Static, z } from "alepha";
 import { CacheProvider } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -24,25 +24,23 @@ export interface RateLimitResult {
  */
 export const rateLimitOptions = $atom({
   name: "alepha.server.rate-limit.options",
-  schema: t.object({
-    windowMs: t.number({
-      default: 15 * 60 * 1000,
-      description: "Window duration in milliseconds",
-    }),
-    max: t.number({
-      default: 100,
-      description: "Maximum number of requests per window",
-    }),
-    skipFailedRequests: t.optional(
-      t.boolean({
-        description: "Skip rate limiting for failed requests",
-      }),
-    ),
-    skipSuccessfulRequests: t.optional(
-      t.boolean({
-        description: "Skip rate limiting for successful requests",
-      }),
-    ),
+  schema: z.object({
+    windowMs: z
+      .number()
+      .describe("Window duration in milliseconds")
+      .default(15 * 60 * 1000),
+    max: z
+      .number()
+      .describe("Maximum number of requests per window")
+      .default(100),
+    skipFailedRequests: z
+      .boolean()
+      .describe("Skip rate limiting for failed requests")
+      .optional(),
+    skipSuccessfulRequests: z
+      .boolean()
+      .describe("Skip rate limiting for successful requests")
+      .optional(),
   }),
   default: {
     windowMs: 15 * 60 * 1000,

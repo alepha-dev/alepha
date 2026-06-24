@@ -1,4 +1,4 @@
-import { $hook, type Alepha, type Static, t } from "alepha";
+import { $hook, type Alepha, type Static, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { expect } from "vitest";
 import { DbEntityNotFoundError } from "../core/errors/DbEntityNotFoundError.ts";
@@ -125,15 +125,15 @@ class CrudApp {
   users = $repository(
     $entity({
       name: "users",
-      schema: t.object({
+      schema: z.object({
         id: db.primaryKey(),
         createdAt: db.createdAt(),
         updatedAt: db.updatedAt(),
-        name: t.text(),
-        profile: t.object({
-          age: t.number(),
+        name: z.text(),
+        profile: z.object({
+          age: z.number(),
         }),
-        role: db.default(t.text(), "user"),
+        role: db.default(z.text(), "user"),
       }),
     }),
   );
@@ -419,10 +419,10 @@ class HooksApp {
   users = $repository(
     $entity({
       name: "users",
-      schema: t.object({
+      schema: z.object({
         id: db.primaryKey(),
-        name: t.text(),
-        email: t.text(),
+        name: z.text(),
+        email: z.text(),
       }),
     }),
   );
@@ -947,9 +947,9 @@ export const testPaginationSort = async (alepha: Alepha) => {
 
 const dummyEntity = $entity({
   name: "dummies",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.optional(t.text()),
+    name: z.text().optional(),
   }),
 });
 
@@ -1026,9 +1026,9 @@ export const testTransactionThrowsWhenUnsupported = async (alepha: Alepha) => {
 
 const customPkEntity = $entity({
   name: "custom_pk_items",
-  schema: t.object({
-    code: db.primaryKey(t.uuid()),
-    label: t.text(),
+  schema: z.object({
+    code: db.primaryKey(z.uuid()),
+    label: z.text(),
   }),
 });
 
@@ -1057,13 +1057,13 @@ export const testSaveWithCustomPrimaryKey = async (alepha: Alepha) => {
 
 const productEntity = $entity({
   name: "products",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    sku: t.text(),
-    name: t.text(),
-    price: t.number(),
+    sku: z.text(),
+    name: z.text(),
+    price: z.number(),
   }),
   indexes: [{ column: "sku", unique: true }],
 });
@@ -1203,9 +1203,9 @@ export const testUpsert = async (alepha: Alepha) => {
 // testSerialIdOperations
 // ============================================================================
 
-const serialTestSchema = t.object({
+const serialTestSchema = z.object({
   id: db.primaryKey(),
-  name: t.text(),
+  name: z.text(),
 });
 
 const serialTestEntity = $entity({
@@ -1241,9 +1241,9 @@ export const testSerialIdOperations = async (alepha: Alepha) => {
 // testUuidIdOperations
 // ============================================================================
 
-const uuidSchema = t.object({
+const uuidSchema = z.object({
   uuid: db.uuidPrimaryKey(),
-  name: t.text(),
+  name: z.text(),
 });
 
 const uuidEntity = $entity({
@@ -1260,7 +1260,13 @@ export const testUuidIdOperations = async (alepha: Alepha) => {
   await alepha.start();
 
   expect(app.repository.id.key).toEqual("uuid");
-  expect(app.repository.id.type).toEqual(db.uuidPrimaryKey());
+  // The id column is a uuid primary key. We assert the introspectable shape
+  // rather than deep-equaling the schema object: zod lazily installs an own
+  // `meta` property on a schema the first time `.meta()` is read (which the ORM
+  // does while building columns), so two structurally-identical uuid schemas no
+  // longer compare equal by reference/own-keys.
+  expect(z.schema.format(app.repository.id.type)).toEqual("uuid");
+  expect(z.schema.format(db.uuidPrimaryKey())).toEqual("uuid");
 
   const it = await app.repository.create({ name: "test" });
 
@@ -1279,10 +1285,10 @@ export const testUuidIdOperations = async (alepha: Alepha) => {
 // testMultipleOperators
 // ============================================================================
 
-const rangeSchema = t.object({
+const rangeSchema = z.object({
   id: db.primaryKey(),
-  name: t.text(),
-  age: t.number(),
+  name: z.text(),
+  age: z.number(),
 });
 
 const rangeEntity = $entity({
@@ -1662,10 +1668,10 @@ export const testPagination = async (alepha: Alepha) => {
 
 const orSiblingsEntity = $entity({
   name: "test_or_siblings",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.text(),
-    age: t.number(),
+    name: z.text(),
+    age: z.number(),
   }),
 });
 

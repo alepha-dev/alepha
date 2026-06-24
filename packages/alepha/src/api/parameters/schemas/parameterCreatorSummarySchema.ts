@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
 /**
  * Slim view of a parameter version's creator, embedded by the admin history
@@ -12,12 +12,12 @@ import { type Static, t } from "alepha";
  * realm — comes back with `creator` undefined. Callers fall back to the raw
  * `creatorId`.
  */
-export const parameterCreatorSummarySchema = t.object({
-  id: t.uuid(),
-  email: t.optional(t.string({ format: "email" })),
-  username: t.optional(t.shortText({ minLength: 3, maxLength: 30 })),
-  firstName: t.optional(t.string()),
-  lastName: t.optional(t.string()),
+export const parameterCreatorSummarySchema = z.object({
+  id: z.uuid(),
+  email: z.string().meta({ format: "email" }).optional(),
+  username: z.shortText({ minLength: 3, maxLength: 30 }).optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
 });
 
 export type ParameterCreatorSummary = Static<

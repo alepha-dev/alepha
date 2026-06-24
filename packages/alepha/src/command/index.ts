@@ -36,7 +36,7 @@ export const AlephaCommand = $module({
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-declare module "typebox" {
+declare module "alepha" {
   interface StringOptions {
     /**
      * Additional aliases for the flags.

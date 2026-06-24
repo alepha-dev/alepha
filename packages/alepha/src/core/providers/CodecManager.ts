@@ -1,11 +1,10 @@
-import type { StaticEncode, TSchema } from "typebox";
 import { AlephaError } from "../errors/AlephaError.ts";
 import { $inject } from "../primitives/$inject.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
 import { KeylessJsonSchemaCodec } from "./KeylessJsonSchemaCodec.ts";
 import type { SchemaCodec } from "./SchemaCodec.ts";
 import { SchemaValidator, type ValidateOptions } from "./SchemaValidator.ts";
-import type { Static } from "./TypeProvider.ts";
+import type { Static, StaticEncode, TSchema } from "./TypeProvider.ts";
 
 export type Encoding = "object" | "string" | "binary";
 

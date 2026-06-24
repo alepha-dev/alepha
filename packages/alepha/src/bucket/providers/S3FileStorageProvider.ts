@@ -9,7 +9,7 @@ import {
   AlephaError,
   type FileLike,
   type Static,
-  t,
+  z,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
@@ -19,7 +19,7 @@ import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import { $bucket } from "../primitives/$bucket.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
-const envSchema = t.object({
+const envSchema = z.object({
   /**
    * S3 endpoint URL. The bucket name is appended (path-style) per request.
    *
@@ -29,24 +29,24 @@ const envSchema = t.object({
    * - MinIO: `http://localhost:9000`
    * - DigitalOcean Spaces: `https://<region>.digitaloceanspaces.com`
    */
-  S3_ENDPOINT: t.string(),
+  S3_ENDPOINT: z.string(),
 
   /**
    * AWS region or "auto" for R2.
    *
    * @default "auto"
    */
-  S3_REGION: t.optional(t.string()),
+  S3_REGION: z.string().optional(),
 
   /**
    * Access key ID for S3 authentication.
    */
-  S3_ACCESS_KEY_ID: t.string(),
+  S3_ACCESS_KEY_ID: z.string(),
 
   /**
    * Secret access key for S3 authentication.
    */
-  S3_SECRET_ACCESS_KEY: t.string(),
+  S3_SECRET_ACCESS_KEY: z.string(),
 });
 
 declare module "alepha" {

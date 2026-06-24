@@ -1,4 +1,4 @@
-import { $atom, $inject, $state, t } from "alepha";
+import { $atom, $inject, $state, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { JwtProvider } from "alepha/security";
 import { $route } from "alepha/server";
@@ -24,10 +24,10 @@ import { OAuthClientService } from "../services/OAuthClientService.ts";
 export const oauthOptions = $atom({
   name: "alepha.api.oauth.options",
   description: "Configuration for the OAuth authorization server.",
-  schema: t.object({
-    realm: t.text({ default: "users" }),
-    resource: t.text({ default: "/mcp" }),
-    loginPath: t.text({ default: "/login" }),
+  schema: z.object({
+    realm: z.text({ default: "users" }),
+    resource: z.text({ default: "/mcp" }),
+    loginPath: z.text({ default: "/login" }),
   }),
   default: { realm: "users", resource: "/mcp", loginPath: "/login" },
 });

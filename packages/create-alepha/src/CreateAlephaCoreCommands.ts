@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { ProjectScaffolder } from "alepha/cli";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
@@ -20,17 +20,16 @@ export class CreateAlephaCoreCommands {
   public readonly root = $command({
     root: true,
     description: "Create a new Alepha project",
-    args: t.optional(
-      t.text({
+    args: z
+      .text({
         title: "name",
-      }),
-    ),
-    flags: t.object({
-      pm: t.optional(
-        t.enum(["yarn", "npm", "pnpm", "bun"], {
-          description: "Package manager to use",
-        }),
-      ),
+      })
+      .optional(),
+    flags: z.object({
+      pm: z
+        .enum(["yarn", "npm", "pnpm", "bun"])
+        .describe("Package manager to use")
+        .optional(),
     }),
     handler: async ({ ask, args, flags, run, root }) => {
       ask.intro("Create Alepha");
@@ -39,7 +38,7 @@ export class CreateAlephaCoreCommands {
       const name =
         args ??
         (await ask("What is your project name?", {
-          schema: t.text({ trim: true, lowercase: true }),
+          schema: z.text({ trim: true, lowercase: true }),
           validate: (value) => {
             if (!/^[a-z0-9-]+$/.test(value)) {
               throw new Error(
@@ -51,14 +50,14 @@ export class CreateAlephaCoreCommands {
 
       // 2. Preset
       const preset = (await ask("Which template would you like?", {
-        schema: t.enum(["minimal", "api", "full-stack", "full-stack + saas"]),
+        schema: z.enum(["minimal", "api", "full-stack", "full-stack + saas"]),
       })) as keyof typeof presets;
 
       // 3. Package manager
       const pm =
         flags.pm ??
         (await ask("Which package manager?", {
-          schema: t.enum(["npm", "yarn", "pnpm", "bun"]),
+          schema: z.enum(["npm", "yarn", "pnpm", "bun"]),
         }));
 
       // Build flags from preset

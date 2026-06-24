@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, $sequence, $transactional } from "alepha/orm";
@@ -32,12 +32,12 @@ export class ChapterController {
       }),
     ],
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
       }),
-      response: t.array(
-        t.extend(chapters.schema, {
-          questCount: t.integer(),
+      response: z.array(
+        chapters.schema.extend({
+          questCount: z.integer(),
         }),
       ),
     },
@@ -65,13 +65,13 @@ export class ChapterController {
   startChapter = $action({
     use: [$secure({ permissions: ["quest:create"] }), $transactional()],
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
       }),
-      body: t.object({
-        title: t.optional(t.string({ minLength: 1, maxLength: 100 })),
-        description: t.optional(t.string({ size: "rich" })),
-        tags: t.optional(t.array(t.string())),
+      body: z.object({
+        title: z.string().min(1).max(100).optional(),
+        description: z.string().meta({ size: "rich" }).optional(),
+        tags: z.array(z.string()).optional(),
       }),
       response: chapters.schema,
     },
@@ -110,12 +110,12 @@ export class ChapterController {
   closeChapter = $action({
     use: [$secure({ permissions: ["quest:create"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
-        title: t.optional(t.string({ minLength: 1, maxLength: 100 })),
-        tags: t.optional(t.array(t.string())),
+      body: z.object({
+        title: z.string().min(1).max(100).optional(),
+        tags: z.array(z.string()).optional(),
       }),
       response: chapters.schema,
     },
@@ -137,13 +137,13 @@ export class ChapterController {
   updateChapter = $action({
     use: [$secure({ permissions: ["quest:create"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      body: t.object({
-        title: t.optional(t.string({ minLength: 1, maxLength: 100 })),
-        description: t.optional(t.string({ size: "rich" })),
-        tags: t.optional(t.array(t.string())),
+      body: z.object({
+        title: z.string().min(1).max(100).optional(),
+        description: z.string().meta({ size: "rich" }).optional(),
+        tags: z.array(z.string()).optional(),
       }),
       response: chapters.schema,
     },
@@ -164,8 +164,8 @@ export class ChapterController {
   deleteChapter = $action({
     use: [$secure({ permissions: ["quest:delete"] })],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
       response: okSchema,
     },
@@ -193,16 +193,16 @@ export class ChapterController {
       }),
     ],
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
-      response: t.object({
-        markdown: t.string(),
+      response: z.object({
+        markdown: z.string(),
         chapter: chapters.schema,
-        stats: t.object({
-          questCount: t.integer(),
-          zoneCount: t.integer(),
-          contributorCount: t.integer(),
+        stats: z.object({
+          questCount: z.integer(),
+          zoneCount: z.integer(),
+          contributorCount: z.integer(),
         }),
       }),
     },
@@ -229,7 +229,7 @@ export class ChapterController {
   getRandomChapterName = $action({
     use: [$secure({ permissions: ["quest:create"] })],
     schema: {
-      response: t.object({ title: t.string() }),
+      response: z.object({ title: z.string() }),
     },
     handler: async () => ({ title: randomChapterName() }),
   });

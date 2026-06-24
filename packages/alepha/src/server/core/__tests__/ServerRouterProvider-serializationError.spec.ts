@@ -1,13 +1,13 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, it } from "vitest";
 import { $action, ServerProvider } from "../index.ts";
 
 class TestApp {
   badResponse = $action({
     schema: {
-      response: t.object({
-        name: t.text(),
-        age: t.integer(),
+      response: z.object({
+        name: z.text(),
+        age: z.integer(),
       }),
     },
     handler: () =>

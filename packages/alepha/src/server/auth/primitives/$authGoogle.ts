@@ -1,4 +1,4 @@
-import { $context, AlephaError, t } from "alepha";
+import { $context, AlephaError, z } from "alepha";
 import type { IssuerPrimitive } from "alepha/security";
 import {
   $auth,
@@ -24,19 +24,19 @@ export const $authGoogle = (
   const { alepha } = $context();
 
   const env = alepha.parseEnv(
-    t.object({
-      GOOGLE_CLIENT_ID: t.optional(
-        t.text({
+    z.object({
+      GOOGLE_CLIENT_ID: z
+        .text({
           description:
             "The OAuth 2.0 client ID obtained from the Google Developer Console.",
-        }),
-      ),
-      GOOGLE_CLIENT_SECRET: t.optional(
-        t.text({
+        })
+        .optional(),
+      GOOGLE_CLIENT_SECRET: z
+        .text({
           description:
             "The OAuth 2.0 client secret obtained from the Google Developer Console.",
-        }),
-      ),
+        })
+        .optional(),
     }),
   );
 

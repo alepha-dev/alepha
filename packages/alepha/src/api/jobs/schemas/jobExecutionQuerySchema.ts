@@ -1,10 +1,10 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const jobExecutionQuerySchema = t.object({
-  status: t.optional(
-    t.enum(["pending", "running", "scheduled", "ok", "error", "cancelled"]),
-  ),
-  limit: t.optional(t.integer({ minimum: 1, maximum: 200, default: 20 })),
+export const jobExecutionQuerySchema = z.object({
+  status: z
+    .enum(["pending", "running", "scheduled", "ok", "error", "cancelled"])
+    .optional(),
+  limit: z.integer().min(1).max(200).default(20).optional(),
 });
 
 export type JobExecutionQuery = Static<typeof jobExecutionQuerySchema>;

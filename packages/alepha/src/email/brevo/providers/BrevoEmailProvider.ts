@@ -1,4 +1,4 @@
-import { $env, t } from "alepha";
+import { $env, z } from "alepha";
 import {
   EmailError,
   type EmailProvider,
@@ -9,11 +9,11 @@ import { $logger } from "alepha/logger";
 /**
  * Environment variables for Brevo configuration.
  */
-const envSchema = t.object({
-  BREVO_API_KEY: t.text({
+const envSchema = z.object({
+  BREVO_API_KEY: z.text({
     description: "Brevo API key for transactional email",
   }),
-  EMAIL_FROM: t.text({
+  EMAIL_FROM: z.text({
     description: "Default sender email address",
   }),
 });

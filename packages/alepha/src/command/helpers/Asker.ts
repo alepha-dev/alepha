@@ -4,10 +4,11 @@ import {
   $inject,
   Alepha,
   AlephaError,
+  coerceScalar,
   type Static,
   type TSchema,
   type TString,
-  t,
+  z,
 } from "alepha";
 import { $logger } from "alepha/logger";
 
@@ -16,16 +17,16 @@ export interface AskOptions<T extends TSchema = TString> {
    * Response schema expected.
    *
    * Recommended schemas:
-   * - t.text() - for free text input
-   * - t.number() - for numeric input
-   * - t.boolean() - for yes/no input (accepts "true", "false", "1", "0")
-   * - t.enum(["option1", "option2"]) - for predefined options
+   * - z.text() - for free text input
+   * - z.number() - for numeric input
+   * - z.boolean() - for yes/no input (accepts "true", "false", "1", "0")
+   * - z.enum(["option1", "option2"]) - for predefined options
    *
    * You can use schema.default to provide a default value.
    *
    * @example
    * ```ts
-   * ask("What is your name?", { schema: t.text({ default: "John Doe" }) })
+   * ask("What is your name?", { schema: z.text({ default: "John Doe" }) })
    * ```
    *
    * @default TString
@@ -77,7 +78,7 @@ export class Asker {
 
     askFn.permission = async (question: string) => {
       const response = await this.prompt(`${question} [Y/n]`, {
-        schema: t.enum(["Y", "y", "n", "no", "yes"], { default: "Y" }),
+        schema: z.enum(["Y", "y", "n", "no", "yes"]).default("Y"),
       });
       return response.charAt(0).toLowerCase() === "y";
     };
@@ -105,9 +106,13 @@ export class Asker {
           this.log.info(question);
           const answer = await rl.question("> ");
           if (options.schema) {
+            // The terminal is a string-only boundary (like HTTP query/env), so
+            // coerce the answer to the schema's scalar type before strict
+            // decoding — otherwise `z.number()` would reject the string "41".
+            const raw = answer ? answer.trim() : undefined;
             value = this.alepha.codec.decode(
               options.schema,
-              answer ? answer.trim() : undefined,
+              raw === undefined ? undefined : coerceScalar(options.schema, raw),
             );
           } else {
             value = String(answer.trim());

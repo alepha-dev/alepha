@@ -4,7 +4,7 @@ import {
   type MollieClient,
   PaymentStatus,
 } from "@mollie/api-client";
-import { $env, $inject, Alepha, AlephaError, type Static, t } from "alepha";
+import { $env, $inject, Alepha, AlephaError, type Static, z } from "alepha";
 import {
   type CreatePaymentMethodResult,
   type CreateSessionResult,
@@ -16,8 +16,8 @@ import {
 } from "alepha/api/payments";
 import { $logger } from "alepha/logger";
 
-const envSchema = t.object({
-  MOLLIE_API_KEY: t.string(),
+const envSchema = z.object({
+  MOLLIE_API_KEY: z.string(),
   /**
    * Public URL Mollie will POST webhooks to. Mollie webhooks are
    * configured per-payment, so this URL is attached to every payment
@@ -27,7 +27,7 @@ const envSchema = t.object({
    * are created without a webhook and status updates rely on the
    * return-from-checkout fetch only.
    */
-  MOLLIE_WEBHOOK_URL: t.optional(t.string()),
+  MOLLIE_WEBHOOK_URL: z.string().optional(),
 });
 
 declare module "alepha" {

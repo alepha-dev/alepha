@@ -1,13 +1,13 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { $entity, $repository, db, sql } from "alepha/orm";
 import { $action } from "alepha/server";
 
 const viewEntity = $entity({
   name: "views",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.text(),
-    count: t.integer(),
+    name: z.text(),
+    count: z.integer(),
   }),
   indexes: [
     {
@@ -22,8 +22,8 @@ export class CountApi {
   views = $repository(viewEntity);
   inc = $action({
     schema: {
-      response: t.object({
-        count: t.integer(),
+      response: z.object({
+        count: z.integer(),
       }),
     },
     handler: async () => {

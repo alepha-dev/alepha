@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { renderToString } from "react-dom/server";
 import { test } from "vitest";
 import { NestedView } from "../../router/index.ts";
@@ -70,8 +70,8 @@ test("Router - NestedView", async ({ expect }) => {
         name: "Hello",
         path: "/hello/:name",
         schema: {
-          params: t.object({
-            name: t.text(),
+          params: z.object({
+            name: z.text(),
           }),
         },
         loader: ({ params }) => params,
@@ -124,7 +124,7 @@ test("Router - All routes", async ({ expect }) => {
           },
           {
             path: ":id",
-            schema: { params: t.object({ id: t.text() }) },
+            schema: { params: z.object({ id: z.text() }) },
             loader: ({ params }) => {
               if (params.id === "boom") throw new Error("boom");
               return params;

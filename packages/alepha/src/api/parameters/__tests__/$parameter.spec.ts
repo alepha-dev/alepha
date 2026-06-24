@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { currentTenantAtom } from "alepha/security";
@@ -9,9 +9,9 @@ import {
   ParameterProvider,
 } from "../index.ts";
 
-const featureSchema = t.object({
-  enableBeta: t.boolean(),
-  maxUploadSize: t.number(),
+const featureSchema = z.object({
+  enableBeta: z.boolean(),
+  maxUploadSize: z.number(),
 });
 
 describe("$parameter", () => {
@@ -579,9 +579,9 @@ describe("Cross-instance sync", () => {
 
 describe("Schema migration", () => {
   it("should keep valid value when schema is compatible", async () => {
-    const schema = t.object({
-      name: t.text(),
-      age: t.optional(t.number()),
+    const schema = z.object({
+      name: z.text(),
+      age: z.number().optional(),
     });
 
     class AppConfig {
@@ -614,9 +614,9 @@ describe("Schema migration", () => {
   });
 
   it("should merge with defaults when adding a required field", async () => {
-    const schema = t.object({
-      name: t.text(),
-      age: t.number(),
+    const schema = z.object({
+      name: z.text(),
+      age: z.number(),
     });
 
     class AppConfig {
@@ -651,11 +651,11 @@ describe("Schema migration", () => {
   });
 
   it("should reset to defaults when merge still invalid", async () => {
-    const schema = t.object({
-      items: t.array(
-        t.object({
-          x: t.number(),
-          y: t.number(),
+    const schema = z.object({
+      items: z.array(
+        z.object({
+          x: z.number(),
+          y: z.number(),
         }),
       ),
     });
@@ -695,9 +695,9 @@ describe("Schema migration", () => {
   });
 
   it("should use migrate function when provided", async () => {
-    const schema = t.object({
-      name: t.text(),
-      age: t.number(),
+    const schema = z.object({
+      name: z.text(),
+      age: z.number(),
     });
 
     class AppConfig {
@@ -737,9 +737,9 @@ describe("Schema migration", () => {
   });
 
   it("should fall through to merge when migrate returns invalid value", async () => {
-    const schema = t.object({
-      name: t.text(),
-      age: t.number(),
+    const schema = z.object({
+      name: z.text(),
+      age: z.number(),
     });
 
     class AppConfig {
@@ -776,9 +776,9 @@ describe("Schema migration", () => {
   });
 
   it("should not migrate when schema hash matches", async () => {
-    const schema = t.object({
-      name: t.text(),
-      age: t.number(),
+    const schema = z.object({
+      name: z.text(),
+      age: z.number(),
     });
 
     class AppConfig {
@@ -819,8 +819,8 @@ describe("Schema migration", () => {
   });
 
   it("should handle type change by resetting to defaults", async () => {
-    const schema = t.object({
-      name: t.number(),
+    const schema = z.object({
+      name: z.number(),
     });
 
     class AppConfig {
@@ -854,8 +854,8 @@ describe("Schema migration", () => {
   });
 
   it("should handle removed fields gracefully", async () => {
-    const schema = t.object({
-      name: t.text(),
+    const schema = z.object({
+      name: z.text(),
     });
 
     class AppConfig {
@@ -889,9 +889,9 @@ describe("Schema migration", () => {
   });
 
   it("should not migrate when there is no DB value", async () => {
-    const schema = t.object({
-      name: t.text(),
-      age: t.number(),
+    const schema = z.object({
+      name: z.text(),
+      age: z.number(),
     });
 
     class AppConfig {
@@ -917,9 +917,9 @@ describe("Schema migration", () => {
   });
 
   it("should handle migrate function that throws", async () => {
-    const schema = t.object({
-      name: t.text(),
-      age: t.number(),
+    const schema = z.object({
+      name: z.text(),
+      age: z.number(),
     });
 
     class AppConfig {
@@ -951,9 +951,9 @@ describe("Schema migration", () => {
   });
 
   it("should notify subscribers after auto-migration", async () => {
-    const schema = t.object({
-      name: t.text(),
-      age: t.number(),
+    const schema = z.object({
+      name: z.text(),
+      age: z.number(),
     });
 
     class Config {
@@ -1000,9 +1000,9 @@ describe("Schema migration", () => {
   });
 
   it("should handle completely new shape by resetting to defaults", async () => {
-    const schema = t.object({
-      width: t.number(),
-      height: t.number(),
+    const schema = z.object({
+      width: z.number(),
+      height: z.number(),
     });
 
     class Config {
@@ -1036,9 +1036,9 @@ describe("Schema migration", () => {
   });
 
   it("should only migrate once per lifecycle in Node.js", async () => {
-    const schema = t.object({
-      name: t.text(),
-      count: t.number(),
+    const schema = z.object({
+      name: z.text(),
+      count: z.number(),
     });
 
     class Config {
@@ -1881,11 +1881,11 @@ describe("reloadNextInBackground", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 10. ParameterTreeNode schema uses t.any() for children
+// 10. ParameterTreeNode schema uses z.any() for children
 // ---------------------------------------------------------------------------
 
 describe("ParameterTreeNode children structure", () => {
-  it("should produce correctly typed children at runtime despite t.any() schema", async () => {
+  it("should produce correctly typed children at runtime despite z.any() schema", async () => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
@@ -2016,7 +2016,7 @@ describe("$parameter.name fallback", () => {
   it("should use ClassName.propertyKey when name option is omitted", async () => {
     class MySettings {
       theme = $parameter({
-        schema: t.object({ dark: t.boolean() }),
+        schema: z.object({ dark: z.boolean() }),
         default: { dark: false },
       });
     }
@@ -2034,7 +2034,7 @@ describe("$parameter.name fallback", () => {
     class MySettings {
       theme = $parameter({
         name: "app.ui.theme",
-        schema: t.object({ dark: t.boolean() }),
+        schema: z.object({ dark: z.boolean() }),
         default: { dark: false },
       });
     }

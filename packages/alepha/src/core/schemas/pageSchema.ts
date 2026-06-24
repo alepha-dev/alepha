@@ -2,64 +2,58 @@ import {
   type Static,
   type TArray,
   type TObject,
-  type TObjectOptions,
   type TRecord,
   TypeProvider,
-  t,
+  z,
 } from "../providers/TypeProvider.ts";
 
-export const pageMetadataSchema = t.object({
-  number: t.integer({ description: "Page number, starting from 0" }),
-  size: t.integer({
-    description: "Number of items per page (requested page size)",
-  }),
-  offset: t.integer({
-    description: "Offset in the dataset (page × size)",
-  }),
-  numberOfElements: t.integer({
-    description:
+export const pageMetadataSchema = z.object({
+  number: z.integer().describe("Page number, starting from 0"),
+  size: z.integer().describe("Number of items per page (requested page size)"),
+  offset: z.integer().describe("Offset in the dataset (page × size)"),
+  numberOfElements: z
+    .integer()
+    .describe(
       "Number of elements in THIS page (content.length). Different from totalElements which is the total across all pages.",
-  }),
-  totalElements: t.optional(
-    t.integer({
-      description:
-        "Total number of elements across all pages. Only available when counting is enabled.",
-    }),
-  ),
-  totalPages: t.optional(
-    t.integer({
-      description:
-        "Total number of pages. Only available when `totalElements` is present.",
-    }),
-  ),
-  isEmpty: t.boolean({
-    description:
+    ),
+  totalElements: z
+    .integer()
+    .describe(
+      "Total number of elements across all pages. Only available when counting is enabled.",
+    )
+    .optional(),
+  totalPages: z
+    .integer()
+    .describe(
+      "Total number of pages. Only available when `totalElements` is present.",
+    )
+    .optional(),
+  isEmpty: z
+    .boolean()
+    .describe(
       "Indicates if the current page has no items (numberOfElements === 0)",
-  }),
-  isFirst: t.boolean({
-    description: "Indicates if this is the first page (number === 0)",
-  }),
-  isLast: t.boolean({
-    description:
-      "Indicates if this is the last page (no more pages after this)",
-  }),
-  sort: t.optional(
-    t.object({
-      sorted: t.boolean({
-        description: "Whether the results are sorted",
-      }),
-      fields: t.array(
-        t.object({
-          field: t.text({
+    ),
+  isFirst: z
+    .boolean()
+    .describe("Indicates if this is the first page (number === 0)"),
+  isLast: z
+    .boolean()
+    .describe("Indicates if this is the last page (no more pages after this)"),
+  sort: z
+    .object({
+      sorted: z.boolean().describe("Whether the results are sorted"),
+      fields: z.array(
+        z.object({
+          field: z.text({
             description: "The field used for sorting",
           }),
-          direction: t.enum(["asc", "desc"], {
-            description: "The direction of the sort. Either 'asc' or 'desc'",
-          }),
+          direction: z
+            .enum(["asc", "desc"])
+            .describe("The direction of the sort. Either 'asc' or 'desc'"),
         }),
       ),
-    }),
-  ),
+    })
+    .optional(),
 });
 
 /**
@@ -70,7 +64,7 @@ export const pageMetadataSchema = t.object({
  *
  * @example
  * ```ts
- * const userSchema = t.object({ id: t.integer(), name: t.text() });
+ * const userSchema = z.object({ id: z.integer(), name: z.text() });
  * const userPageSchema = pageSchema(userSchema);
  * ```
  *
@@ -86,15 +80,11 @@ export const pageMetadataSchema = t.object({
  */
 export const pageSchema = <T extends TObject | TRecord>(
   objectSchema: T,
-  options?: TObjectOptions,
 ): TPage<T> =>
-  t.object(
-    {
-      content: t.array(objectSchema),
-      page: pageMetadataSchema,
-    },
-    options,
-  );
+  z.object({
+    content: z.array(objectSchema),
+    page: pageMetadataSchema,
+  }) as unknown as TPage<T>;
 
 export type TPage<T extends TObject | TRecord> = TObject<{
   content: TArray<T>;

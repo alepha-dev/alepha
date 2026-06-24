@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import {
@@ -26,7 +26,7 @@ export class AdminPaymentController {
     description: "List payment intents",
     schema: {
       query: intentQuerySchema,
-      response: t.page(intentResourceSchema),
+      response: z.page(intentResourceSchema),
     },
     handler: ({ query }) => this.payments.findIntents(query),
   });
@@ -40,7 +40,7 @@ export class AdminPaymentController {
     use: [$secure({ permissions: ["payments:read"] })],
     description: "Get payment intent details",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: intentResourceSchema,
     },
     handler: ({ params }) => this.payments.getIntent(params.id),
@@ -56,7 +56,7 @@ export class AdminPaymentController {
     use: [$secure({ permissions: ["payments:write"] })],
     description: "Capture an authorized payment intent",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       body: captureIntentSchema,
       response: intentResourceSchema,
     },
@@ -74,7 +74,7 @@ export class AdminPaymentController {
     use: [$secure({ permissions: ["payments:write"] })],
     description: "Void an authorized payment intent",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: intentResourceSchema,
     },
     handler: ({ params }) => this.payments.void(params.id),
@@ -90,7 +90,7 @@ export class AdminPaymentController {
     use: [$secure({ permissions: ["payments:write"] })],
     description: "Issue partial or full refund",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       body: refundIntentSchema,
       response: refundResourceSchema,
     },
@@ -108,7 +108,7 @@ export class AdminPaymentController {
     use: [$secure({ permissions: ["payments:write"] })],
     description: "Cancel a created payment intent",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: intentResourceSchema,
     },
     handler: ({ params }) => this.payments.cancel(params.id),

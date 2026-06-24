@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 /**
  * Retention policy for folio revisions. Kept as an atom so ops/tests
@@ -13,12 +13,12 @@ import { $atom, type Static, t } from "alepha";
 export const folioHistoryAtom = $atom({
   name: "lore.folio.history",
   description: "Retention cap for folio revisions (Chronicles of the Folio).",
-  schema: t.object({
+  schema: z.object({
     /**
      * Max revisions to keep per folio (excluding pinned revisions, which
      * are always preserved). 10 matches the spec; tunable.
      */
-    maxRevisions: t.integer({ minimum: 1, default: 10 }),
+    maxRevisions: z.integer().min(1).default(10),
   }),
   default: {
     maxRevisions: 10,

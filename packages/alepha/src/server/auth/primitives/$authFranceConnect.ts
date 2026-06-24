@@ -1,4 +1,4 @@
-import { $context, AlephaError, t } from "alepha";
+import { $context, AlephaError, z } from "alepha";
 import type { IssuerPrimitive } from "alepha/security";
 import {
   $auth,
@@ -41,19 +41,19 @@ export const $authFranceConnect = (
   const { alepha } = $context();
 
   const env = alepha.parseEnv(
-    t.object({
-      FRANCECONNECT_CLIENT_ID: t.optional(
-        t.text({
+    z.object({
+      FRANCECONNECT_CLIENT_ID: z
+        .text({
           description:
             "The OAuth 2.0 client ID for your France Connect service provider, obtained from partenaires.franceconnect.gouv.fr.",
-        }),
-      ),
-      FRANCECONNECT_CLIENT_SECRET: t.optional(
-        t.text({
+        })
+        .optional(),
+      FRANCECONNECT_CLIENT_SECRET: z
+        .text({
           description:
             "The OAuth 2.0 client secret for your France Connect service provider, obtained from partenaires.franceconnect.gouv.fr.",
-        }),
-      ),
+        })
+        .optional(),
     }),
   );
 

@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { jobExecutionQuerySchema } from "../schemas/jobExecutionQuerySchema.ts";
@@ -20,7 +20,7 @@ export class AdminJobController {
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
-      response: t.array(jobRegistrationSchema),
+      response: z.array(jobRegistrationSchema),
     },
     handler: () => this.jobService.listJobs(),
   });
@@ -30,9 +30,9 @@ export class AdminJobController {
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
-      params: t.object({ name: t.text() }),
+      params: z.object({ name: z.text() }),
       query: jobExecutionQuerySchema,
-      response: t.array(jobExecutionResourceSchema),
+      response: z.array(jobExecutionResourceSchema),
     },
     handler: ({ params, query }) =>
       this.jobService.getExecutions(params.name, query),
@@ -43,7 +43,7 @@ export class AdminJobController {
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: jobExecutionResourceSchema,
     },
     handler: ({ params }) => this.jobService.getExecution(params.id),
@@ -55,7 +55,7 @@ export class AdminJobController {
     group: this.group,
     use: [$secure({ permissions: ["admin:job:trigger"] })],
     schema: {
-      params: t.object({ name: t.text() }),
+      params: z.object({ name: z.text() }),
       body: triggerJobSchema,
       response: okSchema,
     },
@@ -73,7 +73,7 @@ export class AdminJobController {
     group: this.group,
     use: [$secure({ permissions: ["admin:job:trigger"] })],
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: okSchema,
     },
     handler: ({ params, user }) =>
@@ -89,7 +89,7 @@ export class AdminJobController {
     group: this.group,
     use: [$secure({ permissions: ["admin:job:cancel"] })],
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: okSchema,
     },
     handler: ({ params, user }) =>

@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 /**
@@ -29,7 +29,7 @@ import { $entity, db } from "alepha/orm";
  */
 export const archiveNames = $entity({
   name: "archive_names",
-  schema: t.object({
+  schema: z.object({
     /**
      * Synthetic UUID PK. Not referenced by any other table — exists
      * purely so `Repository.deleteMany` (which `.returning({id})`s)
@@ -39,22 +39,22 @@ export const archiveNames = $entity({
      * failed")`. Inserts worked because `create()` uses
      * `.returning(this.table)` instead.
      */
-    id: db.primaryKey(t.uuid()),
+    id: db.primaryKey(z.uuid()),
     /**
      * Parent scope key. The parent directory's UUID for non-root
      * entries; the `root:<campaignId>` sentinel for root entries.
      */
-    parentDirectoryId: t.optional(t.string()),
+    parentDirectoryId: z.string().optional(),
     /**
      * Mirror of `parentDirectoryId` for root entries — `String(campaignId)`.
      * Undefined for non-root entries. See entity docstring.
      */
-    rootScope: t.optional(t.string()),
+    rootScope: z.string().optional(),
     /** `LOWER(name)` — case-insensitive uniqueness key. */
-    lowerName: t.string(),
+    lowerName: z.string(),
     /** Discriminator for the entity table `entityId` lives in. */
-    kind: t.enum(["folio", "blob", "directory"], { mode: "text" }),
-    entityId: t.string(),
+    kind: z.enum(["folio", "blob", "directory"]).meta({ mode: "text" }),
+    entityId: z.string(),
   }),
   indexes: [
     // Composite uniqueness — Drizzle composite-PK shape on optional

@@ -1,12 +1,12 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 
 describe("Alepha#parseEnv", () => {
   it("should substitute $KEY placeholders in string values", async () => {
-    const schema = t.object({
-      HOST: t.optional(t.text()),
-      PORT: t.optional(t.text()),
-      BASE_URL: t.optional(t.text()),
+    const schema = z.object({
+      HOST: z.text().optional(),
+      PORT: z.text().optional(),
+      BASE_URL: z.text().optional(),
     });
 
     const alepha = Alepha.create({
@@ -22,9 +22,9 @@ describe("Alepha#parseEnv", () => {
   });
 
   it("should handle keys with regex-special characters", async () => {
-    const schema = t.object({
-      "API.URL": t.optional(t.text()),
-      RESULT: t.optional(t.text()),
+    const schema = z.object({
+      "API.URL": z.text().optional(),
+      RESULT: z.text().optional(),
     });
 
     const alepha = Alepha.create({
@@ -39,10 +39,10 @@ describe("Alepha#parseEnv", () => {
   });
 
   it("should coerce non-string replacement sources", async () => {
-    const schema = t.object({
-      PORT: t.optional(t.text()),
-      DEBUG: t.optional(t.text()),
-      URL: t.optional(t.text()),
+    const schema = z.object({
+      PORT: z.text().optional(),
+      DEBUG: z.text().optional(),
+      URL: z.text().optional(),
     });
 
     const alepha = Alepha.create({
@@ -58,8 +58,8 @@ describe("Alepha#parseEnv", () => {
   });
 
   it("should leave unresolved placeholders as-is", async () => {
-    const schema = t.object({
-      URL: t.optional(t.text()),
+    const schema = z.object({
+      URL: z.text().optional(),
     });
 
     const alepha = Alepha.create({
@@ -71,9 +71,9 @@ describe("Alepha#parseEnv", () => {
   });
 
   it("should match env keys case-sensitively", async () => {
-    const schema = t.object({
-      HOST: t.optional(t.text()),
-      URL: t.optional(t.text()),
+    const schema = z.object({
+      HOST: z.text().optional(),
+      URL: z.text().optional(),
     });
 
     const alepha = Alepha.create({
@@ -85,10 +85,10 @@ describe("Alepha#parseEnv", () => {
   });
 
   it("should resolve transitive $KEY references", async () => {
-    const schema = t.object({
-      A: t.optional(t.text()),
-      B: t.optional(t.text()),
-      C: t.optional(t.text()),
+    const schema = z.object({
+      A: z.text().optional(),
+      B: z.text().optional(),
+      C: z.text().optional(),
     });
 
     const alepha = Alepha.create({
@@ -105,10 +105,10 @@ describe("Alepha#parseEnv", () => {
   });
 
   it("should not replace substring keys when a longer key matches", async () => {
-    const schema = t.object({
-      PORT: t.optional(t.text()),
-      PORT_NAME: t.optional(t.text()),
-      URL: t.optional(t.text()),
+    const schema = z.object({
+      PORT: z.text().optional(),
+      PORT_NAME: z.text().optional(),
+      URL: z.text().optional(),
     });
 
     const alepha = Alepha.create({
@@ -124,11 +124,11 @@ describe("Alepha#parseEnv", () => {
   });
 
   it("should handle overlapping key prefixes correctly", async () => {
-    const schema = t.object({
-      A: t.optional(t.text()),
-      AB: t.optional(t.text()),
-      ABC: t.optional(t.text()),
-      RESULT: t.optional(t.text()),
+    const schema = z.object({
+      A: z.text().optional(),
+      AB: z.text().optional(),
+      ABC: z.text().optional(),
+      RESULT: z.text().optional(),
     });
 
     const alepha = Alepha.create({
@@ -145,8 +145,8 @@ describe("Alepha#parseEnv", () => {
   });
 
   it("should return cached result for same schema", async () => {
-    const schema = t.object({
-      FOO: t.optional(t.text()),
+    const schema = z.object({
+      FOO: z.text().optional(),
     });
 
     const alepha = Alepha.create({

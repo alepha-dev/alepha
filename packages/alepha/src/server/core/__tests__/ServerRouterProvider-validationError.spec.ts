@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, it } from "vitest";
 import { $route, ServerProvider } from "../index.ts";
 
@@ -7,9 +7,9 @@ class TestApp {
     method: "POST",
     path: "/users",
     schema: {
-      body: t.object({
-        name: t.text(),
-        age: t.integer(),
+      body: z.object({
+        name: z.text(),
+        age: z.integer(),
       }),
     },
     handler: () => {},
@@ -19,8 +19,8 @@ class TestApp {
     method: "GET",
     path: "/users/:id",
     schema: {
-      params: t.object({
-        id: t.integer(),
+      params: z.object({
+        id: z.integer(),
       }),
     },
     handler: () => {},
@@ -30,8 +30,8 @@ class TestApp {
     method: "GET",
     path: "/users",
     schema: {
-      query: t.object({
-        limit: t.integer({ minimum: 1, maximum: 100 }),
+      query: z.object({
+        limit: z.integer().min(1).max(100),
       }),
     },
     handler: () => {},
@@ -41,8 +41,8 @@ class TestApp {
     method: "GET",
     path: "/protected",
     schema: {
-      headers: t.object({
-        "x-api-version": t.integer(),
+      headers: z.object({
+        "x-api-version": z.integer(),
       }),
     },
     handler: () => {},
@@ -197,8 +197,8 @@ describe("ServerRouterProvider - request validation error", () => {
           method: "GET",
           path: "/coerce",
           schema: {
-            headers: t.object({
-              "x-api-version": t.integer(),
+            headers: z.object({
+              "x-api-version": z.integer(),
             }),
           },
           handler: ({ headers }) => {
@@ -232,8 +232,8 @@ describe("ServerRouterProvider - request validation error", () => {
           method: "GET",
           path: "/preserve",
           schema: {
-            headers: t.object({
-              "x-api-version": t.integer(),
+            headers: z.object({
+              "x-api-version": z.integer(),
             }),
           },
           handler: ({ headers }) => {
@@ -276,8 +276,8 @@ describe("ServerRouterProvider - request validation error", () => {
           method: "GET",
           path: "/case",
           schema: {
-            headers: t.object({
-              "X-Api-Version": t.integer(),
+            headers: z.object({
+              "X-Api-Version": z.integer(),
             }),
           },
           handler: ({ headers }) => {

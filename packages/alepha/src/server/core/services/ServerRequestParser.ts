@@ -1,4 +1,4 @@
-import { $env, $inject, Alepha, t } from "alepha";
+import { $env, $inject, Alepha, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
@@ -9,7 +9,7 @@ import type {
 } from "../interfaces/ServerRequest.ts";
 import { UserAgentParser } from "./UserAgentParser.ts";
 
-const envSchema = t.object({
+const envSchema = z.object({
   /**
    * Trust proxy headers (X-Forwarded-For, X-Real-IP) for client IP resolution.
    *
@@ -18,10 +18,10 @@ const envSchema = t.object({
    * Set to false only if your server accepts direct connections without a proxy
    * and you want to use the raw connection IP.
    */
-  TRUST_PROXY: t.boolean({
-    default: true,
-    description: "Trust proxy headers for client IP",
-  }),
+  TRUST_PROXY: z
+    .boolean()
+    .describe("Trust proxy headers for client IP")
+    .default(true),
 });
 
 export class ServerRequestParser {

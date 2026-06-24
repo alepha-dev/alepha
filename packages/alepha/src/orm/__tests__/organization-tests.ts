@@ -1,14 +1,14 @@
-import { type Alepha, t } from "alepha";
+import { type Alepha, z } from "alepha";
 import { currentUserAtom } from "alepha/security";
 import { expect } from "vitest";
 import { $entity, $repository, db } from "../core/index.ts";
 
 const entity = $entity({
   name: "test_org_entity",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
     organization: db.organization(),
-    name: t.optional(t.text()),
+    name: z.text().optional(),
   }),
 });
 

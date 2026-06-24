@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $state, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, type Static, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { ServerRouterProvider } from "alepha/server";
 
@@ -9,33 +9,31 @@ import { ServerRouterProvider } from "alepha/server";
  */
 export const corsOptions = $atom({
   name: "alepha.server.cors.options",
-  schema: t.object({
-    origin: t.optional(
-      t.string({
-        description:
-          "Allowed origins (* for all, string for single, comma-separated for multiple)",
-        default: "*",
-      }),
-    ),
-    methods: t.array(t.string(), {
-      description: "Allowed HTTP methods",
-      default: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    }),
-    headers: t.array(t.string(), {
-      description: "Allowed headers",
-      default: ["Content-Type", "Authorization"],
-    }),
-    credentials: t.optional(
-      t.boolean({
-        description: "Allow credentials",
-        default: false,
-      }),
-    ),
-    maxAge: t.optional(
-      t.number({
-        description: "Preflight cache duration in seconds",
-      }),
-    ),
+  schema: z.object({
+    origin: z
+      .string()
+      .describe(
+        "Allowed origins (* for all, string for single, comma-separated for multiple)",
+      )
+      .default("*")
+      .optional(),
+    methods: z
+      .array(z.string())
+      .describe("Allowed HTTP methods")
+      .default(["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]),
+    headers: z
+      .array(z.string())
+      .describe("Allowed headers")
+      .default(["Content-Type", "Authorization"]),
+    credentials: z
+      .boolean()
+      .describe("Allow credentials")
+      .default(false)
+      .optional(),
+    maxAge: z
+      .number()
+      .describe("Preflight cache duration in seconds")
+      .optional(),
   }),
   default: {
     origin: "*",

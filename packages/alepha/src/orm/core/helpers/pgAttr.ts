@@ -8,11 +8,11 @@ import type { PgSymbolKeys, PgSymbols } from "../constants/PG_SYMBOLS.ts";
  *
  * @example
  * ```ts
- * import { t } from "alepha";
+ * import { z } from "alepha";
  * import { PG_UPDATED_AT } from "../constants/PG_SYMBOLS";
  *
  * export const updatedAtSchema = pgAttr(
- *   t.datetime(), PG_UPDATED_AT,
+ *   z.datetime(), PG_UPDATED_AT,
  * );
  * ```
  */
@@ -34,8 +34,8 @@ export const getAttrFields = (
 ): PgAttrField[] => {
   const fields: Array<PgAttrField> = [];
 
-  for (const key of Object.keys(schema.properties)) {
-    const value = schema.properties[key];
+  for (const key of Object.keys(schema.shape)) {
+    const value = schema.shape[key];
     if (name in value) {
       fields.push({
         type: value as TSchema,

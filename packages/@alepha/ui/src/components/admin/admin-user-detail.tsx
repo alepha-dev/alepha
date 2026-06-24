@@ -33,7 +33,7 @@ import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { Skeleton } from "@alepha/ui/components/ui/skeleton";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import type {
   AdminIdentityController,
@@ -79,22 +79,22 @@ export interface AdminUserDetailProps {
   backPath?: string;
 }
 
-const profileSchema = t.object({
-  username: t.optional(t.string()),
-  email: t.optional(t.string()),
-  emailVerified: t.optional(t.boolean()),
-  firstName: t.optional(t.string()),
-  lastName: t.optional(t.string()),
-  roles: t.optional(t.array(t.string())),
+const profileSchema = z.object({
+  username: z.string().optional(),
+  email: z.string().optional(),
+  emailVerified: z.boolean().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  roles: z.array(z.string()).optional(),
 });
 type ProfileForm = Static<typeof profileSchema>;
 
-const passwordSchema = t.object({
-  password: t.string({ minLength: 6 }),
+const passwordSchema = z.object({
+  password: z.string().min(6),
 });
 
 type TabKey = "overview" | "security" | "sessions" | "audits";
-const tabSchema = t.object({ tab: t.optional(t.string()) });
+const tabSchema = z.object({ tab: z.string().optional() });
 
 const PROVIDER_LABELS: Record<string, string> = {
   credentials: "Password",
@@ -1139,3 +1139,5 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
     </div>
   );
 }
+
+export default AdminUserDetail;

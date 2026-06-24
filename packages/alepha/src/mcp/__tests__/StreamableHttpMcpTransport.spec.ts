@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { AlephaMcp, MCP_PROTOCOL_VERSION } from "../index.ts";
@@ -17,7 +17,7 @@ import {
 class PingTool {
   ping = $tool({
     description: "Ping",
-    schema: { params: t.object({}), result: t.text() },
+    schema: { params: z.object({}), result: z.text() },
     handler: async () => "pong",
   });
 }

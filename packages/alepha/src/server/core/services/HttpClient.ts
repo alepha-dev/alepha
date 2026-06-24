@@ -253,7 +253,7 @@ export class HttpClient {
 
   protected async responseData(
     response: Response,
-    options: FetchOptions,
+    options: ResolvedFetchOptions,
   ): Promise<any> {
     if (response.status === 304) {
       let cacheKey = response.url;
@@ -433,6 +433,18 @@ export interface FetchOptions<T extends TSchema = TSchema> {
 
 export type RequestInitWithOptions<T extends TSchema = TSchema> = RequestInit &
   FetchOptions<T>;
+
+/**
+ * Internal resolved fetch options — built in {@link HttpClient.fetch},
+ * consumed by {@link HttpClient.responseData} and the `client:beforeFetch`
+ * event. Distinct from the external {@link FetchOptions}: `schema` is the
+ * already-unwrapped response schema and `cache` is the resolved cache directive.
+ */
+export interface ResolvedFetchOptions {
+  key?: string;
+  schema?: TSchema;
+  cache?: boolean | number | DurationLike;
+}
 
 export interface FetchResponse<T = any> {
   data: T;

@@ -1,17 +1,16 @@
-import { $env, $hook, $inject, Alepha, type Static, t } from "alepha";
+import { $env, $hook, $inject, Alepha, type Static, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { ServerProvider } from "./ServerProvider.ts";
 import { ServerRouterProvider } from "./ServerRouterProvider.ts";
 
-const envSchema = t.object({
-  SERVER_PORT: t.integer({
-    default: 3000,
-    min: 0,
-    max: 65535,
-    description: "Set 0 to listen on a random port.",
-  }),
-  SERVER_HOST: t.text({
+const envSchema = z.object({
+  SERVER_PORT: z
+    .integer()
+    .meta({ min: 0, max: 65535 })
+    .describe("Set 0 to listen on a random port.")
+    .default(3000),
+  SERVER_HOST: z.text({
     default: "localhost",
     description: "Set 0.0.0.0 to listen on all interfaces.",
   }),

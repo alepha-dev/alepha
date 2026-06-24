@@ -1,6 +1,6 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import { $inject, $state, t } from "alepha";
+import { $inject, $state, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { changelogOptions } from "../../atoms/changelogOptions.ts";
@@ -170,29 +170,27 @@ export class ChangelogCommand {
     name: "changelog",
     description:
       "Generate changelog from conventional commits (outputs to stdout)",
-    flags: t.object({
+    flags: z.object({
       /**
        * Show changes from this ref (tag, commit, branch).
        * Defaults to the latest version tag.
        * Example: --from=1.0.0
        */
-      from: t.optional(
-        t.string({
-          aliases: ["f"],
-          description: "Starting ref (default: latest tag)",
-        }),
-      ),
+      from: z
+        .string()
+        .meta({ aliases: ["f"] })
+        .describe("Starting ref (default: latest tag)")
+        .optional(),
       /**
        * Show changes up to this ref (tag, commit, branch).
        * Defaults to HEAD.
        * Example: --to=main
        */
-      to: t.optional(
-        t.string({
-          aliases: ["t"],
-          description: "Ending ref (default: HEAD)",
-        }),
-      ),
+      to: z
+        .string()
+        .meta({ aliases: ["t"] })
+        .describe("Ending ref (default: HEAD)")
+        .optional(),
     }),
     handler: async ({ flags, root }) => {
       const git = (cmd: string) => this.git.exec(cmd, root);

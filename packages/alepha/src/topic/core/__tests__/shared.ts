@@ -1,4 +1,4 @@
-import { $inject, Alepha, type Service, t } from "alepha";
+import { $inject, Alepha, type Service, z } from "alepha";
 import {
   $subscriber,
   $topic,
@@ -17,8 +17,8 @@ export const testTopicParams = async (
     sensor = $topic({
       name: "devices/{deviceId}/sensor",
       schema: {
-        params: t.object({ deviceId: t.text() }),
-        payload: t.object({ temp: t.number() }),
+        params: z.object({ deviceId: z.text() }),
+        payload: z.object({ temp: z.number() }),
       },
     });
   }
@@ -58,9 +58,9 @@ export const testTopicParams = async (
   await app.stop();
 };
 
-export const payloadSchema = t.object({
-  id: t.text(),
-  count: t.integer(),
+export const payloadSchema = z.object({
+  id: z.text(),
+  count: z.integer(),
 });
 
 export const subscriptions: Record<string, SubscribeCallback[]> = {};
@@ -139,7 +139,7 @@ export const testTopicAsSub = async (
     t = $topic({
       name: "a",
       schema: {
-        payload: t.object({ n: t.integer() }),
+        payload: z.object({ n: z.integer() }),
       },
       handler: async ({ payload }) => {
         count += payload.n;
@@ -176,7 +176,7 @@ export const testTopicRetain = async (
     t = $topic({
       name: `retain-test-${crypto.randomUUID()}`,
       schema: {
-        payload: t.object({ value: t.text() }),
+        payload: z.object({ value: z.text() }),
       },
       retain: true,
     });

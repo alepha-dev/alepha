@@ -1,22 +1,22 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const bucketStatsSchema = t.object({
-  bucket: t.string(),
-  totalSize: t.number(),
-  fileCount: t.number(),
+export const bucketStatsSchema = z.object({
+  bucket: z.string(),
+  totalSize: z.number(),
+  fileCount: z.number(),
 });
 
-export const mimeTypeStatsSchema = t.object({
-  mimeType: t.string(),
-  fileCount: t.number(),
+export const mimeTypeStatsSchema = z.object({
+  mimeType: z.string(),
+  fileCount: z.number(),
 });
 
-export const storageStatsSchema = t.object({
-  totalSize: t.number(),
-  totalFiles: t.number(),
-  byBucket: t.array(bucketStatsSchema),
-  byMimeType: t.array(mimeTypeStatsSchema),
+export const storageStatsSchema = z.object({
+  totalSize: z.number(),
+  totalFiles: z.number(),
+  byBucket: z.array(bucketStatsSchema),
+  byMimeType: z.array(mimeTypeStatsSchema),
 });
 
 export type BucketStats = Static<typeof bucketStatsSchema>;

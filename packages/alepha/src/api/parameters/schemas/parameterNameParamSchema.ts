@@ -1,8 +1,7 @@
-import { t } from "alepha";
 import { parameters } from "../entities/parameters.ts";
 
 /**
  * Parameter name param schema.
- * Uses t.pick from entity for consistency.
+ * Uses z.pick from entity for consistency.
  */
-export const parameterNameParamSchema = t.pick(parameters.schema, ["name"]);
+export const parameterNameParamSchema = parameters.schema.pick({ name: true });

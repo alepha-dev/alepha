@@ -1,4 +1,4 @@
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 
 /**
  * Atom storing the active tenant for the current request.
@@ -24,11 +24,11 @@ import { $atom, t } from "alepha";
  */
 export const currentTenantAtom = $atom({
   name: "alepha.security.tenant",
-  schema: t.optional(
-    t.object({
-      id: t.text({
+  schema: z
+    .object({
+      id: z.text({
         description: "Tenant identifier (slug, UUID, or composite).",
       }),
-    }),
-  ),
+    })
+    .optional(),
 });

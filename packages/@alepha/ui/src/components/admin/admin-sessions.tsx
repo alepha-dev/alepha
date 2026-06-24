@@ -170,3 +170,5 @@ export function AdminSessions() {
     </AdminPage>
   );
 }
+
+export default AdminSessions;

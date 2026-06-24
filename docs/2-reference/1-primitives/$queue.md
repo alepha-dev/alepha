@@ -60,11 +60,11 @@ Basic notification queue
 ```typescript
 const emailQueue = $queue({
   name: "email-notifications",
-  schema: t.object({
-    to: t.text(),
-    subject: t.text(),
-    body: t.text(),
-    priority: t.optional(t.enum(["high", "normal"]))
+  schema: z.object({
+    to: z.text(),
+    subject: z.text(),
+    body: z.text(),
+    priority: z.enum(["high", "normal"]).optional()
   }),
   handler: async (message) => {
     await emailService.send(message.payload);
@@ -86,9 +86,9 @@ Batch processing with Redis
 const imageQueue = $queue({
   name: "image-processing",
   provider: RedisQueueProvider,
-  schema: t.object({
-    imageId: t.text(),
-    operations: t.array(t.enum(["resize", "compress", "thumbnail"]))
+  schema: z.object({
+    imageId: z.text(),
+    operations: z.array(z.enum(["resize", "compress", "thumbnail"]))
   }),
   handler: async (message) => {
     for (const op of message.payload.operations) {
@@ -110,9 +110,9 @@ Development with memory provider
 const taskQueue = $queue({
   name: "dev-tasks",
   provider: "memory",
-  schema: t.object({
-    taskType: t.enum(["cleanup", "backup", "report"]),
-    data: t.record(t.text(), t.any())
+  schema: z.object({
+    taskType: z.enum(["cleanup", "backup", "report"]),
+    data: z.record(z.text(), z.any())
   }),
   handler: async (message) => {
     switch (message.payload.taskType) {

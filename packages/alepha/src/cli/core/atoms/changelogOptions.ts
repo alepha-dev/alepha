@@ -1,4 +1,4 @@
-import { $atom, type Static, t } from "alepha";
+import { $atom, type Static, z } from "alepha";
 
 /**
  * Default scopes to ignore in changelog generation.
@@ -30,12 +30,12 @@ export const DEFAULT_IGNORE = [
  */
 export const changelogOptions = $atom({
   name: "alepha.cli.changelog.options",
-  schema: t.object({
+  schema: z.object({
     /**
      * Scopes to ignore (e.g., "project", "release", "chore").
      * Commits like `feat(chore): ...` will be excluded from changelog.
      */
-    ignore: t.optional(t.array(t.string())),
+    ignore: z.array(z.string()).optional(),
   }),
   default: {
     ignore: DEFAULT_IGNORE,

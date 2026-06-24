@@ -1,4 +1,4 @@
-import { $inject, Alepha, AlephaError, t } from "alepha";
+import { $inject, Alepha, AlephaError, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { ParameterAudits } from "../audits/ParameterAudits.ts";
@@ -43,7 +43,7 @@ export class AdminParameterController {
     path: "/parameters/tree",
     method: "GET",
     schema: {
-      response: t.array(parameterTreeNodeSchema),
+      response: z.array(parameterTreeNodeSchema),
     },
     handler: async () => {
       return this.provider.getParameterTree();
@@ -80,9 +80,9 @@ export class AdminParameterController {
     method: "GET",
     schema: {
       params: parameterNameParamSchema,
-      query: t.object({
-        limit: t.optional(t.integer({ minimum: 1, maximum: 100 })),
-        offset: t.optional(t.integer({ minimum: 0 })),
+      query: z.object({
+        limit: z.integer().min(1).max(100).optional(),
+        offset: z.integer().min(0).optional(),
       }),
       response: parameterHistoryResponseSchema,
     },
@@ -305,14 +305,11 @@ export class AdminParameterController {
     path: "/parameters/delete",
     method: "POST",
     schema: {
-      body: t.object({
-        names: t.array(t.string({ minLength: 1 }), {
-          minItems: 1,
-          maxItems: 1000,
-        }),
+      body: z.object({
+        names: z.array(z.string().min(1)).min(1).max(1000),
       }),
-      response: t.object({
-        deleted: t.array(t.string()),
+      response: z.object({
+        deleted: z.array(z.string()),
       }),
     },
     handler: async ({ body }) => {

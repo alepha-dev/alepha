@@ -1,41 +1,35 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const roleSchema = t.object({
-  name: t.text({
+export const roleSchema = z.object({
+  name: z.text({
     description: "Name of the role.",
   }),
 
-  description: t.optional(
-    t.text({
+  description: z
+    .text({
       description: "Describe the role.",
-    }),
-  ),
+    })
+    .optional(),
 
-  default: t.optional(
-    t.boolean({
-      description:
-        "If true, this role will be assigned to all users by default.",
-    }),
-  ),
+  default: z
+    .boolean()
+    .describe("If true, this role will be assigned to all users by default.")
+    .optional(),
 
-  permissions: t.array(
-    t.object({
-      name: t.text({
+  permissions: z.array(
+    z.object({
+      name: z.text({
         description: "Name of the permission.",
       }),
-      ownership: t.optional(
-        t.boolean({
-          description:
-            "If true, user will only have access to it's own resources.",
-        }),
-      ),
-      exclude: t.optional(
-        t.array(t.text(), {
-          description:
-            "Exclude some permissions. Useful when 'name' is a wildcard.",
-        }),
-      ),
+      ownership: z
+        .boolean()
+        .describe("If true, user will only have access to it's own resources.")
+        .optional(),
+      exclude: z
+        .array(z.text())
+        .describe("Exclude some permissions. Useful when 'name' is a wildcard.")
+        .optional(),
     }),
   ),
 });

@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { describe, expect, test, vi } from "vitest";
 import {
@@ -10,9 +10,9 @@ import {
   WorkerProvider,
 } from "../index.ts";
 
-const payloadSchema = t.object({
-  id: t.text(),
-  count: t.integer(),
+const payloadSchema = z.object({
+  id: z.text(),
+  count: z.integer(),
 });
 
 class TestWorkerProvider extends WorkerProvider {

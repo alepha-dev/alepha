@@ -1,9 +1,9 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { pageQuerySchema } from "alepha/orm";
 
-export const notificationQuerySchema = t.extend(pageQuerySchema, {
-  status: t.optional(
-    t.enum([
+export const notificationQuerySchema = pageQuerySchema.extend({
+  status: z
+    .enum([
       "pending",
       "scheduled",
       "retrying",
@@ -11,8 +11,8 @@ export const notificationQuerySchema = t.extend(pageQuerySchema, {
       "completed",
       "dead",
       "cancelled",
-    ]),
-  ),
+    ])
+    .optional(),
 });
 
 export type NotificationQuery = Static<typeof notificationQuerySchema>;

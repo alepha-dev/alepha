@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { $page } from "alepha/react/router";
 import { $sitemap } from "alepha/react/sitemap";
 import { $client } from "alepha/server/links";
@@ -14,8 +14,8 @@ export class AppRouter {
       title: "Home",
     },
     schema: {
-      query: t.object({
-        name: t.text({ default: "Alepha" }),
+      query: z.object({
+        name: z.text({ default: "Alepha" }),
       }),
     },
     loader: async ({ query }) => {

@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
 /**
  * Provenance of an embedded petition submission.
@@ -23,28 +23,26 @@ import { type Static, t } from "alepha";
  * Shared by the `petitions` entity schema and the `submitPetition` request
  * body so the two cannot drift.
  */
-export const petitionSourceSchema = t.object({
-  sigilId: t.optional(t.string({ maxLength: 100 })),
+export const petitionSourceSchema = z.object({
+  sigilId: z.string().max(100).optional(),
   /** Full `location.href` of the embedding page at click time. */
-  hostUrl: t.string({ maxLength: 2000 }),
+  hostUrl: z.string().max(2000),
   /** `location.pathname` (+ search) of the embedding page. */
-  hostPath: t.string({ maxLength: 2000 }),
+  hostPath: z.string().max(2000),
   /** `document.title` of the embedding page. */
-  title: t.optional(t.string({ maxLength: 500 })),
+  title: z.string().max(500).optional(),
   /** `document.referrer` — where the visitor arrived from. */
-  referrer: t.optional(t.string({ maxLength: 2000 })),
-  userAgent: t.string({ maxLength: 1000 }),
+  referrer: z.string().max(2000).optional(),
+  userAgent: z.string().max(1000),
   /** `navigator.language` (e.g. "en-US"). */
-  language: t.optional(t.string({ maxLength: 35 })),
+  language: z.string().max(35).optional(),
   /** Viewport size as "WxH" (`innerWidth`x`innerHeight`). */
-  viewport: t.optional(t.string({ maxLength: 20 })),
+  viewport: z.string().max(20).optional(),
   /** Screen size as "WxH" (`screen.width`x`screen.height`). */
-  screen: t.optional(t.string({ maxLength: 20 })),
+  screen: z.string().max(20).optional(),
   /** IANA timezone (e.g. "Europe/Paris"). */
-  timezone: t.optional(t.string({ maxLength: 100 })),
-  consoleTail: t.optional(
-    t.array(t.string({ maxLength: 2000 }), { maxItems: 50 }),
-  ),
+  timezone: z.string().max(100).optional(),
+  consoleTail: z.array(z.string().max(2000)).max(50).optional(),
 });
 
 export type PetitionSource = Static<typeof petitionSourceSchema>;

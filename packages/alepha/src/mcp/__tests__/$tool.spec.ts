@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, expect, test } from "vitest";
 import {
   $tool,
@@ -17,11 +17,11 @@ describe("$tool primitive", () => {
       add = $tool({
         description: "Add two numbers",
         schema: {
-          params: t.object({
-            a: t.number(),
-            b: t.number(),
+          params: z.object({
+            a: z.number(),
+            b: z.number(),
           }),
-          result: t.number(),
+          result: z.number(),
         },
         handler: async ({ params }) => params.a + params.b,
       });
@@ -66,11 +66,11 @@ describe("$tool primitive", () => {
       multiply = $tool({
         description: "Multiply two numbers",
         schema: {
-          params: t.object({
-            a: t.number(),
-            b: t.number(),
+          params: z.object({
+            a: z.number(),
+            b: z.number(),
           }),
-          result: t.number(),
+          result: z.number(),
         },
         handler: async ({ params }) => params.a * params.b,
       });
@@ -93,10 +93,10 @@ describe("$tool primitive", () => {
       greet = $tool({
         description: "Greet someone",
         schema: {
-          params: t.object({
-            name: t.text(),
+          params: z.object({
+            name: z.text(),
           }),
-          result: t.text(),
+          result: z.text(),
         },
         handler: async ({ params }) => `Hello, ${params.name}!`,
       });
@@ -119,8 +119,8 @@ describe("$tool primitive", () => {
       typed = $tool({
         description: "Typed tool",
         schema: {
-          params: t.object({
-            count: t.number(),
+          params: z.object({
+            count: z.number(),
           }),
         },
         handler: async ({ params }) => params.count * 2,
@@ -165,11 +165,11 @@ describe("$tool primitive", () => {
         name: "complex-tool",
         description: "A complex tool with params",
         schema: {
-          params: t.object({
-            required: t.text(),
-            optional: t.optional(t.number()),
+          params: z.object({
+            required: z.text(),
+            optional: z.number().optional(),
           }),
-          result: t.boolean(),
+          result: z.boolean(),
         },
         handler: async () => true,
       });
@@ -202,10 +202,10 @@ describe("$tool primitive", () => {
       async = $tool({
         description: "Async tool",
         schema: {
-          params: t.object({
-            delay: t.number(),
+          params: z.object({
+            delay: z.number(),
           }),
-          result: t.text(),
+          result: z.text(),
         },
         handler: async ({ params }) => {
           await new Promise((resolve) => setTimeout(resolve, params.delay));
@@ -375,7 +375,7 @@ describe("$tool primitive", () => {
       protected = $tool({
         description: "Protected tool",
         schema: {
-          result: t.text(),
+          result: z.text(),
         },
         handler: async ({ context }) => {
           const authHeader = context?.headers?.authorization;

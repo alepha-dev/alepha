@@ -1,5 +1,5 @@
 import { waitFor } from "@testing-library/dom";
-import { Alepha, createMiddleware, type Middleware, t } from "alepha";
+import { Alepha, createMiddleware, type Middleware, z } from "alepha";
 import { AlephaReact } from "alepha/react";
 import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -90,8 +90,8 @@ describe("$page browser tests", () => {
         user = $page({
           path: "/user/:id",
           schema: {
-            params: t.object({
-              id: t.text(),
+            params: z.object({
+              id: z.text(),
             }),
           },
           loader: ({ params }) => ({
@@ -648,8 +648,8 @@ describe("$page browser tests", () => {
         user = $page({
           path: "/user/:id",
           schema: {
-            params: t.object({
-              id: t.text(),
+            params: z.object({
+              id: z.text(),
             }),
           },
           loader: ({ params }) => ({
@@ -682,9 +682,9 @@ describe("$page browser tests", () => {
         search = $page({
           path: "/search",
           schema: {
-            query: t.object({
-              q: t.text({ default: "" }),
-              page: t.number({ default: 1 }),
+            query: z.object({
+              q: z.text({ default: "" }),
+              page: z.number().default(1),
             }),
           },
           loader: ({ query }) => ({
@@ -731,9 +731,9 @@ describe("$page browser tests", () => {
         search = $page({
           path: "/search",
           schema: {
-            query: t.object({
-              q: t.text({ default: "" }),
-              page: t.number({ default: 1 }),
+            query: z.object({
+              q: z.text({ default: "" }),
+              page: z.number().default(1),
             }),
           },
           loader: ({ query }) => ({
@@ -780,12 +780,12 @@ describe("$page browser tests", () => {
         userPosts = $page({
           path: "/users/:userId/posts",
           schema: {
-            params: t.object({
-              userId: t.text(),
+            params: z.object({
+              userId: z.text(),
             }),
-            query: t.object({
-              sort: t.text({ default: "recent" }),
-              limit: t.number({ default: 10 }),
+            query: z.object({
+              sort: z.text({ default: "recent" }),
+              limit: z.number().default(10),
             }),
           },
           loader: ({ params, query }) => ({
@@ -838,9 +838,9 @@ describe("$page browser tests", () => {
         search = $page({
           path: "/search",
           schema: {
-            query: t.object({
-              q: t.text({ default: "default search" }),
-              page: t.number({ default: 1 }),
+            query: z.object({
+              q: z.text({ default: "default search" }),
+              page: z.number().default(1),
             }),
           },
           loader: ({ query }) => ({

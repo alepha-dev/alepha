@@ -1,8 +1,7 @@
-import type { TSchema } from "typebox";
 import { $inject } from "../primitives/$inject.ts";
 import { Json } from "./Json.ts";
 import { SchemaCodec } from "./SchemaCodec.ts";
-import type { Static } from "./TypeProvider.ts";
+import type { Static, TSchema } from "./TypeProvider.ts";
 
 export class JsonSchemaCodec extends SchemaCodec {
   protected readonly json = $inject(Json);

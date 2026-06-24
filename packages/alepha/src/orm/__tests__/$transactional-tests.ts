@@ -1,4 +1,4 @@
-import { $inject, $pipeline, type Alepha, createMiddleware, t } from "alepha";
+import { $inject, $pipeline, type Alepha, createMiddleware, z } from "alepha";
 import { expect } from "vitest";
 import {
   $entity,
@@ -10,9 +10,9 @@ import {
 
 const item = $entity({
   name: "tx_mw_item",
-  schema: t.object({
-    id: db.primaryKey(t.integer(), {}, { mode: "byDefault" }),
-    name: t.text(),
+  schema: z.object({
+    id: db.primaryKey(z.integer(), {}, { mode: "byDefault" }),
+    name: z.text(),
   }),
 });
 

@@ -1,4 +1,4 @@
-import { $inject, $state, AlephaError, t } from "alepha";
+import { $inject, $state, AlephaError, z } from "alepha";
 import { PackageManagerUtils } from "alepha/cli";
 import { $command } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
@@ -45,19 +45,18 @@ export class VendorCommand {
   // alepha vendor sync
   // ─────────────────────────────────────────────────────────────────────────
 
-  protected readonly syncFlags = t.object({
-    force: t.optional(
-      t.boolean({
-        aliases: ["f"],
-        description: "Skip local modification check",
-      }),
-    ),
-    remote: t.optional(
-      t.text({
+  protected readonly syncFlags = z.object({
+    force: z
+      .boolean()
+      .meta({ aliases: ["f"] })
+      .describe("Skip local modification check")
+      .optional(),
+    remote: z
+      .text({
         description:
           "Override the configured remote for this invocation. Accepts any git-clone URL, including local paths (`file:///abs/path/to/alepha`). Useful for CI canaries that need to sync against a local checkout instead of the published repo.",
-      }),
-    ),
+      })
+      .optional(),
   });
 
   protected readonly sync = $command({

@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
 import type { TSchema } from "alepha";
-import { $atom, $hook, $inject, $state, Alepha, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, Alepha, type Static, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpError } from "../errors/HttpError.ts";
 
@@ -12,16 +12,16 @@ import { HttpError } from "../errors/HttpError.ts";
  */
 export const bodyParserOptions = $atom({
   name: "alepha.server.body-parser.options",
-  schema: t.object({
-    inflate: t.boolean({
-      default: true,
-      description: "Enable decompression of request body.",
-    }),
-    limit: t.integer({
-      default: 100_000, // 100KB
-      min: 0,
-      description: "Maximum size of request body in bytes.",
-    }),
+  schema: z.object({
+    inflate: z
+      .boolean()
+      .describe("Enable decompression of request body.")
+      .default(true),
+    limit: z
+      .integer()
+      .meta({ min: 0 })
+      .describe("Maximum size of request body in bytes.")
+      .default(100_000),
   }),
   default: {
     inflate: true,
@@ -156,7 +156,7 @@ export class ServerBodyParserProvider {
 
     if (!contentType) return undefined;
 
-    if (contentType.startsWith("text/plain") || t.schema.isString(schema)) {
+    if (contentType.startsWith("text/plain") || z.schema.isString(schema)) {
       return this.parseText(stream, contentEncoding);
     }
 

@@ -349,9 +349,9 @@ export class SseFetchResponse<T> implements AsyncIterable<T> {
  * class NotificationController {
  *   events = $sse({
  *     schema: {
- *       data: t.object({
- *         type: t.text(),
- *         message: t.text(),
+ *       data: z.object({
+ *         type: z.text(),
+ *         message: z.text(),
  *       }),
  *     },
  *     handler: async ({ emit, close }) => {

@@ -1,4 +1,4 @@
-import { type Alepha, t } from "alepha";
+import { type Alepha, z } from "alepha";
 import { changelogOptions } from "alepha/cli";
 import { $command } from "alepha/command";
 
@@ -40,12 +40,11 @@ export default (alepha: Alepha) => {
     verify: $command({
       aliases: ["v"],
       description: "Run linter, checker and tests.",
-      flags: t.object({
-        fast: t.optional(
-          t.boolean({
-            description: "Skip build + e2e (faster local sanity check).",
-          }),
-        ),
+      flags: z.object({
+        fast: z
+          .boolean()
+          .describe("Skip build + e2e (faster local sanity check).")
+          .optional(),
       }),
       handler: async ({ run, flags }) => {
         // We need to force CI environment

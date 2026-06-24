@@ -1,24 +1,24 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const devPageMetadataSchema = t.object({
-  name: t.text(),
-  label: t.optional(t.text()),
-  description: t.optional(t.text()),
-  path: t.optional(t.text()),
-  parentName: t.optional(t.text()),
-  params: t.optional(t.any()),
-  query: t.optional(t.any()),
-  hasComponent: t.boolean(),
-  hasLazy: t.boolean(),
-  hasResolve: t.boolean(),
-  childrenNames: t.optional(t.array(t.text())),
-  hasChildren: t.boolean(),
-  hasParent: t.boolean(),
-  hasErrorHandler: t.boolean(),
-  static: t.optional(t.boolean()),
-  cache: t.optional(t.any()),
-  client: t.optional(t.any()),
-  animation: t.optional(t.any()),
+export const devPageMetadataSchema = z.object({
+  name: z.text(),
+  label: z.text().optional(),
+  description: z.text().optional(),
+  path: z.text().optional(),
+  parentName: z.text().optional(),
+  params: z.any().optional(),
+  query: z.any().optional(),
+  hasComponent: z.boolean(),
+  hasLazy: z.boolean(),
+  hasResolve: z.boolean(),
+  childrenNames: z.array(z.text()).optional(),
+  hasChildren: z.boolean(),
+  hasParent: z.boolean(),
+  hasErrorHandler: z.boolean(),
+  static: z.boolean().optional(),
+  cache: z.any().optional(),
+  client: z.any().optional(),
+  animation: z.any().optional(),
 });
 
 export type DevPageMetadata = Static<typeof devPageMetadataSchema>;

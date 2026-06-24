@@ -3,7 +3,7 @@ import { ControlUpload } from "@alepha/ui/components/control-upload/control-uplo
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { t } from "alepha";
+import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
@@ -81,9 +81,9 @@ const CampaignCreate = () => {
 
   const form = useForm({
     initialValues,
-    schema: t.object({
-      title: t.string({ minLength: 3, maxLength: 24 }),
-      icon: t.optional(t.uuid()),
+    schema: z.object({
+      title: z.string().min(3).max(24),
+      icon: z.uuid().optional(),
     }),
     onError: (error) => {
       toaster.error(error.message);

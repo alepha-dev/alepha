@@ -1,46 +1,46 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const apiActionSchema = t.object({
-  path: t.text({
+export const apiActionSchema = z.object({
+  path: z.text({
     description: "Pathname used to access the action.",
   }),
 
-  method: t.optional(
-    t.text({
+  method: z
+    .text({
       description:
         "HTTP method. Omitted when GET (the default for ~75% of actions).",
-    }),
-  ),
+    })
+    .optional(),
 
-  contentType: t.optional(
-    t.text({
+  contentType: z
+    .text({
       description:
         "Content type for the request body. Only present for non-JSON types (e.g. 'multipart/form-data'). When absent, defaults to application/json.",
-    }),
-  ),
+    })
+    .optional(),
 
-  kind: t.optional(
-    t.text({
+  kind: z
+    .text({
       description:
         "Action kind. Used to distinguish special action types (e.g. 'sse' for Server-Sent Events streams).",
-    }),
-  ),
+    })
+    .optional(),
 
-  service: t.optional(
-    t.text({
+  service: z
+    .text({
       description:
         "Service name associated with the action, used for service discovery and routing.",
-    }),
-  ),
+    })
+    .optional(),
 });
 
-export const apiRegistryResponseSchema = t.object({
-  prefix: t.optional(t.text()),
+export const apiRegistryResponseSchema = z.object({
+  prefix: z.text().optional(),
 
-  actions: t.record(t.text(), apiActionSchema),
+  actions: z.record(z.text(), apiActionSchema),
 
-  permissions: t.optional(t.array(t.text())),
+  permissions: z.array(z.text()).optional(),
 });
 
 export type ApiRegistryResponse = Static<typeof apiRegistryResponseSchema>;

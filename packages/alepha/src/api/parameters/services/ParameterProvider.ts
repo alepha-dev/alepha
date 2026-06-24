@@ -6,7 +6,7 @@ import {
   SchemaValidator,
   type Static,
   type TObject,
-  t,
+  z,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
@@ -193,9 +193,9 @@ export class ParameterProvider {
   public readonly syncTopic = $topic({
     name: "parameter:sync",
     schema: {
-      payload: t.object({
-        name: t.text(),
-        instanceId: t.text(),
+      payload: z.object({
+        name: z.text(),
+        instanceId: z.text(),
       }),
     },
     handler: async ({ payload }) => {

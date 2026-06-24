@@ -1,5 +1,5 @@
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const revokeApiKeyParamsSchema = t.object({
-  id: t.uuid(),
+export const revokeApiKeyParamsSchema = z.object({
+  id: z.uuid(),
 });

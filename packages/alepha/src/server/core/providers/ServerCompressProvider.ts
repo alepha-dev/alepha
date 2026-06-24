@@ -2,7 +2,7 @@ import { Readable, type Transform } from "node:stream";
 import { ReadableStream } from "node:stream/web";
 import { promisify } from "node:util";
 import * as zlib from "node:zlib";
-import { $atom, $hook, $inject, $state, Alepha, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, Alepha, type Static, z } from "alepha";
 import type { ServerResponse } from "alepha/server";
 
 const gzip = promisify(zlib.gzip);
@@ -19,15 +19,14 @@ const createZstdCompress = zstd ? zlib.createZstdCompress : undefined;
  */
 export const compressOptions = $atom({
   name: "alepha.server.compress.options",
-  schema: t.object({
-    disabled: t.optional(
-      t.boolean({
-        description: "Disable response compression entirely.",
-      }),
-    ),
-    allowedContentTypes: t.array(t.string(), {
-      description: "Content types eligible for compression.",
-    }),
+  schema: z.object({
+    disabled: z
+      .boolean()
+      .describe("Disable response compression entirely.")
+      .optional(),
+    allowedContentTypes: z
+      .array(z.string())
+      .describe("Content types eligible for compression."),
   }),
   default: {
     allowedContentTypes: [

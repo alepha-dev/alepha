@@ -56,23 +56,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/protobuf@workspace:packages/@alepha/protobuf":
-  version: 0.0.0-use.local
-  resolution: "@alepha/protobuf@workspace:packages/@alepha/protobuf"
-  dependencies:
-    alepha: "npm:0.23.0"
-    protobufjs: "npm:^8.5.0"
-    tsdown: "npm:^0.22.1"
-    typescript: "npm:^6.0.3"
-    vitest: "npm:^4.1.7"
-  peerDependencies:
-    alepha: 0.23.0
-  dependenciesMeta:
-    protobufjs:
-      built: true
-  languageName: unknown
-  linkType: soft
-
 "@alepha/sigil@workspace:*, @alepha/sigil@workspace:packages/@alepha/sigil":
   version: 0.0.0-use.local
   resolution: "@alepha/sigil@workspace:packages/@alepha/sigil"
@@ -4390,11 +4373,11 @@ __metadata:
     tailwindcss: "npm:^4.3.0"
     tsdown: "npm:^0.22.1"
     tsx: "npm:^4.22.4"
-    typebox: "npm:^1.1.39"
     typescript: "npm:^6.0.3"
     vite: "npm:^8.0.14"
     vite-bundle-analyzer: "npm:^1.3.8"
     vitest: "npm:^4.1.7"
+    zod: "npm:^4.4.3"
   peerDependencies:
     react: ^19
     react-dom: ^19
@@ -8798,13 +8781,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"long@npm:^5.3.2":
-  version: 5.3.2
-  resolution: "long@npm:5.3.2"
-  checksum: 10c0/7130fe1cbce2dca06734b35b70d380ca3f70271c7f8852c922a7c62c86c4e35f0c39290565eca7133c625908d40e126ac57c02b1b1a4636b9457d77e1e60b981
-  languageName: node
-  linkType: hard
-
 "longest-streak@npm:^3.0.0":
   version: 3.1.0
   resolution: "longest-streak@npm:3.1.0"
@@ -10671,15 +10647,6 @@ __metadata:
   version: 7.1.0
   resolution: "property-information@npm:7.1.0"
   checksum: 10c0/e0fe22cff26103260ad0e82959229106563fa115a54c4d6c183f49d88054e489cc9f23452d3ad584179dc13a8b7b37411a5df873746b5e4086c865874bfa968e
-  languageName: node
-  linkType: hard
-
-"protobufjs@npm:^8.5.0":
-  version: 8.5.0
-  resolution: "protobufjs@npm:8.5.0"
-  dependencies:
-    long: "npm:^5.3.2"
-  checksum: 10c0/c35041380624401dd27bb97e056e4d9170184738108c786047791a673305746451361268ec5367def8c88ecd655667b4acf2f4c45f049646dc976dc0169b3fd0
   languageName: node
   linkType: hard
 
@@ -12834,13 +12801,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typebox@npm:^1.1.39":
-  version: 1.1.39
-  resolution: "typebox@npm:1.1.39"
-  checksum: 10c0/06ed51027e64b535ec5b4cb831bfeb0a43df7549cb30116746d332eafeba71d8d1f4d717263a337346a9fa97c8fe4096fcb7628f8985d1dd3c7f797b597a2368
-  languageName: node
-  linkType: hard
-
 "typed-array-buffer@npm:^1.0.3":
   version: 1.0.3
   resolution: "typed-array-buffer@npm:1.0.3"
@@ -13845,6 +13805,13 @@ __metadata:
   version: 4.3.6
   resolution: "zod@npm:4.3.6"
   checksum: 10c0/860d25a81ab41d33aa25f8d0d07b091a04acb426e605f396227a796e9e800c44723ed96d0f53a512b57be3d1520f45bf69c0cb3b378a232a00787a2609625307
+  languageName: node
+  linkType: hard
+
+"zod@npm:^4.4.3":
+  version: 4.4.3
+  resolution: "zod@npm:4.4.3"
+  checksum: 10c0/7ea31b558e88f9faf44f31dd185e2e1cbf51fed3081787fb96cc2534749b50c0acfc6da7f0922a7353ed092dd358c7d50c28ea96c94d04af64191bd33152eca3
   languageName: node
   linkType: hard
 

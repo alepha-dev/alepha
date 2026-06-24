@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { logEntrySchema } from "alepha/logger";
 import { $entity, db } from "alepha/orm";
 
@@ -21,13 +21,13 @@ import { $entity, db } from "alepha/orm";
  */
 export const jobExecutionEntity = $entity({
   name: "job_executions",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
 
-    jobName: t.text(),
-    key: t.optional(t.nullable(t.text())),
+    jobName: z.text(),
+    key: z.text().nullable().optional(),
 
     /**
      * Owning tenant for this execution, when it was pushed in (or for) a tenant
@@ -37,30 +37,30 @@ export const jobExecutionEntity = $entity({
      * worker + sweep must see every org's rows, so this stays a plain,
      * non-auto-scoping column rather than an auto-filtered one.
      */
-    organizationId: t.optional(t.nullable(t.uuid())),
+    organizationId: z.uuid().nullable().optional(),
 
     status: db.default(
-      t.enum(["pending", "running", "scheduled", "ok", "error", "cancelled"]),
+      z.enum(["pending", "running", "scheduled", "ok", "error", "cancelled"]),
       "pending",
     ),
-    priority: db.default(t.integer({ minimum: 0, maximum: 3 }), 2),
+    priority: db.default(z.integer().min(0).max(3), 2),
 
-    attempt: db.default(t.integer(), 0),
-    maxAttempts: db.default(t.integer(), 1),
+    attempt: db.default(z.integer(), 0),
+    maxAttempts: db.default(z.integer(), 1),
 
-    payload: t.optional(t.record(t.text(), t.any())),
+    payload: z.record(z.text(), z.any()).optional(),
 
-    scheduledAt: t.optional(t.datetime()),
-    startedAt: t.optional(t.datetime()),
-    completedAt: t.optional(t.datetime()),
+    scheduledAt: z.datetime().optional(),
+    startedAt: z.datetime().optional(),
+    completedAt: z.datetime().optional(),
 
-    error: t.optional(t.text()),
-    logs: t.optional(t.array(logEntrySchema)),
+    error: z.text().optional(),
+    logs: z.array(logEntrySchema).optional(),
 
-    triggeredBy: t.optional(t.text()),
-    triggeredByName: t.optional(t.text()),
-    cancelledBy: t.optional(t.text()),
-    cancelledByName: t.optional(t.text()),
+    triggeredBy: z.text().optional(),
+    triggeredByName: z.text().optional(),
+    cancelledBy: z.text().optional(),
+    cancelledByName: z.text().optional(),
   }),
   indexes: [
     { columns: ["jobName", "status", "scheduledAt"] },

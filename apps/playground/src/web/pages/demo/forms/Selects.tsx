@@ -1,6 +1,6 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { t } from "alepha";
+import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 
 const COLORS_RICH = [
@@ -38,60 +38,69 @@ const fakeAsyncSearch = async (q: string) => {
   return all.filter((c) => c.label.toLowerCase().includes(q.toLowerCase()));
 };
 
-const schema = t.object({
+const schema = z.object({
   // 1. Native enum
-  fruit: t.enum(["apple", "banana", "cherry"], {
-    title: "Fruit (enum)",
-    description: "Schema enum → native <select>.",
-    $control: { width: 50 },
-  }),
+  fruit: z
+    .enum(["apple", "banana", "cherry"])
+    .meta({ title: "Fruit (enum)", $control: { width: 50 } })
+    .describe("Schema enum → native <select>."),
   // 2. List of strings via $control.items
-  size: t.string({
-    title: "Size (strings)",
-    description: '$control.items: ["S", "M", "L", "XL"]',
-    $control: { items: ["S", "M", "L", "XL"], width: 50 },
-  }),
+  size: z
+    .string()
+    .meta({
+      title: "Size (strings)",
+      $control: { items: ["S", "M", "L", "XL"], width: 50 },
+    })
+    .describe('$control.items: ["S", "M", "L", "XL"]'),
   // 3. Rich items {value, label, description, tag} → forces combobox (>20 disabled, force via combobox flag)
-  color: t.string({
-    title: "Color (rich items)",
-    description: "Items with description + tag.",
-    $control: { items: COLORS_RICH, combobox: true, width: 50 },
-  }),
+  color: z
+    .string()
+    .meta({
+      title: "Color (rich items)",
+      $control: { items: COLORS_RICH, combobox: true, width: 50 },
+    })
+    .describe("Items with description + tag."),
   // 4. Segmented (short enum, force segmented)
-  size2: t.enum(["S", "M", "L"], {
-    title: "Size (segmented)",
-    description: "$control.segmented = true.",
-    $control: { segmented: true, width: 50 },
-  }),
+  size2: z
+    .enum(["S", "M", "L"])
+    .meta({
+      title: "Size (segmented)",
+      $control: { segmented: true, width: 50 },
+    })
+    .describe("$control.segmented = true."),
   // 5. Multi select (array of strings) with createNewEntry
-  tags: t.array(t.string(), {
-    title: "Tags (multi + create)",
-    description: "Type and pick the 'Create' entry to add a new tag.",
-    $control: {
-      items: ["alepha", "react", "typescript"],
-      createNewEntry: true,
-      width: 100,
-    },
-  }),
+  tags: z
+    .array(z.string())
+    .meta({
+      title: "Tags (multi + create)",
+      $control: {
+        items: ["alepha", "react", "typescript"],
+        createNewEntry: true,
+        width: 100,
+      },
+    })
+    .describe("Type and pick the 'Create' entry to add a new tag."),
   // 6. Async loader → 50 items, "long" mode
-  country: t.optional(
-    t.string({
+  country: z
+    .string()
+    .meta({
       title: "Country (async, lazy)",
-      description: "Items fetched async, refreshed as you type.",
       $control: {
         items: fakeAsyncSearch as never,
         width: 50,
       },
-    }),
-  ),
+    })
+    .describe("Items fetched async, refreshed as you type.")
+    .optional(),
   // 7. Lots of items → auto-combobox
-  many: t.optional(
-    t.string({
+  many: z
+    .string()
+    .meta({
       title: "Big static list",
-      description: ">20 items → switches to Combobox automatically.",
       $control: { items: COUNTRIES_BIG, width: 50 },
-    }),
-  ),
+    })
+    .describe(">20 items → switches to Combobox automatically.")
+    .optional(),
 });
 
 const SelectsForm = () => {

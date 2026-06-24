@@ -9,9 +9,8 @@ import type {
   TRecord,
   TSchema,
   TString,
-  TUnion,
 } from "alepha";
-import { TypeGuard } from "alepha";
+import { z } from "alepha";
 
 export interface FakeOptions {
   /**
@@ -63,10 +62,10 @@ export interface FakeOptions {
  * @example
  * ```ts
  * const fake = new FakeProvider();
- * const userSchema = t.object({
- *   id: t.uuid(),
- *   name: t.text(),
- *   email: t.email(),
+ * const userSchema = z.object({
+ *   id: z.uuid(),
+ *   name: z.text(),
+ *   email: z.email(),
  * });
  * const fakeUser = fake.generate(userSchema);
  *
@@ -76,7 +75,7 @@ export interface FakeOptions {
  */
 export class FakeProvider {
   protected readonly faker = faker;
-  protected readonly guard = new TypeGuard();
+  protected readonly guard = z.schema;
   protected options: Required<FakeOptions> = {
     locale: "en",
     seed: 12345,
@@ -154,10 +153,10 @@ export class FakeProvider {
    * @example
    * ```ts
    * const fake = new FakeProvider();
-   * const schema = t.object({
-   *   user_name: t.string(),  // generates username
-   *   firstName: t.string(),  // generates first name
-   *   "e-mail": t.string(),   // generates email
+   * const schema = z.object({
+   *   user_name: z.string(),  // generates username
+   *   firstName: z.string(),  // generates first name
+   *   "e-mail": z.string(),   // generates email
    * });
    * const result = fake.generate(schema);
    * ```
@@ -177,9 +176,10 @@ export class FakeProvider {
   }
 
   protected generateValue(schema: TSchema): unknown {
-    // Handle optional
+    const s = schema as any;
+
+    // Handle optional — peel one layer and recurse
     if (this.guard.isOptional(schema)) {
-      // 30% chance of being undefined
       if (
         this.faker.datatype.boolean({
           probability: this.options.optionalProbability,
@@ -187,17 +187,37 @@ export class FakeProvider {
       ) {
         return undefined;
       }
-      // Generate the inner schema
-      return this.generateValue((schema as any).schema);
+      return this.generateValue(s.unwrap());
     }
 
-    // Handle union (nullable or other unions)
+    // Handle nullable (zod ZodNullable — distinct from a union-with-null)
+    if (this.guard.isNullable(schema)) {
+      if (
+        this.faker.datatype.boolean({
+          probability: this.options.nullableProbability,
+        })
+      ) {
+        return null;
+      }
+      return this.generateValue(s.unwrap());
+    }
+
+    // Handle default — generate a value for the wrapped type
+    if (z.schema.isDefault(s)) {
+      return this.generateValue(s.unwrap() as TSchema);
+    }
+
+    // Handle enum
+    if (this.guard.isEnum(schema)) {
+      const values = z.schema.enumValues(schema);
+      return values[this.faker.number.int({ min: 0, max: values.length - 1 })];
+    }
+
+    // Handle union (a union containing null behaves like nullable)
     if (this.guard.isUnion(schema)) {
-      const union = schema as TUnion;
-      // Check if it's a nullable union (union with null)
-      const hasNull = union.anyOf.some((s) => this.guard.isNull(s));
+      const members = (s.anyOf ?? s.options ?? []) as TSchema[];
+      const hasNull = members.some((m) => this.guard.isNull(m));
       if (hasNull) {
-        // 20% chance of being null
         if (
           this.faker.datatype.boolean({
             probability: this.options.nullableProbability,
@@ -205,20 +225,18 @@ export class FakeProvider {
         ) {
           return null;
         }
-        // Pick a non-null option
-        const nonNullOptions = union.anyOf.filter((s) => !this.guard.isNull(s));
-        const randomSchema =
-          nonNullOptions[
-            this.faker.number.int({ min: 0, max: nonNullOptions.length - 1 })
-          ];
-        return this.generateValue(randomSchema);
+        const nonNull = members.filter((m) => !this.guard.isNull(m));
+        return this.generateValue(
+          nonNull[
+            this.faker.number.int({ min: 0, max: nonNull.length - 1 })
+          ] as TSchema,
+        );
       }
-      // Pick a random union member
-      const randomSchema =
-        union.anyOf[
-          this.faker.number.int({ min: 0, max: union.anyOf.length - 1 })
-        ];
-      return this.generateValue(randomSchema);
+      return this.generateValue(
+        members[
+          this.faker.number.int({ min: 0, max: members.length - 1 })
+        ] as TSchema,
+      );
     }
 
     // Handle null
@@ -226,35 +244,19 @@ export class FakeProvider {
       return null;
     }
 
-    // Handle undefined
-    if (this.guard.isUndefined(schema)) {
-      return undefined;
-    }
-
-    // Handle void
-    if (this.guard.isVoid(schema)) {
+    // Handle undefined / void
+    if (this.guard.isUndefined(schema) || this.guard.isVoid(schema)) {
       return undefined;
     }
 
     // Handle literal
     if (this.guard.isLiteral(schema)) {
-      return (schema as any).const;
+      return s.value;
     }
 
-    // Handle unsafe (but check the inner type first)
-    if (this.guard.isUnsafe(schema)) {
-      // For TUnsafe, the properties are directly on the schema itself
-      // Check if it has enum values (from t.enum())
-      const unsafeAny = schema as any;
-      if (unsafeAny.enum && Array.isArray(unsafeAny.enum)) {
-        return unsafeAny.enum[
-          this.faker.number.int({ min: 0, max: unsafeAny.enum.length - 1 })
-        ];
-      }
-      // Check if it's a string type
-      if (unsafeAny.type === "string") {
-        return this.generateString(unsafeAny as any);
-      }
+    // Handle bigint (a validated string) — must precede the plain-string check
+    if (this.guard.isBigInt(schema)) {
+      return this.generateBigInt(schema as TString);
     }
 
     // Handle string
@@ -262,19 +264,14 @@ export class FakeProvider {
       return this.generateString(schema as TString);
     }
 
-    // Handle number
-    if (this.guard.isNumber(schema)) {
-      return this.generateNumber(schema as TNumber);
-    }
-
-    // Handle integer
+    // Handle integer — must precede the plain-number check
     if (this.guard.isInteger(schema)) {
       return this.generateInteger(schema as TInteger);
     }
 
-    // Handle bigint
-    if (this.guard.isBigInt(schema)) {
-      return this.generateBigInt(schema as TString);
+    // Handle number
+    if (this.guard.isNumber(schema)) {
+      return this.generateNumber(schema as TNumber);
     }
 
     // Handle boolean
@@ -299,34 +296,17 @@ export class FakeProvider {
 
     // Handle tuple
     if (this.guard.isTuple(schema)) {
-      const tuple = schema as any;
-      return tuple.items.map((item: TSchema) => this.generateValue(item));
+      const items = (s.items ?? []) as TSchema[];
+      return items.map((item) => this.generateValue(item));
     }
 
-    // Handle any
-    if (this.guard.isAny(schema)) {
-      // Generate a random simple value for any
+    // Handle any / unknown
+    if (this.guard.isAny(schema) || this.guard.isUnsafe(schema)) {
       const types = ["string", "number", "boolean"];
-      const randomType =
+      const kind =
         types[this.faker.number.int({ min: 0, max: types.length - 1 })];
-      switch (randomType) {
-        case "string":
-          return this.faker.lorem.word();
-        case "number":
-          return this.faker.number.float();
-        case "boolean":
-          return this.faker.datatype.boolean();
-      }
-    }
-
-    // Handle unsafe
-    if (this.guard.isUnsafe(schema)) {
-      // Try to generate based on the inner schema
-      const unsafeSchema = schema as any;
-      if (unsafeSchema.schema) {
-        return this.generateValue(unsafeSchema.schema);
-      }
-      // Fallback to string
+      if (kind === "number") return this.faker.number.float();
+      if (kind === "boolean") return this.faker.datatype.boolean();
       return this.faker.lorem.word();
     }
 
@@ -336,18 +316,15 @@ export class FakeProvider {
 
   protected generateString(schema: TString): string {
     const schemaAny = schema as any;
-    const format = schemaAny.format;
-    const pattern = schemaAny.pattern;
-    const enumValues = schemaAny.enum;
-    const minLength = schemaAny.minLength;
-    const maxLength = schemaAny.maxLength;
-
-    // Handle enum
-    if (enumValues && Array.isArray(enumValues) && enumValues.length > 0) {
-      return enumValues[
-        this.faker.number.int({ min: 0, max: enumValues.length - 1 })
-      ] as string;
-    }
+    const format = z.schema.format(schema);
+    const metaObj = (schemaAny.meta?.() ?? {}) as Record<string, any>;
+    const rawPattern = metaObj.pattern;
+    const pattern =
+      typeof rawPattern === "string"
+        ? rawPattern
+        : (rawPattern?.source ?? undefined);
+    const minLength = schemaAny.minLength ?? undefined;
+    const maxLength = schemaAny.maxLength ?? undefined;
 
     // Handle specific formats
     if (format) {
@@ -430,13 +407,19 @@ export class FakeProvider {
 
   protected generateNumber(schema: TNumber): number {
     const schemaAny = schema as any;
-    const min = schemaAny.minimum ?? -1000000;
-    const max = schemaAny.maximum ?? 1000000;
-    const multipleOf = schemaAny.multipleOf;
+    // zod exposes numeric bounds as `.minValue` / `.maxValue` (number | null).
+    const min = schemaAny.minValue ?? -1000000;
+    const max = schemaAny.maxValue ?? 1000000;
+    // `.multipleOf` is a builder method on zod schemas, not a value — only use
+    // it if it surfaces as an actual number.
+    const multipleOf =
+      typeof schemaAny.multipleOf === "number"
+        ? schemaAny.multipleOf
+        : undefined;
 
     let value = this.faker.number.float({ min, max });
 
-    if (multipleOf !== undefined) {
+    if (multipleOf != null) {
       value = Math.round(value / multipleOf) * multipleOf;
     }
 
@@ -445,8 +428,8 @@ export class FakeProvider {
 
   protected generateInteger(schema: TInteger): number {
     const schemaAny = schema as any;
-    const min = schemaAny.minimum ?? -2147483647;
-    const max = schemaAny.maximum ?? 2147483647;
+    const min = schemaAny.minValue ?? -2147483647;
+    const max = schemaAny.maxValue ?? 2147483647;
 
     return this.faker.number.int({ min, max });
   }
@@ -462,22 +445,40 @@ export class FakeProvider {
   }
 
   protected generateArray(schema: TArray): unknown[] {
-    const schemaAny = schema as any;
-    const minItems = schemaAny.minItems ?? 0;
+    // Native zod stores `.min()`/`.max()` length bounds in `_zod.def.checks`,
+    // not in `.meta()`. Read those (falling back to legacy meta minItems/maxItems).
+    const def = (schema as any)._zod?.def;
+    const checks = (def?.checks ?? []) as any[];
+    const readBound = (check: string, key: string): number | undefined => {
+      for (const c of checks) {
+        const d = c?._zod?.def;
+        if (d?.check === check) return d[key];
+      }
+      return undefined;
+    };
+    const metaObj = ((schema as any).meta?.() ?? {}) as Record<string, any>;
+    const minItems =
+      readBound("min_length", "minimum") ?? metaObj.minItems ?? 0;
     const maxItems = Math.min(
-      schemaAny.maxItems ?? this.options.defaultArrayLength,
+      readBound("max_length", "maximum") ??
+        metaObj.maxItems ??
+        this.options.defaultArrayLength,
       this.options.maxArrayLength,
     );
-    const length = this.faker.number.int({ min: minItems, max: maxItems });
+    const length = this.faker.number.int({
+      min: minItems,
+      max: Math.max(minItems, maxItems),
+    });
 
-    return Array.from({ length }, () => this.generateValue(schema.items));
+    const element = (schema as any).element ?? def?.element;
+    return Array.from({ length }, () => this.generateValue(element));
   }
 
   protected generateObject(schema: TObject): Record<string, unknown> {
     const result: Record<string, unknown> = {};
 
     for (const [key, propSchema] of Object.entries(schema.properties)) {
-      result[key] = this.generateValueWithContext(propSchema, key);
+      result[key] = this.generateValueWithContext(propSchema as TSchema, key);
     }
 
     return result;
@@ -505,7 +506,10 @@ export class FakeProvider {
       const stringSchema = schema as TString;
 
       // Skip if it has a specific format already
-      if (stringSchema.format && stringSchema.format !== "string") {
+      if (
+        z.schema.format(stringSchema) &&
+        z.schema.format(stringSchema) !== "string"
+      ) {
         return this.generateValue(schema);
       }
 
@@ -615,12 +619,9 @@ export class FakeProvider {
 
   protected generateRecord(schema: TRecord): Record<string, unknown> {
     const record = schema as any;
-    const keySchema = record.patternProperties
-      ? Object.keys(record.patternProperties)[0]
-      : ".*";
-    const valueSchema = record.patternProperties
-      ? record.patternProperties[keySchema]
-      : record.additionalProperties;
+    // zod stores the value schema on `.valueType` (def.valueType internally).
+    const valueSchema =
+      record.valueType ?? record._zod?.def?.valueType ?? z.any();
 
     // Generate 2-5 random key-value pairs
     const count = this.faker.number.int(this.options.defaultRecordEntries);

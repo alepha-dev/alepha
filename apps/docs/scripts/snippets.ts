@@ -9,8 +9,8 @@ class Api {
   // accessible via HTTP GET /api/greet?name=John
   greet = $action({
     schema: {
-      query: t.object({ name: t.text() }),
-      response: t.object({ greeting: t.string() }),
+      query: z.object({ name: z.text() }),
+      response: z.object({ greeting: z.string() }),
     },
     handler: async ({ query }) => {
       return {
@@ -52,16 +52,16 @@ run(App);
     filename:
       "Define database entities with Drizzle ORM and type-safe repositories",
     content: `
-import { t, run } from "alepha";
+import { z, run } from "alepha";
 import { $entity, db, $repository } from "alepha/orm";
 
 // define an entity with a schema
 export const userEntity = $entity({
   name: "users",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.text(),
-    email: t.email(),
+    name: z.text(),
+    email: z.email(),
   })
 });
 
@@ -76,7 +76,7 @@ run(App);
   queue: {
     filename: "Process background jobs with automatic retries, scheduling",
     content: `
-import { t, run } from "alepha";
+import { z, run } from "alepha";
 import { $queue } from "alepha/queue";
 import { EmailProvider } from "alepha/email";
 
@@ -84,8 +84,8 @@ class App {
   email = $inject(EmailProvider);
 
   sendEmail = $queue({
-    schema: t.object({
-      to: t.email(), subject: t.text(), body: t.string()
+    schema: z.object({
+      to: z.email(), subject: z.text(), body: z.string()
     }),
     handler: async ({ payload }) => {
       const { to, subject, body } = payload;
@@ -100,14 +100,14 @@ run(App);
   command: {
     filename: "Create powerful CLI commands with beautiful terminal output",
     content: `
-import { t, run } from "alepha";
+import { z, run } from "alepha";
 import { $command } from "alepha/command";
 
 class App {
   deploy = $command({
     aliases: ["d"],
-    schema: t.object({
-    	env: t.enum(["staging", "prod"]),
+    schema: z.object({
+    	env: z.enum(["staging", "prod"]),
     }),
     handler: async ({ run, flags }) => {
       await run("npx alepha test");

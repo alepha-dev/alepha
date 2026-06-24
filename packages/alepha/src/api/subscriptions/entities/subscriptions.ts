@@ -1,21 +1,21 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 export const subscriptions = $entity({
   name: "subscriptions",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     organizationId: db.organization(),
 
     // Plan
-    planId: t.string(),
-    interval: t.enum(["monthly", "yearly"]),
+    planId: z.string(),
+    interval: z.enum(["monthly", "yearly"]),
 
     // Status
-    status: t.enum([
+    status: z.enum([
       "trialing",
       "active",
       "past_due",
@@ -25,34 +25,34 @@ export const subscriptions = $entity({
     ]),
 
     // Billing cycle
-    currentPeriodStart: t.datetime(),
-    currentPeriodEnd: t.datetime(),
+    currentPeriodStart: z.datetime(),
+    currentPeriodEnd: z.datetime(),
 
     // Trial
-    trialStart: t.optional(t.datetime()),
-    trialEnd: t.optional(t.datetime()),
+    trialStart: z.datetime().optional(),
+    trialEnd: z.datetime().optional(),
 
     // Cancellation
-    cancelledAt: t.optional(t.datetime()),
-    cancelReason: t.optional(t.string()),
-    cancelAtPeriodEnd: t.boolean({ default: false }),
+    cancelledAt: z.datetime().optional(),
+    cancelReason: z.string().optional(),
+    cancelAtPeriodEnd: z.boolean().default(false),
 
     // Payment tracking
-    lastPaymentIntentId: t.optional(t.uuid()),
-    lastPaymentAt: t.optional(t.datetime()),
-    nextBillingAt: t.optional(t.datetime()),
+    lastPaymentIntentId: z.uuid().optional(),
+    lastPaymentAt: z.datetime().optional(),
+    nextBillingAt: z.datetime().optional(),
 
     // Dunning state
-    dunningStartedAt: t.optional(t.datetime()),
-    dunningAttempt: t.integer({ default: 0 }),
-    dunningNextRetryAt: t.optional(t.datetime()),
+    dunningStartedAt: z.datetime().optional(),
+    dunningAttempt: z.integer().default(0),
+    dunningNextRetryAt: z.datetime().optional(),
 
     // Plan change (pending)
-    pendingPlanId: t.optional(t.string()),
-    pendingInterval: t.optional(t.enum(["monthly", "yearly"])),
+    pendingPlanId: z.string().optional(),
+    pendingInterval: z.enum(["monthly", "yearly"]).optional(),
 
     // Metadata
-    metadata: t.optional(t.record(t.text(), t.any())),
+    metadata: z.record(z.text(), z.any()).optional(),
   }),
   indexes: [
     { columns: ["organizationId"], unique: true },

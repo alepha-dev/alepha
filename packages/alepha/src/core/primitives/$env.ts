@@ -1,6 +1,6 @@
-import type { Static, TObject } from "typebox";
 import { AlephaError } from "../errors/AlephaError.ts";
-import { t } from "../providers/TypeProvider.ts";
+import type { Static, TObject } from "../providers/TypeProvider.ts";
+import { z } from "../providers/TypeProvider.ts";
 import { $context } from "./$context.ts";
 
 /**
@@ -19,8 +19,8 @@ import { $context } from "./$context.ts";
  *   log = $logger();
  *
  *   // program expect a var env "HELLO" as string to works
- *   env = $env(t.object({
- *     HELLO: t.text()
+ *   env = $env(z.object({
+ *     HELLO: z.text()
  *   }));
  *
  *   sayHello = () => this.log.info("Hello ${this.env.HELLO}")
@@ -33,7 +33,7 @@ export const $env = <T extends TObject>(type: T): Static<T> => {
   const { alepha } = $context();
 
   // allow to inject TypeBox schemas
-  if (!t.schema.isObject(type)) {
+  if (!z.schema.isObject(type)) {
     throw new AlephaError("Type must be an TObject");
   }
 

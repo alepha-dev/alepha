@@ -1,4 +1,4 @@
-import { $env, $inject, Alepha, AlephaError, type Static, t } from "alepha";
+import { $env, $inject, Alepha, AlephaError, type Static, z } from "alepha";
 import type {
   CreatePaymentMethodResult,
   CreateSessionResult,
@@ -12,9 +12,9 @@ import { DatabaseCacheProvider } from "alepha/cache/database";
 import { $logger } from "alepha/logger";
 import Stripe from "stripe";
 
-const envSchema = t.object({
-  STRIPE_SECRET_KEY: t.string(),
-  STRIPE_WEBHOOK_SECRET: t.string(),
+const envSchema = z.object({
+  STRIPE_SECRET_KEY: z.string(),
+  STRIPE_WEBHOOK_SECRET: z.string(),
   /**
    * Signing secret of the `connect: true` webhook endpoint (events emitted
    * BY CONNECTED ACCOUNTS — direct charges, Checkout on a connected
@@ -22,7 +22,7 @@ const envSchema = t.object({
    * platform-account endpoint. Optional: platforms without Connect (or
    * before the endpoint is declared) simply can't parse connect webhooks.
    */
-  STRIPE_CONNECT_WEBHOOK_SECRET: t.optional(t.string()),
+  STRIPE_CONNECT_WEBHOOK_SECRET: z.string().optional(),
 });
 
 declare module "alepha" {

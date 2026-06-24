@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { PaymentError } from "../errors/PaymentError.ts";
@@ -28,7 +28,7 @@ export class PaymentController {
     use: [$secure()],
     description: "List current user's saved payment methods",
     schema: {
-      response: t.array(paymentMethodResourceSchema),
+      response: z.array(paymentMethodResourceSchema),
     },
     handler: ({ user }) => this.paymentMethods.listPaymentMethods(user.id),
   });
@@ -70,7 +70,7 @@ export class PaymentController {
     use: [$secure()],
     description: "Remove own payment method",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: okSchema,
     },
     handler: async ({ params, user }) => {
@@ -89,7 +89,7 @@ export class PaymentController {
     use: [$secure()],
     description: "Set as default payment method",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: paymentMethodResourceSchema,
     },
     handler: ({ params, user }) =>

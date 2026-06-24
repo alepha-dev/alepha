@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 import { cancelSubscriptionSchema } from "../schemas/cancelSubscriptionSchema.ts";
@@ -25,7 +25,7 @@ export class SubscriptionController {
     group: this.group,
     description: "List available subscription plans",
     schema: {
-      response: t.array(planResourceSchema),
+      response: z.array(planResourceSchema),
     },
     handler: async () => {
       const plans = await this.config.getPlans();
@@ -162,7 +162,7 @@ export class SubscriptionController {
     use: [$secure()],
     description: "Get the subscription billing event history",
     schema: {
-      response: t.array(subscriptionEventResourceSchema),
+      response: z.array(subscriptionEventResourceSchema),
     },
     handler: async ({ user }) => {
       const sub = await this.service.getByOrganization(user.organization!);

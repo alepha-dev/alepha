@@ -1,14 +1,14 @@
-import { type Alepha, TypeBoxError, t } from "alepha";
+import { type Alepha, TypeBoxError, z } from "alepha";
 import { eq } from "drizzle-orm";
 import { expect } from "vitest";
 import { $entity, $repository, db, sql } from "../core/index.ts";
 
 const userEntity = $entity({
   name: "users",
-  schema: t.object({
-    id: db.primaryKey(t.int64()),
-    name: t.text(),
-    guildId: t.optional(t.integer()),
+  schema: z.object({
+    id: db.primaryKey(z.int64()),
+    name: z.text(),
+    guildId: z.integer().optional(),
   }),
   indexes: [{ column: "name", unique: true }],
 });
@@ -29,7 +29,7 @@ export const testExecuteBasicSqlQueries = async (alepha: Alepha) => {
   expect(
     await app.users.query(
       (t) => sql`SELECT * FROM ${t} WHERE ${t.name} = ${name}`,
-      t.pick(userEntity.schema, ["name"]),
+      userEntity.schema.pick({ name: true }),
     ),
   ).toEqual([
     {
@@ -40,7 +40,7 @@ export const testExecuteBasicSqlQueries = async (alepha: Alepha) => {
   expect(
     await app.users.query(
       (t, db) => db.select({ name: t.name }).from(t).where(eq(t.name, name)),
-      t.pick(userEntity.schema, ["name"]),
+      userEntity.schema.pick({ name: true }),
     ),
   ).toEqual([
     {
@@ -51,7 +51,7 @@ export const testExecuteBasicSqlQueries = async (alepha: Alepha) => {
   expect(
     await app.users.query(
       (t) => sql`SELECT ${t.name} FROM ${t} WHERE ${t.name} = ${name}`,
-      t.pick(userEntity.schema, ["name"]),
+      userEntity.schema.pick({ name: true }),
     ),
   ).toEqual([
     {

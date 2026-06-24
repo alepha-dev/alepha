@@ -7,12 +7,11 @@ import {
   type TNumber,
   type TNumberOptions,
   type TObject,
-  type TObjectOptions,
   type TPage,
   type TSchema,
   type TString,
   type TStringOptions,
-  t,
+  z,
 } from "alepha";
 import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
 import {
@@ -39,24 +38,18 @@ export class DatabaseTypeProvider {
   /**
    * Creates a primary key with an identity column.
    */
-  public readonly identityPrimaryKey = (
-    identity?: PgIdentityOptions,
-    options?: TNumberOptions,
-  ) =>
+  public readonly identityPrimaryKey = (identity?: PgIdentityOptions) =>
     pgAttr(
-      pgAttr(pgAttr(t.integer(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+      pgAttr(pgAttr(z.integer(), PG_PRIMARY_KEY), PG_IDENTITY, identity),
       PG_DEFAULT,
     );
 
   /**
    * Creates a primary key with a big identity column. (default)
    */
-  public readonly bigIdentityPrimaryKey = (
-    identity?: PgIdentityOptions,
-    options?: TNumberOptions,
-  ) =>
+  public readonly bigIdentityPrimaryKey = (identity?: PgIdentityOptions) =>
     pgAttr(
-      pgAttr(pgAttr(t.int64(options), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+      pgAttr(pgAttr(z.int64(), PG_PRIMARY_KEY), PG_IDENTITY, identity),
       PG_DEFAULT,
     );
 
@@ -64,7 +57,7 @@ export class DatabaseTypeProvider {
    * Creates a primary key with a UUID column.
    */
   public readonly uuidPrimaryKey = () =>
-    pgAttr(pgAttr(t.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
+    pgAttr(pgAttr(z.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
 
   /**
    * Creates a primary key for a given type. Supports:
@@ -94,42 +87,30 @@ export class DatabaseTypeProvider {
   ): PgAttr<PgAttr<TBigInt, PgPrimaryKey>, PgDefault>;
   public primaryKey(
     type?: TSchema,
-    options?: TNumberOptions | TStringOptions,
+    _options?: TNumberOptions | TStringOptions,
     identity?: PgIdentityOptions,
   ): PgAttr<PgAttr<TSchema, PgPrimaryKey>, PgDefault> {
-    if (!type || t.schema.isInteger(type)) {
+    if (!type || z.schema.isInteger(type)) {
       return pgAttr(
-        pgAttr(
-          pgAttr(t.integer(options), PG_PRIMARY_KEY),
-          PG_IDENTITY,
-          identity,
-        ),
+        pgAttr(pgAttr(z.integer(), PG_PRIMARY_KEY), PG_IDENTITY, identity),
         PG_DEFAULT,
       );
     }
 
-    if (t.schema.isString(type) && type.format === "uuid") {
-      return pgAttr(pgAttr(t.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
+    if (z.schema.isString(type) && z.schema.format(type) === "uuid") {
+      return pgAttr(pgAttr(z.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
     }
 
-    if (t.schema.isNumber(type) && type.format === "int64") {
+    if (z.schema.isNumber(type) && z.schema.format(type) === "int64") {
       return pgAttr(
-        pgAttr(
-          pgAttr(t.number(options), PG_PRIMARY_KEY),
-          PG_IDENTITY,
-          identity,
-        ),
+        pgAttr(pgAttr(z.number(), PG_PRIMARY_KEY), PG_IDENTITY, identity),
         PG_DEFAULT,
       );
     }
 
-    if (t.schema.isBigInt(type)) {
+    if (z.schema.isBigInt(type)) {
       return pgAttr(
-        pgAttr(
-          pgAttr(t.bigint(options), PG_PRIMARY_KEY),
-          PG_IDENTITY,
-          identity,
-        ),
+        pgAttr(pgAttr(z.bigint(), PG_PRIMARY_KEY), PG_IDENTITY, identity),
         PG_DEFAULT,
       );
     }
@@ -162,28 +143,28 @@ export class DatabaseTypeProvider {
    * @see {@link RepositoryPrimitive#save}
    * @see {@link PgVersionMismatchError}
    */
-  public readonly version = (options: TNumberOptions = {}) =>
-    this.default(pgAttr(t.integer(options), PG_VERSION), 0);
+  public readonly version = () =>
+    this.default(pgAttr(z.integer(), PG_VERSION), 0);
 
   /**
    * Creates a column Created At. So just a datetime column with a default value of the current timestamp.
    */
-  public readonly createdAt = (options?: TStringOptions) =>
-    pgAttr(pgAttr(t.datetime(options), PG_CREATED_AT), PG_DEFAULT);
+  public readonly createdAt = () =>
+    pgAttr(pgAttr(z.datetime(), PG_CREATED_AT), PG_DEFAULT);
 
   /**
    * Creates a column Updated At. Like createdAt, but it is updated on every update of the row.
    */
-  public readonly updatedAt = (options?: TStringOptions) =>
-    pgAttr(pgAttr(t.datetime(options), PG_UPDATED_AT), PG_DEFAULT);
+  public readonly updatedAt = () =>
+    pgAttr(pgAttr(z.datetime(), PG_UPDATED_AT), PG_DEFAULT);
 
   /**
    * Creates a column Deleted At for soft delete functionality.
    * This is used to mark rows as deleted without actually removing them from the database.
    * The column is nullable - NULL means not deleted, timestamp means deleted.
    */
-  public readonly deletedAt = (options?: TStringOptions) =>
-    pgAttr(t.optional(t.datetime(options)), PG_DELETED_AT);
+  public readonly deletedAt = () =>
+    pgAttr(z.datetime().optional(), PG_DELETED_AT);
 
   /**
    * Creates an organization column for multi-tenant row scoping.
@@ -198,7 +179,7 @@ export class DatabaseTypeProvider {
    */
   public readonly organization = (options?: { nullable?: boolean }) => {
     const nullable = options?.nullable ?? true;
-    return pgAttr(nullable ? t.optional(t.uuid()) : t.uuid(), PG_ORGANIZATION);
+    return pgAttr(nullable ? z.uuid().optional() : z.uuid(), PG_ORGANIZATION);
   };
 
   /**
@@ -214,7 +195,7 @@ export class DatabaseTypeProvider {
   ): PgAttr<T, PgRef> => {
     // If actions are not provided, set default onDelete based on type
     const finalActions = actions ?? {
-      onDelete: t.schema.isOptional(type) ? "set null" : "cascade",
+      onDelete: z.schema.isOptional(type) ? "set null" : "cascade",
     };
 
     return this.attr(type, PG_REF, {
@@ -229,11 +210,8 @@ export class DatabaseTypeProvider {
    * Creates a page schema for a given object schema.
    * It's used by {@link Repository#paginate} method.
    */
-  public readonly page = <T extends TObject>(
-    resource: T,
-    options?: TObjectOptions,
-  ): TPage<T> => {
-    return pageSchema(resource, options);
+  public readonly page = <T extends TObject>(resource: T): TPage<T> => {
+    return pageSchema(resource);
   };
 }
 

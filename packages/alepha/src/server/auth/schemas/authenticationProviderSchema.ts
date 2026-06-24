@@ -1,18 +1,15 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const authenticationProviderSchema = t.object(
-  {
-    name: t.text({
+export const authenticationProviderSchema = z
+  .object({
+    name: z.text({
       description: "Name of the authentication provider.",
     }),
-    type: t.enum(["OAUTH2", "OIDC", "CREDENTIALS"], {
-      description: "Type of the authentication provider.",
-    }),
-  },
-  {
-    title: "AuthenticationProvider",
-  },
-);
+    type: z
+      .enum(["OAUTH2", "OIDC", "CREDENTIALS"])
+      .describe("Type of the authentication provider."),
+  })
+  .meta({ title: "AuthenticationProvider" });
 
 export type AuthenticationProvider = Static<
   typeof authenticationProviderSchema

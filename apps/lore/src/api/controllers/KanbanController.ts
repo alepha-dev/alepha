@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
@@ -23,12 +23,12 @@ export class KanbanController {
     method: "GET",
     path: "/kanban/:campaignId",
     schema: {
-      params: t.object({
-        campaignId: t.integer(),
+      params: z.object({
+        campaignId: z.integer(),
       }),
-      response: t.object({
+      response: z.object({
         campaign: campaigns.schema,
-        quests: t.array(questResourceSchema),
+        quests: z.array(questResourceSchema),
       }),
     },
     handler: async ({ params, user }) => {

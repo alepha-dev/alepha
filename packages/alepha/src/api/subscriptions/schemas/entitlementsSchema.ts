@@ -1,9 +1,9 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
-export const entitlementsSchema = t.object({
-  planId: t.string(),
-  planName: t.string(),
-  status: t.enum([
+export const entitlementsSchema = z.object({
+  planId: z.string(),
+  planName: z.string(),
+  status: z.enum([
     "trialing",
     "active",
     "past_due",
@@ -11,11 +11,11 @@ export const entitlementsSchema = t.object({
     "cancelled",
     "expired",
   ]),
-  features: t.array(t.string()),
-  limits: t.record(t.text(), t.integer()),
-  trialEndsAt: t.optional(t.datetime()),
-  periodEndsAt: t.datetime(),
-  cancelledAt: t.optional(t.datetime()),
+  features: z.array(z.string()),
+  limits: z.record(z.text(), z.integer()),
+  trialEndsAt: z.datetime().optional(),
+  periodEndsAt: z.datetime(),
+  cancelledAt: z.datetime().optional(),
 });
 
 export type Entitlements = Static<typeof entitlementsSchema>;

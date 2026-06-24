@@ -29,6 +29,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Switch } from "@alepha/ui/components/ui/switch";
 import { Textarea } from "@alepha/ui/components/ui/textarea";
+import { z } from "alepha";
 import { useAlepha } from "alepha/react";
 import {
   type BaseInputField,
@@ -297,7 +298,7 @@ export function Control(props: ControlProps) {
 
   // ── File: managed upload (image preview, multi, drag-drop) ──────
   // Checked early so it wins over the array→combobox branch below
-  // when the schema is `t.array(t.string())` with $control.upload.
+  // when the schema is `z.array(z.string())` with $control.upload.
   if (merged.upload) {
     const uploadOpts =
       typeof merged.upload === "object"
@@ -592,9 +593,14 @@ export function Control(props: ControlProps) {
 const useDynamicControlRefresh = (input: BaseInputField | undefined) => {
   const alepha = useAlepha();
   const [, bump] = useState(0);
-  const isDynamic =
-    typeof (input?.schema as { $control?: unknown } | undefined)?.$control ===
-    "function";
+  // Function-form `$control` rides on zod's `.meta()` registry (not a plain
+  // schema property), and the field may be wrapped (optional/nullable), so peel
+  // to the inner schema before reading its meta to detect the dynamic case.
+  const base = input?.schema ? z.schema.unwrap(input.schema) : undefined;
+  const rawControl = (
+    base as { meta?: () => { $control?: unknown } } | undefined
+  )?.meta?.()?.$control;
+  const isDynamic = typeof rawControl === "function";
   useEffect(() => {
     if (!isDynamic || !input?.form) return;
     const formId = input.form.id;

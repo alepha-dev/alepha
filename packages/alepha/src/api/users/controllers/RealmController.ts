@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { CaptchaProvider } from "alepha/captcha";
 import { $action } from "alepha/server";
 import { ServerAuthProvider } from "alepha/server/auth";
@@ -27,8 +27,8 @@ export class RealmController {
     path: `${this.url}/config`,
     use: [$etag()],
     schema: {
-      query: t.object({
-        realmName: t.optional(t.string()),
+      query: z.object({
+        realmName: z.string().optional(),
       }),
       response: realmConfigSchema,
     },
@@ -57,14 +57,14 @@ export class RealmController {
     group: this.group,
     path: `${this.url}/check-username`,
     schema: {
-      query: t.object({
-        realmName: t.optional(t.text()),
+      query: z.object({
+        realmName: z.text().optional(),
       }),
-      body: t.object({
-        username: t.text(),
+      body: z.object({
+        username: z.text(),
       }),
-      response: t.object({
-        available: t.boolean(),
+      response: z.object({
+        available: z.boolean(),
       }),
     },
     handler: async ({ query, body }) => {

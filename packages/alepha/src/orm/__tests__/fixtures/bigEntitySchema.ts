@@ -1,64 +1,64 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 import { $entity, db } from "../../core/index.ts";
 
 export const bigEntity = $entity({
   name: "big_entity",
-  schema: t.object({
-    id: db.primaryKey(t.bigint()),
-    type: t.enum(["big_entity"]),
-    date: t.date(),
-    a: t.text(),
-    b: t.number(),
-    c: t.integer(),
-    d: t.boolean(),
-    e: t.object({
-      a: t.text(),
-      b: t.number(),
-      c: t.integer(),
-      d: t.boolean(),
-      e: t.object({
-        a: t.text(),
-        b: t.number(),
-        c: t.integer(),
-        d: t.boolean(),
-        j: t.array(
-          t.object({
-            a: t.text(),
-            b: t.number(),
-            c: t.integer(),
-            d: t.boolean(),
-            e: t.object({
-              a: t.text(),
-              b: t.number(),
-              c: t.integer(),
-              d: t.boolean(),
+  schema: z.object({
+    id: db.primaryKey(z.bigint()),
+    type: z.enum(["big_entity"]),
+    date: z.date(),
+    a: z.text(),
+    b: z.number(),
+    c: z.integer(),
+    d: z.boolean(),
+    e: z.object({
+      a: z.text(),
+      b: z.number(),
+      c: z.integer(),
+      d: z.boolean(),
+      e: z.object({
+        a: z.text(),
+        b: z.number(),
+        c: z.integer(),
+        d: z.boolean(),
+        j: z.array(
+          z.object({
+            a: z.text(),
+            b: z.number(),
+            c: z.integer(),
+            d: z.boolean(),
+            e: z.object({
+              a: z.text(),
+              b: z.number(),
+              c: z.integer(),
+              d: z.boolean(),
             }),
           }),
         ),
       }),
     }),
-    f: t.array(t.text()),
-    g: t.array(t.number()),
-    h: t.array(t.integer()),
-    i: t.array(t.boolean()),
-    j: t.array(
-      t.object({
-        a: t.text(),
-        b: t.number(),
-        c: t.integer(),
-        d: t.boolean(),
-        e: t.object({
-          a: t.text(),
-          b: t.number(),
-          c: t.integer(),
-          d: t.boolean(),
+    f: z.array(z.text()),
+    g: z.array(z.number()),
+    h: z.array(z.integer()),
+    i: z.array(z.boolean()),
+    j: z.array(
+      z.object({
+        a: z.text(),
+        b: z.number(),
+        c: z.integer(),
+        d: z.boolean(),
+        e: z.object({
+          a: z.text(),
+          b: z.number(),
+          c: z.integer(),
+          d: z.boolean(),
         }),
       }),
     ),
-    k: t.datetime(),
-    l: t.uuid(),
-    m: t.enum(["a", "b", "c"]),
+    k: z.datetime(),
+    l: z.uuid(),
+    m: z.enum(["a", "b", "c"]),
   }),
 });
 

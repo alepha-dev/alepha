@@ -10,7 +10,7 @@ import {
   type Static,
   type TObject,
   type TSchema,
-  t,
+  z,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import {
@@ -36,12 +36,11 @@ import {
  */
 export const swaggerOptions = $atom({
   name: "alepha.server.swagger.options",
-  schema: t.object({
-    excludeKeys: t.optional(
-      t.array(t.string(), {
-        description: "Keys to exclude from swagger schema",
-      }),
-    ),
+  schema: z.object({
+    excludeKeys: z
+      .array(z.string())
+      .describe("Keys to exclude from swagger schema")
+      .optional(),
   }),
   default: {
     excludeKeys: [],
@@ -136,21 +135,34 @@ export class ServerSwaggerProvider {
     const excludeTags = doc.excludeTags ?? [];
     const schemas: Record<string, any> = {};
 
-    const schema = (source: TSchema) => {
-      if ("title" in source && typeof source.title === "string") {
-        schemas[source.title] = copy(source);
-        return { $ref: `#/components/schemas/${source.title}` };
+    const toJson = (source: TSchema): any => {
+      let json: any;
+      try {
+        json = z.toJSONSchema(source as any);
+      } catch {
+        json = {};
       }
-      return copy(source);
-    };
-
-    const copy = (obj: any) => {
-      const newValue = JSON.parse(JSON.stringify(obj));
-      this.removePrivateFields(newValue, [
+      // zod stamps a `$schema` dialect URL we don't want in OpenAPI fragments.
+      json.$schema = undefined;
+      this.removePrivateFields(json, [
         ...(this.options.excludeKeys || []),
         "~options",
       ]);
-      return newValue;
+      return json;
+    };
+
+    const schema = (source: TSchema): any => {
+      const json = toJson(source);
+      // A titled schema is hoisted into `components/schemas` and referenced.
+      const title =
+        (typeof (source as any)?.meta === "function"
+          ? (source as any).meta()?.title
+          : undefined) ?? json.title;
+      if (typeof title === "string") {
+        schemas[title] = json;
+        return { $ref: `#/components/schemas/${title}` };
+      }
+      return json;
     };
 
     for (const route of actions) {
@@ -202,11 +214,11 @@ export class ServerSwaggerProvider {
       }
 
       if (
-        t.schema.isObject(route.options.schema.body) ||
-        t.schema.isArray(route.options.schema.body)
+        z.schema.isObject(route.options.schema.body) ||
+        z.schema.isArray(route.options.schema.body)
       ) {
         if (
-          t.schema.isObject(route.options.schema.body) &&
+          z.schema.isObject(route.options.schema.body) &&
           this.isBodyMultipart(route.options.schema.body)
         ) {
           operation.requestBody = {
@@ -229,10 +241,11 @@ export class ServerSwaggerProvider {
         }
       }
 
-      if (t.schema.isObject(route.options.schema.query)) {
+      if (z.schema.isObject(route.options.schema.query)) {
         operation.parameters ??= [];
-        const requiredKeys: string[] =
-          route.options.schema.query.required ?? [];
+        const requiredKeys: string[] = z.schema.requiredKeys(
+          route.options.schema.query,
+        );
         for (const [key, value] of Object.entries(
           route.options.schema.query.properties,
         )) {
@@ -248,14 +261,18 @@ export class ServerSwaggerProvider {
         }
       }
 
-      if (t.schema.isObject(route.options.schema.params)) {
+      if (z.schema.isObject(route.options.schema.params)) {
         operation.parameters ??= [];
         for (const [key, value] of Object.entries(
           route.options.schema.params.properties,
         )) {
+          const valueMeta =
+            typeof (value as any)?.meta === "function"
+              ? ((value as any).meta() ?? {})
+              : {};
           const description =
-            "description" in value && typeof value.description === "string"
-              ? value.description
+            typeof valueMeta.description === "string"
+              ? valueMeta.description
               : undefined;
           const ref = schema(value);
           ref.description = undefined;
@@ -335,7 +352,7 @@ export class ServerSwaggerProvider {
       };
     }
 
-    if (t.schema.isObject(schema) || t.schema.isArray(schema)) {
+    if (z.schema.isObject(schema) || z.schema.isArray(schema)) {
       return {
         schema,
         status: 200,
@@ -343,7 +360,7 @@ export class ServerSwaggerProvider {
       };
     }
 
-    if (t.schema.isString(schema)) {
+    if (z.schema.isString(schema)) {
       return {
         schema,
         status: 200,
@@ -352,9 +369,9 @@ export class ServerSwaggerProvider {
     }
 
     if (
-      t.schema.isNumber(schema) ||
-      t.schema.isInteger(schema) ||
-      t.schema.isBoolean(schema)
+      z.schema.isNumber(schema) ||
+      z.schema.isInteger(schema) ||
+      z.schema.isBoolean(schema)
     ) {
       return {
         schema,
@@ -371,7 +388,7 @@ export class ServerSwaggerProvider {
       };
     }
 
-    // Status-code-keyed map: e.g. { 201: t.object({...}) }
+    // Status-code-keyed map: e.g. { 201: z.object({...}) }
     const status = Object.keys(schema)[0];
     if (status && !Number.isNaN(Number(status))) {
       const inner = schema[status];
@@ -384,11 +401,17 @@ export class ServerSwaggerProvider {
   }
 
   protected extractExample(schema: any): any {
-    if ("examples" in schema && Array.isArray(schema.examples)) {
-      return schema.examples[0];
+    const meta =
+      typeof schema?.meta === "function" ? (schema.meta() ?? {}) : {};
+    if (Array.isArray(meta.examples) && meta.examples.length > 0) {
+      return meta.examples[0];
     }
-    if ("default" in schema) {
-      return schema.default;
+    if (meta.example !== undefined) {
+      return meta.example;
+    }
+    const def = z.schema.getDefault(schema);
+    if (def !== undefined) {
+      return def;
     }
     return undefined;
   }
@@ -418,14 +441,14 @@ export class ServerSwaggerProvider {
 
   protected getContentType(schema: any): string | undefined {
     if (!schema) return undefined;
-    if (t.schema.isObject(schema) || t.schema.isArray(schema)) {
+    if (z.schema.isObject(schema) || z.schema.isArray(schema)) {
       return "application/json";
     }
-    if (t.schema.isString(schema)) return "text/plain";
+    if (z.schema.isString(schema)) return "text/plain";
     if (
-      t.schema.isNumber(schema) ||
-      t.schema.isInteger(schema) ||
-      t.schema.isBoolean(schema)
+      z.schema.isNumber(schema) ||
+      z.schema.isInteger(schema) ||
+      z.schema.isBoolean(schema)
     ) {
       return "application/json";
     }
@@ -438,7 +461,7 @@ export class ServerSwaggerProvider {
       method: "GET",
       path: `${prefix}/json`,
       schema: {
-        response: t.json(),
+        response: z.json(),
       },
       handler: () => json,
     });

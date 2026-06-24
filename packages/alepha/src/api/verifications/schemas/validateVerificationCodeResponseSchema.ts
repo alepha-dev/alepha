@@ -1,15 +1,14 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
-export const validateVerificationCodeResponseSchema = t.object({
-  ok: t.boolean({
-    description: "Indicates whether the verification was successful.",
-  }),
-  alreadyVerified: t.optional(
-    t.boolean({
-      description: "Indicates whether the target was already verified.",
-    }),
-  ),
+export const validateVerificationCodeResponseSchema = z.object({
+  ok: z
+    .boolean()
+    .describe("Indicates whether the verification was successful."),
+  alreadyVerified: z
+    .boolean()
+    .describe("Indicates whether the target was already verified.")
+    .optional(),
 });
 
 export type ValidateVerificationCodeResponse = Static<

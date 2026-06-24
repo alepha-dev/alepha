@@ -1,4 +1,4 @@
-import { $inject, Alepha, t } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { $queue } from "alepha/queue";
 import { JobDispatcher } from "./JobDispatcher.ts";
 import { JobProvider } from "./JobProvider.ts";
@@ -31,7 +31,7 @@ export class JobQueueProvider extends JobDispatcher {
 
   protected readonly queue = $queue({
     name: "api:jobs:dispatch",
-    schema: t.object({ jobName: t.text(), executionId: t.text() }),
+    schema: z.object({ jobName: z.text(), executionId: z.text() }),
     handler: async (msg) => {
       await this.getJobProvider().processExecution(
         msg.payload.jobName,

@@ -1,20 +1,20 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 export const refunds = $entity({
   name: "refunds",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     organizationId: db.organization(),
-    intentId: t.uuid(),
-    amount: t.integer(),
-    currency: t.text({ size: "short" }),
-    status: t.enum(["pending", "processing", "completed", "failed"]),
-    reason: t.optional(t.text()),
-    providerRef: t.optional(t.text()),
+    intentId: z.uuid(),
+    amount: z.integer(),
+    currency: z.text({ size: "short" }),
+    status: z.enum(["pending", "processing", "completed", "failed"]),
+    reason: z.text().optional(),
+    providerRef: z.text().optional(),
   }),
   indexes: ["intentId", "organizationId", "status"],
 });

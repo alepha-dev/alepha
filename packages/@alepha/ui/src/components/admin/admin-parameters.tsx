@@ -16,7 +16,7 @@ import { Skeleton } from "@alepha/ui/components/ui/skeleton";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { cn } from "@alepha/ui/lib/utils";
-import { jsonSchemaToTypeBox, type TObject, t } from "alepha";
+import { jsonSchemaToZod, type TObject, z } from "alepha";
 import type { AdminParameterController } from "alepha/api/parameters";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useForm } from "alepha/react/form";
@@ -51,7 +51,7 @@ import { ParameterSaveDialog } from "./parameter-save-dialog.tsx";
  *           (see `ParameterHistoryItem`) with a `…` menu to view its JSON, diff
  *           it against the previous version, or roll back to it.
  */
-const parameterQuerySchema = t.object({ param: t.optional(t.string()) });
+const parameterQuerySchema = z.object({ param: z.string().optional() });
 
 export function AdminParameters() {
   const client = useClient<AdminParameterController>();
@@ -525,8 +525,8 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
 
   const data = current;
   const schema = data.schema
-    ? (jsonSchemaToTypeBox(data.schema as any) as TObject)
-    : (jsonSchemaToTypeBox({
+    ? (jsonSchemaToZod(data.schema as any) as TObject)
+    : (jsonSchemaToZod({
         type: "object",
         properties: {},
       }) as TObject);
@@ -812,3 +812,5 @@ const labelOf = (s: string) => {
   const last = s.split(".").pop() ?? s;
   return last.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 };
+
+export default AdminParameters;

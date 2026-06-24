@@ -1,4 +1,4 @@
-import { type TSchema, TypeBoxError } from "alepha";
+import { type TSchema, TypeBoxError, z } from "alepha";
 import type { BaseInputField } from "./FormModel.ts";
 import { prettyName } from "./prettyName.ts";
 
@@ -70,43 +70,66 @@ export const parseField = (
   input: BaseInputField,
   options: ParseFieldOptions = {},
 ): FieldMeta => {
-  const schema = input.schema as TSchema & {
-    type?: string;
-    format?: string;
-    title?: string;
-    description?: string;
-    enum?: readonly unknown[];
+  // Peel optional/nullable/default wrappers: structure, `.meta()`, format and
+  // constraints all live on the inner schema, not the wrapper. `required` is
+  // tracked separately via `input.required`.
+  const schema = z.schema.unwrap(input.schema) as TSchema & {
     minLength?: number;
     maxLength?: number;
-    minimum?: number;
-    maximum?: number;
-    pattern?: string;
-    properties?: unknown;
-    items?: { properties?: unknown };
-    $control?: unknown;
+    minValue?: number;
+    maxValue?: number;
   };
+
+  // Title / description / `$control` ride on zod's `.meta()` registry now
+  // (typebox kept them as plain schema properties). Read them from there.
+  const meta = (
+    typeof (schema as any).meta === "function" ? (schema as any).meta() : null
+  ) as Record<string, unknown> | null;
 
   const label =
     options.label ??
-    (typeof schema.title === "string" ? schema.title : undefined) ??
+    (typeof meta?.title === "string" ? meta.title : undefined) ??
     prettyName(input.path);
 
   const description =
     options.description ??
-    (typeof schema.description === "string" ? schema.description : undefined);
+    (typeof meta?.description === "string" ? meta.description : undefined);
 
   const error =
     options.error instanceof TypeBoxError
       ? (options.error as TypeBoxError).value?.message
       : undefined;
 
-  const type = schema.type;
-  const format = typeof schema.format === "string" ? schema.format : undefined;
-  const isEnum = Array.isArray(schema.enum);
-  const isArray = type === "array";
-  const isObject = type === "object" && Boolean(schema.properties);
-  const isArrayOfObjects =
-    isArray && Boolean(schema.items && (schema.items as any).properties);
+  // Structural classification via zod guards (the schema is a real zod schema,
+  // not a JSON-Schema object — `schema.type`/`schema.enum` no longer apply).
+  const isEnum = z.schema.isEnum(schema);
+  const isArray = z.schema.isArray(schema);
+  const isObject = z.schema.isObject(schema);
+  const isInteger = z.schema.isInteger(schema);
+  const isNumber = !isInteger && z.schema.isNumber(schema);
+  const isBoolean = z.schema.isBoolean(schema);
+  const type = isObject
+    ? "object"
+    : isArray
+      ? "array"
+      : isEnum
+        ? "string"
+        : isInteger
+          ? "integer"
+          : isNumber
+            ? "number"
+            : isBoolean
+              ? "boolean"
+              : z.schema.isString(schema)
+                ? "string"
+                : undefined;
+
+  const format =
+    typeof z.schema.format(schema) === "string"
+      ? z.schema.format(schema)
+      : undefined;
+  const element = (schema as any).element ?? (schema as any).items;
+  const isArrayOfObjects = isArray && z.schema.isObject(element);
 
   const name = input.props.name;
   const iconHint = inferIconHint({ type, format, name, isEnum, isArray });
@@ -116,9 +139,12 @@ export const parseField = (
     constraints.minLength = schema.minLength;
   if (typeof schema.maxLength === "number")
     constraints.maxLength = schema.maxLength;
-  if (typeof schema.minimum === "number") constraints.minimum = schema.minimum;
-  if (typeof schema.maximum === "number") constraints.maximum = schema.maximum;
-  if (typeof schema.pattern === "string") constraints.pattern = schema.pattern;
+  if (typeof schema.minValue === "number")
+    constraints.minimum = schema.minValue;
+  if (typeof schema.maxValue === "number")
+    constraints.maximum = schema.maxValue;
+  const pattern = readPattern(schema);
+  if (pattern) constraints.pattern = pattern;
 
   return {
     id: input.props.id,
@@ -132,15 +158,28 @@ export const parseField = (
     isArray,
     isObject,
     isArrayOfObjects,
-    enum: schema.enum,
+    enum: isEnum ? z.schema.enumValues(schema) : undefined,
     iconHint,
     constraints,
     testId: (input.props as Record<string, unknown>)["data-testid"] as
       | string
       | undefined,
     schema: input.schema,
-    control: schema.$control,
+    control: meta?.$control,
   };
+};
+
+/** Best-effort read of a `ZodString` regex pattern from its check list. */
+const readPattern = (schema: unknown): string | undefined => {
+  const checks = (schema as any)?._zod?.def?.checks as
+    | Array<{ _zod?: { def?: { pattern?: RegExp; format?: string } } }>
+    | undefined;
+  if (!Array.isArray(checks)) return undefined;
+  for (const check of checks) {
+    const pattern = check?._zod?.def?.pattern;
+    if (pattern instanceof RegExp) return pattern.source;
+  }
+  return undefined;
 };
 
 const inferIconHint = (params: {

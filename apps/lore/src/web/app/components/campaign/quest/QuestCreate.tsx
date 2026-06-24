@@ -8,7 +8,6 @@ import {
 } from "@alepha/ui/components/ui/dropdown-menu";
 import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { Separator } from "@alepha/ui/components/ui/separator";
-import { t } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -74,7 +73,7 @@ const QuestCreate = (props: QuestCreateProps) => {
 
   const form = useForm({
     id: "quest-create",
-    schema: t.omit(questCreateSchema, ["campaignId", "dependsOn"]),
+    schema: questCreateSchema.omit({ campaignId: true, dependsOn: true }),
     initialValues: {
       ...(props.quest as QuestResource),
       priority: props.quest?.priority ?? "optional",

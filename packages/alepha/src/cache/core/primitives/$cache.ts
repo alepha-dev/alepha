@@ -10,7 +10,7 @@ import {
   Primitive,
   type Service,
   type Static,
-  t,
+  z,
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { CacheProvider } from "../providers/CacheProvider.ts";
@@ -225,15 +225,12 @@ export interface CachePrimitiveOptions<
  */
 export const cacheOptions = $atom({
   name: "alepha.cache.options",
-  schema: t.object({
-    enabled: t.boolean({
-      default: true,
-      description: "Whether caching is enabled.",
-    }),
-    defaultTtl: t.number({
-      default: 300,
-      description: "Default time to live for cache entries in seconds.",
-    }),
+  schema: z.object({
+    enabled: z.boolean().describe("Whether caching is enabled.").default(true),
+    defaultTtl: z
+      .number()
+      .describe("Default time to live for cache entries in seconds.")
+      .default(300),
   }),
   default: {
     enabled: true,

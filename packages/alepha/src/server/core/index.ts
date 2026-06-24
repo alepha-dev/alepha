@@ -29,7 +29,10 @@ import { ServerNotReadyProvider } from "./providers/ServerNotReadyProvider.ts";
 import { ServerProvider } from "./providers/ServerProvider.ts";
 import { ServerRouterProvider } from "./providers/ServerRouterProvider.ts";
 import { ServerTimingProvider } from "./providers/ServerTimingProvider.ts";
-import type { FetchOptions, HttpAction } from "./services/HttpClient.ts";
+import type {
+  HttpAction,
+  ResolvedFetchOptions,
+} from "./services/HttpClient.ts";
 import { HttpClient } from "./services/HttpClient.ts";
 import { ServerRequestParser } from "./services/ServerRequestParser.ts";
 import { UserAgentParser } from "./services/UserAgentParser.ts";
@@ -91,7 +94,7 @@ declare module "alepha" {
     };
     "client:beforeFetch": {
       url: string;
-      options: FetchOptions;
+      options: ResolvedFetchOptions;
       request: RequestInit;
     };
     "client:onError": {

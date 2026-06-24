@@ -1,4 +1,4 @@
-import { $inject, AlephaError, t } from "alepha";
+import { $inject, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -32,21 +32,21 @@ export class PackCommand {
     name: "pack",
     description:
       "Pack the workspace into a deployable tar.gz (for `alepha platform --prebuilt` consumers like Alepha Rocket).",
-    flags: t.object({
-      tag: t.optional(
-        t.text({
+    flags: z.object({
+      tag: z
+        .text({
           aliases: ["t"],
           description:
             "Tag suffix for the artifact name (Docker-style). Defaults to `latest` → `<project>-latest.tar.gz`. Pass a real version like `0.0.2` for a pinned artifact.",
-        }),
-      ),
-      output: t.optional(
-        t.text({
+        })
+        .optional(),
+      output: z
+        .text({
           aliases: ["o"],
           description:
             "Output directory for the tar.gz (default: current dir).",
-        }),
-      ),
+        })
+        .optional(),
     }),
     handler: async ({ flags, root, run }) => {
       const pkgPath = this.fs.join(root, "package.json");

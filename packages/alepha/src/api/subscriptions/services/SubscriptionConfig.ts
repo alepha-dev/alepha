@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { $parameter } from "alepha/api/parameters";
 import { BadRequestError } from "alepha/server";
 import {
@@ -14,7 +14,7 @@ export class SubscriptionConfig {
   protected readonly plans = $parameter({
     name: "subscriptions.plans",
     description: "Subscription plan definitions",
-    schema: t.object({ plans: t.array(planDefinitionSchema) }),
+    schema: z.object({ plans: z.array(planDefinitionSchema) }),
     default: { plans: [] },
   });
 

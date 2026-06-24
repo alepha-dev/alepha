@@ -3,11 +3,12 @@ import { ReadableStream as NodeWebStream } from "node:stream/web";
 import {
   $inject,
   Alepha,
+  coerceScalar,
   isFileLike,
   isTypeFile,
   type Middleware,
   PipelineHandler,
-  t,
+  z,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
@@ -357,18 +358,18 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   protected getResponseType(schema?: RequestConfigSchema): ResponseKind {
     if (schema?.response) {
       if (
-        t.schema.isObject(schema.response) ||
-        t.schema.isRecord(schema.response) ||
-        t.schema.isArray(schema.response)
+        z.schema.isObject(schema.response) ||
+        z.schema.isRecord(schema.response) ||
+        z.schema.isArray(schema.response)
       ) {
         return "json";
       }
 
       if (
-        t.schema.isString(schema.response) ||
-        t.schema.isInteger(schema.response) ||
-        t.schema.isNumber(schema.response) ||
-        t.schema.isBoolean(schema.response)
+        z.schema.isString(schema.response) ||
+        z.schema.isInteger(schema.response) ||
+        z.schema.isNumber(schema.response) ||
+        z.schema.isBoolean(schema.response)
       ) {
         return "text";
       }
@@ -377,7 +378,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         return "file";
       }
 
-      if (t.schema.isVoid(schema.response)) {
+      if (z.schema.isVoid(schema.response)) {
         return "void";
       }
     }
@@ -461,9 +462,24 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   ) {
     if (route.schema?.params) {
       try {
+        // Path params are always strings on the wire — coerce each declared
+        // param to its schema type (int/bool/date) before strict validation,
+        // mirroring the `query` / `headers` handling below. Without this a
+        // numeric route param like `/users/:id` (id: z.integer()) fails strict
+        // zod validation with "expected number, received string".
+        const schemaParams = route.schema.params;
+        const coerced: Record<string, unknown> = { ...request.params };
+        for (const key of Object.keys(schemaParams.properties)) {
+          if (coerced[key] != null) {
+            coerced[key] = this.coerceParam(
+              schemaParams.properties[key],
+              coerced[key],
+            );
+          }
+        }
         request.params = this.alepha.codec.validate(
-          route.schema.params,
-          request.params,
+          schemaParams,
+          coerced,
         ) as any;
       } catch (error) {
         throw new ValidationError("Invalid request params", error);
@@ -478,9 +494,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
         for (const key of keys) {
           if (request.query[key] != null) {
+            const propSchema = schemaQuery.properties[key];
             query[key] = this.alepha.codec.decode(
-              schemaQuery.properties[key],
-              request.query[key],
+              propSchema,
+              this.coerceParam(propSchema, request.query[key]),
             );
           }
         }
@@ -509,7 +526,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
           if (value == null) continue;
           decoded[key] = this.alepha.codec.decode(
             schemaHeaders.properties[key],
-            value,
+            this.coerceParam(schemaHeaders.properties[key], value),
           );
         }
 
@@ -525,7 +542,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
 
     if (route.schema?.body) {
-      if (t.schema.isString(route.schema.body)) {
+      if (z.schema.isString(route.schema.body)) {
         if (typeof request.body !== "string") {
           throw new ValidationError("Request body is not a string");
         }
@@ -540,6 +557,18 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         }
       }
     }
+  }
+
+  /**
+   * Coerce a raw query/header value (always a string on the wire) to the JS
+   * type its schema declares, mirroring `z.coerce` at the HTTP boundary.
+   *
+   * Only the boundary coerces — request bodies and the ORM stay strict. Values
+   * that can't be coerced are passed through unchanged so the subsequent
+   * validation produces a proper rejection. Arrays coerce element-wise.
+   */
+  protected coerceParam(schema: unknown, value: unknown): unknown {
+    return coerceScalar(schema, value);
   }
 }
 

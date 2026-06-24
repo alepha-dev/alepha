@@ -6,7 +6,7 @@ import {
   Alepha,
   type State,
   type Static,
-  t,
+  z,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -26,8 +26,8 @@ export type { RouterPushOptions } from "../services/ReactRouter.ts";
  */
 export const reactBrowserOptions = $atom({
   name: "alepha.react.browser.options",
-  schema: t.object({
-    scrollRestoration: t.enum(["top", "manual"]), // TODO: must be per page?
+  schema: z.object({
+    scrollRestoration: z.enum(["top", "manual"]), // TODO: must be per page?
     /**
      * Intercept clicks on plain `<a href="/...">` anchors and route them
      * through the SPA router, so authors don't need `<Link>` everywhere
@@ -37,7 +37,7 @@ export const reactBrowserOptions = $atom({
      * `_self`, `download`, `data-no-router`, non-http(s) schemes, hash-only
      * hrefs, external origins, and clicks already `defaultPrevented`.
      */
-    interceptAnchorClicks: t.boolean({ default: true }),
+    interceptAnchorClicks: z.boolean().default(true),
   }),
   default: {
     scrollRestoration: "top" as const,

@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -12,13 +12,13 @@ export class GenEnvCommand {
   public readonly command = $command({
     name: "env",
     description: "Extract environment variables from server entry file",
-    flags: t.object({
-      out: t.optional(
-        t.text({
+    flags: z.object({
+      out: z
+        .text({
           aliases: ["o"],
           description: "Output file path (e.g., .env)",
-        }),
-      ),
+        })
+        .optional(),
     }),
     handler: async ({ root, flags }) => {
       const alepha = await this.utils.loadAlephaFromServerEntryFile({

@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { parameters } from "../entities/parameters.ts";
 
 /**
@@ -7,13 +7,10 @@ import { parameters } from "../entities/parameters.ts";
  * Creator fields are omitted; the controller captures the authenticated user
  * server-side.
  */
-export const rollbackParameterBodySchema = t.extend(
-  t.pick(parameters.schema, ["changeDescription"]),
-  {
-    targetVersion: t.integer({
-      description: "Version number to rollback to",
-    }),
-  },
-);
+export const rollbackParameterBodySchema = parameters.schema
+  .pick({ changeDescription: true })
+  .extend({
+    targetVersion: z.integer().describe("Version number to rollback to"),
+  });
 
 export type RollbackParameterBody = Static<typeof rollbackParameterBodySchema>;

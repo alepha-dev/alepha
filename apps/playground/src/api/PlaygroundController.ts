@@ -1,4 +1,4 @@
-import { $inject, Alepha, t } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import {
   AuditService,
   audits as auditEntity,
@@ -39,7 +39,7 @@ export class PlaygroundController {
   public readonly playgroundListJobs = $action({
     method: "GET",
     path: "/playground/jobs",
-    schema: { response: t.array(jobRegistrationSchema) },
+    schema: { response: z.array(jobRegistrationSchema) },
     handler: () => this.jobService.listJobs(),
   });
 
@@ -47,7 +47,7 @@ export class PlaygroundController {
     method: "POST",
     path: "/playground/reset",
     schema: {
-      response: t.object({ ok: t.boolean(), deleted: t.integer() }),
+      response: z.object({ ok: z.boolean(), deleted: z.integer() }),
     },
     handler: async () => {
       const rows = await this.executions.findMany({
@@ -64,9 +64,9 @@ export class PlaygroundController {
     method: "GET",
     path: "/playground/jobs/:name/sample",
     schema: {
-      params: t.object({ name: t.text() }),
-      response: t.object({
-        sample: t.optional(t.record(t.text(), t.any())),
+      params: z.object({ name: z.text() }),
+      response: z.object({
+        sample: z.record(z.text(), z.any()).optional(),
       }),
     },
     handler: ({ params }) => {
@@ -85,9 +85,9 @@ export class PlaygroundController {
     method: "GET",
     path: "/playground/jobs/:name/executions",
     schema: {
-      params: t.object({ name: t.text() }),
+      params: z.object({ name: z.text() }),
       query: jobExecutionQuerySchema,
-      response: t.array(jobExecutionResourceSchema),
+      response: z.array(jobExecutionResourceSchema),
     },
     handler: ({ params, query }) =>
       this.jobService.getExecutions(params.name, query),
@@ -131,9 +131,9 @@ export class PlaygroundController {
     method: "POST",
     path: "/playground/queue/mail",
     schema: {
-      body: t.object({
-        to: t.string({ format: "email" }),
-        subject: t.string(),
+      body: z.object({
+        to: z.string().meta({ format: "email" }),
+        subject: z.string(),
       }),
       response: okSchema,
     },
@@ -149,7 +149,7 @@ export class PlaygroundController {
     method: "POST",
     path: "/playground/queue/marketing/bulk",
     schema: {
-      body: t.object({ count: t.integer({ minimum: 1, maximum: 1000 }) }),
+      body: z.object({ count: z.integer().min(1).max(1000) }),
       response: okSchema,
     },
     handler: async ({ body }) => {
@@ -170,9 +170,9 @@ export class PlaygroundController {
     method: "POST",
     path: "/playground/queue/delayed",
     schema: {
-      body: t.object({
-        to: t.string({ format: "email" }),
-        delaySeconds: t.integer({ minimum: 1, maximum: 3600 }),
+      body: z.object({
+        to: z.string().meta({ format: "email" }),
+        delaySeconds: z.integer().min(1).max(3600),
       }),
       response: okSchema,
     },
@@ -191,7 +191,7 @@ export class PlaygroundController {
     method: "POST",
     path: "/playground/queue/deduped",
     schema: {
-      body: t.object({ key: t.string() }),
+      body: z.object({ key: z.string() }),
       response: okSchema,
     },
     handler: async ({ body }) => {
@@ -209,8 +209,8 @@ export class PlaygroundController {
     method: "POST",
     path: "/playground/queue/priority",
     schema: {
-      body: t.object({
-        priority: t.enum(["critical", "high", "normal", "low"]),
+      body: z.object({
+        priority: z.enum(["critical", "high", "normal", "low"]),
       }),
       response: okSchema,
     },
@@ -246,7 +246,7 @@ export class PlaygroundController {
     method: "POST",
     path: "/playground/queue/slow",
     schema: {
-      body: t.object({ label: t.string() }),
+      body: z.object({ label: z.string() }),
       response: okSchema,
     },
     handler: async ({ body }) => {
@@ -259,7 +259,7 @@ export class PlaygroundController {
     method: "POST",
     path: "/playground/executions/:id/cancel",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: okSchema,
     },
     handler: async ({ params }) => {
@@ -274,12 +274,12 @@ export class PlaygroundController {
     method: "POST",
     path: "/playground/run",
     schema: {
-      body: t.object({
-        name: t.text(),
-        payload: t.optional(t.record(t.text(), t.any())),
-        delaySeconds: t.optional(t.integer({ minimum: 1, maximum: 86_400 })),
-        key: t.optional(t.text()),
-        priority: t.optional(t.enum(["critical", "high", "normal", "low"])),
+      body: z.object({
+        name: z.text(),
+        payload: z.record(z.text(), z.any()).optional(),
+        delaySeconds: z.integer().min(1).max(86_400).optional(),
+        key: z.text().optional(),
+        priority: z.enum(["critical", "high", "normal", "low"]).optional(),
       }),
       response: okSchema,
     },
@@ -319,7 +319,7 @@ export class PlaygroundController {
     method: "POST",
     path: "/playground/executions-any/:id/cancel",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: okSchema,
     },
     handler: async ({ params }) => {
@@ -332,7 +332,7 @@ export class PlaygroundController {
     method: "POST",
     path: "/playground/executions-any/:id/retry",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: okSchema,
     },
     handler: async ({ params }) => {
@@ -404,7 +404,7 @@ export class PlaygroundController {
     method: "GET",
     path: "/playground/audits",
     schema: {
-      response: t.array(auditResourceSchema),
+      response: z.array(auditResourceSchema),
     },
     handler: async () => {
       const page = await this.auditService.find({
@@ -420,7 +420,7 @@ export class PlaygroundController {
     method: "POST",
     path: "/playground/audits/reset",
     schema: {
-      response: t.object({ ok: t.boolean(), deleted: t.integer() }),
+      response: z.object({ ok: z.boolean(), deleted: z.integer() }),
     },
     handler: async () => {
       const rows = await this.auditRepo.findMany({ columns: ["id"] as any });

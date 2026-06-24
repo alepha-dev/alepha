@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -50,9 +50,9 @@ export class PlaygroundJobs {
   /** Simple payload → log it. Keeps runs visible (record: 'all'). */
   public readonly sendMail = $job({
     description: "Pretends to send an email. Every run kept (record: all).",
-    schema: t.object({
-      to: t.string({ format: "email" }),
-      subject: t.string(),
+    schema: z.object({
+      to: z.string().meta({ format: "email" }),
+      subject: z.string(),
     }),
     timeout: [10, "seconds"],
     record: "all",
@@ -69,9 +69,9 @@ export class PlaygroundJobs {
   /** Bulk emails — used by the pushMany demo. */
   public readonly sendMarketing = $job({
     description: "Marketing email — low priority, keeps successes.",
-    schema: t.object({
-      to: t.string({ format: "email" }),
-      campaign: t.string(),
+    schema: z.object({
+      to: z.string().meta({ format: "email" }),
+      campaign: z.string(),
     }),
     priority: "low",
     record: "all",
@@ -83,7 +83,7 @@ export class PlaygroundJobs {
   /** Always fails — exercises sweep-driven retries (every ~5 minutes). */
   public readonly flaky = $job({
     description: "Always throws — watch the sweep-driven retry cycle.",
-    schema: t.object({ v: t.integer() }),
+    schema: z.object({ v: z.integer() }),
     retry: { retries: 3 },
     handler: async ({ attempt }) => {
       throw new Error(`flaky failed on attempt ${attempt}`);
@@ -93,7 +93,7 @@ export class PlaygroundJobs {
   /** Takes 10s — lets you exercise cancel + timeout. */
   public readonly slow = $job({
     description: "Sleeps 10s — cancel it or let the timeout fire.",
-    schema: t.object({ label: t.string() }),
+    schema: z.object({ label: z.string() }),
     timeout: [15, "seconds"],
     handler: async ({ signal, payload }) => {
       this.log.info("slow started", payload);

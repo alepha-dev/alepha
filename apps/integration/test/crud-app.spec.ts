@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $entity, $repository, db, pageQuerySchema } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $action, HttpError } from "alepha/server";
@@ -10,12 +10,12 @@ import { beforeEach, describe, test } from "vitest";
  */
 const userEntity = $entity({
   name: "crud_users",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
-    email: t.text({ format: "email" }),
-    name: t.text({ minLength: 1, maxLength: 100 }),
-    age: t.number({ minimum: 0, maximum: 150 }),
-    isActive: db.default(t.boolean(), true),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    email: z.email(),
+    name: z.text({ minLength: 1, maxLength: 100 }),
+    age: z.number().min(0).max(150),
+    isActive: db.default(z.boolean(), true),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
   }),
@@ -37,11 +37,11 @@ class UserCrudApp {
     method: "POST",
     path: "/users",
     schema: {
-      body: t.object({
-        email: t.text({ format: "email" }),
-        name: t.text({ minLength: 1, maxLength: 100 }),
-        age: t.number({ minimum: 0, maximum: 150 }),
-        isActive: t.optional(t.boolean()),
+      body: z.object({
+        email: z.email(),
+        name: z.text({ minLength: 1, maxLength: 100 }),
+        age: z.number().min(0).max(150),
+        isActive: z.boolean().optional(),
       }),
       response: userResourceSchema,
     },
@@ -75,8 +75,8 @@ class UserCrudApp {
     method: "GET",
     path: "/users/:id",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
       response: userResourceSchema,
     },
@@ -91,11 +91,11 @@ class UserCrudApp {
     method: "GET",
     path: "/users",
     schema: {
-      query: t.extend(pageQuerySchema, {
-        search: t.optional(t.text()),
-        isActive: t.optional(t.boolean()),
-        minAge: t.optional(t.number({ minimum: 0 })),
-        maxAge: t.optional(t.number({ maximum: 150 })),
+      query: pageQuerySchema.extend({
+        search: z.text().optional(),
+        isActive: z.boolean().optional(),
+        minAge: z.number().min(0).optional(),
+        maxAge: z.number().max(150).optional(),
       }),
       response: db.page(userResourceSchema),
     },
@@ -142,14 +142,14 @@ class UserCrudApp {
     method: "PUT",
     path: "/users/:id",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      body: t.object({
-        email: t.optional(t.text({ format: "email" })),
-        name: t.optional(t.text({ minLength: 1, maxLength: 100 })),
-        age: t.optional(t.number({ minimum: 0, maximum: 150 })),
-        isActive: t.optional(t.boolean()),
+      body: z.object({
+        email: z.email().optional(),
+        name: z.text({ minLength: 1, maxLength: 100 }).optional(),
+        age: z.number().min(0).max(150).optional(),
+        isActive: z.boolean().optional(),
       }),
       response: userResourceSchema,
     },
@@ -181,12 +181,12 @@ class UserCrudApp {
     method: "DELETE",
     path: "/users/:id",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
-      response: t.object({
-        success: t.boolean(),
-        id: t.uuid(),
+      response: z.object({
+        success: z.boolean(),
+        id: z.uuid(),
       }),
     },
     handler: async ({ params }) => {
@@ -205,18 +205,18 @@ class UserCrudApp {
     method: "POST",
     path: "/users/bulk",
     schema: {
-      body: t.object({
-        users: t.array(
-          t.object({
-            email: t.text({ format: "email" }),
-            name: t.text({ minLength: 1, maxLength: 100 }),
-            age: t.number({ minimum: 0, maximum: 150 }),
-            isActive: t.optional(t.boolean()),
+      body: z.object({
+        users: z.array(
+          z.object({
+            email: z.email(),
+            name: z.text({ minLength: 1, maxLength: 100 }),
+            age: z.number().min(0).max(150),
+            isActive: z.boolean().optional(),
           }),
         ),
       }),
-      response: t.object({
-        created: t.number(),
+      response: z.object({
+        created: z.number(),
       }),
     },
     handler: async ({ body }) => {
@@ -951,39 +951,36 @@ describe("CRUD Application - Complete Integration Tests", () => {
       ).rejects.toThrow();
     });
 
-    test("should coerce string number to number for age", async ({
+    test("rejects a string age (bodies are strict — no coercion)", async ({
       expect,
     }) => {
-      // TypeBox/JSON schema may coerce string numbers to numbers
-      const { data: result } = await app.createUser.fetch({
-        body: {
-          email: "test@example.com",
-          name: "Test User",
-          age: "30" as any,
-        },
-      });
-
-      // Verify the value was coerced to a number
-      expect(typeof result.age).toBe("number");
-      expect(result.age).toBe(30);
+      // Strict zod: a JSON body string is NOT coerced to a number. Coercion
+      // only happens at the HTTP/string boundary (query, headers, env).
+      await expect(
+        app.createUser.fetch({
+          body: {
+            email: "test@example.com",
+            name: "Test User",
+            age: "30" as any,
+          },
+        }),
+      ).rejects.toThrow();
     });
 
-    test("should coerce string boolean to boolean for isActive", async ({
+    test("rejects a string boolean for isActive (bodies are strict)", async ({
       expect,
     }) => {
-      // TypeBox/JSON schema may coerce string booleans to booleans
-      const { data: result } = await app.createUser.fetch({
-        body: {
-          email: "test@example.com",
-          name: "Test User",
-          age: 30,
-          isActive: "true" as any,
-        },
-      });
-
-      // Verify the value was coerced to a boolean
-      expect(typeof result.isActive).toBe("boolean");
-      expect(result.isActive).toBe(true);
+      // Strict zod: a JSON body string is NOT coerced to a boolean.
+      await expect(
+        app.createUser.fetch({
+          body: {
+            email: "test@example.com",
+            name: "Test User",
+            age: 30,
+            isActive: "true" as any,
+          },
+        }),
+      ).rejects.toThrow();
     });
 
     test("should reject extra fields in body", async ({ expect }) => {

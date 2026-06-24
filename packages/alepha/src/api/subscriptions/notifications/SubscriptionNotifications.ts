@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { z } from "alepha";
 import { $notification } from "alepha/api/notifications";
 
 export class SubscriptionNotifications {
@@ -8,11 +8,11 @@ export class SubscriptionNotifications {
   protected readonly trialEnding = $notification({
     name: "subscription-trial-ending",
     category: "subscriptions",
-    schema: t.object({
-      planName: t.text(),
-      trialEndDate: t.text(),
-      amount: t.text(),
-      interval: t.text(),
+    schema: z.object({
+      planName: z.text(),
+      trialEndDate: z.text(),
+      amount: z.text(),
+      interval: z.text(),
     }),
     email: {
       subject: "Your trial is ending soon",
@@ -28,10 +28,10 @@ export class SubscriptionNotifications {
     name: "subscription-payment-failed",
     category: "subscriptions",
     critical: true,
-    schema: t.object({
-      planName: t.text(),
-      amount: t.text(),
-      retryDate: t.optional(t.text()),
+    schema: z.object({
+      planName: z.text(),
+      amount: z.text(),
+      retryDate: z.text().optional(),
     }),
     email: {
       subject: "Payment failed for your subscription",
@@ -47,7 +47,7 @@ export class SubscriptionNotifications {
     name: "subscription-suspended",
     category: "subscriptions",
     critical: true,
-    schema: t.object({ planName: t.text() }),
+    schema: z.object({ planName: z.text() }),
     email: {
       subject: "Your subscription has been suspended",
       body: (v) =>
@@ -61,10 +61,10 @@ export class SubscriptionNotifications {
   protected readonly subscriptionRenewed = $notification({
     name: "subscription-renewed",
     category: "subscriptions",
-    schema: t.object({
-      planName: t.text(),
-      amount: t.text(),
-      nextBillingDate: t.text(),
+    schema: z.object({
+      planName: z.text(),
+      amount: z.text(),
+      nextBillingDate: z.text(),
     }),
     email: {
       subject: "Payment received — subscription renewed",
@@ -79,10 +79,10 @@ export class SubscriptionNotifications {
   protected readonly planChanged = $notification({
     name: "subscription-plan-changed",
     category: "subscriptions",
-    schema: t.object({
-      oldPlanName: t.text(),
-      newPlanName: t.text(),
-      effectiveDate: t.text(),
+    schema: z.object({
+      oldPlanName: z.text(),
+      newPlanName: z.text(),
+      effectiveDate: z.text(),
     }),
     email: {
       subject: "Your subscription plan has been changed",
@@ -97,9 +97,9 @@ export class SubscriptionNotifications {
   protected readonly cancellationConfirmed = $notification({
     name: "subscription-cancelled",
     category: "subscriptions",
-    schema: t.object({
-      planName: t.text(),
-      accessUntil: t.optional(t.text()),
+    schema: z.object({
+      planName: z.text(),
+      accessUntil: z.text().optional(),
     }),
     email: {
       subject: "Your subscription has been cancelled",

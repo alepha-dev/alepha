@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $job, jobExecutionEntity } from "alepha/api/jobs";
 import { $parameter } from "alepha/api/parameters";
 import { DateTimeProvider } from "alepha/datetime";
@@ -36,12 +36,13 @@ export class NotificationJobs {
   public readonly settings = $parameter({
     name: "alepha.api.notifications",
     description: "Notification delivery & retention settings.",
-    schema: t.object({
-      retentionDays: t.integer({
-        description:
+    schema: z.object({
+      retentionDays: z
+        .integer()
+        .min(1)
+        .describe(
           "Days to keep notification execution rows before the purge sweep removes them.",
-        minimum: 1,
-      }),
+        ),
     }),
     default: {
       retentionDays: 7,

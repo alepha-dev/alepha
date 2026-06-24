@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { campaigns } from "./campaigns.ts";
 import { users } from "./users.ts";
@@ -26,18 +26,18 @@ import { users } from "./users.ts";
  */
 export const blightIgnoreRules = $entity({
   name: "blight_ignore_rules",
-  schema: t.object({
-    id: db.primaryKey(t.integer()),
-    campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
+    campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
     /** Case-insensitive substring matched against a blight's `message`. */
-    pattern: t.string({ minLength: 1, maxLength: 200 }),
+    pattern: z.string().min(1).max(200),
     /**
      * The owner who added the rule. NULLABLE + `set null` on delete so a
      * removed account does not cascade-drop the campaign's ignore rules.
      */
-    createdBy: db.ref(t.optional(t.uuid()), () => users.cols.id, {
+    createdBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),
     createdAt: db.createdAt(),

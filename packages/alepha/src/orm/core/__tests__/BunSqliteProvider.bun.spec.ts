@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $entity, $repository, DatabaseProvider, db } from "../index.ts";
 import {
   BunSqliteProvider,
@@ -10,18 +10,18 @@ import {
 
 const users = $entity({
   name: "users",
-  schema: t.object({
-    id: db.primaryKey(t.integer()),
-    name: t.text(),
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
+    name: z.text(),
   }),
 });
 
 const posts = $entity({
   name: "posts",
-  schema: t.object({
-    id: db.primaryKey(t.bigint()),
-    title: t.text(),
-    body: t.optional(t.text()),
+  schema: z.object({
+    id: db.primaryKey(z.bigint()),
+    title: z.text(),
+    body: z.text().optional(),
   }),
 });
 

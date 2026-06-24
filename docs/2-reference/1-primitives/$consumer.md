@@ -39,10 +39,10 @@ can process messages from the same queue.
 class EmailService {
   emailQueue = $queue({
     name: "emails",
-    schema: t.object({
-      to: t.text(),
-      subject: t.text(),
-      body: t.text()
+    schema: z.object({
+      to: z.text(),
+      subject: z.text(),
+      body: z.text()
     })
   });
 

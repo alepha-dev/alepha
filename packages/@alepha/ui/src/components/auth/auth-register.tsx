@@ -20,7 +20,7 @@ import {
 } from "@alepha/ui/components/ui/input-otp";
 import { Label } from "@alepha/ui/components/ui/label";
 import { Separator } from "@alepha/ui/components/ui/separator";
-import { TypeBoxError, t } from "alepha";
+import { TypeBoxError, z } from "alepha";
 import type {
   RealmConfig,
   RegistrationIntentResponse,
@@ -116,19 +116,17 @@ export function AuthRegister(props: AuthRegisterProps) {
   const allowed = settings.registrationAllowed !== false;
 
   const schema = useMemo(() => {
-    const s = t.object({
-      firstName: t.optional(t.text({ trim: true, maxLength: 100 })),
-      lastName: t.optional(t.text({ trim: true, maxLength: 100 })),
-      username: t.optional(
-        t.text({ trim: true, pattern: settings.usernameRegExp }),
-      ),
-      email: t.optional(t.email()),
-      phoneNumber: t.optional(t.e164()),
-      password: t.string({
-        minLength: settings.passwordPolicy?.minLength ?? 8,
-      }),
+    const s = z.object({
+      firstName: z.text({ trim: true, maxLength: 100 }).optional(),
+      lastName: z.text({ trim: true, maxLength: 100 }).optional(),
+      username: z
+        .text({ trim: true, pattern: settings.usernameRegExp })
+        .optional(),
+      email: z.email().optional(),
+      phoneNumber: z.e164().optional(),
+      password: z.string().min(settings.passwordPolicy?.minLength ?? 8),
     });
-    const required = s.required as string[];
+    const required = z.schema.requiredKeys(s);
     if (settings.firstNameLastName === "required") {
       required.push("firstName", "lastName");
     }

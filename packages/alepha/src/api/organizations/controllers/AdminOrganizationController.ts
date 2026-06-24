@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { createOrganizationSchema } from "../schemas/createOrganizationSchema.ts";
@@ -22,7 +22,7 @@ export class AdminOrganizationController {
     description: "Find organizations with pagination and filtering",
     schema: {
       query: organizationQuerySchema,
-      response: t.page(organizationResourceSchema),
+      response: z.page(organizationResourceSchema),
     },
     handler: ({ query }) => this.organizationService.find(query),
   });
@@ -36,8 +36,8 @@ export class AdminOrganizationController {
     use: [$secure({ permissions: ["admin:organization:read"] })],
     description: "Get an organization by ID",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
       response: organizationResourceSchema,
     },
@@ -70,8 +70,8 @@ export class AdminOrganizationController {
     use: [$secure({ permissions: ["admin:organization:update"] })],
     description: "Update an organization",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
       body: updateOrganizationSchema,
       response: organizationResourceSchema,
@@ -90,8 +90,8 @@ export class AdminOrganizationController {
     use: [$secure({ permissions: ["admin:organization:delete"] })],
     description: "Delete an organization",
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: z.object({
+        id: z.uuid(),
       }),
       response: okSchema,
     },

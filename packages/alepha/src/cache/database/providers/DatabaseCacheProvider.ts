@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $state, Alepha, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, Alepha, type Static, z } from "alepha";
 import { CacheProvider } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -12,20 +12,22 @@ import { cacheEntries } from "../entities/cacheEntries.ts";
  */
 export const databaseCacheOptions = $atom({
   name: "alepha.cache.database.options",
-  schema: t.object({
-    sweepProbability: t.number({
-      description:
+  schema: z.object({
+    sweepProbability: z
+      .number()
+      .min(0)
+      .max(1)
+      .describe(
         "Probability (0..1) that a write operation triggers a sweep of expired rows. Set to 0 to disable opportunistic sweeping.",
-      default: 0.01,
-      minimum: 0,
-      maximum: 1,
-    }),
-    sweepBatchSize: t.integer({
-      description:
+      )
+      .default(0.01),
+    sweepBatchSize: z
+      .integer()
+      .min(1)
+      .describe(
         "Maximum number of expired rows deleted per opportunistic sweep.",
-      default: 100,
-      minimum: 1,
-    }),
+      )
+      .default(100),
   }),
   default: {
     sweepProbability: 0.01,

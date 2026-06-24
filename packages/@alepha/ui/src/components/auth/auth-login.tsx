@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Separator } from "@alepha/ui/components/ui/separator";
-import { AlephaError, TypeBoxError, t } from "alepha";
+import { AlephaError, TypeBoxError, z } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
 import { useAuth } from "alepha/react/auth";
 import { FormValidationError, useForm, useFormState } from "alepha/react/form";
@@ -123,11 +123,9 @@ export function AuthLogin(props: AuthLoginProps) {
       : "username";
 
   const form = useForm({
-    schema: t.object({
-      identifier: t.string({ minLength: 1 }),
-      password: t.string({
-        minLength: settings.passwordPolicy?.minLength || 6,
-      }),
+    schema: z.object({
+      identifier: z.string().min(1),
+      password: z.string().min(settings.passwordPolicy?.minLength || 6),
     }),
     handler: async (data) => {
       if (!credentialsProvider) {

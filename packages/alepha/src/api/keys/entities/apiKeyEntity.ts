@@ -1,37 +1,37 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 export const apiKeyEntity = $entity({
   name: "api_keys",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     organizationId: db.organization(),
 
     // Owner
-    userId: t.uuid(),
+    userId: z.uuid(),
 
     // Key metadata
-    name: t.text({ maxLength: 100 }),
-    description: t.optional(t.text({ maxLength: 500 })),
+    name: z.text({ maxLength: 100 }),
+    description: z.text({ maxLength: 500 }).optional(),
 
     // Token (hashed) - internal, not user input
-    tokenHash: t.string({ maxLength: 256 }),
-    tokenPrefix: t.string({ maxLength: 10 }),
-    tokenSuffix: t.string({ maxLength: 8 }),
+    tokenHash: z.string().max(256),
+    tokenPrefix: z.string().max(10),
+    tokenSuffix: z.string().max(8),
 
     // Roles (snapshot from user at creation)
-    roles: db.default(t.array(t.string()), []),
+    roles: db.default(z.array(z.string()), []),
 
     // Tracking
-    lastUsedAt: t.optional(t.datetime()),
-    lastUsedIp: t.optional(t.string({ maxLength: 45 })),
-    usageCount: db.default(t.integer(), 0),
+    lastUsedAt: z.datetime().optional(),
+    lastUsedIp: z.string().max(45).optional(),
+    usageCount: db.default(z.integer(), 0),
 
     // Lifecycle
-    expiresAt: t.optional(t.datetime()),
-    revokedAt: t.optional(t.datetime()),
+    expiresAt: z.datetime().optional(),
+    revokedAt: z.datetime().optional(),
   }),
   indexes: [
     { columns: ["userId", "name"], unique: true },

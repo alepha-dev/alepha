@@ -1,17 +1,17 @@
 import type { Static } from "alepha";
-import { t } from "alepha";
+import { z } from "alepha";
 
 /**
  * Schema for user registration query parameters.
  * Allows specifying a custom user realm.
  */
-export const registerQuerySchema = t.object({
-  userRealmName: t.optional(
-    t.text({
+export const registerQuerySchema = z.object({
+  userRealmName: z
+    .text({
       description:
         "The user realm to register the user in (defaults to 'default')",
-    }),
-  ),
+    })
+    .optional(),
 });
 
 export type RegisterQuery = Static<typeof registerQuerySchema>;

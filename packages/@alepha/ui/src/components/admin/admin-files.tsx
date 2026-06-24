@@ -13,7 +13,7 @@ import {
   HoverCardTrigger,
 } from "@alepha/ui/components/ui/hover-card";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import type {
   AdminFileStatsController,
   FileController,
@@ -42,9 +42,9 @@ const formatBytes = (n: number) => {
 
 // Filter schema at module scope so its identity stays stable across renders
 // — AlephaTable's internal `useForm` captures it once.
-const filtersSchema = t.object({
-  name: t.optional(t.string()),
-  bucket: t.optional(t.string()),
+const filtersSchema = z.object({
+  name: z.string().optional(),
+  bucket: z.string().optional(),
 });
 type AdminFileFilters = Static<typeof filtersSchema>;
 
@@ -342,3 +342,5 @@ export function AdminFiles() {
     </AdminPage>
   );
 }
+
+export default AdminFiles;

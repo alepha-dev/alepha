@@ -9,10 +9,9 @@ import {
   KIND,
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
+  type SchemaOutput,
   type Static,
-  type TObject,
-  type TSchema,
-  t,
+  z,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import type { RouteMethod } from "../constants/routeMethods.ts";
@@ -23,7 +22,6 @@ import type {
   ServerRequest,
   ServerResponseBody,
   ServerRoute,
-  TRequestBody,
 } from "../interfaces/ServerRequest.ts";
 import { ServerProvider } from "../providers/ServerProvider.ts";
 import { ServerRouterProvider } from "../providers/ServerRouterProvider.ts";
@@ -71,17 +69,17 @@ import {
  *   getUsers = $action({
  *     path: "/users",
  *     schema: {
- *       query: t.object({
- *         page: t.optional(t.number({ default: 1 })),
- *         limit: t.optional(t.number({ default: 10 }))
+ *       query: z.object({
+ *         page: z.number({ default: 1 }).optional(),
+ *         limit: z.number({ default: 10 }).optional()
  *       }),
- *       response: t.object({
- *         users: t.array(t.object({
- *           id: t.text(),
- *           name: t.text(),
- *           email: t.text()
+ *       response: z.object({
+ *         users: z.array(z.object({
+ *           id: z.text(),
+ *           name: z.text(),
+ *           email: z.text()
  *         })),
- *         total: t.number()
+ *         total: z.number()
  *       })
  *     },
  *     handler: async ({ query }) => {
@@ -94,11 +92,11 @@ import {
  *     method: "POST",
  *     path: "/users",
  *     schema: {
- *       body: t.object({
- *         name: t.text(),
- *         email: t.text({ format: "email" })
+ *       body: z.object({
+ *         name: z.text(),
+ *         email: z.text({ format: "email" })
  *       }),
- *       response: t.object({ id: t.text(), name: t.text() })
+ *       response: z.object({ id: z.text(), name: z.text() })
  *     },
  *     handler: async ({ body }) => {
  *       return await this.userService.create(body);
@@ -210,8 +208,8 @@ export interface ActionPrimitiveOptions<TConfig extends RequestConfigSchema>
  */
 export const serverApiOptions = $atom({
   name: "alepha.server.api.options",
-  schema: t.object({
-    prefix: t.text({
+  schema: z.object({
+    prefix: z.text({
       default: "/api",
       description: "Prefix for all API routes (e.g. $action).",
     }),
@@ -318,15 +316,15 @@ export class ActionPrimitive<
         return "multipart/form-data";
       }
 
-      if (t.schema.isString(this.options.schema.body)) {
+      if (z.schema.isString(this.options.schema.body)) {
         // if body is a string, we assume it's plain text
         return "text/plain";
       }
 
       if (
-        t.schema.isObject(this.options.schema.body) ||
-        t.schema.isArray(this.options.schema.body) ||
-        t.schema.isRecord(this.options.schema.body)
+        z.schema.isObject(this.options.schema.body) ||
+        z.schema.isArray(this.options.schema.body) ||
+        z.schema.isRecord(this.options.schema.body)
       )
         // if body is an object or array, we assume it's JSON
         return "application/json";
@@ -508,21 +506,13 @@ export type ClientRequestEntry<
 };
 
 export type ClientRequestEntryContainer<TConfig extends RequestConfigSchema> = {
-  body: TConfig["body"] extends TRequestBody
-    ? Static<TConfig["body"]>
-    : undefined;
+  body: SchemaOutput<TConfig["body"], undefined>;
 
-  params: TConfig["params"] extends TObject
-    ? Static<TConfig["params"]>
-    : undefined;
+  params: SchemaOutput<TConfig["params"], undefined>;
 
-  headers?: TConfig["headers"] extends TObject
-    ? Static<TConfig["headers"]>
-    : Record<string, string>;
+  headers?: SchemaOutput<TConfig["headers"], Record<string, string>>;
 
-  query?: TConfig["query"] extends TObject
-    ? Partial<Static<TConfig["query"]>>
-    : Record<string, string>;
+  query?: Partial<SchemaOutput<TConfig["query"], Record<string, string>>>;
 };
 
 export interface ClientRequestOptions extends FetchOptions {
@@ -539,7 +529,7 @@ export interface ClientRequestOptions extends FetchOptions {
 }
 
 export type ClientRequestResponse<TConfig extends RequestConfigSchema> =
-  TConfig["response"] extends TSchema ? Static<TConfig["response"]> : any;
+  SchemaOutput<TConfig["response"], any>;
 
 /**
  * Specific handler for server actions.

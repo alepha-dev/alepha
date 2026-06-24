@@ -1,16 +1,16 @@
-import { type Alepha, t } from "alepha";
+import { type Alepha, z } from "alepha";
 import { expect } from "vitest";
 import { $entity, $repository, db } from "../core/index.ts";
 
 const User = $entity({
   name: "users",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    name: t.text(),
-    email: t.text(),
-    bio: t.optional(t.text()),
+    name: z.text(),
+    email: z.text(),
+    bio: z.text().optional(),
   }),
 });
 

@@ -13,7 +13,7 @@ import {
   InputOTPSlot,
 } from "@alepha/ui/components/ui/input-otp";
 import { Label } from "@alepha/ui/components/ui/label";
-import { AlephaError, t } from "alepha";
+import { AlephaError, z } from "alepha";
 import type {
   PasswordResetIntentResponse,
   RealmConfig,
@@ -92,9 +92,9 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
 
   const passwordForm = useForm(
     {
-      schema: t.object({
-        password: t.string({ minLength: 8 }),
-        confirmPassword: t.string({ minLength: 8 }),
+      schema: z.object({
+        password: z.string().min(8),
+        confirmPassword: z.string().min(8),
       }),
       handler: async (data) => {
         if (data.password !== data.confirmPassword) {

@@ -1,6 +1,7 @@
 import type { Readable } from "node:stream";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
-import type { TSchema, TUnsafe } from "typebox";
+import type { TSchema, TUnsafe } from "../providers/TypeProvider.ts";
+import { z } from "../providers/TypeProvider.ts";
 
 export interface FileLike {
   /**
@@ -71,11 +72,10 @@ export interface FileLike {
 export type TFile = TUnsafe<FileLike>;
 
 export const isTypeFile = (value: TSchema): value is TFile => {
+  // The format tag lives in zod's `.meta()`, read via `z.schema.format` — there
+  // is no own `format` property to test for.
   return (
-    value &&
-    typeof value === "object" &&
-    "format" in value &&
-    value.format === "binary"
+    !!value && typeof value === "object" && z.schema.format(value) === "binary"
   );
 };
 

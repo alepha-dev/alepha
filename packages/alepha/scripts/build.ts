@@ -2,7 +2,7 @@
 import { access, readdir, readFile } from "node:fs/promises";
 import * as os from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { $inject, AlephaError, run, t } from "alepha";
+import { $inject, AlephaError, run, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -26,19 +26,19 @@ class AlephaPackageBuilderCli {
 
   make = $command({
     root: true,
-    flags: t.object({
-      check: t.optional(
-        t.boolean({
-          description:
-            "Only analyze modules and refresh configs (package.json exports, tsconfig.json paths) without building",
-        }),
-      ),
-      external: t.optional(
-        t.text({
+    flags: z.object({
+      check: z
+        .boolean()
+        .describe(
+          "Only analyze modules and refresh configs (package.json exports, tsconfig.json paths) without building",
+        )
+        .optional(),
+      external: z
+        .text({
           description:
             "Comma-separated additional external packages (e.g. --external=alepha,@alepha/ui/styles.css). Bare package names auto-expand to include all their subpath exports.",
-        }),
-      ),
+        })
+        .optional(),
     }),
     handler: async ({ run, root, flags }) => {
       const modules: Array<Module> = [];
@@ -182,6 +182,10 @@ class AlephaPackageBuilderCli {
       const external: (string | RegExp)[] = [
         "bun",
         "bun:sqlite",
+        // zod is a runtime dependency, never bundled. Its `v4/locales/*.d.cts`
+        // type files use CommonJS dts syntax that rolldown-plugin-dts cannot
+        // bundle, so it must be external for both the JS and the .d.ts builds.
+        toExternalPattern("zod"),
         toExternalPattern(packageName),
         // `vite` bundles a copy of `postcss` whose .d.ts uses
         // `import { atRule, AtRule, ... }` (no `type` modifier), which
@@ -209,6 +213,10 @@ class AlephaPackageBuilderCli {
           platform: "node", // TODO: node must be enabled only if index.node.ts exists
           deps: {
             neverBundle: external,
+            // tsdown externalizes the .d.ts bundle separately — without this,
+            // bundling pulls in zod's CommonJS `v4/locales/*.d.cts` which
+            // rolldown-plugin-dts cannot bundle.
+            dts: { neverBundle: external },
           },
           dts: {
             sourcemap: true,
@@ -217,6 +225,7 @@ class AlephaPackageBuilderCli {
 
         const deps = {
           neverBundle: external,
+          dts: { neverBundle: external },
         };
 
         if (item.workerd) {

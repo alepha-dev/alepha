@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import { petitionResourceSchema } from "./petitionResourceSchema.ts";
 
 /**
@@ -8,11 +8,11 @@ import { petitionResourceSchema } from "./petitionResourceSchema.ts";
  * icon) so the cross-campaign list can show which campaign each petition
  * belongs to without a per-row lookup.
  */
-export const myPetitionResourceSchema = t.extend(petitionResourceSchema, {
-  campaign: t.object({
-    id: t.integer(),
-    title: t.string(),
-    icon: t.optional(t.union([t.uuid(), t.null()])),
+export const myPetitionResourceSchema = petitionResourceSchema.extend({
+  campaign: z.object({
+    id: z.integer(),
+    title: z.string(),
+    icon: z.union([z.uuid(), z.null()]).optional(),
   }),
 });
 

@@ -1,4 +1,4 @@
-import { type Alepha, t } from "alepha";
+import { type Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { expect } from "vitest";
 import {
@@ -10,10 +10,10 @@ import {
 
 const entity = $entity({
   name: "test_entity",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
     deletedAt: db.deletedAt(),
-    name: t.optional(t.text()),
+    name: z.text().optional(),
   }),
 });
 

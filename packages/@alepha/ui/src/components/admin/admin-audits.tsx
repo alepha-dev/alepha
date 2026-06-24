@@ -8,7 +8,7 @@ import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -16,9 +16,9 @@ import { useRouter } from "alepha/react/router";
 import { SlidersHorizontal, Trash2, User } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-const auditFiltersSchema = t.object({
-  status: t.optional(t.string()),
-  action: t.optional(t.string()),
+const auditFiltersSchema = z.object({
+  status: z.string().optional(),
+  action: z.string().optional(),
 });
 type AuditFilters = Static<typeof auditFiltersSchema>;
 
@@ -243,3 +243,5 @@ export function AdminAudits() {
     </AdminPage>
   );
 }
+
+export default AdminAudits;

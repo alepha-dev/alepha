@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { $batch, AlephaBatch } from "../index.ts";
@@ -27,7 +27,7 @@ describe("$batch primitive", () => {
     const mockHandler = createMockHandler();
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 3,
         handler: mockHandler,
       });
@@ -57,7 +57,7 @@ describe("$batch primitive", () => {
     const mockHandler = createMockHandler();
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 10,
         maxDuration: [5, "seconds"],
         handler: mockHandler,
@@ -83,7 +83,7 @@ describe("$batch primitive", () => {
     const mockHandler = createMockHandler();
     class TestApp {
       batcher = $batch({
-        schema: t.object({ id: t.number(), value: t.text() }),
+        schema: z.object({ id: z.number(), value: z.text() }),
         maxSize: 2,
         partitionBy: (item) => `partition-${item.id}`,
         handler: mockHandler,
@@ -126,7 +126,7 @@ describe("$batch primitive", () => {
     const mockHandler = createMockHandler();
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 10,
         handler: mockHandler,
       });
@@ -151,7 +151,7 @@ describe("$batch primitive", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 1,
         handler: failingHandler,
         retry: { max: 2 }, // Try a total of 2 times
@@ -185,7 +185,7 @@ describe("$batch primitive", () => {
     });
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 1,
         handler: mockHandler,
       });
@@ -225,7 +225,7 @@ describe("$batch primitive", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 1,
         concurrency: 2,
         handler: slowHandler,
@@ -254,7 +254,7 @@ describe("$batch primitive", () => {
     const mockHandler = createMockHandler();
     class TestApp {
       batcher = $batch({
-        schema: t.object({ id: t.number(), value: t.text() }),
+        schema: z.object({ id: z.number(), value: z.text() }),
         maxSize: 5,
         partitionBy: (item) => `p-${item.id}`,
         handler: mockHandler,
@@ -293,7 +293,7 @@ describe("$batch primitive", () => {
     const mockHandler = createMockHandler();
     class TestApp {
       batcher = $batch({
-        schema: t.object({ id: t.number(), value: t.text() }),
+        schema: z.object({ id: z.number(), value: z.text() }),
         maxSize: 5,
         partitionBy: (item) => `p-${item.id}`,
         handler: mockHandler,
@@ -319,7 +319,7 @@ describe("$batch primitive", () => {
     const mockHandler = createMockHandler();
     class TestApp {
       batcher = $batch({
-        schema: t.number(), // Expects numbers
+        schema: z.number(), // Expects numbers
         maxSize: 1,
         handler: mockHandler,
       });
@@ -344,7 +344,7 @@ describe("$batch primitive", () => {
     const mockHandler = createMockHandler();
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 5,
         handler: mockHandler,
       });
@@ -362,7 +362,7 @@ describe("$batch primitive", () => {
     const mockHandler = createMockHandler();
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 5,
         maxDuration: [1, "second"],
         partitionBy: (item) => item,
@@ -380,7 +380,7 @@ describe("$batch primitive", () => {
 
     class TestApp {
       httpBatch = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 10,
         maxDuration: [100, "milliseconds"],
         handler: async (urls) => {
@@ -435,7 +435,7 @@ describe("$batch primitive", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 2,
         maxDuration: [10, "seconds"],
         handler: async (items: string[]) => {
@@ -482,7 +482,7 @@ describe("$batch primitive", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.object({ id: t.number(), value: t.text() }),
+        schema: z.object({ id: z.number(), value: z.text() }),
         maxSize: 2,
         partitionBy: (item) => `p-${item.id}`,
         handler: async (items) => {
@@ -526,7 +526,7 @@ describe("$batch primitive", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         // Not providing maxSize, concurrency, or maxDuration
         handler: mockHandler,
       });
@@ -565,7 +565,7 @@ describe("$batch primitive", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         // Not providing maxDuration, should default to 1 second
         handler: mockHandler,
       });
@@ -599,7 +599,7 @@ describe("$batch primitive", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 1,
         // Not providing concurrency, should default to 1
         handler: slowHandler,
@@ -625,7 +625,7 @@ describe("$batch primitive", () => {
   test("should track item status through lifecycle", async () => {
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 10,
         maxDuration: [100, "milliseconds"],
         handler: async (items: string[]) => {
@@ -679,7 +679,7 @@ describe("$batch primitive", () => {
 
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 10,
         maxDuration: [100, "milliseconds"],
         handler: mockHandler,
@@ -735,7 +735,7 @@ describe("$batch primitive", () => {
     const mockHandler = createMockHandler();
     class TestApp {
       batcher = $batch({
-        schema: t.text(),
+        schema: z.text(),
         maxSize: 10,
         handler: mockHandler,
       });

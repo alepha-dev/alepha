@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, test } from "vitest";
 import { SchemaValidator } from "../providers/SchemaValidator.ts";
 
@@ -8,9 +8,9 @@ describe("SchemaValidator", () => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        name: t.text(),
-        age: t.integer(),
+      const schema = z.object({
+        name: z.text(),
+        age: z.integer(),
       });
 
       const data = {
@@ -28,8 +28,8 @@ describe("SchemaValidator", () => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        name: t.text({ trim: true }),
+      const schema = z.object({
+        name: z.text({ trim: true }),
       });
 
       const data = {
@@ -40,23 +40,24 @@ describe("SchemaValidator", () => {
       expect(result.name).toBe("Alice");
     });
 
-    test("should convert null to undefined for non-nullable fields", async ({
+    test("rejects null for an optional (non-nullable) field (strict)", async ({
       expect,
     }) => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        name: t.text(),
-        bio: t.optional(t.text()),
+      const schema = z.object({
+        name: z.text(),
+        bio: z.text().optional(),
       });
 
-      const data = {
-        name: "Alice",
-        bio: null,
-      };
+      // Standard zod is strict: an optional field accepts `undefined`, not
+      // `null` (the old `nullToUndefined` coercion has been dropped).
+      expect(() =>
+        validator.validate(schema, { name: "Alice", bio: null }),
+      ).toThrow();
 
-      const result = validator.validate(schema, data);
+      const result = validator.validate(schema, { name: "Alice" });
       expect(result.name).toBe("Alice");
       expect(result.bio).toBeUndefined();
     });
@@ -69,8 +70,8 @@ describe("SchemaValidator", () => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        name: t.text(),
+      const schema = z.object({
+        name: z.text(),
       });
 
       // Input data with __proto__ key via JSON.parse (bypasses literal protection)
@@ -90,8 +91,8 @@ describe("SchemaValidator", () => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        name: t.text(),
+      const schema = z.object({
+        name: z.text(),
       });
 
       const data = {
@@ -111,8 +112,8 @@ describe("SchemaValidator", () => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        name: t.text(),
+      const schema = z.object({
+        name: z.text(),
       });
 
       const data = {
@@ -132,9 +133,9 @@ describe("SchemaValidator", () => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        user: t.object({
-          name: t.text(),
+      const schema = z.object({
+        user: z.object({
+          name: z.text(),
         }),
       });
 
@@ -155,8 +156,8 @@ describe("SchemaValidator", () => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        name: t.text(),
+      const schema = z.object({
+        name: z.text(),
       });
 
       // Attempt to pollute Object.prototype via __proto__
@@ -176,8 +177,8 @@ describe("SchemaValidator", () => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        name: t.text(),
+      const schema = z.object({
+        name: z.text(),
       });
 
       const data = {
@@ -197,8 +198,8 @@ describe("SchemaValidator", () => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        tags: t.array(t.text({ trim: true })),
+      const schema = z.object({
+        tags: z.array(z.text({ trim: true })),
       });
 
       const data = {
@@ -215,8 +216,8 @@ describe("SchemaValidator", () => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        tags: t.optional(t.array(t.text({ trim: true }))),
+      const schema = z.object({
+        tags: z.array(z.text({ trim: true })).optional(),
       });
 
       const data = {
@@ -233,8 +234,8 @@ describe("SchemaValidator", () => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        tags: t.union([t.array(t.text({ trim: true })), t.null()]),
+      const schema = z.object({
+        tags: z.union([z.array(z.text({ trim: true })), z.null()]),
       });
 
       const data = {
@@ -245,28 +246,26 @@ describe("SchemaValidator", () => {
       expect(result.tags).toEqual(["tag1", "tag2"]);
     });
 
-    test("should delete undefined values when option is enabled", async ({
+    test("validates an optional field left undefined (strict)", async ({
       expect,
     }) => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
-      const schema = t.object({
-        name: t.text(),
-        bio: t.optional(t.text()),
+      const schema = z.object({
+        name: z.text(),
+        bio: z.text().optional(),
       });
 
-      const data = {
+      // The `deleteUndefined` option has been dropped; an undefined optional
+      // field simply validates to `undefined`.
+      const result = validator.validate(schema, {
         name: "Alice",
         bio: undefined,
-      };
-
-      const result = validator.validate(schema, data, {
-        deleteUndefined: true,
       });
 
       expect(result.name).toBe("Alice");
-      expect("bio" in result).toBe(false);
+      expect(result.bio).toBeUndefined();
     });
   });
 });

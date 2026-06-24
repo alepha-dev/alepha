@@ -1,4 +1,4 @@
-import { $inject, Alepha, t } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { AlephaFake, FakeProvider } from "../index.ts";
 
 // Example showing how to use the AlephaFake module
@@ -7,13 +7,13 @@ class MyApp {
 
   async seedDatabase() {
     // Define your schema
-    const userSchema = t.object({
-      id: t.uuid(),
-      firstName: t.text(),
-      lastName: t.text(),
-      email: t.email(),
-      age: t.integer({ minimum: 18, maximum: 99 }),
-      createdAt: t.string({ format: "date-time" }),
+    const userSchema = z.object({
+      id: z.uuid(),
+      firstName: z.text(),
+      lastName: z.text(),
+      email: z.email(),
+      age: z.integer().min(18).max(99),
+      createdAt: z.string().meta({ format: "date-time" }),
     });
 
     // Generate multiple fake users

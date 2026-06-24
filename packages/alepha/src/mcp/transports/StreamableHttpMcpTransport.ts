@@ -1,4 +1,4 @@
-import { $atom, $inject, $state, t } from "alepha";
+import { $atom, $inject, $state, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $route } from "alepha/server";
 import {
@@ -15,12 +15,12 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
 export const mcpStreamableHttpOptions = $atom({
   name: "alepha.mcp.streamableHttp.options",
   description: "Configuration options for the MCP Streamable HTTP transport.",
-  schema: t.object({
+  schema: z.object({
     /**
      * Path for the MCP endpoint. Single endpoint for both requests and
      * (optional) server-streamed responses, per spec 2025-03-26+.
      */
-    path: t.text({ default: "/mcp" }),
+    path: z.text({ default: "/mcp" }),
     /**
      * Allow-list of `Origin` header values accepted on incoming requests.
      * Empty array (default) means "allow any". When set, browser-originated
@@ -31,7 +31,7 @@ export const mcpStreamableHttpOptions = $atom({
      *
      * Spec 2025-11-25, PR #1439.
      */
-    allowedOrigins: t.array(t.text(), { default: [] }),
+    allowedOrigins: z.array(z.text()).default([]),
     /**
      * When true, an unauthenticated POST to the MCP endpoint is rejected
      * with `401 Unauthorized` and an RFC 9728 `WWW-Authenticate` challenge
@@ -43,14 +43,14 @@ export const mcpStreamableHttpOptions = $atom({
      *
      * @default false
      */
-    requireAuth: t.boolean({ default: false }),
+    requireAuth: z.boolean().default(false),
     /**
      * Path of the RFC 9728 protected-resource metadata document, advertised
      * (as an absolute URL, resolved against the request origin) in the
      * `WWW-Authenticate` challenge emitted when {@link requireAuth} rejects
      * a request.
      */
-    resourceMetadataPath: t.text({
+    resourceMetadataPath: z.text({
       default: "/.well-known/oauth-protected-resource",
     }),
   }),
@@ -142,7 +142,7 @@ export class StreamableHttpMcpTransport {
     method: "POST",
     path: this.options.path,
     schema: {
-      body: t.json(),
+      body: z.json(),
     },
     handler: async (request) => {
       try {

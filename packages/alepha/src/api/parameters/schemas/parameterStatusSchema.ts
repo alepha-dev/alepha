@@ -1,9 +1,9 @@
-import { type Static, t } from "alepha";
+import { type Static, z } from "alepha";
 
 /**
  * Parameter status enum schema.
  */
-export const parameterStatusSchema = t.enum([
+export const parameterStatusSchema = z.enum([
   "expired",
   "current",
   "next",

@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { ServerSwaggerProvider } from "alepha/server/swagger";
@@ -13,13 +13,13 @@ export class OpenApiCommand {
   public readonly command = $command({
     name: "openapi",
     description: "Generate OpenAPI specification from actions",
-    flags: t.object({
-      out: t.optional(
-        t.text({
+    flags: z.object({
+      out: z
+        .text({
           aliases: ["o"],
           description: "Output file path",
-        }),
-      ),
+        })
+        .optional(),
     }),
     handler: async ({ root, flags }) => {
       const alepha = await this.utils.loadAlephaFromServerEntryFile({
