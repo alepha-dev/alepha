@@ -254,6 +254,9 @@ export class SqliteModelBuilder extends ModelBuilder {
       if (z.schema.isBoolean(value.items)) {
         return this.sqliteJson(key, value);
       }
+      if (z.schema.isEnum(value.items)) {
+        return this.sqliteJson(key, value);
+      }
     }
 
     if (z.schema.isEnum(value)) {

@@ -630,6 +630,24 @@ describe("ModelBuilder", () => {
       expect(table).toBeDefined();
     });
 
+    it("should build table with an array-of-enum column (stored as json)", () => {
+      // Regression: an enum array element used to fall through to the
+      // "Unsupported schema for field" throw — the Sqlite builder lacked the
+      // enum branch the Postgres builder already had. Stored as JSON, exactly
+      // like an array-of-string column.
+      const entity = $entity({
+        name: "products",
+        schema: z.object({
+          id: db.primaryKey(),
+          channels: z.array(z.enum(["desk", "portal", "mobile"])),
+        }),
+      });
+
+      expect(() => builder.buildTable(entity, options)).not.toThrow();
+      expect(options.tables.has("products")).toBe(true);
+      expect(options.tables.get("products")).toBeDefined();
+    });
+
     it("should throw error for sequences", () => {
       expect(() => {
         builder.buildSequence({ name: "test_seq", options: {} } as any, {
