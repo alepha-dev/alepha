@@ -13,9 +13,9 @@ describe("AlephaSigil module", () => {
   });
 
   it("mounts nothing in dev", async () => {
-    const alepha = Alepha.create({ env: { NODE_ENV: "development" } }).with(
-      AlephaSigil,
-    );
+    const alepha = Alepha.create({
+      env: { NODE_ENV: "development", SERVER_PORT: 0 },
+    }).with(AlephaSigil);
     await alepha.start();
     expect(alepha.inject(RootComponentsProvider).rootComponents.length).toBe(0);
   });
