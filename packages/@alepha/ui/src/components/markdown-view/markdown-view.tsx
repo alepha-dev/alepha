@@ -1,6 +1,7 @@
 import * as React from "react";
 
 void React;
+
 import "./markdown-view.css";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";

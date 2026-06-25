@@ -17,8 +17,8 @@
     "alepha": "0.23.0"
   },
   "devDependencies": {
-    "tsdown": "^0.22.1",
-    "vitest": "^4.1.7"
+    "tsdown": "^0.22.3",
+    "vitest": "^4.1.9"
   },
   "scripts": {
     "lint": "biome check --fix",

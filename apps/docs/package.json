@@ -6,26 +6,26 @@
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@tabler/icons-react": "^3.44.0",
     "alepha": "^0.23.0",
-    "fuse.js": "^7.4.0",
-    "react": "^19.2.6"
+    "fuse.js": "^7.4.2",
+    "react": "^19.2.7"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
-    "@playwright/test": "^1.60.0",
+    "@biomejs/biome": "^2.5.1",
+    "@playwright/test": "^1.61.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
-    "@types/react": "^19.2.15",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@xmldom/xmldom": "^0.9.10",
     "alepha": "^0.23.0",
     "highlight.js": "^11.11.1",
     "jsdom": "^29.1.1",
-    "marked": "^18.0.4",
+    "marked": "^18.0.5",
     "marked-highlight": "^2.2.4",
-    "react-dom": "^19.2.6",
+    "react-dom": "^19.2.7",
     "typescript": "^6.0.3",
-    "vite": "^8.0.14",
-    "vitest": "^4.1.7"
+    "vite": "^8.1.0",
+    "vitest": "^4.1.9"
   },
   "scripts": {
     "dev": "alepha dev",
