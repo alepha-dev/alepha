@@ -4,20 +4,19 @@ void React;
 
 import { FormField } from "@alepha/ui/components/control-base/form-field";
 import type { IconComponent } from "@alepha/ui/components/control-base/icon-hint";
-import { Button } from "@alepha/ui/components/ui/button";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@alepha/ui/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@alepha/ui/components/ui/popover";
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  Combobox as ComboboxRoot,
+  ComboboxTrigger,
+  useComboboxAnchor,
+} from "@alepha/ui/components/ui/combobox";
 import { Segmented } from "@alepha/ui/components/ui/segmented";
 import {
   Select,
@@ -36,7 +35,7 @@ import {
   useFieldValue,
   useFormState,
 } from "alepha/react/form";
-import { Check, ChevronDown, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 export type SelectOption =
@@ -405,16 +404,56 @@ interface ComboboxProps {
   placeholder?: string;
 }
 
-function Combobox(props: ComboboxProps) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
+/**
+ * Normalized option used as the Base UI `Combobox.Item` value. Because the
+ * shape is `{ value, label }`, Base UI uses `label` for display/search and
+ * `value` for selection automatically — which is what makes the popup search
+ * match the visible label rather than the raw id.
+ */
+interface ComboOption {
+  value: string;
+  label: string;
+  description?: string;
+  tag?: string;
+  icon?: ReactNode;
+  disabled?: boolean;
+  /**
+   * Marks the synthetic "create new" row injected by `createNewEntry`.
+   */
+  create?: boolean;
+  /**
+   * The raw query that produced a `create` row (used as the new entry's label).
+   */
+  query?: string;
+}
 
-  // Show the search input only when it's actually useful. For a tiny
-  // static list (e.g. a 2-role multi-select) a search bar is noise.
-  const showSearch =
-    Boolean(props.onSearch) ||
-    Boolean(props.createNewEntry) ||
-    props.data.length > 8;
+/**
+ * Searchable single/multi select built on the Base UI `Combobox` primitive.
+ *
+ * Composed in the "select-like" shape: a button trigger that shows the current
+ * value, with the search `<input>` living inside the popup. We disable Base
+ * UI's internal filtering (`filter={null}`) and filter in JS so the same code
+ * path serves static lists, server-driven (`onSearch`) lists, and the
+ * `createNewEntry` affordance.
+ */
+function Combobox(props: ComboboxProps) {
+  const [query, setQuery] = useState("");
+  // Remembers labels for values the user has picked, so the trigger/chips keep
+  // a human label even after the source option drops out of a server-filtered
+  // `data` set — or for freshly created entries that never existed in `data`.
+  const labelCache = useRef(new Map<string, string>());
+  // Positioning anchor for the multi-select chips box (the popup is anchored to
+  // the chips container rather than the inline input).
+  const anchor = useComboboxAnchor();
+
+  const options: ComboOption[] = props.data.map((o) => ({
+    value: optValue(o),
+    label: optLabel(o),
+    description: optDesc(o),
+    tag: optTag(o),
+    icon: optIcon(o),
+    disabled: optDisabled(o),
+  }));
 
   const selected: string[] = props.multi
     ? Array.isArray(props.value)
@@ -424,166 +463,208 @@ function Combobox(props: ComboboxProps) {
       ? [String(props.value)]
       : [];
 
-  const labelFor = (val: string) => {
-    const found = props.data.find((o) => optValue(o) === val);
-    return found ? optLabel(found) : val;
+  const labelFor = (val: string) =>
+    options.find((o) => o.value === val)?.label ??
+    labelCache.current.get(val) ??
+    val;
+
+  const disabledFor = (val: string) =>
+    options.find((o) => o.value === val)?.disabled ?? false;
+
+  // Server mode (`onSearch`) filters upstream; for static lists we filter on
+  // the visible label — never the value/id (that was the cmdk bug).
+  const serverMode = Boolean(props.onSearch);
+  const q = query.trim().toLowerCase();
+  const filtered =
+    serverMode || !q
+      ? options
+      : options.filter((o) => o.label.toLowerCase().includes(q));
+
+  const showCreate =
+    Boolean(props.createNewEntry) &&
+    q.length > 0 &&
+    !options.some((o) => o.value === query || o.label.toLowerCase() === q) &&
+    !selected.includes(query);
+
+  const createOption: ComboOption | undefined = showCreate
+    ? (() => {
+        const built =
+          typeof props.createNewEntry === "function"
+            ? props.createNewEntry(query)
+            : { value: query, label: query };
+        return {
+          value: built.value,
+          label: built.label,
+          create: true,
+          query,
+        };
+      })()
+    : undefined;
+
+  const items: ComboOption[] = createOption
+    ? [...filtered, createOption]
+    : filtered;
+
+  // Reconstruct option objects for the controlled value. Base UI matches them
+  // back to list items via `isItemEqualToValue` (by `value`), so identity
+  // across renders doesn't matter.
+  const toValueObject = (val: string): ComboOption =>
+    options.find((o) => o.value === val) ?? {
+      value: val,
+      label: labelFor(val),
+    };
+
+  const cbValue = props.multi
+    ? selected.map(toValueObject)
+    : selected[0]
+      ? toValueObject(selected[0])
+      : null;
+
+  const remember = (o: ComboOption) => {
+    if (o.create) labelCache.current.set(o.value, o.query ?? o.value);
+    else labelCache.current.set(o.value, o.label);
+  };
+
+  const handleSingle = (o: ComboOption | null) => {
+    if (!o) {
+      props.onChange(undefined);
+      return;
+    }
+    remember(o);
+    props.onChange(props.coerce(o.value));
+    setQuery("");
+  };
+
+  const handleMulti = (list: ComboOption[]) => {
+    for (const o of list) remember(o);
+    props.onChange(list.map((o) => props.coerce(o.value)));
+    setQuery("");
   };
 
   const emptyLabel = props.placeholder ?? "Select…";
-  const triggerLabel = props.multi
-    ? selected.length === 0
-      ? emptyLabel
-      : selected.length <= 2
-        ? selected.map(labelFor).join(", ")
-        : `${selected.length} selected`
-    : selected[0]
-      ? labelFor(selected[0])
-      : emptyLabel;
+  const triggerLabel = selected[0] ? labelFor(selected[0]) : emptyLabel;
 
-  const handleSelect = (raw: string) => {
-    const opt = props.data.find((o) => optValue(o) === raw);
-    if (opt && optDisabled(opt)) return;
-    if (props.multi) {
-      const next = selected.includes(raw)
-        ? selected.filter((v) => v !== raw)
-        : [...selected, raw];
-      props.onChange(next.map(props.coerce));
-    } else {
-      props.onChange(props.coerce(raw));
-      setOpen(false);
-    }
-  };
+  // The list (loading / empty / items) is identical for single and multi — only
+  // the trigger differs (button vs. chips box), so render it once.
+  const popupBody = props.loading ? (
+    <div className="text-muted-foreground flex items-center justify-center gap-2 p-4 text-sm">
+      <Loader2 className="size-4 animate-spin" /> Loading…
+    </div>
+  ) : (
+    <>
+      <ComboboxEmpty>{props.createNewEntry ? "" : "No results."}</ComboboxEmpty>
+      <ComboboxList>
+        {(opt: ComboOption) =>
+          opt.create ? (
+            <ComboboxItem key={`__create__${opt.value}`} value={opt}>
+              <span className="mr-2">+</span>
+              Create "{opt.query}"
+            </ComboboxItem>
+          ) : (
+            <ComboboxItem key={opt.value} value={opt} disabled={opt.disabled}>
+              {opt.icon && (
+                <span className="mr-2 flex shrink-0 items-center">
+                  {opt.icon}
+                </span>
+              )}
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex items-center gap-1.5">
+                  {opt.tag && (
+                    <span className="bg-muted text-muted-foreground rounded px-1 text-[10px] uppercase tracking-wide">
+                      {opt.tag}
+                    </span>
+                  )}
+                  <span className="truncate">{opt.label}</span>
+                </div>
+                {opt.description && (
+                  <span className="text-muted-foreground text-xs truncate">
+                    {opt.description}
+                  </span>
+                )}
+              </div>
+            </ComboboxItem>
+          )
+        }
+      </ComboboxList>
+    </>
+  );
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(o) => {
-        setOpen(o);
-        if (!o) setQuery("");
+    <ComboboxRoot
+      items={items as never}
+      multiple={props.multi}
+      disabled={props.disabled}
+      value={cbValue as never}
+      onValueChange={
+        (props.multi
+          ? (v: ComboOption[]) => handleMulti(v)
+          : (v: ComboOption | null) => handleSingle(v)) as never
+      }
+      isItemEqualToValue={
+        ((a: ComboOption, b: ComboOption) => a.value === b.value) as never
+      }
+      filter={null}
+      onInputValueChange={(v) => {
+        setQuery(v);
+        props.onSearch?.(v);
       }}
     >
-      <PopoverTrigger
-        render={
-          <Button
+      {props.multi ? (
+        // Multi-select: removable chips for each value with an inline search
+        // input, all inside the bordered chips box (Base UI's native shape).
+        <>
+          <ComboboxChips
+            ref={anchor}
             id={props.id}
-            variant="outline"
+            className={cn(
+              "w-full",
+              props.disabled && "pointer-events-none opacity-50",
+            )}
+          >
+            {props.icon && (
+              <props.icon className="text-muted-foreground ml-1 size-4 shrink-0" />
+            )}
+            {selected.map((val) => (
+              <ComboboxChip key={val} showRemove={!disabledFor(val)}>
+                {labelFor(val)}
+              </ComboboxChip>
+            ))}
+            <ComboboxChipsInput
+              placeholder={
+                selected.length === 0
+                  ? (props.placeholder ?? "Search…")
+                  : "Search…"
+              }
+            />
+          </ComboboxChips>
+          <ComboboxContent anchor={anchor}>{popupBody}</ComboboxContent>
+        </>
+      ) : (
+        // Single-select: a button trigger styled to mirror <SelectTrigger>,
+        // with the search input inside the popup.
+        <>
+          <ComboboxTrigger
+            id={props.id}
             disabled={props.disabled}
             className={cn(
-              // Match the native <SelectTrigger> shape so single- and
-              // multi-select look identical.
-              "h-8 w-full justify-between rounded-lg font-normal",
-              // …and its surface: the outline Button paints bg-background
-              // (grey on a white card); SelectTrigger is transparent in
-              // light and input/30 in dark.
-              "border-input bg-transparent hover:bg-transparent aria-expanded:bg-transparent dark:bg-input/30 dark:hover:bg-input/50 dark:aria-expanded:bg-input/50",
+              "flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:hover:bg-input/50",
               selected.length === 0 && "text-muted-foreground",
             )}
-          />
-        }
-      >
-        <span className="flex min-w-0 items-center gap-2">
-          {props.icon && (
-            <props.icon className="text-muted-foreground size-4 shrink-0" />
-          )}
-          <span className="truncate">{triggerLabel}</span>
-        </span>
-        <ChevronDown className="text-muted-foreground ml-2 size-4 shrink-0" />
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0"
-        align="start"
-      >
-        <Command>
-          {showSearch && (
-            <CommandInput
-              placeholder="Search…"
-              value={query}
-              onValueChange={(v) => {
-                setQuery(v);
-                props.onSearch?.(v);
-              }}
-            />
-          )}
-          <CommandList>
-            {props.loading ? (
-              <div className="text-muted-foreground flex items-center justify-center gap-2 p-4 text-sm">
-                <Loader2 className="size-4 animate-spin" /> Loading…
-              </div>
-            ) : (
-              <>
-                <CommandEmpty>
-                  {props.createNewEntry ? "" : "No results."}
-                </CommandEmpty>
-                <CommandGroup>
-                  {props.data.map((o) => {
-                    const v = optValue(o);
-                    const isSelected = selected.includes(v);
-                    const desc = optDesc(o);
-                    const tag = optTag(o);
-                    const icon = optIcon(o);
-                    const disabled = optDisabled(o);
-                    return (
-                      <CommandItem
-                        key={v}
-                        value={v}
-                        disabled={disabled}
-                        onSelect={() => handleSelect(v)}
-                      >
-                        {icon && (
-                          <span className="mr-2 flex shrink-0 items-center">
-                            {icon}
-                          </span>
-                        )}
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            {tag && (
-                              <span className="bg-muted text-muted-foreground rounded px-1 text-[10px] uppercase tracking-wide">
-                                {tag}
-                              </span>
-                            )}
-                            <span className="truncate">{optLabel(o)}</span>
-                          </div>
-                          {desc && (
-                            <span className="text-muted-foreground text-xs truncate">
-                              {desc}
-                            </span>
-                          )}
-                        </div>
-                        {/* Right-aligned tick, matching shadcn <SelectItem>. */}
-                        <Check
-                          className={cn(
-                            "ml-2 size-4 shrink-0",
-                            isSelected ? "opacity-100" : "opacity-0",
-                          )}
-                        />
-                      </CommandItem>
-                    );
-                  })}
-                  {props.createNewEntry &&
-                    query &&
-                    !props.data.some((o) => optValue(o) === query) && (
-                      <CommandItem
-                        value={`__create__${query}`}
-                        onSelect={() => {
-                          const built =
-                            typeof props.createNewEntry === "function"
-                              ? props.createNewEntry(query)
-                              : { value: query, label: query };
-                          handleSelect(built.value);
-                          setQuery("");
-                        }}
-                      >
-                        <span className="mr-2">+</span>
-                        Create "{query}"
-                      </CommandItem>
-                    )}
-                </CommandGroup>
-              </>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              {props.icon && (
+                <props.icon className="text-muted-foreground size-4 shrink-0" />
+              )}
+              <span className="truncate">{triggerLabel}</span>
+            </span>
+          </ComboboxTrigger>
+          <ComboboxContent>
+            <ComboboxInput showTrigger={false} placeholder="Search…" />
+            {popupBody}
+          </ComboboxContent>
+        </>
+      )}
+    </ComboboxRoot>
   );
 }
 
