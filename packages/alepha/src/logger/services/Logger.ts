@@ -149,6 +149,20 @@ export class Logger implements LoggerInterface {
     throw new AlephaError(`Invalid log level: ${something}`);
   }
 
+  /**
+   * Whether a message at `level` would actually be emitted given the current
+   * active level (read live from state). Mirrors the threshold used by
+   * {@link log}: a level is enabled when it sits at or above the active one.
+   *
+   * @example
+   * // active level = INFO
+   * log.isLevelEnabled("DEBUG"); // false
+   * log.isLevelEnabled("WARN");  // true
+   */
+  public isLevelEnabled(level: LogLevel): boolean {
+    return this.levels[level] <= this.levels[this.level];
+  }
+
   // -------------------------------------------------------------------------------------------------------------------
 
   public error(message: string, data?: unknown): void {

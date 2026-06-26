@@ -155,9 +155,13 @@ export class Runner {
     cmd: string,
     opts: { root?: string } = {},
   ): Promise<string> {
-    // Stream output straight to the terminal (capture: false) so the user
-    // sees tool output live. The returned string is therefore empty.
-    return this.shell.run(cmd, { root: opts.root, capture: false });
+    // Stream child output straight to the terminal only when DEBUG (or more
+    // verbose) is enabled — i.e. under `--verbose`, an agent session
+    // (CLAUDECODE), or `LOG_LEVEL=debug`. Otherwise capture it so a quiet run
+    // (e.g. `alepha verify`) is not buried under sub-process output; captured
+    // output is surfaced on failure by {@link executeTask}.
+    const stream = this.log.isLevelEnabled("DEBUG");
+    return this.shell.run(cmd, { root: opts.root, capture: !stream });
   }
 
   /**
@@ -200,11 +204,16 @@ export class Runner {
     try {
       stdout = String((await task.handler()) ?? "");
     } catch (error) {
-      // Streamed tasks have already printed their output live; this only
-      // surfaces output from handlers that captured it internally (capture:
-      // true) before throwing.
-      if (error instanceof Error && "stdout" in error && error.stdout) {
-        this.log.info(`\n\n${error.stdout}`);
+      // Streamed tasks have already printed their output live and reject
+      // without stdout/stderr attached; this surfaces output from captured
+      // tasks (capture: true — the default below DEBUG) before throwing.
+      const err = error as { stdout?: string; stderr?: string };
+      const captured = [err?.stdout, err?.stderr]
+        .filter(Boolean)
+        .join("\n")
+        .trim();
+      if (captured) {
+        this.log.info(`\n\n${captured}`);
       }
       throw new CommandError(`Task '${task.name}' failed`, { cause: error });
     }

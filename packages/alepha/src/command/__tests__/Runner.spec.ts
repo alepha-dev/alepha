@@ -3,7 +3,11 @@ import {
   LogDestinationProvider,
   MemoryDestinationProvider,
 } from "alepha/logger";
-import { MemoryShellProvider } from "alepha/system";
+import {
+  MemoryShellProvider,
+  NodeShellProvider,
+  ShellProvider,
+} from "alepha/system";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { Runner } from "../index.ts";
 
@@ -181,5 +185,77 @@ describe("Runner", () => {
     expect(cleanStarts.length).toBe(2);
     expect(messages).toContain("Starting 'lint' ...");
     expect(messages).toContain("Starting 'typecheck' ...");
+  });
+
+  describe("sub-process output gating", () => {
+    const build = (level: string) => {
+      const alepha = Alepha.create({ env: { LOG_LEVEL: level } }).with({
+        provide: LogDestinationProvider,
+        use: MemoryDestinationProvider,
+      });
+      return {
+        runner: alepha.inject(Runner),
+        shell: alepha.inject(MemoryShellProvider),
+      };
+    };
+
+    test("captures child output (capture:true) when below DEBUG", async () => {
+      const { runner, shell } = build("info");
+      await runner.run("echo hi");
+      expect(shell.calls[0].options.capture).toBe(true);
+    });
+
+    test("streams child output (capture:false) when DEBUG is enabled", async () => {
+      const { runner, shell } = build("debug");
+      await runner.run("echo hi");
+      expect(shell.calls[0].options.capture).toBe(false);
+    });
+
+    test("streams child output (capture:false) at trace level too", async () => {
+      const { runner, shell } = build("trace");
+      await runner.run("echo hi");
+      expect(shell.calls[0].options.capture).toBe(false);
+    });
+
+    test("surfaces captured stdout and stderr when a task fails", async () => {
+      const failing = () => {
+        throw Object.assign(new Error("boom"), {
+          stdout: "OUT_TEXT",
+          stderr: "ERR_TEXT",
+        });
+      };
+
+      await expect(runner.run("failing", failing)).rejects.toThrow(
+        "Task 'failing' failed",
+      );
+
+      const messages = mockLogger.logs.map((l) => l.message).join("\n");
+      expect(messages).toContain("OUT_TEXT");
+      expect(messages).toContain("ERR_TEXT");
+    });
+  });
+
+  describe("sub-process output gating (integration, real shell)", () => {
+    const build = (level: string) => {
+      const alepha = Alepha.create({ env: { LOG_LEVEL: level } })
+        .with({
+          provide: LogDestinationProvider,
+          use: MemoryDestinationProvider,
+        })
+        .with({ provide: ShellProvider, use: NodeShellProvider });
+      return alepha.inject(Runner);
+    };
+
+    test("captures and returns child stdout when below DEBUG", async () => {
+      const runner = build("info");
+      const out = await runner.run("echo MARKER_INFO");
+      expect(out).toContain("MARKER_INFO");
+    });
+
+    test("streams child output (returns empty) when DEBUG is enabled", async () => {
+      const runner = build("debug");
+      const out = await runner.run("echo MARKER_DEBUG");
+      expect(out).toBe("");
+    });
   });
 });

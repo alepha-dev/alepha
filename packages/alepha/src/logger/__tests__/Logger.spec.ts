@@ -347,4 +347,53 @@ describe("Logger", () => {
       expect(logger.activeFormatter).toBeInstanceOf(PrettyFormatterProvider);
     });
   });
+
+  describe("isLevelEnabled", () => {
+    const at = (level: string) => {
+      const alepha = Alepha.create().with({
+        provide: LogDestinationProvider,
+        use: MemoryDestinationProvider,
+      });
+      const logger = alepha.inject(Logger, {
+        lifetime: "transient",
+        args: ["TestService", "test.module"],
+      });
+      // Set after inject: the logger module's register defaults the level to
+      // "trace" in test mode, so a pre-inject set would be overwritten.
+      alepha.store.set("alepha.logger.level", level);
+      return { alepha, logger };
+    };
+
+    it("enables a level only when it is at or above the active level", ({
+      expect,
+    }) => {
+      const { logger } = at("info");
+      expect(logger.isLevelEnabled("ERROR")).toBe(true);
+      expect(logger.isLevelEnabled("WARN")).toBe(true);
+      expect(logger.isLevelEnabled("INFO")).toBe(true);
+      expect(logger.isLevelEnabled("DEBUG")).toBe(false);
+      expect(logger.isLevelEnabled("TRACE")).toBe(false);
+    });
+
+    it("enables DEBUG once the active level is debug, but not TRACE", ({
+      expect,
+    }) => {
+      const { logger } = at("debug");
+      expect(logger.isLevelEnabled("DEBUG")).toBe(true);
+      expect(logger.isLevelEnabled("INFO")).toBe(true);
+      expect(logger.isLevelEnabled("TRACE")).toBe(false);
+    });
+
+    it("enables everything at trace and reacts to live state changes", ({
+      expect,
+    }) => {
+      const { alepha, logger } = at("trace");
+      expect(logger.isLevelEnabled("TRACE")).toBe(true);
+      expect(logger.isLevelEnabled("DEBUG")).toBe(true);
+
+      alepha.store.set("alepha.logger.level", "warn");
+      expect(logger.isLevelEnabled("DEBUG")).toBe(false);
+      expect(logger.isLevelEnabled("WARN")).toBe(true);
+    });
+  });
 });

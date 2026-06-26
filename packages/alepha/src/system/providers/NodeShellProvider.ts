@@ -122,9 +122,12 @@ export class NodeShellProvider implements ShellProvider {
             ...options.env,
           },
         },
-        (err, stdout) => {
+        (err, stdout, stderr) => {
           if (err) {
+            // Attach both streams so callers (e.g. the CLI Runner) can surface
+            // the full output of a failed command, not just stdout.
             (err as any).stdout = stdout;
+            (err as any).stderr = stderr;
             reject(err);
           } else {
             resolve(stdout);

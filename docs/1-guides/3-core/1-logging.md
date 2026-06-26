@@ -101,7 +101,18 @@ If `LOG_FORMAT` is not set:
 
 The `alepha` and `create-alepha` CLIs default to `cli`. Pass `--verbose` to a
 CLI command to switch to `pretty` at `trace` level when you need module/context
-and the framework's internal logs.
+and the framework's internal logs. An agent session (Claude Code sets the
+`CLAUDECODE` env var) implies `--verbose`.
+
+### Sub-process output
+
+CLI tasks that shell out (`yarn lint`, `vite build`, nested `alepha`
+subcommands, …) only stream their output live when `DEBUG` or a more verbose
+level is enabled — i.e. under `--verbose`, `CLAUDECODE`, or `LOG_LEVEL=debug`.
+Below `DEBUG` (the default), that output is captured instead of streamed, so a
+quiet run such as `alepha verify` is not buried under thousands of sub-process
+lines. Captured output is still surfaced (stdout **and** stderr) if the task
+fails, and the `Starting … / Finished … after Ns` lines always print.
 
 ## Log Entry Structure
 
