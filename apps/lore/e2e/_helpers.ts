@@ -170,7 +170,12 @@ export const registerAndVerify = async (
     page.getByRole("button", { name: /complete registration/i }),
   ).toBeVisible({ timeout: 10_000 });
 
-  const emailPath = await findLatestEmail(email, 10_000);
+  // The verification email is written by a fire-and-forget background job
+  // (DirectJobDispatcher defers the send) that the register response does not
+  // await — under CI contention the file can land several seconds after the
+  // "complete registration" step renders. Poll generously so a slow-but-
+  // arriving email doesn't read as a missing one.
+  const emailPath = await findLatestEmail(email, 20_000);
   expect(emailPath).not.toBeNull();
   const code = extractCode(fs.readFileSync(emailPath!, "utf-8"));
   expect(code).not.toBeNull();
