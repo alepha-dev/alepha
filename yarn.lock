@@ -104,7 +104,7 @@ __metadata:
     recharts: "npm:3.9.0"
     rehype-highlight: "npm:^7.0.2"
     remark-gfm: "npm:^4.0.1"
-    shadcn: "npm:^4.11.0"
+    shadcn: "npm:^4.11.1"
     sonner: "npm:^2.0.7"
     tailwind-merge: "npm:^3.6.0"
     tw-animate-css: "npm:^1.4.0"
@@ -751,10 +751,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@cloudflare/workers-types@npm:^4.20260625.1":
-  version: 4.20260625.1
-  resolution: "@cloudflare/workers-types@npm:4.20260625.1"
-  checksum: 10c0/3681b70a6befd4e507f3e3a7b3804887a04cace568bf9a36fb77cb87bb120413d51a239bc65179d1258ee2d49828553df1417ced688c1ad96960f7e2fbbb0e82
+"@cloudflare/workers-types@npm:^4.20260626.1":
+  version: 4.20260626.1
+  resolution: "@cloudflare/workers-types@npm:4.20260626.1"
+  checksum: 10c0/ec48a1093769c0986f6934ff00e3a9232d1a254a189f64ba68476061cafa082d6eae6ed4e4ccbcee2af8c2c53348ad1d7807c8cafb92b596174e768ac6228753
   languageName: node
   linkType: hard
 
@@ -4119,7 +4119,7 @@ __metadata:
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
     "@biomejs/biome": "npm:^2.5.1"
-    "@cloudflare/workers-types": "npm:^4.20260625.1"
+    "@cloudflare/workers-types": "npm:^4.20260626.1"
     "@electric-sql/pglite": "npm:^0.5.3"
     "@faker-js/faker": "npm:^10.5.0"
     "@redis/client": "npm:^6.0.1"
@@ -5302,13 +5302,6 @@ __metadata:
     d3-selection: "npm:2 - 3"
     d3-transition: "npm:2 - 3"
   checksum: 10c0/ee2036479049e70d8c783d594c444fe00e398246048e3f11a59755cd0e21de62ece3126181b0d7a31bf37bcf32fd726f83ae7dea4495ff86ec7736ce5ad36fd3
-  languageName: node
-  linkType: hard
-
-"data-uri-to-buffer@npm:^4.0.0":
-  version: 4.0.1
-  resolution: "data-uri-to-buffer@npm:4.0.1"
-  checksum: 10c0/20a6b93107597530d71d4cb285acee17f66bcdfc03fd81040921a81252f19db27588d87fc8fc69e1950c55cfb0bf8ae40d0e5e21d907230813eb5d5a7f9eb45b
   languageName: node
   linkType: hard
 
@@ -6809,16 +6802,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fetch-blob@npm:^3.1.2, fetch-blob@npm:^3.1.4":
-  version: 3.2.0
-  resolution: "fetch-blob@npm:3.2.0"
-  dependencies:
-    node-domexception: "npm:^1.0.0"
-    web-streams-polyfill: "npm:^3.0.3"
-  checksum: 10c0/60054bf47bfa10fb0ba6cb7742acec2f37c1f56344f79a70bb8b1c48d77675927c720ff3191fa546410a0442c998d27ab05e9144c32d530d8a52fbe68f843b69
-  languageName: node
-  linkType: hard
-
 "fflate@npm:^0.8.2":
   version: 0.8.2
   resolution: "fflate@npm:0.8.2"
@@ -6914,15 +6897,6 @@ __metadata:
     hasown: "npm:^2.0.2"
     mime-types: "npm:^2.1.12"
   checksum: 10c0/dd6b767ee0bbd6d84039db12a0fa5a2028160ffbfaba1800695713b46ae974a5f6e08b3356c3195137f8530dcd9dfcb5d5ae1eeff53d0db1e5aad863b619ce3b
-  languageName: node
-  linkType: hard
-
-"formdata-polyfill@npm:^4.0.10":
-  version: 4.0.10
-  resolution: "formdata-polyfill@npm:4.0.10"
-  dependencies:
-    fetch-blob: "npm:^3.1.2"
-  checksum: 10c0/5392ec484f9ce0d5e0d52fb5a78e7486637d516179b0eb84d81389d7eccf9ca2f663079da56f761355c0a65792810e3b345dc24db9a8bbbcf24ef3c8c88570c6
   languageName: node
   linkType: hard
 
@@ -7502,7 +7476,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"https-proxy-agent@npm:^7.0.1, https-proxy-agent@npm:^7.0.6":
+"https-proxy-agent@npm:^7.0.1":
   version: 7.0.6
   resolution: "https-proxy-agent@npm:7.0.6"
   dependencies:
@@ -9540,13 +9514,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-domexception@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "node-domexception@npm:1.0.0"
-  checksum: 10c0/5e5d63cda29856402df9472335af4bb13875e1927ad3be861dc5ebde38917aecbf9ae337923777af52a48c426b70148815e890a5d72760f1b4d758cc671b1a2b
-  languageName: node
-  linkType: hard
-
 "node-fetch@npm:^2.7.0":
   version: 2.7.0
   resolution: "node-fetch@npm:2.7.0"
@@ -9558,17 +9525,6 @@ __metadata:
     encoding:
       optional: true
   checksum: 10c0/b55786b6028208e6fbe594ccccc213cab67a72899c9234eb59dba51062a299ea853210fcf526998eaa2867b0963ad72338824450905679ff0fa304b8c5093ae8
-  languageName: node
-  linkType: hard
-
-"node-fetch@npm:^3.3.2":
-  version: 3.3.2
-  resolution: "node-fetch@npm:3.3.2"
-  dependencies:
-    data-uri-to-buffer: "npm:^4.0.0"
-    fetch-blob: "npm:^3.1.4"
-    formdata-polyfill: "npm:^4.0.10"
-  checksum: 10c0/f3d5e56190562221398c9f5750198b34cf6113aa304e34ee97c94fd300ec578b25b2c2906edba922050fce983338fde0d5d34fcb0fc3336ade5bd0e429ad7538
   languageName: node
   linkType: hard
 
@@ -11269,9 +11225,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shadcn@npm:^4.11.0":
-  version: 4.11.0
-  resolution: "shadcn@npm:4.11.0"
+"shadcn@npm:^4.11.1":
+  version: 4.11.1
+  resolution: "shadcn@npm:4.11.1"
   dependencies:
     "@babel/core": "npm:^7.28.0"
     "@babel/parser": "npm:^7.28.0"
@@ -11290,9 +11246,7 @@ __metadata:
     fast-glob: "npm:^3.3.3"
     fs-extra: "npm:^11.3.1"
     fuzzysort: "npm:^3.1.0"
-    https-proxy-agent: "npm:^7.0.6"
     kleur: "npm:^4.1.5"
-    node-fetch: "npm:^3.3.2"
     open: "npm:^11.0.0"
     ora: "npm:^8.2.0"
     postcss: "npm:^8.5.6"
@@ -11303,12 +11257,13 @@ __metadata:
     tailwind-merge: "npm:^3.0.1"
     ts-morph: "npm:^26.0.0"
     tsconfig-paths: "npm:^4.2.0"
+    undici: "npm:^7.27.2"
     validate-npm-package-name: "npm:^7.0.1"
     zod: "npm:^3.24.1"
     zod-to-json-schema: "npm:^3.24.6"
   bin:
     shadcn: dist/index.js
-  checksum: 10c0/146a23118a9e1848f90e61d62e36978e0ee9f51dec7063242f7073a8aefd6200791405a860d6311fae714ee6440ba06b14a5c50bcdcd4c269306f6e03338d51f
+  checksum: 10c0/327e285233c665d2acad8fc58c1d22875e8a4d8690bd4cd9a4991017dd9957021627355cd1fd33c426c2ac2373120e6739d48e5be4e10c166fe7749087cf29c9
   languageName: node
   linkType: hard
 
@@ -12430,7 +12385,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici@npm:7.28.0":
+"undici@npm:7.28.0, undici@npm:^7.27.2":
   version: 7.28.0
   resolution: "undici@npm:7.28.0"
   checksum: 10c0/fe781983a26098795e99bb1f64906cbb7d0bcaa029a26baade007b53ea67f2631d189b8f9671a31f4c8d0cb3773b7559608628ba54452fef51fec90e7c78bb0d
@@ -12899,13 +12854,6 @@ __metadata:
   dependencies:
     xml-name-validator: "npm:^5.0.0"
   checksum: 10c0/8712774c1aeb62dec22928bf1cdfd11426c2c9383a1a63f2bcae18db87ca574165a0fbe96b312b73652149167ac6c7f4cf5409f2eb101d9c805efe0e4bae798b
-  languageName: node
-  linkType: hard
-
-"web-streams-polyfill@npm:^3.0.3":
-  version: 3.3.3
-  resolution: "web-streams-polyfill@npm:3.3.3"
-  checksum: 10c0/64e855c47f6c8330b5436147db1c75cb7e7474d924166800e8e2aab5eb6c76aac4981a84261dd2982b3e754490900b99791c80ae1407a9fa0dcff74f82ea3a7f
   languageName: node
   linkType: hard
 
