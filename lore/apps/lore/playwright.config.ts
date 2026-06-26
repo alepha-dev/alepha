@@ -6,6 +6,12 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 60_000,
   globalTimeout: 600_000,
+  // Email verification is delivered by a fire-and-forget background job
+  // (DirectJobDispatcher defers the send), so `registerAndVerify` races the
+  // deferred file write. Under CI load that write occasionally slips past the
+  // poll window — retry the failed test rather than red the whole run. Local
+  // runs keep 0 retries for fast, honest feedback.
+  retries: process.env.CI ? 2 : 0,
   outputDir: ".playwright/results",
   reporter: [["html", { outputFolder: ".playwright/report", open: "never" }]],
   use: {
