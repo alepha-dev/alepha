@@ -16,6 +16,7 @@ import {
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
+import { currentTenantAtom } from "alepha/security";
 import { FileDetector, FileSystemProvider } from "alepha/system";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import { $bucket } from "../primitives/$bucket.ts";
@@ -106,6 +107,9 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 
     this.log.trace(`Uploading file to ${bucketName}`);
 
+    // The per-tenant sub-directory isn't pre-created by `onStart` (which only
+    // knows the un-scoped bucket name), so ensure it exists before writing.
+    await mkdir(this.path(bucketName), { recursive: true });
     await this.fileSystemProvider.writeFile(
       this.path(bucketName, fileId),
       file,
@@ -198,7 +202,11 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   }
 
   protected path(bucket: string, fileId = ""): string {
-    return join(this.storagePath, bucket, fileId);
+    // Per-tenant directory when a tenant is active, mirroring R2/S3 isolation.
+    const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
+    return tenantId
+      ? join(this.storagePath, tenantId, bucket, fileId)
+      : join(this.storagePath, bucket, fileId);
   }
 
   protected isErrorNoEntry(error: unknown): boolean {

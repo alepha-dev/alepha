@@ -13,6 +13,7 @@ import {
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
+import { currentTenantAtom } from "alepha/security";
 import { FileDetector, FileSystemProvider } from "alepha/system";
 import { S3mini } from "s3mini";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
@@ -121,6 +122,15 @@ export class S3FileStorageProvider implements FileStorageProvider {
     },
   });
 
+  /**
+   * Object key, tenant-scoped when a tenant is active (`currentTenantAtom`):
+   * `{tenantId}/{fileId}` within the per-bucket S3 bucket. No tenant → `{fileId}`.
+   */
+  protected key(fileId: string): string {
+    const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
+    return tenantId ? `${tenantId}/${fileId}` : fileId;
+  }
+
   protected createId(mimeType: string): string {
     const ext = this.fileDetector.getExtensionFromMimeType(mimeType);
     return `${this.crypto.randomUUID()}.${ext}`;
@@ -142,7 +152,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
     try {
       const buffer = new Uint8Array(await file.arrayBuffer());
       await client.putObject(
-        fileId,
+        this.key(fileId),
         buffer,
         file.type || "application/octet-stream",
         undefined,
@@ -169,7 +179,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
     );
 
     const client = this.getClient(bucketName);
-    const response = await client.getObjectResponse(fileId);
+    const response = await client.getObjectResponse(this.key(fileId));
 
     if (!response) {
       throw new FileNotFoundError(
@@ -211,7 +221,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
     );
 
     const client = this.getClient(bucketName);
-    const result = await client.objectExists(fileId);
+    const result = await client.objectExists(this.key(fileId));
     return result === true;
   }
 
@@ -221,7 +231,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
     const client = this.getClient(bucketName);
 
     try {
-      await client.deleteObject(fileId);
+      await client.deleteObject(this.key(fileId));
     } catch (error) {
       this.log.error(`Failed to delete file: ${error}`);
       if (error instanceof Error) {
@@ -234,10 +244,16 @@ export class S3FileStorageProvider implements FileStorageProvider {
   public async list(bucketName: string): Promise<string[]> {
     this.log.trace(`Listing files in bucket '${bucketName}'...`);
     const client = this.getClient(bucketName);
+    const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
+    const prefix = tenantId ? `${tenantId}/` : undefined;
     // Flat, single-page listing (~1000 keys). Not a search API.
-    const objects = await client.listObjects();
+    const objects = await client.listObjects(undefined, prefix);
     if (!objects) return [];
-    return objects.map((object) => object.Key);
+    return objects.map((object) =>
+      prefix && object.Key.startsWith(prefix)
+        ? object.Key.slice(prefix.length)
+        : object.Key,
+    );
   }
 
   public async deleteMany(
@@ -251,7 +267,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
     const client = this.getClient(bucketName);
     // S3 DeleteObjects caps at 1000 keys per request.
     for (let i = 0; i < fileIds.length; i += 1000) {
-      const chunk = fileIds.slice(i, i + 1000);
+      const keys = fileIds.slice(i, i + 1000).map((id) => this.key(id));
       try {
         // bun:s3 client exposes a per-key deleteObject; some SDKs also expose
         // deleteObjects(keys: string[]). Prefer batch when available.
@@ -261,9 +277,9 @@ export class S3FileStorageProvider implements FileStorageProvider {
           }
         ).deleteObjects;
         if (typeof batch === "function") {
-          await batch.call(client, chunk);
+          await batch.call(client, keys);
         } else {
-          await Promise.all(chunk.map((id) => client.deleteObject(id)));
+          await Promise.all(keys.map((key) => client.deleteObject(key)));
         }
       } catch (error) {
         this.log.error(`Failed to delete files: ${error}`);

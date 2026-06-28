@@ -10,6 +10,7 @@ import {
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
+import { currentTenantAtom } from "alepha/security";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import { $bucket } from "../primitives/$bucket.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
@@ -235,10 +236,19 @@ export class R2FileStorageProvider implements FileStorageProvider {
   }
 
   /**
-   * Build the full R2 key: {prefix}/{bucketName}/{fileId}
+   * Build the full R2 key: {prefix}/{tenantId}/{bucketName}/{fileId}
+   *
+   * When a tenant is active on the current request/job (`currentTenantAtom`),
+   * its id is inserted as a directory so a pooled multi-tenant worker keeps
+   * each tenant's objects isolated. No tenant → the historical
+   * `{prefix}/{bucketName}/{fileId}` layout is unchanged.
    */
   protected key(bucketName: string, fileId: string): string {
     const parts = [bucketName, fileId];
+    const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
+    if (tenantId) {
+      parts.unshift(tenantId);
+    }
     if (this.prefix) {
       parts.unshift(this.prefix);
     }

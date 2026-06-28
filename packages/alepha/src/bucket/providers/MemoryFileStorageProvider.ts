@@ -1,5 +1,6 @@
-import { $inject, type FileLike } from "alepha";
+import { $inject, Alepha, type FileLike } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
+import { currentTenantAtom } from "alepha/security";
 import { FileDetector, FileSystemProvider } from "alepha/system";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
@@ -13,6 +14,7 @@ interface StoredFile {
 
 export class MemoryFileStorageProvider implements FileStorageProvider {
   public readonly files: Record<string, StoredFile> = {};
+  protected readonly alepha = $inject(Alepha);
   protected readonly fileSystem = $inject(FileSystemProvider);
   protected readonly fileDetector = $inject(FileDetector);
   protected readonly crypto = $inject(CryptoProvider);
@@ -31,7 +33,7 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
     }
     const buffer = Buffer.concat(chunks);
 
-    this.files[`${bucketName}/${fileId}`] = {
+    this.files[this.key(bucketName, fileId)] = {
       buffer,
       name: file.name,
       type: file.type,
@@ -42,7 +44,7 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
   }
 
   public async download(bucketName: string, fileId: string): Promise<FileLike> {
-    const fileKey = `${bucketName}/${fileId}`;
+    const fileKey = this.key(bucketName, fileId);
     const stored = this.files[fileKey];
 
     if (!stored) {
@@ -59,11 +61,11 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
   }
 
   public async exists(bucketName: string, fileId: string): Promise<boolean> {
-    return `${bucketName}/${fileId}` in this.files;
+    return this.key(bucketName, fileId) in this.files;
   }
 
   public async delete(bucketName: string, fileId: string): Promise<void> {
-    const fileKey = `${bucketName}/${fileId}`;
+    const fileKey = this.key(bucketName, fileId);
     if (!(fileKey in this.files)) {
       throw new FileNotFoundError(`File with ID ${fileId} not found.`);
     }
@@ -76,15 +78,24 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
     fileIds: string[],
   ): Promise<void> {
     for (const id of fileIds) {
-      delete this.files[`${bucketName}/${id}`];
+      delete this.files[this.key(bucketName, id)];
     }
   }
 
   public async list(bucketName: string): Promise<string[]> {
-    const prefix = `${bucketName}/`;
+    const prefix = this.key(bucketName, "");
     return Object.keys(this.files)
       .filter((key) => key.startsWith(prefix))
       .map((key) => key.slice(prefix.length));
+  }
+
+  /**
+   * In-memory key, tenant-scoped when a tenant is active (`currentTenantAtom`),
+   * mirroring the R2/Local/S3 layout: `{tenantId}/{bucket}/{fileId}`.
+   */
+  protected key(bucket: string, fileId = ""): string {
+    const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
+    return tenantId ? `${tenantId}/${bucket}/${fileId}` : `${bucket}/${fileId}`;
   }
 
   protected createId(): string {
