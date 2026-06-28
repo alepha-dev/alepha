@@ -74,18 +74,31 @@ export const jsonSchemaToZod = (schema: any): ZType => {
         case "binary":
           return z.binary();
       }
-      return z
-        .string()
-        .min(schema.minLength)
-        .max(schema.maxLength)
-        .regex(new RegExp(schema.pattern));
+      // Only chain constraints that are actually present: passing `undefined`
+      // to `.min()/.max()` builds a check that rejects every value (and crashes
+      // the locale error formatter on the `undefined` bound), so an unbounded
+      // `z.string()` must stay unbounded.
+      let str = z.string();
+      if (typeof schema.minLength === "number") str = str.min(schema.minLength);
+      if (typeof schema.maxLength === "number") str = str.max(schema.maxLength);
+      if (typeof schema.pattern === "string")
+        str = str.regex(new RegExp(schema.pattern));
+      return str;
     }
 
-    case "integer":
-      return z.integer().min(schema.minimum).max(schema.maximum);
+    case "integer": {
+      let int = z.integer();
+      if (typeof schema.minimum === "number") int = int.min(schema.minimum);
+      if (typeof schema.maximum === "number") int = int.max(schema.maximum);
+      return int;
+    }
 
-    case "number":
-      return z.number().min(schema.minimum).max(schema.maximum);
+    case "number": {
+      let num = z.number();
+      if (typeof schema.minimum === "number") num = num.min(schema.minimum);
+      if (typeof schema.maximum === "number") num = num.max(schema.maximum);
+      return num;
+    }
 
     case "boolean":
       return z.boolean();

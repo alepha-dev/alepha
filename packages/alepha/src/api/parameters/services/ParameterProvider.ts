@@ -682,7 +682,7 @@ export class ParameterProvider {
     next: ParameterWithStatus | null;
     defaultValue: unknown | null;
     currentValue: unknown | null;
-    schema: TObject | null;
+    schema: Record<string, unknown> | null;
   }> {
     let { current, next } = await this.loadCurrentAndNext(name);
 
@@ -714,7 +714,13 @@ export class ParameterProvider {
 
     const defaultValue = param?.options.default ?? null;
     const currentValue = this.getCachedCurrentContent(name) ?? null;
-    const schema = param?.schema ?? null;
+    // Serialize the Zod schema to JSON Schema for transport. `param.schema` is a
+    // live `ZodObject` instance, not a plain record, so it fails the response's
+    // `z.json()` validation ("expected record, received ZodObject") and the
+    // admin UI (which round-trips via `jsonSchemaToZod`) can't rebuild a form
+    // from it. Typebox schemas were already JSON Schema, hence this step was
+    // implicit before the Zod migration.
+    const schema = param?.schema ? z.toJSONSchema(param.schema) : null;
 
     return {
       current: current ? { ...current, status: "current" as const } : null,

@@ -1,4 +1,4 @@
-import { Alepha, z } from "alepha";
+import { Alepha, jsonSchemaToZod, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { currentTenantAtom } from "alepha/security";
@@ -1422,6 +1422,44 @@ describe("getCurrentWithDefault", () => {
       maxUploadSize: 10485760,
     });
     expect(result.schema).not.toBeNull();
+  });
+
+  it("should return the schema as JSON Schema, not a raw ZodObject", async () => {
+    // Regression: the parameter's `schema` is a live `ZodObject`. It must be
+    // serialized to JSON Schema before transport — otherwise the action's
+    // `schema: z.json()` response validation rejects it ("expected record,
+    // received ZodObject at /schema"), 500-ing the admin Parameters UI when an
+    // item is opened. The UI rebuilds its form by round-tripping the value back
+    // through `jsonSchemaToZod` (the inverse of `z.toJSONSchema`).
+    class AppConfig {
+      features = $parameter({
+        name: "gwd.schema.json",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    const result = await provider.getCurrentWithDefault("gwd.schema.json");
+
+    // A plain JSON-Schema record describing the parameter shape — never the
+    // Zod instance (which would have `_zod`/`def`, not `type`/`properties`).
+    expect(z.schema.isObject(result.schema as never)).toBe(false);
+    expect((result.schema as { type?: string }).type).toBe("object");
+    expect(
+      Object.keys((result.schema as { properties?: object }).properties ?? {}),
+    ).toEqual(expect.arrayContaining(["enableBeta", "maxUploadSize"]));
+
+    // Round-trips back to a working Zod schema for the admin form.
+    const rebuilt = jsonSchemaToZod(result.schema);
+    expect(
+      rebuilt.safeParse({ enableBeta: true, maxUploadSize: 42 }).success,
+    ).toBe(true);
   });
 });
 
