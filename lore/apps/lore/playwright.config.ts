@@ -28,7 +28,11 @@ export default defineConfig({
     timeout: 120_000,
     command: "yarn start",
     url: `http://localhost:${port}`,
-    reuseExistingServer: true,
+    // Reuse a running server locally for a fast inner loop, but never under CI
+    // (`yarn verify` forces CI=true): a server left behind by an interrupted run
+    // still answers on this port, and reusing it silently tests stale code
+    // against an in-memory DB that already holds the previous run's rows.
+    reuseExistingServer: !process.env.CI,
     env: {
       SERVER_PORT: `${port}`,
       // Cloudflare Turnstile "always-pass" test keys — `yarn start` runs `node dist`
