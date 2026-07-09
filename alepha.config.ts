@@ -1,4 +1,5 @@
-import { type Alepha, z } from "alepha";
+import { connect } from "node:net";
+import { type Alepha, AlephaError, z } from "alepha";
 import { changelogOptions } from "alepha/cli";
 import { $command } from "alepha/command";
 
@@ -47,6 +48,50 @@ export default (alepha: Alepha) => {
           .optional(),
       }),
       handler: async ({ run, flags }) => {
+        // The services `vitest.config.ts` points at — exactly the set `compose.yml`
+        // provides. When they are down, the suite fails with hundreds of opaque
+        // PostgresError/S3NetworkError lines that name no cause, so probe first
+        // and say the one thing worth saying.
+        const services = [
+          { name: "postgres", port: 15432 },
+          { name: "redis", port: 16379 },
+          { name: "s3mock", port: 19090 },
+        ];
+
+        const isUp = (port: number) =>
+          new Promise<boolean>((resolve) => {
+            const socket = connect({ host: "127.0.0.1", port });
+            const settle = (up: boolean) => {
+              socket.destroy();
+              resolve(up);
+            };
+            socket.setTimeout(1_000);
+            socket.once("connect", () => settle(true));
+            socket.once("timeout", () => settle(false));
+            socket.once("error", () => settle(false));
+          });
+
+        const assertServicesUp = async () => {
+          const probed = await Promise.all(
+            services.map(async (it) => ({ ...it, up: await isUp(it.port) })),
+          );
+
+          if (probed.every((it) => it.up)) {
+            return;
+          }
+
+          const report = probed
+            .map(
+              (it) =>
+                `  ${it.name.padEnd(8)} 127.0.0.1:${it.port}  ${it.up ? "up" : "DOWN"}`,
+            )
+            .join("\n");
+
+          throw new AlephaError(
+            `Test services unreachable:\n${report}\n\n  Start them with:  docker compose up -d`,
+          );
+        };
+
         // We need to force CI environment
         // -> tsdown has different behavior when run in CI
         process.env.CI = "true";
@@ -66,6 +111,7 @@ export default (alepha: Alepha) => {
             `yarn check:i18n`,
             `yarn check:migrations`,
           ]);
+          await assertServicesUp();
           await run([`yarn test`, `yarn test:bun`]);
           return;
         }
@@ -73,6 +119,7 @@ export default (alepha: Alepha) => {
         await run(`yarn copy`);
         await run(`yarn check:deps`);
         await run(`yarn typecheck`);
+        await assertServicesUp();
         await run(`yarn test`);
         await run(`yarn test:bun`);
         await run(`yarn check:i18n`);
