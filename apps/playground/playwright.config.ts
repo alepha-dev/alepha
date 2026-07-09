@@ -1,6 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const port = Number(process.env.E2E_PORT ?? 5174);
+// 3304 sits in the same band as the other apps' e2e ports (docs 3302, lore
+// 3303, example-ssr 3311/3312). Never use 5173/5174 — Vite's default and its
+// first fallback — or any unrelated dev server running locally squats the port
+// and `reuseExistingServer: false` (set under CI) turns that into a hard fail.
+const port = Number(process.env.E2E_PORT ?? 3304);
 
 export default defineConfig({
   testDir: "./e2e",

@@ -2,7 +2,8 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type FullConfig, request } from "@playwright/test";
 
-const port = Number(process.env.E2E_PORT ?? 5174);
+// Keep in sync with playwright.config.ts — see the port note there.
+const port = Number(process.env.E2E_PORT ?? 3304);
 const ADMIN_EMAIL = "admin@alepha.dev";
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "adminadmin";
@@ -23,6 +24,12 @@ export default async function globalSetup(_config: FullConfig) {
   const baseURL = `http://localhost:${port}`;
   const ctx = await request.newContext({ baseURL });
 
+  // `node_modules/.alepha/emails` is never cleaned, so previous runs leave
+  // admin emails behind. Stamp the time before registering and only accept a
+  // mail sent after it — otherwise the poll below returns a stale code from an
+  // earlier run and `register/complete` rejects it.
+  const registeredAt = new Date();
+
   const intent = await ctx.post("/api/users/register", {
     data: {
       username: ADMIN_USERNAME,
@@ -34,7 +41,7 @@ export default async function globalSetup(_config: FullConfig) {
   if (intent.status() === 200) {
     const intentBody = await intent.json();
     const emailCode = intentBody.expectEmailVerification
-      ? await readLatestEmailCode(ADMIN_EMAIL)
+      ? await readLatestEmailCode(ADMIN_EMAIL, { since: registeredAt })
       : undefined;
 
     const complete = await ctx.post("/api/users/register/complete", {

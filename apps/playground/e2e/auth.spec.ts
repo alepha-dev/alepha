@@ -86,7 +86,7 @@ test.describe("/auth/register", () => {
     await codeInput.fill(code);
     await page.getByRole("button", { name: /Complete registration/ }).click();
 
-    await page.waitForURL("http://localhost:5174/", { timeout: 15_000 });
+    await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout: 15_000 });
   });
 });
 

@@ -20,7 +20,10 @@ export default defineConfig({
   ],
   webServer: [
     {
-      reuseExistingServer: true,
+      // Fast inner loop locally, but never reuse under CI (`yarn verify` forces
+      // CI=true) — a wrangler left behind by an interrupted run answers on this
+      // port and would silently serve a stale build to the whole suite.
+      reuseExistingServer: !process.env.CI,
       command: "yarn start:e2e",
       url: `http://localhost:${port}`,
       timeout: 180_000,
