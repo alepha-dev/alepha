@@ -6,6 +6,7 @@ import {
   AlephaApiVerification,
   VerificationController,
   VerificationParameters,
+  VerificationService,
 } from "../index.ts";
 
 const createTest = async () => {
@@ -14,6 +15,7 @@ const createTest = async () => {
     .with(AlephaApiVerification);
   const parameters = alepha.inject(VerificationParameters).get("code");
   const controller = alepha.inject(VerificationController);
+  const service = alepha.inject(VerificationService);
   const dateTimeProvider = alepha.inject(DateTimeProvider);
   const target = "+33633115544";
 
@@ -21,6 +23,7 @@ const createTest = async () => {
 
   return {
     alepha,
+    service,
     parameters,
     controller,
     dateTimeProvider,
@@ -30,16 +33,9 @@ const createTest = async () => {
 
 describe("Code Verification", () => {
   it("should verify phone with 6-digit code correctly", async ({ expect }) => {
-    const { parameters, controller, target } = await createTest();
+    const { parameters, controller, target, service } = await createTest();
 
-    const request = await controller.requestVerificationCode({
-      params: {
-        type: "code",
-      },
-      body: {
-        target,
-      },
-    });
+    const request = await service.createVerification({ type: "code", target });
 
     expect(request.codeExpiration).toEqual(parameters.codeExpiration);
     expect(request.verificationCooldown).toEqual(
@@ -85,16 +81,9 @@ describe("Code Verification", () => {
   });
 
   it("should handle invalid code", async ({ expect }) => {
-    const { controller, target } = await createTest();
+    const { controller, target, service } = await createTest();
 
-    await controller.requestVerificationCode({
-      params: {
-        type: "code",
-      },
-      body: {
-        target,
-      },
-    });
+    await service.createVerification({ type: "code", target });
 
     await expect(() =>
       controller.validateVerificationCode({
@@ -110,16 +99,9 @@ describe("Code Verification", () => {
   });
 
   it("should handle max attempts", async ({ expect }) => {
-    const { parameters, controller, target } = await createTest();
+    const { parameters, controller, target, service } = await createTest();
 
-    await controller.requestVerificationCode({
-      params: {
-        type: "code",
-      },
-      body: {
-        target,
-      },
-    });
+    await service.createVerification({ type: "code", target });
 
     for (let i = 0; i < parameters.maxAttempts; i++) {
       await controller
@@ -149,27 +131,13 @@ describe("Code Verification", () => {
   });
 
   it("should handle cooldown", async ({ expect }) => {
-    const { dateTimeProvider, parameters, controller, target } =
+    const { dateTimeProvider, parameters, target, service } =
       await createTest();
 
-    await controller.requestVerificationCode({
-      params: {
-        type: "code",
-      },
-      body: {
-        target,
-      },
-    });
+    await service.createVerification({ type: "code", target });
 
     await expect(() =>
-      controller.requestVerificationCode({
-        params: {
-          type: "code",
-        },
-        body: {
-          target,
-        },
-      }),
+      service.createVerification({ type: "code", target }),
     ).rejects.toThrowError("Verification is on cooldown for ");
 
     await dateTimeProvider.travel(
@@ -177,14 +145,7 @@ describe("Code Verification", () => {
       "seconds",
     );
 
-    const response = await controller.requestVerificationCode({
-      params: {
-        type: "code",
-      },
-      body: {
-        target,
-      },
-    });
+    const response = await service.createVerification({ type: "code", target });
 
     expect(response.codeExpiration).toEqual(parameters.codeExpiration);
     expect(response.verificationCooldown).toEqual(
@@ -195,7 +156,7 @@ describe("Code Verification", () => {
   });
 
   it("should respect rate limit per day", async ({ expect }) => {
-    const { parameters, controller, dateTimeProvider, target } =
+    const { parameters, dateTimeProvider, target, service } =
       await createTest();
 
     // Anchor test time at noon to keep all `limitPerDay` inserts inside the
@@ -213,14 +174,7 @@ describe("Code Verification", () => {
     }
 
     for (let i = 0; i < parameters.limitPerDay; i++) {
-      await controller.requestVerificationCode({
-        params: {
-          type: "code",
-        },
-        body: {
-          target,
-        },
-      });
+      await service.createVerification({ type: "code", target });
       await dateTimeProvider.travel(
         parameters.verificationCooldown + 1,
         "seconds",
@@ -228,31 +182,17 @@ describe("Code Verification", () => {
     }
 
     await expect(() =>
-      controller.requestVerificationCode({
-        params: {
-          type: "code",
-        },
-        body: {
-          target,
-        },
-      }),
+      service.createVerification({ type: "code", target }),
     ).rejects.toThrowError(
       `Maximum number of verification requests per day reached (${parameters.limitPerDay})`,
     );
   });
 
   it("should handle code expiration", async ({ expect }) => {
-    const { parameters, controller, dateTimeProvider, target } =
+    const { parameters, controller, dateTimeProvider, target, service } =
       await createTest();
 
-    const response = await controller.requestVerificationCode({
-      params: {
-        type: "code",
-      },
-      body: {
-        target,
-      },
-    });
+    const response = await service.createVerification({ type: "code", target });
 
     const code = response.token;
 
@@ -273,16 +213,12 @@ describe("Code Verification", () => {
   });
 
   it("should generate different codes for each request", async ({ expect }) => {
-    const { controller, dateTimeProvider, parameters, target } =
+    const { dateTimeProvider, parameters, target, service } =
       await createTest();
 
-    const response1 = await controller.requestVerificationCode({
-      params: {
-        type: "code",
-      },
-      body: {
-        target,
-      },
+    const response1 = await service.createVerification({
+      type: "code",
+      target,
     });
 
     const code1 = response1.token;
@@ -292,13 +228,9 @@ describe("Code Verification", () => {
       "seconds",
     );
 
-    const response2 = await controller.requestVerificationCode({
-      params: {
-        type: "code",
-      },
-      body: {
-        target,
-      },
+    const response2 = await service.createVerification({
+      type: "code",
+      target,
     });
 
     const code2 = response2.token;
@@ -310,18 +242,14 @@ describe("Code Verification", () => {
   });
 
   it("should pad codes with leading zeros", async ({ expect }) => {
-    const { controller, target } = await createTest();
+    const { target, service } = await createTest();
 
     // Request multiple codes to increase chance of getting one with leading zeros
     const codes: string[] = [];
     for (let i = 0; i < 5; i++) {
-      const response = await controller.requestVerificationCode({
-        params: {
-          type: "code",
-        },
-        body: {
-          target: `${target}${i}`,
-        },
+      const response = await service.createVerification({
+        type: "code",
+        target: `${target}${i}`,
       });
       codes.push(response.token);
     }

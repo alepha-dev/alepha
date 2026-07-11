@@ -218,12 +218,17 @@ were re-checked against source; two were reproduced with live tests.
 - **Test gap:** no spec creates two realms and asserts a realm-A admin token is rejected on
   `?userRealmName=B` — the single most important missing test in the api layer.
 
-### P0-8 · Verification endpoint returns the secret code in its HTTP response · `SOURCE-CHECKED`
-- **Files:** `api/verifications/controllers/VerificationController.ts:14-33` (public `$action`, no
-  `$secure`), returning `createVerification(...)` whose result includes `token` — the plaintext
-  6-digit code / UUID (`VerificationService.ts:135`, `schemas/requestVerificationCodeResponseSchema.ts`,
-  whose own description says *"The caller should send this to the user"*). Mounted **by default**:
-  `AlephaApiVerification` registers `VerificationController` in `services` (`verifications/index.ts`).
+### P0-8 · Verification endpoint returns the secret code in its HTTP response · `SOURCE-CHECKED` · ✅ FIXED
+- **Status:** FIXED — the public token-returning `requestVerificationCode` `$action` was **removed**
+  from `VerificationController` (only the no-leak `validateVerificationCode` submission endpoint
+  remains). Verification requests are now driven server-side: `RegistrationService`/`UserService` call
+  `VerificationService.createVerification` directly (as `CredentialService` already did) and deliver
+  the code via their own notifications — the raw token never crosses the wire. Converted the
+  verification specs to drive creation through the service. `requestVerificationCodeResponseSchema`
+  remains exported (harmless dead export) to avoid a breaking export change. Users (201) + verification
+  (16) tests green.
+- **Files:** `api/verifications/controllers/VerificationController.ts` (action removed);
+  `api/users/services/{RegistrationService,UserService}.ts` (now use the service directly).
 - **Mechanism:** the `createVerification` *service* returning the token is by-design for an internal
   caller that sends it out-of-band. The bug is the **controller exposing it over unauthenticated
   HTTP** — unlike the devtools P0 (not mounted by default), this endpoint is live the moment the

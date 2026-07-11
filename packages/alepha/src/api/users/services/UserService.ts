@@ -1,5 +1,8 @@
 import { $inject, Alepha } from "alepha";
-import type { VerificationController } from "alepha/api/verifications";
+import {
+  type VerificationController,
+  VerificationService,
+} from "alepha/api/verifications";
 import { $logger } from "alepha/logger";
 import type { Page } from "alepha/orm";
 import { CryptoProvider } from "alepha/security";
@@ -16,7 +19,11 @@ import type { UserQuery } from "../schemas/userQuerySchema.ts";
 export class UserService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
+  // Validation (`validateVerificationCode`) goes through the public controller;
+  // code *creation* uses the service directly so the raw token is never exposed
+  // over HTTP (the controller no longer has a token-returning request action).
   protected readonly verificationController = $client<VerificationController>();
+  protected readonly verificationService = $inject(VerificationService);
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly cryptoProvider = $inject(CryptoProvider);
 
@@ -78,11 +85,10 @@ export class UserService {
     }
 
     try {
-      const verification =
-        await this.verificationController.requestVerificationCode({
-          params: { type: method },
-          body: { target: email },
-        });
+      const verification = await this.verificationService.createVerification({
+        type: method,
+        target: email,
+      });
 
       if (method === "link") {
         // Build verification URL from realm settings (server-controlled, not user input)

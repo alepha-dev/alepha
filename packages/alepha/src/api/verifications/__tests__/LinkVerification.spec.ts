@@ -6,6 +6,7 @@ import {
   AlephaApiVerification,
   VerificationController,
   VerificationParameters,
+  VerificationService,
 } from "../index.ts";
 
 const createTest = async () => {
@@ -14,6 +15,7 @@ const createTest = async () => {
     .with(AlephaApiVerification);
   const parameters = alepha.inject(VerificationParameters).get("link");
   const controller = alepha.inject(VerificationController);
+  const service = alepha.inject(VerificationService);
   const dateTimeProvider = alepha.inject(DateTimeProvider);
   const target = "test@example.com";
 
@@ -21,6 +23,7 @@ const createTest = async () => {
 
   return {
     alepha,
+    service,
     parameters,
     controller,
     dateTimeProvider,
@@ -30,16 +33,9 @@ const createTest = async () => {
 
 describe("Link Verification", () => {
   it("should verify link with UUID token correctly", async ({ expect }) => {
-    const { parameters, controller, target } = await createTest();
+    const { parameters, controller, target, service } = await createTest();
 
-    const request = await controller.requestVerificationCode({
-      params: {
-        type: "link",
-      },
-      body: {
-        target,
-      },
-    });
+    const request = await service.createVerification({ type: "link", target });
 
     expect(request.codeExpiration).toEqual(parameters.codeExpiration);
     expect(request.verificationCooldown).toEqual(
@@ -85,16 +81,9 @@ describe("Link Verification", () => {
   });
 
   it("should handle invalid token", async ({ expect }) => {
-    const { controller, target } = await createTest();
+    const { controller, target, service } = await createTest();
 
-    await controller.requestVerificationCode({
-      params: {
-        type: "link",
-      },
-      body: {
-        target,
-      },
-    });
+    await service.createVerification({ type: "link", target });
 
     await expect(() =>
       controller.validateVerificationCode({
@@ -110,16 +99,9 @@ describe("Link Verification", () => {
   });
 
   it("should handle max attempts", async ({ expect }) => {
-    const { parameters, controller, target } = await createTest();
+    const { parameters, controller, target, service } = await createTest();
 
-    await controller.requestVerificationCode({
-      params: {
-        type: "link",
-      },
-      body: {
-        target,
-      },
-    });
+    await service.createVerification({ type: "link", target });
 
     for (let i = 0; i < parameters.maxAttempts; i++) {
       await controller
@@ -149,27 +131,13 @@ describe("Link Verification", () => {
   });
 
   it("should handle cooldown", async ({ expect }) => {
-    const { dateTimeProvider, parameters, controller, target } =
+    const { dateTimeProvider, parameters, target, service } =
       await createTest();
 
-    await controller.requestVerificationCode({
-      params: {
-        type: "link",
-      },
-      body: {
-        target,
-      },
-    });
+    await service.createVerification({ type: "link", target });
 
     await expect(() =>
-      controller.requestVerificationCode({
-        params: {
-          type: "link",
-        },
-        body: {
-          target,
-        },
-      }),
+      service.createVerification({ type: "link", target }),
     ).rejects.toThrowError("Verification is on cooldown for ");
 
     await dateTimeProvider.travel(
@@ -177,14 +145,7 @@ describe("Link Verification", () => {
       "seconds",
     );
 
-    const response = await controller.requestVerificationCode({
-      params: {
-        type: "link",
-      },
-      body: {
-        target,
-      },
-    });
+    const response = await service.createVerification({ type: "link", target });
 
     expect(response.codeExpiration).toEqual(parameters.codeExpiration);
     expect(response.verificationCooldown).toEqual(
@@ -195,7 +156,7 @@ describe("Link Verification", () => {
   });
 
   it("should respect rate limit per day", async ({ expect }) => {
-    const { parameters, controller, dateTimeProvider, target } =
+    const { parameters, dateTimeProvider, target, service } =
       await createTest();
 
     // Anchor test time at noon to keep all `limitPerDay` inserts inside the
@@ -213,14 +174,7 @@ describe("Link Verification", () => {
     }
 
     for (let i = 0; i < parameters.limitPerDay; i++) {
-      await controller.requestVerificationCode({
-        params: {
-          type: "link",
-        },
-        body: {
-          target,
-        },
-      });
+      await service.createVerification({ type: "link", target });
       await dateTimeProvider.travel(
         parameters.verificationCooldown + 1,
         "seconds",
@@ -228,31 +182,17 @@ describe("Link Verification", () => {
     }
 
     await expect(() =>
-      controller.requestVerificationCode({
-        params: {
-          type: "link",
-        },
-        body: {
-          target,
-        },
-      }),
+      service.createVerification({ type: "link", target }),
     ).rejects.toThrowError(
       `Maximum number of verification requests per day reached (${parameters.limitPerDay})`,
     );
   });
 
   it("should handle token expiration", async ({ expect }) => {
-    const { parameters, controller, dateTimeProvider, target } =
+    const { parameters, controller, dateTimeProvider, target, service } =
       await createTest();
 
-    const response = await controller.requestVerificationCode({
-      params: {
-        type: "link",
-      },
-      body: {
-        target,
-      },
-    });
+    const response = await service.createVerification({ type: "link", target });
 
     const token = response.token;
 
@@ -273,18 +213,9 @@ describe("Link Verification", () => {
   });
 
   it("should return token in response", async ({ expect }) => {
-    const { parameters, controller, target } = await createTest();
+    const { parameters, target, service } = await createTest();
 
-    const expectedMinutes = Math.floor(parameters.codeExpiration / 60);
-
-    const response = await controller.requestVerificationCode({
-      params: {
-        type: "link",
-      },
-      body: {
-        target,
-      },
-    });
+    const response = await service.createVerification({ type: "link", target });
 
     expect(response.token).toBeTruthy();
     expect(response.codeExpiration).toBe(parameters.codeExpiration);

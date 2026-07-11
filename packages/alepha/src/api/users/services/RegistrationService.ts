@@ -1,5 +1,8 @@
 import { $inject, Alepha, AlephaError } from "alepha";
-import type { VerificationController } from "alepha/api/verifications";
+import {
+  type VerificationController,
+  VerificationService,
+} from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
 import { DatabaseCacheProvider } from "alepha/cache/database";
 import { CaptchaProvider } from "alepha/captcha";
@@ -47,7 +50,10 @@ export class RegistrationService {
   protected readonly log = $logger();
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly cryptoProvider = $inject(CryptoProvider);
+  // Validation goes through the public controller; code *creation* uses the
+  // service directly so the raw token is never exposed over HTTP.
   protected readonly verificationController = $client<VerificationController>();
+  protected readonly verificationService = $inject(VerificationService);
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly credentialService = $inject(CredentialService);
   protected readonly captchaProvider = $inject(CaptchaProvider);
@@ -484,11 +490,10 @@ export class RegistrationService {
   ): Promise<void> {
     this.log.debug("Sending email verification code", { email });
 
-    const verification =
-      await this.verificationController.requestVerificationCode({
-        params: { type: "code" },
-        body: { target: email },
-      });
+    const verification = await this.verificationService.createVerification({
+      type: "code",
+      target: email,
+    });
 
     await this.userNotifications(realmName).emailVerification.push({
       contact: email,
@@ -511,11 +516,10 @@ export class RegistrationService {
   ): Promise<void> {
     this.log.debug("Sending phone verification code", { phoneNumber });
     try {
-      const verification =
-        await this.verificationController.requestVerificationCode({
-          params: { type: "code" },
-          body: { target: phoneNumber },
-        });
+      const verification = await this.verificationService.createVerification({
+        type: "code",
+        target: phoneNumber,
+      });
 
       await this.userNotifications(realmName).phoneVerification.push({
         contact: phoneNumber,
