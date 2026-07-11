@@ -26,7 +26,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.3",
     "alepha": "0.23.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "peerDependencies": {

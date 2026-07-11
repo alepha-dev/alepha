@@ -3,7 +3,7 @@
   "name": "alepha-monorepo",
   "description": "Alepha framework monorepo workspace",
   "type": "module",
-  "packageManager": "yarn@4.14.1",
+  "packageManager": "yarn@4.17.1",
   "workspaces": {
     "packages": [
       "packages/**/*",
@@ -21,7 +21,7 @@
     "@vitest/ui": "^4.1.10",
     "alepha": "^0.23.0",
     "depcheck": "^1.4.7",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "dependenciesMeta": {
