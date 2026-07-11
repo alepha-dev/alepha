@@ -160,9 +160,12 @@ were re-checked against source; two were reproduced with live tests.
 - **Fix:** hard-refuse to register (or 404 in the handler) when `isProduction()`, plus a localhost /
   `$secure` gate — belt-and-suspenders like sigil.
 
-### P0-6 · `db migrations check` only checks the first provider · `SOURCE-CHECKED`
-- **File:** `packages/alepha/src/cli/core/commands/db.ts:77` and `:98` (flagged independently by both
-  the CLI and ORM passes).
+### P0-6 · `db migrations check` only checks the first provider · `SOURCE-CHECKED` · ✅ FIXED
+- **Status:** FIXED — the "no journal" / "no changes" branches now `continue` instead of `return`, so
+  every provider is checked; drift is collected across all providers and reported before throwing (the
+  error names every drifted provider); and the `--provider` filter is now honored. Test gap remains
+  (db.ts has no direct tests — a two-provider memory fixture would lock this in).
+- **File:** `packages/alepha/src/cli/core/commands/db.ts` (the `check` command loop).
 - **Mechanism:** inside `for (const primitive of repositoryProvider.getRepositories())`, both "No
   migration journal found" and "No changes detected" call `return`, exiting the whole handler. A
   multi-provider app (Postgres + D1 sqlite — Lore's exact shape) gets drift-checked only on whichever

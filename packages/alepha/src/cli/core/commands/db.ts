@@ -43,7 +43,7 @@ export class DbCommand {
       })
       .optional(),
     flags: drizzleCommandFlags,
-    handler: async ({ args, root }) => {
+    handler: async ({ flags, root }) => {
       const rootDir = root;
       this.log.debug(`Using project root: ${rootDir}`);
 
@@ -58,6 +58,7 @@ export class DbCommand {
       const drizzleKitProvider =
         alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
       const accepted = new Set<string>([]);
+      const drifted: Array<{ provider: string; statements: string[] }> = [];
 
       for (const primitive of repositoryProvider.getRepositories()) {
         const provider = primitive.provider;
@@ -68,15 +69,23 @@ export class DbCommand {
 
         accepted.add(providerName);
 
+        // Honor the --provider filter (previously declared but ignored here).
+        if (flags.provider && flags.provider !== providerName) {
+          continue;
+        }
+
         const migrationDir = this.fs.join(rootDir, "migrations", providerName);
 
         const journalBuffer = await this.fs
           .readFile(this.fs.join(migrationDir, "meta", "_journal.json"))
           .catch(() => null);
 
+        // `continue`, not `return`: a journal-less or clean provider must not
+        // exit the whole handler and mask drift in the remaining providers
+        // (e.g. a clean Postgres hiding a drifted SQLite/D1 migration set).
         if (!journalBuffer) {
-          this.log.info("No migration journal found.");
-          return;
+          this.log.info(`No migration journal found for '${providerName}'.`);
+          continue;
         }
 
         const journal = JSON.parse(journalBuffer.toString("utf-8"));
@@ -96,27 +105,39 @@ export class DbCommand {
           });
 
         if (migrationStatements.length === 0) {
-          this.log.info("No changes detected.");
-          return;
+          this.log.info(`No changes detected for '${providerName}'.`);
+          continue;
         }
 
-        this.log.info("");
-        this.log.info("Detected migration statements:");
-        this.log.info("");
-        for (const stmt of migrationStatements) {
-          this.log.info(stmt);
+        drifted.push({
+          provider: providerName,
+          statements: migrationStatements,
+        });
+      }
+
+      // Report drift across ALL providers before failing.
+      if (drifted.length > 0) {
+        for (const { provider: providerName, statements } of drifted) {
+          this.log.info("");
+          this.log.info(`Detected migration statements for '${providerName}':`);
+          this.log.info("");
+          for (const stmt of statements) {
+            this.log.info(stmt);
+          }
+          this.log.info("");
+          this.log.info(`At least ${statements.length} change(s) detected.`);
         }
         this.log.info("");
-
-        this.log.info(
-          `At least ${migrationStatements.length} change(s) detected.`,
-        );
         this.log.info(
           "Please, run 'alepha db migrations generate' to update the migration files.",
         );
         this.log.info("");
 
-        throw new AlephaError("Database migrations are not up to date.");
+        throw new AlephaError(
+          `Database migrations are not up to date (${drifted
+            .map((d) => d.provider)
+            .join(", ")}).`,
+        );
       }
     },
   });
