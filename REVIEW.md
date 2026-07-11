@@ -143,8 +143,13 @@ were re-checked against source; two were reproduced with live tests.
   One-line severity flip; highest value in the security slice.
 - **Test gap:** no test asserts prod + default secret errors (it currently can't).
 
-### P0-4 · DI `lifetime: "scoped"` is broken after start · `REPRODUCED` (by the core pass)
-- **File:** `packages/alepha/src/core/Alepha.ts:882` (scoped-registry select) → guard at `:929`.
+### P0-4 · DI `lifetime: "scoped"` is broken after start · `REPRODUCED` (by the core pass) · ✅ FIXED
+- **Status:** FIXED — the locked-container guard now fires only when instantiating into the **global**
+  registry (`this.started && registry === this.registry`). A `scoped` inject targets the per-request
+  registry (a fresh Map from `alepha.context.run`) and is stored only there, so it no longer throws
+  `ContainerLockedError` after start. Added `scoped-after-start.spec.ts` (resolves after start, and
+  isolates across forks); full core suite (425) still green, so the global-container lock is intact.
+- **File:** `packages/alepha/src/core/Alepha.ts` (the post-start guard in `inject`).
 - **Mechanism:** a scoped injection after `start()` falls into the locked-container guard and throws
   `ContainerLockedError`. The documented contract (`$inject.ts:40`: *"A new scope is created when
   Alepha handles a request"*) is unreachable at runtime — scoped injection only works pre-start.

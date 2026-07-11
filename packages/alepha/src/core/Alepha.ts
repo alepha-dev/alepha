@@ -926,7 +926,14 @@ export class Alepha {
         return match.instance;
       }
 
-      if (this.started) {
+      // The locked-container guard protects the GLOBAL registry from gaining new
+      // singletons after start. A `scoped` inject targets a per-request registry
+      // (a fresh Map created by `alepha.context.run` per request, resolved at
+      // `registry` above) and is stored only there — it never mutates the global
+      // container. Refusing it after start makes `lifetime: "scoped"` unusable at
+      // the only time it matters (while handling a request), so the guard must
+      // apply only when we are instantiating into the global registry itself.
+      if (this.started && registry === this.registry) {
         const mod = (service as WithModule)[MODULE]?.name;
         throw new ContainerLockedError(
           `Container is locked. No more services can be added. Attempted to inject '${service.name}' from '${parent?.name}'. ${mod ? `Module '${mod}' is not registered ?` : ""}`,
