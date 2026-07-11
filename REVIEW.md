@@ -195,9 +195,16 @@ were re-checked against source; two were reproduced with live tests.
 - **Bonus (both passes suggested):** add a guard that flags a destructive `DROP TABLE` in a new
   migration — the natural automated defense for the D1 hazard that today relies on human review.
 
-### P0-7 · Cross-realm/tenant broken access control in admin controllers · `SOURCE-CHECKED`
-- **Files:** `api/users/controllers/AdminUserController.ts:61,88,110,127` (and the session/identity
-  admin controllers) — every admin action takes a client-controlled `userRealmName` query param;
+### P0-7 · Cross-realm/tenant broken access control in admin controllers · `SOURCE-CHECKED` · ✅ FIXED
+- **Status:** FIXED — added `SecurityProvider.assertRealmScope(user, requestedRealm)`, which binds the
+  target realm to the authenticated caller's realm (omitted → caller's realm; a *different* realm →
+  `ForbiddenError`). Applied to every `userRealmName`-taking handler in `AdminUserController`,
+  `AdminSessionController`, and `AdminIdentityController`. A realm-A admin can no longer act on realm-B
+  users/sessions/identities via `?userRealmName=B`. `UserController` (public/self-service, where the
+  client legitimately names its realm for unauthenticated registration/reset) is intentionally left
+  as-is. Added `assertRealmScope.spec.ts`; users suite (201) green. (Single-realm apps like Lore are
+  unaffected — no realm claim, no restriction.)
+- **Files:** `security/providers/SecurityProvider.ts` (`assertRealmScope`); the three `Admin*Controller.ts`.
   `api/users/services/UserService.ts` (`getUserById(id, userRealmName) => this.users(userRealmName)
   .getById(id)`) selects the **target** realm's repository from that param.
 - **Mechanism:** the admin `$action`s guard with `$secure({ permissions: ["admin:user:*"] })` but set

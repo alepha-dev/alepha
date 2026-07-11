@@ -1,5 +1,5 @@
 import { $inject, z } from "alepha";
-import { $secure } from "alepha/security";
+import { $secure, SecurityProvider } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { identityQuerySchema } from "../schemas/identityQuerySchema.ts";
 import { identityResourceSchema } from "../schemas/identityResourceSchema.ts";
@@ -9,6 +9,7 @@ export class AdminIdentityController {
   protected readonly url = "/identities";
   protected readonly group = "admin:identities";
   protected readonly identityService = $inject(IdentityService);
+  protected readonly securityProvider = $inject(SecurityProvider);
 
   /**
    * Find identities with pagination and filtering.
@@ -24,9 +25,12 @@ export class AdminIdentityController {
       }),
       response: z.page(identityResourceSchema),
     },
-    handler: ({ query }) => {
+    handler: ({ query, user }) => {
       const { userRealmName, ...q } = query;
-      return this.identityService.findIdentities(q, userRealmName);
+      return this.identityService.findIdentities(
+        q,
+        this.securityProvider.assertRealmScope(user, userRealmName),
+      );
     },
   });
 
@@ -47,8 +51,11 @@ export class AdminIdentityController {
       }),
       response: identityResourceSchema,
     },
-    handler: ({ params, query }) =>
-      this.identityService.getIdentityById(params.id, query.userRealmName),
+    handler: ({ params, query, user }) =>
+      this.identityService.getIdentityById(
+        params.id,
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
+      ),
   });
 
   /**
@@ -69,8 +76,11 @@ export class AdminIdentityController {
       }),
       response: okSchema,
     },
-    handler: async ({ params, query }) => {
-      await this.identityService.deleteIdentity(params.id, query.userRealmName);
+    handler: async ({ params, query, user }) => {
+      await this.identityService.deleteIdentity(
+        params.id,
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
+      );
       return { ok: true, id: params.id };
     },
   });

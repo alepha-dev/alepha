@@ -34,8 +34,10 @@ export class AdminUserController {
         }),
       ),
     },
-    handler: ({ query }) => {
-      const roles = this.securityProvider.getRoles(query.userRealmName);
+    handler: ({ query, user }) => {
+      const roles = this.securityProvider.getRoles(
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
+      );
       return roles.map((r) => ({
         name: r.name,
         default: r.default,
@@ -58,9 +60,12 @@ export class AdminUserController {
       }),
       response: z.page(userResourceSchema),
     },
-    handler: ({ query }) => {
+    handler: ({ query, user }) => {
       const { userRealmName, ...q } = query;
-      return this.userService.findUsers(q, userRealmName);
+      return this.userService.findUsers(
+        q,
+        this.securityProvider.assertRealmScope(user, userRealmName),
+      );
     },
   });
 
@@ -81,8 +86,11 @@ export class AdminUserController {
       }),
       response: userResourceSchema,
     },
-    handler: ({ params, query }) =>
-      this.userService.getUserById(params.id, query.userRealmName),
+    handler: ({ params, query, user }) =>
+      this.userService.getUserById(
+        params.id,
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
+      ),
   });
 
   /**
@@ -101,8 +109,11 @@ export class AdminUserController {
       body: createUserSchema,
       response: userResourceSchema,
     },
-    handler: ({ body, query }) =>
-      this.userService.createUser(body, query.userRealmName),
+    handler: ({ body, query, user }) =>
+      this.userService.createUser(
+        body,
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
+      ),
   });
 
   /**
@@ -124,8 +135,12 @@ export class AdminUserController {
       body: updateUserSchema,
       response: userResourceSchema,
     },
-    handler: ({ params, body, query }) =>
-      this.userService.updateUser(params.id, body, query.userRealmName),
+    handler: ({ params, body, query, user }) =>
+      this.userService.updateUser(
+        params.id,
+        body,
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
+      ),
   });
 
   /**
@@ -151,11 +166,11 @@ export class AdminUserController {
       }),
       response: okSchema,
     },
-    handler: async ({ params, body, query }) => {
+    handler: async ({ params, body, query, user }) => {
       await this.userService.setPassword(
         params.id,
         body.password,
-        query.userRealmName,
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
       );
       return { ok: true, id: params.id };
     },
@@ -179,8 +194,11 @@ export class AdminUserController {
       }),
       response: okSchema,
     },
-    handler: async ({ params, query }) => {
-      await this.userService.deleteUser(params.id, query.userRealmName);
+    handler: async ({ params, query, user }) => {
+      await this.userService.deleteUser(
+        params.id,
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
+      );
       return { ok: true, id: params.id };
     },
   });
@@ -207,10 +225,14 @@ export class AdminUserController {
         deleted: z.array(z.uuid()),
       }),
     },
-    handler: async ({ body, query }) => {
+    handler: async ({ body, query, user }) => {
+      const realm = this.securityProvider.assertRealmScope(
+        user,
+        query.userRealmName,
+      );
       const deleted: string[] = [];
       for (const id of body.ids) {
-        await this.userService.deleteUser(id, query.userRealmName);
+        await this.userService.deleteUser(id, realm);
         deleted.push(id);
       }
       return { deleted };

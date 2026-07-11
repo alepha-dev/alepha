@@ -712,6 +712,32 @@ export class SecurityProvider {
   }
 
   /**
+   * Resolve the realm an authenticated admin action is allowed to operate on.
+   *
+   * Admin endpoints accept a client-supplied target realm (e.g. a
+   * `userRealmName` query param). Without scoping, a realm-A admin could act on
+   * realm-B resources by simply naming realm B — a cross-tenant escalation
+   * whenever realms are used as tenant boundaries. This binds the target realm
+   * to the caller's own realm: omitting the target means "my realm"; naming a
+   * *different* realm than the caller's is refused.
+   *
+   * Returns the effective realm to use (may be `undefined` in single-realm apps
+   * where neither the caller nor the request carries a realm).
+   */
+  public assertRealmScope(
+    user: { realm?: string } | undefined,
+    requestedRealm: string | undefined,
+  ): string | undefined {
+    const callerRealm = user?.realm;
+    if (requestedRealm && callerRealm && requestedRealm !== callerRealm) {
+      throw new ForbiddenError(
+        `Cross-realm access denied: authenticated in realm '${callerRealm}', requested realm '${requestedRealm}'.`,
+      );
+    }
+    return requestedRealm ?? callerRealm;
+  }
+
+  /**
    * Retrieves the user account from the provided user ID.
    *
    * @param realm

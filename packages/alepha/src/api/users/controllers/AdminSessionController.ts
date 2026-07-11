@@ -1,5 +1,5 @@
 import { $inject, z } from "alepha";
-import { $secure } from "alepha/security";
+import { $secure, SecurityProvider } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { sessionQuerySchema } from "../schemas/sessionQuerySchema.ts";
 import { sessionResourceSchema } from "../schemas/sessionResourceSchema.ts";
@@ -9,6 +9,7 @@ export class AdminSessionController {
   protected readonly url = "/sessions";
   protected readonly group = "admin:sessions";
   protected readonly sessionService = $inject(SessionCrudService);
+  protected readonly securityProvider = $inject(SecurityProvider);
 
   /**
    * Find sessions with pagination and filtering.
@@ -24,9 +25,12 @@ export class AdminSessionController {
       }),
       response: z.page(sessionResourceSchema),
     },
-    handler: ({ query }) => {
+    handler: ({ query, user }) => {
       const { userRealmName, ...q } = query;
-      return this.sessionService.findSessions(q, userRealmName);
+      return this.sessionService.findSessions(
+        q,
+        this.securityProvider.assertRealmScope(user, userRealmName),
+      );
     },
   });
 
@@ -47,8 +51,11 @@ export class AdminSessionController {
       }),
       response: sessionResourceSchema,
     },
-    handler: ({ params, query }) =>
-      this.sessionService.getSessionById(params.id, query.userRealmName),
+    handler: ({ params, query, user }) =>
+      this.sessionService.getSessionById(
+        params.id,
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
+      ),
   });
 
   /**
@@ -69,8 +76,11 @@ export class AdminSessionController {
       }),
       response: okSchema,
     },
-    handler: async ({ params, query }) => {
-      await this.sessionService.deleteSession(params.id, query.userRealmName);
+    handler: async ({ params, query, user }) => {
+      await this.sessionService.deleteSession(
+        params.id,
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
+      );
       return { ok: true, id: params.id };
     },
   });
@@ -95,10 +105,10 @@ export class AdminSessionController {
         deleted: z.array(z.string()),
       }),
     },
-    handler: async ({ body, query }) => {
+    handler: async ({ body, query, user }) => {
       const deleted = await this.sessionService.deleteSessions(
         body.ids,
-        query.userRealmName,
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
       );
       return { deleted };
     },
