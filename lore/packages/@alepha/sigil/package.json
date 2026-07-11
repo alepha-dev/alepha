@@ -35,9 +35,9 @@
     "alepha": "0.23.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "tsdown": "^0.22.3",
+    "tsdown": "^0.22.4",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
   "peerDependencies": {
     "alepha": "0.23.0",
