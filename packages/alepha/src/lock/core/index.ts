@@ -6,6 +6,7 @@ import { MemoryLockProvider } from "./providers/MemoryLockProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./errors/LockAcquireError.ts";
 export * from "./primitives/$lock.ts";
 export * from "./providers/LockProvider.ts";
 export * from "./providers/LockTopicProvider.ts";

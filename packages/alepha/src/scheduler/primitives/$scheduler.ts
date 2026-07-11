@@ -16,7 +16,7 @@ import {
   DateTimeProvider,
   type DurationLike,
 } from "alepha/datetime";
-import { $lock } from "alepha/lock";
+import { $lock, LockAcquireError } from "alepha/lock";
 import { $logger } from "alepha/logger";
 import { CronProvider } from "../providers/CronProvider.ts";
 
@@ -138,7 +138,20 @@ export class SchedulerPrimitive extends Primitive<SchedulerPrimitiveOptions> {
           });
 
           if (this.options.lock !== false) {
-            await this.schedulerLock.run({ now });
+            try {
+              await this.schedulerLock.run({ now });
+            } catch (error) {
+              // A held lock means another instance (or an overlapping run) is
+              // already handling this tick — that is exactly what the lock is
+              // for (dedup), not a failure. Skip this tick quietly rather than
+              // surfacing it as a `scheduler:error`. Other errors still bubble.
+              if (!(error instanceof LockAcquireError)) {
+                throw error;
+              }
+              this.log.debug(
+                `Scheduler '${this.name}' tick skipped — lock held by another runner`,
+              );
+            }
           } else {
             await this.options.handler({ now });
           }

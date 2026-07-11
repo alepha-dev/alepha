@@ -88,6 +88,10 @@ were re-checked against source; two were reproduced with live tests.
   identity, which is correct/intended for cross-replica scheduler dedup — within-instance overlap is
   the scheduler's responsibility (CronProvider's `executing` flag). Not changed; different semantics
   from the middleware. The lock-release-after-expiry (P1) is a separate follow-up.
+- **Follow-up:** now that the lock actually contends, `$scheduler` surfaced a latent bug — it treated
+  `LockAcquireError` (another runner holds the tick's lock) as a `scheduler:error` instead of a normal
+  dedup skip. Fixed: contention is now a quiet skip (`$scheduler.ts`); `LockAcquireError` is exported
+  from `alepha/lock`. (Also settled a `travel()`-fired fire-and-forget cron race in `FileJobs.spec.ts`.)
 - **File:** `packages/alepha/src/lock/core/primitives/$lock.ts` (middleware closure).
 - **Mechanism:** the lock id is `crypto.randomUUID()` created in the middleware handler body, which
   runs **once when the pipeline is composed** (`$pipeline.ts:115` memoizes `this.wrapped`). All

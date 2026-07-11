@@ -54,6 +54,12 @@ describe("FileJobRegistry", () => {
     expect(await list()).toHaveLength(3);
 
     await dtp.travel(2, "hours");
+
+    // Time-travel fires the hourly cron, whose purge handler runs asynchronously
+    // (CronProvider dispatches handlers fire-and-forget) and holds the scheduler
+    // lock while in flight. Let that settle so the manual trigger below isn't
+    // (correctly) deduped by the still-running travel-fired run.
+    await new Promise((resolve) => setTimeout(resolve, 50));
     await jobs.purgeFiles.trigger();
 
     expect(await list()).toHaveLength(2);
