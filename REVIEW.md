@@ -101,9 +101,15 @@ were re-checked against source; two were reproduced with live tests.
 - **Test gap:** `lock-edge-cases.spec.ts` only ever contends *different* instances. Add a
   same-instance `Promise.all([svc.fn(), svc.fn()])` test.
 
-### P0-2 · Bun Redis `set` discards the reply → locking is a silent no-op under Bun · `SOURCE-CHECKED`
-- **File:** `packages/alepha/src/redis/providers/BunRedisProvider.ts:204` (the with-options branch:
-  `await this.publisher.send("SET", args); return buf;`).
+### P0-2 · Bun Redis `set` discards the reply → locking is a silent no-op under Bun · `SOURCE-CHECKED` · ✅ FIXED
+- **Status:** FIXED — `BunRedisProvider.set` now captures the command reply and mirrors
+  `NodeRedisProvider`: returns the written value on `"OK"`/nil, otherwise returns the prior value from
+  the `GET` option (as a Buffer). This restores the `SET … NX GET` contract the `$lock` protocol
+  depends on. NOTE: the Bun path still needs NX/GET coverage under `test:bun` (needs a Bun+Redis
+  runtime); the fix mirrors the Node path which is tested. The binary-arg encoding
+  (`buf.toString("binary")`) for large/compressed cache payloads is a separate, lower-severity concern
+  left as-is.
+- **File:** `packages/alepha/src/redis/providers/BunRedisProvider.ts` (the with-options branch).
 - **Mechanism:** the lock protocol depends on `SET … NX GET` returning the **current holder's**
   value (`RedisLockProvider.ts:16`, comment: *"all the secrets of $lock is based on this"*). Node's
   adapter returns `Buffer.from(resp)` correctly (`NodeRedisProvider.ts:178`); Bun's returns `buf` —

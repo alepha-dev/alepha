@@ -201,15 +201,23 @@ export class BunRedisProvider extends RedisProvider {
       args.push("GET");
     }
 
-    if (args.length === 2) {
-      // Simple set without options
-      await this.publisher.set(key, buf);
-    } else {
-      // Set with options via raw command
-      await this.publisher.send("SET", args);
-    }
+    // Capture the reply. With the `GET` option the reply carries the *prior*
+    // value, and the entire `$lock` protocol (`SET … NX GET`) depends on reading
+    // it. Previously this discarded the reply and always returned the value it
+    // just wrote, so under Bun every lock contender saw its own id back and
+    // believed it had acquired the lock — RedisLockProvider (and therefore every
+    // scheduler dedup / migration guard) became a silent no-op across instances.
+    const resp =
+      args.length === 2
+        ? await this.publisher.set(key, buf)
+        : await this.publisher.send("SET", args);
 
-    return buf;
+    // Mirror NodeRedisProvider: "OK"/nil means "applied, no prior value" → echo
+    // the value we wrote; any other reply is the prior value returned by GET.
+    if (resp == null || resp === "OK") {
+      return buf;
+    }
+    return Buffer.isBuffer(resp) ? resp : Buffer.from(String(resp), "binary");
   }
 
   public override async has(key: string): Promise<boolean> {
