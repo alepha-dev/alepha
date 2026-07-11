@@ -476,13 +476,13 @@ describe("FileController", () => {
       expect(results.content.every((f) => f.creator === user1Id)).toBe(true);
     });
 
-    it("should filter by date range", { retry: 3 }, async () => {
+    it("should filter by date range", async () => {
       const { service, ctrl, dtp } = await setup();
 
-      const startTime = dtp.nowISOString();
-
-      // ensure time difference
-      await new Promise((resolve) => setTimeout(resolve, 1));
+      // createdAfter is exclusive, so sampling "now" here races the first
+      // upload: at millisecond precision both can land on the same tick and
+      // the file gets filtered out. Take a bound strictly below all uploads.
+      const startTime = dtp.now().subtract(1, "second").toISOString();
 
       await service.uploadFile(createFile("content", { name: "file1.txt" }));
       await service.uploadFile(createFile("content", { name: "file2.txt" }));
