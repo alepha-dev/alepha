@@ -22,7 +22,12 @@ class FakeForward extends SigilForwardProvider {
 
 const make = () =>
   Alepha.create({
-    env: { NODE_ENV: "production", SERVER_PORT: 0, SIGIL_ID: "sig-1" },
+    env: {
+      NODE_ENV: "production",
+      APP_SECRET: "test-secret",
+      SERVER_PORT: 0,
+      SIGIL_ID: "sig-1",
+    },
   }).with({ provide: SigilForwardProvider, use: FakeForward });
 
 describe("SigilProxyController.ingest", () => {
@@ -78,7 +83,11 @@ describe("SigilProxyController.ingest", () => {
     }
 
     const alepha = Alepha.create({
-      env: { NODE_ENV: "production", SERVER_PORT: 0 },
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+      },
     }).with({ provide: SigilForwardProvider, use: DisabledForward });
     const ctrl = alepha.inject(SigilProxyController);
     await alepha.start();
@@ -130,7 +139,12 @@ describe("SigilProxyController.ingest", () => {
     }
 
     const alepha = Alepha.create({
-      env: { NODE_ENV: "production", SERVER_PORT: 0, SIGIL_ID: "sig-1" },
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+        SIGIL_ID: "sig-1",
+      },
     }).with({ provide: SigilForwardProvider, use: FilteredForward });
     const ctrl = alepha.inject(SigilProxyController);
     await alepha.start();
@@ -170,7 +184,12 @@ describe("SigilProxyController.request", () => {
     }
 
     const alepha = Alepha.create({
-      env: { NODE_ENV: "production", SERVER_PORT: 0, SIGIL_ID: "sig-1" },
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+        SIGIL_ID: "sig-1",
+      },
     }).with({ provide: SigilForwardProvider, use: RedirectForward });
     const ctrl = alepha.inject(SigilProxyController);
     await alepha.start();
@@ -198,7 +217,12 @@ describe("SigilProxyController.request", () => {
     }
 
     const alepha = Alepha.create({
-      env: { NODE_ENV: "production", SERVER_PORT: 0, SIGIL_ID: "sig-1" },
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+        SIGIL_ID: "sig-1",
+      },
     }).with({ provide: SigilForwardProvider, use: RedirectForward });
     const ctrl = alepha.inject(SigilProxyController);
     await alepha.start();

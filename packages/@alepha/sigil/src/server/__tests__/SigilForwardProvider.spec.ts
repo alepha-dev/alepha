@@ -17,7 +17,12 @@ class RecordingHttpClient extends HttpClient {
 
 const make = (env: Record<string, any>) =>
   Alepha.create({
-    env: { NODE_ENV: "production", SERVER_PORT: 0, ...env },
+    env: {
+      NODE_ENV: "production",
+      APP_SECRET: "test-secret",
+      SERVER_PORT: 0,
+      ...env,
+    },
   }).with({
     provide: HttpClient,
     use: RecordingHttpClient,

@@ -16,7 +16,11 @@ class FakeForward extends SigilForwardProvider {
 describe("SigilServerErrors", () => {
   it("forwards server:onError as a server-origin blight", async () => {
     const alepha = Alepha.create({
-      env: { NODE_ENV: "production", SERVER_PORT: 0 },
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+      },
     }).with({
       provide: SigilForwardProvider,
       use: FakeForward,
@@ -45,7 +49,11 @@ describe("SigilServerErrors", () => {
       }
     }
     const alepha = Alepha.create({
-      env: { NODE_ENV: "production", SERVER_PORT: 0 },
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+      },
     }).with({
       provide: SigilForwardProvider,
       use: Disabled,

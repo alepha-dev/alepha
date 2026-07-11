@@ -6,7 +6,12 @@ import { AlephaSigil } from "../index.ts";
 describe("AlephaSigil module", () => {
   it("mounts SigilRoot via rootComponents in production", async () => {
     const alepha = Alepha.create({
-      env: { NODE_ENV: "production", SERVER_PORT: 0, SIGIL_ID: "x" },
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+        SIGIL_ID: "x",
+      },
     }).with(AlephaSigil);
     await alepha.start();
     expect(alepha.inject(RootComponentsProvider).rootComponents.length).toBe(1);
