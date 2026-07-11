@@ -80,8 +80,15 @@ were re-checked against source; two were reproduced with live tests.
 
 ## P0 — Fix first
 
-### P0-1 · `$lock` provides no same-process mutual exclusion · `REPRODUCED`
-- **File:** `packages/alepha/src/lock/core/primitives/$lock.ts:46` (also `LockPrimitive`, same file ~:414).
+### P0-1 · `$lock` provides no same-process mutual exclusion · `REPRODUCED` · ✅ FIXED
+- **Status:** FIXED (middleware) — the lock id is now generated inside the per-invocation closure, not
+  at composition time, so concurrent calls get distinct ids and `SET NX GET` correctly rejects
+  contenders. Added `lock-mutual-exclusion.spec.ts` (3 concurrent calls → `maxConcurrent === 1`,
+  previously 3). NOTE on `LockPrimitive` (~:414): its lazy `this.id` is a per-*instance* replica
+  identity, which is correct/intended for cross-replica scheduler dedup — within-instance overlap is
+  the scheduler's responsibility (CronProvider's `executing` flag). Not changed; different semantics
+  from the middleware. The lock-release-after-expiry (P1) is a separate follow-up.
+- **File:** `packages/alepha/src/lock/core/primitives/$lock.ts` (middleware closure).
 - **Mechanism:** the lock id is `crypto.randomUUID()` created in the middleware handler body, which
   runs **once when the pipeline is composed** (`$pipeline.ts:115` memoizes `this.wrapped`). All
   invocations share one id. The acquire is `SET NX GET`; when the key already exists it returns the

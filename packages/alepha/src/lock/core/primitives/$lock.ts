@@ -44,12 +44,19 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
     name: "$lock",
     options: options as unknown as Record<string, unknown>,
     handler: ({ alepha, next }) => {
-      const id = crypto.randomUUID();
       const maxDurationMs = dateTimeProvider
         .duration(options.maxDuration ?? [5, "minutes"])
         .asMilliseconds();
 
       return async (...args: any[]) => {
+        // Per-invocation identity. The pipeline composes this middleware once
+        // and memoizes the wrapped function, so an id created in the handler
+        // body (outside this closure) would be shared by every concurrent
+        // invocation — `SET NX GET` would then hand each caller back that same
+        // shared id, and every one would read `lockId === id` and enter the
+        // critical section together. Generating it here, per call, is what makes
+        // mutual exclusion actually hold within a single process.
+        const id = crypto.randomUUID();
         const name =
           typeof options.name === "function"
             ? options.name(...args)
