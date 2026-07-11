@@ -15,15 +15,15 @@
   "dependencies": {
     "@alepha/ui": "workspace:^",
     "alepha": "workspace:^",
-    "lucide-react": "^1.21.0",
+    "lucide-react": "^1.24.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
-    "@tailwindcss/vite": "^4.3.1",
-    "tailwindcss": "^4.3.1",
-    "vite": "^8.1.0",
-    "wrangler": "^4.105.0"
+    "@tailwindcss/vite": "^4.3.2",
+    "tailwindcss": "^4.3.2",
+    "vite": "^8.1.4",
+    "wrangler": "^4.110.0"
   }
 }

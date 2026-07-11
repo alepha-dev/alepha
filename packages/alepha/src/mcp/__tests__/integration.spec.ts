@@ -47,7 +47,7 @@ describe("MCP Integration", () => {
     });
 
     expect(initResponse?.result).toBeDefined();
-    const initResult = initResponse?.result as {
+    const initResult = initResponse!.result as {
       capabilities: { tools?: object };
     };
     expect(initResult.capabilities.tools).toBeDefined();
@@ -66,7 +66,7 @@ describe("MCP Integration", () => {
       method: "tools/list",
     });
 
-    const tools = (listResponse?.result as { tools: Array<{ name: string }> })
+    const tools = (listResponse!.result as { tools: Array<{ name: string }> })
       .tools;
     expect(tools).toHaveLength(1);
     expect(tools[0].name).toBe("add");
@@ -82,7 +82,7 @@ describe("MCP Integration", () => {
       },
     });
 
-    const result = callResponse?.result as { content: Array<{ text: string }> };
+    const result = callResponse!.result as { content: Array<{ text: string }> };
     expect(result.content[0].text).toBe("30");
   });
 
@@ -129,7 +129,7 @@ describe("MCP Integration", () => {
     });
 
     const resources = (
-      listResponse?.result as {
+      listResponse!.result as {
         resources: Array<{ uri: string; name: string }>;
       }
     ).resources;
@@ -145,7 +145,7 @@ describe("MCP Integration", () => {
       params: { uri: "file:///README.md" },
     });
 
-    const content1 = (read1?.result as { contents: Array<{ text: string }> })
+    const content1 = (read1!.result as { contents: Array<{ text: string }> })
       .contents[0];
     expect(content1.text).toContain("Read count: 1");
 
@@ -156,7 +156,7 @@ describe("MCP Integration", () => {
       params: { uri: "file:///README.md" },
     });
 
-    const content2 = (read2?.result as { contents: Array<{ text: string }> })
+    const content2 = (read2!.result as { contents: Array<{ text: string }> })
       .contents[0];
     expect(content2.text).toContain("Read count: 2");
   });
@@ -218,7 +218,7 @@ describe("MCP Integration", () => {
     });
 
     const prompts = (
-      listResponse?.result as {
+      listResponse!.result as {
         prompts: Array<{
           name: string;
           arguments?: Array<{ name: string; required?: boolean }>;
@@ -244,7 +244,7 @@ describe("MCP Integration", () => {
     });
 
     const messages1 = (
-      get1?.result as {
+      get1!.result as {
         messages: Array<{ role: string; content: { text: string } }>;
       }
     ).messages;
@@ -267,7 +267,7 @@ describe("MCP Integration", () => {
     });
 
     const messages2 = (
-      get2?.result as { messages: Array<{ content: { text: string } }> }
+      get2!.result as { messages: Array<{ content: { text: string } }> }
     ).messages;
     expect(messages2).toHaveLength(2);
     expect(messages2[1].content.text).toContain("performance");
@@ -349,7 +349,7 @@ describe("MCP Integration", () => {
     });
 
     const caps = (
-      init?.result as {
+      init!.result as {
         capabilities: { tools?: object; resources?: object; prompts?: object };
       }
     ).capabilities;
@@ -365,7 +365,7 @@ describe("MCP Integration", () => {
       params: { name: "calculator", arguments: { op: "mul", a: 7, b: 8 } },
     });
     expect(
-      (calc?.result as { content: Array<{ text: string }> }).content[0].text,
+      (calc!.result as { content: Array<{ text: string }> }).content[0].text,
     ).toBe("56");
 
     // Read version resource
@@ -376,7 +376,7 @@ describe("MCP Integration", () => {
       params: { uri: "app://version" },
     });
     const versionData = JSON.parse(
-      (ver?.result as { contents: Array<{ text: string }> }).contents[0].text,
+      (ver!.result as { contents: Array<{ text: string }> }).contents[0].text,
     );
     expect(versionData.version).toBe("1.0.0");
 
@@ -388,7 +388,7 @@ describe("MCP Integration", () => {
       params: { name: "greeting", arguments: { name: "Alice" } },
     });
     expect(
-      (greet?.result as { messages: Array<{ content: { text: string } }> })
+      (greet!.result as { messages: Array<{ content: { text: string } }> })
         .messages[0].content.text,
     ).toContain("Alice");
   });
@@ -424,7 +424,7 @@ describe("MCP Integration", () => {
       params: { name: "flaky", arguments: {} },
     });
     expect(
-      (r1?.result as { content: Array<{ text: string }> }).content[0].text,
+      (r1!.result as { content: Array<{ text: string }> }).content[0].text,
     ).toBe("success");
 
     // Second call - failure
@@ -434,7 +434,7 @@ describe("MCP Integration", () => {
       method: "tools/call",
       params: { name: "flaky", arguments: {} },
     });
-    expect((r2?.result as { isError?: boolean }).isError).toBe(true);
+    expect((r2!.result as { isError?: boolean }).isError).toBe(true);
 
     // Third call - success (server should still work)
     const r3 = await provider.handleMessage({
@@ -444,7 +444,7 @@ describe("MCP Integration", () => {
       params: { name: "flaky", arguments: {} },
     });
     expect(
-      (r3?.result as { content: Array<{ text: string }> }).content[0].text,
+      (r3!.result as { content: Array<{ text: string }> }).content[0].text,
     ).toBe("success");
   });
 });

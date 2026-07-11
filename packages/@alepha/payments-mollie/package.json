@@ -21,13 +21,13 @@
     "src"
   ],
   "dependencies": {
-    "@mollie/api-client": "^4.5.0"
+    "@mollie/api-client": "^4.6.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.1",
+    "@biomejs/biome": "^2.5.3",
     "alepha": "0.23.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
   "peerDependencies": {
     "alepha": "0.23.0"
