@@ -14,7 +14,11 @@ describe("ServerRouterProvider - errorHandler", () => {
   describe("in production mode", () => {
     it("should not leak error details in 500 response", async ({ expect }) => {
       const alepha = Alepha.create({
-        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
       }).with(TestApp);
 
       await alepha.start();

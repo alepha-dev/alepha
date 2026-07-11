@@ -34,7 +34,11 @@ describe("NodeHttpServerProvider", () => {
 
     test("production mode: waits for connections then closes", async () => {
       alepha = Alepha.create({
-        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
       });
       alepha.with(NodeHttpServerProvider);
 
@@ -57,7 +61,11 @@ describe("NodeHttpServerProvider", () => {
 
     test("production mode: forces close after timeout", async () => {
       alepha = Alepha.create({
-        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
       });
       alepha.with(NodeHttpServerProvider);
 
@@ -98,7 +106,11 @@ describe("NodeHttpServerProvider", () => {
 
     test("rejects new requests during shutdown", async () => {
       alepha = Alepha.create({
-        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
       });
       alepha.with(NodeHttpServerProvider);
 

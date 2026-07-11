@@ -68,7 +68,11 @@ describe("ServerRouterProvider - request validation error", () => {
       expect,
     }) => {
       const alepha = Alepha.create({
-        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
       }).with(TestApp);
 
       const { response, json } = await fetchAndStop(alepha, (host) => ({
@@ -92,7 +96,11 @@ describe("ServerRouterProvider - request validation error", () => {
       expect,
     }) => {
       const alepha = Alepha.create({
-        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
       }).with(TestApp);
 
       const { response, json } = await fetchAndStop(alepha, (host) => ({
@@ -136,7 +144,11 @@ describe("ServerRouterProvider - request validation error", () => {
       expect,
     }) => {
       const alepha = Alepha.create({
-        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
       }).with(TestApp);
 
       const { response, json } = await fetchAndStop(alepha, (host) => ({
@@ -155,7 +167,11 @@ describe("ServerRouterProvider - request validation error", () => {
       expect,
     }) => {
       const alepha = Alepha.create({
-        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
       }).with(TestApp);
 
       const { response, json } = await fetchAndStop(alepha, (host) => ({
@@ -174,7 +190,11 @@ describe("ServerRouterProvider - request validation error", () => {
       expect,
     }) => {
       const alepha = Alepha.create({
-        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
       }).with(TestApp);
 
       const { response, json } = await fetchAndStop(alepha, (host) => ({
@@ -208,7 +228,11 @@ describe("ServerRouterProvider - request validation error", () => {
       }
 
       const alepha = Alepha.create({
-        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
       }).with(CoerceApp);
 
       await alepha.start();
@@ -245,7 +269,11 @@ describe("ServerRouterProvider - request validation error", () => {
       }
 
       const alepha = Alepha.create({
-        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
       }).with(PreserveApp);
 
       await alepha.start();
@@ -289,7 +317,11 @@ describe("ServerRouterProvider - request validation error", () => {
       }
 
       const alepha = Alepha.create({
-        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
       }).with(CaseApp);
 
       await alepha.start();

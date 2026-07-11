@@ -1,4 +1,4 @@
-import { $env, $hook, $inject, Alepha, z } from "alepha";
+import { $env, $hook, $inject, Alepha, AlephaError, z } from "alepha";
 import { $logger } from "alepha/logger";
 
 export const DEFAULT_SECRET_KEY_VALUE = "change-me-in-production";
@@ -23,14 +23,20 @@ export class SecretProvider {
   protected readonly configure = $hook({
     on: "configure",
     handler: async () => {
-      // It's not ideal from a security pov but it's the best for convenience,
-      // it can be changed to a hard error in a future release.
-      if (
-        this.secretKey === DEFAULT_SECRET_KEY_VALUE &&
-        this.alepha.isProduction()
-      ) {
+      if (this.secretKey === DEFAULT_SECRET_KEY_VALUE) {
+        // In production the default secret is a full token-forgery bypass:
+        // JWTs would be signed with a public, well-known constant. Fail closed.
+        if (this.alepha.isProduction()) {
+          throw new AlephaError(
+            "APP_SECRET is unset in production (using the built-in default). " +
+              "Set a strong, unique APP_SECRET environment variable — the default " +
+              "is public and lets anyone forge authentication tokens.",
+          );
+        }
+        // Outside production, keep the convenience default but make the risk loud.
         this.log.warn(
-          "Using default secret key. Please set a secure APP_SECRET environment variable.",
+          "Using the default APP_SECRET. This is fine for local development but " +
+            "MUST be set to a strong, unique value before deploying to production.",
         );
       }
     },
