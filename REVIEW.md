@@ -155,10 +155,15 @@ were re-checked against source; two were reproduced with live tests.
   `Alepha.ts:872` to warn-once on scoped fallback.
 - **Test gap:** no test injects a scoped service after `start()`.
 
-### P0-5 · DevTools DB / atom / env endpoints ship with no auth and no prod guard · `SOURCE-CHECKED`
-- **Files:** `packages/@alepha/devtools/src/index.ts:28` (module `register` — no `isProduction()`
-  guard anywhere in the load path); `providers/DevToolsProvider.ts:287-373` (db list/create/update/
-  delete), `:61-85` (atom write), `:389-398` (env via metadata).
+### P0-5 · DevTools DB / atom / env endpoints ship with no auth and no prod guard · `SOURCE-CHECKED` · ✅ FIXED
+- **Status:** FIXED — the route-bearing providers were removed from the module's `services` array
+  (which auto-injects *after* `register`, so a register-only guard was insufficient) and are now
+  registered only inside a production-guarded `register` (`if (alepha.isProduction()) return;`),
+  mirroring sigil. In production the `$route` fields never mount. Added `production-guard.spec.ts`
+  asserting zero `/__devtools` routes in production and >0 outside it. (Defense-in-depth `$secure`/
+  localhost gating on the handlers is a good follow-up but no longer load-bearing.)
+- **Files:** `packages/@alepha/devtools/src/index.ts` (module registration);
+  `providers/DevToolsProvider.ts` (the route definitions, now only mounted in non-production).
 - **Mechanism:** every route is a plain `$route` with `silent:true` (suppresses *logging* only, not
   access) and no `$secure`. Bodies are `z.record(z.text(), z.any())` passed straight to
   `repo.create`/`updateById`/`deleteById`, bypassing the app's own validation. Unlike `sigil`

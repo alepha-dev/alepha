@@ -28,8 +28,19 @@ export * from "./providers/DevToolsMetadataProvider.ts";
 export const AlephaDevtools = $module({
   name: "alepha.devtools",
   primitives: [],
-  services: [DevToolsMetadataProvider, DevToolsProvider],
   register: (alepha) => {
+    // SECURITY: DevTools mounts unauthenticated endpoints that read and MUTATE
+    // application state — arbitrary DB create/update/delete, atom writes, and
+    // cleartext env (secrets) via `/devtools/metadata`. It must NEVER be exposed
+    // on a deployed app. Guard registration here (like sigil does) so that
+    // importing this module into a production server graph — as the module docs
+    // suggest — cannot accidentally expose those routes. The route-bearing
+    // providers are intentionally NOT listed under `services` (which would
+    // auto-inject them regardless of this guard); they are registered only in
+    // non-production, so their `$route` fields never mount in prod.
+    if (alepha.isProduction()) {
+      return;
+    }
     alepha.with(AlephaServer);
     alepha.with(AlephaServerStatic);
     alepha.with(DevToolsProvider);
