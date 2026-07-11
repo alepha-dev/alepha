@@ -6,7 +6,11 @@ import { SigilBrowserProvider } from "../SigilBrowserProvider.ts";
 describe("SigilBrowserProvider", () => {
   it("enqueues a pageview on react:transition:end (prod + browser)", async () => {
     const alepha = Alepha.create({
-      env: { NODE_ENV: "production", SERVER_PORT: 0 },
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+      },
     });
     const provider = alepha.inject(SigilBrowserProvider);
     await alepha.start();
@@ -18,7 +22,11 @@ describe("SigilBrowserProvider", () => {
 
   it("does not enqueue a pageview when the beacon feature is off", async () => {
     const alepha = Alepha.create({
-      env: { NODE_ENV: "production", SERVER_PORT: 0 },
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+      },
     });
     const provider = alepha.inject(SigilBrowserProvider);
     await alepha.start();
