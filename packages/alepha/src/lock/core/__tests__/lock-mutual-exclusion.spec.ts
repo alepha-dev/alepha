@@ -1,7 +1,9 @@
 import { Alepha } from "alepha";
-import { AlephaLock, LockProvider, MemoryLockProvider } from "alepha/lock";
 import { describe, expect, it } from "vitest";
+import { AlephaLock } from "../index.ts";
 import { $lock } from "../primitives/$lock.ts";
+import { LockProvider } from "../providers/LockProvider.ts";
+import { MemoryLockProvider } from "../providers/MemoryLockProvider.ts";
 
 describe("$lock middleware — same-process mutual exclusion", () => {
   it("lets only one of several concurrent calls enter the critical section", async () => {
