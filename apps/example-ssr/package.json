@@ -16,7 +16,7 @@
     "e2e:mode:prod": "playwright test",
     "e2e:ui": "playwright test --ui",
     "start": "yarn build:e2e && yarn migrate:e2e && wrangler dev --cwd dist --persist-to /tmp/wrangler-state",
-    "start:e2e": "CI=true yarn build:e2e && yarn migrate:e2e && wrangler dev --cwd dist --port $SERVER_PORT --persist-to /tmp/wrangler-state",
+    "start:e2e": "CI=true yarn build:e2e && yarn migrate:e2e && wrangler dev --cwd dist --port $SERVER_PORT --var APP_SECRET:e2e-test-secret --persist-to /tmp/wrangler-state",
     "migrate:e2e": "cp -R migrations/sqlite dist/migrations && wrangler d1 migrations apply emerald --cwd dist --local --persist-to /tmp/wrangler-state",
     "build:e2e": "DATABASE_URL=d1://emerald:00000000-0000-0000-0000-000000000000 alepha build"
   },
