@@ -23,6 +23,9 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       SERVER_PORT: `${port}`,
+      // `yarn start` runs the production build (`node dist`), which now refuses
+      // to boot on the default APP_SECRET — inject a test one.
+      APP_SECRET: "e2e-test-secret",
     },
     stdout: "pipe",
     stderr: "pipe",
