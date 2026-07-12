@@ -137,6 +137,11 @@ were re-checked against source; two were reproduced with live tests.
 - **Status:** FIXED — `SecretProvider.configure` now throws `AlephaError` on start when
   `isProduction() && secret === DEFAULT_SECRET_KEY_VALUE` (still warns outside production). Added
   `crypto/__tests__/SecretProvider.spec.ts`; production-mode server specs now set a test `APP_SECRET`.
+  **Follow-ups (same effort):** production-mode tests across the suite needed a test `APP_SECRET`
+  (server, sigil), and `apps/playground`'s e2e webServer (which runs the production build via `node
+  dist` with `NODE_ENV=production`) now injects one — otherwise the server correctly refuses to boot
+  and Playwright times out. (lore/docs run `node dist` with `NODE_ENV` unset → non-production → warn,
+  so they are unaffected.)
 - **File:** `packages/alepha/src/crypto/providers/SecretProvider.ts` (default constant
   `"change-me-in-production"`).
 - **Mechanism:** on a prod deploy that forgot to set `APP_SECRET`, HS256 JWTs are signed with the

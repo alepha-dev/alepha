@@ -28,6 +28,9 @@ export default defineConfig({
     url: `http://localhost:${port}`,
     env: {
       NODE_ENV: "production",
+      // The e2e server runs the production build; Alepha now refuses to boot in
+      // production with the built-in default APP_SECRET, so inject a test one.
+      APP_SECRET: "e2e-test-secret",
       SERVER_PORT: String(port),
       DATABASE_URL: ":memory:",
     },
