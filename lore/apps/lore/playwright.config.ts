@@ -35,6 +35,9 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     env: {
       SERVER_PORT: `${port}`,
+      // `yarn start` runs the production build (`node dist`), which now refuses
+      // to boot on the default APP_SECRET — inject a test one.
+      APP_SECRET: "e2e-test-secret",
       // Cloudflare Turnstile "always-pass" test keys — `yarn start` runs `node dist`
       // which doesn't load `.env`, so e2e needs these injected explicitly.
       TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
