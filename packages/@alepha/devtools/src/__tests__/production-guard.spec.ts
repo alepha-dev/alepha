@@ -1,7 +1,16 @@
+import { mkdirSync } from "node:fs";
 import { Alepha } from "alepha";
 import { AlephaServer, ServerRouterProvider } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { AlephaDevtools } from "../index.ts";
+
+// Outside production the module serves its built UI from `assets/ui`, which is a
+// gitignored build artifact (absent in CI). ServerStaticProvider would fail to
+// boot on the missing directory. This spec only exercises route registration,
+// so make the static root exist as an empty directory.
+beforeAll(() => {
+  mkdirSync(new URL("../../assets/ui", import.meta.url), { recursive: true });
+});
 
 const devtoolsRoutes = (alepha: Alepha) =>
   alepha
