@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build",
+    "typecheck": "tsc --noEmit",
     "start": "node dist",
     "wrangler": "cd dist && wrangler",
     "wrangler:dev": "cd dist && wrangler dev",

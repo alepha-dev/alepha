@@ -144,7 +144,7 @@ const Dialogs = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => toast("Plain toast")}
+              onClick={() => toast.show("Plain toast")}
             >
               toast
             </Button>
@@ -165,13 +165,15 @@ const Dialogs = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                toast.promise(new Promise((r) => setTimeout(r, 1500)), {
-                  loading: "Working...",
-                  success: "Done",
-                  error: "Failed",
-                })
-              }
+              onClick={async () => {
+                toast.info("Working...");
+                try {
+                  await new Promise((resolve) => setTimeout(resolve, 1500));
+                  toast.success("Done");
+                } catch {
+                  toast.error("Failed");
+                }
+              }}
             >
               promise
             </Button>

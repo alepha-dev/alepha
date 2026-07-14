@@ -27,7 +27,8 @@
     "components.json"
   ],
   "scripts": {
-    "sync": "node scripts/sync.mjs"
+    "sync": "node scripts/sync.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "exports": {
     "./components/*": "./src/components/*.tsx",

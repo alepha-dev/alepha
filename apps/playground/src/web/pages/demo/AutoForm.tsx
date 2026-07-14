@@ -2,6 +2,7 @@ import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
 import { useForm } from "alepha/react/form";
+import type { SchemaControl, SchemaControlFn } from "alepha/react/ui";
 
 const profileSchema = z.object({
   username: z
@@ -27,11 +28,11 @@ const profileSchema = z.object({
   apiToken: z
     .string()
     .meta({
-      $control: ({ form }) => {
+      $control: (({ form }) => {
         const role = (form.currentValues as { role?: string }).role;
         if (role !== "admin") return false;
         return { icon: "key", password: true };
-      },
+      }) satisfies SchemaControlFn,
     })
     .describe("Only visible when role is admin (driven by $control function).")
     .optional(),
@@ -69,7 +70,7 @@ const profileSchema = z.object({
           renderTabName: (i, value) =>
             (value as { label?: string })?.label || `Contact #${i + 1}`,
         },
-      },
+      } satisfies SchemaControl,
     })
     .describe("Add up to 6 ways to reach you."),
   // Tags = array of primitive strings with description

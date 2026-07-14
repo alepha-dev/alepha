@@ -40,7 +40,7 @@
     "clean": "yarn alepha clean",
     "copy": "yarn workspaces foreach -Apt run copy",
     "lint": "yarn alepha lint",
-    "typecheck": "yarn workspaces foreach -Apt run typecheck",
+    "typecheck": "yarn workspaces foreach -Apt -j 4 run typecheck",
     "test": "yarn vitest run",
     "check:deps": "yarn workspaces foreach -Apt exec depcheck .",
     "check:i18n": "yarn workspaces foreach -Apt run check:i18n",
