@@ -1,4 +1,5 @@
 import { KIND } from "../constants/KIND.ts";
+import { AlephaError } from "../errors/AlephaError.ts";
 import type { Atom, AtomStatic } from "./$atom.ts";
 
 /**
@@ -65,28 +66,67 @@ export class Computed<R = unknown, N extends string = string> {
   }
 
   /**
+   * Reentrancy guard for {@link keys}. Deps are declared as a `readonly`
+   * array at construction time, so a cycle can't be built through the
+   * public API — but the array itself isn't frozen, so nothing stops a
+   * caller from reaching in and creating one anyway. Without this guard,
+   * a cycle would recurse until the JS engine throws a native
+   * `RangeError`, which violates the repo's "never throw a bare `Error`"
+   * convention.
+   */
+  protected resolvingKeys = false;
+
+  /**
+   * Reentrancy guard for {@link compute}, same rationale as
+   * {@link resolvingKeys}.
+   */
+  protected computing = false;
+
+  /**
    * Transitive atom keys this computed value depends on. Subscribers
    * (useComputed, StateManager.watch) use this to know which `state:mutate`
    * events invalidate the value.
    */
   public keys(): string[] {
-    const out: string[] = [];
-    for (const dep of this.options.deps as ReadonlyArray<AnyDep>) {
-      if (dep instanceof Computed) {
-        out.push(...dep.keys());
-      } else {
-        out.push(dep.key);
-      }
+    if (this.resolvingKeys) {
+      throw new AlephaError(
+        `Circular $computed dependency detected at "${this.key}". A computed cannot depend on itself, even transitively.`,
+      );
     }
-    return [...new Set(out)];
+
+    this.resolvingKeys = true;
+    try {
+      const out: string[] = [];
+      for (const dep of this.options.deps as ReadonlyArray<AnyDep>) {
+        if (dep instanceof Computed) {
+          out.push(...dep.keys());
+        } else {
+          out.push(dep.key);
+        }
+      }
+      return [...new Set(out)];
+    } finally {
+      this.resolvingKeys = false;
+    }
   }
 
   /**
    * Resolve the value using the given dependency resolver.
    */
   public compute(resolve: (dep: AnyDep) => unknown): R {
-    const values = (this.options.deps as ReadonlyArray<AnyDep>).map(resolve);
-    return this.options.get(...(values as DepValues<any>));
+    if (this.computing) {
+      throw new AlephaError(
+        `Circular $computed dependency detected at "${this.key}". A computed cannot depend on itself, even transitively.`,
+      );
+    }
+
+    this.computing = true;
+    try {
+      const values = (this.options.deps as ReadonlyArray<AnyDep>).map(resolve);
+      return this.options.get(...(values as DepValues<any>));
+    } finally {
+      this.computing = false;
+    }
   }
 }
 
