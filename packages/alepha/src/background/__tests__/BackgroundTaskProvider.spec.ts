@@ -72,6 +72,42 @@ describe("BackgroundTaskProvider", () => {
       await background.flush();
     });
 
+    it("keeps waitUntil isolated across concurrent invocations", async () => {
+      // One CF isolate serves overlapping requests. Each must defer into ITS
+      // OWN executionCtx — if the handle is shared, the later request's
+      // waitUntil captures the earlier request's background work (and throws
+      // "waitUntil after response" once it has returned).
+      const alepha = Alepha.create();
+      alepha.with({
+        provide: BackgroundTaskProvider,
+        use: WorkerdBackgroundTaskProvider,
+      });
+      const background = alepha.inject(BackgroundTaskProvider);
+      await alepha.start();
+
+      const invoke = (captured: Promise<unknown>[]) =>
+        alepha.context.run(
+          async () => {
+            // Yield so both invocations are open at the same time.
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            background.defer(async () => {});
+          },
+          {
+            "cloudflare.waitUntil": (p: Promise<unknown>) => captured.push(p),
+          },
+        );
+
+      const capturedA: Promise<unknown>[] = [];
+      const capturedB: Promise<unknown>[] = [];
+      await Promise.all([invoke(capturedA), invoke(capturedB)]);
+
+      // Each invocation's own execution context received exactly its own task.
+      expect(capturedA).toHaveLength(1);
+      expect(capturedB).toHaveLength(1);
+
+      await background.flush();
+    });
+
     it("falls back to fire-and-track when no waitUntil is in scope", async () => {
       const alepha = Alepha.create();
       alepha.with({

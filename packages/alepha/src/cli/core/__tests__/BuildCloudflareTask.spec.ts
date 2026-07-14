@@ -10,6 +10,8 @@ import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
 class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testEnhanceD1 = this.enhanceD1.bind(this);
   public testEnhanceR2 = this.enhanceR2.bind(this);
+  public testEnhanceQueue = this.enhanceQueue.bind(this);
+  public testWriteWorkerEntryPoint = this.writeWorkerEntryPoint.bind(this);
 }
 
 describe("BuildCloudflareTask", () => {
@@ -21,11 +23,25 @@ describe("BuildCloudflareTask", () => {
     return alepha.inject(TestBuildCloudflareTask);
   };
 
+  const createTaskWithFs = () => {
+    const alepha = Alepha.create().with({
+      provide: FileSystemProvider,
+      use: MemoryFileSystemProvider,
+    });
+    return {
+      task: alepha.inject(TestBuildCloudflareTask),
+      fs: alepha.inject(MemoryFileSystemProvider),
+    };
+  };
+
   // Snapshot + restore the env vars these enhancers read so tests don't leak.
   const ENV_KEYS = [
     "DATABASE_URL",
     "R2_BUCKET_NAME",
     "CLOUDFLARE_JURISDICTION",
+    "CLOUDFLARE_QUEUE_NAME",
+    "CLOUDFLARE_QUEUE_DLQ_NAME",
+    "CLOUDFLARE_QUEUE_MAX_RETRIES",
   ] as const;
   const saved: Record<string, string | undefined> = {};
   beforeEach(() => {
@@ -74,6 +90,89 @@ describe("BuildCloudflareTask", () => {
       expect(wrangler.r2_buckets).toEqual([
         { binding: "my-bucket", bucket_name: "my-bucket", jurisdiction: "eu" },
       ]);
+    });
+  });
+
+  describe("enhanceQueue", () => {
+    /**
+     * The worker's queue handler calls `msg.retry()` on any throw. Without a
+     * `dead_letter_queue`, CF burns its retries and then DISCARDS the message —
+     * a poison job disappears with no record and no signal.
+     */
+    it("gives the consumer a dead-letter queue and a retry ceiling", () => {
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-queue";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(wrangler);
+
+      expect(wrangler.queues.consumers).toEqual([
+        {
+          queue: "my-queue",
+          dead_letter_queue: "my-queue-dlq",
+          max_retries: 3,
+        },
+      ]);
+    });
+
+    it("honours an explicit dead-letter queue and retry ceiling", () => {
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-queue";
+      process.env.CLOUDFLARE_QUEUE_DLQ_NAME = "shared-dlq";
+      process.env.CLOUDFLARE_QUEUE_MAX_RETRIES = "5";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(wrangler);
+
+      expect(wrangler.queues.consumers[0]).toEqual({
+        queue: "my-queue",
+        dead_letter_queue: "shared-dlq",
+        max_retries: 5,
+      });
+    });
+
+    it("ignores a non-numeric retry ceiling rather than emitting NaN", () => {
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-queue";
+      process.env.CLOUDFLARE_QUEUE_MAX_RETRIES = "not-a-number";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(wrangler);
+
+      expect(wrangler.queues.consumers[0].max_retries).toBe(3);
+    });
+  });
+
+  describe("writeWorkerEntryPoint", () => {
+    const ENTRY = "/root/dist/main.cloudflare.js";
+
+    /**
+     * A single CF isolate serves concurrent invocations. Stashing the
+     * per-invocation `executionCtx.waitUntil` on the shared Alepha store means
+     * request B overwrites request A's, and A's background work then calls B's
+     * (already-returned) context — "waitUntil after response" — silently
+     * killing it. The handle must ride the per-invocation async context.
+     */
+    it("does not stash waitUntil on the shared global store", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      await task.testWriteWorkerEntryPoint("/root", "dist");
+
+      expect(
+        fs.wasWrittenMatching(
+          ENTRY,
+          /__alepha\.set\(\s*["']cloudflare\.waitUntil["']/,
+        ),
+      ).toBe(false);
+    });
+
+    it("scopes waitUntil to each invocation's async context", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      await task.testWriteWorkerEntryPoint("/root", "dist");
+
+      // Every entry point (fetch / scheduled / queue) must run its body inside
+      // an Alepha fork seeded with that invocation's waitUntil.
+      expect(fs.wasWrittenMatching(ENTRY, /__alepha\.context\.run\(/)).toBe(
+        true,
+      );
     });
   });
 });

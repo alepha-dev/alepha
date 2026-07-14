@@ -19,6 +19,12 @@ export interface CloudflareQueue {
  */
 export const QUEUE_DEFAULT_BINDING = "JOBS_QUEUE";
 
+/**
+ * How many times Cloudflare redelivers a message before routing it to the
+ * consumer's dead-letter queue. Matches Cloudflare's own default.
+ */
+export const QUEUE_DEFAULT_MAX_RETRIES = 3;
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**

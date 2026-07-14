@@ -2,7 +2,7 @@ import { basename } from "node:path";
 import { $inject } from "alepha";
 import { KV_DEFAULT_BINDING } from "alepha/cache";
 import { SEND_EMAIL_DEFAULT_BINDING } from "alepha/email/cloudflare";
-import { QUEUE_DEFAULT_BINDING } from "alepha/queue";
+import { QUEUE_DEFAULT_BINDING, QUEUE_DEFAULT_MAX_RETRIES } from "alepha/queue";
 import type { CronProvider, WorkerdCronProvider } from "alepha/scheduler";
 import { FileSystemProvider } from "alepha/system";
 import { ViteUtils } from "../services/ViteUtils.ts";
@@ -497,9 +497,22 @@ export class BuildCloudflareTask extends BuildTask {
       binding: QUEUE_DEFAULT_BINDING,
       queue: queueName,
     });
+
+    // The worker's queue handler calls `msg.retry()` on any throw. Cloudflare
+    // only gives a failing message somewhere to land if the consumer declares a
+    // `dead_letter_queue` — otherwise it burns `max_retries` and DISCARDS the
+    // message, with no record and no signal. CF creates the DLQ on demand, so a
+    // derived default is safe.
+    const maxRetries = Number(process.env.CLOUDFLARE_QUEUE_MAX_RETRIES);
+
     wrangler.queues.consumers = wrangler.queues.consumers || [];
     wrangler.queues.consumers.push({
       queue: queueName,
+      dead_letter_queue:
+        process.env.CLOUDFLARE_QUEUE_DLQ_NAME || `${queueName}-dlq`,
+      max_retries: Number.isSafeInteger(maxRetries)
+        ? maxRetries
+        : QUEUE_DEFAULT_MAX_RETRIES,
     });
   }
 
@@ -554,15 +567,21 @@ export class BuildCloudflareTask extends BuildTask {
     const workerCode = `
 import "./index.js";
 
-// Stash the per-invocation \`executionCtx.waitUntil\` in the Alepha store
-// so background work (notably $job direct dispatch) can keep the isolate
-// alive past the response.
-const setWaitUntil = (executionCtx) => {
-  if (executionCtx && typeof executionCtx.waitUntil === "function") {
-    __alepha.set("cloudflare.waitUntil", (p) => executionCtx.waitUntil(p));
-  } else {
-    __alepha.set("cloudflare.waitUntil", undefined);
-  }
+// Run an invocation inside an Alepha fork carrying THIS invocation's
+// \`executionCtx.waitUntil\`, so background work (notably $job direct dispatch)
+// can keep the isolate alive past the response.
+//
+// It must be the async context, never the shared store: one isolate serves
+// concurrent invocations, so a store slot would let request B overwrite
+// request A's handle — A's background work would then call B's already-returned
+// context ("waitUntil after response") and be silently dropped.
+const withExecutionContext = (executionCtx, fn) => {
+  const waitUntil =
+    executionCtx && typeof executionCtx.waitUntil === "function"
+      ? (p) => executionCtx.waitUntil(p)
+      : undefined;
+
+  return __alepha.context.run(fn, { "cloudflare.waitUntil": waitUntil });
 };
 
 // Bind the per-invocation Worker \`env\`: keep the full binding (D1, R2, KV, …)
@@ -578,7 +597,6 @@ export default {
     const ctx = { req: request, res: undefined };
 
     bindEnv(env);
-    setWaitUntil(executionCtx);
 
     try {
       await __alepha.start();
@@ -587,14 +605,15 @@ export default {
       return new Response("Internal Server Error", { status: 500 });
     }
 
-    await __alepha.events.emit("web:request", ctx);
+    await withExecutionContext(executionCtx, () =>
+      __alepha.events.emit("web:request", ctx),
+    );
 
     return ctx.res;
   },
 
   scheduled: async (event, env, executionCtx) => {
     bindEnv(env);
-    setWaitUntil(executionCtx);
 
     try {
       await __alepha.start();
@@ -603,15 +622,16 @@ export default {
       throw err;
     }
 
-    await __alepha.events.emit("cloudflare:scheduled", {
-      cron: event.cron,
-      scheduledTime: event.scheduledTime,
-    });
+    await withExecutionContext(executionCtx, () =>
+      __alepha.events.emit("cloudflare:scheduled", {
+        cron: event.cron,
+        scheduledTime: event.scheduledTime,
+      }),
+    );
   },
 
   queue: async (batch, env, executionCtx) => {
     bindEnv(env);
-    setWaitUntil(executionCtx);
 
     try {
       await __alepha.start();
@@ -620,14 +640,16 @@ export default {
       throw err;
     }
 
-    for (const msg of batch.messages) {
-      try {
-        await __alepha.events.emit("cloudflare:queue", msg.body);
-        msg.ack();
-      } catch (e) {
-        msg.retry();
+    await withExecutionContext(executionCtx, async () => {
+      for (const msg of batch.messages) {
+        try {
+          await __alepha.events.emit("cloudflare:queue", msg.body);
+          msg.ack();
+        } catch (e) {
+          msg.retry();
+        }
       }
-    }
+    });
   },
 };
 `.trim();

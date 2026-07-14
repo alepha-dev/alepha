@@ -423,6 +423,15 @@ export class DbCommand {
         command: options.command,
       });
 
+      const migrationsDir = this.fs.join(rootDir, "migrations", providerName);
+      const isGenerate = options.command === "generate";
+
+      // Snapshot the directory so the destructive-migration guard below only
+      // inspects files THIS run created, not the whole applied history.
+      const before = isGenerate
+        ? new Set(await this.fs.ls(migrationsDir).catch(() => []))
+        : new Set<string>();
+
       const flags = options.commandFlags ? ` ${options.commandFlags}` : "";
       // drizzle-kit ships embedded in `alepha` — resolve and run it from
       // alepha's own install, so the project never declares it.
@@ -443,14 +452,22 @@ export class DbCommand {
         },
       );
 
+      if (!isGenerate) {
+        continue;
+      }
+
       // Post-process generated SQL: strip explicit "public". schema qualifiers
       // from FK REFERENCES so migration files stay truly schema-free.
       // search_path handles resolution at runtime.
-      if (options.command === "generate" && dialect === "postgresql") {
-        await this.stripPublicSchemaFromMigrations(
-          this.fs.join(rootDir, "migrations", providerName),
-        );
+      if (dialect === "postgresql") {
+        await this.stripPublicSchemaFromMigrations(migrationsDir);
       }
+
+      const after = await this.fs.ls(migrationsDir).catch(() => []);
+      await this.assertNoDestructiveMigrations(
+        migrationsDir,
+        after.filter((file) => !before.has(file)),
+      );
     }
   }
 
@@ -478,6 +495,77 @@ export class DbCommand {
         this.log.debug(`Stripped "public". qualifiers from ${file}`);
       }
     }
+  }
+
+  /**
+   * Refuse a freshly generated migration that drops a table.
+   *
+   * Drizzle rebuilds a SQLite table by dropping and recreating it. On
+   * Cloudflare D1 that is a data-loss bomb: D1 ignores `PRAGMA
+   * foreign_keys=OFF`, so dropping a table that other tables reference with
+   * `ON DELETE CASCADE` silently wipes every child row — with no error, on
+   * deploy, in production.
+   *
+   * The generated file is left on disk on purpose: the point is to force a
+   * human to read it. If the drop really is intended, keep the file and move
+   * on (a re-run detects no schema diff, so nothing is regenerated and this
+   * guard stays quiet).
+   */
+  protected async assertNoDestructiveMigrations(
+    migrationsDir: string,
+    files: string[],
+  ): Promise<void> {
+    const offenders: string[] = [];
+
+    for (const file of files) {
+      if (!file.endsWith(".sql")) continue;
+
+      const content = await this.fs.readFile(this.fs.join(migrationsDir, file));
+      const drops = this.findDropTableStatements(content.toString("utf-8"));
+
+      for (const drop of drops) {
+        offenders.push(`  ${file}: ${drop}`);
+      }
+    }
+
+    if (offenders.length === 0) {
+      return;
+    }
+
+    throw new AlephaError(
+      [
+        `Refusing to generate a destructive migration: DROP TABLE found in ${offenders.length} statement(s).`,
+        "",
+        ...offenders,
+        "",
+        "On Cloudflare D1, dropping a table that CASCADE children reference wipes those child rows silently.",
+        "Review the generated file above. If the drop is intentional, keep it and re-run — nothing will be regenerated.",
+        "If it is not, delete the file and adjust your schema (e.g. keep the column, or drop it in a hand-written migration).",
+      ].join("\n"),
+    );
+  }
+
+  /**
+   * Extract `DROP TABLE` statements from a SQL migration, skipping any that sit
+   * inside a `--` line comment.
+   */
+  protected findDropTableStatements(sql: string): string[] {
+    const statements: string[] = [];
+
+    for (const rawLine of sql.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (line.startsWith("--")) continue;
+
+      // Drop the trailing comment so `DROP TABLE x; -- ...` still matches on
+      // the statement itself and a commented-out tail can't add a false hit.
+      const code = line.split("--")[0];
+
+      if (/\bDROP\s+TABLE\b/i.test(code)) {
+        statements.push(code.trim());
+      }
+    }
+
+    return statements;
   }
 
   /**
