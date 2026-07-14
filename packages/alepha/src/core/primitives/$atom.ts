@@ -1,5 +1,6 @@
 import type { z as zod } from "zod";
 import { KIND } from "../constants/KIND.ts";
+import { AlephaError } from "../errors/AlephaError.ts";
 import type { Static, TObject } from "../providers/TypeProvider.ts";
 import type { ZType } from "../providers/ZodProvider.ts";
 
@@ -38,6 +39,18 @@ import type { ZType } from "../providers/ZodProvider.ts";
 export const $atom = <T extends ZType, N extends string>(
   options: AtomOptions<T, N>,
 ): Atom<T, N> => {
+  if (options.serverOnly && options.persist) {
+    throw new AlephaError(
+      `Atom "${options.name}" declares both serverOnly and persist: "${options.persist}", ` +
+        "which is a contradiction: serverOnly only guarantees exclusion from the SSR " +
+        "hydration payload, while every persist adapter (cookie, localStorage, " +
+        "sessionStorage) targets the browser by definition — cookie persistence ships " +
+        "the value in a Set-Cookie response header, and web-storage persistence IS the " +
+        "browser. Combining them silently leaks the value through the persistence " +
+        "channel instead of the hydration payload. Remove `serverOnly` or `persist` from " +
+        `atom "${options.name}".`,
+    );
+  }
   return new Atom<T, N>(options);
 };
 
@@ -79,11 +92,25 @@ export type AtomOptions<T extends ZType, N extends string> = {
   persist?: AtomPersist;
 
   /**
-   * Exclude this atom from SSR hydration export.
+   * Exclude this atom from the SSR hydration export
+   * (`StateManager.exportAtoms()`).
    *
-   * The value stays on the server: it is never serialized into the HTML
-   * payload sent to the browser. Use for atoms that may hold secrets or
-   * internal request state.
+   * This is the ONLY guarantee `serverOnly` makes: the value is never
+   * written into the `<script id="__ssr">` JSON block serialized into the
+   * HTML payload. It says nothing about any other channel a value can
+   * reach the browser through.
+   *
+   * **Cannot be combined with `persist`.** Every persistence adapter
+   * (`"cookie"`, `"localStorage"`, `"sessionStorage"`) targets the browser
+   * by definition — cookie persistence ships the value in a `Set-Cookie`
+   * response header, and web-storage persistence IS the browser. Declaring
+   * `serverOnly: true` together with any `persist` value throws
+   * `AlephaError` at `$atom()` call time, because the persistence channel
+   * would leak the exact value `serverOnly` is meant to keep server-side.
+   *
+   * Use `serverOnly` for atoms that may hold secrets or internal
+   * request-scoped state that must never leave the server, and never pair
+   * it with `persist`.
    */
   serverOnly?: boolean;
 } & (T extends zod.ZodOptional<any>

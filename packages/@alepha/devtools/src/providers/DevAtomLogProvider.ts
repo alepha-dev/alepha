@@ -36,7 +36,12 @@ export class DevAtomLogProvider {
    * Entries, newest first, optionally filtered by state key.
    */
   public entries(key?: string): AtomMutationEntry[] {
-    const list = key ? this.buffer.filter((e) => e.key === key) : this.buffer;
-    return [...list].reverse();
+    // `filter()` already allocates a fresh array, so it can be reversed
+    // in place. The unfiltered path reads the live buffer directly and
+    // must copy before reversing, or callers could mutate internal state.
+    if (key) {
+      return this.buffer.filter((e) => e.key === key).reverse();
+    }
+    return [...this.buffer].reverse();
   }
 }

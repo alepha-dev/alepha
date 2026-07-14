@@ -561,6 +561,18 @@ describe("StateManager", () => {
       get: (c) => c.value * 2,
     });
 
+    const other = $atom({
+      name: "test.extras.other",
+      schema: z.object({ value: z.number() }),
+      default: { value: 0 },
+    });
+
+    const total = $computed({
+      name: "test.extras.total",
+      deps: [counter, other],
+      get: (c, o) => c.value + o.value,
+    });
+
     it("reset restores the declared default", () => {
       const alepha = Alepha.create();
       alepha.store.set(counter, { value: 99 });
@@ -626,6 +638,76 @@ describe("StateManager", () => {
       const exported = alepha.store.exportAtoms();
       expect(exported["test.extras.counter"]).toEqual({ value: 1 });
       expect(exported["test.extras.secret"]).toBeUndefined();
+    });
+
+    it("serverOnly atoms are excluded from exportAtoms('current') — the ALS/SSR branch", () => {
+      // This is the branch ReactServerTemplateProvider.buildHydrationData()
+      // actually calls during SSR (exportAtoms("current")), serializing the
+      // result straight into the <script id="__ssr"> hydration payload. The
+      // default-branch test above does not exercise this code path at all.
+      const alepha = Alepha.create();
+
+      const exported = alepha.context.run(
+        () => {
+          alepha.store.set(counter, { value: 7 });
+          alepha.store.set(secret, { token: "s3cret" });
+          return alepha.store.exportAtoms("current");
+        },
+        { context: "test.extras.ssr-fork" },
+      );
+
+      expect(exported["test.extras.counter"]).toEqual({ value: 7 });
+      expect(exported["test.extras.secret"]).toBeUndefined();
+    });
+
+    it("watch on a computed tracks prevValue correctly across two different dependency keys", async () => {
+      const alepha = Alepha.create();
+      const calls: Array<[unknown, unknown]> = [];
+
+      alepha.store.watch(total, (value, prevValue) => {
+        calls.push([value, prevValue]);
+      });
+
+      // Mutate the first dep key.
+      alepha.store.set(counter, { value: 3 });
+      await new Promise((r) => setTimeout(r, 0));
+
+      // Then mutate a *different* dep key. The computed's own `prev` must
+      // have been updated after the first callback, or this second call
+      // would report a stale prevValue.
+      alepha.store.set(other, { value: 4 });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(calls).toEqual([
+        [3, 0],
+        [7, 3],
+      ]);
+    });
+
+    it("reset's clone of the default cannot corrupt future resets (zod parse always returns a fresh object)", () => {
+      const alepha = Alepha.create();
+      alepha.store.set(counter, { value: 99 });
+      alepha.store.reset(counter);
+
+      const resetValue = alepha.store.get(counter);
+      expect(resetValue).toEqual({ value: 0 });
+
+      // A careless caller mutates the value handed back by reset/get.
+      (resetValue as { value: number }).value = 424242;
+
+      // The atom's declared default itself must be untouched: `reset()` ->
+      // `set()` -> `SchemaValidator.validate()` runs `schema.safeParse()`,
+      // and zod's object parsing always returns a brand-new object, never
+      // the same reference as `atom.options.default` — even when the input
+      // is already valid. So the mutation above can never reach here.
+      expect(counter.options.default).toEqual({ value: 0 });
+
+      // Prove it end-to-end too: a fresh container resets to the pristine
+      // default, unaffected by the mutation performed above.
+      const freshAlepha = Alepha.create();
+      freshAlepha.store.set(counter, { value: 1 });
+      freshAlepha.store.reset(counter);
+      expect(freshAlepha.store.get(counter)).toEqual({ value: 0 });
     });
   });
 });
