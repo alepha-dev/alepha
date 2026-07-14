@@ -77,6 +77,32 @@ export class AlsProvider {
     return undefined;
   }
 
+  /**
+   * Return the raw ALS layer object that owns `key`, walking from the
+   * current layer up through parent forks — the same resolution order as
+   * the default-scope branch of {@link get}. Returns `undefined` when no
+   * active ALS layer (current or any ancestor) has the key.
+   *
+   * Used by `StateManager.register()` to decode a value in place, in
+   * whichever fork layer it physically lives, instead of flattening
+   * fork-scoped state into the app-level store.
+   */
+  public getLayer(key: string): AsyncLocalStorageData | undefined {
+    if (!this.als) {
+      return undefined;
+    }
+
+    let current = this.als.getStore();
+    while (current) {
+      if (key in current) {
+        return current;
+      }
+      current = current[ALS_PARENT];
+    }
+
+    return undefined;
+  }
+
   public has(key: string): boolean {
     if (!this.als) {
       return false;

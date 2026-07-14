@@ -29,6 +29,7 @@ Foundation of the entire framework with dependency injection and lifecycle manag
 ### Primitives
 
 - [`$atom`](/docs/reference-primitives-$atom) — Define an atom for state management.
+- [`$computed`](/docs/reference-primitives-$computed) — Define a derived, read-only value computed from one or more atoms
 - [`$env`](/docs/reference-primitives-$env) — Get typed values from environment variables.
 - [`$hook`](/docs/reference-primitives-$hook) — Registers a new hook.
 - [`$inject`](/docs/reference-primitives-$inject) — Get the instance of the specified type from the context.

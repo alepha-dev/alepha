@@ -4,6 +4,7 @@ import {
   $inject,
   $state,
   Alepha,
+  SchemaValidator,
   type State,
   type Static,
   z,
@@ -64,6 +65,7 @@ export class ReactBrowserProvider {
   protected readonly router = $inject(ReactBrowserRouterProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly browserHeadProvider = $inject(BrowserHeadProvider);
+  protected readonly validator = $inject(SchemaValidator);
 
   protected readonly options = $state(reactBrowserOptions);
 
@@ -295,6 +297,53 @@ export class ReactBrowserProvider {
     }
   }
 
+  /**
+   * Apply the SSR hydration payload (the `#__ssr` script tag) to the atom
+   * store.
+   *
+   * Every key except `alepha.react.router.layers` is treated as an atom
+   * value. A registered atom's value is explicitly schema-validated: an
+   * invalid value is dropped (warn + keep the atom's default) instead of
+   * being trusted, so a tampered payload can't smuggle bad data into a
+   * validated atom. Atoms not registered yet fall through to
+   * `Alepha.set()`, which lets `StateManager.register()` decode them
+   * against the schema the moment they first get used.
+   *
+   * `alepha.react.router.layers` is deliberately skipped by this loop: it
+   * carries render instructions (`part`, `name`, `config`, `props`,
+   * `error`), not atom values. Those are NOT hardened here and are trusted
+   * as-is from the SSR payload — a tampered payload can still influence
+   * rendering through this key. Validating router layers is separate,
+   * future work; this method only guarantees atom values.
+   */
+  protected applyHydration(hydration: ReactHydrationState): void {
+    for (const [key, value] of Object.entries(hydration)) {
+      if (key === "alepha.react.router.layers") {
+        // Render instructions, not an atom value — see the method doc
+        // above. Intentionally trusted as-is.
+        continue;
+      }
+
+      const atom = this.alepha.store.getAtom(key);
+      if (atom) {
+        const result = this.validator.safeValidate(atom.schema, value);
+        if (!result.success) {
+          this.log.warn(
+            `Hydrated value for atom "${key}" failed schema validation, keeping default`,
+          );
+          continue;
+        }
+        this.alepha.store.set(key as keyof State, result.data as any, {
+          skipValidation: true,
+        });
+      } else {
+        // Not registered yet — register() will decode it when the atom
+        // first gets used.
+        this.alepha.set(key as keyof State, value);
+      }
+    }
+  }
+
   // -------------------------------------------------------------------------------------------------------------------
 
   protected readonly onTransitionEnd = $hook({
@@ -318,12 +367,7 @@ export class ReactBrowserProvider {
       const previous = hydration?.["alepha.react.router.layers"] ?? [];
 
       if (hydration) {
-        // low budget, but works for now
-        for (const [key, value] of Object.entries(hydration)) {
-          if (key !== "alepha.react.router.layers") {
-            this.alepha.set(key as keyof State, value);
-          }
-        }
+        this.applyHydration(hydration);
       }
 
       await this.render({ previous });

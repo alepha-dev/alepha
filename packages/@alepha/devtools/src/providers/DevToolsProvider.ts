@@ -7,6 +7,7 @@ import { $serve } from "alepha/server/static";
 import { FileSystemProvider } from "alepha/system";
 import { devtoolsAssets } from "../assets.ts";
 import { devMetadataSchema } from "../schemas/DevMetadata.ts";
+import { DevAtomLogProvider } from "./DevAtomLogProvider.ts";
 import { DevToolsMetadataProvider } from "./DevToolsMetadataProvider.ts";
 
 export class DevToolsProvider {
@@ -17,6 +18,7 @@ export class DevToolsProvider {
   protected readonly memoryDestination = $inject(MemoryDestinationProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly emailOptions = $state(localEmailOptions);
+  protected readonly atomLog = $inject(DevAtomLogProvider);
 
   protected readonly onStart = $hook({
     on: "start",
@@ -69,6 +71,7 @@ export class DevToolsProvider {
       }),
       response: z.object({
         success: z.boolean(),
+        message: z.text().optional(),
       }),
     },
     handler: ({ body }) => {
@@ -76,11 +79,37 @@ export class DevToolsProvider {
       const atomEntry = atoms.find((a) => a.atom.key === body.name);
 
       if (atomEntry) {
-        this.alepha.store.set(atomEntry.atom, body.value);
-        return { success: true };
+        try {
+          this.alepha.store.set(atomEntry.atom, body.value);
+          return { success: true };
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          this.log.warn(`Failed to update atom "${body.name}"`, { error });
+          return { success: false, message };
+        }
       }
 
-      return { success: false };
+      return { success: false, message: `Unknown atom "${body.name}"` };
+    },
+  });
+
+  protected readonly atomLogRoute = $route({
+    method: "GET",
+    path: "/__devtools/api/atoms/log",
+    silent: true,
+    schema: {
+      query: z.object({
+        key: z.text().optional(),
+      }),
+      response: z.object({
+        entries: z.array(z.any()),
+        total: z.integer(),
+      }),
+    },
+    handler: ({ query }) => {
+      const entries = this.atomLog.entries(query.key);
+      return { entries: entries.slice(0, 100) as any, total: entries.length };
     },
   });
 

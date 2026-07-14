@@ -1,5 +1,6 @@
 import type { z as zod } from "zod";
 import { KIND } from "../constants/KIND.ts";
+import { AlephaError } from "../errors/AlephaError.ts";
 import type { Static, TObject } from "../providers/TypeProvider.ts";
 import type { ZType } from "../providers/ZodProvider.ts";
 
@@ -14,16 +15,16 @@ import type { ZType } from "../providers/ZodProvider.ts";
  * You control how state is structured and validated.
  *
  * Features:
- * - Set a schema for validation
- * - Set a default value for initial state
- * - Rules, like read-only, custom validation, etc.
- * - Automatic getter access in services with {@link $use}
+ * - Schema validation on every write (invalid writes throw)
+ * - Default value for initial state
+ * - Automatic getter access in services with {@link $state}
  * - SSR support (server state automatically serialized and hydrated on client)
- * - React integration (useAtom hook for automatic component re-renders)
- * - Middleware
- * - Persistence adapters (localStorage, Redis, database, file system, cookie, etc.)
- * - State migrations (version upgrades when schema changes)
- * - Documentation generation & devtools integration
+ * - React integration (useStore / useSelector hooks for automatic re-renders)
+ * - Derived values with {@link $computed} (useComputed hook)
+ * - Persistence adapters: cookie (SSR-safe), localStorage, sessionStorage
+ * - `serverOnly` flag to keep an atom out of the hydration payload
+ * - reset / watch helpers on the state manager
+ * - Documentation generation & devtools integration (mutation log)
  *
  * Common use cases:
  * - user preferences
@@ -38,13 +39,88 @@ import type { ZType } from "../providers/ZodProvider.ts";
 export const $atom = <T extends ZType, N extends string>(
   options: AtomOptions<T, N>,
 ): Atom<T, N> => {
+  if (options.serverOnly && options.persist) {
+    throw new AlephaError(
+      `Atom "${options.name}" declares both serverOnly and persist: "${options.persist}", ` +
+        "which is a contradiction: serverOnly only guarantees exclusion from the SSR " +
+        "hydration payload, while every persist adapter (cookie, localStorage, " +
+        "sessionStorage) targets the browser by definition — cookie persistence ships " +
+        "the value in a Set-Cookie response header, and web-storage persistence IS the " +
+        "browser. Combining them silently leaks the value through the persistence " +
+        "channel instead of the hydration payload. Remove `serverOnly` or `persist` from " +
+        `atom "${options.name}".`,
+    );
+  }
   return new Atom<T, N>(options);
 };
+
+/**
+ * Persistence adapter for an atom.
+ */
+export type AtomPersist = "cookie" | "localStorage" | "sessionStorage";
 
 export type AtomOptions<T extends ZType, N extends string> = {
   name: N;
   schema: T;
   description?: string;
+
+  /**
+   * Persist this atom outside the in-memory store.
+   *
+   * - `"cookie"` — synced to an HTTP cookie by the `alepha/server/cookies`
+   *   module. Works on the server AND in the browser, so it is the only
+   *   correct adapter for SSR apps: the server reads it while rendering and
+   *   the first paint matches the persisted state.
+   * - `"localStorage"` / `"sessionStorage"` — browser Web Storage. Fine for
+   *   pure SPA apps. The server cannot see these values; registering such
+   *   an atom during SSR logs a warning.
+   *
+   * Values are validated against the schema when read back; invalid or
+   * corrupted entries are discarded and the default is used.
+   *
+   * **Security: cookie-persisted atoms are attacker-controlled.** The
+   * cookie written by `persist: "cookie"` is unsigned, unencrypted, and
+   * freely writable by any client-side script (`AtomCookiePersistence`'s
+   * `cookieOptions()` sets no `sign`, `encrypt`, or `httpOnly`) — a request
+   * can present any value it wants for it. Never persist trust-bearing
+   * state — user ids, roles, entitlements, permissions — in a
+   * `persist: "cookie"` atom. If you need a signed, encrypted, and/or
+   * `httpOnly` cookie, declare an explicit
+   * `$cookie({ key: atom.key, sign: true, encrypt: true, httpOnly: true, ... })`
+   * binding instead — that is the escape hatch for trust-bearing values.
+   */
+  persist?: AtomPersist;
+
+  /**
+   * Exclude this atom from the SSR hydration export
+   * (`StateManager.exportAtoms()`).
+   *
+   * This is the ONLY guarantee `serverOnly` makes: the value is never
+   * written into the `<script id="__ssr">` JSON block serialized into the
+   * HTML payload. It says nothing about any other channel a value can
+   * reach the browser through.
+   *
+   * **Cannot be combined with `persist`.** Every persistence adapter
+   * (`"cookie"`, `"localStorage"`, `"sessionStorage"`) targets the browser
+   * by definition — cookie persistence ships the value in a `Set-Cookie`
+   * response header, and web-storage persistence IS the browser. Declaring
+   * `serverOnly: true` together with any `persist` value throws
+   * `AlephaError` at `$atom()` call time, because the persistence channel
+   * would leak the exact value `serverOnly` is meant to keep server-side.
+   *
+   * Use `serverOnly` for atoms that may hold secrets or internal
+   * request-scoped state that must never leave the server, and never pair
+   * it with `persist`.
+   *
+   * **Never make a `serverOnly` atom a dependency of a `$computed` that the
+   * browser reads through `useComputed`.** A computed is re-derived, never
+   * serialized: the server derives it from the atom's real value, and the
+   * browser — which never received that value — re-derives it from the
+   * atom's default. The two disagree, producing a React hydration mismatch
+   * and a silently wrong value from then on. Keep such a computed
+   * server-side (`alepha.store.get`), or derive it from atoms that ship.
+   */
+  serverOnly?: boolean;
 } & (T extends zod.ZodOptional<any>
   ? {
       default?: Static<T>;

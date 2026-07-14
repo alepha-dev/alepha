@@ -1,5 +1,6 @@
 import { Alepha, type State } from "alepha";
 import { describe, expect, it } from "vitest";
+import { AlephaError } from "../errors/AlephaError.ts";
 import { $atom } from "../primitives/$atom.ts";
 import { $state } from "../primitives/$state.ts";
 import { z } from "../providers/TypeProvider.ts";
@@ -39,5 +40,53 @@ describe("$atom", () => {
 
     alepha.store.set("count" as keyof State, { value: 23 });
     expect(app.count.value).toBe(23);
+  });
+});
+
+describe("$atom: serverOnly + persist is a contradiction", () => {
+  it("throws AlephaError when combined with persist: cookie", () => {
+    expect(() =>
+      $atom({
+        name: "test.extras.serverOnlyCookie",
+        schema: z.object({ token: z.string() }),
+        default: { token: "" },
+        serverOnly: true,
+        persist: "cookie",
+      }),
+    ).toThrow(AlephaError);
+  });
+
+  it("throws AlephaError when combined with persist: localStorage", () => {
+    expect(() =>
+      $atom({
+        name: "test.extras.serverOnlyLocalStorage",
+        schema: z.object({ token: z.string() }),
+        default: { token: "" },
+        serverOnly: true,
+        persist: "localStorage",
+      }),
+    ).toThrow(AlephaError);
+  });
+
+  it("does not throw when only serverOnly is set", () => {
+    expect(() =>
+      $atom({
+        name: "test.extras.serverOnlyAlone",
+        schema: z.object({ token: z.string() }),
+        default: { token: "" },
+        serverOnly: true,
+      }),
+    ).not.toThrow();
+  });
+
+  it("does not throw when only persist is set", () => {
+    expect(() =>
+      $atom({
+        name: "test.extras.persistAlone",
+        schema: z.object({ token: z.string() }),
+        default: { token: "" },
+        persist: "cookie",
+      }),
+    ).not.toThrow();
   });
 });

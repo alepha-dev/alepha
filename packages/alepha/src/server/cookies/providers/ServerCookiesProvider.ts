@@ -101,8 +101,14 @@ export class ServerCookiesProvider {
    * When `APP_NAME` is unset the name is returned unchanged, so existing
    * single-app deployments keep their current cookie names. Same convention as
    * the `APP_NAME` prefix used by R2 storage and server-timing.
+   *
+   * Pass `prefix = false` to skip the namespace entirely — used for
+   * `persist: "cookie"` atoms, whose browser-side counterpart cannot see
+   * `APP_NAME` and therefore always uses the bare name. See
+   * `CookiePrimitiveOptions.prefix`.
    */
-  protected prefixName(name: string): string {
+  protected prefixName(name: string, prefix = true): string {
+    if (!prefix) return name;
     const app = this.alepha.env.APP_NAME;
     if (!app) return name;
     return `${String(app).toLowerCase()}.${name}`;
@@ -114,7 +120,8 @@ export class ServerCookiesProvider {
     contextCookies?: Cookies,
   ): Static<T> | undefined {
     const cookies = this.getCookiesFromContext(contextCookies);
-    let rawValue = cookies.req[this.prefixName(name)];
+    const prefixed = options.prefix !== false;
+    let rawValue = cookies.req[this.prefixName(name, prefixed)];
 
     if (!rawValue) return undefined;
 
@@ -152,7 +159,7 @@ export class ServerCookiesProvider {
     } catch (error) {
       this.log.warn(`Failed to parse cookie "${name}"`, error);
       // corrupted or invalid cookie, instruct browser to delete it on next response
-      this.deleteCookie(name, cookies);
+      this.deleteCookie(name, cookies, prefixed);
       return undefined;
     }
   }
@@ -194,15 +201,16 @@ export class ServerCookiesProvider {
       cookie.maxAge = this.dateTimeProvider.duration(options.ttl).as("seconds");
     }
 
-    cookies.res[this.prefixName(name)] = cookie;
+    cookies.res[this.prefixName(name, options.prefix !== false)] = cookie;
   }
 
   public deleteCookie<T extends TSchema>(
     name: string,
     contextCookies?: Cookies,
+    prefix = true,
   ): void {
     const cookies = this.getCookiesFromContext(contextCookies);
-    cookies.res[this.prefixName(name)] = null;
+    cookies.res[this.prefixName(name, prefix)] = null;
   }
 
   // --- Crypto & Parsing ---

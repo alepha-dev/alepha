@@ -17,6 +17,7 @@ import { HttpClient } from "alepha/server";
 import { Atom, RefreshCw, Save, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TreeView, type TreeViewNode } from "../shared/TreeView.tsx";
+import { ConfigAtomsMutations } from "./ConfigAtomsMutations.tsx";
 
 interface AtomTreeNode {
   key: string;
@@ -215,9 +216,13 @@ const AtomDetailPanel = (props: AtomDetailPanelProps) => {
         <div className="flex items-center gap-2">
           <Atom className="size-4 opacity-50" />
           <span className="font-mono text-sm font-semibold">{atom.name}</span>
-          <Badge variant={hasValue ? "default" : "secondary"}>
-            {hasValue ? "has value" : "default"}
-          </Badge>
+          {atom.serverOnly ? (
+            <Badge variant="outline">server-only</Badge>
+          ) : (
+            <Badge variant={hasValue ? "default" : "secondary"}>
+              {hasValue ? "has value" : "default"}
+            </Badge>
+          )}
         </div>
         {atom.description && (
           <p className="text-muted-foreground text-xs">{atom.description}</p>
@@ -231,7 +236,11 @@ const AtomDetailPanel = (props: AtomDetailPanelProps) => {
               <p className="text-muted-foreground mb-2 text-[10px] font-semibold uppercase tracking-wider">
                 Current Value
               </p>
-              {atom.currentValue !== undefined ? (
+              {atom.serverOnly ? (
+                <p className="text-muted-foreground text-xs italic">
+                  hidden (server-only)
+                </p>
+              ) : atom.currentValue !== undefined ? (
                 <pre className="bg-muted overflow-auto rounded p-2 text-xs">
                   {JSON.stringify(atom.currentValue, null, 2)}
                 </pre>
@@ -245,7 +254,11 @@ const AtomDetailPanel = (props: AtomDetailPanelProps) => {
               <p className="text-muted-foreground mb-2 text-[10px] font-semibold uppercase tracking-wider">
                 Default Value
               </p>
-              {atom.defaultValue !== undefined ? (
+              {atom.serverOnly ? (
+                <p className="text-muted-foreground text-xs italic">
+                  hidden (server-only)
+                </p>
+              ) : atom.defaultValue !== undefined ? (
                 <pre className="bg-muted overflow-auto rounded p-2 text-xs">
                   {JSON.stringify(atom.defaultValue, null, 2)}
                 </pre>
@@ -325,6 +338,8 @@ const AtomDetailPanel = (props: AtomDetailPanelProps) => {
               {JSON.stringify(atom.schema, null, 2)}
             </pre>
           </div>
+
+          <ConfigAtomsMutations atomName={atom.name} />
         </div>
       </div>
     </div>

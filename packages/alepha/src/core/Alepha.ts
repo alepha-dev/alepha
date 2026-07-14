@@ -18,6 +18,7 @@ import {
   type ServiceEntry,
 } from "./interfaces/Service.ts";
 import type { Atom, AtomStatic, TAtomObject } from "./primitives/$atom.ts";
+import type { Computed } from "./primitives/$computed.ts";
 import type { InjectOptions } from "./primitives/$inject.ts";
 import { Module, type WithModule } from "./primitives/$module.ts";
 import { AlsProvider, type StateScope } from "./providers/AlsProvider.ts";
@@ -367,6 +368,7 @@ export class Alepha {
     return this.context.run(callback, data);
   }
 
+  public get<R>(target: Computed<R>, scope?: StateScope): R;
   public get<T extends TAtomObject>(
     target: Atom<T>,
     scope?: StateScope,
@@ -389,6 +391,14 @@ export class Alepha {
   ): this;
   public set(target: any, value: any): this {
     this.store.set(target, value);
+    return this;
+  }
+
+  /**
+   * Reset an atom back to its declared default value.
+   */
+  public reset<T extends TAtomObject>(target: Atom<T>): this {
+    this.store.reset(target);
     return this;
   }
 
@@ -1489,5 +1499,15 @@ export interface Hooks {
      * The previous value of the state.
      */
     prevValue: any;
+  };
+
+  /**
+   * Triggered the first time an atom is registered in the state manager.
+   */
+  "state:register": {
+    /**
+     * The atom that was registered.
+     */
+    atom: Atom<any, any>;
   };
 }
