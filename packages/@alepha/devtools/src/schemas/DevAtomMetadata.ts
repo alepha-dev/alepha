@@ -21,6 +21,13 @@ export const devAtomMetadataSchema = z.object({
    * The current value of the atom
    */
   currentValue: z.any().optional(),
+  /**
+   * True when the atom was declared with `serverOnly: true`. Its value must
+   * never reach a browser, so `defaultValue`/`currentValue` are omitted for
+   * these atoms — only the atom's existence, name, description, and schema
+   * are exposed.
+   */
+  serverOnly: z.boolean().optional(),
 });
 
 export type DevAtomMetadata = Static<typeof devAtomMetadataSchema>;

@@ -400,13 +400,29 @@ export class DevToolsMetadataProvider {
   public getAtoms(): DevAtomMetadata[] {
     const atomsWithValues = this.alepha.store.getAtoms(false);
 
-    return atomsWithValues.map(({ atom, value }) => ({
-      name: atom.key,
-      description: atom.options.description,
-      schema: atom.schema,
-      defaultValue: atom.options.default,
-      currentValue: value,
-    }));
+    return atomsWithValues.map(({ atom, value }) => {
+      // `serverOnly` is a security guard: its value must never reach a
+      // browser. The atom itself is still listed (a developer can see it
+      // exists and inspect its schema/description) but `defaultValue` and
+      // `currentValue` — the actual secret payload — are never included in
+      // this dev-only metadata response.
+      if (atom.options.serverOnly) {
+        return {
+          name: atom.key,
+          description: atom.options.description,
+          schema: atom.schema,
+          serverOnly: true,
+        };
+      }
+
+      return {
+        name: atom.key,
+        description: atom.options.description,
+        schema: atom.schema,
+        defaultValue: atom.options.default,
+        currentValue: value,
+      };
+    });
   }
 
   public getSystem(): DevSystem {
