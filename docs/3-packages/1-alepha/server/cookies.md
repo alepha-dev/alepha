@@ -20,3 +20,7 @@ Server and browser-safe cookie handling.
 ### Primitives
 
 - [`$cookie`](/docs/reference-primitives-$cookie) — Declares a type-safe, configurable HTTP cookie.
+
+### Providers
+
+- [`AtomCookiePersistence`](/docs/reference-providers-atomcookiepersistence) — Binds every atom declared with `persist: "cookie"` to an HTTP cookie.

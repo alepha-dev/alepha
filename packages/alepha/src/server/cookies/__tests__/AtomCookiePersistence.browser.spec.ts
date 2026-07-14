@@ -52,6 +52,38 @@ describe("AtomCookiePersistence (browser)", () => {
     expect(alepha.store.get(prefs)).toEqual({ theme: "dark" });
   });
 
+  it("reads and writes an atom that registered BEFORE the adapter existed", async () => {
+    // The `$module({ atoms, imports, services })` shape: `atoms[]` register
+    // before `services[]` are injected, so the adapter never sees the
+    // atom's one-shot `state:register` event. Discovering atoms from the
+    // state manager's registry (instead of from that event) is what makes
+    // this work.
+    document.cookie = `test.cookie.browser.module=${encodeURIComponent(
+      JSON.stringify({ theme: "dark" }),
+    )}; Path=/`;
+
+    const prefs = $atom({
+      name: "test.cookie.browser.module",
+      schema,
+      default: { theme: "light" },
+      persist: "cookie",
+    });
+
+    const alepha = Alepha.create();
+    alepha.store.register(prefs);
+    alepha.inject(AtomCookiePersistence);
+    await alepha.start();
+
+    expect(alepha.store.get(prefs)).toEqual({ theme: "dark" });
+
+    alepha.store.set(prefs, { theme: "solarized" });
+    const raw = readRawCookie("test.cookie.browser.module");
+    expect(raw).toBeDefined();
+    expect(JSON.parse(decodeURIComponent(raw!))).toEqual({
+      theme: "solarized",
+    });
+  });
+
   it("falls back to the default when there is no cookie", () => {
     const prefs = $atom({
       name: "test.cookie.browser.none",

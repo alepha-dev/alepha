@@ -7,12 +7,23 @@ import { ServerCookiesProvider } from "./ServerCookiesProvider.ts";
 /**
  * Binds every atom declared with `persist: "cookie"` to an HTTP cookie.
  *
- * - `state:register` — starts tracking the atom; if we are already inside a
- *   request (atom registered lazily during SSR render), reads the cookie
- *   immediately so the render sees the persisted value.
  * - `server:onRequest` — seeds the request-scoped state from the cookie, so
  *   SSR renders with the persisted value.
  * - `state:mutate` — writes the new value back as a Set-Cookie header.
+ * - `state:register` — an atom registering lazily *during* a request (first
+ *   touched by an SSR render, after `server:onRequest` already ran) reads
+ *   its cookie right away, so that render still sees the persisted value.
+ *
+ * Atoms are resolved from the `StateManager` registry
+ * (`alepha.store.listAtoms()`) on every request and every mutation, never
+ * from a map built up from `state:register` events. That event fires exactly
+ * once per atom and is never replayed, while `$module.register()` registers
+ * `atoms[]` BEFORE it wires `imports[]` and injects `services[]` — so the
+ * documented `$module({ atoms, imports: [AlephaServerCookies], services })`
+ * shape registers every atom before this provider exists. An event-sourced
+ * map would stay empty forever there, making `persist: "cookie"` a silent
+ * no-op in both directions. Reading the registry on demand is
+ * order-independent.
  *
  * The cookie is named after the atom key, lives 365 days, SameSite=lax,
  * path "/". For custom cookie options (encryption, signing, custom TTL),
@@ -22,21 +33,6 @@ export class AtomCookiePersistence {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly serverCookies = $inject(ServerCookiesProvider);
-  protected readonly atoms = new Map<string, Atom<any, any>>();
-
-  protected readonly onRegister = $hook({
-    on: "state:register",
-    handler: ({ atom }) => {
-      if (atom.options.persist !== "cookie") {
-        return;
-      }
-      this.atoms.set(atom.key, atom);
-
-      if (this.alepha.store.get("alepha.http.request")) {
-        this.read(atom);
-      }
-    },
-  });
 
   protected readonly onRequest = $hook({
     on: "server:onRequest",
@@ -51,8 +47,23 @@ export class AtomCookiePersistence {
       // the request lifecycle (`ServerRouterProvider` sets it only after
       // `server:onRequest` resolves), so the request-scoped cookie jar must
       // be passed explicitly rather than resolved from context.
-      for (const atom of this.atoms.values()) {
+      for (const atom of this.cookieAtoms()) {
         this.read(atom, request.cookies);
+      }
+    },
+  });
+
+  protected readonly onRegister = $hook({
+    on: "state:register",
+    handler: ({ atom }) => {
+      if (atom.options.persist !== "cookie") {
+        return;
+      }
+
+      // Only the lazy, mid-request case is handled here — every atom already
+      // registered when the request started was swept by `onRequest` above.
+      if (this.alepha.store.get("alepha.http.request")) {
+        this.read(atom);
       }
     },
   });
@@ -60,8 +71,8 @@ export class AtomCookiePersistence {
   protected readonly onMutate = $hook({
     on: "state:mutate",
     handler: ({ key, value }) => {
-      const atom = this.atoms.get(key as string);
-      if (!atom) {
+      const atom = this.alepha.store.getAtom(String(key));
+      if (!atom || atom.options.persist !== "cookie") {
         return;
       }
       try {
@@ -76,6 +87,16 @@ export class AtomCookiePersistence {
       }
     },
   });
+
+  /**
+   * Every registered atom declared with `persist: "cookie"`, read live from
+   * the state manager's registry.
+   */
+  protected cookieAtoms(): Array<Atom<any, any>> {
+    return this.alepha.store
+      .listAtoms()
+      .filter((atom) => atom.options.persist === "cookie");
+  }
 
   protected read(atom: Atom<any, any>, cookies?: Cookies): void {
     // Safety net, not a live bug today: an ALS provider is always installed

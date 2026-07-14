@@ -1,4 +1,4 @@
-import { $atom, $inject, $state, Alepha, z } from "alepha";
+import { $atom, $inject, $module, $state, Alepha, z } from "alepha";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { AlephaServerCookies } from "../index.ts";
@@ -73,6 +73,100 @@ describe("AtomCookiePersistence", () => {
     const response = await app.read.fetch(
       {},
       { request: { headers: { cookie: "" } } },
+    );
+
+    expect(response.data.theme).toBe("light");
+  });
+});
+
+describe("registration order: atoms declared on a $module, before the adapter exists", () => {
+  // The documented usage shape — and the one that used to make
+  // `persist: "cookie"` a silent no-op in BOTH directions.
+  //
+  // `$module.register()` registers `options.atoms` FIRST, then wires
+  // `imports[]`, then injects `services[]`. So by the time
+  // `AtomCookiePersistence` is instantiated (via the `AlephaServerCookies`
+  // import), the atom has already registered and its one-shot
+  // `state:register` event has already been emitted and dropped —
+  // `EventManager` has no replay buffer. An adapter that discovered atoms
+  // from that event kept an empty map forever: no cookie read on request, no
+  // Set-Cookie on mutation, no warning.
+  //
+  // A test that injects the adapter before touching the atom proves nothing;
+  // it just reproduces the fragile ordering that happened to work.
+  const modulePrefs = $atom({
+    name: "test.cookie.module.prefs",
+    schema: z.object({ theme: z.string() }),
+    default: { theme: "light" },
+    persist: "cookie",
+  });
+
+  class ModuleCookieApp {
+    protected readonly alepha = $inject(Alepha);
+
+    read = $action({
+      schema: {
+        response: z.object({ theme: z.string() }),
+      },
+      handler: () => ({ theme: this.alepha.store.get(modulePrefs).theme }),
+    });
+
+    update = $action({
+      schema: {
+        body: z.object({ theme: z.string() }),
+        response: z.object({ ok: z.boolean() }),
+      },
+      handler: ({ body }) => {
+        this.alepha.store.set(modulePrefs, { theme: body.theme });
+        return { ok: true };
+      },
+    });
+  }
+
+  const CookieAtomModule = $module({
+    name: "test.cookie.module",
+    atoms: [modulePrefs],
+    imports: [AlephaServerCookies],
+    services: [ModuleCookieApp],
+  });
+
+  const moduleAlepha = Alepha.create().with(CookieAtomModule);
+  const moduleApp = moduleAlepha.inject(ModuleCookieApp);
+
+  it("seeds request state from the incoming cookie", async () => {
+    const cookieHeader = `test.cookie.module.prefs=${encodeURIComponent(
+      JSON.stringify({ theme: "dark" }),
+    )}`;
+
+    const response = await moduleApp.read.fetch(
+      {},
+      {
+        key: "module-read",
+        request: { headers: { cookie: cookieHeader } },
+      },
+    );
+
+    expect(response.data.theme).toBe("dark");
+  });
+
+  it("emits a Set-Cookie when the atom mutates", async () => {
+    const response = await moduleApp.update.fetch({ body: { theme: "dark" } });
+    const setCookie = response.raw?.headers.get("set-cookie");
+
+    expect(setCookie).toBeDefined();
+    expect(setCookie).not.toBeNull();
+    const value = JSON.parse(
+      decodeURIComponent(
+        setCookie!.match(/test\.cookie\.module\.prefs=([^;]*)/)![1],
+      ),
+    );
+    expect(value).toEqual({ theme: "dark" });
+  });
+
+  it("falls back to the default without a cookie", async () => {
+    const response = await moduleApp.read.fetch(
+      {},
+      { key: "module-read-none", request: { headers: { cookie: "" } } },
     );
 
     expect(response.data.theme).toBe("light");

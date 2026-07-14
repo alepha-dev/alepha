@@ -25,7 +25,13 @@ export const ConfigAtomsMutations = (props: ConfigAtomsMutationsProps) => {
           setEntries((res.data as any).entries ?? []);
         }
       })
-      .catch(() => {});
+      .catch((error) => {
+        // Never swallow: a failing mutation-log fetch would otherwise render
+        // as "no recent mutations", which is indistinguishable from a
+        // healthy, idle atom. Same reporting as the sibling ConfigAtoms
+        // save handler.
+        console.error("Failed to load atom mutation log:", error);
+      });
     return () => {
       cancelled = true;
     };

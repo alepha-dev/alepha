@@ -7,12 +7,12 @@ Alepha provides `$atom` for defining typed, validated state and `useStore` for c
 Atoms are defined at the module level using `$atom`. Each atom has a unique name, a TypeBox schema, and an optional default value.
 
 ```typescript
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 
 const counter = $atom({
   name: "app:counter",
-  schema: t.object({
-    count: t.integer(),
+  schema: z.object({
+    count: z.number().int(),
   }),
   default: { count: 0 },
 });
@@ -25,7 +25,7 @@ Atoms must contain only serializable data. Avoid storing class instances, functi
 | Option        | Type       | Description                                |
 |---------------|------------|--------------------------------------------|
 | `name`        | `string`   | Unique identifier for the atom.            |
-| `schema`      | `TObject`  | TypeBox schema for validation.             |
+| `schema`      | `ZodType`  | Zod schema for validation.                 |
 | `default`     | `Static<T>` | Default value. Required unless schema is fully optional. |
 | `description` | `string`   | Optional description for documentation.    |
 
@@ -293,14 +293,14 @@ Use it for state that must never leave the server -- internal request-scoped dat
 ## Example: Feature Flags
 
 ```typescript
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 import { useStore } from "alepha/react";
 
 const featureFlags = $atom({
   name: "app:features",
-  schema: t.object({
-    darkMode: t.boolean(),
-    betaFeatures: t.boolean(),
+  schema: z.object({
+    darkMode: z.boolean(),
+    betaFeatures: z.boolean(),
   }),
   default: {
     darkMode: false,

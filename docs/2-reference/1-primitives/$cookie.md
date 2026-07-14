@@ -28,4 +28,5 @@ within the server request/response cycle.
 | `encrypt` | `boolean` | No | If true, the cookie value will be encrypted |
 | `sign` | `boolean` | No | If true, the cookie will be signed to prevent tampering |
 | `key` | `string` | No | Optional key to link this cookie to an Atom, enabling automatic synchronization between the cookie and the Atom's state. |
+| `prefix` | `boolean` | No | Internal escape hatch: when explicitly set to `false`, the server skips the `APP_NAME` cookie-name namespace applied by `ServerCookiesProvider.prefixName()` |
 

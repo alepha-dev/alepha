@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Alepha } from "../Alepha.ts";
+import { AlephaError } from "../errors/AlephaError.ts";
 import { TypeBoxError } from "../errors/TypeBoxError.ts";
 import { $atom } from "../primitives/$atom.ts";
 import { $computed } from "../primitives/$computed.ts";
@@ -439,8 +440,48 @@ describe("StateManager", () => {
       );
 
       expect(result).toEqual({ theme: "dark", count: 1 });
-      // Must not have leaked into the app-level store.
-      expect(alepha.store.get(settings, "app")).toBeUndefined();
+      // The fork's value must not have leaked into the app-level store...
+      expect(alepha.store.get(settings, "app")).not.toEqual({
+        theme: "dark",
+        count: 1,
+      });
+      // ...but the app-level store MUST still have received the atom's
+      // declared default. Registration inside a fork is still a
+      // registration: leaving the app store empty here is what made every
+      // later, fork-less (or cookie-less) read resolve `undefined` instead
+      // of the default.
+      expect(alepha.store.get(settings, "app")).toEqual({
+        theme: "light",
+        count: 0,
+      });
+    });
+
+    it("still resolves the default outside the fork after an atom first registered inside one", () => {
+      const alepha = Alepha.create();
+
+      alepha.context.run(
+        () => {
+          alepha.store.set(
+            settings.key as any,
+            {
+              theme: "dark",
+              count: 1,
+            } as any,
+          );
+          // First registration happens here, inside the fork.
+          alepha.store.get(settings);
+        },
+        { context: "req-1" },
+      );
+
+      // A later request (a different fork) carrying no seed of its own, and
+      // the app-level read outside any fork, both see the default.
+      const next = alepha.context.run(() => alepha.store.get(settings), {
+        context: "req-2",
+      });
+
+      expect(next).toEqual({ theme: "light", count: 0 });
+      expect(alepha.store.get(settings)).toEqual({ theme: "light", count: 0 });
     });
 
     it("falls back to the default inside the same ALS layer (not the app store) when the seeded value is invalid, and warns", () => {
@@ -465,9 +506,37 @@ describe("StateManager", () => {
 
       expect(result).toEqual({ theme: "light", count: 0 });
       expect(warn).toHaveBeenCalledTimes(1);
-      // The default must have been written into the ALS layer, not the
-      // app store — outside the fork, the app-level value is still unset.
-      expect(alepha.store.get(settings, "app")).toBeUndefined();
+      // The invalid seed was replaced inside the ALS layer, and the app
+      // store holds the declared default (never the fork's value).
+      expect(alepha.store.get(settings, "app")).toEqual({
+        theme: "light",
+        count: 0,
+      });
+    });
+
+    it("hands out a fresh copy of the default when a seeded value is invalid — never the shared declaration", () => {
+      const alepha = Alepha.create();
+
+      const result = alepha.context.run(
+        () => {
+          alepha.store.set(settings.key as any, { theme: 42 } as any);
+          return alepha.store.get(settings);
+        },
+        { context: "req-1" },
+      );
+
+      // A careless caller mutates the value it got back from the
+      // fallback-to-default path.
+      (result as { count: number }).count = 424242;
+
+      // `atom.options.default` is a module-level object shared by every
+      // container in the process. If the fallback aliased it instead of
+      // cloning it through the validator, that mutation would have rewritten
+      // the declaration itself — permanently, for every request.
+      expect(settings.options.default).toEqual({ theme: "light", count: 0 });
+
+      const fresh = Alepha.create();
+      expect(fresh.store.get(settings)).toEqual({ theme: "light", count: 0 });
     });
 
     it("decodes a value that landed in a parent fork layer before a nested fork registers the atom", () => {
@@ -628,6 +697,23 @@ describe("StateManager", () => {
       await new Promise((r) => setTimeout(r, 0));
 
       expect(calls).toEqual([[10, 0]]);
+    });
+
+    it("register refuses a Computed, so it can never reach exportAtoms", () => {
+      const alepha = Alepha.create();
+
+      // `reset()`/`register()` are the only atom entry points that took a
+      // Computed without complaint. A registered Computed would land in the
+      // atom registry and from there be serialized into the SSR hydration
+      // payload — breaking the "never stored, never serialized" contract.
+      expect(() => alepha.store.reset(doubledCounter as any)).toThrow(
+        AlephaError,
+      );
+      expect(() => alepha.store.register(doubledCounter as any)).toThrow(
+        /Cannot register computed value/,
+      );
+      expect(alepha.store.getAtom("test.extras.doubled")).toBeUndefined();
+      expect(alepha.store.exportAtoms()["test.extras.doubled"]).toBeUndefined();
     });
 
     it("serverOnly atoms are excluded from exportAtoms", () => {

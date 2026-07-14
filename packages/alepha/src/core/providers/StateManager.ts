@@ -100,7 +100,32 @@ export class StateManager<State extends object = AlephaState> {
     return this.atoms.get(key as keyof State);
   }
 
+  /**
+   * Every atom registered so far, whatever store layer (if any) currently
+   * holds its value.
+   *
+   * This is the order-independent way to discover atoms. The
+   * `"state:register"` event fires exactly once per key and `EventManager`
+   * has no replay buffer, so a service instantiated after an atom registered
+   * never hears about it — a real hazard, since `$module.register()`
+   * registers `atoms[]` BEFORE it wires `imports[]` and injects `services[]`.
+   * Services that act on atoms (e.g. the cookie persistence adapter) must
+   * read this registry on demand rather than build their own map from the
+   * event.
+   */
+  public listAtoms(): Array<Atom> {
+    return [...this.atoms.values()];
+  }
+
   public register(atom: Atom<any>): this {
+    if ((atom as unknown) instanceof Computed) {
+      throw new AlephaError(
+        `Cannot register computed value "${(atom as unknown as Computed).key}" as an atom. ` +
+          "Computed values are derived from their dependencies on every read — they are " +
+          "never stored, serialized, hydrated, or persisted. Register its dependency atoms instead.",
+      );
+    }
+
     const key = atom.key as keyof State;
 
     if (this.atoms.has(key)) {
@@ -113,18 +138,28 @@ export class StateManager<State extends object = AlephaState> {
     // SSR hydration payload, an `Alepha.create(seed)` value, or a
     // fork-scoped write (e.g. `$cookie` mirrors its value into the store
     // during `server:onRequest`, ahead of the atom's first access). `get()`
-    // resolves ALS (request-scoped fork) layers before the app store, so we
-    // must look there first too — decoding only `this.store` would let a
-    // raw, unvalidated ALS value permanently shadow the decoded default.
+    // resolves ALS (request-scoped fork) layers before the app store, so
+    // such a value must be decoded in the layer it physically lives in —
+    // decoding only `this.store` would let a raw, unvalidated ALS value
+    // permanently shadow the decoded default.
     const layer = this.als?.getLayer(key as string);
     if (layer) {
       this.decodeExisting(atom, key, layer);
-    } else if (key in this.store) {
+    }
+
+    // ...and, INDEPENDENTLY of that, the app-level store must always end up
+    // holding the atom's declared default. These two concerns are not
+    // exclusive: an atom whose first registration happens inside a fork that
+    // already carries a value for its key (exactly what a cookie-seeded
+    // request produces) would otherwise leave the app store empty forever,
+    // so every later, cookie-less request — which sees no fork value either
+    // — would resolve `undefined` instead of the default. One user's
+    // cookied request would silently define what every cookie-less user
+    // sees.
+    if (key in this.store) {
       this.decodeExisting(atom, key, this.store as Record<string, any>);
     } else {
-      this.set(key, atom.options.default as State[keyof State], {
-        skipContext: true,
-      });
+      this.seedDefault(atom, key);
     }
 
     this.bindWebStorage(atom);
@@ -136,11 +171,63 @@ export class StateManager<State extends object = AlephaState> {
     // `async`, that guarantee silently breaks: `register()` returns before
     // the seed lands, so an SSR render started right after would see the
     // atom's default instead of the persisted value.
+    //
+    // This event is a "an atom just appeared, act on it NOW" signal — it is
+    // NOT a discovery mechanism. It fires once, is never replayed, and an
+    // atom may well register before the interested service even exists
+    // (`$module.register()` registers `atoms[]` first, then `imports[]`,
+    // then `services[]`). Consumers that need the full set of atoms must
+    // read {@link listAtoms} instead.
     this.events
       ?.emit("state:register", { atom }, { catch: true })
       .catch(() => null);
 
     return this;
+  }
+
+  /**
+   * Install the atom's declared default into the app-level store.
+   *
+   * Deliberately bypasses {@link set}, for two reasons:
+   *
+   * 1. `set()` short-circuits when the new value equals the currently
+   *    *resolved* value (`prevValue === value` for non-objects) — inside a
+   *    fork that already holds the same primitive value, the app-store write
+   *    would simply never happen.
+   * 2. A registration seed is initialisation, NOT a mutation, so it must not
+   *    emit `state:mutate`. Persistence adapters listen on that event: an
+   *    atom registering lazily mid-request would otherwise emit a mutation
+   *    carrying its *default*, and the cookie adapter would dutifully write
+   *    it back as a `Set-Cookie` — overwriting the very cookie the request
+   *    arrived with.
+   *
+   * A `undefined` default (only reachable for an optional schema) is not
+   * written at all, so the key stays absent from the store — matching the
+   * previous behaviour of `set(key, undefined)`.
+   */
+  protected seedDefault(atom: Atom<any>, key: keyof State): void {
+    const value = this.cloneDefault(atom);
+    if (value === undefined) {
+      return;
+    }
+    (this.store as Record<string, any>)[key as string] = value;
+  }
+
+  /**
+   * A fresh, schema-validated copy of the atom's declared default.
+   *
+   * `atom.options.default` is a module-level object shared by every
+   * container and every request in the process. Handing that exact reference
+   * to the store would let an ordinary `store.mut(atom, s => ...)` mutate the
+   * declaration itself, permanently and process-wide. Every other write path
+   * round-trips through the validator (zod always returns a new object), so
+   * these must too.
+   */
+  protected cloneDefault(atom: Atom<any>): unknown {
+    if (atom.options.default === undefined) {
+      return undefined;
+    }
+    return this.validator.validate(atom.schema, atom.options.default);
   }
 
   /**
@@ -174,7 +261,7 @@ export class StateManager<State extends object = AlephaState> {
       `Atom "${String(key)}" received an invalid seed value at registration, falling back to its default.`,
       { issues: result.error.issues },
     );
-    layer[key as string] = atom.options.default;
+    layer[key as string] = this.cloneDefault(atom);
   }
 
   /**
@@ -182,7 +269,9 @@ export class StateManager<State extends object = AlephaState> {
    * declared with `persist`. Best-effort: quota errors and privacy modes
    * are swallowed. Cookie persistence is NOT handled here — it needs the
    * HTTP request cycle and lives in `alepha/server/cookies`
-   * (AtomCookiePersistence), wired through the `state:register` event.
+   * (AtomCookiePersistence), which discovers its atoms through
+   * {@link listAtoms}. Both adapters are therefore registration-order
+   * independent: one `persist` option, one reliability contract.
    */
   protected bindWebStorage(atom: Atom<any>): void {
     const persist = atom.options.persist;
@@ -394,6 +483,23 @@ export class StateManager<State extends object = AlephaState> {
   /**
    * Observe mutations of an atom, a computed value, or a raw state key
    * outside React. Returns an unsubscribe function.
+   *
+   * **`Computed` overload, server-side caveat.** A computed has no stored
+   * value, so the watcher keeps the last computed result in a single `prev`
+   * closure variable, created once at subscription time and shared by every
+   * invocation. Request-scoped (fork) state is not: two concurrent requests
+   * resolve different values for the same dependency atoms. So the
+   * `prevValue` handed to the callback is "the value this watcher computed
+   * last time it fired", which may well have been computed inside a
+   * *different* request's fork. `value` is always correct (it is computed
+   * fresh, inside the mutating context); only `prevValue` can cross request
+   * boundaries.
+   *
+   * That is fine for `watch`'s intended use — app-level, non-React
+   * observation of app-level state (React subscribes through `useComputed`,
+   * which is per-component and browser-side, where there is only ever one
+   * "request"). Do not build per-request logic on a computed's `prevValue`
+   * on the server.
    */
   public watch<T extends TAtomObject>(
     target: Atom<T>,

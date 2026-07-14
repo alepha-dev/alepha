@@ -111,6 +111,14 @@ export type AtomOptions<T extends ZType, N extends string> = {
    * Use `serverOnly` for atoms that may hold secrets or internal
    * request-scoped state that must never leave the server, and never pair
    * it with `persist`.
+   *
+   * **Never make a `serverOnly` atom a dependency of a `$computed` that the
+   * browser reads through `useComputed`.** A computed is re-derived, never
+   * serialized: the server derives it from the atom's real value, and the
+   * browser — which never received that value — re-derives it from the
+   * atom's default. The two disagree, producing a React hydration mismatch
+   * and a silently wrong value from then on. Keep such a computed
+   * server-side (`alepha.store.get`), or derive it from atoms that ship.
    */
   serverOnly?: boolean;
 } & (T extends zod.ZodOptional<any>
