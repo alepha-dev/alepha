@@ -1490,4 +1490,14 @@ export interface Hooks {
      */
     prevValue: any;
   };
+
+  /**
+   * Triggered the first time an atom is registered in the state manager.
+   */
+  "state:register": {
+    /**
+     * The atom that was registered.
+     */
+    atom: Atom<any, any>;
+  };
 }

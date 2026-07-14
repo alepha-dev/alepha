@@ -41,10 +41,31 @@ export const $atom = <T extends ZType, N extends string>(
   return new Atom<T, N>(options);
 };
 
+/**
+ * Persistence adapter for an atom.
+ */
+export type AtomPersist = "cookie" | "localStorage" | "sessionStorage";
+
 export type AtomOptions<T extends ZType, N extends string> = {
   name: N;
   schema: T;
   description?: string;
+
+  /**
+   * Persist this atom outside the in-memory store.
+   *
+   * - `"cookie"` — synced to an HTTP cookie by the `alepha/server/cookies`
+   *   module. Works on the server AND in the browser, so it is the only
+   *   correct adapter for SSR apps: the server reads it while rendering and
+   *   the first paint matches the persisted state.
+   * - `"localStorage"` / `"sessionStorage"` — browser Web Storage. Fine for
+   *   pure SPA apps. The server cannot see these values; registering such
+   *   an atom during SSR logs a warning.
+   *
+   * Values are validated against the schema when read back; invalid or
+   * corrupted entries are discarded and the default is used.
+   */
+  persist?: AtomPersist;
 } & (T extends zod.ZodOptional<any>
   ? {
       default?: Static<T>;

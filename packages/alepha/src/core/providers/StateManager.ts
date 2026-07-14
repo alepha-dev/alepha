@@ -119,6 +119,12 @@ export class StateManager<State extends object = AlephaState> {
       });
     }
 
+    this.bindWebStorage(atom);
+
+    this.events
+      ?.emit("state:register", { atom }, { catch: true })
+      .catch(() => null);
+
     return this;
   }
 
@@ -154,6 +160,84 @@ export class StateManager<State extends object = AlephaState> {
       { issues: result.error.issues },
     );
     layer[key as string] = atom.options.default;
+  }
+
+  /**
+   * Web-storage persistence (localStorage / sessionStorage) for atoms
+   * declared with `persist`. Best-effort: quota errors and privacy modes
+   * are swallowed. Cookie persistence is NOT handled here — it needs the
+   * HTTP request cycle and lives in `alepha/server/cookies`
+   * (AtomCookiePersistence), wired through the `state:register` event.
+   */
+  protected bindWebStorage(atom: Atom<any>): void {
+    const persist = atom.options.persist;
+    if (persist !== "localStorage" && persist !== "sessionStorage") {
+      return;
+    }
+
+    const storage = this.getWebStorage(persist);
+    if (!storage) {
+      // Server side: web storage does not exist, so an SSR'd page cannot
+      // render the persisted value. SSR apps must use `persist: "cookie"`.
+      this.logger?.warn(
+        `Atom "${atom.key}" uses ${persist} persistence, which is unavailable in this environment. Use persist: "cookie" for SSR apps.`,
+      );
+      return;
+    }
+
+    const key = atom.key as keyof State;
+
+    try {
+      const raw = storage.getItem(atom.key);
+      if (raw != null) {
+        const result = this.validator.safeValidate(
+          atom.schema,
+          JSON.parse(raw),
+        );
+        if (result.success) {
+          // Persisted user state wins over the default and over any seed.
+          this.store[key] = result.data as State[keyof State];
+        } else {
+          storage.removeItem(atom.key);
+        }
+      }
+    } catch {
+      storage.removeItem(atom.key);
+    }
+
+    this.events.on("state:mutate", ({ key: mutatedKey, value }) => {
+      if (mutatedKey !== atom.key) {
+        return;
+      }
+      try {
+        if (value === undefined) {
+          storage.removeItem(atom.key);
+        } else {
+          storage.setItem(atom.key, JSON.stringify(value));
+        }
+      } catch {
+        // best-effort persistence
+      }
+    });
+  }
+
+  /**
+   * Resolve a Web Storage area, or undefined when unavailable (server,
+   * privacy mode that throws on access).
+   */
+  protected getWebStorage(
+    kind: "localStorage" | "sessionStorage",
+  ): Storage | undefined {
+    try {
+      if (typeof window === "undefined") {
+        return undefined;
+      }
+      return kind === "localStorage"
+        ? window.localStorage
+        : window.sessionStorage;
+    } catch {
+      return undefined;
+    }
   }
 
   /**
