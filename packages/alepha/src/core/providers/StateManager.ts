@@ -48,6 +48,9 @@ export class StateManager<State extends object = AlephaState> {
     if (scope === "current") {
       if (this.als?.exists()) {
         for (const atom of this.atoms.values()) {
+          if (atom.options.serverOnly) {
+            continue;
+          }
           const value = this.als.get(atom.key, "current");
           if (value !== undefined) {
             exported[atom.key as string] = value;
@@ -58,6 +61,9 @@ export class StateManager<State extends object = AlephaState> {
     }
 
     for (const [key, atom] of this.atoms.entries()) {
+      if (atom.options.serverOnly) {
+        continue;
+      }
       const value = this.get(atom, scope);
       if (value !== undefined) {
         exported[key as string] = value;
@@ -375,6 +381,62 @@ export class StateManager<State extends object = AlephaState> {
     }
 
     return this;
+  }
+
+  /**
+   * Reset an atom back to its declared default value.
+   */
+  public reset<T extends TAtomObject>(atom: Atom<T>): this {
+    this.register(atom);
+    return this.set(atom, atom.options.default as AtomStatic<T>);
+  }
+
+  /**
+   * Observe mutations of an atom, a computed value, or a raw state key
+   * outside React. Returns an unsubscribe function.
+   */
+  public watch<T extends TAtomObject>(
+    target: Atom<T>,
+    callback: (value: Static<T>, prevValue: Static<T> | undefined) => void,
+  ): () => void;
+  public watch<R>(
+    target: Computed<R>,
+    callback: (value: R, prevValue: R | undefined) => void,
+  ): () => void;
+  public watch<Key extends keyof State>(
+    target: Key,
+    callback: (
+      value: State[Key] | undefined,
+      prevValue: State[Key] | undefined,
+    ) => void,
+  ): () => void;
+  public watch(
+    target: any,
+    callback: (value: any, prevValue: any) => void,
+  ): () => void {
+    if (target instanceof Computed) {
+      const keys = new Set(target.keys());
+      let prev = this.get(target);
+      return this.events.on("state:mutate", (ev) => {
+        if (!keys.has(ev.key as string)) {
+          return;
+        }
+        const next = this.get(target);
+        const last = prev;
+        prev = next;
+        callback(next, last);
+      });
+    }
+
+    if (target instanceof Atom) {
+      this.register(target);
+    }
+    const key = target instanceof Atom ? target.key : target;
+    return this.events.on("state:mutate", (ev) => {
+      if (ev.key === key) {
+        callback(ev.value, ev.prevValue);
+      }
+    });
   }
 
   /**

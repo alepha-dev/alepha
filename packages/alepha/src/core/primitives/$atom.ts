@@ -77,6 +77,15 @@ export type AtomOptions<T extends ZType, N extends string> = {
    * binding instead — that is the escape hatch for trust-bearing values.
    */
   persist?: AtomPersist;
+
+  /**
+   * Exclude this atom from SSR hydration export.
+   *
+   * The value stays on the server: it is never serialized into the HTML
+   * payload sent to the browser. Use for atoms that may hold secrets or
+   * internal request state.
+   */
+  serverOnly?: boolean;
 } & (T extends zod.ZodOptional<any>
   ? {
       default?: Static<T>;

@@ -395,6 +395,14 @@ export class Alepha {
   }
 
   /**
+   * Reset an atom back to its declared default value.
+   */
+  public reset<T extends TAtomObject>(target: Atom<T>): this {
+    this.store.reset(target);
+    return this;
+  }
+
+  /**
    * True when start() is called.
    *
    * -> No more services can be added, it's over, bye!

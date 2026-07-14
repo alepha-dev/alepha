@@ -17,6 +17,7 @@ import { HttpClient } from "alepha/server";
 import { Atom, RefreshCw, Save, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TreeView, type TreeViewNode } from "../shared/TreeView.tsx";
+import { ConfigAtomsMutations } from "./ConfigAtomsMutations.tsx";
 
 interface AtomTreeNode {
   key: string;
@@ -325,6 +326,8 @@ const AtomDetailPanel = (props: AtomDetailPanelProps) => {
               {JSON.stringify(atom.schema, null, 2)}
             </pre>
           </div>
+
+          <ConfigAtomsMutations atomName={atom.name} />
         </div>
       </div>
     </div>

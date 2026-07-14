@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Alepha } from "../Alepha.ts";
 import { TypeBoxError } from "../errors/TypeBoxError.ts";
 import { $atom } from "../primitives/$atom.ts";
+import { $computed } from "../primitives/$computed.ts";
 import { AlsProvider } from "../providers/AlsProvider.ts";
 import { StateManager } from "../providers/StateManager.ts";
 import { z } from "../providers/TypeProvider.ts";
@@ -537,6 +538,94 @@ describe("StateManager", () => {
       // keys() returns local store keys
       const keys = alepha.store.keys();
       expect(keys).toEqual(["active"]);
+    });
+  });
+
+  describe("Reset, Watch, ServerOnly", () => {
+    const counter = $atom({
+      name: "test.extras.counter",
+      schema: z.object({ value: z.number() }),
+      default: { value: 0 },
+    });
+
+    const secret = $atom({
+      name: "test.extras.secret",
+      schema: z.object({ token: z.string() }),
+      default: { token: "" },
+      serverOnly: true,
+    });
+
+    const doubledCounter = $computed({
+      name: "test.extras.doubled",
+      deps: [counter],
+      get: (c) => c.value * 2,
+    });
+
+    it("reset restores the declared default", () => {
+      const alepha = Alepha.create();
+      alepha.store.set(counter, { value: 99 });
+      alepha.store.reset(counter);
+      expect(alepha.store.get(counter)).toEqual({ value: 0 });
+    });
+
+    it("reset is exposed on the Alepha instance", () => {
+      const alepha = Alepha.create();
+      alepha.store.set(counter, { value: 99 });
+      alepha.reset(counter);
+      expect(alepha.get(counter)).toEqual({ value: 0 });
+    });
+
+    it("watch fires with value and previous value", async () => {
+      const alepha = Alepha.create();
+      const calls: Array<[unknown, unknown]> = [];
+
+      alepha.store.watch(counter, (value, prevValue) => {
+        calls.push([value, prevValue]);
+      });
+
+      alepha.store.set(counter, { value: 1 });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(calls).toEqual([[{ value: 1 }, { value: 0 }]]);
+    });
+
+    it("watch returns an unsubscribe function", async () => {
+      const alepha = Alepha.create();
+      const calls: unknown[] = [];
+
+      const off = alepha.store.watch(counter, (value) => {
+        calls.push(value);
+      });
+      off();
+
+      alepha.store.set(counter, { value: 1 });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(calls).toEqual([]);
+    });
+
+    it("watch supports computed values", async () => {
+      const alepha = Alepha.create();
+      const calls: Array<[unknown, unknown]> = [];
+
+      alepha.store.watch(doubledCounter, (value, prevValue) => {
+        calls.push([value, prevValue]);
+      });
+
+      alepha.store.set(counter, { value: 5 });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(calls).toEqual([[10, 0]]);
+    });
+
+    it("serverOnly atoms are excluded from exportAtoms", () => {
+      const alepha = Alepha.create();
+      alepha.store.set(counter, { value: 1 });
+      alepha.store.set(secret, { token: "s3cret" });
+
+      const exported = alepha.store.exportAtoms();
+      expect(exported["test.extras.counter"]).toEqual({ value: 1 });
+      expect(exported["test.extras.secret"]).toBeUndefined();
     });
   });
 });
