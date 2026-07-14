@@ -152,13 +152,13 @@ There is no need to explicitly register `billingModule` if something already dep
 Modules can register atoms in their state:
 
 ```typescript
-import { $atom, $module, t } from "alepha";
+import { $atom, $module, z } from "alepha";
 
 const billingConfig = $atom({
   name: "billing:config",
-  schema: t.object({
-    currency: t.text({ default: "USD" }),
-    taxRate: t.number({ default: 0.2 }),
+  schema: z.object({
+    currency: z.text({ default: "USD" }),
+    taxRate: z.number().default(0.2),
   }),
   default: { currency: "USD", taxRate: 0.2 },
 });

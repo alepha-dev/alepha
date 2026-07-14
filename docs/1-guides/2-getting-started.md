@@ -113,7 +113,7 @@ Development mode gives you:
 OpenAPI documentation, and type-safe client calls.
 
 ```typescript filename="src/main.server.ts"
-import { t, run, $inject } from "alepha";
+import { z, run, $inject } from "alepha";
 import { $action } from "alepha/server";
 import { DateTimeProvider } from "alepha/datetime";
 
@@ -123,9 +123,9 @@ class App {
   hello = $action({
     path: "/hello",
     schema: {
-      response: t.object({
-        message: t.text(),
-        serverTime: t.datetime(),
+      response: z.object({
+        message: z.text(),
+        serverTime: z.datetime(),
       }),
     },
     handler: () => ({

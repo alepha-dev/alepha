@@ -3,7 +3,7 @@
 The `db` object from `alepha/orm` provides helper methods for database-specific column types. These extend the base `t` type system with attributes that control how columns behave at the database level.
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 ```
 
@@ -15,9 +15,9 @@ The `db` object is an instance of `DatabaseTypeProvider`. An older alias `pg` is
 
 ```typescript
 db.primaryKey()            // integer with identity (auto-increment) - default
-db.primaryKey(t.uuid())    // UUID with auto-generated default
-db.primaryKey(t.integer()) // integer with identity
-db.primaryKey(t.bigint())  // bigint with identity
+db.primaryKey(z.uuid())    // UUID with auto-generated default
+db.primaryKey(z.integer()) // integer with identity
+db.primaryKey(z.bigint())  // bigint with identity
 ```
 
 Calling `db.primaryKey()` with no argument creates an integer (identity) column. This is the default primary key type.
@@ -74,22 +74,22 @@ When `save()` is called, it includes the current version in the WHERE clause. If
 
 ## Enum
 
-`t.enum()` creates a native PostgreSQL ENUM type column by default.
+`z.enum()` creates a native PostgreSQL ENUM type column by default.
 
 ```typescript
-role: t.enum(["admin", "user", "moderator"]),
+role: z.enum(["admin", "user", "moderator"]),
 ```
 
 You can share an enum type across multiple tables by specifying a custom name:
 
 ```typescript
-status: t.enum(["pending", "active", "archived"], { name: "status_enum" }),
+status: z.enum(["pending", "active", "archived"]).meta({ name: "status_enum" }),
 ```
 
 To store as a TEXT column instead of a real PostgreSQL ENUM, use `mode: "text"`:
 
 ```typescript
-status: t.enum(["pending", "active", "archived"], { mode: "text" }),
+status: z.enum(["pending", "active", "archived"]).meta({ mode: "text" }),
 ```
 
 ## Default Values
@@ -97,8 +97,8 @@ status: t.enum(["pending", "active", "archived"], { mode: "text" }),
 `db.default()` wraps a schema with a default value at the database level.
 
 ```typescript
-isActive: db.default(t.boolean(), true),
-score: db.default(t.integer(), 0),
+isActive: db.default(z.boolean(), true),
+score: db.default(z.integer(), 0),
 ```
 
 When the column is omitted during insert, the database uses the default value.
@@ -108,23 +108,23 @@ When the column is omitted during insert, the database uses the default value.
 `db.ref()` creates a foreign key reference to another entity's column.
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 const team = $entity({
   name: "teams",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
-    name: t.text(),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    name: z.text(),
   }),
 });
 
 const player = $entity({
   name: "players",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
-    name: t.text(),
-    teamId: db.ref(t.uuid(), () => team.cols.id),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    name: z.text(),
+    teamId: db.ref(z.uuid(), () => team.cols.id),
   }),
 });
 ```
@@ -135,13 +135,13 @@ The second argument is a lazy function returning the target entity column. This 
 
 By default, `db.ref()` infers the `onDelete` action from the column type:
 
-- If the column is optional (`t.optional(...)`), the default is `"set null"`.
+- If the column is optional (`.optional()`), the default is `"set null"`.
 - If the column is required, the default is `"cascade"`.
 
 You can override this behavior with explicit actions:
 
 ```typescript
-teamId: db.ref(t.optional(t.uuid()), () => team.cols.id, {
+teamId: db.ref(z.uuid().optional(), () => team.cols.id, {
   onDelete: "set null",
   onUpdate: "cascade",
 }),
@@ -152,17 +152,17 @@ Available actions: `"cascade"`, `"restrict"`, `"no action"`, `"set null"`, `"set
 ## Full Example
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 const user = $entity({
   name: "users",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
-    email: t.email(),
-    name: t.text(),
-    role: t.enum(["admin", "user", "moderator"]),
-    isActive: db.default(t.boolean(), true),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    email: z.email(),
+    name: z.text(),
+    role: z.enum(["admin", "user", "moderator"]),
+    isActive: db.default(z.boolean(), true),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     deletedAt: db.deletedAt(),

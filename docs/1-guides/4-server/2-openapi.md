@@ -91,9 +91,9 @@ Schema descriptions propagate to OpenAPI field descriptions:
 
 ```typescript
 schema: {
-  body: t.object({
-    email: t.email({ description: "User's email address" }),
-    age: t.integer({ description: "User's age in years" }),
+  body: z.object({
+    email: z.email().describe("User's email address"),
+    age: z.integer().describe("User's age in years"),
   }),
 }
 ```

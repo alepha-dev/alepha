@@ -142,16 +142,16 @@ test("MyService", async () => {
 Providers separate infrastructure logic (the "how") from business logic (the "what"). A provider wraps external systems — databases, email services, storage — behind a clean API.
 
 ```typescript
-import { $env, $hook, t } from "alepha";
+import { $env, $hook, z } from "alepha";
 import { $logger } from "alepha/logger";
 
 export class EmailProvider {
   log = $logger();
 
-  env = $env(t.object({
-    SMTP_HOST: t.text(),
-    SMTP_USER: t.text(),
-    SMTP_PASS: t.text(),
+  env = $env(z.object({
+    SMTP_HOST: z.text(),
+    SMTP_USER: z.text(),
+    SMTP_PASS: z.text(),
   }));
 
   protected transporter = createTransport({

@@ -1,13 +1,13 @@
 # File Upload
 
-Alepha handles multipart/form-data uploads through the `t.file()` schema type. Multipart parsing is built into `AlephaServer` and active by default.
+Alepha handles multipart/form-data uploads through the `z.file()` schema type. Multipart parsing is built into `AlephaServer` and active by default.
 
 ## Defining Upload Endpoints
 
-Use `t.file()` in a body schema. When the body contains a file field, the action automatically expects `multipart/form-data`:
+Use `z.file()` in a body schema. When the body contains a file field, the action automatically expects `multipart/form-data`:
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $action } from "alepha/server";
 import { $bucket } from "alepha/bucket";
 
@@ -18,11 +18,11 @@ class UploadController {
     method: "POST",
     path: "/upload",
     schema: {
-      body: t.object({
-        file: t.file(),
-        description: t.optional(t.text()),
+      body: z.object({
+        file: z.file(),
+        description: z.text().optional(),
       }),
-      response: t.object({ id: t.text() }),
+      response: z.object({ id: z.text() }),
     },
     handler: async ({ body }) => {
       const fileId = await this.bucket.upload(body.file);
@@ -61,10 +61,10 @@ Combine file fields with regular form fields in the same schema. Non-file fields
 
 ```typescript
 schema: {
-  body: t.object({
-    avatar: t.file(),
-    username: t.text(),
-    bio: t.optional(t.text()),
+  body: z.object({
+    avatar: z.file(),
+    username: z.text(),
+    bio: z.text().optional(),
   }),
 }
 ```

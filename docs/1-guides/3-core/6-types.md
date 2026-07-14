@@ -5,13 +5,13 @@ Alepha provides schema validation through the `t` singleton from `"alepha"`. It 
 ## Basic Usage
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 
-const userSchema = t.object({
-  id: t.uuid(),
-  email: t.email(),
-  name: t.text(),
-  age: t.optional(t.integer()),
+const userSchema = z.object({
+  id: z.uuid(),
+  email: z.email(),
+  name: z.text(),
+  age: z.integer().optional(),
 });
 ```
 
@@ -19,25 +19,25 @@ const userSchema = t.object({
 
 ## Strings
 
-### t.string() vs t.text()
+### z.string() vs z.text()
 
-`t.string()` creates a raw string with no length limit. Use it for internal values where length is irrelevant.
+`z.string()` creates a raw string with no length limit. Use it for internal values where length is irrelevant.
 
-`t.text()` adds length limits and text processing. Use it for user input, database fields, and API schemas.
+`z.text()` adds length limits and text processing. Use it for user input, database fields, and API schemas.
 
 ```typescript
-t.string()                  // no limits
-t.text()                    // max 255 chars, trimmed
-t.text({ size: "short" })   // max 64 chars, trimmed
-t.text({ size: "long" })    // max 1024 chars, trimmed
-t.text({ size: "rich" })    // max 65535 chars, trimmed
+z.string()                  // no limits
+z.text()                    // max 255 chars, trimmed
+z.text({ size: "short" })   // max 64 chars, trimmed
+z.text({ size: "long" })    // max 1024 chars, trimmed
+z.text({ size: "rich" })    // max 65535 chars, trimmed
 ```
 
-`t.text()` trims whitespace by default. You can control this and enable lowercase conversion:
+`z.text()` trims whitespace by default. You can control this and enable lowercase conversion:
 
 ```typescript
-t.text({ trim: false })          // no trimming
-t.text({ trim: true, lowercase: true })  // trim + lowercase
+z.text({ trim: false })          // no trimming
+z.text({ trim: true, lowercase: true })  // trim + lowercase
 ```
 
 ### Text Presets
@@ -45,9 +45,9 @@ t.text({ trim: true, lowercase: true })  // trim + lowercase
 Shorthand methods for common text sizes:
 
 ```typescript
-t.shortText()   // same as t.text({ size: "short" })  — 64 chars
-t.longText()    // same as t.text({ size: "long" })   — 1024 chars
-t.richText()    // same as t.text({ size: "rich" })   — 65535 chars
+z.shortText()   // same as z.text({ size: "short" })  — 64 chars
+z.longText()    // same as z.text({ size: "long" })   — 1024 chars
+z.richText()    // same as z.text({ size: "rich" })   — 65535 chars
 ```
 
 ### Default Length Limits
@@ -71,19 +71,19 @@ TypeProvider.DEFAULT_RICH_STRING_MAX_LENGTH = 100000;
 ## Numbers
 
 ```typescript
-t.number()    // any number
-t.integer()   // integer (no fractional part)
-t.int32()     // integer clamped to signed 32-bit range (-2147483647 to 2147483647)
-t.int64()     // JS-safe integer (-9007199254740991 to 9007199254740991)
+z.number()    // any number
+z.integer()   // integer (no fractional part)
+z.int32()     // integer clamped to signed 32-bit range (-2147483647 to 2147483647)
+z.int64()     // JS-safe integer (-9007199254740991 to 9007199254740991)
 ```
 
-`t.int64()` is NOT a true 64-bit integer. JavaScript cannot represent all int64 values. For true int64, use `t.bigint()` which stores values as strings.
+`z.int64()` is NOT a true 64-bit integer. JavaScript cannot represent all int64 values. For true int64, use `z.bigint()` which stores values as strings.
 
-All number methods accept TypeBox number options:
+Chain zod's native number checks for bounds:
 
 ```typescript
-t.integer({ minimum: 0, maximum: 100 })
-t.number({ exclusiveMinimum: 0 })
+z.integer().min(0).max(100)
+z.number().gt(0)
 ```
 
 ## Objects
@@ -91,9 +91,9 @@ t.number({ exclusiveMinimum: 0 })
 Objects reject additional properties by default:
 
 ```typescript
-const schema = t.object({
-  name: t.text(),
-  email: t.email(),
+const schema = z.object({
+  name: z.text(),
+  email: z.email(),
 });
 // { name: "alice", email: "a@b.c", extra: true } → validation error
 ```
@@ -101,7 +101,7 @@ const schema = t.object({
 To allow additional properties:
 
 ```typescript
-t.object({ name: t.text() }, { additionalProperties: true })
+z.object({ name: z.text() }).meta({ additionalProperties: true })
 ```
 
 ## Arrays
@@ -109,9 +109,9 @@ t.object({ name: t.text() }, { additionalProperties: true })
 Arrays are limited to 1000 items by default:
 
 ```typescript
-t.array(t.string())                      // max 1000 items
-t.array(t.string(), { maxItems: 50 })    // max 50 items
-t.array(t.string(), { minItems: 1 })     // at least 1 item
+z.array(z.string())                      // max 1000 items
+z.array(z.string()).max(50)              // max 50 items
+z.array(z.string()).min(1)               // at least 1 item
 ```
 
 Override the global default:
@@ -125,28 +125,28 @@ TypeProvider.DEFAULT_ARRAY_MAX_ITEMS = 5000;
 ### Optional and Nullable
 
 ```typescript
-t.optional(t.string())    // string | undefined
-t.nullable(t.string())    // string | null
+z.string().optional()    // string | undefined
+z.string().nullable()    // string | null
 ```
 
 These can be combined:
 
 ```typescript
-t.optional(t.nullable(t.string()))  // string | null | undefined
+z.string().nullable().optional()  // string | null | undefined
 ```
 
 ### Partial, Pick, Omit
 
 ```typescript
-const user = t.object({
-  id: t.uuid(),
-  name: t.text(),
-  email: t.email(),
+const user = z.object({
+  id: z.uuid(),
+  name: z.text(),
+  email: z.email(),
 });
 
-t.partial(user)                  // all fields optional
-t.pick(user, ["id", "name"])     // only id and name
-t.omit(user, ["id"])             // name and email only
+user.partial()                              // all fields optional
+user.pick({ id: true, name: true })         // only id and name
+user.omit({ id: true })                     // name and email only
 ```
 
 All three preserve the `additionalProperties: false` default.
@@ -156,35 +156,21 @@ All three preserve the `additionalProperties: false` default.
 Add properties to an existing schema:
 
 ```typescript
-const baseUser = t.object({
-  id: t.uuid(),
-  name: t.text(),
+const baseUser = z.object({
+  id: z.uuid(),
+  name: z.text(),
 });
 
-const admin = t.extend(baseUser, {
-  role: t.const("admin"),
-  permissions: t.array(t.text()),
+const admin = baseUser.extend({
+  role: z.const("admin"),
+  permissions: z.array(z.text()),
 });
 ```
 
-`t.extend` also accepts an array of schemas to merge multiple bases:
+To merge multiple base schemas, spread their `.shape` into a new object:
 
 ```typescript
-t.extend([baseUser, timestamped], { extra: t.text() })
-```
-
-### Nullify
-
-Maps all properties of an object to nullable:
-
-```typescript
-const schema = t.object({
-  name: t.text(),
-  age: t.integer(),
-});
-
-t.nullify(schema)
-// equivalent to: { name: string | null, age: number | null }
+z.object({ ...baseUser.shape, ...timestamped.shape, extra: z.text() })
 ```
 
 ## Format Types
@@ -194,7 +180,7 @@ t.nullify(schema)
 String-encoded arbitrary-precision integer:
 
 ```typescript
-t.bigint()   // validates "123456789", "-42", etc.
+z.bigint()   // validates "123456789", "-42", etc.
 ```
 
 Values are represented as strings to avoid JavaScript number limitations.
@@ -202,21 +188,21 @@ Values are represented as strings to avoid JavaScript number limitations.
 ### UUID
 
 ```typescript
-t.uuid()   // validates UUID format (e.g. "550e8400-e29b-41d4-a716-446655440000")
+z.uuid()   // validates UUID format (e.g. "550e8400-e29b-41d4-a716-446655440000")
 ```
 
 ### URL
 
 ```typescript
-t.url()   // validates URL format
+z.url()   // validates URL format
 ```
 
 ### File and Stream
 
 ```typescript
-t.file()                      // file-like object (browser File API compatible)
-t.file({ maxSize: 1048576 })  // with size limit (bytes)
-t.stream()                    // experimental streaming type
+z.file()                      // file-like object (browser File API compatible)
+z.file({ maxSize: 1048576 })  // with size limit (bytes)
+z.stream()                    // experimental streaming type
 ```
 
 ## Domain Types
@@ -224,28 +210,28 @@ t.stream()                    // experimental streaming type
 ### Email
 
 ```typescript
-t.email()   // validates email format, auto-trims and lowercases
+z.email()   // validates email format, auto-trims and lowercases
 ```
 
 ### Phone (E.164)
 
 ```typescript
-t.e164()   // validates E.164 format, e.g. "+1234567890"
+z.e164()   // validates E.164 format, e.g. "+1234567890"
 ```
 
 ### Language Tag (BCP 47)
 
 ```typescript
-t.bcp47()   // validates BCP 47 tags, e.g. "en", "en-US", "fr-CA"
+z.bcp47()   // validates BCP 47 tags, e.g. "en", "en-US", "fr-CA"
 ```
 
 ### Date and Time
 
 ```typescript
-t.datetime()   // ISO 8601 date-time, e.g. "2024-01-15T10:30:00Z"
-t.date()       // ISO 8601 date, e.g. "2024-01-15"
-t.time()       // ISO 8601 time, e.g. "10:30:00"
-t.duration()   // ISO 8601 duration, e.g. "P1DT12H"
+z.datetime()   // ISO 8601 date-time, e.g. "2024-01-15T10:30:00Z"
+z.date()       // ISO 8601 date, e.g. "2024-01-15"
+z.time()       // ISO 8601 time, e.g. "10:30:00"
+z.duration()   // ISO 8601 duration, e.g. "P1DT12H"
 ```
 
 ## Enums
@@ -253,7 +239,7 @@ t.duration()   // ISO 8601 duration, e.g. "P1DT12H"
 String enums with built-in validation:
 
 ```typescript
-t.enum(["ACTIVE", "INACTIVE", "BANNED"])
+z.enum(["ACTIVE", "INACTIVE", "BANNED"])
 // validates that the value is one of the listed strings
 ```
 
@@ -262,16 +248,16 @@ Enum values are validated both by pattern matching and by an `enum` constraint o
 ## Other Types
 
 ```typescript
-t.const("value")    // literal value
-t.boolean()         // boolean
-t.null()            // null
-t.any()             // any (no validation)
-t.void()            // void
-t.undefined()       // undefined
-t.union([...])      // union of schemas
-t.tuple([...])      // fixed-length array
-t.record(k, v)      // Record<K, V>
-t.json()            // Record<string, any> — convenience for JSON blobs
+z.const("value")    // literal value
+z.boolean()         // boolean
+z.null()            // null
+z.any()             // any (no validation)
+z.void()            // void
+z.undefined()       // undefined
+z.union([...])      // union of schemas
+z.tuple([...])      // fixed-length array
+z.record(k, v)      // Record<K, V>
+z.json()            // Record<string, any> — convenience for JSON blobs
 ```
 
 ## Validation
@@ -279,12 +265,12 @@ t.json()            // Record<string, any> — convenience for JSON blobs
 Alepha validates data through `alepha.codec.validate()`. This is the same validation used internally by `$action`, `$env`, and other primitives.
 
 ```typescript
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 
 const alepha = Alepha.create();
-const schema = t.object({
-  name: t.text(),
-  email: t.email(),
+const schema = z.object({
+  name: z.text(),
+  email: z.email(),
 });
 
 const result = alepha.codec.validate(schema, {
@@ -294,10 +280,10 @@ const result = alepha.codec.validate(schema, {
 // result: { name: "Alice", email: "alice@example.com" }
 ```
 
-Validation does more than type checking. It applies preprocessing defined by `t.text()`:
+Validation does more than type checking. It applies preprocessing defined by `z.text()`:
 
-- **Trimming**: strings created with `t.text()` are trimmed by default.
-- **Lowercase**: strings with `lowercase: true` (like `t.email()`) are lowercased.
+- **Trimming**: strings created with `z.text()` are trimmed by default.
+- **Lowercase**: strings with `lowercase: true` (like `z.email()`) are lowercased.
 - **Null coercion**: `null` values in non-nullable fields become `undefined`, which are then stripped from objects.
 - **Array wrapping**: non-array values passed to an array schema are automatically wrapped into a single-element array (e.g. `"hello"` becomes `["hello"]`).
 
@@ -318,9 +304,9 @@ alepha.codec.validate(schema, value, {
 `alepha.codec.encode()` validates data and serializes it to a target format:
 
 ```typescript
-const schema = t.object({
-  id: t.uuid(),
-  name: t.text(),
+const schema = z.object({
+  id: z.uuid(),
+  name: z.text(),
 });
 
 // Validate and return the cleaned object (default)

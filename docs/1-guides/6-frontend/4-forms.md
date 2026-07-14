@@ -5,14 +5,14 @@ Alepha provides `useForm` for schema-driven forms with TypeBox validation, autom
 ## Basic Usage
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 
 function LoginForm() {
   const form = useForm({
-    schema: t.object({
-      email: t.email(),
-      password: t.text(),
+    schema: z.object({
+      email: z.email(),
+      password: z.text(),
     }),
     handler: async (values) => {
       await api.login(values);
@@ -94,17 +94,17 @@ Input types are automatically inferred from the schema:
 
 | Schema Type      | Input Type       |
 |------------------|------------------|
-| `t.integer()`    | `number`         |
-| `t.number()`     | `number`         |
-| `t.boolean()`    | `checkbox`       |
-| `t.email()`      | `email`          |
-| `t.text()`       | `text`           |
+| `z.integer()`    | `number`         |
+| `z.number()`     | `number`         |
+| `z.boolean()`    | `checkbox`       |
+| `z.email()`      | `email`          |
+| `z.text()`       | `text`           |
 | Field named `password` | `password`  |
 | Field named `url` | `url`           |
-| `t.string({ format: "date" })` | `date` |
-| `t.string({ format: "time" })` | `time` |
-| `t.string({ format: "date-time" })` | `datetime-local` |
-| `t.string({ format: "binary" })` | `file` |
+| `z.date()`       | `date`           |
+| `z.time()`       | `time`           |
+| `z.datetime()`   | `datetime-local` |
+| `z.file()`       | `file`           |
 
 String constraints like `maxLength` and `minLength` are also applied to the input attributes.
 
@@ -114,10 +114,10 @@ For schemas with nested objects, use `items` to access child fields:
 
 ```typescript
 const form = useForm({
-  schema: t.object({
-    address: t.object({
-      street: t.text(),
-      city: t.text(),
+  schema: z.object({
+    address: z.object({
+      street: z.text(),
+      city: z.text(),
     }),
   }),
   handler: async (values) => { /* values.address.street, values.address.city */ },

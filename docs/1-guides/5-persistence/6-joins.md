@@ -3,7 +3,7 @@
 Relations between tables are not declared on `$entity`. Instead, use the `with` option in repository query methods to perform joins at query time.
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
 ```
 
@@ -14,20 +14,20 @@ Use `db.ref()` to create foreign key columns that reference another entity:
 ```typescript
 const teams = $entity({
   name: "teams",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.text(),
-    country: t.text(),
+    name: z.text(),
+    country: z.text(),
   }),
 });
 
 const players = $entity({
   name: "players",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    teamId: db.ref(t.optional(t.integer()), () => teams.cols.id),
-    name: t.text(),
-    position: t.text(),
+    teamId: db.ref(z.integer().optional(), () => teams.cols.id),
+    name: z.text(),
+    position: z.text(),
   }),
 });
 ```
@@ -314,10 +314,10 @@ When an entity references itself (e.g. a `managerId` pointing to the same `users
 ```typescript
 const users = $entity({
   name: "users",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    name: t.text(),
-    managerId: db.ref(t.optional(t.integer()), () => users.cols.id),
+    name: z.text(),
+    managerId: db.ref(z.integer().optional(), () => users.cols.id),
   }),
 });
 

@@ -7,7 +7,7 @@ Alepha ships with first-class MCP support. You define tools, resources, and prom
 ## Quick Start
 
 ```typescript
-import { t, run } from "alepha";
+import { z, run } from "alepha";
 import { AlephaMcp, $tool, $resource } from "alepha/mcp";
 import { AlephaServer } from "alepha/server";
 
@@ -15,11 +15,11 @@ class MyMcp {
   add = $tool({
     description: "Add two numbers",
     schema: {
-      params: t.object({
-        a: t.number(),
-        b: t.number(),
+      params: z.object({
+        a: z.number(),
+        b: z.number(),
       }),
-      result: t.number(),
+      result: z.number(),
     },
     handler: async ({ params }) => params.a + params.b,
   });
@@ -61,18 +61,18 @@ class TaskTools {
   task_list = $tool({
     description: "List tasks. Filter by status or search by title.",
     schema: {
-      params: t.object({
-        status: t.optional(t.enum(["new", "accepted", "completed"])),
-        search: t.optional(t.string({ description: "Search by title" })),
-        limit: t.optional(t.integer({ minimum: 1, maximum: 100 })),
+      params: z.object({
+        status: z.enum(["new", "accepted", "completed"]).optional(),
+        search: z.text({ description: "Search by title" }).optional(),
+        limit: z.integer().min(1).max(100).optional(),
       }),
-      result: t.object({
-        tasks: t.array(t.object({
-          id: t.integer(),
-          title: t.string(),
-          status: t.string(),
+      result: z.object({
+        tasks: z.array(z.object({
+          id: z.integer(),
+          title: z.text(),
+          status: z.text(),
         })),
-        total: t.integer(),
+        total: z.integer(),
       }),
     },
     handler: async ({ params }) => {
@@ -88,14 +88,14 @@ class TaskTools {
   task_create = $tool({
     description: "Create a new task.",
     schema: {
-      params: t.object({
-        title: t.text(),
-        description: t.optional(t.text()),
-        priority: t.optional(t.enum(["low", "medium", "high"])),
+      params: z.object({
+        title: z.text(),
+        description: z.text().optional(),
+        priority: z.enum(["low", "medium", "high"]).optional(),
       }),
-      result: t.object({
-        id: t.integer(),
-        title: t.string(),
+      result: z.object({
+        id: z.integer(),
+        title: z.text(),
       }),
     },
     handler: async ({ params }) => {
@@ -186,9 +186,9 @@ import { $prompt } from "alepha/mcp";
 class Prompts {
   codeReview = $prompt({
     description: "Request a code review",
-    args: t.object({
-      code: t.text({ description: "The code to review" }),
-      language: t.text({ description: "Programming language" }),
+    args: z.object({
+      code: z.text({ description: "The code to review" }),
+      language: z.text({ description: "Programming language" }),
     }),
     handler: async ({ args }) => [
       {
@@ -265,10 +265,10 @@ class PostTools {
   post_create = $tool({
     description: "Create a new blog post.",
     schema: {
-      params: t.object({
-        title: t.text(),
-        content: t.text({ description: "Markdown content" }),
-        tags: t.optional(t.array(t.string())),
+      params: z.object({
+        title: z.text(),
+        content: z.text({ description: "Markdown content" }),
+        tags: z.array(z.text()).optional(),
       }),
     },
     handler: async ({ params }) => {
@@ -295,14 +295,14 @@ Add `description` to individual fields to help the AI understand what each param
 
 ```typescript
 schema: {
-  params: t.object({
-    project: t.optional(t.integer({ description: "Project ID" })),
-    project_name: t.optional(t.string({ description: "Case-insensitive project name" })),
-    limit: t.optional(t.integer({
-      description: "Max results to return (default: 20)",
-      minimum: 1,
-      maximum: 100,
-    })),
+  params: z.object({
+    project: z.integer().describe("Project ID").optional(),
+    project_name: z.text({ description: "Case-insensitive project name" }).optional(),
+    limit: z.integer()
+      .min(1)
+      .max(100)
+      .describe("Max results to return (default: 20)")
+      .optional(),
   }),
 }
 ```
@@ -311,9 +311,9 @@ Extract shared schemas to keep tool definitions clean:
 
 ```typescript
 // schemas/common.ts
-export const projectParamsSchema = t.object({
-  project: t.optional(t.integer({ description: "Project ID" })),
-  project_name: t.optional(t.string({ description: "Project name (case-insensitive)" })),
+export const projectParamsSchema = z.object({
+  project: z.integer().describe("Project ID").optional(),
+  project_name: z.text({ description: "Project name (case-insensitive)" }).optional(),
 });
 
 // tools/TaskTools.ts
@@ -322,8 +322,8 @@ import { projectParamsSchema } from "../schemas/common.ts";
 task_list = $tool({
   description: "List tasks for a project.",
   schema: {
-    params: t.extend(projectParamsSchema, {
-      status: t.optional(t.enum(["new", "accepted", "completed"])),
+    params: projectParamsSchema.extend({
+      status: z.enum(["new", "accepted", "completed"]).optional(),
     }),
   },
   handler: async ({ params }) => { /* ... */ },

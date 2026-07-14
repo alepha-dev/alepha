@@ -17,22 +17,22 @@ This generates a project in current directory with a server entry point, a sampl
 Actions are defined as class properties using `$action`. Each action becomes an HTTP endpoint.
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $action } from "alepha/server";
 
 class ProductController {
   list = $action({
     path: "/products",
     schema: {
-      query: t.object({
-        page: t.optional(t.integer({ default: 1 })),
-        limit: t.optional(t.integer({ default: 10 })),
+      query: z.object({
+        page: z.integer().default(1).optional(),
+        limit: z.integer().default(10).optional(),
       }),
       // good practice is to move complex schemas to separate files (api/schemas/*) and import them
-      response: t.array(t.object({
-        id: t.uuid(),
-        name: t.text(),
-        price: t.number(),
+      response: z.array(z.object({
+        id: z.uuid(),
+        name: z.text(),
+        price: z.number(),
       })),
     },
     handler: async ({ query }) => {
@@ -47,11 +47,11 @@ class ProductController {
     method: "POST",
     path: "/products",
     schema: {
-      body: t.object({
-        name: t.text(),
-        price: t.number(),
+      body: z.object({
+        name: z.text(),
+        price: z.number(),
       }),
-      response: t.object({ id: t.uuid(), name: t.text(), price: t.number() }),
+      response: z.object({ id: z.uuid(), name: z.text(), price: z.number() }),
     },
     handler: async ({ body }) => {
       return await this.repo.create(body);
@@ -89,7 +89,7 @@ When a `params` schema is provided and no `path` is set, path parameters are app
 ```typescript
 class App {
   getUser = $action({
-    schema: { params: t.object({ id: t.uuid() }) },
+    schema: { params: z.object({ id: z.uuid() }) },
     handler: async ({ params }) => { /* ... */ },
   });
   // GET /api/getUser/:id
@@ -105,9 +105,9 @@ update = $action({
   method: "PUT",
   path: "/products/:id",
   schema: {
-    params: t.object({ id: t.uuid() }),
-    body: t.object({ name: t.text(), price: t.number() }),
-    response: t.object({ id: t.uuid(), name: t.text(), price: t.number() }),
+    params: z.object({ id: z.uuid() }),
+    body: z.object({ name: z.text(), price: z.number() }),
+    response: z.object({ id: z.uuid(), name: z.text(), price: z.number() }),
   },
   handler: async ({ params, body }) => {
     return await this.repo.update(params.id, body);
@@ -159,8 +159,8 @@ The `disabled` option prevents the route from being registered. Useful for featu
 
 ```typescript
 class App {
-  env = $env(t.object({
-    ENABLE_BETA: t.boolean({ default: false }),
+  env = $env(z.object({
+    ENABLE_BETA: z.boolean().default(false),
   }));
 
   beta = $action({
@@ -194,14 +194,14 @@ const result = await this.list({ query: { page: 1, limit: 10 } });
 For endpoints that stream data progressively (AI chat, progress updates, live feeds), use `$sse` instead of `$action`. It returns a `text/event-stream` response that the client consumes as an async iterable.
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $sse } from "alepha/server";
 
 class AiController {
   chat = $sse({
     schema: {
-      body: t.object({ prompt: t.text() }),
-      data: t.object({ token: t.text() }),
+      body: z.object({ prompt: z.text() }),
+      data: z.object({ token: z.text() }),
     },
     handler: async ({ body, emit }) => {
       for await (const token of generateTokens(body.prompt)) {

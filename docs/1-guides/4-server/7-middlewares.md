@@ -59,7 +59,7 @@ alepha.store.mut(helmetOptions, (old) => ({
 
 ### Multipart
 
-Multipart form-data parsing for file uploads. Active by default when a route schema includes `t.file()`.
+Multipart form-data parsing for file uploads. Active by default when a route schema includes `z.file()`.
 
 Configure via the `multipartOptions` atom:
 

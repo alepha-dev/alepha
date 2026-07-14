@@ -7,13 +7,13 @@ Alepha provides two primitives for configuration: `$env` for environment variabl
 `$env` reads environment variables with schema validation, type coercion, and defaults. Import it from `"alepha"`.
 
 ```typescript
-import { $env, t } from "alepha";
+import { $env, z } from "alepha";
 
 class App {
-  env = $env(t.object({
-    DATABASE_URL: t.text(),
-    PORT: t.integer({ default: 3000 }),
-    DEBUG: t.optional(t.boolean()),
+  env = $env(z.object({
+    DATABASE_URL: z.text(),
+    PORT: z.integer().default(3000),
+    DEBUG: z.boolean().optional(),
   }));
 
   connect() {
@@ -24,7 +24,7 @@ class App {
 }
 ```
 
-The schema must be a `t.object(...)`. Each property maps to an environment variable name.
+The schema must be a `z.object(...)`. Each property maps to an environment variable name.
 Alepha validates values at instantiation time and throws if required variables are missing.
 
 ### How env values are resolved
@@ -48,18 +48,18 @@ String values support `$VAR` interpolation using other variables from the same s
 
 ```typescript
 class Config {
-  env = $env(t.object({
-    HOST: t.text({ default: "localhost" }),
-    PORT: t.integer({ default: 5432 }),
-    DB_NAME: t.text({ default: "mydb" }),
-    DATABASE_URL: t.text({ default: "postgres://$HOST:$PORT/$DB_NAME" }),
+  env = $env(z.object({
+    HOST: z.text({ default: "localhost" }),
+    PORT: z.integer().default(5432),
+    DB_NAME: z.text({ default: "mydb" }),
+    DATABASE_URL: z.text({ default: "postgres://$HOST:$PORT/$DB_NAME" }),
   }));
 }
 ```
 
 ### Environment caching
 
-Alepha caches parsed env results per schema. Multiple services using the same `t.object(...)` reference will share the same parsed output.
+Alepha caches parsed env results per schema. Multiple services using the same `z.object(...)` reference will share the same parsed output.
 
 ## State Management with $atom
 
@@ -68,13 +68,13 @@ Alepha caches parsed env results per schema. Multiple services using the same `t
 ### Defining an atom
 
 ```typescript
-import { $atom, t } from "alepha";
+import { $atom, z } from "alepha";
 
 const appConfig = $atom({
   name: "app.config",
-  schema: t.object({
-    theme: t.enum(["light", "dark"]),
-    language: t.text({ default: "en" }),
+  schema: z.object({
+    theme: z.enum(["light", "dark"]),
+    language: z.text({ default: "en" }),
   }),
   default: { theme: "light", language: "en" },
 });
@@ -84,7 +84,7 @@ The `name` uniquely identifies the atom in the state store. The `schema` defines
 
 Recommended naming convention for `name` is dot-separated, e.g. `"app.config"`, `"user.settings"`, etc.
 
-If the schema has all optional fields (via `t.optional`), the `default` is optional too. Otherwise, `default` is required.
+If the schema has all optional fields (via `.optional()`), the `default` is optional too. Otherwise, `default` is required.
 
 ### Reading and writing atoms
 
@@ -109,11 +109,11 @@ alepha.set(appConfig, { theme: "dark", language: "fr" });
 `$use` creates a reactive getter that always returns the current atom value:
 
 ```typescript
-import { $atom, $use, t } from "alepha";
+import { $atom, $use, z } from "alepha";
 
 const count = $atom({
   name: "count",
-  schema: t.object({ value: t.number() }),
+  schema: z.object({ value: z.number() }),
   default: { value: 0 },
 });
 

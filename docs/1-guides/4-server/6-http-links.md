@@ -9,14 +9,14 @@ Alepha's link system provides type-safe cross-service communication through `$cl
 ```typescript
 import { $client } from "alepha/server/links";
 import { $action } from "alepha/server";
-import { t } from "alepha";
+import { z } from "alepha";
 
 class ProductController {
   getProduct = $action({
     path: "/products/:id",
     schema: {
-      params: t.object({ id: t.uuid() }),
-      response: t.object({ id: t.uuid(), name: t.text(), price: t.number() }),
+      params: z.object({ id: z.uuid() }),
+      response: z.object({ id: z.uuid(), name: z.text(), price: z.number() }),
     },
     handler: async ({ params }) => {
       return await this.repo.findById(params.id);
@@ -31,7 +31,7 @@ class OrderService {
     method: "POST",
     path: "/orders",
     schema: {
-      body: t.object({ productId: t.uuid(), quantity: t.integer() }),
+      body: z.object({ productId: z.uuid(), quantity: z.integer() }),
     },
     handler: async ({ body }) => {
       // Type-safe call: params type is inferred from ProductController.getProduct
@@ -83,11 +83,11 @@ const schemas = this.products.getProduct.schema();
 
 ```typescript
 import { $remote } from "alepha/server/links";
-import { $env, t } from "alepha";
+import { $env, z } from "alepha";
 
 class Gateway {
-  env = $env(t.object({
-    PAYMENTS_URL: t.text({ default: "http://localhost:4000" }),
+  env = $env(z.object({
+    PAYMENTS_URL: z.text({ default: "http://localhost:4000" }),
   }));
 
   payments = $remote({

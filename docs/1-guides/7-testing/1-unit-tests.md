@@ -40,13 +40,13 @@ test("should inject a service", async () => {
 Actions expose two call modes: `.run()` for in-process invocation and `.fetch()` for HTTP simulation.
 
 ```typescript
-import { Alepha, t } from "alepha";
+import { Alepha, z } from "alepha";
 import { $action } from "alepha/server";
 
 class UserController {
   getUser = $action({
     path: "/users/:id",
-    schema: { params: t.object({ id: t.uuid() }) },
+    schema: { params: z.object({ id: z.uuid() }) },
     handler: async ({ params }) => ({ id: params.id, name: "Alice" }),
   });
 }

@@ -51,7 +51,7 @@ import { $inject } from "alepha";
 import { $action } from "alepha/server";
 import { $secure } from "alepha/security";
 import { PaymentService } from "alepha/api/payments";
-import { t } from "alepha";
+import { z } from "alepha";
 
 class CheckoutController {
   protected readonly payments = $inject(PaymentService);
@@ -61,8 +61,8 @@ class CheckoutController {
     path: "/checkout",
     use: [$secure()],
     schema: {
-      body: t.object({ productId: t.uuid() }),
-      response: t.object({ url: t.text() }),
+      body: z.object({ productId: z.uuid() }),
+      response: z.object({ url: z.text() }),
     },
     handler: async ({ body, user }) => {
       const product = await this.products.getById(body.productId);

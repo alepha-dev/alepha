@@ -15,7 +15,7 @@ Routes are defined as class properties. The class is registered with the Alepha 
 A complete example from a real Alepha application:
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 import type { CountApi } from "./CountApi.ts";
@@ -26,8 +26,8 @@ export class AppRouter {
   home = $page({
     head: { title: "Home" },
     schema: {
-      query: t.object({
-        name: t.text({ default: "Alepha" }),
+      query: z.object({
+        name: z.text({ default: "Alepha" }),
       }),
     },
     loader: async ({ query }) => {
@@ -64,8 +64,8 @@ Type-safe URL parameters and query strings using TypeBox schemas.
 
 ```typescript
 schema: {
-  params: t.object({ id: t.integer() }),
-  query: t.object({ tab: t.optional(t.text()) }),
+  params: z.object({ id: z.integer() }),
+  query: z.object({ tab: z.text().optional() }),
 }
 ```
 
@@ -354,13 +354,13 @@ Manage typed query parameters with a schema.
 
 ```typescript
 import { useQueryParams } from "alepha/react/router";
-import { t } from "alepha";
+import { z } from "alepha";
 
 function SearchPage() {
   const [params, setParams] = useQueryParams(
-    t.object({
-      search: t.optional(t.text()),
-      page: t.optional(t.integer()),
+    z.object({
+      search: z.text().optional(),
+      page: z.integer().optional(),
     }),
   );
 
@@ -382,8 +382,8 @@ Options:
 | `push`   | `boolean`                   | `false`    | `true` adds a history entry (`pushState`) so back returns to the previous value; `false` replaces the current entry (`replaceState`). |
 
 With `format: "querystring"`, each schema field maps to its own URL param,
-and values are coerced back to their declared types on read (e.g. an
-`t.integer()` field reads `?page=2` as the number `2`).
+and values are coerced back to their declared types on read (e.g. a
+`z.integer()` field reads `?page=2` as the number `2`).
 
 ## Links and Anchor Interception
 

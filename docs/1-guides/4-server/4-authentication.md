@@ -9,7 +9,7 @@ Alepha provides JWT-based authentication through `$issuer` for token management 
 ```typescript
 import { $issuer } from "alepha/security";
 import { $action } from "alepha/server";
-import { t } from "alepha";
+import { z } from "alepha";
 
 class AuthController {
   issuer = $issuer({
@@ -20,9 +20,9 @@ class AuthController {
     method: "POST",
     path: "/auth/login",
     schema: {
-      body: t.object({
-        email: t.email(),
-        password: t.text(),
+      body: z.object({
+        email: z.email(),
+        password: z.text(),
       }),
     },
     handler: async ({ body }) => {

@@ -56,7 +56,7 @@ class OrderService {
     method: "POST",
     path: "/orders",
     schema: {
-      body: t.object({ productId: t.uuid(), quantity: t.integer() }),
+      body: z.object({ productId: z.uuid(), quantity: z.integer() }),
       response: orderEntity.schema,
     },
     handler: async ({ body }) => this.orders.create(body),
@@ -113,16 +113,16 @@ Alepha does not use decorators (like NestJS) or file-system magic (like Next.js)
 **Primitives** -- factory functions starting with `$` that live directly in your class properties.
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $action } from "alepha/server";
 import { $entity, $repository, db } from "alepha/orm";
 
 const product = $entity({
   name: "products",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
-    price: t.number(),
-    name: t.text(),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    price: z.number(),
+    name: z.text(),
   }),
 });
 
@@ -133,7 +133,7 @@ class ProductService {
     method: "POST",
     path: "/products",
     schema: {
-      body: t.pick(product.schema, ["name", "price"]),
+      body: product.schema.pick({ name: true, price: true }),
       response: product.schema,
     },
     handler: async ({ body }) => {

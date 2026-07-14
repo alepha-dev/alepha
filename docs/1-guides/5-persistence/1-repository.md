@@ -9,7 +9,7 @@ Alepha main target is PostgreSQL, but SQLite are also supported.
 The API is mostly database-agnostic, but some features (e.g. certain column types or operators) may be database-specific.
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
 ```
 
@@ -18,15 +18,15 @@ import { $entity, $repository, db } from "alepha/orm";
 An entity maps directly to a database table. The schema uses Alepha's `t` type system combined with `db` helpers for database-specific column types.
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 const product = $entity({
   name: "products",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
-    name: t.text(),
-    price: t.number(),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    name: z.text(),
+    price: z.number(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
   }),
@@ -58,11 +58,11 @@ Entities support unique constraints and check constraints at the table level:
 ```typescript
 const user = $entity({
   name: "users",
-  schema: t.object({
-    id: db.primaryKey(t.uuid()),
-    tenantId: t.uuid(),
-    username: t.text(),
-    age: t.integer(),
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    tenantId: z.uuid(),
+    username: z.text(),
+    age: z.integer(),
   }),
   constraints: [
     { columns: ["tenantId", "username"], unique: true },

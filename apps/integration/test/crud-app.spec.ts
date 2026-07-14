@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $entity, $repository, db, pageQuerySchema } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $action, HttpError } from "alepha/server";
@@ -714,8 +715,11 @@ describe("CRUD Application - Complete Integration Tests", () => {
         },
       });
 
-      // Small delay to ensure timestamp difference
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // updatedAt is stamped app-side from DateTimeProvider, so advance the
+      // testable clock rather than sleeping on the wall clock: a real delay is
+      // racy under load (the update can even stamp 1ms *before* the create),
+      // whereas travel() makes the update deterministically later.
+      await alepha.inject(DateTimeProvider).travel([1, "second"]);
 
       const { data: updated } = await app.updateUser.fetch({
         params: { id: created.id },
