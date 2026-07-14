@@ -39,7 +39,12 @@ const NestedView = (props: NestedViewProps) => {
   const onError = routerLayer?.onError;
   const state = useRouterState();
   const alepha = useAlepha();
-  const [boundaryKey, setBoundaryKey] = useState(0);
+
+  // Navigating away from a page that threw must clear the boundary — otherwise
+  // the fallback latches and every later page keeps rendering the old error
+  // until a full reload. Resetting on the path (rather than remounting via
+  // `key`) recovers without tearing down the children on every navigation.
+  const boundaryResetKeys = [state.url.pathname];
 
   const [view, setView] = useState<ReactNode | undefined>(
     state.layers[index]?.element,
@@ -148,7 +153,10 @@ const NestedView = (props: NestedViewProps) => {
 
   if (props.errorBoundary) {
     return (
-      <ErrorBoundary key={boundaryKey} fallback={props.errorBoundary}>
+      <ErrorBoundary
+        fallback={props.errorBoundary}
+        resetKeys={boundaryResetKeys}
+      >
         {element}
       </ErrorBoundary>
     );
@@ -165,7 +173,7 @@ const NestedView = (props: NestedViewProps) => {
   };
 
   return (
-    <ErrorBoundary key={boundaryKey} fallback={fallback}>
+    <ErrorBoundary fallback={fallback} resetKeys={boundaryResetKeys}>
       {element}
     </ErrorBoundary>
   );

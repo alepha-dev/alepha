@@ -19,6 +19,20 @@ export interface ErrorBoundaryProps {
    * Use this to log errors to a monitoring service.
    */
   onError?: (error: Error, info: ErrorInfo) => void;
+
+  /**
+   * Clear a caught error whenever any of these values changes (compared with
+   * `Object.is`, positionally).
+   *
+   * A boundary that catches has to be told when the reason to fail is gone —
+   * otherwise the fallback latches and every later render keeps showing the
+   * stale error. The router passes the current path, so navigating away from a
+   * page that threw recovers on its own.
+   *
+   * Unlike remounting via `key`, this clears the error WITHOUT tearing down the
+   * children, so unrelated component state survives an ordinary navigation.
+   */
+  resetKeys?: readonly unknown[];
 }
 
 /**
@@ -59,6 +73,34 @@ export class ErrorBoundary extends React.Component<
     if (this.props.onError) {
       this.props.onError(error, info);
     }
+  }
+
+  /**
+   * Recover once the caller signals the failing input is gone.
+   */
+  componentDidUpdate(prevProps: PropsWithChildren<ErrorBoundaryProps>): void {
+    if (!this.state.error) {
+      return;
+    }
+
+    if (this.hasResetKeyChanged(prevProps.resetKeys, this.props.resetKeys)) {
+      this.setState({ error: undefined });
+    }
+  }
+
+  protected hasResetKeyChanged(
+    previous: readonly unknown[] | undefined,
+    next: readonly unknown[] | undefined,
+  ): boolean {
+    if (previous === next) {
+      return false;
+    }
+
+    if (!previous || !next || previous.length !== next.length) {
+      return true;
+    }
+
+    return previous.some((value, i) => !Object.is(value, next[i]));
   }
 
   render(): ReactNode {

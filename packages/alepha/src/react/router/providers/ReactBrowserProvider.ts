@@ -136,7 +136,8 @@ export class ReactBrowserProvider {
   }
 
   public get url(): string {
-    const url = this.location.pathname + this.location.search;
+    const url =
+      this.location.pathname + this.location.search + this.location.hash;
     if (this.base) {
       return url.replace(this.base, "");
     }
@@ -205,8 +206,14 @@ export class ReactBrowserProvider {
     }
 
     // when redirecting in browser
-    if (this.state.url.pathname + this.state.url.search !== url) {
-      this.pushState(this.state.url.pathname + this.state.url.search);
+    // The hash is part of the identity of the committed route: without it,
+    // pushing "/docs#section" never matches "/docs" and takes the redirect
+    // branch below, which rewrites history without the fragment.
+    const committed =
+      this.state.url.pathname + this.state.url.search + this.state.url.hash;
+
+    if (committed !== url) {
+      this.pushState(committed);
       return;
     }
 

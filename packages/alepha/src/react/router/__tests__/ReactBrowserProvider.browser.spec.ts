@@ -313,4 +313,29 @@ describe("ReactBrowserProvider", () => {
       expect(provider.pushCalls).toHaveLength(0);
     });
   });
+
+  /**
+   * `url` is what `push()` compares the committed route against and what gets
+   * written back to history. Dropping the fragment here made every internal
+   * `<a href="/docs#section">` land on /docs with no anchor, never scrolling.
+   */
+  describe("url", () => {
+    it("keeps the hash fragment", () => {
+      window.history.pushState({}, "", "/docs#section");
+
+      expect(provider.url).toBe("/docs#section");
+    });
+
+    it("keeps the hash alongside the query string", () => {
+      window.history.pushState({}, "", "/docs?q=1#section");
+
+      expect(provider.url).toBe("/docs?q=1#section");
+    });
+
+    it("is unchanged when there is no hash", () => {
+      window.history.pushState({}, "", "/docs?q=1");
+
+      expect(provider.url).toBe("/docs?q=1");
+    });
+  });
 });

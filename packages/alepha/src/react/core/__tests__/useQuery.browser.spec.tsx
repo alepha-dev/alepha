@@ -108,4 +108,52 @@ describe("useQuery", () => {
       expect(result.current.data).toBe("fetched");
     });
   });
+
+  /**
+   * The concurrency guard used to bail out BEFORE the abort-previous block, so
+   * a dep that changed while a request was in flight never triggered a refetch:
+   * the stale user's data committed and stayed forever.
+   */
+  test("refetches when a dep changes mid-flight and commits the newest result", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    await alepha.start();
+
+    const release: Record<string, () => void> = {};
+    const handler = vi.fn(
+      (userId: string) =>
+        new Promise<string>((resolve) => {
+          release[userId] = () => resolve(`data-for-${userId}`);
+        }),
+    );
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const { result, rerender } = renderHook(
+      ({ userId }) => useQuery({ handler: () => handler(userId) }, [userId]),
+      { wrapper, initialProps: { userId: "alice" } },
+    );
+
+    // alice's request is in flight (never resolved yet).
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+    expect(result.current.data).toBe(undefined);
+
+    // The dep changes while alice is still in flight.
+    rerender({ userId: "bob" });
+
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(2));
+
+    // Now let both finish — alice (superseded) first, then bob.
+    await act(async () => {
+      release.alice?.();
+      release.bob?.();
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toBe("data-for-bob");
+    });
+  });
 });

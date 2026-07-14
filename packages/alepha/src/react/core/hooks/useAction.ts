@@ -133,6 +133,10 @@ export function useAction<Args extends any[], Result = void>(
   const abortControllerRef = useRef<AbortController | undefined>(undefined);
   const isMountedRef = useRef(true);
   const intervalRef = useRef<Interval | undefined>(undefined);
+  // Monotonic id of the latest run. A superseded run keeps executing until its
+  // abort lands, so every state write is gated on "am I still the latest?" —
+  // otherwise the stale run's `finally` would clear the newer run's `loading`.
+  const runIdRef = useRef(0);
 
   // Track mount state — must set true in body for React StrictMode double-invoke
   useEffect(() => {
@@ -171,13 +175,21 @@ export function useAction<Args extends any[], Result = void>(
   }, []);
 
   const executeAction = useCallback(
-    async (...args: Args): Promise<Result | undefined> => {
-      // Prevent concurrent executions
-      if (isExecutingRef.current) {
+    async (
+      args: Args,
+      { supersede = false }: { supersede?: boolean } = {},
+    ): Promise<Result | undefined> => {
+      if (isExecutingRef.current && !supersede) {
+        // A manual `run()` must not fire twice — this is what stops a
+        // double-clicked mutation from being submitted twice.
         return;
       }
 
-      // Abort previous request if still running
+      // A dep-change or interval run supersedes: the in-flight request was
+      // issued for inputs that are now stale, so its result must never win.
+      // (This is why the guard above is skipped rather than short-circuiting —
+      // otherwise `useQuery([userId])` whose `userId` changes mid-flight would
+      // never refetch, and the old user's data would stay on screen.)
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -185,6 +197,9 @@ export function useAction<Args extends any[], Result = void>(
       // Create new AbortController for this request
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
+
+      const runId = ++runIdRef.current;
+      const isLatestRun = () => runIdRef.current === runId;
 
       isExecutingRef.current = true;
       setLoading(true);
@@ -200,8 +215,12 @@ export function useAction<Args extends any[], Result = void>(
           signal: abortController.signal,
         } as any);
 
-        // Only update state if still mounted and not aborted
-        if (!isMountedRef.current || abortController.signal.aborted) {
+        // Only update state if still mounted, not aborted, and not superseded
+        if (
+          !isMountedRef.current ||
+          abortController.signal.aborted ||
+          !isLatestRun()
+        ) {
           return;
         }
 
@@ -223,8 +242,8 @@ export function useAction<Args extends any[], Result = void>(
           return;
         }
 
-        // Only update state if still mounted
-        if (!isMountedRef.current) {
+        // Only update state if still mounted and not superseded
+        if (!isMountedRef.current || !isLatestRun()) {
           return;
         }
 
@@ -246,9 +265,13 @@ export function useAction<Args extends any[], Result = void>(
         // fire-and-forget `action.run()` calls from producing unhandled
         // promise rejections.
       } finally {
-        isExecutingRef.current = false;
-        if (isMountedRef.current) {
-          setLoading(false);
+        // A superseded run must not release the guard or drop `loading` — the
+        // run that replaced it is still in flight.
+        if (isLatestRun()) {
+          isExecutingRef.current = false;
+          if (isMountedRef.current) {
+            setLoading(false);
+          }
         }
 
         await alepha.events.emit("react:action:end", {
@@ -265,8 +288,11 @@ export function useAction<Args extends any[], Result = void>(
     [...deps, options.id, options.onError, options.onSuccess],
   );
 
-  const handler = useCallback(
-    async (...args: Args): Promise<Result | undefined> => {
+  const runAction = useCallback(
+    async (
+      args: Args,
+      options_: { supersede?: boolean } = {},
+    ): Promise<Result | undefined> => {
       if (options.debounce) {
         // clear existing timer
         if (debounceTimerRef.current) {
@@ -277,7 +303,7 @@ export function useAction<Args extends any[], Result = void>(
         return new Promise((resolve) => {
           debounceTimerRef.current = dateTimeProvider.createTimeout(
             async () => {
-              const result = await executeAction(...args);
+              const result = await executeAction(args, options_);
               resolve(result);
             },
             options.debounce ?? 0,
@@ -285,9 +311,18 @@ export function useAction<Args extends any[], Result = void>(
         });
       }
 
-      return executeAction(...args);
+      return executeAction(args, options_);
     },
     [executeAction, options.debounce],
+  );
+
+  /**
+   * Public `run()` — a user-initiated call. Deduped while one is in flight so a
+   * double-clicked mutation submits once.
+   */
+  const handler = useCallback(
+    (...args: Args): Promise<Result | undefined> => runAction(args),
+    [runAction],
   );
 
   const cancel = useCallback(() => {
@@ -310,10 +345,12 @@ export function useAction<Args extends any[], Result = void>(
     }
   }, []);
 
-  // Run action on mount if runOnInit is true
+  // Run action on mount, and again whenever `deps` change. These runs supersede
+  // an in-flight request: it was issued for the previous deps, so its result is
+  // already stale.
   useEffect(() => {
     if (options.runOnInit) {
-      handler(...([] as any));
+      runAction([] as any, { supersede: true });
     }
   }, deps);
 
@@ -325,7 +362,7 @@ export function useAction<Args extends any[], Result = void>(
 
     // Set up interval
     intervalRef.current = dateTimeProvider.createInterval(
-      () => handler(...([] as any)),
+      () => runAction([] as any, { supersede: true }),
       options.runEvery,
       true,
     );
@@ -337,7 +374,7 @@ export function useAction<Args extends any[], Result = void>(
         intervalRef.current = undefined;
       }
     };
-  }, [handler, options.runEvery]);
+  }, [runAction, options.runEvery]);
 
   return {
     run: handler,
