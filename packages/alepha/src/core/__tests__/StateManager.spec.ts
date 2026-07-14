@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Alepha } from "../Alepha.ts";
+import { TypeBoxError } from "../errors/TypeBoxError.ts";
 import { $atom } from "../primitives/$atom.ts";
 import { AlsProvider } from "../providers/AlsProvider.ts";
 import { StateManager } from "../providers/StateManager.ts";
@@ -342,7 +343,7 @@ describe("StateManager", () => {
       const alepha = Alepha.create();
       expect(() =>
         alepha.store.set(prefs, { theme: "dark", count: "nope" } as any),
-      ).toThrow();
+      ).toThrow(TypeBoxError);
     });
 
     it("strips unknown keys on write", () => {
@@ -375,6 +376,24 @@ describe("StateManager", () => {
       expect(alepha.store.get(prefs)).toEqual({ theme: "light", count: 0 });
     });
 
+    it("warns when a pre-seeded value is invalid and falls back to the default", () => {
+      const warn = vi.fn();
+      const alepha = Alepha.create({
+        "test.validation.prefs": { theme: 42 },
+        "alepha.logger": {
+          trace: vi.fn(),
+          debug: vi.fn(),
+          info: vi.fn(),
+          warn,
+          error: vi.fn(),
+        },
+      } as any);
+
+      expect(alepha.store.get(prefs)).toEqual({ theme: "light", count: 0 });
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0][0]).toContain("test.validation.prefs");
+    });
+
     it("decodes a valid pre-seeded value through the schema", () => {
       const alepha = Alepha.create({
         "test.validation.prefs": { theme: "dark", count: 2, junk: 1 },
@@ -387,6 +406,92 @@ describe("StateManager", () => {
       alepha.store.get(prefs);
       expect(alepha.store.getAtom("test.validation.prefs")).toBeDefined();
       expect(alepha.store.getAtom("nope")).toBeUndefined();
+    });
+  });
+
+  describe("ALS-aware decode-at-registration", () => {
+    const settings = $atom({
+      name: "test.validation.als.settings",
+      schema: z.object({ theme: z.string(), count: z.number() }),
+      default: { theme: "light", count: 0 },
+    });
+
+    it("decodes a value written into a request-scoped ALS layer before the atom registers, in place", () => {
+      const alepha = Alepha.create();
+
+      const result = alepha.context.run(
+        () => {
+          // Simulate a fork-scoped write landing ahead of the atom's first
+          // access (e.g. $cookie mirroring a cookie value into the store
+          // during server:onRequest, before anything reads the atom).
+          alepha.store.set(
+            settings.key as any,
+            {
+              theme: "dark",
+              count: 1,
+              extra: true,
+            } as any,
+          );
+          return alepha.store.get(settings);
+        },
+        { context: "req-1" },
+      );
+
+      expect(result).toEqual({ theme: "dark", count: 1 });
+      // Must not have leaked into the app-level store.
+      expect(alepha.store.get(settings, "app")).toBeUndefined();
+    });
+
+    it("falls back to the default inside the same ALS layer (not the app store) when the seeded value is invalid, and warns", () => {
+      const warn = vi.fn();
+      const alepha = Alepha.create({
+        "alepha.logger": {
+          trace: vi.fn(),
+          debug: vi.fn(),
+          info: vi.fn(),
+          warn,
+          error: vi.fn(),
+        },
+      } as any);
+
+      const result = alepha.context.run(
+        () => {
+          alepha.store.set(settings.key as any, { theme: 42 } as any);
+          return alepha.store.get(settings);
+        },
+        { context: "req-1" },
+      );
+
+      expect(result).toEqual({ theme: "light", count: 0 });
+      expect(warn).toHaveBeenCalledTimes(1);
+      // The default must have been written into the ALS layer, not the
+      // app store — outside the fork, the app-level value is still unset.
+      expect(alepha.store.get(settings, "app")).toBeUndefined();
+    });
+
+    it("decodes a value that landed in a parent fork layer before a nested fork registers the atom", () => {
+      const alepha = Alepha.create();
+
+      const result = alepha.context.run(
+        () => {
+          alepha.store.set(
+            settings.key as any,
+            {
+              theme: "dark",
+              count: 5,
+            } as any,
+          );
+
+          // A nested fork (e.g. a batched sub-request) is the one that
+          // first accesses the atom — the raw value lives one layer up.
+          return alepha.context.run(() => alepha.store.get(settings), {
+            context: "req-1-child",
+          });
+        },
+        { context: "req-1" },
+      );
+
+      expect(result).toEqual({ theme: "dark", count: 5 });
     });
   });
 

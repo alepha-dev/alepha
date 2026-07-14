@@ -1,4 +1,5 @@
 import type { State as AlephaState } from "../Alepha.ts";
+import type { LoggerInterface } from "../interfaces/LoggerInterface.ts";
 import {
   Atom,
   type AtomStatic,
@@ -94,33 +95,78 @@ export class StateManager<State extends object = AlephaState> {
   public register(atom: Atom<any>): this {
     const key = atom.key as keyof State;
 
-    if (!this.atoms.has(key)) {
-      this.atoms.set(key, atom);
-      if (!(key in this.store)) {
-        this.set(key, atom.options.default as State[keyof State], {
-          skipContext: true,
-        });
-      } else {
-        // A value landed in the store before the atom registered (SSR
-        // hydration payload, Alepha.create() seed). Decode it against the
-        // schema; on mismatch fall back to the default rather than letting
-        // bad data flow through a "validated" atom.
-        const current = this.store[key];
-        if (current !== undefined) {
-          const result = this.validator.safeValidate(atom.schema, current);
-          if (result.success) {
-            this.store[key] = result.data as State[keyof State];
-          } else {
-            this.set(key, atom.options.default as State[keyof State], {
-              skipContext: true,
-              skipValidation: true,
-            });
-          }
-        }
-      }
+    if (this.atoms.has(key)) {
+      return this;
+    }
+
+    this.atoms.set(key, atom);
+
+    // A value can land under an atom's key before the atom registers — an
+    // SSR hydration payload, an `Alepha.create(seed)` value, or a
+    // fork-scoped write (e.g. `$cookie` mirrors its value into the store
+    // during `server:onRequest`, ahead of the atom's first access). `get()`
+    // resolves ALS (request-scoped fork) layers before the app store, so we
+    // must look there first too — decoding only `this.store` would let a
+    // raw, unvalidated ALS value permanently shadow the decoded default.
+    const layer = this.als?.getLayer(key as string);
+    if (layer) {
+      this.decodeExisting(atom, key, layer);
+    } else if (key in this.store) {
+      this.decodeExisting(atom, key, this.store as Record<string, any>);
+    } else {
+      this.set(key, atom.options.default as State[keyof State], {
+        skipContext: true,
+      });
     }
 
     return this;
+  }
+
+  /**
+   * Decode a value that already exists under an atom's key at registration
+   * time, in place, in whichever layer it physically lives (an ALS fork
+   * layer or the app store) — never flattening a fork-scoped value into the
+   * app-level store.
+   *
+   * On schema mismatch, falls back to the atom's default (written into that
+   * same layer) and emits a warning: a bad seed silently reverting a whole
+   * atom to its defaults should be visible, not indistinguishable from
+   * "nothing was ever set".
+   */
+  protected decodeExisting(
+    atom: Atom<any>,
+    key: keyof State,
+    layer: Record<string, any>,
+  ): void {
+    const current = layer[key as string];
+    if (current === undefined) {
+      return;
+    }
+
+    const result = this.validator.safeValidate(atom.schema, current);
+    if (result.success) {
+      layer[key as string] = result.data;
+      return;
+    }
+
+    this.logger?.warn(
+      `Atom "${String(key)}" received an invalid seed value at registration, falling back to its default.`,
+      { issues: result.error.issues },
+    );
+    layer[key as string] = atom.options.default;
+  }
+
+  /**
+   * Best-effort logger lookup. `StateManager` lives in `core`, which cannot
+   * depend on the logger module, so this reads the `"alepha.logger"` state
+   * key directly (set by `Alepha.create()`, see `Alepha.ts`) instead of
+   * injecting a logger service. May be `undefined` during early boot, before
+   * the logger is wired up — callers must stay null-safe.
+   */
+  protected get logger(): LoggerInterface | undefined {
+    return this.get("alepha.logger" as keyof State) as
+      | LoggerInterface
+      | undefined;
   }
 
   /**

@@ -69,6 +69,7 @@ export class DevToolsProvider {
       }),
       response: z.object({
         success: z.boolean(),
+        message: z.text().optional(),
       }),
     },
     handler: ({ body }) => {
@@ -79,12 +80,15 @@ export class DevToolsProvider {
         try {
           this.alepha.store.set(atomEntry.atom, body.value);
           return { success: true };
-        } catch {
-          return { success: false };
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          this.log.warn(`Failed to update atom "${body.name}"`, { error });
+          return { success: false, message };
         }
       }
 
-      return { success: false };
+      return { success: false, message: `Unknown atom "${body.name}"` };
     },
   });
 

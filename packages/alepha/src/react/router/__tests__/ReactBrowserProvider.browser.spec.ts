@@ -1,7 +1,8 @@
-import { Alepha } from "alepha";
+import { $atom, Alepha, z } from "alepha";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ReactBrowserProvider,
+  type ReactHydrationState,
   type RouterPushOptions,
   reactBrowserOptions,
 } from "../providers/ReactBrowserProvider.ts";
@@ -9,6 +10,7 @@ import {
 class TestReactBrowserProvider extends ReactBrowserProvider {
   public testGetHydrationState = this.getHydrationState.bind(this);
   public testAttachAnchorInterceptor = this.attachAnchorInterceptor.bind(this);
+  public testApplyHydration = this.applyHydration.bind(this);
   public pushCalls: Array<{ url: string; options?: RouterPushOptions }> = [];
 
   public override async push(
@@ -113,6 +115,65 @@ describe("ReactBrowserProvider", () => {
 
       expect(result?.["alepha.react.router.layers"]).toHaveLength(2);
       expect(result?.["alepha.i18n.locale"]).toBe("en");
+    });
+  });
+
+  describe("applyHydration", () => {
+    const testAtom = $atom({
+      name: "test.hydration.settings",
+      schema: z.object({ theme: z.string() }),
+      default: { theme: "light" },
+    });
+
+    it("writes a valid hydrated value through, parsed against the schema", () => {
+      alepha.store.get(testAtom); // pre-register, as a real app would
+
+      provider.testApplyHydration({
+        [testAtom.key]: { theme: "dark", junk: true },
+      } as unknown as ReactHydrationState);
+
+      expect(alepha.store.get(testAtom)).toEqual({ theme: "dark" });
+    });
+
+    it("keeps the default and warns when a hydrated value fails schema validation", async () => {
+      alepha.store.get(testAtom); // pre-register, as a real app would
+
+      const onLog = vi.fn();
+      alepha.events.on("log", onLog);
+
+      provider.testApplyHydration({
+        [testAtom.key]: { theme: 42 },
+      } as unknown as ReactHydrationState);
+
+      // Logger delivery is event-based and async — flush before asserting.
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(alepha.store.get(testAtom)).toEqual({ theme: "light" });
+      expect(
+        onLog.mock.calls.some(([payload]) =>
+          payload.entry?.message?.includes(testAtom.key),
+        ),
+      ).toBe(true);
+    });
+
+    it("passes through a not-yet-registered atom value, decoded later at registration", () => {
+      provider.testApplyHydration({
+        [testAtom.key]: { theme: "dark", junk: true },
+      } as unknown as ReactHydrationState);
+
+      // First access registers the atom and decodes the raw hydrated value
+      // (StateManager.register()'s decode-at-registration path).
+      expect(alepha.store.get(testAtom)).toEqual({ theme: "dark" });
+    });
+
+    it("skips alepha.react.router.layers — it is not treated as an atom value", () => {
+      provider.testApplyHydration({
+        "alepha.react.router.layers": [{ name: "home" }],
+      } as ReactHydrationState);
+
+      expect(
+        alepha.store.getAtom("alepha.react.router.layers"),
+      ).toBeUndefined();
     });
   });
 
