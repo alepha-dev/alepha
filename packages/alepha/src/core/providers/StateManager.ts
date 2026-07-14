@@ -121,6 +121,13 @@ export class StateManager<State extends object = AlephaState> {
 
     this.bindWebStorage(atom);
 
+    // Fire-and-forget, but `emit`'s executor runs sync hooks synchronously
+    // before hitting its first `await` — so a sync "state:register" handler
+    // (e.g. AtomCookiePersistence's lazy in-request cookie seed) completes
+    // before this call returns. If a handler on this event is ever made
+    // `async`, that guarantee silently breaks: `register()` returns before
+    // the seed lands, so an SSR render started right after would see the
+    // atom's default instead of the persisted value.
     this.events
       ?.emit("state:register", { atom }, { catch: true })
       .catch(() => null);
@@ -198,11 +205,17 @@ export class StateManager<State extends object = AlephaState> {
           // Persisted user state wins over the default and over any seed.
           this.store[key] = result.data as State[keyof State];
         } else {
-          storage.removeItem(atom.key);
+          this.safeRemoveItem(storage, atom.key);
         }
       }
     } catch {
-      storage.removeItem(atom.key);
+      // `getWebStorage` only guards *resolving* the Storage object (e.g.
+      // `window.localStorage`) — in the very privacy mode its own JSDoc
+      // claims to handle, the `getItem`/`JSON.parse` call above can throw
+      // AND `storage.removeItem` can throw too. Route the recovery through
+      // the same best-effort guard so persistence genuinely never escapes
+      // `register()` (and therefore never escapes a caller's `store.get`).
+      this.safeRemoveItem(storage, atom.key);
     }
 
     this.events.on("state:mutate", ({ key: mutatedKey, value }) => {
@@ -219,6 +232,19 @@ export class StateManager<State extends object = AlephaState> {
         // best-effort persistence
       }
     });
+  }
+
+  /**
+   * Best-effort `Storage#removeItem`. Some privacy modes throw on every
+   * Storage method, including `removeItem` — this must never escape a
+   * recovery `catch`, or persistence stops being best-effort.
+   */
+  protected safeRemoveItem(storage: Storage, key: string): void {
+    try {
+      storage.removeItem(key);
+    } catch {
+      // truly best-effort — nothing more we can do
+    }
   }
 
   /**

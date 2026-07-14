@@ -7,8 +7,15 @@ const schema = z.object({ theme: z.string() });
 
 describe("StateManager web storage persistence", () => {
   beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
+    // Always go through `window.*`, matching what the implementation reads
+    // (StateManager.getWebStorage uses `window.localStorage` /
+    // `window.sessionStorage`, not the bare global). On Node >= 22 with Web
+    // Storage enabled (on by default in Node 25), the bare `localStorage` /
+    // `sessionStorage` globals are a DIFFERENT object from jsdom's
+    // `window.localStorage` / `window.sessionStorage` — mixing the two
+    // makes this suite fail for reasons unrelated to the code under test.
+    window.localStorage.clear();
+    window.sessionStorage.clear();
   });
 
   it("writes to localStorage when a persisted atom mutates", async () => {
@@ -23,13 +30,13 @@ describe("StateManager web storage persistence", () => {
     alepha.store.set(prefs, { theme: "dark" });
     await new Promise((r) => setTimeout(r, 0)); // state:mutate is async
 
-    expect(localStorage.getItem("test.persist.write")).toBe(
+    expect(window.localStorage.getItem("test.persist.write")).toBe(
       JSON.stringify({ theme: "dark" }),
     );
   });
 
   it("hydrates from localStorage on registration in a fresh container", () => {
-    localStorage.setItem(
+    window.localStorage.setItem(
       "test.persist.read",
       JSON.stringify({ theme: "dark" }),
     );
@@ -45,7 +52,10 @@ describe("StateManager web storage persistence", () => {
   });
 
   it("drops an invalid persisted value and keeps the default", () => {
-    localStorage.setItem("test.persist.bad", JSON.stringify({ theme: 42 }));
+    window.localStorage.setItem(
+      "test.persist.bad",
+      JSON.stringify({ theme: 42 }),
+    );
     const prefs = $atom({
       name: "test.persist.bad",
       schema,
@@ -55,7 +65,7 @@ describe("StateManager web storage persistence", () => {
 
     const alepha = Alepha.create();
     expect(alepha.store.get(prefs)).toEqual({ theme: "light" });
-    expect(localStorage.getItem("test.persist.bad")).toBeNull();
+    expect(window.localStorage.getItem("test.persist.bad")).toBeNull();
   });
 
   it("supports sessionStorage", async () => {
@@ -70,7 +80,7 @@ describe("StateManager web storage persistence", () => {
     alepha.store.set(prefs, { theme: "dark" });
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(sessionStorage.getItem("test.persist.session")).toBe(
+    expect(window.sessionStorage.getItem("test.persist.session")).toBe(
       JSON.stringify({ theme: "dark" }),
     );
   });

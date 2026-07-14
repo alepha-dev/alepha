@@ -78,3 +78,123 @@ describe("AtomCookiePersistence", () => {
     expect(response.data.theme).toBe("light");
   });
 });
+
+describe("cookie-name symmetry with APP_NAME set", () => {
+  // ServerCookiesProvider.getCookie/setCookie normally namespace every
+  // cookie under `${APP_NAME.toLowerCase()}.${name}`. The browser variant
+  // of this adapter (AtomCookiePersistence.browser.ts) can never see
+  // APP_NAME — it is not baked into the client bundle and not part of SSR
+  // hydration — so it always reads/writes the BARE atom key. Without the
+  // `prefix: false` override in AtomCookiePersistence.cookieOptions(), a
+  // client-side mutation would write `theme`, the server would look for
+  // `rdm.theme`, miss, and SSR the default — flash of wrong state on every
+  // reload. These tests must run with APP_NAME set: without it, both sides
+  // collapse to the bare key and the asymmetry is invisible.
+  const appNameSettingsAtom = $atom({
+    name: "test.cookie.appname",
+    schema: z.object({ theme: z.string() }),
+    default: { theme: "light" },
+    persist: "cookie",
+  });
+
+  class AppNameCookieAtomApp {
+    protected readonly alepha = $inject(Alepha);
+
+    settings = $state(appNameSettingsAtom);
+
+    read = $action({
+      schema: {
+        response: z.object({ theme: z.string() }),
+      },
+      handler: () => ({ theme: this.settings.theme }),
+    });
+
+    update = $action({
+      schema: {
+        body: z.object({ theme: z.string() }),
+        response: z.object({ ok: z.boolean() }),
+      },
+      handler: ({ body }) => {
+        this.alepha.store.set(appNameSettingsAtom, { theme: body.theme });
+        return { ok: true };
+      },
+    });
+  }
+
+  const appNameAlepha = Alepha.create({ env: { APP_NAME: "RDM" } })
+    .with(AlephaServer)
+    .with(AlephaServerCookies);
+
+  const appNameApp = appNameAlepha.inject(AppNameCookieAtomApp);
+
+  it("writes the bare (unprefixed) cookie name — the same name the browser variant writes", async () => {
+    const response = await appNameApp.update.fetch({
+      body: { theme: "dark" },
+    });
+    const setCookie = response.raw?.headers.get("set-cookie");
+
+    expect(setCookie).toBeDefined();
+    expect(setCookie).toMatch(/^test\.cookie\.appname=/);
+    // The bug this guards against: the namespaced name showing up instead.
+    expect(setCookie).not.toMatch(/rdm\.test\.cookie\.appname/);
+  });
+
+  it("reads back a bare-named incoming cookie — the same name the browser variant reads", async () => {
+    const cookieHeader = `test.cookie.appname=${encodeURIComponent(
+      JSON.stringify({ theme: "dark" }),
+    )}`;
+
+    const response = await appNameApp.read.fetch(
+      {},
+      { request: { headers: { cookie: cookieHeader } } },
+    );
+
+    expect(response.data.theme).toBe("dark");
+  });
+});
+
+describe("request isolation (cookie-seeded state never leaks across concurrent requests)", () => {
+  // Permanent regression coverage for the invariant confirmed during
+  // review: cookie-seeded atom state stays fork-local (each request runs
+  // inside its own AsyncLocalStorage fork — see ServerRouterProvider /
+  // AlsProvider), and the app-level store never sees a request's value.
+  // GET requests dedupe by `{url, method}` in HttpClient (ignoring
+  // headers), so each concurrent call below needs a distinct `key` to
+  // actually hit the server three times instead of sharing one response.
+  it("keeps concurrent requests' cookie-seeded values isolated, and never touches the app-level store", async () => {
+    const cookieFor = (theme: string) =>
+      `test.cookie.settings=${encodeURIComponent(JSON.stringify({ theme }))}`;
+
+    const [alice, bob, none] = await Promise.all([
+      app.read.fetch(
+        {},
+        {
+          key: "isolation-alice",
+          request: { headers: { cookie: cookieFor("alice") } },
+        },
+      ),
+      app.read.fetch(
+        {},
+        {
+          key: "isolation-bob",
+          request: { headers: { cookie: cookieFor("bob") } },
+        },
+      ),
+      app.read.fetch(
+        {},
+        {
+          key: "isolation-none",
+          request: { headers: { cookie: "" } },
+        },
+      ),
+    ]);
+
+    expect(alice.data.theme).toBe("alice");
+    expect(bob.data.theme).toBe("bob");
+    expect(none.data.theme).toBe("light"); // default, not a leaked neighbor value
+
+    // The root (app-level) store must never have been mutated by a
+    // request-scoped cookie read.
+    expect(alepha.store.get(settingsAtom, "app")).toEqual({ theme: "light" });
+  });
+});

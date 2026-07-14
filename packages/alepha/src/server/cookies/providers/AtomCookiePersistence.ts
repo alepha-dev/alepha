@@ -40,6 +40,12 @@ export class AtomCookiePersistence {
 
   protected readonly onRequest = $hook({
     on: "server:onRequest",
+    // Explicit dependency instead of relying on `services` array order in
+    // `AlephaServerCookies`: this hook needs `request.cookies`, which is
+    // only populated by `ServerCookiesProvider.onRequest`. If that ever ran
+    // second, `getCookiesFromContext` would throw, get caught, and log at
+    // debug — cookies silently ignored in production with no visible error.
+    after: [this.serverCookies],
     handler: ({ request }) => {
       // `alepha.http.request` is not set in the store yet at this point in
       // the request lifecycle (`ServerRouterProvider` sets it only after
@@ -72,6 +78,20 @@ export class AtomCookiePersistence {
   });
 
   protected read(atom: Atom<any, any>, cookies?: Cookies): void {
+    // Safety net, not a live bug today: an ALS provider is always installed
+    // by `core/index.ts` / `core/index.workerd.ts`, so every request already
+    // runs inside its own fork. But `store.set(..., { skipEvents: true })`
+    // below has no `skipContext`, so if no fork were active,
+    // `StateManager.set()` would fall through to writing the APP-LEVEL
+    // store — turning one user's cookie value into what every subsequent
+    // cookieless request reads. Degrade to "cookie ignored" instead.
+    if (!this.alepha.context.exists()) {
+      this.log.debug(
+        `Skipping cookie read for atom "${atom.key}": no active request context.`,
+      );
+      return;
+    }
+
     try {
       const value = this.serverCookies.getCookie(
         atom.key,
@@ -94,6 +114,14 @@ export class AtomCookiePersistence {
       path: "/",
       sameSite: "lax" as const,
       ttl: [365, "days"] as DurationLike,
+      // The browser variant of this adapter cannot see APP_NAME (not baked
+      // into the client bundle, not part of SSR hydration — see
+      // AtomCookiePersistence.browser.ts), so it always reads/writes the
+      // bare atom key. Skip the APP_NAME prefix here too — specifically for
+      // atom-persisted cookies — so both sides agree on the same cookie
+      // name. Every other server cookie ($cookie primitive) still gets the
+      // namespace; see ServerCookiesProvider.prefixName.
+      prefix: false,
     };
   }
 }

@@ -58,7 +58,12 @@ export class CookieParser {
     if (cookie.path) {
       parts.push(`Path=${cookie.path}`);
     }
-    if (cookie.maxAge) {
+    // `!= null`, not truthy: `maxAge: 0` is the standard "delete this
+    // cookie now" value (used by AtomCookiePersistence.browser.ts's
+    // clearCookie() and BrowserCookiePrimitive.del()). A truthy check would
+    // silently drop `Max-Age` for exactly that value, turning a deletion
+    // into a plain (non-expiring-until-session-end) write.
+    if (cookie.maxAge != null) {
       parts.push(`Max-Age=${cookie.maxAge}`);
     }
     if (cookie.secure !== false && isHttps) {

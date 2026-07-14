@@ -7,8 +7,15 @@ import { CookieParser } from "../services/CookieParser.ts";
  * Browser variant of AtomCookiePersistence: reads `document.cookie` when a
  * `persist: "cookie"` atom registers, and writes it back on every mutation.
  *
- * Note: unlike the server variant, cookie names are not APP_NAME-prefixed —
- * same behavior as BrowserCookiePrimitive.
+ * Cookie names are NOT APP_NAME-prefixed here, because `APP_NAME` is not
+ * reachable in the browser: `BuildClientTask` only `define`s
+ * `process.env.NODE_ENV` for the client bundle, and the SSR hydration
+ * payload (`ReactServerTemplateProvider.buildHydrationData`) only carries
+ * registered atom values + router layers — never the raw `env` store key.
+ * The server variant (`AtomCookiePersistence.ts`) matches this by passing
+ * `prefix: false` to `ServerCookiesProvider`, specifically for atom-cookie
+ * traffic — every other server cookie ($cookie primitive) still gets the
+ * APP_NAME namespace. See `ServerCookiesProvider.prefixName`.
  */
 export class AtomCookiePersistence {
   protected readonly alepha = $inject(Alepha);
@@ -24,19 +31,26 @@ export class AtomCookiePersistence {
       }
       this.atoms.set(atom.key, atom);
 
+      const raw = this.cookieParser.parseRequestCookies(document.cookie)[
+        atom.key
+      ];
+      if (!raw) {
+        return;
+      }
+
       try {
-        const raw = this.cookieParser.parseRequestCookies(document.cookie)[
-          atom.key
-        ];
-        if (raw) {
-          this.alepha.store.set(
-            atom.key as keyof State,
-            JSON.parse(decodeURIComponent(raw)),
-            { skipEvents: true },
-          );
-        }
+        this.alepha.store.set(
+          atom.key as keyof State,
+          JSON.parse(decodeURIComponent(raw)),
+          { skipEvents: true },
+        );
       } catch {
-        // corrupted cookie — keep the default (or the hydrated value)
+        // Corrupted cookie (invalid JSON/encoding, or a value that no
+        // longer matches the atom's schema — `store.set` validates against
+        // it) — clear it instead of leaving it to keep throwing on every
+        // future read. Mirrors the web-storage adapter's parity
+        // (StateManager.bindWebStorage removes the bad entry too).
+        this.clearCookie(atom.key);
       }
     },
   });
@@ -48,6 +62,15 @@ export class AtomCookiePersistence {
       if (!atom) {
         return;
       }
+
+      if (value === undefined) {
+        // Without this branch, `store.del(atom)` would write the literal
+        // string "undefined", and the next read's `JSON.parse("undefined")`
+        // would throw into the catch above on every subsequent register.
+        this.clearCookie(atom.key);
+        return;
+      }
+
       const cookie: Cookie = {
         value: encodeURIComponent(JSON.stringify(value)),
         path: "/",
@@ -58,4 +81,19 @@ export class AtomCookiePersistence {
       document.cookie = this.cookieParser.cookieToString(atom.key, cookie);
     },
   });
+
+  /**
+   * Expire a cookie immediately, mirroring
+   * `ServerCookiesProvider.deleteCookie`'s `Max-Age=0` semantics.
+   */
+  protected clearCookie(name: string): void {
+    const cookie: Cookie = {
+      value: "",
+      path: "/",
+      sameSite: "lax",
+      maxAge: 0,
+    };
+    // biome-ignore lint/suspicious/noDocumentCookie: cookie persistence adapter
+    document.cookie = this.cookieParser.cookieToString(name, cookie);
+  }
 }

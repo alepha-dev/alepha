@@ -64,6 +64,17 @@ export type AtomOptions<T extends ZType, N extends string> = {
    *
    * Values are validated against the schema when read back; invalid or
    * corrupted entries are discarded and the default is used.
+   *
+   * **Security: cookie-persisted atoms are attacker-controlled.** The
+   * cookie written by `persist: "cookie"` is unsigned, unencrypted, and
+   * freely writable by any client-side script (`AtomCookiePersistence`'s
+   * `cookieOptions()` sets no `sign`, `encrypt`, or `httpOnly`) — a request
+   * can present any value it wants for it. Never persist trust-bearing
+   * state — user ids, roles, entitlements, permissions — in a
+   * `persist: "cookie"` atom. If you need a signed, encrypted, and/or
+   * `httpOnly` cookie, declare an explicit
+   * `$cookie({ key: atom.key, sign: true, encrypt: true, httpOnly: true, ... })`
+   * binding instead — that is the escape hatch for trust-bearing values.
    */
   persist?: AtomPersist;
 } & (T extends zod.ZodOptional<any>
