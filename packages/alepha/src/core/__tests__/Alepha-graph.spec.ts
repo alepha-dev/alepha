@@ -89,7 +89,7 @@ describe("Alepha#graph", () => {
         module: "alepha.core",
       },
       SchemaValidator: {
-        from: ["CodecManager"],
+        from: ["StateManager", "CodecManager"],
         module: "alepha.core",
       },
     });

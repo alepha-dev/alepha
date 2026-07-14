@@ -1,8 +1,10 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Alepha } from "../Alepha.ts";
+import { $atom } from "../primitives/$atom.ts";
 import { AlsProvider } from "../providers/AlsProvider.ts";
 import { StateManager } from "../providers/StateManager.ts";
+import { z } from "../providers/TypeProvider.ts";
 
 // Set up AsyncLocalStorage for tests
 AlsProvider.create = () => new AsyncLocalStorage();
@@ -326,6 +328,65 @@ describe("StateManager", () => {
       expect(result).toBe("ALS Value");
       // Local value should be gone
       expect(stateManager.get("age")).toBeUndefined();
+    });
+  });
+
+  describe("Atom Validation", () => {
+    const prefs = $atom({
+      name: "test.validation.prefs",
+      schema: z.object({ theme: z.string(), count: z.number() }),
+      default: { theme: "light", count: 0 },
+    });
+
+    it("rejects a write that violates the schema", () => {
+      const alepha = Alepha.create();
+      expect(() =>
+        alepha.store.set(prefs, { theme: "dark", count: "nope" } as any),
+      ).toThrow();
+    });
+
+    it("strips unknown keys on write", () => {
+      const alepha = Alepha.create();
+      alepha.store.set(prefs, { theme: "dark", count: 1, extra: true } as any);
+      expect(alepha.store.get(prefs)).toEqual({ theme: "dark", count: 1 });
+    });
+
+    it("validates writes made through the raw string key once registered", () => {
+      const alepha = Alepha.create();
+      alepha.store.get(prefs); // registers the atom
+      expect(() =>
+        alepha.store.set("test.validation.prefs" as any, { theme: 1 } as any),
+      ).toThrow();
+    });
+
+    it("skips validation when skipValidation is set", () => {
+      const alepha = Alepha.create();
+      alepha.store.get(prefs);
+      alepha.store.set("test.validation.prefs" as any, { theme: 1 } as any, {
+        skipValidation: true,
+      });
+      expect((alepha.store.get(prefs) as any).theme).toBe(1);
+    });
+
+    it("falls back to the default when a pre-seeded value is invalid", () => {
+      const alepha = Alepha.create({
+        "test.validation.prefs": { theme: 42 },
+      } as any);
+      expect(alepha.store.get(prefs)).toEqual({ theme: "light", count: 0 });
+    });
+
+    it("decodes a valid pre-seeded value through the schema", () => {
+      const alepha = Alepha.create({
+        "test.validation.prefs": { theme: "dark", count: 2, junk: 1 },
+      } as any);
+      expect(alepha.store.get(prefs)).toEqual({ theme: "dark", count: 2 });
+    });
+
+    it("exposes registered atoms via getAtom", () => {
+      const alepha = Alepha.create();
+      alepha.store.get(prefs);
+      expect(alepha.store.getAtom("test.validation.prefs")).toBeDefined();
+      expect(alepha.store.getAtom("nope")).toBeUndefined();
     });
   });
 

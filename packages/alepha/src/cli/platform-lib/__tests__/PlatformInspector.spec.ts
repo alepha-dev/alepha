@@ -5,7 +5,7 @@ import { platformOptions } from "../atoms/platformOptions.ts";
 import { PlatformInspector } from "../services/PlatformInspector.ts";
 
 describe("PlatformInspector", () => {
-  const createTestEnv = (config: Record<string, any> = {}) => {
+  const createTestEnv = (config?: Record<string, any>) => {
     const alepha = Alepha.create().with({
       provide: FileSystemProvider,
       use: MemoryFileSystemProvider,
@@ -14,7 +14,14 @@ describe("PlatformInspector", () => {
     const fs = alepha.inject(MemoryFileSystemProvider);
     const inspector = alepha.inject(PlatformInspector);
 
-    alepha.set(platformOptions, config as any);
+    // Only write the atom when the test actually provides a config —
+    // `platformOptions.schema` requires `environments`, so an empty object
+    // is not a valid "configured" state. Leaving the atom unset is how a
+    // real "no platform config" run looks (falls through to the
+    // dist/manifest.json fallback in PlatformInspector.resolveConfig).
+    if (config) {
+      alepha.set(platformOptions, config as any);
+    }
 
     return { alepha, fs, inspector };
   };
@@ -22,7 +29,7 @@ describe("PlatformInspector", () => {
   test("throws when platform is not configured in CI", async ({ expect }) => {
     process.env.CI = "1";
     try {
-      const { inspector } = createTestEnv({});
+      const { inspector } = createTestEnv();
       await expect(inspector.resolveConfig("/project")).rejects.toThrowError(
         AlephaError,
       );

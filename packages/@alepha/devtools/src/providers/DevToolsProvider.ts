@@ -76,8 +76,12 @@ export class DevToolsProvider {
       const atomEntry = atoms.find((a) => a.atom.key === body.name);
 
       if (atomEntry) {
-        this.alepha.store.set(atomEntry.atom, body.value);
-        return { success: true };
+        try {
+          this.alepha.store.set(atomEntry.atom, body.value);
+          return { success: true };
+        } catch {
+          return { success: false };
+        }
       }
 
       return { success: false };

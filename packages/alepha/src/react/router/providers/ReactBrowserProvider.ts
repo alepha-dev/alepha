@@ -4,6 +4,7 @@ import {
   $inject,
   $state,
   Alepha,
+  SchemaValidator,
   type State,
   type Static,
   z,
@@ -64,6 +65,7 @@ export class ReactBrowserProvider {
   protected readonly router = $inject(ReactBrowserRouterProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly browserHeadProvider = $inject(BrowserHeadProvider);
+  protected readonly validator = $inject(SchemaValidator);
 
   protected readonly options = $state(reactBrowserOptions);
 
@@ -318,9 +320,25 @@ export class ReactBrowserProvider {
       const previous = hydration?.["alepha.react.router.layers"] ?? [];
 
       if (hydration) {
-        // low budget, but works for now
         for (const [key, value] of Object.entries(hydration)) {
-          if (key !== "alepha.react.router.layers") {
+          if (key === "alepha.react.router.layers") {
+            continue;
+          }
+          const atom = this.alepha.store.getAtom(key);
+          if (atom) {
+            const result = this.validator.safeValidate(atom.schema, value);
+            if (!result.success) {
+              this.log.warn(
+                `Hydrated value for atom "${key}" failed schema validation, keeping default`,
+              );
+              continue;
+            }
+            this.alepha.store.set(key as keyof State, result.data as any, {
+              skipValidation: true,
+            });
+          } else {
+            // Not registered yet — register() will decode it when the atom
+            // first gets used.
             this.alepha.set(key as keyof State, value);
           }
         }

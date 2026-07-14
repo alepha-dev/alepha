@@ -8,6 +8,7 @@ import { $inject } from "../primitives/$inject.ts";
 import { AlsProvider, type StateScope } from "./AlsProvider.ts";
 import { EventManager } from "./EventManager.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
+import { SchemaValidator } from "./SchemaValidator.ts";
 import type { Static, TObject } from "./TypeProvider.ts";
 
 export interface AtomWithValue {
@@ -19,6 +20,7 @@ export class StateManager<State extends object = AlephaState> {
   protected readonly als = $inject(AlsProvider);
   protected readonly events = $inject(EventManager);
   protected readonly codec = $inject(JsonSchemaCodec);
+  protected readonly validator = $inject(SchemaValidator);
   protected readonly atoms = new Map<keyof State, Atom>();
 
   protected store: Partial<State> = {};
@@ -82,6 +84,13 @@ export class StateManager<State extends object = AlephaState> {
     return atoms;
   }
 
+  /**
+   * Return the registered atom for a state key, if any.
+   */
+  public getAtom(key: string): Atom | undefined {
+    return this.atoms.get(key as keyof State);
+  }
+
   public register(atom: Atom<any>): this {
     const key = atom.key as keyof State;
 
@@ -91,6 +100,23 @@ export class StateManager<State extends object = AlephaState> {
         this.set(key, atom.options.default as State[keyof State], {
           skipContext: true,
         });
+      } else {
+        // A value landed in the store before the atom registered (SSR
+        // hydration payload, Alepha.create() seed). Decode it against the
+        // schema; on mismatch fall back to the default rather than letting
+        // bad data flow through a "validated" atom.
+        const current = this.store[key];
+        if (current !== undefined) {
+          const result = this.validator.safeValidate(atom.schema, current);
+          if (result.success) {
+            this.store[key] = result.data as State[keyof State];
+          } else {
+            this.set(key, atom.options.default as State[keyof State], {
+              skipContext: true,
+              skipValidation: true,
+            });
+          }
+        }
       }
     }
 
@@ -151,6 +177,12 @@ export class StateManager<State extends object = AlephaState> {
 
     const key = target instanceof Atom ? target.key : target;
     const store = this.store as Record<string, any>;
+
+    const atom =
+      target instanceof Atom ? target : this.atoms.get(key as keyof State);
+    if (atom && value !== undefined && options?.skipValidation !== true) {
+      value = this.validator.validate(atom.schema, value);
+    }
 
     const prevValue = this.get(key);
     if (prevValue === value && typeof value !== "object") {
@@ -248,4 +280,10 @@ type OnlyArray<T extends object> = {
 export interface SetStateOptions {
   skipContext?: boolean;
   skipEvents?: boolean;
+
+  /**
+   * Skip schema validation for this write. Internal escape hatch for
+   * callers that have already validated the value (e.g. hydration).
+   */
+  skipValidation?: boolean;
 }
