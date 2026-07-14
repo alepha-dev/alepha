@@ -1661,6 +1661,54 @@ export const testPagination = async (alepha: Alepha) => {
 };
 
 // ============================================================================
+// testPaginationWithQueryLimit — `paginate` reads its page size from
+// `query.limit` as well as `pagination.size`. The `+1` sentinel row that
+// `createPagination` uses to detect a next page must survive either way;
+// spreading `query` over the computed `limit + 1` used to erase it, which made
+// `isLast` always true for callers passing `query.limit`.
+// ============================================================================
+
+export const testPaginationWithQueryLimit = async (alepha: Alepha) => {
+  const app = alepha.inject(PaginationApp);
+  await alepha.start();
+
+  for (let i = 1; i <= 25; i++) {
+    await app.users.create({
+      name: `User ${i}`,
+      profile: { age: 20 + i },
+      role: i % 2 === 0 ? "admin" : "user",
+    });
+  }
+
+  // First page: 25 rows, 10 per page => there IS a next page.
+  const first = await app.users.paginate({ page: 0 }, { limit: 10 });
+
+  expect(first.content.length).toBe(10);
+  expect(first.page.size).toBe(10);
+  expect(first.page.offset).toBe(0);
+  expect(first.page.isFirst).toBe(true);
+  expect(first.page.isLast).toBe(false);
+
+  // Middle page: still not the last one.
+  const middle = await app.users.paginate({ page: 1 }, { limit: 10 });
+
+  expect(middle.content.length).toBe(10);
+  expect(middle.page.offset).toBe(10);
+  expect(middle.page.isFirst).toBe(false);
+  expect(middle.page.isLast).toBe(false);
+
+  // Final page: 5 remaining rows, no sentinel => last.
+  const last = await app.users.paginate({ page: 2 }, { limit: 10 });
+
+  expect(last.content.length).toBe(5);
+  expect(last.page.offset).toBe(20);
+  expect(last.page.isLast).toBe(true);
+
+  // Clean up
+  await app.users.clear({ force: true });
+};
+
+// ============================================================================
 // testConditionsWithSiblings — `or`/`and` keys must AND-combine with their
 // sibling field conditions, not short-circuit the whole where (the early
 // `return or(...)` in QueryManager used to DROP every other key).

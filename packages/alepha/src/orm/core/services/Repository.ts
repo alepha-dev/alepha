@@ -545,10 +545,11 @@ export abstract class Repository<T extends TObject> {
     tasks.push(
       this.findMany(
         {
+          ...query,
           offset,
+          // one extra row is the next-page sentinel `createPagination` looks for
           limit: limit + 1,
           orderBy,
-          ...query,
         },
         opts,
       ).then((it) => {

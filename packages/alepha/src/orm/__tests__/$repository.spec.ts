@@ -10,6 +10,7 @@ import {
   testOrderByModes,
   testPagination,
   testPaginationSort,
+  testPaginationWithQueryLimit,
   testPgAttr,
   testRepositoryHooks,
   testSaveWithCustomPrimaryKey,
@@ -184,6 +185,16 @@ describe("$repository", () => {
     });
     it("should return correct pagination metadata (postgres)", async () => {
       await testPagination(Alepha.create().with(AlephaOrmPostgres));
+    });
+    it("should detect the next page when size comes from query.limit (sqlite)", async () => {
+      await testPaginationWithQueryLimit(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      );
+    });
+    it("should detect the next page when size comes from query.limit (postgres)", async () => {
+      await testPaginationWithQueryLimit(
+        Alepha.create().with(AlephaOrmPostgres),
+      );
     });
   });
 });
