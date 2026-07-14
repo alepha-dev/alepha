@@ -11,10 +11,26 @@
 > everything below into shippable phases. The **How Alepha is used** and **Framework gaps revealed by
 > Lore** sections carry the "good stuff / big problems" ground-truth from the flagship app.
 >
+> ### Progress (as of v5, 2026-07-14)
+> **All 8 P0s are ✅ FIXED.** A first remediation pass (v5) then shipped **9 P1-class fixes** — ORM
+> `paginate`, the two Cloudflare prod bugs, the cascade-`DROP TABLE` migration guard, typecheck
+> coverage, and the React reactivity cluster. Fixed findings are marked `✅ FIXED` inline with a
+> **Status:** note; **the original finding text is left intact below each one** so the reasoning stays
+> auditable. Three pieces of this document's own advice turned out to be wrong and are corrected in
+> place — read the **Status:** notes, not just the finding, before acting.
+>
+> **What to do next (highest severity first):**
+> 1. **Fix roadmap → Phase 0, items 5–8** (`verifyCode`, OAuth scope intersection, `skipTrial`,
+>    tenancy fail-closed). These sat in the *security hotfix* phase alongside the P0s and were never
+>    done. None affects Lore, which is likely why — but they ship in framework code.
+> 2. **HttpClient cache** (identity-scoped key, opt-in reads, invalidation) — a genuine cross-user
+>    leak; needs a policy decision, not a guess.
+> 3. **Phase 1 item 13** — the `$job` engine (long-`delay` overflow, dedup race, lease renewal).
+>
 > **Update history:** v2 added the full `api/*` deep review. **v3** adds deep second passes over
 > `react/*` and `cli/*` (finding new bugs the first passes missed) and a study of `apps/lore` (the
 > first Alepha app) for real-usage evidence — good idioms, and the framework gaps the app works
-> around. Plus the Fix roadmap. See the *Change log* at the bottom.
+> around. Plus the Fix roadmap. **v5** is the first remediation pass. See the *Change log* at the bottom.
 
 ---
 
@@ -208,6 +224,12 @@ were re-checked against source; two were reproduced with live tests.
 - **Fix:** `continue` instead of `return`; collect failures across all providers; report after the loop.
 - **Bonus (both passes suggested):** add a guard that flags a destructive `DROP TABLE` in a new
   migration — the natural automated defense for the D1 hazard that today relies on human review.
+  **✅ DONE** — `alepha db migrations create` now snapshots the migrations dir before running
+  drizzle-kit and refuses (throws `AlephaError`) if any **newly created** file contains a `DROP TABLE`
+  (`--`-comment lines and trailing comments are ignored; pre-existing migrations are never re-flagged).
+  The generated file is deliberately left on disk — the point is to force a human to read it; if the
+  drop is intended, keep it and re-run (no schema diff → nothing regenerated → the guard stays quiet).
+  `DbCommand.spec.ts`, 5 tests. This retires the fear-based grep gate in `apps/lore/CLAUDE.md`.
 
 ### P0-7 · Cross-realm/tenant broken access control in admin controllers · `SOURCE-CHECKED` · ✅ FIXED
 - **Status:** FIXED — added `SecurityProvider.assertRealmScope(user, requestedRealm)`, which binds the
@@ -307,7 +329,10 @@ were re-checked against source; two were reproduced with live tests.
   `Repository.ts:828`. `stampOrganization` stamps only the insert values; there is no `setWhere`. With
   a non-org-scoped unique key (e.g. `email`), tenant A's upsert updates tenant B's row — the one
   write path where `withOrganization` doesn't apply. Same hole updates soft-deleted rows.
-- **P1 · `paginate` spread destroys the `+1` sentinel when `query.limit` is set · `SOURCE-CHECKED`.**
+- **P1 · `paginate` spread destroys the `+1` sentinel when `query.limit` is set · `SOURCE-CHECKED` · ✅ FIXED**
+  - **Status:** FIXED — spread reordered to `{ ...query, offset, limit: limit + 1, orderBy }`. Added
+    `testPaginationWithQueryLimit` to the shared `$repository` suite (runs on **both** sqlite and
+    postgres); it fails on both without the fix (`isLast: true` with 15 rows still to come).
   `Repository.ts:545` — `this.findMany({ offset, limit: limit + 1, orderBy, ...query }, opts)`.
   `...query` overwrites `limit + 1` back to `limit`, and `createPagination` detects a next page only
   via `entities.length === limit + 1` (`createPagination.ts:54`), so `isLast` is **always true** for
@@ -350,14 +375,31 @@ were re-checked against source; two were reproduced with live tests.
 
 ### React / SSR
 
-- **P1 · `useStore` misses updates and is not concurrent-safe.**
+- **P1 · `useStore` misses updates and is not concurrent-safe. · ✅ FIXED**
+  - **Status:** FIXED — rewritten on `useSyncExternalStore`, so the store (not a `useState` copy) is
+    the source of truth: (a) and (c) fall out of that, and the `subscribe`/`getSnapshot` callbacks are
+    now keyed on the resolved atom key, fixing (b). Added `useStore.browser.spec.tsx` (6 tests; the two
+    target-change ones fail without the fix).
+    **Deliberately NOT changed:** the default is still seeded *during render*. Effects don't run during
+    SSR, and the default must be in the store before `exportAtoms` serializes the hydration payload —
+    moving it to an effect (as this finding suggested) would silently break SSR. The StrictMode
+    double-emit noted in the P2s is the accepted cost.
+    **Still open:** `useFieldValue.ts:17` has the identical stale-subscription shape. Fixing it needs a
+    public path accessor on `FormModel` (its `values` are keyed by dot-notation `user.name`, while
+    `input.path` is slash-notation `/user/name`).
   `react/.../useStore.ts:26`. Initial value in `useState`, subscription in a `[]`-deps effect: (a) a
   `state:mutate` between first render and effect commit is lost until the next mutation; (b) changing
   `target` never resubscribes; (c) no `useSyncExternalStore` → tearing under concurrent render; also
   writes the default into the store *during render*. Same pattern repeats in `useFieldValue.ts:17`.
   **Fix:** rewrite on `useSyncExternalStore(subscribe, () => store.get(target), getServerSnapshot)`.
   **Highest-leverage single change in the react layer** — every downstream hook inherits it.
-- **P1 · `useAction`/`useQuery` drop dep-change refetch while a fetch is in flight.**
+- **P1 · `useAction`/`useQuery` drop dep-change refetch while a fetch is in flight. · ✅ FIXED**
+  - **Status:** FIXED — `executeAction` takes a `supersede` flag. Dep-change (`runOnInit` effect) and
+    interval runs pass it: they skip the concurrency guard, abort the in-flight controller and proceed.
+    A manual `run()` still dedupes (a double-clicked mutation must not submit twice). Added a monotonic
+    `runIdRef` gating every state write — without it a superseded run's `finally` clears the *newer*
+    run's `loading` when its abort lands. Test: a `useQuery` whose dep changes mid-flight (handler
+    called once, not twice, without the fix). Same finding as the `react` deep-pass entry below.
   `useAction.ts:176` — the `isExecutingRef` guard runs *before* the abort block (`:180`), making the
   abort dead code during execution. `useQuery({handler}, [userId])` whose `userId` changes mid-flight
   never refetches; the old user's data commits and stays. Docs (`useQuery.ts:103`) claim a
@@ -450,7 +492,22 @@ were re-checked against source; two were reproduced with live tests.
 
 ### Build / packaging / types (cross-cutting)
 
-- **P1 · `yarn typecheck` silently skips 5 workspaces incl. `@alepha/ui` · `SOURCE-CHECKED`.**
+- **P1 · `yarn typecheck` silently skips 5 workspaces incl. `@alepha/ui` · `SOURCE-CHECKED` · ✅ FIXED**
+  - **Status:** FIXED — `"typecheck": "tsc --noEmit"` added to all five (15 workspaces now participate).
+    What it surfaced: `@alepha/ui`, `example-api`, `benchmark` were already clean; **`example-ssr`** had
+    192 errors that were **all** in `packages/alepha/src` and **zero** in its own code — it extended
+    `alepha/tsconfig.base` (which sets no `types`), so `Buffer` was unresolvable in alepha's sources;
+    now extends the root tsconfig like the other example apps. **`playground`** had 5 real errors: the
+    Dialogs demo called `toast(...)`/`toast.promise(...)` (sonner's raw API, which the `Toast` facade
+    deliberately never exposed — the demo was fixed, not the facade), and the AutoForm demo's `$control`
+    callbacks were implicit `any`.
+  - **⚠️ Do NOT "fix" the `$control` implicit-`any` by augmenting zod's `GlobalMeta`.** Tried; it
+    poisons every `.meta()` call site (`GlobalMeta` is in the inference path of every zod schema, and
+    `SchemaControlOption → SchemaControl → FormModel → zod schema → GlobalMeta` closes the loop), giving
+    `Type instantiation is excessively deep` in untouched files and driving `tsc` past **100 GB RSS**.
+    Annotate locally with `satisfies SchemaControlFn` / `satisfies SchemaControl` instead.
+  - **Related:** the root `typecheck` fan-out is now capped at `-j 4`. It was unbounded (= core count),
+    and `tsc` has no memory ceiling — 14 concurrent `tsc` processes is a machine-killer.
   `package.json:43` fans out via `workspaces foreach … run typecheck`; workspaces with no `typecheck`
   script are skipped: `@alepha/ui`, `playground`, `example-api`, `example-ssr`, `benchmark`.
   `@alepha/ui` is source-only and ships to prod via Lore auto-deploy — only components actually
@@ -639,12 +696,18 @@ were re-checked against source; two were reproduced with live tests.
 
 ### React — deep second pass (NEW findings)
 
-- **P1 · Error boundary never resets after navigation · `SOURCE-CHECKED`.**
+- **P1 · Error boundary never resets after navigation · `SOURCE-CHECKED` · ✅ FIXED**
   `react/router/components/NestedView.tsx:42` — `const [boundaryKey, setBoundaryKey] = useState(0)`;
   `setBoundaryKey` is **never called** anywhere (grep-confirmed — it appears only at its declaration),
   so `<ErrorBoundary key={boundaryKey}>` (`:151`,`:168`) never remounts. Once a route throws, the
   fallback latches; navigating to a healthy page still shows the old error until a full reload. **Fix:**
   bump `boundaryKey` on `react:transition:end`, or key the boundary by the layer path.
+  - **Status:** FIXED — but **not** by the suggested fix. Bumping the `key` (either form) remounts the
+    whole subtree, throwing away page state on *every* navigation. Instead `ErrorBoundary` gained a
+    `resetKeys` prop (the react-error-boundary pattern): `componentDidUpdate` clears a caught error when
+    a reset key changes, recovering **without tearing down the children**. `NestedView` passes
+    `[state.url.pathname]` and the dead `boundaryKey` state is gone. Added
+    `ErrorBoundary.browser.spec.tsx` (4 tests).
 - **P1 · HttpClient server cache is process-global, URL-only keyed → cross-user leak potential · `SOURCE-CHECKED`.**
   `HttpClient.ts:95` — the cache **read is unconditional** for every GET, keyed on the bare `url` with
   no auth/identity dimension; the no-ETag branch (`:103`) returns `cached.data` **directly**, and
@@ -667,18 +730,24 @@ were re-checked against source; two were reproduced with live tests.
   `string` (hydration text mismatch, `.getTime()` throws); `Map`/`Set` → `{}`; `bigint` → throws
   inside `safeJsonSerialize` → blank page. **Fix:** decode hydrated atoms against their schema
   client-side; document loader returns must be JSON-primitive; make `safeJsonSerialize` survive bigint.
-- **P1 · In-app navigation strips the URL hash.** `ReactBrowserProvider.ts:208` — `push(url)` rebuilds
+- **P1 · In-app navigation strips the URL hash. · ✅ FIXED** `ReactBrowserProvider.ts:208` — `push(url)` rebuilds
   the committed URL as `pathname + search` (no hash; `get url()` at `:138` also omits it), so
   `push("/docs#section")` compares `"/docs" !== "/docs#section"`, takes the redirect branch, and
   `pushState("/docs")` drops the fragment. Every internal `<a href="/x#y">` loses its anchor and never
   scrolls. **Fix:** include `state.url.hash` in the comparison and the `pushState` argument.
+  - **Status:** FIXED — `get url()` now returns `pathname + search + hash`, and `push()` compares
+    against (and re-pushes) the committed URL including its hash. Added 3 tests to
+    `ReactBrowserProvider.browser.spec.ts`.
 - **P1 · SPA navigation accumulates duplicate `<link>` tags (SEO harm).**
   `BrowserHeadProvider.ts:122` — link tags are matched by **href**, not `rel`, so navigating A→B where
   both set `<link rel="canonical">` appends a second canonical and never removes A's; same for
   per-route `hreflang` alternates. After a few client navs the document has conflicting canonicals —
   actively harmful for an SSR/SEO framework. **Fix:** track framework-managed head nodes (data attr)
   and replace by `rel` each navigation.
-- **P1 · `useAction`/`useQuery` dep-change supersession is dead code (precision on pass-1).**
+- **P1 · `useAction`/`useQuery` dep-change supersession is dead code (precision on pass-1). · ✅ FIXED**
+  - **Status:** FIXED — see the `useAction`/`useQuery` entry in the *React / SSR* P1 section above
+    (same defect). Note the guard was **kept** for manual `run()`: it is what stops a double-clicked
+    mutation submitting twice. Only dep-change/interval runs supersede.
   `useAction.ts:176` — the `isExecutingRef` guard returns *before* the abort-previous block (`:181`),
   and `finally` clears `abortControllerRef` (`:260`), so "cancel in-flight, start newer" is
   unreachable. That is *why* a `useQuery([userId])` whose `userId` changes mid-flight never refetches;
@@ -686,14 +755,28 @@ were re-checked against source; two were reproduced with live tests.
 
 ### CLI — deep second pass (NEW findings)
 
-- **P1 · CF worker entry stores per-invocation `waitUntil` on a process-global → clobbered under concurrency · `SOURCE-CHECKED`.**
+- **P1 · CF worker entry stores per-invocation `waitUntil` on a process-global → clobbered under concurrency · `SOURCE-CHECKED` · ✅ FIXED**
+  - **Status:** FIXED — the generated worker no longer touches the shared store. `fetch`, `scheduled`
+    and `queue` each run their body inside `__alepha.context.run(fn, {"cloudflare.waitUntil": …})`, so
+    the handle lives in the per-invocation async context. ALS **is** enabled under workerd
+    (`core/index.workerd.ts:71`, + `nodejs_compat`), so `WorkerdBackgroundTaskProvider`'s existing
+    `store.get` resolves it per-request via the ALS fork chain — that provider was already correct and
+    is unchanged. Verified in prod: CI `deploy-lore-production` green.
+  - **Diagnostic note for future passes:** the provider-level concurrency test (two concurrent forks,
+    each with its own `waitUntil`) **passes on the unfixed code** — the ALS lookup was never the bug.
+    The defect was *only* that the generated worker wrote outside any fork. It is kept as a regression
+    guard. The codegen itself is now asserted in `BuildCloudflareTask.spec.ts`.
   `BuildCloudflareTask.ts:560` — the generated worker `fetch` calls `setWaitUntil(executionCtx)` →
   `__alepha.set("cloudflare.waitUntil", …)` on **every** request. A single CF isolate serves
   concurrent requests: request A sets it, request B overwrites it, and A's `$job` direct-dispatch then
   calls B's `executionCtx.waitUntil`, which throws "waitUntil after response" once B returned —
   silently killing A's background work. **This hits Lore's production (CF Workers).** **Fix:** thread
   the exec ctx through the emitted event context, not a shared store.
-- **P1 · CF queue consumer has no dead-letter queue or retry ceiling → silent job loss · `SOURCE-CHECKED`.**
+- **P1 · CF queue consumer has no dead-letter queue or retry ceiling → silent job loss · `SOURCE-CHECKED` · ✅ FIXED**
+  - **Status:** FIXED — `enhanceQueue` now emits `dead_letter_queue` (defaults to `<queue>-dlq`; CF
+    creates the queue on demand, so a derived default is safe) and `max_retries` (default 3, matching
+    CF). Both overridable via `CLOUDFLARE_QUEUE_DLQ_NAME` / `CLOUDFLARE_QUEUE_MAX_RETRIES`; a
+    non-numeric override falls back to the default rather than emitting `NaN`. 3 tests.
   `BuildCloudflareTask.ts:500` (`queues.consumers.push({queue})`) — grep confirms **no**
   `dead_letter_queue`/`max_retries` are ever emitted; the worker `queue` handler calls `msg.retry()`
   on any throw, so a poison message burns CF's default 3 retries and is then **dropped with no DLQ or
@@ -1258,6 +1341,12 @@ several findings collapse into one fix.
 
 ### Phase 0 — Security hotfixes (days, mostly one-liners)
 These are exploitable-by-default or one-line severity flips. Ship first.
+
+> **Items 1–4 are ✅ DONE** (all 8 P0s are fixed). **Items 5–8 are the highest-severity work still
+> open in the whole document** — they sat in Phase 0 alongside the P0s but were never done. None of
+> them affects Lore (single realm, hand-rolled tenancy, no OAuth server, no subscriptions), which is
+> presumably why they were skipped — but they are live in shipped framework code.
+
 1. **Throw on default `APP_SECRET` in prod** (P0-3, `SecretProvider.ts:28`) — 1 line.
 2. **Strip the token from the verification HTTP response + gate the route** (P0-8,
    `VerificationController.ts:14`) — the endpoint is mounted by default; highest exploitability.
@@ -1276,20 +1365,24 @@ These are exploitable-by-default or one-line severity flips. Ship first.
    `BunRedisProvider.ts:204`) — restore mutual exclusion; add a same-instance concurrency test and a
    Bun NX/GET test.
 10. **DI `lifetime:"scoped"` after start** (P0-4, `Alepha.ts:882`).
-11. **`db migrations check` `continue` not `return`** (P0-6, `db.ts:77`) + a cascade-`DROP TABLE`
-    guard (the D1 land-mine).
-12. **CF worker `waitUntil` per-request, not global** (`BuildCloudflareTask.ts:560`) + **queue DLQ /
-    `max_retries`** (`:500`) — both hit Lore's prod today.
+11. ~~**`db migrations check` `continue` not `return`** (P0-6) + a cascade-`DROP TABLE` guard~~ — **✅ DONE** (both).
+12. ~~**CF worker `waitUntil` per-request, not global** + **queue DLQ / `max_retries`**~~ — **✅ DONE** (both).
 13. **`$job`: clamp long `delay`** (`JobProvider.ts:676`), **`ON CONFLICT` keyed dedup** (`:617`),
-    **lease/heartbeat renewal** to stop long-job double-run (`:1167`).
+    **lease/heartbeat renewal** to stop long-job double-run (`:1167`). ← **Phase 1's remaining work.**
 
 ### Phase 2 — High-impact P1 correctness (2–4 weeks)
 14. **ORM**: implicit-tx child fork (`DatabaseProvider.ts:216`), `null`→`isNull` + zero-condition guard
     on write paths (`QueryManager.ts:182`), `upsert` tenant/soft-delete scoping (`Repository.ts:828`),
-    `paginate` spread fix (`:545`), SQLite tx mutex (`NodeSqliteProvider.ts:134`).
-15. **React**: error-boundary reset (`NestedView.tsx:42`), `useSyncExternalStore` for `useStore` (fixes
-    3 bugs), scope the HttpClient cache by identity + gate reads + invalidate on mutation, hash-strip
-    (`ReactBrowserProvider.ts:208`), head reconcile-by-`rel`.
+    ~~`paginate` spread fix~~ (**✅ DONE**), SQLite tx mutex (`NodeSqliteProvider.ts:134`).
+15. **React**: ~~error-boundary reset~~ (**✅ DONE**, via `resetKeys` — *not* a `key` bump),
+    ~~`useSyncExternalStore` for `useStore`~~ (**✅ DONE**), ~~dep-change supersession~~ (**✅ DONE**),
+    ~~hash-strip~~ (**✅ DONE**).
+    **Remaining, and now the single biggest open React item: scope the HttpClient cache by identity +
+    gate reads on opt-in + invalidate on mutation** — a real cross-user leak in any app that routes an
+    authenticated GET through server-side `HttpClient.fetch`. Left deliberately: each choice changes
+    behavior for existing callers, so it wants a policy decision, not a guess. Also still open: head
+    reconcile-by-`rel` (`BrowserHeadProvider.ts:122`), and `useFieldValue`'s stale subscription (same
+    shape as the old `useStore` — needs a public path accessor on `FormModel` first).
 16. **Infra**: compare-and-delete lock release (`$lock.ts:120`), tick-slot cron dedup
     (`$scheduler.ts:189`), cache fail-open on read (`$cache.ts:334`), workerd rethrow so CF Queues
     redeliver.
@@ -1352,6 +1445,20 @@ leverage.
   one-definition-three-transports win, 9 casts in 43k LOC) and **Framework gaps revealed by Lore**
   (portable SQL, migration safety, resource-scoped authz, `useQuery` hook — the structural backlog).
   Added the **Fix roadmap**. No new P0s (the HttpClient cache is a scoped P1). Still **8 P0s**.
+- **v5** — **first remediation pass shipped** (`65f50620..0c89bf94`, 4 commits, CI green incl.
+  `deploy-lore-production`). Fixed 9 findings, each TDD'd with a test that fails first: ORM `paginate`
+  sentinel; CF `waitUntil` per-invocation + CF queue DLQ/`max_retries`; the cascade-`DROP TABLE`
+  migration guard (P0-6's bonus — retires Lore's human grep gate); typecheck for the 5 skipped
+  workspaces (+ `-j 4` fan-out cap); and the React cluster — `useStore` on `useSyncExternalStore`,
+  error-boundary reset via `resetKeys`, `useAction`/`useQuery` dep-change supersession, router
+  hash-strip. **Three corrections to this document's own advice**, recorded inline: (a) `useStore`'s
+  default seeding must stay *during render* (effects don't run in SSR — moving it breaks hydration);
+  (b) the error boundary must **not** be fixed by bumping `key` (that remounts the subtree and discards
+  page state every navigation) — use `resetKeys`; (c) the `useAction` concurrency guard must be **kept**
+  for manual `run()` (it prevents double-submit) — only dep/interval runs supersede. **Landmine
+  recorded:** do NOT type `$control` by augmenting zod's `GlobalMeta` — it explodes the type graph and
+  takes `tsc` past 100 GB. **Now the top of the backlog:** Phase 0 items 5–8 (verifyCode, OAuth scope,
+  `skipTrial`, tenancy fail-closed) — the highest-severity work still open — and the HttpClient cache.
 - **v4** — maintainer correction: **withdrew** the "dev toolchain shipped as runtime deps = adoption
   tax" P1. Alepha is bundled into the app's JS in production (no `node_modules` shipped), and the
   toolchain lives in `dependencies` on purpose so the framework owns/controls the biome/drizzle-kit/
