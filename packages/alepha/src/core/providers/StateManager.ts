@@ -1,10 +1,12 @@
 import type { State as AlephaState } from "../Alepha.ts";
+import { AlephaError } from "../errors/AlephaError.ts";
 import type { LoggerInterface } from "../interfaces/LoggerInterface.ts";
 import {
   Atom,
   type AtomStatic,
   type TAtomObject,
 } from "../primitives/$atom.ts";
+import { type AnyDep, Computed } from "../primitives/$computed.ts";
 import { $inject } from "../primitives/$inject.ts";
 import { AlsProvider, type StateScope } from "./AlsProvider.ts";
 import { EventManager } from "./EventManager.ts";
@@ -288,6 +290,7 @@ export class StateManager<State extends object = AlephaState> {
    *   - `"parent"`: Read only from the immediate parent fork layer.
    *   - `"app"`: Read only from the root (app-level) store.
    */
+  public get<R>(target: Computed<R>, scope?: StateScope): R;
   public get<T extends TAtomObject>(
     target: Atom<T>,
     scope?: StateScope,
@@ -297,6 +300,10 @@ export class StateManager<State extends object = AlephaState> {
     scope?: StateScope,
   ): State[Key] | undefined;
   public get(target: string | object, scope?: StateScope): any {
+    if (target instanceof Computed) {
+      return target.compute((dep: AnyDep) => this.get(dep as any, scope));
+    }
+
     if (target instanceof Atom) {
       this.register(target);
     }
@@ -327,6 +334,12 @@ export class StateManager<State extends object = AlephaState> {
     options?: SetStateOptions,
   ): this;
   public set(target: any, value: any, options?: SetStateOptions): this {
+    if (target instanceof Computed) {
+      throw new AlephaError(
+        `Cannot set computed value "${target.key}". Mutate its dependencies instead.`,
+      );
+    }
+
     if (target instanceof Atom) {
       this.register(target);
     }

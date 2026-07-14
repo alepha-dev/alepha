@@ -18,6 +18,7 @@ import {
   type ServiceEntry,
 } from "./interfaces/Service.ts";
 import type { Atom, AtomStatic, TAtomObject } from "./primitives/$atom.ts";
+import type { Computed } from "./primitives/$computed.ts";
 import type { InjectOptions } from "./primitives/$inject.ts";
 import { Module, type WithModule } from "./primitives/$module.ts";
 import { AlsProvider, type StateScope } from "./providers/AlsProvider.ts";
@@ -367,6 +368,7 @@ export class Alepha {
     return this.context.run(callback, data);
   }
 
+  public get<R>(target: Computed<R>, scope?: StateScope): R;
   public get<T extends TAtomObject>(
     target: Atom<T>,
     scope?: StateScope,
