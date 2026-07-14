@@ -15,16 +15,16 @@ import type { ZType } from "../providers/ZodProvider.ts";
  * You control how state is structured and validated.
  *
  * Features:
- * - Set a schema for validation
- * - Set a default value for initial state
- * - Rules, like read-only, custom validation, etc.
- * - Automatic getter access in services with {@link $use}
+ * - Schema validation on every write (invalid writes throw)
+ * - Default value for initial state
+ * - Automatic getter access in services with {@link $state}
  * - SSR support (server state automatically serialized and hydrated on client)
- * - React integration (useAtom hook for automatic component re-renders)
- * - Middleware
- * - Persistence adapters (localStorage, Redis, database, file system, cookie, etc.)
- * - State migrations (version upgrades when schema changes)
- * - Documentation generation & devtools integration
+ * - React integration (useStore / useSelector hooks for automatic re-renders)
+ * - Derived values with {@link $computed} (useComputed hook)
+ * - Persistence adapters: cookie (SSR-safe), localStorage, sessionStorage
+ * - `serverOnly` flag to keep an atom out of the hydration payload
+ * - reset / watch helpers on the state manager
+ * - Documentation generation & devtools integration (mutation log)
  *
  * Common use cases:
  * - user preferences
