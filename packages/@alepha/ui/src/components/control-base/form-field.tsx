@@ -4,7 +4,7 @@ void React;
 
 import { Label } from "@alepha/ui/components/ui/label";
 import { cn } from "@alepha/ui/lib/utils";
-import { createContext, type ReactNode, useContext } from "react";
+import { createContext, type ReactNode, useContext, useMemo } from "react";
 
 export type FormFieldLayout = "stack" | "row";
 
@@ -49,6 +49,76 @@ export function FormFieldAutoSaveProvider(props: {
  */
 export function useFormFieldAutoSave(): boolean {
   return useContext(FormFieldAutoSaveContext);
+}
+
+/**
+ * Id of the error element a `<FormField id={id} error>` renders.
+ */
+export function formFieldErrorId(
+  id?: string,
+  error?: string,
+): string | undefined {
+  return id && error ? `${id}-error` : undefined;
+}
+
+/**
+ * Id of the description element a `<FormField id={id} description>` renders
+ * (the description is replaced by the error when both are set).
+ */
+export function formFieldDescriptionId(
+  id?: string,
+  description?: string,
+  error?: string,
+): string | undefined {
+  return id && description && !error ? `${id}-description` : undefined;
+}
+
+/**
+ * The aria attributes a control spreads on its native element when it
+ * renders its own `<FormField>` (id/error/description in hand). Widgets
+ * nested under someone else's FormField use {@link useFormFieldA11y}
+ * instead.
+ */
+export function formFieldAriaProps(props: {
+  id?: string;
+  error?: string;
+  description?: string;
+}): { "aria-invalid"?: true; "aria-describedby"?: string } {
+  return {
+    "aria-invalid": props.error ? true : undefined,
+    "aria-describedby":
+      formFieldErrorId(props.id, props.error) ??
+      formFieldDescriptionId(props.id, props.description, props.error),
+  };
+}
+
+export interface FormFieldA11y {
+  /**
+   * `true` when the surrounding FormField carries an error — mirror it
+   * onto the widget's `aria-invalid`.
+   */
+  invalid?: true;
+  /**
+   * Id of the FormField's error (or description) element — mirror it
+   * onto the widget's `aria-describedby`.
+   */
+  describedBy?: string;
+}
+
+const FormFieldA11yContext = createContext<FormFieldA11y>({});
+
+/**
+ * Read the surrounding FormField's accessibility wiring. Leaf widgets
+ * spread the result onto their native element so screen readers announce
+ * the invalid state and the error/description text:
+ *
+ * ```tsx
+ * const a11y = useFormFieldA11y();
+ * <input aria-invalid={a11y.invalid} aria-describedby={a11y.describedBy} />
+ * ```
+ */
+export function useFormFieldA11y(): FormFieldA11y {
+  return useContext(FormFieldA11yContext);
 }
 
 export interface FormFieldProps {
@@ -106,6 +176,25 @@ export function FormField(props: FormFieldProps) {
     : "";
   const dataInvalid = props.error ? true : undefined;
 
+  const errorId = formFieldErrorId(props.id, props.error);
+  const descriptionId = formFieldDescriptionId(
+    props.id,
+    props.description,
+    props.error,
+  );
+  const a11y = useMemo<FormFieldA11y>(
+    () => ({
+      invalid: props.error ? true : undefined,
+      describedBy: errorId ?? descriptionId,
+    }),
+    [props.error, errorId, descriptionId],
+  );
+  const children = (
+    <FormFieldA11yContext.Provider value={a11y}>
+      {props.children}
+    </FormFieldA11yContext.Provider>
+  );
+
   if (layout === "row") {
     return (
       <div
@@ -128,10 +217,13 @@ export function FormField(props: FormFieldProps) {
             </Label>
           )}
           {props.description && !props.error && (
-            <p className="text-muted-foreground text-xs">{props.description}</p>
+            <p id={descriptionId} className="text-muted-foreground text-xs">
+              {props.description}
+            </p>
           )}
           {props.error && (
             <p
+              id={errorId}
               className="text-destructive text-xs flex items-center gap-1"
               role="alert"
             >
@@ -141,7 +233,7 @@ export function FormField(props: FormFieldProps) {
           )}
         </div>
         <div className="flex min-w-0 justify-start sm:justify-end">
-          {props.children}
+          {children}
         </div>
       </div>
     );
@@ -162,12 +254,15 @@ export function FormField(props: FormFieldProps) {
           )}
         </Label>
       )}
-      {props.children}
+      {children}
       {props.description && !props.error && (
-        <p className="text-muted-foreground text-xs">{props.description}</p>
+        <p id={descriptionId} className="text-muted-foreground text-xs">
+          {props.description}
+        </p>
       )}
       {props.error && (
         <p
+          id={errorId}
           className="text-destructive text-xs flex items-center gap-1"
           role="alert"
         >

@@ -174,12 +174,27 @@ export class DatabaseTypeProvider {
    *
    * @param options.nullable - When `false`, the column is NOT NULL in the database and
    *   the ORM rejects inserts that arrive without an organization context.
-   *   Defaults to `true` (nullable) for backward compatibility: NULL rows are visible
-   *   to every tenant, which is the historic "global row" semantics.
+   *   Defaults to `true` (nullable) — unless `strict` is set, which flips the
+   *   default to non-nullable. NULL rows are visible to every tenant (the
+   *   historic "global row" semantics) only when the column is nullable AND
+   *   not strict.
+   * @param options.strict - Fail-closed tenant scoping for security-sensitive
+   *   tables. Refuses reads/writes with no resolved tenant (instead of a
+   *   fail-open "see/write everything") and drops the `OR org IS NULL` escape
+   *   so a scoped tenant never sees global rows. Defaults to `false`.
    */
-  public readonly organization = (options?: { nullable?: boolean }) => {
-    const nullable = options?.nullable ?? true;
-    return pgAttr(nullable ? z.uuid().optional() : z.uuid(), PG_ORGANIZATION);
+  public readonly organization = (options?: {
+    nullable?: boolean;
+    strict?: boolean;
+  }) => {
+    const strict = options?.strict ?? false;
+    // A strict (fail-closed) column has no "global row" concept, so it is
+    // non-nullable by default — but an explicit `nullable` still wins so
+    // legacy NULL rows can coexist while remaining invisible to tenants.
+    const nullable = options?.nullable ?? !strict;
+    return pgAttr(nullable ? z.uuid().optional() : z.uuid(), PG_ORGANIZATION, {
+      strict,
+    });
   };
 
   /**

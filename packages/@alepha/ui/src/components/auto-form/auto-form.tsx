@@ -219,11 +219,6 @@ export interface AutoFormProps<T extends TObject> {
   footer?: ReactNode;
 
   /**
-   * Throttle (ms) for text inputs. Propagated to every Control.
-   */
-  throttle?: number;
-
-  /**
    * Extra classes applied to the form wrapper.
    */
   className?: string;
@@ -390,7 +385,6 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
             group={group}
             inputs={inputs}
             disabled={props.disabled}
-            throttle={props.throttle}
             fields={props.fields}
             i18nPrefix={props.i18nPrefix}
             multiGroup={resolvedGroups.length > 1}
@@ -525,7 +519,6 @@ interface GroupBlockProps {
   fields?: Partial<Record<string, Partial<Omit<ControlProps, "input">>>>;
   i18nPrefix?: string;
   disabled?: boolean;
-  throttle?: number;
   multiGroup?: boolean;
   layout: "stack" | "row";
   gridClassName?: string;
@@ -596,7 +589,6 @@ function GroupBlock(props: GroupBlockProps) {
               input={it.input}
               {...it.props}
               disabled={props.disabled || it.props.disabled}
-              throttle={it.props.throttle ?? props.throttle}
             />
           ))}
         </div>
@@ -641,7 +633,6 @@ function GroupBlock(props: GroupBlockProps) {
               input={it.input}
               {...it.props}
               disabled={props.disabled || it.props.disabled}
-              throttle={it.props.throttle ?? props.throttle}
             />
           </div>
         ))}

@@ -55,6 +55,48 @@ describe("OAuthClientService.register", () => {
   });
 });
 
+describe("OAuthClientService.intersectScopes", () => {
+  const setup = async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const service = alepha.inject(OAuthClientService);
+    await alepha.start();
+    return service;
+  };
+
+  it("drops requested scopes the client is not registered for", async ({
+    expect,
+  }) => {
+    const service = await setup();
+    // Client registered for ["mcp"] but asks for admin → admin is stripped.
+    expect(service.intersectScopes(["mcp", "admin"], ["mcp"])).toEqual(["mcp"]);
+  });
+
+  it("falls back to the client's registered scopes when none requested", async ({
+    expect,
+  }) => {
+    const service = await setup();
+    expect(service.intersectScopes(undefined, ["mcp", "openid"])).toEqual([
+      "mcp",
+      "openid",
+    ]);
+    expect(service.intersectScopes([], ["mcp"])).toEqual(["mcp"]);
+  });
+
+  it("preserves requested order and de-duplicates", async ({ expect }) => {
+    const service = await setup();
+    expect(
+      service.intersectScopes(["openid", "mcp", "openid"], ["mcp", "openid"]),
+    ).toEqual(["openid", "mcp"]);
+  });
+
+  it("returns nothing when no requested scope is allowed", async ({
+    expect,
+  }) => {
+    const service = await setup();
+    expect(service.intersectScopes(["admin"], ["mcp"])).toEqual([]);
+  });
+});
+
 describe("OAuthClientService authorization code", () => {
   it("mints and verifies a single-use auth code bound to PKCE", async ({
     expect,

@@ -11,6 +11,10 @@ import {
   testOrgFilterOnDelete,
   testOrgFilterOnUpdateOne,
   testOrgUserSeesOwnAndGlobalRows,
+  testStrictFailsClosedForOrglessUser,
+  testStrictFailsClosedWithoutTenant,
+  testStrictHidesGlobalRows,
+  testStrictRefusesInsertWithoutTenant,
 } from "./organization-tests.ts";
 
 describe("organization", () => {
@@ -99,5 +103,47 @@ describe("organization", () => {
   });
   it("org filter on delete (postgres)", async () => {
     await testOrgFilterOnDelete(Alepha.create().with(AlephaOrmPostgres));
+  });
+
+  it("strict: hides global/NULL rows from a scoped tenant (sqlite)", async () => {
+    await testStrictHidesGlobalRows(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("strict: hides global/NULL rows from a scoped tenant (postgres)", async () => {
+    await testStrictHidesGlobalRows(Alepha.create().with(AlephaOrmPostgres));
+  });
+
+  it("strict: fails closed with no tenant (sqlite)", async () => {
+    await testStrictFailsClosedWithoutTenant(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("strict: fails closed with no tenant (postgres)", async () => {
+    await testStrictFailsClosedWithoutTenant(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+
+  it("strict: fails closed for an org-less user (sqlite)", async () => {
+    await testStrictFailsClosedForOrglessUser(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("strict: fails closed for an org-less user (postgres)", async () => {
+    await testStrictFailsClosedForOrglessUser(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+
+  it("strict: refuses insert without a tenant (sqlite)", async () => {
+    await testStrictRefusesInsertWithoutTenant(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("strict: refuses insert without a tenant (postgres)", async () => {
+    await testStrictRefusesInsertWithoutTenant(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
   });
 });

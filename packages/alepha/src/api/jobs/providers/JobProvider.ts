@@ -12,7 +12,11 @@ import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { LockProvider } from "alepha/lock";
 import type { LogEntry } from "alepha/logger";
 import { $logger } from "alepha/logger";
-import { $repository, DbEntityNotFoundError } from "alepha/orm";
+import {
+  $repository,
+  DbConflictError,
+  DbEntityNotFoundError,
+} from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
 import {
   type JobStatus,
@@ -622,7 +626,7 @@ export class JobProvider {
       if (existing.length > 0) {
         return existing[0].id;
       }
-      const execution = await this.executions.create({
+      const { id: executionId, created } = await this.createKeyedExecution({
         jobName: name,
         key: options.key,
         payload: validated as Record<string, unknown>,
@@ -634,12 +638,16 @@ export class JobProvider {
         triggeredByName: options.triggeredByName,
         organizationId: options.organizationId,
       });
-      if (status === "pending") {
-        await this.dispatch(name, execution.id);
-      } else if (status === "scheduled" && scheduledAt) {
-        this.scheduleOptimisticDispatch(name, execution.id, scheduledAt);
+      if (!created) {
+        // Lost the race to a concurrent same-key push — the winner dispatches.
+        return executionId;
       }
-      return execution.id;
+      if (status === "pending") {
+        await this.dispatch(name, executionId);
+      } else if (status === "scheduled" && scheduledAt) {
+        this.scheduleOptimisticDispatch(name, executionId, scheduledAt);
+      }
+      return executionId;
     }
 
     const execution = await this.executions.create({
@@ -663,10 +671,93 @@ export class JobProvider {
   }
 
   /**
+   * How long a `running` row may go without a lease renewal before the
+   * sweep assumes the instance running it crashed. Shared by the sweep's
+   * crash detection and the heartbeat cadence so the two can't drift.
+   */
+  protected crashThresholdMs(registration: JobRuntimeRegistration): number {
+    return registration.options.timeout
+      ? this.dt.duration(registration.options.timeout).as("milliseconds") * 2
+      : this.config.runTimeout;
+  }
+
+  /**
+   * While a handler runs, keep the row's `updatedAt` fresh so another
+   * instance's sweep can tell a long-running job from a crashed one — the
+   * sweep treats `max(startedAt, updatedAt)` as the lease. Self-stops when
+   * the row leaves `running` (finished, cancelled, swept elsewhere).
+   */
+  protected startLeaseHeartbeat(
+    executionId: string,
+    registration: JobRuntimeRegistration,
+  ): ReturnType<typeof setInterval> {
+    const intervalMs = Math.max(
+      250,
+      Math.floor(this.crashThresholdMs(registration) / 3),
+    );
+    const timer = setInterval(() => {
+      void (async () => {
+        try {
+          await this.executions.updateOne(
+            { id: { eq: executionId }, status: { eq: "running" } },
+            { status: "running" },
+          );
+        } catch {
+          clearInterval(timer);
+        }
+      })();
+    }, intervalMs);
+    return timer;
+  }
+
+  /**
+   * Insert a keyed execution row, resolving the dedup pre-check/insert
+   * race: a concurrent same-key push can land between the read and this
+   * insert, so a unique violation on (jobName, key) is settled by
+   * returning the winner's row instead of throwing.
+   */
+  protected async createKeyedExecution(fields: {
+    jobName: string;
+    key: string;
+    payload?: Record<string, unknown>;
+    status: JobStatus;
+    priority: number;
+    maxAttempts: number;
+    scheduledAt?: string;
+    triggeredBy?: string;
+    triggeredByName?: string;
+    organizationId?: string;
+  }): Promise<{ id: string; created: boolean }> {
+    try {
+      const execution = await this.executions.create(fields);
+      return { id: execution.id, created: true };
+    } catch (e) {
+      if (e instanceof DbConflictError) {
+        const winner = await this.executions.findMany({
+          where: { jobName: { eq: fields.jobName }, key: { eq: fields.key } },
+          limit: 1,
+        });
+        if (winner.length > 0) {
+          return { id: winner[0].id, created: false };
+        }
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Ceiling for the optimistic local timer. Past one day the sweep is the
+   * delivery mechanism anyway, and a 32-bit `setTimeout` overflows at
+   * ~24.85 days — an unclamped timer would fire immediately and run the
+   * job weeks early.
+   */
+  protected readonly maxOptimisticDelayMs = 24 * 60 * 60 * 1000;
+
+  /**
    * Fire a local setTimeout so delayed/retrying rows dispatch as close to
    * `scheduledAt` as possible, rather than waiting for the next sweep tick.
-   * No-op on stateless runtimes where timers won't survive (the sweep
-   * handles those).
+   * No-op on stateless runtimes where timers won't survive, and for delays
+   * beyond `maxOptimisticDelayMs` (the sweep handles both).
    */
   protected scheduleOptimisticDispatch(
     jobName: string,
@@ -677,6 +768,9 @@ export class JobProvider {
       0,
       new Date(scheduledAt).getTime() - this.dt.nowMillis(),
     );
+    if (delayMs > this.maxOptimisticDelayMs) {
+      return;
+    }
     this.dt.createTimeout(() => {
       void this.dispatchScheduled(jobName, executionId);
     }, delayMs);
@@ -921,6 +1015,7 @@ export class JobProvider {
       const ms = this.dt.duration(opts.timeout).as("milliseconds");
       timeoutId = setTimeout(() => abortController.abort(), ms);
     }
+    const leaseTimer = this.startLeaseHeartbeat(executionId, registration);
 
     const now = this.dt.now();
 
@@ -997,6 +1092,7 @@ export class JobProvider {
         { context: contextId },
       );
     } finally {
+      clearInterval(leaseTimer);
       this.perExecutionLogs.delete(contextId);
     }
   }
@@ -1173,13 +1269,18 @@ export class JobProvider {
         const reg = this.jobs.get(exec.jobName);
         if (!reg) continue;
         if (this.abortControllers.has(exec.id)) continue; // still alive locally
-        const crashThresholdMs = reg.options.timeout
-          ? this.dt.duration(reg.options.timeout).as("milliseconds") * 2
-          : this.config.runTimeout;
+        const crashThresholdMs = this.crashThresholdMs(reg);
         const startedAtMs = exec.startedAt
           ? new Date(exec.startedAt).getTime()
           : 0;
-        if (startedAtMs > 0 && nowMs - startedAtMs > crashThresholdMs) {
+        // The lease is whichever is fresher: the claim (startedAt) or the
+        // last heartbeat (updatedAt). A legitimately long-running job on
+        // another instance keeps renewing; only a stale lease is a crash.
+        const heartbeatMs = exec.updatedAt
+          ? new Date(exec.updatedAt).getTime()
+          : 0;
+        const lastAliveMs = Math.max(startedAtMs, heartbeatMs);
+        if (lastAliveMs > 0 && nowMs - lastAliveMs > crashThresholdMs) {
           this.log.warn(
             `Sweep: marking crashed ${exec.jobName} (${exec.id}) as failed`,
           );
@@ -1209,6 +1310,8 @@ export class JobProvider {
    * Move a row from `scheduled` → `pending` and dispatch it.
    * Used by the optimistic retry/delay timer. If the sweep has already moved
    * the row, or another worker has claimed it, the UPDATE guard fails silently.
+   * The `scheduledAt <= now` condition keeps a stray early timer (clock skew,
+   * timer overflow) from promoting a row ahead of schedule.
    */
   protected async dispatchScheduled(
     jobName: string,
@@ -1217,7 +1320,11 @@ export class JobProvider {
     if (this.stopping) return;
     try {
       await this.executions.updateOne(
-        { id: { eq: executionId }, status: { eq: "scheduled" } },
+        {
+          id: { eq: executionId },
+          status: { eq: "scheduled" },
+          scheduledAt: { lte: this.dt.nowISOString() },
+        },
         { status: "pending" },
       );
       await this.dispatchSafe(jobName, executionId);

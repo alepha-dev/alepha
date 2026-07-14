@@ -77,8 +77,9 @@ export class SubscriptionController {
       response: subscriptionResourceSchema,
     },
     handler: ({ body, user }) =>
+      // NB: no `skipTrial` — the public subscribe path always honors the
+      // plan's trial. Comped/paid activations go through the service directly.
       this.service.subscribe(user.organization!, body.planId, body.interval, {
-        skipTrial: body.skipTrial,
         metadata: body.metadata,
       }),
   });

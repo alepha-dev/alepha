@@ -10,39 +10,23 @@ import { $queue } from "alepha/queue";
 
 Creates a queue primitive for asynchronous message processing with background workers.
 
-The $queue primitive enables powerful asynchronous communication patterns in your application.
-It provides type-safe message queuing with automatic worker processing, making it perfect for
-decoupling components and handling background tasks efficiently.
+`$queue` is the **raw transport layer**: it fans messages out to background
+workers over the configured backend with type-safe payloads. Delivery is
+**at-most-once** — a message is popped from the backend before the handler
+runs, so a handler error or a process crash loses it. There is no retry,
+no dead-letter queue, and no delivery guarantee at this layer.
 
-**Background Processing**
-- Automatic worker threads for non-blocking message processing
-- Built-in retry mechanisms and error handling
-- Dead letter queues for failed message handling
-- Graceful shutdown and worker lifecycle management
+**For work that must not be lost, use `$job` (alepha/api/jobs) instead.**
+It layers a durable, DB-backed outbox over this transport: at-least-once
+delivery, retries, idempotency keys, priorities, crash recovery via a
+reconciliation sweep, and failure records.
 
-**Type Safety**
-- Full TypeScript support with schema validation using TypeBox
-- Type-safe message payloads with automatic inference
-- Runtime validation of all queued messages
-- Compile-time errors for invalid message structures
-
-**Storage Flexibility**
-- Memory provider for development and testing
-- Redis provider for production scalability and persistence
-- Custom provider support for specialized backends
-- Automatic failover and connection pooling
-
-**Performance & Scalability**
-- Batch processing support for high-throughput scenarios
-- Horizontal scaling with distributed queue backends
-- Configurable concurrency and worker pools
-- Efficient serialization and message routing
-
-**Reliability**
-- Message persistence across application restarts
-- Automatic retry with exponential backoff
-- Dead letter handling for permanently failed messages
-- Comprehensive logging and monitoring integration
+**What $queue gives you**
+- Type-safe payloads with schema validation at push and receive
+- Background workers with graceful shutdown and lifecycle management
+- Pluggable backends: memory (dev/test), Redis, Cloudflare Queues
+- Cheap fire-and-forget fan-out where occasional loss is acceptable
+  (cache invalidation, presence pings, metrics, live notifications)
 
 ## Options
 
@@ -56,28 +40,25 @@ decoupling components and handling background tasks efficiently.
 
 ## Examples
 
-Basic notification queue
+Loss-tolerant event fan-out
 ```typescript
-const emailQueue = $queue({
-  name: "email-notifications",
+const activityQueue = $queue({
+  name: "activity-events",
   schema: z.object({
-    to: z.text(),
-    subject: z.text(),
-    body: z.text(),
-    priority: z.enum(["high", "normal"]).optional()
+    userId: z.text(),
+    event: z.text(),
+    at: z.number()
   }),
   handler: async (message) => {
-    await emailService.send(message.payload);
-    console.log(`Email sent to ${message.payload.to}`);
+    await metrics.track(message.payload);
   }
 });
 
 // Push messages for background processing
-await emailQueue.push({
-  to: "user@example.com",
-  subject: "Welcome!",
-  body: "Welcome to our platform",
-  priority: "high"
+await activityQueue.push({
+  userId: "u1",
+  event: "page-view",
+  at: 1700000000000
 });
 ```
 

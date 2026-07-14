@@ -37,7 +37,7 @@ export type PgSymbols = {
   [PG_REF]: PgRefOptions;
   [PG_ENUM]: PgEnumOptions;
   [PG_GENERATED]: PgGeneratedOptions;
-  [PG_ORGANIZATION]: {};
+  [PG_ORGANIZATION]: PgOrganizationOptions;
 
   /**
    * @deprecated Use `PG_IDENTITY` instead.
@@ -46,6 +46,18 @@ export type PgSymbols = {
 };
 
 export type PgSymbolKeys = keyof PgSymbols;
+
+export interface PgOrganizationOptions {
+  /**
+   * Fail-closed tenant scoping. When `true`, the repository (a) refuses any
+   * read/write with no resolved tenant instead of falling through to an
+   * unfiltered "see/write everything" query, and (b) drops the
+   * `OR organizationId IS NULL` "global row" escape — a scoped tenant never
+   * sees NULL/global rows. Use for security-sensitive tables. Defaults to
+   * `false` (the historic fail-open semantics).
+   */
+  strict?: boolean;
+}
 
 export type PgIdentityOptions = {
   mode: "always" | "byDefault";

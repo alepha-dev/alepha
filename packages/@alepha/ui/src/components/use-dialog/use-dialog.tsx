@@ -14,6 +14,7 @@ import {
 } from "@alepha/ui/components/ui/alert-dialog";
 import { Input } from "@alepha/ui/components/ui/input";
 import { AlephaError } from "alepha";
+import { useI18n } from "alepha/react/i18n";
 import {
   type ChangeEvent,
   createContext,
@@ -78,6 +79,7 @@ const Ctx = createContext<DialogApi | null>(null);
  * `<DialogProvider>{children}</DialogProvider>`.
  */
 export function DialogProvider(props: { children: ReactNode }) {
+  const { tr } = useI18n();
   const [pending, setPending] = useState<Pending | null>(null);
   const [promptValue, setPromptValue] = useState("");
   const [promptError, setPromptError] = useState<string | null>(null);
@@ -188,7 +190,8 @@ export function DialogProvider(props: { children: ReactNode }) {
           <AlertDialogFooter>
             {pending?.kind !== "alert" && (
               <AlertDialogCancel onClick={() => resolve(cancelValue)}>
-                {opts?.cancelLabel ?? "Cancel"}
+                {opts?.cancelLabel ??
+                  tr("useDialog.cancel", { default: "Cancel" })}
               </AlertDialogCancel>
             )}
             <AlertDialogAction
@@ -208,7 +211,9 @@ export function DialogProvider(props: { children: ReactNode }) {
               }
             >
               {opts?.confirmLabel ??
-                (pending?.kind === "alert" ? "OK" : "Confirm")}
+                (pending?.kind === "alert"
+                  ? tr("useDialog.ok", { default: "OK" })
+                  : tr("useDialog.confirm", { default: "Confirm" }))}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -34,46 +34,86 @@ declare module "alepha" {
   interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
-/**
- * Maps Mollie's payment status to our internal webhook event status.
- * Returns null for transient states we ignore (open, pending, canceled
- * with no intent — the user simply abandoned the checkout).
- */
-const mapStatus = (
-  status: PaymentStatus,
-): "authorized" | "captured" | "failed" | null => {
-  switch (status) {
-    case PaymentStatus.paid:
-      return "captured";
-    case PaymentStatus.authorized:
-      return "authorized";
-    case PaymentStatus.failed:
-    case PaymentStatus.expired:
-    case PaymentStatus.canceled:
-      return "failed";
-    default:
-      return null;
-  }
-};
-
-/**
- * Convert integer minor units (cents) to Mollie's decimal-string format.
- * Alepha stores all amounts as integers; Mollie's API wants strings like
- * "10.00". We assume two-decimal currencies — JPY/KRW would need a table.
- */
-const toMollieAmount = (cents: number, currency: string) => ({
-  value: (cents / 100).toFixed(2),
-  currency: currency.toUpperCase(),
-});
-
 export class MolliePaymentProvider implements PaymentProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
   protected readonly mollie: MollieClient;
 
+  /**
+   * ISO 4217 currency exponents that differ from the default of 2.
+   * Mollie requires the exact decimal count for the currency and rejects
+   * e.g. "10.00" for JPY (which must be sent as "1000").
+   */
+  protected readonly currencyExponents: Record<string, number> = {
+    BIF: 0,
+    CLP: 0,
+    DJF: 0,
+    GNF: 0,
+    ISK: 0,
+    JPY: 0,
+    KMF: 0,
+    KRW: 0,
+    PYG: 0,
+    RWF: 0,
+    UGX: 0,
+    VND: 0,
+    VUV: 0,
+    XAF: 0,
+    XOF: 0,
+    XPF: 0,
+    BHD: 3,
+    IQD: 3,
+    JOD: 3,
+    KWD: 3,
+    LYD: 3,
+    OMR: 3,
+    TND: 3,
+  };
+
   constructor() {
     this.mollie = createMollieClient({ apiKey: this.env.MOLLIE_API_KEY });
+  }
+
+  /**
+   * Maps Mollie's payment status to our internal webhook event status.
+   * Returns null for transient states we ignore (open, pending, canceled
+   * with no intent — the user simply abandoned the checkout).
+   */
+  protected mapStatus(
+    status: PaymentStatus,
+  ): "authorized" | "captured" | "failed" | null {
+    switch (status) {
+      case PaymentStatus.paid:
+        return "captured";
+      case PaymentStatus.authorized:
+        return "authorized";
+      case PaymentStatus.failed:
+      case PaymentStatus.expired:
+      case PaymentStatus.canceled:
+        return "failed";
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Convert integer minor units to Mollie's decimal-string format.
+   * Alepha stores all amounts as ISO 4217 minor units; Mollie wants a
+   * string with the currency's exact decimal count ("10.50" for EUR,
+   * "1000" for JPY, "1.234" for BHD). Built from integer string math so
+   * no floating-point rounding can leak into the wire format.
+   */
+  protected toMollieAmount(minorUnits: number, currency: string) {
+    const code = currency.toUpperCase();
+    const exponent = this.currencyExponents[code] ?? 2;
+    const sign = minorUnits < 0 ? "-" : "";
+    const digits = String(Math.abs(minorUnits)).padStart(exponent + 1, "0");
+    const value =
+      exponent === 0
+        ? digits
+        : `${digits.slice(0, -exponent)}.${digits.slice(-exponent)}`;
+    return { value: `${sign}${value}`, currency: code };
   }
 
   public async createSession(
@@ -81,7 +121,7 @@ export class MolliePaymentProvider implements PaymentProvider {
     options: { returnUrl: string; authorize?: boolean },
   ): Promise<CreateSessionResult> {
     const payment = await this.mollie.payments.create({
-      amount: toMollieAmount(intent.amount, intent.currency),
+      amount: this.toMollieAmount(intent.amount, intent.currency),
       description: `Payment ${intent.id}`,
       redirectUrl: options.returnUrl,
       webhookUrl: this.env.MOLLIE_WEBHOOK_URL,
@@ -106,7 +146,7 @@ export class MolliePaymentProvider implements PaymentProvider {
     const payment = await this.mollie.payments.get(providerRef);
     await this.mollie.paymentCaptures.create({
       paymentId: providerRef,
-      amount: toMollieAmount(amount, payment.amount.currency),
+      amount: this.toMollieAmount(amount, payment.amount.currency),
     });
   }
 
@@ -121,7 +161,7 @@ export class MolliePaymentProvider implements PaymentProvider {
     const payment = await this.mollie.payments.get(providerRef);
     const refund = await this.mollie.paymentRefunds.create({
       paymentId: providerRef,
-      amount: toMollieAmount(amount, payment.amount.currency),
+      amount: this.toMollieAmount(amount, payment.amount.currency),
     });
     return { providerRef: refund.id };
   }
@@ -159,7 +199,7 @@ export class MolliePaymentProvider implements PaymentProvider {
     }
 
     const payment = await this.mollie.payments.get(id);
-    const status = mapStatus(payment.status);
+    const status = this.mapStatus(payment.status);
     if (!status) {
       // Transient state — surface a non-mapped status so PaymentService logs and ignores.
       return { providerRef: payment.id, status: payment.status, raw: payment };

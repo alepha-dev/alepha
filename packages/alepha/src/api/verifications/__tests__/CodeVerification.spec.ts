@@ -80,6 +80,40 @@ describe("Code Verification", () => {
     });
   });
 
+  it("rejects a wrong code even after the target is already verified", async ({
+    expect,
+  }) => {
+    const { controller, target, service } = await createTest();
+
+    const request = await service.createVerification({ type: "code", target });
+
+    // First, verify legitimately with the real code.
+    expect(
+      await controller.validateVerificationCode({
+        params: { type: "code" },
+        body: { target, token: request.token },
+      }),
+    ).toEqual({ ok: true });
+
+    // A bogus code submitted afterwards must NOT be accepted just because
+    // the target was already verified — otherwise any flow re-using
+    // verifyCode as an authz gate accepts an attacker's guess.
+    await expect(() =>
+      controller.validateVerificationCode({
+        params: { type: "code" },
+        body: { target, token: "000000" },
+      }),
+    ).rejects.toThrowError("Invalid verification code");
+
+    // The real code still short-circuits as already-verified.
+    expect(
+      await controller.validateVerificationCode({
+        params: { type: "code" },
+        body: { target, token: request.token },
+      }),
+    ).toEqual({ ok: true, alreadyVerified: true });
+  });
+
   it("should handle invalid code", async ({ expect }) => {
     const { controller, target, service } = await createTest();
 

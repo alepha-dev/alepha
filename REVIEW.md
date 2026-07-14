@@ -20,12 +20,14 @@
 > place — read the **Status:** notes, not just the finding, before acting.
 >
 > **What to do next (highest severity first):**
-> 1. **Fix roadmap → Phase 0, items 5–8** (`verifyCode`, OAuth scope intersection, `skipTrial`,
->    tenancy fail-closed). These sat in the *security hotfix* phase alongside the P0s and were never
->    done. None affects Lore, which is likely why — but they ship in framework code.
+> 1. ~~**Fix roadmap → Phase 0, items 5–8** (`verifyCode`, OAuth scope intersection, `skipTrial`,
+>    tenancy fail-closed)~~ — **✅ DONE in v6.** All four shipped, TDD'd. Note the *related* pieces
+>    left open: OAuth token attenuation (finding #1, tokens are still full-session) and the
+>    process-local single-use auth code; billing double-charge cron; `sensitive` notification redaction.
 > 2. **HttpClient cache** (identity-scoped key, opt-in reads, invalidation) — a genuine cross-user
->    leak; needs a policy decision, not a guess.
-> 3. **Phase 1 item 13** — the `$job` engine (long-`delay` overflow, dedup race, lease renewal).
+>    leak; needs a policy decision, not a guess. **Now the top open item.**
+> 3. ~~**Phase 1 item 13** — the `$job` engine~~ — **✅ DONE in v6** (delay clamp, conflict-keyed
+>    dedup, lease heartbeat).
 >
 > **Update history:** v2 added the full `api/*` deep review. **v3** adds deep second passes over
 > `react/*` and `cli/*` (finding new bugs the first passes missed) and a study of `apps/lore` (the
@@ -345,7 +347,12 @@ were re-checked against source; two were reproduced with live tests.
 ### Queue / lock / scheduler / cache
 
 - **P1 · `$queue` (the raw transport) is at-most-once and its JSDoc oversells durability — but that
-  durability lives in `$job`, not here. Fix the docs, don't reimplement.**
+  durability lives in `$job`, not here. Fix the docs, don't reimplement. · ✅ FIXED (docs)**
+  - **Status:** DOCS FIXED (v6) — the `$queue` JSDoc now states at-most-once honestly (no retry, no
+    DLQ, message lost on handler throw), points to `$job` for durable work, and the misleading
+    "email queue" example was replaced with a loss-tolerant one. The `1-introduction.md` primitive
+    table now maps "Background jobs" to `$job` and lists `$queue` as loss-tolerant fan-out. The
+    optional workerd-rethrow behavior change remains open (Phase 2 item 16).
   `queue/.../WorkerProvider.ts:223` — the message is `RPOP`'d (`RedisQueueProvider.ts:45`); a handler
   error/crash loses it, the `catch` only `log.error`s. `$queue.ts:23`/`:46` claim "Built-in retry…
   Dead letter queues… persistence across restarts" — **none of that is in the queue layer.**
@@ -480,7 +487,11 @@ were re-checked against source; two were reproduced with live tests.
 
 ### Payments
 
-- **P1 · Mollie mis-charges zero-decimal currencies 100×.**
+- **P1 · Mollie mis-charges zero-decimal currencies 100×. · ✅ FIXED**
+  - **Status:** FIXED (v6) — `toMollieAmount` now uses an ISO 4217 exponent table (0/2/3 decimals)
+    and builds the wire string from integer math (no float division). Moved into the class as a
+    `protected` method per house convention. `MolliePaymentProvider.spec.ts` covers EUR/JPY/ISK/KRW/
+    BHD/KWD plus the `mapStatus` table.
   `payments-mollie/.../MolliePaymentProvider.ts:64` — `toMollieAmount = (cents/100).toFixed(2)`.
   Amounts are stored as `z.integer()` minor units (`paymentIntents.ts:12`). JPY/KRW/HUF have no minor
   unit, so ¥1000 → `"10.00"` (100× undercharge; Mollie also rejects `.00` on zero-decimal currencies).
@@ -526,16 +537,27 @@ were re-checked against source; two were reproduced with live tests.
 
 ### @alepha/ui
 
-- **P1 · Bulk-selection count lies across pages → destructive action on wrong rows · `SOURCE-CHECKED`.**
+- **P1 · Bulk-selection count lies across pages → destructive action on wrong rows · `SOURCE-CHECKED` · ✅ FIXED**
+  - **Status:** FIXED (v6) — selection extracted to `useTableSelection` backed by `Map<string, T>`
+    (full rows cached across pages), so the pill count and the items handed to bulk actions derive
+    from the same structure and cannot diverge. `use-table-selection.browser.spec.tsx`, 5 tests.
   `alepha-table.tsx:533` (`selectedItems = data.filter(...)` — current page only) vs `:767`
   (pill shows `selection.size` — all pages) vs `:780` (`action.onClick(selectedItems, …)`). Select 2
   on page 1, page to 2, select 1 → pill says "3 selected", a destructive bulk action receives 1 item.
   **Fix:** clear selection on `page` change, or cache selected items across pages.
-- **P1 · `throttle` prop is a documented no-op · `SOURCE-CHECKED`.**
+- **P1 · `throttle` prop is a documented no-op · `SOURCE-CHECKED` · ✅ FIXED**
+  - **Status:** FIXED (v6) — the prop was **deleted** from Control and AutoForm (both declarations,
+    all propagation sites). Zero consumers existed in-tree, and since it never worked, nothing could
+    have depended on it.
   `control.tsx:566` (text) and `:467` (textarea) both do `onChange={(e)=>setValue(e.target.value)}`.
   `control.tsx:149` documents it, `auto-form.tsx` propagates it (`:393`), Control never reads it.
   **Fix:** implement it in the text/textarea branches, or delete the prop from both files.
-- **P1 · FormField never wires `aria-invalid`/`aria-describedby`; sortable headers are mouse-only.**
+- **P1 · FormField never wires `aria-invalid`/`aria-describedby`; sortable headers are mouse-only. · ✅ FIXED**
+  - **Status:** FIXED (v6) — FormField now assigns `{id}-error` / `{id}-description` ids and exposes
+    them two ways: `useFormFieldA11y()` (context, for arbitrary nested widgets) and
+    `formFieldAriaProps()` (helper, for controls that render their own FormField — wired into the
+    text/textarea/password inputs). Sortable headers are now a real `<button>` inside the `<th>` with
+    `aria-sort`. `form-field-a11y.browser.spec.tsx`, 5 tests.
   `control-base/form-field.tsx:104` styles invalid state via CSS only; the error `<p role="alert">`
   has no id, inputs get no `aria-invalid`. Sortable headers (`alepha-table.tsx:819`) are a raw
   `onClick` on `<TableHead>` — no `<button>`, no `tabIndex`, no `aria-sort`. Keyboard/AT users can't
@@ -565,14 +587,23 @@ were re-checked against source; two were reproduced with live tests.
 > `$job` with `lock:true` DOES use `LockProvider` (`acquireCronLock`, `:369`), so it inherits the
 > `$lock`/Bun P0s for cross-instance cron dedup.
 
-- **P1 · Long `delay` fires immediately (setTimeout overflow) · `SOURCE-CHECKED`.**
+- **P1 · Long `delay` fires immediately (setTimeout overflow) · `SOURCE-CHECKED` · ✅ FIXED**
+  - **Status:** FIXED (v6) — `scheduleOptimisticDispatch` skips the local timer past
+    `maxOptimisticDelayMs` (1 day; the sweep owns delivery beyond it), and `dispatchScheduled`'s
+    UPDATE guard now also requires `scheduledAt <= now`, so any stray early timer is inert.
+    `$job-hardening.spec.ts` (30-day push stays `scheduled`; early dispatch refused).
   `JobProvider.ts:676` (`scheduleOptimisticDispatch`) computes `delayMs` and passes it unclamped to
   `createTimeout` → `setTimeout` (`DateTimeProvider.ts:454`). Any delay > 2³¹−1 ms (~24.85 days)
   overflows the 32-bit timer and fires almost immediately (Node clamps to 1 ms). `dispatchScheduled`
   also doesn't re-check `scheduledAt <= now` (unlike the sweep at `:1140`). `push(p, {delay:[30,
   "day"]})` runs within ms instead of in 30 days. **Fix:** clamp `delayMs` (skip the timer past ~1
   day, let the sweep handle it) and add `scheduledAt <= now` to the dispatch guard.
-- **P1 · Cross-instance sweep can double-execute a legitimately long-running job · `SOURCE-CHECKED`.**
+- **P1 · Cross-instance sweep can double-execute a legitimately long-running job · `SOURCE-CHECKED` · ✅ FIXED**
+  - **Status:** FIXED (v6) — while a handler runs, a per-execution heartbeat touches the `running` row
+    (bumping the auto `updatedAt`, cadence = crashThreshold/3, no schema change), and the sweep's
+    crash detection now keys on `max(startedAt, updatedAt)` — a fresh lease is never re-dispatched;
+    a stale one still recovers. Tests: fresh-lease row survives a foreign sweep; stale lease (via
+    `travel`) still recovered; live renewal observed while a handler runs.
   `JobProvider.ts:1167`. Crash detection uses `this.abortControllers.has(exec.id)` — a **per-process**
   in-memory Set — plus a fixed threshold (`timeout*2`, or `config.runTimeout` 30 min when no timeout).
   Instance B's sweep can't see that instance A is still running the job, so a job outliving the
@@ -580,7 +611,11 @@ were re-checked against source; two were reproduced with live tests.
   at-least-once, but there is **no lease/heartbeat renewal** to shrink the window. **Fix:** renew a
   `startedAt`/lease heartbeat while a handler runs (BullMQ `lockRenewTime`); document "jobs must be
   idempotent" loudly.
-- **P1 · Key dedup is a check-then-insert race · `SOURCE-CHECKED`.**
+- **P1 · Key dedup is a check-then-insert race · `SOURCE-CHECKED` · ✅ FIXED**
+  - **Status:** FIXED (v6) — the insert now goes through `createKeyedExecution`, which catches the
+    unique-violation (`DbConflictError`, portable across dialects) and re-reads the winner's row;
+    the loser returns the winner's id without dispatching. (`pushMany` routes keyed items through
+    `push`, so it inherits the fix.)
   `JobProvider.ts:617` — `findMany(key)` then `create()` (the comment admits "two queries…
   deterministic across dialects"). Two concurrent same-key pushes both find nothing and both insert;
   the unique index `["jobName","key"]` makes the **second `create()` throw** instead of returning the
@@ -625,7 +660,14 @@ were re-checked against source; two were reproduced with live tests.
 
 ### API layer — subscriptions (`api/subscriptions`) — grade **C-**
 
-- **P1 · `skipTrial:true` mints an `active` paid subscription with no payment.**
+- **P1 · `skipTrial:true` mints an `active` paid subscription with no payment. · ✅ FIXED**
+  - **Status:** FIXED (v6) — `skipTrial` (and the dead `paymentMethodId`) were **removed from the
+    public `createSubscriptionSchema`**, and the controller no longer forwards it. The public
+    subscribe path now always honors the plan's trial. `skipTrial` remains an internal
+    `SubscriptionService.subscribe` option for trusted server-side activation after a captured
+    payment — it is not client-controllable. Schema test asserts a client-sent `skipTrial` is
+    dropped. (The double-charge cron and no-resubscribe items below are separate, still open.)
+
   `SubscriptionController.ts:79` + `createSubscriptionSchema.ts:7` + `SubscriptionService.ts:266` —
   `skipTrial` is a client-controlled body field; when true the code creates `status:"active"`
   immediately and never reads `paymentMethodId`. An org admin with the normal `subscription:create`
@@ -648,7 +690,13 @@ were re-checked against source; two were reproduced with live tests.
 
 ### API layer — verifications & notifications — grades **D** / **B-**
 
-- **P1 · `verifyCode` returns `ok:true` without checking the code once verified · `SOURCE-CHECKED`.**
+- **P1 · `verifyCode` returns `ok:true` without checking the code once verified · `SOURCE-CHECKED` · ✅ FIXED**
+  - **Status:** FIXED (v6) — the already-verified short-circuit now still compares the submitted
+    code against the record's hash and throws `Invalid verification code` on mismatch, so a bogus
+    code is never accepted just because the target was previously verified. The real code still
+    returns `{ok:true, alreadyVerified:true}`. Added a CodeVerification test (verify → wrong code
+    rejected → real code still short-circuits).
+
   `VerificationService.ts:172` — `findByEntry` returns the most-recent row for `(type,target,purpose)`;
   if `verifiedAt` is set it returns `{ok:true, alreadyVerified:true}` with no code comparison. Until a
   new code is requested, any `verifyCode(target, <anything>)` returns ok:true. Any flow re-using it as
@@ -670,7 +718,15 @@ were re-checked against source; two were reproduced with live tests.
   registered MCP/third-party client that completes the flow gets a token identical to a full
   interactive login. **Fix:** attenuate — pass granted scopes into `createToken`, stamp `scope`/`aud`,
   and enforce at resource guards; don't reuse the realm session token as the OAuth access token.
-- **P1 · Requested scope is never intersected with the client's registered scopes.**
+- **P1 · Requested scope is never intersected with the client's registered scopes. · ✅ FIXED**
+  - **Status:** FIXED (v6) — added `OAuthClientService.intersectScopes(requested, allowed)` (filters
+    to the client's registered scopes, preserves order, de-dupes, falls back to the full set when
+    none requested) and applied it at all three controller sites: the skip-consent mint, the consent
+    page display, and the consent-decision mint. A client registered for `["mcp"]` asking for
+    `mcp admin` is granted only `mcp`. 4 unit tests. NOTE: finding #1 (tokens are full-session,
+    unscoped) and the process-local single-use code are **still open** — this closes the escalation
+    vector but the token attenuation itself is separate work.
+
   `OAuthController.ts:187,264` — `scopes: query.scope ? query.scope.split(" ") : client.scopes`; the
   requested scope string is trusted verbatim, `client.scopes` is only a fallback. Direct scope
   escalation the moment finding #1 is fixed. **Fix:** `granted = requested.filter(s =>
@@ -929,7 +985,8 @@ were re-checked against source; two were reproduced with live tests.
   each accepted call triggers a server-side forward to Lore; no rate limit → cheap telemetry
   poisoning / outbound-volume amplification.
 - **stripe · Two `throw new Error` violate the AlephaError convention.** `StripePaymentProvider.ts:435`
-  & `:480`. Also the Stripe client is constructed without a pinned `apiVersion` (`:50`).
+  & `:480` — **✅ FIXED (v6)**, both are `AlephaError` now. Still open: the Stripe client is
+  constructed without a pinned `apiVersion` (`:50`).
 - **build · Single `types` condition despite divergent runtime entries.** `package.json:259` — every
   export has one `types` pointing at the node entry while `browser`/`workerd`/`bun` resolve different
   files built with `dts:false`; consumers get node types for browser code. Per-condition `types` or
@@ -952,7 +1009,18 @@ were re-checked against source; two were reproduced with live tests.
 
 ### API layer P2s
 
-- **tenant · Row-level multi-tenancy leans on `org = value OR org IS NULL`, fail-open when no tenant · `SOURCE-CHECKED`.**
+- **tenant · Row-level multi-tenancy leans on `org = value OR org IS NULL`, fail-open when no tenant · `SOURCE-CHECKED` · ✅ FIXED (opt-in)**
+  - **Status:** FIXED (v6) as an **opt-in per-entity** flag: `db.organization({ strict: true })`.
+    A strict column (a) **fails closed** — a read or write with no resolved tenant throws
+    `AlephaError` instead of falling through to an unfiltered "see/write everything" query — and
+    (b) **drops the `OR org IS NULL` escape**, so a scoped tenant never sees global/NULL rows. Strict
+    defaults the column to NOT NULL (no global-row concept); an explicit `nullable: true` still lets
+    legacy NULL rows coexist while staying invisible to tenants. Default (`strict` unset) keeps the
+    exact historic fail-open behavior — no migration forced. `Repository.withOrganization` /
+    `stampOrganization` enforce it; the write guard refuses an *omitted* org but honors an *explicit*
+    `null` (deliberate global-row write). 8 tests across sqlite + postgres. Apps must opt sensitive
+    tables in.
+
   `Repository.withOrganization` (`Repository.ts:1488`) returns the where **unfiltered** when no tenant
   resolves, and otherwise matches `org = value OR org IS NULL`. So (a) any row written without an
   active tenant (background job, service account, single-tenant legacy) gets `organizationId = NULL`
@@ -1342,23 +1410,25 @@ several findings collapse into one fix.
 ### Phase 0 — Security hotfixes (days, mostly one-liners)
 These are exploitable-by-default or one-line severity flips. Ship first.
 
-> **Items 1–4 are ✅ DONE** (all 8 P0s are fixed). **Items 5–8 are the highest-severity work still
-> open in the whole document** — they sat in Phase 0 alongside the P0s but were never done. None of
-> them affects Lore (single realm, hand-rolled tenancy, no OAuth server, no subscriptions), which is
-> presumably why they were skipped — but they are live in shipped framework code.
+> **Items 1–8 are ✅ DONE.** Items 1–4 (the P0 security hotfixes) shipped earlier; items 5–8 shipped
+> in **v6**. What remains from this phase's *adjacent* work: OAuth token attenuation + shared-store
+> single-use code (the second halves of item 6), and requiring a captured payment for the internal
+> `skipTrial` lever (item 7's second half) — all now tracked under Phase 2 / the security backlog.
 
-1. **Throw on default `APP_SECRET` in prod** (P0-3, `SecretProvider.ts:28`) — 1 line.
-2. **Strip the token from the verification HTTP response + gate the route** (P0-8,
-   `VerificationController.ts:14`) — the endpoint is mounted by default; highest exploitability.
-3. **Guard devtools behind `!isProduction()` + localhost/`$secure`** (P0-5, `devtools/src/index.ts:28`).
-4. **Bind admin actions to the token's realm** (P0-7, `AdminUserController.ts`) — reject
-   `user.realm !== userRealmName`, or scope `checkPermission` by realm.
-5. **`verifyCode`: compare the submitted code even when already-verified** (`VerificationService.ts:172`).
-6. **OAuth: intersect requested scope with the client's registration + attenuate the token**
-   (`OAuthController.ts:187`, `OAuthClientService.ts:126`) — and make auth-code single-use shared-store.
-7. **Refuse `skipTrial` without a captured payment** (`SubscriptionService.ts:266`).
-8. **Tenancy fail-closed switch** for sensitive tables — require a resolved tenant, drop the `org IS
-   NULL` escape (`Repository.ts:1488`); at least make it opt-in per entity.
+1. ~~**Throw on default `APP_SECRET` in prod**~~ (P0-3) — **✅ DONE**.
+2. ~~**Strip the token from the verification HTTP response + gate the route**~~ (P0-8) — **✅ DONE**.
+3. ~~**Guard devtools behind `!isProduction()` + localhost/`$secure`**~~ (P0-5) — **✅ DONE**.
+4. ~~**Bind admin actions to the token's realm**~~ (P0-7) — **✅ DONE**.
+5. ~~**`verifyCode`: compare the submitted code even when already-verified**~~ — **✅ DONE (v6)**:
+   already-verified now still hash-compares the code and rejects a mismatch.
+6. ~~**OAuth: intersect requested scope with the client's registration**~~ — **✅ DONE (v6)** via
+   `intersectScopes` at all authorize/consent sites. **Still open:** token attenuation (unscoped
+   full-session JWT) and the process-local single-use auth code.
+7. ~~**Don't expose `skipTrial` on the public body**~~ — **✅ DONE (v6)**: removed from
+   `createSubscriptionSchema`; internal service lever retained. **Still open:** enforce a captured
+   payment before the internal `skipTrial` activation.
+8. ~~**Tenancy fail-closed switch** for sensitive tables~~ — **✅ DONE (v6)** as opt-in
+   `db.organization({ strict: true })`: fail-closed reads/writes + no `IS NULL` escape.
 
 ### Phase 1 — Correctness / data-loss P0s + prod-runtime bugs (1–2 weeks)
 9. **`$lock` per-invocation id** (P0-1, `$lock.ts:46`) + **Bun `SET` reply** (P0-2,
@@ -1367,8 +1437,8 @@ These are exploitable-by-default or one-line severity flips. Ship first.
 10. **DI `lifetime:"scoped"` after start** (P0-4, `Alepha.ts:882`).
 11. ~~**`db migrations check` `continue` not `return`** (P0-6) + a cascade-`DROP TABLE` guard~~ — **✅ DONE** (both).
 12. ~~**CF worker `waitUntil` per-request, not global** + **queue DLQ / `max_retries`**~~ — **✅ DONE** (both).
-13. **`$job`: clamp long `delay`** (`JobProvider.ts:676`), **`ON CONFLICT` keyed dedup** (`:617`),
-    **lease/heartbeat renewal** to stop long-job double-run (`:1167`). ← **Phase 1's remaining work.**
+13. ~~**`$job`: clamp long `delay`** + **keyed-dedup race** + **lease/heartbeat renewal**~~ —
+    **✅ DONE** (all three; see the marked P1s in *API layer — jobs*). **Phase 1 is closed.**
 
 ### Phase 2 — High-impact P1 correctness (2–4 weeks)
 14. **ORM**: implicit-tx child fork (`DatabaseProvider.ts:216`), `null`→`isNull` + zero-condition guard
@@ -1405,8 +1475,11 @@ leverage.
     ordering** (or make `.with()` order-independent).
 
 ### Ongoing hygiene (parallel to all phases)
-- **De-market the docs to match reality** — `$queue` (point to `$job`), `$throttle`, `$debounce`,
-  email "templates". One session, big trust payoff.
+- ~~**De-market the docs to match reality**~~ — **✅ DONE (v6)**: `$queue` states at-most-once and
+  points to `$job` (intro guide table too); `$throttle` documents the concurrency-burst limitation
+  and no longer references the nonexistent `$rateLimit`; the email module states there is no
+  template rendering (`$email`'s `name` is a hook channel label). `$debounce` was checked and its
+  docs are accurate.
 - **Typecheck all workspaces** (`@alepha/ui` + 4 others ship unchecked) and fix the circular-dep
   detector's `*/core` blind spot.
 - **Test the failure paths** — the recurring test gap across every module is crash/retry/concurrency/
@@ -1463,3 +1536,22 @@ leverage.
   tax" P1. Alepha is bundled into the app's JS in production (no `node_modules` shipped), and the
   toolchain lives in `dependencies` on purpose so the framework owns/controls the biome/drizzle-kit/
   vitest version for consumers. Recorded as by-design in the CLEAN section; do not re-flag.
+- **v6** — **second remediation pass** (uncommitted at time of writing), TDD'd throughout. **Closes
+  Phase 1** ($job: 1-day optimistic-timer clamp + `scheduledAt <= now` dispatch guard;
+  `DbConflictError`-recovering keyed dedup; lease heartbeat on `updatedAt` + sweep keys crash
+  detection on `max(startedAt, updatedAt)` — no schema change). **Payments:** Mollie currency-exponent
+  table (JPY/ISK/… integer-string wire format) and first test suites for both PSP providers (Stripe
+  webhook verify+map exercised through real signatures); the two raw-`Error` throws are `AlephaError`.
+  **@alepha/ui:** cross-page `Map`-backed `useTableSelection` (count can no longer lie to bulk
+  actions); dead `throttle` prop deleted; `aria-invalid`/`aria-describedby` wired via
+  `formFieldAriaProps` + `useFormFieldA11y`; sortable headers are real buttons with `aria-sort`;
+  i18n split-brain closed (alepha-table / control-select / use-dialog all `tr()`).
+  **Docs de-market done** ($queue at-most-once → `$job`; $throttle limitation, phantom `$rateLimit`
+  reference removed; email "templates" claim corrected; intro guide table). **Then closed Phase 0
+  items 5–8** (the security hotfixes that had sat open): `verifyCode` hash-compares even when
+  already-verified; OAuth `intersectScopes` at all authorize/consent sites; `skipTrial` removed from
+  the public subscription body; opt-in fail-closed tenancy via `db.organization({ strict: true })`
+  (throws on no-tenant read/write, drops the `IS NULL` escape). Full verify battery green: lint,
+  typecheck (all workspaces), **4077 tests**, 42 bun tests, check:i18n, check:deps, build.
+  **Top of the backlog is now:** the HttpClient cross-user cache policy decision, then the remaining
+  OAuth token attenuation + billing double-charge cron.

@@ -153,7 +153,8 @@ Common infrastructure needs are built-in primitives:
 
 | Need | Primitive | What it does |
 |------|-----------|--------------|
-| Background jobs | `$queue` | Enqueue and process async work |
+| Background jobs | `$job` | Durable async work: retries, idempotency keys, crash recovery |
+| Message fan-out | `$queue` | At-most-once transport for loss-tolerant events |
 | File uploads | `$bucket` | Store and retrieve files (S3, R2, Vercel Blob) |
 | Cron jobs | `$scheduler` | Run tasks on a schedule |
 | Pub/sub | `$topic` | Publish and subscribe to events |

@@ -26,10 +26,14 @@ export interface EmailPrimitiveOptions {
 /**
  * Email primitive for sending emails through various providers.
  *
+ * The primitive's `name` identifies the channel in the `email:sending` /
+ * `email:sent` hooks; it does not select a template — `send()` expects an
+ * already-rendered `subject` and `body`.
+ *
  * Usage:
  * ```typescript
  * class MyService {
- *   private readonly welcomeEmail = $email({ name: "welcome" });
+ *   protected readonly welcomeEmail = $email({ name: "welcome" });
  *
  *   async sendWelcome(userEmail: string, userName: string) {
  *     await this.welcomeEmail.send({

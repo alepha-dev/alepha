@@ -170,6 +170,18 @@ export class VerificationService {
 
     const verification = await this.findByEntry(entry);
     if (verification.verifiedAt) {
+      // Already verified — but STILL require the submitted code to match the
+      // record. Short-circuiting on `verifiedAt` alone means any code (or a
+      // blank one) passes once the target has been verified, so any flow
+      // re-using verifyCode as an authz gate would accept an attacker's guess.
+      if (verification.code !== this.hashCode(code)) {
+        this.log.warn("Invalid code submitted for already-verified entry", {
+          id: verification.id,
+          type: entry.type,
+          target: entry.target,
+        });
+        throw new BadRequestError("Invalid verification code");
+      }
       this.log.debug("Verification already verified", {
         id: verification.id,
         type: entry.type,

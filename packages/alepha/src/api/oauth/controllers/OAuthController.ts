@@ -184,7 +184,10 @@ export class OAuthController {
             clientId: query.client_id,
             redirectUri: query.redirect_uri,
             codeChallenge: query.code_challenge,
-            scopes: query.scope ? query.scope.split(" ") : client.scopes,
+            scopes: this.clients.intersectScopes(
+              query.scope?.split(" "),
+              client.scopes,
+            ),
             resource: query.resource || undefined,
             nonce: query.nonce,
           },
@@ -200,7 +203,12 @@ export class OAuthController {
       reply.body = renderConsentPage({
         clientName: client.clientName,
         userName: user.name ?? user.email ?? "your account",
-        scopes: query.scope ? query.scope.split(" ") : client.scopes,
+        // Show the user the scopes they will actually grant, not the raw
+        // (possibly over-broad) request.
+        scopes: this.clients.intersectScopes(
+          query.scope?.split(" "),
+          client.scopes,
+        ),
         hidden: {
           response_type: query.response_type,
           client_id: query.client_id,
@@ -261,7 +269,10 @@ export class OAuthController {
           clientId: body.client_id,
           redirectUri: body.redirect_uri,
           codeChallenge: body.code_challenge,
-          scopes: body.scope ? body.scope.split(" ") : client.scopes,
+          scopes: this.clients.intersectScopes(
+            body.scope?.split(" "),
+            client.scopes,
+          ),
           resource: body.resource || undefined,
           nonce: body.nonce,
         },

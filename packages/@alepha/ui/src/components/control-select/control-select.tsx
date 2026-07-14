@@ -35,6 +35,7 @@ import {
   useFieldValue,
   useFormState,
 } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
 import { Loader2 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
@@ -186,6 +187,7 @@ const segmentedLabel = (o: SelectOption) =>
   typeof o === "string" ? titlecase(o) : o.label;
 
 export function ControlSelect(props: ControlSelectProps) {
+  const { tr } = useI18n();
   const form = useFormState(props.input, ["error"]);
   const [value, setValue] = useFieldValue(props.input);
 
@@ -233,8 +235,8 @@ export function ControlSelect(props: ControlSelectProps) {
     if (effectiveLoader) return;
     if (isBoolean && enumValues.length === 0) {
       setStaticData([
-        { value: "true", label: "Yes" },
-        { value: "false", label: "No" },
+        { value: "true", label: tr("controlSelect.yes", { default: "Yes" }) },
+        { value: "false", label: tr("controlSelect.no", { default: "No" }) },
       ]);
     } else if (
       isNumeric &&
@@ -249,7 +251,7 @@ export function ControlSelect(props: ControlSelectProps) {
     } else {
       setStaticData(enumValues);
     }
-  }, [effectiveLoader, enumKey, isBoolean, isNumeric, min, max]);
+  }, [effectiveLoader, enumKey, isBoolean, isNumeric, min, max, tr]);
 
   const data = effectiveLoader ? asyncData : staticData;
 
@@ -307,7 +309,10 @@ export function ControlSelect(props: ControlSelectProps) {
           createNewEntry={props.createNewEntry}
           icon={props.icon}
           placeholder={
-            props.clearable ? (props.clearLabel ?? "None") : undefined
+            props.clearable
+              ? (props.clearLabel ??
+                tr("controlSelect.none", { default: "None" }))
+              : undefined
           }
         />
       </FormField>
@@ -315,7 +320,8 @@ export function ControlSelect(props: ControlSelectProps) {
   }
 
   // Static / short — native Select
-  const clearLabel = props.clearLabel ?? "None";
+  const clearLabel =
+    props.clearLabel ?? tr("controlSelect.none", { default: "None" });
   const labelFor = (raw: string) => {
     const found = data.find((o) => optValue(o) === raw);
     return found ? optLabel(found) : raw;
@@ -348,7 +354,13 @@ export function ControlSelect(props: ControlSelectProps) {
           {props.icon && (
             <props.icon className="text-muted-foreground size-4 shrink-0" />
           )}
-          <SelectValue placeholder={props.clearable ? clearLabel : "Select…"}>
+          <SelectValue
+            placeholder={
+              props.clearable
+                ? clearLabel
+                : tr("controlSelect.select", { default: "Select…" })
+            }
+          >
             {selectedValue === CLEAR_VALUE
               ? clearLabel
               : selectedValue != null
@@ -437,6 +449,7 @@ interface ComboOption {
  * `createNewEntry` affordance.
  */
 function Combobox(props: ComboboxProps) {
+  const { tr } = useI18n();
   const [query, setQuery] = useState("");
   // Remembers labels for values the user has picked, so the trigger/chips keep
   // a human label even after the source option drops out of a server-filtered
@@ -541,24 +554,33 @@ function Combobox(props: ComboboxProps) {
     setQuery("");
   };
 
-  const emptyLabel = props.placeholder ?? "Select…";
+  const emptyLabel =
+    props.placeholder ?? tr("controlSelect.select", { default: "Select…" });
   const triggerLabel = selected[0] ? labelFor(selected[0]) : emptyLabel;
 
   // The list (loading / empty / items) is identical for single and multi — only
   // the trigger differs (button vs. chips box), so render it once.
   const popupBody = props.loading ? (
     <div className="text-muted-foreground flex items-center justify-center gap-2 p-4 text-sm">
-      <Loader2 className="size-4 animate-spin" /> Loading…
+      <Loader2 className="size-4 animate-spin" />{" "}
+      {tr("controlSelect.loading", { default: "Loading…" })}
     </div>
   ) : (
     <>
-      <ComboboxEmpty>{props.createNewEntry ? "" : "No results."}</ComboboxEmpty>
+      <ComboboxEmpty>
+        {props.createNewEntry
+          ? ""
+          : tr("controlSelect.noResults", { default: "No results." })}
+      </ComboboxEmpty>
       <ComboboxList>
         {(opt: ComboOption) =>
           opt.create ? (
             <ComboboxItem key={`__create__${opt.value}`} value={opt}>
               <span className="mr-2">+</span>
-              Create "{opt.query}"
+              {tr("controlSelect.create", {
+                default: `Create "${opt.query}"`,
+                args: [String(opt.query ?? "")],
+              })}
             </ComboboxItem>
           ) : (
             <ComboboxItem key={opt.value} value={opt} disabled={opt.disabled}>

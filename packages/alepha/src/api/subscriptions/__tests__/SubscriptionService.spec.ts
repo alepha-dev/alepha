@@ -4,6 +4,7 @@ import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
 import { AlephaApiSubscriptions } from "../index.ts";
+import { createSubscriptionSchema } from "../schemas/createSubscriptionSchema.ts";
 import type { PlanDefinition } from "../schemas/planDefinitionSchema.ts";
 import { SubscriptionConfig } from "../services/SubscriptionConfig.ts";
 import { SubscriptionService } from "../services/SubscriptionService.ts";
@@ -66,6 +67,19 @@ const setup = async () => {
 
 describe("SubscriptionService", () => {
   // ---------------------------------------------------------------------------------------------------------------
+
+  describe("public createSubscription body", () => {
+    it("does not accept a client-controlled skipTrial", ({ expect }) => {
+      // skipTrial goes straight to `status:active` with no payment; a client
+      // must never be able to set it via the public subscribe endpoint.
+      const parsed = createSubscriptionSchema.parse({
+        planId: "pro",
+        interval: "monthly",
+        skipTrial: true,
+      } as Record<string, unknown>);
+      expect((parsed as Record<string, unknown>).skipTrial).toBeUndefined();
+    });
+  });
 
   describe("subscribe", () => {
     it("should create a trialing subscription with trial days", async ({

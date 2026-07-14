@@ -54,6 +54,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTableSelection } from "./use-table-selection.ts";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -359,7 +360,6 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const [data, setData] = useState<T[]>([]);
   const [meta, setMeta] = useState<Page<T>["page"] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selection, setSelection] = useState<Set<string>>(new Set());
   const [refreshKey, setRefreshKey] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -528,37 +528,15 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
 
   // -- Selection -------------------------------------------------------------
 
-  const clearSelection = useCallback(() => setSelection(new Set()), []);
-
-  const selectedItems = useMemo(
-    () => data.filter((it) => selection.has(rowKey(it))),
-    [data, selection, rowKey],
-  );
-
-  const allSelected =
-    data.length > 0 && data.every((it) => selection.has(rowKey(it)));
-  const someSelected =
-    !allSelected && data.some((it) => selection.has(rowKey(it)));
-
-  const toggleAll = () => {
-    if (allSelected) {
-      const next = new Set(selection);
-      for (const it of data) next.delete(rowKey(it));
-      setSelection(next);
-    } else {
-      const next = new Set(selection);
-      for (const it of data) next.add(rowKey(it));
-      setSelection(next);
-    }
-  };
-
-  const toggleRow = (item: T) => {
-    const k = rowKey(item);
-    const next = new Set(selection);
-    if (next.has(k)) next.delete(k);
-    else next.add(k);
-    setSelection(next);
-  };
+  const {
+    selection,
+    selectedItems,
+    allSelected,
+    someSelected,
+    toggleRow,
+    toggleAll,
+    clearSelection,
+  } = useTableSelection(data, rowKey);
 
   // -- Sort ------------------------------------------------------------------
 
@@ -719,7 +697,9 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                           size="sm"
                           variant="ghost"
                           className="h-9 w-9 p-0"
-                          aria-label="Reset filters"
+                          aria-label={tr("alephaTable.resetFilters", {
+                            default: "Reset filters",
+                          })}
                           disabled={!hasActiveFilters}
                           onClick={resetFilters}
                         />
@@ -727,7 +707,11 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                     >
                       <FunnelX className="size-4" />
                     </TooltipTrigger>
-                    <TooltipContent>Reset filters</TooltipContent>
+                    <TooltipContent>
+                      {tr("alephaTable.resetFilters", {
+                        default: "Reset filters",
+                      })}
+                    </TooltipContent>
                   </Tooltip>
                 )}
                 {showActionsMenu && (
@@ -739,7 +723,9 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                           size="sm"
                           variant="ghost"
                           className="h-9 w-9 p-0"
-                          aria-label="Refresh"
+                          aria-label={tr("alephaTable.refresh", {
+                            default: "Refresh",
+                          })}
                           disabled={isRefreshing}
                           onClick={handleRefreshClick}
                         />
@@ -749,7 +735,9 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                         className={cn("size-4", isRefreshing && "animate-spin")}
                       />
                     </TooltipTrigger>
-                    <TooltipContent>Refresh</TooltipContent>
+                    <TooltipContent>
+                      {tr("alephaTable.refresh", { default: "Refresh" })}
+                    </TooltipContent>
                   </Tooltip>
                 )}
               </div>
@@ -764,7 +752,12 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           // inverts awkwardly against a white container in dark mode).
           <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
             <div className="pointer-events-auto flex animate-in fade-in-0 slide-in-from-bottom-2 items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-zinc-100 shadow-lg ring-1 ring-white/10 duration-150">
-              <span className="text-sm pl-2">{selection.size} selected</span>
+              <span className="text-sm pl-2">
+                {tr("alephaTable.selected", {
+                  default: `${selection.size} selected`,
+                  args: [String(selection.size)],
+                })}
+              </span>
               <span className="mx-1 h-4 w-px bg-white/20" />
               {props.bulkActions?.map((action) => {
                 const ActionIcon = action.icon;
@@ -789,7 +782,9 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                 size="icon"
                 className="size-8 bg-transparent text-zinc-300 hover:bg-white/10 hover:text-zinc-100"
                 onClick={clearSelection}
-                aria-label="Clear selection"
+                aria-label={tr("alephaTable.clearSelection", {
+                  default: "Clear selection",
+                })}
               >
                 <X className="size-4" />
               </Button>
@@ -812,29 +807,54 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                       checked={allSelected}
                       indeterminate={!allSelected && someSelected}
                       onCheckedChange={() => toggleAll()}
-                      aria-label="Select all rows"
+                      aria-label={tr("alephaTable.selectAll", {
+                        default: "Select all rows",
+                      })}
                     />
                   </TableHead>
                 )}
-                {visibleCols.map(([key, def]) => (
-                  <TableHead
-                    key={key}
-                    className={cn(
-                      def.className,
-                      def.align === "right" && "text-right",
-                      def.align === "center" && "text-center",
-                      def.sortable && "cursor-pointer select-none",
-                    )}
-                    onClick={() => toggleSort(key, def)}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      {def.label}
-                      {def.sortable &&
-                        sort?.field === (def.sortKey ?? key) &&
-                        (sort.direction === "asc" ? "↑" : "↓")}
-                    </span>
-                  </TableHead>
-                ))}
+                {visibleCols.map(([key, def]) => {
+                  const sorted =
+                    def.sortable && sort?.field === (def.sortKey ?? key);
+                  return (
+                    <TableHead
+                      key={key}
+                      className={cn(
+                        def.className,
+                        def.align === "right" && "text-right",
+                        def.align === "center" && "text-center",
+                      )}
+                      aria-sort={
+                        sorted
+                          ? sort?.direction === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : undefined
+                      }
+                    >
+                      {def.sortable ? (
+                        // A real button so keyboard and assistive-tech
+                        // users can sort — a th onClick is mouse-only.
+                        <button
+                          type="button"
+                          onClick={() => toggleSort(key, def)}
+                          className="hover:text-foreground inline-flex cursor-pointer select-none items-center gap-1"
+                        >
+                          {def.label}
+                          {sorted && (
+                            <span aria-hidden>
+                              {sort?.direction === "asc" ? "↑" : "↓"}
+                            </span>
+                          )}
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          {def.label}
+                        </span>
+                      )}
+                    </TableHead>
+                  );
+                })}
                 {hasRowActions && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
@@ -882,7 +902,9 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => toggleRow(item)}
-                            aria-label="Select row"
+                            aria-label={tr("alephaTable.selectRow", {
+                              default: "Select row",
+                            })}
                           />
                         </TableCell>
                       )}
@@ -988,6 +1010,7 @@ function ColumnPicker<T>(props: {
   visible: Set<string>;
   onToggle: (key: string) => void;
 }) {
+  const { tr } = useI18n();
   const entries = Object.entries(props.columns);
   return (
     <DropdownMenu>
@@ -998,7 +1021,9 @@ function ColumnPicker<T>(props: {
             size="sm"
             variant="ghost"
             className="h-9 w-9 p-0"
-            aria-label="Toggle columns"
+            aria-label={tr("alephaTable.toggleColumns", {
+              default: "Toggle columns",
+            })}
           />
         }
       >
@@ -1006,7 +1031,9 @@ function ColumnPicker<T>(props: {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Columns</DropdownMenuLabel>
+          <DropdownMenuLabel>
+            {tr("alephaTable.columns", { default: "Columns" })}
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
           {entries.map(([key, def]) => (
             <DropdownMenuCheckboxItem
@@ -1065,12 +1092,19 @@ function RowActionsMenu<T>(props: {
   item: T;
   ctx: RowActionContext;
 }) {
+  const { tr } = useI18n();
   if (props.actions.length === 0) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" size="icon" aria-label="Open row actions" />
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={tr("alephaTable.openRowActions", {
+              default: "Open row actions",
+            })}
+          />
         }
       >
         <MoreVertical className="size-4" />

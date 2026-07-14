@@ -346,6 +346,31 @@ export class OAuthClientService {
   }
 
   /**
+   * Narrow the scopes a client asks for to those it is actually registered
+   * for. The requested scope string is attacker-controlled, so it must never
+   * be trusted verbatim — a client registered for `["mcp"]` that asks for
+   * `mcp admin` must only be granted `mcp`. When nothing (usable) is
+   * requested, the client's full registered set is the default grant.
+   * Requested order is preserved and duplicates are dropped.
+   */
+  public intersectScopes(
+    requested: string[] | undefined,
+    allowed: string[],
+  ): string[] {
+    if (!requested || requested.length === 0) {
+      return allowed;
+    }
+    const allowedSet = new Set(allowed);
+    const granted: string[] = [];
+    for (const scope of requested) {
+      if (allowedSet.has(scope) && !granted.includes(scope)) {
+        granted.push(scope);
+      }
+    }
+    return granted;
+  }
+
+  /**
    * Redirect_uri check. A registered pattern is matched byte-exact unless it
    * contains a single `*`, which matches exactly ONE host label (no dots).
    * E.g. `https://*.alepha.club/auth/callback` matches

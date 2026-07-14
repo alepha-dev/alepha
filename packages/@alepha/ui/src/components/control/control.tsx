@@ -8,6 +8,7 @@ import {
 } from "@alepha/ui/components/control-array/control-array";
 import {
   FormField,
+  formFieldAriaProps,
   useFormFieldAutoSave,
 } from "@alepha/ui/components/control-base/form-field";
 import {
@@ -145,11 +146,6 @@ export interface ControlProps {
    * span). Read by the parent group; ignored when rendering standalone.
    */
   width?: 100 | 75 | 66 | 50 | 33 | 25;
-  /**
-   * Throttle text input onChange in ms. Set by `<AutoForm throttle>` and
-   * propagated to children. `0` (default) = no throttle.
-   */
-  throttle?: number;
   /**
    * HTML `autocomplete` hint passed to the underlying input.
    */
@@ -455,6 +451,11 @@ export function Control(props: ControlProps) {
       >
         <Textarea
           {...merged.inputProps}
+          {...formFieldAriaProps({
+            id: meta.id,
+            error: meta.error,
+            description: merged.description ?? meta.description,
+          })}
           id={meta.id}
           name={props.input.props.name}
           rows={rows}
@@ -546,6 +547,11 @@ export function Control(props: ControlProps) {
         )}
         <Input
           {...merged.inputProps}
+          {...formFieldAriaProps({
+            id: meta.id,
+            error: meta.error,
+            description: merged.description ?? meta.description,
+          })}
           id={meta.id}
           name={props.input.props.name}
           type={htmlType}
@@ -669,6 +675,11 @@ function PasswordControl(props: PasswordControlProps) {
         )}
         <Input
           {...props.inputProps}
+          {...formFieldAriaProps({
+            id: props.id,
+            error: props.error,
+            description: props.description,
+          })}
           id={props.id}
           name={props.name}
           type={reveal ? "text" : "password"}

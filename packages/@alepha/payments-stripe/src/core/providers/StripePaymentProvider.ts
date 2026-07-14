@@ -431,8 +431,9 @@ export class StripePaymentProvider implements PaymentProvider {
       customer_email: opts.customerId ? undefined : opts.customerEmail,
       metadata: opts.metadata,
     });
-    if (!session.url)
-      throw new Error("Stripe Checkout session created without url");
+    if (!session.url) {
+      throw new AlephaError("Stripe Checkout session created without url");
+    }
     return { url: session.url, sessionId: session.id };
   }
 
@@ -476,8 +477,9 @@ export class StripePaymentProvider implements PaymentProvider {
         ? { metadata: opts.metadata }
         : undefined,
     });
-    if (!session.url)
-      throw new Error("Stripe Checkout session created without url");
+    if (!session.url) {
+      throw new AlephaError("Stripe Checkout session created without url");
+    }
     return { url: session.url, sessionId: session.id };
   }
 

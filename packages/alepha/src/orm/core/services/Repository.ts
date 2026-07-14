@@ -1490,20 +1490,32 @@ export abstract class Repository<T extends TObject> {
       return where;
     }
 
+    const strict = orgField.data?.strict === true;
     const value = this.resolveOrganizationValue();
     if (!value) {
+      if (strict) {
+        // Fail closed: refuse rather than fall through to an unfiltered query
+        // that would expose every tenant's rows on a sensitive table.
+        throw new AlephaError(
+          `Refusing to query tenant-scoped entity '${this.tableName}' with no resolved tenant/organization in context (strict tenancy).`,
+        );
+      }
       return where;
     }
 
     return {
       and: [
         where,
-        {
-          or: [
-            { [orgField.key]: { eq: value } },
-            { [orgField.key]: { isNull: true } },
-          ],
-        } as any,
+        // Strict entities drop the `OR org IS NULL` escape so a scoped tenant
+        // never sees global/NULL rows.
+        strict
+          ? ({ [orgField.key]: { eq: value } } as any)
+          : ({
+              or: [
+                { [orgField.key]: { eq: value } },
+                { [orgField.key]: { isNull: true } },
+              ],
+            } as any),
       ],
     } as PgQueryWhereOrSQL<T>;
   }
@@ -1514,13 +1526,25 @@ export abstract class Repository<T extends TObject> {
       return;
     }
 
-    if (data[orgField.key] != null) {
+    // An explicit value — including an explicit `null` "global row" — is a
+    // deliberate, auditable choice and is honored as-is. Strict only guards
+    // the fail-open accident: the org column simply omitted.
+    if (orgField.key in data && data[orgField.key] !== undefined) {
       return;
     }
 
     const value = this.resolveOrganizationValue();
     if (value) {
       data[orgField.key] = value;
+      return;
+    }
+
+    if (orgField.data?.strict === true) {
+      // Fail closed: an unscoped insert would create a NULL/global row on a
+      // sensitive table. Require an explicit organization or a resolved tenant.
+      throw new AlephaError(
+        `Refusing to insert into tenant-scoped entity '${this.tableName}' with no organization set and no resolved tenant in context (strict tenancy).`,
+      );
     }
   }
 
