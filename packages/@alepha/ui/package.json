@@ -61,7 +61,7 @@
     "vaul": "^1.1.2"
   },
   "peerDependencies": {
-    "alepha": "0.23.0",
+    "alepha": "0.24.0",
     "react": "*",
     "react-dom": "*",
     "recharts": "^3"
@@ -70,7 +70,7 @@
     "@biomejs/biome": "^2.5.3",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.17",
-    "alepha": "0.23.0",
+    "alepha": "0.24.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "shadcn": "^4.13.0",
