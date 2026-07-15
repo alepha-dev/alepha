@@ -43,7 +43,14 @@ import { type Page, type TObject, z } from "alepha";
 import { ClientOnly, useAlepha } from "alepha/react";
 import { type FormModel, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { Columns3, FunnelX, MoreVertical, RefreshCw, X } from "lucide-react";
+import {
+  Columns3,
+  FunnelX,
+  Inbox,
+  MoreVertical,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import {
   type ComponentType,
   type ReactNode,
@@ -238,6 +245,11 @@ export interface AlephaTableProps<T> {
    * Message shown when the page is empty. Defaults to "No results".
    */
   emptyMessage?: string;
+  /**
+   * Rich empty-state node rendered when the page is empty — e.g. an icon +
+   * message + optional call-to-action. Overrides `emptyMessage` when set.
+   */
+  empty?: ReactNode;
   /**
    * Free-form content rendered above the toolbar (e.g. a page title).
    */
@@ -869,19 +881,28 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                   }
                 />
               ) : data.length === 0 ? (
-                <TableRow>
+                <TableRow className="hover:bg-transparent">
                   <TableCell
                     colSpan={
                       visibleCols.length +
                       (hasCheckbox ? 1 : 0) +
                       (hasRowActions ? 1 : 0)
                     }
-                    className="text-muted-foreground py-8 text-center"
+                    className="p-0"
                   >
-                    {props.emptyMessage ??
-                      String(
-                        tr("alephaTable.empty", { default: "No results." }),
-                      )}
+                    {props.empty ?? (
+                      <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 py-12 text-center">
+                        <Inbox className="size-8 opacity-40" />
+                        <p className="text-sm">
+                          {props.emptyMessage ??
+                            String(
+                              tr("alephaTable.empty", {
+                                default: "No results.",
+                              }),
+                            )}
+                        </p>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
