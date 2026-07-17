@@ -1,13 +1,13 @@
 import { Alepha, z } from "alepha";
 import { AlephaSecurity, JwtProvider } from "alepha/security";
 import { NodeHttpServerProvider } from "alepha/server";
+import { describe, it } from "vitest";
+import WebSocket from "ws";
 import {
   AlephaWebSocket,
   NodeWebSocketServerProvider,
   WebSocketServerProvider,
 } from "../index.ts";
-import { describe, it } from "vitest";
-import WebSocket from "ws";
 import type { WebSocketPrimitiveOptions } from "../interfaces/WebSocketInterfaces.ts";
 import { $channel } from "../primitives/$channel.ts";
 import { $websocket } from "../primitives/$websocket.ts";

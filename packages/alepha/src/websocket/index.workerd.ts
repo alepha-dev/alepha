@@ -3,6 +3,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaTopic } from "alepha/topic";
 import { $channel } from "./primitives/$channel.ts";
 import { $websocket } from "./primitives/$websocket.ts";
+import { CloudflareDurableObjectWebSocketServerProvider } from "./providers/CloudflareDurableObjectWebSocketServerProvider.ts";
 import { NodeWebSocketServerProvider } from "./providers/NodeWebSocketServerProvider.ts";
 import { WebSocketServerProvider } from "./providers/WebSocketServerProvider.ts";
 import { RoomManager } from "./services/RoomManager.ts";
@@ -11,6 +12,8 @@ import { WebSocketTopicService } from "./services/WebSocketTopicService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./index.shared.ts";
+export { AlephaWebSocketDurableObject } from "./providers/AlephaWebSocketDurableObject.ts";
+export * from "./providers/CloudflareDurableObjectWebSocketServerProvider.ts";
 export * from "./providers/NodeWebSocketServerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -25,6 +28,7 @@ export * from "./providers/NodeWebSocketServerProvider.ts";
  * - Connection lifecycle management
  * - Room/channel grouping
  * - Browser compatibility
+ * - Providers: Node.js (dev), Cloudflare Durable Objects (workerd)
  *
  * @module alepha.websocket
  */
@@ -32,12 +36,17 @@ export const AlephaWebSocket = $module({
   name: "alepha.websocket",
   primitives: [$channel, $websocket],
   services: [WebSocketServerProvider, RoomManager, WebSocketTopicService],
-  variants: [NodeWebSocketServerProvider],
+  variants: [
+    NodeWebSocketServerProvider,
+    CloudflareDurableObjectWebSocketServerProvider,
+  ],
   imports: [AlephaServer, AlephaTopic],
   register: (alepha: Alepha) => {
     alepha.with({
       provide: WebSocketServerProvider,
-      use: NodeWebSocketServerProvider,
+      use: alepha.isTest()
+        ? NodeWebSocketServerProvider
+        : CloudflareDurableObjectWebSocketServerProvider,
     });
   },
 });
