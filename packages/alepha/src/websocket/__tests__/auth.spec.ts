@@ -5,7 +5,7 @@ import {
   AlephaWebSocket,
   NodeWebSocketServerProvider,
   WebSocketServerProvider,
-} from "alepha/websocket";
+} from "../index.ts";
 import { describe, it } from "vitest";
 import WebSocket from "ws";
 import type { WebSocketPrimitiveOptions } from "../interfaces/WebSocketInterfaces.ts";
