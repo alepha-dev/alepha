@@ -535,6 +535,7 @@
     "./websocket": {
       "types": "./src/websocket/index.ts",
       "react-native": "./src/websocket/index.browser.ts",
+      "workerd": "./src/websocket/index.workerd.ts",
       "browser": "./src/websocket/index.browser.ts",
       "import": "./src/websocket/index.ts",
       "default": "./src/websocket/index.ts"
@@ -983,6 +984,7 @@
       "./websocket": {
         "types": "./dist/websocket/index.d.ts",
         "react-native": "./dist/websocket/index.browser.js",
+        "workerd": "./dist/websocket/index.workerd.js",
         "browser": "./dist/websocket/index.browser.js",
         "import": "./dist/websocket/index.js",
         "default": "./dist/websocket/index.js"
