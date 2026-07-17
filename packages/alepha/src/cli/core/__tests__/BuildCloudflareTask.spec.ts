@@ -17,6 +17,10 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public setHasWebSocket(value: boolean): void {
     this.hasWebSocket = value;
   }
+
+  public setWebsocketPaths(paths: string[]): void {
+    this.websocketPaths = paths;
+  }
 }
 
 describe("BuildCloudflareTask", () => {
@@ -209,6 +213,46 @@ describe("BuildCloudflareTask", () => {
       expect(fs.wasWrittenMatching(ENTRY, /__alepha\.context\.run\(/)).toBe(
         true,
       );
+    });
+
+    describe("websocket routing", () => {
+      it("re-exports the DO class and adds an upgrade branch when websocket is present", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(true);
+        task.setWebsocketPaths(["/ws/chat"]);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /export \{ AlephaWebSocketDurableObject \} from "\.\/index\.js"/,
+          ),
+        ).toBe(true);
+        expect(fs.wasWrittenMatching(ENTRY, /Upgrade/)).toBe(true);
+        expect(fs.wasWrittenMatching(ENTRY, /idFromName/)).toBe(true);
+        // The registered channel path must be baked into the routing guard.
+        expect(fs.wasWrittenMatching(ENTRY, /\["\/ws\/chat"\]/)).toBe(true);
+        // Regression guard for the brief's incorrect `endpoint.options.secure`
+        // shape: `getEndpoint` returns `WebSocketPrimitiveOptions` directly,
+        // so `secure` is a top-level field.
+        expect(fs.wasWrittenMatching(ENTRY, /endpoint\.secure/)).toBe(true);
+        expect(fs.wasWrittenMatching(ENTRY, /endpoint\.options\.secure/)).toBe(
+          false,
+        );
+      });
+
+      it("omits the DO export and upgrade branch when websocket is absent", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(false);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(ENTRY, /AlephaWebSocketDurableObject/),
+        ).toBe(false);
+        expect(fs.wasWrittenMatching(ENTRY, /Upgrade/)).toBe(false);
+      });
     });
   });
 });

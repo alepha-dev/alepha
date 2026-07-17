@@ -132,6 +132,22 @@ export class BuildCloudflareTask extends BuildTask {
    */
   protected hasWebSocket = false;
 
+  /**
+   * Registered `$websocket` channel paths (e.g. `/ws/chat`), resolved in
+   * `generateCloudflare` alongside `hasWebSocket` from a live `ctx.alepha`
+   * probe. Baked into the worker entry point's upgrade-routing guard so only
+   * requests to a known channel path are forwarded to the room Durable
+   * Object.
+   *
+   * Always empty in manifest/prebuilt mode (`ctx.manifest` set) — there is no
+   * live Alepha instance to introspect there. The upgrade branch is still
+   * emitted whenever `hasWebSocket` is true, but with an empty `wsPaths` guard
+   * nothing will match, so websocket upgrades silently fall through to the
+   * normal fetch pipeline instead of routing. Acceptable for v1; a follow-up
+   * could carry these paths into `BuildManifest` itself.
+   */
+  protected websocketPaths: string[] = [];
+
   async run(ctx: BuildTaskContext): Promise<void> {
     if (ctx.options.target !== "cloudflare") {
       return;
@@ -199,9 +215,14 @@ export class BuildCloudflareTask extends BuildTask {
       this.hasWebSocket = ctx.manifest.resources.hasWebSocket;
     } else {
       try {
-        this.hasWebSocket = ctx.alepha.primitives("$websocket").length > 0;
+        const websocketPrimitives = ctx.alepha.primitives("$websocket");
+        this.hasWebSocket = websocketPrimitives.length > 0;
+        this.websocketPaths = websocketPrimitives.map(
+          (p: any) => p.options.channel.options.path,
+        );
       } catch {
         this.hasWebSocket = false;
+        this.websocketPaths = [];
       }
     }
 
@@ -628,9 +649,83 @@ export class BuildCloudflareTask extends BuildTask {
     root: string,
     distDir: string,
   ): Promise<void> {
+    // Re-exports the room Durable Object class so wrangler's
+    // `new_sqlite_classes` migration (see enhanceDurableObjects) resolves a
+    // real binding target. This only resolves at deploy time once `index.js`
+    // itself re-exports the class — emitted here regardless, gated on
+    // `hasWebSocket` alone.
+    const doExport = this.hasWebSocket
+      ? '\nexport { AlephaWebSocketDurableObject } from "./index.js";\n'
+      : "";
+
+    // WebSocket upgrade -> route to the room Durable Object. Runs at the very
+    // top of `fetch`, before `bindEnv`/the normal request pipeline: a
+    // hibernating WS upgrade has no HTTP response for `web:request` to
+    // produce, so it must never reach that dispatcher.
+    const upgradeBranch = this.hasWebSocket
+      ? `
+    if (request.headers.get("Upgrade") === "websocket") {
+      const url = new URL(request.url);
+      const wsPaths = ${JSON.stringify(this.websocketPaths)};
+      if (wsPaths.includes(url.pathname)) {
+        bindEnv(env);
+
+        try {
+          await __alepha.start();
+        } catch (err) {
+          __alepha.log.error("Failed to start Alepha for websocket upgrade", err);
+          return new Response("Internal Server Error", { status: 500 });
+        }
+
+        const roomId =
+          url.searchParams.get("roomId") ||
+          (url.searchParams.get("roomIds") || "").split(",")[0].trim() ||
+          "default";
+
+        const wsProvider = __alepha.inject("WebSocketServerProvider");
+
+        let userId = "";
+        try {
+          const resolved = await wsProvider.resolveUserId({
+            url: request.url,
+            headers: {
+              authorization: request.headers.get("authorization") || undefined,
+              cookie: request.headers.get("cookie") || undefined,
+            },
+          });
+          userId = resolved || "";
+        } catch (err) {
+          __alepha.log.warn("Failed to resolve WebSocket user identity", err);
+        }
+
+        // \`getEndpoint\` returns the \`WebSocketPrimitiveOptions\` config object
+        // directly (see registerEndpoint in the providers) — \`secure\` is a
+        // top-level field, there is no \`.options\` wrapper on it.
+        const endpoint = wsProvider.getEndpoint(url.pathname);
+        if (endpoint && endpoint.secure && !userId) {
+          return new Response("Unauthorized", { status: 401 });
+        }
+
+        const connectionId = "ws-" + crypto.randomUUID();
+        const ns = env.ALEPHA_WEBSOCKET;
+        const stub = ns.get(ns.idFromName(url.pathname + ":" + roomId));
+        const forward = new Request(request, {
+          headers: new Headers(request.headers),
+        });
+        forward.headers.set("x-alepha-ws-channel", url.pathname);
+        forward.headers.set("x-alepha-ws-room", roomId);
+        forward.headers.set("x-alepha-ws-conn", connectionId);
+        if (userId) forward.headers.set("x-alepha-ws-user", userId);
+
+        return stub.fetch(forward);
+      }
+    }
+`
+      : "";
+
     const workerCode = `
 import "./index.js";
-
+${doExport}
 // Run an invocation inside an Alepha fork carrying THIS invocation's
 // \`executionCtx.waitUntil\`, so background work (notably $job direct dispatch)
 // can keep the isolate alive past the response.
@@ -657,7 +752,7 @@ const bindEnv = (env) => {
 };
 
 export default {
-  fetch: async (request, env, executionCtx) => {
+  fetch: async (request, env, executionCtx) => {${upgradeBranch}
     const ctx = { req: request, res: undefined };
 
     bindEnv(env);
