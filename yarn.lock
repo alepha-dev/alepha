@@ -6810,6 +6810,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"example-ws@workspace:apps/others/example-ws":
+  version: 0.0.0-use.local
+  resolution: "example-ws@workspace:apps/others/example-ws"
+  dependencies:
+    alepha: "npm:^0.24.0"
+    react: "npm:^19.2.7"
+  languageName: unknown
+  linkType: soft
+
 "execa@npm:^5.1.1":
   version: 5.1.1
   resolution: "execa@npm:5.1.1"
