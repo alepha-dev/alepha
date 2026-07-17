@@ -1,3 +1,4 @@
+import { $inject, Alepha } from "alepha";
 import type {
   EmitOptions,
   WebSocketConnection,
@@ -12,6 +13,8 @@ import type { TWSObject } from "../primitives/$channel.ts";
  * platform-specific providers (Node.js, Browser, etc.)
  */
 export abstract class WebSocketServerProvider {
+  protected readonly alepha = $inject(Alepha);
+
   /**
    * Register a WebSocket endpoint with its channel configuration
    */
@@ -19,6 +22,13 @@ export abstract class WebSocketServerProvider {
     TClient extends TWSObject,
     TServer extends TWSObject,
   >(config: WebSocketPrimitiveOptions<TClient, TServer>): void;
+
+  /**
+   * Look up a registered endpoint by its channel path.
+   */
+  abstract getEndpoint(
+    channelPath: string,
+  ): WebSocketPrimitiveOptions<any, any> | undefined;
 
   /**
    * Emit a message to clients based on targeting criteria
@@ -53,4 +63,41 @@ export abstract class WebSocketServerProvider {
     code?: number,
     reason?: string,
   ): Promise<void>;
+
+  /**
+   * Resolve the authenticated user id from a WebSocket handshake, using
+   * alepha/security if it is registered. Browsers cannot set custom headers
+   * on a WebSocket handshake, so credentials arrive as cookies or as a query
+   * parameter (e.g. ?token= / ?api_key=) — both are carried through to the
+   * security resolvers via the url + headers passed here.
+   *
+   * Public because platform entry points (e.g. the generated Cloudflare
+   * worker entry) resolve this provider by string injection and call it
+   * cross-module at runtime, outside of the module's type graph.
+   *
+   * Returns undefined when security is not registered or no credential
+   * resolves to a user.
+   */
+  public async resolveUserId(handshake: {
+    url: string;
+    headers: Record<string, string | undefined>;
+  }): Promise<string | undefined> {
+    let security: { resolveUserFromServerRequest: Function } | undefined;
+    try {
+      security = this.alepha.inject("SecurityProvider") as any;
+    } catch {
+      return undefined;
+    }
+
+    if (!security) {
+      return undefined;
+    }
+
+    const user = await security.resolveUserFromServerRequest({
+      url: handshake.url,
+      headers: handshake.headers,
+    } as any);
+
+    return user?.id;
+  }
 }

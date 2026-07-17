@@ -75,6 +75,15 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     this.endpoints.set(path, config);
   }
 
+  /**
+   * Look up a registered endpoint by its channel path.
+   */
+  public getEndpoint(
+    channelPath: string,
+  ): WebSocketPrimitiveOptions<any, any> | undefined {
+    return this.endpoints.get(channelPath);
+  }
+
   public async emit<TClient extends TWSObject>(
     channelPath: string,
     options: EmitOptions<TClient>,
