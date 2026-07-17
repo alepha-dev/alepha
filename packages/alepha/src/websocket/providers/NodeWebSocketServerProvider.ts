@@ -4,7 +4,6 @@ import {
   $hook,
   $inject,
   $state,
-  Alepha,
   AlephaError,
   SchemaValidator,
   type Static,
@@ -54,7 +53,6 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class NodeWebSocketServerProvider extends WebSocketServerProvider {
-  protected readonly alepha = $inject(Alepha);
   protected readonly roomManager = $inject(RoomManager);
   protected readonly topicService = $inject(WebSocketTopicService);
   protected readonly log = $logger();
@@ -148,11 +146,11 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  protected handleUpgrade(
+  protected async handleUpgrade(
     request: IncomingMessage,
     socket: any,
     head: Buffer,
-  ): boolean {
+  ): Promise<boolean> {
     const url = new URL(request.url || "/", "http://localhost");
     const path = url.pathname;
 
@@ -169,11 +167,50 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
     this.log.debug(`WebSocket upgrade request: ${path}`);
 
+    const userId = await this.resolveUserIdFromUpgrade(request);
+    if (endpoint.secure && !userId) {
+      this.log.warn(`Rejected unauthenticated WebSocket upgrade: ${path}`);
+      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+      socket.destroy();
+      return false;
+    }
+
     this.wss?.handleUpgrade(request, socket, head, (ws) => {
-      this.handleConnection(ws, endpoint, request);
+      this.handleConnection(ws, endpoint, request, userId);
     });
 
     return true;
+  }
+
+  /**
+   * Adapt a Node upgrade request into the minimal shape the security resolvers
+   * read (url + headers, including cookie), then resolve the user id.
+   */
+  protected async resolveUserIdFromUpgrade(
+    request: IncomingMessage,
+  ): Promise<string | undefined> {
+    const url = `http://${request.headers.host ?? "localhost"}${request.url ?? "/"}`;
+    return this.resolveUserId({
+      url,
+      headers: {
+        authorization: request.headers.authorization,
+        cookie: request.headers.cookie,
+      },
+    });
+  }
+
+  /**
+   * Warn (dev only) when a single connection is placed in more than one room.
+   * On the Cloudflare provider a socket lives in exactly one Durable Object, so
+   * multi-room connections are not portable.
+   */
+  protected warnMultiRoom(roomIds: string[]): void {
+    if (roomIds.length > 1 && !this.alepha.isProduction()) {
+      this.log.warn(
+        `WebSocket connection joined multiple rooms (${roomIds.join(", ")}); ` +
+          "this is not portable to the Cloudflare provider (one room per connection).",
+      );
+    }
   }
 
   protected handleConnection<
@@ -183,17 +220,14 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     ws: WebSocket,
     endpoint: WebSocketPrimitiveOptions<TClient, TServer>,
     request: IncomingMessage,
+    userId: string | undefined,
   ): void {
     const connectionId = `ws-${this.nextConnectionId++}`;
-
-    // TODO: Extract userId from the WebSocket upgrade request.
-    // Parse JWT from cookies or Authorization header during handshake.
-    // Until implemented, maxConnectionsPerUser has no effect.
-    const userId: string | undefined = undefined;
 
     // Extract roomIds from query params (e.g., ?roomId=room1&roomId=room2 or ?roomIds=room1,room2)
     const url = new URL(request.url || "/", "http://localhost");
     const roomIds = this.extractRoomIds(url);
+    this.warnMultiRoom(roomIds);
 
     // Check max connections per user before registering
     if (userId && endpoint.maxConnectionsPerUser) {
@@ -461,7 +495,10 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       const httpServer = this.alepha.store.get("alepha.node.server");
       if (httpServer) {
         httpServer.on("upgrade", (request, socket, head) => {
-          this.handleUpgrade(request, socket, head);
+          this.handleUpgrade(request, socket, head).catch((error) => {
+            this.log.error("Unhandled error during WebSocket upgrade:", error);
+            socket.destroy();
+          });
         });
         this.log.debug("WebSocket upgrade handler attached to HTTP server");
       } else {
