@@ -68,4 +68,20 @@ describe("WebSocketRoom", () => {
       expect(ok.sent).toEqual([JSON.stringify({ type: "hi" })]);
     });
   });
+
+  describe("broadcast", () => {
+    it("fans out to non-excepted sockets via the public RPC", async ({
+      expect,
+    }) => {
+      const a = new FakeWs({ connectionId: "a" });
+      const b = new FakeWs({ connectionId: "b" });
+      const ctx = { acceptWebSocket: () => {}, getWebSockets: () => [a, b] };
+      const room = new WebSocketRoom(ctx, {});
+
+      await room.broadcast({ type: "hi" }, { exceptConnectionIds: ["b"] });
+
+      expect(a.sent).toEqual([JSON.stringify({ type: "hi" })]);
+      expect(b.sent).toEqual([]);
+    });
+  });
 });

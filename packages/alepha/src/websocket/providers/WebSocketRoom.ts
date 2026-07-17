@@ -135,6 +135,15 @@ export class WebSocketRoom {
    * Parse + validate an inbound client message, then run the endpoint handler
    * with a room-scoped reply(). Extracted from webSocketMessage so it is unit
    * testable without the hibernation runtime.
+   *
+   * Mirrors `NodeWebSocketConnection.handleMessage`'s error handling so both
+   * providers behave the same way from the client's point of view: malformed
+   * JSON is logged and dropped, and any error thrown by schema validation or
+   * the user's handler is logged, reported back to the offending socket on a
+   * best-effort basis, and swallowed — never rethrown. On real Durable Object
+   * hibernation, an uncaught throw out of `webSocketMessage` closes the
+   * socket with code 1011 and no client-visible reason, so this connection
+   * must stay open through handler errors the same way the Node path does.
    */
   protected async handleRawMessage(
     ws: any,
@@ -146,35 +155,56 @@ export class WebSocketRoom {
       try {
         parsed = JSON.parse(raw);
       } catch {
+        this.safeLog(
+          "warn",
+          `Received non-JSON WebSocket message on ${att.connectionId}`,
+        );
         return;
       }
       const message = parsed.message ?? parsed;
-      const alepha = this.getAlepha();
-      alepha
-        .inject(SchemaValidator)
-        .validate(endpoint.channel.options.schema.out, message, {
-          trim: false,
-          nullToUndefined: false,
-          deleteUndefined: false,
+
+      try {
+        this.getAlepha()
+          .inject(SchemaValidator)
+          .validate(endpoint.channel.options.schema.out, message, {
+            trim: false,
+            nullToUndefined: false,
+            deleteUndefined: false,
+          });
+
+        const reply = async (opts: {
+          message: unknown;
+          exceptSelf?: boolean;
+          exceptConnectionIds?: string[];
+        }) => {
+          const except = new Set(opts.exceptConnectionIds ?? []);
+          if (opts.exceptSelf) except.add(att.connectionId);
+          this.broadcastLocal(opts.message, except);
+        };
+
+        await endpoint.handler({
+          connectionId: att.connectionId,
+          userId: att.userId,
+          roomId: att.roomId,
+          message,
+          reply,
         });
-
-      const reply = async (opts: {
-        message: unknown;
-        exceptSelf?: boolean;
-        exceptConnectionIds?: string[];
-      }) => {
-        const except = new Set(opts.exceptConnectionIds ?? []);
-        if (opts.exceptSelf) except.add(att.connectionId);
-        this.broadcastLocal(opts.message, except);
-      };
-
-      await endpoint.handler({
-        connectionId: att.connectionId,
-        userId: att.userId,
-        roomId: att.roomId,
-        message,
-        reply,
-      });
+      } catch (error) {
+        this.safeLog(
+          "error",
+          `Error handling WebSocket message on ${att.connectionId}:`,
+          error,
+        );
+        try {
+          ws.send(
+            JSON.stringify({
+              error: error instanceof Error ? error.message : "Unknown error",
+            }),
+          );
+        } catch {
+          // socket may already be closing/closed — nothing more we can do
+        }
+      }
     });
   }
 
@@ -190,8 +220,12 @@ export class WebSocketRoom {
       if (att && except.has(att.connectionId)) continue;
       try {
         ws.send(serialized);
-      } catch {
-        // socket closing/closed — ignore
+      } catch (error) {
+        this.safeLog(
+          "warn",
+          `Failed to send to WebSocket ${att?.connectionId ?? "unknown"}:`,
+          error,
+        );
       }
     }
   }
@@ -202,6 +236,25 @@ export class WebSocketRoom {
       throw new AlephaError("__alepha not found in Durable Object isolate");
     }
     return alepha;
+  }
+
+  /**
+   * Best-effort structured log via the app logger (`Alepha.log`). Never
+   * throws: if no Alepha instance is available yet — `broadcastLocal` can be
+   * reached from the public `broadcast()` RPC before any socket has ever
+   * called `withEndpoint` in this isolate — this silently no-ops rather than
+   * crashing the caller over a logging convenience.
+   */
+  protected safeLog(
+    level: "warn" | "error",
+    message: string,
+    data?: unknown,
+  ): void {
+    try {
+      this.getAlepha().log?.[level]?.(message, data);
+    } catch {
+      // no Alepha instance available yet — nothing to log to
+    }
   }
 
   /**
