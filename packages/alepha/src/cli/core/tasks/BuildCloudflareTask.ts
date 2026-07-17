@@ -15,6 +15,13 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 // here wouldn't match the one the workspace registered.
 const CLOUDFLARE_EMAIL_PROVIDER_NAME = "CloudflareEmailProvider";
 
+// Must match WEBSOCKET_DEFAULT_BINDING in alepha/websocket (kept as a literal
+// here because the CF provider isn't on the node barrel).
+const WEBSOCKET_DO_BINDING = "ALEPHA_WEBSOCKET";
+// Must match the AlephaWebSocketDurableObject class name in alepha/websocket
+// (kept as a literal here because the CF provider isn't on the node barrel).
+const WEBSOCKET_DO_CLASS = "AlephaWebSocketDurableObject";
+
 /**
  * Best-effort Cloudflare zone (registrable domain) for a wildcard Worker route:
  * strip the leading `*.` and any subdomain labels, keep the last two — e.g.
@@ -77,6 +84,7 @@ export interface BuildManifest {
     hasKV: boolean;
     hasQueue: boolean;
     hasCron: boolean;
+    hasWebSocket: boolean;
   };
   /**
    * All distinct cron expressions registered by `$scheduler`
@@ -116,6 +124,13 @@ export class BuildCloudflareTask extends BuildTask {
   protected readonly warningComment =
     "// This file was automatically generated. DO NOT MODIFY.\n" +
     "// Changes to this file will be lost when the code is regenerated.\n";
+
+  /**
+   * Whether the workspace registers any `$websocket` primitive. Gates
+   * `enhanceDurableObjects` — resolved in `generateCloudflare` from either
+   * `ctx.manifest` (prebuilt/manifest mode) or a live `ctx.alepha` probe.
+   */
+  protected hasWebSocket = false;
 
   async run(ctx: BuildTaskContext): Promise<void> {
     if (ctx.options.target !== "cloudflare") {
@@ -177,6 +192,19 @@ export class BuildCloudflareTask extends BuildTask {
       head_sampling_rate: 1,
     };
 
+    // Manifest/prebuilt mode: ctx.alepha is a null cast (see BuildCommand),
+    // so read the resource flag captured at artifact-build time instead of
+    // probing a live instance.
+    if (ctx.manifest) {
+      this.hasWebSocket = ctx.manifest.resources.hasWebSocket;
+    } else {
+      try {
+        this.hasWebSocket = ctx.alepha.primitives("$websocket").length > 0;
+      } catch {
+        this.hasWebSocket = false;
+      }
+    }
+
     this.enhanceDomain(wrangler);
     this.enhanceServices(wrangler);
     this.enhanceCron(ctx, wrangler);
@@ -185,6 +213,7 @@ export class BuildCloudflareTask extends BuildTask {
     this.enhanceKV(wrangler);
     this.enhanceQueue(wrangler);
     this.enhanceEmail(ctx, wrangler);
+    this.enhanceDurableObjects(wrangler);
 
     await this.fs.writeFile(
       this.fs.join(root, distDir, "wrangler.jsonc"),
@@ -252,6 +281,11 @@ export class BuildCloudflareTask extends BuildTask {
       hasQueue = ctx.alepha.primitives("$queue").length > 0;
     } catch {}
 
+    let hasWebSocket = false;
+    try {
+      hasWebSocket = ctx.alepha.primitives("$websocket").length > 0;
+    } catch {}
+
     try {
       const cronProvider = ctx.alepha.inject("CronProvider") as {
         getCronJobs?: () => Array<{ expression: string }>;
@@ -300,6 +334,7 @@ export class BuildCloudflareTask extends BuildTask {
         hasKV,
         hasQueue,
         hasCron: crons.length > 0,
+        hasWebSocket,
       },
       crons,
       email,
@@ -513,6 +548,35 @@ export class BuildCloudflareTask extends BuildTask {
       max_retries: Number.isSafeInteger(maxRetries)
         ? maxRetries
         : QUEUE_DEFAULT_MAX_RETRIES,
+    });
+  }
+
+  /**
+   * Durable Object binding + SQLite migration for the `$websocket` primitive
+   * on Cloudflare. Gated on `hasWebSocket` (resolved in `generateCloudflare`
+   * from `ctx.manifest` or a live `ctx.alepha` probe) — a workerd app with no
+   * `$websocket` usage gets no binding and no migration.
+   *
+   * `new_sqlite_classes` (rather than `new_classes`) is required because
+   * `AlephaWebSocketDurableObject` uses the SQLite-backed Durable Object
+   * storage API.
+   */
+  protected enhanceDurableObjects(wrangler: WranglerConfig): void {
+    if (!this.hasWebSocket) {
+      return;
+    }
+
+    wrangler.durable_objects ??= {};
+    wrangler.durable_objects.bindings = wrangler.durable_objects.bindings || [];
+    wrangler.durable_objects.bindings.push({
+      name: WEBSOCKET_DO_BINDING,
+      class_name: WEBSOCKET_DO_CLASS,
+    });
+
+    wrangler.migrations = wrangler.migrations || [];
+    wrangler.migrations.push({
+      tag: "v1",
+      new_sqlite_classes: [WEBSOCKET_DO_CLASS],
     });
   }
 

@@ -11,7 +11,12 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testEnhanceD1 = this.enhanceD1.bind(this);
   public testEnhanceR2 = this.enhanceR2.bind(this);
   public testEnhanceQueue = this.enhanceQueue.bind(this);
+  public testEnhanceDurableObjects = this.enhanceDurableObjects.bind(this);
   public testWriteWorkerEntryPoint = this.writeWorkerEntryPoint.bind(this);
+
+  public setHasWebSocket(value: boolean): void {
+    this.hasWebSocket = value;
+  }
 }
 
 describe("BuildCloudflareTask", () => {
@@ -137,6 +142,37 @@ describe("BuildCloudflareTask", () => {
       createTask().testEnhanceQueue(wrangler);
 
       expect(wrangler.queues.consumers[0].max_retries).toBe(3);
+    });
+  });
+
+  describe("enhanceDurableObjects", () => {
+    it("emits the DO binding + sqlite migration when websocket is present", () => {
+      const task = createTask();
+      task.setHasWebSocket(true);
+
+      const wrangler: Record<string, any> = {};
+      task.testEnhanceDurableObjects(wrangler);
+
+      expect(wrangler.durable_objects.bindings).toEqual([
+        {
+          name: "ALEPHA_WEBSOCKET",
+          class_name: "AlephaWebSocketDurableObject",
+        },
+      ]);
+      expect(wrangler.migrations).toEqual([
+        { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
+      ]);
+    });
+
+    it("no-ops when websocket is absent", () => {
+      const task = createTask();
+      task.setHasWebSocket(false);
+
+      const wrangler: Record<string, any> = {};
+      task.testEnhanceDurableObjects(wrangler);
+
+      expect(wrangler.durable_objects).toBeUndefined();
+      expect(wrangler.migrations).toBeUndefined();
     });
   });
 
