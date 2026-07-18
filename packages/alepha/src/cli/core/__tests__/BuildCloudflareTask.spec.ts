@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
@@ -13,6 +13,8 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testEnhanceQueue = this.enhanceQueue.bind(this);
   public testEnhanceDurableObjects = this.enhanceDurableObjects.bind(this);
   public testWriteWorkerEntryPoint = this.writeWorkerEntryPoint.bind(this);
+  public testWriteManifest = this.writeManifest.bind(this);
+  public testGenerateCloudflare = this.generateCloudflare.bind(this);
 
   public setHasWebSocket(value: boolean): void {
     this.hasWebSocket = value;
@@ -242,6 +244,29 @@ describe("BuildCloudflareTask", () => {
         );
       });
 
+      it("strips any client-forged x-alepha-ws-user header before trusting it", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(true);
+        task.setWebsocketPaths(["/ws/chat"]);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        const content = fs.getFileContent(ENTRY) ?? "";
+        const deleteIndex = content.indexOf(
+          'forward.headers.delete("x-alepha-ws-user")',
+        );
+        const setIndex = content.indexOf(
+          'if (userId) forward.headers.set("x-alepha-ws-user"',
+        );
+
+        // A forged inbound `x-alepha-ws-user` header must be deleted before
+        // the trusted value is conditionally set — otherwise an anonymous
+        // client on a non-secure endpoint could forge its identity.
+        expect(deleteIndex).toBeGreaterThan(-1);
+        expect(setIndex).toBeGreaterThan(-1);
+        expect(deleteIndex).toBeLessThan(setIndex);
+      });
+
       it("omits the DO export and upgrade branch when websocket is absent", async () => {
         const { task, fs } = createTaskWithFs();
         task.setHasWebSocket(false);
@@ -253,6 +278,88 @@ describe("BuildCloudflareTask", () => {
         ).toBe(false);
         expect(fs.wasWrittenMatching(ENTRY, /Upgrade/)).toBe(false);
       });
+    });
+  });
+
+  describe("writeManifest", () => {
+    /**
+     * Minimal fake of the workspace's live `ctx.alepha` — only `primitives`
+     * is exercised meaningfully; every other lookup `writeManifest` makes
+     * (`inject`, `dump`) is wrapped in try/catch there, so a throwing stub is
+     * enough to exercise the "resource absent" paths without a real Alepha
+     * instance.
+     */
+    const fakeAlepha = {
+      primitives: (name: string) =>
+        name === "$websocket"
+          ? [{ options: { channel: { options: { path: "/ws/chat" } } } }]
+          : [],
+      inject: () => {
+        throw new AlephaError("not available in this fake");
+      },
+      dump: () => {
+        throw new AlephaError("not available in this fake");
+      },
+    } as any;
+
+    it("captures registered $websocket channel paths into the manifest", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      const ctx = { alepha: fakeAlepha, platformOptions: null } as any;
+
+      await task.testWriteManifest(ctx, "/root", "dist", "my-app");
+
+      const manifest = JSON.parse(
+        fs.getFileContent("/root/dist/manifest.json") ?? "{}",
+      );
+
+      expect(manifest.websocketPaths).toEqual(["/ws/chat"]);
+      expect(manifest.resources.hasWebSocket).toBe(true);
+    });
+  });
+
+  describe("generateCloudflare (manifest/prebuilt mode)", () => {
+    /**
+     * In `--prebuilt`/manifest mode there is no live Alepha to probe, so
+     * `websocketPaths` must come from `ctx.manifest` instead — otherwise the
+     * emitted worker's `wsPaths` routing guard stays empty and WebSocket
+     * upgrades silently fail to route even though the DO binding and
+     * migration are still emitted (see FIX 3).
+     */
+    it("resolves websocketPaths from ctx.manifest so the emitted worker's routing guard is populated", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      const ctx = {
+        root: "/root",
+        options: {},
+        platformOptions: null,
+        manifest: {
+          version: 1,
+          project: "my-app",
+          defaultEnv: "production",
+          environments: {},
+          resources: {
+            hasDatabase: false,
+            hasBucket: false,
+            hasKV: false,
+            hasQueue: false,
+            hasCron: false,
+            hasWebSocket: true,
+          },
+          crons: [],
+          websocketPaths: ["/ws/chat"],
+          env: [],
+        },
+      } as any;
+
+      await task.testGenerateCloudflare(ctx, "dist");
+
+      expect(
+        fs.wasWrittenMatching(
+          "/root/dist/main.cloudflare.js",
+          /\["\/ws\/chat"\]/,
+        ),
+      ).toBe(true);
     });
   });
 });

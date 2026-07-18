@@ -92,6 +92,18 @@ export interface BuildManifest {
    */
   crons: string[];
   /**
+   * Registered `$websocket` channel paths (e.g. `/ws/chat`), captured the
+   * same way `writeWorkerEntryPoint`'s live-probe path resolves
+   * `websocketPaths` (`ctx.alepha.primitives("$websocket")` mapped to
+   * `options.channel.options.path`). The prebuilt/manifest deploy path
+   * (Alepha Rocket `--prebuilt`) has no live Alepha to introspect, so
+   * without this the emitted worker's `wsPaths` guard stays empty and
+   * WebSocket upgrades silently fail to route even though the DO binding
+   * and migration are still emitted. Empty when `resources.hasWebSocket`
+   * is false.
+   */
+  websocketPaths: string[];
+  /**
    * Cloudflare email binding, captured when the app registers
    * `CloudflareEmailProvider` at artifact-build time. The prebuilt/manifest
    * deploy path (Alepha Rocket `--prebuilt`) has no Vite introspection, so it
@@ -134,17 +146,13 @@ export class BuildCloudflareTask extends BuildTask {
 
   /**
    * Registered `$websocket` channel paths (e.g. `/ws/chat`), resolved in
-   * `generateCloudflare` alongside `hasWebSocket` from a live `ctx.alepha`
-   * probe. Baked into the worker entry point's upgrade-routing guard so only
-   * requests to a known channel path are forwarded to the room Durable
-   * Object.
-   *
-   * Always empty in manifest/prebuilt mode (`ctx.manifest` set) — there is no
-   * live Alepha instance to introspect there. The upgrade branch is still
-   * emitted whenever `hasWebSocket` is true, but with an empty `wsPaths` guard
-   * nothing will match, so websocket upgrades silently fall through to the
-   * normal fetch pipeline instead of routing. Acceptable for v1; a follow-up
-   * could carry these paths into `BuildManifest` itself.
+   * `generateCloudflare` alongside `hasWebSocket` — from a live `ctx.alepha`
+   * probe, or from `ctx.manifest.websocketPaths` in prebuilt/manifest mode
+   * (see `writeManifest`, which captures the same paths at artifact-build
+   * time so the manifest-only deploy path — Alepha Rocket `--prebuilt` —
+   * doesn't need a live Alepha to introspect). Baked into the worker entry
+   * point's upgrade-routing guard so only requests to a known channel path
+   * are forwarded to the room Durable Object.
    */
   protected websocketPaths: string[] = [];
 
@@ -213,6 +221,7 @@ export class BuildCloudflareTask extends BuildTask {
     // probing a live instance.
     if (ctx.manifest) {
       this.hasWebSocket = ctx.manifest.resources.hasWebSocket;
+      this.websocketPaths = ctx.manifest.websocketPaths ?? [];
     } else {
       try {
         const websocketPrimitives = ctx.alepha.primitives("$websocket");
@@ -303,8 +312,13 @@ export class BuildCloudflareTask extends BuildTask {
     } catch {}
 
     let hasWebSocket = false;
+    let websocketPaths: string[] = [];
     try {
-      hasWebSocket = ctx.alepha.primitives("$websocket").length > 0;
+      const websocketPrimitives = ctx.alepha.primitives("$websocket");
+      hasWebSocket = websocketPrimitives.length > 0;
+      websocketPaths = websocketPrimitives.map(
+        (p: any) => p.options.channel.options.path,
+      );
     } catch {}
 
     try {
@@ -358,6 +372,7 @@ export class BuildCloudflareTask extends BuildTask {
         hasWebSocket,
       },
       crons,
+      websocketPaths,
       email,
       env,
     };
@@ -712,6 +727,12 @@ export class BuildCloudflareTask extends BuildTask {
         const forward = new Request(request, {
           headers: new Headers(request.headers),
         });
+        // Strip any client-forged x-alepha-ws-* before setting the trusted
+        // values — these headers are the worker->DO identity contract.
+        forward.headers.delete("x-alepha-ws-channel");
+        forward.headers.delete("x-alepha-ws-room");
+        forward.headers.delete("x-alepha-ws-conn");
+        forward.headers.delete("x-alepha-ws-user");
         forward.headers.set("x-alepha-ws-channel", url.pathname);
         forward.headers.set("x-alepha-ws-room", roomId);
         forward.headers.set("x-alepha-ws-conn", connectionId);

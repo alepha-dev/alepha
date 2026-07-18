@@ -174,9 +174,11 @@ export class WebSocketRoom {
 
         const reply = async (opts: {
           message: unknown;
+          roomId?: string;
           exceptSelf?: boolean;
           exceptConnectionIds?: string[];
         }) => {
+          this.assertReplyRoom(opts.roomId, att.roomId);
           const except = new Set(opts.exceptConnectionIds ?? []);
           if (opts.exceptSelf) except.add(att.connectionId);
           this.broadcastLocal(opts.message, except);
@@ -206,6 +208,29 @@ export class WebSocketRoom {
         }
       }
     });
+  }
+
+  /**
+   * Guard for `reply({ roomId })` on Cloudflare. `reply()` always fans out
+   * over THIS Durable Object's own room (see `broadcastLocal`) — there is no
+   * cross-DO hop like the Node provider's `$topic` bus has. So a handler
+   * that requests a *different* room's id would otherwise be silently
+   * ignored and the message would land in the sender's own room instead of
+   * the one it asked for. Fail loud instead of letting that mismatch pass
+   * unnoticed.
+   *
+   * No-ops when `optsRoomId` is `undefined`/`null` (the common case: no
+   * explicit room requested) or equal to the connection's own room.
+   */
+  protected assertReplyRoom(
+    optsRoomId: string | undefined,
+    attRoomId: string,
+  ): void {
+    if (optsRoomId != null && optsRoomId !== attRoomId) {
+      throw new AlephaError(
+        `Cloudflare WebSocket provider: reply() cannot target a different room (roomId '${optsRoomId}' != connection room '${attRoomId}'); cross-room targeting is not supported — use the same room or emit() from a server handler.`,
+      );
+    }
   }
 
   /**

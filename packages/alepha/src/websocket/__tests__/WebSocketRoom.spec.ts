@@ -84,4 +84,40 @@ describe("WebSocketRoom", () => {
       expect(b.sent).toEqual([]);
     });
   });
+
+  describe("assertReplyRoom", () => {
+    /**
+     * On Cloudflare, `reply()` always fans out over the CURRENT Durable
+     * Object's room — there is no cross-DO hop like Node's `$topic` bus.
+     * A handler calling `reply({ roomId: "other" })` would otherwise
+     * silently land the message in the sender's own room instead of
+     * "other", so this must throw rather than pass silently.
+     */
+    it("throws when opts.roomId differs from the connection's room", ({
+      expect,
+    }) => {
+      const ctx = { acceptWebSocket: () => {}, getWebSockets: () => [] };
+      const room = new WebSocketRoom(ctx, {}) as any;
+
+      expect(() => room.assertReplyRoom("other-room", "room-a")).toThrow(
+        /reply\(\) cannot target a different room/,
+      );
+    });
+
+    it("does not throw when opts.roomId is undefined", ({ expect }) => {
+      const ctx = { acceptWebSocket: () => {}, getWebSockets: () => [] };
+      const room = new WebSocketRoom(ctx, {}) as any;
+
+      expect(() => room.assertReplyRoom(undefined, "room-a")).not.toThrow();
+    });
+
+    it("does not throw when opts.roomId matches the connection's room", ({
+      expect,
+    }) => {
+      const ctx = { acceptWebSocket: () => {}, getWebSockets: () => [] };
+      const room = new WebSocketRoom(ctx, {}) as any;
+
+      expect(() => room.assertReplyRoom("room-a", "room-a")).not.toThrow();
+    });
+  });
 });
