@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "type": "module",
+  "name": "example-ws",
+  "scripts": {
+    "dev": "alepha dev",
+    "typecheck": "tsc --noEmit",
+    "start": "alepha build && node dist"
+  },
+  "dependencies": {
+    "alepha": "^0.24.0",
+    "react": "^19.2.7"
+  }
+}

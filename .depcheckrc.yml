@@ -28,6 +28,7 @@ ignores:
     - 'bun'
     - 'bun:sqlite'
     - 'bun:test'
+    - 'cloudflare:workers'
     - 'tailwindcss'
     - '@tailwindcss/vite'
     - '@types/react-dom'

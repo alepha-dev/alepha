@@ -34,6 +34,7 @@
     "vite": "^8.1.4",
     "vite-bundle-analyzer": "^1.3.9",
     "vitest": "^4.1.10",
+    "ws": "^8.20.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -48,6 +49,7 @@
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
     "cron-schedule": "^6.0.0",
     "jose": "^6.2.3",
     "jsdom": "^29.1.1",
@@ -405,6 +407,11 @@
       "import": "./src/react/ui/index.ts",
       "default": "./src/react/ui/index.ts"
     },
+    "./react/websocket": {
+      "types": "./src/react/websocket/index.ts",
+      "import": "./src/react/websocket/index.ts",
+      "default": "./src/react/websocket/index.ts"
+    },
     "./redis": {
       "types": "./src/redis/index.ts",
       "bun": "./src/redis/index.bun.ts",
@@ -524,6 +531,14 @@
       "types": "./src/topic/redis/index.ts",
       "import": "./src/topic/redis/index.ts",
       "default": "./src/topic/redis/index.ts"
+    },
+    "./websocket": {
+      "types": "./src/websocket/index.ts",
+      "react-native": "./src/websocket/index.browser.ts",
+      "workerd": "./src/websocket/index.workerd.ts",
+      "browser": "./src/websocket/index.browser.ts",
+      "import": "./src/websocket/index.ts",
+      "default": "./src/websocket/index.ts"
     },
     "./tsconfig.base": "./tsconfig.base.json",
     "./package.json": "./package.json"
@@ -841,6 +856,11 @@
         "import": "./dist/react/ui/index.js",
         "default": "./dist/react/ui/index.js"
       },
+      "./react/websocket": {
+        "types": "./dist/react/websocket/index.d.ts",
+        "import": "./dist/react/websocket/index.js",
+        "default": "./dist/react/websocket/index.js"
+      },
       "./redis": {
         "types": "./dist/redis/index.d.ts",
         "bun": "./dist/redis/index.bun.js",
@@ -960,6 +980,14 @@
         "types": "./dist/topic/redis/index.d.ts",
         "import": "./dist/topic/redis/index.js",
         "default": "./dist/topic/redis/index.js"
+      },
+      "./websocket": {
+        "types": "./dist/websocket/index.d.ts",
+        "react-native": "./dist/websocket/index.browser.js",
+        "workerd": "./dist/websocket/index.workerd.js",
+        "browser": "./dist/websocket/index.browser.js",
+        "import": "./dist/websocket/index.js",
+        "default": "./dist/websocket/index.js"
       },
       "./tsconfig.base": "./tsconfig.base.json",
       "./package.json": "./package.json"

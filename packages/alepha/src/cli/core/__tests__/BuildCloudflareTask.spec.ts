@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
@@ -11,7 +11,18 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testEnhanceD1 = this.enhanceD1.bind(this);
   public testEnhanceR2 = this.enhanceR2.bind(this);
   public testEnhanceQueue = this.enhanceQueue.bind(this);
+  public testEnhanceDurableObjects = this.enhanceDurableObjects.bind(this);
   public testWriteWorkerEntryPoint = this.writeWorkerEntryPoint.bind(this);
+  public testWriteManifest = this.writeManifest.bind(this);
+  public testGenerateCloudflare = this.generateCloudflare.bind(this);
+
+  public setHasWebSocket(value: boolean): void {
+    this.hasWebSocket = value;
+  }
+
+  public setWebsocketPaths(paths: string[]): void {
+    this.websocketPaths = paths;
+  }
 }
 
 describe("BuildCloudflareTask", () => {
@@ -140,6 +151,37 @@ describe("BuildCloudflareTask", () => {
     });
   });
 
+  describe("enhanceDurableObjects", () => {
+    it("emits the DO binding + sqlite migration when websocket is present", () => {
+      const task = createTask();
+      task.setHasWebSocket(true);
+
+      const wrangler: Record<string, any> = {};
+      task.testEnhanceDurableObjects(wrangler);
+
+      expect(wrangler.durable_objects.bindings).toEqual([
+        {
+          name: "ALEPHA_WEBSOCKET",
+          class_name: "AlephaWebSocketDurableObject",
+        },
+      ]);
+      expect(wrangler.migrations).toEqual([
+        { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
+      ]);
+    });
+
+    it("no-ops when websocket is absent", () => {
+      const task = createTask();
+      task.setHasWebSocket(false);
+
+      const wrangler: Record<string, any> = {};
+      task.testEnhanceDurableObjects(wrangler);
+
+      expect(wrangler.durable_objects).toBeUndefined();
+      expect(wrangler.migrations).toBeUndefined();
+    });
+  });
+
   describe("writeWorkerEntryPoint", () => {
     const ENTRY = "/root/dist/main.cloudflare.js";
 
@@ -173,6 +215,151 @@ describe("BuildCloudflareTask", () => {
       expect(fs.wasWrittenMatching(ENTRY, /__alepha\.context\.run\(/)).toBe(
         true,
       );
+    });
+
+    describe("websocket routing", () => {
+      it("re-exports the DO class and adds an upgrade branch when websocket is present", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(true);
+        task.setWebsocketPaths(["/ws/chat"]);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /export \{ AlephaWebSocketDurableObject \} from "\.\/index\.js"/,
+          ),
+        ).toBe(true);
+        expect(fs.wasWrittenMatching(ENTRY, /Upgrade/)).toBe(true);
+        expect(fs.wasWrittenMatching(ENTRY, /idFromName/)).toBe(true);
+        // The registered channel path must be baked into the routing guard.
+        expect(fs.wasWrittenMatching(ENTRY, /\["\/ws\/chat"\]/)).toBe(true);
+        // Regression guard for the brief's incorrect `endpoint.options.secure`
+        // shape: `getEndpoint` returns `WebSocketPrimitiveOptions` directly,
+        // so `secure` is a top-level field.
+        expect(fs.wasWrittenMatching(ENTRY, /endpoint\.secure/)).toBe(true);
+        expect(fs.wasWrittenMatching(ENTRY, /endpoint\.options\.secure/)).toBe(
+          false,
+        );
+      });
+
+      it("strips any client-forged x-alepha-ws-user header before trusting it", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(true);
+        task.setWebsocketPaths(["/ws/chat"]);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        const content = fs.getFileContent(ENTRY) ?? "";
+        const deleteIndex = content.indexOf(
+          'forward.headers.delete("x-alepha-ws-user")',
+        );
+        const setIndex = content.indexOf(
+          'if (userId) forward.headers.set("x-alepha-ws-user"',
+        );
+
+        // A forged inbound `x-alepha-ws-user` header must be deleted before
+        // the trusted value is conditionally set — otherwise an anonymous
+        // client on a non-secure endpoint could forge its identity.
+        expect(deleteIndex).toBeGreaterThan(-1);
+        expect(setIndex).toBeGreaterThan(-1);
+        expect(deleteIndex).toBeLessThan(setIndex);
+      });
+
+      it("omits the DO export and upgrade branch when websocket is absent", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(false);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(ENTRY, /AlephaWebSocketDurableObject/),
+        ).toBe(false);
+        expect(fs.wasWrittenMatching(ENTRY, /Upgrade/)).toBe(false);
+      });
+    });
+  });
+
+  describe("writeManifest", () => {
+    /**
+     * Minimal fake of the workspace's live `ctx.alepha` — only `primitives`
+     * is exercised meaningfully; every other lookup `writeManifest` makes
+     * (`inject`, `dump`) is wrapped in try/catch there, so a throwing stub is
+     * enough to exercise the "resource absent" paths without a real Alepha
+     * instance.
+     */
+    const fakeAlepha = {
+      primitives: (name: string) =>
+        name === "$websocket"
+          ? [{ options: { channel: { options: { path: "/ws/chat" } } } }]
+          : [],
+      inject: () => {
+        throw new AlephaError("not available in this fake");
+      },
+      dump: () => {
+        throw new AlephaError("not available in this fake");
+      },
+    } as any;
+
+    it("captures registered $websocket channel paths into the manifest", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      const ctx = { alepha: fakeAlepha, platformOptions: null } as any;
+
+      await task.testWriteManifest(ctx, "/root", "dist", "my-app");
+
+      const manifest = JSON.parse(
+        fs.getFileContent("/root/dist/manifest.json") ?? "{}",
+      );
+
+      expect(manifest.websocketPaths).toEqual(["/ws/chat"]);
+      expect(manifest.resources.hasWebSocket).toBe(true);
+    });
+  });
+
+  describe("generateCloudflare (manifest/prebuilt mode)", () => {
+    /**
+     * In `--prebuilt`/manifest mode there is no live Alepha to probe, so
+     * `websocketPaths` must come from `ctx.manifest` instead — otherwise the
+     * emitted worker's `wsPaths` routing guard stays empty and WebSocket
+     * upgrades silently fail to route even though the DO binding and
+     * migration are still emitted (see FIX 3).
+     */
+    it("resolves websocketPaths from ctx.manifest so the emitted worker's routing guard is populated", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      const ctx = {
+        root: "/root",
+        options: {},
+        platformOptions: null,
+        manifest: {
+          version: 1,
+          project: "my-app",
+          defaultEnv: "production",
+          environments: {},
+          resources: {
+            hasDatabase: false,
+            hasBucket: false,
+            hasKV: false,
+            hasQueue: false,
+            hasCron: false,
+            hasWebSocket: true,
+          },
+          crons: [],
+          websocketPaths: ["/ws/chat"],
+          env: [],
+        },
+      } as any;
+
+      await task.testGenerateCloudflare(ctx, "dist");
+
+      expect(
+        fs.wasWrittenMatching(
+          "/root/dist/main.cloudflare.js",
+          /\["\/ws\/chat"\]/,
+        ),
+      ).toBe(true);
     });
   });
 });

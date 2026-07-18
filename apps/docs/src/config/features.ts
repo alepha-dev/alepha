@@ -19,6 +19,7 @@ import {
   IconMessageCircle,
   IconPackage,
   IconPhone,
+  IconPlugConnected,
   IconRepeat,
   IconRobot,
   IconSeo,
@@ -138,6 +139,14 @@ export const coreFeatures = [
     description: "Pub/sub messaging.",
     slug: "packages-alepha-topic-core",
   },
+  {
+    icon: IconPlugConnected,
+    title: "WebSocket",
+    module: "alepha/websocket",
+    description: "Real-time bidirectional communication.",
+    slug: "packages-alepha-websocket",
+  },
+
   // Utilities
   {
     icon: IconLink,

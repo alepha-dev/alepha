@@ -21,6 +21,14 @@ export class BuildServerTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly viteUtils = $inject(ViteUtils);
 
+  /**
+   * Whether the Durable Object class should be re-exported through the app's
+   * server bundle. Set to `true` only for a `workerd` build of an app that uses
+   * the `$websocket` primitive. Any other build leaves this `false`, so the
+   * generated bundle and `dist/index.js` stay byte-identical to before.
+   */
+  protected exportDurableObject = false;
+
   async run(ctx: BuildTaskContext): Promise<void> {
     if (ctx.flags?.prebuilt) {
       return;
@@ -106,6 +114,35 @@ export class BuildServerTask extends BuildTask {
       conditions.unshift(...opts.conditions);
     }
 
+    // Cloudflare ships `dist/index.js` + `dist/server/*.js` under `no_bundle`
+    // (no node_modules). For the `AlephaWebSocketDurableObject` class named in
+    // the wrangler `durable_objects`/`migrations` config to be reachable at the
+    // edge, it must ride out through the app's own server bundle as a real
+    // named export. Only do this for a workerd build of an app that actually
+    // uses `$websocket` — every other build stays untouched.
+    this.exportDurableObject =
+      (opts.conditions?.includes("workerd") ?? false) &&
+      opts.alepha.primitives("$websocket").length > 0;
+
+    // For the entry chunk to carry the named export, build from a generated
+    // entry that both runs the real app entry (for its side effects) and
+    // re-exports the DO class. The same `entry` is passed to `build.ssr` and
+    // to `extractEntryFromBundle`, so the facade chunk is found.
+    let entry = opts.entry;
+    if (this.exportDurableObject) {
+      const entryAbsolute = isAbsolute(opts.entry)
+        ? opts.entry
+        : join(opts.root, opts.entry);
+      const generated = `${opts.distDir}/.alepha-workerd-entry.mjs`;
+      await this.fs.mkdir(opts.distDir);
+      await this.fs.writeFile(
+        generated,
+        `import ${JSON.stringify(entryAbsolute)};\n` +
+          `export { AlephaWebSocketDurableObject } from "alepha/websocket";\n`,
+      );
+      entry = generated;
+    }
+
     const viteBuildServerConfig: UserConfig = {
       mode: "production",
       logLevel: opts.silent ? "silent" : undefined,
@@ -126,7 +163,7 @@ export class BuildServerTask extends BuildTask {
         resolve: { conditions },
       },
       build: {
-        ssr: opts.entry,
+        ssr: entry,
         minify: true,
         sourcemap: true,
         chunkSizeWarningLimit: 10000,
@@ -179,11 +216,7 @@ export class BuildServerTask extends BuildTask {
 
     await this.generateExternals(opts.distDir, externals);
 
-    const entryFile = this.extractEntryFromBundle(
-      opts.root,
-      opts.entry,
-      result,
-    );
+    const entryFile = this.extractEntryFromBundle(opts.root, entry, result);
 
     let manifest = "";
     let manifestData:
@@ -239,8 +272,24 @@ export class BuildServerTask extends BuildTask {
 
     await this.fs.writeFile(
       `${opts.distDir}/index.js`,
-      `${warning}\nimport './server/${entryFile}';\n\n${manifest}`.trim(),
+      `${warning}\nimport './server/${entryFile}';\n${this.durableObjectReexport(entryFile)}\n${manifest}`.trim(),
     );
+  }
+
+  /**
+   * Re-export line appended to `dist/index.js` so the Durable Object class rides
+   * out through the app's own (`no_bundle`) server bundle and is reachable from
+   * the generated Cloudflare worker entry (`main.cloudflare.js` does
+   * `export { AlephaWebSocketDurableObject } from "./index.js"`).
+   *
+   * Returns an empty string for any build that is not a workerd + `$websocket`
+   * build, keeping `dist/index.js` byte-identical to before in every other case.
+   */
+  protected durableObjectReexport(entryFile: string): string {
+    if (!this.exportDurableObject) {
+      return "";
+    }
+    return `export { AlephaWebSocketDurableObject } from "./server/${entryFile}";\n`;
   }
 
   /**

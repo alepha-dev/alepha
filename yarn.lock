@@ -3708,6 +3708,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/ws@npm:^8.18.1":
+  version: 8.18.1
+  resolution: "@types/ws@npm:8.18.1"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/61aff1129143fcc4312f083bc9e9e168aa3026b7dd6e70796276dcfb2c8211c4292603f9c4864fae702f2ed86e4abd4d38aa421831c2fd7f856c931a481afbab
+  languageName: node
+  linkType: hard
+
 "@typescript/typescript-aix-ppc64@npm:7.0.2":
   version: 7.0.2
   resolution: "@typescript/typescript-aix-ppc64@npm:7.0.2"
@@ -4368,6 +4377,7 @@ __metadata:
     "@types/nodemailer": "npm:^8.0.1"
     "@types/react": "npm:^19.2.17"
     "@types/react-dom": "npm:^19.2.3"
+    "@types/ws": "npm:^8.18.1"
     "@vitejs/plugin-react": "npm:^6.0.3"
     cron-schedule: "npm:^6.0.0"
     dayjs: "npm:^1.11.21"
@@ -4390,6 +4400,7 @@ __metadata:
     vite: "npm:^8.1.4"
     vite-bundle-analyzer: "npm:^1.3.9"
     vitest: "npm:^4.1.10"
+    ws: "npm:^8.20.0"
     zod: "npm:^4.4.3"
   peerDependencies:
     react: ^19
@@ -6796,6 +6807,15 @@ __metadata:
   dependenciesMeta:
     better-sqlite3:
       built: true
+  languageName: unknown
+  linkType: soft
+
+"example-ws@workspace:apps/others/example-ws":
+  version: 0.0.0-use.local
+  resolution: "example-ws@workspace:apps/others/example-ws"
+  dependencies:
+    alepha: "npm:^0.24.0"
+    react: "npm:^19.2.7"
   languageName: unknown
   linkType: soft
 
@@ -13468,6 +13488,21 @@ __metadata:
     utf-8-validate:
       optional: true
   checksum: 10c0/ef4a243476283fc49bc7550966c4af4aa0eef56273837211e700de3b664e08604a760cdddcb5ba43c049140e74ccfec5b0ee0bb439e08c2adf9138902fdde5f9
+  languageName: node
+  linkType: hard
+
+"ws@npm:^8.20.0":
+  version: 8.21.1
+  resolution: "ws@npm:8.21.1"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10c0/c4c6f1d95f6d465262de2037c57c715725d67e078dd49420ede4e19115668aba159cb64d85c5e89c06eb2826be599e62e5095860ad6cc54ff42e8bd7684e1db8
   languageName: node
   linkType: hard
 

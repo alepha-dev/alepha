@@ -15,6 +15,13 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 // here wouldn't match the one the workspace registered.
 const CLOUDFLARE_EMAIL_PROVIDER_NAME = "CloudflareEmailProvider";
 
+// Must match WEBSOCKET_DEFAULT_BINDING in alepha/websocket (kept as a literal
+// here because the CF provider isn't on the node barrel).
+const WEBSOCKET_DO_BINDING = "ALEPHA_WEBSOCKET";
+// Must match the AlephaWebSocketDurableObject class name in alepha/websocket
+// (kept as a literal here because the CF provider isn't on the node barrel).
+const WEBSOCKET_DO_CLASS = "AlephaWebSocketDurableObject";
+
 /**
  * Best-effort Cloudflare zone (registrable domain) for a wildcard Worker route:
  * strip the leading `*.` and any subdomain labels, keep the last two — e.g.
@@ -77,12 +84,25 @@ export interface BuildManifest {
     hasKV: boolean;
     hasQueue: boolean;
     hasCron: boolean;
+    hasWebSocket: boolean;
   };
   /**
    * All distinct cron expressions registered by `$scheduler`
    * primitives. Empty when `hasCron` is false.
    */
   crons: string[];
+  /**
+   * Registered `$websocket` channel paths (e.g. `/ws/chat`), captured the
+   * same way `writeWorkerEntryPoint`'s live-probe path resolves
+   * `websocketPaths` (`ctx.alepha.primitives("$websocket")` mapped to
+   * `options.channel.options.path`). The prebuilt/manifest deploy path
+   * (Alepha Rocket `--prebuilt`) has no live Alepha to introspect, so
+   * without this the emitted worker's `wsPaths` guard stays empty and
+   * WebSocket upgrades silently fail to route even though the DO binding
+   * and migration are still emitted. Empty when `resources.hasWebSocket`
+   * is false.
+   */
+  websocketPaths: string[];
   /**
    * Cloudflare email binding, captured when the app registers
    * `CloudflareEmailProvider` at artifact-build time. The prebuilt/manifest
@@ -116,6 +136,25 @@ export class BuildCloudflareTask extends BuildTask {
   protected readonly warningComment =
     "// This file was automatically generated. DO NOT MODIFY.\n" +
     "// Changes to this file will be lost when the code is regenerated.\n";
+
+  /**
+   * Whether the workspace registers any `$websocket` primitive. Gates
+   * `enhanceDurableObjects` — resolved in `generateCloudflare` from either
+   * `ctx.manifest` (prebuilt/manifest mode) or a live `ctx.alepha` probe.
+   */
+  protected hasWebSocket = false;
+
+  /**
+   * Registered `$websocket` channel paths (e.g. `/ws/chat`), resolved in
+   * `generateCloudflare` alongside `hasWebSocket` — from a live `ctx.alepha`
+   * probe, or from `ctx.manifest.websocketPaths` in prebuilt/manifest mode
+   * (see `writeManifest`, which captures the same paths at artifact-build
+   * time so the manifest-only deploy path — Alepha Rocket `--prebuilt` —
+   * doesn't need a live Alepha to introspect). Baked into the worker entry
+   * point's upgrade-routing guard so only requests to a known channel path
+   * are forwarded to the room Durable Object.
+   */
+  protected websocketPaths: string[] = [];
 
   async run(ctx: BuildTaskContext): Promise<void> {
     if (ctx.options.target !== "cloudflare") {
@@ -177,6 +216,25 @@ export class BuildCloudflareTask extends BuildTask {
       head_sampling_rate: 1,
     };
 
+    // Manifest/prebuilt mode: ctx.alepha is a null cast (see BuildCommand),
+    // so read the resource flag captured at artifact-build time instead of
+    // probing a live instance.
+    if (ctx.manifest) {
+      this.hasWebSocket = ctx.manifest.resources.hasWebSocket;
+      this.websocketPaths = ctx.manifest.websocketPaths ?? [];
+    } else {
+      try {
+        const websocketPrimitives = ctx.alepha.primitives("$websocket");
+        this.hasWebSocket = websocketPrimitives.length > 0;
+        this.websocketPaths = websocketPrimitives.map(
+          (p: any) => p.options.channel.options.path,
+        );
+      } catch {
+        this.hasWebSocket = false;
+        this.websocketPaths = [];
+      }
+    }
+
     this.enhanceDomain(wrangler);
     this.enhanceServices(wrangler);
     this.enhanceCron(ctx, wrangler);
@@ -185,6 +243,7 @@ export class BuildCloudflareTask extends BuildTask {
     this.enhanceKV(wrangler);
     this.enhanceQueue(wrangler);
     this.enhanceEmail(ctx, wrangler);
+    this.enhanceDurableObjects(wrangler);
 
     await this.fs.writeFile(
       this.fs.join(root, distDir, "wrangler.jsonc"),
@@ -252,6 +311,16 @@ export class BuildCloudflareTask extends BuildTask {
       hasQueue = ctx.alepha.primitives("$queue").length > 0;
     } catch {}
 
+    let hasWebSocket = false;
+    let websocketPaths: string[] = [];
+    try {
+      const websocketPrimitives = ctx.alepha.primitives("$websocket");
+      hasWebSocket = websocketPrimitives.length > 0;
+      websocketPaths = websocketPrimitives.map(
+        (p: any) => p.options.channel.options.path,
+      );
+    } catch {}
+
     try {
       const cronProvider = ctx.alepha.inject("CronProvider") as {
         getCronJobs?: () => Array<{ expression: string }>;
@@ -300,8 +369,10 @@ export class BuildCloudflareTask extends BuildTask {
         hasKV,
         hasQueue,
         hasCron: crons.length > 0,
+        hasWebSocket,
       },
       crons,
+      websocketPaths,
       email,
       env,
     };
@@ -516,6 +587,35 @@ export class BuildCloudflareTask extends BuildTask {
     });
   }
 
+  /**
+   * Durable Object binding + SQLite migration for the `$websocket` primitive
+   * on Cloudflare. Gated on `hasWebSocket` (resolved in `generateCloudflare`
+   * from `ctx.manifest` or a live `ctx.alepha` probe) — a workerd app with no
+   * `$websocket` usage gets no binding and no migration.
+   *
+   * `new_sqlite_classes` (rather than `new_classes`) is required because
+   * `AlephaWebSocketDurableObject` uses the SQLite-backed Durable Object
+   * storage API.
+   */
+  protected enhanceDurableObjects(wrangler: WranglerConfig): void {
+    if (!this.hasWebSocket) {
+      return;
+    }
+
+    wrangler.durable_objects ??= {};
+    wrangler.durable_objects.bindings = wrangler.durable_objects.bindings || [];
+    wrangler.durable_objects.bindings.push({
+      name: WEBSOCKET_DO_BINDING,
+      class_name: WEBSOCKET_DO_CLASS,
+    });
+
+    wrangler.migrations = wrangler.migrations || [];
+    wrangler.migrations.push({
+      tag: "v1",
+      new_sqlite_classes: [WEBSOCKET_DO_CLASS],
+    });
+  }
+
   protected enhanceEmail(
     ctx: BuildTaskContext,
     wrangler: WranglerConfig,
@@ -564,9 +664,89 @@ export class BuildCloudflareTask extends BuildTask {
     root: string,
     distDir: string,
   ): Promise<void> {
+    // Re-exports the room Durable Object class so wrangler's
+    // `new_sqlite_classes` migration (see enhanceDurableObjects) resolves a
+    // real binding target. This only resolves at deploy time once `index.js`
+    // itself re-exports the class — emitted here regardless, gated on
+    // `hasWebSocket` alone.
+    const doExport = this.hasWebSocket
+      ? '\nexport { AlephaWebSocketDurableObject } from "./index.js";\n'
+      : "";
+
+    // WebSocket upgrade -> route to the room Durable Object. Runs at the very
+    // top of `fetch`, before `bindEnv`/the normal request pipeline: a
+    // hibernating WS upgrade has no HTTP response for `web:request` to
+    // produce, so it must never reach that dispatcher.
+    const upgradeBranch = this.hasWebSocket
+      ? `
+    if (request.headers.get("Upgrade") === "websocket") {
+      const url = new URL(request.url);
+      const wsPaths = ${JSON.stringify(this.websocketPaths)};
+      if (wsPaths.includes(url.pathname)) {
+        bindEnv(env);
+
+        try {
+          await __alepha.start();
+        } catch (err) {
+          __alepha.log.error("Failed to start Alepha for websocket upgrade", err);
+          return new Response("Internal Server Error", { status: 500 });
+        }
+
+        const roomId =
+          url.searchParams.get("roomId") ||
+          (url.searchParams.get("roomIds") || "").split(",")[0].trim() ||
+          "default";
+
+        const wsProvider = __alepha.inject("WebSocketServerProvider");
+
+        let userId = "";
+        try {
+          const resolved = await wsProvider.resolveUserId({
+            url: request.url,
+            headers: {
+              authorization: request.headers.get("authorization") || undefined,
+              cookie: request.headers.get("cookie") || undefined,
+            },
+          });
+          userId = resolved || "";
+        } catch (err) {
+          __alepha.log.warn("Failed to resolve WebSocket user identity", err);
+        }
+
+        // \`getEndpoint\` returns the \`WebSocketPrimitiveOptions\` config object
+        // directly (see registerEndpoint in the providers) — \`secure\` is a
+        // top-level field, there is no \`.options\` wrapper on it.
+        const endpoint = wsProvider.getEndpoint(url.pathname);
+        if (endpoint && endpoint.secure && !userId) {
+          return new Response("Unauthorized", { status: 401 });
+        }
+
+        const connectionId = "ws-" + crypto.randomUUID();
+        const ns = env.ALEPHA_WEBSOCKET;
+        const stub = ns.get(ns.idFromName(url.pathname + ":" + roomId));
+        const forward = new Request(request, {
+          headers: new Headers(request.headers),
+        });
+        // Strip any client-forged x-alepha-ws-* before setting the trusted
+        // values — these headers are the worker->DO identity contract.
+        forward.headers.delete("x-alepha-ws-channel");
+        forward.headers.delete("x-alepha-ws-room");
+        forward.headers.delete("x-alepha-ws-conn");
+        forward.headers.delete("x-alepha-ws-user");
+        forward.headers.set("x-alepha-ws-channel", url.pathname);
+        forward.headers.set("x-alepha-ws-room", roomId);
+        forward.headers.set("x-alepha-ws-conn", connectionId);
+        if (userId) forward.headers.set("x-alepha-ws-user", userId);
+
+        return stub.fetch(forward);
+      }
+    }
+`
+      : "";
+
     const workerCode = `
 import "./index.js";
-
+${doExport}
 // Run an invocation inside an Alepha fork carrying THIS invocation's
 // \`executionCtx.waitUntil\`, so background work (notably $job direct dispatch)
 // can keep the isolate alive past the response.
@@ -593,7 +773,7 @@ const bindEnv = (env) => {
 };
 
 export default {
-  fetch: async (request, env, executionCtx) => {
+  fetch: async (request, env, executionCtx) => {${upgradeBranch}
     const ctx = { req: request, res: undefined };
 
     bindEnv(env);

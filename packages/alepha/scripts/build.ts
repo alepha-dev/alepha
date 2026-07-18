@@ -182,6 +182,10 @@ class AlephaPackageBuilderCli {
       const external: (string | RegExp)[] = [
         "bun",
         "bun:sqlite",
+        // `cloudflare:workers` only exists inside a Cloudflare Workers isolate
+        // at runtime (used by AlephaWebSocketDurableObject); it must never be
+        // bundled/resolved by rolldown.
+        "cloudflare:workers",
         // zod is a runtime dependency, never bundled. Its `v4/locales/*.d.cts`
         // type files use CommonJS dts syntax that rolldown-plugin-dts cannot
         // bundle, so it must be external for both the JS and the .d.ts builds.
