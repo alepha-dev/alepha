@@ -91,10 +91,7 @@ export type RoomMethod<
   TClient extends TWSObject,
   TServer extends TWSObject,
   TState,
-> = (
-  room: RoomContext<TClient, TState>,
-  ...args: any[]
-) => any | Promise<any>;
+> = (room: RoomContext<TClient, TState>, ...args: any[]) => any | Promise<any>;
 
 /**
  * Options for the {@link $room} primitive — a stateful, optionally
@@ -159,9 +156,7 @@ export interface RoomPrimitiveOptions<
    * The last socket left: persist and tear down. After this returns the tick
    * loop is stopped and the state is discarded.
    */
-  onEmpty?: (
-    room: RoomContext<TClient, TState>,
-  ) => void | Promise<void>;
+  onEmpty?: (room: RoomContext<TClient, TState>) => void | Promise<void>;
 
   /**
    * Server-side methods callable on this room by id from outside it. The seam

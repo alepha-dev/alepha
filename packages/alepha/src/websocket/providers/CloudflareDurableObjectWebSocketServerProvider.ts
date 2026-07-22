@@ -24,7 +24,12 @@ interface DurableObjectNamespaceLike {
       message: unknown,
       criteria: { exceptConnectionIds?: string[] },
     ): Promise<void>;
-    callRoom(method: string, args: unknown[]): Promise<unknown>;
+    callRoom(
+      channelPath: string,
+      roomId: string,
+      method: string,
+      args: unknown[],
+    ): Promise<unknown>;
   };
 }
 
@@ -116,7 +121,7 @@ export class CloudflareDurableObjectWebSocketServerProvider extends WebSocketSer
   ): Promise<unknown> {
     const ns = this.getNamespace();
     const stub = ns.get(ns.idFromName(`${channelPath}:${roomId}`));
-    return stub.callRoom(method, args);
+    return stub.callRoom(channelPath, roomId, method, args);
   }
 
   public async broadcastToRoom(

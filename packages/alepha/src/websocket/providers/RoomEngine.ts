@@ -1,4 +1,3 @@
-import type { TWSObject } from "../primitives/$channel.ts";
 import type {
   RoomClock,
   RoomConnection,
@@ -6,6 +5,7 @@ import type {
   RoomPrimitiveOptions,
   RoomSocket,
 } from "../interfaces/RoomInterfaces.ts";
+import type { TWSObject } from "../primitives/$channel.ts";
 
 /** Dependencies a {@link RoomEngine} needs from whatever runtime hosts it. */
 export interface RoomEngineDeps<
@@ -90,11 +90,7 @@ export class RoomEngine<
       return;
     }
     try {
-      await this.options.onMessage?.(
-        this.context(),
-        socket,
-        message as never,
-      );
+      await this.options.onMessage?.(this.context(), socket, message as never);
     } catch (error) {
       this.deps.log?.(
         "error",
@@ -174,7 +170,11 @@ export class RoomEngine<
     try {
       await this.options.onEmpty?.(this.context());
     } catch (error) {
-      this.deps.log?.("error", `Error in onEmpty for room ${this.deps.roomId}`, error);
+      this.deps.log?.(
+        "error",
+        `Error in onEmpty for room ${this.deps.roomId}`,
+        error,
+      );
     }
     this.alive = false;
     this.starting = undefined;
@@ -202,11 +202,19 @@ export class RoomEngine<
       const result = this.options.onTick?.(this.context(), dt);
       if (result instanceof Promise) {
         result.catch((error) =>
-          this.deps.log?.("error", `Error in onTick for room ${this.deps.roomId}`, error),
+          this.deps.log?.(
+            "error",
+            `Error in onTick for room ${this.deps.roomId}`,
+            error,
+          ),
         );
       }
     } catch (error) {
-      this.deps.log?.("error", `Error in onTick for room ${this.deps.roomId}`, error);
+      this.deps.log?.(
+        "error",
+        `Error in onTick for room ${this.deps.roomId}`,
+        error,
+      );
     }
   }
 

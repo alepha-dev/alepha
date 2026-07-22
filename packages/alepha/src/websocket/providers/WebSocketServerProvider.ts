@@ -75,9 +75,7 @@ export abstract class WebSocketServerProvider {
    * Register a stateful room endpoint (the {@link RoomPrimitiveOptions} of a
    * `$room`).
    */
-  abstract registerRoom(
-    options: RoomPrimitiveOptions<any, any, any>,
-  ): void;
+  abstract registerRoom(options: RoomPrimitiveOptions<any, any, any>): void;
 
   /**
    * Look up a registered room endpoint by its channel path.

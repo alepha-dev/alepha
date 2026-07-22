@@ -102,7 +102,15 @@ describe("RoomEngine — tick loop", () => {
   it("does not tick before the first socket joins", async () => {
     const clock = new FakeClock();
     let ticks = 0;
-    makeEngine({ tickHz: 20, onTick: () => { ticks++; } }, { clock });
+    makeEngine(
+      {
+        tickHz: 20,
+        onTick: () => {
+          ticks++;
+        },
+      },
+      { clock },
+    );
 
     clock.advance(50);
     clock.advance(50);
@@ -114,7 +122,15 @@ describe("RoomEngine — tick loop", () => {
   it("stops ticking and clears the timer after the last socket leaves", async () => {
     const clock = new FakeClock();
     let ticks = 0;
-    const engine = makeEngine({ tickHz: 20, onTick: () => { ticks++; } }, { clock });
+    const engine = makeEngine(
+      {
+        tickHz: 20,
+        onTick: () => {
+          ticks++;
+        },
+      },
+      { clock },
+    );
     const socket = fakeSocket();
 
     await engine.join(socket);
@@ -129,7 +145,15 @@ describe("RoomEngine — tick loop", () => {
   it("restarts the loop when a socket rejoins an emptied room", async () => {
     const clock = new FakeClock();
     let ticks = 0;
-    const engine = makeEngine({ tickHz: 20, onTick: () => { ticks++; } }, { clock });
+    const engine = makeEngine(
+      {
+        tickHz: 20,
+        onTick: () => {
+          ticks++;
+        },
+      },
+      { clock },
+    );
     const a = fakeSocket();
 
     await engine.join(a);
@@ -173,7 +197,9 @@ describe("RoomEngine — state lifecycle", () => {
           built++;
           return { n: 42 };
         },
-        onTick: (room) => { seen.push(room.state.n); },
+        onTick: (room) => {
+          seen.push(room.state.n);
+        },
       },
       { clock },
     );
@@ -312,7 +338,11 @@ describe("RoomEngine — message validation", () => {
   it("drops an invalid message, does not call onMessage, and reports an error", async () => {
     let handled = 0;
     const engine = makeEngine(
-      { onMessage: () => { handled++; } },
+      {
+        onMessage: () => {
+          handled++;
+        },
+      },
       {
         validate: () => {
           throw new Error("bad shape");
@@ -331,7 +361,11 @@ describe("RoomEngine — message validation", () => {
   it("delivers a valid message to onMessage", async () => {
     const got: unknown[] = [];
     const engine = makeEngine(
-      { onMessage: (_room, _conn, msg) => { got.push(msg); } },
+      {
+        onMessage: (_room, _conn, msg) => {
+          got.push(msg);
+        },
+      },
       { validate: () => {} },
     );
     const a = fakeSocket();

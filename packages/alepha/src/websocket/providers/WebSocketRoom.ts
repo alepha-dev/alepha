@@ -1,6 +1,25 @@
 import { type Alepha, AlephaError, SchemaValidator } from "alepha";
+import type {
+  RoomClock,
+  RoomPrimitiveOptions,
+  RoomSocket,
+} from "../interfaces/RoomInterfaces.ts";
 import type { WebSocketPrimitiveOptions } from "../interfaces/WebSocketInterfaces.ts";
+import { RoomEngine } from "./RoomEngine.ts";
 import { WebSocketServerProvider } from "./WebSocketServerProvider.ts";
+
+/**
+ * The Durable Object's own wall clock, driving a room's tick loop. The isolate
+ * stays alive while the room holds an accepted WebSocket, so a `setInterval`
+ * here keeps ticking for as long as the game is live and stops costing anything
+ * the moment the room empties. Injectable so tests drive a deterministic clock.
+ */
+const defaultRoomClock: RoomClock = {
+  setInterval: (fn, ms) => setInterval(fn, ms),
+  clearInterval: (handle) =>
+    clearInterval(handle as ReturnType<typeof setInterval>),
+  now: () => Date.now(),
+};
 
 /**
  * Per-socket attachment persisted via the hibernation API's
@@ -53,9 +72,20 @@ export interface WebSocketRoomState {
 export class WebSocketRoom {
   protected started = false;
 
+  /**
+   * One {@link RoomEngine} per `channelPath:roomId` hosted in this Durable
+   * Object (in practice a DO is a single room, but keyed for safety).
+   */
+  protected readonly roomEngines = new Map<string, RoomEngine<any, any, any>>();
+  /** Per-connection application data bags, keyed by connectionId. */
+  protected readonly dataBags = new Map<string, Record<string, unknown>>();
+  /** Connection ids currently joined to their engine (for rehydrate). */
+  protected readonly joined = new Set<string>();
+
   constructor(
     protected readonly ctx: WebSocketRoomState,
     protected readonly env: Record<string, unknown>,
+    protected readonly clock: RoomClock = defaultRoomClock,
   ) {}
 
   /**
@@ -85,12 +115,32 @@ export class WebSocketRoom {
     };
     server.serializeAttachment(attachment);
 
-    await this.withEndpoint(channelPath, async (endpoint) => {
-      await endpoint.onConnect?.({ connectionId, userId, roomIds: [roomId] });
-    });
+    await this.onSocketOpen(server, attachment);
 
     // @ts-expect-error `webSocket` on ResponseInit is a Workers-only extension not present in lib.dom's Response type.
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /**
+   * Post-accept admission, shared by the real `fetch` and by tests (which
+   * cannot construct a Workers `WebSocketPair`). Routes a stateful `$room`
+   * socket into its engine's join lifecycle, or falls back to the stateless
+   * `$websocket` `onConnect`.
+   */
+  protected async onSocketOpen(
+    server: any,
+    attachment: WsAttachment,
+  ): Promise<void> {
+    const { channelPath, roomId, connectionId, userId } = attachment;
+    const roomEngine = await this.getRoomEngine(channelPath, roomId);
+    if (roomEngine) {
+      await roomEngine.join(this.roomSocket(server, attachment));
+      this.joined.add(connectionId);
+      return;
+    }
+    await this.withEndpoint(channelPath, async (endpoint) => {
+      await endpoint.onConnect?.({ connectionId, userId, roomIds: [roomId] });
+    });
   }
 
   /**
@@ -101,6 +151,28 @@ export class WebSocketRoom {
     const att = ws.deserializeAttachment() as WsAttachment;
     const raw =
       typeof data === "string" ? data : new TextDecoder().decode(data);
+
+    const roomEngine = await this.getRoomEngine(att.channelPath, att.roomId);
+    if (roomEngine) {
+      // Rehydrate after an isolate reset: re-join the socket the engine forgot.
+      if (!this.joined.has(att.connectionId)) {
+        await roomEngine.join(this.roomSocket(ws, att));
+        this.joined.add(att.connectionId);
+      }
+      let parsed: any;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        this.safeLog(
+          "warn",
+          `Received non-JSON room message on ${att.connectionId}`,
+        );
+        return;
+      }
+      await roomEngine.message(att.connectionId, parsed?.message ?? parsed);
+      return;
+    }
+
     await this.handleRawMessage(ws, att, raw);
   }
 
@@ -111,6 +183,18 @@ export class WebSocketRoom {
   async webSocketClose(ws: any): Promise<void> {
     const att = ws.deserializeAttachment() as WsAttachment | null;
     if (!att) return;
+
+    const roomEngine = await this.getRoomEngine(att.channelPath, att.roomId);
+    if (roomEngine) {
+      await roomEngine.leave(att.connectionId);
+      this.joined.delete(att.connectionId);
+      this.dataBags.delete(att.connectionId);
+      if (roomEngine.size === 0) {
+        this.roomEngines.delete(`${att.channelPath}:${att.roomId}`);
+      }
+      return;
+    }
+
     await this.withEndpoint(att.channelPath, async (endpoint) => {
       await endpoint.onDisconnect?.({
         connectionId: att.connectionId,
@@ -118,6 +202,26 @@ export class WebSocketRoom {
         roomIds: [att.roomId],
       });
     });
+  }
+
+  /**
+   * RPC invoked by the Cloudflare provider to run a server-side room method
+   * (the coordinator/presence seam). The channel/room come as arguments because
+   * an RPC — unlike an upgrade — carries no headers.
+   */
+  async callRoom(
+    channelPath: string,
+    roomId: string,
+    method: string,
+    args: unknown[] = [],
+  ): Promise<unknown> {
+    const roomEngine = await this.getRoomEngine(channelPath, roomId);
+    if (!roomEngine) {
+      throw new AlephaError(
+        `No room endpoint registered for channel '${channelPath}'.`,
+      );
+    }
+    return roomEngine.call(method, args);
   }
 
   /**
@@ -291,6 +395,18 @@ export class WebSocketRoom {
     channelPath: string,
     fn: (endpoint: WebSocketPrimitiveOptions<any, any>) => Promise<void>,
   ): Promise<void> {
+    const alepha = await this.ensureStarted();
+    const endpoint = alepha
+      .inject(WebSocketServerProvider)
+      .getEndpoint(channelPath);
+    if (endpoint) await fn(endpoint);
+  }
+
+  /**
+   * Boot the shared app graph on first use (binding this Durable Object's env).
+   * Idempotent and re-entrant, so cold-start safe.
+   */
+  protected async ensureStarted(): Promise<Alepha> {
     const alepha = this.getAlepha();
     if (!this.started) {
       alepha.set("cloudflare.env", this.env);
@@ -298,9 +414,80 @@ export class WebSocketRoom {
       await alepha.start();
       this.started = true;
     }
+    return alepha;
+  }
+
+  /**
+   * Get or create the {@link RoomEngine} for one `channelPath:roomId`, or
+   * `undefined` if that channel is a stateless `$websocket` rather than a
+   * stateful `$room`. The engine validates client frames against the channel
+   * `out` schema and ticks off this Durable Object's own clock.
+   */
+  protected async getRoomEngine(
+    channelPath: string,
+    roomId: string,
+  ): Promise<RoomEngine<any, any, any> | undefined> {
+    const key = `${channelPath}:${roomId}`;
+    const existing = this.roomEngines.get(key);
+    if (existing) return existing;
+
+    const alepha = await this.ensureStarted();
     const endpoint = alepha
       .inject(WebSocketServerProvider)
-      .getEndpoint(channelPath);
-    if (endpoint) await fn(endpoint);
+      .getRoomEndpoint(channelPath) as
+      | RoomPrimitiveOptions<any, any, any>
+      | undefined;
+    if (!endpoint) return undefined;
+
+    const validator = alepha.inject(SchemaValidator);
+    const outSchema = endpoint.channel.options.schema.out;
+    const engine = new RoomEngine({
+      roomId,
+      clock: this.clock,
+      options: endpoint,
+      validate: (message) =>
+        validator.validate(outSchema, message, {
+          trim: false,
+          nullToUndefined: false,
+          deleteUndefined: false,
+        }),
+      log: (level, message, data) => this.safeLog(level, message, data),
+    });
+    this.roomEngines.set(key, engine);
+    return engine;
+  }
+
+  /**
+   * Adapt one hibernation WebSocket into a {@link RoomSocket}. The per-
+   * connection data bag is held in-memory keyed by connectionId — it survives
+   * for as long as the isolate stays warm (an actively-ticking room never
+   * hibernates), and is rebuilt on an explicit rehydrate after an isolate
+   * reset.
+   */
+  protected roomSocket(ws: any, att: WsAttachment): RoomSocket {
+    let data = this.dataBags.get(att.connectionId);
+    if (!data) {
+      data = {};
+      this.dataBags.set(att.connectionId, data);
+    }
+    return {
+      id: att.connectionId,
+      userId: att.userId,
+      data,
+      sendRaw: (payload) => {
+        try {
+          ws.send(payload);
+        } catch (error) {
+          this.safeLog("warn", `Failed to send to ${att.connectionId}`, error);
+        }
+      },
+      close: (code, reason) => {
+        try {
+          ws.close(code, reason);
+        } catch {
+          // socket may already be closing/closed
+        }
+      },
+    };
   }
 }

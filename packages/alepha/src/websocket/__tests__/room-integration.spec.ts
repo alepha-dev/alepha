@@ -166,7 +166,11 @@ describe("$room integration (Node)", () => {
 
     await coordinator.session.call("party-1", "setSwitch", "door", true);
     const open = await coordinator.session.call("party-1", "getSwitch", "door");
-    const other = await coordinator.session.call("party-2", "getSwitch", "door");
+    const other = await coordinator.session.call(
+      "party-2",
+      "getSwitch",
+      "door",
+    );
 
     expect(open).toBe(true);
     expect(other).toBe(false); // isolated per room id

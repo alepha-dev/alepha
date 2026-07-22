@@ -58,4 +58,17 @@ export class AlephaWebSocketDurableObject extends DurableObject {
   ): Promise<void> {
     return this.room.broadcast(message, criteria);
   }
+
+  /**
+   * RPC for a server-side `$room` method (coordinator/presence). channel/room
+   * arrive as arguments because an RPC carries no headers.
+   */
+  async callRoom(
+    channelPath: string,
+    roomId: string,
+    method: string,
+    args: unknown[] = [],
+  ): Promise<unknown> {
+    return this.room.callRoom(channelPath, roomId, method, args);
+  }
 }

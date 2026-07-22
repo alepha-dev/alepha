@@ -72,13 +72,17 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   protected nextConnectionId = 1;
 
   /** Registered `$room` endpoints, keyed by channel path. */
-  protected roomEndpoints = new Map<string, RoomPrimitiveOptions<any, any, any>>();
+  protected roomEndpoints = new Map<
+    string,
+    RoomPrimitiveOptions<any, any, any>
+  >();
   /** Live room engines, keyed by `channelPath:roomId`. */
   protected roomEngines = new Map<string, RoomEngine<any, any, any>>();
   /** Real timers for the room tick loop. */
   protected readonly roomClock: RoomClock = {
     setInterval: (fn, ms) => setInterval(fn, ms),
-    clearInterval: (handle) => clearInterval(handle as ReturnType<typeof setInterval>),
+    clearInterval: (handle) =>
+      clearInterval(handle as ReturnType<typeof setInterval>),
     now: () => Date.now(),
   };
 
@@ -191,7 +195,9 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     message: unknown,
     options?: { exceptConnectionIds?: string[] },
   ): Promise<void> {
-    this.roomEngines.get(`${channelPath}:${roomId}`)?.broadcast(message, options);
+    this.roomEngines
+      .get(`${channelPath}:${roomId}`)
+      ?.broadcast(message, options);
   }
 
   /**
@@ -337,7 +343,10 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       }
       const message = parsed?.message ?? parsed;
       engine.message(connectionId, message).catch((error) => {
-        this.log.error(`Error handling room message on ${connectionId}:`, error);
+        this.log.error(
+          `Error handling room message on ${connectionId}:`,
+          error,
+        );
       });
     });
 
