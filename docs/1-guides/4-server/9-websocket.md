@@ -2,6 +2,8 @@
 
 Alepha provides real-time, bidirectional messaging through the `$channel` and `$websocket` primitives. You define a typed message schema once, write a single handler, and the same application code runs unchanged on a long-lived Node process (a VPS, backed by `ws`) or on Cloudflare Workers (backed by Durable Objects). The browser client — `useRoom` — is identical on both.
 
+> Need **in-memory state and a server-side tick loop** (a game world, a live simulation) rather than a stateless per-message handler? See [Stateful rooms (`$room`)](./10-rooms.md).
+
 ## Quick Start
 
 ```typescript
