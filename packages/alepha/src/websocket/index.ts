@@ -2,6 +2,7 @@ import { $module, type Alepha } from "alepha";
 import { AlephaServer } from "alepha/server";
 import { AlephaTopic } from "alepha/topic";
 import { $channel } from "./primitives/$channel.ts";
+import { $room } from "./primitives/$room.ts";
 import { $websocket } from "./primitives/$websocket.ts";
 import { NodeWebSocketServerProvider } from "./providers/NodeWebSocketServerProvider.ts";
 import { WebSocketServerProvider } from "./providers/WebSocketServerProvider.ts";
@@ -30,7 +31,7 @@ export * from "./providers/NodeWebSocketServerProvider.ts";
  */
 export const AlephaWebSocket = $module({
   name: "alepha.websocket",
-  primitives: [$channel, $websocket],
+  primitives: [$channel, $websocket, $room],
   services: [WebSocketServerProvider, RoomManager, WebSocketTopicService],
   variants: [NodeWebSocketServerProvider],
   imports: [AlephaServer, AlephaTopic],

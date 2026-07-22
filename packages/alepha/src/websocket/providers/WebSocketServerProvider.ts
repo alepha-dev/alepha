@@ -1,4 +1,5 @@
 import { $inject, Alepha } from "alepha";
+import type { RoomPrimitiveOptions } from "../interfaces/RoomInterfaces.ts";
 import type {
   EmitOptions,
   WebSocketConnection,
@@ -62,6 +63,49 @@ export abstract class WebSocketServerProvider {
     connectionId: string,
     code?: number,
     reason?: string,
+  ): Promise<void>;
+
+  // -------------------------------------------------------------------------
+  // Stateful rooms ($room). A room is a stateful, optionally tick-driven
+  // endpoint. Node hosts one RoomEngine per channel:room in-process;
+  // Cloudflare hosts one Durable Object per channel:room.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Register a stateful room endpoint (the {@link RoomPrimitiveOptions} of a
+   * `$room`).
+   */
+  abstract registerRoom(
+    options: RoomPrimitiveOptions<any, any, any>,
+  ): void;
+
+  /**
+   * Look up a registered room endpoint by its channel path.
+   */
+  abstract getRoomEndpoint(
+    channelPath: string,
+  ): RoomPrimitiveOptions<any, any, any> | undefined;
+
+  /**
+   * Invoke a server-side method on one room, by id. Brings a headless room to
+   * life on first call.
+   */
+  abstract callRoom(
+    channelPath: string,
+    roomId: string,
+    method: string,
+    args?: unknown[],
+  ): Promise<unknown>;
+
+  /**
+   * Push a server-initiated message to every socket in one live room. A no-op
+   * if that room holds no connections.
+   */
+  abstract broadcastToRoom(
+    channelPath: string,
+    roomId: string,
+    message: unknown,
+    options?: { exceptConnectionIds?: string[] },
   ): Promise<void>;
 
   /**

@@ -13,6 +13,11 @@ import { $logger } from "alepha/logger";
 import { WebSocket, WebSocketServer } from "ws";
 import { WebSocketValidationError } from "../errors/WebSocketError.ts";
 import type {
+  RoomClock,
+  RoomPrimitiveOptions,
+  RoomSocket,
+} from "../interfaces/RoomInterfaces.ts";
+import type {
   EmitOptions,
   WebSocketConnection,
   WebSocketHandlerContext,
@@ -22,6 +27,7 @@ import type {
 import type { TWSObject } from "../primitives/$channel.ts";
 import { RoomManager } from "../services/RoomManager.ts";
 import { WebSocketTopicService } from "../services/WebSocketTopicService.ts";
+import { RoomEngine } from "./RoomEngine.ts";
 import { WebSocketServerProvider } from "./WebSocketServerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -55,6 +61,7 @@ declare module "alepha" {
 export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   protected readonly roomManager = $inject(RoomManager);
   protected readonly topicService = $inject(WebSocketTopicService);
+  protected readonly schemaValidator = $inject(SchemaValidator);
   protected readonly log = $logger();
   protected readonly wsOptions = $state(websocketOptions);
 
@@ -63,6 +70,17 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   protected connections = new Map<string, WebSocketConnection>();
   protected userConnections = new Map<string, Set<string>>(); // userId → Set<connectionId>
   protected nextConnectionId = 1;
+
+  /** Registered `$room` endpoints, keyed by channel path. */
+  protected roomEndpoints = new Map<string, RoomPrimitiveOptions<any, any, any>>();
+  /** Live room engines, keyed by `channelPath:roomId`. */
+  protected roomEngines = new Map<string, RoomEngine<any, any, any>>();
+  /** Real timers for the room tick loop. */
+  protected readonly roomClock: RoomClock = {
+    setInterval: (fn, ms) => setInterval(fn, ms),
+    clearInterval: (handle) => clearInterval(handle as ReturnType<typeof setInterval>),
+    now: () => Date.now(),
+  };
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -145,6 +163,72 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   }
 
   // -------------------------------------------------------------------------------------------------------------------
+  // Stateful rooms ($room)
+  // -------------------------------------------------------------------------------------------------------------------
+
+  public registerRoom(options: RoomPrimitiveOptions<any, any, any>): void {
+    this.roomEndpoints.set(options.channel.options.path, options);
+  }
+
+  public getRoomEndpoint(
+    channelPath: string,
+  ): RoomPrimitiveOptions<any, any, any> | undefined {
+    return this.roomEndpoints.get(channelPath);
+  }
+
+  public async callRoom(
+    channelPath: string,
+    roomId: string,
+    method: string,
+    args: unknown[] = [],
+  ): Promise<unknown> {
+    return this.getRoomEngine(channelPath, roomId).call(method, args);
+  }
+
+  public async broadcastToRoom(
+    channelPath: string,
+    roomId: string,
+    message: unknown,
+    options?: { exceptConnectionIds?: string[] },
+  ): Promise<void> {
+    this.roomEngines.get(`${channelPath}:${roomId}`)?.broadcast(message, options);
+  }
+
+  /**
+   * Get or create the room engine for one `channelPath:roomId`. The engine
+   * validates client frames against the channel `out` schema and drives its
+   * tick loop off the real Node clock.
+   */
+  protected getRoomEngine(
+    channelPath: string,
+    roomId: string,
+  ): RoomEngine<any, any, any> {
+    const key = `${channelPath}:${roomId}`;
+    const existing = this.roomEngines.get(key);
+    if (existing) return existing;
+
+    const endpoint = this.roomEndpoints.get(channelPath);
+    if (!endpoint) {
+      throw new AlephaError(`No room endpoint registered for ${channelPath}`);
+    }
+    const outSchema = endpoint.channel.options.schema.out;
+    const engine = new RoomEngine({
+      roomId,
+      clock: this.roomClock,
+      options: endpoint,
+      validate: (message) =>
+        this.schemaValidator.validate(outSchema, message, {
+          trim: false,
+          nullToUndefined: false,
+          deleteUndefined: false,
+        }),
+      log: (level, message, data) => this.log[level](message, data),
+    });
+    this.roomEngines.set(key, engine);
+    return engine;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   protected async handleUpgrade(
     request: IncomingMessage,
@@ -155,7 +239,8 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     const path = url.pathname;
 
     const endpoint = this.endpoints.get(path);
-    if (!endpoint) {
+    const roomEndpoint = this.roomEndpoints.get(path);
+    if (!endpoint && !roomEndpoint) {
       // Not our endpoint - in Vite dev mode, let Vite HMR handle it
       // In production, destroy the socket
       if (!this.alepha.isViteDev()) {
@@ -167,8 +252,9 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
     this.log.debug(`WebSocket upgrade request: ${path}`);
 
+    const secure = endpoint?.secure ?? roomEndpoint?.secure;
     const userId = await this.resolveUserIdFromUpgrade(request);
-    if (endpoint.secure && !userId) {
+    if (secure && !userId) {
       this.log.warn(`Rejected unauthenticated WebSocket upgrade: ${path}`);
       socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
       socket.destroy();
@@ -176,10 +262,115 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     }
 
     this.wss?.handleUpgrade(request, socket, head, (ws) => {
-      this.handleConnection(ws, endpoint, request, userId);
+      if (roomEndpoint) {
+        this.handleRoomConnection(ws, roomEndpoint, request, userId);
+      } else if (endpoint) {
+        this.handleConnection(ws, endpoint, request, userId);
+      }
     });
 
     return true;
+  }
+
+  /**
+   * Adapt one Node `ws` socket into a {@link RoomSocket} and drive its room
+   * engine's join/message/leave lifecycle. The room's tick loop, state and
+   * per-recipient send all live in the engine.
+   */
+  protected handleRoomConnection(
+    ws: WebSocket,
+    endpoint: RoomPrimitiveOptions<any, any, any>,
+    request: IncomingMessage,
+    userId: string | undefined,
+  ): void {
+    const path = endpoint.channel.options.path;
+    const connectionId = `ws-${this.nextConnectionId++}`;
+    const url = new URL(request.url || "/", "http://localhost");
+    const roomId = this.extractRoomIds(url)[0] ?? "default";
+
+    if (userId && endpoint.maxConnectionsPerUser) {
+      const existing = this.userConnections.get(userId);
+      if (existing && existing.size >= endpoint.maxConnectionsPerUser) {
+        this.log.warn(
+          `User ${userId} exceeded max connections (${endpoint.maxConnectionsPerUser})`,
+        );
+        ws.close(1008, "Max connections per user exceeded");
+        return;
+      }
+    }
+
+    const engine = this.getRoomEngine(path, roomId);
+    const key = `${path}:${roomId}`;
+    const roomSocket: RoomSocket = {
+      id: connectionId,
+      userId,
+      data: {},
+      sendRaw: (data) => {
+        if (ws.readyState === WebSocket.OPEN) ws.send(data);
+      },
+      close: (code, reason) => ws.close(code, reason),
+    };
+
+    if (userId) {
+      let userConns = this.userConnections.get(userId);
+      if (!userConns) {
+        userConns = new Set();
+        this.userConnections.set(userId, userConns);
+      }
+      userConns.add(connectionId);
+    }
+
+    this.log.info(`WebSocket room connection established: ${connectionId}`, {
+      path,
+      roomId,
+      userId,
+      remoteAddress: request.socket.remoteAddress,
+    });
+
+    ws.on("message", (data) => {
+      let parsed: any;
+      try {
+        parsed = JSON.parse(data.toString());
+      } catch {
+        this.log.warn(`Received non-JSON room message on ${connectionId}`);
+        return;
+      }
+      const message = parsed?.message ?? parsed;
+      engine.message(connectionId, message).catch((error) => {
+        this.log.error(`Error handling room message on ${connectionId}:`, error);
+      });
+    });
+
+    ws.on("close", (code, reason) => {
+      this.log.info(`WebSocket room connection closed: ${connectionId}`, {
+        code,
+        reason: reason.toString(),
+      });
+      if (userId) {
+        const userConns = this.userConnections.get(userId);
+        if (userConns) {
+          userConns.delete(connectionId);
+          if (userConns.size === 0) this.userConnections.delete(userId);
+        }
+      }
+      engine
+        .leave(connectionId)
+        .then(() => {
+          if (engine.size === 0) this.roomEngines.delete(key);
+        })
+        .catch((error) => {
+          this.log.error(`Error leaving room on ${connectionId}:`, error);
+        });
+    });
+
+    ws.on("error", (error) => {
+      this.log.error(`WebSocket room error on ${connectionId}:`, error);
+    });
+
+    engine.join(roomSocket).catch((error) => {
+      this.log.error(`Failed to join room on ${connectionId}:`, error);
+      ws.close(1011, "Room join failed");
+    });
   }
 
   /**
@@ -463,7 +654,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
       this.wss = new WebSocketServer({ noServer: true });
 
-      for (const [path, endpoint] of this.endpoints.entries()) {
+      for (const path of this.endpoints.keys()) {
         this.log.debug(`WebSocket endpoint registered: ${path}`);
       }
 
@@ -515,6 +706,10 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       if (!this.wss) {
         return;
       }
+
+      // Stop every room tick loop so open timers cannot keep the process alive.
+      for (const engine of this.roomEngines.values()) engine.dispose();
+      this.roomEngines.clear();
 
       // Close all connections (collect into array to avoid mutation during iteration)
       const connections = Array.from(this.connections.values());

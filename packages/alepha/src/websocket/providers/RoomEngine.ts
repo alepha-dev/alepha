@@ -130,6 +130,32 @@ export class RoomEngine<
     return fn(this.context(), ...args);
   }
 
+  /**
+   * Server-initiated fan-out to every connected socket. The seam a coordinator
+   * uses to push a fresh state snapshot down into a room from outside any
+   * callback.
+   */
+  broadcast(
+    message: unknown,
+    options?: { exceptConnectionIds?: string[] },
+  ): void {
+    this.context().broadcast(message as never, options);
+  }
+
+  /** Server-initiated send to one connection. */
+  send(connectionId: string, message: unknown): void {
+    this.context().send(connectionId, message as never);
+  }
+
+  /**
+   * Stop the tick loop without running `onEmpty`. For host shutdown, where the
+   * whole process is going away and per-room persistence is the application's
+   * concern via its own stop hook.
+   */
+  dispose(): void {
+    this.stopLoop();
+  }
+
   // -------------------------------------------------------------------------
 
   protected async ensureAlive(): Promise<void> {

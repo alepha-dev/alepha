@@ -1,5 +1,6 @@
 import { AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
+import type { RoomPrimitiveOptions } from "../interfaces/RoomInterfaces.ts";
 import type {
   EmitOptions,
   WebSocketPrimitiveOptions,
@@ -23,6 +24,7 @@ interface DurableObjectNamespaceLike {
       message: unknown,
       criteria: { exceptConnectionIds?: string[] },
     ): Promise<void>;
+    callRoom(method: string, args: unknown[]): Promise<unknown>;
   };
 }
 
@@ -84,6 +86,50 @@ export class CloudflareDurableObjectWebSocketServerProvider extends WebSocketSer
         });
       }),
     );
+  }
+
+  // -------------------------------------------------------------------------
+  // Stateful rooms ($room). The engine lives inside each room's Durable
+  // Object; this main-isolate provider only routes calls to the right stub.
+  // -------------------------------------------------------------------------
+
+  protected readonly roomEndpoints = new Map<
+    string,
+    RoomPrimitiveOptions<any, any, any>
+  >();
+
+  public registerRoom(options: RoomPrimitiveOptions<any, any, any>): void {
+    this.roomEndpoints.set(options.channel.options.path, options);
+  }
+
+  public getRoomEndpoint(
+    channelPath: string,
+  ): RoomPrimitiveOptions<any, any, any> | undefined {
+    return this.roomEndpoints.get(channelPath);
+  }
+
+  public async callRoom(
+    channelPath: string,
+    roomId: string,
+    method: string,
+    args: unknown[] = [],
+  ): Promise<unknown> {
+    const ns = this.getNamespace();
+    const stub = ns.get(ns.idFromName(`${channelPath}:${roomId}`));
+    return stub.callRoom(method, args);
+  }
+
+  public async broadcastToRoom(
+    channelPath: string,
+    roomId: string,
+    message: unknown,
+    options?: { exceptConnectionIds?: string[] },
+  ): Promise<void> {
+    const ns = this.getNamespace();
+    const stub = ns.get(ns.idFromName(`${channelPath}:${roomId}`));
+    await stub.broadcast(message, {
+      exceptConnectionIds: options?.exceptConnectionIds,
+    });
   }
 
   public getConnections() {

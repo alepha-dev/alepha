@@ -38,6 +38,18 @@ class TestProvider extends WebSocketServerProvider {
   }
 
   async closeConnection(): Promise<void> {}
+
+  registerRoom(): void {}
+
+  getRoomEndpoint() {
+    return undefined;
+  }
+
+  async callRoom(): Promise<unknown> {
+    return undefined;
+  }
+
+  async broadcastToRoom(): Promise<void> {}
 }
 
 describe("WebSocketServerProvider.resolveUserId", () => {

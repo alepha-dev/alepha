@@ -358,6 +358,47 @@ describe("RoomEngine — message validation", () => {
   });
 });
 
+describe("RoomEngine — server-initiated push", () => {
+  it("broadcast() from the server reaches every connected socket", async () => {
+    const engine = makeEngine({});
+    const a = fakeSocket();
+    const b = fakeSocket();
+    await engine.join(a);
+    await engine.join(b);
+
+    engine.broadcast({ tick: 1 });
+
+    expect(a.sent).toEqual([JSON.stringify({ tick: 1 })]);
+    expect(b.sent).toEqual([JSON.stringify({ tick: 1 })]);
+  });
+
+  it("send() from the server targets one socket", async () => {
+    const engine = makeEngine({});
+    const a = fakeSocket();
+    const b = fakeSocket();
+    await engine.join(a);
+    await engine.join(b);
+
+    engine.send(b.id, { hello: "b" });
+
+    expect(a.sent).toEqual([]);
+    expect(b.sent).toEqual([JSON.stringify({ hello: "b" })]);
+  });
+});
+
+describe("RoomEngine — dispose", () => {
+  it("stops the loop timer without waiting for the room to empty", async () => {
+    const clock = new FakeClock();
+    const engine = makeEngine({ tickHz: 20, onTick: () => {} }, { clock });
+    await engine.join(fakeSocket());
+    expect(clock.liveTimers).toBe(1);
+
+    engine.dispose();
+
+    expect(clock.liveTimers).toBe(0);
+  });
+});
+
 describe("RoomEngine — headless coordinator methods", () => {
   it("invokes a named method and returns its result, building state lazily", async () => {
     let built = 0;
