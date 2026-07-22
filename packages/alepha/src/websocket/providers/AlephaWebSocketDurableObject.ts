@@ -71,4 +71,12 @@ export class AlephaWebSocketDurableObject extends DurableObject {
   ): Promise<unknown> {
     return this.room.callRoom(channelPath, roomId, method, args);
   }
+
+  /**
+   * Durable Object alarm handler: the room tick-loop watchdog. Recovers a
+   * ticking room after a rare mid-connection isolate reset.
+   */
+  async alarm(): Promise<void> {
+    return this.room.alarm();
+  }
 }

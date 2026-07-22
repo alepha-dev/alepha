@@ -123,8 +123,10 @@ inside a `method`/`onEmpty` (its `state` is in-memory and lost if the DO is
 evicted while idle). An actively-ticking world room stays warm and keeps its
 state for as long as it ticks.
 
-> **Note (v1 hardening):** a `$room` on Cloudflare relies on the isolate staying
-> warm while it holds a socket. An `alarm()`-based watchdog to re-arm the loop
-> and rehydrate sockets after a rare mid-connection isolate reset is a planned
-> follow-up; the engine already rehydrates a forgotten socket on its next
-> message.
+**Watchdog.** A `$room` on Cloudflare relies on the isolate staying warm while it
+holds a socket. To recover from a rare mid-connection isolate reset, a Durable
+Object `alarm()` fires every ~10s while the room holds sockets: it re-hydrates
+any hibernation socket the fresh in-memory engine has forgotten (which restarts
+the tick loop) and re-arms itself. Connectivity and the loop come back
+automatically; the room *state* does not (in-memory state cannot survive
+eviction), so persist anything durable in `onEmpty` or a `method`.

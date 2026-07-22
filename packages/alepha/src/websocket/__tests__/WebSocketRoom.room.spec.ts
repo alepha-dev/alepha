@@ -51,10 +51,17 @@ class FakeWs {
 
 function fakeCtx() {
   const sockets: FakeWs[] = [];
+  const alarms: number[] = [];
   return {
     sockets,
+    alarms,
     acceptWebSocket: (ws: FakeWs) => sockets.push(ws),
     getWebSockets: () => sockets,
+    storage: {
+      setAlarm: (t: number) => {
+        alarms.push(t);
+      },
+    },
   };
 }
 
@@ -172,5 +179,34 @@ describe("WebSocketRoom hosting a $room engine", () => {
 
     expect(events).toContain("leave:c1");
     expect(ws.sent.length).toBe(before);
+  });
+
+  it("arms a watchdog alarm on the first room join", async () => {
+    const { room, ctx, clock } = await setup();
+    await join(room, ctx, "lobby", "c1");
+
+    // scheduled once, ~10s out on the room's own clock
+    expect(ctx.alarms).toEqual([clock.now() + 10_000]);
+  });
+
+  it("rehydrates sockets and restarts the loop after an isolate reset", async () => {
+    const { room, ctx, clock } = await setup();
+    const ws = await join(room, ctx, "lobby", "c1");
+    clock.advance(50);
+    expect(ws.sent.length).toBe(1);
+
+    // Simulate an isolate reset: a brand-new room over the SAME hibernation
+    // sockets, with fresh (empty) in-memory engine state.
+    const clock2 = new FakeClock();
+    const room2 = new WebSocketRoom(ctx as any, {}, clock2);
+
+    clock2.advance(50); // engine is gone — nothing ticks
+    const beforeAlarm = ws.sent.length;
+
+    await room2.alarm(); // watchdog re-hydrates c1, restarting the loop
+    expect(ctx.alarms.at(-1)).toBe(clock2.now() + 10_000); // re-armed at now=50
+
+    clock2.advance(50);
+    expect(ws.sent.length).toBe(beforeAlarm + 1); // ticks resumed to the socket
   });
 });

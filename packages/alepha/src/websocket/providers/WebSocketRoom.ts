@@ -51,7 +51,25 @@ export interface WebSocketRoomState {
    * hibernated ones).
    */
   getWebSockets(): any[];
+
+  /**
+   * Durable Object storage, used only to schedule the tick-loop watchdog
+   * alarm. Optional so this class stays constructible with a plain fake in
+   * tests that don't exercise the watchdog.
+   */
+  storage?: {
+    setAlarm(scheduledTime: number): void | Promise<void>;
+  };
 }
+
+/**
+ * How often the watchdog alarm fires while a room holds sockets. It exists to
+ * recover from a rare mid-connection isolate reset: the hibernation API keeps
+ * the sockets, but our in-memory engine is gone, so nothing is ticking. The
+ * alarm re-hydrates the forgotten sockets (which restarts the loop) even with
+ * no inbound traffic to trigger it.
+ */
+const ALARM_INTERVAL_MS = 10_000;
 
 /**
  * All the logic for hosting one room's hibernatable WebSockets on Cloudflare.
@@ -81,6 +99,8 @@ export class WebSocketRoom {
   protected readonly dataBags = new Map<string, Record<string, unknown>>();
   /** Connection ids currently joined to their engine (for rehydrate). */
   protected readonly joined = new Set<string>();
+  /** Whether a watchdog alarm is currently scheduled. */
+  protected alarmScheduled = false;
 
   constructor(
     protected readonly ctx: WebSocketRoomState,
@@ -136,11 +156,54 @@ export class WebSocketRoom {
     if (roomEngine) {
       await roomEngine.join(this.roomSocket(server, attachment));
       this.joined.add(connectionId);
+      this.scheduleAlarm();
       return;
     }
     await this.withEndpoint(channelPath, async (endpoint) => {
       await endpoint.onConnect?.({ connectionId, userId, roomIds: [roomId] });
     });
+  }
+
+  /**
+   * Watchdog entry point, invoked by the Durable Object runtime. Re-hydrates
+   * any sockets the in-memory engine forgot (after an isolate reset) — which
+   * restarts the tick loop — then re-arms itself while the room still holds
+   * sockets. Never throws: a throwing alarm would be retried in a hot loop.
+   */
+  async alarm(): Promise<void> {
+    this.alarmScheduled = false;
+    try {
+      await this.ensureStarted();
+      await this.rehydrate();
+    } catch (error) {
+      this.safeLog("error", "Error in room watchdog alarm", error);
+    }
+    if (this.ctx.getWebSockets().length > 0) this.scheduleAlarm();
+  }
+
+  /**
+   * Re-join every hibernation socket the engine does not currently know about.
+   * `RoomEngine.join` restarts the tick loop, so this is what brings a room
+   * back to life after its isolate was reset. The room *state* is not restored
+   * (in-memory state cannot survive eviction) — connectivity and the loop are.
+   */
+  protected async rehydrate(): Promise<void> {
+    for (const ws of this.ctx.getWebSockets()) {
+      const att = ws.deserializeAttachment() as WsAttachment | null;
+      if (!att) continue;
+      const roomEngine = await this.getRoomEngine(att.channelPath, att.roomId);
+      if (roomEngine && !this.joined.has(att.connectionId)) {
+        await roomEngine.join(this.roomSocket(ws, att));
+        this.joined.add(att.connectionId);
+      }
+    }
+  }
+
+  /** Arm the watchdog alarm, unless storage is unavailable or one is pending. */
+  protected scheduleAlarm(): void {
+    if (this.alarmScheduled || !this.ctx.storage) return;
+    this.alarmScheduled = true;
+    void this.ctx.storage.setAlarm(this.clock.now() + ALARM_INTERVAL_MS);
   }
 
   /**
