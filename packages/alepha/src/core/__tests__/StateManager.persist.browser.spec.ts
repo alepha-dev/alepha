@@ -9,11 +9,9 @@ describe("StateManager web storage persistence", () => {
   beforeEach(() => {
     // Always go through `window.*`, matching what the implementation reads
     // (StateManager.getWebStorage uses `window.localStorage` /
-    // `window.sessionStorage`, not the bare global). On Node >= 22 with Web
-    // Storage enabled (on by default in Node 25), the bare `localStorage` /
-    // `sessionStorage` globals are a DIFFERENT object from jsdom's
-    // `window.localStorage` / `window.sessionStorage` — mixing the two
-    // makes this suite fail for reasons unrelated to the code under test.
+    // `window.sessionStorage`). Working Web Storage in the jsdom env is
+    // guaranteed by `vitest.setup.webstorage.ts` — without it, Node >= 25's
+    // native (method-less) `localStorage` global shadows jsdom's `Storage`.
     window.localStorage.clear();
     window.sessionStorage.clear();
   });

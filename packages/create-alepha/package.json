@@ -17,7 +17,7 @@
     "alepha": "0.24.0"
   },
   "devDependencies": {
-    "tsdown": "^0.22.7",
+    "tsdown": "^0.22.13",
     "vitest": "^4.1.10"
   },
   "scripts": {

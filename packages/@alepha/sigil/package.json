@@ -33,9 +33,9 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "alepha": "0.24.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "tsdown": "^0.22.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tsdown": "^0.22.13",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },

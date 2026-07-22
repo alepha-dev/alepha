@@ -74,6 +74,10 @@ export default defineConfig({
           include: ["packages/**/src/**/*.browser.spec.{ts,tsx}"],
           name: { label: "jsdom", color: "cyan" },
           environment: "jsdom",
+          // jsdom's Storage is dropped by vitest's global population when the
+          // host Node exposes a `localStorage` global (Node >= 25). Restore a
+          // working `window.localStorage` / `window.sessionStorage`.
+          setupFiles: ["./vitest.setup.webstorage.ts"],
         },
         resolve: {
           conditions: ["browser", "module", "import", "default"],

@@ -23,14 +23,14 @@
   },
   "dependencies": {
     "alepha": "^0.24.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
-    "better-sqlite3": "^12.11.1",
-    "vite": "^8.1.4",
-    "wrangler": "^4.110.0"
+    "better-sqlite3": "^13.0.1",
+    "vite": "^8.1.5",
+    "wrangler": "^4.113.0"
   },
   "dependenciesMeta": {
     "better-sqlite3": {
