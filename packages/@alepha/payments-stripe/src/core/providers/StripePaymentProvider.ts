@@ -14,6 +14,13 @@ import Stripe from "stripe";
 
 const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string(),
+  /**
+   * Platform publishable key (`pk_…`). Browser-safe; needed to initialize
+   * ConnectJS for embedded Connect components (in-app onboarding). Optional:
+   * platforms that only use hosted onboarding / server-side charges don't
+   * need it, and consumers should fall back to the hosted flow when unset.
+   */
+  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string(),
   /**
    * Signing secret of the `connect: true` webhook endpoint (events emitted
@@ -222,6 +229,15 @@ export class StripePaymentProvider implements PaymentProvider {
   }
 
   /**
+   * Platform publishable key (`pk_…`) for initializing ConnectJS in the
+   * browser (embedded Connect components). `undefined` when unset — callers
+   * should fall back to hosted onboarding.
+   */
+  public get publishableKey(): string | undefined {
+    return this.env.STRIPE_PUBLISHABLE_KEY;
+  }
+
+  /**
    * Parse a webhook delivered by the `connect: true` endpoint (events
    * emitted by CONNECTED accounts). Same mapping as `parseWebhook`, but
    * verified with STRIPE_CONNECT_WEBHOOK_SECRET — Stripe signs each
@@ -337,6 +353,25 @@ export class StripePaymentProvider implements PaymentProvider {
     country?: string;
     email?: string;
     displayName?: string;
+    /**
+     * Legal structure of the connected account. Drives which KYC Stripe
+     * collects during onboarding. Defaults to `"company"` for backward
+     * compatibility, but callers SHOULD pass the owner's real structure —
+     * e.g. a French sports club is often a `non_profit` (association loi
+     * 1901) or an `individual` (auto-entrepreneur); forcing `"company"`
+     * asks for company-registration documents they don't have and dead-ends
+     * onboarding.
+     */
+    entityType?: "company" | "individual" | "non_profit";
+    /**
+     * Merchant Category Code — prefilled so Stripe skips the business-category
+     * question. Defaults to `7997` (membership sports/recreation clubs).
+     */
+    mcc?: string;
+    /** Public support website prefill (`configuration.merchant.support.url`). */
+    supportUrl?: string;
+    /** Public support email prefill (`configuration.merchant.support.email`). */
+    supportEmail?: string;
   }): Promise<{ id: string }> {
     // FR/EU platforms (PSD2, verified empirically 2026-06-11 on the Stripe
     // sandbox): creating a v2 account WITH a merchant configuration requires
@@ -345,15 +380,22 @@ export class StripePaymentProvider implements PaymentProvider {
     // in FR can only update certain identity information on a v2 account
     // with a merchant configuration via account tokens"). The working shape:
     //  - the TOKEN carries contact_email + display_name + entity_type
-    //    (assumed "company"; the hosted onboarding re-confirms it);
+    //    (caller-supplied; the hosted/embedded onboarding re-confirms it);
     //  - `identity.country` is NOT tokenizable (per the account-tokens doc)
     //    and goes DIRECTLY on the create — and it is required for the
     //    entity_type/merchant configuration to apply.
     const token = await this.stripe.v2.core.accountTokens.create({
       contact_email: opts.email,
       display_name: opts.displayName,
-      identity: { entity_type: "company" },
+      identity: { entity_type: opts.entityType ?? "company" },
     });
+
+    // Merchant config carries non-identity prefill (mcc + public support
+    // info) — these live on `configuration.merchant`, NOT `identity`, so
+    // they go directly on the create (no account token needed).
+    const support: { email?: string; url?: string } = {};
+    if (opts.supportEmail) support.email = opts.supportEmail;
+    if (opts.supportUrl) support.url = opts.supportUrl;
 
     const account = await this.stripe.v2.core.accounts.create({
       account_token: token.id,
@@ -368,12 +410,44 @@ export class StripePaymentProvider implements PaymentProvider {
       configuration: {
         merchant: {
           capabilities: { card_payments: { requested: true } },
+          mcc: opts.mcc ?? "7997",
+          ...(Object.keys(support).length > 0 ? { support } : {}),
         },
       },
       include: ["configuration.merchant", "requirements"],
     });
 
     return { id: account.id };
+  }
+
+  /**
+   * Open an **embedded Connect components** Account Session for a connected
+   * account (Accounts v2). Returns the `client_secret` the browser passes to
+   * ConnectJS to mount in-app `account-onboarding` / `notification-banner` /
+   * `account-management` components — so the owner completes KYC INSIDE the
+   * app instead of being redirected off to Stripe-hosted onboarding.
+   *
+   * Enables all three baseline components by default; pass `components` to
+   * narrow. The session is short-lived — mint a fresh one per page load.
+   */
+  public async createAccountSession(opts: {
+    account: string;
+    components?: {
+      onboarding?: boolean;
+      notificationBanner?: boolean;
+      management?: boolean;
+    };
+  }): Promise<{ clientSecret: string }> {
+    const c = opts.components ?? {};
+    const session = await this.stripe.accountSessions.create({
+      account: opts.account,
+      components: {
+        account_onboarding: { enabled: c.onboarding ?? true },
+        notification_banner: { enabled: c.notificationBanner ?? true },
+        account_management: { enabled: c.management ?? true },
+      },
+    });
+    return { clientSecret: session.client_secret };
   }
 
   public async createAccountOnboardingLink(opts: {
