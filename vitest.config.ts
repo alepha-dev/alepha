@@ -74,10 +74,13 @@ export default defineConfig({
           include: ["packages/**/src/**/*.browser.spec.{ts,tsx}"],
           name: { label: "jsdom", color: "cyan" },
           environment: "jsdom",
-          // jsdom's Storage is dropped by vitest's global population when the
-          // host Node exposes a `localStorage` global (Node >= 25). Restore a
-          // working `window.localStorage` / `window.sessionStorage`.
-          setupFiles: ["./vitest.setup.webstorage.ts"],
+          // Node >= 25 ships a native Web Storage global. Vitest's jsdom
+          // environment refuses to overwrite globals that already exist, so
+          // the native (unbacked) `localStorage` shadows jsdom's real
+          // `Storage` and `window.localStorage.setItem` ends up undefined.
+          // Turning the Node built-in off in the test workers lets jsdom
+          // install its own spec-compliant implementation.
+          execArgv: ["--no-experimental-webstorage"],
         },
         resolve: {
           conditions: ["browser", "module", "import", "default"],
