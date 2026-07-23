@@ -133,6 +133,12 @@ export abstract class CacheProvider {
       }
     }
 
+    // A wildcard that matched nothing must be a no-op: falling through to
+    // `del(name)` with zero keys would wipe the entire container.
+    if (keys.length > 0 && keysToDelete.length === 0) {
+      return;
+    }
+
     await this.del(name, ...keysToDelete);
   }
 
