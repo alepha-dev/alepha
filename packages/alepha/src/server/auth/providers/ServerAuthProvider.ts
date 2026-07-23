@@ -50,7 +50,9 @@ export class ServerAuthProvider {
    * Prevents open redirect attacks by rejecting any other absolute URL.
    */
   protected validateRedirectUri(uri: string): string {
-    if (uri.startsWith("/") && !uri.startsWith("//")) {
+    // Reject backslashes: browsers normalize `/\evil.com` to `//evil.com`,
+    // turning a "relative" path into a protocol-relative open redirect.
+    if (uri.startsWith("/") && !uri.startsWith("//") && !uri.includes("\\")) {
       return uri;
     }
     const parent = this.alepha.env.COOKIE_PARENT_DOMAIN;
