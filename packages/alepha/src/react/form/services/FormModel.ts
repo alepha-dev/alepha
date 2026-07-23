@@ -549,14 +549,17 @@ export class FormModel<T extends TObject> {
     }
 
     if (z.schema.isString(schema)) {
-      if (z.schema.format(schema) === "date") {
-        return new Date(input).toISOString().slice(0, 10); // For date input
-      }
-      if (z.schema.format(schema) === "time") {
-        return new Date(`1970-01-01T${input}`).toISOString().slice(11, 16); // For time input
-      }
-      if (z.schema.format(schema) === "date-time") {
-        return new Date(input).toISOString(); // For datetime-local input
+      const format = z.schema.format(schema);
+      if (format === "date" || format === "time" || format === "date-time") {
+        // A cleared native date/time input emits "" — treat it (and any
+        // unparseable value) as unset instead of throwing on toISOString().
+        if (input === "") return undefined;
+        const date =
+          format === "time" ? new Date(`1970-01-01T${input}`) : new Date(input);
+        if (Number.isNaN(date.getTime())) return undefined;
+        if (format === "date") return date.toISOString().slice(0, 10); // For date input
+        if (format === "time") return date.toISOString().slice(11, 16); // For time input
+        return date.toISOString(); // For datetime-local input
       }
       return String(input);
     }
