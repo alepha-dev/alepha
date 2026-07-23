@@ -42,8 +42,11 @@ export class RealmController {
           realmName,
         });
 
+      // Never leak the privileged-account allowlist to anonymous callers.
+      const { adminEmails, adminUsernames, ...publicSettings } = settings;
+
       return {
-        settings,
+        settings: publicSettings,
         realmName,
         authenticationMethods,
         captchaSiteKey: settings.captchaRequired
