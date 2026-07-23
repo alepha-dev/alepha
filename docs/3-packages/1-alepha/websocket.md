@@ -25,12 +25,14 @@ Real-time bidirectional communication.
 ### Primitives
 
 - [`$channel`](/docs/reference-primitives-$channel) — Defines a WebSocket channel with specified client and server message schemas.
+- [`$room`](/docs/reference-primitives-$room) — Defines a **stateful** WebSocket room — the home for an authoritative,
 - [`$websocket`](/docs/reference-primitives-$websocket) — Defines a WebSocket server endpoint for a specific channel.
 
 ### Providers
 
 - [`AlephaWebSocketDurableObject`](/docs/reference-providers-alephawebsocketdurableobject) — Durable Object that hosts one room's WebSocket connections on Cloudflare.
 - [`CloudflareDurableObjectWebSocketServerProvider`](/docs/reference-providers-cloudflaredurableobjectwebsocketserverprovider) — WebSocket server provider backed by Cloudflare Durable Objects.
+- [`RoomEngine`](/docs/reference-providers-roomengine) — Runtime-neutral heart of a stateful room: it owns the in-memory state, the
 - [`WebSocketRoom`](/docs/reference-providers-websocketroom) — All the logic for hosting one room's hibernatable WebSockets on Cloudflare.
 
 ### Environment Variables
