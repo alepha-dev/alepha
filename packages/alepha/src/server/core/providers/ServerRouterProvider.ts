@@ -259,7 +259,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     timing.beginTiming("runHandler");
     try {
       const result = await route.handler.run(request);
-      if (result) {
+      if (result !== undefined) {
         reply.body = result;
       }
     } finally {
