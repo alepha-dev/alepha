@@ -53,7 +53,8 @@ export class WebSocketChannelConnection<
   protected readonly log = $logger();
   protected ws?: WebSocket;
   protected reconnectAttempts = 0;
-  protected reconnectTimer?: number;
+  protected reconnectTimer?: ReturnType<typeof setTimeout>;
+  protected manuallyClosed = false;
   protected static readonly MAX_QUEUE_SIZE = 1000;
   protected messageQueue: Array<{ roomId: string; message: Static<TServer> }> =
     [];
@@ -196,6 +197,8 @@ export class WebSocketChannelConnection<
     this.isConnecting = true;
     this.isError = false;
     this.error = undefined;
+    // An explicit connect() supersedes any prior intentional disconnect.
+    this.manuallyClosed = false;
 
     const url = this.buildUrl();
     this.log.info("Connecting to WebSocket server", { url });
@@ -267,8 +270,9 @@ export class WebSocketChannelConnection<
             callback();
           }
 
-          // Attempt reconnection
-          if (this.options.autoReconnect !== false) {
+          // Attempt reconnection — but never after an intentional disconnect(),
+          // which would leak an ownerless zombie connection.
+          if (!this.manuallyClosed && this.options.autoReconnect !== false) {
             this.scheduleReconnect();
           }
         };
@@ -421,7 +425,7 @@ export class WebSocketChannelConnection<
       intervalMs: reconnectInterval,
     });
 
-    this.reconnectTimer = window.setTimeout(() => {
+    this.reconnectTimer = setTimeout(() => {
       this.log.info("Reconnecting...", {
         attempt: this.reconnectAttempts,
         maxAttempts,
@@ -440,6 +444,8 @@ export class WebSocketChannelConnection<
       hasTimer: !!this.reconnectTimer,
       hasConnection: !!this.ws,
     });
+
+    this.manuallyClosed = true;
 
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
