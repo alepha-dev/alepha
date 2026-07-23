@@ -75,8 +75,12 @@ export class NodeShellProvider implements ShellProvider {
         });
 
     return new Promise<string>((resolve, reject) => {
-      proc.on("exit", (code) => {
-        if (code === 0 || code === null) {
+      proc.on("exit", (code, signal) => {
+        // `code` is null when the child was killed by a signal — that is a
+        // failure (SIGKILL, SIGSEGV, OOM), not a success.
+        if (signal != null) {
+          reject(new AlephaError(`Command killed by signal ${signal}`));
+        } else if (code === 0 || code === null) {
           resolve("");
         } else {
           reject(new AlephaError(`Command exited with code ${code}`));
