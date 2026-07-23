@@ -95,6 +95,12 @@ export class ServerProxyProvider {
 
       request.reply.status = response.status;
       request.reply.headers = Object.fromEntries(response.headers.entries());
+      // Header iteration yields one entry per `set-cookie`, so fromEntries
+      // keeps only the last cookie — restore the full list as an array.
+      const setCookies = response.headers.getSetCookie?.() ?? [];
+      if (setCookies.length > 0) {
+        request.reply.headers["set-cookie"] = setCookies;
+      }
       request.reply.body = response.body;
 
       this.log.debug("Received response", {
