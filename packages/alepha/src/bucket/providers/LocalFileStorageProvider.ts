@@ -202,6 +202,11 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   }
 
   protected path(bucket: string, fileId = ""): string {
+    // File ids are opaque keys on S3/R2 but filesystem paths here — reject
+    // separators and dot-dot so a caller-supplied id cannot escape the root.
+    if (/[/\\]/.test(fileId) || fileId.includes("..")) {
+      throw new AlephaError(`Invalid file id: ${fileId}`);
+    }
     // Per-tenant directory when a tenant is active, mirroring R2/S3 isolation.
     const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
     return tenantId
