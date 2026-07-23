@@ -282,7 +282,7 @@ export class HttpClient {
       return await response.text();
     }
 
-    if (response.headers.get("Content-Type") === "application/json") {
+    if (response.headers.get("Content-Type")?.startsWith("application/json")) {
       const json = await response.json();
 
       if (response.status >= 400) {
