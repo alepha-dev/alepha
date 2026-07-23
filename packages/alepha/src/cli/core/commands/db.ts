@@ -129,7 +129,7 @@ export class DbCommand {
         }
         this.log.info("");
         this.log.info(
-          "Please, run 'alepha db migrations generate' to update the migration files.",
+          "Please, run 'alepha db migrations create' to update the migration files.",
         );
         this.log.info("");
 
