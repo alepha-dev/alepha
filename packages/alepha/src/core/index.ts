@@ -129,7 +129,8 @@ export const run = (
             try {
               await alepha.stop();
               console.log(" ");
-              process.exit(0);
+              // A crash must not report success to orchestrators/CI.
+              process.exit(trap === "uncaughtException" ? 1 : 0);
             } catch (error) {
               alepha.log?.error("Alepha failed to stop", error);
               process.exit(1);
