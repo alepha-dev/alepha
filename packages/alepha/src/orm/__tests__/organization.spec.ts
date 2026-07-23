@@ -15,6 +15,7 @@ import {
   testStrictFailsClosedWithoutTenant,
   testStrictHidesGlobalRows,
   testStrictRefusesInsertWithoutTenant,
+  testUpsertRefusesCrossTenant,
 } from "./organization-tests.ts";
 
 describe("organization", () => {
@@ -94,6 +95,15 @@ describe("organization", () => {
   });
   it("org filter on updateMany (postgres)", async () => {
     await testOrgFilterOnUpdateOne(Alepha.create().with(AlephaOrmPostgres));
+  });
+
+  it("upsert refuses to overwrite another tenant's row (sqlite)", async () => {
+    await testUpsertRefusesCrossTenant(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("upsert refuses to overwrite another tenant's row (postgres)", async () => {
+    await testUpsertRefusesCrossTenant(Alepha.create().with(AlephaOrmPostgres));
   });
 
   it("org filter on delete (sqlite)", async () => {

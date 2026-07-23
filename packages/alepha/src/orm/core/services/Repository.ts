@@ -825,15 +825,40 @@ export abstract class Repository<T extends TObject> {
 
     //setData = this.cast(setData, false) as any;
 
+    // Scope the conflict-UPDATE to the current tenant and non-deleted rows so a
+    // conflict on a tenant-agnostic unique key (e.g. `email`) cannot silently
+    // overwrite — or resurrect — another organization's row. Only entities that
+    // are actually org- or soft-delete-scoped pay for this; plain entities keep
+    // the original statement byte-for-byte.
+    const setWhere =
+      this.organizationField() || this.deletedAt()
+        ? this.toSQL(
+            this.withOrganization(
+              this.withDeletedAt({} as PgQueryWhere<T>, opts),
+            ),
+          )
+        : undefined;
+
     try {
       const entity = await this.rawInsert(opts)
         .values(this.cast(data ?? {}, true))
         .onConflictDoUpdate({
           target: targetColumns,
           set: setData,
+          ...(setWhere ? { setWhere } : {}),
         })
         .returning(this.table)
-        .then(([it]) => this.clean(it, this.entity.schema));
+        .then(([it]) => {
+          if (!it) {
+            // The conflicting row is outside the current tenant/soft-delete
+            // scope, so the guarded UPDATE matched nothing and no row was
+            // inserted. Fail loudly rather than cleaning `undefined`.
+            throw new AlephaError(
+              `Upsert on '${this.tableName}' conflicted with a row outside the current tenant (or an already-deleted row); refusing to overwrite it.`,
+            );
+          }
+          return this.clean(it, this.entity.schema);
+        });
 
       this.dbCache
         .invalidateTable(this.tableName)

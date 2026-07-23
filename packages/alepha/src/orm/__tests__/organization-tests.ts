@@ -53,6 +53,29 @@ class StrictApp {
   seed = $repository(strictSeedEntity);
 }
 
+// Org-scoped entity whose unique key (`code`) is tenant-agnostic — the exact
+// shape where an unscoped upsert could overwrite another tenant's row.
+const upsertEntity = $entity({
+  name: "test_org_upsert_entity",
+  schema: z.object({
+    id: db.primaryKey(),
+    organization: db.organization(),
+    code: z.text(),
+    name: z.text().optional(),
+  }),
+  indexes: [{ column: "code", unique: true }],
+});
+
+class UpsertApp {
+  repository = $repository(upsertEntity);
+}
+
+const setupUpsert = async (alepha: Alepha) => {
+  const app = alepha.inject(UpsertApp);
+  await alepha.start();
+  return { repository: app.repository, alepha };
+};
+
 const setupStrict = async (alepha: Alepha) => {
   const app = alepha.inject(StrictApp);
   await alepha.start();
@@ -277,6 +300,41 @@ export const testStrictRefusesInsertWithoutTenant = async (alepha: Alepha) => {
   await expect(repository.create({ name: "orphan" })).rejects.toThrow(
     AlephaError,
   );
+};
+
+export const testUpsertRefusesCrossTenant = async (alepha: Alepha) => {
+  const { repository, alepha: app } = await setupUpsert(alepha);
+
+  // org-a owns the row keyed by code "SHARED".
+  app.store.set(currentUserAtom, {
+    id: "user-a",
+    organization: "a0000000-0000-0000-0000-000000000001",
+  });
+  await repository.upsert(
+    { code: "SHARED", name: "owned-by-a" },
+    { target: ["code"] },
+  );
+
+  // org-b upserts the SAME (tenant-agnostic) unique key. The conflict-UPDATE is
+  // scoped to the caller's tenant, so it must be refused rather than silently
+  // overwriting org-a's row.
+  app.store.set(currentUserAtom, {
+    id: "user-b",
+    organization: "b0000000-0000-0000-0000-000000000002",
+  });
+  await expect(
+    repository.upsert(
+      { code: "SHARED", name: "hijacked-by-b" },
+      { target: ["code"] },
+    ),
+  ).rejects.toThrow(AlephaError);
+
+  // org-a's row is intact.
+  app.store.set(currentUserAtom, { id: "master" });
+  const rows = await repository.findMany();
+  expect(rows).toHaveLength(1);
+  expect(rows[0].name).toEqual("owned-by-a");
+  expect(rows[0].organization).toEqual("a0000000-0000-0000-0000-000000000001");
 };
 
 export const testOrgFilterOnDelete = async (alepha: Alepha) => {
