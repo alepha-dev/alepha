@@ -690,8 +690,11 @@ export class SessionService {
     });
 
     if (existing) {
-      // Refuse auto-link if the OAuth provider explicitly says email is not verified
-      if (profile.email_verified === false) {
+      // Auto-linking by email requires positive proof of ownership: a provider
+      // that omits `email_verified` has NOT asserted the email is verified, and
+      // linking on it would let an attacker who registered the victim's email
+      // at that provider take over the local account.
+      if (profile.email_verified !== true) {
         this.log.warn(
           "OAuth2 profile email not verified by provider, refusing auto-link",
           { provider, email: profile.email, userId: existing.id },

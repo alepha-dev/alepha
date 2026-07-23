@@ -823,7 +823,7 @@ describe("alepha/api/users - SessionService.link", () => {
     ).rejects.toThrowError(BadRequestError);
   });
 
-  it("should allow auto-link when email_verified is true or undefined", async ({
+  it("should allow auto-link when email_verified is true", async ({
     expect,
   }) => {
     const { sessionService, userService } = await setup();
@@ -842,6 +842,26 @@ describe("alepha/api/users - SessionService.link", () => {
     });
 
     expect(result.id).toBe(user.id);
+  });
+
+  it("should refuse auto-link when email_verified is absent (no positive proof)", async ({
+    expect,
+  }) => {
+    const { sessionService, userService } = await setup();
+
+    await userService.users().create({
+      username: "unprovenuser",
+      email: "unproven@example.com",
+      roles: ["user"],
+    });
+
+    await expect(
+      sessionService.link("google", {
+        sub: "google-unproven",
+        email: "unproven@example.com",
+        name: "Unproven User",
+      }),
+    ).rejects.toThrowError(BadRequestError);
   });
 
   it("should use defaultRoles from realm settings for new OAuth users", async ({
