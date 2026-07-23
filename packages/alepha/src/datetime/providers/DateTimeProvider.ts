@@ -478,6 +478,10 @@ export class DateTimeProvider {
     clearInterval(interval.timer);
     interval.duration = 0;
     interval.timer = null;
+    const index = this.intervals.indexOf(interval);
+    if (index !== -1) {
+      this.intervals.splice(index, 1);
+    }
   }
 
   /**
@@ -522,6 +526,8 @@ export class DateTimeProvider {
 
       const spent = now - timeout.now;
       timeout.duration = timeout.duration - spent - ms;
+      // Re-baseline so the next travel() doesn't count this elapsed time again.
+      timeout.now = now + ms;
 
       if (timeout.duration <= 0) {
         const index = this.timeouts.indexOf(timeout);
