@@ -19,7 +19,13 @@ export class JsonFormatterProvider extends LogFormatterProvider {
       json.data = entry.data;
     }
 
-    return JSON.stringify(json);
+    try {
+      return JSON.stringify(json);
+    } catch {
+      // Circular or BigInt-bearing data must never crash the logging caller.
+      json.data = "[Unserializable Object]";
+      return JSON.stringify(json);
+    }
   }
 
   public formatJsonError(error: Error): object {
