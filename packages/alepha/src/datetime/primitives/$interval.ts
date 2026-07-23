@@ -35,7 +35,13 @@ export class IntervalPrimitive extends Primitive<IntervalPrimitiveOptions> {
 
   protected onInit() {
     this.dateTimeProvider.createInterval(async () => {
-      await this.options.handler();
+      try {
+        await this.options.handler();
+      } catch (error) {
+        // A throwing tick must not become an unhandled rejection that kills
+        // the process — log it and let the next tick run.
+        this.alepha.log?.error("Interval handler failed", error);
+      }
       this.called += 1;
     }, this.options.duration);
   }
