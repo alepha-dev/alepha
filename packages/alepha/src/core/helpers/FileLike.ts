@@ -87,7 +87,7 @@ export const isFileLike = (value: any): value is FileLike => {
     typeof value.name === "string" &&
     typeof value.type === "string" &&
     typeof value.size === "number" &&
-    typeof value.stream.bind(value) === "function"
+    typeof value.stream === "function"
   );
 };
 
