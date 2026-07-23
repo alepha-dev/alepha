@@ -1,6 +1,11 @@
 import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
-import { $action, NotFoundError, okSchema } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  NotFoundError,
+  okSchema,
+} from "alepha/server";
 import { cancelSubscriptionSchema } from "../schemas/cancelSubscriptionSchema.ts";
 import { changePlanSchema } from "../schemas/changePlanSchema.ts";
 import { createSubscriptionSchema } from "../schemas/createSubscriptionSchema.ts";
@@ -16,6 +21,21 @@ export class SubscriptionController {
   protected readonly group = "subscriptions";
   protected readonly service = $inject(SubscriptionService);
   protected readonly config = $inject(SubscriptionConfig);
+
+  /**
+   * Subscriptions are organization-scoped. A user without an organization must
+   * never reach the service layer: `organizationId: { eq: undefined }` is
+   * dropped from the WHERE clause by the query builder, which would match an
+   * arbitrary organization's subscription.
+   */
+  protected requireOrganization(user: { organization?: string }): string {
+    if (!user.organization) {
+      throw new BadRequestError(
+        "An organization is required to manage subscriptions",
+      );
+    }
+    return user.organization;
+  }
 
   /**
    * List available subscription plans with pricing.
@@ -56,7 +76,9 @@ export class SubscriptionController {
       response: subscriptionResourceSchema,
     },
     handler: async ({ user }) => {
-      const sub = await this.service.getByOrganization(user.organization!);
+      const sub = await this.service.getByOrganization(
+        this.requireOrganization(user),
+      );
       if (!sub)
         throw new NotFoundError("No subscription found for your organization");
       return sub;
@@ -79,9 +101,14 @@ export class SubscriptionController {
     handler: ({ body, user }) =>
       // NB: no `skipTrial` — the public subscribe path always honors the
       // plan's trial. Comped/paid activations go through the service directly.
-      this.service.subscribe(user.organization!, body.planId, body.interval, {
-        metadata: body.metadata,
-      }),
+      this.service.subscribe(
+        this.requireOrganization(user),
+        body.planId,
+        body.interval,
+        {
+          metadata: body.metadata,
+        },
+      ),
   });
 
   /**
@@ -98,7 +125,9 @@ export class SubscriptionController {
       response: subscriptionResourceSchema,
     },
     handler: async ({ body, user }) => {
-      const sub = await this.service.getByOrganization(user.organization!);
+      const sub = await this.service.getByOrganization(
+        this.requireOrganization(user),
+      );
       if (!sub)
         throw new NotFoundError("No subscription found for your organization");
       await this.service.changePlan(sub.id, body.planId, body.interval, {
@@ -122,7 +151,9 @@ export class SubscriptionController {
       response: okSchema,
     },
     handler: async ({ body, user }) => {
-      const sub = await this.service.getByOrganization(user.organization!);
+      const sub = await this.service.getByOrganization(
+        this.requireOrganization(user),
+      );
       if (!sub)
         throw new NotFoundError("No subscription found for your organization");
       await this.service.cancel(sub.id, {
@@ -146,7 +177,9 @@ export class SubscriptionController {
       response: okSchema,
     },
     handler: async ({ user }) => {
-      const sub = await this.service.getByOrganization(user.organization!);
+      const sub = await this.service.getByOrganization(
+        this.requireOrganization(user),
+      );
       if (!sub)
         throw new NotFoundError("No subscription found for your organization");
       await this.service.resume(sub.id);
@@ -166,7 +199,9 @@ export class SubscriptionController {
       response: z.array(subscriptionEventResourceSchema),
     },
     handler: async ({ user }) => {
-      const sub = await this.service.getByOrganization(user.organization!);
+      const sub = await this.service.getByOrganization(
+        this.requireOrganization(user),
+      );
       if (!sub)
         throw new NotFoundError("No subscription found for your organization");
       return this.service.getHistory(sub.id);
@@ -185,6 +220,7 @@ export class SubscriptionController {
     schema: {
       response: entitlementsSchema,
     },
-    handler: ({ user }) => this.service.getEntitlements(user.organization!),
+    handler: ({ user }) =>
+      this.service.getEntitlements(this.requireOrganization(user)),
   });
 }
