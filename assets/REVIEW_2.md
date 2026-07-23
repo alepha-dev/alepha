@@ -84,7 +84,17 @@ These patterns each explain many individual findings — fixing them at the root
 | P2 | `ask.permission` accepts `N`/`No`/`YES` etc. | `Asker.ts` |
 | P1 | Cleared/invalid date, time, and datetime inputs return `undefined` instead of throwing `RangeError` | `FormModel.ts` |
 
-Deliberately **not** fixed in this pass (need design decisions or wider changes): the repository-level `eq: undefined` hardening (root cause of the P0 — needs a QueryManager contract decision), the SQLite async-transaction family, the registration rate-limit race (needs TTL support on `incr()` across all cache providers first — today `incr` never expires, so switching would permanently lock IPs out), `checkPermission` realm threading, and everything in the payments/subscriptions billing loop.
+### Second fix pass — 2026-07-24
+
+Three more findings fixed and marked **✅ FIXED** in the body (verified with `yarn v` — full pipeline including e2e green):
+
+| Sev | Fix | Where |
+|-----|-----|-------|
+| P2 | `upsert()` conflict-UPDATE is now scoped to the caller's tenant + non-deleted rows via `setWhere`; a conflict on a tenant-agnostic unique key fails loudly instead of overwriting/resurrecting another org's row. Only org/soft-delete entities pay for it — plain entities keep the exact original statement. New cross-tenant regression test (both dialects). | `Repository.ts`, `organization-tests.ts` |
+| P2 | `/realms/config` (unauthenticated) no longer returns `adminEmails` / `adminUsernames` — the response schema omits them (`publicRealmSettingsSchema`) and the handler strips them. New schema test. | `realmConfigSchema.ts`, `RealmController.ts` |
+| P1 | HttpClient GET dedup + server-side ETag cache are now identity-scoped (hash of authorization/cookie), so the shared singleton can't hand one user another user's cached/in-flight response. Anonymous requests scope to "" → browser behaviour unchanged. | `HttpClient.ts` |
+
+Deliberately **not** fixed in these passes (need design decisions or wider changes): the repository-level `eq: undefined` hardening (root cause of the P0 — needs a QueryManager contract decision), the SQLite async-transaction family, the registration rate-limit race (needs TTL support on `incr()` across all cache providers first — today `incr` never expires, so switching would permanently lock IPs out), `checkPermission` realm threading, and everything in the payments/subscriptions billing loop.
 
 Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`main` @ 6c7ec9400); fixed findings' line numbers may have shifted slightly.
 
@@ -264,7 +274,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/server/core/providers/ServerRouterProvider.ts:261-264 (with 314-322)
 - **Detail**: `const result = await route.handler.run(request); if (result) { reply.body = result; }` drops falsy results. For `response: z.boolean()` (text kind), `serializeResponse` does `String(undefined)` → 200 with body `"undefined"`; JSON kinds encode undefined → 500. Fix: `if (result !== undefined)`.
 
-### [BUG] HttpClient GET dedup keyed by URL only — cross-user response sharing on the server
+### ✅ FIXED — [BUG] HttpClient GET dedup keyed by URL only — cross-user response sharing on the server
 - **Severity**: P1
 - **File**: packages/alepha/src/server/core/services/HttpClient.ts:121-137; links/providers/LinkProvider.ts:336-339
 - **Detail**: In-flight GETs dedup with `key = JSON.stringify({url, method})` — headers ignored — on the singleton HttpClient. `LinkProvider.followRemote` forwards the current request's `authorization` header, so two concurrent server-side calls to the same remote-action URL for different users coalesce: user B receives user A's response. Same key issue affects the server-side etag cache (line 95). Fix: include auth-relevant headers (or ALS context id) in the key, or disable dedup when authorization is present server-side.
@@ -449,7 +459,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/orm/core/providers/drivers/NodeSqliteProvider.ts:134
 - **Detail**: The tx marker is ALS-scoped per request, but BEGIN executes on the single shared `DatabaseSync` connection. While request A awaits inside its `transactional()` body, request B issues its own BEGIN → "cannot start a transaction within a transaction"; worse, B's COMMIT/ROLLBACK can end A's half-finished transaction. Any server under concurrent load using the default sqlite driver with `$transactional` can hit this. Fix: per-connection mutex/queue. Same hazard in the base class when `transactional()` runs outside ALS context (marker goes to the global store).
 
-### [BUG] `upsert()` conflict-update path is not organization-scoped (cross-tenant write) and ignores soft-delete
+### ✅ FIXED — [BUG] `upsert()` conflict-update path is not organization-scoped (cross-tenant write) and ignores soft-delete
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/core/services/Repository.ts:829
 - **Detail**: `upsert` stamps the org on insert values, but `onConflictDoUpdate({ target, set })` has no `where` — if the conflict target is a tenant-agnostic unique key (e.g. email), a tenant's upsert overwrites another tenant's row. Also updates soft-deleted rows, silently "resurrecting" data. Fix: pass `setWhere`/`targetWhere` built from `withOrganization(withDeletedAt({}))`.
@@ -987,7 +997,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/keys/services/ApiKeyService.ts:258-306; packages/alepha/src/api/users/services/UserService.ts:485-513
 - **Detail**: `validate()` resolves a token to `{ id: apiKey.userId, roles: apiKey.roles }` purely from the `api_keys` row — it never loads the user, so it never checks `user.enabled`. Meanwhile `UserService.deleteUser` cleans up sessions and identities but not API keys (cross-module by design), and `updateUser({enabled:false})` revokes nothing. Result: a disabled — or fully deleted — user keeps authenticating (with their original roles, incl. `admin`) via any outstanding API key until the key's own `expiresAt`. `SessionService.refreshSession` correctly rejects disabled users (line 573); the API-key path has no equivalent guard. Fix: revoke a user's API keys on disable/delete (e.g. a `UserJobs`/audit hook), and/or have `validate()` verify the owner is still enabled.
 
-### [BUG] Public realm-config endpoint leaks `adminEmails` / `adminUsernames`
+### ✅ FIXED — [BUG] Public realm-config endpoint leaks `adminEmails` / `adminUsernames`
 - **Severity**: P2
 - **File**: packages/alepha/src/api/users/controllers/RealmController.ts:24-54; packages/alepha/src/api/users/schemas/realmConfigSchema.ts:5-15
 - **Detail**: `getRealmConfig` is unauthenticated (no `$secure`) and returns `settings: realmAuthSettingsAtom.schema` verbatim. That schema includes `adminEmails` and `adminUsernames` (the exact list of accounts auto-promoted to admin), plus the full password policy. Any anonymous caller can `GET /realms/config` and harvest the privileged-account list to target. Fix: return a public-safe projection (drop `adminEmails`, `adminUsernames`, and anything else not needed to render the login/registration UI).
