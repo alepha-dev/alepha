@@ -78,7 +78,9 @@ export class Asker {
 
     askFn.permission = async (question: string) => {
       const response = await this.prompt(`${question} [Y/n]`, {
-        schema: z.enum(["Y", "y", "n", "no", "yes"]).default("Y"),
+        schema: z
+          .enum(["Y", "y", "N", "n", "no", "No", "NO", "yes", "Yes", "YES"])
+          .default("Y"),
       });
       return response.charAt(0).toLowerCase() === "y";
     };
