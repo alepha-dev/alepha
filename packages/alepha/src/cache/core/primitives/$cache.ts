@@ -385,7 +385,10 @@ export class CachePrimitive<
     if (
       !this.alepha.isStarted() ||
       this.options.disabled ||
-      !this.settings.enabled
+      !this.settings.enabled ||
+      // `undefined` is the miss sentinel: storing it would serialize to an
+      // empty payload that throws on every subsequent read of the key.
+      value === undefined
     ) {
       return;
     }
