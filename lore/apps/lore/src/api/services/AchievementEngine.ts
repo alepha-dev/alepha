@@ -28,8 +28,6 @@ export interface AchievementContext {
   character: Character;
   /** Zone keys configured on the campaign at evaluation time. */
   campaignZones: string[];
-  /** Total number of characters in the campaign (for first_recruit-style preds). */
-  campaignCharacterCount: number;
 }
 
 export interface AchievementDefinition {

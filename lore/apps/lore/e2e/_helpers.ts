@@ -95,54 +95,35 @@ export const apiPost = async <T>(
 };
 
 /**
- * Unlock a Shop feature for the campaign from within an e2e flow. Earns
- * the gold via a single high-payout quest (difficulty 3, priority high →
- * 320 silver = 3g), then POSTs the buy. Price=1g so 3g covers any
- * starter feature with margin to spare.
+ * Turn a campaign feature toggle on (or off) from within an e2e flow.
  *
- * The owner-character path is used because the e2e session is the
- * campaign creator; for member-only flows the same pattern works once
- * the caller has accepted the campaign.
+ * Replaces the old `unlockShopFeature`, which had to farm gold from a
+ * throwaway quest and POST a purchase. The gold Shop is gone — the
+ * per-quest modules (`questNote`, `questReminder`, `questChrono`) are
+ * plain owner-controlled switches now, so the e2e just flips the flag.
  */
-export const unlockShopFeature = async (
+export const setCampaignFeature = async (
   page: Page,
   campaignId: number,
   featureKey: string,
+  value = true,
 ): Promise<void> => {
-  const seed = await apiPost<{ id: number }>(page, "createQuest", {
-    campaignId,
-    title: `Shop warmup ${Date.now()}`,
-    description: "Auto-completed by e2e to fund a Shop purchase.",
-    zone: "Shop",
-    priority: "high",
-    difficulty: 3,
-    objectives: [],
-    attachments: [],
-  });
-  const acceptUrl = `/api/acceptQuest/${seed.id}`;
-  const completeUrl = `/api/completeQuest/${seed.id}`;
+  // Action routes are name-derived: `/api/<actionName>/<param>` (same
+  // shape as the acceptQuest / completeQuest URLs used above).
+  const url = `/api/updateCampaignById/${campaignId}`;
   await page.evaluate(
-    async ({ acceptUrl, completeUrl }) => {
-      const a = await fetch(acceptUrl, {
-        method: "GET",
-        credentials: "include",
-      });
-      if (!a.ok) throw new Error(`accept ${a.status} ${await a.text()}`);
-      const c = await fetch(completeUrl, {
+    async ({ url, featureKey, value }) => {
+      const r = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({}),
+        body: JSON.stringify({ features: { [featureKey]: value } }),
       });
-      if (!c.ok) throw new Error(`complete ${c.status} ${await c.text()}`);
+      if (!r.ok)
+        throw new Error(`setCampaignFeature ${r.status} ${await r.text()}`);
     },
-    { acceptUrl, completeUrl },
+    { url, featureKey, value },
   );
-  const buyUrl = `/api/campaigns/${campaignId}/features/${featureKey}/buy`;
-  await page.evaluate(async (url) => {
-    const r = await fetch(url, { method: "POST", credentials: "include" });
-    if (!r.ok) throw new Error(`buy ${r.status} ${await r.text()}`);
-  }, buyUrl);
 };
 
 /**

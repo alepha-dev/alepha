@@ -10,7 +10,6 @@ import { chapters } from "../entities/chapters.ts";
 import { quests } from "../entities/quests.ts";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { importResultSchema } from "../schemas/questImportRow.ts";
-import { FeaturePaywallService } from "../services/FeaturePaywallService.ts";
 import { QuestCsvFormatter } from "../services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "../services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "../services/QuestImportFormatProvider.ts";
@@ -30,7 +29,6 @@ export class CampaignQuestPortabilityController {
   protected readonly formats = $inject(QuestImportFormatProvider);
   protected readonly realm = $inject(RealmProvider);
   protected readonly quest = $inject(QuestController);
-  protected readonly paywall = $inject(FeaturePaywallService);
 
   exportQuests = $action({
     use: [$secure()],
@@ -47,12 +45,6 @@ export class CampaignQuestPortabilityController {
         where: { id: { eq: params.id } },
       });
 
-      // Paywall TODO (#77 follow-up): gate on `csv_io` once the e2e/test
-      // setup grows a helper to sponsor features. Today the existing
-      // CSV specs assume the endpoint is free, so adding a hard gate
-      // breaks them without a way to unlock from outside the paywall
-      // controller. The FeatureRegistry entry exists; the wire is the
-      // only piece missing.
       const campaignQuests = await this.quests.findMany({
         where: { campaignId: { eq: params.id } },
         orderBy: "shortId",
@@ -151,8 +143,6 @@ export class CampaignQuestPortabilityController {
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.id, user);
 
-      // Paywall TODO (#77 follow-up): same as exportQuests — gate on
-      // `csv_io` once e2e setup can sponsor features.
       const text = await body.file.text();
       const rows = this.parser.parse(text);
       if (rows.length === 0) {

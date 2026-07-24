@@ -4,25 +4,17 @@ import {
 } from "@alepha/ui/components/app-shell/app-shell";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import {
-  Link,
-  NestedView,
-  useRouter,
-  useRouterState,
-} from "alepha/react/router";
+import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import {
   BarChart3,
   BookMarked,
   BookOpen,
   Bug,
-  ChevronRight,
   Cog,
   Grid3x2,
   History,
   Inbox,
   KanbanSquare,
-  Lock,
-  ShoppingBag,
   Users,
 } from "lucide-react";
 import {
@@ -70,7 +62,6 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   campaignInsights: "campaign.menu.insights",
   campaignMyCharacter: "campaign.menu.myCharacter",
   campaignRoster: "campaign.menu.roster",
-  campaignShop: "campaign.menu.shop",
   campaignSettings: "campaign.menu.settings",
   campaignSettingsBanner: "campaign.menu.settings",
   campaignSettingsZones: "campaign.menu.settings",
@@ -170,34 +161,14 @@ const CampaignView = () => {
       active: name === "campaignChapters",
     });
   }
-  // Chronicles is a Shop feature. When not bought, the entry stays
-  // visible with its History icon on the left and the disabled
-  // treatment (dashed border + light bg + trailing Lock + cursor-not-
-  // allowed) drawn by the @alepha/ui app-shell when `disabled: true`.
-  // The hover dropdown explains why and links to the Shop.
-  const chroniclesUnlocked = (campaign.unlockedFeatures ?? []).includes(
-    "chronicles",
-  );
-  const shopHref = router.path("campaignShop", { params: { campaignId } });
   knowledgeItems.push({
     label: tr("campaign.menu.chronicles"),
     icon: History,
-    href: chroniclesUnlocked
-      ? router.path("campaignChronicles", { params: { campaignId } })
-      : shopHref,
-    active:
-      chroniclesUnlocked &&
-      (name === "campaignChronicles" || name.startsWith("chronicles")),
-    disabled: !chroniclesUnlocked,
-    tooltip: chroniclesUnlocked ? undefined : (
-      <LockedFeatureCard
-        bodyKey="campaign.menu.chronicles.locked.body"
-        shopHref={shopHref}
-      />
-    ),
+    href: router.path("campaignChronicles", { params: { campaignId } }),
+    active: name === "campaignChronicles" || name.startsWith("chronicles"),
   });
 
-  // Bottom strip — no header. Personal/meta entries: people, gold, config.
+  // Bottom strip — no header. Personal/meta entries: people, config.
   const personalItems: NavGroup["items"] = [];
   // Roster appears only when there's a party of 2+ characters. Solo
   // campaigns simply don't see the entry — no greyed-out item.
@@ -212,12 +183,6 @@ const CampaignView = () => {
   // Character Sheet entry intentionally not pushed here — the
   // CharacterSidebarCard mounted in the AppShell `sidebarFooter` is
   // the entry point to /character.
-  personalItems.push({
-    label: tr("campaign.menu.shop"),
-    icon: ShoppingBag,
-    href: shopHref,
-    active: name === "campaignShop",
-  });
   personalItems.push({
     label: tr("campaign.menu.settings"),
     icon: Cog,
@@ -322,36 +287,3 @@ const CampaignView = () => {
 };
 
 export default CampaignView;
-
-/**
- * Rich tooltip body for a paywalled nav entry. Rendered inside the
- * AppShell's HoverCard when a locked nav item is hovered. Title +
- * feature-specific body + Shop link.
- *
- * `bodyKey` is the i18n key for the feature-specific copy (e.g.
- * `campaign.menu.chronicles.locked.body`). Keeping it as a key
- * rather than a ReactNode keeps the i18n surface flat and easy to
- * translate.
- */
-const LockedFeatureCard = (props: { bodyKey: string; shopHref: string }) => {
-  const { tr } = useI18n<I18n, "en">();
-  return (
-    <div className="flex max-w-xs flex-col gap-2">
-      <div className="text-foreground flex items-center gap-1.5 text-sm font-semibold">
-        <Lock className="size-3.5" />
-        {tr("campaign.menu.locked.title" as never)}
-      </div>
-      <p className="text-muted-foreground text-xs leading-relaxed">
-        {tr(props.bodyKey as never)}
-      </p>
-      <Link
-        href={props.shopHref}
-        className="text-primary inline-flex items-center gap-1 text-xs font-medium hover:underline"
-      >
-        <ShoppingBag className="size-3" />
-        {tr("campaign.menu.locked.cta" as never)}
-        <ChevronRight className="size-3" />
-      </Link>
-    </div>
-  );
-};

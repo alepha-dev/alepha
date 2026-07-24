@@ -8,7 +8,6 @@ import { CampaignStatsController } from "./controllers/CampaignStatsController.t
 import { ChapterController } from "./controllers/ChapterController.ts";
 import { CharacterController } from "./controllers/CharacterController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
-import { FeaturePaywallController } from "./controllers/FeaturePaywallController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
 import { IdentityController } from "./controllers/IdentityController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
@@ -38,8 +37,6 @@ import { BlightIngestService } from "./services/BlightIngestService.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { CampaignLimits } from "./services/CampaignLimits.ts";
 import { CharacterInfo } from "./services/CharacterInfo.ts";
-import { FeaturePaywallService } from "./services/FeaturePaywallService.ts";
-import { FeatureRegistry } from "./services/FeatureRegistry.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { InvitationService } from "./services/InvitationService.ts";
@@ -64,8 +61,6 @@ export const LoreApi = $module({
     LoreFileAccessProvider,
     CharacterInfo,
     AchievementEngine,
-    FeatureRegistry,
-    FeaturePaywallService,
     ArchiveNameService,
     ArchiveDirectoryService,
     ArchiveBlobService,
@@ -114,7 +109,6 @@ export const LoreApi = $module({
     SigilIngestController,
     BlightController,
     InsightsController,
-    FeaturePaywallController,
     VersionController,
   ],
 });

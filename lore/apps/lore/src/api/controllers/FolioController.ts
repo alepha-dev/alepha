@@ -488,7 +488,6 @@ export class FolioController {
             {
               character,
               campaignZones: campaign.zones ?? [],
-              campaignCharacterCount: 0,
             },
           );
           if (granted.length > 0) {
@@ -596,6 +595,17 @@ export class FolioController {
         // reference. `searchText` is already blanked above.
         await this.linkService.syncLinks(updated, "");
       }
+      // Crossing the protection boundary invalidates every stored snapshot:
+      // they belong to the previous cryptographic domain. Purge BEFORE
+      // appending below, so the revision written for THIS edit (already in
+      // the new domain) survives. Going clear → protected this is the
+      // confidentiality fix — without it, encrypting a folio left every
+      // pre-encryption plaintext snapshot readable by any campaign member
+      // through `listHistory`.
+      if (isProtected !== existing.protected) {
+        await this.historyService.purgeRevisions(params.id);
+      }
+
       // Write a revision row when the change touched anything we record
       // (content / title / tags / summary). Pin-only or
       // parent-reparent-only updates skip the revision — they're not

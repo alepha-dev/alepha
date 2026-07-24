@@ -76,16 +76,6 @@ async function createTestCampaign(
     { body: { title: "Test Campaign" } },
     { user },
   );
-  // Pre-unlock the Chronicles feature (#74/#77) so the stats endpoint
-  // under test isn't blocked by the paywall — these specs assert the
-  // aggregation, not the gate. The paywall has its own coverage.
-  // biome-ignore lint/suspicious/noExplicitAny: ORM repo generic too strict
-  const campaignsRepo: any = (ctx.campaignController as any).campaigns;
-  const campaign = await campaignsRepo.getOne({
-    where: { id: { eq: response.data.id } },
-  });
-  campaign.unlockedFeatures = ["chronicles"];
-  await campaignsRepo.save(campaign);
   return { id: response.data.id, title: response.data.title };
 }
 

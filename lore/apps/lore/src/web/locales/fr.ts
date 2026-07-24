@@ -199,10 +199,6 @@ export default {
   "campaign.menu.myCharacter": "Fiche",
   "campaign.menu.roster": "Équipée",
   "campaign.menu.chronicles": "Chroniques",
-  "campaign.menu.locked.title": "Verrouillé",
-  "campaign.menu.locked.cta": "Ouvrir la Boutique",
-  "campaign.menu.chronicles.locked.body":
-    "Déverrouillez Chroniques pour voir les statistiques de campagne : quêtes terminées dans le temps, meilleurs contributeurs, répartition par zone.",
   "campaign.menu.folios": "Archive",
   "campaign.menu.settings": "Paramètres",
   "campaign.menu.group.inn": "Activité",
@@ -441,17 +437,13 @@ export default {
   "chronicles.party.idle.never": "jamais",
   "campaign.settings.quests.title": "Fonctionnalités des quêtes",
   "campaign.settings.quests.subtitle":
-    "Activez les fonctionnalités par-quête disponibles dans cette campagne. Reminder et Gating doivent d'abord être achetés dans la Boutique ; l'achat active le toggle, vous pouvez toujours le désactiver ici.",
-  "campaign.settings.quests.shopLink": "Acheter dans la Boutique.",
+    "Activez les fonctionnalités par-quête disponibles dans cette campagne.",
   "campaign.settings.quests.note.label": "Note de quête",
   "campaign.settings.quests.note.description":
     "Bloc-notes libre attaché à une quête, visible uniquement par l'assigné.",
   "campaign.settings.quests.reminder.label": "Rappel de quête",
   "campaign.settings.quests.reminder.description":
     "Rappels e-mail périodiques pour les quêtes acceptées.",
-  "campaign.settings.quests.gating.label": "Restriction par niveau",
-  "campaign.settings.quests.gating.description":
-    "Affiche les champs niveau recommandé / requis sur l'éditeur de quête et les applique à l'acceptation.",
   "campaign.settings.quests.chrono.label": "Chrono de quête",
   "campaign.settings.quests.chrono.description":
     "Chronomètre attaché à une quête — start/stop une session depuis la vue quête.",
@@ -586,23 +578,6 @@ export default {
   "zone.rename.name": "Nom de la zone",
   "zone.rename.submit": "Renommer",
 
-  "campaign.settings.debug.title": "Debug",
-  "campaign.settings.debug.shopReset.title":
-    "Réinitialiser les achats de la Boutique",
-  "campaign.settings.debug.shopReset.subtitle":
-    "Efface toutes les fonctionnalités achetées dans la Boutique. Les soldes des personnages restent intacts pour pouvoir racheter et retester les flux payants.",
-  "campaign.settings.debug.shopReset.button": "Réinitialiser",
-  "campaign.settings.debug.shopReset.success":
-    "Achats de la Boutique réinitialisés.",
-  "campaign.settings.debug.shopReset.error":
-    "Échec de la réinitialisation des achats.",
-  "campaign.settings.debug.shopReset.confirm.title":
-    "Réinitialiser les achats ?",
-  "campaign.settings.debug.shopReset.confirm.description":
-    "Cela efface les fonctionnalités débloquées et l'historique d'achat. L'or des personnages n'est PAS remboursé.",
-  "campaign.settings.debug.shopReset.confirm.cancel": "Annuler",
-  "campaign.settings.debug.shopReset.confirm.submit": "Réinitialiser",
-
   "character.sheet.level": "Niveau $1",
   "character.sheet.identity.title": "Identité",
   "character.sheet.identity.name": "Nom",
@@ -614,17 +589,6 @@ export default {
   "character.roster.empty": "Aucun personnage pour le moment.",
   "character.roster.sort.level": "Niveau",
   "character.roster.sort.joined": "Arrivée",
-
-  "campaign.menu.shop": "Marché",
-  "shop.title": "Boutique",
-  "shop.subtitle":
-    "Dépensez de l'or pour débloquer des fonctionnalités pour toute la campagne. Une fois débloquées, elles le restent.",
-  "shop.owned": "Acquis",
-  "shop.locked": "Verrouillée",
-  "shop.buy": "Acheter",
-  "shop.buy.success": "Fonctionnalité débloquée — profitez-en !",
-  "shop.boughtBy": "Acheté par le personnage $1 pour $2g le $3.",
-  "shop.yourBalance": "Votre solde : $1g.",
 
   "error.title": "Oups ! Quelque chose s'est mal passé.",
   "error.description":

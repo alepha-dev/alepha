@@ -3,7 +3,7 @@ import {
   apiPost,
   createCampaignViaWizard,
   registerAndVerify,
-  unlockShopFeature,
+  setCampaignFeature,
 } from "./_helpers.ts";
 
 /**
@@ -109,9 +109,9 @@ test.describe("Quest", () => {
     await registerAndVerify(page, email, password);
     const campaignId = await createCampaignViaWizard(page, campaignTitle);
 
-    // Quest Reminder is a Shop feature (1g). Earn gold + buy it before
+    // Reminders are an owner toggle, off by default — enable it before
     // exercising the reminder UI.
-    await unlockShopFeature(page, campaignId, "quest_reminder");
+    await setCampaignFeature(page, campaignId, "questReminder");
 
     const { shortId } = await apiPost<{
       id: number;

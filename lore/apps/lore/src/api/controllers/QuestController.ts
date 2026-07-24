@@ -29,7 +29,6 @@ import {
 } from "../schemas/questResourceSchema.ts";
 import { AchievementEngine } from "../services/AchievementEngine.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
-import { FeaturePaywallService } from "../services/FeaturePaywallService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService, sanitizeHtml } from "../services/QuestService.ts";
 
@@ -45,7 +44,6 @@ export class QuestController {
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
   achievements = $inject(AchievementEngine);
-  paywall = $inject(FeaturePaywallService);
   questService = $inject(QuestService);
 
   attachments = $bucket({
@@ -483,7 +481,7 @@ export class QuestController {
   });
 
   abandonQuest = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -520,7 +518,7 @@ export class QuestController {
   });
 
   acceptQuest = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -552,31 +550,6 @@ export class QuestController {
         if (predecessor && !predecessor.completedAt) {
           throw new BadRequestError(
             `Cannot accept quest: blocked by #${predecessor.shortId}`,
-          );
-        }
-      }
-
-      // Quest Gating (#74 + #77): when the campaign has sponsored
-      // `quest_gating`, requiredLevel is hard-enforced server-side. The
-      // schema fields are always present (added in #69) but only
-      // load-bearing when the unlock is purchased — pre-existing quests
-      // stay accept-able if no gating is set.
-      if (
-        quest.requiredLevel != null &&
-        this.paywall.isUnlocked(campaign.unlockedFeatures, "quest_gating")
-      ) {
-        const character = await this.characters.findOne({
-          where: {
-            campaignId: { eq: quest.campaignId },
-            userId: { eq: user.id },
-          },
-        });
-        const level = character
-          ? this.characterInfo.getLevelByXp(character.xp)
-          : 0;
-        if (level < quest.requiredLevel) {
-          throw new BadRequestError(
-            `Cannot accept quest: requires Lv.${quest.requiredLevel} (you are Lv.${level}).`,
           );
         }
       }
@@ -674,15 +647,12 @@ export class QuestController {
         );
       }
 
-      // Paywall: Quest Reminder is bought from the Shop. Disabling
-      // (interval=null) is always allowed so a locked campaign can
-      // still clear pre-existing reminders.
-      if (
-        body.interval != null &&
-        !this.paywall.isUnlocked(campaign.unlockedFeatures, "quest_reminder")
-      ) {
+      // Reminders are an owner-controlled module toggle. Disabling
+      // (interval=null) is always allowed so a campaign that turned the
+      // module off can still clear pre-existing reminders.
+      if (body.interval != null && !campaign.features?.questReminder) {
         throw new ForbiddenError(
-          "Quest Reminder is locked — buy it from the Shop.",
+          "Quest Reminder is disabled for this campaign.",
         );
       }
 
@@ -701,7 +671,11 @@ export class QuestController {
   });
 
   completeQuest = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    // Writes `quests` then `characters` (award + achievements). Without the
+    // transaction a failed character save leaves the quest closed and the
+    // reward silently dropped, and two concurrent completions both pass the
+    // `completedAt IS NULL` read and double-award.
+    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -717,6 +691,14 @@ export class QuestController {
       }),
       response: questResourceSchema.extend({
         character: characters.schema,
+        /**
+         * XP and money awarded by THIS completion. Distinct from
+         * `character.xp` / `character.balance`, which are lifetime
+         * accumulators — MCP `quest_complete` used to report the
+         * accumulators as the per-quest award.
+         */
+        xpEarned: z.integer(),
+        moneyEarned: z.integer(),
       }),
     },
     handler: async ({ params, body, user }) => {
@@ -779,7 +761,6 @@ export class QuestController {
         {
           character,
           campaignZones: campaign.zones ?? [],
-          campaignCharacterCount: 0, // not used by quest.completed predicates
         },
       );
       if (newAchievements.length > 0) {
@@ -794,6 +775,8 @@ export class QuestController {
       return {
         ...this.mapQuestToResource(quest),
         character,
+        xpEarned: xp,
+        moneyEarned: money,
       };
     },
   });

@@ -70,15 +70,14 @@ const seedAcceptedQuest = async (
     { body: { title: "Reminder Probe" } },
     { user },
   );
-  // Shop unlock: quest_reminder is paywalled. The spec asserts the
-  // setQuestReminder behavior, not the gate — pre-unlock so the gate is
-  // satisfied.
+  // Reminders are an owner toggle (off by default). The spec asserts the
+  // setQuestReminder behavior, not the gate — enable it up front.
   // biome-ignore lint/suspicious/noExplicitAny: ORM repo generic is too strict
   const campaignsRepo: any = (ctx.campaigns as any).campaigns;
   const c = await campaignsRepo.getOne({
     where: { id: { eq: campaign.data.id } },
   });
-  c.unlockedFeatures = ["quest_reminder"];
+  c.features = { ...c.features, questReminder: true };
   await campaignsRepo.save(c);
 
   const created = await ctx.quests.createQuest.fetch(

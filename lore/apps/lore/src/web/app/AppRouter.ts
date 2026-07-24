@@ -13,7 +13,6 @@ import type { CampaignController } from "../../api/controllers/CampaignControlle
 import type { CampaignStatsController } from "../../api/controllers/CampaignStatsController.ts";
 import type { ChapterController } from "../../api/controllers/ChapterController.ts";
 import type { DirectoryController } from "../../api/controllers/DirectoryController.ts";
-import type { FeaturePaywallController } from "../../api/controllers/FeaturePaywallController.ts";
 import type { FolioController } from "../../api/controllers/FolioController.ts";
 import type { InsightsController } from "../../api/controllers/InsightsController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
@@ -51,7 +50,6 @@ export class AppRouter {
   chapterApi = $client<ChapterController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
-  shopApi = $client<FeaturePaywallController>();
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
   meRouter = $inject(MeRouter);
@@ -250,7 +248,6 @@ export class AppRouter {
       this.campaignInsights,
       this.campaignMyCharacter,
       this.campaignRoster,
-      this.campaignShop,
     ],
     path: "/c/:campaignId",
     schema: {
@@ -406,25 +403,6 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › My Character`,
     }),
     lazy: () => import("./components/character/MyCharacterPage.tsx"),
-  });
-
-  campaignShop = $page({
-    name: "campaignShop",
-    path: "/shop",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Shop`,
-    }),
-    lazy: () => import("./components/campaign/CampaignShopPage.tsx"),
-    loader: async () => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
-      }
-      const features = await this.shopApi.listFeatures({
-        params: { campaignId: campaign.id },
-      });
-      return { features };
-    },
   });
 
   campaignRoster = $page({

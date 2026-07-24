@@ -58,7 +58,6 @@ export class CharacterController {
       const ctx = {
         character,
         campaignZones: campaign.zones ?? [],
-        campaignCharacterCount: 0,
       };
 
       // Reconciliation step: a predicate may be satisfied even though

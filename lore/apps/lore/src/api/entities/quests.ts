@@ -172,20 +172,6 @@ export const quests = $entity({
       onDelete: "set null",
     }),
     /**
-     * Soft level gating — when set, characters below this level see a
-     * warning on the accept button but can still pick up the quest. UI
-     * only surfaces this field when the campaign has sponsored the
-     * Quest Gating feature; the schema is always present so the column
-     * doesn't need a later migration.
-     */
-    recommendedLevel: z.integer().min(1).optional(),
-    /**
-     * Hard level gating — when set, characters below this level cannot
-     * accept the quest (server-enforced). Same UI gating as
-     * `recommendedLevel`.
-     */
-    requiredLevel: z.integer().min(1).optional(),
-    /**
      * Provenance for quests spawned by an automated source (currently the
      * Blights inbox forward-to-quest action). Absent for hand-authored
      * quests. Opaque JSON — adding fields to `questSourceSchema` never

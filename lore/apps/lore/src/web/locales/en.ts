@@ -224,10 +224,6 @@ export default {
   "campaign.menu.myCharacter": "Sheet",
   "campaign.menu.roster": "Roster",
   "campaign.menu.chronicles": "Chronicles",
-  "campaign.menu.locked.title": "Locked",
-  "campaign.menu.locked.cta": "Open the Shop",
-  "campaign.menu.chronicles.locked.body":
-    "Unlock Chronicles to see campaign-wide stats: completed quests over time, top contributors, per-zone breakdown.",
   "campaign.menu.folios": "Archive",
   "campaign.menu.settings": "Settings",
   "campaign.menu.group.inn": "Activity",
@@ -446,17 +442,13 @@ export default {
   "chronicles.party.idle.never": "never",
   "campaign.settings.quests.title": "Quest features",
   "campaign.settings.quests.subtitle":
-    "Toggle the per-quest features visible across this campaign. Reminder and Gating need to be bought from the Shop first; buying flips the toggle ON, you can still turn it back off here.",
-  "campaign.settings.quests.shopLink": "Buy from the Shop.",
+    "Toggle the per-quest features visible across this campaign.",
   "campaign.settings.quests.note.label": "Quest note",
   "campaign.settings.quests.note.description":
     "Free-text scratch pad on each quest, only the assignee sees the editor.",
   "campaign.settings.quests.reminder.label": "Quest reminder",
   "campaign.settings.quests.reminder.description":
     "Periodic email reminders for accepted quests.",
-  "campaign.settings.quests.gating.label": "Quest gating",
-  "campaign.settings.quests.gating.description":
-    "Surface recommended / required level fields on the quest editor and enforce them on accept.",
   "campaign.settings.quests.chrono.label": "Quest chrono",
   "campaign.settings.quests.chrono.description":
     "Stopwatch attached to a quest — start/stop a session from the quest view.",
@@ -593,19 +585,6 @@ export default {
   "zone.rename.name": "Zone Name",
   "zone.rename.submit": "Rename",
 
-  "campaign.settings.debug.title": "Debug",
-  "campaign.settings.debug.shopReset.title": "Reset Shop purchases",
-  "campaign.settings.debug.shopReset.subtitle":
-    "Wipe every feature this campaign has bought from the Shop. Character balances stay untouched so you can re-buy and test paywalled flows again.",
-  "campaign.settings.debug.shopReset.button": "Reset",
-  "campaign.settings.debug.shopReset.success": "Shop purchases reset.",
-  "campaign.settings.debug.shopReset.error": "Failed to reset Shop purchases.",
-  "campaign.settings.debug.shopReset.confirm.title": "Reset Shop purchases?",
-  "campaign.settings.debug.shopReset.confirm.description":
-    "This clears the campaign's unlocked features and the buy history. Character gold balances are NOT refunded.",
-  "campaign.settings.debug.shopReset.confirm.cancel": "Cancel",
-  "campaign.settings.debug.shopReset.confirm.submit": "Reset",
-
   "character.sheet.level": "Level $1",
   "character.sheet.identity.title": "Identity",
   "character.sheet.identity.name": "Name",
@@ -617,17 +596,6 @@ export default {
   "character.roster.empty": "No characters yet.",
   "character.roster.sort.level": "Level",
   "character.roster.sort.joined": "Joined",
-
-  "campaign.menu.shop": "Market",
-  "shop.title": "Shop",
-  "shop.subtitle":
-    "Spend gold to unlock features for the whole campaign. Once unlocked, they stay unlocked.",
-  "shop.owned": "Owned",
-  "shop.locked": "Locked",
-  "shop.buy": "Buy",
-  "shop.buy.success": "Feature unlocked — enjoy!",
-  "shop.boughtBy": "Bought by character $1 for $2g on $3.",
-  "shop.yourBalance": "Your balance: $1g.",
 
   "error.title": "Oh no! Something went wrong.",
   "error.description":

@@ -9,29 +9,29 @@ export const campaignFeaturesSchema = z.object({
    * capability (`POST /sigils/:id/petition`). For sigil petitions, ALL
    * three gates must be on: `features.sigils` (master) AND
    * `features.petitions` AND the sigil's `kinds.includes("petition")`.
-   * Petitions arrive ONLY via the sigil in-app dialog — there is no
-   * standalone first-party submission form.
+   * Petitions arrive via TWO paths, both gated on this flag: the
+   * first-party form at `/c/:campaignId/request` (route
+   * `campaignPetitionRequest`) and the sigil in-app dialog. Both land on
+   * `POST /campaigns/:id/petitions`.
    */
   petitions: z.boolean(),
   chapters: z.boolean(),
   /**
    * Per-quest feature toggles. All default OFF for new campaigns —
-   * keeps the quest view minimal until the owner opts in. Reminder
-   * and gating additionally need the matching Shop unlock; the Shop
-   * `buyFeature` action flips them to ON post-purchase (hybrid
-   * "Shop unlocks AND defaults the toggle to ON" pattern).
+   * keeps the quest view minimal until the owner opts in. Plain
+   * owner-controlled switches: the Shop that used to sell `questReminder`
+   * was removed along with the gold economy, so the toggle is now the
+   * only gate.
    */
   questNote: z.boolean().optional(),
   questReminder: z.boolean().optional(),
-  questGating: z.boolean().optional(),
   questChrono: z.boolean().optional(),
   /**
    * Sigils module toggles. Like the per-quest toggles above, these are
    * intentionally optional and absent from `defaultCampaignFeatures` —
    * adding a key there changes the column DEFAULT and triggers a D1
    * `campaigns` table rebuild that cascade-wipes prod. They default to
-   * `false` via the `useCampaignFeatureToggle` hook. Plain module on/off
-   * switches — no paywall.
+   * `false` via the `useCampaignFeatureToggle` hook.
    */
   sigils: z.boolean().optional(),
   blights: z.boolean().optional(),
@@ -43,7 +43,7 @@ export type CampaignFeatures = Static<typeof campaignFeaturesSchema>;
 
 /**
  * Default feature flags. NB: the per-quest toggles (`questNote`,
- * `questReminder`, `questGating`, `questChrono`) are intentionally
+ * `questReminder`, `questChrono`) are intentionally
  * absent from this object. Including them here changes the column's
  * Drizzle DEFAULT — and on D1 that triggers a table rebuild
  * (`DROP TABLE campaigns`) which cascade-wipes characters, quests,
@@ -120,16 +120,20 @@ export const campaigns = $entity({
       ["In Progress"],
     ),
     /**
-     * Feature keys this campaign has sponsored (paywall economy — see folio
-     * "Character — vision and economy"). Append-only: once a feature is
-     * unlocked it stays unlocked, even when the sponsor leaves the campaign.
+     * @deprecated — the gold Shop / feature paywall was removed. Every
+     * feature it used to sell (Chronicles, Quest Reminder, Quest Gating)
+     * is now either always-on or a plain owner toggle. No code reads or
+     * writes these two columns.
+     *
+     * They are kept in the schema ON PURPOSE: dropping a column from
+     * `campaigns` risks the Drizzle/D1 table-rebuild path, and `campaigns`
+     * is a CASCADE parent of characters/quests/chapters/folios/petitions —
+     * exactly the shape that wiped production on 2026-05-13. Same
+     * treatment as the `public` column above. A future PR can drop them
+     * with a hand-written, verified `ALTER TABLE ... DROP COLUMN`.
      */
     unlockedFeatures: db.default(z.array(z.string()), []),
-    /**
-     * Audit log of paywall unlocks — one entry per unlock. Powers the
-     * "Sponsored by Alice on 2026-04-12" credit line shown on each feature
-     * tile + as a Chronicles event. Append-only.
-     */
+    /** @deprecated — see `unlockedFeatures`. */
     unlockHistory: db.default(
       z.array(
         z.object({

@@ -344,6 +344,13 @@
       "when": 1782320974521,
       "tag": "0048_clammy_jack_power",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "6",
+      "when": 1784928723320,
+      "tag": "0049_nostalgic_thunderbolts",
+      "breakpoints": true
     }
   ]
 }
