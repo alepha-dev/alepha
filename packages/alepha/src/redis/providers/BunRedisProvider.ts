@@ -154,6 +154,30 @@ export class BunRedisProvider extends RedisProvider {
   ): Promise<Buffer> {
     const buf = Buffer.isBuffer(value) ? value : Buffer.from(value, "utf-8");
 
+    // Expiration-only options go through the typed native overloads, which
+    // accept raw bytes. The raw `send` fallback UTF-8-encodes every string
+    // argument, so any byte ≥ 0x80 (compressed / Uint8Array / non-ASCII
+    // cache values) would be double-encoded and stored corrupted.
+    const hasCondition =
+      options?.condition !== undefined ||
+      options?.NX ||
+      options?.XX ||
+      options?.GET;
+
+    if (options && !hasCondition) {
+      await this.setWithExpiration(key, buf, options);
+      return buf;
+    }
+
+    if (hasCondition && !buf.every((byte) => byte <= 0x7f)) {
+      // The conditional path can only use `send` (the typed API has no
+      // combined NX/GET/PX overloads) — refuse loudly instead of silently
+      // corrupting the value.
+      throw new AlephaError(
+        "Bun Redis: SET with NX/XX/GET options only supports ASCII-safe values — the raw command path UTF-8-encodes arguments and would corrupt binary data.",
+      );
+    }
+
     // Build SET command arguments
     const args: string[] = [key, buf.toString("binary")];
 
@@ -218,6 +242,48 @@ export class BunRedisProvider extends RedisProvider {
       return buf;
     }
     return Buffer.isBuffer(resp) ? resp : Buffer.from(String(resp), "binary");
+  }
+
+  /**
+   * Apply a SET with expiration options through the typed native overloads
+   * (binary-safe — values are passed as raw bytes, never re-encoded).
+   */
+  protected async setWithExpiration(
+    key: string,
+    buf: Buffer,
+    options: RedisSetOptions,
+  ): Promise<void> {
+    const expiration = options.expiration;
+    if (expiration && expiration.type !== "KEEPTTL") {
+      await this.publisher.set(
+        key,
+        buf,
+        expiration.type as "PX",
+        expiration.value,
+      );
+      return;
+    }
+    if (options.EX !== undefined) {
+      await this.publisher.set(key, buf, "EX", options.EX);
+      return;
+    }
+    if (options.PX !== undefined) {
+      await this.publisher.set(key, buf, "PX", options.PX);
+      return;
+    }
+    if (options.EXAT !== undefined) {
+      await this.publisher.set(key, buf, "EXAT", options.EXAT);
+      return;
+    }
+    if (options.PXAT !== undefined) {
+      await this.publisher.set(key, buf, "PXAT", options.PXAT);
+      return;
+    }
+    if (expiration?.type === "KEEPTTL" || options.KEEPTTL) {
+      await this.publisher.set(key, buf, "KEEPTTL");
+      return;
+    }
+    await this.publisher.set(key, buf);
   }
 
   public override async has(key: string): Promise<boolean> {

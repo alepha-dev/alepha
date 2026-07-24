@@ -3,6 +3,7 @@ import {
   testTopicAsSub,
   testTopicBasic,
   testTopicLateSubscribe,
+  testTopicParams,
   testTopicRetain,
 } from "../../core/__tests__/shared.ts";
 import { RedisTopicProvider } from "../index.ts";
@@ -24,5 +25,9 @@ describe("$topic - redis", () => {
 
   it("should deliver retained message to new subscriber", async () => {
     await testTopicRetain(RedisTopicProvider);
+  });
+
+  it("should deliver messages to parameterized topics", async () => {
+    await testTopicParams(provider);
   });
 });

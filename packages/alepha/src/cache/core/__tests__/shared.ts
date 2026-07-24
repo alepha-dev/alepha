@@ -341,6 +341,29 @@ export const testCacheIncr = async (
   expect(val3).toBe(4);
 };
 
+export const testCacheIncrThenGet = async (
+  configure: (app: Alepha) => void = () => {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  const app = Alepha.create().with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+  configure(app);
+
+  const provider = app.inject(CacheProvider);
+  await app.start();
+
+  const name = "test-incr-get";
+  const key = `counter:${randomUUID()}`;
+
+  await provider.incr(name, key, 5);
+
+  // Reading a counter back must work on every provider — Redis/KV store the
+  // raw ASCII digits, and getTyped must not choke on the missing type marker.
+  expect(await provider.getTyped(name, key)).toBe(5);
+};
+
 export const testCacheIncrTtl = async (
   configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,

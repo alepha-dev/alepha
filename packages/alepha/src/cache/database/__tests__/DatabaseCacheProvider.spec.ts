@@ -8,6 +8,7 @@ import {
   testCacheDisabled,
   testCacheFalsyValues,
   testCacheIncr,
+  testCacheIncrThenGet,
   testCacheIncrTtl,
   testCacheInvalidateAll,
   testCacheInvalidateByArgs,
@@ -87,6 +88,10 @@ describe("$cache - database (sqlite)", () => {
 
   it("should increment values atomically", async () => {
     await testCacheIncr(sqlite(), provider);
+  });
+
+  it("should read back incremented counters via getTyped", async () => {
+    await testCacheIncrThenGet(sqlite(), provider);
   });
 
   it("should expire incremented counters after their ttl", async () => {

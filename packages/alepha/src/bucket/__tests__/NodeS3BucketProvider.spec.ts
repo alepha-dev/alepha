@@ -50,7 +50,7 @@ describe("NodeS3BucketProvider", () => {
     await testDeleteFile(provider);
   });
 
-  test("delete() should not throw for a non-existent file", async () => {
+  test("delete() should throw for a non-existent file", async () => {
     await testDeleteNonExistentFile(provider);
   });
 

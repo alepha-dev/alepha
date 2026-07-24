@@ -96,6 +96,13 @@ export const testDeleteNonExistentFile = async (
   await provider.delete(BUCKET_NAME, fileId);
   const fileExists2 = await provider.exists(BUCKET_NAME, fileId);
   expect(fileExists2).toBe(false);
+
+  // Deleting an id that does not exist must throw on EVERY provider — a
+  // backend that silently succeeds hides broken cleanup logic until the app
+  // switches provider.
+  await expect(
+    provider.delete(BUCKET_NAME, "does-not-exist.txt"),
+  ).rejects.toThrow();
 };
 
 export const testDeleteFile = async (provider: FileStorageProvider) => {

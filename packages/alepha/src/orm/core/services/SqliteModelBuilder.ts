@@ -192,12 +192,18 @@ export class SqliteModelBuilder extends ModelBuilder {
 
     if (z.schema.isBigInt(value)) {
       if (PG_PRIMARY_KEY in value || PG_IDENTITY in value) {
+        // Auto-increment rowid — must stay INTEGER; sequential ids won't
+        // reach 2^53 in practice.
         return pg
           .integer(key, { mode: "number" })
           .primaryKey({ autoIncrement: true });
       }
 
-      return pg.integer(key, { mode: "number" });
+      // Non-key 64-bit values (snowflakes, external ids) exceed JS number
+      // precision — SQLite drivers hand integers back as numbers, silently
+      // corrupting anything beyond 2^53. The app-level type is a string
+      // anyway, so store TEXT for an exact round-trip (matches Postgres).
+      return pg.text(key);
     }
 
     if (z.schema.isNumber(value)) {

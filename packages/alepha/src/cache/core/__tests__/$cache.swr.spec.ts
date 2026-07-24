@@ -39,6 +39,57 @@ describe("$cache stale-while-revalidate (SWR)", () => {
     expect(calls).toBe(1);
   });
 
+  it("does not unwrap user data shaped like an envelope", async () => {
+    // A handler may legitimately return an object with these exact keys —
+    // it must round-trip intact, not be mistaken for the SWR envelope.
+    const suspicious = { __swr: 1, v: "inner", f: 5 };
+    class App {
+      cache = $cache({
+        ttl: [5, "seconds"],
+        handler: async () => suspicious,
+      });
+    }
+
+    const alepha = Alepha.create().with({
+      provide: CacheProvider,
+      use: MemoryCacheProvider,
+    });
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    expect(await app.cache()).toEqual(suspicious);
+    // Second read comes from the cache — must still be the full object.
+    expect(await app.cache()).toEqual(suspicious);
+  });
+
+  it("round-trips Uint8Array values through the SWR envelope", async () => {
+    const binary = new Uint8Array([0x00, 0x7f, 0x80, 0xff]);
+    class App {
+      cache = $cache({
+        ttl: [5, "seconds"],
+        stale: [1, "hour"],
+        handler: async () => binary,
+      });
+    }
+
+    const alepha = Alepha.create().with({
+      provide: CacheProvider,
+      use: MemoryCacheProvider,
+    });
+    const app = alepha.inject(App);
+    const time = alepha.inject(DateTimeProvider);
+    await alepha.start();
+
+    expect(await app.cache()).toBeInstanceOf(Uint8Array);
+
+    // A read served from the provider (L1 expired) must also decode back to
+    // the original bytes — not a JSON-mangled plain object.
+    await time.travel([40, "seconds"]);
+    const cached = await app.cache();
+    expect(cached).toBeInstanceOf(Uint8Array);
+    expect(Array.from(cached as Uint8Array)).toEqual([0x00, 0x7f, 0x80, 0xff]);
+  });
+
   it("returns stale value and schedules a background refresh", async () => {
     let calls = 0;
     class App {

@@ -90,4 +90,24 @@ export class BunRedisSubscriberProvider extends RedisSubscriberProvider {
     // Bun's unsubscribe doesn't support callback filtering
     await this.subscriber.unsubscribe(channel);
   }
+
+  public override async pSubscribe(
+    _pattern: string,
+    _callback: SubscribeCallback,
+  ): Promise<void> {
+    // Failing loudly beats a plain SUBSCRIBE on the pattern, which would be
+    // treated as a literal channel name and silently never receive anything.
+    throw new AlephaError(
+      "Bun's native Redis client does not support PSUBSCRIBE — parameterized topics are not available with BunRedisSubscriberProvider.",
+    );
+  }
+
+  public override async pUnsubscribe(
+    _pattern: string,
+    _callback?: SubscribeCallback,
+  ): Promise<void> {
+    throw new AlephaError(
+      "Bun's native Redis client does not support PUNSUBSCRIBE — parameterized topics are not available with BunRedisSubscriberProvider.",
+    );
+  }
 }

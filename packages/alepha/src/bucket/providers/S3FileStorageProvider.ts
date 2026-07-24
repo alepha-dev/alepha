@@ -230,6 +230,15 @@ export class S3FileStorageProvider implements FileStorageProvider {
 
     const client = this.getClient(bucketName);
 
+    // S3 DELETE is idempotent (204 either way) — check existence explicitly
+    // so `delete()` behaves like Memory/Local/R2 and throws on a missing id
+    // instead of silently succeeding.
+    if (!(await this.exists(bucketName, fileId))) {
+      throw new FileNotFoundError(
+        `File '${fileId}' not found in bucket '${bucketName}'`,
+      );
+    }
+
     try {
       await client.deleteObject(this.key(fileId));
     } catch (error) {

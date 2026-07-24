@@ -81,7 +81,21 @@ export class RedisTopicProvider extends TopicProvider {
   }
 
   /**
+   * Wrapped listeners by original callback — the wrapper strips the Redis
+   * channel prefix so param extraction sees the bare topic name, and the map
+   * preserves listener identity for unsubscribe.
+   */
+  protected readonly listeners = new Map<
+    SubscribeCallback,
+    SubscribeCallback
+  >();
+
+  /**
    * Subscribe to a topic.
+   *
+   * Topic names containing the wildcard char (parameterized topics) go
+   * through PSUBSCRIBE — a plain SUBSCRIBE would treat the pattern as a
+   * literal channel name and silently never receive anything.
    */
   public async subscribe(
     name: string,
@@ -90,13 +104,22 @@ export class RedisTopicProvider extends TopicProvider {
   ): Promise<UnSubscribeFn> {
     const topic = this.prefix(name);
 
-    // Subscribe first to avoid message loss window
-    await this.redisSubscriberProvider.subscribe(topic, callback);
+    const listener: SubscribeCallback = (message, channel) =>
+      callback(message, channel === undefined ? name : this.unprefix(channel));
+    this.listeners.set(callback, listener);
 
-    // Then deliver retained message if exists
-    const retained = await this.redisProvider.get(`${topic}:retained`);
-    if (retained) {
-      await callback(retained.toString());
+    // Subscribe first to avoid message loss window
+    if (this.isPattern(name)) {
+      await this.redisSubscriberProvider.pSubscribe(topic, listener);
+    } else {
+      await this.redisSubscriberProvider.subscribe(topic, listener);
+
+      // Then deliver retained message if exists (literal channels only —
+      // a pattern has no single retained key)
+      const retained = await this.redisProvider.get(`${topic}:retained`);
+      if (retained) {
+        await callback(retained.toString(), name);
+      }
     }
 
     return () => this.unsubscribe(name, callback);
@@ -110,7 +133,25 @@ export class RedisTopicProvider extends TopicProvider {
     callback?: SubscribeCallback,
   ): Promise<void> {
     const topic = this.prefix(name);
+    const listener = callback ? this.listeners.get(callback) : undefined;
+    if (callback) {
+      this.listeners.delete(callback);
+    }
 
-    await this.redisSubscriberProvider.unsubscribe(topic, callback);
+    if (this.isPattern(name)) {
+      await this.redisSubscriberProvider.pUnsubscribe(topic, listener);
+    } else {
+      await this.redisSubscriberProvider.unsubscribe(topic, listener);
+    }
+  }
+
+  protected isPattern(name: string): boolean {
+    const wildcard = this.wildcardChar();
+    return wildcard !== undefined && name.includes(wildcard);
+  }
+
+  protected unprefix(channel: string): string {
+    const prefix = `${this.options.prefix}:`;
+    return channel.startsWith(prefix) ? channel.slice(prefix.length) : channel;
   }
 }

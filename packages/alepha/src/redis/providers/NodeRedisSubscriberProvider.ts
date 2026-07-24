@@ -81,6 +81,20 @@ export class NodeRedisSubscriberProvider extends RedisSubscriberProvider {
     await this.subscriber.unsubscribe(channel, callback);
   }
 
+  public override async pSubscribe(
+    pattern: string,
+    callback: SubscribeCallback,
+  ): Promise<void> {
+    await this.subscriber.pSubscribe(pattern, callback);
+  }
+
+  public override async pUnsubscribe(
+    pattern: string,
+    callback?: SubscribeCallback,
+  ): Promise<void> {
+    await this.subscriber.pUnsubscribe(pattern, callback);
+  }
+
   /**
    * Redis subscriber client factory method.
    */

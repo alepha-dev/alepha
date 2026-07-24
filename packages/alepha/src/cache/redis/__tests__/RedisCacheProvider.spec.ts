@@ -9,6 +9,7 @@ import {
   testCacheDisabled,
   testCacheFalsyValues,
   testCacheIncr,
+  testCacheIncrThenGet,
   testCacheIncrTtl,
   testCacheInvalidateAll,
   testCacheInvalidateByArgs,
@@ -80,6 +81,10 @@ describe("$cache - redis", () => {
 
   it("should increment values atomically", async () => {
     await testCacheIncr(configure(), provider);
+  });
+
+  it("should read back incremented counters via getTyped", async () => {
+    await testCacheIncrThenGet(configure(), provider);
   });
 
   it("should expire incremented counters after their ttl", async () => {

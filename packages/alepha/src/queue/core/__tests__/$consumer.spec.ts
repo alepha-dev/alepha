@@ -6,7 +6,9 @@ import {
   MemoryQueueProvider,
   QueueProvider,
   queueWorkerOptions,
+  WorkerProvider,
 } from "../index.ts";
+import { WorkerdWorkerProvider } from "../providers/WorkerdWorkerProvider.ts";
 
 const $track = (log: string[], tag: string) =>
   createMiddleware({
@@ -62,6 +64,43 @@ describe("$consumer middleware", () => {
     await expect.poll(() => log.length === 3, { timeout: 1000 }).toBeTruthy();
 
     expect(log).toStrictEqual(["mw:before", "handler:msg1", "mw:after"]);
+
+    await app.stop();
+  });
+
+  test("should apply middleware on the Cloudflare worker path", async () => {
+    const log: string[] = [];
+
+    class TestService {
+      queue = $queue({
+        name: "cf-test",
+        schema: payloadSchema,
+      });
+
+      consumer = $consumer({
+        queue: this.queue,
+        use: [$track(log, "mw")],
+        handler: async ({ payload }) => {
+          log.push(`handler:${payload.id}`);
+        },
+      });
+    }
+
+    const app = Alepha.create()
+      .with({ provide: QueueProvider, use: MemoryQueueProvider })
+      .with({ provide: WorkerProvider, use: WorkerdWorkerProvider });
+
+    const svc = app.inject(TestService);
+    await app.start();
+
+    // Simulate a Cloudflare Queue delivery — middleware declared in `use`
+    // must run on this path exactly like on the Node polling path.
+    await app.events.emit("cloudflare:queue", {
+      queue: svc.queue.name,
+      message: JSON.stringify({ payload: { id: "m1", count: 1 } }),
+    } as never);
+
+    expect(log).toStrictEqual(["mw:before", "handler:m1", "mw:after"]);
 
     await app.stop();
   });

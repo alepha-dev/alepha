@@ -57,6 +57,34 @@ export abstract class RedisSubscriberProvider {
     channel: string,
     callback?: SubscribeCallback,
   ): Promise<void>;
+
+  /**
+   * Subscribe to a glob pattern (Redis PSUBSCRIBE).
+   *
+   * A pattern subscribed via plain SUBSCRIBE is treated as a literal channel
+   * name and never matches anything — parameterized topics MUST go through
+   * this method.
+   *
+   * @param pattern The channel pattern, wildcards allowed (e.g. a topic of
+   * shape "devices/{id}/sensor" subscribes its wildcardized form).
+   * @param callback The callback to invoke when a message is received; the
+   * second argument is the concrete channel the message arrived on.
+   */
+  public abstract pSubscribe(
+    pattern: string,
+    callback: SubscribeCallback,
+  ): Promise<void>;
+
+  /**
+   * Unsubscribe from a glob pattern (Redis PUNSUBSCRIBE).
+   *
+   * @param pattern The channel pattern.
+   * @param callback Optional specific callback to remove.
+   */
+  public abstract pUnsubscribe(
+    pattern: string,
+    callback?: SubscribeCallback,
+  ): Promise<void>;
 }
 
 /**

@@ -116,6 +116,21 @@ Deliberately **not** fixed in these passes (need design decisions or wider chang
 | users | Admin session API no longer returns `refreshToken` (schema + `SessionCrudService` projection). |
 | prod defaults | SMS resolves `LocalSmsProvider` outside tests (memory = silent message loss in prod); mock-checkout endpoints refuse production unless `mockCheckoutOptions.allowInProduction` is set; `/metrics` supports a `METRICS_TOKEN` bearer guard (+ prod warning when unset); registering the rate-limit module no longer throttles every route at 100/15min — global limiting is opt-in, per-route limits keep sane defaults. |
 
+### Fourth fix pass — 2026-07-24 (batch 3 — provider divergence / silent data loss)
+
+8 more findings fixed and marked **✅ FIXED** in the body. Verified with `yarn lint`, `tsc --noEmit`, the full alepha suite (385 files, 4308 tests), `yarn test:bun` (46), the lore suite (298), and a clean `yarn w alepha build`.
+
+| Area | Fix |
+|------|-----|
+| topic/redis | Parameterized `$topic`s now PSUBSCRIBE their wildcard pattern (`RedisSubscriberProvider.pSubscribe`/`pUnsubscribe`; Bun's client lacks PSUBSCRIBE and now fails loudly instead of subscribing a dead literal channel). The subscriber callback also gets the concrete channel with the Redis prefix stripped, so param extraction works. `testTopicParams` is wired into the Redis spec. |
+| queue | `WorkerdWorkerProvider` registers `$consumer`s through the pipeline-wrapped handler — `use` middleware ($retry, $lock, ...) now runs on Cloudflare like on Node. |
+| redis/bun | `set` with expiration options goes through Bun's typed native API (binary-safe raw bytes); the conditional NX/XX/GET path (raw `send`, UTF-8-encoded args) refuses non-ASCII values loudly instead of silently corrupting them. Binary + UTF-8 round-trip tests added to the Bun spec. |
+| orm | `findMany` with offset-and-no-limit no longer truncates at 1000 on SQLite (effectively unbounded limit) and no longer mutates the caller's query object. |
+| orm | Non-key `z.bigint()` columns are stored as TEXT on SQLite/D1 — exact round-trip beyond 2^53, matching Postgres (auto-increment bigint PKs stay INTEGER rowids). |
+| cache | `getTyped` after `incr` works on every provider — unmarked ASCII-digit payloads (Redis INCRBY / KV) deserialize as numbers instead of throwing `Unknown serialization type`. Conformance test wired into Memory/Database/Redis specs. |
+| bucket | S3 `delete()` of a missing id throws `FileNotFoundError` like Memory/Local/R2 (explicit existence check — S3 DELETE is idempotent). The shared `testDeleteNonExistentFile` now actually deletes a non-existent id, on every provider. |
+| cache | SWR envelope uses a distinctive marker (`__alepha_swr_envelope__`) so user data can never be mistaken for it, and `Uint8Array` values are base64-wrapped inside the envelope instead of being JSON-mangled. |
+
 Still deliberately open: the payments/subscriptions billing loop (needs product decisions — see the module section), and the rate-limit `"unknown"`-IP shared bucket (only reachable when a global limit is explicitly configured).
 
 Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`main` @ 6c7ec9400); fixed findings' line numbers may have shifted slightly.
@@ -486,12 +501,12 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/orm/core/services/Repository.ts:829
 - **Detail**: `upsert` stamps the org on insert values, but `onConflictDoUpdate({ target, set })` has no `where` — if the conflict target is a tenant-agnostic unique key (e.g. email), a tenant's upsert overwrites another tenant's row. Also updates soft-deleted rows, silently "resurrecting" data. Fix: pass `setWhere`/`targetWhere` built from `withOrganization(withDeletedAt({}))`.
 
-### [BUG] `findMany` silently caps results at 1000 and mutates the caller's query (SQLite offset-without-limit)
+### ✅ FIXED — [BUG] `findMany` silently caps results at 1000 and mutates the caller's query (SQLite offset-without-limit)
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/core/services/Repository.ts:392
 - **Detail**: `if (dialect === "sqlite" && !query.limit) { query.limit = 1000; }` — offset with no limit on sqlite/D1 silently truncates to 1000 (pg returns everything: dialect-divergent), and the caller's query object is mutated (carries `limit: 1000` on pg too on reuse). Fix: `LIMIT -1` and a local variable.
 
-### [BUG] `bigint` columns lose precision on SQLite/D1 (mapped to JS-number integer)
+### ✅ FIXED — [BUG] `bigint` columns lose precision on SQLite/D1 (mapped to JS-number integer)
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/core/services/SqliteModelBuilder.ts:193
 - **Detail**: `z.bigint()` maps on PG to `mode: "bigint"` (exact), but on SQLite to `integer(key, { mode: "number" })`. Values beyond 2^53 (snowflake/external 64-bit IDs) silently corrupt on sqlite/D1 while working on pg. Fix: customType with safeIntegers/text storage or BigInt round-trip.
@@ -619,7 +634,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/cache/core/providers/CacheProvider.ts:150 (with $cache.ts:343-346)
 - **Detail**: `serialize(undefined)` does `JSON.stringify(undefined)` → `undefined`, and `TextEncoder.encode(undefined)` yields an **empty** payload (verified in Node), so the stored value is a lone `JSON` marker byte. On next read `deserialize` → `JSON.parse("")` throws `SyntaxError`, which propagates uncaught out of `CachePrimitive.read()` — every call for that key now crashes until TTL expiry instead of re-running the handler. Fix: skip `set()` when the value is `undefined` (mirroring the existing `read.value !== undefined` miss semantics). Falsy-values test covers `0/""/false/null` but not `undefined`.
 
-### [BUG] BunRedisProvider.set corrupts binary values whenever any SET option is used
+### ✅ FIXED — [BUG] BunRedisProvider.set corrupts binary values whenever any SET option is used
 - **Severity**: P1
 - **File**: packages/alepha/src/redis/providers/BunRedisProvider.ts:158
 - **Detail**: The options path builds `args = [key, buf.toString("binary")]` and sends via `publisher.send("SET", args)`. `toString("binary")` is latin1; Bun's RESP writer encodes string args as UTF-8, so every byte ≥ 0x80 gets double-encoded (verified: 6-byte buffer round-trips to 10 bytes). `RedisCacheProvider.set` always passes `expiration: {type:"PX"}` for TTL'd caches, so on Bun any compressed, `Uint8Array`, or non-ASCII cache value is stored corrupted. Only the no-options fast path is safe. Bun spec's "set with EX option" test uses ASCII only. Fix: use Bun.RedisClient's native set-with-options API or pass raw bytes.
@@ -629,7 +644,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/bucket/providers/LocalFileStorageProvider.ts:204
 - **Detail**: `path()` does `join(this.storagePath, bucket, fileId)` with no sanitization, so `download(bucket, "../../../../etc/passwd")`, `delete`, `exists`, and `upload` with a caller-supplied fileId escape the storage root — `$bucket.download(fileId)` is the natural place to feed a request param straight in. S3/R2/Memory treat the id as opaque, so only the Local provider (the non-test default on Node without `S3_ENDPOINT`, bucket/index.ts:79-90) is exploitable — a provider-swap silently changes security posture. Fix: reject fileIds containing `/`, `\` or `..` (or verify resolved path stays under `storagePath`).
 
-### [BUG] `get()` after `incr()` throws on KV/Redis but works on Memory/Database
+### ✅ FIXED — [BUG] `get()` after `incr()` throws on KV/Redis but works on Memory/Database
 - **Severity**: P2
 - **File**: packages/alepha/src/cache/core/providers/CloudflareKVProvider.ts:225 (and redis/providers/NodeRedisProvider.ts:241)
 - **Detail**: `MemoryCacheProvider.incr` stores `this.serialize(newValue)` and DB provider re-serializes `row.count`, but KV `incr` does `kv.put(kvKey, String(newValue))` and Redis `INCRBY` stores raw ASCII digits — `getTyped` then sees first byte 0x30-0x39 and throws `CacheError("Unknown serialization type")`. Same app code passes tests on Memory and crashes on KV/Redis. Fix: fall back to `Number.parseInt` for unmarked numeric payloads, or store the typed marker.
@@ -644,7 +659,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/cache/database/providers/DatabaseCacheProvider.ts:229
 - **Detail**: The upsert's conflict `set` updates `count`/`value` but not `expiresAt`. If a key expired but wasn't swept, `incr()` keeps counting on the row while `get()`/`has()` filter it via `unexpiredWhere` — key reports absent while `incr()` returns growing values. Fix: add `expiresAt: null` (or fresh TTL) to the conflict set. Note `incr` on a live `set()` row also silently nulls the cached `value`.
 
-### [BUG] S3 delete of a missing file silently succeeds; Memory/Local/R2 throw FileNotFoundError
+### ✅ FIXED — [BUG] S3 delete of a missing file silently succeeds; Memory/Local/R2 throw FileNotFoundError
 - **Severity**: P2
 - **File**: packages/alepha/src/bucket/providers/S3FileStorageProvider.ts:228
 - **Detail**: s3mini's `deleteObject` returns a boolean and the provider ignores it, while R2 does an explicit `exists` check "for consistency with other providers" and Memory/Local throw. Same `bucket.delete(id)` diverges per backend. The S3 spec's `testDeleteNonExistentFile` never actually deletes a non-existent id. Fix: check the return and throw `FileNotFoundError` on `false` (or drop the throw everywhere; pick one contract).
@@ -694,7 +709,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/cache/core/primitives/$cache.ts:353
 - **Detail**: `read()`/`set()` no-op when `!isStarted() || options.disabled || !settings.enabled`, but `incr()` calls the provider unconditionally — a disabled cache still mutates the store (and on KV throws before binding init). Add the same guard.
 
-### [BUG] SWR envelope collides with user data / breaks binary values
+### ✅ FIXED — [BUG] SWR envelope collides with user data / breaks binary values
 - **Severity**: P3
 - **File**: packages/alepha/src/cache/core/primitives/$cache.ts:594 and :409
 - **Detail**: `isSwrEnvelope` matches any cached object with `{__swr: 1, v, f}` keys (user data unwrapped incorrectly); with `stale` configured, a `Uint8Array` gets JSON-stringified inside the envelope instead of BINARY marker, deserializing as a plain object. Use a more distinctive marker; document "SWR requires JSON-serializable values".
@@ -717,7 +732,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 
 ## websocket + topic + queue + batch + background + scheduler + lock + retry
 
-### [BUG] Redis pub/sub: parameterized topics silently never deliver (wildcard SUBSCRIBE without PSUBSCRIBE)
+### ✅ FIXED — [BUG] Redis pub/sub: parameterized topics silently never deliver (wildcard SUBSCRIBE without PSUBSCRIBE)
 - **Severity**: P1 (silent total message loss)
 - **File**: packages/alepha/src/topic/redis/providers/RedisTopicProvider.ts:61 (with topic/core/providers/TopicProvider.ts:97-126 and redis/providers/NodeRedisSubscriberProvider.ts:70-75)
 - **Detail**: `TopicProvider.subscribeHandler` wildcardizes parameterized topic names (`devices/{deviceId}/sensor` → `devices/*/sensor`), then calls `subscribe()` with that pattern. `NodeRedisSubscriberProvider.subscribe` uses plain SUBSCRIBE, never PSUBSCRIBE, so the pattern is treated as a literal channel name and never matches the interpolated channels publishers write to. Every `$topic` with `params` on Redis subscribes to a dead channel — publishes vanish. Telling: `testTopicParams` exists in shared tests and runs against Memory, but is absent from RedisTopicProvider.spec.ts. Fix: pSubscribe/pUnsubscribe when the channel contains the wildcard char (or reject params topics on Redis loudly).
@@ -757,7 +772,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/websocket/providers/RoomEngine.ts:157-166
 - **Detail**: `ensureAlive` caches `this.starting`; if the factory rejects, every subsequent join/call re-awaits the same rejection; engine only resets in teardown(), unreachable because no socket ever joined. A headless coordinator reached via `call()` is wedged until restart. Fix: clear `this.starting` on rejection.
 
-### [BUG] WorkerdWorkerProvider drops `$consumer` pipeline middleware
+### ✅ FIXED — [BUG] WorkerdWorkerProvider drops `$consumer` pipeline middleware
 - **Severity**: P2
 - **File**: packages/alepha/src/queue/core/providers/WorkerdWorkerProvider.ts:37
 - **Detail**: Base registers `handler: (msg) => consumer.handler.run(msg)` (pipeline-wrapped); workerd override pushes `consumer.options` whose handler is the raw options handler. Middleware (`$retry`/`$lock` in `use`) runs on Node but not Cloudflare. Fix: mirror the base wrapping.

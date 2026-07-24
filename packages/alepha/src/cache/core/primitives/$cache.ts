@@ -250,12 +250,20 @@ declare module "alepha" {
 
 const DEFAULT_MEMORY_MAX = 500;
 const DEFAULT_MEMORY_TTL_MS = 30_000;
-const SWR_MARKER = "__swr" as const;
+// Deliberately distinctive so plausible user data can never be mistaken for
+// (and unwrapped as) the SWR envelope.
+const SWR_MARKER = "__alepha_swr_envelope__" as const;
 
 type SwrEnvelope = {
   [SWR_MARKER]: 1;
   v: unknown;
   f: number;
+  /**
+   * Set when `v` is a base64-encoded Uint8Array — the envelope is
+   * JSON-serialized, which would otherwise mangle raw bytes into a plain
+   * object.
+   */
+  b?: 1;
 };
 
 type L1Entry<T> = {
@@ -417,7 +425,14 @@ export class CachePrimitive<
 
     const payload =
       this.options.stale && freshTtlMs > 0
-        ? ({ [SWR_MARKER]: 1, v: value, f: freshUntil } satisfies SwrEnvelope)
+        ? value instanceof Uint8Array
+          ? ({
+              [SWR_MARKER]: 1,
+              v: Buffer.from(value).toString("base64"),
+              f: freshUntil,
+              b: 1,
+            } satisfies SwrEnvelope)
+          : ({ [SWR_MARKER]: 1, v: value, f: freshUntil } satisfies SwrEnvelope)
         : value;
 
     await this.provider.setTyped(this.container, key, payload, {
@@ -513,7 +528,11 @@ export class CachePrimitive<
     let stale = false;
 
     if (this.isSwrEnvelope(raw)) {
-      value = raw.v as TReturn;
+      value = (
+        raw.b === 1
+          ? new Uint8Array(Buffer.from(raw.v as string, "base64"))
+          : raw.v
+      ) as TReturn;
       stale = raw.f > 0 && raw.f <= now;
     } else {
       value = raw as TReturn;

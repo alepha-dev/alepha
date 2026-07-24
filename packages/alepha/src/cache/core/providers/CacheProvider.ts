@@ -186,6 +186,13 @@ export abstract class CacheProvider {
       return this.decoder.decode(payload) as T;
     }
 
+    // Counters written by Redis INCRBY / KV incr are raw ASCII digits with no
+    // type marker — reading them back must work like on Memory/Database.
+    const text = this.decoder.decode(uint8Array);
+    if (/^-?\d+$/.test(text)) {
+      return Number.parseInt(text, 10) as T;
+    }
+
     throw new CacheError(`Unknown serialization type: ${type}`);
   }
 

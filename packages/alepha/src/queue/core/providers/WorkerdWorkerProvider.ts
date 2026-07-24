@@ -34,7 +34,13 @@ export class WorkerdWorkerProvider extends WorkerProvider {
       }
 
       for (const consumer of this.alepha.primitives($consumer)) {
-        this.consumers.push(consumer.options);
+        // Mirror the Node WorkerProvider: run through the pipeline-wrapped
+        // handler so `use` middleware ($retry, $lock, ...) applies on
+        // Cloudflare too — pushing the raw options handler silently drops it.
+        this.consumers.push({
+          queue: consumer.options.queue,
+          handler: (msg) => consumer.handler.run(msg),
+        });
       }
 
       if (this.consumers.length > 0) {

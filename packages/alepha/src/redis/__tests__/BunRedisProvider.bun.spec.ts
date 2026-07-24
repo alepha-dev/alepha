@@ -130,6 +130,35 @@ describe("BunRedisProvider", () => {
 
     await redis.del([key]);
   });
+
+  it("should round-trip binary values with SET options intact", async () => {
+    const key = `test:bun:binary:${randomUUID()}`;
+
+    // Bytes ≥ 0x80 — the shape of every compressed / Uint8Array / non-ASCII
+    // cache value. RedisCacheProvider always passes a PX expiration, so this
+    // exact combination is the cache hot path on Bun.
+    const binary = Buffer.from([0x00, 0x7f, 0x80, 0xc3, 0xff, 0xf0]);
+
+    await redis.set(key, binary, {
+      expiration: { type: "PX", value: 60_000 },
+    });
+
+    const result = await redis.get(key);
+    expect(result?.length).toBe(binary.length);
+    expect(Buffer.compare(result!, binary)).toBe(0);
+
+    await redis.del([key]);
+  });
+
+  it("should round-trip non-ASCII text with EX option intact", async () => {
+    const key = `test:bun:utf8:${randomUUID()}`;
+
+    await redis.set(key, "héllo wörld — émojis: 🚀", { EX: 10 });
+    const result = await redis.get(key);
+    expect(result?.toString("utf-8")).toBe("héllo wörld — émojis: 🚀");
+
+    await redis.del([key]);
+  });
 });
 
 // -------------------------------------------------------------------------------------------------------------------

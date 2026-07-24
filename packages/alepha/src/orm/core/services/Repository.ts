@@ -400,17 +400,20 @@ export abstract class Repository<T extends TObject> {
 
     builder.where(() => this.toSQL(where, joins));
 
+    let limit = query.limit;
     if (query.offset) {
       builder.offset(query.offset);
 
-      // SQLite requires LIMIT when OFFSET is used
-      if (this.provider.dialect === "sqlite" && !query.limit) {
-        query.limit = 1000;
+      // SQLite requires LIMIT when OFFSET is used. Use an effectively
+      // unbounded limit so the dialects stay equivalent (a fixed cap would
+      // silently truncate), without mutating the caller's query object.
+      if (this.provider.dialect === "sqlite" && !limit) {
+        limit = Number.MAX_SAFE_INTEGER;
       }
     }
 
-    if (query.limit) {
-      builder.limit(query.limit);
+    if (limit) {
+      builder.limit(limit);
     }
 
     if (query.orderBy) {
