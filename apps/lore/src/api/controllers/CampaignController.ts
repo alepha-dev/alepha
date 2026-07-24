@@ -100,7 +100,6 @@ export class CampaignController {
         {
           character: ownerCharacter,
           campaignZones: campaign.zones ?? [],
-          campaignCharacterCount: 1,
         },
       );
       if (granted.length > 0) {

@@ -6,8 +6,8 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 // Limited to the legacy module-level toggles that drive a dedicated
 // settings sub-page. Per-quest toggles (questNote / questReminder /
-// questGating / questChrono) live on the Quests settings page and
-// render via a dedicated row component, not this section.
+// questChrono) live on the Quests settings page and render via a
+// dedicated row component, not this section.
 type ModuleFeatureKey = "kanban" | "folios" | "chapters" | "sigils";
 
 // Compile-time guarantee that ModuleFeatureKey stays a subset of

@@ -545,9 +545,7 @@ const QuestView = (props: QuestViewProps) => {
           </QuestViewCollapsibleBlock>
 
           {/* Settings — Reminder lives here. Hidden when the per-campaign
-              Quest Reminder toggle is off (covers the case where the
-              owner hasn't bought the Shop unlock OR turned the toggle
-              off manually). */}
+              Quest Reminder toggle is off. */}
           {questReminderEnabled && !quest.completedAt && (
             <QuestViewCollapsibleBlock
               icon={<SettingsIcon className="size-5" />}

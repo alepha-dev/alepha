@@ -120,6 +120,28 @@ export class FolioHistoryService {
     return this.revisions.findOne({ where: { id: { eq: id } } });
   }
 
+  /**
+   * Drop every revision of a folio. Called when the folio crosses a
+   * protection boundary (clear ⇄ protected) — the stored snapshots belong
+   * to the old cryptographic domain and must not outlive it.
+   *
+   * Going clear → protected this is a **confidentiality** requirement: the
+   * plaintext snapshots are readable by any campaign member via
+   * `GET /folios/:id/history`, so encrypting a folio without this purge
+   * protects nothing that was already written.
+   *
+   * Going protected → clear it keeps the invariant symmetric: leftover
+   * ciphertext snapshots are undecryptable noise in the History tab, and
+   * reverting to one would write an envelope into a folio the client
+   * renders as markdown.
+   *
+   * `pinned` is deliberately NOT honored here — it exempts a revision from
+   * the retention sweep, not from the protection-domain purge.
+   */
+  public async purgeRevisions(folioId: string): Promise<void> {
+    await this.revisions.deleteMany({ folioId: { eq: folioId } });
+  }
+
   public async setPinned(id: string, pinned: boolean): Promise<void> {
     await this.revisions.updateById(id, { pinned });
   }

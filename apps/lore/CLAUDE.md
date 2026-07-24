@@ -1,6 +1,8 @@
 # Alepha Lore
 
-Gamified campaign management app built with [Alepha](https://github.com/feunard/alepha). Think World of Warcraft quest system: users create **campaigns**, forge **quests** with objectives, recruit a **party** of users, and progress together — earning XP, gold, and leveling up their **characters** across **zones**.
+Gamified campaign management app built with [Alepha](https://github.com/feunard/alepha). Think World of Warcraft quest system: users create **campaigns**, forge **quests** with objectives, recruit a **party** of users, and progress together — earning XP and leveling up their **characters** across **zones**.
+
+It has since grown well past a quest tracker. The load-bearing surfaces today are **quests** (roadmap + in-flight work), **folios** (campaign memory, wiki-linked, optionally end-to-end encrypted), **petitions** (inbound bug/feature triage), **blights** (deduplicated crash telemetry from partner sites via **sigils**), and the **archive** (directory tree + binary blobs). All five are exposed over **MCP**, which is the primary consumer.
 
 Alepha Lore is the **only public Alepha app** and exists in large part to **dogfood the framework** — improvements and bug fixes upstream are part of the job, not a side quest.
 
@@ -30,16 +32,17 @@ Lore lives inside the **Alepha monorepo** at `apps/lore`. The Alepha framework i
 apps/lore/                # This app
 ├── src/                  # App source
 │   ├── api/              # Backend
-│   │   ├── controllers/  # 14 controllers (Quest, Campaign, CampaignStats, CampaignQuestPortability, Kanban, Chapter, Character, Folio, Petition, Invitation, AdminInvitation, Identity, Session, User)
-│   │   ├── entities/     # entities (campaigns, quests, characters, chapters, folios, folioLinks, petitions, invitations, files, identities, sessions, users)
-│   │   ├── providers/    # AppSecurityProvider (permission checks), LoreFileAccessProvider (per-file IDOR gate)
+│   │   ├── controllers/  # 21 controllers — see list below
+│   │   ├── entities/     # 23 entities — see list below
+│   │   ├── providers/    # AppSecurityProvider (membership/owner gates), LoreFileAccessProvider (per-file IDOR gate), LoreSigilForwardProvider (in-process sigil forward)
+│   │   ├── jobs/         # ChapterJobs, InvitationJobs, QuestJobs (reminder sweep), SigilJobs (blight purge)
 │   │   ├── schemas/      # Request/response schemas
-│   │   └── services/     # CharacterInfo, FolioLinkService, InvitationService, PetitionRateLimiter, QuestCsv{Formatter,Parser}, QuestImportFormatProvider, QuestResourceMapper, parsers/
+│   │   └── services/     # 25 services — see list below
 │   ├── mcp/              # MCP protocol integration (tools, resources)
 │   ├── web/
 │   │   ├── app/          # Main SPA
-│   │   │   ├── atoms/    # 11 state atoms — see "State Atoms" section
-│   │   │   ├── components/  # ~93 React components
+│   │   │   ├── atoms/    # 15 state atoms — see "State Atoms" section
+│   │   │   ├── components/  # ~119 React components
 │   │   │   ├── services/ # I18n (EN + FR), Toaster
 │   │   │   └── AppRouter.ts  # All routes
 │   │   └── admin/        # Admin UI module
@@ -50,6 +53,14 @@ apps/lore/                # This app
 ├── migrations/sqlite/    # Drizzle migrations (D1 / SQLite)
 └── public/               # Static assets served at /
 ```
+
+**Controllers (21)** — `AdminInvitation`, `Blight`, `Blob`, `Campaign`, `CampaignQuestPortability`, `CampaignStats`, `Chapter`, `Character`, `Directory`, `Folio`, `Identity`, `Insights`, `Invitation`, `Kanban`, `Petition`, `Quest`, `Session`, `Sigil`, `SigilIngest`, `User`, `Version`.
+
+**Entities (23)** — `archiveBlobs`, `archiveDirectories`, `archiveNames`, `blightIgnoreRules`, `campaigns`, `chapters`, `characters`, `files`, `folioLinks`, `folioRevisions`, `folios`, `identities`, `invitations`, `petitions`, `quests`, `sessions`, `sigilBlightRate`, `sigilBlights`, `sigils`, `sigilUniqueVisitors`, `sigilViews`, `sigilVitals`, `users`.
+
+**Services (25)** — `AchievementEngine`, `ArchiveBlobService`, `ArchiveDirectoryService`, `ArchiveNameService`, `BeaconIngestService`, `BlightIngestService`, `BlightRuleService`, `CampaignLimits`, `CharacterInfo`, `FolioHistoryService`, `FolioLinkService`, `InvitationService`, `PetitionRateLimiter`, `PinnedFolioFolder`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestRunner`, `SigilIngestSupport`, `SigilService`, `VitalsIngestService`, plus `bot-ua-patterns` and `parsers/`.
+
+**MCP tools** — `ArchiveTools`, `CampaignTools`, `ChapterTools`, `FolioTools`, `PetitionTools`, `QuestTools`, `SigilTools`.
 
 ## Routes
 
@@ -63,20 +74,29 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/c/:campaignId/` | `campaignBoard` | `campaign/CampaignBoardTable.tsx` | Quest list grouped by zone |
 | `/c/:campaignId/chapters` | `campaignChapters` | `campaign/chapters/CampaignChapters.tsx` | Chapters list |
 | `/c/:campaignId/kanban` | `campaignKanban` | `kanban/KanbanBoard.tsx` | Drag & drop columns |
-| `/c/:campaignId/chronicles` | `campaignChronicles` | `campaign/CampaignStats.tsx` | Stats / chronicles |
+| `/c/:campaignId/chronicles` | `campaignChronicles` | `campaign/CampaignStats.tsx` | Stats / chronicles layout |
+| `/c/:campaignId/chronicles/` | `chroniclesOverview` | chronicles page | Overview |
+| `/c/:campaignId/chronicles/quests` | `chroniclesQuests` | chronicles page | Quest analytics |
+| `/c/:campaignId/chronicles/party` | `chroniclesParty` | `campaign/chronicles/ChroniclesParty.tsx` | Per-character contribution |
 | `/c/:campaignId/petitions` | `campaignPetitions` | `campaign/petitions/CampaignPetitions.tsx` | Owner inbox: triage bug/feature requests |
+| `/c/:campaignId/blights` | `campaignBlights` | blights page | Crash-telemetry inbox (sigil-fed) |
+| `/c/:campaignId/insights` | `campaignInsights` | insights page | Beacon / vitals analytics |
+| `/c/:campaignId/character` | `campaignMyCharacter` | `character/MyCharacterPage.tsx` | Character sheet + achievements |
+| `/c/:campaignId/roster` | `campaignRoster` | `character/RosterPage.tsx` | Party list — 404s on solo campaigns (<2 characters) |
 | `/c/:campaignId/q/:shortId` | `campaignQuest` | `campaign/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
-| `/c/:campaignId/folios` | `campaignFolios` | `folios/FoliosLayout.tsx` | Folio index for this campaign |
-| `/c/:campaignId/folios/new` | `campaignFoliosNew` | `folios/FolioCreatePage.tsx` | New folio |
-| `/c/:campaignId/folios/:shortId` | `campaignFoliosFolio` | `folios/FolioView.tsx` | Folio detail |
-| `/c/:campaignId/folios/:shortId/edit` | `campaignFoliosFolioEdit` | `folios/FolioEditPage.tsx` | Folio editor |
+| `/c/:campaignId/q/:shortId/graph` | `campaignQuestGraph` | `campaign/quest/QuestGraph.tsx` | Quest dependency graph |
+| `/c/:campaignId/archive` | `campaignFolios` | `folios/FoliosLayout.tsx` | Folio + archive index (note: path is `/archive`, route name is still `campaignFolios`) |
+| `/c/:campaignId/archive/new` | `campaignFoliosNew` | `folios/FolioCreatePage.tsx` | New folio |
+| `/c/:campaignId/archive/:shortId` | `campaignFoliosFolio` | `folios/FolioView.tsx` | Folio detail |
+| `/c/:campaignId/archive/:shortId/edit` | `campaignFoliosFolioEdit` | `folios/FolioEditPage.tsx` | Folio editor |
 | `/c/:campaignId/settings` | `campaignSettings` | `campaign/settings/CampaignSettings.tsx` | Settings layout (sub-routes below) |
 | `/c/:campaignId/settings/` | `campaignSettingsBanner` | `…/CampaignSettingsGeneralPage.tsx` | General / banner |
 | `/c/:campaignId/settings/characters` | `campaignSettingsCharacters` | `…/CampaignSettingsCharactersPage.tsx` | Members & pending invitations |
 | `/c/:campaignId/settings/zones` | `campaignSettingsZones` | `…/CampaignSettingsZonesPage.tsx` | Zones config |
 | `/c/:campaignId/settings/kanban` | `campaignSettingsKanban` | `…/CampaignSettingsKanbanPage.tsx` | Kanban columns config |
 | `/c/:campaignId/settings/folios` | `campaignSettingsFolios` | `…/CampaignSettingsFoliosPage.tsx` | Folios config |
-| `/c/:campaignId/settings/petitions` | `campaignSettingsPetitions` | settings page | Petitions module toggle / config |
+| `/c/:campaignId/settings/quests` | `campaignSettingsQuests` | `…/CampaignSettingsQuestsPage.tsx` | Per-quest module toggles (note / chrono / reminder) |
+| `/c/:campaignId/settings/sigils` | `campaignSettingsSigils` | `…/CampaignSettingsSigilsPage.tsx` | Sigil inventory + module toggles |
 | `/c/:campaignId/settings/chapters` | `campaignSettingsChapters` | settings page | Chapter config |
 | `/c/:campaignId/request` | `campaignPetitionRequest` | `campaign/petitions/CampaignPetitionRequest.tsx` | First-party petition form (login required). Top-level, **not** nested under the `campaign` layout — no membership check |
 | `/c/:campaignId/p/:petitionId` | `campaignPetitionStatus` | `campaign/petitions/CampaignPetitionStatus.tsx` | Reporter-facing status page; readable by reporter or campaign owner |
@@ -99,9 +119,13 @@ Live in `src/web/app/atoms/`. The campaign route loader fills the `current*` ato
 - `currentQuestAtom` — active quest detail
 - `currentFolioAtom` — active folio detail
 - `currentPetitionCountAtom` — pending petitions badge for the campaign header
+- `currentBlightCountAtom` — open blights badge for the campaign header
 
-**Folios index (set by `campaignFolios` loader)**
+**Archive / folios index (set by the `campaignFolios` loader)**
 - `userFoliosAtom`, `folioTagsAtom`
+- `campaignDirectoriesAtom` — archive directory tree
+- `currentArchivePathAtom` — breadcrumb chain for the active directory
+- `currentArchiveContentsAtom` — folios + blobs in the active directory
 
 **Global (per-user, not per-campaign)**
 - `userCampaignsAtom` — sidebar/home campaign list
@@ -152,10 +176,14 @@ User-submitted bug reports / feature requests that the campaign owner triages.
 
 **Lifecycle**: `pending → accepted` (promoted to a quest, linked via `promotedQuestId`) `| rejected`.
 
-**Submission flow (login required)**
-- `/c/:campaignId/request` — first-party form on lore. Anonymous visitors see a "Sign in with Google" CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).
-- External "report a bug" buttons on third-party sites are plain `<a target="_blank" rel="noopener noreferrer">` anchors pointing to `/c/:id/request?path=<encoded>&url=<encoded>&type=bug` — no embedded JS, no screenshot capture, no widget. The page reads query params, persists them to `sessionStorage` (key `lor.petition.draft.<campaignId>`), cleans the URL via `history.replaceState`, and re-reads after the Google OAuth round-trip. Cleared on successful submit.
-- One POST to `/campaigns/:id/petitions` after the user fills the form.
+**Submission flow (login required)** — there are **two** live entry points; both land on `POST /campaigns/:id/petitions`:
+- `/c/:campaignId/request` — first-party form on lore (`CampaignPetitionRequest.tsx`, route `campaignPetitionRequest`). Anonymous visitors see a sign-in CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).
+- External "report a bug" buttons on third-party sites are plain `<a target="_blank" rel="noopener noreferrer">` anchors pointing to `/c/:id/request?path=<encoded>&url=<encoded>&type=bug` — no embedded JS, no screenshot capture, no widget. The page reads query params, persists them to `sessionStorage` (key `lor.petition.draft.<campaignId>`), cleans the URL via `history.replaceState`, and re-reads after the OAuth round-trip. Cleared on successful submit.
+- The **sigil in-app dialog** (`@alepha/sigil` embed, when the sigil's `kinds` include `petition`) is the second path.
+
+> A comment in `entities/campaigns.ts` used to claim petitions arrive *only* via the sigil dialog. That is not true — the first-party `/request` form is still wired and still shipped. If you remove one of the two paths, fix both the entity comment and this section.
+
+**Reporter-facing views** — `/me/petitions` (own submissions across campaigns) and `/c/:id/p/:petitionId` (single status page, readable by the reporter or the campaign owner).
 
 **Attachments**
 - Uploaded one-at-a-time via `POST /campaigns/:id/petitions/attachments`. Returns a file id; the client collects ids and includes them in the petition body.
@@ -185,7 +213,7 @@ User-submitted bug reports / feature requests that the campaign owner triages.
 
 ## Folios are this campaign's memory for Claude
 
-Folios are markdown notes scoped to **(user, campaign)** — they mirror the `~/.claude/projects/*/memory/MEMORY.md` pattern but at the campaign level: persistent across sessions, exportable, tagged, fully MCP-readable. Treat them as the canonical place where any agent working on a Lore campaign should look for context and write down what it learns.
+Folios are markdown notes scoped to a **campaign** and shared across all its members (they were per-user before quest #65) — they mirror the `~/.claude/projects/*/memory/MEMORY.md` pattern but at the campaign level: persistent across sessions, exportable, tagged, fully MCP-readable. Treat them as the canonical place where any agent working on a Lore campaign should look for context and write down what it learns.
 
 **Conventions** (apply when curating folios — yourself or via Claude):
 
@@ -204,12 +232,40 @@ The MCP tool descriptions in `src/mcp/tools/CampaignTools.ts` and `src/mcp/tools
 
 **Where to look**
 
-- Entity: `src/api/entities/folios.ts` (per-user-per-campaign, `searchText` blob for cheap LIKE search, `summary` for agent-readable orientation)
+- Entity: `src/api/entities/folios.ts` (campaign-scoped, `searchText` blob for cheap LIKE search — blank for protected folios, `summary` for agent-readable orientation)
 - Link table: `src/api/entities/folioLinks.ts` (derived; re-synced from `[[...]]` references on every folio save)
 - Link sync: `src/api/services/FolioLinkService.ts`
-- Controller: `src/api/controllers/FolioController.ts` (list, search, get, getLinks, create, update, delete)
+- Controller: `src/api/controllers/FolioController.ts` (list, listTags, getByShortId, get, getLinks, create, update, delete, listCampaignActivity, listHistory, revertHistory, pinHistory)
+- History: `src/api/services/FolioHistoryService.ts` (append, retention sweep, protection-domain purge)
 - MCP tools: `src/mcp/tools/FolioTools.ts` + `CampaignTools.ts` (`campaign_context`)
 - UI: `src/web/app/components/folios/FolioEditor.tsx`, `FolioView.tsx`, `FolioBacklinksPanel.tsx`
+
+### ⚠️ Protected folios: the protection-domain invariant
+
+A folio with `protected: true` stores a client-side `BrowserCryptoProvider` envelope in `content`. The server never sees the passphrase or the plaintext.
+
+**Invariant: `folio_revisions` never holds a snapshot from a different protection domain than the folio's current one.** Crossing the boundary in either direction purges the folio's revision history (`FolioHistoryService.purgeRevisions`, called from `FolioController.update` when `isProtected !== existing.protected`).
+
+This is a **confidentiality requirement**, not a tidiness one. Before it existed, encrypting a folio blanked `searchText` and wiped the outbound links but left every pre-encryption plaintext snapshot in `folio_revisions` — readable by any campaign member through `GET /folios/:id/history`. Encrypting protected nothing already written. It also meant `revertHistory` could write a plaintext snapshot into a folio still flagged `protected`, leaving it undecryptable in the UI.
+
+`pinned` revisions are exempt from the retention sweep but **not** from this purge. Regression guard: `test/folio-protected-history.spec.ts`.
+
+## Sigils, Blights, Beacon, Vitals
+
+A **sigil** is a credential issued to a partner site. The site embeds `@alepha/sigil`, which posts telemetry back to Lore. What a sigil may send is scoped by its `kinds` and by campaign-level `features` toggles (`sigils` is the master switch; `blights`, `beacon`, `vitals` are per-capability).
+
+- **Blights** — deduplicated uncaught exceptions, keyed by `fingerprint`. The owner triages them in the inbox (`/c/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` zone, provenance recorded in `quests.source`). Purged on a retention window (`campaign.retentionDays ?? 30`) by `SigilJobs`; resolved and `quest:`-forwarded rows are kept as audit trail.
+- **Beacon / Vitals** — pageviews, unique visitors, and web-vitals samples, surfaced on `/c/:id/insights`.
+
+> ⚠️ **`name`, `message`, `stack`, `sourceUrl` on a blight are 100% attacker-controlled** and are shown to the campaign owner — the highest-value target. Render as escaped plain text only. Never markdown, never `dangerouslySetInnerHTML`.
+
+Read endpoints are member-gated; mutations are owner-only. Ingest endpoints are **public and unauthenticated** — see the Cloudflare WAF runbook section below, which is a required deploy step.
+
+## Archive (directories + blobs)
+
+Folios live in a directory tree rather than nesting under each other. `archiveDirectories` is the tree (depth-capped at 8), `archiveBlobs` holds binary attachments, and `archiveNames` backs name-uniqueness. `folios.directoryId` is `undefined` for campaign root and **cascades on directory delete** — removing a directory removes everything in it, folios included.
+
+Surfaced at `/c/:id/archive` and over MCP via `ArchiveTools`.
 
 ## I18n
 
@@ -218,11 +274,25 @@ Two languages: English (`en`) and French (`fr`). All translations in `src/web/ap
 ## Gamification System
 
 Defined in `src/api/services/CharacterInfo.ts`:
-- **18 levels** with increasing XP thresholds
-- **XP** earned from completing quests (based on difficulty × priority)
-- **Gold/Silver** currency from quest rewards
-- **Ranks**: F, C, B, A, S (mapped from difficulty 1-5)
+- **20 levels** with increasing XP thresholds (D&D-style 1–20 cap)
+- **XP** earned from completing quests (`difficulty × 150 + priority bonus`)
+- **Gold/Silver** accrues from quest rewards (`balance` is a silver ledger; `gold = floor(balance / 100)`)
+- **Ranks**: F, C, B, A, S (mapped from quest difficulty 1–5 — a quest property, not a character one)
 - **Characters** are per-campaign — each user has a separate character (and separate progression) per campaign
+- **Achievements** (`AchievementEngine`) are server-evaluated badge keys appended to `characters.achievements`. One may be equipped as a Title. The registry currently ships two (`hard_worker`, `bookkeeper`); adding more is a registry edit, no schema work.
+
+### ⚠️ There is no Shop, no paywall, and no level gating
+
+Removed deliberately. A previous design sold campaign features (Chronicles, Quest Reminder, Quest Gating) for gold via a single-payer Shop, and let quests carry `requiredLevel` / `recommendedLevel` gates. **All of it is gone**:
+
+- `FeaturePaywallService`, `FeatureRegistry`, `FeaturePaywallController`, `CampaignShopPage` — deleted.
+- `quests.recommendedLevel` / `quests.requiredLevel` — dropped (migration `0049`).
+- `campaign.features.questGating` — removed from the schema.
+- **Chronicles is now free** for any campaign member.
+- **Quest Reminder** is gated only on the `features.questReminder` owner toggle.
+- `campaigns.unlockedFeatures` / `campaigns.unlockHistory` — **kept in the schema as `@deprecated` dead columns**. Nothing reads or writes them. They stay because dropping a `campaigns` column risks the D1 rebuild path, and `campaigns` is the CASCADE parent that wiped prod in 2026-05. Same treatment as the vestigial `public` column.
+
+XP and gold still accrue on quest completion and still drive levels and the level-up animation — they are **cosmetic progression only**. Gold has no sink. Do not reintroduce a spend mechanic without an explicit decision; the wall was removed because it gated real work behind grinding.
 
 ## Key Dependencies
 
@@ -300,25 +370,29 @@ Re-verify this rule exists after any Cloudflare zone reconfiguration. Without it
 
 ## Tests
 
-Unit / integration specs in `test/` (Vitest, in-memory SQLite):
+52 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
 
 - `mcp-security.spec.ts` — MCP auth, API keys, user isolation
 - `campaign-stats.spec.ts` — chronicles aggregation
 - `campaign-leave.spec.ts` — `leaveCampaign` (owner-forbidden, no-op, member removal)
 - `campaign-features.spec.ts` — `campaign.features` toggle behavior + defaults
 - `chapter-jobs.spec.ts` — chapter background work (open/close, scheduling)
-- `quest-csv-formatter.spec.ts` / `quest-csv-parser.spec.ts` / `quest-csv-roundtrip.spec.ts` — generic CSV import/export
-- `quest-csv-alepha-lore-parser.spec.ts` / `quest-csv-trello-parser.spec.ts` — format-specific parsers
-- `quest-trello-import.spec.ts` — controller-level Trello import round-trip
+- `quest-csv-*.spec.ts` — generic + format-specific CSV import/export, plus the Trello round-trip
 - `quest-objective-history.spec.ts` — objective state history tracking
 - `quest-reminder.spec.ts` — quest reminder/notification logic
+- `quest-reward-delta.spec.ts` — **regression guard**: `completeQuest` reports the per-quest award, not the character's lifetime totals (MCP `quest_complete` used to return the accumulators)
+- `folio-protected-history.spec.ts` — **regression guard**: the protection-domain invariant (no plaintext left in `folio_revisions` after encrypting; pinned revisions are not exempt)
+- `folio-*.spec.ts` — links, backlinks, tidy, pinning, permissions, history, activity, blob links
+- `sigil-*.spec.ts` / `vitals-ingest.spec.ts` / `blight-controller.spec.ts` — ingest, origin gating, rate limiting, purge jobs, migration safety
+- `archive-module.spec.ts` — directory tree + blobs
+- `achievement-engine.spec.ts` — predicate evaluation + grant idempotency
 - Shared fixtures live in `test/fixtures/`
 
 ### E2E convention: one file per feature
 
 `e2e/` is split by feature, not by user journey. One `<feature>.spec.ts` per major surface, each covering happy path + key edge cases:
 
-- `quest.spec.ts` — quest lifecycle (open → accept → complete)
+- `quest.spec.ts` — quest lifecycle (open → accept → complete) + reminder UI
 - `petition.spec.ts` — petition submit → accept → link quests → status progression
 - `register.spec.ts` — registration form + email verification
 - `settings-features.spec.ts` — campaign feature toggles
@@ -326,10 +400,17 @@ Unit / integration specs in `test/` (Vitest, in-memory SQLite):
 - `invitation.spec.ts` — owner invites → user accepts → joins campaign as a character (drives the email-link round-trip)
 - `protected-folio.spec.ts` — end-to-end encrypted folios (passphrase round-trip, wrong-passphrase rejection, no plaintext on the wire)
 - `quest-import-export.spec.ts` — Data settings page CSV export (import side is covered by the unit specs)
+- `archive.spec.ts` — directory tree navigation + blob upload
+- `blights.spec.ts` / `sigil.spec.ts` — sigil issuance, ingest, blight triage + forward-to-quest
+- `campaign-wizard.spec.ts` — 3-step create wizard
+- `my-character.spec.ts` / `character-identity.spec.ts` / `roster.spec.ts` — character sheet, alias/avatar, party list
+- `home.spec.ts`, `admin-user-detail.spec.ts`
 - `security-public-campaign.spec.ts` — regression guard: non-member account hits 403 on every campaign endpoint after the public-campaign purge
 - `security-file-access.spec.ts` — regression guard: `/api/files/:id` IDOR fix via `LoreFileAccessProvider` (only owners/members can download an attachment)
 
 Shared setup (register/verify, campaign-create wizard, API helpers) lives in `e2e/_helpers.ts`. Re-use those rather than copy-pasting auth setup into each new spec.
+
+`setCampaignFeature(page, campaignId, key, value?)` flips a campaign feature toggle from inside a flow — use it when a spec needs an off-by-default module (e.g. `questReminder`). It replaced the old `unlockShopFeature`, which farmed gold from a throwaway quest to fund a Shop purchase; the Shop no longer exists.
 
 **When adding or modifying a feature, the matching `<feature>.spec.ts` must move with it.** No feature ships without its e2e moving in lockstep. If no spec exists yet for the feature, create one — start by composing `registerAndVerify` + `createCampaignViaWizard` from `_helpers.ts`, then drive the feature-specific UI.
 

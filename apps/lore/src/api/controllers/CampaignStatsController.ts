@@ -3,7 +3,7 @@ import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action, ForbiddenError } from "alepha/server";
+import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
@@ -14,7 +14,6 @@ import {
   chroniclesPartySchema,
   chroniclesQuestsSchema,
 } from "../schemas/chroniclesSchemas.ts";
-import { FeaturePaywallService } from "../services/FeaturePaywallService.ts";
 
 export class CampaignStatsController {
   quests = $repository(quests);
@@ -24,14 +23,13 @@ export class CampaignStatsController {
   database = $inject(DatabaseProvider);
   security = $inject(AppSecurityProvider);
   dt = $inject(DateTimeProvider);
-  paywall = $inject(FeaturePaywallService);
 
   /**
    * Chronicles "Overview" tab: KPI tiles, a cumulative created-vs-completed
    * burn-up chart, a weekly completion-rate trend, and counts of quests that
    * need attention (stale, unassigned, blocked).
    *
-   * Members-only + the `chronicles` paywall. Every date computation
+   * Members-only. Every date computation
    * dialect-branches (SQLite epoch-ms ints in production, Postgres timestamps
    * in tests).
    */
@@ -50,12 +48,6 @@ export class CampaignStatsController {
     },
     handler: async ({ params, user }) => {
       const { campaign } = await this.security.assertMember(params.id, user);
-
-      if (!this.paywall.isUnlocked(campaign.unlockedFeatures, "chronicles")) {
-        throw new ForbiddenError(
-          "Chronicles is locked — buy it from the Shop.",
-        );
-      }
 
       const isSqlite = this.database.dialect === "sqlite";
       const daysAgo = (days: number) =>
@@ -257,7 +249,7 @@ export class CampaignStatsController {
    * time per priority, and an actionable list of the oldest still-open quests.
    *
    * Same access model as `getChroniclesOverview`: members-only + the
-   * `chronicles` paywall. Date computations dialect-branch (SQLite epoch-ms
+   * Members-only. Date computations dialect-branch (SQLite epoch-ms
    * ints in production, Postgres timestamps in tests).
    */
   getChroniclesQuests = $action({
@@ -275,12 +267,6 @@ export class CampaignStatsController {
     },
     handler: async ({ params, user }) => {
       const { campaign } = await this.security.assertMember(params.id, user);
-
-      if (!this.paywall.isUnlocked(campaign.unlockedFeatures, "chronicles")) {
-        throw new ForbiddenError(
-          "Chronicles is locked — buy it from the Shop.",
-        );
-      }
 
       const isSqlite = this.database.dialect === "sqlite";
       // Cycle time = completedAt - acceptedAt expressed in hours. SQLite
@@ -463,7 +449,7 @@ export class CampaignStatsController {
    * last 14 days.
    *
    * Same access model as `getChroniclesOverview`: members-only + the
-   * `chronicles` paywall. Date computations dialect-branch (SQLite epoch-ms
+   * Members-only. Date computations dialect-branch (SQLite epoch-ms
    * ints in production, Postgres timestamps in tests).
    */
   getChroniclesParty = $action({
@@ -481,12 +467,6 @@ export class CampaignStatsController {
     },
     handler: async ({ params, user }) => {
       const { campaign } = await this.security.assertMember(params.id, user);
-
-      if (!this.paywall.isUnlocked(campaign.unlockedFeatures, "chronicles")) {
-        throw new ForbiddenError(
-          "Chronicles is locked — buy it from the Shop.",
-        );
-      }
 
       const isSqlite = this.database.dialect === "sqlite";
       // Compose a user's display name: "first last" trimmed, else username,

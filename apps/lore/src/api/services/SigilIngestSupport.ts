@@ -14,7 +14,7 @@ import { campaigns } from "../entities/campaigns.ts";
  * declaration + doc comments) into each engine, it lives here once and is
  * `$inject`ed into both — composition over inheritance, matching how the
  * rest of the Lore services compose (`QuestImportFormatProvider`,
- * `FeaturePaywallService`).
+ * `QuestResourceMapper`).
  *
  * What stays per-service: the actual hashing tuples — `BlightIngestService`
  * hashes `(ip, salt)` for IP fingerprints, `BeaconIngestService` hashes

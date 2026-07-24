@@ -311,17 +311,16 @@ export class QuestTools {
         body: { message: params.message },
       });
 
-      // Calculate rewards from character delta
-      const xpEarned = result.character?.xp;
-      const moneyEarned = result.character?.balance;
-
       return {
         id: result.id,
         shortId: result.shortId,
         title: result.title,
         completedAt: result.completedAt!,
-        xpEarned,
-        moneyEarned,
+        // Per-completion award, computed server-side. Reading
+        // `character.xp` / `.balance` here would report the character's
+        // lifetime totals as this quest's reward.
+        xpEarned: result.xpEarned,
+        moneyEarned: result.moneyEarned,
       };
     },
   });
