@@ -160,6 +160,19 @@ describe("BrowserCryptoProvider", () => {
     expect(code).toMatch(/^\d$/);
   });
 
+  it("should generate long codes without hanging", () => {
+    const crypto = new BrowserCryptoProvider();
+
+    // For length >= 10, `10 ** length` exceeds 2^32, so the rejection-sampling
+    // limit floored to 0 and the loop could never exit — a hung tab. The Node
+    // impl handles these fine, so the providers must not diverge.
+    for (const length of [10, 12, 15]) {
+      const code = crypto.randomCode(length);
+      expect(code).toHaveLength(length);
+      expect(code).toMatch(new RegExp(`^\\d{${length}}$`));
+    }
+  });
+
   describe("passphrase-based encryption (protected folios)", () => {
     // Iteration count tuned down for tests — production paths use the
     // 600k default. Using the default here would push the suite well

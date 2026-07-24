@@ -115,17 +115,26 @@ export class BrowserCryptoProvider {
   }
 
   public randomCode(length: number): string {
-    const max = 10 ** length;
-    const array = new Uint32Array(1);
-    // Rejection sampling to avoid modulo bias
-    const limit = Math.floor(0x100000000 / max) * max;
-    let value: number;
-    do {
-      crypto.getRandomValues(array);
-      value = array[0]!;
-    } while (value >= limit);
-    const code = value % max;
-    return String(code).padStart(length, "0");
+    // Generated digit by digit: computing `10 ** length` first overflows the
+    // Uint32 range at length >= 10, which floored the rejection-sampling
+    // limit to 0 and made the loop unterminable (a hung tab). Drawing each
+    // digit independently is uniform, allocation-cheap, and has no length
+    // ceiling — matching the Node provider, which handles long codes fine.
+    //
+    // 250 = 25 × 10, so bytes 0–249 map onto 0–9 with no modulo bias;
+    // 250–255 are rejected and redrawn.
+    const digits: string[] = [];
+    const buffer = new Uint8Array(length);
+    while (digits.length < length) {
+      crypto.getRandomValues(buffer);
+      for (const byte of buffer) {
+        if (byte < 250) {
+          digits.push(String(byte % 10));
+          if (digits.length === length) break;
+        }
+      }
+    }
+    return digits.join("");
   }
 
   protected toHex(buffer: ArrayBuffer | Uint8Array): string {

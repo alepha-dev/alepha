@@ -114,6 +114,19 @@ export interface IssuerSettings {
     sessionId?: string;
   }>;
 
+  /**
+   * Exchange a refresh token for the CURRENT user, re-read from your store.
+   *
+   * Strongly recommended. Without it the realm falls back to token-only
+   * refresh, which rebuilds the user from the *expired* access token and
+   * therefore re-issues whatever roles that token carried: a revoked or
+   * demoted user keeps their old privileges until the refresh token itself
+   * expires (30 days by default). Token-only mode also cannot support idle
+   * invalidation, since there is no row to track `lastUsedAt` on.
+   *
+   * Provide this whenever roles can change during a session — i.e. almost
+   * always. `alepha/api/users` wires it for you via `$realm`.
+   */
   onRefreshSession?: (refreshToken: string) => Promise<{
     user: UserAccount;
     expiresIn: number;

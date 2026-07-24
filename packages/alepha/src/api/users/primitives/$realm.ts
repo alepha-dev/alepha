@@ -132,13 +132,17 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     const apiKeyService = alepha.inject(ApiKeyService);
     customResolvers.push(
       apiKeyService.createResolver({
-        // Keys must die with their account: refuse the key when its owner
-        // no longer exists or has been disabled.
-        validateOwner: async (userId) => {
+        // Keys must die with their account — and must never grant more than
+        // the owner currently holds, so a demotion takes effect immediately
+        // instead of waiting for every outstanding key to expire.
+        resolveOwner: async (userId) => {
           const user = await realmProvider
             .userRepository(name)
             .findById(userId);
-          return user?.enabled === true;
+          if (!user) {
+            return undefined;
+          }
+          return { enabled: user.enabled === true, roles: user.roles };
         },
       }),
     );

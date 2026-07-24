@@ -940,6 +940,46 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     expect(response.data.roles).toEqual(["user"]); // Original roles
   });
 
+  it("should not outlive a demotion of its owner", async ({ expect }) => {
+    const { adminUserController, apiKeyController, app, fakeProvider } =
+      await setup();
+    const fakeUser = fakeProvider.generate(userDataSchema);
+
+    // A user who IS an admin mints a key carrying admin.
+    const userResponse = await adminUserController.createUser.fetch(
+      { body: { ...fakeUser, roles: ["user", "admin"] } },
+      { user: adminUser },
+    );
+    const user = userResponse.data;
+
+    const createResponse = await apiKeyController.createApiKey.fetch(
+      { body: { name: "Admin Key" } },
+      { user: { id: user.id, roles: user.roles } },
+    );
+    const { token } = createResponse.data;
+
+    // Sanity: the key works as admin while the owner is one.
+    const before = await app.adminStats.fetch({ query: { api_key: token } });
+    expect(before.status).toBe(200);
+
+    // The owner is demoted.
+    await adminUserController.updateUser.fetch(
+      { params: { id: user.id }, body: { roles: ["user"] } },
+      { user: adminUser },
+    );
+
+    // A key must never grant more than its owner currently has — otherwise
+    // demotion is meaningless while any older key is outstanding.
+    await expect(
+      app.adminStats.fetch({ query: { api_key: token } }),
+    ).rejects.toThrow();
+
+    // ...but the roles the owner still holds keep working.
+    const after = await app.getProfile.fetch({ query: { api_key: token } });
+    expect(after.status).toBe(200);
+    expect(after.data.roles).toEqual(["user"]);
+  });
+
   it("should create API key with multiple roles", async ({ expect }) => {
     const { adminUserController, apiKeyController, app, fakeProvider } =
       await setup();

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { randomBytes, scryptSync } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -455,8 +455,6 @@ export class CloudflareAdapter extends PlatformAdapter {
     //   4. Add/overwrite secrets as `{type,name,text}`, plus a fresh
     //      ALEPHA_SECRETS_HASH binding so subsequent runs see it.
     //   5. PATCH the merged binding list in one call.
-    const hash = computeSecretsHash(secrets);
-
     {
       const workerName = ctx.naming.worker();
 
@@ -472,12 +470,21 @@ export class CloudflareAdapter extends PlatformAdapter {
               b.name === CloudflareAdapter.SECRETS_HASH_BINDING,
           );
 
-          if (existingHashBinding?.text === hash) {
+          // Recompute against the STORED salt: matching means the secret set
+          // is unchanged and the PATCH can be skipped.
+          const existing = parseSecretsFingerprint(existingHashBinding?.text);
+          if (
+            existing &&
+            computeSecretsHash(secrets, existing.salt) === existing.digest
+          ) {
             this.log.info(
-              `Secrets for ${workerName} unchanged (hash ${hash.slice(0, 8)}…), skipping push.`,
+              `Secrets for ${workerName} unchanged (${existing.digest.slice(0, 8)}…), skipping push.`,
             );
             return;
           }
+
+          const salt = randomBytes(16).toString("hex");
+          const fingerprint = `v2:${salt}:${computeSecretsHash(secrets, salt)}`;
 
           const overwriting = new Set(Object.keys(secrets));
           const inherit = existingBindings
@@ -507,7 +514,7 @@ export class CloudflareAdapter extends PlatformAdapter {
             {
               type: "plain_text",
               name: CloudflareAdapter.SECRETS_HASH_BINDING,
-              text: hash,
+              text: fingerprint,
             },
           ]);
         },
@@ -1386,10 +1393,35 @@ export class CloudflareAdapter extends PlatformAdapter {
  * lines does not invalidate the cache. Used as a fingerprint by
  * `CloudflareAdapter.secrets` — see the comment block there.
  */
-function computeSecretsHash(secrets: Record<string, string>): string {
+function computeSecretsHash(
+  secrets: Record<string, string>,
+  salt: string,
+): string {
   const sorted = Object.keys(secrets)
     .sort()
     .map((k) => `${k}=${secrets[k]}`)
     .join("\n");
-  return createHash("sha256").update(sorted).digest("hex");
+  // Salted + deliberately slow. A plain sha256 of "KEY=VALUE" lines stored in
+  // a *readable* binding is an offline brute-force oracle: anyone with
+  // worker-settings read access could recover low-entropy secret values,
+  // which is precisely what Cloudflare's write-only secrets prevent. The salt
+  // kills precomputation; the KDF cost makes guessing expensive. It stays
+  // stable across deploys (the salt is stored alongside), so the skip-if-
+  // unchanged cache still works.
+  return scryptSync(sorted, salt, 32, { N: 16384, r: 8, p: 1 }).toString("hex");
+}
+
+/**
+ * Serialized fingerprint: `v2:<salt>:<digest>`. The v1 format was a bare
+ * sha256 of the values; it is treated as a miss so the next deploy upgrades
+ * it in place.
+ */
+function parseSecretsFingerprint(
+  text: string | undefined,
+): { salt: string; digest: string } | undefined {
+  if (!text?.startsWith("v2:")) {
+    return undefined;
+  }
+  const [, salt, digest] = text.split(":");
+  return salt && digest ? { salt, digest } : undefined;
 }

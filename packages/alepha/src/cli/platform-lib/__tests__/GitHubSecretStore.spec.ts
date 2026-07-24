@@ -108,22 +108,29 @@ describe("GitHubSecretStore", () => {
       await store.set("app-production", "API_KEY", "abc123");
 
       // Should write dotenv format
+      // Private per-invocation directory (mode 0700), not a guessable
+      // /tmp path any local user could read or pre-create.
       const written = fs.writeFileCalls.find((c) =>
-        /\/tmp\/alepha-secret-API_KEY-/.test(c.path),
+        /node_modules\/\.alepha\/secrets\/[0-9a-f-]{36}\/secret\.env$/.test(
+          c.path,
+        ),
       );
+      expect(written?.path).not.toMatch(/^\/tmp\//);
       expect(written).toBeDefined();
       expect(written!.data).toBe('API_KEY="abc123"\n');
 
       // Should call gh with --env-file (no positional secret name)
       expect(
         shell.wasCalledMatching(
-          /gh secret set -f \/tmp\/alepha-secret-API_KEY-\d+ --env app-production/,
+          /gh secret set -f node_modules\/\.alepha\/secrets\/[0-9a-f-]{36}\/secret\.env --env app-production/,
         ),
       ).toBe(true);
 
       // Temp file should be cleaned up
       expect(
-        fs.rmCalls.some((c) => /\/tmp\/alepha-secret-API_KEY-/.test(c.path)),
+        fs.rmCalls.some((c) =>
+          /node_modules\/\.alepha\/secrets\/[0-9a-f-]{36}$/.test(c.path),
+        ),
       ).toBe(true);
     });
 
@@ -133,7 +140,7 @@ describe("GitHubSecretStore", () => {
       await store.set("app-production", "KEY", 'val"ue\nwith\\special');
 
       const written = fs.writeFileCalls.find((c) =>
-        /\/tmp\/alepha-secret-KEY-/.test(c.path),
+        /secrets\/[0-9a-f-]{36}\/secret\.env$/.test(c.path),
       );
       expect(written!.data).toBe('KEY="val\\"ue\\nwith\\\\special"\n');
     });

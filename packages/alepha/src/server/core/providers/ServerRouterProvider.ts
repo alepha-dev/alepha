@@ -412,6 +412,17 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       reply.headers["content-type"] = "application/json";
       const errorJson = HttpError.toJSON(error);
       errorJson.requestId = requestId;
+
+      // A 5xx cause is internal (DB URLs, upstream errors, stack-y hints) and
+      // must not reach the client in production — the same rule the
+      // non-HttpError branches below already apply to `message`. 4xx causes
+      // are deliberate, client-facing context and are kept.
+      if (error.status >= 500 && this.alepha.isProduction()) {
+        errorJson.cause = undefined;
+        errorJson.details = undefined;
+        errorJson.message = "Internal Server Error";
+      }
+
       reply.body = JSON.stringify(errorJson);
       return;
     }

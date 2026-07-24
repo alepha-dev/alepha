@@ -779,7 +779,10 @@ describe("CloudflareAdapter", () => {
         (b) => b.name === "ALEPHA_SECRETS_HASH",
       );
       expect(hashBinding?.type).toBe("plain_text");
-      expect(hashBinding?.text).toMatch(/^[a-f0-9]{64}$/);
+      // Salted + slow-KDF fingerprint (`v2:<salt>:<digest>`) — a bare sha256
+      // of the values in a readable binding is an offline brute-force oracle.
+      expect(hashBinding?.text).toMatch(/^v2:[a-f0-9]{32}:[a-f0-9]{64}$/);
+      expect(hashBinding?.text).not.toContain("my-secret");
 
       // Mutate the bindings to a sentinel set we can watch for accidental
       // overwrites. If the second `secrets()` call decides to PATCH again,

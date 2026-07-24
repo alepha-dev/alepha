@@ -54,6 +54,9 @@ export class JwtProvider {
         name,
         secretKey: secretKeyOrJwks,
         keyLoader: () => Promise.resolve(createSecretKey(secretKey)),
+        // We only ever sign symmetric tokens with HS256 — pin it so a future
+        // key-loader change can't widen the accepted set.
+        algorithms: ["HS256"],
       });
     } else {
       this.log.debug(`will verify JWTs from issuer '${name}' with JWKS`, {
@@ -113,6 +116,7 @@ export class JwtProvider {
     this.keystore.push({
       name,
       keyLoader: createLocalJWKSet({ keys: [publicJwk] }),
+      algorithms: [signing.alg],
     });
   }
 
@@ -152,6 +156,7 @@ export class JwtProvider {
           keyName: it.name,
           result: await jwtVerify(token, it.keyLoader, {
             currentDate: this.dateTimeProvider.now().toDate(),
+            ...(it.algorithms ? { algorithms: it.algorithms } : {}),
             ...options,
           }),
         };
@@ -250,6 +255,12 @@ export interface KeyLoaderHolder {
   name: string;
   keyLoader: KeyLoader;
   secretKey?: string;
+  /**
+   * Accepted JWS algorithms for this key, pinned at registration when we know
+   * exactly what we sign with. Left undefined for external JWKS URLs, whose
+   * IdP chooses its own algorithm (RS256/ES256/…) and may rotate it.
+   */
+  algorithms?: string[];
 }
 
 export interface SignerHolder {

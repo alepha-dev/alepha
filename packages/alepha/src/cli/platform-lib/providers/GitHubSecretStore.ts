@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { $inject, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -99,7 +100,19 @@ export class GitHubSecretStore implements SecretStoreProvider {
     key: string,
     value: string,
   ): Promise<void> {
-    const tmpFile = `/tmp/alepha-secret-${key}-${Date.now()}`;
+    // The plaintext secret briefly hits disk. Put it in a private,
+    // unpredictably-named directory (mode 0700) instead of a guessable
+    // /tmp path: on a shared machine any local user could otherwise read it
+    // — or pre-create the path and have us write into their file.
+    const dir = this.fs.join(
+      "node_modules",
+      ".alepha",
+      "secrets",
+      randomUUID(),
+    );
+    await this.fs.mkdir(dir, { recursive: true, mode: 0o700 });
+
+    const tmpFile = this.fs.join(dir, "secret.env");
     const escaped = value
       .replace(/\\/g, "\\\\")
       .replace(/"/g, '\\"')
@@ -112,7 +125,7 @@ export class GitHubSecretStore implements SecretStoreProvider {
       );
       this.log.debug(`Secret set: ${key}`, { output });
     } finally {
-      await this.fs.rm(tmpFile);
+      await this.fs.rm(dir, { recursive: true, force: true });
     }
   }
 

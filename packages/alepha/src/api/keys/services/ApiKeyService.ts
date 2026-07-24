@@ -45,16 +45,20 @@ export class ApiKeyService {
    *
    * @param options.priority - Priority of this resolver (default: 50, JWT is 100)
    * @param options.prefix - API key prefix to match in Bearer header (default: "ak")
-   * @param options.validateOwner - Called with the key's userId on every
-   * validation; return false to refuse the key. Wire this to the user store
+   * @param options.resolveOwner - Called with the key's userId on every
+   * validation. Return `undefined` (or `enabled: false`) to refuse the key —
    * so keys stop authenticating the moment their owner is disabled or
-   * deleted — an API key must never outlive its account.
+   * deleted; an API key must never outlive its account. The returned `roles`
+   * cap the key's own stored roles, so a demoted owner's outstanding keys
+   * lose the privileges they no longer hold.
    */
   public createResolver(
     options: {
       priority?: number;
       prefix?: string;
-      validateOwner?: (userId: string) => Promise<boolean>;
+      resolveOwner?: (
+        userId: string,
+      ) => Promise<{ enabled: boolean; roles?: string[] } | undefined>;
     } = {},
   ): IssuerResolver {
     const { priority = 50, prefix = "ak" } = options;
@@ -82,7 +86,7 @@ export class ApiKeyService {
           return null;
         }
 
-        return this.validate(token, options.validateOwner);
+        return this.validate(token, options.resolveOwner);
       },
     };
   }
@@ -268,7 +272,9 @@ export class ApiKeyService {
    */
   public async validate(
     token: string,
-    validateOwner?: (userId: string) => Promise<boolean>,
+    resolveOwner?: (
+      userId: string,
+    ) => Promise<{ enabled: boolean; roles?: string[] } | undefined>,
   ): Promise<UserInfo | null> {
     // Quick check for API key format
     if (!token.includes("_")) {
@@ -311,12 +317,27 @@ export class ApiKeyService {
     // A key must never outlive its account: refuse when the owner is
     // disabled or deleted. Deliberately NOT cached — revocation must be
     // visible immediately.
-    if (validateOwner && !(await validateOwner(apiKey.userId))) {
-      this.log.info("API key refused: owner is disabled or deleted", {
-        apiKeyId: apiKey.id,
-        userId: apiKey.userId,
-      });
-      return null;
+    let roles = apiKey.roles;
+    if (resolveOwner) {
+      const owner = await resolveOwner(apiKey.userId);
+      if (!owner?.enabled) {
+        this.log.info("API key refused: owner is disabled or deleted", {
+          apiKeyId: apiKey.id,
+          userId: apiKey.userId,
+        });
+        return null;
+      }
+
+      // Cap the key's stored roles by what the owner holds *now*. The stored
+      // set is a snapshot from creation time, so without this a key minted
+      // while its owner was an admin keeps granting admin after they are
+      // demoted — making demotion meaningless while any key is outstanding.
+      // Intersecting (rather than replacing) preserves least privilege: a
+      // deliberately narrow key never widens when its owner is promoted.
+      if (owner.roles) {
+        const live = new Set(owner.roles);
+        roles = roles.filter((role) => live.has(role));
+      }
     }
 
     // Update usage stats (fire and forget)
@@ -326,7 +347,7 @@ export class ApiKeyService {
 
     return {
       id: apiKey.userId,
-      roles: apiKey.roles,
+      roles,
     };
   }
 

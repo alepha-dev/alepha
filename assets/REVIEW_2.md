@@ -9,7 +9,7 @@
 
 **268 findings: 1 P0 · 48 P1 · 128 P2 · 91 P3** (168 bugs, 50 unfinished, 50 recommendations).
 
-> **Update 2026-07-24**: 84 findings closed — 73 fixed across seven passes, plus 11 retired with the deletion of `alepha/api/subscriptions`.
+> **Update 2026-07-24**: 92 findings closed — 81 fixed across nine passes, plus 11 retired with the deletion of `alepha/api/subscriptions`.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -187,6 +187,21 @@ The payments guide now states the recurring-billing stance explicitly: let the P
 | api/payments | **CI follow-up:** `refund()`'s reservation no longer runs inside `transactional()`. Several refunds issued in the same async context joined one ambient transaction, so a loser's rollback erased the winner's reservation — one refund reported success while the intent stayed `captured` (flaky, ~1 run in 6; caught by CI on the removal commit). The version-guarded UPDATE is itself atomic and is all the mutual exclusion this needs. |
 | websocket | The four declared `websocket:*` hooks (`connect`, `disconnect`, `message`, `error`) are emitted by the Node provider. They were documented "Fires when …" and never fired. Emission is fire-and-forget so a subscriber cannot break the connection it observes. |
 
+### Ninth pass — 2026-07-24 (security-adjacent P2s)
+
+8 findings fixed. Verified with `yarn lint`, `tsc --noEmit`, the full alepha suite (4318 tests), `yarn test:bun` (46) and the lore suite (298).
+
+| Area | Fix |
+|------|-----|
+| cli | Deploy secrets no longer land in a guessable `/tmp/alepha-secret-<KEY>-<ts>` path any local user could read (or pre-create and have us write into). They go to a per-invocation, randomly-named directory created mode `0700` under `node_modules/.alepha/secrets/`, removed in `finally`. |
+| cli | `ALEPHA_SECRETS_HASH` is no longer a bare sha256 of `KEY=VALUE` lines in a *readable* binding — an offline brute-force oracle for low-entropy secrets, defeating the point of Cloudflare's write-only secrets. Now `v2:<salt>:<scrypt digest>`: the salt kills precomputation, the KDF cost makes guessing expensive, and the skip-if-unchanged cache still works (the salt is stored alongside and reused for comparison). v1 values are treated as a miss and upgraded in place. |
+| server | `HttpError.toJSON` no longer ships the internal `cause` (and `details`) to clients for 5xx in production — the same rule the non-HttpError branches already applied to `message`. 4xx causes are deliberate, client-facing context and are kept. |
+| server/auth | OIDC discovery only relaxes TLS for genuinely local issuers (`http://localhost` and friends) or outside production. It was applying `allowInsecureRequests` unconditionally, disabling HTTPS enforcement on discovery and token exchange for every deployment. |
+| security | `jwtVerify` pins an `algorithms` allowlist wherever the algorithm is known — `HS256` for symmetric secrets, the configured `alg` for signing keys. External JWKS URLs stay unpinned, since the IdP owns and may rotate its algorithm. |
+| crypto | `BrowserCryptoProvider.randomCode` no longer hangs for length ≥ 10. `10 ** length` overflowed the Uint32 range, flooring the rejection-sampling limit to 0 so the loop could never exit. Digits are now drawn independently (bias-free, no length ceiling), matching the Node provider. |
+| api/keys | API keys can no longer outlive a demotion: the owner hook resolves the owner's *current* roles and the key's stored snapshot is intersected with them. A key minted while its owner was an admin stops granting admin the moment they are demoted, while a deliberately narrow key never widens on promotion. |
+| security | Token-only refresh (no `onRefreshSession`) documented where the choice is made: the option now spells out that omitting it re-issues whatever roles the expired token carried, so a revoked user keeps privileges until the refresh token expires (30 days by default), and that idle invalidation is unavailable. |
+
 Still deliberately open: the rate-limit `"unknown"`-IP shared bucket (only reachable when a global limit is explicitly configured).
 
 Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`main` @ 6c7ec9400); fixed findings' line numbers may have shifted slightly.
@@ -308,12 +323,12 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/security/providers/SecurityProvider.ts:500-506
 - **Detail**: `checkPermission(permission, ...roleNames)` maps each role name via `this.getRoles()` with **no realm argument**, which concatenates roles from every realm (SecurityProvider.ts:745-751) and returns the first name match. `$secure` calls it with just `...user.roles` and no realm (`$secure.ts:147-150`). Every `$realm` defines default roles literally named `"admin"` and `"user"` ($realm.ts:142-176), so in any multi-realm app these names collide. A user authenticated in realm A with role `"admin"` will be authorized against whichever realm's `"admin"` role appears first in the `realms` array — potentially a broader permission set than their own realm grants. Breaks realm/tenant authorization isolation. Fix: thread the user's `realm` into `checkPermission` and resolve with `getRoles(realm)`.
 
-### [BUG] Browser `randomCode` infinite-loops for length ≥ 10; diverges from Node impl
+### ✅ FIXED — [BUG] Browser `randomCode` infinite-loops for length ≥ 10; diverges from Node impl
 - **Severity**: P2
 - **File**: packages/alepha/src/crypto/providers/BrowserCryptoProvider.ts:117-129
 - **Detail**: `randomCode` computes `max = 10 ** length` and rejection-samples a `Uint32` against `limit = Math.floor(0x100000000 / max) * max`. For `length >= 10`, `max` (1e10) exceeds 2^32, so `limit === 0`; the loop condition `value >= limit` is always true → **infinite loop / hung tab**. The Node `CryptoProvider.randomCode` (CryptoProvider.ts:152-156) uses `randomInt` and works up to ~15 digits, so the two providers silently disagree at the boundary. Fix: draw enough random bytes (BigInt/multi-word) or cap/validate `length`.
 
-### [RECO] `JwtProvider` does not pin an `algorithms` allowlist on verify
+### ✅ FIXED — [RECO] `JwtProvider` does not pin an `algorithms` allowlist on verify
 - **Severity**: P2
 - **File**: packages/alepha/src/security/providers/JwtProvider.ts:150-157
 - **Detail**: `jwtVerify` is called without the `algorithms` option, so the accepted algorithm is inferred solely from the resolved key type. jose does reject `alg: none` and won't let a symmetric secret verify an asymmetric signature, so this is not exploitable today. But every realm knows exactly one expected alg; pass an explicit allowlist (`algorithms: ["HS256"]` / `[signer.alg]`) so a future key-loader change can't widen the accepted set.
@@ -323,7 +338,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/security/errors/SecurityError.ts:1-4 (raised at JwtProvider.ts:168,172,183)
 - **Detail**: `SecurityError` hardcodes `status = 403`, and `JwtProvider.parse` throws it for "Token expired", "Token claim validation failed", and "Invalid token". These are authentication failures and should be `401`; 401 is what signals a client to refresh/re-authenticate. Returning 403 for an expired token can break refresh flows. Fix: use a 401-status error (like `InvalidTokenError`) for token validity failures, reserving 403 for authorization denials.
 
-### [UNFINISHED] Token-based refresh reuses roles from the expired access token without re-validation
+### ✅ FIXED — [UNFINISHED] Token-based refresh reuses roles from the expired access token without re-validation
 - **Severity**: P2
 - **File**: packages/alepha/src/security/primitives/$issuer.ts:420-431
 - **Detail**: The token-only refresh path (no `onRefreshSession`) rebuilds the user from the *expired* access token with `currentDate: new Date(0)` to skip expiry, then re-mints a new access token carrying the same roles. Documented in a WARNING comment. With a 30-day default refresh window, a revoked/downgraded user keeps elevated roles for up to 30 days on token-only realms. Known limitation, but a real authz-staleness gap; consider docs + shorter default refresh lifetime for token-only mode.
@@ -412,7 +427,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/server/core/services/ServerRequestParser.ts:60-62,90-92
 - **Detail**: The getter calls `getRequestId()` unmemoized; without an x-request-id header each access generates a fresh randomUUID — the id logged, the id in the error body, and ids read by middleware all differ; none match the ALS context id. Fix: lazy memo per request; reuse as context id.
 
-### [BUG] `HttpError.toJSON` leaks internal cause to clients in production
+### ✅ FIXED — [BUG] `HttpError.toJSON` leaks internal cause to clients in production
 - **Severity**: P2
 - **File**: packages/alepha/src/server/core/errors/HttpError.ts:41; ServerRouterProvider.ts:410-417
 - **Detail**: The HttpError branch serializes `toJSON` unconditionally, which includes `reason` (cause name+message) as `cause`. Any 5xx HttpError with a cause ships the internal message to clients in production — sanitization only covers the non-HttpError path. Fix: strip cause/details for status ≥ 500 in production.
@@ -467,7 +482,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/server/auth/providers/ServerAuthProvider.ts:501-505
 - **Detail**: `handleCallback` only switches to POST-body parsing when `raw?.web?.req` exists; on the Node adapter `currentUrl` stays the query URL (no code for form_post) → Apple Sign In breaks on plain Node. Fix: build a web Request from raw.node.req (as ServerMultipartProvider does).
 
-### [BUG] OIDC discovery always runs with `allowInsecureRequests`
+### ✅ FIXED — [BUG] OIDC discovery always runs with `allowInsecureRequests`
 - **Severity**: P2
 - **File**: packages/alepha/src/server/auth/primitives/$auth.ts:464-478
 - **Detail**: `execute.push(allowInsecureRequests)` unconditional, disabling openid-client's HTTPS-only enforcement in production — a misconfigured `http://` issuer silently sends client secrets/auth codes cleartext. Fix: only when `!alepha.isProduction()`.
@@ -1110,7 +1125,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/users/schemas/sessionResourceSchema.ts:23; packages/alepha/src/api/users/controllers/AdminSessionController.ts:17-59
 - **Detail**: `sessionResourceSchema` includes `refreshToken: z.uuid()`, and `AdminSessionController.findSessions/getSession` return it to anyone with `admin:session:read`. A refresh token is a long-lived bearer credential: this hands an admin (or anyone who compromises the admin API/UI/logs) the ability to mint access tokens for any user — full impersonation. `MySessionController` deliberately omits it (see its doc comment) precisely for this reason; the admin view should too. Fix: drop `refreshToken` from the admin projection.
 
-### [RECO] API-key roles are a frozen snapshot taken at creation
+### ✅ FIXED — [RECO] API-key roles are a frozen snapshot taken at creation
 - **Severity**: P2
 - **File**: packages/alepha/src/api/keys/services/ApiKeyService.ts:90-122; packages/alepha/src/api/keys/controllers/ApiKeyController.ts:39
 - **Detail**: `create()` persists `roles` from `request.user.roles` at creation time, and `validate()` returns those stored roles. If a user is later demoted (e.g. `admin` removed), any API key minted while they were admin keeps granting admin. This is a real privilege-persistence gap, not just style. At minimum document it loudly; better, resolve roles against the live user at validate time (or cap key roles to the current user's roles).
@@ -1516,7 +1531,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/cli/core/providers/AppEntryProvider.ts:75
 - **Detail**: `await this.fs.ls(join(root, "src"))` runs unconditionally even when custom entries are configured; `ls` is raw `readdir` and throws ENOENT for a missing dir. Guard with `fs.exists` or `.catch(() => [])`.
 
-### [BUG] Secret values written to predictable world-readable `/tmp` files
+### ✅ FIXED — [BUG] Secret values written to predictable world-readable `/tmp` files
 - **Severity**: P2
 - **File**: packages/alepha/src/cli/platform-lib/providers/GitHubSecretStore.ts:87-92
 - **Detail**: `set()` writes the plaintext secret to `/tmp/alepha-secret-${key}-${Date.now()}` — hardcoded /tmp, predictable name, default mode — before `gh secret set -f`. On shared machines any local user can read it (or pre-create the path). Write to `node_modules/.alepha/` or use `mkdtemp` + mode 0600. Also uses `Date.now()` (convention: DateTimeProvider).
@@ -1591,7 +1606,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/cli/core/commands/db.ts:236,261
 - **Detail**: `(provider as any).connect()` / `.close()` bypass the type system. Add methods to the interface. Similar: `prepareDrizzleConfig({ kit: any })`, prerender task `any[]` lists.
 
-### [RECO] Stop stamping a plain-text hash of secret *values* onto the worker
+### ✅ FIXED — [RECO] Stop stamping a plain-text hash of secret *values* onto the worker
 - **Severity**: P2
 - **File**: packages/alepha/src/cli/platform-lib/adapters/CloudflareAdapter.ts:458,1389-1395
 - **Detail**: `ALEPHA_SECRETS_HASH` is sha256 of sorted "KEY=VALUE" lines stored as a **readable** plain_text binding — an offline brute-force oracle for low-entropy secrets to anyone with worker-settings read access. Salt with a per-worker nonce or hash only key names + local value digest.

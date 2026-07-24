@@ -463,7 +463,18 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
 
       const discoverOidc = async () => {
         const execute: Array<(config: Configuration) => void> = [];
-        execute.push(allowInsecureRequests);
+        // Only relax TLS for local/dev issuers. Applying it unconditionally
+        // disabled HTTPS enforcement on the OIDC discovery + token exchange
+        // for every deployment, including production.
+        const issuerUrl = new URL(oidc.issuer);
+        const isLocalIssuer =
+          issuerUrl.protocol === "http:" &&
+          ["localhost", "127.0.0.1", "[::1]", "0.0.0.0"].includes(
+            issuerUrl.hostname,
+          );
+        if (isLocalIssuer || !this.alepha.isProduction()) {
+          execute.push(allowInsecureRequests);
+        }
 
         return discovery(
           new URL(oidc.issuer),
