@@ -73,7 +73,7 @@ export function useQuery<Result>(
     deps,
   );
 
-  const refetch = useCallback(() => action.run(), [action.run]);
+  const refetch = useCallback(() => action.refetch(), [action.refetch]);
 
   // `loading` is true while a fetch is in flight, AND during the initial gap
   // between first render and the auto-run effect — so consumers can render a

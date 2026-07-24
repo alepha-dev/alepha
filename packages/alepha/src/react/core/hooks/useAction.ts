@@ -325,6 +325,18 @@ export function useAction<Args extends any[], Result = void>(
     [runAction],
   );
 
+  /**
+   * Public `refetch()` — re-run with the same semantics as a dep change: the
+   * in-flight request (if any) is aborted and a fresh one starts. This is
+   * what `useQuery.refetch()` uses — `run()`'s double-click dedup would
+   * silently drop a refetch issued during a slow fetch or an active poll.
+   */
+  const refetch = useCallback(
+    (...args: Args): Promise<Result | undefined> =>
+      runAction(args, { supersede: true }),
+    [runAction],
+  );
+
   const cancel = useCallback(() => {
     // clear debounce timer
     if (debounceTimerRef.current) {
@@ -345,14 +357,16 @@ export function useAction<Args extends any[], Result = void>(
     }
   }, []);
 
-  // Run action on mount, and again whenever `deps` change. These runs supersede
-  // an in-flight request: it was issued for the previous deps, so its result is
-  // already stale.
+  // Run action on mount, and again whenever `deps` change — or when
+  // `runOnInit` itself flips to true (the `useQuery` `enabled: !!userId` gate
+  // pattern: the fetch must start the moment the gate opens, not stay a
+  // skeleton forever). These runs supersede an in-flight request: it was
+  // issued for the previous deps, so its result is already stale.
   useEffect(() => {
     if (options.runOnInit) {
       runAction([] as any, { supersede: true });
     }
-  }, deps);
+  }, [...deps, options.runOnInit]);
 
   // Run action periodically if runEvery is specified
   useEffect(() => {
@@ -378,6 +392,7 @@ export function useAction<Args extends any[], Result = void>(
 
   return {
     run: handler,
+    refetch,
     loading,
     error,
     cancel,
@@ -498,6 +513,13 @@ export interface UseActionReturn<Args extends any[], Result> {
    * ```
    */
   run: (...args: Args) => Promise<Result | undefined>;
+
+  /**
+   * Re-execute the action, aborting the in-flight request if any (same
+   * supersede semantics as a dependency change). Unlike `run()`, this is
+   * never dropped by the double-click dedup guard.
+   */
+  refetch: (...args: Args) => Promise<Result | undefined>;
 
   /**
    * Loading state - true when action is executing.

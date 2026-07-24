@@ -131,6 +131,18 @@ Deliberately **not** fixed in these passes (need design decisions or wider chang
 | bucket | S3 `delete()` of a missing id throws `FileNotFoundError` like Memory/Local/R2 (explicit existence check — S3 DELETE is idempotent). The shared `testDeleteNonExistentFile` now actually deletes a non-existent id, on every provider. |
 | cache | SWR envelope uses a distinctive marker (`__alepha_swr_envelope__`) so user data can never be mistaken for it, and `Uint8Array` values are base64-wrapped inside the envelope instead of being JSON-mangled. |
 
+### Fifth fix pass — 2026-07-24 (batch 5 — react DX)
+
+6 more findings fixed and marked **✅ FIXED** in the body. Verified with `yarn lint`, `tsc --noEmit`, the full alepha suite (4319 tests), the lore suite (298), and a clean build.
+
+| Area | Fix |
+|------|-----|
+| react/core | `useQuery` `enabled` false→true starts the fetch (the `runOnInit` effect now keys on it) — the `enabled: !!userId` gate pattern no longer leaves a permanent skeleton. |
+| react/core | `useAction` gained a public `refetch()` with dep-change supersede semantics (aborts the in-flight request); `useQuery.refetch()` uses it — no longer a silent no-op during slow fetches or active polls. |
+| react/router | Anchor-click semantics centralized in `ReactRouter.shouldHandleAnchorClick`: `anchor()`, `<Link>`, and `useActive` all let modified/aux clicks and `target="_blank"` fall through to the browser; `<Link>` composes the caller's `onClick` (preventDefault opts out of SPA navigation). |
+| react/router | Query-only navigations re-run loaders — the decoded query participates in the layer-reuse signature, matching SSR behavior. |
+| react/router | `useQueryParams` subscribes to router state (navigations it did not initiate re-sync it), and `setQueryParams` updates the router store alongside `window.history` so `router.query` never desyncs. |
+
 Still deliberately open: the payments/subscriptions billing loop (needs product decisions — see the module section), and the rate-limit `"unknown"`-IP shared bucket (only reachable when a global limit is explicitly configured).
 
 Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`main` @ 6c7ec9400); fixed findings' line numbers may have shifted slightly.
@@ -886,12 +898,12 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/react/core/hooks/useAction.ts:288,358-377 and datetime/providers/DateTimeProvider.ts:477-481
 - **Detail**: (1) `executeAction`'s dep list includes `options.onSuccess`; `useQuery` always passes a fresh inline `onSuccess` (useQuery.ts:65), so `executeAction`→`runAction` are recreated every render, and the `runEvery` effect tears down/recreates the interval each render. The documented tuple form `runEvery: [5, "seconds"]` also has fresh identity each render. A component re-rendering faster than the polling period never fires a single poll. (2) `DateTimeProvider.createInterval` pushes into the singleton `this.intervals` array, but `clearInterval` never splices the entry out (unlike clearTimeout) — every churned interval permanently retains its closure chain in a process-global array; unbounded leak in SPA sessions and servers. Fix: splice in clearInterval, stabilize callbacks via refs, key the effect on `duration.asMilliseconds()`.
 
-### [BUG] Query-only navigation reuses the cached layer and skips the loader
+### ✅ FIXED — [BUG] Query-only navigation reuses the cached layer and skips the loader
 - **Severity**: P1
 - **File**: packages/alepha/src/react/router/providers/ReactPageProvider.ts:352-379
 - **Detail**: The layer-reuse check compares only `part` + `params`; `config.query` is decoded and passed to loaders but never participates. Client-side `router.push("/search?q=bar")` from `/search?q=foo` reuses the previous layer and never re-runs a loader that reads `query` — old data stays on screen, while SSR reload of the same URL shows fresh data (SSR/browser divergence). `$page` documents `loader: async ({ params, query })`. Fix: include the decoded query in the reuse signature.
 
-### [BUG] Back/forward across query-only changes leaves `useQueryParams` components stale
+### ✅ FIXED — [BUG] Back/forward across query-only changes leaves `useQueryParams` components stale
 - **Severity**: P1
 - **File**: packages/alepha/src/react/router/hooks/useQueryParams.ts:38-58, NestedView.tsx:103-104, ReactRouter.ts:240-261
 - **Detail**: `useQueryParams` never subscribes to anything — evaluated during render, sync effect fires only if the component re-renders for another reason. On popstate between `?q=a` and `?q=b` (same path), the layer is reused, NestedView doesn't swap the element, the subtree never re-renders — the hook shows old params. Also `setQueryParams` writes `window.history` directly without touching router state, so two components using the same key desync. Fix: subscribe to router state (`useStore`), and have setQueryParams update the store URL.
@@ -906,12 +918,12 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/react/form/services/FormModel.ts:551-560
 - **Detail**: `getValueFromInput` guards null/undefined but not `""`. A native date input cleared by the user emits `value: ""`; the format:"date" branch runs `new Date("").toISOString()` → RangeError thrown synchronously in the change handler, crashing into the error boundary. Live path: `@alepha/ui` control-date.tsx:88 does `setValue(e.target.value)`. Same for time/date-time. Fix: treat `""`/NaN dates as unset → undefined.
 
-### [BUG] `useQuery` `enabled` flip false→true never fetches and locks `loading: true` forever
+### ✅ FIXED — [BUG] `useQuery` `enabled` flip false→true never fetches and locks `loading: true` forever
 - **Severity**: P1
 - **File**: packages/alepha/src/react/core/hooks/useQuery.ts:50,61,83-88 and useAction.ts:351-355
 - **Detail**: `enabled` maps to `runOnInit`, whose effect is keyed on user `deps` only — flipping enabled false→true re-renders but never re-runs the effect; no fetch starts. Derived `loading` becomes true and stays true forever — permanent skeleton, no request. The common gate pattern (`enabled: !!userId`) hits this unless the gate value happens to be in deps. Spec only covers statically-false enabled. Fix: include `enabled` in the runOnInit effect deps.
 
-### [BUG] `<Link>` / `router.anchor()` / `useActive` break cmd/ctrl/middle-click and swallow user `onClick`
+### ✅ FIXED — [BUG] `<Link>` / `router.anchor()` / `useActive` break cmd/ctrl/middle-click and swallow user `onClick`
 - **Severity**: P2
 - **File**: packages/alepha/src/react/router/services/ReactRouter.ts:211-219, Link.tsx:16-20, useActive.ts:29-43
 - **Detail**: `anchor()`'s onClick unconditionally preventDefaults and SPA-navigates — no metaKey/ctrlKey/shiftKey/altKey, button, or `target="_blank"` check, so "open in new tab" navigates the current tab. The global anchor interceptor (ReactBrowserProvider.ts:420-424) gets this right, but Link's own handler runs regardless. Link also spreads `{...props, ...router.anchor(...)}`, discarding a caller onClick. Fix: bail on modified/aux clicks; compose user onClick.
@@ -921,7 +933,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/react/form/services/FormModel.ts:189-214
 - **Detail**: `submitInProgress` checked at entry but set true only *after* two awaited `events.emit` calls. A second submit during those emits passes the guard; handler runs twice. Fix: set the flag synchronously before the first await.
 
-### [BUG] `useQuery.refetch()` is silently dropped while a request is in flight
+### ✅ FIXED — [BUG] `useQuery.refetch()` is silently dropped while a request is in flight
 - **Severity**: P2
 - **File**: packages/alepha/src/react/core/hooks/useQuery.ts:76,167 and useAction.ts:182-186
 - **Detail**: Docs say "previous in-flight request is aborted", but refetch → `action.run()` with no supersede hits `if (isExecutingRef.current && !supersede) return;` — no-op during slow fetches or active polls. Fix: refetch passes `{ supersede: true }`.
@@ -991,7 +1003,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/react/form/services/FormModel.ts:344-356,489-499
 - **Detail**: Array fields return `items: []` "populated dynamically in the UI" — permanently empty typed surface; UI builds its own. ~12-line commented-out nested-proxy block above is dead. `UseActionOptions.name` (useAction.ts:437) accepted but never read.
 
-### [RECO] Centralize anchor-click semantics
+### ✅ FIXED — [RECO] Centralize anchor-click semantics
 - **Severity**: P2
 - **File**: packages/alepha/src/react/router/services/ReactRouter.ts:193-220
 - **Detail**: The correct click policy (modifiers, buttons, target, download, data-no-router, external origins) exists in `attachAnchorInterceptor`; `anchor()`/`useActive` reimplement a naive preventDefault. Link could drop its onClick entirely and rely on delegation — one behavior, one place.

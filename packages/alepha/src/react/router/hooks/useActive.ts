@@ -29,6 +29,10 @@ export const useActive = (args: string | UseActiveOptions): UseActiveHook => {
     anchorProps: {
       href: router.base(href),
       onClick: async (ev?: any) => {
+        if (!router.shouldHandleAnchorClick(ev)) {
+          // Modified/aux click — the browser handles it (new tab, etc.).
+          return;
+        }
         ev?.stopPropagation();
         ev?.preventDefault();
         if (isActive) return;

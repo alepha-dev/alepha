@@ -352,14 +352,20 @@ export class ReactPageProvider {
       if (previous?.[i] && !forceRefresh && previous[i].name === route.name) {
         const url = (str?: string) => (str ? str.replace(/\/\/+/g, "/") : "/");
 
+        // The decoded query participates: loaders read `query`, so a
+        // query-only navigation (`/search?q=foo` → `/search?q=bar`) must
+        // re-run them — reusing the layer would keep stale data on screen
+        // and diverge from SSR, which re-runs loaders for the same URL.
         const prev = JSON.stringify({
           part: url(previous[i].part),
           params: previous[i].config?.params ?? {},
+          query: previous[i].config?.query ?? {},
         });
 
         const curr = JSON.stringify({
           part: url(route.path),
           params: config.params ?? {},
+          query: config.query ?? {},
         });
 
         if (prev === curr) {

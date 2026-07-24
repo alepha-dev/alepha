@@ -211,12 +211,54 @@ export class ReactRouter<T extends object> {
     return {
       href: this.base(href),
       onClick: (ev: any) => {
+        if (!this.shouldHandleAnchorClick(ev)) {
+          // Modified/aux click or another browsing context — let the browser
+          // do its thing ("open in new tab" must not navigate this tab).
+          return;
+        }
+
         ev.stopPropagation();
         ev.preventDefault();
 
         this.push(href, options).catch(console.error);
       },
     };
+  }
+
+  /**
+   * True when a click on a router-managed anchor should be SPA-handled.
+   *
+   * Modified clicks (cmd/ctrl/shift/alt), non-primary buttons, anchors
+   * targeting another browsing context, and already-prevented events fall
+   * through to the browser — the single source of truth for `anchor()`,
+   * `<Link>`, `useActive`, and the global interceptor.
+   */
+  public shouldHandleAnchorClick(ev?: {
+    defaultPrevented?: boolean;
+    button?: number;
+    metaKey?: boolean;
+    ctrlKey?: boolean;
+    shiftKey?: boolean;
+    altKey?: boolean;
+    currentTarget?: unknown;
+  }): boolean {
+    if (!ev) {
+      return true;
+    }
+    if (ev.defaultPrevented) {
+      return false;
+    }
+    if (typeof ev.button === "number" && ev.button !== 0) {
+      return false;
+    }
+    if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) {
+      return false;
+    }
+    const target = (ev.currentTarget as HTMLAnchorElement | undefined)?.target;
+    if (target && target !== "_self") {
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -257,6 +299,16 @@ export class ReactRouter<T extends object> {
       window.history.pushState({}, "", state);
     } else {
       window.history.replaceState({}, "", state);
+    }
+
+    // Keep the router store in sync — `router.query`, `useQueryParams`, and
+    // every `useRouterState` subscriber read from the store, not from
+    // `window.location`. Writing only to history would desync them.
+    const current = this.alepha.store.get("alepha.react.router.state");
+    if (current) {
+      const url = new URL(current.url);
+      url.search = search;
+      this.alepha.store.set("alepha.react.router.state", { ...current, url });
     }
   }
 }

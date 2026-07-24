@@ -2,6 +2,7 @@ import type { Alepha, Static, TObject } from "alepha";
 import { useAlepha } from "alepha/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "./useRouter.ts";
+import { useRouterState } from "./useRouterState.ts";
 
 /**
  * Hook to manage query parameters in the URL using a defined schema.
@@ -29,6 +30,10 @@ export const useQueryParams = <T extends TObject>(
 ): [Partial<Static<T>>, (data: Static<T>) => void] => {
   const alepha = useAlepha();
   const router = useRouter();
+  // Subscribe to router-state changes: navigations this component did not
+  // initiate (back/forward, another component's push) must re-render it so
+  // the sync effect below can observe the new URL.
+  useRouterState();
 
   const key = options.key ?? "q";
   const format = options.format ?? "base64";
