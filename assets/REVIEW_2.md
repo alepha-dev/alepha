@@ -9,6 +9,8 @@
 
 **268 findings: 1 P0 · 48 P1 · 128 P2 · 91 P3** (168 bugs, 50 unfinished, 50 recommendations).
 
+> **Update 2026-07-24**: 79 findings closed — 68 fixed across six passes, plus 11 retired with the deletion of `alepha/api/subscriptions` (see the seventh pass below).
+
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
 1. **Multi-tenancy has real holes.** The single P0: an authenticated user with no organization hits `/subscriptions/mine/*` with `eq: undefined`, which the QueryManager silently drops — **no WHERE clause**, so they read and mutate an arbitrary org's subscription. The same `undefined`-swallowing shows up as `aggregate()` skipping tenant scoping, `upsert()` writing cross-tenant, JWT tenant-claim validation being dead code on the issuer path, and `checkPermission` resolving role names across all realms.
@@ -157,7 +159,22 @@ Deliberately **not** fixed in these passes (need design decisions or wider chang
 
 Note: connection ids changed format (`ws-1` → `ws-<uuid>`). Three integration assertions encoding the old sequential shape were updated.
 
-Still deliberately open: the payments/subscriptions billing loop (needs product decisions — see the module section), and the rate-limit `"unknown"`-IP shared bucket (only reachable when a global limit is explicitly configured).
+### Seventh pass — 2026-07-24 (batch 4 — `alepha/api/subscriptions` DELETED)
+
+The billing loop was never fixed: **the module was removed instead** (27 files, ~3,525 lines). Evidence that made this the right call rather than a redesign:
+
+- **Dead in every real consumer.** Lore never imported it. The one app that registers it (`apps/club`) configures zero plans, has zero rows, and calls nothing — its two framework tables have sat empty since creation, while six framework crons ran hourly/daily in every pooled worker against them. The app that actually bills customers (`apps/platform`) never registered the module at all.
+- **Its core premise was disproven in production.** The module's own guide claimed "the recurring billing logic stays in Alepha rather than being delegated to the PSP". The real-world app settled on the opposite and shipped it: Stripe owns recurrence (`mode: "subscription"` checkout) and dunning (Smart Retries), and the app is a pure webhook consumer reconciling one status field. No app-driven charging cron exists anywhere in that codebase, and its roadmap points further down the PSP-rails path (SEPA mandates), not back toward local charging.
+- **The loop could not be completed without the framework taking on card-holding and retry orchestration** — a responsibility the PSP already owns and does better.
+- **It was a leaf**: no other framework module imported it, so removal is contained.
+
+11 findings (1 P0, 4 P1, and the unfinished/reco tail) are closed by deletion — marked **🗑️ REMOVED** in the body. `alepha/api/payments` stays and is unaffected: it is the one-off/intent layer the real apps use heavily (bookings, wallet top-ups, shop sales, courses, split payments, refunds).
+
+The payments guide now states the recurring-billing stance explicitly: let the PSP own it, reconcile status from webhooks.
+
+**Downstream action required:** `apps/club` still registers the module (`apps/club/src/api/index.ts` — the import and the `alepha.with(AlephaApiSubscriptions)` line) and will not build until those two lines are removed. Its `subscriptions` / `subscription_events` tables become orphans; nothing FKs to them, so dropping them whenever migrations are next regenerated is safe (no D1 cascade hazard).
+
+Still deliberately open: the rate-limit `"unknown"`-IP shared bucket (only reachable when a global limit is explicitly configured).
 
 Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`main` @ 6c7ec9400); fixed findings' line numbers may have shifted slightly.
 
@@ -1114,22 +1131,22 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 
 ## api feature modules (audits, files, jobs, notifications, organizations, parameters, payments, subscriptions)
 
-### ✅ FIXED — [BUG] Org-less authenticated user on `/subscriptions/mine/*` reads and mutates an arbitrary organization's subscription
+### 🗑️ REMOVED (module deleted) — [BUG] Org-less authenticated user on `/subscriptions/mine/*` reads and mutates an arbitrary organization's subscription
 - **Severity**: P0 (security)
 - **File**: packages/alepha/src/api/subscriptions/controllers/SubscriptionController.ts:59,101,125,149,169,188 (+ services/SubscriptionService.ts:104-111, orm/core/services/QueryManager.ts:236,292)
 - **Detail**: Every handler calls `this.service.getByOrganization(user.organization!)`. For a user with no `organization` (docs call this "god mode"; fresh users pre-onboarding commonly have none), the value is `undefined`, producing `where: { organizationId: { eq: undefined } }`. Traced through QueryManager: the `eq` key selects the operator branch, but `operator?.eq != null` is false → zero conditions → **no WHERE clause at all**. `findOne` returns the first subscription row in the table. `getMySubscription` leaks another org's subscription; `POST /subscriptions/mine/cancel|change-plan|resume` **mutates a random org's subscription**. Fix: throw 400/403 when `user.organization` is absent (PaymentController.addPaymentMethod:50-54 already does this), and make the repository reject `eq: undefined` instead of silently dropping it.
 
-### [BUG] `undefined` in update patches never clears columns — resume/plan-change/dunning state persists forever (verified by test)
+### 🗑️ REMOVED (module deleted) — [BUG] `undefined` in update patches never clears columns — resume/plan-change/dunning state persists forever (verified by test)
 - **Severity**: P1 (billing impact)
 - **File**: packages/alepha/src/api/subscriptions/services/SubscriptionService.ts:406-411,507-516,569-577; services/BillingService.ts:179-184,240-247,284-294,368-372; jobs/SubscriptionJobs.ts:162-166
 - **Detail**: Drizzle's `mapUpdateSet` filters `value !== undefined`, so `updateById(id, { cancelledAt: undefined })` is a no-op. Verified against real Postgres: after cancel()+resume(), `cancelledAt`/`cancelReason` remain set; after a scheduled change followed by an immediate changePlan(), `pendingPlanId` remains. Consequences: (a) `BillingService.renew` re-applies the stale `pendingPlanId` at next renewal, **silently reverting a later plan change**; (b) the dunning "stop retrying" branches never clear the retry timestamp, so the hourly dunning job **keeps creating a payment intent every hour forever**; (c) reactivate/recoverFromDunning leave stale dunning timestamps. Fix: pass `null` (the codebase's own convention — JobProvider clears with `key: null`). Existing test passes only vacuously.
 
-### [BUG] An organization can never re-subscribe after cancellation/expiry (verified by test)
+### 🗑️ REMOVED (module deleted) — [BUG] An organization can never re-subscribe after cancellation/expiry (verified by test)
 - **Severity**: P1 (blocks revenue path)
 - **File**: packages/alepha/src/api/subscriptions/entities/subscriptions.ts:59; services/SubscriptionService.ts:190-296
 - **Detail**: `subscribe()` checks for an existing sub only in `["trialing","active","past_due"]`, then always `create()`s — but the unique index on `organizationId` covers ALL statuses. Confirmed empirically: subscribe → cancel immediate → subscribe again throws duplicate-key (surfaces as 500). Every churned customer is permanently locked out. Fix: reuse/reset the terminal row, or partial unique index on active statuses.
 
-### [BUG] Billing loop is half-wired: intents are created but never charged, and duplicates pile up hourly
+### 🗑️ REMOVED (module deleted) — [BUG] Billing loop is half-wired: intents are created but never charged, and duplicates pile up hourly
 - **Severity**: P1
 - **File**: packages/alepha/src/api/subscriptions/jobs/SubscriptionJobs.ts:69-114 (billingCycle), 198-244 (trialExpiry); services/BillingService.ts:97-104
 - **Detail**: `billingCycle`/`trialExpiry` create a PaymentIntent (status `created`) and store `lastPaymentIntentId` — nothing then creates a checkout session, charges a saved method, or emits an event a host app could react to. Since `nextBillingAt`/status only advance on `payments:captured`, the same subscription matches again every hour, creating a new orphan intent each run. Each run overwrites `lastPaymentIntentId` and `findByPaymentIntent` matches only that column — if the user pays hour-1's intent after hour-2's run, the **paid renewal is never applied**. Also `trialExpiry` never transitions `trialing` → anything, so unpaid trials retain access indefinitely. Fix: emit `subscription:payment_due` (or charge the default method), mark pending-payment, match intents by `metadata.subscriptionId`.
@@ -1179,12 +1196,12 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/jobs/providers/JobProvider.ts:1040-1052 (vs 1336-1346); consumer: api/notifications/jobs/NotificationJobs.ts:52-66
 - **Detail**: On success, `keepSuccess` consults only the **global** atom, while trim correctly honors per-job `keep.ok ?? global`. Notifications rely on `record: "all", keep: { ok: 0 }` meaning "keep every row for audit" — but with global `keepLastSuccess: 0`, every successful notification row is deleted at completion, destroying the advertised audit trail. Fix: consult per-job keep in keepSuccess.
 
-### [BUG] Proration mis-computes when the interval changes
+### 🗑️ REMOVED (module deleted) — [BUG] Proration mis-computes when the interval changes
 - **Severity**: P2 (money math)
 - **File**: packages/alepha/src/api/subscriptions/services/SubscriptionService.ts:838-866
 - **Detail**: `calculateProration` divides both old and new plan amounts by daysInPeriod of the *current* (old-interval) period. Monthly→yearly immediate change: `newDailyRate = yearlyAmount / ~30` — roughly 12× overcharge (mirror undercharge yearly→monthly). Fix: compute the new daily rate against the new interval's period length.
 
-### [BUG] Trial conversion metric is structurally pinned at ~100%
+### 🗑️ REMOVED (module deleted) — [BUG] Trial conversion metric is structurally pinned at ~100%
 - **Severity**: P2
 - **File**: packages/alepha/src/api/subscriptions/services/SubscriptionService.ts:747-754; BillingService.ts:132-146; SubscriptionJobs.ts:198-244
 - **Detail**: `trialConversionRate = activated / trial_ended`, but `trial_ended` is recorded only in `BillingService.activate` — immediately followed by `activated` for the same sub. Lapsed trials never record `trial_ended`, so denominator equals numerator. Fix: record it in the trial-expiry job.
@@ -1194,17 +1211,17 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/notifications/controllers/AdminNotificationController.ts:38-64; schemas/notificationQuerySchema.ts
 - **Detail**: `findNotifications`'s where only sets jobName + org; `query.status` silently ignored. The schema enum (`"retrying" | "completed" | "dead" | …`) doesn't match the outbox statuses (`ok`, `error`, `scheduled`…). Fix: map the public enum and add `where.status`.
 
-### [UNFINISHED] SubscriptionNotifications: six templates defined, zero senders
+### 🗑️ REMOVED (module deleted) — [UNFINISHED] SubscriptionNotifications: six templates defined, zero senders
 - **Severity**: P2
 - **File**: packages/alepha/src/api/subscriptions/notifications/SubscriptionNotifications.ts
 - **Detail**: `trialEnding`, `paymentFailed`, `subscriptionSuspended`, `subscriptionRenewed`, `planChanged`, `cancellationConfirmed` are registered but nothing ever `.push()`es them or subscribes to lifecycle events to send them. No job computes "trial ending soon". Dead weight implying functionality that doesn't exist.
 
-### [UNFINISHED] Subscription event payloads don't match their declared `Hooks` types; three events never emitted
+### 🗑️ REMOVED (module deleted) — [UNFINISHED] Subscription event payloads don't match their declared `Hooks` types; three events never emitted
 - **Severity**: P2
 - **File**: packages/alepha/src/api/subscriptions/index.ts:43-110; SubscriptionService.ts (emits); BillingService.ts (emits)
 - **Detail**: Every emit is `emit("subscription:X" as any, …)` because the shapes genuinely diverge (e.g. `created` emits `{ subscription }` vs declared flat ids; `oldPlanId` vs emitted `previousPlanId`; `renewed` missing declared amount/currency). `subscription:expired`, `suspended`, `trial_ending` are declared but never emitted anywhere. Consumers coding against the declared types get undefined fields. Align and drop the `as any`s.
 
-### [UNFINISHED] `UsageService.resetForPeriod` has no caller; usage window is calendar-month, not billing-period
+### 🗑️ REMOVED (module deleted) — [UNFINISHED] `UsageService.resetForPeriod` has no caller; usage window is calendar-month, not billing-period
 - **Severity**: P2
 - **File**: packages/alepha/src/api/subscriptions/services/UsageService.ts:104-117
 - **Detail**: Doc says "Used at the start of a new billing period", nothing calls it. Keys are `org:resource:YYYY-MM`, so quotas reset on the 1st regardless of `currentPeriodStart`. Also `increment()` counts denied attempts (increments before the limit check), inflating `current` on rejected calls. Wire into renew with period-based keys, or document calendar semantics and delete.
@@ -1234,7 +1251,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/jobs/services/JobService.ts:176-211; providers/JobProvider.ts:65-71,779-871
 - **Detail**: Admin retry re-pushes with `job.push(execution.payload as any)` — `triggeredBy`, `organizationId`, `key` from the original execution are dropped; retried tenant notifications lose org scoping. `PushManyItem` has no organizationId/triggeredBy fields at all.
 
-### [UNFINISHED] MRR endpoint: dead fields and a silent 1000-row cap
+### 🗑️ REMOVED (module deleted) — [UNFINISHED] MRR endpoint: dead fields and a silent 1000-row cap
 - **Severity**: P3
 - **File**: packages/alepha/src/api/subscriptions/controllers/AdminSubscriptionController.ts:83-127
 - **Detail**: `growth`, `newMrr`, `expansionMrr`, `contractionMrr`, `churnMrr` are hardcoded 0 (schema presents them as real), and computation iterates only the first 1000 active subs — totals silently wrong beyond that. Aggregate in SQL or mark unimplemented.
@@ -1249,7 +1266,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/payments/entities/paymentIntents.ts:9 + PaymentService.ts (all updateById calls)
 - **Detail**: paymentIntents/refunds/subscriptions all declare `db.version()` (optimistic locking), but every service mutation uses `updateById`, which never checks it — only `save()` does. All the races above would be caught by status-guarded updateOne or save() with version check. Adopt one pattern consistently.
 
-### [RECO] `subscribe()` should map unique-constraint races to a 400
+### 🗑️ REMOVED (module deleted) — [RECO] `subscribe()` should map unique-constraint races to a 400
 - **Severity**: P3
 - **File**: packages/alepha/src/api/subscriptions/services/SubscriptionService.ts:206-217
 - **Detail**: The exists-check→create window means concurrent subscribes surface as a raw DbConflictError 500. Catch and rethrow BadRequestError.

@@ -21,7 +21,13 @@ Every state transition emits a hook on Alepha's event bus:
 "payments:voided" | "payments:refunded" | "payments:cancelled"
 ```
 
-Other modules (subscriptions, accounting, notifications) listen via `$hook` — they never call the PSP directly.
+Your own modules (accounting, notifications, fulfilment) listen via `$hook` — they never call the PSP directly.
+
+> **Recurring billing** is deliberately out of scope: let your PSP own it. Create
+> the subscription with the provider (e.g. a Stripe Checkout in
+> `mode: "subscription"`), then reconcile its status from webhooks into whatever
+> field gates access in your app. Charging on your own cron means holding cards,
+> reimplementing dunning, and diverging from the PSP's source of truth.
 
 ## Registering the module
 
