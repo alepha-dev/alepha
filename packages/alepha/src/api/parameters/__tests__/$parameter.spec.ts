@@ -2425,3 +2425,101 @@ describe("$parameter multi-tenant isolation", () => {
     await alepha.stop();
   });
 });
+
+/**
+ * Fails `loadCurrentAndNext` a configurable number of times so a transient
+ * DB outage can be simulated.
+ */
+class FlakyParameterProvider extends ParameterProvider {
+  public failuresLeft = 0;
+
+  /** Simulate a cold instance that has not loaded this parameter yet. */
+  public forgetLoaded(name: string): void {
+    this.loaded.delete(this.cacheKey(name));
+  }
+
+  public override async loadCurrentAndNext(
+    ...args: Parameters<ParameterProvider["loadCurrentAndNext"]>
+  ): Promise<any> {
+    if (this.failuresLeft > 0) {
+      this.failuresLeft--;
+      throw new Error("transient DB failure");
+    }
+    return super.loadCurrentAndNext(...args);
+  }
+}
+
+describe("$parameter — load failure recovery", () => {
+  it("recovers after a transient load failure instead of poisoning the cache", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "app.features.recovery",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with({ provide: ParameterProvider, use: FlakyParameterProvider })
+      .with(AlephaApiParameters)
+      .with(AppConfig);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider) as FlakyParameterProvider;
+    const app = alepha.inject(AppConfig);
+
+    // A cold instance lazily loading the parameter hits a transient outage.
+    provider.forgetLoaded("app.features.recovery");
+    provider.failuresLeft = 1;
+    await expect(app.features.get()).rejects.toThrow(/transient/);
+
+    // That rejection must not be cached. `get()` only starts a load when no
+    // promise is in flight, so a rejected one left in the map was re-awaited
+    // by every subsequent call — the parameter never recovered short of a
+    // process restart.
+    const value = await app.features.get();
+    expect(value).toEqual({ enableBeta: false, maxUploadSize: 10485760 });
+  });
+});
+
+describe("$parameter — cross-instance delete", () => {
+  it("publishes a sync notification when a parameter is deleted", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "app.features.deleted",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiParameters)
+      .with(AppConfig);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    const seen: string[] = [];
+    await provider.syncTopic.subscribe(async (message) => {
+      seen.push(message.payload.name);
+    });
+
+    // The parameter must exist before we delete it; the schema hash is
+    // resolved from the registered primitive when empty.
+    await provider.save(
+      "app.features.deleted",
+      { enableBeta: true, maxUploadSize: 1 },
+      "",
+    );
+    seen.length = 0;
+
+    await provider.delete("app.features.deleted");
+
+    // Without this, other instances keep serving the deleted value forever:
+    // the Node default TTL is 0, so nothing ever revalidates. `save()`
+    // already published; `delete()` did not.
+    expect(seen).toContain("app.features.deleted");
+  });
+});

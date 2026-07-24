@@ -8,7 +8,11 @@ import {
   type TSchema,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
-import { DateTimeProvider, type DurationLike } from "alepha/datetime";
+import {
+  type DateTime,
+  DateTimeProvider,
+  type DurationLike,
+} from "alepha/datetime";
 import { LockProvider } from "alepha/lock";
 import type { LogEntry } from "alepha/logger";
 import { $logger } from "alepha/logger";
@@ -702,12 +706,32 @@ export class JobProvider {
             { id: { eq: executionId }, status: { eq: "running" } },
             { status: "running" },
           );
-        } catch {
-          clearInterval(timer);
+        } catch (error) {
+          if (this.shouldStopHeartbeat(error)) {
+            clearInterval(timer);
+            return;
+          }
+          this.log.warn(
+            `Lease heartbeat failed for ${executionId}, will retry next tick`,
+            { error },
+          );
         }
       })();
     }, intervalMs);
     return timer;
+  }
+
+  /**
+   * Whether a failed lease renewal means the heartbeat should stop.
+   *
+   * Only when the row is gone or no longer `running` (cancelled, completed
+   * elsewhere) — there is nothing left to renew. A transient DB error must
+   * NOT stop it: the handler keeps running, so once `crashThresholdMs`
+   * elapses another instance's sweep marks the lease crashed and schedules a
+   * retry — a duplicate, concurrent execution of the same job.
+   */
+  protected shouldStopHeartbeat(error: unknown): boolean {
+    return error instanceof DbEntityNotFoundError;
   }
 
   /**
@@ -1058,12 +1082,26 @@ export class JobProvider {
               executionId,
             });
 
-            // Success: either DELETE (keepLastSuccess=0 or record=error)
-            // or UPDATE to 'ok' (record=all and keepLastSuccess>0).
+            // Success: either DELETE (no retention configured, or
+            // record=error) or UPDATE to 'ok'.
             // Guarded on 'running' — a cancellation that landed while the
             // handler was finishing must not be stomped to 'ok' or erased.
+            //
+            // The two `0`s mean opposite things, by documented design:
+            //   - per-job `keep.ok: 0`  → "keep forever, never trim"
+            //   - global `keepLastSuccess: 0` → "delete on success"
+            // So an explicit per-job value ALWAYS retains the row (0 =
+            // forever, >0 = ring buffer trimmed later); only when the job is
+            // silent does the global's delete-on-success apply. Reading just
+            // the global here destroyed the audit trail of jobs that
+            // declared `record: "all", keep: { ok: 0 }` — notifications
+            // being the in-tree example.
+            const perJobKeepOk = opts.keep?.ok;
             const keepSuccess =
-              record === "all" && this.config.keepLastSuccess > 0;
+              record === "all" &&
+              (perJobKeepOk !== undefined
+                ? true
+                : this.config.keepLastSuccess > 0);
             if (keepSuccess) {
               await this.guardedUpdate(
                 executionId,
@@ -1260,68 +1298,95 @@ export class JobProvider {
     const now = this.dt.now();
     const nowIso = now.toISOString();
 
+    // Each phase is contained independently: one failing phase (or one bad
+    // row inside it) must not skip the others until the next tick, which is
+    // 15 minutes away by default.
+    await this.sweepPhase("promote-due", () => this.sweepDue(nowIso));
+    await this.sweepPhase("redispatch-stale", () => this.sweepStale(now));
+    await this.sweepPhase("recover-crashed", () => this.sweepCrashed(now));
+  }
+
+  protected async sweepPhase(
+    label: string,
+    phase: () => Promise<void>,
+  ): Promise<void> {
     try {
-      // 1. Due scheduled rows → pending + dispatch
-      const dueWhere = this.executions.createQueryWhere();
-      dueWhere.status = { eq: "scheduled" };
-      dueWhere.scheduledAt = { lte: nowIso };
-      const due = await this.executions.findMany({
-        where: dueWhere,
-        orderBy: { column: "priority", direction: "asc" },
-      });
-      for (const exec of due) {
-        if (!this.jobs.has(exec.jobName)) continue;
-        await this.promoteDue(exec);
-      }
+      await phase();
+    } catch (error) {
+      this.log.error(`Sweep phase '${label}' failed`, { error });
+    }
+  }
 
-      // 2. Stale pending rows → re-dispatch
-      const staleIso = now
-        .subtract(this.config.staleThreshold, "millisecond")
-        .toISOString();
-      const staleWhere = this.executions.createQueryWhere();
-      staleWhere.status = { eq: "pending" };
-      staleWhere.createdAt = { lte: staleIso };
-      const stale = await this.executions.findMany({
-        where: staleWhere,
-        orderBy: { column: "priority", direction: "asc" },
-      });
-      for (const exec of stale) {
-        if (!this.jobs.has(exec.jobName)) continue;
-        await this.dispatchSafe(exec.jobName, exec.id);
-      }
+  /** Phase 1: due `scheduled` rows → pending + dispatch. */
+  protected async sweepDue(nowIso: string): Promise<void> {
+    const dueWhere = this.executions.createQueryWhere();
+    dueWhere.status = { eq: "scheduled" };
+    dueWhere.scheduledAt = { lte: nowIso };
+    const due = await this.executions.findMany({
+      where: dueWhere,
+      orderBy: { column: "priority", direction: "asc" },
+    });
+    for (const exec of due) {
+      if (!this.jobs.has(exec.jobName)) continue;
+      await this.promoteDue(exec);
+    }
+  }
 
-      // 3. Crashed running rows → mark as failed + apply retry
-      const runningWhere = this.executions.createQueryWhere();
-      runningWhere.status = { eq: "running" };
-      const running = await this.executions.findMany({ where: runningWhere });
-      const nowMs = now.valueOf();
-      for (const exec of running) {
-        const reg = this.jobs.get(exec.jobName);
-        if (!reg) continue;
-        if (this.abortControllers.has(exec.id)) continue; // still alive locally
-        const crashThresholdMs = this.crashThresholdMs(reg);
-        const startedAtMs = exec.startedAt
-          ? new Date(exec.startedAt).getTime()
-          : 0;
-        // The lease is whichever is fresher: the claim (startedAt) or the
-        // last heartbeat (updatedAt). A legitimately long-running job on
-        // another instance keeps renewing; only a stale lease is a crash.
-        const heartbeatMs = exec.updatedAt
-          ? new Date(exec.updatedAt).getTime()
-          : 0;
-        const lastAliveMs = Math.max(startedAtMs, heartbeatMs);
-        if (lastAliveMs > 0 && nowMs - lastAliveMs > crashThresholdMs) {
-          this.log.warn(
-            `Sweep: marking crashed ${exec.jobName} (${exec.id}) as failed`,
-          );
-          const err = new Error(
-            "Execution assumed crashed (recovered by sweep)",
-          );
+  /** Phase 2: stale `pending` rows → re-dispatch. */
+  protected async sweepStale(now: DateTime): Promise<void> {
+    const staleIso = now
+      .subtract(this.config.staleThreshold, "millisecond")
+      .toISOString();
+    const staleWhere = this.executions.createQueryWhere();
+    staleWhere.status = { eq: "pending" };
+    staleWhere.createdAt = { lte: staleIso };
+    const stale = await this.executions.findMany({
+      where: staleWhere,
+      orderBy: { column: "priority", direction: "asc" },
+    });
+    for (const exec of stale) {
+      if (!this.jobs.has(exec.jobName)) continue;
+      await this.dispatchSafe(exec.jobName, exec.id);
+    }
+  }
+
+  /** Phase 3: crashed `running` rows → mark failed + apply retry. */
+  protected async sweepCrashed(now: DateTime): Promise<void> {
+    const runningWhere = this.executions.createQueryWhere();
+    runningWhere.status = { eq: "running" };
+    const running = await this.executions.findMany({ where: runningWhere });
+    const nowMs = now.valueOf();
+    for (const exec of running) {
+      const reg = this.jobs.get(exec.jobName);
+      if (!reg) continue;
+      if (this.abortControllers.has(exec.id)) continue; // still alive locally
+      const crashThresholdMs = this.crashThresholdMs(reg);
+      const startedAtMs = exec.startedAt
+        ? new Date(exec.startedAt).getTime()
+        : 0;
+      // The lease is whichever is fresher: the claim (startedAt) or the
+      // last heartbeat (updatedAt). A legitimately long-running job on
+      // another instance keeps renewing; only a stale lease is a crash.
+      const heartbeatMs = exec.updatedAt
+        ? new Date(exec.updatedAt).getTime()
+        : 0;
+      const lastAliveMs = Math.max(startedAtMs, heartbeatMs);
+      if (lastAliveMs > 0 && nowMs - lastAliveMs > crashThresholdMs) {
+        this.log.warn(
+          `Sweep: marking crashed ${exec.jobName} (${exec.id}) as failed`,
+        );
+        const err = new Error("Execution assumed crashed (recovered by sweep)");
+        // Per-row containment: one unrecoverable row must not strand the
+        // remaining crashed executions until the next tick.
+        try {
           await this.handleFailure(exec.id, reg, exec.attempt, err, "");
+        } catch (error) {
+          this.log.error(
+            `Sweep failed to recover crashed execution ${exec.id}`,
+            { error },
+          );
         }
       }
-    } catch (e) {
-      this.log.error("Sweep failed", { error: e });
     }
   }
 

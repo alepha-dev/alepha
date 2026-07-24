@@ -1,6 +1,6 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
+import { $repository, DbEntityNotFoundError, DbError } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 import {
@@ -8,6 +8,7 @@ import {
   AlephaApiJobs,
   AlephaApiJobsQueue,
   JobProvider,
+  jobConfig,
   jobExecutionEntity,
 } from "../index.ts";
 
@@ -16,6 +17,7 @@ class TestJobProvider extends JobProvider {
   public testCreateKeyedExecution = this.createKeyedExecution.bind(this);
   public testSweep = this.sweep.bind(this);
   public testPromoteDue = this.promoteDue.bind(this);
+  public testShouldStopHeartbeat = this.shouldStopHeartbeat.bind(this);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -147,6 +149,74 @@ describe("$job — sweep guards", () => {
     const rows = await app.executions.findMany({ where: { id: { eq: id } } });
     expect(rows[0].status).toBe("cancelled");
     expect(calls).toBe(0);
+  });
+});
+
+describe("$job — lease heartbeat", () => {
+  it("keeps renewing through a transient DB error", async ({ expect }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs)
+      .with(AlephaApiJobsQueue);
+    await alepha.start();
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+
+    // A transient failure must not stop the heartbeat: the handler is still
+    // running, so a stopped lease lets another instance's sweep declare it
+    // crashed and re-dispatch it — duplicate concurrent execution.
+    expect(jobs.testShouldStopHeartbeat(new Error("ECONNRESET"))).toBe(false);
+    expect(
+      jobs.testShouldStopHeartbeat(new DbError("connection terminated")),
+    ).toBe(false);
+
+    // The row being gone or no longer `running` is the one case where there
+    // is genuinely nothing left to renew.
+    expect(
+      jobs.testShouldStopHeartbeat(new DbEntityNotFoundError("job_executions")),
+    ).toBe(true);
+  });
+});
+
+describe("$job — retention", () => {
+  it("keeps successful rows forever when the job declares keep.ok = 0", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs)
+      .with(AlephaApiJobsQueue);
+    // Global "delete successes" — the setting under which the per-job
+    // override was silently ignored.
+    alepha.store.mut(jobConfig, (c) => ({ ...c, keepLastSuccess: 0 }));
+
+    class AuditApp {
+      executions = $repository(jobExecutionEntity);
+      // Documented contract of `keep`: `{ ok: 0 }` means KEEP FOREVER (no
+      // trim) — the opposite of global `keepLastSuccess: 0`, which means
+      // "delete on success". The success path only consulted the global, so
+      // audit rows were destroyed at completion.
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        record: "all",
+        keep: { ok: 0, error: 0 },
+        handler: async () => {},
+      });
+    }
+
+    const app = alepha.inject(AuditApp);
+    await alepha.start();
+
+    const id = await app.work.push({ v: 1 });
+
+    const rows = await waitFor(
+      () => app.executions.findMany({ where: { id: { eq: id } } }),
+      (r) => r.length === 0 || r[0]?.status === "ok",
+      { label: "execution settled" },
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe("ok");
   });
 });
 

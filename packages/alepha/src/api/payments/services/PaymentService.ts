@@ -404,22 +404,12 @@ export class PaymentService {
       );
     }
 
-    // Claim first: only the caller that wins this guarded UPDATE may insert a
-    // reservation, so the amount check above can never be acted on twice.
-    try {
-      await this.intentRepo.updateOne(
-        { id: { eq: fresh.id }, version: { eq: fresh.version } },
-        { version: (fresh.version ?? 0) + 1 },
-      );
-    } catch (error) {
-      if (error instanceof DbEntityNotFoundError) {
-        throw new PaymentError(
-          `Concurrent refund in progress for intent ${fresh.id}, retry`,
-        );
-      }
-      throw error;
-    }
-
+    // Insert the reservation BEFORE the version claim. Ordering matters:
+    // callers read the version first and the refund rows second, so any
+    // competitor that observes our bumped version is guaranteed to also see
+    // this row in its refunded-total read. Claiming first opens a window
+    // where a competitor sees the new version but not yet the new refund —
+    // three concurrent 500s then all pass a "1000 remaining" check.
     const pending = await this.refundRepo.create({
       intentId: fresh.id,
       organizationId: fresh.organizationId,
@@ -428,6 +418,27 @@ export class PaymentService {
       status: "pending",
       reason,
     });
+
+    try {
+      await this.intentRepo.updateOne(
+        { id: { eq: fresh.id }, version: { eq: fresh.version } },
+        { version: (fresh.version ?? 0) + 1 },
+      );
+    } catch (error) {
+      // Lost the claim — release the reservation so it stops counting
+      // against the remaining refundable amount.
+      await this.refundRepo.deleteById(pending.id).catch((releaseError) => {
+        this.log.warn(`Failed to release refund reservation ${pending.id}`, {
+          error: releaseError,
+        });
+      });
+      if (error instanceof DbEntityNotFoundError) {
+        throw new PaymentError(
+          `Concurrent refund in progress for intent ${fresh.id}, retry`,
+        );
+      }
+      throw error;
+    }
 
     // PSP call outside any lock — network I/O must not hold one.
     let refundProviderRef: string | undefined;

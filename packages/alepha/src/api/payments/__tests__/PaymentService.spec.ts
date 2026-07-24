@@ -198,11 +198,22 @@ describe("PaymentService", () => {
     // extra winner means the check-then-write raced and money was
     // over-refunded.
     const results = await Promise.allSettled(
-      Array.from({ length: 8 }, () => payments.refund(intent.id, 500)),
+      Array.from({ length: 12 }, () => payments.refund(intent.id, 500)),
     );
 
     const fulfilled = results.filter((r) => r.status === "fulfilled");
     expect(fulfilled.length).toBeLessThanOrEqual(2);
+
+    // The money invariant, stated directly: never refund more than was
+    // captured. Counting winners is a proxy; this is the thing that matters.
+    const refunded = await (payments as any).refundRepo.findMany({
+      where: { intentId: { eq: intent.id }, status: { ne: "failed" } },
+    });
+    const total = refunded.reduce(
+      (sum: number, r: { amount: number }) => sum + r.amount,
+      0,
+    );
+    expect(total).toBeLessThanOrEqual(1000);
 
     const updated = await payments.getIntent(intent.id);
     expect(["partially_refunded", "refunded"]).toContain(updated.status);

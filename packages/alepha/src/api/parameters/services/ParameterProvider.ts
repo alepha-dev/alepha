@@ -229,7 +229,14 @@ export class ParameterProvider {
     const ck = this.cacheKey(name);
     if (!this.loaded.has(ck) || this.isStale(ck)) {
       if (!this.loadPromises.has(ck)) {
-        this.loadPromises.set(ck, this.doLoad(name));
+        // Clear in `finally`, not just on the success paths inside doLoad: a
+        // rejected promise left in the map is re-awaited by every subsequent
+        // get(), so one transient DB failure poisoned the parameter until
+        // the process restarted.
+        this.loadPromises.set(
+          ck,
+          this.doLoad(name).finally(() => this.loadPromises.delete(ck)),
+        );
       }
       await this.loadPromises.get(ck);
     }
@@ -325,7 +332,11 @@ export class ParameterProvider {
    */
   public async load(name: string): Promise<void> {
     const ck = this.cacheKey(name);
-    this.loadPromises.set(ck, this.doLoad(name));
+    // Same rule as `get()`: a failed load must not linger in the map.
+    this.loadPromises.set(
+      ck,
+      this.doLoad(name).finally(() => this.loadPromises.delete(ck)),
+    );
     await this.loadPromises.get(ck);
   }
 
@@ -584,6 +595,10 @@ export class ParameterProvider {
   public async delete(name: string): Promise<void> {
     await this.repo.deleteMany({ name: { eq: name } });
     this.evictCaches(name);
+    // Evicting locally is not enough: other instances keep serving the
+    // deleted value indefinitely (the Node default TTL is 0, so nothing
+    // revalidates). `save()` already publishes — deletes must too.
+    await this.publishChange(name);
     this.log.info("Parameter deleted", { name });
   }
 
@@ -595,6 +610,7 @@ export class ParameterProvider {
     await this.repo.deleteMany({ name: { inArray: names } });
     for (const name of names) {
       this.evictCaches(name);
+      await this.publishChange(name);
     }
     this.log.info("Parameters deleted", { count: names.length });
     return names;

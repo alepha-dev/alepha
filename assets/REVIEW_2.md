@@ -9,7 +9,7 @@
 
 **268 findings: 1 P0 · 48 P1 · 128 P2 · 91 P3** (168 bugs, 50 unfinished, 50 recommendations).
 
-> **Update 2026-07-24**: 92 findings closed — 81 fixed across nine passes, plus 11 retired with the deletion of `alepha/api/subscriptions`.
+> **Update 2026-07-24**: 97 findings closed — 86 fixed across ten passes, plus 11 retired with the deletion of `alepha/api/subscriptions`.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -201,6 +201,19 @@ The payments guide now states the recurring-billing stance explicitly: let the P
 | crypto | `BrowserCryptoProvider.randomCode` no longer hangs for length ≥ 10. `10 ** length` overflowed the Uint32 range, flooring the rejection-sampling limit to 0 so the loop could never exit. Digits are now drawn independently (bias-free, no length ceiling), matching the Node provider. |
 | api/keys | API keys can no longer outlive a demotion: the owner hook resolves the owner's *current* roles and the key's stored snapshot is intersected with them. A key minted while its owner was an admin stops granting admin the moment they are demoted, while a deliberately narrow key never widens on promotion. |
 | security | Token-only refresh (no `onRefreshSession`) documented where the choice is made: the option now spells out that omitting it re-issues whatever roles the expired token carried, so a revoked user keeps privileges until the refresh token expires (30 days by default), and that idle invalidation is unavailable. |
+
+### Tenth pass — 2026-07-24 (jobs + parameters)
+
+5 findings fixed. Verified with `yarn lint`, `tsc --noEmit`, the full alepha suite (4322 tests), `yarn test:bun` (46) and the lore suite (298).
+
+| Area | Fix |
+|------|-----|
+| api/jobs | The lease heartbeat no longer stops on *any* error — only when the row is gone or no longer `running` (`shouldStopHeartbeat`). A transient DB blip used to kill it while the handler kept running; once `crashThresholdMs` elapsed another instance's sweep declared the lease crashed and re-dispatched, producing a **duplicate concurrent execution**. Transient failures now log and retry on the next tick. |
+| api/jobs | The sweep's three phases are contained independently (`sweepDue` / `sweepStale` / `sweepCrashed`, each wrapped by `sweepPhase`), with per-row containment inside the crash-recovery phase. One bad row — or one failing `findMany` — used to abort the whole tick, stranding every remaining due/stale/crashed row for 15 minutes. |
+| api/jobs | Per-job `keep.ok` is honoured on the success path. The two zeros mean opposite things *by documented design* — per-job `{ ok: 0 }` is "keep forever, never trim", global `keepLastSuccess: 0` is "delete on success" — and the success path only ever read the global. Any explicit per-job value now retains the row; the global's delete-on-success applies only when the job is silent. This was destroying the audit trail of `alepha/api/notifications`, whose job declares `record: "all", keep: { ok: 0 }` and describes itself as keeping every execution for audit. |
+| api/parameters | A failed load no longer poisons the parameter forever. The in-flight promise is cleared in `finally`, so a rejected load isn't re-awaited by every subsequent `get()` until the process restarts. |
+| api/payments | **CI follow-up (second):** the refund reservation is inserted BEFORE the version claim again. Removing the transaction in the previous pass also inverted that ordering, opening a window where a competitor observes the bumped version but not yet the new refund row — three concurrent 500s all passed a "1000 remaining" check and over-refunded a 1000 payment. Callers read version→refunds, so insert-before-claim guarantees anyone seeing version N+1 also sees the reservation. The spec now asserts the money invariant (total refunded ≤ captured) directly at 12-way concurrency. |
+| api/parameters | `delete()` / `deleteMany()` publish on the sync topic like `save()` already did. Without it other instances served the deleted value indefinitely — the Node default TTL is 0, so nothing revalidates. |
 
 Still deliberately open: the rate-limit `"unknown"`-IP shared bucket (only reachable when a global limit is explicitly configured).
 
@@ -1199,27 +1212,27 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/jobs/providers/JobProvider.ts:1237-1244
 - **Detail**: Sweep phase 1 promotes due `scheduled` rows with an unguarded `updateById(exec.id, { status: "pending" })`; a concurrent `cancel()` is overwritten and the job runs anyway. `dispatchScheduled` (1322) already does this correctly with a guarded updateOne — the sweep should too. Similarly `cancel()` (948) uses unguarded updateById and can stamp `cancelled` over a completed row.
 
-### [BUG] Lease heartbeat dies on first transient DB error → false crash detection → duplicate execution
+### ✅ FIXED — [BUG] Lease heartbeat dies on first transient DB error → false crash detection → duplicate execution
 - **Severity**: P2
 - **File**: packages/alepha/src/api/jobs/providers/JobProvider.ts:690-711
 - **Detail**: The heartbeat's catch does `clearInterval(timer)` on **any** error. Correct for DbEntityNotFoundError, but a transient DB failure also kills the heartbeat while the handler keeps running; once crashThresholdMs passes, another instance's sweep (which only skips executions in the *local* abortControllers map) marks it crashed and schedules a retry — duplicate concurrent execution. Fix: only stop on DbEntityNotFoundError.
 
-### [BUG] One bad row aborts the whole job sweep tick
+### ✅ FIXED — [BUG] One bad row aborts the whole job sweep tick
 - **Severity**: P2
 - **File**: packages/alepha/src/api/jobs/providers/JobProvider.ts:1232-1295
 - **Detail**: All three sweep phases share one try/catch. `updateById` in phase 1 throws DbEntityNotFoundError if the row vanished between findMany and write — the catch logs "Sweep failed" and remaining due/stale/crashed rows are skipped until the next tick (default 15 min). Per-row try/catch would contain the blast radius.
 
-### [BUG] Parameter load failure poisons the cache permanently
+### ✅ FIXED — [BUG] Parameter load failure poisons the cache permanently
 - **Severity**: P2
 - **File**: packages/alepha/src/api/parameters/services/ParameterProvider.ts:228-235,766-848
 - **Detail**: `get()` stores `doLoad(name)`'s promise in `loadPromises`; doLoad deletes the entry only on success paths. If `loadCurrentAndNext` throws, the rejected promise stays in the map and every subsequent `get()` re-awaits the same rejection forever until restart. Fix: cleanup in `finally`.
 
-### [BUG] Parameter delete is not propagated cross-instance
+### ✅ FIXED — [BUG] Parameter delete is not propagated cross-instance
 - **Severity**: P2
 - **File**: packages/alepha/src/api/parameters/services/ParameterProvider.ts:584-601
 - **Detail**: `save()` publishes on syncTopic, but `delete()`/`deleteMany()` only evict local caches — other instances serve the deleted value indefinitely (Node default TTL 0, no revalidation). Fix: publishChange(name) after delete.
 
-### [BUG] Per-job `keep: { ok: 0 }` ("keep forever") is ignored by the success-path delete decision
+### ✅ FIXED — [BUG] Per-job `keep: { ok: 0 }` ("keep forever") is ignored by the success-path delete decision
 - **Severity**: P2
 - **File**: packages/alepha/src/api/jobs/providers/JobProvider.ts:1040-1052 (vs 1336-1346); consumer: api/notifications/jobs/NotificationJobs.ts:52-66
 - **Detail**: On success, `keepSuccess` consults only the **global** atom, while trim correctly honors per-job `keep.ok ?? global`. Notifications rely on `record: "all", keep: { ok: 0 }` meaning "keep every row for audit" — but with global `keepLastSuccess: 0`, every successful notification row is deleted at completion, destroying the advertised audit trail. Fix: consult per-job keep in keepSuccess.
