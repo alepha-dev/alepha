@@ -538,6 +538,48 @@ describe("ServerLinksProvider", () => {
       expect(res1.headers.get("etag")).toBe(res2.headers.get("etag"));
     });
 
+    it("should not serve the anonymous registry to an authenticated user with no roles", async ({
+      expect,
+    }) => {
+      class App {
+        authOnly = $action({
+          use: [$secure()],
+          schema: { response: z.text() },
+          handler: () => "AUTH_ONLY",
+        });
+        issuer = $issuer({
+          secret: "test",
+          roles: [{ name: "user", permissions: [{ name: "*" }] }],
+        });
+      }
+
+      const alepha = Alepha.create()
+        .with(App)
+        .with(ServerLinksProvider)
+        .with(AlephaSecurity);
+      await alepha.start();
+
+      const hostname = alepha.inject(ServerProvider).hostname;
+
+      // Anonymous request first — populates the cache entry for "no roles"
+      const anon = await (await fetch(`${hostname}/api/_links`)).json();
+      expect(anon.actions.authOnly).toBeUndefined();
+
+      // Authenticated user carrying an empty role set must not reuse it:
+      // $secure() is auth-only, so this user IS allowed to see the action.
+      const { access_token } = await alepha
+        .inject(App)
+        .issuer.createToken({ id: randomUUID(), roles: [] });
+
+      const authed = await (
+        await fetch(`${hostname}/api/_links`, {
+          headers: { authorization: `Bearer ${access_token}` },
+        })
+      ).json();
+
+      expect(authed.actions.authOnly).toBeDefined();
+    });
+
     it("should serve cached response on second request", async ({ expect }) => {
       class App {
         ping = $action({

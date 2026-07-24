@@ -27,6 +27,7 @@ import type {
 } from "../interfaces/WebSocketInterfaces.ts";
 import type { TWSObject } from "../primitives/$channel.ts";
 import { RoomManager } from "../services/RoomManager.ts";
+import { WebSocketChannelConnection } from "../services/WebSocketClient.ts";
 import { WebSocketTopicService } from "../services/WebSocketTopicService.ts";
 import { RoomEngine } from "./RoomEngine.ts";
 import { WebSocketServerProvider } from "./WebSocketServerProvider.ts";
@@ -631,6 +632,11 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   ): Promise<void> {
     const targetConnections = new Set<string>();
 
+    // Which room made a connection a target, so the frame can say so. A client
+    // holds ONE socket for every room it subscribed to; without this it cannot
+    // tell which of its handlers a message belongs to.
+    const targetRooms = new Map<string, string>();
+
     // Helper to check if a connection belongs to this channel
     const isOnChannel = (connId: string) => {
       const conn = this.connections.get(connId);
@@ -644,6 +650,11 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         for (const connId of roomConns) {
           if (isOnChannel(connId)) {
             targetConnections.add(connId);
+            // First room wins for a connection in several of the targeted
+            // rooms — it receives one frame, so it gets one label.
+            if (!targetRooms.has(connId)) {
+              targetRooms.set(connId, roomId);
+            }
           }
         }
       }
@@ -697,14 +708,31 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       }
     }
 
-    // Send to all target connections
-    const serialized = JSON.stringify(message);
+    // Send to all target connections. Frames addressed to a room carry the
+    // room marker; a channel-wide emit stays unlabelled.
+    const serializedByRoom = new Map<string, string>();
+    const serialize = (roomId: string | undefined): string => {
+      if (!roomId) {
+        return JSON.stringify(message);
+      }
+
+      let serialized = serializedByRoom.get(roomId);
+      if (!serialized) {
+        serialized = JSON.stringify({
+          ...message,
+          [WebSocketChannelConnection.ROOM_MARKER]: roomId,
+        });
+        serializedByRoom.set(roomId, serialized);
+      }
+      return serialized;
+    };
+
     await Promise.all(
       Array.from(targetConnections).map(async (connId) => {
         const conn = this.connections.get(connId);
         if (conn) {
           try {
-            await conn.send(serialized);
+            await conn.send(serialize(targetRooms.get(connId)));
           } catch (error) {
             this.log.error(`Failed to send to connection ${connId}:`, error);
           }

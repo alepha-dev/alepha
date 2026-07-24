@@ -368,16 +368,32 @@ export function useAction<Args extends any[], Result = void>(
     }
   }, [...deps, options.runOnInit]);
 
+  // The interval must not depend on `runAction`'s identity: `useQuery` passes
+  // a fresh inline `onSuccess` on every render, which rebuilds `runAction`,
+  // which used to tear the interval down and start it over. A component
+  // re-rendering faster than the polling period then never polled at all.
+  const runActionRef = useRef(runAction);
+  useEffect(() => {
+    runActionRef.current = runAction;
+  });
+
+  // Same reason for the period: the documented tuple form (`[5, "seconds"]`)
+  // is a fresh array each render, so the effect keys on its value, not its
+  // identity.
+  const runEveryMs = options.runEvery
+    ? dateTimeProvider.duration(options.runEvery).as("milliseconds")
+    : undefined;
+
   // Run action periodically if runEvery is specified
   useEffect(() => {
-    if (!options.runEvery) {
+    if (!runEveryMs) {
       return;
     }
 
     // Set up interval
     intervalRef.current = dateTimeProvider.createInterval(
-      () => runAction([] as any, { supersede: true }),
-      options.runEvery,
+      () => runActionRef.current([] as any, { supersede: true }),
+      runEveryMs,
       true,
     );
 
@@ -388,7 +404,7 @@ export function useAction<Args extends any[], Result = void>(
         intervalRef.current = undefined;
       }
     };
-  }, [runAction, options.runEvery]);
+  }, [runEveryMs]);
 
   return {
     run: handler,

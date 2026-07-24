@@ -118,7 +118,7 @@ export class BuildClientTask extends BuildTask {
 
     try {
       await viteBuild(viteBuildClientConfig);
-      await this.postBuildCleanUpForIndexHtml();
+      await this.postBuildCleanUpForIndexHtml(opts.dist);
     } catch (error) {
       logger?.flush();
       throw error;
@@ -127,8 +127,12 @@ export class BuildClientTask extends BuildTask {
 
   /**
    * Weird cleanup required because we changed input from "index.html" to "node_modules/.alepha/index.html".
+   *
+   * `dist` is required on purpose: it must be the same directory Vite built
+   * into (`output.dist`/`output.public`). A default here silently pointed the
+   * cleanup at another tree whenever the app customised its output.
    */
-  public async postBuildCleanUpForIndexHtml(dist = "dist/public") {
+  public async postBuildCleanUpForIndexHtml(dist: string) {
     const manifestPath = `${dist}/.vite/manifest.json`;
     let text = await this.fs.readTextFile(manifestPath);
     text = text.replaceAll("node_modules/.alepha/index.html", "index.html");

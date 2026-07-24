@@ -13,6 +13,9 @@ class TestApp {
     method: "POST",
     handler: () => "world",
   });
+  ping = $action({
+    handler: () => "pong",
+  });
 }
 
 describe("ServerCorsProvider", () => {
@@ -112,6 +115,52 @@ describe("ServerCorsProvider", () => {
       "Content-Type, X-Custom-Header",
     );
     expect(response.headers.get("access-control-max-age")).toBe("86400");
+  });
+
+  test("should answer the preflight of a GET route", async () => {
+    // A cross-origin GET carrying Authorization (in the default allowed
+    // headers) IS preflighted by the browser. Without an OPTIONS twin the
+    // preflight 404s and the browser blocks the real request.
+    await setupServer({ origin: "https://preflight.example.com" });
+
+    const response = await fetch(`${server.hostname}/api/ping`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: "https://preflight.example.com",
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "Authorization",
+      },
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("access-control-allow-origin")).toBe(
+      "https://preflight.example.com",
+    );
+  });
+
+  test("should set Vary: Origin when reflecting the request origin", async () => {
+    await setupServer({ origin: "https://allowed.example.com" });
+
+    const response = await fetch(`${server.hostname}/api/hello`, {
+      method: "POST",
+      headers: { Origin: "https://allowed.example.com" },
+    });
+
+    // Without it a shared cache can hand origin A's response to origin B.
+    expect(response.headers.get("vary")).toContain("Origin");
+  });
+
+  test("should refuse credentials when origin is the wildcard", async () => {
+    await setupServer({ origin: "*", credentials: true });
+
+    const response = await fetch(`${server.hostname}/api/hello`, {
+      method: "POST",
+      headers: { Origin: "https://evil.example.com" },
+    });
+
+    // Reflecting an arbitrary origin AND allowing credentials lets any site
+    // read authenticated responses. The combination must not be honoured.
+    expect(response.headers.get("access-control-allow-credentials")).toBeNull();
   });
 
   test("should NOT return CORS headers for a request from a disallowed origin", async () => {

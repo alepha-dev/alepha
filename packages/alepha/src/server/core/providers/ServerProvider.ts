@@ -1,4 +1,4 @@
-import { Readable } from "node:stream";
+import { pipeline, Readable } from "node:stream";
 import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -234,7 +234,16 @@ export class ServerProvider {
     // if response.body is node stream
     if (response.body instanceof Readable) {
       res.writeHead(response.status, response.headers);
-      response.body.pipe(res);
+
+      // `pipe` forwards no errors: a source that fails mid-stream would just
+      // unpipe, leaving the response open forever (client hangs, socket
+      // leaks). `pipeline` destroys both ends, so the client sees a truncated
+      // response and the connection is released.
+      pipeline(response.body, res, (error) => {
+        if (error) {
+          this.log.warn("Response stream failed", error);
+        }
+      });
       return;
     }
 
@@ -244,17 +253,58 @@ export class ServerProvider {
       // Flush headers immediately and disable Nagle's algorithm for streaming
       res.flushHeaders();
       res.socket?.setNoDelay(true);
+
+      // A disconnected client never surfaces as an error on the source, so
+      // without watching 'close' an open-ended producer ($sse, a proxied
+      // event stream) keeps producing into a dead socket forever. Cancelling
+      // the reader is what tells it to stop.
+      let clientGone = false;
+      let onClientGone: () => void = () => {};
+      const disconnected = new Promise<void>((resolve) => {
+        onClientGone = () => {
+          clientGone = true;
+          resolve();
+        };
+      });
+      res.once("close", onClientGone);
+
+      const reader = response.body.getReader();
+
       try {
-        for await (const chunk of response.body) {
-          const canContinue = res.write(chunk);
+        while (!clientGone) {
+          const next = await Promise.race([
+            reader.read(),
+            disconnected.then(() => undefined),
+          ]);
+
+          if (!next || next.done) {
+            break;
+          }
+
+          const canContinue = res.write(next.value);
           // If the internal buffer is full, wait for it to drain
           if (!canContinue) {
-            await new Promise<void>((resolve) => res.once("drain", resolve));
+            await Promise.race([
+              new Promise<void>((resolve) => res.once("drain", resolve)),
+              disconnected,
+            ]);
           }
         }
       } catch (error) {
-        this.log.error("Error piping proxy response stream", error);
+        this.log.error("Error piping response stream", error);
       } finally {
+        res.off("close", onClientGone);
+
+        if (clientGone) {
+          await reader
+            .cancel(new Error("Client disconnected"))
+            .catch((error) =>
+              this.log.debug("Failed to cancel response stream", error),
+            );
+        } else {
+          reader.releaseLock();
+        }
+
         res.end();
       }
       return;

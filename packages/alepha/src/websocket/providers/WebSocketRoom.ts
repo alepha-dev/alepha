@@ -5,6 +5,7 @@ import type {
   RoomSocket,
 } from "../interfaces/RoomInterfaces.ts";
 import type { WebSocketPrimitiveOptions } from "../interfaces/WebSocketInterfaces.ts";
+import { WebSocketChannelConnection } from "../services/WebSocketClient.ts";
 import { RoomEngine } from "./RoomEngine.ts";
 import { WebSocketServerProvider } from "./WebSocketServerProvider.ts";
 
@@ -407,11 +408,32 @@ export class WebSocketRoom {
   protected broadcastLocal(message: unknown, except: Set<string>): void {
     const serialized =
       typeof message === "string" ? message : JSON.stringify(message);
+
+    // Stamp the room the same way the Node provider does, so a client
+    // dispatches by room on both runtimes. Pre-serialized string payloads are
+    // passed through untouched.
+    const serializedByRoom = new Map<string, string>();
+    const forRoom = (roomId: string | undefined): string => {
+      if (!roomId || typeof message === "string") {
+        return serialized;
+      }
+
+      let labelled = serializedByRoom.get(roomId);
+      if (!labelled) {
+        labelled = JSON.stringify({
+          ...(message as Record<string, unknown>),
+          [WebSocketChannelConnection.ROOM_MARKER]: roomId,
+        });
+        serializedByRoom.set(roomId, labelled);
+      }
+      return labelled;
+    };
+
     for (const ws of this.ctx.getWebSockets()) {
       const att = ws.deserializeAttachment() as WsAttachment | null;
       if (att && except.has(att.connectionId)) continue;
       try {
-        ws.send(serialized);
+        ws.send(forRoom(att?.roomId));
       } catch (error) {
         this.safeLog(
           "warn",

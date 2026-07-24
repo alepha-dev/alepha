@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { $action } from "alepha/server";
+import { $action, ServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, test } from "vitest";
 import { $etag, AlephaServerEtag, ServerEtagProvider } from "../index.ts";
 
@@ -19,6 +19,16 @@ class TestApp {
   cachedWithCustomTtl = $action({
     use: [$etag({ store: { ttl: 1000 } })],
     handler: () => `ttl-cached-${this.counter++}`,
+  });
+
+  cachedWithShortTtl = $action({
+    use: [$etag({ store: { ttl: [100, "milliseconds"] } })],
+    handler: () => `short-ttl-${this.counter++}`,
+  });
+
+  cachedWithShortDurationStore = $action({
+    use: [$etag({ store: [100, "milliseconds"] })],
+    handler: () => `short-store-${this.counter++}`,
   });
 
   asyncCachedAction = $action({
@@ -321,6 +331,25 @@ describe("ServerEtagProvider", () => {
   });
 
   describe("Cache invalidation", () => {
+    test("should invalidate every caller's entry for the route", async ({
+      expect,
+    }) => {
+      // Entries are namespaced by caller identity, so invalidating a route
+      // must clear all of them — not only the anonymous one.
+      const hostname = alepha.inject(ServerProvider).hostname;
+      const call = (token: string) =>
+        fetch(`${hostname}/api/cachedAction`, {
+          headers: { authorization: `Bearer ${token}` },
+        }).then((res) => res.text());
+
+      const alice = await call("alice-token");
+      expect(await call("alice-token")).toBe(alice);
+
+      await etagProvider.invalidate(app.cachedAction.route);
+
+      expect(await call("alice-token")).not.toBe(alice);
+    });
+
     test("should invalidate cache using ServerEtagProvider.invalidate()", async ({
       expect,
     }) => {
@@ -372,6 +401,54 @@ describe("ServerEtagProvider", () => {
 
       expect(response1.data).toBe(response2.data);
       expect(response1.data).toBe("ttl-cached-0");
+    });
+
+    test("should expire the stored response once store.ttl elapses", async ({
+      expect,
+    }) => {
+      // The configured TTL was truth-tested but never passed to cache.set,
+      // so every $etag store silently used the global cache default (300s).
+      const first = await app.cachedWithShortTtl.fetch();
+      const cached = await app.cachedWithShortTtl.fetch();
+      expect(cached.data).toBe(first.data);
+
+      await new Promise((resolve) => setTimeout(resolve, 250));
+
+      const afterExpiry = await app.cachedWithShortTtl.fetch();
+      expect(afterExpiry.data).not.toBe(first.data);
+    });
+
+    test("should not serve one caller's stored body to another", async ({
+      expect,
+    }) => {
+      // The key was route + params + query only, so `$etag(true)` on an
+      // authenticated action handed the first caller's body to everyone else.
+      const hostname = alepha.inject(ServerProvider).hostname;
+      const call = (token: string) =>
+        fetch(`${hostname}/api/cachedAction`, {
+          headers: { authorization: `Bearer ${token}` },
+        }).then((res) => res.text());
+
+      const alice = await call("alice-token");
+      const bob = await call("bob-token");
+
+      expect(alice).not.toBe(bob);
+
+      // ...but the same caller still gets a cache hit.
+      expect(await call("alice-token")).toBe(alice);
+    });
+
+    test("should accept a bare duration as store", async ({ expect }) => {
+      const first = await app.cachedWithShortDurationStore.fetch();
+      expect((await app.cachedWithShortDurationStore.fetch()).data).toBe(
+        first.data,
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 250));
+
+      expect((await app.cachedWithShortDurationStore.fetch()).data).not.toBe(
+        first.data,
+      );
     });
   });
 

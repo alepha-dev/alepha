@@ -62,6 +62,11 @@ export default defineConfig({
             "**/*.bun.spec.{ts,tsx}",
             "**/node_modules/**",
             "**/e2e/**",
+            // Git worktrees live here. Without this every spec in the repo is
+            // collected twice, and the root-anchored excludes below (which a
+            // nested checkout does not match) stop applying to the copy — so
+            // e2e suites meant for `yarn e2e` run inside `yarn test`.
+            "**/.claude/**",
             "apps/e2e-cli/**",
             "apps/tmp/**",
           ],

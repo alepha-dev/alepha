@@ -24,7 +24,9 @@ export class ServerEtagProvider {
   }
 
   public async invalidate(route: ServerRoute) {
-    await this.cache.invalidate(this.createCacheKey(route));
+    // Wildcard: entries are keyed by route + params + query + caller identity,
+    // so the bare key would only clear the anonymous, parameterless one.
+    await this.cache.invalidate(`${this.createCacheKey(route)}*`);
   }
 
   /**
@@ -150,12 +152,16 @@ export class ServerEtagProvider {
         action: action.name,
       });
 
-      await this.cache.set(key, {
-        body: body,
-        lastModified,
-        contentType: contentType,
-        hash: generatedEtag,
-      });
+      await this.cache.set(
+        key,
+        {
+          body: body,
+          lastModified,
+          contentType: contentType,
+          hash: generatedEtag,
+        },
+        this.resolveStoreTtl(options),
+      );
 
       // Set Cache-Control header if configured
       const cacheControl = this.buildCacheControlHeader(options);
@@ -268,6 +274,7 @@ export class ServerEtagProvider {
           response.status,
           response.headers?.["content-type"],
           shouldUseEtag,
+          this.resolveStoreTtl(options),
         )
           .then((hash) => {
             if (shouldUseEtag && hash) {
@@ -297,13 +304,17 @@ export class ServerEtagProvider {
           etag: shouldUseEtag,
         });
 
-        await this.cache.set(key, {
-          body: response.body,
-          status: response.status,
-          contentType: response.headers?.["content-type"],
-          lastModified,
-          hash: generatedEtag,
-        });
+        await this.cache.set(
+          key,
+          {
+            body: response.body,
+            status: response.status,
+            contentType: response.headers?.["content-type"],
+            lastModified,
+            hash: generatedEtag,
+          },
+          this.resolveStoreTtl(options),
+        );
       }
 
       // Set ETag headers if etag is enabled
@@ -386,6 +397,34 @@ export class ServerEtagProvider {
     return false;
   }
 
+  /**
+   * TTL configured on `store`, in whatever form it was written:
+   * `store: true` (no TTL — the cache default applies), a bare duration, or
+   * `{ ttl }`. It used to be truth-tested and then dropped, so every stored
+   * response silently fell back to the global cache default.
+   */
+  public resolveStoreTtl(
+    options?: EtagMiddlewareOptionsResolved,
+  ): DurationLike | undefined {
+    const store = options?.store;
+
+    if (!store || store === true) {
+      return undefined;
+    }
+
+    if (typeof store === "number" || Array.isArray(store)) {
+      return store;
+    }
+
+    // A `Duration` instance is a DurationLike; a CachePrimitiveOptions is not
+    // and carries the duration under `ttl`.
+    if (typeof store === "object" && "ttl" in store) {
+      return store.ttl;
+    }
+
+    return store as DurationLike;
+  }
+
   public shouldUseEtag(options?: EtagMiddlewareOptionsResolved): boolean {
     if (!options) return false;
     if (options.etag) return true;
@@ -413,7 +452,28 @@ export class ServerEtagProvider {
       params.push(`${key}=${value}`);
     }
 
-    return `${route.method}:${(route.path ?? "").replaceAll(":", "")}:${params.join(",").replaceAll(":", "")}`;
+    return `${route.method}:${(route.path ?? "").replaceAll(":", "")}:${params.join(",").replaceAll(":", "")}${this.identityScope(config)}`;
+  }
+
+  /**
+   * Namespaces the cache entry by caller identity.
+   *
+   * The key is otherwise route + params + query, so `$etag(true)` on an
+   * authenticated action would store the first caller's body and serve it to
+   * everyone else. Anonymous callers (no authorization, no cookie) share one
+   * entry, which is the intended behaviour for public routes.
+   */
+  protected identityScope(config?: ServerRequest): string {
+    const headers = config?.headers as Record<string, string> | undefined;
+
+    const auth = headers?.authorization ?? "";
+    const cookie = headers?.cookie ?? "";
+
+    if (!auth && !cookie) {
+      return "";
+    }
+
+    return `:${this.crypto.hash(`${auth}${cookie}`, "md5")}`;
   }
 
   /**
@@ -426,6 +486,7 @@ export class ServerEtagProvider {
     status: number | undefined,
     contentType: string | undefined,
     generateEtag: boolean,
+    ttl?: DurationLike,
   ): Promise<string | undefined> {
     const chunks: Uint8Array[] = [];
     const reader = stream.getReader();
@@ -449,13 +510,17 @@ export class ServerEtagProvider {
 
       this.log.trace("Storing streamed response", { key });
 
-      await this.cache.set(key, {
-        body,
-        status,
-        contentType,
-        lastModified,
-        hash,
-      });
+      await this.cache.set(
+        key,
+        {
+          body,
+          status,
+          contentType,
+          lastModified,
+          hash,
+        },
+        ttl,
+      );
 
       return generateEtag ? hash : undefined;
     } finally {

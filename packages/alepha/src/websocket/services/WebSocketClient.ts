@@ -56,6 +56,16 @@ export class WebSocketChannelConnection<
   protected reconnectTimer?: ReturnType<typeof setTimeout>;
   protected manuallyClosed = false;
   protected static readonly MAX_QUEUE_SIZE = 1000;
+
+  /**
+   * Key the server stamps on an outbound frame to say which room it belongs
+   * to. One socket serves every room this client subscribed to, so without it
+   * the client cannot tell whose message it just received.
+   *
+   * Stripped before validation and before the handler sees the payload — it is
+   * transport metadata, not part of the channel's `in` schema.
+   */
+  public static readonly ROOM_MARKER = "__alephaRoom";
   protected messageQueue: Array<{ roomId: string; message: Static<TServer> }> =
     [];
 
@@ -323,17 +333,42 @@ export class WebSocketChannelConnection<
       const parsed = JSON.parse(data);
       this.log.trace("Parsed incoming message", { parsed });
 
+      const marker = WebSocketChannelConnection.ROOM_MARKER;
+      const roomId =
+        parsed &&
+        typeof parsed === "object" &&
+        typeof parsed[marker] === "string"
+          ? (parsed[marker] as string)
+          : undefined;
+
+      // Transport metadata — must not reach the schema or the handler.
+      if (roomId !== undefined) {
+        delete parsed[marker];
+      }
+
       // Validate incoming message against schema
       const inSchema = this.channel.options.schema.in;
       this.alepha.codec.validate(inSchema, parsed);
 
       this.log.debug("Dispatching message to handlers", {
         handlerCount: this.subscriptions.size,
+        roomId,
       });
 
-      // Extract roomId from message if present (server should send it back)
-      // For now, broadcast to all subscribed rooms
-      // TODO: Server should include roomId in response
+      if (roomId !== undefined) {
+        // Addressed frame: only the room it was sent to. Fanning it to every
+        // handler delivered room A's messages to room B.
+        const handler = this.subscriptions.get(roomId);
+        if (handler) {
+          handler(parsed as Static<TClient>);
+        } else {
+          this.log.trace("No handler for room", { roomId });
+        }
+        return;
+      }
+
+      // Unaddressed frame (channel-wide emit, or a server that predates the
+      // marker) — every subscriber is a legitimate recipient.
       for (const handler of this.subscriptions.values()) {
         handler(parsed as Static<TClient>);
       }

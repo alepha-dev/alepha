@@ -91,7 +91,7 @@ describe("$cors", () => {
 
     class TestService {
       fn = $pipeline({
-        use: [$cors({ origin: "*", credentials: true })],
+        use: [$cors({ origin: "https://any.example.com", credentials: true })],
         handler: async () => "ok",
       });
     }
@@ -111,6 +111,36 @@ describe("$cors", () => {
 
       await svc.fn();
       expect(headers["Access-Control-Allow-Credentials"]).toBe("true");
+    });
+  });
+
+  test("refuses credentials when the origin is the wildcard", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCors);
+
+    class TestService {
+      fn = $pipeline({
+        use: [$cors({ origin: "*", credentials: true })],
+        handler: async () => "ok",
+      });
+    }
+
+    const svc = alepha.inject(TestService);
+
+    await alepha.context.run(async () => {
+      const headers: Record<string, string> = {};
+      alepha.set("alepha.http.request", {
+        headers: { origin: "https://evil.example.com" },
+        reply: {
+          setHeader: (name: string, value: string) => {
+            headers[name] = value;
+          },
+        },
+      } as any);
+
+      await svc.fn();
+      expect(headers["Access-Control-Allow-Credentials"]).toBeUndefined();
     });
   });
 

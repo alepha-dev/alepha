@@ -27,6 +27,33 @@ describe("fork", () => {
     expect(alepha.get("test")).toBe("A");
   });
 
+  it("should shadow the app value when a fork sets null", () => {
+    // `get` nullish-coalesced the ALS value into the app store, so a fork
+    // writing `null` ("logged out" for a nullable session atom) read the
+    // app-level value back instead of its own.
+    const alepha = new Alepha();
+    alepha.set("test", "app-value" as any);
+
+    alepha.fork(() => {
+      alepha.set("test", null as any);
+      expect(alepha.get("test")).toBeNull();
+    });
+
+    expect(alepha.get("test")).toBe("app-value");
+  });
+
+  it("should shadow the app value when a fork sets undefined", () => {
+    const alepha = new Alepha();
+    alepha.set("test", "app-value" as any);
+
+    alepha.fork(() => {
+      alepha.set("test", undefined as any);
+      expect(alepha.get("test")).toBeUndefined();
+    });
+
+    expect(alepha.get("test")).toBe("app-value");
+  });
+
   it("should walk up the tree through nested forks", () => {
     const alepha = new Alepha();
     alepha.set("test", "A");

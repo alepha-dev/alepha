@@ -538,6 +538,75 @@ describe("useAction", () => {
     unmount();
   });
 
+  test("should keep polling when the component re-renders faster than runEvery", async ({
+    expect,
+  }) => {
+    // The interval effect keyed on `runAction`, whose identity changed on
+    // every render because of the inline `onSuccess` (exactly what `useQuery`
+    // passes). Each render tore the interval down and started a new one, so a
+    // component re-rendering faster than the period never polled at all.
+    const alepha = Alepha.create().with(AlephaDateTime);
+    await alepha.start();
+
+    const mockAction = vi.fn(async () => "polled");
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const { rerender, unmount } = renderHook(
+      () =>
+        useAction(
+          {
+            handler: mockAction,
+            runEvery: 60,
+            onSuccess: () => {},
+          },
+          [],
+        ),
+      { wrapper },
+    );
+
+    for (let i = 0; i < 20; i++) {
+      rerender();
+      await new Promise((resolve) => setTimeout(resolve, 15));
+    }
+
+    expect(mockAction.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+    unmount();
+  });
+
+  test("should keep polling when runEvery is an inline duration tuple", async ({
+    expect,
+  }) => {
+    // `[50, "milliseconds"]` is a fresh array on every render — the documented
+    // form of the option, and enough on its own to reset the interval.
+    const alepha = Alepha.create().with(AlephaDateTime);
+    await alepha.start();
+
+    const mockAction = vi.fn(async () => "polled");
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const { rerender, unmount } = renderHook(
+      () =>
+        useAction({ handler: mockAction, runEvery: [50, "milliseconds"] }, []),
+      { wrapper },
+    );
+
+    for (let i = 0; i < 20; i++) {
+      rerender();
+      await new Promise((resolve) => setTimeout(resolve, 15));
+    }
+
+    expect(mockAction.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+    unmount();
+  });
+
   test("should cleanup interval on unmount", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();

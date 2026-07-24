@@ -9,7 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-24**: 98 findings closed — 87 fixed across eleven passes, plus 11 retired with the deletion of `alepha/api/subscriptions`. An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold. See "Eleventh pass" below for the one new finding it surfaced and two corrections.
+> **Update 2026-07-24**: 108 findings closed — 97 fixed across twelve passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
+>
+> **Remaining: 161 open — 0 P0 · 0 P1 · 78 P2 · 83 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -22,6 +24,8 @@ The framework's core abstractions are sound — password hashing, PKCE, SQL-inje
 4. **Runtime-divergence bugs are systemic.** The same call behaves differently across Node/Bun/workerd/Memory providers: sync-SQLite transactions commit before async callbacks finish (no rollback, on both Node and Bun paths); Bun Redis corrupts binary values with any SET option; Redis parameterized `$topic`s subscribe to a dead channel (total message loss); cache `incr` then `get` throws on KV/Redis but works on Memory; `$consumer` middleware is dropped on Cloudflare. The Memory-provider-first test culture hides exactly these: R2, CloudflareKV, Nodemailer, WebSocketClient, SubscriptionJobs, and BuildClientTask have zero test coverage.
 
 ## Top priorities
+
+**All 20 are closed** (fixed, or retired with the subscriptions module). The table is kept as the record of what the review found, not as a work list — see the fix-pass sections for where each landed.
 
 | # | Sev | Module | Finding |
 |---|-----|--------|---------|
@@ -219,7 +223,7 @@ Still deliberately open: the rate-limit `"unknown"`-IP shared bucket (only reach
 
 ### Eleventh pass — 2026-07-24 (audit of the closed findings)
 
-Every finding marked ✅ FIXED / 🗑️ REMOVED above was re-verified against the tree by reading the actual code path. All 92 hold. The audit surfaced one **new** finding and two corrections:
+Every finding marked ✅ FIXED / 🗑️ REMOVED above was re-verified against the tree by reading the actual code path. All 96 closed at that point hold. The audit surfaced one **new** finding and two corrections:
 
 | Area | Item |
 |------|------|
@@ -227,18 +231,36 @@ Every finding marked ✅ FIXED / 🗑️ REMOVED above was re-verified against t
 | server | **Correction.** The ninth-pass table credits the 5xx-cause fix to `HttpError.toJSON`. The guard actually lives in `ServerRouterProvider.sendError` (:416-421) — `toJSON` still emits `cause` unconditionally. Behaviorally correct (the router is the only non-test caller), but the fix is a *call-site* guard, not a serializer guard: anything that serializes an `HttpError` itself must apply the rule too. Exactly what the batch endpoint failed to do. |
 | server | **Hygiene.** `HttpClient.identityScope` built its cache-key separator from **literal** `\x00` / `\x01` bytes in the source. That made the whole file binary to `grep`, `git diff`, and code search — all of which silently return nothing rather than erroring. Replaced with `\u0000` / `\u0001` escapes: identical runtime value, file is text again. |
 
-Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`main` @ 6c7ec9400); fixed findings' line numbers may have shifted slightly.
+### Twelfth pass — 2026-07-24 (the remaining P1s)
+
+All 11 P1s that were still open are fixed — **no P1 or P0 remains**. TDD throughout: every fix has a test that failed first. Verified with `yarn lint`, `tsc --noEmit`, a clean `yarn w alepha build` (no circular deps), and the full suite (757 files, 8468 tests).
+
+| Area | Fix |
+|------|-----|
+| server/links | `/api/_links` is cached per identity, not per role string. `roles: []` on an authenticated user produced the same `""` key as an anonymous visitor, so whichever request landed first poisoned the other — either leaking secured actions to anonymous callers or hiding them from logged-in ones until restart. The key now carries authentication itself and the realm (`$secure({ issuers })` filters on it, and realm A's role names are not realm B's). |
+| server/cors | `OPTIONS` twins are created for **every** path, GET included — a cross-origin GET carrying `Authorization` is preflighted, and that preflight used to 404 with no CORS headers, so the browser blocked the real request. Twins are deduped per path (a path with POST *and* PUT used to register two). Responses now carry `Vary: Origin` (the allowed origin is reflected, so a shared cache could hand origin A's response to origin B) — and `ServerCompressProvider` appends to `Vary` instead of overwriting it. `origin: "*"` + `credentials: true` is refused with a startup warning: reflecting an arbitrary origin *with* credentials is exactly what the browser's own wildcard-plus-credentials ban prevents. |
+| server/core | Streamed response bodies go through `stream.pipeline`. **Correction to the original finding:** on Node 26 a failing `Readable` does not crash the process — `pipe` unpipes and leaves the response open, so the client hangs forever and the socket leaks (verified: the request never settled within 3s). `pipeline` tears both ends down, so the client sees a truncated response and the connection is released. Same for the compressor pipe. |
+| server/core | `$sse` handlers learn about disconnects: the stream implements `cancel()`, the handler context gained `signal: AbortSignal`, and `emit()` returns `false` once the stream is over. `ServerProvider` races the reader against the response's `close` event and cancels it when the client goes away — nothing used to notice, so one disconnected client meant one handler looping forever. |
+| server/etag | `store`'s TTL reaches `cache.set` on all three write paths (action, response, streamed). **Correction:** responses were not cached *forever* — the configured TTL was dropped and the cache's own 300s default silently applied instead, so `store: { ttl: [1, "hour"] }` got five minutes. Separately, stored entries are namespaced by caller identity: `$etag(true)` on an authenticated action served the first caller's body to everyone else. `invalidate()` clears the whole route (wildcard) so it still reaches every caller's entry. |
+| react/core | `runEvery` polling survives re-renders. The effect keyed on `runAction`, whose identity changes every render because of `useQuery`'s inline `onSuccess`, and on the `runEvery` tuple, which is a fresh array each render — so a component re-rendering faster than the period never polled once (verified: 0 calls over 300ms at a 60ms period). It now keys on the period's millisecond value and calls through a ref. |
+| react/form | `useFormQuerySync`'s form→URL direction fires: the listener compared `form:change`'s slash-prefixed path (`/status`) against bare key names, so the whole direction was dead code. Both write paths use `setQueryParams`' updater form, so query params the form doesn't own survive. First test coverage for this hook. |
+| core/state | A fork that writes `null` or `undefined` shadows the app-level value. `get()` coalesced the ALS result into the app store, so a request-scoped nullable atom set to "logged out" read another layer's value back. `AlsProvider.has()` gained scope awareness so presence is distinguishable from a present-null. |
+| core/codec | The keyless codec refuses what it cannot represent instead of corrupting it: unions (it resolved one by taking the first non-null variant, encoding variant B with A's layout) and a top-level optional/nullable object (encodes flat, decodes one slot). Field-level `optional`/`nullable` are unaffected. Nothing in-tree opts into `encoder: "keyless"` yet, so this closes the trap before anyone falls in. |
+| cli | `postBuildCleanUpForIndexHtml` receives the directory Vite actually built into. It defaulted to a hardcoded `dist/public`, so any customised `output.dist`/`output.public` failed the build on a manifest that wasn't there. The parameter is now required so the default cannot drift back. |
+| websocket | The server stamps the room on outbound frames (`__alephaRoom`, stripped before validation and before the handler sees it) and the client dispatches to that room's handler only. One socket serves every room a client subscribed to, so room A's messages were delivered to room B's handler — the acknowledged TODO. Unlabelled frames (channel-wide emit) still reach every subscriber. Both the Node provider and the Durable Object path stamp it, so the runtimes agree. |
+
+Per-module detail follows. Line numbers reference the tree as it stood when each finding was written (`main` @ 6c7ec9400 for the original passes); the fix passes have since moved code, so treat every line number as a starting hint, not an address — locate by symbol name.
 
 ---
 
 ## core
 
-### [BUG] KeylessJsonSchemaCodec silently corrupts data for union and top-level-optional schemas
+### ✅ FIXED — [BUG] KeylessJsonSchemaCodec silently corrupts data for union and top-level-optional schemas
 - **Severity**: P1 (silent data corruption)
 - **File**: packages/alepha/src/core/providers/KeylessJsonSchemaCodec.ts:407-414, 492-499, 598-616
 - **Detail**: `unwrap()` resolves a union by picking the *first non-null variant* (line 605-615), so a `z.union([A, B])` value of shape B is encoded/decoded using A's field order. Verified: `{kind:"b", y:"hello", z2:"w"}` round-trips to `{"kind":"b","x":"b"}` — wrong keys, dropped fields, no error. Independently, a **top-level** `.optional()` object schema encodes flat (`[1,"x"]`) but the decoder (`genDec` optional branch, line 492-499, and `interpretDecode` line 293-306) consumes only one slot and regex-rewrites `a[i++]` into a single temp var; verified round-trip of `{a:1,b:"x"}` yields `{"a":1,"b":1}`. Field-level optionals are fine — only wrapper-at-root and unions are broken. The codec is registered by default in `CodecManager` and publicly exported; nothing in-tree uses `encoder: "keyless"` yet, so blast radius is latent — but it will corrupt the first schema with a union that opts in. Fix: reject unsupported schemas loudly (throw at `getCodec` time for unions / top-level wrappers) or implement a tagged-variant encoding.
 
-### [BUG] Setting a fork-scoped state key to `null` does not shadow the app-level value
+### ✅ FIXED — [BUG] Setting a fork-scoped state key to `null` does not shadow the app-level value
 - **Severity**: P1 (incorrect behavior; cross-layer state leak on the server)
 - **File**: packages/alepha/src/core/providers/StateManager.ts:413-415
 - **Detail**: `get()` resolves ALS values with `this.als.get(key, scope) ?? (scope ? undefined : store[key])`. `AlsProvider.get` returns the stored value, so a legitimate `null` (or `undefined` via `store.del()`) written inside a request fork is nullish-coalesced away and the **app-level** value is returned instead. Verified: app store `k = "app-value"`, then inside `fork()` `set("k", null)` → `get("k")` returns `"app-value"`. `false`/`0` work correctly, only nullish values leak. For request-scoped session/user atoms with nullable schemas ("set to null = logged out") this reads another layer's value. Fix: use `als.has(key)`/`getLayer(key)` to distinguish "absent" from "present = null" before falling back.
@@ -410,7 +432,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/server/core/services/HttpClient.ts:121-137; links/providers/LinkProvider.ts:336-339
 - **Detail**: In-flight GETs dedup with `key = JSON.stringify({url, method})` — headers ignored — on the singleton HttpClient. `LinkProvider.followRemote` forwards the current request's `authorization` header, so two concurrent server-side calls to the same remote-action URL for different users coalesce: user B receives user A's response. Same key issue affects the server-side etag cache (line 95). Fix: include auth-relevant headers (or ALS context id) in the key, or disable dedup when authorization is present server-side.
 
-### [BUG] `/api/_links` registry cache conflates anonymous users with role-less authenticated users
+### ✅ FIXED — [BUG] `/api/_links` registry cache conflates anonymous users with role-less authenticated users
 - **Severity**: P1
 - **File**: packages/alepha/src/server/links/providers/ServerLinksProvider.ts:115
 - **Detail**: `roleKey = user?.roles?.slice().sort().join(",") ?? ""` — an authenticated user with `roles: []` (or undefined roles) produces the same `""` key as an unauthenticated request; `isLinkAccessible` returns different sets for those. Whichever hits first poisons the cache: anonymous visitors can receive a registry listing secured actions, or logged-in users lose secured links until restart (cache never invalidated). Fix: incorporate `!!user` into the key.
@@ -420,17 +442,17 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/server/proxy/providers/ServerProxyProvider.ts:97
 - **Detail**: `Object.fromEntries(response.headers.entries())` keeps only the last `set-cookie` (undici/workerd yield each as a separate entry). `ServerProvider.toWebHeaders` correctly special-cases `set-cookie: string[]`, but the proxy never produces the array form. Proxying auth endpoints silently loses sessions. Fix: `response.headers.getSetCookie()` → string[].
 
-### [BUG] CORS preflight fails for GET routes (no OPTIONS route created)
+### ✅ FIXED — [BUG] CORS preflight fails for GET routes (no OPTIONS route created)
 - **Severity**: P1
 - **File**: packages/alepha/src/server/cors/providers/ServerCorsProvider.ts:149-171
 - **Detail**: The configure hook creates an OPTIONS twin for every route *except* GET. A cross-origin GET carrying `Authorization` (in the module's default headers allowlist) triggers a preflight; that OPTIONS 404s with no CORS headers → browser blocks. Also: reflecting reqOrigin without `Vary: Origin` breaks shared caches; `origin: "*"` + credentials reflects any origin with credentials. Fix: OPTIONS for GET too, add Vary, refuse/warn wildcard+credentials.
 
-### [BUG] Node streaming responses: unhandled `'error'` on piped streams can crash the process
+### ✅ FIXED — [BUG] Node streaming responses: a failing piped stream leaves the response open forever
 - **Severity**: P1
 - **File**: packages/alepha/src/server/core/providers/ServerProvider.ts:235-238; ServerCompressProvider.ts:160-163
 - **Detail**: `response.body.pipe(res)` attaches no error listener to the source — pipe doesn't forward errors, so a mid-stream read error (deleted static file, fs fault) emits unhandled 'error' → uncaughtException → crash. Same for the compress pipe. Client disconnect mid-stream destroys neither source (fd leak). Fix: `stream.pipeline(body, res, cb)` in both.
 
-### [BUG] SSE endpoints never learn about client disconnects — handlers run forever
+### ✅ FIXED — [BUG] SSE endpoints never learn about client disconnects — handlers run forever
 - **Severity**: P1
 - **File**: packages/alepha/src/server/core/primitives/$sse.ts:586-630
 - **Detail**: The ReadableStream implements `start` but no `cancel`. On disconnect the runtime cancels the stream; `emit()` swallows the enqueue TypeError in its empty catch and the handler keeps looping indefinitely — permanent leak per disconnected client. No AbortSignal exposed. Fix: implement `cancel(reason)`, expose `signal` in SseHandlerContext, make emit return false once closed.
@@ -440,7 +462,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/server/core/services/HttpClient.ts:285
 - **Detail**: Exact match `=== "application/json"`. Any server appending `; charset=utf-8` falls through: 2xx returns the raw Response as data; errors throw generic non-JSON HttpError. `text/*` uses startsWith two lines above. Fix: startsWith (or parse media type).
 
-### [UNFINISHED] `$etag` store TTL / cache options accepted but ignored — responses cached forever
+### ✅ FIXED — [UNFINISHED] `$etag` store TTL / cache options accepted but ignored
 - **Severity**: P1
 - **File**: packages/alepha/src/server/etag/providers/ServerEtagProvider.ts:153,300,452 (options: primitives/$etag.ts:112)
 - **Detail**: `store?: true | DurationLike | CachePrimitiveOptions` is documented (JSDoc example with ttl), but `options.store` is only truth-tested; every `cache.set(key, entry)` passes no TTL. Stored responses live until restart or manual invalidate — stale data + unbounded growth for param/query-keyed routes. Also `createCacheKey` (407) includes no user identity: `$etag(true)` on an authenticated action serves one user's cached body to all others — needs a loud doc warning or vary-by option.
@@ -912,7 +934,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/websocket/services/WebSocketClient.ts:143, 165-179
 - **Detail**: `subscriptions` is `Map<roomId, handler>` — second subscriber overwrites the first, and either party's unsubscribe deletes the survivor (two components on one room is the normal UI case). Also every new-room subscribe on an OPEN connection calls `reconnect()`, tearing down the live socket. Fix: `Map<roomId, Set<handler>>` and additive join messages (needs server support).
 
-### [UNFINISHED] Client message dispatch fans every message to every room's handler (acknowledged TODO)
+### ✅ FIXED — [UNFINISHED] Client message dispatch fans every message to every room's handler (acknowledged TODO)
 - **Severity**: P1 for multi-room clients, P3 single-room
 - **File**: packages/alepha/src/websocket/services/WebSocketClient.ts:330-335
 - **Detail**: `// TODO: Server should include roomId in response` — `handleMessage` loops all subscription handlers, so a client on rooms A and B delivers A's messages to B's handler too. Server never stamps roomId on outbound frames, so the client cannot filter. Makes the documented multi-room client model incorrect. Fix: include roomId in the server envelope.
@@ -981,7 +1003,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 
 ## react
 
-### [BUG] `runEvery` polling: interval reset on every render + unbounded interval registry leak
+### ✅ FIXED — [BUG] `runEvery` polling: interval reset on every render + unbounded interval registry leak
 - **Severity**: P1
 - **File**: packages/alepha/src/react/core/hooks/useAction.ts:288,358-377 and datetime/providers/DateTimeProvider.ts:477-481
 - **Detail**: (1) `executeAction`'s dep list includes `options.onSuccess`; `useQuery` always passes a fresh inline `onSuccess` (useQuery.ts:65), so `executeAction`→`runAction` are recreated every render, and the `runEvery` effect tears down/recreates the interval each render. The documented tuple form `runEvery: [5, "seconds"]` also has fresh identity each render. A component re-rendering faster than the polling period never fires a single poll. (2) `DateTimeProvider.createInterval` pushes into the singleton `this.intervals` array, but `clearInterval` never splices the entry out (unlike clearTimeout) — every churned interval permanently retains its closure chain in a process-global array; unbounded leak in SPA sessions and servers. Fix: splice in clearInterval, stabilize callbacks via refs, key the effect on `duration.asMilliseconds()`.
@@ -996,7 +1018,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/react/router/hooks/useQueryParams.ts:38-58, NestedView.tsx:103-104, ReactRouter.ts:240-261
 - **Detail**: `useQueryParams` never subscribes to anything — evaluated during render, sync effect fires only if the component re-renders for another reason. On popstate between `?q=a` and `?q=b` (same path), the layer is reused, NestedView doesn't swap the element, the subtree never re-renders — the hook shows old params. Also `setQueryParams` writes `window.history` directly without touching router state, so two components using the same key desync. Fix: subscribe to router state (`useStore`), and have setQueryParams update the store URL.
 
-### [BUG] `useFormQuerySync` form→URL direction never fires (path format mismatch) and clobbers unrelated query params
+### ✅ FIXED — [BUG] `useFormQuerySync` form→URL direction never fires (path format mismatch) and clobbers unrelated query params
 - **Severity**: P1
 - **File**: packages/alepha/src/react/form/hooks/useFormQuerySync.ts:119,108,130
 - **Detail**: `form:change` events carry `path: "/status"` (FormModel always slash-prefixes), but the listener filters with `keys.includes(e.path)` where keys are bare names — never matches; "Direction 2 — form → URL" is dead code. Both write paths call `router.setQueryParams(record)` which replaces the whole query string, clobbering unrelated params — contradicting the comment at line 96. No test file, no app usage. Fix: compare against `/${key}`; use updater-function merge form.
@@ -1515,7 +1537,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 
 ## cli
 
-### [BUG] Custom `output.dist`/`output.public` breaks the client build cleanup (hardcoded `dist/public`)
+### ✅ FIXED — [BUG] Custom `output.dist`/`output.public` breaks the client build cleanup (hardcoded `dist/public`)
 - **Severity**: P1
 - **File**: packages/alepha/src/cli/core/tasks/BuildClientTask.ts:121,131
 - **Detail**: `buildClient()` builds into `${distDir}/${publicDir}` (from `ctx.options.output`), but then calls `await this.postBuildCleanUpForIndexHtml();` with no argument, and that method defaults to `dist = "dist/public"`. With a customized `build.output.dist` or `output.public`, the cleanup reads `dist/public/.vite/manifest.json` which doesn't exist → the whole build fails (or silently rewrites the wrong tree if a stale `dist/public/` coexists). Fix: pass `opts.dist` through.

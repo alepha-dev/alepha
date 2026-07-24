@@ -38,6 +38,10 @@ import { ServerEtagProvider } from "../providers/ServerEtagProvider.ts";
  *   });
  * }
  * ```
+ *
+ * Stored responses are namespaced by caller identity (the `authorization` and
+ * `cookie` headers), so an authenticated route does not serve one user's body
+ * to another. Anonymous callers share a single entry.
  */
 export const $etag = (options?: EtagMiddlewareOptions): Middleware => {
   const resolved = resolveEtagOptions(options);
@@ -105,7 +109,9 @@ export type EtagMiddlewareOptions =
       /**
        * If true, enables storing cached responses. (in-memory, Redis, @see alepha/cache for other providers)
        * If a DurationLike is provided, it will be used as the TTL for the cache.
-       * If CachePrimitiveOptions is provided, it will be used to configure the cache storage.
+       * If CachePrimitiveOptions is provided, its `ttl` is used as the TTL.
+       *
+       * With `store: true` the cache's own default TTL applies (300s).
        *
        * @default false
        */

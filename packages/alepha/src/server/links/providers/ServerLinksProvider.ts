@@ -30,8 +30,7 @@ export class ServerLinksProvider {
   protected securityProvider: SecurityProvider | undefined;
 
   /**
-   * Cache of serialized JSON by role key.
-   * Key = sorted roles joined by comma (empty string for unauthenticated).
+   * Cache of serialized JSON by identity key (see {@link registryCacheKey}).
    */
   protected registryCache = new Map<string, RegistryCacheEntry>();
 
@@ -112,7 +111,7 @@ export class ServerLinksProvider {
   public readonly links = $route({
     path: LinkProvider.path.apiLinks,
     handler: async ({ user, headers, reply }) => {
-      const roleKey = user?.roles?.slice().sort().join(",") ?? "";
+      const roleKey = this.registryCacheKey(user);
       const cached = this.registryCache.get(roleKey);
 
       if (cached) {
@@ -269,6 +268,24 @@ export class ServerLinksProvider {
   });
 
   protected static readonly MAX_BATCH_SIZE = 20;
+
+  /**
+   * Cache key for the registry response.
+   *
+   * Every input {@link isLinkAccessible} reads must appear here, or one
+   * identity's registry is served to another:
+   *
+   * - authentication itself — `$secure()` is auth-only, so an authenticated
+   *   user carrying no roles sees strictly more than an anonymous visitor.
+   *   Keying on roles alone made both `""`.
+   * - the realm — `$secure({ issuers })` filters on it, so realm A and realm B
+   *   with identical role names resolve to different link sets.
+   */
+  protected registryCacheKey(user?: UserAccountToken): string {
+    if (!user) return "anonymous";
+    const roles = user.roles?.slice().sort().join(",") ?? "";
+    return `user:${user.realm ?? ""}:${roles}`;
+  }
 
   /**
    * Retrieves API registry for the user based on their permissions.

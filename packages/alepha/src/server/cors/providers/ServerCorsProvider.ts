@@ -101,6 +101,20 @@ export class ServerCorsProvider {
           `Initialized with ${this.registeredConfigs.length} registered CORS configurations.`,
         );
       }
+
+      const unsafe = [
+        this.globalOptions,
+        ...this.registeredConfigs.map((it) => this.buildCorsOptions(it)),
+      ].some((it) => it.origin === "*" && it.credentials);
+
+      if (unsafe) {
+        this.log.warn(
+          'CORS is configured with origin "*" and credentials: true. ' +
+            "Credentials are NOT sent for wildcard origins — any site could " +
+            "otherwise read authenticated responses. List the allowed origins " +
+            "explicitly to enable credentials.",
+        );
+      }
     },
   });
 
@@ -123,7 +137,10 @@ export class ServerCorsProvider {
   public applyCorsHeaders(
     request: {
       headers: { origin?: string };
-      reply: { setHeader: (name: string, value: string) => void };
+      reply: {
+        headers?: Record<string, string | string[] | undefined>;
+        setHeader: (name: string, value: string) => void;
+      };
     },
     options: CorsOptions,
   ): void {
@@ -134,7 +151,14 @@ export class ServerCorsProvider {
       request.reply.setHeader("Access-Control-Allow-Origin", reqOrigin);
     }
 
-    if (credentials) {
+    // The response is origin-dependent (we reflect the caller's origin), so a
+    // shared cache must not reuse origin A's entry for origin B.
+    this.addVaryOrigin(request.reply);
+
+    // A reflected concrete origin + credentials is what the browser's
+    // `*`-with-credentials ban exists to prevent: any site could then read
+    // authenticated responses. Reflecting is only safe against an allow-list.
+    if (credentials && origin !== "*") {
       request.reply.setHeader("Access-Control-Allow-Credentials", "true");
     }
 
@@ -146,18 +170,51 @@ export class ServerCorsProvider {
     }
   }
 
+  /**
+   * Append `Origin` to the `Vary` header without dropping what is already
+   * there (`ServerCompressProvider` sets `accept-encoding`).
+   */
+  protected addVaryOrigin(reply: {
+    headers?: Record<string, string | string[] | undefined>;
+    setHeader: (name: string, value: string) => void;
+  }): void {
+    const current = reply.headers?.vary;
+    const values = Array.isArray(current)
+      ? current
+      : typeof current === "string"
+        ? current.split(",")
+        : [];
+
+    const parts = values.map((v) => v.trim()).filter(Boolean);
+
+    if (parts.some((v) => v.toLowerCase() === "origin")) {
+      return;
+    }
+
+    reply.setHeader("Vary", [...parts, "Origin"].join(", "));
+  }
+
   protected readonly configure = $hook({
     on: "start",
     handler: () => {
       const routes = this.serverRouterProvider.getRoutes();
+
+      // Paths that already answer OPTIONS — either declared by the app or
+      // created by a previous iteration for a sibling method on the same path.
+      const covered = new Set(
+        routes.filter((r) => r.method === "OPTIONS").map((r) => r.path),
+      );
+
       for (const route of routes) {
-        if (
-          !route.method ||
-          route.method === "GET" ||
-          route.method === "OPTIONS"
-        ) {
+        if (route.method === "OPTIONS" || covered.has(route.path)) {
           continue;
         }
+
+        // GET is preflighted too: any request carrying `Authorization` (in the
+        // default allowed headers) is non-simple, so the browser sends OPTIONS
+        // first. Skipping GET meant that preflight 404'd with no CORS headers
+        // and the browser blocked the real request.
+        covered.add(route.path);
 
         this.serverRouterProvider.createRoute({
           path: route.path,

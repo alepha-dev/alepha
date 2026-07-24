@@ -1,3 +1,4 @@
+import { AlephaError } from "../errors/AlephaError.ts";
 import { $hook } from "../primitives/$hook.ts";
 import { SchemaCodec } from "./SchemaCodec.ts";
 import type { TArray, TObject, TSchema, TUnion } from "./TypeProvider.ts";
@@ -133,12 +134,111 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   protected getCodec<T>(schema: TSchema): KeylessCodec<T> {
     let c = this.cache.get(schema);
     if (!c) {
+      this.assertSupported(schema);
       c = this.useFunctionCompilation
         ? this.compileWithFunction(schema)
         : this.compileInterpreted(schema);
       this.cache.set(schema, c);
     }
     return c as KeylessCodec<T>;
+  }
+
+  /**
+   * Refuse schemas the positional format cannot represent.
+   *
+   * The encoding stores values in field order and drops the keys, so both
+   * sides must agree on one layout for a given schema. Two shapes break that
+   * and used to corrupt data *silently*:
+   *
+   * - **Unions.** A union has no single field order. The codec resolved one by
+   *   taking the first non-null variant, so a value of variant B was written
+   *   with variant A's layout and read back with A's keys — wrong keys,
+   *   dropped fields, no error.
+   * - **A wrapper at the root** (`z.object({...}).optional()`). It encodes flat
+   *   but the decoder consumes a single slot, so `{a:1,b:"x"}` round-trips to
+   *   `{a:1,b:1}`.
+   *
+   * Field-level `optional`/`nullable` are fine — they have a reserved slot.
+   */
+  protected assertSupported(schema: TSchema): void {
+    if (this.isRootWrapper(schema)) {
+      throw new AlephaError(
+        "The keyless encoder does not support a top-level optional/nullable object schema: " +
+          "it encodes flat but decodes as a single value. Wrap it in an object instead.",
+      );
+    }
+
+    this.assertNoUnion(schema, "");
+  }
+
+  /**
+   * Walks the schema on the RAW property schemas — {@link getObjectFields}
+   * unwraps a union into its first variant, which is exactly the resolution
+   * that loses data, so checking its output would never see one.
+   */
+  protected assertNoUnion(schema: TSchema, path: string): void {
+    if (!schema || typeof schema !== "object") {
+      return;
+    }
+
+    if (this.isRealUnion(schema)) {
+      throw new AlephaError(
+        `The keyless encoder does not support union schemas (at "${path || "<root>"}"): ` +
+          "the format is positional and a union has no single field order. " +
+          "Use the default encoder for this schema, or model the variants as one object with optional fields.",
+      );
+    }
+
+    const inner = this.unwrap(schema);
+
+    if (z.schema.isArray(inner)) {
+      this.assertNoUnion((inner as TArray).items, `${path}[]`);
+      return;
+    }
+
+    if (z.schema.isObject(inner)) {
+      const props = (inner as TObject).properties as
+        | Record<string, TSchema>
+        | undefined;
+
+      for (const key of Object.keys(props ?? {})) {
+        this.assertNoUnion(props![key], path ? `${path}.${key}` : key);
+      }
+    }
+  }
+
+  /**
+   * A union with more than one non-null variant. `[X, null]` is how the
+   * typebox era spelled nullable and stays supported.
+   */
+  protected isRealUnion(schema: TSchema): boolean {
+    if (!z.schema.isUnion(schema)) {
+      return false;
+    }
+
+    // `anyOf` is the JSON-Schema spelling, `options` zod's own.
+    const asAny = schema as TUnion & { options?: unknown };
+    const variants = Array.isArray(asAny.anyOf)
+      ? asAny.anyOf
+      : Array.isArray(asAny.options)
+        ? asAny.options
+        : undefined;
+
+    if (!variants) {
+      return false;
+    }
+
+    return variants.filter((s: any) => !z.schema.isNull(s)).length > 1;
+  }
+
+  protected isRootWrapper(schema: TSchema): boolean {
+    if (!z.schema.isOptional(schema) && !z.schema.isNullable(schema)) {
+      return false;
+    }
+
+    // Only the object case is broken: a wrapped scalar occupies its one slot
+    // like any other value.
+    return z.schema.isObject(this.unwrap(schema));
   }
 
   protected nextVar(): string {

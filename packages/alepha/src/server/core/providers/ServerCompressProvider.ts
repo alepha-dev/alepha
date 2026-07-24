@@ -1,8 +1,9 @@
-import { Readable, type Transform } from "node:stream";
+import { pipeline, Readable, type Transform } from "node:stream";
 import { ReadableStream } from "node:stream/web";
 import { promisify } from "node:util";
 import * as zlib from "node:zlib";
 import { $atom, $hook, $inject, $state, Alepha, type Static, z } from "alepha";
+import { $logger } from "alepha/logger";
 import type { ServerResponse } from "alepha/server";
 
 const gzip = promisify(zlib.gzip);
@@ -77,6 +78,7 @@ export class ServerCompressProvider {
 
   protected readonly alepha = $inject(Alepha);
   protected readonly options = $state(compressOptions);
+  protected readonly log = $logger();
 
   public readonly onResponse = $hook({
     on: "server:onResponse",
@@ -159,7 +161,13 @@ export class ServerCompressProvider {
 
     if (typeof body === "object" && body instanceof Readable) {
       this.setHeaders(response, encoding);
-      response.body = body.pipe(compressor.stream({ params }));
+      // pipeline, not pipe: a failing source must tear the compressor down
+      // too, otherwise the response never ends and the client hangs.
+      response.body = pipeline(body, compressor.stream({ params }), (error) => {
+        if (error) {
+          this.log.warn("Compressed response stream failed", error);
+        }
+      });
       return;
     }
 
@@ -254,7 +262,18 @@ export class ServerCompressProvider {
     response: ServerResponse,
     encoding: keyof typeof ServerCompressProvider.compressors,
   ): void {
-    response.headers.vary = "accept-encoding";
+    // Append — CORS may already have added `Origin`, and overwriting it lets a
+    // shared cache serve one origin's response to another.
+    const current = response.headers.vary;
+    const parts = (typeof current === "string" ? current.split(",") : [])
+      .map((v) => v.trim())
+      .filter(Boolean);
+
+    if (!parts.some((v) => v.toLowerCase() === "accept-encoding")) {
+      parts.push("accept-encoding");
+    }
+
+    response.headers.vary = parts.join(", ");
     response.headers["content-encoding"] = encoding;
   }
 }

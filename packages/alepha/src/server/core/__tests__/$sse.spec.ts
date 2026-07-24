@@ -1,4 +1,5 @@
 import { Alepha, AlephaError, z } from "alepha";
+import { AlephaServer, ServerProvider } from "alepha/server";
 import { LinkProvider, ServerLinksProvider } from "alepha/server/links";
 import { describe, test } from "vitest";
 import { $sse } from "../index.ts";
@@ -285,6 +286,60 @@ describe("$sse", () => {
     }
 
     expect(events).toStrictEqual([{ token: "Hello" }, { token: "world" }]);
+  });
+
+  test("should abort the handler signal when the client disconnects", async ({
+    expect,
+  }) => {
+    // Without this the handler loops forever on every disconnected client:
+    // enqueue-after-close was swallowed and nothing else told it to stop.
+    let aborted = false;
+    let emitAfterDisconnect: boolean | undefined;
+
+    class Api {
+      ticks = $sse({
+        schema: {
+          data: z.object({ n: z.number() }),
+        },
+        handler: async ({ emit, signal }) => {
+          signal.addEventListener("abort", () => {
+            aborted = true;
+          });
+
+          for (let n = 0; n < 100; n++) {
+            const delivered = emit({ n });
+            if (aborted && emitAfterDisconnect === undefined) {
+              emitAfterDisconnect = delivered;
+            }
+            if (signal.aborted) return;
+            await new Promise((resolve) => setTimeout(resolve, 20));
+          }
+        },
+      });
+    }
+
+    const alepha = Alepha.create().with(Api).with(AlephaServer);
+    await alepha.start();
+    const hostname = alepha.inject(ServerProvider).hostname;
+
+    const controller = new AbortController();
+    const res = await fetch(`${hostname}/api/ticks`, {
+      method: "POST",
+      headers: {
+        accept: "text/event-stream",
+        "content-type": "application/json",
+      },
+      signal: controller.signal,
+    });
+
+    const reader = res.body!.getReader();
+    await reader.read();
+    controller.abort();
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    expect(aborted).toBe(true);
+    expect(emitAfterDisconnect).toBe(false);
   });
 
   test("should register as a link", async ({ expect }) => {

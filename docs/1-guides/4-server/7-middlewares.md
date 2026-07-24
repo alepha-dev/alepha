@@ -104,13 +104,17 @@ class App {
 | `origin` | `"*"` | Allowed origins. `"*"` for all, or comma-separated list. |
 | `methods` | `["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]` | Allowed HTTP methods |
 | `headers` | `["Content-Type", "Authorization"]` | Allowed request headers |
-| `credentials` | `true` | Allow credentials (cookies, auth headers) |
+| `credentials` | `false` | Allow credentials (cookies, auth headers) |
 | `maxAge` | - | Preflight cache duration in seconds |
 | `paths` | - | Path patterns to match (e.g. `["/api/*"]`) |
 
 When `paths` is provided, the CORS configuration applies only to matching routes. Without `paths`, it applies globally.
 
-Alepha automatically creates `OPTIONS` preflight routes for all non-GET routes when the CORS module is active.
+Alepha automatically creates an `OPTIONS` preflight route for every path when the CORS module is active — including `GET`-only paths, which browsers preflight as soon as the request carries a non-simple header such as `Authorization`.
+
+Responses always carry `Vary: Origin`, since the allowed origin is reflected from the request.
+
+**`credentials` requires an explicit origin.** With `origin: "*"` the allowed origin is reflected back, so pairing it with `credentials: true` would let *any* site read authenticated responses — the exact thing the browser's own ban on `Access-Control-Allow-Origin: *` plus credentials prevents. Alepha refuses that combination: `Access-Control-Allow-Credentials` is omitted and a warning is logged at startup. List the origins you trust to enable credentials.
 
 ### Rate Limiting
 

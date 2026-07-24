@@ -872,4 +872,60 @@ describe("KeylessJsonSchemaCodec", () => {
       expect(encoded1).toBe(encoded2);
     });
   });
+
+  describe("Unsupported schemas", () => {
+    // The format is positional: it stores values, never keys. A union has no
+    // single field order, and the codec used to silently pick the FIRST
+    // variant — encoding a value of variant B with A's layout, which decodes
+    // to wrong keys and dropped fields with no error at all. Refusing the
+    // schema up front is the only honest answer until a tagged encoding
+    // exists.
+    test("should refuse a schema containing a union", async ({ expect }) => {
+      const alepha = Alepha.create();
+      const codec = alepha.inject(KeylessJsonSchemaCodec);
+
+      const schema = z.object({
+        payload: z.union([
+          z.object({ kind: z.literal("a"), x: z.text() }),
+          z.object({ kind: z.literal("b"), y: z.text() }),
+        ]),
+      });
+
+      expect(() =>
+        codec.encodeToString(schema, { payload: { kind: "a", x: "1" } }),
+      ).toThrow(/union/i);
+    });
+
+    test("should refuse a top-level optional object schema", async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create();
+      const codec = alepha.inject(KeylessJsonSchemaCodec);
+
+      // Encodes flat but decodes as a single slot — verified to round-trip
+      // `{a:1,b:"x"}` into `{a:1,b:1}`.
+      const schema = z.object({ a: z.integer(), b: z.text() }).optional();
+
+      expect(() =>
+        codec.encodeToString(schema as any, { a: 1, b: "x" }),
+      ).toThrow(/top-level/i);
+    });
+
+    test("should still accept optional and nullable fields", async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create();
+      const codec = alepha.inject(KeylessJsonSchemaCodec);
+
+      const schema = z.object({
+        name: z.text(),
+        bio: z.text().optional(),
+        age: z.integer().nullable(),
+      });
+
+      expect(() =>
+        codec.encodeToString(schema, { name: "a", bio: undefined, age: null }),
+      ).not.toThrow();
+    });
+  });
 });

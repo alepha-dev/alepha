@@ -410,9 +410,18 @@ export class StateManager<State extends object = AlephaState> {
       return store[key];
     }
 
-    return this.als?.exists()
-      ? (this.als.get(key as string, scope) ?? (scope ? undefined : store[key]))
-      : store[key];
+    if (!this.als?.exists()) {
+      return store[key];
+    }
+
+    // Presence, not truthiness: a fork that wrote `null` (a nullable session
+    // atom set to "logged out") owns the key, and coalescing that away would
+    // return the app-level value from another layer.
+    if (this.als.has(key as string, scope)) {
+      return this.als.get(key as string, scope);
+    }
+
+    return scope ? undefined : store[key];
   }
 
   /**

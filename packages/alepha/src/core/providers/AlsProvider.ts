@@ -103,7 +103,15 @@ export class AlsProvider {
     return undefined;
   }
 
-  public has(key: string): boolean {
+  /**
+   * Whether `key` is present for the given scope — the presence counterpart
+   * of {@link get}, resolving through exactly the same layers.
+   *
+   * A caller cannot use `get() !== undefined` for this: a layer may legally
+   * hold `null` or `undefined`, and treating that as "absent" leaks the value
+   * of whatever layer sits behind it.
+   */
+  public has(key: string, scope?: StateScope): boolean {
     if (!this.als) {
       return false;
     }
@@ -111,6 +119,18 @@ export class AlsProvider {
     const store = this.als.getStore();
     if (!store) {
       return false;
+    }
+
+    if (scope === "app") {
+      return false;
+    }
+
+    if (scope === "current") {
+      return key in store;
+    }
+
+    if (scope === "parent") {
+      return !!store[ALS_PARENT] && key in store[ALS_PARENT];
     }
 
     if (key in store) {
