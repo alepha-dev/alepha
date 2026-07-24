@@ -242,6 +242,59 @@ describe("RoomEngine — state lifecycle", () => {
   });
 });
 
+describe("RoomEngine — teardown resilience", () => {
+  it("tears down even when onLeave throws on the last leave", async () => {
+    const clock = new FakeClock();
+    let emptied = 0;
+    const logs: string[] = [];
+    const engine = makeEngine(
+      {
+        tickHz: 20,
+        onLeave: () => {
+          throw new Error("boom");
+        },
+        onEmpty: () => {
+          emptied++;
+        },
+      },
+      { clock, log: (_l, message) => logs.push(message) },
+    );
+    const socket = fakeSocket();
+
+    await engine.join(socket);
+    // A throwing onLeave must not abort teardown: the tick loop would run
+    // forever on an empty room (billable spin on Cloudflare) and onEmpty —
+    // the persistence hook — would never fire.
+    await expect(engine.leave(socket.id)).resolves.toBeUndefined();
+
+    expect(emptied).toBe(1);
+    expect(clock.liveTimers).toBe(0);
+    expect(logs.join(" ")).toMatch(/onLeave/i);
+  });
+
+  it("recovers after a rejecting state factory instead of latching broken", async () => {
+    let attempts = 0;
+    const engine = makeEngine<{ n: number }>({
+      state: () => {
+        attempts++;
+        if (attempts === 1) {
+          throw new Error("transient failure");
+        }
+        return { n: attempts };
+      },
+      methods: {
+        peek: (room: any) => room.state,
+      },
+    });
+
+    await expect(engine.call("peek")).rejects.toThrow("transient failure");
+
+    // The cached rejected promise must not wedge the room forever — a
+    // headless coordinator reached via call() would need a restart.
+    await expect(engine.call("peek")).resolves.toEqual({ n: 2 });
+  });
+});
+
 describe("RoomEngine — lifecycle callbacks", () => {
   it("passes the joining/leaving connection to onJoin/onLeave", async () => {
     const joined: string[] = [];

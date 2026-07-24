@@ -109,7 +109,19 @@ export class RoomEngine<
     const socket = this.sockets.get(socketId);
     if (!socket) return;
     this.sockets.delete(socketId);
-    await this.options.onLeave?.(this.context(), socket);
+    // A throwing onLeave must never abort teardown (same contract as
+    // onEmpty): the tick loop would keep firing on an empty room — an
+    // indefinite billable spin on Cloudflare — and onEmpty, the persistence
+    // hook, would never run.
+    try {
+      await this.options.onLeave?.(this.context(), socket);
+    } catch (error) {
+      this.deps.log?.(
+        "error",
+        `Error in onLeave for room ${this.deps.roomId}`,
+        error,
+      );
+    }
     if (this.sockets.size === 0) await this.teardown();
   }
 
@@ -160,7 +172,14 @@ export class RoomEngine<
       this.starting = (async () => {
         this.state = await this.options.state?.({ roomId: this.deps.roomId });
         this.alive = true;
-      })();
+      })().catch((error) => {
+        // Drop the cached rejection so the next join/call retries the
+        // factory. Keeping it would latch the room broken forever — a
+        // headless coordinator reached via `call()` never reaches teardown
+        // (no socket ever joined), so it would need a process restart.
+        this.starting = undefined;
+        throw error;
+      });
     }
     await this.starting;
   }

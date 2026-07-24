@@ -143,6 +143,20 @@ Deliberately **not** fixed in these passes (need design decisions or wider chang
 | react/router | Query-only navigations re-run loaders — the decoded query participates in the layer-reuse signature, matching SSR behavior. |
 | react/router | `useQueryParams` subscribes to router state (navigations it did not initiate re-sync it), and `setQueryParams` updates the router store alongside `window.history` so `router.query` never desyncs. |
 
+### Sixth fix pass — 2026-07-24 (batch 6 — websocket / rooms)
+
+5 more findings fixed and marked **✅ FIXED** in the body. Verified with `yarn lint`, `tsc --noEmit`, the full alepha suite (4324 tests), `yarn test:bun` (46), the lore suite (298), and a clean build.
+
+| Area | Fix |
+|------|-----|
+| websocket/RoomEngine | A throwing `onLeave` no longer aborts teardown (same try/catch contract as `onEmpty`) — the tick loop stops and `onEmpty` still persists. This was an indefinite billable spin on Cloudflare Durable Objects. |
+| websocket/RoomEngine | A rejecting `state` factory no longer latches the room broken: the cached rejection is cleared so the next `join`/`call` retries (a headless coordinator reached via `call()` previously needed a process restart). |
+| websocket/node | Connection ids are `ws-<uuid>` instead of a per-process counter — with 2+ instances behind the topic bus, instance B's `ws-1` used to receive messages addressed to instance A's `ws-1`, and `exceptSelf` excluded the wrong sockets everywhere. Matches the Cloudflare path. |
+| websocket/node | Room message/close handlers are gated on the `join` promise: a disconnect during an async `state` factory no longer leaves a ghost socket that keeps the room non-empty forever, and frames arriving before join resolves are delivered instead of dropped. |
+| websocket/node | A frame-level `roomId` is honored only for rooms the connection actually joined — a client could previously address (and broadcast into) any room per-frame. Cloudflare already refused this (`assertReplyRoom`); the runtimes now agree. |
+
+Note: connection ids changed format (`ws-1` → `ws-<uuid>`). Three integration assertions encoding the old sequential shape were updated.
+
 Still deliberately open: the payments/subscriptions billing loop (needs product decisions — see the module section), and the rate-limit `"unknown"`-IP shared bucket (only reachable when a global limit is explicitly configured).
 
 Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`main` @ 6c7ec9400); fixed findings' line numbers may have shifted slightly.
@@ -749,7 +763,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/topic/redis/providers/RedisTopicProvider.ts:61 (with topic/core/providers/TopicProvider.ts:97-126 and redis/providers/NodeRedisSubscriberProvider.ts:70-75)
 - **Detail**: `TopicProvider.subscribeHandler` wildcardizes parameterized topic names (`devices/{deviceId}/sensor` → `devices/*/sensor`), then calls `subscribe()` with that pattern. `NodeRedisSubscriberProvider.subscribe` uses plain SUBSCRIBE, never PSUBSCRIBE, so the pattern is treated as a literal channel name and never matches the interpolated channels publishers write to. Every `$topic` with `params` on Redis subscribes to a dead channel — publishes vanish. Telling: `testTopicParams` exists in shared tests and runs against Memory, but is absent from RedisTopicProvider.spec.ts. Fix: pSubscribe/pUnsubscribe when the channel contains the wildcard char (or reject params topics on Redis loudly).
 
-### [BUG] Node WebSocket connection ids collide across instances (`ws-1`, `ws-2`, …)
+### ✅ FIXED — [BUG] Node WebSocket connection ids collide across instances (`ws-1`, `ws-2`, …)
 - **Severity**: P1 (misdelivery/loss in multi-instance setups)
 - **File**: packages/alepha/src/websocket/providers/NodeWebSocketServerProvider.ts:293,425
 - **Detail**: `ws-${this.nextConnectionId++}` is per-process. `emit()` distributes `connectionIds`/`exceptConnectionIds` to all instances via the topic bus, and `sendToLocalConnections` matches ids against local connections. With 2+ instances behind Redis, instance B's `ws-1` receives messages targeted at instance A's `ws-1`; `exceptSelf` wrongly excludes same-numbered connections on every other instance. The Cloudflare path already uses `crypto.randomUUID()`. Fix: UUID (or instance-prefixed id) on Node too.
@@ -759,7 +773,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/websocket/services/WebSocketClient.ts:254-274, 438-459
 - **Detail**: `disconnect()` calls `ws.close()` but sets no intentional-close flag; `onclose` runs `scheduleReconnect()` ~3s later. In the unsubscribe-last-room path, cleanup deletes the connection from the map *and* calls `disconnect()` — the orphaned connection reconnects with zero subscriptions and no owner, forever (reconnectAttempts resets on every successful open). Fix: `manuallyClosed` flag.
 
-### [BUG] RoomEngine: `onLeave` throw on last leave skips teardown → tick-loop timer leak and `onEmpty` (persistence) never runs
+### ✅ FIXED — [BUG] RoomEngine: `onLeave` throw on last leave skips teardown → tick-loop timer leak and `onEmpty` (persistence) never runs
 - **Severity**: P1
 - **File**: packages/alepha/src/websocket/providers/RoomEngine.ts:108-114
 - **Detail**: `leave()` runs `await this.options.onLeave?.(...)` *before* the `size === 0 → teardown()` check; a throwing onLeave propagates and teardown never runs. On Node the close handler only logs and skips `roomEngines.delete(key)` — the setInterval loop fires on an empty room forever. On Cloudflare the error escapes `webSocketClose` and cleanup is skipped, keeping the DO ticking (billable) indefinitely. Fix: wrap onLeave in try/catch (like onEmpty) so teardown always runs.
@@ -774,12 +788,12 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/lock/core/primitives/$lock.ts:421-427, 443-473
 - **Detail**: One lazily-created `this.id` per primitive instance — two overlapping `run()` calls both SET NX GET, both read back `id === this.id`, both enter the critical section (the exact failure the middleware fixes with a per-invocation id). LockPrimitive is exported public API but only instantiated by its own tests; its topic-based `wait()` is dead code. Fix: per-invocation UUID, or retire the class.
 
-### [BUG] Node room path: close/message racing an async `join` → ghost socket, room never empties
+### ✅ FIXED — [BUG] Node room path: close/message racing an async `join` → ghost socket, room never empties
 - **Severity**: P2
 - **File**: packages/alepha/src/websocket/providers/NodeWebSocketServerProvider.ts:336-382
 - **Detail**: `engine.join(roomSocket)` awaited nowhere. If the `state` factory is async and the client disconnects during it, the close handler's `leave()` early-returns (socket not yet in engine.sockets), then join completes and adds the socket — a closed ghost held forever (tick loop indefinite, onEmpty never persists). Same window drops client frames arriving before join resolves. Fix: gate message/close on the join promise; leave cancels pending join.
 
-### [BUG] RoomEngine: failed `state` factory latches the room broken
+### ✅ FIXED — [BUG] RoomEngine: failed `state` factory latches the room broken
 - **Severity**: P2
 - **File**: packages/alepha/src/websocket/providers/RoomEngine.ts:157-166
 - **Detail**: `ensureAlive` caches `this.starting`; if the factory rejects, every subsequent join/call re-awaits the same rejection; engine only resets in teardown(), unreachable because no socket ever joined. A headless coordinator reached via `call()` is wedged until restart. Fix: clear `this.starting` on rejection.
@@ -794,7 +808,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/queue/core/providers/WorkerProvider.ts:131-156, 200-212
 - **Detail**: `processMessage` catches handler errors, but `getNextMessage` does not — a throw from `provider.pop()` (Redis blip) escapes the while loop into the .catch that logs "Worker crashed" and decrements workersRunning. With default concurrency 1, polling stops entirely; recovery only when local code calls `push()` (wakeUp). Fix: try/catch around getNextMessage with backoff.
 
-### [BUG] Node stateless channel: client-controlled `roomId` spoofing in message frames
+### ✅ FIXED — [BUG] Node stateless channel: client-controlled `roomId` spoofing in message frames
 - **Severity**: P2 (clients can broadcast into rooms they never joined)
 - **File**: packages/alepha/src/websocket/providers/NodeWebSocketServerProvider.ts:803, 823-843
 - **Detail**: `handleMessage` takes `roomId = parsed.roomId || this.roomIds[0]` from the client frame with no `isInRoom` check, and `reply()` fans out to `options.roomId || roomId` via the cross-instance bus. A client in room A can address any room B per-frame. Cloudflare explicitly forbids cross-room reply (assertReplyRoom throws) — security hole and Node/CF divergence. Fix: validate frame roomId against joined rooms (or drop frame-level roomId like CF).

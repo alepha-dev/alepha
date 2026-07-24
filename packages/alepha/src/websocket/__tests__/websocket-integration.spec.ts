@@ -88,13 +88,13 @@ describe("WebSocket integration", () => {
       await delay(100);
 
       expect(events.length).toBe(1);
-      expect(events[0]).toMatch(/^connect:ws-\d+:lobby$/);
+      expect(events[0]).toMatch(/^connect:ws-[0-9a-f-]{36}:lobby$/);
 
       ws.close();
       await delay(100);
 
       expect(events.length).toBe(2);
-      expect(events[1]).toMatch(/^disconnect:ws-\d+$/);
+      expect(events[1]).toMatch(/^disconnect:ws-[0-9a-f-]{36}$/);
 
       await alepha.stop();
     });
@@ -261,7 +261,7 @@ describe("WebSocket integration", () => {
       await delay(200);
 
       expect(receivedContext).not.toBeNull();
-      expect(receivedContext.connectionId).toMatch(/^ws-\d+$/);
+      expect(receivedContext.connectionId).toMatch(/^ws-[0-9a-f-]{36}$/);
       expect(receivedContext.roomId).toBe("lobby");
       expect(receivedContext.message).toEqual({ content: "hello" });
       expect(receivedContext.hasReply).toBe(true);

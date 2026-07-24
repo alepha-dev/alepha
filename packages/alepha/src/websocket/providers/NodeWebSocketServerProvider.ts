@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import {
   $atom,
@@ -69,7 +70,17 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   protected endpoints = new Map<string, WebSocketPrimitiveOptions<any, any>>();
   protected connections = new Map<string, WebSocketConnection>();
   protected userConnections = new Map<string, Set<string>>(); // userId → Set<connectionId>
-  protected nextConnectionId = 1;
+  /**
+   * Connection ids must be unique across ALL instances: `emit()` distributes
+   * connectionIds/exceptConnectionIds over the topic bus and every instance
+   * matches them against its local connections. A per-process counter makes
+   * instance B's `ws-1` answer to messages addressed to instance A's `ws-1`
+   * (and `exceptSelf` exclude the wrong sockets everywhere). The Cloudflare
+   * path already uses randomUUID.
+   */
+  protected createConnectionId(): string {
+    return `ws-${randomUUID()}`;
+  }
 
   /** Registered `$room` endpoints, keyed by channel path. */
   protected roomEndpoints = new Map<
@@ -290,7 +301,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     userId: string | undefined,
   ): void {
     const path = endpoint.channel.options.path;
-    const connectionId = `ws-${this.nextConnectionId++}`;
+    const connectionId = this.createConnectionId();
     const url = new URL(request.url || "/", "http://localhost");
     const roomId = this.extractRoomIds(url)[0] ?? "default";
 
@@ -333,6 +344,22 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       remoteAddress: request.socket.remoteAddress,
     });
 
+    // `join` is async (the room's `state` factory may be), so frames and the
+    // close event can arrive before the socket is actually admitted. Gate both
+    // on the join promise: without it, a close during an async factory
+    // early-returns from `leave()` (socket not in the engine yet) and the
+    // later-resolving join admits a ghost that keeps the room non-empty
+    // forever — tick loop spinning, `onEmpty` never persisting.
+    let closed = false;
+    const joined = engine.join(roomSocket).then(
+      () => true,
+      (error) => {
+        this.log.error(`Failed to join room on ${connectionId}:`, error);
+        ws.close(1011, "Room join failed");
+        return false;
+      },
+    );
+
     ws.on("message", (data) => {
       let parsed: any;
       try {
@@ -342,15 +369,21 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         return;
       }
       const message = parsed?.message ?? parsed;
-      engine.message(connectionId, message).catch((error) => {
-        this.log.error(
-          `Error handling room message on ${connectionId}:`,
-          error,
-        );
-      });
+      joined
+        .then((ok) => {
+          if (!ok || closed) return;
+          return engine.message(connectionId, message);
+        })
+        .catch((error) => {
+          this.log.error(
+            `Error handling room message on ${connectionId}:`,
+            error,
+          );
+        });
     });
 
     ws.on("close", (code, reason) => {
+      closed = true;
       this.log.info(`WebSocket room connection closed: ${connectionId}`, {
         code,
         reason: reason.toString(),
@@ -362,8 +395,10 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
           if (userConns.size === 0) this.userConnections.delete(userId);
         }
       }
-      engine
-        .leave(connectionId)
+      // Wait for the pending join before leaving, so a disconnect that races
+      // an async factory still removes the socket.
+      joined
+        .then(() => engine.leave(connectionId))
         .then(() => {
           if (engine.size === 0) this.roomEngines.delete(key);
         })
@@ -374,11 +409,6 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
     ws.on("error", (error) => {
       this.log.error(`WebSocket room error on ${connectionId}:`, error);
-    });
-
-    engine.join(roomSocket).catch((error) => {
-      this.log.error(`Failed to join room on ${connectionId}:`, error);
-      ws.close(1011, "Room join failed");
     });
   }
 
@@ -422,7 +452,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     request: IncomingMessage,
     userId: string | undefined,
   ): void {
-    const connectionId = `ws-${this.nextConnectionId++}`;
+    const connectionId = this.createConnectionId();
 
     // Extract roomIds from query params (e.g., ?roomId=room1&roomId=room2 or ?roomIds=room1,room2)
     const url = new URL(request.url || "/", "http://localhost");
@@ -799,8 +829,24 @@ export class NodeWebSocketConnection implements WebSocketConnection {
         return;
       }
 
-      // Extract roomId from message (or use first room in connection's rooms)
-      const roomId = parsed.roomId || this.roomIds[0] || "default";
+      // Extract roomId from message (or use first room in connection's rooms).
+      // A frame-level roomId is only honored for rooms this connection
+      // actually joined — otherwise a client in room A could address (and
+      // broadcast into) any room B per-frame. Cloudflare refuses cross-room
+      // replies outright (assertReplyRoom); Node must not be laxer.
+      const claimedRoomId = parsed.roomId;
+      const defaultRoomId = this.roomIds[0] || "default";
+      let roomId = defaultRoomId;
+      if (claimedRoomId && claimedRoomId !== defaultRoomId) {
+        if (this.roomIds.includes(claimedRoomId)) {
+          roomId = claimedRoomId;
+        } else {
+          this.log.warn(
+            `Connection ${this.id} addressed room '${claimedRoomId}' it has not joined — ignoring frame roomId`,
+            { joined: this.roomIds },
+          );
+        }
+      }
 
       // Extract message payload
       const message = parsed.message || parsed;
