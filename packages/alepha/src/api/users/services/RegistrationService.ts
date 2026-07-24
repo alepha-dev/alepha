@@ -124,14 +124,16 @@ export class RegistrationService {
     const request = this.alepha.store.get("alepha.http.request");
     const ipKey = request?.ip ? `register:ip:${request.ip}` : undefined;
     if (ipKey) {
-      const count = (await this.rateLimitCache.get(ipKey)) ?? 0;
-      if (count >= realmSettings.registrationIpMaxAttempts) {
+      // Atomic incr — a get-then-set counter lets a concurrent burst sail
+      // past the threshold (all callers read the same count). The counter
+      // expires with the cache TTL (fixed 15-minute window).
+      const count = await this.rateLimitCache.incr(ipKey);
+      if (count > realmSettings.registrationIpMaxAttempts) {
         this.log.warn("Registration rate limit exceeded", { ip: request?.ip });
         throw new BadRequestError(
           "Too many registration attempts, please try again later",
         );
       }
-      await this.rateLimitCache.set(ipKey, count + 1);
     }
 
     // Check if registration is allowed
@@ -209,6 +211,19 @@ export class RegistrationService {
       throw new BadRequestError("First name and last name are required");
     }
 
+    // Validate captcha BEFORE the availability checks and any side effects
+    // (email sends). Checking availability first would let bots enumerate
+    // registered emails/usernames/phones without ever solving a captcha.
+    if (realmSettings?.captchaRequired === true) {
+      if (!body.captchaToken) {
+        throw new BadRequestError("Captcha verification is required");
+      }
+      const valid = await this.captchaProvider.verify(body.captchaToken);
+      if (!valid) {
+        throw new BadRequestError("Captcha verification failed");
+      }
+    }
+
     // In "email" mode, derive the username from the email *now* so that
     // checkUserAvailability picks it up too, the DB unique index sees a
     // concrete value, and the persisted intent already carries the final
@@ -234,18 +249,6 @@ export class RegistrationService {
       body.password,
       realmSettings.passwordPolicy,
     );
-
-    // Validate captcha BEFORE any side effects (email sends, rate-limit counters).
-    // This blocks bots from triggering verification emails on other people's addresses.
-    if (realmSettings?.captchaRequired === true) {
-      if (!body.captchaToken) {
-        throw new BadRequestError("Captcha verification is required");
-      }
-      const valid = await this.captchaProvider.verify(body.captchaToken);
-      if (!valid) {
-        throw new BadRequestError("Captcha verification failed");
-      }
-    }
 
     // Hash the password
     const passwordHash = await this.cryptoProvider.hashPassword(body.password);

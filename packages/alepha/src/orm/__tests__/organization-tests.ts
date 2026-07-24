@@ -337,6 +337,29 @@ export const testUpsertRefusesCrossTenant = async (alepha: Alepha) => {
   expect(rows[0].organization).toEqual("a0000000-0000-0000-0000-000000000001");
 };
 
+export const testAggregateAppliesOrgScoping = async (alepha: Alepha) => {
+  const { repository, alepha: app } = await setup(alepha);
+
+  await repository.create({
+    name: "org-a-row",
+    organization: "a0000000-0000-0000-0000-000000000001",
+  });
+  await repository.create({
+    name: "org-b-row",
+    organization: "b0000000-0000-0000-0000-000000000002",
+  });
+
+  // An aggregate with NO where clause must still be tenant-scoped.
+  app.store.set(currentUserAtom, {
+    id: "user-a",
+    organization: "a0000000-0000-0000-0000-000000000001",
+  });
+  const result = await repository.aggregate({
+    select: { id: { count: true } },
+  });
+  expect(Number(result[0].id.count)).toEqual(1);
+};
+
 export const testOrgFilterOnDelete = async (alepha: Alepha) => {
   const { repository, alepha: app } = await setup(alepha);
 

@@ -58,11 +58,23 @@ export abstract class ShellProvider {
   /**
    * Run a shell command or binary.
    *
+   * The command can be either:
+   * - a string (`"git status"`), parsed on whitespace with quote support;
+   * - an argv array (`["git", "log", ref]`), passed to the process verbatim
+   *   with NO shell and NO parsing.
+   *
+   * Always use the argv-array form when any part of the command comes from
+   * a variable (paths, user input, refs, keys...) — it is injection-proof by
+   * construction.
+   *
    * @param command - The command to run
    * @param options - Execution options
    * @returns stdout if capture is true, empty string otherwise
    */
-  abstract run(command: string, options?: ShellRunOptions): Promise<string>;
+  abstract run(
+    command: string | string[],
+    options?: ShellRunOptions,
+  ): Promise<string>;
 
   /**
    * Check if a command is installed and available in the system PATH.

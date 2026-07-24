@@ -351,7 +351,15 @@ export class CachePrimitive<
   }
 
   public async incr(key: string, amount = 1): Promise<number> {
-    const result = await this.provider.incr(this.container, key, amount);
+    const ttl = this.options.ttl
+      ? this.dateTimeProvider.duration(this.options.ttl).as("milliseconds")
+      : undefined;
+    const result = await this.provider.incr(
+      this.container,
+      key,
+      amount,
+      ttl && ttl > 0 ? ttl : undefined,
+    );
     // L1 is no longer authoritative after atomic incr on remote.
     this.delL1(key);
     return result;

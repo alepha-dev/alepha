@@ -237,8 +237,18 @@ export class NodeRedisProvider extends RedisProvider {
   // Counter operations
   // ---------------------------------------------------------
 
-  public override async incr(key: string, amount: number): Promise<number> {
-    return this.publisher.INCRBY(key, amount);
+  public override async incr(
+    key: string,
+    amount: number,
+    ttl?: number,
+  ): Promise<number> {
+    const result = await this.publisher.INCRBY(key, amount);
+    // INCRBY is atomic, so exactly one concurrent caller observes the
+    // "creation" value and arms the expiry (fixed window).
+    if (ttl && result === amount) {
+      await this.publisher.PEXPIRE(key, Math.ceil(ttl));
+    }
+    return result;
   }
 
   /**

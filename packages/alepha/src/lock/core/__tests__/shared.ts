@@ -80,6 +80,28 @@ export const testLockBasic = async (
   expect(app3.stack()).toBe("A");
 };
 
+export const testDelIfOwner = async (
+  provider: Service<LockProvider>,
+): Promise<void> => {
+  const alepha = Alepha.create()
+    .with({ provide: LockProvider, use: provider })
+    .with(AlephaLock);
+  const lock = alepha.inject(LockProvider);
+  await alepha.start();
+
+  const key = `del-if-owner-${randomUUID()}`;
+  await lock.set(key, "owner-1,2026-01-01T00:00:00Z", true, 30_000);
+
+  // Wrong owner: must be a no-op — a holder whose lock already expired must
+  // not delete the next holder's lock.
+  await lock.delIfOwner(key, "owner-2");
+  expect(await lock.get(key)).toContain("owner-1");
+
+  // Right owner: deletes.
+  await lock.delIfOwner(key, "owner-1");
+  expect(await lock.get(key)).toBeUndefined();
+};
+
 export const testLockWait = async (
   provider: Service<LockProvider>,
   topicProvider: Service<TopicProvider>,

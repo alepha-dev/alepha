@@ -2,6 +2,7 @@ import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
+  testAggregateAppliesOrgScoping,
   testAutoStampDoesNotOverrideExplicit,
   testAutoStampNullForMasterUser,
   testAutoStampOnCreate,
@@ -104,6 +105,17 @@ describe("organization", () => {
   });
   it("upsert refuses to overwrite another tenant's row (postgres)", async () => {
     await testUpsertRefusesCrossTenant(Alepha.create().with(AlephaOrmPostgres));
+  });
+
+  it("aggregate applies org scoping without a where (sqlite)", async () => {
+    await testAggregateAppliesOrgScoping(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("aggregate applies org scoping without a where (postgres)", async () => {
+    await testAggregateAppliesOrgScoping(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
   });
 
   it("org filter on delete (sqlite)", async () => {

@@ -945,13 +945,31 @@ export class JobProvider {
     const controller = this.abortControllers.get(executionId);
     if (controller) controller.abort();
 
-    await this.executions.updateById(executionId, {
-      status: "cancelled",
-      key: null,
-      cancelledBy: context?.cancelledBy,
-      cancelledByName: context?.cancelledByName,
-      completedAt: this.dt.nowISOString(),
-    });
+    // Status-guarded: the execution may complete between our read above and
+    // this write — never stamp `cancelled` over a terminal row.
+    try {
+      await this.executions.updateOne(
+        {
+          id: { eq: executionId },
+          status: { inArray: ["pending", "running", "scheduled"] },
+        },
+        {
+          status: "cancelled",
+          key: null,
+          cancelledBy: context?.cancelledBy,
+          cancelledByName: context?.cancelledByName,
+          completedAt: this.dt.nowISOString(),
+        },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        const current = await this.executions.findById(executionId);
+        throw new AlephaError(
+          `Cannot cancel execution in '${current?.status ?? "deleted"}' status`,
+        );
+      }
+      throw error;
+    }
 
     this.log.info(`Cancelled execution ${executionId}`, {
       jobName: execution.jobName,
@@ -1240,8 +1258,7 @@ export class JobProvider {
       });
       for (const exec of due) {
         if (!this.jobs.has(exec.jobName)) continue;
-        await this.executions.updateById(exec.id, { status: "pending" });
-        await this.dispatchSafe(exec.jobName, exec.id);
+        await this.promoteDue(exec);
       }
 
       // 2. Stale pending rows → re-dispatch
@@ -1293,6 +1310,36 @@ export class JobProvider {
     } catch (e) {
       this.log.error("Sweep failed", { error: e });
     }
+  }
+
+  /**
+   * Sweep phase 1: promote a due `scheduled` row to `pending` and dispatch.
+   * Status-guarded like `dispatchScheduled` — a concurrent `cancel()` between
+   * the sweep's read and this write must win, not be resurrected. A failure
+   * on one row must not abort the rest of the sweep tick.
+   */
+  protected async promoteDue(exec: {
+    id: string;
+    jobName: string;
+  }): Promise<void> {
+    try {
+      await this.executions.updateOne(
+        { id: { eq: exec.id }, status: { eq: "scheduled" } },
+        { status: "pending" },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        this.log.trace(
+          `Sweep: skipping ${exec.jobName} (${exec.id}) — no longer scheduled`,
+        );
+        return;
+      }
+      this.log.warn(`Sweep failed to promote ${exec.jobName} (${exec.id})`, {
+        error,
+      });
+      return;
+    }
+    await this.dispatchSafe(exec.jobName, exec.id);
   }
 
   protected async dispatchSafe(

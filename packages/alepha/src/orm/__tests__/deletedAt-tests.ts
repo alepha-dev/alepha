@@ -71,6 +71,26 @@ export const testNoUpdateIfAlreadyDeleted = async (alepha: Alepha) => {
   });
 };
 
+export const testAggregateExcludesSoftDeleted = async (alepha: Alepha) => {
+  const { repository } = await setup(alepha);
+  await repository.createMany([{}, {}]);
+  const entities = await repository.findMany();
+  await repository.deleteById(entities[0].id);
+
+  // An aggregate with NO where clause must still exclude soft-deleted rows.
+  const result = await repository.aggregate({
+    select: { id: { count: true } },
+  });
+  expect(Number(result[0].id.count)).toEqual(1);
+
+  // ...unless force is set.
+  const forced = await repository.aggregate(
+    { select: { id: { count: true } } },
+    { force: true },
+  );
+  expect(Number(forced[0].id.count)).toEqual(2);
+};
+
 export const testForceDelete = async (alepha: Alepha) => {
   const { repository } = await setup(alepha);
   await repository.createMany([{}, {}]);

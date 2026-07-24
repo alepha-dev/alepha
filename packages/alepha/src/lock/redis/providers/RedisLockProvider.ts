@@ -1,9 +1,9 @@
 import { $inject } from "alepha";
-import type { LockProvider } from "alepha/lock";
+import { LockProvider } from "alepha/lock";
 import { $logger } from "alepha/logger";
 import { RedisProvider, type RedisSetOptions } from "alepha/redis";
 
-export class RedisLockProvider implements LockProvider {
+export class RedisLockProvider extends LockProvider {
   protected readonly log = $logger();
   protected readonly redisProvider = $inject(RedisProvider);
 
@@ -35,5 +35,10 @@ export class RedisLockProvider implements LockProvider {
 
   public async del(...keys: string[]): Promise<void> {
     await this.redisProvider.del(keys);
+  }
+
+  public async get(key: string): Promise<string | undefined> {
+    const value = await this.redisProvider.get(key);
+    return value?.toString("utf-8");
   }
 }

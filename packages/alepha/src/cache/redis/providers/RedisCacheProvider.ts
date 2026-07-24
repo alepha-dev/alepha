@@ -123,9 +123,10 @@ export class RedisCacheProvider extends CacheProvider {
     name: string,
     key: string,
     amount: number,
+    ttl?: number,
   ): Promise<number> {
     const keyWithPrefix = this.prefix(name, key);
-    return this.redisProvider.incr(keyWithPrefix, amount);
+    return this.redisProvider.incr(keyWithPrefix, amount, ttl);
   }
 
   protected prefix(...path: string[]): string {

@@ -183,6 +183,29 @@ describe("ServerRouterProvider - request validation error", () => {
       expect(json.message).toMatch(/^Invalid request query:/);
       expect(json.message.toLowerCase()).toMatch(/maximum|less|<=|100/);
     });
+
+    it("should reject a missing required query parameter", async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create({
+        env: {
+          NODE_ENV: "production",
+          SERVER_PORT: 0,
+          APP_SECRET: "test-secret",
+        },
+      }).with(TestApp);
+
+      // `limit` is required — omitting it must be a 400, not a handler
+      // running with `query.limit === undefined`.
+      const { response, json } = await fetchAndStop(alepha, (host) => ({
+        url: `${host}/users`,
+      }));
+
+      expect(response.status).toBe(400);
+      expect(json.error).toBe("ValidationError");
+      expect(json.message).toMatch(/^Invalid request query:/);
+      expect(json.message).toContain("limit");
+    });
   });
 
   describe("header validation", () => {

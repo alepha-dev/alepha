@@ -42,5 +42,59 @@ describe("NodeShellProvider", () => {
       expect(err.stdout).toContain("OUT");
       expect(err.stderr).toContain("ERR");
     });
+
+    it("does not execute shell metacharacters embedded in an argument", async () => {
+      // `;` was missing from the escape set — "echo foo;id" executed `id`.
+      const out = await shell.run("echo foo;id", { capture: true });
+      expect(out.trim()).toBe("foo;id");
+    });
+
+    it("does not expand command substitution in an argument", async () => {
+      // Double-quoted escaping still expanded `$(...)`; args must stay literal.
+      const out = await shell.run("echo $(id)", { capture: true });
+      expect(out.trim()).toBe("$(id)");
+    });
+  });
+
+  describe("run with argv array", () => {
+    it("captures stdout with args passed verbatim (no shell)", async () => {
+      const hostile = "a;b|c`$(id)'\"";
+      const out = await shell.run(
+        ["node", "-e", "process.stdout.write(process.argv[1])", hostile],
+        { capture: true },
+      );
+      expect(out).toBe(hostile);
+    });
+
+    it("attaches stdout/stderr to the error on failure", async () => {
+      const err = await shell
+        .run(
+          [
+            "node",
+            "-e",
+            "process.stdout.write('OUT');process.stderr.write('ERR');process.exit(3)",
+          ],
+          { capture: true },
+        )
+        .then(
+          () => {
+            throw new Error("expected the command to reject");
+          },
+          (e) => e as { stdout?: string; stderr?: string },
+        );
+
+      expect(err.stdout).toContain("OUT");
+      expect(err.stderr).toContain("ERR");
+    });
+  });
+
+  describe("isInstalled", () => {
+    it("returns true for an installed command", async () => {
+      await expect(shell.isInstalled("node")).resolves.toBe(true);
+    });
+
+    it("rejects names containing shell metacharacters without executing them", async () => {
+      await expect(shell.isInstalled("node; echo pwned")).resolves.toBe(false);
+    });
   });
 });

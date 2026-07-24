@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, test } from "vitest";
-import { $issuer } from "../index.ts";
+import { $issuer, currentTenantAtom, SecurityProvider } from "../index.ts";
 
 describe("$issuer", () => {
   const roles = [
@@ -97,5 +97,45 @@ describe("$issuer", () => {
       refresh_token_expires_in: dt.duration(30, "days").asSeconds(),
       token_type: "Bearer",
     });
+  });
+
+  test("rejects a token minted on another tenant (issuer resolver path)", async ({
+    expect,
+  }) => {
+    class App {
+      issuer = $issuer({
+        secret: "test",
+        roles,
+      });
+    }
+
+    const alepha = Alepha.create();
+    const app = alepha.inject(App);
+    const securityProvider = alepha.inject(SecurityProvider);
+    await alepha.start();
+
+    // Mint a token while tenant A is active — it carries `tenant: "tenant-a"`.
+    alepha.store.set(currentTenantAtom, { id: "tenant-a" });
+    const token = await app.issuer.createToken({
+      id: randomUUID(),
+      roles: ["user"],
+    });
+
+    const request = {
+      url: "http://localhost/",
+      headers: { authorization: `Bearer ${token.access_token}` },
+    };
+
+    // Replaying it on tenant B must be refused.
+    alepha.store.set(currentTenantAtom, { id: "tenant-b" });
+    const rejected =
+      await securityProvider.resolveUserFromServerRequest(request);
+    expect(rejected).toBeUndefined();
+
+    // The right tenant still works.
+    alepha.store.set(currentTenantAtom, { id: "tenant-a" });
+    const accepted =
+      await securityProvider.resolveUserFromServerRequest(request);
+    expect(accepted?.id).toBeDefined();
   });
 });

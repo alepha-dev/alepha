@@ -286,6 +286,7 @@ export class MemoryCacheProvider extends CacheProvider {
     name: string,
     key: string,
     amount: number,
+    ttl?: number,
   ): Promise<number> {
     if (this.store[name] == null) {
       this.store[name] = {};
@@ -307,6 +308,18 @@ export class MemoryCacheProvider extends CacheProvider {
     const newValue = current + amount;
     this.store[name][key] ??= {};
     this.store[name][key].data = this.serialize(newValue);
+
+    // Fixed window: the ttl is armed when the counter is created and NOT
+    // extended by subsequent increments.
+    if (ttl && !existing) {
+      const entry = this.store[name][key];
+      if (entry.timeout) {
+        this.dateTimeProvider.clearTimeout(entry.timeout);
+      }
+      entry.timeout = this.dateTimeProvider.createTimeout(() => {
+        delete this.store[name][key];
+      }, ttl);
+    }
 
     return newValue;
   }

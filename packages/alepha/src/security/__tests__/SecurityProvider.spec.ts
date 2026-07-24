@@ -23,6 +23,40 @@ describe("SecurityProvider", () => {
     expect(() => sec.can("noop", "hey")).toThrow(SecurityError);
   });
 
+  it("should resolve role names within the given realm only", () => {
+    const sec = Alepha.create().inject(SecurityProvider);
+
+    sec.createRealm({ name: "realm-a", roles: [], resolvers: [] });
+    sec.createRealm({ name: "realm-b", roles: [], resolvers: [] });
+
+    // Both realms define a role literally named "admin" — with very
+    // different power. A realm-b admin must never inherit realm-a's "*".
+    sec.createRole({ name: "admin", permissions: [{ name: "*" }] }, "realm-a");
+    sec.createRole(
+      { name: "admin", permissions: [{ name: "reports:read" }] },
+      "realm-b",
+    );
+
+    const denied = sec.checkPermissionInRealm(
+      "realm-b",
+      "users:delete",
+      "admin",
+    );
+    expect(denied.isAuthorized).toBe(false);
+
+    const allowed = sec.checkPermissionInRealm(
+      "realm-b",
+      "reports:read",
+      "admin",
+    );
+    expect(allowed.isAuthorized).toBe(true);
+
+    // Without a realm, the old cross-realm behavior is preserved.
+    expect(sec.checkPermission("users:delete", "admin").isAuthorized).toBe(
+      true,
+    );
+  });
+
   it("should handle duplicate permissions", () => {
     const app = Alepha.create();
     const security = app.inject(SecurityProvider);

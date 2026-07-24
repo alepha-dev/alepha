@@ -113,27 +113,39 @@ export class SecurityProvider {
         // Parse and validate JWT
         const { result } = await this.jwt.parse(token, realmName);
 
-        // Reject tokens whose tenant claim doesn't match the tenant resolved
-        // for the current request. Prevents a token minted on tenant A from
-        // being replayed on tenant B (subdomain spoofing, leaked bearer
-        // tokens). Tokens minted without a tenant claim (no active tenant at
-        // session creation) pass through — single-tenant apps are unaffected.
-        const claimTenant = this.getTenantFromPayload(result.payload);
-        if (claimTenant) {
-          const activeTenant = this.alepha.store.get(currentTenantAtom)?.id;
-          if (activeTenant && activeTenant !== claimTenant) {
-            this.log.warn("JWT tenant claim does not match active tenant", {
-              claim: claimTenant,
-              active: activeTenant,
-            });
-            return null;
-          }
+        if (!this.matchesTenantClaim(result.payload)) {
+          return null;
         }
 
         // Extract user info from JWT payload
         return this.createUserFromPayload(result.payload, realmName);
       },
     };
+  }
+
+  /**
+   * Reject tokens whose tenant claim doesn't match the tenant resolved for
+   * the current request. Prevents a token minted on tenant A from being
+   * replayed on tenant B (subdomain spoofing, leaked bearer tokens). Tokens
+   * minted without a tenant claim (no active tenant at session creation)
+   * pass through — single-tenant apps are unaffected.
+   *
+   * Every JWT resolver (the default one AND `$issuer`'s) must call this
+   * before turning a payload into a user.
+   */
+  public matchesTenantClaim(payload: JWTPayload): boolean {
+    const claimTenant = this.getTenantFromPayload(payload);
+    if (claimTenant) {
+      const activeTenant = this.alepha.store.get(currentTenantAtom)?.id;
+      if (activeTenant && activeTenant !== claimTenant) {
+        this.log.warn("JWT tenant claim does not match active tenant", {
+          claim: claimTenant,
+          active: activeTenant,
+        });
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -371,9 +383,14 @@ export class SecurityProvider {
 
     let ownership: string | boolean | undefined;
 
-    // Permission check
+    // Permission check — resolved within the user's realm so a homonymous
+    // role from another realm can't leak its permission set.
     if (options.permission) {
-      const check = this.checkPermission(options.permission, ...roles);
+      const check = this.checkPermissionInRealm(
+        options.realm,
+        options.permission,
+        ...roles,
+      );
       if (!check.isAuthorized) {
         throw new SecurityError(
           `User is not allowed to access '${this.permissionToString(options.permission)}'`,
@@ -497,8 +514,54 @@ export class SecurityProvider {
     permissionLike: string | Permission,
     ...roleEntries: string[]
   ): SecurityCheckResult {
+    // A realm carried on the permission object scopes role-name resolution
+    // to that realm (see checkPermissionInRealm). Unknown/empty realms fall
+    // back to the cross-realm list so substituted providers in tests keep
+    // working.
+    const realm =
+      typeof permissionLike === "object"
+        ? (permissionLike as Permission & { realm?: string }).realm
+        : undefined;
+    let candidates = realm ? this.getRoles(realm) : this.getRoles();
+    if (realm && candidates.length === 0) {
+      candidates = this.getRoles();
+    }
+
+    return this.checkRoles(candidates, permissionLike, roleEntries);
+  }
+
+  /**
+   * Like {@link checkPermission}, but resolves role names within the given
+   * realm only. In multi-realm apps every realm defines roles literally named
+   * "admin"/"user" — resolving across ALL realms would grant a user whichever
+   * realm's homonymous role happens to be registered first. Always pass the
+   * authenticated user's realm when it is known.
+   *
+   * Implemented as a thin wrapper over {@link checkPermission} so provider
+   * subclasses overriding that method keep full control.
+   */
+  public checkPermissionInRealm(
+    realm: string | undefined,
+    permissionLike: string | Permission,
+    ...roleEntries: string[]
+  ): SecurityCheckResult {
+    const permission: Permission =
+      typeof permissionLike === "string"
+        ? { name: permissionLike }
+        : permissionLike;
+    return this.checkPermission(
+      realm ? ({ ...permission, realm } as Permission) : permission,
+      ...roleEntries,
+    );
+  }
+
+  protected checkRoles(
+    candidates: Role[],
+    permissionLike: string | Permission,
+    roleEntries: string[],
+  ): SecurityCheckResult {
     const roles: Role[] = roleEntries.map((it) => {
-      const role = this.getRoles().find((role) => role.name === it);
+      const role = candidates.find((role) => role.name === it);
       if (!role) {
         throw new SecurityError(`Role '${it}' not found`);
       }
@@ -625,7 +688,11 @@ export class SecurityProvider {
     let ownership: string | boolean | undefined;
 
     if (options.permission) {
-      const check = this.checkPermission(options.permission, ...roles);
+      const check = this.checkPermissionInRealm(
+        realm,
+        options.permission,
+        ...roles,
+      );
       if (!check.isAuthorized) {
         throw new SecurityError(
           `User is not allowed to access '${this.permissionToString(options.permission)}'`,

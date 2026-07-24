@@ -1,4 +1,4 @@
-import { exec, spawn } from "node:child_process";
+import { exec, execFile, spawn } from "node:child_process";
 import { $inject, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "./FileSystemProvider.ts";
@@ -20,16 +20,36 @@ export class NodeShellProvider implements ShellProvider {
    * Run a shell command or binary.
    */
   public async run(
-    command: string,
+    command: string | string[],
     options: ShellRunOptions = {},
   ): Promise<string> {
     const { resolve = false, capture = false, root, env } = options;
     const cwd = root ?? process.cwd();
+    const isArgv = Array.isArray(command);
 
-    this.log.debug(`Shell: ${command}`, { cwd, resolve, capture });
+    this.log.debug(`Shell: ${isArgv ? command.join(" ") : command}`, {
+      cwd,
+      resolve,
+      capture,
+    });
 
     let executable: string;
     let args: string[];
+
+    if (isArgv) {
+      if (command.length === 0) {
+        throw new AlephaError("Cannot run an empty argv array");
+      }
+      [executable, ...args] = command;
+      if (resolve) {
+        executable = await this.resolveExecutable(executable, cwd);
+      }
+      if (capture) {
+        // Argv form never touches a shell — args are passed verbatim.
+        return this.execCaptureArgv(executable, args, { cwd, env });
+      }
+      return this.execInherit(executable, args, { cwd, env });
+    }
 
     if (resolve) {
       const [bin, ...rest] = this.parseCommand(command);
@@ -91,18 +111,29 @@ export class NodeShellProvider implements ShellProvider {
   }
 
   /**
-   * Build a shell command string with proper escaping for Windows.
-   * Quotes both executable and arguments that contain spaces or special characters.
+   * Build a shell command string where every argument stays literal.
+   *
+   * POSIX: single-quote escaping (`'...'` with `'\''` for embedded quotes) —
+   * nothing expands inside single quotes, so `;`, backticks, `$(...)`, `|`
+   * and friends cannot break out of an argument.
+   * Windows (cmd.exe): double-quote escaping.
    */
   protected buildShellCommand(executable: string, args: string[]): string {
-    const escapeForShell = (str: string): string => {
-      // If str contains spaces or special chars, wrap in double quotes
-      // and escape internal double quotes
-      if (/[\s"&|<>^()]/.test(str)) {
-        return `"${str.replace(/"/g, '\\"')}"`;
-      }
-      return str;
-    };
+    const isWindows = process.platform === "win32";
+
+    const escapeForShell = isWindows
+      ? (str: string): string => {
+          if (/[\s"&|<>^()]/.test(str)) {
+            return `"${str.replace(/"/g, '\\"')}"`;
+          }
+          return str;
+        }
+      : (str: string): string => {
+          if (/^[\w./:=@%,+-]+$/.test(str)) {
+            return str;
+          }
+          return `'${str.replaceAll("'", `'\\''`)}'`;
+        };
 
     return [escapeForShell(executable), ...args.map(escapeForShell)].join(" ");
   }
@@ -130,6 +161,40 @@ export class NodeShellProvider implements ShellProvider {
           if (err) {
             // Attach both streams so callers (e.g. the CLI Runner) can surface
             // the full output of a failed command, not just stdout.
+            (err as any).stdout = stdout;
+            (err as any).stderr = stderr;
+            reject(err);
+          } else {
+            resolve(stdout);
+          }
+        },
+      );
+    });
+  }
+
+  /**
+   * Execute an argv array and capture stdout — no shell involved.
+   */
+  protected execCaptureArgv(
+    executable: string,
+    args: string[],
+    options: { cwd: string; env?: Record<string, string> },
+  ): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      execFile(
+        executable,
+        args,
+        {
+          cwd: options.cwd,
+          maxBuffer: 50 * 1024 * 1024,
+          env: {
+            ...process.env,
+            LOG_FORMAT: "pretty",
+            ...options.env,
+          },
+        },
+        (err, stdout, stderr) => {
+          if (err) {
             (err as any).stdout = stdout;
             (err as any).stderr = stderr;
             reject(err);
@@ -207,6 +272,12 @@ export class NodeShellProvider implements ShellProvider {
    * Check if a command is installed and available in the system PATH.
    */
   public isInstalled(command: string): Promise<boolean> {
+    // The name is interpolated into a shell string below — refuse anything
+    // that isn't a plain command name rather than letting metacharacters run.
+    if (!/^[\w.-]+$/.test(command)) {
+      return Promise.resolve(false);
+    }
+
     return new Promise((resolve) => {
       const check =
         process.platform === "win32"

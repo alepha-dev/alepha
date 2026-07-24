@@ -2,7 +2,11 @@ import { $inject, Alepha } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import {
+  $repository,
+  DatabaseProvider,
+  DbEntityNotFoundError,
+} from "alepha/orm";
 import {
   type PaymentIntentEntity,
   paymentIntents,
@@ -19,6 +23,7 @@ export class PaymentService {
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly provider = $inject(PaymentProvider);
+  protected readonly dbProvider = $inject(DatabaseProvider);
   protected readonly intentRepo = $repository(paymentIntents);
   protected readonly refundRepo = $repository(refunds);
 
@@ -38,21 +43,44 @@ export class PaymentService {
       });
 
       for (const intent of stale) {
-        if (intent.providerRef) {
-          try {
-            await this.provider.expireSession(intent.providerRef);
-          } catch (error) {
-            this.log.warn(
-              `Failed to expire session for intent ${intent.id}`,
-              error,
-            );
-          }
-        }
-        await this.intentRepo.updateById(intent.id, { status: "expired" });
-        this.log.info(`Expired stale intent ${intent.id}`);
+        await this.expireIntent(intent);
       }
     },
   });
+
+  /**
+   * Expire a single stale intent with a status-guarded claim: a webhook may
+   * capture the payment between the sweep's read and this write, and a
+   * captured payment must never be stomped to "expired".
+   */
+  public async expireIntent(intent: PaymentIntentEntity): Promise<void> {
+    try {
+      await this.intentRepo.updateOne(
+        { id: { eq: intent.id }, status: { eq: "processing" } },
+        { status: "expired" },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        this.log.info(
+          `Skipping expiry: intent ${intent.id} is no longer processing`,
+        );
+        return;
+      }
+      throw error;
+    }
+
+    if (intent.providerRef) {
+      try {
+        await this.provider.expireSession(intent.providerRef);
+      } catch (error) {
+        this.log.warn(`Failed to expire session for intent ${intent.id}`, {
+          error,
+        });
+      }
+    }
+
+    this.log.info(`Expired stale intent ${intent.id}`);
+  }
 
   /**
    * Create a new payment intent in "created" status.
@@ -102,25 +130,57 @@ export class PaymentService {
       throw new PaymentError("Payment intent does not belong to this user");
     }
 
-    // Associate intent with user if not already set
-    if (userId && !intent.userId) {
-      await this.intentRepo.updateById(intent.id, { userId });
+    // Claim the intent BEFORE the PSP call: two concurrent createSession
+    // calls would otherwise both create sessions, and the loser's ref would
+    // overwrite the winner's — orphaning the payment made against the first
+    // session.
+    try {
+      await this.intentRepo.updateOne(
+        { id: { eq: intent.id }, status: { eq: "created" } },
+        {
+          status: "processing",
+          ...(userId && !intent.userId ? { userId } : {}),
+        },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        throw new PaymentError(
+          `Cannot createSession: intent ${intent.id} is already being processed`,
+        );
+      }
+      throw error;
     }
 
-    const result = await this.provider.createSession(intent, {
-      returnUrl,
-      authorize,
-      stripeAccount: options?.stripeAccount,
-      applicationFeeAmount: options?.applicationFeeAmount,
-      customerEmail: options?.customerEmail,
-    });
+    try {
+      const result = await this.provider.createSession(intent, {
+        returnUrl,
+        authorize,
+        stripeAccount: options?.stripeAccount,
+        applicationFeeAmount: options?.applicationFeeAmount,
+        customerEmail: options?.customerEmail,
+      });
 
-    await this.intentRepo.updateById(intent.id, {
-      status: "processing",
-      providerRef: result.providerRef,
-    });
+      await this.intentRepo.updateById(intent.id, {
+        providerRef: result.providerRef,
+      });
 
-    return { url: result.url, intentId: intent.id };
+      return { url: result.url, intentId: intent.id };
+    } catch (error) {
+      // Release the claim so the intent isn't stuck in "processing" with no
+      // session behind it.
+      await this.intentRepo
+        .updateOne(
+          { id: { eq: intent.id }, status: { eq: "processing" } },
+          { status: "created" },
+        )
+        .catch((releaseError) => {
+          this.log.warn(
+            `Failed to release intent ${intent.id} after session failure`,
+            { error: releaseError },
+          );
+        });
+      throw error;
+    }
   }
 
   /**
@@ -316,56 +376,119 @@ export class PaymentService {
   ): Promise<RefundEntity> {
     const intent = await this.getIntent(intentId);
 
-    // Allow refunds from both "captured" and "partially_refunded" states
-    if (
-      intent.status !== "captured" &&
-      intent.status !== "partially_refunded"
-    ) {
-      throw new PaymentError(
-        `Cannot refund: intent ${intent.id} is '${intent.status}', expected 'captured' or 'partially_refunded'`,
+    // Atomically reserve the refund: a version-guarded claim plus a
+    // "pending" refund row, inside one transaction. Two concurrent refunds
+    // both reading the same refunded total can otherwise both pass the
+    // remaining-amount check and over-refund (verified race for cash
+    // intents, which have no PSP to reject the excess).
+    const pending = await this.dbProvider.transactional(async () => {
+      const fresh = await this.getIntent(intentId);
+
+      // Allow refunds from both "captured" and "partially_refunded" states
+      if (
+        fresh.status !== "captured" &&
+        fresh.status !== "partially_refunded"
+      ) {
+        throw new PaymentError(
+          `Cannot refund: intent ${fresh.id} is '${fresh.status}', expected 'captured' or 'partially_refunded'`,
+        );
+      }
+
+      // Validate refund amount against remaining refundable amount.
+      // Pending refunds count as reserved; failed ones never happened.
+      const existingRefunds = await this.refundRepo.findMany({
+        where: { intentId: { eq: fresh.id }, status: { ne: "failed" } },
+      });
+      const totalRefunded = existingRefunds.reduce(
+        (sum, r) => sum + r.amount,
+        0,
       );
-    }
+      const remaining = fresh.amount - totalRefunded;
 
-    // Validate refund amount against remaining refundable amount
-    const existingRefunds = await this.refundRepo.findMany({
-      where: { intentId: { eq: intent.id } },
-    });
-    const totalRefunded = existingRefunds.reduce((sum, r) => sum + r.amount, 0);
-    const remaining = intent.amount - totalRefunded;
+      if (amount > remaining) {
+        throw new PaymentError(
+          `Refund amount ${amount} exceeds remaining refundable amount ${remaining}`,
+        );
+      }
 
-    if (amount > remaining) {
-      throw new PaymentError(
-        `Refund amount ${amount} exceeds remaining refundable amount ${remaining}`,
-      );
-    }
-
-    let refundProviderRef: string | undefined;
-    if (intent.providerRef) {
-      const result = await this.provider.refundPayment(
-        intent.providerRef,
+      // Insert the reservation BEFORE the version claim: any competitor that
+      // observes our bumped version is then guaranteed to also see this row
+      // in its refunded-total read, so it can never double-spend the
+      // remaining amount.
+      const reserved = await this.refundRepo.create({
+        intentId: fresh.id,
+        organizationId: fresh.organizationId,
         amount,
-        options,
-      );
-      refundProviderRef = result.providerRef;
+        currency: fresh.currency,
+        status: "pending",
+        reason,
+      });
+
+      try {
+        await this.intentRepo.updateOne(
+          { id: { eq: fresh.id }, version: { eq: fresh.version } },
+          { version: (fresh.version ?? 0) + 1 },
+        );
+      } catch (error) {
+        // Release the reservation — with a dedicated transaction the rollback
+        // does this, but a joined/outer transaction would keep the row.
+        await this.refundRepo.deleteById(reserved.id).catch((releaseError) => {
+          this.log.warn(`Failed to release refund reservation ${reserved.id}`, {
+            error: releaseError,
+          });
+        });
+        if (error instanceof DbEntityNotFoundError) {
+          throw new PaymentError(
+            `Concurrent refund in progress for intent ${fresh.id}, retry`,
+          );
+        }
+        throw error;
+      }
+
+      return reserved;
+    });
+
+    // PSP call outside the transaction — network I/O must not hold locks.
+    let refundProviderRef: string | undefined;
+    try {
+      if (intent.providerRef) {
+        const result = await this.provider.refundPayment(
+          intent.providerRef,
+          amount,
+          options,
+        );
+        refundProviderRef = result.providerRef;
+      }
+    } catch (error) {
+      // Release the reservation — a failed refund must not count against
+      // the remaining refundable amount.
+      await this.refundRepo
+        .updateById(pending.id, { status: "failed" })
+        .catch((releaseError) => {
+          this.log.warn(
+            `Failed to mark refund ${pending.id} as failed after PSP error`,
+            { error: releaseError },
+          );
+        });
+      throw error;
     }
 
-    const refund = await this.refundRepo.create({
-      intentId: intent.id,
-      organizationId: intent.organizationId,
-      amount,
-      currency: intent.currency,
+    const refund = await this.refundRepo.updateById(pending.id, {
       status: "completed",
-      reason,
       providerRef: refundProviderRef,
     });
 
-    // Set status based on whether fully or partially refunded
-    const newTotalRefunded = totalRefunded + amount;
+    // Set status from the refunded total as recorded in the database.
+    const allRefunds = await this.refundRepo.findMany({
+      where: { intentId: { eq: intent.id }, status: { ne: "failed" } },
+    });
+    const newTotalRefunded = allRefunds.reduce((sum, r) => sum + r.amount, 0);
     const newStatus =
       newTotalRefunded >= intent.amount ? "refunded" : "partially_refunded";
-    await this.intentRepo.updateById(intent.id, {
-      status: newStatus,
-    });
+    await this.intentRepo.updateOne(
+      { id: { eq: intent.id } },
+      { status: newStatus },
+    );
 
     await this.alepha.events.emit("payments:refunded", {
       intentId: intent.id,

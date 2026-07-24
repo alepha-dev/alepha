@@ -724,6 +724,67 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     ).rejects.toThrow();
   });
 
+  it("should reject API key after its owner is disabled", async ({
+    expect,
+  }) => {
+    const { adminUserController, apiKeyController, app, fakeProvider } =
+      await setup();
+    const fakeUser = fakeProvider.generate(userDataSchema);
+
+    const userResponse = await adminUserController.createUser.fetch(
+      { body: { ...fakeUser, roles: ["user"] } },
+      { user: adminUser },
+    );
+    const user = userResponse.data;
+
+    const createResponse = await apiKeyController.createApiKey.fetch(
+      { body: { name: "My Key" } },
+      { user: { id: user.id, roles: user.roles } },
+    );
+    const { token } = createResponse.data;
+
+    // Key works while the user is enabled.
+    const ok = await app.getProfile.fetch({ query: { api_key: token } });
+    expect(ok.status).toBe(200);
+
+    // Disable the account — every outstanding API key must stop working.
+    await adminUserController.updateUser.fetch(
+      { params: { id: user.id }, body: { enabled: false } },
+      { user: adminUser },
+    );
+
+    await expect(
+      app.getProfile.fetch({ query: { api_key: token } }),
+    ).rejects.toThrow();
+  });
+
+  it("should reject API key after its owner is deleted", async ({ expect }) => {
+    const { adminUserController, apiKeyController, app, fakeProvider } =
+      await setup();
+    const fakeUser = fakeProvider.generate(userDataSchema);
+
+    const userResponse = await adminUserController.createUser.fetch(
+      { body: { ...fakeUser, roles: ["user"] } },
+      { user: adminUser },
+    );
+    const user = userResponse.data;
+
+    const createResponse = await apiKeyController.createApiKey.fetch(
+      { body: { name: "My Key" } },
+      { user: { id: user.id, roles: user.roles } },
+    );
+    const { token } = createResponse.data;
+
+    await adminUserController.deleteUser.fetch(
+      { params: { id: user.id } },
+      { user: adminUser },
+    );
+
+    await expect(
+      app.getProfile.fetch({ query: { api_key: token } }),
+    ).rejects.toThrow();
+  });
+
   // -------------------------------------------------------------------------
   // Role-based Access with API Keys
   // -------------------------------------------------------------------------

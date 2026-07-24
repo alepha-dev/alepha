@@ -4,8 +4,10 @@ import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testBypassImplicitTx,
   testComposeWithMiddleware,
+  testConcurrentTransactionals,
   testDatabaseProviderTransactional,
   testNesting,
+  testRepositoryTransactionAsyncRollback,
   testRollbackOnError,
   testWrapsInTransaction,
 } from "./$transactional-tests.ts";
@@ -56,6 +58,26 @@ describe("$transactional", () => {
   });
   it("should bypass implicit tx with tx: null (postgres)", async () => {
     await testBypassImplicitTx(Alepha.create().with(AlephaOrmPostgres));
+  });
+
+  it("Repository.transaction rolls back async work (sqlite)", async () => {
+    await testRepositoryTransactionAsyncRollback(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("Repository.transaction rolls back async work (postgres)", async () => {
+    await testRepositoryTransactionAsyncRollback(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+
+  it("concurrent transactional blocks are serialized (sqlite)", async () => {
+    await testConcurrentTransactionals(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("concurrent transactional blocks are serialized (postgres)", async () => {
+    await testConcurrentTransactionals(Alepha.create().with(AlephaOrmPostgres));
   });
 
   it("should work with DatabaseProvider.transactional() directly (sqlite)", async () => {

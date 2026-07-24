@@ -210,6 +210,7 @@ export class CloudflareKVProvider extends CacheProvider {
     name: string,
     key: string,
     amount: number,
+    ttl?: number,
   ): Promise<number> {
     const kvKey = this.prefix(name, key);
     const kv = this.getKV();
@@ -222,7 +223,14 @@ export class CloudflareKVProvider extends CacheProvider {
     }
 
     const newValue = current + amount;
-    await kv.put(kvKey, String(newValue));
+    // KV clamps expirationTtl to a 60-second minimum; shorter windows are
+    // widened accordingly. NOTE: sliding here (each put resets the TTL) —
+    // KV cannot express "keep the original expiry" without another read.
+    await kv.put(
+      kvKey,
+      String(newValue),
+      ttl ? { expirationTtl: Math.max(60, Math.ceil(ttl / 1000)) } : undefined,
+    );
     return newValue;
   }
 

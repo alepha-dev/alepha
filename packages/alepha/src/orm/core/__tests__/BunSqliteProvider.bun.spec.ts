@@ -116,6 +116,42 @@ describe("BunSqliteProvider", () => {
     expect(deleted).toBeFalsy();
   });
 
+  it("should roll back async transactional work", async () => {
+    const app = setup();
+    await alepha.start();
+
+    const db = alepha.inject(DatabaseProvider);
+
+    // Async callbacks must run entirely INSIDE the transaction — drizzle's
+    // sync bun-sqlite driver would otherwise COMMIT before the awaited work
+    // finishes, making rollback impossible.
+    await expect(
+      db.transactional(async () => {
+        await app.userRepo.create({ name: "will-rollback" });
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        await app.userRepo.create({ name: "will-rollback-too" });
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+
+    expect(await app.userRepo.findMany()).toHaveLength(0);
+  });
+
+  it("should roll back async Repository.transaction work", async () => {
+    const app = setup();
+    await alepha.start();
+
+    await expect(
+      app.userRepo.transaction(async (tx) => {
+        await app.userRepo.create({ name: "will-rollback" }, { tx: tx as any });
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+
+    expect(await app.userRepo.findMany()).toHaveLength(0);
+  });
+
   it("should execute raw SQL", async () => {
     setup();
     await alepha.start();

@@ -127,7 +127,10 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
         try {
           return await next(...args);
         } finally {
-          await lockProvider.del(name);
+          // Compare-and-delete: if the handler outlived maxDuration the key
+          // expired and another instance may hold the lock now — deleting
+          // unconditionally would release the NEW holder's lock.
+          await lockProvider.delIfOwner(name, id);
           await alepha.events.emit("lock:released", {
             name,
             id,
@@ -414,18 +417,6 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
   protected readonly settings = $state(lockOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
-  /**
-   * Lazy-initialized UUID to avoid calling crypto.randomUUID() in global scope.
-   * Cloudflare Workers doesn't allow random value generation during initialization.
-   */
-  protected _id?: string;
-  protected get id(): string {
-    if (!this._id) {
-      this._id = crypto.randomUUID();
-    }
-    return this._id;
-  }
-
   public readonly maxDuration = this.dateTimeProvider.duration(
     this.options.maxDuration ?? [5, "minutes"],
   );
@@ -444,32 +435,45 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
     const key = this.key(...args);
     const handler = this.options.handler;
 
-    const lock = await this.lock(key);
+    // Per-invocation identity: a single id shared by the primitive instance
+    // would hand every overlapping run() call the same identity — all of
+    // them would read back "their own" id from SET NX GET and enter the
+    // critical section together.
+    const id = crypto.randomUUID();
+
+    const lock = await this.lock(key, id);
     if (lock.endedAt) {
       return;
     }
 
-    if (lock.id !== this.id) {
-      if (this.options.wait) {
-        // Poll until the lock is released, then re-attempt
-        const start = this.dateTimeProvider.nowMillis();
-        const maxMs = this.maxDuration.as("milliseconds");
-        let acquired = false;
-        while (this.dateTimeProvider.nowMillis() - start < maxMs) {
-          await this.dateTimeProvider.wait(500);
-          const current = await this.lock(key);
-          if (current.id === this.id || !current.id || current.endedAt) {
-            acquired = true;
-            break;
-          }
-        }
-        if (acquired) {
-          return this.run(...args);
-        }
-        this.log.warn(`Lock wait timeout for '${key}', giving up`);
+    if (lock.id !== id) {
+      if (!this.options.wait) {
+        return;
       }
 
-      return;
+      // Poll until the lock is released; each poll is itself an NX acquire
+      // attempt with OUR id, so winning the poll means holding the lock —
+      // fall through to the critical section (re-running from the top would
+      // mint a fresh id and mistake our own lock for another holder's).
+      const start = this.dateTimeProvider.nowMillis();
+      const maxMs = this.maxDuration.as("milliseconds");
+      let acquired = false;
+      while (this.dateTimeProvider.nowMillis() - start < maxMs) {
+        await this.dateTimeProvider.wait(500);
+        const current = await this.lock(key, id);
+        if (current.endedAt) {
+          // A previous holder finished with a grace period — skip entirely.
+          return;
+        }
+        if (current.id === id || !current.id) {
+          acquired = true;
+          break;
+        }
+      }
+      if (!acquired) {
+        this.log.warn(`Lock wait timeout for '${key}', giving up`);
+        return;
+      }
     }
 
     this.log.debug(`Lock '${key}' ...`);
@@ -481,7 +485,7 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
         name: key,
       });
 
-      await this.setGracePeriod(key, lock, ...args);
+      await this.setGracePeriod(key, lock, id, ...args);
 
       this.log.debug(`Lock '${key}' OK`);
     }
@@ -490,10 +494,10 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
   /**
    * Set the lock for the given key.
    */
-  protected async lock(key: string): Promise<LockResult> {
+  protected async lock(key: string, id: string): Promise<LockResult> {
     const value = await this.provider.set(
       key,
-      `${this.id},${this.dateTimeProvider.nowISOString()}`,
+      `${id},${this.dateTimeProvider.nowISOString()}`,
       true,
       this.maxDuration.as("milliseconds"),
     );
@@ -504,6 +508,7 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
   protected async setGracePeriod(
     key: string,
     lock: LockResult,
+    id: string,
     ...args: Parameters<TFunc>
   ): Promise<void> {
     const gracePeriod = this.options.gracePeriod
@@ -513,14 +518,21 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
       : undefined;
 
     if (gracePeriod) {
+      // Only extend a lock we still own — if ours expired mid-handler,
+      // overwriting would clobber the next holder's lock.
+      const current = await this.provider.get(key);
+      const owner = current?.split(",")[0];
+      if (owner !== undefined && owner !== id) {
+        return;
+      }
       await this.provider.set(
         key,
-        `${this.id},${lock.createdAt.toISOString()},${this.dateTimeProvider.nowISOString()}`,
+        `${id},${lock.createdAt.toISOString()},${this.dateTimeProvider.nowISOString()}`,
         false,
         this.dateTimeProvider.duration(gracePeriod).as("milliseconds"),
       );
     } else {
-      await this.provider.del(key);
+      await this.provider.delIfOwner(key, id);
     }
   }
 

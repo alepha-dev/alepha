@@ -4,6 +4,8 @@ import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 import { PaymentError } from "../errors/PaymentError.ts";
 import { AlephaApiPayments } from "../index.ts";
+import { MemoryPaymentProvider } from "../providers/MemoryPaymentProvider.ts";
+import { PaymentProvider } from "../providers/PaymentProvider.ts";
 import { PaymentService } from "../services/PaymentService.ts";
 
 const setup = async () => {
@@ -185,6 +187,112 @@ describe("PaymentService", () => {
     await expect(payments.refund(intent.id, 1000)).rejects.toThrowError(
       PaymentError,
     );
+  });
+
+  it("should not over-refund under concurrent refunds", async ({ expect }) => {
+    const { payments } = await setup();
+
+    const intent = await payments.recordCashPayment(1000, "eur");
+
+    // Fire many concurrent refunds; at most two of 500 fit in 1000. Any
+    // extra winner means the check-then-write raced and money was
+    // over-refunded.
+    const results = await Promise.allSettled(
+      Array.from({ length: 8 }, () => payments.refund(intent.id, 500)),
+    );
+
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    expect(fulfilled.length).toBeLessThanOrEqual(2);
+
+    const updated = await payments.getIntent(intent.id);
+    expect(["partially_refunded", "refunded"]).toContain(updated.status);
+  });
+
+  it("should not create two provider sessions for one intent", async ({
+    expect,
+  }) => {
+    // A slow PSP widens the window between the status check and the status
+    // write — the realistic shape of the race (PSP calls are network I/O).
+    class SlowPaymentProvider extends MemoryPaymentProvider {
+      public override async createSession(
+        ...args: Parameters<MemoryPaymentProvider["createSession"]>
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        return super.createSession(...args);
+      }
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with({ provide: PaymentProvider, use: SlowPaymentProvider })
+      .with(AlephaApiPayments);
+    const payments = alepha.inject(PaymentService);
+    await alepha.start();
+
+    const intent = await payments.createIntent(1500, "eur");
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 4 }, () =>
+        payments.createSession(intent.id, "https://example.com/return"),
+      ),
+    );
+
+    // Only one session may be created: the loser's ref would overwrite the
+    // winner's, orphaning the payment made against the first session.
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+  });
+
+  it("should not expire an intent that was captured mid-sweep", async ({
+    expect,
+  }) => {
+    const { payments } = await setup();
+
+    const intent = await payments.createIntent(1500, "eur");
+    await payments.createSession(intent.id, "https://example.com");
+
+    // The sweep read the intent while it was still "processing"...
+    const staleSnapshot = await payments.getIntent(intent.id);
+
+    // ...then a webhook captured it before the sweep wrote.
+    await payments.handleWebhookEvent(intent.id, "captured");
+
+    await payments.expireIntent(staleSnapshot);
+
+    // The captured payment must never be stomped to "expired".
+    const updated = await payments.getIntent(intent.id);
+    expect(updated.status).toBe("captured");
+  });
+
+  it("should refuse mock checkout endpoints in production", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create({
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "prod-secret-for-tests-1234567890",
+        DATABASE_URL: "sqlite://:memory:",
+        SERVER_PORT: 0,
+      },
+    }).with(AlephaApiPayments);
+    await alepha.start();
+
+    const { ServerProvider } = await import("alepha/server");
+    const hostname = alepha.inject(ServerProvider).hostname;
+
+    // The memory provider is active (no PSP configured) — but in production
+    // an unauthenticated "mark as paid" endpoint must be refused, not
+    // silently exposed.
+    const resp = await fetch(
+      `${hostname}/payments/mock-checkout/00000000-0000-4000-8000-000000000001/confirm`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      },
+    );
+
+    expect(resp.status).toBe(403);
+    await alepha.stop();
   });
 
   it("should ignore webhook that would downgrade status", async ({

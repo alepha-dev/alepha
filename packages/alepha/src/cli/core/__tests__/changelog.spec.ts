@@ -19,10 +19,11 @@ import {
 let currentMockResponses: Map<string, string> | null = null;
 
 class MockGitProvider extends GitProvider {
-  override async exec(cmd: string, _cwd: string): Promise<string> {
+  override async exec(args: string[], _cwd: string): Promise<string> {
     if (!currentMockResponses) {
       throw new Error("No git mocks configured");
     }
+    const cmd = args.join(" ");
     const response = currentMockResponses.get(cmd);
     if (response === undefined) {
       throw new Error(`Unmocked git command: ${cmd}`);

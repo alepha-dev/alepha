@@ -115,6 +115,31 @@ export class BunSqliteProvider extends DatabaseProvider {
     return this.sqlite;
   }
 
+  public override get usesSyncTransactions(): boolean {
+    return true;
+  }
+
+  /**
+   * Same rationale as `NodeSqliteProvider.transactional`: drizzle's bun-sqlite
+   * driver wraps a synchronous `BEGIN`/`COMMIT` around the callback, so an
+   * async callback would commit before its awaited work finishes and rollback
+   * could never happen. Use awaited BEGIN/COMMIT/ROLLBACK on the native
+   * connection, serialized on the single shared connection.
+   */
+  public override async transactional<R>(fn: () => Promise<R>): Promise<R> {
+    const existing = this.alepha.get("alepha.orm.tx");
+    if (existing) {
+      return fn();
+    }
+
+    const sqlite = this.sqlite;
+    if (!sqlite) {
+      throw new AlephaError("Database not initialized");
+    }
+
+    return this.runExclusiveNativeTransaction((sql) => sqlite.run(sql), fn);
+  }
+
   public override async execute(
     query: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {

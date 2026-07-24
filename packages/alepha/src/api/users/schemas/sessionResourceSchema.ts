@@ -15,12 +15,18 @@ export const sessionUserSummarySchema = z.object({
   lastName: z.string().optional(),
 });
 
+/**
+ * Admin-facing session projection. Deliberately WITHOUT `refreshToken`: a
+ * refresh token is a long-lived bearer credential, and exposing it here
+ * would hand full user impersonation to anyone who can read admin API
+ * responses (UI, logs, proxies). `MySessionController` omits it for the
+ * same reason.
+ */
 export const sessionResourceSchema = z.object({
   id: z.uuid(),
   version: z.number(),
   createdAt: z.datetime(),
   updatedAt: z.datetime(),
-  refreshToken: z.uuid(),
   userId: z.uuid(),
   expiresAt: z.datetime(),
   ip: z.string().optional(),

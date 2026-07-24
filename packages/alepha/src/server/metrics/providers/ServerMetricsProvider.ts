@@ -1,10 +1,22 @@
-import { $hook, $inject, Alepha } from "alepha";
-import { $route } from "alepha/server";
+import { $env, $hook, $inject, Alepha, z } from "alepha";
+import { $logger } from "alepha/logger";
+import { $route, HttpError } from "alepha/server";
 import { collectDefaultMetrics, Histogram, Registry } from "prom-client";
 
 export class ServerMetricsProvider {
   protected readonly register: Registry = new Registry();
   protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
+  protected readonly env = $env(
+    z.object({
+      /**
+       * Bearer token protecting the `/metrics` endpoint. When set, requests
+       * must carry `Authorization: Bearer <token>`. Without it the endpoint
+       * is public — set this in any internet-facing production deployment.
+       */
+      METRICS_TOKEN: z.string().optional(),
+    }),
+  );
   protected httpRequestDuration?: Histogram<string>;
 
   public readonly options: ServerMetricsProviderOptions = {};
@@ -13,12 +25,23 @@ export class ServerMetricsProvider {
     method: "GET",
     path: "/metrics",
     silent: true,
-    handler: () => this.register.metrics(),
+    handler: ({ headers }) => {
+      const token = this.env.METRICS_TOKEN;
+      if (token && headers.authorization !== `Bearer ${token}`) {
+        throw new HttpError({ status: 401, message: "Unauthorized" });
+      }
+      return this.register.metrics();
+    },
   });
 
   protected readonly onStart = $hook({
     on: "start",
     handler: () => {
+      if (this.alepha.isProduction() && !this.env.METRICS_TOKEN) {
+        this.log.warn(
+          "/metrics is exposed without authentication — set METRICS_TOKEN to protect it in production.",
+        );
+      }
       collectDefaultMetrics({
         register: this.register,
         ...this.options,

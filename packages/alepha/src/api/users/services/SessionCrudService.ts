@@ -7,6 +7,13 @@ import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { SessionQuery } from "../schemas/sessionQuerySchema.ts";
 
 /**
+ * Admin-safe view of a session: everything except the refresh token, which
+ * is a long-lived bearer credential (holding it means full impersonation of
+ * the session's user).
+ */
+export type SessionView = Omit<SessionEntity, "refreshToken">;
+
+/**
  * Relation map embedding a slim user summary on every session row, so the
  * admin UI can render `user.email`/`user.username` instead of a bare UUID.
  * Left-join (default) so sessions whose owner was deleted still come back
@@ -33,7 +40,7 @@ export class SessionCrudService {
   public async findSessions(
     q: SessionQuery = {},
     userRealmName?: string,
-  ): Promise<Page<SessionEntity>> {
+  ): Promise<Page<SessionView>> {
     this.log.trace("Finding sessions", { query: q, userRealmName });
     q.sort ??= "-createdAt";
 
@@ -54,7 +61,10 @@ export class SessionCrudService {
       total: result.page.totalElements,
     });
 
-    return result;
+    return {
+      ...result,
+      content: result.content.map((session) => this.toView(session)),
+    };
   }
 
   /**
@@ -63,14 +73,19 @@ export class SessionCrudService {
   public async getSessionById(
     id: string,
     userRealmName?: string,
-  ): Promise<SessionEntity> {
+  ): Promise<SessionView> {
     this.log.trace("Getting session by ID", { id, userRealmName });
     const session = await this.sessions(userRealmName).getOne({
       where: { id: { eq: id } },
       with: withUser,
     });
     this.log.debug("Session retrieved", { id, userId: session.userId });
-    return session;
+    return this.toView(session);
+  }
+
+  protected toView(session: SessionEntity): SessionView {
+    const { refreshToken, ...view } = session;
+    return view;
   }
 
   /**

@@ -151,10 +151,18 @@ describe("QueryManager", () => {
       expect(result).toBeUndefined();
     });
 
-    it("should return undefined for undefined values", () => {
-      const result = qm.toSQL({ age: undefined } as any, options);
+    it("should throw when a column is explicitly undefined", () => {
+      // Drizzle silently drops `undefined` conditions, which turns a broken
+      // filter (e.g. tenant scoping) into an unfiltered query. Fail loudly.
+      expect(() => qm.toSQL({ age: undefined } as any, options)).toThrow(
+        /undefined/,
+      );
+    });
 
-      expect(result).toBeUndefined();
+    it("should throw when eq is explicitly undefined", () => {
+      expect(() =>
+        qm.toSQL({ age: { eq: undefined } } as any, options),
+      ).toThrow(/undefined/);
     });
 
     it("should include not condition alongside sibling conditions", () => {

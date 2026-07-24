@@ -72,12 +72,17 @@ export abstract class CacheProvider {
    * @param name Cache name, used to group keys.
    * @param key The key to increment.
    * @param amount The amount to increment by.
+   * @param ttl Optional counter lifetime in milliseconds. Applied when the
+   * counter is created (fixed window — increments do not extend it); once
+   * elapsed the counter starts fresh. Without it, counters never expire and
+   * any rate limiter built on them becomes a permanent lock-out.
    * @returns The new value after incrementing.
    */
   public abstract incr(
     name: string,
     key: string,
     amount: number,
+    ttl?: number,
   ): Promise<number>;
 
   // ---------------------------------------------------------------------------

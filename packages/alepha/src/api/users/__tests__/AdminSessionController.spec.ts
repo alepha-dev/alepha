@@ -112,6 +112,37 @@ describe("alepha/api/users - AdminSessionController", () => {
     expect(fetched.user?.email).toBe("withuser@example.com");
   });
 
+  it("should never expose refresh tokens to admins", async ({ expect }) => {
+    const { sessionService, userService, controller, dateTimeProvider } =
+      await setup();
+
+    const user = await userService.users().create({
+      username: "tokenuser",
+      email: "token@example.com",
+      roles: ["user"],
+    });
+
+    await sessionService.sessions().create({
+      userId: user.id,
+      refreshToken: crypto.randomUUID(),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
+    });
+
+    // A refresh token is a long-lived bearer credential: returning it from
+    // the admin API hands full user impersonation to anyone who can read
+    // admin responses (UI, logs, proxies).
+    const list = await controller.findSessions({}, { user: adminUser });
+    for (const session of list.content) {
+      expect(session).not.toHaveProperty("refreshToken");
+    }
+
+    const single = await controller.getSession(
+      { params: { id: list.content[0].id } },
+      { user: adminUser },
+    );
+    expect(single).not.toHaveProperty("refreshToken");
+  });
+
   it("should throw error for non-existent session", async ({ expect }) => {
     const { controller } = await setup();
 

@@ -15,6 +15,7 @@ class TestJobProvider extends JobProvider {
   public testDispatchScheduled = this.dispatchScheduled.bind(this);
   public testCreateKeyedExecution = this.createKeyedExecution.bind(this);
   public testSweep = this.sweep.bind(this);
+  public testPromoteDue = this.promoteDue.bind(this);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -103,6 +104,49 @@ describe("$job — long-delay hardening", () => {
     const rows = await app.executions.findMany({ where: { id: { eq: id } } });
     expect(calls).toBe(0);
     expect(rows[0].status).toBe("scheduled");
+  });
+});
+
+describe("$job — sweep guards", () => {
+  it("sweep promote does not resurrect a cancelled execution", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs)
+      .with(AlephaApiJobsQueue);
+    let calls = 0;
+    class SweepGuardApp {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        handler: async () => {
+          calls++;
+        },
+      });
+    }
+    const app = alepha.inject(SweepGuardApp);
+    await alepha.start();
+
+    const id = await app.work.push({ v: 1 }, { delay: [1, "hour"] });
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+
+    // The sweep read this row while it was still "scheduled"...
+    const snapshot = (
+      await app.executions.findMany({ where: { id: { eq: id } } })
+    )[0];
+
+    // ...then a user cancelled it before the sweep wrote.
+    await app.work.cancel(id);
+
+    await jobs.testPromoteDue(snapshot);
+    await sleep(100);
+
+    // The cancelled execution must not be promoted back to pending nor run.
+    const rows = await app.executions.findMany({ where: { id: { eq: id } } });
+    expect(rows[0].status).toBe("cancelled");
+    expect(calls).toBe(0);
   });
 });
 

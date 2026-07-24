@@ -121,9 +121,15 @@ export abstract class RedisProvider {
    *
    * @param key The key to increment.
    * @param amount The amount to increment by.
+   * @param ttl Optional lifetime in milliseconds, armed when the counter is
+   * created (fixed window — increments do not extend it).
    * @returns The new value after incrementing.
    */
-  public abstract incr(key: string, amount: number): Promise<number>;
+  public abstract incr(
+    key: string,
+    amount: number,
+    ttl?: number,
+  ): Promise<number>;
 }
 
 /**

@@ -121,6 +121,10 @@ export class NodeSqliteProvider extends DatabaseProvider {
     return this.sqlite;
   }
 
+  public override get usesSyncTransactions(): boolean {
+    return true;
+  }
+
   /**
    * SQLite transaction override.
    *
@@ -129,7 +133,9 @@ export class NodeSqliteProvider extends DatabaseProvider {
    * around the callback, so async callbacks commit before the work finishes.
    *
    * This override uses direct `BEGIN`/`COMMIT`/`ROLLBACK` on the native
-   * connection with proper `await`, making async transactions safe.
+   * connection with proper `await`, making async transactions safe. Blocks
+   * are serialized because the single shared connection can only hold one
+   * transaction at a time.
    */
   public override async transactional<R>(fn: () => Promise<R>): Promise<R> {
     const existing = this.alepha.get("alepha.orm.tx");
@@ -137,23 +143,10 @@ export class NodeSqliteProvider extends DatabaseProvider {
       return fn();
     }
 
-    // Set the tx marker to the drizzle db itself — SQLite transactions are
-    // connection-scoped, so all operations on this connection participate.
-    this.alepha.store.set("alepha.orm.tx", this.db as any, {
-      skipEvents: true,
-    });
-
-    this.sqlite.exec("BEGIN");
-    try {
-      const result = await fn();
-      this.sqlite.exec("COMMIT");
-      return result;
-    } catch (error) {
-      this.sqlite.exec("ROLLBACK");
-      throw error;
-    } finally {
-      this.alepha.store.set("alepha.orm.tx", undefined, { skipEvents: true });
-    }
+    return this.runExclusiveNativeTransaction(
+      (sql) => this.sqlite.exec(sql),
+      fn,
+    );
   }
 
   public override async execute(

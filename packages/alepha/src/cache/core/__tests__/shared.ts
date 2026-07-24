@@ -341,6 +341,33 @@ export const testCacheIncr = async (
   expect(val3).toBe(4);
 };
 
+export const testCacheIncrTtl = async (
+  configure: (app: Alepha) => void = () => {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  const app = Alepha.create().with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+  configure(app);
+
+  const provider = app.inject(CacheProvider);
+  await app.start();
+
+  const name = "test-incr-ttl";
+  const key = `counter:${randomUUID()}`;
+
+  // Counter accumulates within the window...
+  expect(await provider.incr(name, key, 1, 300)).toBe(1);
+  expect(await provider.incr(name, key, 1, 300)).toBe(2);
+
+  await new Promise((r) => setTimeout(r, 600));
+
+  // ...and starts FRESH once the window elapses. A counter that never
+  // expires turns any rate limiter built on it into a permanent lock-out.
+  expect(await provider.incr(name, key, 1, 300)).toBe(1);
+};
+
 export const testCacheFalsyValues = async (
   configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,

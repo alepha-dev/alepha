@@ -147,8 +147,14 @@ export class ServerMultipartProvider {
     let formData: FormData;
 
     try {
-      formData = await request.formData();
+      formData = await this.limitBodySize(request).formData();
     } catch (error) {
+      if (error instanceof HttpError) {
+        throw error;
+      }
+      if (error instanceof Error && error.cause instanceof HttpError) {
+        throw error.cause;
+      }
       throw new HttpError(
         {
           status: 400,
@@ -158,6 +164,52 @@ export class ServerMultipartProvider {
       );
     }
 
+    return this.parseFormData(route, formData);
+  }
+
+  /**
+   * Wrap the request body in a counting stream that aborts past
+   * `options.limit`. The content-length fail-fast check can't protect
+   * against `Transfer-Encoding: chunked` (no length header), and
+   * `formData()` would otherwise buffer the entire body into RAM.
+   */
+  protected limitBodySize(request: Request): Request {
+    const body = request.body;
+    if (!body) {
+      return request;
+    }
+
+    const limit = this.options.limit;
+    let received = 0;
+
+    const limited = body.pipeThrough(
+      new TransformStream<Uint8Array, Uint8Array>({
+        transform: (chunk, controller) => {
+          received += chunk.byteLength;
+          if (received > limit) {
+            controller.error(
+              new HttpError({
+                status: 413,
+                message: `Request body size limit exceeded. Maximum allowed: ${limit} bytes`,
+              }),
+            );
+            return;
+          }
+          controller.enqueue(chunk);
+        },
+      }),
+    );
+
+    return new Request(request, {
+      body: limited,
+      duplex: "half",
+    } as RequestInit);
+  }
+
+  protected async parseFormData(
+    route: ServerRoute,
+    formData: FormData,
+  ): Promise<Record<string, unknown>> {
     const body: Record<string, any> = {};
     let fileCount = 0;
     let totalSize = 0;

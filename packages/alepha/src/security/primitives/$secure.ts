@@ -141,10 +141,12 @@ export function $secure(options?: SecureOptions): Middleware {
           }
         }
 
-        // 6. Explicit permission checks (all must pass)
+        // 6. Explicit permission checks (all must pass) — role names are
+        // resolved within the user's own realm, never across realms.
         if (options?.permissions?.length) {
           for (const perm of options.permissions) {
-            const result = securityProvider.checkPermission(
+            const result = securityProvider.checkPermissionInRealm(
+              user.realm,
               perm,
               ...(user.roles ?? []),
             );

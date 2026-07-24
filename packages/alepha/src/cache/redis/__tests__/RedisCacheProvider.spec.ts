@@ -9,6 +9,7 @@ import {
   testCacheDisabled,
   testCacheFalsyValues,
   testCacheIncr,
+  testCacheIncrTtl,
   testCacheInvalidateAll,
   testCacheInvalidateByArgs,
   testCacheInvalidateByKey,
@@ -79,6 +80,10 @@ describe("$cache - redis", () => {
 
   it("should increment values atomically", async () => {
     await testCacheIncr(configure(), provider);
+  });
+
+  it("should expire incremented counters after their ttl", async () => {
+    await testCacheIncrTtl(configure(), provider);
   });
 
   it("should cache falsy values (0, empty string, false, null)", async () => {

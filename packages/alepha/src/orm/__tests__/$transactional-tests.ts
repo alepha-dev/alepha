@@ -154,6 +154,68 @@ export const testBypassImplicitTx = async (alepha: Alepha) => {
   expect(items[0].name).toBe("outside-tx");
 };
 
+export const testRepositoryTransactionAsyncRollback = async (
+  alepha: Alepha,
+) => {
+  class App {
+    repo = $repository(item);
+  }
+
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  // The async callback must run entirely INSIDE the transaction: on sync
+  // SQLite drivers a naive implementation commits before the awaited work
+  // finishes, making rollback impossible.
+  await expect(
+    app.repo.transaction(async (tx) => {
+      await app.repo.create({ name: "will-rollback" }, { tx: tx as any });
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      await app.repo.create({ name: "will-rollback-too" }, { tx: tx as any });
+      throw new Error("boom");
+    }),
+  ).rejects.toThrow("boom");
+
+  const items = await app.repo.findMany();
+  expect(items).toHaveLength(0);
+};
+
+export const testConcurrentTransactionals = async (alepha: Alepha) => {
+  class App {
+    repo = $repository(item);
+    db = $inject(DatabaseProvider);
+  }
+
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  // Two overlapping transactional blocks from separate contexts (like two
+  // concurrent server requests). On a single shared SQLite connection they
+  // must be serialized — not collide with "cannot start a transaction
+  // within a transaction" or end each other's half-finished transaction.
+  await Promise.all([
+    alepha.fork(() =>
+      app.db.transactional(async () => {
+        await app.repo.create({ name: "t1" });
+        await sleep(25);
+        await app.repo.create({ name: "t1-bis" });
+      }),
+    ),
+    alepha.fork(async () => {
+      await sleep(5);
+      return app.db.transactional(async () => {
+        await app.repo.create({ name: "t2" });
+        await sleep(5);
+      });
+    }),
+  ]);
+
+  const items = await app.repo.findMany();
+  expect(items).toHaveLength(3);
+};
+
 export const testDatabaseProviderTransactional = async (alepha: Alepha) => {
   class App {
     repo = $repository(item);

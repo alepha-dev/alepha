@@ -1,6 +1,7 @@
 import { RedisTopicProvider } from "alepha/topic/redis";
 import { describe, test } from "vitest";
 import {
+  testDelIfOwner,
   testLockBasic,
   testLockGracePeriod,
   testLockWait,
@@ -21,5 +22,9 @@ describe("RedisLockProvider", () => {
 
   test("should lock with grace period", async () => {
     await testLockGracePeriod(Provider, TopicProvider);
+  });
+
+  test("delIfOwner only deletes the caller's own lock", async () => {
+    await testDelIfOwner(Provider);
   });
 });

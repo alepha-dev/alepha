@@ -1,4 +1,4 @@
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { $inject, $state, z } from "alepha";
 import { $command } from "alepha/command";
@@ -13,7 +13,7 @@ export {
 } from "../../atoms/changelogOptions.ts";
 export { GitMessageParser } from "../../services/GitMessageParser.ts";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // =============================================================================
 // GIT PROVIDER
@@ -22,10 +22,13 @@ const execAsync = promisify(exec);
 /**
  * Git provider for executing git commands.
  * Can be substituted in tests with a mock implementation.
+ *
+ * Takes an argv array so user-supplied refs (`--from`/`--to`) can never be
+ * interpreted by a shell.
  */
 export class GitProvider {
-  async exec(cmd: string, cwd: string): Promise<string> {
-    const { stdout } = await execAsync(`git ${cmd}`, { cwd });
+  async exec(args: string[], cwd: string): Promise<string> {
+    const { stdout } = await execFileAsync("git", args, { cwd });
     return stdout;
   }
 }
@@ -151,9 +154,9 @@ export class ChangelogCommand {
    * Get the latest version tag.
    */
   protected async getLatestTag(
-    git: (cmd: string) => Promise<string>,
+    git: (args: string[]) => Promise<string>,
   ): Promise<string | null> {
-    const tagsOutput = await git("tag --sort=-version:refname");
+    const tagsOutput = await git(["tag", "--sort=-version:refname"]);
     const tags = tagsOutput
       .trim()
       .split("\n")
@@ -193,7 +196,7 @@ export class ChangelogCommand {
         .optional(),
     }),
     handler: async ({ flags, root }) => {
-      const git = (cmd: string) => this.git.exec(cmd, root);
+      const git = (args: string[]) => this.git.exec(args, root);
 
       // Determine the starting point
       let fromRef: string;
@@ -218,7 +221,11 @@ export class ChangelogCommand {
       this.log.debug("Using to ref", { to: toRef });
 
       // Get commits in range
-      const commitsOutput = await git(`log ${fromRef}..${toRef} --oneline`);
+      const commitsOutput = await git([
+        "log",
+        `${fromRef}..${toRef}`,
+        "--oneline",
+      ]);
 
       if (!commitsOutput.trim()) {
         process.stdout.write(`No changes in range ${fromRef}..${toRef}\n`);

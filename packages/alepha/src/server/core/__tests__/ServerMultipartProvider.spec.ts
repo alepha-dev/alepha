@@ -1,7 +1,10 @@
 import { Alepha, z } from "alepha";
 import { $action, AlephaServer, ServerProvider } from "alepha/server";
 import { describe, test } from "vitest";
-import { multipartOptions } from "../providers/ServerMultipartProvider.ts";
+import {
+  multipartOptions,
+  ServerMultipartProvider,
+} from "../providers/ServerMultipartProvider.ts";
 
 class App {
   upload = $action({
@@ -267,6 +270,65 @@ describe("ServerMultipartProvider - Size Limits", () => {
     expect(resp.status).toBe(413);
     const body = await resp.json();
     expect(body.message).toMatch(/size limit exceeded/i);
+  });
+
+  test("should abort oversized streamed upload without buffering it", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaServer).with(App);
+    alepha.store.mut(multipartOptions, () => ({
+      limit: 1_000,
+      fileLimit: 100_000_000,
+      fileCount: 10,
+    }));
+    await alepha.start();
+
+    // Chunked transfer-encoding: no content-length header, so the fail-fast
+    // header check can't fire. The stream itself must be cut at `limit` —
+    // otherwise formData() buffers the entire body into RAM (DoS).
+    const boundary = "----alepha-test-boundary";
+    const encoder = new TextEncoder();
+    const head = encoder.encode(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="big.bin"\r\nContent-Type: application/octet-stream\r\n\r\n`,
+    );
+    const tail = encoder.encode(`\r\n--${boundary}--\r\n`);
+    const chunk = new Uint8Array(1024).fill(120);
+    const totalChunks = 200; // ~200 KB against a 1 KB limit
+
+    let pulled = 0;
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(head);
+      },
+      pull(controller) {
+        if (pulled < totalChunks) {
+          pulled++;
+          controller.enqueue(chunk);
+        } else {
+          controller.enqueue(tail);
+          controller.close();
+        }
+      },
+    });
+
+    const request = new Request("http://localhost/api/upload", {
+      method: "POST",
+      headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+      body,
+      duplex: "half",
+    } as RequestInit);
+
+    const provider = alepha.inject(ServerMultipartProvider);
+    const route = {
+      schema: { body: z.object({ file: z.file() }) },
+    } as never;
+
+    await expect(provider.parseMultipart(route, request)).rejects.toThrow(
+      /size limit/i,
+    );
+
+    // The parser must stop reading at the limit, not consume the stream.
+    expect(pulled).toBeLessThan(totalChunks);
   });
 
   test("should reject request with too many files", async ({ expect }) => {

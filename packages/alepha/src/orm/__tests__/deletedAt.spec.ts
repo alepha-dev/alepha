@@ -2,6 +2,7 @@ import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
+  testAggregateExcludesSoftDeleted,
   testForceDelete,
   testNoUpdateIfAlreadyDeleted,
   testSoftDeleteUpdatesInsteadOfDelete,
@@ -26,6 +27,17 @@ describe("deletedAt", () => {
   });
   it("should not update if deletedAt is already set (postgres)", async () => {
     await testNoUpdateIfAlreadyDeleted(Alepha.create().with(AlephaOrmPostgres));
+  });
+
+  it("aggregate excludes soft-deleted rows (sqlite)", async () => {
+    await testAggregateExcludesSoftDeleted(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("aggregate excludes soft-deleted rows (postgres)", async () => {
+    await testAggregateExcludesSoftDeleted(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
   });
 
   it("should force delete (sqlite)", async () => {

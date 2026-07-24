@@ -10,6 +10,7 @@ import {
   testCacheDisabled,
   testCacheFalsyValues,
   testCacheIncr,
+  testCacheIncrTtl,
   testCacheInvalidateAll,
   testCacheInvalidateByArgs,
   testCacheInvalidateByKey,
@@ -116,6 +117,10 @@ describe("$cache", () => {
 
   it("should increment values atomically", async () => {
     await testCacheIncr();
+  });
+
+  it("should expire incremented counters after their ttl", async () => {
+    await testCacheIncrTtl();
   });
 
   it("should cache falsy values (0, empty string, false, null)", async () => {

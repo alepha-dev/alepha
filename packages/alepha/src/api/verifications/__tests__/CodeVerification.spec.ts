@@ -114,6 +114,37 @@ describe("Code Verification", () => {
     ).toEqual({ ok: true, alreadyVerified: true });
   });
 
+  it("locks an already-verified record after too many wrong guesses", async ({
+    expect,
+  }) => {
+    const { controller, target, service } = await createTest();
+
+    const request = await service.createVerification({ type: "code", target });
+    await controller.validateVerificationCode({
+      params: { type: "code" },
+      body: { target, token: request.token },
+    });
+
+    // Wrong guesses against a verified record must burn the same attempt
+    // budget as unverified ones — otherwise the code is brute-forceable
+    // forever through this branch.
+    for (let i = 0; i < request.maxVerificationAttempts; i++) {
+      await expect(() =>
+        controller.validateVerificationCode({
+          params: { type: "code" },
+          body: { target, token: "000000" },
+        }),
+      ).rejects.toThrow();
+    }
+
+    await expect(() =>
+      controller.validateVerificationCode({
+        params: { type: "code" },
+        body: { target, token: "111111" },
+      }),
+    ).rejects.toThrow(/maximum|locked/i);
+  });
+
   it("should handle invalid code", async ({ expect }) => {
     const { controller, target, service } = await createTest();
 

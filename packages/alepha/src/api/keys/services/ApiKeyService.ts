@@ -45,9 +45,17 @@ export class ApiKeyService {
    *
    * @param options.priority - Priority of this resolver (default: 50, JWT is 100)
    * @param options.prefix - API key prefix to match in Bearer header (default: "ak")
+   * @param options.validateOwner - Called with the key's userId on every
+   * validation; return false to refuse the key. Wire this to the user store
+   * so keys stop authenticating the moment their owner is disabled or
+   * deleted — an API key must never outlive its account.
    */
   public createResolver(
-    options: { priority?: number; prefix?: string } = {},
+    options: {
+      priority?: number;
+      prefix?: string;
+      validateOwner?: (userId: string) => Promise<boolean>;
+    } = {},
   ): IssuerResolver {
     const { priority = 50, prefix = "ak" } = options;
     const prefixPattern = `${prefix}_`;
@@ -74,7 +82,7 @@ export class ApiKeyService {
           return null;
         }
 
-        return this.validate(token);
+        return this.validate(token, options.validateOwner);
       },
     };
   }
@@ -254,8 +262,14 @@ export class ApiKeyService {
 
   /**
    * Validate an API key token and return user info if valid.
+   *
+   * @param validateOwner - Optional per-request owner check; a false return
+   * refuses the key (owner disabled or deleted).
    */
-  public async validate(token: string): Promise<UserInfo | null> {
+  public async validate(
+    token: string,
+    validateOwner?: (userId: string) => Promise<boolean>,
+  ): Promise<UserInfo | null> {
     // Quick check for API key format
     if (!token.includes("_")) {
       return null;
@@ -291,6 +305,17 @@ export class ApiKeyService {
       apiKey.expiresAt &&
       this.dateTimeProvider.now().isAfter(apiKey.expiresAt)
     ) {
+      return null;
+    }
+
+    // A key must never outlive its account: refuse when the owner is
+    // disabled or deleted. Deliberately NOT cached — revocation must be
+    // visible immediately.
+    if (validateOwner && !(await validateOwner(apiKey.userId))) {
+      this.log.info("API key refused: owner is disabled or deleted", {
+        apiKeyId: apiKey.id,
+        userId: apiKey.userId,
+      });
       return null;
     }
 

@@ -276,9 +276,20 @@ export class BunRedisProvider extends RedisProvider {
   // Counter operations
   // ---------------------------------------------------------
 
-  public override async incr(key: string, amount: number): Promise<number> {
-    const result = await this.publisher.send("INCRBY", [key, String(amount)]);
-    return Number(result);
+  public override async incr(
+    key: string,
+    amount: number,
+    ttl?: number,
+  ): Promise<number> {
+    const result = Number(
+      await this.publisher.send("INCRBY", [key, String(amount)]),
+    );
+    // INCRBY is atomic, so exactly one concurrent caller observes the
+    // "creation" value and arms the expiry (fixed window).
+    if (ttl && result === amount) {
+      await this.publisher.send("PEXPIRE", [key, String(Math.ceil(ttl))]);
+    }
+    return result;
   }
 
   /**

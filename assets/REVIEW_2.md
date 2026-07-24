@@ -94,7 +94,29 @@ Three more findings fixed and marked **✅ FIXED** in the body (verified with `y
 | P2 | `/realms/config` (unauthenticated) no longer returns `adminEmails` / `adminUsernames` — the response schema omits them (`publicRealmSettingsSchema`) and the handler strips them. New schema test. | `realmConfigSchema.ts`, `RealmController.ts` |
 | P1 | HttpClient GET dedup + server-side ETag cache are now identity-scoped (hash of authorization/cookie), so the shared singleton can't hand one user another user's cached/in-flight response. Anonymous requests scope to "" → browser behaviour unchanged. | `HttpClient.ts` |
 
-Deliberately **not** fixed in these passes (need design decisions or wider changes): the repository-level `eq: undefined` hardening (root cause of the P0 — needs a QueryManager contract decision), the SQLite async-transaction family, the registration rate-limit race (needs TTL support on `incr()` across all cache providers first — today `incr` never expires, so switching would permanently lock IPs out), `checkPermission` realm threading, and everything in the payments/subscriptions billing loop.
+Deliberately **not** fixed in these passes (need design decisions or wider changes): the repository-level `eq: undefined` hardening (root cause of the P0 — needs a QueryManager contract decision), the SQLite async-transaction family, the registration rate-limit race (needs TTL support on `incr()` across all cache providers first — today `incr` never expires, so switching would permanently lock IPs out), `checkPermission` realm threading, and everything in the payments/subscriptions billing loop. → All of these except the billing loop were fixed in the third pass below.
+
+### Third fix pass — 2026-07-24 (batches 1 & 2)
+
+25 more findings fixed and marked **✅ FIXED** in the body. Verified with `yarn lint`, `tsc --noEmit`, the full alepha suite (383 files, 4297 tests), `yarn test:bun` (44), the lore suite (298), and a clean `yarn w alepha build` (no circular deps). TDD throughout — every fix has a test that failed first.
+
+| Area | Fix |
+|------|-----|
+| orm (root cause) | **QueryManager now throws on `undefined` filters** — both `where: { col: undefined }` and `{ col: { eq: undefined } }` raise `AlephaError` instead of silently dropping the WHERE condition. Kills the P0 class at the root; callers wanting optional filters must omit the key. |
+| orm | `aggregate()` applies tenant scoping + soft-delete filter even without a `where` (was the one asymmetric read path). |
+| orm | SQLite async-transaction family: `Repository.transaction()` routes sync-SQLite drivers through awaited BEGIN/COMMIT (`usesSyncTransactions`); `BunSqliteProvider` got the awaited `transactional()` override; concurrent `transactional()` blocks are serialized on the shared connection (mutex in `DatabaseProvider.runExclusiveNativeTransaction`). |
+| system/cli | `ShellProvider.run` accepts an **argv array** (no shell, no parsing — injection-proof); string-form escaping switched to POSIX single-quotes (kills `;`, backticks, `$()`); `isInstalled` validates the name; `gh`/`git` call sites (GitHubSecretStore, VendorService, changelog `--from/--to`) migrated to argv form. |
+| payments | `expireStaleIntents` uses a status-guarded claim (never stomps a captured payment); `createSession` claims `created → processing` before the PSP call (no double sessions / orphaned payments, releases claim on PSP failure); `refund()` reserves via pending-refund row + version-guarded claim in a transaction — concurrent refunds can no longer over-refund (verified by an 8-way concurrent test). |
+| jobs | Sweep promotes due rows with a status guard (`promoteScheduled` cannot resurrect a cancelled execution; per-row failure containment); `cancel()` uses a guarded update so it can't stamp `cancelled` over a terminal row. |
+| lock | `LockProvider.delIfOwner` (+`get`) — compare-and-delete release in the `$lock` middleware and `LockPrimitive`; a finisher whose lock expired no longer deletes the next holder's lock; `setGracePeriod` only extends a lock still owned; `LockPrimitive.run` uses a per-invocation id (overlapping calls on one instance are now mutually exclusive). |
+| api/keys | API keys die with their account: `createResolver({ validateOwner })` re-checks the owner on every validation; `$realm` wires it to the realm user repo — disabled or deleted users' keys stop authenticating immediately. |
+| security | JWT tenant-claim anti-replay check extracted to `SecurityProvider.matchesTenantClaim` and wired into the `$issuer` resolver (was dead code on the primary auth path); `checkPermissionInRealm` resolves role names within the caller's realm (used by `$secure`, `createUser`, `createUserFromToken`) — realm-A's `admin` no longer leaks its permission set to realm-B users. |
+| server | Multipart bodies stream through a counting limiter that aborts past `limit` — chunked (no content-length) uploads can no longer buffer unbounded RAM; required query parameters are validated (missing required → 400 instead of `undefined` reaching the handler). |
+| users/verifications | Registration checks captcha BEFORE availability (no email/username enumeration without solving a captcha); IP rate limit uses atomic `incr()` (concurrent bursts can't sail past the threshold); `incr()` gained fixed-window TTL support across ALL cache providers (Memory, Database, Redis node+bun, KV) with a shared conformance test — counters expire instead of permanently locking IPs out; already-verified verification codes now burn the attempt budget and lock (no infinite guessing). |
+| users | Admin session API no longer returns `refreshToken` (schema + `SessionCrudService` projection). |
+| prod defaults | SMS resolves `LocalSmsProvider` outside tests (memory = silent message loss in prod); mock-checkout endpoints refuse production unless `mockCheckoutOptions.allowInProduction` is set; `/metrics` supports a `METRICS_TOKEN` bearer guard (+ prod warning when unset); registering the rate-limit module no longer throttles every route at 100/15min — global limiting is opt-in, per-route limits keep sane defaults. |
+
+Still deliberately open: the payments/subscriptions billing loop (needs product decisions — see the module section), and the rate-limit `"unknown"`-IP shared bucket (only reachable when a global limit is explicitly configured).
 
 Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`main` @ 6c7ec9400); fixed findings' line numbers may have shifted slightly.
 
@@ -205,12 +227,12 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 
 ## security + crypto + captcha
 
-### [BUG] JWT tenant-claim replay protection is dead code on the primary auth path
+### ✅ FIXED — [BUG] JWT tenant-claim replay protection is dead code on the primary auth path
 - **Severity**: P1
 - **File**: packages/alepha/src/security/primitives/$issuer.ts:200-226 (and packages/alepha/src/security/providers/SecurityProvider.ts:97-137)
 - **Detail**: `$issuer.createToken` writes a `tenant` claim into every access token (`$issuer.ts:340,372`) and the code/comments assert the resolver "compares this claim against `currentTenantAtom` on every request" to stop cross-tenant token replay. But that comparison lives only in `SecurityProvider.createDefaultJwtResolver` (SecurityProvider.ts:121-131), which is registered **only** when `realm.resolvers.length === 0` (SecurityProvider.ts:84). `$issuer.onInit` always registers its own `createJwtResolver()` (`$issuer.ts:194`), which has **no tenant check**, so `realm.resolvers` is never empty for issuer/`$realm`-based realms — the exact multi-tenant path in `api/users`. Result: bearer JWTs minted on tenant A are accepted on tenant B; the documented anti-replay guard never runs. Fix: move the tenant-claim check into `$issuer.createJwtResolver` (or a shared resolver helper).
 
-### [BUG] `checkPermission` resolves role names across ALL realms, ignoring the user's realm
+### ✅ FIXED — [BUG] `checkPermission` resolves role names across ALL realms, ignoring the user's realm
 - **Severity**: P1
 - **File**: packages/alepha/src/security/providers/SecurityProvider.ts:500-506
 - **Detail**: `checkPermission(permission, ...roleNames)` maps each role name via `this.getRoles()` with **no realm argument**, which concatenates roles from every realm (SecurityProvider.ts:745-751) and returns the first name match. `$secure` calls it with just `...user.roles` and no realm (`$secure.ts:147-150`). Every `$realm` defines default roles literally named `"admin"` and `"user"` ($realm.ts:142-176), so in any multi-realm app these names collide. A user authenticated in realm A with role `"admin"` will be authorized against whichever realm's `"admin"` role appears first in the `realms` array — potentially a broader permission set than their own realm grants. Breaks realm/tenant authorization isolation. Fix: thread the user's `realm` into `checkPermission` and resolve with `getRoles(realm)`.
@@ -259,12 +281,12 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/server/auth/providers/ServerAuthProvider.ts:52-69
 - **Detail**: Accepts any string starting with `/` that doesn't start with `//` — so `/\evil.com` passes and becomes `Location: /\evil.com`, which browsers normalize to `//evil.com` (open redirect after OAuth login/logout via `?redirect_uri=`). The repo already contains the correct check — `auth/helpers/safeRedirectPath.ts` explicitly rejects backslash tricks — but it is **never imported anywhere** (dead code). Spec tests `//` and absolute URLs but not backslashes. Fix: reject `\` (or reuse safeRedirectPath).
 
-### [BUG] Multipart uploads with chunked transfer-encoding buffer unbounded (DoS)
+### ✅ FIXED — [BUG] Multipart uploads with chunked transfer-encoding buffer unbounded (DoS)
 - **Severity**: P1
 - **File**: packages/alepha/src/server/core/providers/ServerMultipartProvider.ts:113-126,150
 - **Detail**: The only pre-parse size guard is the content-length header check; `Transfer-Encoding: chunked` (no content-length) skips it, and `request.formData()` buffers the entire body into RAM with no limit. ServerBodyParserProvider explicitly skips its streaming size check for multipart. Per-file/total checks run only *after* the body is in memory. Fix: counting TransformStream that aborts past `options.limit` before formData().
 
-### [BUG] Required query parameters are never validated
+### ✅ FIXED — [BUG] Required query parameters are never validated
 - **Severity**: P1
 - **File**: packages/alepha/src/server/core/providers/ServerRouterProvider.ts:489-509
 - **Detail**: The `schema.query` branch decodes only *present* keys and assigns `request.query = query` — unlike the headers branch (533) it never calls `codec.validate`, so a missing required query param produces `{}` instead of a 400; handler runs with `query.limit === undefined`. Spec only tests an invalid present value. Fix: validate the decoded subset against the full schema.
@@ -349,7 +371,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/server/cookies/services/CookieParser.ts:34-36
 - **Detail**: Null-cookie branch emits `name=; Path=/; Max-Age=0` regardless of the cookie's declared path/domain — a `$cookie({ path: "/admin" })` or domain-scoped cookie can never be deleted. ServerCookiesProvider.deleteCookie (207) doesn't receive the options to forward. Fix: pass path/domain through deletion.
 
-### [BUG] Rate-limit module: importing it rate-limits every route at 100 req/15 min; unproxied clients share one bucket
+### ✅ FIXED — [BUG] Rate-limit module: importing it rate-limits every route at 100 req/15 min; unproxied clients share one bucket
 - **Severity**: P2
 - **File**: packages/alepha/src/server/rate-limit/providers/ServerRateLimitProvider.ts:114-135,252-255
 - **Detail**: The global server:onRequest hook falls back to atom *defaults* `max: 100, windowMs: 15min`; the "skip if not configured" guard (`!max && !windowMs`) can never fire. Merely registering the module throttles every route (incl. static assets and OPTIONS). When `req.ip` is undefined the key is the shared literal `"unknown"` — all clients exhaust one bucket. Fix: opt-in global hook (no default limit); fall back to connection IP.
@@ -439,22 +461,22 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 
 ## orm
 
-### [BUG] `aggregate()` skips tenant scoping and soft-delete filter when `where` is omitted
+### ✅ FIXED — [BUG] `aggregate()` skips tenant scoping and soft-delete filter when `where` is omitted
 - **Severity**: P1
 - **File**: packages/alepha/src/orm/core/services/Repository.ts:1258
 - **Detail**: In `aggregate()`, `withOrganization(withDeletedAt(...))` is only applied inside `if (query.where)`. An aggregate with no `where` therefore includes soft-deleted rows AND other tenants' rows on `PG_ORGANIZATION`-scoped entities — including `strict` tenancy tables, whose fail-closed guard never runs. `findMany`, `count`, `updateMany`, `deleteMany` all apply scoping unconditionally; `aggregate` is the one asymmetric path. Fix: hoist the scoping call out of the `if`. No test covers aggregate + organization/deletedAt.
 
-### [BUG] `Repository.transaction()` commits before async work completes on SQLite drivers
+### ✅ FIXED — [BUG] `Repository.transaction()` commits before async work completes on SQLite drivers
 - **Severity**: P1
 - **File**: packages/alepha/src/orm/core/services/Repository.ts:271
 - **Detail**: `transaction()` calls `this.db.transaction(cb)`; on node:sqlite/bun:sqlite this reaches drizzle's sync session and the shimmed `db.transaction` (NodeSqliteProvider.ts:201-217) runs `BEGIN; result = fn(...); COMMIT` synchronously — an async callback returns a pending Promise and COMMIT executes immediately, so every statement in the callback runs **outside** the transaction and can never roll back. The `transactional` override's own comment admits this but only `transactional` was fixed; public `Repository.transaction()` still routes through the broken path. Fix: delegate to `provider.transactional` on sync-sqlite drivers, or reject async callbacks there.
 
-### [BUG] `BunSqliteProvider` inherits the base `transactional()` — same premature-commit hole
+### ✅ FIXED — [BUG] `BunSqliteProvider` inherits the base `transactional()` — same premature-commit hole
 - **Severity**: P1
 - **File**: packages/alepha/src/orm/core/providers/drivers/BunSqliteProvider.ts:74
 - **Detail**: NodeSqliteProvider overrides `transactional()` with explicit awaited BEGIN/COMMIT/ROLLBACK precisely because drizzle's sync sqlite driver can't wrap async callbacks; BunSqliteProvider has no such override, so `$transactional`/`$seed` on Bun+SQLite commit while the async body is still pending. Rollback-on-error silently doesn't happen. Bun spec has zero transaction coverage. Fix: port the override.
 
-### [BUG] Concurrent `transactional()` blocks on NodeSqlite collide on the shared connection
+### ✅ FIXED — [BUG] Concurrent `transactional()` blocks on NodeSqlite collide on the shared connection
 - **Severity**: P1
 - **File**: packages/alepha/src/orm/core/providers/drivers/NodeSqliteProvider.ts:134
 - **Detail**: The tx marker is ALS-scoped per request, but BEGIN executes on the single shared `DatabaseSync` connection. While request A awaits inside its `transactional()` body, request B issues its own BEGIN → "cannot start a transaction within a transaction"; worse, B's COMMIT/ROLLBACK can end A's half-finished transaction. Any server under concurrent load using the default sqlite driver with `$transactional` can hit this. Fix: per-connection mutex/queue. Same hazard in the base class when `transactional()` runs outside ALS context (marker goes to the global store).
@@ -617,7 +639,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/cache/core/providers/CloudflareKVProvider.ts:152
 - **Detail**: `options.expirationTtl = Math.max(60, Math.ceil(ttl / 1000))` — a 5s TTL entry lives up to 60s on Workers, with no log or freshness check on read. KV genuinely requires ≥60s, but the divergence is invisible. Fix: wrap clamped values in the SWR-style envelope (or `freshUntil`) so `read()` honors the real TTL, or log a warning.
 
-### [BUG] DatabaseCacheProvider.incr never clears a stale `expiresAt`, hiding a live counter
+### ✅ FIXED — [BUG] DatabaseCacheProvider.incr never clears a stale `expiresAt`, hiding a live counter
 - **Severity**: P2
 - **File**: packages/alepha/src/cache/database/providers/DatabaseCacheProvider.ts:229
 - **Detail**: The upsert's conflict `set` updates `count`/`value` but not `expiresAt`. If a key expired but wasn't swept, `incr()` keeps counting on the row while `get()`/`has()` filter it via `unexpiredWhere` — key reports absent while `incr()` returns growing values. Fix: add `expiresAt: null` (or fresh TTL) to the conflict set. Note `incr` on a live `set()` row also silently nulls the cached `value`.
@@ -627,7 +649,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/bucket/providers/S3FileStorageProvider.ts:228
 - **Detail**: s3mini's `deleteObject` returns a boolean and the provider ignores it, while R2 does an explicit `exists` check "for consistency with other providers" and Memory/Local throw. Same `bucket.delete(id)` diverges per backend. The S3 spec's `testDeleteNonExistentFile` never actually deletes a non-existent id. Fix: check the return and throw `FileNotFoundError` on `false` (or drop the throw everywhere; pick one contract).
 
-### [BUG] SMS defaults to MemorySmsProvider in every environment, including production
+### ✅ FIXED — [BUG] SMS defaults to MemorySmsProvider in every environment, including production
 - **Severity**: P2
 - **File**: packages/alepha/src/sms/index.ts:50
 - **Detail**: `register` binds `SmsProvider → MemorySmsProvider` unconditionally (unlike email, which switches on `isTest()`). In production, `$sms.send()` "succeeds" by pushing into an in-process array — silent message loss with a success hook emitted. `LocalSmsProvider` exists but is never selected; no real provider in tree. Fix: mirror email's env-switch; warn-log on first prod send through Memory.
@@ -715,12 +737,12 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/websocket/providers/RoomEngine.ts:108-114
 - **Detail**: `leave()` runs `await this.options.onLeave?.(...)` *before* the `size === 0 → teardown()` check; a throwing onLeave propagates and teardown never runs. On Node the close handler only logs and skips `roomEngines.delete(key)` — the setInterval loop fires on an empty room forever. On Cloudflare the error escapes `webSocketClose` and cleanup is skipped, keeping the DO ticking (billable) indefinitely. Fix: wrap onLeave in try/catch (like onEmpty) so teardown always runs.
 
-### [BUG] $lock release can delete another holder's lock after own expiry
+### ✅ FIXED — [BUG] $lock release can delete another holder's lock after own expiry
 - **Severity**: P2 (mutual-exclusion break under slow handlers)
 - **File**: packages/alepha/src/lock/core/primitives/$lock.ts:127-137 (middleware), 504-525 (LockPrimitive.setGracePeriod)
 - **Detail**: Release is `finally { await lockProvider.del(name) }` — unconditional. If the handler outlives `maxDuration` (default 5 min), the key expires, another instance acquires, then the first finisher deletes the second holder's lock (classic unsafe-release). `setGracePeriod` is worse: non-NX set overwriting the current holder. Fix: compare-and-delete (Lua GET==myId then DEL) and compare-and-set for grace.
 
-### [BUG] LockPrimitive: shared per-instance id defeats in-process mutual exclusion
+### ✅ FIXED — [BUG] LockPrimitive: shared per-instance id defeats in-process mutual exclusion
 - **Severity**: P2
 - **File**: packages/alepha/src/lock/core/primitives/$lock.ts:421-427, 443-473
 - **Detail**: One lazily-created `this.id` per primitive instance — two overlapping `run()` calls both SET NX GET, both read back `id === this.id`, both enter the critical section (the exact failure the middleware fixes with a per-invocation id). LockPrimitive is exported public API but only instantiated by its own tests; its topic-based `wait()` is dead code. Fix: per-invocation UUID, or retire the class.
@@ -992,7 +1014,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/users/services/SessionService.ts:694
 - **Detail**: In `link()`, when an OAuth profile's email matches an existing local user, auto-linking is refused only when the provider explicitly returns `email_verified === false`: `if (profile.email_verified === false)`. Many IdPs (and several of the `$auth*` providers) omit `email_verified` entirely, in which case it is `undefined` and the code links the OAuth identity into the pre-existing account. An attacker who controls an OAuth account carrying a victim's email at a provider that doesn't assert verification can thereby take over the victim's local (credentials) account. Fix: require positive proof — `if (profile.email_verified !== true) throw ...` for the auto-link-by-email branch.
 
-### [BUG] API keys survive user disable/deletion and are never re-checked against `enabled`
+### ✅ FIXED — [BUG] API keys survive user disable/deletion and are never re-checked against `enabled`
 - **Severity**: P1 (arguably P0 — auth persists after account removal)
 - **File**: packages/alepha/src/api/keys/services/ApiKeyService.ts:258-306; packages/alepha/src/api/users/services/UserService.ts:485-513
 - **Detail**: `validate()` resolves a token to `{ id: apiKey.userId, roles: apiKey.roles }` purely from the `api_keys` row — it never loads the user, so it never checks `user.enabled`. Meanwhile `UserService.deleteUser` cleans up sessions and identities but not API keys (cross-module by design), and `updateUser({enabled:false})` revokes nothing. Result: a disabled — or fully deleted — user keeps authenticating (with their original roles, incl. `admin`) via any outstanding API key until the key's own `expiresAt`. `SessionService.refreshSession` correctly rejects disabled users (line 573); the API-key path has no equivalent guard. Fix: revoke a user's API keys on disable/delete (e.g. a `UserJobs`/audit hook), and/or have `validate()` verify the owner is still enabled.
@@ -1002,17 +1024,17 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/users/controllers/RealmController.ts:24-54; packages/alepha/src/api/users/schemas/realmConfigSchema.ts:5-15
 - **Detail**: `getRealmConfig` is unauthenticated (no `$secure`) and returns `settings: realmAuthSettingsAtom.schema` verbatim. That schema includes `adminEmails` and `adminUsernames` (the exact list of accounts auto-promoted to admin), plus the full password policy. Any anonymous caller can `GET /realms/config` and harvest the privileged-account list to target. Fix: return a public-safe projection (drop `adminEmails`, `adminUsernames`, and anything else not needed to render the login/registration UI).
 
-### [BUG] Registration enumerates existing email/username/phone before captcha is checked
+### ✅ FIXED — [BUG] Registration enumerates existing email/username/phone before captcha is checked
 - **Severity**: P2
 - **File**: packages/alepha/src/api/users/services/RegistrationService.ts:230 vs 240-248
 - **Detail**: `createRegistrationIntent` calls `checkUserAvailability` (which throws `ConflictError("User with this email already exists")`, etc.) at line 230, but captcha is validated afterward at line 240. So an attacker can enumerate which emails/usernames/phone numbers are registered without ever solving a captcha, throttled only by `registrationIpMaxAttempts` (default 10 / 15 min). Fix: run the captcha check before the availability check (and consider a generic conflict message).
 
-### [BUG] Registration IP rate-limit is a racy get-then-set, contradicting its own "atomic incr" comment
+### ✅ FIXED — [BUG] Registration IP rate-limit is a racy get-then-set, contradicting its own "atomic incr" comment
 - **Severity**: P2
 - **File**: packages/alepha/src/api/users/services/RegistrationService.ts:72-80, 127-134
 - **Detail**: The `rateLimitCache` comment claims the SQL-backed provider is used "so `incr()` is atomic (`INSERT ... ON CONFLICT DO UPDATE SET count = count + 1`)", but the code does `const count = (await this.rateLimitCache.get(ipKey)) ?? 0; ... await this.rateLimitCache.set(ipKey, count + 1)`. That read-modify-write is a TOCTOU race: concurrent requests all read the same `count` and all write `count+1`, so a burst sails past the threshold — exactly the coalescing failure the comment says it avoids. Fix: use the cache's atomic `incr` (as documented) instead of get+set.
 
-### [RECO] Admin session listing exposes raw `refreshToken` for every session
+### ✅ FIXED — [RECO] Admin session listing exposes raw `refreshToken` for every session
 - **Severity**: P2
 - **File**: packages/alepha/src/api/users/schemas/sessionResourceSchema.ts:23; packages/alepha/src/api/users/controllers/AdminSessionController.ts:17-59
 - **Detail**: `sessionResourceSchema` includes `refreshToken: z.uuid()`, and `AdminSessionController.findSessions/getSession` return it to anyone with `admin:session:read`. A refresh token is a long-lived bearer credential: this hands an admin (or anyone who compromises the admin API/UI/logs) the ability to mint access tokens for any user — full impersonation. `MySessionController` deliberately omits it (see its doc comment) precisely for this reason; the admin view should too. Fix: drop `refreshToken` from the admin projection.
@@ -1032,7 +1054,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/users/controllers/RealmController.ts:56-82
 - **Detail**: The public availability check queries `where: { username: { eq: body.username } }` — case-sensitive `eq`, and with no `realm` filter. Because uniqueness is enforced on `(realm, LOWER(username))`, this reports `available: true` for `Admin` when `admin` is taken (then the actual registration 409s), and in a multi-realm deployment it checks across all realms instead of the target realm. Fix: scope by `realm.name` and compare case-insensitively.
 
-### [BUG] Already-verified verification codes allow unlimited guessing (no attempt increment)
+### ✅ FIXED — [BUG] Already-verified verification codes allow unlimited guessing (no attempt increment)
 - **Severity**: P3
 - **File**: packages/alepha/src/api/verifications/services/VerificationService.ts:172-192
 - **Detail**: Once `verifiedAt` is set, the "already verified" branch compares the submitted code and throws on mismatch without incrementing `attempts` or ever re-locking. So after a code is consumed, an attacker gets unlimited guesses against that record via the public `validateVerificationCode` endpoint. Impact is low because every in-tree consumer (`completePasswordReset`, `verifyEmailCode`) explicitly rejects `alreadyVerified`, but any future flow that treats `alreadyVerified` as success would be brute-forceable. Worth an attempt-counter on this branch too.
@@ -1071,22 +1093,22 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/subscriptions/jobs/SubscriptionJobs.ts:69-114 (billingCycle), 198-244 (trialExpiry); services/BillingService.ts:97-104
 - **Detail**: `billingCycle`/`trialExpiry` create a PaymentIntent (status `created`) and store `lastPaymentIntentId` — nothing then creates a checkout session, charges a saved method, or emits an event a host app could react to. Since `nextBillingAt`/status only advance on `payments:captured`, the same subscription matches again every hour, creating a new orphan intent each run. Each run overwrites `lastPaymentIntentId` and `findByPaymentIntent` matches only that column — if the user pays hour-1's intent after hour-2's run, the **paid renewal is never applied**. Also `trialExpiry` never transitions `trialing` → anything, so unpaid trials retain access indefinitely. Fix: emit `subscription:payment_due` (or charge the default method), mark pending-payment, match intents by `metadata.subscriptionId`.
 
-### [BUG] `expireStaleIntents` can overwrite a captured payment with `expired`
+### ✅ FIXED — [BUG] `expireStaleIntents` can overwrite a captured payment with `expired`
 - **Severity**: P1 (payment recorded lost)
 - **File**: packages/alepha/src/api/payments/services/PaymentService.ts:30-55
 - **Detail**: The cron reads `processing` intents older than 30 min, awaits `provider.expireSession()`, then does an **unguarded** `updateById(intent.id, { status: "expired" })`. A webhook landing between read and write flips the intent to `captured`, which the job stomps to `expired`: money taken, intent expired, `payments:captured` already emitted against a now-expired row. Fix: `updateOne({ id, status: { eq: "processing" } }, { status: "expired" })`. Secondary: the 30-min window keys on intent createdAt, not session creation.
 
-### [BUG] `refund()` TOCTOU allows over-refund
+### ✅ FIXED — [BUG] `refund()` TOCTOU allows over-refund
 - **Severity**: P1
 - **File**: packages/alepha/src/api/payments/services/PaymentService.ts:304-379
 - **Detail**: The remaining-refundable check has no lock/transaction/guard; two concurrent refunds both read the same totalRefunded and both pass. Stripe may reject the excess for PSP-backed intents, but **cash intents (`recordCashPayment`) have no providerRef** so the PSP branch is skipped and the DB records refunds exceeding the captured amount. Fix: serialize per intent (lock, guarded UPDATE with running total, or the entity's existing `db.version()` which `updateById` never uses).
 
-### [BUG] Concurrent `createSession` for one intent creates two PSP sessions; first one's payment is dropped
+### ✅ FIXED — [BUG] Concurrent `createSession` for one intent creates two PSP sessions; first one's payment is dropped
 - **Severity**: P2
 - **File**: packages/alepha/src/api/payments/services/PaymentService.ts:80-124
 - **Detail**: Two concurrent calls both pass `assertStatus(intent, "created")`, both create PSP sessions, `providerRef` overwritten by last writer. If the user pays the first session, `handleParsedWebhook` finds no intent for that ref and the captured payment is never applied. Fix: claim the intent with a guarded `updateOne({ id, status: { eq: "created" } }, { status: "processing" })` before the PSP call, or store all issued refs.
 
-### [BUG] Job sweep can resurrect a cancelled execution
+### ✅ FIXED — [BUG] Job sweep can resurrect a cancelled execution
 - **Severity**: P2 (race)
 - **File**: packages/alepha/src/api/jobs/providers/JobProvider.ts:1237-1244
 - **Detail**: Sweep phase 1 promotes due `scheduled` rows with an unguarded `updateById(exec.id, { status: "pending" })`; a concurrent `cancel()` is overwritten and the job runs anyway. `dispatchScheduled` (1322) already does this correctly with a guarded updateOne — the sweep should too. Similarly `cancel()` (948) uses unguarded updateById and can stamp `cancelled` over a completed row.
@@ -1206,7 +1228,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/payments/controllers/AdminPaymentController.ts:25,56,74,90,108,124
 - **Detail**: Uses `payments:read`/`payments:write` while every other admin controller uses `admin:<module>:<verb>`. A role granting `admin:*` won't cover the payments admin surface. Rename with aliases.
 
-### [RECO] Mock checkout confirm is an unauthenticated capture endpoint whenever the memory provider is active
+### ✅ FIXED — [RECO] Mock checkout confirm is an unauthenticated capture endpoint whenever the memory provider is active
 - **Severity**: P3
 - **File**: packages/alepha/src/api/payments/controllers/MockCheckoutController.ts:170-196; index.ts:78-84
 - **Detail**: `AlephaApiPayments` registers MemoryPaymentProvider as default, and MockCheckoutController exposes `POST /payments/mock-checkout/:id/confirm` (no auth) that flips any `processing` intent to `captured`. An app shipped to production without a real PSP silently has a "mark as paid" endpoint. Refuse mock checkout in production unless explicitly opted in.
@@ -1219,7 +1241,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 
 ## mcp + command + system + datetime + logger + router + fake + bin
 
-### [BUG] ShellProvider capture path is shell-injectable — escaping misses `;`, backtick, `$`, and single quotes
+### ✅ FIXED — [BUG] ShellProvider capture path is shell-injectable — escaping misses `;`, backtick, `$`, and single quotes
 - **Severity**: P1
 - **File**: packages/alepha/src/system/providers/NodeShellProvider.ts:93 (buildShellCommand), :43-46, :109-138 (execCapture)
 - **Detail**: `run(cmd, { capture: true })` re-joins parsed args via `buildShellCommand` and passes the string to `exec()` (`/bin/sh -c`). The escape regex `/[\s"&|<>^()]/` does not include `;`, backticks, `$`, `\`, or `'`, so an arg like `foo;rm -rf x` goes through unquoted and the shell executes `rm`. Worse, args that DO get quoted use double quotes, inside which `$(...)`/backtick still expand. Any app interpolating a filename/user value into a captured shell command is injectable, despite the method's "properly escaped" claim. Fix: single-quote POSIX escaping (`'...'` + `'\''`), or drop the shell and use `execFile(executable, args)`.
@@ -1294,7 +1316,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/mcp/providers/McpServerProvider.ts:65, transports/StreamableHttpMcpTransport.ts:215-235
 - **Detail**: `negotiatedVersion` lives on the provider singleton. (a) Client B initializing with older version changes what client A is validated against → spurious 400s; (b) on Workers a fresh isolate resets to `2025-11-25`, so a client that negotiated `2025-06-18` gets 400 mismatch on its next request. Validate header against `SUPPORTED_PROTOCOL_VERSIONS` membership or key per session.
 
-### [BUG] `isInstalled` interpolates the command name into a shell string
+### ✅ FIXED — [BUG] `isInstalled` interpolates the command name into a shell string
 - **Severity**: P2
 - **File**: packages/alepha/src/system/providers/NodeShellProvider.ts:205-213
 - **Detail**: `` exec(`command -v ${command}`) `` — metacharacters execute (`isInstalled("x; curl …")`). Use `execFile` or validate against `/^[\w.-]+$/`.
@@ -1433,7 +1455,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/cli/core/commands/verify.ts:34-36
 - **Detail**: Tests gated on the existence of a `test/` directory only, but the framework supports co-located `src/**/*.spec.ts` — such a project silently gets a green verify with zero tests executed. Gate on `test/` OR a glob hit, or always run vitest with `--passWithNoTests`.
 
-### [BUG] `changelog --from/--to` flags interpolated into a real shell
+### ✅ FIXED — [BUG] `changelog --from/--to` flags interpolated into a real shell
 - **Severity**: P2
 - **File**: packages/alepha/src/cli/core/commands/gen/changelog.ts:26-31,221
 - **Detail**: `GitProvider.exec` uses `promisify(exec)` (true shell) with `` `git ${cmd}` ``, embedding raw flag values (`git log ${fromRef}..${toRef}`). A ref like `HEAD;rm -rf .` executes. The one ShellProvider bypass in the CLI. Route through ShellProvider or `execFile("git", [...])`.

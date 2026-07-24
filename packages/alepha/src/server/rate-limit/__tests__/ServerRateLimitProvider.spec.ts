@@ -34,6 +34,35 @@ describe("ServerRateLimitProvider", () => {
       body: undefined,
     }) as any;
 
+  it("does not throttle routes just because the module is registered", async () => {
+    const app = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaCache)
+      .with(AlephaServerRateLimit);
+
+    class HelloApp {
+      hello = $action({ path: "/hello", handler: () => "ok" });
+    }
+    app.inject(HelloApp);
+    await app.start();
+
+    const { ServerProvider } = await import("alepha/server");
+    const hostname = app.inject(ServerProvider).hostname;
+
+    // No rate limit was configured anywhere — merely importing the module
+    // must not silently cap the app at the (former) 100 req / 15 min
+    // fallback.
+    let lastStatus = 0;
+    for (let i = 0; i < 105; i++) {
+      const resp = await fetch(`${hostname}/api/hello`);
+      lastStatus = resp.status;
+      await resp.arrayBuffer();
+    }
+    expect(lastStatus).toBe(200);
+
+    await app.stop();
+  });
+
   it("should allow requests within limit", async () => {
     const req = createMockRequest();
     const result = await provider.checkLimit(req, { max: 5, windowMs: 60000 });

@@ -502,7 +502,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
           }
         }
 
-        request.query = query;
+        // Validate the decoded subset against the full schema — decoding only
+        // present keys would silently accept a missing required parameter.
+        request.query = this.alepha.codec.validate(schemaQuery, query) as any;
       } catch (error) {
         throw new ValidationError("Invalid request query", error);
       }

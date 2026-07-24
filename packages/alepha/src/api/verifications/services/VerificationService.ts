@@ -174,7 +174,23 @@ export class VerificationService {
       // record. Short-circuiting on `verifiedAt` alone means any code (or a
       // blank one) passes once the target has been verified, so any flow
       // re-using verifyCode as an authz gate would accept an attacker's guess.
+      //
+      // Wrong guesses burn the same attempt budget as unverified records —
+      // without the counter this branch is brute-forceable forever.
+      if (verification.attempts >= settings.maxAttempts) {
+        this.log.warn("Verification locked due to max attempts", {
+          id: verification.id,
+          type: entry.type,
+          target: entry.target,
+        });
+        throw new BadRequestError(
+          "Maximum number of attempts reached - verification is locked",
+        );
+      }
       if (verification.code !== this.hashCode(code)) {
+        await this.verificationRepository.updateById(verification.id, {
+          attempts: verification.attempts + 1,
+        });
         this.log.warn("Invalid code submitted for already-verified entry", {
           id: verification.id,
           type: entry.type,

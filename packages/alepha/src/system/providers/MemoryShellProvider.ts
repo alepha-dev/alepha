@@ -4,7 +4,17 @@ import type { ShellProvider, ShellRunOptions } from "./ShellProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface MemoryShellCall {
+  /**
+   * The command as a display string. Argv-array calls are recorded as their
+   * space-joined form so `wasCalled` assertions work for both call styles.
+   */
   command: string;
+
+  /**
+   * The original argv array, when the call used the array form.
+   */
+  argv?: string[];
+
   options: ShellRunOptions;
 }
 
@@ -110,19 +120,24 @@ export class MemoryShellProvider implements ShellProvider {
    * Record command and return simulated output.
    */
   public async run(
-    command: string,
+    command: string | string[],
     options: ShellRunOptions = {},
   ): Promise<string> {
-    this.calls.push({ command, options });
+    const key = Array.isArray(command) ? command.join(" ") : command;
+    this.calls.push({
+      command: key,
+      argv: Array.isArray(command) ? command : undefined,
+      options,
+    });
 
     // Check for configured error
-    const errorMsg = this.errors.get(command);
+    const errorMsg = this.errors.get(key);
     if (errorMsg) {
       throw new AlephaError(errorMsg);
     }
 
     // Return configured output or empty string
-    return this.outputs.get(command) ?? "";
+    return this.outputs.get(key) ?? "";
   }
 
   /**

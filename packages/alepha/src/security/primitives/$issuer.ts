@@ -216,6 +216,13 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         // Parse and validate JWT
         const { result } = await this.jwt.parse(token, this.name);
 
+        // Anti-replay: a token minted on tenant A must not authenticate on
+        // tenant B. This is the primary auth path for `$realm`-based apps —
+        // skipping the check here would make it dead code.
+        if (!this.securityProvider.matchesTenantClaim(result.payload)) {
+          return null;
+        }
+
         // Extract user info from JWT payload
         return this.securityProvider.createUserFromPayload(
           result.payload,

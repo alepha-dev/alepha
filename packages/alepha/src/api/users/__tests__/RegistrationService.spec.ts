@@ -706,6 +706,59 @@ describe("alepha/api/users - RegistrationService", () => {
   });
 
   describe("Registration rate limiting", () => {
+    it("should check captcha before revealing whether an email exists", async ({
+      expect,
+    }) => {
+      const { registrationService, userService } = await setup({
+        captchaRequired: true,
+      });
+
+      await userService.users().create({
+        username: "captchauser",
+        email: "captcha-taken@example.com",
+        roles: ["user"],
+      });
+
+      // Without a captcha, the caller must get the captcha error — not a
+      // ConflictError that confirms the address is registered (enumeration).
+      await expect(
+        registrationService.createRegistrationIntent({
+          username: "someone",
+          email: "captcha-taken@example.com",
+          password: "SecurePassword123!",
+        }),
+      ).rejects.toThrow(/captcha/i);
+    });
+
+    it("should hold the IP rate limit under a concurrent burst", async ({
+      expect,
+    }) => {
+      const { alepha, registrationService } = await setup();
+
+      await alepha.fork(async () => {
+        alepha.store.set("alepha.http.request", { ip: "10.0.0.9" } as never);
+
+        // 20 truly concurrent attempts against a limit of 10: a get-then-set
+        // counter lets the whole burst through; an atomic incr admits at
+        // most 10.
+        const results = await Promise.allSettled(
+          Array.from({ length: 20 }, (_, i) =>
+            registrationService.createRegistrationIntent({
+              email: `burst-${i}@example.com`,
+              password: "SecurePassword123!",
+            }),
+          ),
+        );
+
+        const rateLimited = results.filter(
+          (r) =>
+            r.status === "rejected" &&
+            String(r.reason).includes("Too many registration attempts"),
+        );
+        expect(rateLimited.length).toBeGreaterThanOrEqual(10);
+      });
+    });
+
     it("should rate limit registration attempts by IP", async ({ expect }) => {
       const { alepha, registrationService } = await setup();
 

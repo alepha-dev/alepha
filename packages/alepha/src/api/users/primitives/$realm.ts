@@ -130,7 +130,18 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   if (features.apiKeys) {
     alepha.with(AlephaApiKeys);
     const apiKeyService = alepha.inject(ApiKeyService);
-    customResolvers.push(apiKeyService.createResolver());
+    customResolvers.push(
+      apiKeyService.createResolver({
+        // Keys must die with their account: refuse the key when its owner
+        // no longer exists or has been disabled.
+        validateOwner: async (userId) => {
+          const user = await realmProvider
+            .userRepository(name)
+            .findById(userId);
+          return user?.enabled === true;
+        },
+      }),
+    );
   }
 
   const realm: RealmPrimitive = $issuer({

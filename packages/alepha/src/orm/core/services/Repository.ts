@@ -281,6 +281,20 @@ export abstract class Repository<T extends TObject> {
     }
 
     this.log.debug(`Starting transaction on table ${this.tableName}`);
+
+    if (this.provider.usesSyncTransactions) {
+      // Drizzle's sync SQLite session commits as soon as the callback
+      // returns — an async callback would run its awaited statements OUTSIDE
+      // the transaction and rollback could never happen. Route through the
+      // provider's awaited implementation instead; statements participate via
+      // the shared connection, so the db itself acts as the tx handle.
+      return this.provider.transactional(() =>
+        transaction(
+          this.db as unknown as PgTransaction<any, Record<string, any>, any>,
+        ),
+      );
+    }
+
     return await this.db.transaction(transaction, config);
   }
 
@@ -1279,12 +1293,14 @@ export abstract class Repository<T extends TObject> {
     const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
     let builder = db.select(flatFields).from(this.table as PgTable);
 
-    // WHERE
-    if (query.where) {
-      const where = this.withOrganization(
-        this.withDeletedAt(query.where as any, opts),
-      );
-      builder = builder.where(this.toSQL(where)) as any;
+    // WHERE — tenant scoping and the soft-delete filter apply even when the
+    // caller passes no `where` (like every other read path).
+    const where = this.withOrganization(
+      this.withDeletedAt((query.where ?? {}) as any, opts),
+    );
+    const whereSql = this.toSQL(where);
+    if (whereSql) {
+      builder = builder.where(whereSql) as any;
     }
 
     // GROUP BY

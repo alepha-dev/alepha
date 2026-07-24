@@ -20,19 +20,22 @@ export interface RateLimitResult {
 }
 
 /**
- * Rate limit configuration atom (global defaults)
+ * Rate limit configuration atom (global defaults).
+ *
+ * Empty by default: merely registering the module must NOT throttle every
+ * route (static assets, OPTIONS, health checks included). Set `max` and/or
+ * `windowMs` here to opt into a global limit; per-route limits configured
+ * via `$rateLimit`/registrations fall back to 100 req / 15 min when they
+ * don't specify their own numbers.
  */
 export const rateLimitOptions = $atom({
   name: "alepha.server.rate-limit.options",
   schema: z.object({
-    windowMs: z
-      .number()
-      .describe("Window duration in milliseconds")
-      .default(15 * 60 * 1000),
+    windowMs: z.number().describe("Window duration in milliseconds").optional(),
     max: z
       .number()
       .describe("Maximum number of requests per window")
-      .default(100),
+      .optional(),
     skipFailedRequests: z
       .boolean()
       .describe("Skip rate limiting for failed requests")
@@ -42,10 +45,7 @@ export const rateLimitOptions = $atom({
       .describe("Skip rate limiting for successful requests")
       .optional(),
   }),
-  default: {
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-  },
+  default: {},
 });
 
 export type RateLimitAtomOptions = Static<typeof rateLimitOptions.schema>;
@@ -165,8 +165,8 @@ export class ServerRateLimitProvider {
     config: RateLimitRegistration,
   ): RateLimitOptions {
     return {
-      max: config.max ?? this.globalOptions.max,
-      windowMs: config.windowMs ?? this.globalOptions.windowMs,
+      max: config.max ?? this.globalOptions.max ?? 100,
+      windowMs: config.windowMs ?? this.globalOptions.windowMs ?? 900_000,
       keyGenerator: config.keyGenerator,
       skipFailedRequests:
         config.skipFailedRequests ?? this.globalOptions.skipFailedRequests,
@@ -214,8 +214,8 @@ export class ServerRateLimitProvider {
     baseKey: string,
     options: RateLimitOptions = {},
   ): Promise<RateLimitResult> {
-    const windowMs = options.windowMs ?? this.globalOptions.windowMs;
-    const max = options.max ?? this.globalOptions.max;
+    const windowMs = options.windowMs ?? this.globalOptions.windowMs ?? 900_000;
+    const max = options.max ?? this.globalOptions.max ?? 100;
 
     const now = this.dateTime.nowMillis();
     // Fixed window: round down to nearest window boundary

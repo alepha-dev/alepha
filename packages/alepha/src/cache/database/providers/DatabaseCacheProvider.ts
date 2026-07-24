@@ -215,16 +215,31 @@ export class DatabaseCacheProvider extends CacheProvider {
     name: string,
     key: string,
     amount: number,
+    ttl?: number,
   ): Promise<number> {
     if (!this.alepha.isStarted()) {
       return amount;
     }
+
+    // TTL semantics (fixed window): `expiresAt` is stamped when the counter
+    // is created and NOT extended by increments. An expired row is reaped
+    // first so the fresh window starts at zero instead of resurrecting the
+    // stale count (the delete is idempotent under concurrency).
+    const nowIso = this.dateTimeProvider.nowISOString();
+    await this.repository.deleteMany({
+      container: { eq: name },
+      cacheKey: { eq: key },
+      expiresAt: { lt: nowIso },
+    } as any);
 
     // Atomic upsert via `INSERT ... ON CONFLICT (container, cacheKey) DO UPDATE
     // SET count = COALESCE(cache_entries.count, 0) + excluded.count`.
     // Both Postgres and SQLite (incl. D1) support this in a single statement,
     // so concurrent callers can never observe an interleaved read/write.
     const table = this.repository.table;
+    const expiresAt = ttl
+      ? this.dateTimeProvider.now().add(ttl, "millisecond").toISOString()
+      : null;
 
     const updated = await this.repository.upsert(
       {
@@ -232,12 +247,14 @@ export class DatabaseCacheProvider extends CacheProvider {
         cacheKey: key,
         count: amount,
         value: null,
-        expiresAt: null,
+        expiresAt,
       } as any,
       {
         target: ["container", "cacheKey"],
         set: {
           // `excluded.count` references the value being inserted on conflict.
+          // `expiresAt` is deliberately NOT in the set — increments must not
+          // extend the window.
           count: sql`coalesce(${table.count}, 0) + ${amount}`,
           value: null,
         },

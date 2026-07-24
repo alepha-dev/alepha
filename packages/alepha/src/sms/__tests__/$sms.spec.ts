@@ -1,8 +1,27 @@
 import { Alepha } from "alepha";
 import { describe, test } from "vitest";
-import { $sms, MemorySmsProvider } from "../index.ts";
+import {
+  $sms,
+  AlephaSms,
+  LocalSmsProvider,
+  MemorySmsProvider,
+  SmsProvider,
+} from "../index.ts";
 
 describe("$sms", () => {
+  test("does not silently use the memory provider outside tests", ({
+    expect,
+  }) => {
+    // In production the memory provider would "succeed" by pushing into an
+    // in-process array — silent message loss with a success hook emitted.
+    const alepha = Alepha.create({ env: { NODE_ENV: "production" } }).with(
+      AlephaSms,
+    );
+    expect(alepha.inject(SmsProvider)).toBeInstanceOf(LocalSmsProvider);
+
+    const test = Alepha.create({ env: { NODE_ENV: "test" } }).with(AlephaSms);
+    expect(test.inject(SmsProvider)).toBeInstanceOf(MemorySmsProvider);
+  });
   test("should send SMS using primitive", async ({ expect }) => {
     class TestService {
       readonly welcomeSms = $sms({ name: "welcome" });

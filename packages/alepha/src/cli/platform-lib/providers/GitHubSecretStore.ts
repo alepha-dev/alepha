@@ -42,7 +42,14 @@ export class GitHubSecretStore implements SecretStoreProvider {
    */
   public async ensureEnvironment(environment: string): Promise<void> {
     await this.shell.run(
-      `gh api --method PUT /repos/{owner}/{repo}/environments/${environment} --silent`,
+      [
+        "gh",
+        "api",
+        "--method",
+        "PUT",
+        `/repos/{owner}/{repo}/environments/${environment}`,
+        "--silent",
+      ],
       { capture: true },
     );
     this.log.debug(`Ensured environment "${environment}" exists`);
@@ -54,7 +61,15 @@ export class GitHubSecretStore implements SecretStoreProvider {
   public async list(environment: string): Promise<RemoteSecret[]> {
     try {
       const output = await this.shell.run(
-        `gh secret list --env ${environment} --json name,updatedAt`,
+        [
+          "gh",
+          "secret",
+          "list",
+          "--env",
+          environment,
+          "--json",
+          "name,updatedAt",
+        ],
         { capture: true },
       );
 
@@ -92,7 +107,7 @@ export class GitHubSecretStore implements SecretStoreProvider {
     await this.fs.writeFile(tmpFile, `${key}="${escaped}"\n`);
     try {
       const output = await this.shell.run(
-        `gh secret set -f ${tmpFile} --env ${environment}`,
+        ["gh", "secret", "set", "-f", tmpFile, "--env", environment],
         { capture: true },
       );
       this.log.debug(`Secret set: ${key}`, { output });
@@ -105,8 +120,9 @@ export class GitHubSecretStore implements SecretStoreProvider {
    * Delete a secret from a GitHub Actions environment.
    */
   public async delete(environment: string, key: string): Promise<void> {
-    await this.shell.run(`gh secret delete ${key} --env ${environment}`, {
-      capture: true,
-    });
+    await this.shell.run(
+      ["gh", "secret", "delete", key, "--env", environment],
+      { capture: true },
+    );
   }
 }

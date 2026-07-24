@@ -1,8 +1,34 @@
-import { $inject, z } from "alepha";
+import { $atom, $inject, $state, Alepha, type Static, z } from "alepha";
 import { $route, type ServerReply } from "alepha/server";
 import { MemoryPaymentProvider } from "../providers/MemoryPaymentProvider.ts";
 import { PaymentProvider } from "../providers/PaymentProvider.ts";
 import { PaymentService } from "../services/PaymentService.ts";
+
+/**
+ * Options for the mock checkout endpoints.
+ */
+export const mockCheckoutOptions = $atom({
+  name: "alepha.api.payments.mock-checkout.options",
+  schema: z.object({
+    allowInProduction: z
+      .boolean()
+      .describe(
+        "Explicitly allow the mock checkout in production. The confirm " +
+          "endpoint is an unauthenticated 'mark as paid' — an app shipped " +
+          "without a real PSP must not silently expose it.",
+      )
+      .default(false),
+  }),
+  default: { allowInProduction: false },
+});
+
+export type MockCheckoutOptions = Static<typeof mockCheckoutOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [mockCheckoutOptions.key]: MockCheckoutOptions;
+  }
+}
 
 const FORBIDDEN_HTML =
   "<!doctype html><meta charset=utf-8><title>Mock checkout</title>" +
@@ -135,10 +161,18 @@ const appendStatusParam = (returnUrl: string, status: "success" | "cancel") => {
 
 export class MockCheckoutController {
   protected readonly url = "/payments/mock-checkout";
+  protected readonly alepha = $inject(Alepha);
   protected readonly payments = $inject(PaymentService);
   protected readonly provider = $inject(PaymentProvider);
+  protected readonly options = $state(mockCheckoutOptions);
 
   protected isMemoryProvider() {
+    // The confirm endpoint is an unauthenticated capture ("mark as paid").
+    // An app shipped to production without a real PSP must not silently
+    // expose it — production requires an explicit opt-in.
+    if (this.alepha.isProduction() && !this.options.allowInProduction) {
+      return false;
+    }
     return this.provider instanceof MemoryPaymentProvider;
   }
 

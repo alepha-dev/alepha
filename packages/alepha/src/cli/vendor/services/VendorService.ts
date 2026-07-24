@@ -323,7 +323,17 @@ export class VendorService {
     this.log.debug(`Cloning ${remote}#${branch} into ${tmpDir}`);
 
     const output = await this.shell.run(
-      `git clone --depth 1 --branch ${branch} --filter=blob:none ${remote} ${tmpDir}`,
+      [
+        "git",
+        "clone",
+        "--depth",
+        "1",
+        "--branch",
+        branch,
+        "--filter=blob:none",
+        remote,
+        tmpDir,
+      ],
       { capture: true },
     );
 
@@ -348,14 +358,16 @@ export class VendorService {
 
     this.log.debug(`Cloning ${remote}@${commit} into ${tmpDir}`);
 
-    await this.shell.run(`git init ${tmpDir}`, { capture: true });
-    await this.shell.run(`git -C ${tmpDir} remote add origin ${remote}`, {
-      capture: true,
-    });
-    await this.shell.run(`git -C ${tmpDir} fetch --depth 1 origin ${commit}`, {
-      capture: true,
-    });
-    await this.shell.run(`git -C ${tmpDir} checkout FETCH_HEAD`, {
+    await this.shell.run(["git", "init", tmpDir], { capture: true });
+    await this.shell.run(
+      ["git", "-C", tmpDir, "remote", "add", "origin", remote],
+      { capture: true },
+    );
+    await this.shell.run(
+      ["git", "-C", tmpDir, "fetch", "--depth", "1", "origin", commit],
+      { capture: true },
+    );
+    await this.shell.run(["git", "-C", tmpDir, "checkout", "FETCH_HEAD"], {
       capture: true,
     });
 
@@ -366,9 +378,10 @@ export class VendorService {
    * Get the HEAD commit hash from a cloned repository.
    */
   protected async getCommitHash(repoDir: string): Promise<string> {
-    const hash = await this.shell.run(`git -C ${repoDir} rev-parse HEAD`, {
-      capture: true,
-    });
+    const hash = await this.shell.run(
+      ["git", "-C", repoDir, "rev-parse", "HEAD"],
+      { capture: true },
+    );
     return hash.trim();
   }
 

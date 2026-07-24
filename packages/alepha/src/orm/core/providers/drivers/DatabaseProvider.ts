@@ -225,6 +225,62 @@ export abstract class DatabaseProvider {
     }, config);
   }
 
+  /**
+   * Whether this driver runs `db.transaction()` through drizzle's synchronous
+   * SQLite session. Sync sessions COMMIT as soon as the callback returns, so
+   * an async callback would commit before its awaited work finishes; such
+   * drivers must route transactions through the awaited `transactional()`
+   * implementation instead.
+   */
+  public get usesSyncTransactions(): boolean {
+    return false;
+  }
+
+  /**
+   * Chain of pending native transactions — sync SQLite drivers share a single
+   * connection, so BEGIN blocks must be serialized.
+   */
+  protected txMutex: Promise<unknown> = Promise.resolve();
+
+  /**
+   * Awaited BEGIN/COMMIT/ROLLBACK on a single shared native connection,
+   * serialized so two concurrent contexts can't collide ("cannot start a
+   * transaction within a transaction") or end each other's half-finished
+   * transaction.
+   */
+  protected runExclusiveNativeTransaction<R>(
+    exec: (sql: string) => void,
+    fn: () => Promise<R>,
+  ): Promise<R> {
+    const run = async (): Promise<R> => {
+      // Set the tx marker to the drizzle db itself — SQLite transactions are
+      // connection-scoped, so all operations on this connection participate.
+      this.alepha.store.set("alepha.orm.tx", this.db as any, {
+        skipEvents: true,
+      });
+      exec("BEGIN");
+      try {
+        const result = await fn();
+        exec("COMMIT");
+        return result;
+      } catch (error) {
+        exec("ROLLBACK");
+        throw error;
+      } finally {
+        this.alepha.store.set("alepha.orm.tx", undefined, {
+          skipEvents: true,
+        });
+      }
+    };
+
+    const result = this.txMutex.then(run, run);
+    this.txMutex = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
   public abstract execute(
     statement: SQLLike,
   ): Promise<Record<string, unknown>[]>;
