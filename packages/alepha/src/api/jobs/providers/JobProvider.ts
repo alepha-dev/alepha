@@ -942,11 +942,11 @@ export class JobProvider {
       );
     }
 
-    const controller = this.abortControllers.get(executionId);
-    if (controller) controller.abort();
-
     // Status-guarded: the execution may complete between our read above and
-    // this write — never stamp `cancelled` over a terminal row.
+    // this write — never stamp `cancelled` over a terminal row. Claim the
+    // status BEFORE aborting: the abort makes the running handler throw, and
+    // its failure path would otherwise write `error` first, making this
+    // legitimate cancellation lose the race (flaky on slow machines).
     try {
       await this.executions.updateOne(
         {
@@ -970,6 +970,9 @@ export class JobProvider {
       }
       throw error;
     }
+
+    const controller = this.abortControllers.get(executionId);
+    if (controller) controller.abort();
 
     this.log.info(`Cancelled execution ${executionId}`, {
       jobName: execution.jobName,
@@ -1057,16 +1060,26 @@ export class JobProvider {
 
             // Success: either DELETE (keepLastSuccess=0 or record=error)
             // or UPDATE to 'ok' (record=all and keepLastSuccess>0).
+            // Guarded on 'running' — a cancellation that landed while the
+            // handler was finishing must not be stomped to 'ok' or erased.
             const keepSuccess =
               record === "all" && this.config.keepLastSuccess > 0;
             if (keepSuccess) {
-              await this.executions.updateById(executionId, {
-                status: "ok",
-                completedAt: this.dt.nowISOString(),
-                key: null,
-              });
+              await this.guardedUpdate(
+                executionId,
+                ["running"],
+                {
+                  status: "ok",
+                  completedAt: this.dt.nowISOString(),
+                  key: null,
+                },
+                "success",
+              );
             } else {
-              await this.executions.deleteById(executionId);
+              await this.executions.deleteMany({
+                id: { eq: executionId },
+                status: { eq: "running" },
+              });
             }
 
             await this.alepha.events.emit(
