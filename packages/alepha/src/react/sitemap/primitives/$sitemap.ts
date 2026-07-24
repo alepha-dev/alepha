@@ -157,14 +157,20 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
     return this.buildSitemapXml(urls);
   }
 
+  /**
+   * Same substitution rules as `ReactPageProvider.compile` — whole-token
+   * match, `$&` kept literal, values percent-encoded. A sitemap `<loc>` has to
+   * be a valid URL, and a slug with a space or a slash produced neither.
+   */
   protected buildPathFromParams(
     pathPattern: string,
     params: Record<string, any>,
   ): string {
-    let path = pathPattern;
-    for (const [key, value] of Object.entries(params)) {
-      path = path.replace(`:${key}`, String(value));
-    }
+    const path = pathPattern.replace(/:([A-Za-z0-9_]+)/g, (match, key) =>
+      Object.hasOwn(params, key)
+        ? encodeURIComponent(String(params[key]))
+        : match,
+    );
     return path || "/";
   }
 

@@ -697,9 +697,18 @@ export class SsePrimitive<
       {}) as SseRequestEntryContainer<SseConfigSchema>;
 
     if (params && typeof params === "object") {
-      for (const [key, value] of Object.entries(params)) {
-        url = url.replace(`:${key}`, String(value));
-      }
+      // Same rules as `HttpClient.pathVariables`: whole-token match (so `:id`
+      // cannot eat the prefix of `:idType`), a replace function (so `$&` in a
+      // value stays literal), and percent-encoded values.
+      url = url.replace(
+        /\{([A-Za-z0-9_]+)\}|:([A-Za-z0-9_]+)/g,
+        (match, braced, colon) => {
+          const key = braced ?? colon;
+          return Object.hasOwn(params, key)
+            ? encodeURIComponent(String((params as Record<string, any>)[key]))
+            : match;
+        },
+      );
     }
 
     if (query && typeof query === "object") {

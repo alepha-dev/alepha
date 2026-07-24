@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, z } from "alepha";
 import { describe, it, test } from "vitest";
 import {
   $action,
@@ -126,6 +126,74 @@ describe("HttpClient", () => {
 
       expect(callCount).toBe(2);
       expect(res1.data).not.toEqual(res2.data);
+    });
+  });
+
+  describe("path variables", () => {
+    const pathVariables = async () => {
+      const alepha = Alepha.create();
+      const client = alepha.inject(HttpClient);
+      await alepha.start();
+      return (url: string, params: Record<string, any>) =>
+        client.pathVariables(url, {}, { params });
+    };
+
+    it("should percent-encode a value", async ({ expect }) => {
+      // Raw interpolation let `/`, `?`, `#` and spaces break or inject the URL.
+      const build = await pathVariables();
+
+      expect(build("/users/:id", { id: "John Doe" })).toBe("/users/John%20Doe");
+      expect(build("/files/:name", { name: "a/b?c#d" })).toBe(
+        "/files/a%2Fb%3Fc%23d",
+      );
+    });
+
+    it("should treat `$&` in a value as literal text", async ({ expect }) => {
+      // `$&`, `$'` and friends are replacement patterns: String.replace
+      // expanded them against the match, corrupting the URL.
+      const build = await pathVariables();
+
+      expect(build("/search/:q", { q: "$&" })).toBe("/search/%24%26");
+    });
+
+    it("should not let `:id` consume the prefix of `:idType`", async ({
+      expect,
+    }) => {
+      const build = await pathVariables();
+
+      expect(build("/a/:idType/:id", { id: "1", idType: "sku" })).toBe(
+        "/a/sku/1",
+      );
+    });
+
+    it("should round-trip a value containing a space to the handler", async ({
+      expect,
+    }) => {
+      // The client skipped encoding and the server skipped decoding, so this
+      // only ever "worked" because both halves were broken.
+      let received: string | undefined;
+
+      class TestApp {
+        getUser = $action({
+          path: "/users/:id",
+          schema: {
+            params: z.object({ id: z.text() }),
+            response: z.text(),
+          },
+          handler: ({ params }) => {
+            received = params.id;
+            return "ok";
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(TestApp);
+      const app = alepha.inject(TestApp);
+      await alepha.start();
+
+      await app.getUser.fetch({ params: { id: "John Doe" } });
+
+      expect(received).toBe("John Doe");
     });
   });
 

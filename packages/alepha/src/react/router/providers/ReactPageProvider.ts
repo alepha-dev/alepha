@@ -700,11 +700,21 @@ export class ReactPageProvider {
     return url.replace(/\/\/+/g, "/") || "/";
   }
 
+  /**
+   * Substitute `:name` tokens with param values.
+   *
+   * Same rules as `HttpClient.pathVariables`: the token is matched whole (so
+   * `:id` cannot eat the prefix of `:idType`), a replace function keeps `$&`
+   * literal instead of expanding it as a substitution pattern, and values are
+   * percent-encoded — the router decodes path params, so an unencoded value
+   * does not round-trip to itself.
+   */
   public compile(path: string, params: Record<string, string> = {}) {
-    for (const [key, value] of Object.entries(params)) {
-      path = path.replace(`:${key}`, value);
-    }
-    return path;
+    return path.replace(/:([A-Za-z0-9_]+)/g, (match, key) =>
+      Object.hasOwn(params, key)
+        ? encodeURIComponent(String(params[key]))
+        : match,
+    );
   }
 
   protected renderView(

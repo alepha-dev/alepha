@@ -219,6 +219,88 @@ describe("match", () => {
     });
   });
 
+  describe("Backtracking", () => {
+    test("should fall back to a sibling param when the static branch dead-ends", () => {
+      // Matching greedily preferred the static child and never came back, so
+      // a route the user declared returned no match at all.
+      add("/a/{x}", "param_route");
+      add("/a/b/c", "deep_static");
+
+      expect(match("/a/b")).toEqual({
+        name: "param_route",
+        params: { x: "b" },
+      });
+      // The deeper static route still wins where it applies.
+      expect(match("/a/b/c")).toEqual({ name: "deep_static", params: {} });
+    });
+
+    test("should backtrack across several levels", () => {
+      add("/shop/:category/:item", "item");
+      add("/shop/sale/summer/deals", "summer_deals");
+
+      expect(match("/shop/sale/summer")).toEqual({
+        name: "item",
+        params: { category: "sale", item: "summer" },
+      });
+    });
+  });
+
+  describe("Wildcard fallback", () => {
+    test("should set the wildcard capture when falling back from a dead-end", () => {
+      add("/users/*", "catch_all");
+      add("/users/jack/profile", "profile");
+
+      // Dead-ends at "settings" under the static "jack" branch and unwinds to
+      // /users/* — which used to arrive with no "*" entry at all, so static
+      // file serving and catch-alls read `undefined`.
+      expect(match("/users/jack/settings")).toEqual({
+        name: "catch_all",
+        params: { "*": "jack/settings" },
+      });
+    });
+
+    test("should not leak params captured on an abandoned branch", () => {
+      add("/x/:id/edit", "edit");
+      add("/x/*", "catch_all");
+
+      expect(match("/x/42/delete")).toEqual({
+        name: "catch_all",
+        params: { "*": "42/delete" },
+      });
+    });
+  });
+
+  describe("Percent-decoding", () => {
+    test("should decode a path parameter", () => {
+      // Query values are decoded, path params were not: the same string
+      // arrived decoded via ?q= and raw via /:id.
+      add("/users/:name", "user");
+
+      expect(match("/users/john%20doe")).toEqual({
+        name: "user",
+        params: { name: "john doe" },
+      });
+    });
+
+    test("should decode each segment of a wildcard capture", () => {
+      add("/files/*", "files");
+
+      expect(match("/files/my%20folder/report%20final.pdf")).toEqual({
+        name: "files",
+        params: { "*": "my folder/report final.pdf" },
+      });
+    });
+
+    test("should keep a malformed escape sequence verbatim instead of throwing", () => {
+      add("/users/:name", "user");
+
+      expect(match("/users/100%")).toEqual({
+        name: "user",
+        params: { name: "100%" },
+      });
+    });
+  });
+
   describe("Error Handling and Edge Cases", () => {
     test("should return null if no route matches", () => {
       add("/home", "home");

@@ -9,9 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-24**: 108 findings closed — 97 fixed across twelve passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
+> **Update 2026-07-25**: 112 findings closed — 101 fixed across thirteen passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
 >
-> **Remaining: 161 open — 0 P0 · 0 P1 · 78 P2 · 83 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
+> **Remaining: 157 open — 0 P0 · 0 P1 · 74 P2 · 83 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -248,6 +248,19 @@ All 11 P1s that were still open are fixed — **no P1 or P0 remains**. TDD throu
 | core/codec | The keyless codec refuses what it cannot represent instead of corrupting it: unions (it resolved one by taking the first non-null variant, encoding variant B with A's layout) and a top-level optional/nullable object (encodes flat, decodes one slot). Field-level `optional`/`nullable` are unaffected. Nothing in-tree opts into `encoder: "keyless"` yet, so this closes the trap before anyone falls in. |
 | cli | `postBuildCleanUpForIndexHtml` receives the directory Vite actually built into. It defaulted to a hardcoded `dist/public`, so any customised `output.dist`/`output.public` failed the build on a manifest that wasn't there. The parameter is now required so the default cannot drift back. |
 | websocket | The server stamps the room on outbound frames (`__alephaRoom`, stripped before validation and before the handler sees it) and the client dispatches to that room's handler only. One socket serves every room a client subscribed to, so room A's messages were delivered to room B's handler — the acknowledged TODO. Unlabelled frames (channel-wide emit) still reach every subscriber. Both the Node provider and the Durable Object path stamp it, so the runtimes agree. |
+
+### Thirteenth pass — 2026-07-25 (routing)
+
+The four routing findings, taken together because they share one root: path segments were matched greedily and carried around raw.
+
+| Area | Fix |
+|------|-----|
+| router | `createRouteMatch` is a depth-first search with backtracking instead of a greedy walk. With `/a/{x}` and `/a/b/c` registered, `/a/b` descended into the static `b`, found no route and gave up — **404 on a route the caller declared**. A failed subtree now returns `undefined` and the caller tries the next alternative at its own level (static, then param, then wildcard). |
+| router | The wildcard fallback carries its capture. Unwinding from a dead-end to `/users/*` produced `params` with **no `*` entry at all** (static file serving and catch-alls read `undefined`), plus whatever params had been captured on the abandoned branch. Params are now attached while unwinding a *successful* branch only, so a stale capture cannot leak. A wildcard matching its own prefix (`/useRs/:name/x/*` on `/users/JACK/x`) reports `"*": ""` — an empty capture rather than a missing one, matching what the root wildcard already did. |
+| router | Path params and wildcard captures are percent-decoded, per segment. Query values already were, so `?q=john%20doe` arrived decoded while `/:id` arrived literal. A malformed escape (`100%`) is kept verbatim instead of throwing — a bad escape in a URL is a 404 at worst, never a 500. Both server adapters go through `router.match`, so this lands on the Node and web paths at once. |
+| server/react | Every path-building site got the same three fixes: values are percent-encoded, the token is matched whole (`/a/:idType/:id` used to compile to `/a/1Type/:id` because `:id` ate the prefix of `:idType`), and a replace *function* keeps `$&` / `$'` in a value literal instead of expanding them as substitution patterns. `HttpClient.pathVariables` and `$sse.buildFetchUrl` were named in the finding; `ReactPageProvider.compile` (what `router.push(name, params)` and `<Link>` put in the address bar) and `$sitemap.buildPathFromParams` have the identical defect and are fixed with it — with the server now decoding, an unencoded client is no longer symmetric-but-wrong, it is simply wrong. |
+
+Note: three assertions in `RouterProvider.spec.ts` encoded the old behaviour — a leaked `name` on a wildcard fallback and two missing `*` captures. They were updated, with a comment saying why.
 
 Per-module detail follows. Line numbers reference the tree as it stood when each finding was written (`main` @ 6c7ec9400 for the original passes); the fix passes have since moved code, so treat every line number as a starting hint, not an address — locate by symbol name.
 
@@ -498,7 +511,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/server/core/providers/ServerCompressProvider.ts:197-233
 - **Detail**: `createFlushingCompressStream` uses flowing-mode `reader.on("data")` + `controller.enqueue` regardless of desiredSize — slow client + large SSR stream buffers unbounded. If the output is cancelled, enqueue throws inside the 'data' handler with no try/catch → uncaught. Fix: pull/cancel, respect desiredSize, guard enqueue.
 
-### [BUG] Client `pathVariables` neither URL-encodes nor escapes replacement patterns; server never percent-decodes params
+### ✅ FIXED — [BUG] Client `pathVariables` neither URL-encodes nor escapes replacement patterns; server never percent-decodes params
 - **Severity**: P2
 - **File**: packages/alepha/src/server/core/services/HttpClient.ts:376-379; router matcher (params raw)
 - **Detail**: (1) `url.replace(":key", value)` interpolates raw values — `/`, `?`, `#`, spaces break/inject URLs; (2) `$&`/`$'` in the value are substitution patterns, corrupting the URL; (3) `:id` replaces the prefix of `:idType`. Server side assigns `params[name] = parts[i]` without decodeURIComponent, so a compliant client sending `/users/John%20Doe` gives the handler the literal `John%20Doe`. Round-trips only "work" because both sides skip encoding. Same bug in `$sse.buildFetchUrl` (:646-648). Fix: encodeURIComponent client-side (replace-function), decode on extraction.
@@ -1403,17 +1416,17 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/datetime/primitives/$interval.ts:36-41, DateTimeProvider.ts:227
 - **Detail**: `IntervalPrimitive.onInit` registers `async () => { await this.options.handler(); … }` with no catch, and `onStart` passes it straight to `setInterval`. A throwing handler produces an unhandled rejection (fatal on modern Node) with zero logging. Also the awaited first run inside the `start` hook propagates a first-tick error into app startup. Wrap in try/catch + `log.error`. No error-handling test exists.
 
-### [BUG] Router wildcard fallback loses `params["*"]` (and leaks stale param captures)
+### ✅ FIXED — [BUG] Router wildcard fallback loses `params["*"]` (and leaks stale param captures)
 - **Severity**: P2
 - **File**: packages/alepha/src/router/providers/RouterProvider.ts:119, :123-130 (vs correct direct-hit path at :116)
 - **Detail**: Only the direct `cursor.wildcard` branch sets `params["*"]`. The fallback returns return the wildcard route with **no `*` entry**. Trace: routes `/users/*` + `/users/jack/profile`, request `/users/jack/settings` → dead-ends at `jack`, falls back to `/users/*` with `params = {}`. Handlers reading `params["*"]` (static file serving, catch-alls) get `undefined`. Params captured along the abandoned branch also leak in.
 
-### [BUG] Router does not backtrack from static prefix to param route — valid routes 404
+### ✅ FIXED — [BUG] Router does not backtrack from static prefix to param route — valid routes 404
 - **Severity**: P2
 - **File**: packages/alepha/src/router/providers/RouterProvider.ts:102-121
 - **Detail**: Matching greedily prefers a static child and never backtracks to a sibling param. With `/a/{x}` and `/a/b/c` registered, request `/a/b` descends into static `b` (intermediate node), finds no route, returns no match — though `/a/{x}` matches. Implement single-level backtracking or validate the restriction at `push()` time.
 
-### [BUG] Path params are never percent-decoded (query params are)
+### ✅ FIXED — [BUG] Path params are never percent-decoded (query params are)
 - **Severity**: P2
 - **File**: packages/alepha/src/router/providers/RouterProvider.ts:113; server/core/providers/ServerProvider.ts:177, :206
 - **Detail**: `params[name] = parts[i]` raw; query values go through `fastDecode`. `GET /users/john%20doe` yields `params.id === "john%20doe"` but `?q=john%20doe` yields `"john doe"` — inconsistent; encoded IDs arrive corrupted. Decode each captured segment with guarded `decodeURIComponent`.

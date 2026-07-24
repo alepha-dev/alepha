@@ -41,6 +41,10 @@ class UserController {
 }
 ```
 
+Stored responses are namespaced by caller identity (the `authorization` and
+`cookie` headers), so an authenticated route does not serve one user's body
+to another. Anonymous callers share a single entry.
+
 ## Options
 
 | Option | Type | Required | Description |

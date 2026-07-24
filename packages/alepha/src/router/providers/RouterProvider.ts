@@ -95,41 +95,91 @@ export abstract class RouterProvider<T extends Route = Route> {
 
     const parts = this.createParts(path);
 
-    let cursor = this.tree;
-    let wildcard: { route: T } | undefined;
-    const params: Record<string, string> = {};
+    return this.search(this.tree, parts, 0) ?? { route: undefined, params: {} };
+  }
 
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i].toLowerCase(); // url is case-insensitive
-      if (cursor.children[part]) {
-        if (cursor.wildcard) {
-          wildcard = cursor.wildcard;
-        }
-        cursor = cursor.children[part];
-      } else if (cursor.param) {
-        if (cursor.wildcard) {
-          wildcard = cursor.wildcard;
-        }
-        params[cursor.param.name] = parts[i];
-        cursor = cursor.param;
-      } else if (cursor.wildcard) {
-        params["*"] = parts.slice(i).join("/");
-        return { route: cursor.wildcard.route, params };
-      } else {
-        return { route: wildcard?.route, params };
+  /**
+   * Depth-first search with backtracking, static child first.
+   *
+   * A greedy walk cannot do this: with `/a/{x}` and `/a/b/c` registered it
+   * descends into the static `b`, finds no route there, and gives up — 404 on
+   * a route the caller declared. Here a failed subtree returns `undefined` and
+   * the caller tries the next alternative at its own level.
+   *
+   * Params are attached while unwinding a *successful* branch, so captures
+   * made along an abandoned one cannot leak into the result.
+   */
+  protected search(
+    node: Tree<T>,
+    parts: string[],
+    index: number,
+  ): RouteMatch<T> | undefined {
+    if (index === parts.length) {
+      if (node.route) {
+        return { route: node.route, params: {} };
+      }
+      // "/a/*" also answers "/a" — with an empty capture.
+      if (node.wildcard) {
+        return { route: node.wildcard.route, params: { "*": "" } };
+      }
+      return undefined;
+    }
+
+    const part = parts[index].toLowerCase(); // url is case-insensitive
+
+    const child = node.children[part];
+    if (child) {
+      const hit = this.search(child, parts, index + 1);
+      if (hit) {
+        return hit;
       }
     }
 
-    if (!cursor?.route) {
-      // when "/a/*" - trigger if "/a"
-      if (cursor.wildcard) {
-        return { route: cursor.wildcard.route, params };
+    if (node.param) {
+      const hit = this.search(node.param as Tree<T>, parts, index + 1);
+      if (hit) {
+        hit.params ??= {};
+        hit.params[node.param.name] = this.decodeParam(parts[index]);
+        return hit;
       }
-      // return deep wildcard or nothing
-      return { route: wildcard?.route, params };
     }
 
-    return { route: cursor.route, params };
+    // Nearest enclosing wildcard wins. Returning `undefined` instead lets an
+    // ancestor's wildcard answer, which is how a dead-end deep inside a static
+    // branch unwinds to `/users/*`.
+    if (node.wildcard) {
+      return {
+        route: node.wildcard.route,
+        params: {
+          "*": parts
+            .slice(index)
+            .map((it) => this.decodeParam(it))
+            .join("/"),
+        },
+      };
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Percent-decode a captured segment.
+   *
+   * Query values already go through a decoder, so leaving path params raw made
+   * the same string arrive decoded as `?q=john%20doe` and literal as
+   * `/:id`. A malformed sequence (`100%`) is kept verbatim rather than
+   * throwing — a bad escape in a URL is a 404 at worst, never a 500.
+   */
+  protected decodeParam(value: string): string {
+    if (!value.includes("%")) {
+      return value;
+    }
+
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
   }
 
   protected mapParams(match: RouteMatch<T>): RouteMatch<T> {

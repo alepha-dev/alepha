@@ -428,10 +428,26 @@ export class HttpClient {
           ) as Record<string, any>)
         : args.params;
 
-      for (const key of Object.keys(params)) {
-        url = url.replace(`:${key}`, params[key]);
-        url = url.replace(`{${key}}`, params[key]);
-      }
+      // One regex pass, substituting only declared keys:
+      //
+      // - the token is matched whole, so `:id` can no longer eat the prefix of
+      //   `:idType` (`/a/:idType/:id` used to become `/a/1Type/:id`);
+      // - a replace *function* means `$&` / `$'` inside a value stay literal
+      //   instead of being expanded as substitution patterns;
+      // - values are percent-encoded, so `/`, `?`, `#` and spaces can no
+      //   longer break out of their segment.
+      //
+      // Unknown tokens are left untouched — that also keeps the port in
+      // `http://host:3000` from being read as a parameter.
+      url = url.replace(
+        /\{([A-Za-z0-9_]+)\}|:([A-Za-z0-9_]+)/g,
+        (match, braced, colon) => {
+          const key = braced ?? colon;
+          return Object.hasOwn(params, key)
+            ? encodeURIComponent(String(params[key]))
+            : match;
+        },
+      );
     }
 
     return url;

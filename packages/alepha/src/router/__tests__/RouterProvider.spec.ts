@@ -86,17 +86,23 @@ describe("RouterProvider", () => {
       },
     });
 
+    // Falls all the way back to the root `/*`. The route that matched is
+    // `/*`, so it gets the whole path as its capture — and `name`, captured
+    // on the branch that was abandoned, is not part of it.
     expect(match("/users/jack/info/other")).toEqual({
       name: "not-found",
       params: {
-        name: "jack",
+        "*": "users/jack/info/other",
       },
     });
 
+    // `/useRs/:name/x/*` matching its own prefix: the wildcard captured
+    // nothing, which is an empty capture rather than a missing one.
     expect(match("/users/JACK/x")).toEqual({
       name: "users-by-name-x-not-found",
       params: {
         name: "JACK",
+        "*": "",
       },
     });
 
@@ -104,6 +110,7 @@ describe("RouterProvider", () => {
       name: "users-by-name-x-not-found",
       params: {
         name: "jack",
+        "*": "y",
       },
     });
 
