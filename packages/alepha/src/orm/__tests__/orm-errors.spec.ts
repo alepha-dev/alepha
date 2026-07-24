@@ -287,6 +287,30 @@ describe("Database Error Tests", () => {
           );
         }
       });
+
+      it("should throw DbColumnNotFoundError when the message also names a relation", async () => {
+        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const app = alepha.inject(App);
+        await alepha.start();
+
+        try {
+          // On a write, postgres says `column "x" of relation "y" does not
+          // exist` — which contains both "does not exist" and "relation", so
+          // it matched the table branch first and was reported as a missing
+          // TABLE. The one message that names the column was the one that
+          // hid it.
+          await app.parents.query(
+            (t) =>
+              sql`INSERT INTO ${t} (${sql.raw("non_existent_column_xyz")}) VALUES ('x')`,
+          );
+          expect.fail("Should have thrown DbColumnNotFoundError");
+        } catch (error) {
+          expect(error).toBeInstanceOf(DbColumnNotFoundError);
+          expect((error as DbColumnNotFoundError).column).toBe(
+            "non_existent_column_xyz",
+          );
+        }
+      });
     });
   });
 

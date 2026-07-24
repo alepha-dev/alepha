@@ -931,4 +931,148 @@ describe("ModelBuilder", () => {
       await testExpressionIndex(Alepha.create().with(AlephaOrmPostgres));
     });
   });
+
+  describe("dialect parity", () => {
+    // An entity that builds on the sqlite dev driver but throws
+    // "Unsupported schema type" at startup on postgres is a deploy-time
+    // surprise, not a schema error.
+    const dialects = [
+      { name: "postgres", create: () => new PostgresModelBuilder() },
+      { name: "sqlite", create: () => new SqliteModelBuilder() },
+    ];
+
+    const options = () => ({
+      tables: new Map(),
+      enums: new Map(),
+      schemas: new Map(),
+      schema: "public",
+    });
+
+    for (const dialect of dialects) {
+      it(`should build a z.any() column (${dialect.name})`, () => {
+        const entity = $entity({
+          name: "events",
+          schema: z.object({
+            id: db.primaryKey(),
+            payload: z.any(),
+          }),
+        });
+
+        const opts = options();
+        expect(() => dialect.create().buildTable(entity, opts)).not.toThrow();
+        expect(opts.tables.has("events")).toBe(true);
+      });
+
+      it(`should build an array-of-any column (${dialect.name})`, () => {
+        const entity = $entity({
+          name: "events",
+          schema: z.object({
+            id: db.primaryKey(),
+            payloads: z.array(z.any()),
+          }),
+        });
+
+        const opts = options();
+        expect(() => dialect.create().buildTable(entity, opts)).not.toThrow();
+        expect(opts.tables.has("events")).toBe(true);
+      });
+    }
+  });
+
+  describe("unknown column references", () => {
+    // A typo'd column used to produce no index, no foreign key, no constraint
+    // and no error — migration generation then emitted a schema silently
+    // missing it. Failing loudly at build time is the only safe answer.
+    const dialects = [
+      { name: "postgres", create: () => new PostgresModelBuilder() },
+      { name: "sqlite", create: () => new SqliteModelBuilder() },
+    ];
+
+    const options = () => ({
+      tables: new Map(),
+      enums: new Map(),
+      schemas: new Map(),
+      schema: "public",
+    });
+
+    for (const dialect of dialects) {
+      it(`should throw when an index names an unknown column (${dialect.name})`, () => {
+        const entity = $entity({
+          name: "users",
+          schema: z.object({
+            id: db.primaryKey(),
+            email: z.email(),
+          }),
+          indexes: ["emial" as any],
+        });
+
+        expect(() => dialect.create().buildTable(entity, options())).toThrow(
+          /emial/,
+        );
+      });
+
+      it(`should throw when a composite index names an unknown column (${dialect.name})`, () => {
+        const entity = $entity({
+          name: "users",
+          schema: z.object({
+            id: db.primaryKey(),
+            email: z.email(),
+            username: z.text(),
+          }),
+          indexes: [{ columns: ["email", "usrname"] as any }],
+        });
+
+        expect(() => dialect.create().buildTable(entity, options())).toThrow(
+          /usrname/,
+        );
+      });
+
+      it(`should throw when a unique constraint names an unknown column (${dialect.name})`, () => {
+        const entity = $entity({
+          name: "users",
+          schema: z.object({
+            id: db.primaryKey(),
+            email: z.email(),
+          }),
+          constraints: [{ columns: ["emial"] as any, unique: true }],
+        });
+
+        expect(() => dialect.create().buildTable(entity, options())).toThrow(
+          /emial/,
+        );
+      });
+
+      it(`should throw when a foreign key names an unknown local column (${dialect.name})`, () => {
+        const builder = dialect.create();
+        const opts = options();
+
+        const usersEntity = $entity({
+          name: "users",
+          schema: z.object({
+            id: db.primaryKey(),
+            name: z.text(),
+          }),
+        });
+
+        builder.buildTable(usersEntity, opts);
+
+        const postsEntity = $entity({
+          name: "posts",
+          schema: z.object({
+            id: db.primaryKey(),
+            userId: z.text(),
+          }),
+          foreignKeys: [
+            {
+              name: "posts_user_fk",
+              columns: ["user_id" as any],
+              foreignColumns: [() => usersEntity.cols.id],
+            },
+          ],
+        });
+
+        expect(() => builder.buildTable(postsEntity, opts)).toThrow(/user_id/);
+      });
+    }
+  });
 });

@@ -64,6 +64,94 @@ export abstract class ModelBuilder {
   }
 
   /**
+   * Resolve a column the entity's `indexes` / `foreignKeys` / `constraints`
+   * refer to, failing loudly when it does not exist.
+   *
+   * Every one of those builder paths used to guard with a truthiness check and
+   * *skip* the config when the lookup missed: a typo'd column produced no
+   * index, no foreign key, no constraint — and no error. Migration generation
+   * then emitted a schema quietly missing it, which is a data-integrity
+   * hazard that only surfaces as a duplicate row or an orphan much later.
+   *
+   * TypeScript already rejects the typo at the call site; this covers the
+   * paths where the types are bypassed (`as any`, dynamically built entities,
+   * JavaScript consumers).
+   */
+  protected resolveConfigColumn(
+    self: any,
+    entity: EntityPrimitive,
+    column: string,
+    kind: string,
+  ): any {
+    const resolved = self?.[column];
+
+    if (!resolved) {
+      throw new AlephaError(this.unknownColumnMessage(entity, column, kind));
+    }
+
+    return resolved;
+  }
+
+  protected unknownColumnMessage(
+    entity: EntityPrimitive,
+    column: string,
+    kind: string,
+  ): string {
+    const known = Object.keys(entity.schema.properties ?? {})
+      .sort()
+      .join(", ");
+
+    return `Entity '${entity.name}' declares a ${kind} on unknown column '${column}'. Known columns: ${known}`;
+  }
+
+  /**
+   * Check every column named by `indexes` / `foreignKeys` / `constraints`
+   * against the entity's schema, at build time.
+   *
+   * The per-column resolution below runs inside the config closure, and
+   * drizzle does not call that closure when the table is constructed — it
+   * stores it and invokes it later, during migration generation. Waiting
+   * until then to report a typo is too late to be useful, so the same check
+   * runs eagerly here against the declared schema.
+   */
+  protected assertConfigColumnsExist(entity: EntityPrimitive): void {
+    const declared = new Set(Object.keys(entity.schema.properties ?? {}));
+
+    const assert = (column: string, kind: string) => {
+      if (!declared.has(column)) {
+        throw new AlephaError(this.unknownColumnMessage(entity, column, kind));
+      }
+    };
+
+    for (const indexDef of entity.options.indexes ?? []) {
+      if (typeof indexDef === "string") {
+        assert(indexDef, "index");
+      } else if (indexDef && typeof indexDef === "object") {
+        if ("column" in indexDef) {
+          assert(indexDef.column as string, "index");
+        } else if ("columns" in indexDef) {
+          for (const column of indexDef.columns) {
+            assert(column as string, "index");
+          }
+        }
+        // `expressions` receives the built table and is the caller's own code.
+      }
+    }
+
+    for (const fkDef of entity.options.foreignKeys ?? []) {
+      for (const column of fkDef.columns) {
+        assert(column as string, "foreign key");
+      }
+    }
+
+    for (const constraintDef of entity.options.constraints ?? []) {
+      for (const column of constraintDef.columns) {
+        assert(column as string, "constraint");
+      }
+    }
+  }
+
+  /**
    * Build the table configuration function for any database.
    * This includes indexes, foreign keys, constraints, and custom config.
    *
@@ -88,6 +176,8 @@ export abstract class ModelBuilder {
       return undefined;
     }
 
+    this.assertConfigColumnsExist(entity);
+
     return (self: TSelf) => {
       const configs: TConfig[] = [];
 
@@ -99,11 +189,11 @@ export abstract class ModelBuilder {
             const indexName = `${entity.name}_${columnName}_idx`;
 
             // Use original camelCase property name for lookup
-            if ((self as any)[indexDef]) {
-              configs.push(
-                builders.index(indexName).on((self as any)[indexDef]),
-              );
-            }
+            configs.push(
+              builders
+                .index(indexName)
+                .on(this.resolveConfigColumn(self, entity, indexDef, "index")),
+            );
           } else if (typeof indexDef === "object" && indexDef !== null) {
             if ("column" in indexDef) {
               const columnName = this.toColumnName(indexDef.column as string);
@@ -111,19 +201,19 @@ export abstract class ModelBuilder {
                 indexDef.name || `${entity.name}_${columnName}_idx`;
 
               // Use original camelCase property name for lookup
-              if ((self as any)[indexDef.column]) {
-                let idx = indexDef.unique
-                  ? builders
-                      .uniqueIndex(indexName)
-                      .on((self as any)[indexDef.column])
-                  : builders
-                      .index(indexName)
-                      .on((self as any)[indexDef.column]);
-                if ("where" in indexDef && indexDef.where) {
-                  idx = (idx as any).where(indexDef.where);
-                }
-                configs.push(idx);
+              const column = this.resolveConfigColumn(
+                self,
+                entity,
+                indexDef.column as string,
+                "index",
+              );
+              let idx = indexDef.unique
+                ? builders.uniqueIndex(indexName).on(column)
+                : builders.index(indexName).on(column);
+              if ("where" in indexDef && indexDef.where) {
+                idx = (idx as any).where(indexDef.where);
               }
+              configs.push(idx);
             } else if ("expressions" in indexDef) {
               const parts = indexDef.expressions(self as any);
               if (parts.length > 0) {
@@ -143,19 +233,17 @@ export abstract class ModelBuilder {
                 indexDef.name || `${entity.name}_${columnNames.join("_")}_idx`;
 
               // Use original camelCase property names for lookup
-              const cols = indexDef.columns
-                .map((col: any) => (self as any)[col])
-                .filter(Boolean);
+              const cols = indexDef.columns.map((col: any) =>
+                this.resolveConfigColumn(self, entity, col, "index"),
+              );
 
-              if (cols.length === indexDef.columns.length) {
-                let idx = indexDef.unique
-                  ? builders.uniqueIndex(indexName).on(...cols)
-                  : builders.index(indexName).on(...cols);
-                if ("where" in indexDef && indexDef.where) {
-                  idx = (idx as any).where(indexDef.where);
-                }
-                configs.push(idx);
+              let idx = indexDef.unique
+                ? builders.uniqueIndex(indexName).on(...cols)
+                : builders.index(indexName).on(...cols);
+              if ("where" in indexDef && indexDef.where) {
+                idx = (idx as any).where(indexDef.where);
               }
+              configs.push(idx);
             }
           }
         }
@@ -169,47 +257,50 @@ export abstract class ModelBuilder {
           );
 
           // Use original camelCase property names for lookup
-          const cols = fkDef.columns
-            .map((col) => (self as any)[col])
-            .filter(Boolean);
+          const cols = fkDef.columns.map((col) =>
+            this.resolveConfigColumn(
+              self,
+              entity,
+              col as string,
+              "foreign key",
+            ),
+          );
 
-          if (cols.length === fkDef.columns.length) {
-            const fkName =
-              fkDef.name || `${entity.name}_${columnNames.join("_")}_fk`;
+          const fkName =
+            fkDef.name || `${entity.name}_${columnNames.join("_")}_fk`;
 
-            // Resolve foreign column references
-            const foreignColumns = fkDef.foreignColumns.map((colRef) => {
-              const entityCol = colRef();
-              if (!entityCol?.entity || !entityCol.name) {
+          // Resolve foreign column references
+          const foreignColumns = fkDef.foreignColumns.map((colRef) => {
+            const entityCol = colRef();
+            if (!entityCol?.entity || !entityCol.name) {
+              throw new AlephaError(
+                `Invalid foreign column reference in ${entity.name}`,
+              );
+            }
+
+            // If we have a table resolver, use it to get the actual table column
+            if (tableResolver) {
+              const foreignTable = tableResolver(entityCol.entity.name);
+              if (!foreignTable) {
                 throw new AlephaError(
-                  `Invalid foreign column reference in ${entity.name}`,
+                  `Foreign table ${entityCol.entity.name} not found for ${entity.name}`,
                 );
               }
+              // Use original camelCase property name for lookup in foreign table
+              return foreignTable[entityCol.name];
+            }
 
-              // If we have a table resolver, use it to get the actual table column
-              if (tableResolver) {
-                const foreignTable = tableResolver(entityCol.entity.name);
-                if (!foreignTable) {
-                  throw new AlephaError(
-                    `Foreign table ${entityCol.entity.name} not found for ${entity.name}`,
-                  );
-                }
-                // Use original camelCase property name for lookup in foreign table
-                return foreignTable[entityCol.name];
-              }
+            // Fallback: return the entity column reference (will be resolved later)
+            return entityCol;
+          });
 
-              // Fallback: return the entity column reference (will be resolved later)
-              return entityCol;
-            });
-
-            configs.push(
-              builders.foreignKey({
-                name: fkName,
-                columns: cols,
-                foreignColumns,
-              }),
-            );
-          }
+          configs.push(
+            builders.foreignKey({
+              name: fkName,
+              columns: cols,
+              foreignColumns,
+            }),
+          );
         }
       }
 
@@ -221,26 +312,24 @@ export abstract class ModelBuilder {
           );
 
           // Use original camelCase property names for lookup
-          const cols = constraintDef.columns
-            .map((col) => (self as any)[col])
-            .filter(Boolean);
+          const cols = constraintDef.columns.map((col) =>
+            this.resolveConfigColumn(self, entity, col as string, "constraint"),
+          );
 
-          if (cols.length === constraintDef.columns.length) {
-            if (constraintDef.unique) {
-              const constraintName =
-                constraintDef.name ||
-                `${entity.name}_${columnNames.join("_")}_unique`;
+          if (constraintDef.unique) {
+            const constraintName =
+              constraintDef.name ||
+              `${entity.name}_${columnNames.join("_")}_unique`;
 
-              configs.push(builders.unique(constraintName).on(...cols));
-            }
+            configs.push(builders.unique(constraintName).on(...cols));
+          }
 
-            if (constraintDef.check) {
-              const constraintName =
-                constraintDef.name ||
-                `${entity.name}_${columnNames.join("_")}_check`;
+          if (constraintDef.check) {
+            const constraintName =
+              constraintDef.name ||
+              `${entity.name}_${columnNames.join("_")}_check`;
 
-              configs.push(builders.check(constraintName, constraintDef.check));
-            }
+            configs.push(builders.check(constraintName, constraintDef.check));
           }
         }
       }

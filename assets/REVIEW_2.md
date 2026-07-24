@@ -9,9 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-25**: 112 findings closed — 101 fixed across thirteen passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
+> **Update 2026-07-25**: 117 findings closed — 106 fixed across fourteen passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
 >
-> **Remaining: 157 open — 0 P0 · 0 P1 · 74 P2 · 83 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
+> **Remaining: 152 open — 0 P0 · 0 P1 · 69 P2 · 83 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -261,6 +261,18 @@ The four routing findings, taken together because they share one root: path segm
 | server/react | Every path-building site got the same three fixes: values are percent-encoded, the token is matched whole (`/a/:idType/:id` used to compile to `/a/1Type/:id` because `:id` ate the prefix of `:idType`), and a replace *function* keeps `$&` / `$'` in a value literal instead of expanding them as substitution patterns. `HttpClient.pathVariables` and `$sse.buildFetchUrl` were named in the finding; `ReactPageProvider.compile` (what `router.push(name, params)` and `<Link>` put in the address bar) and `$sitemap.buildPathFromParams` have the identical defect and are fixed with it — with the server now decoding, an unencoded client is no longer symmetric-but-wrong, it is simply wrong. |
 
 Note: three assertions in `RouterProvider.spec.ts` encoded the old behaviour — a leaked `name` on a wildcard fallback and two missing `*` captures. They were updated, with a comment saying why.
+
+### Fourteenth pass — 2026-07-25 (orm — silent data correctness)
+
+Five findings whose common shape is a write or a schema that goes wrong without saying so.
+
+| Area | Fix |
+|------|-----|
+| orm/ModelBuilder | A column named by `indexes` / `foreignKeys` / `constraints` that does not exist is now an error naming the entity, the column and the known columns. Every one of those paths used to guard with a truthiness check and *skip* the config: a typo produced no index, no foreign key, no constraint, and no error — migration generation then emitted a schema quietly missing it. The check runs **eagerly** at build time, because drizzle stores the extra-config closure and only invokes it later during migration generation, which is far too late to be useful. TypeScript already rejects the typo at the call site; this covers `as any`, dynamically built entities and JS consumers. |
+| orm/postgres | `z.any()` (and `z.array(z.any())`) map to `jsonb`, matching the sqlite JSON mapping. The postgres builder had no `isAny` branch and threw `Unsupported schema type` at startup, so an entity developed against the sqlite dev driver broke on a postgres deploy. |
+| orm/postgres | **Correction — the finding was backwards.** `format: "binary"` is broken on **postgres**, not sqlite. `z.binary()` is a *string* carrying `format: "binary"`, and sqlite round-trips it correctly through its JSON text column. Postgres declared the `bytea` column as `data: Buffer`, so the row returned by an insert carried a Buffer, failed schema validation in `Repository.clean()`, and a `z.binary()` column could not be written at all (verified: `expected string, received Buffer at /payload`). The `byte` type now exchanges base64 while still storing real bytes. First test coverage for binary columns, on both dialects. |
+| orm/Repository | The `upsert()` ON CONFLICT `set` payload goes through the same validation and codec encoding as every other write path — the `cast()` call had been commented out. This is not cosmetic: sqlite is dynamically typed, so an invalid value was **written**, and the row could only be read back as a validation error afterwards (verified). `cast` lifts raw SQL expressions out before validating and re-attaches them, so `set: { hits: sql\`hits + 1\` }` still works. |
+| orm/Repository | A missing column is reported as `DbColumnNotFoundError`, not `DbTableNotFoundError`. On a write, postgres says `column "x" of relation "y" does not exist` — containing both "does not exist" and "relation", so it matched the table branch first: the one message that names the column was the one that hid it. The existing test only covered the `SELECT` form, whose message omits "relation" and so happened to classify correctly. |
 
 Per-module detail follows. Line numbers reference the tree as it stood when each finding was written (`main` @ 6c7ec9400 for the original passes); the fix passes have since moved code, so treat every line number as a starting hint, not an address — locate by symbol name.
 
@@ -646,22 +658,22 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/orm/core/services/SqliteModelBuilder.ts:193
 - **Detail**: `z.bigint()` maps on PG to `mode: "bigint"` (exact), but on SQLite to `integer(key, { mode: "number" })`. Values beyond 2^53 (snowflake/external 64-bit IDs) silently corrupt on sqlite/D1 while working on pg. Fix: customType with safeIntegers/text storage or BigInt round-trip.
 
-### [BUG] `format: "binary"` columns are broken on SQLite
+### ✅ FIXED — [BUG] `format: "binary"` columns are broken on SQLite
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/core/services/SqliteModelBuilder.ts:283
 - **Detail**: On PG binary → bytea customType (Buffer); on SQLite → `sqliteJson` — `JSON.stringify(buffer)` writes `{"type":"Buffer","data":[...]}` and parse returns that plain object, never a Buffer. Different type per dialect; zero test coverage. Fix: blob customType or reject binary on sqlite with a clear error.
 
-### [BUG] `z.any()` columns supported on SQLite but crash the Postgres model builder
+### ✅ FIXED — [BUG] `z.any()` columns supported on SQLite but crash the Postgres model builder
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/postgres/services/PostgresModelBuilder.ts:388
 - **Detail**: SqliteModelBuilder handles `isAny` (→ JSON text); PostgresModelBuilder has no `isAny` branch and throws `Unsupported schema type` at startup. An entity developed on sqlite dev driver breaks on pg deploy. Fix: map isAny to jsonb.
 
-### [BUG] Missing-column errors misclassified as `DbTableNotFoundError`
+### ✅ FIXED — [BUG] Missing-column errors misclassified as `DbTableNotFoundError`
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/core/services/Repository.ts:1434
 - **Detail**: PG's `column "x" of relation "y" does not exist` contains both "does not exist" and "relation", so it matches the table branch before the column branch. Fix: check column pattern first, or require message to start with relation/table.
 
-### [BUG] `ModelBuilder` silently drops indexes, foreign keys, and constraints on column-name typos
+### ✅ FIXED — [BUG] `ModelBuilder` silently drops indexes, foreign keys, and constraints on column-name typos
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/core/services/ModelBuilder.ts:102
 - **Detail**: Builder paths guard with `if ((self as any)[indexDef])` / length checks and *skip* the config when a column lookup fails — a typo'd column in `indexes`/`foreignKeys`/`constraints` produces no constraint and no error; migration generation emits a schema missing it. Silent data-integrity hazard. Fix: throw AlephaError naming entity and bad column.
@@ -681,7 +693,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/orm/core/services/QueryManager.ts:458
 - **Detail**: `arrayContains`/`arrayContained`/`arrayOverlaps` map to drizzle's PG array functions unconditionally, but sqlite stores string arrays as JSON text — invalid SQL / wrong semantics at runtime. `ilike` family got sqlite fallbacks; array family didn't. Fix: throw "not supported on sqlite" or implement via json_each.
 
-### [UNFINISHED] `upsert()` SET values bypass codec encoding — dead commented-out cast
+### ✅ FIXED — [UNFINISHED] `upsert()` SET values bypass codec encoding — dead commented-out cast
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/core/services/Repository.ts:826
 - **Detail**: `//setData = this.cast(setData, false) as any;` commented out, so the ON CONFLICT set payload skips validation and codec encoding that every other write path applies. `cast()` already extracts SQL wrappers safely, so it can be re-enabled.

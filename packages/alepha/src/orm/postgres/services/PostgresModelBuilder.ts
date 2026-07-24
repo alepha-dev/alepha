@@ -316,12 +316,22 @@ export class PostgresModelBuilder extends ModelBuilder {
       return schema(key, value);
     }
 
+    // jsonb, matching SqliteModelBuilder's JSON mapping. Without this branch
+    // an entity that builds fine on the sqlite dev driver threw "Unsupported
+    // schema type" at startup on a postgres deploy.
+    if (z.schema.isAny(value)) {
+      return schema(key, value);
+    }
+
     if (z.schema.isArray(value)) {
       const items = value.items;
       if (z.schema.isObject(items)) {
         return schema(key, value);
       }
       if (z.schema.isRecord(items)) {
+        return schema(key, value);
+      }
+      if (z.schema.isAny(items)) {
         return schema(key, value);
       }
       if (z.schema.isString(items)) {

@@ -840,7 +840,13 @@ export abstract class Repository<T extends TObject> {
         opts.now ?? this.dateTimeProvider.nowISOString();
     }
 
-    //setData = this.cast(setData, false) as any;
+    // The ON CONFLICT payload goes through the same validation and codec
+    // encoding as every other write path. Skipping it let a value of the wrong
+    // type reach the driver — and sqlite, being dynamically typed, stored it,
+    // so the row could only be read back as a validation error afterwards.
+    // `cast` lifts raw SQL expressions out before validating and re-attaches
+    // them, so `set: { hits: sql\`hits + 1\` }` still works.
+    setData = this.cast(setData, false) as any;
 
     // Scope the conflict-UPDATE to the current tenant and non-deleted rows so a
     // conflict on a tenant-agnostic unique key (e.g. `email`) cannot silently
@@ -1475,17 +1481,21 @@ export abstract class Repository<T extends TObject> {
       return DbDeadlockError.fromDatabaseError(getSourceError());
     }
 
-    // Check for table not found (must check before column not found)
+    // Column before table: on a write, postgres reports a missing column as
+    // `column "x" of relation "y" does not exist`, which contains both "does
+    // not exist" and "relation" and so matched the table branch — the one
+    // message that names the column was reported as a missing table. No
+    // table-not-found message mentions a column, so this order is safe.
+    if (hasPattern(this.errorPatterns.columnNotFound)) {
+      return DbColumnNotFoundError.fromDatabaseError(getSourceError());
+    }
+
+    // Check for table not found
     if (
       hasPattern(this.errorPatterns.tableNotFound) &&
       (fullMessage.includes("relation") || fullMessage.includes("table"))
     ) {
       return DbTableNotFoundError.fromDatabaseError(getSourceError());
-    }
-
-    // Check for column not found
-    if (hasPattern(this.errorPatterns.columnNotFound)) {
-      return DbColumnNotFoundError.fromDatabaseError(getSourceError());
     }
 
     return new DbError(message, error);
