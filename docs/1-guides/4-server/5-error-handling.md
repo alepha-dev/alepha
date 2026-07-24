@@ -105,6 +105,26 @@ All HTTP errors are serialized as JSON with a consistent structure:
 
 The `error` field is the class name (e.g. `NotFoundError`, `ConflictError`). For plain `HttpError` instances, it is derived from the status code.
 
+## Production Sanitization
+
+In production (`NODE_ENV=production`), **5xx responses are stripped before they reach the client**: `message` becomes `"Internal Server Error"`, and `cause` and `details` are dropped. A 5xx message is internal — it routinely carries DB connection strings, upstream hostnames, and credentials — so it belongs in your logs, not in the response. The `requestId` is always preserved, which is how you correlate the sanitized response with the full error in your logs.
+
+**4xx responses are never sanitized.** A `BadRequestError("age must be a positive integer")` is deliberate, client-facing context and is passed through verbatim, `cause` included.
+
+Outside production nothing is stripped, so local debugging shows the real error.
+
+This rule applies to every path an error can take to a client, including batched actions (`POST /api/_batch`) — a sub-action that fails with a 5xx reports `"Internal Server Error"` in its `error` field, while a 4xx sub-action keeps its message:
+
+```json
+[
+  { "action": "getUser", "status": 200, "data": { "id": "1" } },
+  { "action": "chargeCard", "status": 500, "error": "Internal Server Error" },
+  { "action": "updateAge", "status": 400, "error": "age must be a positive integer" }
+]
+```
+
+Use the `server:onError` hook below to ship the unsanitized error to your logger or Sentry.
+
 ## Status Code Mapping
 
 `HttpError` maps status codes to error names automatically:

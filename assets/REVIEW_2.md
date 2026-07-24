@@ -7,9 +7,9 @@
 
 ## Executive summary
 
-**268 findings: 1 P0 · 48 P1 · 128 P2 · 91 P3** (168 bugs, 50 unfinished, 50 recommendations).
+**269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-24**: 97 findings closed — 86 fixed across ten passes, plus 11 retired with the deletion of `alepha/api/subscriptions`.
+> **Update 2026-07-24**: 98 findings closed — 87 fixed across eleven passes, plus 11 retired with the deletion of `alepha/api/subscriptions`. An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold. See "Eleventh pass" below for the one new finding it surfaced and two corrections.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -172,7 +172,7 @@ The billing loop was never fixed: **the module was removed instead** (27 files, 
 
 The payments guide now states the recurring-billing stance explicitly: let the PSP own it, reconcile status from webhooks.
 
-**Downstream action required:** `apps/club` still registers the module (`apps/club/src/api/index.ts` — the import and the `alepha.with(AlephaApiSubscriptions)` line) and will not build until those two lines are removed. Its `subscriptions` / `subscription_events` tables become orphans; nothing FKs to them, so dropping them whenever migrations are next regenerated is safe (no D1 cascade hazard).
+**Downstream action — DONE (2026-07-24).** `apps/club` no longer registers the module. Its `subscriptions` / `subscription_events` tables are orphans; nothing FKs to them, so dropping them whenever migrations are next regenerated is safe (no D1 cascade hazard).
 
 ### Eighth pass — 2026-07-24 (hygiene)
 
@@ -216,6 +216,16 @@ The payments guide now states the recurring-billing stance explicitly: let the P
 | api/parameters | `delete()` / `deleteMany()` publish on the sync topic like `save()` already did. Without it other instances served the deleted value indefinitely — the Node default TTL is 0, so nothing revalidates. |
 
 Still deliberately open: the rate-limit `"unknown"`-IP shared bucket (only reachable when a global limit is explicitly configured).
+
+### Eleventh pass — 2026-07-24 (audit of the closed findings)
+
+Every finding marked ✅ FIXED / 🗑️ REMOVED above was re-verified against the tree by reading the actual code path. All 92 hold. The audit surfaced one **new** finding and two corrections:
+
+| Area | Item |
+|------|------|
+| server/links | **NEW P2 — `/api/_batch` leaked raw 5xx messages in production.** The batch handler returned `reason.message` verbatim for every failed sub-action, with none of the sanitization `sendError` applies on the single-request path — so a 500 shipped DB connection strings and credentials to the client. This is the path the React client uses by default (`BatchCollector`), making it the *more* likely leak of the two. Now mirrors `sendError`: 5xx in production → `"Internal Server Error"`, 4xx messages kept. Test-first (`BatchEndpoint.spec.ts`, failing → green); documented in `docs/1-guides/4-server/5-error-handling.md` under "Production Sanitization". |
+| server | **Correction.** The ninth-pass table credits the 5xx-cause fix to `HttpError.toJSON`. The guard actually lives in `ServerRouterProvider.sendError` (:416-421) — `toJSON` still emits `cause` unconditionally. Behaviorally correct (the router is the only non-test caller), but the fix is a *call-site* guard, not a serializer guard: anything that serializes an `HttpError` itself must apply the rule too. Exactly what the batch endpoint failed to do. |
+| server | **Hygiene.** `HttpClient.identityScope` built its cache-key separator from **literal** `\x00` / `\x01` bytes in the source. That made the whole file binary to `grep`, `git diff`, and code search — all of which silently return nothing rather than erroring. Replaced with `\u0000` / `\u0001` escapes: identical runtime value, file is text again. |
 
 Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`main` @ 6c7ec9400); fixed findings' line numbers may have shifted slightly.
 
@@ -444,6 +454,12 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **Severity**: P2
 - **File**: packages/alepha/src/server/core/errors/HttpError.ts:41; ServerRouterProvider.ts:410-417
 - **Detail**: The HttpError branch serializes `toJSON` unconditionally, which includes `reason` (cause name+message) as `cause`. Any 5xx HttpError with a cause ships the internal message to clients in production — sanitization only covers the non-HttpError path. Fix: strip cause/details for status ≥ 500 in production.
+- **Fix location (eleventh-pass correction)**: the guard is in `ServerRouterProvider.sendError` (:416-421), not in `toJSON` — `toJSON` still emits `cause` unconditionally. Behaviorally complete (the router is its only non-test caller), but it is a *call-site* guard, so any other code that serializes an `HttpError` must repeat the rule. `/api/_batch` did not — see below.
+
+### ✅ FIXED — [BUG] `/api/_batch` returns raw 5xx messages in production, bypassing the error sanitizer
+- **Severity**: P2 (information disclosure)
+- **File**: packages/alepha/src/server/links/providers/ServerLinksProvider.ts:236-254
+- **Detail**: Found by the eleventh-pass audit, not the original review. The batch handler mapped every rejected sub-action to `{ action, status, error: reason.message }` with no sanitization, while the single-request path strips 5xx messages in production (`sendError`, :416-421). A sub-action throwing `connect ECONNREFUSED db.internal:5432 (user=admin password=hunter2)` shipped that string to the client verbatim — verified with a failing test before the fix. This is the *more* exposed of the two paths: `BatchCollector` batches client `$action` calls into `/api/_batch` by default, so most React-app traffic takes it. Fixed by mirroring `sendError`: status ≥ 500 in production → `"Internal Server Error"`, 4xx messages kept (deliberate, client-facing). Documented in `docs/1-guides/4-server/5-error-handling.md`.
 
 ### [BUG] Helmet HSTS "isSecure" check reads response headers instead of request headers
 - **Severity**: P2

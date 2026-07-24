@@ -1,5 +1,5 @@
-import { Alepha, z } from "alepha";
-import { $action, ServerProvider } from "alepha/server";
+import { Alepha, AlephaError, z } from "alepha";
+import { $action, BadRequestError, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 import { ServerLinksProvider } from "../index.ts";
 
@@ -152,6 +152,88 @@ describe("POST /api/_batch", () => {
     );
 
     expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("should not leak a 5xx message in production", async ({ expect }) => {
+    class App {
+      boom = $action({
+        schema: { response: z.text() },
+        handler: () => {
+          throw new AlephaError(
+            "connect ECONNREFUSED db.internal:5432 (user=admin password=hunter2)",
+          );
+        },
+      });
+    }
+
+    const alepha = Alepha.create({
+      env: {
+        NODE_ENV: "production",
+        SERVER_PORT: 0,
+        APP_SECRET: "test-secret",
+      },
+    })
+      .with(App)
+      .with(ServerLinksProvider);
+    await alepha.start();
+
+    const res = await fetch(
+      `${alepha.inject(ServerProvider).hostname}/api/_batch`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify([{ action: "boom" }]),
+      },
+    );
+
+    const data = await res.json();
+
+    expect(data[0].status).toBe(500);
+    expect(data[0].error).toBe("Internal Server Error");
+    expect(JSON.stringify(data)).not.toContain("hunter2");
+    expect(JSON.stringify(data)).not.toContain("db.internal");
+
+    await alepha.stop();
+  });
+
+  it("should keep a 4xx message in production (client-facing)", async ({
+    expect,
+  }) => {
+    class App {
+      nope = $action({
+        schema: { response: z.text() },
+        handler: () => {
+          throw new BadRequestError("age must be a positive integer");
+        },
+      });
+    }
+
+    const alepha = Alepha.create({
+      env: {
+        NODE_ENV: "production",
+        SERVER_PORT: 0,
+        APP_SECRET: "test-secret",
+      },
+    })
+      .with(App)
+      .with(ServerLinksProvider);
+    await alepha.start();
+
+    const res = await fetch(
+      `${alepha.inject(ServerProvider).hostname}/api/_batch`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify([{ action: "nope" }]),
+      },
+    );
+
+    const data = await res.json();
+
+    expect(data[0].status).toBe(400);
+    expect(data[0].error).toContain("age");
+
+    await alepha.stop();
   });
 
   it("should handle actions with params", async ({ expect }) => {

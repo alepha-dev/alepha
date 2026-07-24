@@ -250,7 +250,20 @@ export class ServerLinksProvider {
           error: reason,
         });
 
-        return { action, status, error: message };
+        // Same rule the single-request path applies in `sendError`: a 5xx
+        // message is internal (DB URLs, upstream errors, credentials in a
+        // connection string) and must not reach the client in production.
+        // 4xx messages are deliberate, client-facing context and are kept.
+        // Without this the batch endpoint was a way around the sanitizer —
+        // and it is the path the React client uses by default.
+        return {
+          action,
+          status,
+          error:
+            status >= 500 && this.alepha.isProduction()
+              ? "Internal Server Error"
+              : message,
+        };
       });
     },
   });
