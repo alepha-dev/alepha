@@ -36,7 +36,9 @@ export class CookieParser {
         continue;
       }
 
-      if (!cookie.value) {
+      // `Max-Age=0` is an explicit deletion and legitimately carries an empty
+      // value — dropping it here is what made a scoped cookie undeletable.
+      if (!cookie.value && cookie.maxAge !== 0) {
         continue;
       }
 

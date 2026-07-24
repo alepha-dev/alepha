@@ -22,7 +22,7 @@ import {
 } from "jose";
 import { JWTClaimValidationFailed, JWTExpired } from "jose/errors";
 import type { JWTVerifyOptions } from "jose/jwt/verify";
-import { SecurityError } from "../errors/SecurityError.ts";
+import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 
 /**
  * Provides utilities for working with JSON Web Tokens (JWT).
@@ -170,11 +170,11 @@ export class JwtProvider {
         this.log.trace("Token verification has failed", error);
 
         if (error instanceof JWTExpired) {
-          throw new SecurityError("Token expired", { cause: error });
+          throw new InvalidTokenError("Token expired", { cause: error });
         }
 
         if (error instanceof JWTClaimValidationFailed) {
-          throw new SecurityError("Token claim validation failed", {
+          throw new InvalidTokenError("Token claim validation failed", {
             cause: error,
           });
         }
@@ -185,7 +185,7 @@ export class JwtProvider {
       `No valid key loader found to verify the token (keystore size: ${this.keystore.length})`,
     );
 
-    throw new SecurityError("Invalid token");
+    throw new InvalidTokenError("Invalid token");
   }
 
   /**

@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { SecurityError, type UserAccount } from "alepha/security";
+import { $route, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { $auth } from "../primitives/$auth.ts";
 import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
@@ -20,6 +21,10 @@ class TestServerAuthProvider extends ServerAuthProvider {
 
   public testGetAuthenticationProviders(filters: { realmName?: string } = {}) {
     return this.getAuthenticationProviders(filters);
+  }
+
+  public testTokenCookieTtl(tokens: any) {
+    return this.tokenCookieTtl(tokens);
   }
 }
 
@@ -247,6 +252,129 @@ describe("ServerAuthProvider", () => {
 
       const result = await auth.testRefreshTokens(tokens);
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe("fallback token", () => {
+    const createFallbackApp = (fallback: () => any) => {
+      class FallbackApp {
+        auth = $auth({
+          name: "fallback-provider",
+          issuer: mockIssuer,
+          credentials: {
+            account: async () => undefined,
+          },
+          fallback,
+        });
+
+        echo = $route({
+          path: "/echo-auth",
+          handler: ({ headers }) => headers.authorization ?? "",
+        });
+      }
+
+      return Alepha.create().with(FallbackApp).with(ServerAuthProvider);
+    };
+
+    it("should use a string fallback token", async () => {
+      const alepha = createFallbackApp(() => "static-token");
+      await alepha.start();
+
+      const hostname = alepha.inject(ServerProvider).hostname;
+      const body = await (await fetch(`${hostname}/echo-auth`)).text();
+
+      expect(body).toBe("Bearer static-token");
+    });
+
+    it("should resolve the object fallback form", async () => {
+      // `AccessToken` allows `{ token: () => Async<string> }` and the JSDoc
+      // example passes a `$serviceAccount`, but the value was interpolated
+      // straight into the header — the documented form produced
+      // `Bearer [object Object]`.
+      const alepha = createFallbackApp(() => ({
+        token: async () => "service-account-token",
+      }));
+      await alepha.start();
+
+      const hostname = alepha.inject(ServerProvider).hostname;
+      const body = await (await fetch(`${hostname}/echo-auth`)).text();
+
+      expect(body).toBe("Bearer service-account-token");
+    });
+  });
+
+  describe("token cookie ttl", () => {
+    it("should use the reported refresh token expiry", () => {
+      const { auth } = createApp();
+
+      const ttl = auth.testTokenCookieTtl({
+        access_token: "a",
+        refresh_token: "r",
+        expires_in: 3600,
+        refresh_token_expires_in: 60 * 60 * 24 * 30,
+      });
+
+      expect(ttl?.asSeconds()).toBe(60 * 60 * 24 * 30);
+    });
+
+    it("should defer to the cookie default when only expires_in is reported", () => {
+      // Google returns `expires_in: 3600` and no refresh expiry alongside a
+      // long-lived refresh token — using it as the cookie Max-Age signed
+      // users out after an hour.
+      const { auth } = createApp();
+
+      const ttl = auth.testTokenCookieTtl({
+        access_token: "a",
+        refresh_token: "r",
+        expires_in: 3600,
+      });
+
+      expect(ttl).toBeUndefined();
+    });
+
+    it("should use expires_in when there is no refresh token", () => {
+      // Without a refresh token the session really does end with the access
+      // token, so its lifetime is the right cookie lifetime.
+      const { auth } = createApp();
+
+      const ttl = auth.testTokenCookieTtl({
+        access_token: "a",
+        expires_in: 3600,
+      });
+
+      expect(ttl?.asSeconds()).toBe(3600);
+    });
+  });
+
+  describe("login route", () => {
+    it("should not fail on a malformed Referer header", async () => {
+      // Browsers legitimately send a non-URL Referer from sandboxed origins,
+      // and `new URL(referer)` threw — turning the whole login into a 500.
+      const { alepha } = createApp();
+      await alepha.start();
+
+      const hostname = alepha.inject(ServerProvider).hostname;
+
+      const res = await fetch(`${hostname}/oauth/login?provider=github`, {
+        headers: { referer: "null" },
+        redirect: "manual",
+      });
+
+      expect(res.status).toBeLessThan(500);
+    });
+
+    it("should still capture the login uri from a valid Referer", async () => {
+      const { alepha } = createApp();
+      await alepha.start();
+
+      const hostname = alepha.inject(ServerProvider).hostname;
+
+      const res = await fetch(`${hostname}/oauth/login?provider=github`, {
+        headers: { referer: "https://app.example.com/dashboard?tab=1" },
+        redirect: "manual",
+      });
+
+      expect(res.status).toBeLessThan(500);
     });
   });
 

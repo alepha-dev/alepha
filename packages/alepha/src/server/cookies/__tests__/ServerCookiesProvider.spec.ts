@@ -302,6 +302,40 @@ describe("ServerCookiesProvider", () => {
     });
   });
 
+  test("should delete a scoped cookie with its own path and domain", async () => {
+    // The deletion must carry the same Path and Domain the cookie was written
+    // with, or the browser keeps it.
+    class ScopedApp {
+      admin = $cookie({
+        name: "admin_session",
+        schema: z.text(),
+        path: "/admin",
+        domain: ".example.com",
+      });
+
+      logout = $action({
+        schema: { response: z.text() },
+        handler: () => {
+          this.admin.del();
+          return "bye";
+        },
+      });
+    }
+
+    const scopedAlepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaServerCookies);
+    const scopedApp = scopedAlepha.inject(ScopedApp);
+    await scopedAlepha.start();
+
+    const response = await scopedApp.logout.fetch();
+    const header = response.raw?.headers.get("set-cookie") ?? "";
+
+    expect(header).toContain("Path=/admin");
+    expect(header).toContain("Domain=.example.com");
+    expect(header).toContain("Max-Age=0");
+  });
+
   // test("should throw if secret is missing for secure cookies", async () => {
   // 	class AppWithMissingSecret {
   // 		badCookie = $cookie({

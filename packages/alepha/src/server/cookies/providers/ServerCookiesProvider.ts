@@ -204,13 +204,26 @@ export class ServerCookiesProvider {
     cookies.res[this.prefixName(name, options.prefix !== false)] = cookie;
   }
 
-  public deleteCookie<T extends TSchema>(
+  /**
+   * A browser only drops a cookie when the deletion carries the same `Path`
+   * and `Domain` it was written with, so the scope has to be forwarded here.
+   * Without `scope` this emits the historical bare `Path=/` deletion, which
+   * silently does nothing for a cookie declared with any other path.
+   */
+  public deleteCookie(
     name: string,
     contextCookies?: Cookies,
     prefix = true,
+    scope?: { path?: string; domain?: string },
   ): void {
     const cookies = this.getCookiesFromContext(contextCookies);
-    cookies.res[this.prefixName(name, prefix)] = null;
+
+    cookies.res[this.prefixName(name, prefix)] = {
+      value: "",
+      path: scope?.path ?? "/",
+      domain: scope?.domain,
+      maxAge: 0,
+    };
   }
 
   // --- Crypto & Parsing ---

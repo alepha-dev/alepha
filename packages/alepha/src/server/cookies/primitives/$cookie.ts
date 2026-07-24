@@ -186,7 +186,14 @@ export class CookiePrimitive<T extends TSchema>
    * Deletes the cookie in the current request's response.
    */
   public del(options?: { cookies?: Cookies }): void {
-    this.serverCookiesProvider.deleteCookie(this.name, options?.cookies);
+    // Forward the declared scope: the browser matches Path and Domain when
+    // deciding whether a Set-Cookie deletes an existing cookie.
+    this.serverCookiesProvider.deleteCookie(
+      this.name,
+      options?.cookies,
+      this.options.prefix !== false,
+      { path: this.options.path, domain: this.options.domain },
+    );
   }
 }
 

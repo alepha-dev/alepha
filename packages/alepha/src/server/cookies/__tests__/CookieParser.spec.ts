@@ -90,6 +90,28 @@ describe("CookieParser", () => {
       expect(result).toEqual(["session=; Path=/; Max-Age=0"]);
     });
 
+    it("should keep the path and domain when deleting a scoped cookie", ({
+      expect,
+    }) => {
+      // A browser only drops a cookie when the deletion matches its Path and
+      // Domain. Emitting a bare `Path=/` meant a `$cookie({ path: "/admin" })`
+      // — or any domain-scoped cookie — could never be deleted.
+      const cookies: Record<string, Cookie | null> = {
+        session: {
+          value: "",
+          path: "/admin",
+          domain: ".example.com",
+          maxAge: 0,
+        },
+      };
+
+      const result = parser.serializeResponseCookies(cookies, false);
+
+      expect(result).toEqual([
+        "session=; Path=/admin; Max-Age=0; Domain=.example.com",
+      ]);
+    });
+
     it("should skip cookies with empty value", ({ expect }) => {
       const cookies: Record<string, Cookie | null> = {
         empty: { value: "" },

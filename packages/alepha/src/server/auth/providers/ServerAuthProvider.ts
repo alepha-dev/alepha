@@ -1,5 +1,5 @@
 import { $hook, $inject, Alepha, z } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
+import { DateTimeProvider, type Duration } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   InvalidCredentialsError,
@@ -28,7 +28,11 @@ import {
   randomState,
 } from "openid-client";
 import { alephaServerAuthRoutes } from "../constants/routes.ts";
-import { $auth, type AuthPrimitive } from "../primitives/$auth.ts";
+import {
+  $auth,
+  type AccessToken,
+  type AuthPrimitive,
+} from "../primitives/$auth.ts";
 import type { AuthenticationProvider } from "../schemas/authenticationProviderSchema.ts";
 import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
@@ -134,7 +138,9 @@ export class ServerAuthProvider {
       if (!request.headers.authorization) {
         for (const provider of this.identities) {
           if ("fallback" in provider.options && provider.options.fallback) {
-            const token = await provider.options.fallback();
+            const token = await this.resolveAccessToken(
+              await provider.options.fallback(),
+            );
             if (token) {
               request.headers.authorization = `Bearer ${token}`;
               break;
@@ -303,6 +309,41 @@ export class ServerAuthProvider {
   });
 
   /**
+   * Resolve an {@link AccessToken} to the string that goes in the header.
+   *
+   * The type admits `{ token: () => Async<string> }` — the form the `fallback`
+   * JSDoc example uses, passing a `$serviceAccount` — but the value was
+   * interpolated directly, so the documented form produced
+   * `Bearer [object Object]`.
+   */
+  protected async resolveAccessToken(
+    token: AccessToken | undefined,
+  ): Promise<string | undefined> {
+    if (!token) {
+      return undefined;
+    }
+
+    return typeof token === "string" ? token : await token.token();
+  }
+
+  /**
+   * Path + query of a `Referer`, or `undefined` when it is absent or not a
+   * parseable URL.
+   */
+  protected refererPath(referer?: string): string | undefined {
+    if (!referer) {
+      return undefined;
+    }
+
+    try {
+      const url = new URL(referer);
+      return url.pathname + url.search;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * Oauth2/OIDC login route.
    */
   public readonly login = $route({
@@ -317,9 +358,10 @@ export class ServerAuthProvider {
       }),
     },
     handler: async ({ query, url, reply, headers }) => {
-      const loginUri = headers.referer
-        ? new URL(headers.referer).pathname + new URL(headers.referer).search
-        : undefined;
+      // A Referer is attacker- and browser-controlled and is not guaranteed to
+      // be a URL — sandboxed origins legitimately send `null`. Parsing it
+      // unguarded turned the whole login into a 500.
+      const loginUri = this.refererPath(headers.referer);
 
       const provider = this.provider({
         provider: query.provider,
@@ -789,19 +831,32 @@ export class ServerAuthProvider {
     return this.tokens.get({ cookies });
   }
 
-  protected setTokens(tokens: Tokens, cookies?: Cookies): void {
+  /**
+   * How long the token cookie should live.
+   *
+   * The cookie carries the *refresh* token, so its lifetime is the refresh
+   * token's — not the access token's. Falling back to `expires_in` truncated
+   * the session to the access-token lifetime: Google reports only
+   * `expires_in` (3600) alongside a long-lived refresh token, so users were
+   * signed out after an hour despite a refresh token that was still good.
+   *
+   * When no refresh expiry is reported, `undefined` lets the `$cookie`
+   * default apply. `expires_in` is only right when there is no refresh token
+   * at all — then the session really does end with the access token.
+   */
+  protected tokenCookieTtl(tokens: Tokens): Duration | undefined {
     const exp =
       tokens.refresh_token_expires_in ||
       tokens.refresh_expires_in ||
-      tokens.expires_in;
+      (tokens.refresh_token ? undefined : tokens.expires_in);
 
-    const ttl = exp
-      ? this.dateTimeProvider.duration(exp, "seconds")
-      : undefined;
+    return exp ? this.dateTimeProvider.duration(exp, "seconds") : undefined;
+  }
 
+  protected setTokens(tokens: Tokens, cookies?: Cookies): void {
     this.tokens.set(tokens, {
       cookies,
-      ttl,
+      ttl: this.tokenCookieTtl(tokens),
     });
   }
 

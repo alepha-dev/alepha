@@ -9,9 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-25**: 117 findings closed — 106 fixed across fourteen passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
+> **Update 2026-07-25**: 122 findings closed — 111 fixed across fifteen passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
 >
-> **Remaining: 152 open — 0 P0 · 0 P1 · 69 P2 · 83 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
+> **Remaining: 147 open — 0 P0 · 0 P1 · 64 P2 · 83 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -274,6 +274,16 @@ Five findings whose common shape is a write or a schema that goes wrong without 
 | orm/Repository | The `upsert()` ON CONFLICT `set` payload goes through the same validation and codec encoding as every other write path — the `cast()` call had been commented out. This is not cosmetic: sqlite is dynamically typed, so an invalid value was **written**, and the row could only be read back as a validation error afterwards (verified). `cast` lifts raw SQL expressions out before validating and re-attaches them, so `set: { hits: sql\`hits + 1\` }` still works. |
 | orm/Repository | A missing column is reported as `DbColumnNotFoundError`, not `DbTableNotFoundError`. On a write, postgres says `column "x" of relation "y" does not exist` — containing both "does not exist" and "relation", so it matched the table branch first: the one message that names the column was the one that hid it. The existing test only covered the `SELECT` form, whose message omits "relation" and so happened to classify correctly. |
 
+### Fifteenth pass — 2026-07-25 (auth + cookies)
+
+| Area | Fix |
+|------|-----|
+| security/JwtProvider | Token-validity failures throw `InvalidTokenError` (401) instead of `SecurityError` (403). **Scope correction:** the finding says this "can break refresh flows"; at the HTTP boundary it does not, because `$secure` catches the error and answers its own 401 (verified: both a malformed and an expired token already returned `401 UnauthorizedError`). The 403 is real for every *direct* `jwt.parse` caller — issuer refresh, OAuth code exchange — which propagate it as-is. Tested there, where it is observable. `SecurityError` keeps its 403 for genuine authorization denials, and a valid token from the wrong realm still answers 403. |
+| server/cookies | A cookie is deleted with the `Path` and `Domain` it was declared with. The deletion emitted a bare `name=; Path=/; Max-Age=0`, and a browser only drops a cookie when the deletion matches its scope — so `$cookie({ path: "/admin" })` or any domain-scoped cookie could never be deleted. `deleteCookie` takes the scope, `$cookie.del()` forwards its own options, and the serializer no longer discards an explicit `Max-Age=0` deletion for having an empty value. |
+| server/auth | `Referer` is parsed defensively. `new URL(referer)` threw on the non-URL values browsers legitimately send from sandboxed origins, so `GET /oauth/login` answered **500** (verified). |
+| server/auth | The token cookie lives as long as the *refresh* token. `expires_in` was used as a fallback Max-Age, and Google reports only `expires_in` (3600) alongside a long-lived refresh token — so the session cookie died after an hour. With no refresh expiry reported the `$cookie` default (30 days) now applies; `expires_in` is still used when there is no refresh token at all, where the session really does end with the access token. |
+| server/auth | The `fallback` object form works. `AccessToken` admits `{ token: () => Async<string> }` — the form the JSDoc example uses, passing a `$serviceAccount` — but the value was interpolated straight into the header, producing `Bearer [object Object]` (verified). |
+
 Per-module detail follows. Line numbers reference the tree as it stood when each finding was written (`main` @ 6c7ec9400 for the original passes); the fix passes have since moved code, so treat every line number as a starting hint, not an address — locate by symbol name.
 
 ---
@@ -403,7 +413,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/security/providers/JwtProvider.ts:150-157
 - **Detail**: `jwtVerify` is called without the `algorithms` option, so the accepted algorithm is inferred solely from the resolved key type. jose does reject `alg: none` and won't let a symmetric secret verify an asymmetric signature, so this is not exploitable today. But every realm knows exactly one expected alg; pass an explicit allowlist (`algorithms: ["HS256"]` / `[signer.alg]`) so a future key-loader change can't widen the accepted set.
 
-### [RECO] Auth failures surface as HTTP 403 instead of 401
+### ✅ FIXED — [RECO] Auth failures surface as HTTP 403 instead of 401
 - **Severity**: P2
 - **File**: packages/alepha/src/security/errors/SecurityError.ts:1-4 (raised at JwtProvider.ts:168,172,183)
 - **Detail**: `SecurityError` hardcodes `status = 403`, and `JwtProvider.parse` throws it for "Token expired", "Token claim validation failed", and "Invalid token". These are authentication failures and should be `401`; 401 is what signals a client to refresh/re-authenticate. Returning 403 for an expired token can break refresh flows. Fix: use a 401-status error (like `InvalidTokenError`) for token validity failures, reserving 403 for authorization denials.
@@ -528,7 +538,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/server/core/services/HttpClient.ts:376-379; router matcher (params raw)
 - **Detail**: (1) `url.replace(":key", value)` interpolates raw values — `/`, `?`, `#`, spaces break/inject URLs; (2) `$&`/`$'` in the value are substitution patterns, corrupting the URL; (3) `:id` replaces the prefix of `:idType`. Server side assigns `params[name] = parts[i]` without decodeURIComponent, so a compliant client sending `/users/John%20Doe` gives the handler the literal `John%20Doe`. Round-trips only "work" because both sides skip encoding. Same bug in `$sse.buildFetchUrl` (:646-648). Fix: encodeURIComponent client-side (replace-function), decode on extraction.
 
-### [BUG] Cookie deletion hardcodes `Path=/` and omits `Domain`
+### ✅ FIXED — [BUG] Cookie deletion hardcodes `Path=/` and omits `Domain`
 - **Severity**: P2
 - **File**: packages/alepha/src/server/cookies/services/CookieParser.ts:34-36
 - **Detail**: Null-cookie branch emits `name=; Path=/; Max-Age=0` regardless of the cookie's declared path/domain — a `$cookie({ path: "/admin" })` or domain-scoped cookie can never be deleted. ServerCookiesProvider.deleteCookie (207) doesn't receive the options to forward. Fix: pass path/domain through deletion.
@@ -538,17 +548,17 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/server/rate-limit/providers/ServerRateLimitProvider.ts:114-135,252-255
 - **Detail**: The global server:onRequest hook falls back to atom *defaults* `max: 100, windowMs: 15min`; the "skip if not configured" guard (`!max && !windowMs`) can never fire. Merely registering the module throttles every route (incl. static assets and OPTIONS). When `req.ip` is undefined the key is the shared literal `"unknown"` — all clients exhaust one bucket. Fix: opt-in global hook (no default limit); fall back to connection IP.
 
-### [BUG] `$auth` `fallback` token object form produces `Bearer [object Object]`
+### ✅ FIXED — [BUG] `$auth` `fallback` token object form produces `Bearer [object Object]`
 - **Severity**: P2
 - **File**: packages/alepha/src/server/auth/providers/ServerAuthProvider.ts:132-141; primitives/$auth.ts:514
 - **Detail**: `AccessToken = string | { token: () => Async<string> }` (JSDoc example passes a `$serviceAccount`), but the consumer does `Bearer ${token}` without calling `.token()` — the documented object form interpolates as `[object Object]`. Fix: call `.token()` for the object form.
 
-### [BUG] Login route 500s on malformed `Referer`
+### ✅ FIXED — [BUG] Login route 500s on malformed `Referer`
 - **Severity**: P2
 - **File**: packages/alepha/src/server/auth/providers/ServerAuthProvider.ts:318-320
 - **Detail**: `new URL(headers.referer)` throws on non-URL referers (browsers legitimately send `Referer: null` from sandboxed origins) → GET /oauth/login 500s. Wrap in try/catch → undefined.
 
-### [BUG] Token cookie TTL truncated to access-token lifetime when provider reports no refresh expiry
+### ✅ FIXED — [BUG] Token cookie TTL truncated to access-token lifetime when provider reports no refresh expiry
 - **Severity**: P2
 - **File**: packages/alepha/src/server/auth/providers/ServerAuthProvider.ts:790-804
 - **Detail**: `setTokens` uses `refresh_token_expires_in || refresh_expires_in || expires_in` as cookie Max-Age. Google returns only `expires_in` (3600) with a long-lived refresh token → the session cookie (incl. refresh token) expires after 1 hour. Fix: fall back to the $cookie default (30 days) when no refresh expiry reported.
