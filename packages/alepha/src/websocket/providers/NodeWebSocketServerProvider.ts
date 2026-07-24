@@ -503,6 +503,9 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       remoteAddress: request.socket.remoteAddress,
     });
 
+    const path = endpoint.channel.options.path;
+    this.emitHook("websocket:connect", { connectionId, path });
+
     // Call onConnect handler if provided
     if (endpoint.onConnect) {
       Promise.resolve(
@@ -513,6 +516,11 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     }
 
     ws.on("message", (data) => {
+      this.emitHook("websocket:message", {
+        connectionId,
+        path,
+        message: data.toString(),
+      });
       connection.handleMessage(data).catch((error) => {
         this.log.error(
           `Unhandled error in message handler for ${connectionId}:`,
@@ -541,6 +549,13 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         }
       }
 
+      this.emitHook("websocket:disconnect", {
+        connectionId,
+        path,
+        code,
+        reason: reason.toString(),
+      });
+
       // Call onDisconnect handler if provided
       if (endpoint.onDisconnect) {
         Promise.resolve(
@@ -553,6 +568,23 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
     ws.on("error", (error) => {
       this.log.error(`WebSocket error on ${connectionId}:`, error);
+      this.emitHook("websocket:error", { connectionId, path, error });
+    });
+  }
+
+  /**
+   * Emit a `websocket:*` observability hook. Fire-and-forget: a subscriber
+   * must never be able to break the connection it is observing.
+   */
+  protected emitHook<
+    K extends
+      | "websocket:connect"
+      | "websocket:disconnect"
+      | "websocket:message"
+      | "websocket:error",
+  >(name: K, payload: Parameters<typeof this.alepha.events.emit<K>>[1]): void {
+    this.alepha.events.emit(name, payload, { catch: true }).catch((error) => {
+      this.log.error(`Error emitting ${name}`, error);
     });
   }
 

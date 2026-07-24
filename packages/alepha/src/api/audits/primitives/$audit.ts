@@ -1,4 +1,4 @@
-import { $inject, createPrimitive, KIND, Primitive } from "alepha";
+import { $inject, AlephaError, createPrimitive, KIND, Primitive } from "alepha";
 import {
   AuditService,
   type AuditTypeDefinition,
@@ -99,11 +99,20 @@ export class AuditPrimitive extends Primitive<AuditPrimitiveOptions> {
 
   /**
    * Log an audit event for this type.
+   *
+   * `action` must be one of the type's declared {@link actions}: the admin
+   * filter options are built from that same list, so an undeclared action
+   * (a typo, most often) would be recorded but never surfaceable.
    */
   public async log(
     action: string,
     options: AuditLogOptions = {},
   ): Promise<void> {
+    if (!this.options.actions.includes(action)) {
+      throw new AlephaError(
+        `Unknown audit action '${action}' for type '${this.options.type}'. Declared actions: ${this.options.actions.join(", ")}.`,
+      );
+    }
     await this.auditService.record(this.options.type, action, options);
   }
 

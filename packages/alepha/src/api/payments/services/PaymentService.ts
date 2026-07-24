@@ -2,11 +2,7 @@ import { $inject, Alepha } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import {
-  $repository,
-  DatabaseProvider,
-  DbEntityNotFoundError,
-} from "alepha/orm";
+import { $repository, DbEntityNotFoundError } from "alepha/orm";
 import {
   type PaymentIntentEntity,
   paymentIntents,
@@ -23,7 +19,6 @@ export class PaymentService {
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly provider = $inject(PaymentProvider);
-  protected readonly dbProvider = $inject(DatabaseProvider);
   protected readonly intentRepo = $repository(paymentIntents);
   protected readonly refundRepo = $repository(refunds);
 
@@ -376,79 +371,65 @@ export class PaymentService {
   ): Promise<RefundEntity> {
     const intent = await this.getIntent(intentId);
 
-    // Atomically reserve the refund: a version-guarded claim plus a
-    // "pending" refund row, inside one transaction. Two concurrent refunds
-    // both reading the same refunded total can otherwise both pass the
-    // remaining-amount check and over-refund (verified race for cash
+    // Reserve the refund with a version-guarded claim. Two concurrent refunds
+    // both reading the same refunded total would otherwise both pass the
+    // remaining-amount check and over-refund (a verified race for cash
     // intents, which have no PSP to reject the excess).
-    const pending = await this.dbProvider.transactional(async () => {
-      const fresh = await this.getIntent(intentId);
+    //
+    // Deliberately NOT wrapped in `transactional()`: that would join an
+    // ambient transaction when several refunds run in the same async context,
+    // so one loser's rollback would erase the winner's reservation. The
+    // version-guarded UPDATE is itself atomic, which is all the mutual
+    // exclusion this needs — exactly one caller wins per version.
+    const fresh = await this.getIntent(intentId);
 
-      // Allow refunds from both "captured" and "partially_refunded" states
-      if (
-        fresh.status !== "captured" &&
-        fresh.status !== "partially_refunded"
-      ) {
-        throw new PaymentError(
-          `Cannot refund: intent ${fresh.id} is '${fresh.status}', expected 'captured' or 'partially_refunded'`,
-        );
-      }
-
-      // Validate refund amount against remaining refundable amount.
-      // Pending refunds count as reserved; failed ones never happened.
-      const existingRefunds = await this.refundRepo.findMany({
-        where: { intentId: { eq: fresh.id }, status: { ne: "failed" } },
-      });
-      const totalRefunded = existingRefunds.reduce(
-        (sum, r) => sum + r.amount,
-        0,
+    // Allow refunds from both "captured" and "partially_refunded" states
+    if (fresh.status !== "captured" && fresh.status !== "partially_refunded") {
+      throw new PaymentError(
+        `Cannot refund: intent ${fresh.id} is '${fresh.status}', expected 'captured' or 'partially_refunded'`,
       );
-      const remaining = fresh.amount - totalRefunded;
+    }
 
-      if (amount > remaining) {
+    // Validate refund amount against remaining refundable amount.
+    // Pending refunds count as reserved; failed ones never happened.
+    const existingRefunds = await this.refundRepo.findMany({
+      where: { intentId: { eq: fresh.id }, status: { ne: "failed" } },
+    });
+    const totalRefunded = existingRefunds.reduce((sum, r) => sum + r.amount, 0);
+    const remaining = fresh.amount - totalRefunded;
+
+    if (amount > remaining) {
+      throw new PaymentError(
+        `Refund amount ${amount} exceeds remaining refundable amount ${remaining}`,
+      );
+    }
+
+    // Claim first: only the caller that wins this guarded UPDATE may insert a
+    // reservation, so the amount check above can never be acted on twice.
+    try {
+      await this.intentRepo.updateOne(
+        { id: { eq: fresh.id }, version: { eq: fresh.version } },
+        { version: (fresh.version ?? 0) + 1 },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
         throw new PaymentError(
-          `Refund amount ${amount} exceeds remaining refundable amount ${remaining}`,
+          `Concurrent refund in progress for intent ${fresh.id}, retry`,
         );
       }
+      throw error;
+    }
 
-      // Insert the reservation BEFORE the version claim: any competitor that
-      // observes our bumped version is then guaranteed to also see this row
-      // in its refunded-total read, so it can never double-spend the
-      // remaining amount.
-      const reserved = await this.refundRepo.create({
-        intentId: fresh.id,
-        organizationId: fresh.organizationId,
-        amount,
-        currency: fresh.currency,
-        status: "pending",
-        reason,
-      });
-
-      try {
-        await this.intentRepo.updateOne(
-          { id: { eq: fresh.id }, version: { eq: fresh.version } },
-          { version: (fresh.version ?? 0) + 1 },
-        );
-      } catch (error) {
-        // Release the reservation — with a dedicated transaction the rollback
-        // does this, but a joined/outer transaction would keep the row.
-        await this.refundRepo.deleteById(reserved.id).catch((releaseError) => {
-          this.log.warn(`Failed to release refund reservation ${reserved.id}`, {
-            error: releaseError,
-          });
-        });
-        if (error instanceof DbEntityNotFoundError) {
-          throw new PaymentError(
-            `Concurrent refund in progress for intent ${fresh.id}, retry`,
-          );
-        }
-        throw error;
-      }
-
-      return reserved;
+    const pending = await this.refundRepo.create({
+      intentId: fresh.id,
+      organizationId: fresh.organizationId,
+      amount,
+      currency: fresh.currency,
+      status: "pending",
+      reason,
     });
 
-    // PSP call outside the transaction — network I/O must not hold locks.
+    // PSP call outside any lock — network I/O must not hold one.
     let refundProviderRef: string | undefined;
     try {
       if (intent.providerRef) {

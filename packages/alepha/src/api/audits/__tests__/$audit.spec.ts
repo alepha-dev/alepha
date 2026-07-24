@@ -275,4 +275,32 @@ describe("alepha/api/audits - $audit primitive", () => {
       expect(actions).toContain("deliver");
     });
   });
+
+  describe("action allow-list", () => {
+    it("rejects an action that is not declared on the audit type", async ({
+      expect,
+    }) => {
+      const { paymentAudits } = await setup();
+
+      // `actions` is documented as "List of allowed actions for this audit
+      // type". A typo used to be recorded silently, producing entries the
+      // admin filters (built from the same list) can never surface.
+      await expect(
+        paymentAudits.audit.log("refnud", {
+          resourceType: "payment",
+          resourceId: "p-1",
+        }),
+      ).rejects.toThrow(/refnud/);
+    });
+
+    it("still accepts a declared action", async ({ expect }) => {
+      const { paymentAudits } = await setup();
+      await expect(
+        paymentAudits.audit.log("refund", {
+          resourceType: "payment",
+          resourceId: "p-2",
+        }),
+      ).resolves.toBeUndefined();
+    });
+  });
 });

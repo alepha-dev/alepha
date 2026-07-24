@@ -1,4 +1,4 @@
-import { Alepha, z } from "alepha";
+import { $hook, Alepha, z } from "alepha";
 import { NodeHttpServerProvider } from "alepha/server";
 import { describe, test } from "vitest";
 import WebSocket from "ws";
@@ -16,6 +16,66 @@ const messageSchema = z.object({ content: z.text() });
 
 const hostnameOf = (alepha: Alepha) =>
   alepha.inject(NodeHttpServerProvider).hostname.replace("http://", "ws://");
+
+describe("websocket:* hooks", () => {
+  test("connect / message / disconnect hooks are emitted", async ({
+    expect,
+  }) => {
+    const events: string[] = [];
+    const alepha = Alepha.create().with(AlephaWebSocket);
+
+    class Controller {
+      ch = $channel({
+        path: "/ws/hooks",
+        schema: { in: messageSchema, out: messageSchema },
+      });
+
+      ws = $websocket({
+        channel: this.ch,
+        handler: async () => {},
+      });
+
+      onConnect = $hook({
+        on: "websocket:connect",
+        handler: ({ path }) => {
+          events.push(`connect:${path}`);
+        },
+      });
+
+      onMessage = $hook({
+        on: "websocket:message",
+        handler: ({ path }) => {
+          events.push(`message:${path}`);
+        },
+      });
+
+      onDisconnect = $hook({
+        on: "websocket:disconnect",
+        handler: ({ path }) => {
+          events.push(`disconnect:${path}`);
+        },
+      });
+    }
+
+    alepha.inject(Controller);
+    await alepha.start();
+
+    const ws = new WebSocket(`${hostnameOf(alepha)}/ws/hooks`);
+    await waitForOpen(ws);
+    ws.send(JSON.stringify({ content: "hi" }));
+    await delay(150);
+    ws.close();
+    await delay(150);
+
+    // Declared in the Hooks interface with "Fires when …" docs — they must
+    // actually fire, or the extension point is decorative.
+    expect(events).toContain("connect:/ws/hooks");
+    expect(events).toContain("message:/ws/hooks");
+    expect(events).toContain("disconnect:/ws/hooks");
+
+    await alepha.stop();
+  });
+});
 
 describe("NodeWebSocketServerProvider — hardening", () => {
   test("connection ids are globally unique, not per-process counters", async ({

@@ -21,7 +21,7 @@ variable substitution, and categorization for different notification channels.
 | `description` | `string` | No |  |
 | `category` | `string` | No |  |
 | `critical` | `boolean` | No |  |
-| `sensitive` | `boolean` | No |  |
+| `sensitive` | `boolean` | No | Marks the template's rendered `variables` as personal data |
 | `translations` | `Object` | No |  |
 | `schema` | `T` | Yes |  |
 

@@ -1,4 +1,4 @@
-import { faker } from "@faker-js/faker";
+import { allLocales, Faker, faker } from "@faker-js/faker";
 import type {
   StaticDecode,
   TArray,
@@ -10,7 +10,7 @@ import type {
   TSchema,
   TString,
 } from "alepha";
-import { z } from "alepha";
+import { AlephaError, z } from "alepha";
 
 export interface FakeOptions {
   /**
@@ -74,7 +74,7 @@ export interface FakeOptions {
  * ```
  */
 export class FakeProvider {
-  protected readonly faker = faker;
+  protected faker = faker;
   protected readonly guard = z.schema;
   protected options: Required<FakeOptions> = {
     locale: "en",
@@ -108,6 +108,21 @@ export class FakeProvider {
           }
         : this.options.defaultRecordEntries,
     };
+
+    // Swap the faker instance when the locale changes — the option is
+    // documented as "Faker locale to use for generating fake data", so it has
+    // to actually drive the corpus. Falls back to `en` for keys the locale
+    // doesn't define.
+    if (options.locale !== undefined) {
+      const locale = (allLocales as Record<string, unknown>)[options.locale];
+      if (!locale) {
+        throw new AlephaError(
+          `Unknown faker locale '${options.locale}'. Use one of: ${Object.keys(allLocales).slice(0, 8).join(", ")}, …`,
+        );
+      }
+      this.faker = new Faker({ locale: [locale as never, allLocales.en] });
+      this.faker.seed(this.options.seed);
+    }
 
     // Reseed faker if seed is provided (allows resetting to same seed)
     if (options.seed !== undefined) {

@@ -154,7 +154,11 @@ export class AdminNotificationController {
     const payload = (exec.payload ?? {}) as Record<string, unknown>;
     return {
       ...this.toResource(exec),
-      variables: payload.variables,
+      // `variables` hold the rendered personal data (reset links, codes,
+      // addresses). A template flagged `sensitive` withholds them from the
+      // admin view — otherwise the flag is decorative and the data is
+      // readable by anyone with `admin:notification:read`.
+      variables: payload.sensitive ? undefined : payload.variables,
       logs: exec.logs,
     };
   }

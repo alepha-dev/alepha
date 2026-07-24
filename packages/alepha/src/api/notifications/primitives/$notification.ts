@@ -50,6 +50,12 @@ export interface NotificationPrimitiveOptions<T extends TObject>
   description?: string;
   category?: string;
   critical?: boolean;
+  /**
+   * Marks the template's rendered `variables` as personal data. Admin
+   * endpoints withhold them (the notification itself is still delivered and
+   * listed) — use it for password resets, verification codes, invoices, and
+   * anything else an operator should not be able to read after the fact.
+   */
   sensitive?: boolean;
   translations?: {
     // e.g., "en", "fr", even "en-US"

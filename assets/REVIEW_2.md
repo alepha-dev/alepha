@@ -9,7 +9,7 @@
 
 **268 findings: 1 P0 · 48 P1 · 128 P2 · 91 P3** (168 bugs, 50 unfinished, 50 recommendations).
 
-> **Update 2026-07-24**: 79 findings closed — 68 fixed across six passes, plus 11 retired with the deletion of `alepha/api/subscriptions` (see the seventh pass below).
+> **Update 2026-07-24**: 84 findings closed — 73 fixed across seven passes, plus 11 retired with the deletion of `alepha/api/subscriptions`.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -173,6 +173,19 @@ The billing loop was never fixed: **the module was removed instead** (27 files, 
 The payments guide now states the recurring-billing stance explicitly: let the PSP own it, reconcile status from webhooks.
 
 **Downstream action required:** `apps/club` still registers the module (`apps/club/src/api/index.ts` — the import and the `alepha.with(AlephaApiSubscriptions)` line) and will not build until those two lines are removed. Its `subscriptions` / `subscription_events` tables become orphans; nothing FKs to them, so dropping them whenever migrations are next regenerated is safe (no D1 cascade hazard).
+
+### Eighth pass — 2026-07-24 (hygiene)
+
+5 more findings fixed. Verified with `yarn lint`, `tsc --noEmit`, the full alepha suite (4314 tests), `yarn test:bun` (46), the lore suite (298), and a clean build.
+
+| Area | Fix |
+|------|-----|
+| logger | **Secret redaction.** `Logger.log` now masks credential-bearing keys (`authorization`, `cookie`, `password`, `token`, `apikey`, `secret`, `credential`, …) anywhere in `entry.data` — nested, inside arrays, matched case-insensitively ignoring `-`/`_` — before any formatter, destination, or the devtools log viewer sees it. One `log.debug("req", { headers })` used to ship bearer tokens to stdout and the aggregator. Errors pass through untouched (formatters depend on the instance), cycles are handled, and redaction can never throw. |
+| fake | `FakeProvider.locale` is wired: `configure({ locale })` swaps the faker instance (falling back to `en` for keys a locale doesn't define) instead of being silently ignored. An unknown locale now throws rather than pretending to work. |
+| api/audits | `$audit` enforces its `actions` allow-list in `log()`. A typo'd action used to be recorded silently and was then unfilterable — the admin filter options are built from that same list. |
+| api/notifications | The `sensitive` flag does something: admin detail responses withhold the rendered `variables` (reset links, codes, personal data) for templates marked sensitive. The option is also documented now — it had no JSDoc at all. |
+| api/payments | **CI follow-up:** `refund()`'s reservation no longer runs inside `transactional()`. Several refunds issued in the same async context joined one ambient transaction, so a loser's rollback erased the winner's reservation — one refund reported success while the intent stayed `captured` (flaky, ~1 run in 6; caught by CI on the removal commit). The version-guarded UPDATE is itself atomic and is all the mutual exclusion this needs. |
+| websocket | The four declared `websocket:*` hooks (`connect`, `disconnect`, `message`, `error`) are emitted by the Node provider. They were documented "Fires when …" and never fired. Emission is fire-and-forget so a subscriber cannot break the connection it observes. |
 
 Still deliberately open: the rate-limit `"unknown"`-IP shared bucket (only reachable when a global limit is explicitly configured).
 
@@ -860,7 +873,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/websocket/services/WebSocketClient.ts:330-335
 - **Detail**: `// TODO: Server should include roomId in response` — `handleMessage` loops all subscription handlers, so a client on rooms A and B delivers A's messages to B's handler too. Server never stamps roomId on outbound frames, so the client cannot filter. Makes the documented multi-room client model incorrect. Fix: include roomId in the server envelope.
 
-### [UNFINISHED] `websocket:*` hooks declared but never emitted
+### ✅ FIXED — [UNFINISHED] `websocket:*` hooks declared but never emitted
 - **Severity**: P3
 - **File**: packages/alepha/src/websocket/index.shared.ts:16-53
 - **Detail**: `websocket:connect/disconnect/message/error` declared in Hooks augmentation with full JSDoc; repo-wide grep shows no emit for any. Emit them or delete the declarations.
@@ -1231,12 +1244,12 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/api/audits/controllers/AdminAuditController.ts (getFilterOptions)
 - **Detail**: Returns `resourceTypes: ["user", "session", "file", "order", "payment"]` and `userRealms: ["default"]` as literals — the admin UI shows fabricated filter values and omits real ones. Should be SELECT DISTINCT (or removed).
 
-### [UNFINISHED] `$audit` `actions` allow-list is never enforced
+### ✅ FIXED — [UNFINISHED] `$audit` `actions` allow-list is never enforced
 - **Severity**: P3
 - **File**: packages/alepha/src/api/audits/primitives/$audit.ts:103-108
 - **Detail**: `actions: string[]` ("List of allowed actions") — `log()` passes any string with no membership check; typos create unfilterable audit types silently. Add validation in log().
 
-### [UNFINISHED] Notification `sensitive` flag does nothing
+### ✅ FIXED — [UNFINISHED] Notification `sensitive` flag does nothing
 - **Severity**: P3
 - **File**: packages/alepha/src/api/notifications/primitives/$notification.ts:53; AdminNotificationController.ts:153-160
 - **Detail**: `sensitive` is carried through and echoed, but `toDetailResource` returns `variables` (rendered personal data) regardless. Redact for sensitive templates or drop the option.
@@ -1394,7 +1407,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/mcp/transports/StreamableHttpMcpTransport.ts:248, :255
 - **Detail**: Spec: notifications "MUST return HTTP 202 Accepted"; transport returns 204. Unparseable messages require `"id": null`; `createErrorResponse(0, …)` fabricates id 0 (can collide with real id 0). Also JSON-RPC batch arrays (required by advertised 2025-03-26/2024-11-05 versions) are rejected by `parseMessage`.
 
-### [UNFINISHED] `FakeProvider.locale` option is accepted but never used
+### ✅ FIXED — [UNFINISHED] `FakeProvider.locale` option is accepted but never used
 - **Severity**: P2
 - **File**: packages/alepha/src/fake/providers/FakeProvider.ts:20, :77-91
 - **Detail**: `FakeOptions.locale` (documented, default "en") stored but never read — `configure({ locale: "fr" })` is a no-op. Wire it (`new Faker({ locale })`) or drop it. Related: `generateValueWithContext` ignores min/maxLength constraints.
@@ -1424,7 +1437,7 @@ Per-module detail follows. Line numbers reference the tree as of 2026-07-24 (`ma
 - **File**: packages/alepha/src/command/providers/CliProvider.ts:1119
 - **Detail**: `Env:` help section uses `(schema as any).description`, but wrapped (`.optional()`) env schemas keep it in the inner schema's `.meta()` registry — renders empty. Use `this.schemaMeta(schema).description`.
 
-### [RECO] Logger has no secret redaction at all
+### ✅ FIXED — [RECO] Logger has no secret redaction at all
 - **Severity**: P2
 - **File**: packages/alepha/src/logger/services/Logger.ts:188-224, JsonFormatterProvider.ts
 - **Detail**: `entry.data` serialized wholesale by every formatter and stored verbatim in MemoryDestinationProvider (devtools displays it). Nothing masks `authorization`, `password`, `token`, `apiKey`, `set-cookie`. One `log.debug("req", { headers })` ships bearer tokens to stdout/aggregation/devtools. Add key-based redaction in `Logger.log`. MCP transport also logs full request bodies at debug.

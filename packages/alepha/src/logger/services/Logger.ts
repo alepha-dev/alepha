@@ -203,7 +203,7 @@ export class Logger implements LoggerInterface {
     const logEntry: LogEntry = {
       level,
       message: _message,
-      data: _data,
+      data: this.redact(_data),
       context: this.context,
       service: this.service,
       module: this.module,
@@ -221,6 +221,83 @@ export class Logger implements LoggerInterface {
     this.emit(logEntry, formatted);
 
     this.destination.write(formatted, logEntry);
+  }
+
+  /**
+   * Keys whose values are masked before the entry reaches any formatter,
+   * destination, or devtools. Matched case-insensitively, ignoring `-`/`_`,
+   * as a substring — so `authorization`, `x-api-key`, `refreshToken` and
+   * `set-cookie` are all covered.
+   */
+  protected readonly redactedKeys = [
+    "authorization",
+    "cookie",
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "apikey",
+    "accesskey",
+    "privatekey",
+    "credential",
+    "sessionid",
+  ];
+
+  protected static readonly REDACTED = "[redacted]";
+
+  /**
+   * Mask credential-bearing values anywhere in the log payload.
+   *
+   * Without this, a single `log.debug("request", { headers })` ships bearer
+   * tokens and cookies to stdout, the log aggregator, and the devtools log
+   * viewer. Structure and non-secret fields are preserved so the entry stays
+   * useful for debugging.
+   *
+   * Errors are passed through untouched (formatters rely on the instance),
+   * and cycles are handled — logging must never throw.
+   */
+  protected redact(
+    data: object | Error | undefined,
+  ): object | Error | undefined {
+    if (!data || data instanceof Error) {
+      return data;
+    }
+
+    const isSecretKey = (key: string): boolean => {
+      const normalized = key.toLowerCase().replace(/[-_]/g, "");
+      return this.redactedKeys.some((needle) => normalized.includes(needle));
+    };
+
+    const seen = new WeakSet<object>();
+    const walk = (value: unknown): unknown => {
+      if (value === null || typeof value !== "object") {
+        return value;
+      }
+      if (value instanceof Error || value instanceof Date) {
+        return value;
+      }
+      if (seen.has(value)) {
+        return "[circular]";
+      }
+      seen.add(value);
+
+      if (Array.isArray(value)) {
+        return value.map(walk);
+      }
+
+      const out: Record<string, unknown> = {};
+      for (const [key, item] of Object.entries(value)) {
+        out[key] = isSecretKey(key) ? Logger.REDACTED : walk(item);
+      }
+      return out;
+    };
+
+    try {
+      return walk(data) as object;
+    } catch {
+      // Never let redaction break logging.
+      return data;
+    }
   }
 
   protected emit(entry: LogEntry, message?: string) {
