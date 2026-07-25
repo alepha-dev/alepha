@@ -126,26 +126,7 @@ export interface SimpleHead {
   /**
    * Link tags (e.g., stylesheets, preload, canonical)
    */
-  link?: Array<{
-    rel: string;
-    href: string;
-    type?: string;
-    as?: string;
-    crossorigin?: string;
-    /**
-     * Media query — used for theme-aware icons and responsive stylesheets.
-     * e.g. `(prefers-color-scheme: dark)` to ship a dark-mode favicon.
-     */
-    media?: string;
-    /**
-     * Sizes attribute — used for icon link tags (e.g. `"32x32"`, `"any"`).
-     */
-    sizes?: string;
-    /**
-     * Hreflang attribute — used for `rel="alternate"` localized variants.
-     */
-    hreflang?: string;
-  }>;
+  link?: Array<HeadLink>;
   /**
    * Script tags - string for inline code, or object with attributes
    */
@@ -158,6 +139,27 @@ export interface SimpleHead {
         content?: string;
       })
   >;
+}
+
+export interface HeadLink {
+  rel: string;
+  href: string;
+  type?: string;
+  as?: string;
+  crossorigin?: string;
+  /**
+   * Media query — used for theme-aware icons and responsive stylesheets.
+   * e.g. `(prefers-color-scheme: dark)` to ship a dark-mode favicon.
+   */
+  media?: string;
+  /**
+   * Sizes attribute — used for icon link tags (e.g. `"32x32"`, `"any"`).
+   */
+  sizes?: string;
+  /**
+   * Hreflang attribute — used for `rel="alternate"` localized variants.
+   */
+  hreflang?: string;
 }
 
 export interface HeadMeta {

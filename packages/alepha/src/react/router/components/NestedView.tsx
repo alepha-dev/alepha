@@ -1,4 +1,5 @@
-import { ErrorBoundary, useAlepha, useEvents } from "alepha/react";
+import { DateTimeProvider } from "alepha/datetime";
+import { ErrorBoundary, useAlepha, useEvents, useInject } from "alepha/react";
 import { memo, type ReactNode, use, useRef, useState } from "react";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import { Redirection } from "../errors/Redirection.ts";
@@ -39,6 +40,7 @@ const NestedView = (props: NestedViewProps) => {
   const onError = routerLayer?.onError;
   const state = useRouterState();
   const alepha = useAlepha();
+  const dateTime = useInject(DateTimeProvider);
 
   // Navigating away from a page that threw must clear the boundary — otherwise
   // the fallback latches and every later page keeps rendering the old error
@@ -53,6 +55,12 @@ const NestedView = (props: NestedViewProps) => {
   const [animation, setAnimation] = useState("");
   const animationExitDuration = useRef<number>(0);
   const animationExitNow = useRef<number>(0);
+
+  // Every `react:transition:end` claims the next number. A handler that has to
+  // sleep out an exit animation re-checks it on waking: if a later transition
+  // claimed one meanwhile, that transition has already committed its view and
+  // this one is showing a page the user navigated away from.
+  const commitGeneration = useRef<number>(0);
 
   useEvents(
     {
@@ -75,7 +83,7 @@ const NestedView = (props: NestedViewProps) => {
 
         if (animationExit) {
           const duration = animationExit.duration || 200;
-          animationExitNow.current = Date.now();
+          animationExitNow.current = dateTime.nowMillis();
           animationExitDuration.current = duration;
           setAnimation(animationExit.animation);
         } else {
@@ -87,16 +95,24 @@ const NestedView = (props: NestedViewProps) => {
       },
       "react:transition:end": async ({ state }) => {
         const layer = state.layers[index];
+        const generation = ++commitGeneration.current;
 
         // --------- Animations Begin ---------
         if (animationExitNow.current) {
           const duration = animationExitDuration.current;
-          const diff = Date.now() - animationExitNow.current;
+          const diff = dateTime.nowMillis() - animationExitNow.current;
           if (diff < duration) {
             await new Promise((resolve) =>
-              setTimeout(resolve, duration - diff),
+              dateTime.createTimeout(resolve as () => void, duration - diff),
             );
           }
+        }
+
+        if (generation !== commitGeneration.current) {
+          // Superseded while we slept — the newer transition owns the view
+          // and its animation state. Committing here would put the old page
+          // back on screen.
+          return;
         }
         // --------- Animations End ---------
 

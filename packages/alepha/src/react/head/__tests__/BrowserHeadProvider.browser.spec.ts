@@ -158,6 +158,98 @@ describe("BrowserHeadProvider", () => {
       ).toHaveLength(1);
     });
 
+    describe("reconcile", () => {
+      it("should drop a meta tag the next page does not declare", () => {
+        // renderHead only ever added or updated. Navigating from a page with a
+        // description to one without left the previous page's description in
+        // the DOM — the client diverged from what a hard load would produce.
+        provider.renderHead(
+          document,
+          { meta: [{ name: "description", content: "About us" }] },
+          { reconcile: true },
+        );
+        provider.renderHead(document, { title: "Home" }, { reconcile: true });
+
+        expect(document.querySelector('meta[name="description"]')).toBeNull();
+      });
+
+      it("should replace a canonical link rather than accumulate one per page", () => {
+        // Links deduped on rel+href, so a new href simply appended: after N
+        // navigations the document carried N canonicals.
+        provider.renderHead(
+          document,
+          { link: [{ rel: "canonical", href: "/a" }] },
+          { reconcile: true },
+        );
+        provider.renderHead(
+          document,
+          { link: [{ rel: "canonical", href: "/b" }] },
+          { reconcile: true },
+        );
+
+        const hrefs = [
+          ...document.querySelectorAll('link[rel="canonical"]'),
+        ].map((it) => it.getAttribute("href"));
+        expect(hrefs).toEqual(["/b"]);
+      });
+
+      it("should leave tags it never rendered alone", () => {
+        // charset/viewport and anything a third-party script injected are not
+        // ours to remove.
+        const viewport = document.createElement("meta");
+        viewport.setAttribute("name", "viewport");
+        viewport.setAttribute("content", "width=device-width");
+        document.head.appendChild(viewport);
+
+        provider.renderHead(
+          document,
+          { meta: [{ name: "description", content: "About us" }] },
+          { reconcile: true },
+        );
+        provider.renderHead(document, { title: "Home" }, { reconcile: true });
+
+        expect(document.querySelector('meta[name="viewport"]')).not.toBeNull();
+      });
+
+      it("should adopt a server-rendered tag it updates in place", () => {
+        // Hydration re-renders the SSR page's head: every tag it touches
+        // becomes managed, so the FIRST client navigation can clean the
+        // server's tags up too.
+        const ssr = document.createElement("meta");
+        ssr.setAttribute("name", "description");
+        ssr.setAttribute("content", "Server rendered");
+        document.head.appendChild(ssr);
+
+        provider.renderHead(
+          document,
+          { meta: [{ name: "description", content: "Server rendered" }] },
+          { reconcile: true },
+        );
+        provider.renderHead(document, { title: "Home" }, { reconcile: true });
+
+        expect(document.querySelector('meta[name="description"]')).toBeNull();
+      });
+
+      it("should not remove anything when reconcile is off", () => {
+        // refreshGlobalHead() re-applies ONLY global head; it must not treat
+        // the current page's tags as stale.
+        provider.renderHead(
+          document,
+          { meta: [{ name: "description", content: "About us" }] },
+          { reconcile: true },
+        );
+        provider.renderHead(document, {
+          meta: [{ property: "og:title", content: "Alepha" }],
+        });
+
+        expect(
+          document
+            .querySelector('meta[name="description"]')
+            ?.getAttribute("content"),
+        ).toBe("About us");
+      });
+    });
+
     it("should handle complete head object", () => {
       const head: Head = {
         title: "Complete Test",

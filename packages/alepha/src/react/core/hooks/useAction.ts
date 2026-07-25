@@ -174,6 +174,19 @@ export function useAction<Args extends any[], Result = void>(
     };
   }, []);
 
+  // The caller's callbacks and `id`, read through a ref so they never enter
+  // `executeAction`'s dependency list. `useQuery` hands `useAction` a freshly
+  // allocated inline `onSuccess` on every render; listing it as a dep rebuilt
+  // `executeAction` → `runAction` → `run` / `refetch` / `cancel` each time, so
+  // every consumer keyed on one of those identities churned, and a consumer
+  // effect shaped `useEffect(() => { refetch() }, [refetch])` looped forever.
+  //
+  // Assigned during render (the same pattern as `useSelector`): the callbacks
+  // invoked are always the latest ones the caller passed, never a
+  // first-render closure.
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
   const executeAction = useCallback(
     async (
       args: Args,
@@ -208,10 +221,10 @@ export function useAction<Args extends any[], Result = void>(
       try {
         await alepha.events.emit("react:action:begin", {
           type: "custom",
-          id: options.id,
+          id: optionsRef.current.id,
         });
         // Pass abort signal as last argument to handler
-        const result = await options.handler(...args, {
+        const result = await optionsRef.current.handler(...args, {
           signal: abortController.signal,
         } as any);
 
@@ -228,11 +241,11 @@ export function useAction<Args extends any[], Result = void>(
 
         await alepha.events.emit("react:action:success", {
           type: "custom",
-          id: options.id,
+          id: optionsRef.current.id,
         });
 
-        if (options.onSuccess) {
-          await options.onSuccess(result);
+        if (optionsRef.current.onSuccess) {
+          await optionsRef.current.onSuccess(result);
         }
 
         return result;
@@ -252,12 +265,12 @@ export function useAction<Args extends any[], Result = void>(
 
         await alepha.events.emit("react:action:error", {
           type: "custom",
-          id: options.id,
+          id: optionsRef.current.id,
           error,
         });
 
-        if (options.onError) {
-          await options.onError(error);
+        if (optionsRef.current.onError) {
+          await optionsRef.current.onError(error);
         }
         // Without a custom `onError`, the error is NOT re-thrown: it is captured
         // in `error` state and emitted as `react:action:error` (a mounted
@@ -276,7 +289,7 @@ export function useAction<Args extends any[], Result = void>(
 
         await alepha.events.emit("react:action:end", {
           type: "custom",
-          id: options.id,
+          id: optionsRef.current.id,
         });
 
         // Clean up abort controller
@@ -285,7 +298,7 @@ export function useAction<Args extends any[], Result = void>(
         }
       }
     },
-    [...deps, options.id, options.onError, options.onSuccess],
+    [...deps],
   );
 
   const runAction = useCallback(

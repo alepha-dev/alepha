@@ -1,6 +1,11 @@
 import { $inject, Alepha } from "alepha";
-import type { Head, HeadMeta } from "../interfaces/Head.ts";
+import type { Head, HeadLink, HeadMeta } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
+
+/**
+ * Marks a meta/link tag as owned by the router's head reconciliation.
+ */
+const MANAGED_ATTRIBUTE = "data-alepha-head";
 
 /**
  * Browser-side head provider that manages document head elements.
@@ -31,7 +36,11 @@ export class BrowserHeadProvider {
 
     this.headProvider.fillHead(state as any);
     if (state.head) {
-      this.renderHead(this.document, state.head);
+      // `reconcile`: a navigation replaces the page's head wholesale, so tags
+      // the previous page declared and this one does not must go. Hydration
+      // goes through here too, which is how server-rendered tags become
+      // managed in the first place.
+      this.renderHead(this.document, state.head, { reconcile: true });
     }
   }
 
@@ -88,7 +97,16 @@ export class BrowserHeadProvider {
     };
   }
 
-  public renderHead(document: Document, head: Head): void {
+  public renderHead(
+    document: Document,
+    head: Head,
+    options?: RenderHeadOptions,
+  ): void {
+    // Every meta/link this pass renders — created or updated in place. In
+    // reconcile mode it becomes the new set of managed tags; anything
+    // previously managed and absent from it is stale and gets removed.
+    const rendered = options?.reconcile ? new Set<Element>() : undefined;
+
     if (head.title) {
       document.title = head.title;
     }
@@ -115,38 +133,16 @@ export class BrowserHeadProvider {
 
     if (head.meta) {
       for (const it of head.meta) {
-        this.renderMetaTag(document, it);
+        const el = this.renderMetaTag(document, it);
+        if (el) {
+          rendered?.add(el);
+        }
       }
     }
 
     if (head.link) {
       for (const it of head.link) {
-        const { rel, href } = it;
-        let link = document.querySelector(`link[rel="${rel}"][href="${href}"]`);
-        if (!link) {
-          link = document.createElement("link");
-          link.setAttribute("rel", rel);
-          link.setAttribute("href", href);
-          if (it.type) {
-            link.setAttribute("type", it.type);
-          }
-          if (it.as) {
-            link.setAttribute("as", it.as);
-          }
-          if (it.crossorigin != null) {
-            link.setAttribute("crossorigin", "");
-          }
-          if (it.media) {
-            link.setAttribute("media", it.media);
-          }
-          if (it.sizes) {
-            link.setAttribute("sizes", it.sizes);
-          }
-          if (it.hreflang) {
-            link.setAttribute("hreflang", it.hreflang);
-          }
-          document.head.appendChild(link);
-        }
+        rendered?.add(this.renderLinkTag(document, it));
       }
     }
 
@@ -155,6 +151,64 @@ export class BrowserHeadProvider {
         this.renderScriptTag(document, it);
       }
     }
+
+    if (rendered) {
+      this.reconcile(document, rendered);
+    }
+  }
+
+  /**
+   * Remove every previously-managed meta/link that this pass did not render,
+   * and mark the ones it did.
+   *
+   * Scripts are deliberately out of scope: they have side effects, may have
+   * already executed, and re-adding one on a later navigation is not
+   * equivalent to leaving it in place.
+   */
+  protected reconcile(document: Document, rendered: Set<Element>): void {
+    for (const el of document.head.querySelectorAll(`[${MANAGED_ATTRIBUTE}]`)) {
+      if (!rendered.has(el)) {
+        el.remove();
+      }
+    }
+
+    for (const el of rendered) {
+      el.setAttribute(MANAGED_ATTRIBUTE, "");
+    }
+  }
+
+  protected renderLinkTag(document: Document, link: HeadLink): Element {
+    const { rel, href } = link;
+    const existing = document.querySelector(
+      `link[rel="${rel}"][href="${href}"]`,
+    );
+    if (existing) {
+      return existing;
+    }
+
+    const el = document.createElement("link");
+    el.setAttribute("rel", rel);
+    el.setAttribute("href", href);
+    if (link.type) {
+      el.setAttribute("type", link.type);
+    }
+    if (link.as) {
+      el.setAttribute("as", link.as);
+    }
+    if (link.crossorigin != null) {
+      el.setAttribute("crossorigin", "");
+    }
+    if (link.media) {
+      el.setAttribute("media", link.media);
+    }
+    if (link.sizes) {
+      el.setAttribute("sizes", link.sizes);
+    }
+    if (link.hreflang) {
+      el.setAttribute("hreflang", link.hreflang);
+    }
+    document.head.appendChild(el);
+    return el;
   }
 
   protected renderScriptTag(
@@ -218,7 +272,10 @@ export class BrowserHeadProvider {
     return null;
   }
 
-  protected renderMetaTag(document: Document, meta: HeadMeta): void {
+  protected renderMetaTag(
+    document: Document,
+    meta: HeadMeta,
+  ): Element | undefined {
     const { content } = meta;
 
     // Handle OpenGraph tags (property attribute)
@@ -228,13 +285,13 @@ export class BrowserHeadProvider {
       );
       if (existing) {
         existing.setAttribute("content", content);
-      } else {
-        const newMeta = document.createElement("meta");
-        newMeta.setAttribute("property", meta.property);
-        newMeta.setAttribute("content", content);
-        document.head.appendChild(newMeta);
+        return existing;
       }
-      return;
+      const newMeta = document.createElement("meta");
+      newMeta.setAttribute("property", meta.property);
+      newMeta.setAttribute("content", content);
+      document.head.appendChild(newMeta);
+      return newMeta;
     }
 
     // Handle standard meta tags (name attribute)
@@ -242,12 +299,29 @@ export class BrowserHeadProvider {
       const existing = document.querySelector(`meta[name="${meta.name}"]`);
       if (existing) {
         existing.setAttribute("content", content);
-      } else {
-        const newMeta = document.createElement("meta");
-        newMeta.setAttribute("name", meta.name);
-        newMeta.setAttribute("content", content);
-        document.head.appendChild(newMeta);
+        return existing;
       }
+      const newMeta = document.createElement("meta");
+      newMeta.setAttribute("name", meta.name);
+      newMeta.setAttribute("content", content);
+      document.head.appendChild(newMeta);
+      return newMeta;
     }
+
+    return undefined;
   }
+}
+
+export interface RenderHeadOptions {
+  /**
+   * Treat `head` as the complete set of page-owned meta/link tags: mark what
+   * it renders as managed and remove any tag managed by an earlier pass that
+   * it does not re-declare.
+   *
+   * On (navigation), the DOM ends up matching what a hard load of the same URL
+   * would produce. Off (the default, used by `refreshGlobalHead`), the call
+   * only adds and updates — a partial head must never be read as "everything
+   * else is stale".
+   */
+  reconcile?: boolean;
 }

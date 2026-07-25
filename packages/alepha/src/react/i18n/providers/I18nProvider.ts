@@ -27,6 +27,16 @@ export class I18nProvider<
     lang: string;
     loader: () => Promise<Record<string, string>>;
     translations: Record<string, string>;
+
+    /**
+     * Whether {@link loader} has already run for this entry.
+     *
+     * Deliberately NOT derived from `Object.keys(translations).length` — a
+     * dictionary that legitimately resolves to `{}` (an empty or
+     * not-yet-populated catalog) would then read as "never loaded" forever,
+     * re-invoking the loader on every single switch to that language.
+     */
+    loaded?: boolean;
   }> = [];
 
   options: {
@@ -200,6 +210,7 @@ export class I18nProvider<
               target: item.target,
             });
             item.translations = await item.loader();
+            item.loaded = true;
           }
         }
         return;
@@ -207,6 +218,7 @@ export class I18nProvider<
 
       for (const item of this.registry) {
         item.translations = await item.loader();
+        item.loaded = true;
       }
     },
   });
@@ -226,8 +238,9 @@ export class I18nProvider<
   protected applyLang = async (lang: string) => {
     if (this.alepha.isBrowser()) {
       for (const item of this.registry) {
-        if (lang === item.lang && Object.keys(item.translations).length === 0) {
+        if (lang === item.lang && !item.loaded) {
           item.translations = await item.loader();
+          item.loaded = true;
         }
       }
     }
@@ -274,22 +287,24 @@ export class I18nProvider<
       }
 
       if (key === "alepha.react.i18n.lang" && this.alepha.isBrowser()) {
-        let hasChanged = false;
         for (const item of this.registry) {
-          if (value === item.lang) {
-            if (Object.keys(item.translations).length > 0) {
-              continue; // already loaded
-            }
+          if (value === item.lang && !item.loaded) {
             item.translations = await item.loader();
-            hasChanged = true;
+            item.loaded = true;
           }
         }
 
         this.refreshLocale();
 
-        if (hasChanged) {
-          this.alepha.store.set("alepha.react.i18n.lang", value);
-        }
+        // No re-notify here. `EventManager.emit` awaits its handlers in
+        // registration order and this provider registers during `start`, so
+        // every React subscriber of the lang atom is notified *after* the
+        // loader above has resolved — they already render the loaded
+        // dictionary. The re-set that used to live here wrote back the same
+        // lang value, which `StateManager.set` drops on its equality
+        // short-circuit: it emitted nothing and was pure dead code.
+        // `i18n-async-dictionary-load.browser.spec.tsx` pins the behaviour it
+        // was meant to guarantee.
       }
     },
   });

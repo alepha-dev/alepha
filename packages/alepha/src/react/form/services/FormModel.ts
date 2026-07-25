@@ -9,7 +9,7 @@ import {
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import type { InputHTMLAttributes } from "react";
+import type { ChangeEvent, InputHTMLAttributes } from "react";
 
 /**
  * FormModel is a dynamic form handler that generates form inputs based on a provided TypeBox schema.
@@ -194,6 +194,12 @@ export class FormModel<T extends TObject> {
       return;
     }
 
+    // Claimed SYNCHRONOUSLY, before the first await. The flag used to be set
+    // only after the two awaited emits below, so a second submit arriving
+    // during them sailed past the guard and ran the handler twice — a
+    // double-clicked button charging a card twice.
+    this.submitInProgress = true;
+
     // Lifecycle events are best-effort NOTIFICATIONS (loading spinners, toasts,
     // analytics). A misbehaving listener must never break form state or reject
     // submit() — hence `{ catch: true }` on every emit below. Without it, a
@@ -210,8 +216,6 @@ export class FormModel<T extends TObject> {
       { id: this.id },
       { catch: true },
     );
-
-    this.submitInProgress = true;
 
     const options = this.options;
 
@@ -463,6 +467,36 @@ export class FormModel<T extends TObject> {
       attr.type = "checkbox";
     }
 
+    // Self-wiring. `<input {...form.input.username.props} />` — the pattern
+    // useForm's own JSDoc documents — used to produce an input that fed
+    // nothing back: `props` carried id/name/type/validation only, so whatever
+    // the user typed stayed in the DOM and `submit()` shipped an empty object.
+    //
+    // Uncontrolled (`defaultValue` + `onChange`) rather than controlled: form
+    // values live in the model, not in React state, so a keystroke must not
+    // re-render the tree. `useFieldValue` stays the opt-in for reactive reads.
+    // Container fields (object/array) are excluded — they render children, not
+    // an input. Assigned before `onCreateField` so a caller can still override.
+    if (!z.schema.isObject(field) && !z.schema.isArray(field)) {
+      const initialValue = context.store[key];
+      if (attr.type === "checkbox") {
+        attr.defaultChecked = initialValue === true;
+      } else if (attr.type !== "file" && initialValue != null) {
+        attr.defaultValue = initialValue;
+      }
+
+      attr.onChange = (event: ChangeEvent<HTMLInputElement>) => {
+        const target = event.target;
+        if (target.type === "checkbox") {
+          set(target.checked);
+        } else if (target.type === "file") {
+          set(target.files?.[0]);
+        } else {
+          set(target.value);
+        }
+      };
+    }
+
     if (options.onCreateField) {
       const customAttr = options.onCreateField(name, field);
       Object.assign(attr, customAttr);
@@ -608,12 +642,21 @@ export type InputHTMLAttributesLike = Pick<
   | "name"
   | "type"
   | "value"
+  | "defaultValue"
+  | "defaultChecked"
   | "required"
   | "maxLength"
   | "minLength"
   | "aria-label"
 > & {
   value?: any;
+  defaultValue?: any;
+
+  /**
+   * Writes the control's value back into the form model. Spreading `props`
+   * onto an `<input>` is enough to make it a working, uncontrolled field.
+   */
+  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
 };
 
 export type FormCtrlOptions<T extends TObject> = {

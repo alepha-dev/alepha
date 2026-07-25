@@ -9,9 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-25**: 164 findings closed — 153 fixed across twenty-two passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
+> **Update 2026-07-25**: 170 findings closed — 159 fixed across twenty-three passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
 >
-> **Remaining: 105 open — 0 P0 · 0 P1 · 26 P2 · 79 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
+> **Remaining: 99 open — 0 P0 · 0 P1 · 20 P2 · 79 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -394,6 +394,21 @@ Seven of the nine open findings in this group.
 | mcp/transport | Spec compliance: a notification answers **202** (was 204), and an unparseable message answers `id: null` (was a fabricated `0`, which can collide with a real id of 0). Note the malformed-JSON route is unreachable from HTTP — the server's body parser rejects it first — so the reachable case is valid JSON that is not valid JSON-RPC. |
 
 Still open here: the Bun/Node `execCapture` divergence (a shell-semantics change on a runtime only reachable through `test:bun`), and `EnvUtils` implicitly loading `.local` variants (documentation vs behaviour, plus a too-broad catch).
+
+### Twenty-third pass — 2026-07-25 (react)
+
+Every open react P2 — all six. TDD throughout: each fix has a test that failed first against the unmodified tree.
+
+| Area | Fix |
+|------|-----|
+| react/form | `FormModel.submit` claims `submitInProgress` **synchronously**, before the first `await`. It used to be set only after the two awaited `react:action:begin` / `form:submit:begin` emits, so any async listener on either — a toaster, an analytics call — opened a window in which a second submit passed the entry guard: a double-clicked "Pay" ran the handler twice (verified: 2 calls, now 1). |
+| react/form | Field `props` are self-wiring: `defaultValue` / `defaultChecked` from the model plus an `onChange` that writes back (reading `checked` for checkboxes and `files[0]` for file inputs). `useForm`'s own JSDoc example — `<input {...form.input.username.props} />` — used to submit an empty object no matter what the user typed, because `props` carried id/name/type/validation only. Uncontrolled by design: values live in the model, so a keystroke does not re-render the tree, and `useFieldValue` remains the opt-in for reactive reads. `onCreateField` still overrides. |
+| react/router | `NestedView`'s `react:transition:end` handler takes a generation number before sleeping out the leaving page's exit animation, and drops its commit if a later transition claimed one meanwhile. Two quick navigations away from an animated page put the **middle** page back on screen after the last one had already rendered (verified: showed "B" where the user was on "C"). Raw `Date.now()` / `setTimeout` also replaced with `DateTimeProvider`. |
+| react/head | `BrowserHeadProvider.renderHead` reconciles: in `reconcile` mode (navigation, which includes hydration) it marks every meta/link it renders with `data-alepha-head` and removes any previously-marked tag the new page does not re-declare. Tags were add-and-update only, so a page's description/og:image survived onto pages that declare none, and canonicals accumulated one per navigation — the client diverged from what a hard load of the same URL produces. Hydration re-renders the SSR head, which is how server-emitted tags become managed without changing the SSR output at all. `refreshGlobalHead` deliberately stays non-reconciling: a global-only head must never be read as "everything else is stale". Scripts are out of scope — they have side effects and may have already run. |
+| react/i18n | A dictionary entry carries an explicit `loaded` flag. "Already loaded" was inferred from `Object.keys(translations).length`, so a catalog that legitimately resolves to `{}` read as never-loaded and re-ran its loader on **every** switch to that language (verified: 2 loads across `fr → en → fr`, now 1). |
+| react/core | `useAction` holds the caller's `handler` / `onSuccess` / `onError` / `id` in a render-refreshed ref and drops them from `executeAction`'s deps, so `run` / `refetch` / `cancel` keep stable identities. `useQuery` hands `useAction` a freshly allocated inline `onSuccess` every render, which rebuilt the whole chain — every consumer keyed on one of those identities churned, and `useEffect(() => { refetch() }, [refetch])` looped. A second test pins the flip side: the callbacks invoked are the latest ones, not a first-render closure. (The `runEvery` normalization half of this RECO had already landed in the twelfth pass.) |
+
+**One finding closed as not reproducible.** *"i18n: re-notify after async dictionary load is a no-op"* — the short-circuit is real, but its stated consequence is not. `EventManager.emit` awaits its handlers in registration order and `I18nProvider` registers during `start`, so every React subscriber of the lang atom is notified *after* the loader resolves; consumers already render the loaded dictionary. The re-set was pure dead code and is deleted rather than "fixed". A `force` option on `StateManager.set` was written and then reverted — no caller could demonstrate a need for it, and an unused escape hatch on the equality short-circuit is a liability. Test `i18n-async-dictionary-load.browser.spec.tsx` pins the behaviour the re-notify was meant to guarantee.
 
 Per-module detail follows. Line numbers reference the tree as it stood when each finding was written (`main` @ 6c7ec9400 for the original passes); the fix passes have since moved code, so treat every line number as a starting hint, not an address — locate by symbol name.
 
@@ -1184,7 +1199,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/react/router/services/ReactRouter.ts:211-219, Link.tsx:16-20, useActive.ts:29-43
 - **Detail**: `anchor()`'s onClick unconditionally preventDefaults and SPA-navigates — no metaKey/ctrlKey/shiftKey/altKey, button, or `target="_blank"` check, so "open in new tab" navigates the current tab. The global anchor interceptor (ReactBrowserProvider.ts:420-424) gets this right, but Link's own handler runs regardless. Link also spreads `{...props, ...router.anchor(...)}`, discarding a caller onClick. Fix: bail on modified/aux clicks; compose user onClick.
 
-### [BUG] `FormModel.submit` double-submit guard has an async hole
+### ✅ FIXED — [BUG] `FormModel.submit` double-submit guard has an async hole
 - **Severity**: P2
 - **File**: packages/alepha/src/react/form/services/FormModel.ts:189-214
 - **Detail**: `submitInProgress` checked at entry but set true only *after* two awaited `events.emit` calls. A second submit during those emits passes the guard; handler runs twice. Fix: set the flag synchronously before the first await.
@@ -1194,17 +1209,17 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/react/core/hooks/useQuery.ts:76,167 and useAction.ts:182-186
 - **Detail**: Docs say "previous in-flight request is aborted", but refetch → `action.run()` with no supersede hits `if (isExecutingRef.current && !supersede) return;` — no-op during slow fetches or active polls. Fix: refetch passes `{ supersede: true }`.
 
-### [BUG] Exit-animation race in NestedView can commit a stale view
+### ✅ FIXED — [BUG] Exit-animation race in NestedView can commit a stale view
 - **Severity**: P2
 - **File**: packages/alepha/src/react/router/components/NestedView.tsx:88-120
 - **Detail**: The `react:transition:end` handler sleeps `duration - diff` via raw setTimeout then `setView(layer.element)` with the payload captured at emit time; no supersession check — a second navigation's end committing during the sleep gets overwritten by the older page on wake. Also raw Date.now()/setTimeout (rule: DateTimeProvider). Fix: generation counter; drop stale writes.
 
-### [BUG] Stale per-page meta/link persist across client-side navigation
+### ✅ FIXED — [BUG] Stale per-page meta/link persist across client-side navigation
 - **Severity**: P2
 - **File**: packages/alepha/src/react/head/providers/BrowserHeadProvider.ts:91-158
 - **Detail**: `renderHead` only adds/updates tags, never removes ones the new page doesn't declare. Navigate A (description, og:image, canonical) → B (none) leaves A's tags in the DOM; links are add-only (dedupe on rel+href) so old canonicals accumulate. SSR is correct → client/hard-load divergence. Fix: `data-alepha-head` marker + reconcile removals.
 
-### [BUG] i18n: re-notify after async dictionary load is a no-op (StateManager equality short-circuit)
+### ✅ CLOSED (not reproducible; dead code removed) — [BUG] i18n: re-notify after async dictionary load is a no-op
 - **Severity**: P2
 - **File**: packages/alepha/src/react/i18n/providers/I18nProvider.ts:276-293
 - **Detail**: The `state:mutate` hook re-sets the same lang value to force re-render after async dictionary load, but `StateManager.set` short-circuits on equality — the emit never happens; components keep raw keys until something else re-renders. Main `setLang` path is safe; direct `store.set("alepha.react.i18n.lang", …)` hits this. Fix: revision atom or track translations in a store value.
@@ -1249,7 +1264,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/react/form/errors/FormValidationError.ts
 - **Detail**: Exported from the barrel, zero references in packages/ or apps/. Wire into FormModel.submit's validation path or remove.
 
-### [UNFINISHED] Form field `props` are not self-wiring; the `useForm` JSDoc example silently loses input
+### ✅ FIXED — [UNFINISHED] Form field `props` are not self-wiring; the `useForm` JSDoc example silently loses input
 - **Severity**: P2
 - **File**: packages/alepha/src/react/form/hooks/useForm.ts:25-31; FormModel.ts:602-614
 - **Detail**: The canonical JSDoc example — `<input {...form.input.username.props} />` then submit — does not work: `InputHTMLAttributesLike` has no value/onChange, and `submit()` reads only `this.values` populated via `input.set()`. Typed text never reaches the handler; form submits empty. Every real consumer uses `useFieldValue`. Include onChange/defaultValue in props or fix the example — the front-door API documents a broken pattern.
@@ -1264,7 +1279,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/react/router/services/ReactRouter.ts:193-220
 - **Detail**: The correct click policy (modifiers, buttons, target, download, data-no-router, external origins) exists in `attachAnchorInterceptor`; `anchor()`/`useActive` reimplement a naive preventDefault. Link could drop its onClick entirely and rely on delegation — one behavior, one place.
 
-### [RECO] Stabilize `useQuery` callbacks and duration deps
+### ✅ FIXED — [RECO] Stabilize `useQuery` callbacks and duration deps
 - **Severity**: P2
 - **File**: useAction.ts:288; useQuery.ts:57-74
 - **Detail**: Keep onSuccess/onError/handler in refs (pattern already used in useSelector/useRoom), drop from executeAction deps; normalize runEvery to ms before using as an effect dep. Fixes the churn family at the source.
