@@ -1,4 +1,4 @@
-import { useClient, useStore } from "alepha/react";
+import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import {
@@ -54,9 +54,9 @@ const FolioTreePanel = ({
   // panel is mounted outside the folio route (atoms empty).
   const [folios, setFolios] = useStore(userFoliosAtom);
   const [dirs, setDirs] = useStore(campaignDirectoriesAtom);
-  const [loading, setLoading] = useState(
-    folios.length === 0 && dirs.length === 0,
-  );
+  // Seeded from the atoms the route loader fills, so a warm navigation
+  // renders the tree without a fetch or a skeleton frame.
+  const seeded = folios.length > 0 || dirs.length > 0;
   // Collapsed state per directory id. Seeded ONCE (see the init effect
   // below) to collapse every directory EXCEPT the ancestors of the
   // current folio; afterwards it is sticky — navigation only expands the
@@ -69,38 +69,35 @@ const FolioTreePanel = ({
   // user had open — petition #14.
   const initializedRef = useRef(false);
 
-  useEffect(() => {
-    // Atoms hot — skip the network entirely.
-    if (folios.length > 0 || dirs.length > 0) {
-      setLoading(false);
-      return;
-    }
-    let alive = true;
-    Promise.all([
-      folioApi.list({ query: { campaignId, limit: 100 } as never }),
-      dirApi.listAllDirectories({ params: { campaignId } }),
-    ])
-      .then(([folioList, dirList]) => {
-        if (!alive) return;
-        setFolios(folioList);
-        setDirs(dirList as DirectoryNode[]);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (alive) setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [
-    campaignId,
-    folioApi,
-    dirApi,
-    folios.length,
-    dirs.length,
-    setFolios,
-    setDirs,
-  ]);
+  // Keyed so the tree is shared with anything else querying the same
+  // campaign, and so a folio mutation can invalidate it by prefix instead
+  // of hand-patching `userFoliosAtom`. Results are mirrored into the atoms
+  // the rest of the archive UI still reads.
+  const { loading: fetching, error } = useQuery(
+    {
+      key: ["folioTree", campaignId],
+      enabled: !seeded,
+      staleTime: [30, "seconds"],
+      handler: async () => {
+        const [folioList, dirList] = await Promise.all([
+          folioApi.list({ query: { campaignId, limit: 100 } as never }),
+          dirApi.listAllDirectories({ params: { campaignId } }),
+        ]);
+        return { folios: folioList, dirs: dirList as DirectoryNode[] };
+      },
+      onSuccess: (result) => {
+        setFolios(result.folios);
+        setDirs(result.dirs);
+      },
+      // Previously `.catch(() => {})` — the panel silently rendered empty
+      // on a failed fetch. Swallow it the same way for the tree (it is a
+      // navigation aid, not the page), but keep the error observable.
+      onError: () => {},
+    },
+    [campaignId],
+  );
+
+  const loading = !seeded && fetching && !error;
 
   // Ancestor chain of the current folio's directory (root → leaf). Drives
   // both the one-time seed and the per-navigation "expand the path I just

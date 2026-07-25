@@ -117,8 +117,11 @@ const FolioView = () => {
           folios.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)),
         );
       },
+      // The atom patch above keeps this view instant; invalidation stops the
+      // shared tree query from serving a stale copy on a later navigation.
+      invalidates: [["folioTree", campaignId]],
     },
-    [folio, folioApi, folios, alepha, setFolios],
+    [folio, folioApi, folios, alepha, setFolios, campaignId],
   );
 
   const deleteAction = useAction(
@@ -136,8 +139,9 @@ const FolioView = () => {
           router.path("campaignFolios", { params: { campaignId } }),
         );
       },
+      invalidates: [["folioTree", campaignId]],
     },
-    [folio, folios, folioApi, alepha, router, setFolios, setTags],
+    [folio, folios, folioApi, alepha, router, setFolios, setTags, campaignId],
   );
 
   if (!folio) return null;

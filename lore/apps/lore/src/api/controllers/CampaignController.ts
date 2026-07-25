@@ -4,7 +4,12 @@ import { users } from "alepha/api/users";
 import { $bucket } from "alepha/bucket";
 import { $logger } from "alepha/logger";
 import { $repository, pageQuerySchema } from "alepha/orm";
-import { $secure, type UserAccountToken } from "alepha/security";
+import {
+  $owns,
+  $secure,
+  OwnedResourceProvider,
+  type UserAccountToken,
+} from "alepha/security";
 import {
   $action,
   BadRequestError,
@@ -13,6 +18,7 @@ import {
 } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 import {
+  type Campaign,
   campaignFeaturesSchema,
   campaigns,
   defaultCampaignFeatures,
@@ -21,7 +27,6 @@ import { chapters } from "../entities/chapters.ts";
 import { type Character, characters } from "../entities/characters.ts";
 import { quests } from "../entities/quests.ts";
 import type { User } from "../entities/users.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { AchievementEngine } from "../services/AchievementEngine.ts";
 import { CampaignLimits } from "../services/CampaignLimits.ts";
@@ -36,7 +41,38 @@ export class CampaignController {
   chapters = $repository(chapters);
   users = $repository(users);
   fileRepo = $repository(files);
-  security = $inject(AppSecurityProvider);
+  owned = $inject(OwnedResourceProvider);
+
+  /**
+   * Campaign-member gate: the campaign creator, or any user holding a
+   * character in it. Privileged identities bypass both.
+   */
+  protected ownsAsMember = () =>
+    $owns({
+      repository: () => this.campaigns,
+      param: "id",
+      owner: "createdBy",
+      cast: Number,
+      via: {
+        repository: () => this.characters,
+        resource: "campaignId",
+        user: "userId",
+      },
+      message: "Not a member of this campaign",
+    });
+
+  /**
+   * Campaign-owner gate: the creator only. Used for destructive and
+   * configuration endpoints.
+   */
+  protected ownsAsOwner = () =>
+    $owns({
+      repository: () => this.campaigns,
+      param: "id",
+      owner: "createdBy",
+      cast: Number,
+      message: "Only the campaign owner can perform this action",
+    });
   questMapper = $inject(QuestResourceMapper);
   achievements = $inject(AchievementEngine);
   limits = $inject(CampaignLimits);
@@ -206,7 +242,7 @@ export class CampaignController {
   // -------------------------------------------------------------------------------------------------------------------
 
   getCampaignUsers = $action({
-    use: [$secure({ permissions: ["campaign:read"] })],
+    use: [$secure({ permissions: ["campaign:read"] }), this.ownsAsMember()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -214,8 +250,6 @@ export class CampaignController {
       response: z.array(users.schema),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.id, user);
-
       const campaignCharacters = await this.characters.findMany({
         where: { campaignId: { eq: params.id } },
       });
@@ -230,7 +264,7 @@ export class CampaignController {
   });
 
   updateCampaignById = $action({
-    use: [$secure({ permissions: ["campaign:update"] })],
+    use: [$secure({ permissions: ["campaign:update"] }), this.ownsAsOwner()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -248,7 +282,7 @@ export class CampaignController {
       response: campaigns.schema,
     },
     handler: async ({ params, body, user }) => {
-      const { campaign } = await this.security.assertOwner(params.id, user);
+      const campaign = this.owned.get<Campaign>();
 
       if (body.title) {
         campaign.title = body.title.trim();
@@ -309,7 +343,7 @@ export class CampaignController {
   }
 
   getCampaignById = $action({
-    use: [$secure({ permissions: ["campaign:read"] })],
+    use: [$secure({ permissions: ["campaign:read"] }), this.ownsAsMember()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -326,7 +360,7 @@ export class CampaignController {
       }),
     },
     handler: async ({ params, user }) => {
-      const { campaign } = await this.security.assertMember(params.id, user);
+      const campaign = this.owned.get<Campaign>();
 
       const character = await this.characters.findOne({
         where: {
@@ -364,6 +398,7 @@ export class CampaignController {
       $etag({
         control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
       }),
+      this.ownsAsMember(),
     ],
     schema: {
       params: z.object({
@@ -376,8 +411,6 @@ export class CampaignController {
       ),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.id, user);
-
       const campaignCharacters = await this.characters.findMany({
         where: { campaignId: { eq: params.id } },
       });
@@ -423,7 +456,7 @@ export class CampaignController {
   });
 
   deleteCampaignById = $action({
-    use: [$secure({ permissions: ["campaign:delete"] })],
+    use: [$secure({ permissions: ["campaign:delete"] }), this.ownsAsOwner()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -431,8 +464,6 @@ export class CampaignController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.id, user);
-
       await this.campaigns.deleteById(params.id);
       await this.characters.deleteMany({
         campaignId: { eq: params.id },
@@ -500,7 +531,7 @@ export class CampaignController {
   });
 
   getZones = $action({
-    use: [$secure({ permissions: ["campaign:read"] })],
+    use: [$secure({ permissions: ["campaign:read"] }), this.ownsAsMember()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -514,7 +545,7 @@ export class CampaignController {
       ),
     },
     handler: async ({ params, user }) => {
-      const { campaign } = await this.security.assertMember(params.id, user);
+      const campaign = this.owned.get<Campaign>();
 
       const campaignQuests = await this.quests.findMany({
         where: { campaignId: { eq: params.id } },
@@ -555,7 +586,7 @@ export class CampaignController {
   });
 
   renameZone = $action({
-    use: [$secure({ permissions: ["campaign:update"] })],
+    use: [$secure({ permissions: ["campaign:update"] }), this.ownsAsOwner()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -567,7 +598,7 @@ export class CampaignController {
       response: okSchema,
     },
     handler: async ({ params, body, user }) => {
-      const { campaign } = await this.security.assertOwner(params.id, user);
+      const campaign = this.owned.get<Campaign>();
 
       // Update all quests with the old zone name to the new one
       const questsToUpdate = await this.quests.findMany({
@@ -600,7 +631,7 @@ export class CampaignController {
   // ── Kanban column CRUD ──────────────────────────────────────────────
 
   addKanbanColumn = $action({
-    use: [$secure({ permissions: ["campaign:update"] })],
+    use: [$secure({ permissions: ["campaign:update"] }), this.ownsAsOwner()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -609,7 +640,7 @@ export class CampaignController {
       response: z.array(z.string()),
     },
     handler: async ({ params, body, user }) => {
-      const { campaign } = await this.security.assertOwner(params.id, user);
+      const campaign = this.owned.get<Campaign>();
       const current = campaign.kanbanColumns ?? [];
       const name = body.name.trim();
       if (!name) {
@@ -630,7 +661,7 @@ export class CampaignController {
   });
 
   renameKanbanColumn = $action({
-    use: [$secure({ permissions: ["campaign:update"] })],
+    use: [$secure({ permissions: ["campaign:update"] }), this.ownsAsOwner()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -640,7 +671,7 @@ export class CampaignController {
       response: z.array(z.string()),
     },
     handler: async ({ params, body, user }) => {
-      const { campaign } = await this.security.assertOwner(params.id, user);
+      const campaign = this.owned.get<Campaign>();
       const current = campaign.kanbanColumns ?? [];
       const newName = body.newName.trim();
       if (!current.includes(body.oldName)) {
@@ -669,14 +700,14 @@ export class CampaignController {
   });
 
   deleteKanbanColumn = $action({
-    use: [$secure({ permissions: ["campaign:update"] })],
+    use: [$secure({ permissions: ["campaign:update"] }), this.ownsAsOwner()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({ name: z.string() }),
       response: z.array(z.string()),
     },
     handler: async ({ params, body, user }) => {
-      const { campaign } = await this.security.assertOwner(params.id, user);
+      const campaign = this.owned.get<Campaign>();
       const current = campaign.kanbanColumns ?? [];
       if (!current.includes(body.name)) {
         throw new BadRequestError("Column not found.");
@@ -703,7 +734,7 @@ export class CampaignController {
   });
 
   reorderKanbanColumns = $action({
-    use: [$secure({ permissions: ["campaign:update"] })],
+    use: [$secure({ permissions: ["campaign:update"] }), this.ownsAsOwner()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -712,7 +743,7 @@ export class CampaignController {
       response: z.array(z.string()),
     },
     handler: async ({ params, body, user }) => {
-      const { campaign } = await this.security.assertOwner(params.id, user);
+      const campaign = this.owned.get<Campaign>();
       const current = campaign.kanbanColumns ?? [];
       // Must reorder the exact same set — additions/removals go through the
       // dedicated endpoints so concurrent edits can't drop a column silently.
