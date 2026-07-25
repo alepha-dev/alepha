@@ -21,3 +21,11 @@ services:
     image: adobe/s3mock:latest
     ports:
       - "19090:9090"
+
+  emqx:
+    restart: always
+    image: emqx/emqx:latest
+    ports:
+      - "11883:1883"
+    environment:
+      EMQX_ALLOW_ANONYMOUS: "true"

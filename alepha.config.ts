@@ -56,6 +56,7 @@ export default (alepha: Alepha) => {
           { name: "postgres", port: 15432 },
           { name: "redis", port: 16379 },
           { name: "s3mock", port: 19090 },
+          { name: "emqx", port: 11883 },
         ];
 
         const isUp = (port: number) =>

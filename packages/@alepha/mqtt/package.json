@@ -1,0 +1,73 @@
+{
+  "name": "@alepha/mqtt",
+  "description": "MQTT client and topic provider for Alepha framework.",
+  "keywords": [
+    "alepha",
+    "mqtt"
+  ],
+  "author": "Feunard",
+  "version": "0.24.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "./src/core/index.ts",
+  "types": "./src/core/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "mqtt": "^5.15.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.5",
+    "alepha": "0.24.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "peerDependencies": {
+    "alepha": "0.24.0"
+  },
+  "scripts": {
+    "lint": "alepha lint && yarn build:check",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "node ../../alepha/scripts/build.ts",
+    "build:check": "node ../../alepha/scripts/build.ts --check"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
+  "homepage": "https://github.com/feunard/alepha",
+  "exports": {
+    ".": {
+      "types": "./src/core/index.ts",
+      "import": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
+    },
+    "./topic": {
+      "types": "./src/topic/index.ts",
+      "import": "./src/topic/index.ts",
+      "default": "./src/topic/index.ts"
+    }
+  },
+  "publishConfig": {
+    "main": "./dist/core/index.js",
+    "types": "./dist/core/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/core/index.d.ts",
+        "import": "./dist/core/index.js",
+        "default": "./dist/core/index.js"
+      },
+      "./topic": {
+        "types": "./dist/topic/index.d.ts",
+        "import": "./dist/topic/index.js",
+        "default": "./dist/topic/index.js"
+      }
+    }
+  }
+}

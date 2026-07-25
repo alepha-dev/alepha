@@ -80,6 +80,13 @@ jobs:
         ports:
           - 19090:9090
 
+      emqx:
+        image: emqx/emqx
+        ports:
+          - 11883:1883
+        env:
+          EMQX_ALLOW_ANONYMOUS: "true"
+
     steps:
       - name: Git Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -125,6 +132,13 @@ jobs:
         image: adobe/s3mock
         ports:
           - 19090:9090
+
+      emqx:
+        image: emqx/emqx
+        ports:
+          - 11883:1883
+        env:
+          EMQX_ALLOW_ANONYMOUS: "true"
 
     steps:
       - name: Git Checkout
