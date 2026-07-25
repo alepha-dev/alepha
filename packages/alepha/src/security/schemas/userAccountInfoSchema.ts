@@ -66,6 +66,16 @@ export const userAccountInfoSchema = z.object({
       description: "The realm (issuer) the user was authenticated from.",
     })
     .optional(),
+
+  ownership: z
+    .union([z.text(), z.boolean()])
+    .describe(
+      "Whether the caller is scoped to their own resources for the checked " +
+        "permission. `false` is a privileged identity (admin); `true` or a " +
+        "scope string narrows access to owned rows; `undefined` means no " +
+        "permission check determined a scope.",
+    )
+    .optional(),
 });
 
 export type UserAccount = Static<typeof userAccountInfoSchema>;

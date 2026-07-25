@@ -15,10 +15,18 @@ exposes the last result as `data`, and provides a stable `refetch()` to
 re-run the query on demand. For optimistic mutations and side-effects,
 use {@link useAction} directly — `useQuery` is for the read path.
 
-Caching, request deduplication, and AbortSignal cancellation come from
-`useAction` + `HttpClient`. There is no separate cache layer — pass
-`localCache` to your `HttpClient.fetch()`/`fetchAction()` call inside
-the query handler if you want per-call caching.
+Request deduplication and AbortSignal cancellation come from `useAction` +
+`HttpClient`.
+
+Pass a `key` to opt into the shared query cache: components using the same
+key read one entry rather than each fetching, `staleTime` serves a fresh
+entry without hitting the network, and a mutation declaring
+`invalidates: [["folios"]]` drops every entry under that prefix and makes
+mounted queries refetch. The cache lives in a registered atom, so
+server-rendered results hydrate on the client for free.
+
+Without a `key`, none of that applies and the hook behaves exactly as it
+always has — no cache reads, no cache writes, no shared state.
 
 ## Examples
 

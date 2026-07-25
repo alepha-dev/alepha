@@ -63,9 +63,22 @@ export function $secure(options?: SecureOptions): Middleware {
         // Server-side permissions are enforced by the API — the browser version
         // trusts that the API registry already filtered actions by permission.
 
-        // Custom guard
+        // Custom guard.
+        //
+        // The browser has no server request, so `params` / `query` / `body`
+        // are empty here. A guard that reads them denies in the browser and is
+        // re-evaluated for real on the server — which is the safe direction:
+        // the UI hides the action, the API is what actually enforces it.
         if (options?.guard) {
-          if (!options.guard(user)) {
+          const allowed = await options.guard({
+            user,
+            params: {},
+            query: {},
+            body: undefined,
+            alepha,
+          });
+
+          if (!allowed) {
             return undefined;
           }
         }

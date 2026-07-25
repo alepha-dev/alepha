@@ -3,7 +3,9 @@ import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { describe, test, vi } from "vitest";
 import { AlephaContext } from "../contexts/AlephaContext.ts";
+import { useAction } from "../hooks/useAction.ts";
 import { useQuery } from "../hooks/useQuery.ts";
+import { AlephaReact } from "../index.ts";
 
 describe("useQuery", () => {
   test("runs on mount and exposes data/loading/error/refetch", async ({
@@ -230,5 +232,101 @@ describe("useQuery", () => {
     await waitFor(() => {
       expect(result.current.data).toBe("data-for-bob");
     });
+  });
+});
+
+describe("useQuery keyed cache", () => {
+  test("shares data between two components on the same key", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+
+    const handler = vi.fn(async () => "Alpha");
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const useBoth = () => {
+      const a = useQuery({ key: ["folio", 1], handler }, []);
+      const b = useQuery({ key: ["folio", 1], handler }, []);
+      return { a, b };
+    };
+
+    const { result } = renderHook(useBoth, { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.a.data).toBe("Alpha");
+      expect(result.current.b.data).toBe("Alpha");
+    });
+
+    // Both hooks read the one cached entry rather than each fetching.
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  test("serves cached data within staleTime instead of refetching", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+
+    let calls = 0;
+    const handler = async () => `v${++calls}`;
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const first = renderHook(
+      () =>
+        useQuery({ key: ["folio", 2], handler, staleTime: [1, "minute"] }, []),
+      { wrapper },
+    );
+    await waitFor(() => expect(first.result.current.data).toBe("v1"));
+    first.unmount();
+
+    const second = renderHook(
+      () =>
+        useQuery({ key: ["folio", 2], handler, staleTime: [1, "minute"] }, []),
+      { wrapper },
+    );
+
+    // Fresh entry → rendered from cache on the very first render, no fetch.
+    expect(second.result.current.data).toBe("v1");
+    expect(second.result.current.loading).toBe(false);
+    expect(calls).toBe(1);
+  });
+
+  test("refetches when a mutation invalidates the key", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+
+    let calls = 0;
+    const handler = async () => `v${++calls}`;
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const useBoth = () => {
+      const query = useQuery({ key: ["folio", 3], handler }, []);
+      const mutate = useAction(
+        { handler: async () => "written", invalidates: [["folio"]] },
+        [],
+      );
+      return { query, mutate };
+    };
+
+    const { result } = renderHook(useBoth, { wrapper });
+
+    await waitFor(() => expect(result.current.query.data).toBe("v1"));
+
+    await act(async () => {
+      await result.current.mutate.run();
+    });
+
+    await waitFor(() => expect(result.current.query.data).toBe("v2"));
+    expect(calls).toBe(2);
   });
 });

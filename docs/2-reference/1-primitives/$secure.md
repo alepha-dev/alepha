@@ -54,7 +54,7 @@ class OrderController {
       issuers: ["main"],
       roles: ["admin"],
       permissions: ["admin:manage"],
-      guard: (user) => !!user.email,
+      guard: ({ user }) => !!user.email,
     })],
     handler: () => { ... },
   });
@@ -68,5 +68,5 @@ class OrderController {
 | `issuers` | `string[]` | No | Restrict to specific issuers (realms) |
 | `roles` | `string[]` | No | Required roles |
 | `permissions` | `Object` | No | Required permissions |
-| `guard` | `Object` | No | Custom guard function |
+| `guard` | `Object` | No | Custom guard |
 

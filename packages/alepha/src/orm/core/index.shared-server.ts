@@ -19,6 +19,7 @@ export * from "./providers/drivers/CloudflareD1Provider.ts";
 export * from "./providers/drivers/DatabaseProvider.ts";
 export * from "./providers/RepositoryProvider.ts";
 export * from "./providers/SequenceProvider.ts";
+export * from "./providers/SqlExpressionProvider.ts";
 export * from "./schemas/databaseEnvSchema.ts";
 export * from "./schemas/insertSchema.ts";
 export * from "./schemas/updateSchema.ts";

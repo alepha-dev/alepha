@@ -333,7 +333,7 @@ describe("$secure guard", () => {
 
     class TestService {
       fn = $pipeline({
-        use: [$secure({ guard: (user) => user.id === "user-1" })],
+        use: [$secure({ guard: ({ user }) => user.id === "user-1" })],
         handler: async () => "ok",
       });
     }
@@ -357,7 +357,7 @@ describe("$secure guard", () => {
 
     class TestService {
       fn = $pipeline({
-        use: [$secure({ guard: (user) => user.id === "someone-else" })],
+        use: [$secure({ guard: ({ user }) => user.id === "someone-else" })],
         handler: async () => "ok",
       });
     }
@@ -481,6 +481,67 @@ describe("$secure atom resolution", () => {
     await alepha.context.run(async () => {
       alepha.store.set(currentUserAtom, { ...fakeUser, roles: ["viewer"] });
       await expect(svc.fn()).rejects.toThrowError(ForbiddenError);
+    });
+  });
+
+  test("guard receives request params", async ({ expect }) => {
+    const alepha = Alepha.create().with({
+      provide: SecurityProvider,
+      use: TestSecurityProvider,
+    });
+
+    const seen: Array<Record<string, string>> = [];
+
+    class TestService {
+      fn = $pipeline({
+        use: [
+          $secure({
+            guard: async (ctx) => {
+              seen.push(ctx.params);
+              return ctx.params.id === "allowed";
+            },
+          }),
+        ],
+        handler: async () => "ok",
+      });
+    }
+
+    const svc = alepha.inject(TestService);
+
+    await alepha.context.run(async () => {
+      alepha.store.set(currentUserAtom, fakeUser);
+      alepha.set("alepha.http.request", { params: { id: "denied" } } as any);
+
+      await expect(svc.fn()).rejects.toThrowError(ForbiddenError);
+    });
+
+    expect(seen[seen.length - 1]).toEqual({ id: "denied" });
+  });
+
+  test("guard may be async and allow", async ({ expect }) => {
+    const alepha = Alepha.create().with({
+      provide: SecurityProvider,
+      use: TestSecurityProvider,
+    });
+
+    class TestService {
+      fn = $pipeline({
+        use: [
+          $secure({
+            guard: async (ctx) => ctx.params.id === "allowed",
+          }),
+        ],
+        handler: async () => "ok",
+      });
+    }
+
+    const svc = alepha.inject(TestService);
+
+    await alepha.context.run(async () => {
+      alepha.store.set(currentUserAtom, fakeUser);
+      alepha.set("alepha.http.request", { params: { id: "allowed" } } as any);
+
+      expect(await svc.fn()).toBe("ok");
     });
   });
 });

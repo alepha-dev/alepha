@@ -1,7 +1,10 @@
 import { $module } from "alepha";
+import { queryCacheAtom } from "./atoms/queryCacheAtom.ts";
+import { QueryCache } from "./services/QueryCache.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./atoms/queryCacheAtom.ts";
 export type * from "./components/ClientOnly.tsx";
 export { default as ClientOnly } from "./components/ClientOnly.tsx";
 export type * from "./components/ErrorBoundary.tsx";
@@ -15,8 +18,10 @@ export * from "./hooks/useComputed.ts";
 export * from "./hooks/useEvents.ts";
 export * from "./hooks/useInject.ts";
 export * from "./hooks/useQuery.ts";
+export * from "./hooks/useQueryClient.ts";
 export * from "./hooks/useSelector.ts";
 export * from "./hooks/useStore.ts";
+export * from "./services/QueryCache.ts";
 export * from "./utils/shallowEqual.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -87,4 +92,9 @@ declare module "alepha" {
  */
 export const AlephaReact = $module({
   name: "alepha.react.core",
+  // Registered up front rather than lazily on first write, so a page that
+  // server-renders a query has the atom present when `exportAtoms` builds the
+  // hydration payload.
+  atoms: [queryCacheAtom],
+  services: [QueryCache],
 });

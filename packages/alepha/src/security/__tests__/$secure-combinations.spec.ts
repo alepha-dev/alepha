@@ -97,7 +97,7 @@ function setup() {
       use: [
         $secure({
           issuers: ["main"],
-          guard: (user) => user.email === "allowed@test.com",
+          guard: ({ user }) => user.email === "allowed@test.com",
         }),
       ],
       handler: () => "issuer+guard",
@@ -112,7 +112,7 @@ function setup() {
       use: [
         $secure({
           roles: ["editor"],
-          guard: (user) => user.email === "allowed@test.com",
+          guard: ({ user }) => user.email === "allowed@test.com",
         }),
       ],
       handler: () => "role+guard",
@@ -122,7 +122,7 @@ function setup() {
       use: [
         $secure({
           permissions: ["posts:read"],
-          guard: (user) => user.email === "allowed@test.com",
+          guard: ({ user }) => user.email === "allowed@test.com",
         }),
       ],
       handler: () => "permission+guard",
@@ -148,7 +148,7 @@ function setup() {
         $secure({
           issuers: ["main"],
           roles: ["editor"],
-          guard: (user) => user.email === "allowed@test.com",
+          guard: ({ user }) => user.email === "allowed@test.com",
         }),
       ],
       handler: () => "issuer+role+guard",
@@ -159,7 +159,7 @@ function setup() {
         $secure({
           issuers: ["main"],
           permissions: ["posts:create"],
-          guard: (user) => user.email === "allowed@test.com",
+          guard: ({ user }) => user.email === "allowed@test.com",
         }),
       ],
       handler: () => "issuer+permission+guard",
@@ -170,7 +170,7 @@ function setup() {
         $secure({
           roles: ["editor"],
           permissions: ["posts:create"],
-          guard: (user) => user.email === "allowed@test.com",
+          guard: ({ user }) => user.email === "allowed@test.com",
         }),
       ],
       handler: () => "role+permission+guard",
@@ -186,7 +186,7 @@ function setup() {
           issuers: ["main"],
           roles: ["editor"],
           permissions: ["posts:create"],
-          guard: (user) => user.email === "allowed@test.com",
+          guard: ({ user }) => user.email === "allowed@test.com",
         }),
       ],
       handler: () => "all",

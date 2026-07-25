@@ -1,7 +1,12 @@
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, DatabaseProvider, sql } from "alepha/orm";
+import {
+  $repository,
+  DatabaseProvider,
+  SqlExpressionProvider,
+  sql,
+} from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
@@ -21,6 +26,7 @@ export class CampaignStatsController {
   campaigns = $repository(campaigns);
   users = $repository(users);
   database = $inject(DatabaseProvider);
+  sqlx = $inject(SqlExpressionProvider);
   security = $inject(AppSecurityProvider);
   dt = $inject(DateTimeProvider);
 
@@ -63,23 +69,14 @@ export class CampaignStatsController {
     handler: async ({ params, user }) => {
       const { campaign } = await this.security.assertMember(params.id, user);
 
-      const isSqlite = this.database.dialect === "sqlite";
-      const daysAgo = (days: number) =>
-        isSqlite
-          ? sql.raw(`(strftime('%s', 'now', '-${days} days') * 1000)`)
-          : sql.raw(`CURRENT_DATE - INTERVAL '${days} days'`);
-      const createdAtDay = isSqlite
-        ? sql`DATE(${this.quests.table.createdAt} / 1000, 'unixepoch')`
-        : sql`DATE(${this.quests.table.createdAt})`;
-      const completedAtDay = isSqlite
-        ? sql`DATE(${this.quests.table.completedAt} / 1000, 'unixepoch')`
-        : sql`DATE(${this.quests.table.completedAt})`;
-      // Cycle time = completedAt - acceptedAt expressed in hours. SQLite
-      // stores epoch-ms integers (divide by 3.6M); Postgres stores
-      // timestamps (EXTRACT EPOCH gives seconds, divide by 3600).
-      const cycleHours = isSqlite
-        ? sql`AVG(${this.quests.table.completedAt} - ${this.quests.table.acceptedAt}) / 3600000.0`
-        : sql`AVG(EXTRACT(EPOCH FROM (${this.quests.table.completedAt} - ${this.quests.table.acceptedAt}))) / 3600.0`;
+      const daysAgo = (days: number) => this.sqlx.ago(days, "days");
+      const createdAtDay = this.sqlx.dateDay(this.quests.table.createdAt);
+      const completedAtDay = this.sqlx.dateDay(this.quests.table.completedAt);
+      const cycleHours = sql`AVG(${this.sqlx.dateDiff(
+        this.quests.table.completedAt,
+        this.quests.table.acceptedAt,
+        "hours",
+      )})`;
 
       // KPI aggregate — single pass over the campaign's live quests.
       const [kpiAgg] = await this.database.run(
@@ -282,13 +279,11 @@ export class CampaignStatsController {
     handler: async ({ params, user }) => {
       const { campaign } = await this.security.assertMember(params.id, user);
 
-      const isSqlite = this.database.dialect === "sqlite";
-      // Cycle time = completedAt - acceptedAt expressed in hours. SQLite
-      // stores epoch-ms integers (divide by 3.6M); Postgres stores
-      // timestamps (EXTRACT EPOCH gives seconds, divide by 3600).
-      const cycleHours = isSqlite
-        ? sql`COALESCE(AVG(${this.quests.table.completedAt} - ${this.quests.table.acceptedAt}) / 3600000.0, 0)`
-        : sql`COALESCE(AVG(EXTRACT(EPOCH FROM (${this.quests.table.completedAt} - ${this.quests.table.acceptedAt}))) / 3600.0, 0)`;
+      const cycleHours = sql`COALESCE(AVG(${this.sqlx.dateDiff(
+        this.quests.table.completedAt,
+        this.quests.table.acceptedAt,
+        "hours",
+      )}), 0)`;
       const priorityOrder = sql`
 				CASE ${this.quests.table.priority}
 					WHEN 'high' THEN 1
@@ -482,7 +477,6 @@ export class CampaignStatsController {
     handler: async ({ params, user }) => {
       const { campaign } = await this.security.assertMember(params.id, user);
 
-      const isSqlite = this.database.dialect === "sqlite";
       // Compose a user's display name: "first last" trimmed, else username,
       // else a short fallback derived from the uuid.
       const userName = sql`
@@ -550,13 +544,9 @@ export class CampaignStatsController {
       );
 
       // Weekly completion buckets per user over (roughly) the last 8 weeks.
-      // `week` is a sortable label: SQLite `%Y-%W`, Postgres `IYYY-IW`.
-      const weekBucket = isSqlite
-        ? sql`strftime('%Y-%W', ${this.quests.table.completedAt} / 1000, 'unixepoch')`
-        : sql`to_char(${this.quests.table.completedAt}, 'IYYY-IW')`;
-      const weeksAgo = isSqlite
-        ? sql.raw("(strftime('%s', 'now', '-56 days') * 1000)")
-        : sql.raw("CURRENT_DATE - INTERVAL '56 days'");
+      // `week` is a sortable ISO label ("2026-W11") on both dialects.
+      const weekBucket = this.sqlx.dateWeek(this.quests.table.completedAt);
+      const weeksAgo = this.sqlx.ago(56, "days");
 
       const contributionQuery = await this.database.run(
         sql`

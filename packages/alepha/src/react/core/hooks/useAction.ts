@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { QueryCache } from "../services/QueryCache.ts";
 import { useAlepha } from "./useAlepha.ts";
 import { useInject } from "./useInject.ts";
 
@@ -244,6 +245,24 @@ export function useAction<Args extends any[], Result = void>(
           id: optionsRef.current.id,
         });
 
+        // Invalidate before the caller's `onSuccess`, so a handler that
+        // navigates or reads the cache sees the post-mutation state.
+        // Resolved here rather than injected at the top of the hook: injecting
+        // unconditionally would make every `useAction` require the react
+        // module to be loaded, breaking containers that use the hook
+        // standalone. Only callers that opt into `invalidates` pay for it.
+        const invalidates = optionsRef.current.invalidates;
+        if (invalidates) {
+          const keys =
+            typeof invalidates === "function"
+              ? invalidates(result as Result)
+              : invalidates;
+          const queryCache = alepha.inject(QueryCache);
+          for (const key of keys) {
+            queryCache.invalidate(key);
+          }
+        }
+
         if (optionsRef.current.onSuccess) {
           await optionsRef.current.onSuccess(result);
         }
@@ -472,6 +491,29 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
    * Custom success handler.
    */
   onSuccess?: (result: Result) => void | Promise<void>;
+
+  /**
+   * Query cache keys to invalidate after a successful run.
+   *
+   * Matching is by prefix, so `[["folios"]]` drops every entry under that
+   * prefix regardless of trailing key members. Mounted `useQuery` hooks whose
+   * key was dropped refetch automatically — this is the replacement for
+   * hand-patching atoms after a write.
+   *
+   * Pass a function to derive keys from the result, e.g. when the id of the
+   * created row is only known afterwards.
+   *
+   * ```tsx
+   * const remove = useAction(
+   *   {
+   *     handler: async (id: string) => api.delete({ params: { id } }),
+   *     invalidates: [["folios", campaignId]],
+   *   },
+   *   [campaignId],
+   * );
+   * ```
+   */
+  invalidates?: unknown[][] | ((result: Result) => unknown[][]);
 
   /**
    * Optional identifier for this action (useful for debugging/analytics)

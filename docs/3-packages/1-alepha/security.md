@@ -29,6 +29,7 @@ Complete authentication and authorization system with JWT, RBAC, and multi-issue
 
 - [`$basicAuth`](/docs/reference-primitives-$basicauth) — Middleware that enforces HTTP Basic Authentication on the request.
 - [`$issuer`](/docs/reference-primitives-$issuer) — Create a new issuer.
+- [`$owns`](/docs/reference-primitives-$owns) — Resource-scoped authorization gate.
 - [`$permission`](/docs/reference-primitives-$permission) — Create a new permission.
 - [`$role`](/docs/reference-primitives-$role) — Create a new role.
 - [`$secure`](/docs/reference-primitives-$secure) — Middleware that enforces authentication and authorization.
@@ -37,3 +38,4 @@ Complete authentication and authorization system with JWT, RBAC, and multi-issue
 ### Providers
 
 - [`JwtProvider`](/docs/reference-providers-jwtprovider) — Provides utilities for working with JSON Web Tokens (JWT).
+- [`OwnedResourceProvider`](/docs/reference-providers-ownedresourceprovider) — Reads the resource resolved by `$owns` for the current request.

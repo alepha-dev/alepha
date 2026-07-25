@@ -232,6 +232,71 @@ function StatusBar() {
 
 The second argument is a dependency list (same as `useEffect`). Events are fully typed based on the `Hooks` interface.
 
+## Data fetching and cache invalidation
+
+`useQuery` works without a cache — pass a handler, get `data` / `loading` / `error` / `refetch`. Pass a `key` and it joins a shared cache.
+
+```tsx
+const { data, loading, isStale } = useQuery(
+  {
+    key: ["folios", campaignId],
+    handler: async ({ signal }) =>
+      folioApi.list({ params: { campaignId }, request: { signal } }),
+  },
+  [campaignId],
+);
+```
+
+A key buys four things:
+
+- **Sharing.** Two components on the same key read one entry instead of each fetching.
+- **Deduplication.** Two components mounting on the same key in one tick share a single in-flight request — the second joins the first rather than issuing its own.
+- **`staleTime`.** While an entry is fresh, mounting renders it straight from cache with no network call and `loading: false`.
+- **SSR hydration.** The cache is a registered atom, so a server-rendered result arrives in the hydration payload for free.
+
+### Invalidating after a write
+
+This is the part that replaces hand-patching state after a mutation. Declare what a write affects and mounted queries refetch themselves:
+
+```tsx
+const remove = useAction(
+  {
+    handler: async (id: string) => folioApi.delete({ params: { id } }),
+    invalidates: [["folios", campaignId], ["folioTags", campaignId]],
+  },
+  [campaignId],
+);
+```
+
+Keys are arrays and matching is by **prefix**, so `["folios"]` drops `["folios", 1]` and `["folios", 2]` without the mutation needing to know which campaigns were queried. It will not touch `["folios-archive"]`.
+
+Pass a function when the keys depend on the result:
+
+```tsx
+invalidates: (created) => [["folios", created.campaignId]],
+```
+
+### Imperative access
+
+When the trigger is not a `useAction` — a websocket message, a router event, an optimistic write — use `useQueryClient`:
+
+```tsx
+const queries = useQueryClient();
+
+queries.invalidate(["folios", campaignId]);
+queries.setData(["folio", id], (previous) => ({ ...previous, pinned: true }));
+queries.clear(); // on logout
+```
+
+### `useQuery` or `$page.loader`?
+
+Both fetch. The dividing line is whether the route can render without the data:
+
+- **`$page.loader`** — the page is meaningless without it (the folio being viewed). It runs before render, so there is no loading state to design, and it participates in SSR.
+- **`useQuery`** — a component owns the data and can render a skeleton while it arrives (a sidebar, a backlinks panel, a tag list). It is also the right choice for anything a mutation should be able to invalidate.
+
+Mixing them is normal: load the subject in the route, query its satellites in components.
+
 ## AlephaProvider
 
 Only needed if you are **not** using the Alepha Router (e.g., in Expo or Next.js integrations). When using `$page` and the router, the context is provided automatically.
