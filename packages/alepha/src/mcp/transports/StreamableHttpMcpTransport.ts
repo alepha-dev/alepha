@@ -4,8 +4,10 @@ import { $route } from "alepha/server";
 import {
   createErrorResponse,
   createParseError,
+  isSupportedProtocolVersion,
   JsonRpcParseError,
   parseMessage,
+  SUPPORTED_PROTOCOL_VERSIONS,
 } from "../helpers/jsonrpc.ts";
 import type { McpContext } from "../interfaces/McpTypes.ts";
 import { McpServerProvider } from "../providers/McpServerProvider.ts";
@@ -217,18 +219,21 @@ export class StreamableHttpMcpTransport {
           const headerVersion = Array.isArray(headerRaw)
             ? headerRaw[0]
             : headerRaw;
-          if (
-            headerVersion &&
-            headerVersion !== this.mcpServer.negotiatedVersion
-          ) {
-            this.log.warn("MCP-Protocol-Version header mismatch", {
+          // Validated against the SUPPORTED set, not against a single
+          // negotiated value held on the provider singleton. That value is
+          // process-global: client B initializing with an older version
+          // changed what client A was checked against, and on Workers a fresh
+          // isolate reset it — so a client that negotiated correctly started
+          // getting 400s on its next request.
+          if (headerVersion && !isSupportedProtocolVersion(headerVersion)) {
+            this.log.warn("MCP-Protocol-Version header not supported", {
               header: headerVersion,
-              negotiated: this.mcpServer.negotiatedVersion,
+              supported: SUPPORTED_PROTOCOL_VERSIONS,
             });
             request.reply.status = 400;
             request.reply.headers["content-type"] = "application/json";
             request.reply.body = JSON.stringify({
-              error: `MCP-Protocol-Version mismatch: expected ${this.mcpServer.negotiatedVersion}, got ${headerVersion}`,
+              error: `MCP-Protocol-Version not supported: got ${headerVersion}, expected one of ${SUPPORTED_PROTOCOL_VERSIONS.join(", ")}`,
             });
             return;
           }
@@ -245,14 +250,17 @@ export class StreamableHttpMcpTransport {
           request.reply.headers["content-type"] = "application/json";
           request.reply.body = JSON.stringify(response);
         } else {
-          request.reply.status = 204;
+          // Spec: a notification "MUST return HTTP 202 Accepted".
+          request.reply.status = 202;
         }
       } catch (error) {
         if (error instanceof JsonRpcParseError) {
           request.reply.status = 400;
           request.reply.headers["content-type"] = "application/json";
           request.reply.body = JSON.stringify(
-            createErrorResponse(0, createParseError(error.message)),
+            // `null`, per JSON-RPC: the id could not be determined. `0` both
+            // violated the spec and could collide with a real id of 0.
+            createErrorResponse(null, createParseError(error.message)),
           );
         } else {
           this.log.error("Failed to process MCP message", error);

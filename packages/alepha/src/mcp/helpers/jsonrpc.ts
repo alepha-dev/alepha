@@ -63,7 +63,10 @@ export function createResponse(
 }
 
 export function createErrorResponse(
-  id: string | number,
+  // `null` is required by JSON-RPC when the request id could not be
+  // determined (an unparseable message). Fabricating `0` there both violates
+  // the spec and can collide with a real request whose id IS 0.
+  id: string | number | null,
   error: JsonRpcError,
 ): JsonRpcResponse {
   return {

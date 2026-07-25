@@ -11,10 +11,10 @@ import {
   rename,
   stat,
 } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { PassThrough, Readable } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   $inject,
   AlephaError,
@@ -97,7 +97,10 @@ export class NodeFileSystemProvider implements FileSystemProvider {
     if ("path" in options) {
       const filePath = options.path;
       const filename = basename(filePath);
-      return this.createFileFromUrl(`file://${filePath}`, {
+      // `file://` + path breaks on a relative path (the first segment parses
+      // as the URL host) and on `#`/`?`/`%` in a filename, which truncate
+      // into fragment/query or mis-decode. `pathToFileURL` handles all of it.
+      return this.createFileFromUrl(pathToFileURL(resolve(filePath)).href, {
         type: options.type,
         name: options.name || filename,
       });
@@ -291,9 +294,19 @@ export class NodeFileSystemProvider implements FileSystemProvider {
 
     if (options.force === false) {
       await p;
-    } else {
-      await p.catch(() => {});
+      return;
     }
+
+    // `force` only ever meant "an existing directory is fine". Swallowing
+    // EVERY error made EACCES, ENOSPC and EROFS vanish, so the failure
+    // surfaced far from its cause on a later write. `recursive: true` already
+    // makes EEXIST a no-op, so this rethrows anything else.
+    await p.catch((error: NodeJS.ErrnoException) => {
+      if (error?.code === "EEXIST") {
+        return;
+      }
+      throw error;
+    });
   }
 
   /**
@@ -590,9 +603,22 @@ export class NodeFileSystemProvider implements FileSystemProvider {
     const stream = new PassThrough();
 
     fetch(url)
-      .then((res) =>
-        Readable.fromWeb(res.body as unknown as NodeWebStream).pipe(stream),
-      )
+      .then((res) => {
+        // The status was ignored, so a 404 or 500 error page streamed
+        // through as if it were the file's content. The buffered path
+        // already threw on `!ok`; this one silently produced garbage.
+        if (!res.ok) {
+          throw new AlephaError(
+            `Failed to fetch ${url}: ${res.status} ${res.statusText}`,
+          );
+        }
+        if (!res.body) {
+          throw new AlephaError(`Response for ${url} has no body`);
+        }
+        return Readable.fromWeb(res.body as unknown as NodeWebStream).pipe(
+          stream,
+        );
+      })
       .catch((err) => stream.destroy(err));
 
     return stream;

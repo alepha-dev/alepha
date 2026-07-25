@@ -1,8 +1,39 @@
 import { Readable } from "node:stream";
 import { Alepha } from "alepha";
-import { beforeEach, describe, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { AlephaSystem } from "../index.ts";
 import { NodeFileSystemProvider } from "../providers/NodeFileSystemProvider.ts";
+
+describe("NodeFileSystemProvider hardening", () => {
+  const create = () => {
+    const alepha = Alepha.create();
+    return alepha.inject(NodeFileSystemProvider);
+  };
+
+  it("should surface a real mkdir failure instead of swallowing it", async () => {
+    // `force !== false` did `.catch(() => {})`, so EACCES / ENOSPC / EROFS all
+    // vanished and the failure surfaced far from its cause on a later write.
+    // `recursive: true` already makes EEXIST a no-op, so the catch protected
+    // nothing.
+    const fs = create();
+
+    await expect(
+      // A path under a file (not a directory) — ENOTDIR, not EEXIST.
+      fs.mkdir(`${import.meta.filename}/nested`),
+    ).rejects.toThrow();
+  });
+
+  it("should build a file URL that survives a relative path", async () => {
+    // `file://${path}` parses the first segment of a relative path as the URL
+    // HOST, so the file could never be found.
+    const fs = create();
+
+    const file = fs.createFile({ path: "package.json" });
+
+    expect(file.name).toBe("package.json");
+    await expect(file.text()).resolves.toContain('"name"');
+  });
+});
 
 describe("NodeFileSystem", () => {
   let fs: NodeFileSystemProvider;

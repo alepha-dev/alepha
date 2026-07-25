@@ -13,7 +13,11 @@ export interface JsonRpcRequest {
 
 export interface JsonRpcResponse {
   jsonrpc: "2.0";
-  id: string | number;
+  /**
+   * `null` when the request id could not be determined — JSON-RPC requires it
+   * for an unparseable message.
+   */
+  id: string | number | null;
   result?: unknown;
   error?: JsonRpcError;
 }

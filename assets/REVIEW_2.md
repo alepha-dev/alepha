@@ -9,9 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-25**: 157 findings closed — 146 fixed across twenty-one passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
+> **Update 2026-07-25**: 164 findings closed — 153 fixed across twenty-two passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
 >
-> **Remaining: 112 open — 0 P0 · 0 P1 · 32 P2 · 80 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
+> **Remaining: 105 open — 0 P0 · 0 P1 · 26 P2 · 79 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -378,6 +378,22 @@ Left open, with reasons rather than silence:
 
 - **`CloudflareHyperdriveProvider.db` creating a client per access.** This is deliberate and documented — its JSDoc states it avoids Workers' "Cannot perform I/O on behalf of a different request". Caching per request context is a real improvement, but it changes connection lifecycle on the one runtime that cannot be exercised here (no workerd, no Hyperdrive binding).
 - **`SET search_path` before pg migrations on a pooled connection.** Pinning the SET and `migrate()` to one connection needs a reserved connection (or libpq `options=-csearch_path=…` on the URL), and the failure mode — migrate checking out a *different* pooled connection — cannot be reproduced deterministically in this suite. Touching the migration path blind is the wrong trade.
+
+### Twenty-second pass — 2026-07-25 (cli, system, datetime, mcp)
+
+Seven of the nine open findings in this group.
+
+| Area | Fix |
+|------|-----|
+| command/CliProvider | Command resolution skips argv slots that are flag **values**. `argv.filter(a => !a.startsWith("-"))` ran before any flag parsing, so `cli deploy --target vercel` saw `vercel` as a positional, walked into a `vercel` subcommand, and then failed `--target requires a value`; flags before the command (`cli --mode production build`) made `production` the resolved command. Resolution now uses the flag definitions of **every** registered command — which command owns `--target` is precisely what is being worked out, so the superset is all that exists this early. |
+| system/NodeFileSystemProvider | `mkdir` rethrows everything except EEXIST. `force !== false` did `.catch(() => {})`, so EACCES / ENOSPC / EROFS vanished and the failure surfaced far from its cause on a later write — and `recursive: true` already makes EEXIST a no-op, so the catch protected nothing. |
+| system/NodeFileSystemProvider | `createFile({ path })` builds its URL with `pathToFileURL(resolve(path))`. String-concatenating `file://` parsed the first segment of a *relative* path as the URL host, and truncated on `#`/`?` in a filename. |
+| system/NodeFileSystemProvider | The streaming fetch path checks `res.ok`. It piped the body regardless, so a 404 or 500 error page streamed through **as the file's content** — while the buffered path already threw. |
+| datetime/DateTimeProvider | A replayed timeout whose expiry is still in the future is registered against the remaining virtual time. It returned an unregistered dummy, so `travel()` could never fire it and `wait(d, { now })` hung forever (verified: a 10s vitest timeout) — stalling any paused-clock cron chain, and `CronProvider` is a production caller. The already-elapsed comparison also moved from `<` to `<=`, so an expiry landing exactly on the current instant fires. |
+| mcp/transport | The `MCP-Protocol-Version` header is validated against the **supported set**, not a single negotiated value held on the provider singleton. That value is process-global: another client initializing with an older version changed what this client was checked against, and a fresh serverless isolate reset it — both producing spurious 400s. |
+| mcp/transport | Spec compliance: a notification answers **202** (was 204), and an unparseable message answers `id: null` (was a fabricated `0`, which can collide with a real id of 0). Note the malformed-JSON route is unreachable from HTTP — the server's body parser rejects it first — so the reachable case is valid JSON that is not valid JSON-RPC. |
+
+Still open here: the Bun/Node `execCapture` divergence (a shell-semantics change on a runtime only reachable through `test:bun`), and `EnvUtils` implicitly loading `.local` variants (documentation vs behaviour, plus a too-broad catch).
 
 Per-module detail follows. Line numbers reference the tree as it stood when each finding was written (`main` @ 6c7ec9400 for the original passes); the fix passes have since moved code, so treat every line number as a starting hint, not an address — locate by symbol name.
 
@@ -1548,7 +1564,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/router/providers/RouterProvider.ts:113; server/core/providers/ServerProvider.ts:177, :206
 - **Detail**: `params[name] = parts[i]` raw; query values go through `fastDecode`. `GET /users/john%20doe` yields `params.id === "john%20doe"` but `?q=john%20doe` yields `"john doe"` — inconsistent; encoded IDs arrive corrupted. Decode each captured segment with guarded `decodeURIComponent`.
 
-### [BUG] Flag values are consumed as subcommand names during command resolution
+### ✅ FIXED — [BUG] Flag values are consumed as subcommand names during command resolution
 - **Severity**: P2
 - **File**: packages/alepha/src/command/providers/CliProvider.ts:164-168, :382-397
 - **Detail**: `positionalArgs = argv.filter(a => !a.startsWith("-"))` runs before flag parsing, so a space-separated flag value is a positional. `cli deploy --target vercel` with a `vercel` child walks into the child and `--target` then fails "requires a value". Flags before the command (`cli --mode production build`) make `production` the resolved command → "Unknown command". Skip argv positions consumed as flag values (logic exists in `getFlagConsumedIndices`).
@@ -1558,27 +1574,27 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/command/helpers/Asker.ts:79-84
 - **Detail**: `[Y/n]` prompt validates against `z.enum(["Y", "y", "n", "no", "yes"]).default("Y")`. Typing `N`, `No`, or `YES` fails and loops. Lowercase the answer before decoding or extend the enum.
 
-### [BUG] `NodeFileSystemProvider.mkdir` swallows all errors, not just EEXIST
+### ✅ FIXED — [BUG] `NodeFileSystemProvider.mkdir` swallows all errors, not just EEXIST
 - **Severity**: P2
 - **File**: packages/alepha/src/system/providers/NodeFileSystemProvider.ts:286-297
 - **Detail**: Default `force !== false` does `await p.catch(() => {})` — EACCES, ENOSPC, EROFS all vanish; later writes fail confusingly far from cause. (`recursive: true` already makes EEXIST a no-op, so the catch protects nothing.) Also violates the repo's own "never `.catch(()=>{})`" rule.
 
-### [BUG] `createFile({ path })` builds file URL by string concat — breaks on relative paths and `#`/`?` in filenames
+### ✅ FIXED — [BUG] `createFile({ path })` builds file URL by string concat — breaks on relative paths and `#`/`?` in filenames
 - **Severity**: P2
 - **File**: packages/alepha/src/system/providers/NodeFileSystemProvider.ts:100
 - **Detail**: `` `file://${filePath}` `` — relative path parses first segment as URL host; `#`/`?` truncate into fragment/query; `%` mis-decoded. Use `pathToFileURL()`.
 
-### [BUG] `createFileFromUrl(...).stream()` over HTTP ignores response status
+### ✅ FIXED — [BUG] `createFileFromUrl(...).stream()` over HTTP ignores response status
 - **Severity**: P2
 - **File**: packages/alepha/src/system/providers/NodeFileSystemProvider.ts:589-599
 - **Detail**: `getStreamingResponse` pipes `res.body` regardless of `res.ok`, so a 404/500 error page streams through as file content; the buffered path correctly throws on `!response.ok`. Destroy the stream with an error when `!res.ok`.
 
-### [BUG] Paused-time `createTimeout` with `now` silently drops future timers; `wait(…, { now })` hangs
+### ✅ FIXED — [BUG] Paused-time `createTimeout` with `now` silently drops future timers; `wait(…, { now })` hangs
 - **Severity**: P2
 - **File**: packages/alepha/src/datetime/providers/DateTimeProvider.ts:434-445
 - **Detail**: When paused and `now` is passed, a future expiry returns a dummy `{ callback: () => {}, clear: () => {} }` never registered in `this.timeouts` — `travel()` past expiry never fires it, `wait(duration, { now })` never resolves. Production caller: `CronProvider` (scheduler/providers/CronProvider.ts:132-136) — paused-clock tests stall cron chains permanently. Also replay comparison uses strict `<` (expiry exactly equal to now doesn't fire). Register future-dated timeouts against remaining virtual time.
 
-### [BUG] MCP negotiated protocol version is a mutable singleton — breaks multi-client and serverless deployments
+### ✅ FIXED — [BUG] MCP negotiated protocol version is a mutable singleton — breaks multi-client and serverless deployments
 - **Severity**: P2
 - **File**: packages/alepha/src/mcp/providers/McpServerProvider.ts:65, transports/StreamableHttpMcpTransport.ts:215-235
 - **Detail**: `negotiatedVersion` lives on the provider singleton. (a) Client B initializing with older version changes what client A is validated against → spurious 400s; (b) on Workers a fresh isolate resets to `2025-11-25`, so a client that negotiated `2025-06-18` gets 400 mismatch on its next request. Validate header against `SUPPORTED_PROTOCOL_VERSIONS` membership or key per session.
@@ -1598,7 +1614,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/command/helpers/EnvUtils.ts:44, CliProvider.ts:719-729
 - **Detail**: `parseEnv` implicitly adds `${file}.local` for every file, while docs/debug log claim only `.env`/`.env.{mode}`. Also swallows all read errors (EACCES) as "no file found", and inline `# comments` after values kept as part of value. Align docs, narrow catch to ENOENT.
 
-### [BUG] MCP notification response uses 204 (spec says 202) and parse-error id is `0` (spec says `null`)
+### ✅ FIXED — [BUG] MCP notification response uses 204 (spec says 202) and parse-error id is `0` (spec says `null`)
 - **Severity**: P3
 - **File**: packages/alepha/src/mcp/transports/StreamableHttpMcpTransport.ts:248, :255
 - **Detail**: Spec: notifications "MUST return HTTP 202 Accepted"; transport returns 204. Unparseable messages require `"id": null`; `createErrorResponse(0, …)` fabricates id 0 (can collide with real id 0). Also JSON-RPC batch arrays (required by advertised 2025-03-26/2024-11-05 versions) are rejected by `parseMessage`.

@@ -12,6 +12,7 @@ class TestCliProvider extends CliProvider {
   public testParseArgumentValue = this.parseArgumentValue.bind(this);
   public testParseModeFlag = this.parseModeFlag.bind(this);
   public testResolveCommand = this.resolveCommand.bind(this);
+  public testResolveCommandFromArgv = this.resolveCommandFromArgv.bind(this);
   public testRemoveConsumedArgs = this.removeConsumedArgs.bind(this);
   public testGetFlagConsumedIndices = this.getFlagConsumedIndices.bind(this);
   public testGenerateArgsUsage = this.generateArgsUsage.bind(this);
@@ -51,6 +52,64 @@ class TestCliProvider extends CliProvider {
 }
 
 describe("CliProvider", () => {
+  describe("positional args vs flag values", () => {
+    // `positionalArgs = argv.filter(a => !a.startsWith("-"))` ran BEFORE flag
+    // parsing, so a space-separated flag value was treated as a command name.
+    class App {
+      // A child whose name collides with a plausible flag value.
+      vercel = $command({
+        name: "vercel",
+        handler: () => {},
+      });
+
+      deploy = $command({
+        name: "deploy",
+        flags: z.object({ target: z.text().optional() }),
+        children: [this.vercel],
+        handler: () => {},
+      });
+
+      build = $command({ name: "build", handler: () => {} });
+    }
+
+    const create = () => {
+      const alepha = Alepha.create().with(App);
+      return alepha.inject(TestCliProvider);
+    };
+
+    it("should not treat a flag value as a subcommand", () => {
+      const cli = create();
+
+      const { command } = cli.testResolveCommandFromArgv([
+        "deploy",
+        "--target",
+        "vercel",
+      ]);
+
+      expect(command?.name).toBe("deploy");
+    });
+
+    it("should resolve a command that follows a global flag value", () => {
+      const cli = create();
+
+      const { command } = cli.testResolveCommandFromArgv([
+        "--target",
+        "production",
+        "build",
+      ]);
+
+      expect(command?.name).toBe("build");
+    });
+
+    it("should still resolve a real subcommand", () => {
+      const cli = create();
+
+      const { command } = cli.testResolveCommandFromArgv(["deploy", "vercel"]);
+
+      expect(command?.name).toBe("vercel");
+    });
+  });
+
   const createTestCli = () => {
     const alepha = Alepha.create();
     return alepha.inject(TestCliProvider);

@@ -432,16 +432,29 @@ export class DateTimeProvider {
     now?: number,
   ): Timeout {
     if (this.ref && now) {
+      // Replaying a timer that was created at an earlier virtual instant
+      // (`now`) under a paused or travelled clock.
       const next = this.of(now).add(this.duration(duration));
-      if (next.valueOf() < this.now().valueOf()) {
+      const remaining = next.valueOf() - this.now().valueOf();
+
+      // `<=`, not `<`: an expiry landing exactly on the current instant has
+      // elapsed and must fire.
+      if (remaining <= 0) {
         callback();
+        return {
+          now,
+          duration: 0,
+          callback: () => {},
+          clear: () => {},
+        };
       }
-      return {
-        now,
-        duration: 0,
-        callback: () => {},
-        clear: () => {},
-      };
+
+      // Still in the future. This used to return an unregistered dummy, so
+      // `travel()` past the expiry never fired it and `wait(d, { now })` hung
+      // forever — stalling any paused-clock cron chain
+      // (`CronProvider` is a production caller). Register it against the
+      // REMAINING virtual time instead.
+      return this.createTimeout(callback, remaining);
     }
 
     const timeout: Timeout = {

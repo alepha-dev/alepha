@@ -161,11 +161,10 @@ export class CliProvider {
     handler: async () => {
       const argv = [...this.argv];
 
-      // Extract positional arguments (potential command path)
-      const positionalArgs = argv.filter((arg) => !arg.startsWith("-"));
-
-      // Resolve command using space-separated or colon-notation
-      const { command, consumedArgs } = this.resolveCommand(positionalArgs);
+      // Resolve command using space-separated or colon-notation, skipping
+      // argv slots that are flag values rather than positionals.
+      const { command, consumedArgs, positionalArgs } =
+        this.resolveCommandFromArgv(argv);
 
       const globalFlags = this.parseFlags(
         argv,
@@ -348,6 +347,48 @@ export class CliProvider {
    * 2. Colon notation (backwards compat): `deploy:vercel` -> finds command with name "deploy:vercel"
    * 3. Simple commands: `build` -> finds command with name "build"
    */
+  /**
+   * Resolve a command from the raw argv, skipping argv slots that are flag
+   * VALUES rather than positionals.
+   *
+   * `argv.filter(a => !a.startsWith("-"))` ran before any flag parsing, so
+   * `cli deploy --target vercel` saw `vercel` as a positional and walked into
+   * a `vercel` subcommand — after which `--target` failed as "requires a
+   * value". Flags before the command (`cli --mode production build`) made
+   * `production` the resolved command → "Unknown command".
+   *
+   * The flag definitions of EVERY registered command are used, not just the
+   * global ones: which command owns `--target` is exactly what we are trying
+   * to work out, so the superset is the only thing available this early. A
+   * value-taking flag anywhere in the app therefore consumes its next
+   * argument here — which is the behaviour a user expects from a CLI.
+   */
+  protected resolveCommandFromArgv(argv: string[]): {
+    command: CommandPrimitive<TObject> | undefined;
+    consumedArgs: string[];
+    positionalArgs: string[];
+  } {
+    const flagDefs = [
+      ...Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
+        key,
+        aliases: value.aliases,
+        schema: value.schema,
+      })),
+      ...this.commands.flatMap((command) => {
+        const flags = (command.options as { flags?: TObject }).flags;
+        return flags ? this.extractFlagDefs(flags) : [];
+      }),
+    ];
+
+    const consumedIndices = this.getFlagConsumedIndices(argv, flagDefs);
+
+    const positionalArgs = argv.filter(
+      (arg, idx) => !arg.startsWith("-") && !consumedIndices.has(idx),
+    );
+
+    return { ...this.resolveCommand(positionalArgs), positionalArgs };
+  }
+
   protected resolveCommand(positionalArgs: string[]): {
     command: CommandPrimitive<TObject> | undefined;
     consumedArgs: string[];
