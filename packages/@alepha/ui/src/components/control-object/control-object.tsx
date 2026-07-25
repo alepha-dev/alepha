@@ -19,6 +19,10 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import {
+  childI18nPrefix,
+  resolveFieldI18n,
+} from "../control-base/field-i18n.ts";
 
 export interface ControlObjectProps {
   /**
@@ -53,6 +57,8 @@ export interface ControlObjectProps {
    * Default expanded state. @default true
    */
   defaultExpanded?: boolean;
+  /** Dictionary prefix for this object's children (see `resolveFieldI18n`). */
+  i18nPrefix?: string;
   /**
    * Allow the user to clear the object (sets value to undefined).
    */
@@ -91,7 +97,16 @@ export function ControlObject(props: ControlObjectProps) {
       {fieldNames.map((name) => {
         const field = nestedItems?.[name];
         if (!field) return null;
-        const fieldProps = props.controlProps?.[name] ?? {};
+        const fieldProps = {
+          ...(props.controlProps?.[name] ?? {}),
+          ...resolveFieldI18n(
+            tr as never,
+            props.i18nPrefix,
+            name,
+            props.controlProps?.[name] ?? {},
+          ),
+          i18nPrefix: childI18nPrefix(props.i18nPrefix, name),
+        };
         const width = widthFor(field, fieldProps.width as number | undefined);
         return (
           <div key={name} className={spanClass(width)}>

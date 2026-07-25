@@ -20,6 +20,7 @@ import { useAlepha } from "alepha/react";
 import {
   type BaseInputField,
   parseField,
+  unionVariants,
   useFormState,
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -32,6 +33,10 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  childI18nPrefix,
+  resolveFieldI18n,
+} from "../control-base/field-i18n.ts";
 
 interface ArrayItem {
   key: number;
@@ -43,6 +48,12 @@ export interface ControlArrayProps {
    * Bound array `InputField` from `useForm`.
    */
   input: BaseInputField;
+  /**
+   * Dictionary prefix for the item fields: each reads `<prefix>.<field>` and
+   * `<prefix>.<field>.desc` (the index is not part of the key — every row of
+   * the list shares one label).
+   */
+  i18nPrefix?: string;
   /**
    * Field label. Falls back to schema `title`.
    */
@@ -160,6 +171,69 @@ const useArrayItems = (input: BaseInputField | undefined) => {
   return { items, setItems, nextKey: () => counter.current++ };
 };
 
+/**
+ * Discriminated-union support for item schemas.
+ *
+ * `z.array(z.union([...objects]))` is how a heterogeneous list is spelled. The
+ * variants almost always differ by one literal property (`kind`, `type`, …),
+ * which is enough to (a) tell which variant an existing item is and (b) label
+ * the choice offered when adding one. Everything below degrades quietly: no
+ * union, or no discriminant, and the array behaves exactly as before.
+ */
+const objectVariants = (itemSchema: TSchema): TObject[] | null => {
+  const variants = unionVariants(itemSchema);
+  if (!variants?.length) return null;
+  const objects = variants
+    .map((variant) => z.schema.unwrap(variant))
+    .filter((variant) => z.schema.isObject(variant)) as TObject[];
+  return objects.length === variants.length ? objects : null;
+};
+
+/** The property whose value identifies the variant (a literal in every variant). */
+const discriminantOf = (variants: TObject[]): string | null => {
+  const [first] = variants;
+  if (!first) return null;
+  for (const name of Object.keys(first.properties)) {
+    const values = variants.map((variant) =>
+      literalValueOf(variant.properties?.[name]),
+    );
+    if (values.every((value) => typeof value === "string")) {
+      const unique = new Set(values as string[]);
+      if (unique.size === variants.length) return name;
+    }
+  }
+  return null;
+};
+
+/** The single allowed value of a literal/const schema, if it is one. */
+const literalValueOf = (schema: unknown): unknown => {
+  if (!schema) return undefined;
+  const inner = z.schema.unwrap(schema as TSchema) as {
+    const?: unknown;
+    values?: unknown[] | Set<unknown>;
+    _zod?: { def?: { values?: unknown[] } };
+  };
+  if (inner?.const !== undefined) return inner.const;
+  // zod spells a literal's allowed values as `_zod.def.values` (an array);
+  // the public `.values` is a Set, so normalise both.
+  const raw = inner?._zod?.def?.values ?? inner?.values;
+  const values =
+    raw instanceof Set ? [...raw] : Array.isArray(raw) ? raw : undefined;
+  return values?.length === 1 ? values[0] : undefined;
+};
+
+/** Label for a variant: its discriminant value, else its index. */
+const variantLabel = (
+  variant: TObject,
+  discriminant: string | null,
+  index: number,
+): string => {
+  const value = discriminant
+    ? literalValueOf(variant.properties?.[discriminant])
+    : undefined;
+  return typeof value === "string" ? value : `#${index + 1}`;
+};
+
 const buildItemInput = (
   parent: BaseInputField,
   schema: TSchema,
@@ -219,8 +293,31 @@ export function ControlArray(props: ControlArrayProps) {
   if (!schema || !("items" in schema)) return null;
 
   const itemSchema = (schema as { items: TSchema }).items;
-  const objectItemSchema =
-    itemSchema && "properties" in itemSchema ? (itemSchema as TObject) : null;
+  const variants = objectVariants(itemSchema);
+  const discriminant = variants ? discriminantOf(variants) : null;
+
+  /**
+   * The object schema to edit an item with. For a union that is the variant the
+   * item's discriminant points at (first variant as a fallback, e.g. a freshly
+   * added item), so each row renders exactly its own fields.
+   */
+  const schemaForValue = (value: unknown): TObject | null => {
+    if (!variants) {
+      return itemSchema && "properties" in itemSchema
+        ? (itemSchema as TObject)
+        : null;
+    }
+    if (discriminant && value && typeof value === "object") {
+      const tag = (value as Record<string, unknown>)[discriminant];
+      const match = variants.find(
+        (variant) => literalValueOf(variant.properties?.[discriminant]) === tag,
+      );
+      if (match) return match;
+    }
+    return variants[0] ?? null;
+  };
+
+  const objectItemSchema = schemaForValue(items[0]?.value);
   const fieldNames = objectItemSchema
     ? Object.keys(objectItemSchema.properties)
     : [];
@@ -243,16 +340,21 @@ export function ControlArray(props: ControlArrayProps) {
     props.forceTabs ||
     (objectItemSchema && (items.length > 4 || hasComplexFields));
 
-  const handleAdd = () => {
+  const handleAdd = (variantIndex = 0) => {
     if (items.length >= max) return;
+    const shape = variants ? variants[variantIndex] : objectItemSchema;
     let value: unknown;
-    if (objectItemSchema) {
+    if (shape) {
       value = {};
       for (const [k, p] of Object.entries(
-        objectItemSchema.properties as Record<string, TSchema>,
+        shape.properties as Record<string, TSchema>,
       )) {
         const def = z.schema.getDefault(p);
         if (def !== undefined) (value as Record<string, unknown>)[k] = def;
+        // Stamp the discriminant so the new item resolves to its variant.
+        const literal = literalValueOf(p);
+        if (literal !== undefined)
+          (value as Record<string, unknown>)[k] = literal;
       }
     } else {
       value = "";
@@ -306,17 +408,37 @@ export function ControlArray(props: ControlArrayProps) {
         // fall through
       }
     }
+    const value = items[i]?.value as Record<string, unknown> | undefined;
+    const tag = discriminant ? value?.[discriminant] : undefined;
+    if (typeof tag === "string") return `${tag} #${i + 1}`;
     return `${meta.label} #${i + 1}`;
   };
 
-  const renderItemBody = (item: ArrayItem, index: number) =>
-    objectItemSchema ? (
+  const renderItemBody = (item: ArrayItem, index: number) => {
+    // Resolved per item: in a union each row may be a different variant.
+    const itemObjectSchema = schemaForValue(item.value);
+    const itemFieldNames = itemObjectSchema
+      ? Object.keys(itemObjectSchema.properties)
+      : [];
+    return itemObjectSchema ? (
       <div className={`grid gap-3 ${colsClass[columns]}`}>
-        {fieldNames.map((name) => {
-          const fieldProps = props.controlProps?.[name] ?? {};
+        {itemFieldNames.map((name) => {
+          const fieldProps = {
+            ...(props.controlProps?.[name] ?? {}),
+            ...resolveFieldI18n(
+              tr as never,
+              props.i18nPrefix,
+              name,
+              props.controlProps?.[name] ?? {},
+            ),
+            i18nPrefix: childI18nPrefix(props.i18nPrefix, name),
+          };
+          // The discriminant decides the item's SHAPE — editing it would
+          // invalidate every sibling field, so it is shown read-only.
+          const isDiscriminant = !!variants && name === discriminant;
           const fieldInput = buildFieldInput(
             props.input,
-            objectItemSchema,
+            itemObjectSchema,
             name,
             index,
             item.value as Record<string, unknown>,
@@ -326,7 +448,7 @@ export function ControlArray(props: ControlArrayProps) {
             <Control
               key={name}
               input={fieldInput}
-              disabled={props.disabled}
+              disabled={props.disabled || isDiscriminant}
               {...fieldProps}
             />
           );
@@ -341,6 +463,7 @@ export function ControlArray(props: ControlArrayProps) {
         {...props.itemControlProps}
       />
     );
+  };
 
   const itemActions = (index: number) => (
     <div className="flex shrink-0 flex-col gap-1">
@@ -428,19 +551,40 @@ export function ControlArray(props: ControlArrayProps) {
 
   const headerControls = (
     <div className="flex items-start gap-3">
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        className="size-8 shrink-0"
-        disabled={props.disabled || items.length >= max}
-        onClick={handleAdd}
-        aria-label={
-          props.addLabel ?? tr("controlArray.add", { default: "Add" })
-        }
-      >
-        <Plus className="size-4" />
-      </Button>
+      {variants && variants.length > 1 ? (
+        // A union offers a choice of shapes: one Add button per variant,
+        // labelled by its discriminant ("single", "period_pass", …).
+        <div className="flex shrink-0 flex-wrap gap-1">
+          {variants.map((variant, index) => (
+            <Button
+              key={variantLabel(variant, discriminant, index)}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              disabled={props.disabled || items.length >= max}
+              onClick={() => handleAdd(index)}
+            >
+              <Plus className="size-3.5" />
+              {variantLabel(variant, discriminant, index)}
+            </Button>
+          ))}
+        </div>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-8 shrink-0"
+          disabled={props.disabled || items.length >= max}
+          onClick={() => handleAdd()}
+          aria-label={
+            props.addLabel ?? tr("controlArray.add", { default: "Add" })
+          }
+        >
+          <Plus className="size-4" />
+        </Button>
+      )}
       <div className="flex flex-col min-w-0 flex-1">
         <div className="text-sm font-medium leading-tight">
           {meta.label}

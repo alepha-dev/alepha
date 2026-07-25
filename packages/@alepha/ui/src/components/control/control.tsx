@@ -122,6 +122,23 @@ export interface ControlProps {
    */
   array?: boolean;
   /**
+   * Props forwarded to the nested `<ControlObject>`, keyed by child field name.
+   * This is the only way to reach INSIDE an object field — without it a caller
+   * can style/override the object as a whole but never one of its children
+   * (e.g. attaching a `custom` widget to `payg.zoneFareCents`).
+   */
+  /**
+   * Dictionary prefix for schema-generated labels/help: this field reads
+   * `<prefix>.<name>` and `<prefix>.<name>.desc`, and passes the extended
+   * prefix down into nested objects and array items.
+   */
+  i18nPrefix?: string;
+  objectProps?: {
+    controlProps?: Record<string, Partial<Omit<ControlProps, "input">>>;
+    variant?: "fieldset" | "plain";
+    defaultExpanded?: boolean;
+  };
+  /**
    * Custom render component receiving `{value, onChange}`.
    */
   custom?: ComponentType<{ value: unknown; onChange: (v: unknown) => void }>;
@@ -268,6 +285,10 @@ export function Control(props: ControlProps) {
         label={merged.label ?? props.label}
         description={merged.description ?? props.description}
         disabled={merged.disabled}
+        i18nPrefix={merged.i18nPrefix}
+        controlProps={merged.objectProps?.controlProps}
+        variant={merged.objectProps?.variant}
+        defaultExpanded={merged.objectProps?.defaultExpanded}
       />,
     );
   }
@@ -278,6 +299,7 @@ export function Control(props: ControlProps) {
       merged,
       <ControlArray
         input={props.input}
+        i18nPrefix={merged.i18nPrefix}
         label={merged.label ?? props.label}
         description={merged.description ?? props.description}
         disabled={merged.disabled}

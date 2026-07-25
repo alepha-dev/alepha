@@ -31,6 +31,7 @@ import { useAlepha } from "alepha/react";
 import {
   type BaseInputField,
   type FormModel,
+  isObjectOrUnionOfObjects,
   useFormState,
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -287,6 +288,7 @@ export interface AutoFormProps<T extends TObject> {
  * carrying `$control` metadata configure themselves.
  */
 export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
+  const { tr } = useI18n();
   const { dirty, loading } = useFormState(props.form, ["dirty", "loading"]);
   const inputs = props.form.input as Record<string, never>;
 
@@ -359,7 +361,7 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
     if (props.groups) return props.groups.filter((g) => g.can?.() !== false);
     if (props.autoGroup) {
       const opts = typeof props.autoGroup === "object" ? props.autoGroup : {};
-      return autoGroupSchema(schema, opts);
+      return autoGroupSchema(schema, { tr, ...opts });
     }
     return [
       {
@@ -557,6 +559,12 @@ function GroupBlock(props: GroupBlockProps) {
         const desc = tr(key, { default: "" });
         if (desc && desc !== key) merged.description = desc;
       }
+      // Hand the extended prefix down so an object's children and an array's
+      // item fields resolve their own labels/help
+      // (`parameters.x.payg.dailyCapCents.desc`).
+      if (props.i18nPrefix && merged.i18nPrefix === undefined) {
+        merged.i18nPrefix = `${props.i18nPrefix}.${name}`;
+      }
       return { name, input, props: merged };
     })
     .filter(Boolean) as Array<{
@@ -621,9 +629,16 @@ function GroupBlock(props: GroupBlockProps) {
             key={it.name}
             className={
               // Responsive grid: each field is one cell. Default: 12-col span
-              // from width heuristics.
+              // from width heuristics. A caller-supplied grid keeps its own
+              // column count for scalars, but COMPLEX fields (an object card,
+              // a list of object editors) still claim the whole row —
+              // squeezing one into a third of a row is unreadable, and the
+              // heuristic already knows which those are (width 100).
               props.gridClassName
-                ? undefined
+                ? widthFor(it.input, it.props.width as number | undefined) >=
+                  100
+                  ? "col-span-full"
+                  : undefined
                 : spanClass(
                     widthFor(it.input, it.props.width as number | undefined),
                   )
@@ -815,19 +830,35 @@ const focusError = (path: string, formId: string) => {
 
 const autoGroupSchema = (
   schema: TObject,
-  opts: { defaultTitle?: string; defaultIcon?: string },
+  opts: {
+    defaultTitle?: string;
+    defaultIcon?: string;
+    /** Translator for the fallback group title (the helper is hook-free). */
+    tr?: (key: string, options?: { default?: string }) => string;
+  },
 ): AutoFormGroup[] => {
   const general: AutoFormGroup = {
-    title: opts.defaultTitle ?? "General",
+    title:
+      opts.defaultTitle ??
+      opts.tr?.("autoForm.general", { default: "General" }) ??
+      "General",
     icon: opts.defaultIcon ?? "cog",
     fields: [],
   };
   const groups: AutoFormGroup[] = [];
 
   for (const [key, prop] of Object.entries(schema.properties ?? {})) {
-    const p = prop as { type?: string; items?: { type?: string } };
+    const p = prop as {
+      type?: string;
+      items?: unknown;
+      element?: unknown;
+    };
     const isObject = p.type === "object";
-    const isArrayOfObjects = p.type === "array" && p.items?.type === "object";
+    // An array of a UNION of objects is a complex field too — without this it
+    // lands in the "General" grid and gets a third of a row to render a list
+    // of object editors in.
+    const isArrayOfObjects =
+      p.type === "array" && isObjectOrUnionOfObjects(p.element ?? p.items);
     if (isObject || isArrayOfObjects) {
       // Solo complex fields render their own header (label + description +
       // chevron + add/init), so we skip the group bar to avoid a
