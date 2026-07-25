@@ -129,7 +129,12 @@ export const parseField = (
       ? z.schema.format(schema)
       : undefined;
   const element = (schema as any).element ?? (schema as any).items;
-  const isArrayOfObjects = isArray && z.schema.isObject(element);
+  // An array of a UNION of objects is still an array of objects for editing
+  // purposes — `z.array(z.union([...]))` is how a heterogeneous list (a
+  // discriminated one, most often) is spelled, and classifying it as scalars
+  // sends it to the tag-list control, which stringifies each item to
+  // "[object Object]". ControlArray resolves the variant per item.
+  const isArrayOfObjects = isArray && isObjectOrUnionOfObjects(element);
 
   const name = input.props.name;
   const iconHint = inferIconHint({ type, format, name, isEnum, isArray });
@@ -180,6 +185,39 @@ const readPattern = (schema: unknown): string | undefined => {
     if (pattern instanceof RegExp) return pattern.source;
   }
   return undefined;
+};
+
+/**
+ * Variants of a union schema, or `undefined` when `schema` is not one.
+ * `anyOf` is the JSON-Schema spelling (a round-tripped schema), `options`
+ * zod's own — both appear in practice.
+ */
+export const unionVariants = (schema: unknown): TSchema[] | undefined => {
+  if (!schema || !z.schema.isUnion(schema as TSchema)) {
+    return undefined;
+  }
+  const asAny = schema as { anyOf?: unknown; options?: unknown };
+  const variants = Array.isArray(asAny.anyOf)
+    ? asAny.anyOf
+    : Array.isArray(asAny.options)
+      ? asAny.options
+      : undefined;
+  return variants as TSchema[] | undefined;
+};
+
+/**
+ * True for an object schema, and for a union whose every variant is an object
+ * (a discriminated union of objects) — both are editable as objects.
+ */
+export const isObjectOrUnionOfObjects = (schema: unknown): boolean => {
+  if (!schema) return false;
+  if (z.schema.isObject(schema as TSchema)) return true;
+  const variants = unionVariants(schema);
+  return (
+    !!variants &&
+    variants.length > 0 &&
+    variants.every((variant) => z.schema.isObject(z.schema.unwrap(variant)))
+  );
 };
 
 const inferIconHint = (params: {

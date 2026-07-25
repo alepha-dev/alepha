@@ -49,7 +49,10 @@ export class FormModel<T extends TObject> {
         options.schema.partial(),
         options.initialValues,
       ) as Record<string, any>;
-      Object.assign(this.values, decoded);
+      Object.assign(
+        this.values,
+        this.flattenObjectValues(options.schema, decoded),
+      );
     }
 
     this.initialValues = { ...this.values };
@@ -58,6 +61,56 @@ export class FormModel<T extends TObject> {
       store: this.values,
       parent: "",
     });
+  }
+
+  /**
+   * Flatten nested OBJECT values into the store's dotted-key convention.
+   *
+   * The store is flat on purpose — `createInputFromSchema` keys nested inputs
+   * as `payg.dailyCapCents` and `restructureValues()` rebuilds the nesting at
+   * submit time — and `extractSchemaDefaults` already emits dotted keys. Caller
+   * `initialValues`, however, arrive NESTED (that is the shape of an API
+   * payload), so without this pass `values.payg` sits there as one opaque
+   * object while every nested input reads `values["payg.dailyCapCents"]` and
+   * finds nothing: the controls render empty, and editing one writes a fresh
+   * dotted key while the stale nested object survives into the submit payload.
+   *
+   * The parent key is KEPT alongside its flattened children: `ControlObject`
+   * uses it to tell an initialized object from an absent optional one.
+   * Recursion is schema-driven, so arrays (handled whole by `ControlArray`)
+   * and leaf values are left untouched.
+   */
+  protected flattenObjectValues(
+    schema: TObject,
+    values: Record<string, any>,
+    prefix = "",
+  ): Record<string, any> {
+    const flat: Record<string, any> = {};
+    const shape = (schema as any).shape as Record<string, any> | undefined;
+
+    for (const [key, value] of Object.entries(values)) {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+      flat[fullKey] = value;
+
+      const fieldSchema = shape?.[key];
+      if (!fieldSchema || value == null || typeof value !== "object") {
+        continue;
+      }
+      const inner = z.schema.unwrap(fieldSchema);
+      if (!z.schema.isObject(inner) || Array.isArray(value)) {
+        continue;
+      }
+      Object.assign(
+        flat,
+        this.flattenObjectValues(
+          inner as TObject,
+          value as Record<string, any>,
+          fullKey,
+        ),
+      );
+    }
+
+    return flat;
   }
 
   /**
@@ -128,10 +181,13 @@ export class FormModel<T extends TObject> {
   public readonly setInitialValues = (values: Record<string, any>) => {
     // Same partial-decode rationale as the constructor — initial values may be
     // incomplete; full schema is enforced only at submit time.
-    const decoded = this.alepha.codec.decode(
-      this.options.schema.partial(),
-      values,
-    ) as Record<string, any>;
+    const decoded = this.flattenObjectValues(
+      this.options.schema,
+      this.alepha.codec.decode(this.options.schema.partial(), values) as Record<
+        string,
+        any
+      >,
+    );
 
     // Snapshot the OLD keys before we wipe — without this, fields that
     // had a value but are absent from the new initialValues never emit
@@ -294,6 +350,16 @@ export class FormModel<T extends TObject> {
       if (key.includes(".")) {
         // nested object: restructure flat key to nested structure
         this.restructureNestedValue(values, key, value);
+      } else if (
+        value != null &&
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        Object.getPrototypeOf(value) === Object.prototype
+      ) {
+        // A parent object key coexists with its flattened children (see
+        // flattenObjectValues): copy it so the nested writes below land on
+        // OUR object and never mutate the caller's initialValues.
+        values[key] = { ...value };
       } else {
         // value is already typed, just copy it
         values[key] = value;

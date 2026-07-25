@@ -13,6 +13,21 @@ import type { ZType } from "../providers/ZodProvider.ts";
  * back to `z.any()`.
  */
 export const jsonSchemaToZod = (schema: any): ZType => {
+  const zod = jsonSchemaToZodInner(schema);
+  // Carry the documentation across the round trip. `title` and `description`
+  // are the only human-facing parts of a JSON Schema, and dropping them means
+  // a schema that documents itself (`z.number().describe("…")`) arrives at the
+  // form layer mute — no field label, no help text. `.meta()` is where the UI
+  // (parseField → FormField) reads them from.
+  const doc: Record<string, unknown> = {};
+  if (typeof schema?.title === "string") doc.title = schema.title;
+  if (typeof schema?.description === "string") {
+    doc.description = schema.description;
+  }
+  return Object.keys(doc).length > 0 ? (zod.meta(doc) as ZType) : zod;
+};
+
+const jsonSchemaToZodInner = (schema: any): ZType => {
   if (!schema || typeof schema !== "object") {
     return z.any();
   }
@@ -31,6 +46,15 @@ export const jsonSchemaToZod = (schema: any): ZType => {
         : z.union(mapped as [ZType, ZType, ...ZType[]]);
     if (nullable) result = result.nullable();
     return result;
+  }
+
+  // `const` is how a literal survives serialization. Dropping it (falling
+  // through to the plain `type` below) loses two things: the value stops being
+  // validated as that literal, and — worse — a DISCRIMINATED union round-trips
+  // into an undiscriminable one, so nothing downstream can tell which variant
+  // a value belongs to.
+  if (schema.const !== undefined) {
+    return z.literal(schema.const);
   }
 
   if (Array.isArray(schema.enum) && schema.enum.length > 0) {
