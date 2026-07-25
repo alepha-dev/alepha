@@ -15,7 +15,7 @@ Each tool has a name, description, typed parameters, and a handler function.
 
 **Key Features**
 - Full TypeScript inference for parameters and results
-- Automatic schema validation using TypeBox
+- Automatic schema validation using Zod
 - JSON Schema generation for MCP protocol
 - Integration with MCP server provider
 
@@ -28,7 +28,7 @@ Each tool has a name, description, typed parameters, and a handler function.
 | `description` | `string` | Yes | A human-readable description of what the tool does |
 | `annotations` | `McpToolAnnotations` | No | Behavior hints (spec 2025-03-26+) |
 | `icons` | `McpIcon[]` | No | Icons surfaced in client tool palettes / picker UIs (spec 2025-11-25). |
-| `schema` | `T` | No | TypeBox schema defining the tool's parameters and result type |
+| `schema` | `T` | No | Zod schema defining the tool's parameters and result type |
 | `handler` | `Object` | Yes | The handler function that executes when the tool is called |
 
 ## Examples

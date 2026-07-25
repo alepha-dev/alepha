@@ -349,7 +349,7 @@ export class SseFetchResponse<T> implements AsyncIterable<T> {
  *
  * **Key Features**
  * - Full TypeScript inference for event data types
- * - Automatic schema validation using TypeBox
+ * - Automatic schema validation using Zod
  * - Convention-based URL generation with customizable paths
  * - Direct invocation (`run()`) returns an `SseStream` async iterable
  * - HTTP requests (`fetch()`) returns an `SseFetchResponse` async iterable

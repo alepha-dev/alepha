@@ -8,5 +8,5 @@ import { FakeProvider } from "alepha/fake";
 
 ## Overview
 
-Generate fake data from TypeBox schemas using faker.js.
+Generate fake data from Zod schemas using faker.js.
 

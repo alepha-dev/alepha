@@ -36,7 +36,7 @@ const product = $entity({
 });
 ```
 
-The `name` field sets the database table name. The `schema` field defines columns using TypeBox schemas. The `indexes` field configures database indexes for query optimization.
+The `name` field sets the database table name. The `schema` field defines columns using Zod schemas. The `indexes` field configures database indexes for query optimization.
 
 ### Index Options
 

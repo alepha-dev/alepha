@@ -2,7 +2,7 @@ import type { FormModel } from "alepha/react/form";
 
 /**
  * Schema-bound metadata read by `<Control>` (in `@alepha/ui`) to configure
- * how a field renders. Place under `$control` on any TypeBox schema option.
+ * how a field renders. Place under `$control` on any Zod schema option.
  *
  * Two forms:
  *

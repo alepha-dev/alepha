@@ -57,7 +57,7 @@ export interface FakeOptions {
 }
 
 /**
- * Generate fake data from TypeBox schemas using faker.js.
+ * Generate fake data from Zod schemas using faker.js.
  *
  * @example
  * ```ts
@@ -133,7 +133,7 @@ export class FakeProvider {
   }
 
   /**
-   * Generate fake data matching the given TypeBox schema.
+   * Generate fake data matching the given Zod schema.
    *
    * For object schemas, property names are used to generate contextually
    * appropriate values. The following field name patterns are recognized

@@ -30,7 +30,7 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
  *
  * **Key Features**
  * - Full TypeScript inference for parameters and results
- * - Automatic schema validation using TypeBox
+ * - Automatic schema validation using Zod
  * - JSON Schema generation for MCP protocol
  * - Integration with MCP server provider
  *
@@ -119,7 +119,7 @@ export interface ToolPrimitiveOptions<T extends ToolPrimitiveSchema> {
   icons?: McpIcon[];
 
   /**
-   * TypeBox schema defining the tool's parameters and result type.
+   * Zod schema defining the tool's parameters and result type.
    *
    * - **params**: TObject schema for input parameters (optional)
    * - **result**: TSchema for the return value (optional)
@@ -256,11 +256,11 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
   }
 
   /**
-   * Convert a TypeBox schema to JSON Schema format.
+   * Convert a Zod schema to JSON Schema format.
    *
    * Emits the 2020-12 dialect annotation at the root (spec 2025-11-25 /
    * SEP-1613 — JSON Schema 2020-12 is the default dialect for MCP).
-   * The TypeBox shapes Alepha emits today are already 2020-12-compatible;
+   * The JSON Schema shapes Alepha emits today are already 2020-12-compatible;
    * this is just the dialect declaration.
    */
   protected schemaToJsonSchema(

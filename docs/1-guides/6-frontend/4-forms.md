@@ -1,6 +1,6 @@
 # Forms
 
-Alepha provides `useForm` for schema-driven forms with TypeBox validation, automatic input generation, and lifecycle events.
+Alepha provides `useForm` for schema-driven forms with Zod validation, automatic input generation, and lifecycle events.
 
 ## Basic Usage
 
@@ -35,7 +35,7 @@ Spread `form.props` on the `<form>` element and `form.input.<field>.props` on ea
 
 | Option          | Type                                | Description                                      |
 |-----------------|-------------------------------------|--------------------------------------------------|
-| `schema`        | `TObject`                           | TypeBox schema defining fields and validation.   |
+| `schema`        | `TObject`                           | Zod schema defining fields and validation.   |
 | `handler`       | `(values, { form }) => unknown`     | Called on submit with validated values.           |
 | `initialValues` | `Partial<Static<T>>`               | Pre-populate fields with existing data.          |
 | `id`            | `string`                            | Prefix for field IDs and `data-testid` attributes. |
@@ -68,7 +68,7 @@ A proxy object where each key corresponds to a schema property. Each field has:
 | `props`    | `InputHTMLAttributes`       | Spread on the `<input>` element.            |
 | `path`     | `string`                    | JSON pointer path (e.g., `/email`).         |
 | `required` | `boolean`                   | Whether the field is required.              |
-| `schema`   | `TSchema`                   | The TypeBox schema for this field.          |
+| `schema`   | `TSchema`                   | The Zod schema for this field.          |
 | `set`      | `(value: any) => void`      | Programmatically set the field value.       |
 | `form`     | `FormModel`                 | Reference back to the parent form.          |
 

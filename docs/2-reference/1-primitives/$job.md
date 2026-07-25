@@ -21,7 +21,7 @@ queue job that handles them.
 |--------|------|----------|-------------|
 | `name` | `string` | No | Optional explicit job name |
 | `description` | `string` | No | Human-readable description (shown in the admin UI). |
-| `schema` | `T` | No | Payload schema (TypeBox) |
+| `schema` | `T` | No | Payload schema (Zod) |
 | `cron` | `string` | No | Cron expression for recurring execution |
 | `retry` | `JobRetryOptions` | No | Retry policy for queue-mode and direct-mode jobs |
 | `lock` | `boolean` | No | **Cron-mode only.** Whether to acquire a distributed lock around the cron tick so that only one instance of a multi-replica deployment runs the handler per tick |

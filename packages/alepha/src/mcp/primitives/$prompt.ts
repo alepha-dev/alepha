@@ -102,7 +102,7 @@ export interface PromptPrimitiveOptions<T extends TObject> {
   icons?: McpIcon[];
 
   /**
-   * TypeBox schema defining the prompt arguments.
+   * Zod schema defining the prompt arguments.
    *
    * Each property in the schema becomes an argument that can be
    * filled in when the prompt is used.
@@ -184,7 +184,7 @@ export class PromptPrimitive<T extends TObject> extends Primitive<
   }
 
   /**
-   * Convert a TypeBox schema to an array of prompt arguments.
+   * Convert a Zod schema to an array of prompt arguments.
    */
   protected schemaToArguments(schema: TObject): McpPromptArgument[] {
     const args: McpPromptArgument[] = [];

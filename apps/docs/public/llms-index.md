@@ -12,7 +12,7 @@
 - **Convention over Configuration**: Sensible defaults, minimal boilerplate
 - **Dependency Injection**: Built-in DI container manages all service instances
 
-**Built on**: Drizzle (ORM), React (SSR), Vite (bundler), TypeBox (validation)
+**Built on**: Drizzle (ORM), React (SSR), Vite (bundler), Zod 4 (validation)
 **Runs on**: Node.js 22+, Bun, Cloudflare Workers, Vercel, Docker
 
 **Quick Start**: `npx alepha init` - Creates minimal config files to use Alepha in current directory
@@ -25,7 +25,7 @@
 - use Vite for bundling (full-stack)
 - use React for frontend (full-stack)
 - use Postgres or SQlite for database
-- use TypeBox for schema definitions (not Zod!), using `t` from Alepha, not importing TypeBox directly
+- use Zod for schema definitions, always via `z` from Alepha (`import { z } from "alepha"`), never `import { z } from "zod"` directly — Alepha's `z` adds opinionated defaults and extra formats
 - use documentation: https://alepha.dev/llms.txt
 - one file = one class
 - primitives are always a class property, except for `$entity` to be drizzle-kit compatible
@@ -61,18 +61,18 @@ Note: Always use `src/api/` and `main.server.ts` even for API-only projects. The
 
 ### API + Database
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $action } from "alepha/server";
 import { $entity, $repository, db } from "alepha/orm";
 
 const userEntity = $entity({
   name: "users",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    email: t.email(),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
-    deletedAt: pg.deletedAt() // Soft delete
+    email: z.email(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
+    deletedAt: db.deletedAt() // Soft delete
   }),
   indexes: [
     { column: "email", unique: true }
@@ -85,21 +85,29 @@ class UserController {
   getUser = $action({
     path: "/users/:id",  // -> GET /api/users/:id
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: z.object({ id: z.uuid() }),
       response: userEntity.schema,
     },
-    handler: async ({ params }) => this.userRepo.findById(params.id),
+    handler: async ({ params }) => this.userRepo.getById(params.id),
   });
 
   createUser = $action({
     method: "POST",
     schema: {
-      body: t.object({
-        email: t.email(),
+      body: z.object({
+        email: z.email(),
       }),
       response: userEntity.schema,
     },
     handler: async ({ body }) => this.userRepo.create(body),
+  });
+
+  listUsers = $action({
+    path: "/users",  // -> GET /api/users
+    schema: {
+      response: z.array(userEntity.schema),
+    },
+    handler: async () => this.userRepo.findMany(),
   });
 }
 ```
@@ -188,7 +196,7 @@ describe("UserService", () => {
 - `$action` paths auto-prefix with `/api`
 - Method: GET default, POST if body schema exists
 - Response schema strips undeclared fields (security)
-- `t.` = TypeBox via `import { t } from "alepha"`
+- `z.` = Zod schemas via `import { z } from "alepha"`
 - Primitives are class properties, not standalone (except `$atom`, `$entity`)
 - One file = one class
 - Use import with file extensions (e.g. `import { User } from "./User.ts"`)
@@ -198,7 +206,7 @@ describe("UserService", () => {
 
 1. **DON'T use decorators** - Alepha uses primitives, not decorators
 2. **DON'T use Express/Fastify patterns** - No `app.get()`, `router.use()`, etc.
-3. **DON'T use Zod** - Use TypeBox (`t`) for schemas
+3. **DON'T import from `zod` directly** - Use `z` from `alepha`; it carries the framework's defaults and formats
 4. **DON'T use functional components for services** - Always use classes
 5. **DON'T forget the `$` prefix** - All primitives start with `$`
 6. **DON'T inject across modules** - Use `$client` for cross-module communication
@@ -209,7 +217,7 @@ describe("UserService", () => {
 
 Core utilities:
 
-- `t` (TypeBox schemas) - `import { t } from "alepha"`
+- `z` (Zod schemas) - `import { z } from "alepha"`
 - `db` (database column helpers) - `import { db } from "alepha/orm"`
 
 Core primitives:

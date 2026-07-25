@@ -13,7 +13,7 @@ npm install alepha
 Test data generation with Faker.js.
 
 **Features:**
-- TypeBox schema-based generation
+- Zod schema-based generation
 - Context-aware field generation (email field -> email address)
 - Test data seeding
 
@@ -21,4 +21,4 @@ Test data generation with Faker.js.
 
 ### Providers
 
-- [`FakeProvider`](/docs/reference-providers-fakeprovider) — Generate fake data from TypeBox schemas using faker.js.
+- [`FakeProvider`](/docs/reference-providers-fakeprovider) — Generate fake data from Zod schemas using faker.js.

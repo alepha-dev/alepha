@@ -306,6 +306,6 @@ src/
 | `services/` | Business logic | `UserService.ts` |
 | `entities/` | Database schemas with `$entity` | `userEntity.ts` |
 | `providers/` | External service wrappers | `StripeProvider.ts` |
-| `schemas/` | Shared TypeBox schemas | `userSchema.ts` |
+| `schemas/` | Shared Zod schemas | `userSchema.ts` |
 | `atoms/` | State definitions with `$atom` | `currentUserAtom.ts` |
 | `components/` | React components | `UserCard.tsx` |

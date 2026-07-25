@@ -168,7 +168,7 @@ export interface QueuePrimitiveOptions<T extends TSchema> {
   provider?: "memory" | Service<QueueProvider>;
 
   /**
-   * TypeBox schema defining the structure of messages in this queue.
+   * Zod schema defining the structure of messages in this queue.
    *
    * This schema:
    * - Validates all messages pushed to the queue

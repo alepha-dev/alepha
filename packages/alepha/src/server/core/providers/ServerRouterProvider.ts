@@ -527,7 +527,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
         // Per-key decode (mirrors `query` handling): coerces declared header
         // values from strings to their schema types (int/bool/date). Then
-        // validate the decoded subset against the full schema so TypeBox
+        // validate the decoded subset against the full schema so Zod
         // produces consistent error messages (missing-required, type
         // mismatch). Finally merge the decoded values back into
         // `request.headers` so undeclared headers (auth, cookie, user-agent,

@@ -12,7 +12,7 @@ export * from "./providers/FakeProvider.ts";
  * Test data generation with Faker.js.
  *
  * **Features:**
- * - TypeBox schema-based generation
+ * - Zod schema-based generation
  * - Context-aware field generation (email field -> email address)
  * - Test data seeding
  *

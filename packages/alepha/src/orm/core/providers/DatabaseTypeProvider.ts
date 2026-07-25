@@ -254,9 +254,9 @@ export class DatabaseTypeProvider {
 }
 
 /**
- * Wrapper of TypeProvider (`t`) for database types.
+ * Wrapper of the schema provider (`z`) for database types.
  *
- * Use `db` for improve TypeBox schema definitions with database-specific attributes.
+ * Use `db` to extend Zod schema definitions with database-specific attributes.
  *
  * @example
  * ```ts

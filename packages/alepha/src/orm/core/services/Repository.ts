@@ -121,7 +121,7 @@ export abstract class Repository<T extends TObject> {
   /**
    * Represents the primary key of the table.
    * - Key is the name of the primary key column.
-   * - Type is the type (TypeBox) of the primary key column.
+   * - Type is the schema type of the primary key column.
    *
    * ID is mandatory. If the table does not have a primary key, it will throw an error.
    */
@@ -1647,8 +1647,8 @@ export abstract class Repository<T extends TObject> {
       ? this.entity.insertSchema // insert
       : (this.entity.updateSchema.partial() as TObject); // update
 
-    // Extract raw SQL expressions before codec validation — TypeBox would
-    // reject them since they aren't plain values of the declared type
+    // Extract raw SQL expressions before codec validation — the schema
+    // would reject them since they aren't plain values of the declared type
     // (e.g. `sql\`count + 1\`` for an integer column). They're re-attached
     // after encoding so Drizzle still receives them as live SQL.
     const sqlValues: Record<string, unknown> = {};

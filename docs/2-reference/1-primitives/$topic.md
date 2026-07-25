@@ -23,7 +23,7 @@ event filtering, and pluggable backends (memory, Redis, custom providers).
 | `name` | `string` | No | Unique name identifier for the topic |
 | `description` | `string` | No | Human-readable description of the topic's purpose and usage |
 | `provider` | `"memory" \| Service&lt;TopicProvider&gt;` | No | Topic provider configuration for message storage and delivery |
-| `schema` | `T` | Yes | TypeBox schema defining the structure of messages published to this topic |
+| `schema` | `T` | Yes | Zod schema defining the structure of messages published to this topic |
 | `handler` | `TopicHandler&lt;T&gt;` | No | Default subscriber handler function that processes messages published to this topic |
 | `retain` | `boolean` | No | Whether the last published message should be retained and delivered to new subscribers |
 

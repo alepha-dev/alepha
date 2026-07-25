@@ -39,7 +39,7 @@ import {
  *
  * **Key Features**
  * - Full TypeScript inference for request/response types
- * - Automatic schema validation using TypeBox
+ * - Automatic schema validation using Zod
  * - Convention-based URL generation with customizable paths
  * - Direct invocation (`run()`) or HTTP requests (`fetch()`)
  * - Built-in authentication and authorization support

@@ -17,7 +17,7 @@ Foundation of the entire framework with dependency injection and lifecycle manag
 **Features:**
 - Dependency injection for services
 - Service substitution/mocking
-- Type-safe environment variable loading with TypeBox schemas
+- Type-safe environment variable loading with Zod schemas
 - Lifecycle hooks (start, stop, log, etc.)
 - Module definitions and composition
 - Request-scoped context access via Async Local Storage (ALS)

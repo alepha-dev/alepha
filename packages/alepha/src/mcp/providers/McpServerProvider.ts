@@ -348,7 +348,7 @@ export class McpServerProvider {
       // Spec 2025-11-25 / SEP-1303: input-validation failures (and other
       // tool-runtime errors) are returned as Tool Execution Errors, not
       // JSON-RPC protocol errors, so the model can self-correct.
-      // For TypeBox validation errors we surface the failing path so the
+      // For Zod validation errors we surface the failing path so the
       // model knows which argument was malformed.
       if (error instanceof TypeBoxError) {
         const path = error.value?.path || "/";

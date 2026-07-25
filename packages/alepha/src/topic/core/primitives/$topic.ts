@@ -136,7 +136,7 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
   provider?: "memory" | Service<TopicProvider>;
 
   /**
-   * TypeBox schema defining the structure of messages published to this topic.
+   * Zod schema defining the structure of messages published to this topic.
    *
    * The schema must include:
    * - **payload**: Required schema for the main message data

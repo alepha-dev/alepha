@@ -4,7 +4,7 @@ Alepha provides `$atom` for defining typed, validated state and `useStore` for c
 
 ## Defining Atoms
 
-Atoms are defined at the module level using `$atom`. Each atom has a unique name, a TypeBox schema, and an optional default value.
+Atoms are defined at the module level using `$atom`. Each atom has a unique name, a Zod schema, and an optional default value.
 
 ```typescript
 import { $atom, z } from "alepha";

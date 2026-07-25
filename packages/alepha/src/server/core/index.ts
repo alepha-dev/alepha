@@ -136,7 +136,7 @@ export * from "./services/UserAgentParser.ts";
  * **Features:**
  * - Type-safe API endpoints with schema validation
  * - Lower-level HTTP route definitions
- * - Automatic request/response validation via TypeBox
+ * - Automatic request/response validation via Zod
  * - Convention-based URL generation (`/api/{ActionName}`)
  * - Direct invocation (`run()`) or HTTP (`fetch()`)
  * - Built-in authentication integration

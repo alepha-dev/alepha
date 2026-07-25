@@ -9,7 +9,7 @@ import { insertSchema, type TObjectInsert } from "../schemas/insertSchema.ts";
 import { type TObjectUpdate, updateSchema } from "../schemas/updateSchema.ts";
 
 /**
- * Creates a database entity primitive that defines table structure using TypeBox schemas.
+ * Creates a database entity primitive that defines table structure using Zod schemas.
  *
  * @example
  * ```ts
@@ -45,7 +45,7 @@ export interface EntityPrimitiveOptions<
   name: string;
 
   /**
-   * TypeBox schema defining the table structure and column types.
+   * Zod schema defining the table structure and column types.
    */
   schema: T;
 

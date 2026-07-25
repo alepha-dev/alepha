@@ -12,7 +12,7 @@ import { $logger } from "alepha/logger";
 import type { ChangeEvent, InputHTMLAttributes } from "react";
 
 /**
- * FormModel is a dynamic form handler that generates form inputs based on a provided TypeBox schema.
+ * FormModel is a dynamic form handler that generates form inputs based on a provided Zod schema.
  * It manages form state, handles input changes, and processes form submissions with validation.
  *
  * It means to be injected and used within React components to provide a structured way to create and manage forms.
@@ -728,7 +728,7 @@ export type InputHTMLAttributesLike = Pick<
 export type FormCtrlOptions<T extends TObject> = {
   /**
    * The schema defining the structure and validation rules for the form.
-   * This should be a TypeBox schema object.
+   * This should be a Zod schema object.
    */
   schema: T;
 

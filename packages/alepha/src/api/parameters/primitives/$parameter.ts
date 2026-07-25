@@ -57,7 +57,7 @@ export interface ParameterPrimitiveOptions<T extends TObject> {
   description?: string;
 
   /**
-   * TypeBox schema defining the parameter structure.
+   * Zod schema defining the parameter structure.
    */
   schema: T;
 
@@ -91,7 +91,7 @@ export class ParameterPrimitive<T extends TObject> extends Primitive<
   }
 
   /**
-   * The TypeBox schema for this parameter.
+   * The Zod schema for this parameter.
    */
   public get schema(): T {
     return this.options.schema;

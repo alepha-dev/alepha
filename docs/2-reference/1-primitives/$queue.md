@@ -35,7 +35,7 @@ reconciliation sweep, and failure records.
 | `name` | `string` | No | Unique name for the queue |
 | `description` | `string` | No | Human-readable description of the queue's purpose |
 | `provider` | `"memory" \| Service&lt;QueueProvider&gt;` | No | Queue storage provider configuration |
-| `schema` | `T` | Yes | TypeBox schema defining the structure of messages in this queue |
+| `schema` | `T` | Yes | Zod schema defining the structure of messages in this queue |
 | `handler` | `Object` | No | Message handler function that processes queue messages |
 
 ## Examples

@@ -991,7 +991,7 @@ export class CliProvider {
       throw new CommandError(`Expected boolean, got "${value}"`);
     }
 
-    // For other types, return the string value and let TypeBox validate it
+    // For other types, return the string value and let Zod validate it
     return value;
   }
 

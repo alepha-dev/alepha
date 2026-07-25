@@ -14,7 +14,7 @@ Type-safe forms with validation.
 
 **Features:**
 - Form state management
-- TypeBox schema validation
+- Zod schema validation
 - Field-level error handling
 - Submit handling with loading state
 - Form reset

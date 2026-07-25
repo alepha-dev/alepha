@@ -10,7 +10,7 @@ Scaffold a new API project:
 alepha init --api
 ```
 
-This generates a project in current directory with a server entry point, a sample controller, and TypeBox schemas.
+This generates a project in current directory with a server entry point, a sample controller, and Zod schemas.
 
 ## Defining Actions
 
@@ -129,7 +129,7 @@ The `schema` option accepts up to five fields:
 | `headers` | Required request headers |
 | `response` | Response body shape |
 
-All fields use TypeBox schemas via the `t` helper from `alepha`. The handler receives fully validated and typed request data.
+All fields use Zod schemas via the `z` helper from `alepha`. The handler receives fully validated and typed request data.
 
 ## Groups
 

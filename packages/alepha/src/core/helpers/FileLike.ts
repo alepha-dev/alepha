@@ -67,7 +67,7 @@ export interface FileLike {
 }
 
 /**
- * TypeBox view of FileLike.
+ * Schema view of FileLike.
  */
 export type TFile = TUnsafe<FileLike>;
 

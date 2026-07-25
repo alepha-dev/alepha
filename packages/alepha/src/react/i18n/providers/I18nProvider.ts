@@ -395,7 +395,7 @@ export class I18nProvider<
       return new Intl.DateTimeFormat(this.lang).format(dt.toDate());
     }
 
-    // handle TypeBox errors
+    // handle Zod errors
     if (value instanceof TypeBoxError) {
       return TypeProvider.translateError(value, this.lang);
     }

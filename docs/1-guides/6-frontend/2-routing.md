@@ -60,7 +60,7 @@ path: "/blog/:slug"
 
 ### schema
 
-Type-safe URL parameters and query strings using TypeBox schemas.
+Type-safe URL parameters and query strings using Zod schemas.
 
 ```typescript
 schema: {

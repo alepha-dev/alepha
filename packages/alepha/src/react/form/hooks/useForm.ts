@@ -5,7 +5,7 @@ import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
 
 /**
  * Custom hook to create a form with validation and field management.
- * This hook uses TypeBox schemas to define the structure and validation rules for the form.
+ * This hook uses Zod schemas to define the structure and validation rules for the form.
  * It provides a way to handle form submission, field creation, and value management.
  *
  * @example

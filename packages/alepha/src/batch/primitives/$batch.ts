@@ -28,7 +28,7 @@ export const $batch = <TItem extends TSchema, TResponse>(
 
 export interface BatchPrimitiveOptions<TItem extends TSchema, TResponse = any> {
   /**
-   * TypeBox schema for validating each item added to the batch.
+   * Zod schema for validating each item added to the batch.
    */
   schema: TItem;
 

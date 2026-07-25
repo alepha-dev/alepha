@@ -61,12 +61,12 @@ export interface CommandPrimitiveOptions<
   aliases?: string[];
 
   /**
-   * A TypeBox object schema defining the flags for the command.
+   * A Zod object schema defining the flags for the command.
    */
   flags?: T;
 
   /**
-   * A TypeBox object schema defining required environment variables.
+   * A Zod object schema defining required environment variables.
    *
    * Environment variables are validated before the handler runs (fail fast).
    * They are displayed in the help output under "Env:" section.
@@ -88,7 +88,7 @@ export interface CommandPrimitiveOptions<
   env?: E;
 
   /**
-   * An optional TypeBox schema defining the arguments for the command.
+   * An optional Zod schema defining the arguments for the command.
    *
    * @example
    * args: z.text()

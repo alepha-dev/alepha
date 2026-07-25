@@ -14,7 +14,7 @@ Creates a batch processing primitive for efficient grouping and processing of mu
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `schema` | `TItem` | Yes | TypeBox schema for validating each item added to the batch. |
+| `schema` | `TItem` | Yes | Zod schema for validating each item added to the batch. |
 | `handler` | `Object` | Yes | The batch processing handler function that processes arrays of validated items. |
 | `maxSize` | `number` | No | Maximum number of items to collect before automatically flushing the batch. |
 | `maxQueueSize` | `number` | No | Maximum number of items that can be queued in a single partition |

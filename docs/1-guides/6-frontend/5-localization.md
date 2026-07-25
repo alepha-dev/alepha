@@ -166,10 +166,13 @@ The `date` option accepts:
 
 The `timezone` option accepts IANA timezone names.
 
-**TypeBox error localization:**
+**Validation error localization:**
+
+`TypeBoxError` is the schema-validation error Alepha throws — the name is a
+leftover from before the Zod migration, the class is current:
 
 ```typescript
-l(typeBoxError)
+l(validationError)
 // Localized validation error message
 ```
 

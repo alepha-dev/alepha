@@ -110,8 +110,8 @@ class TaskTools {
 | Option | Type | Description |
 |--------|------|-------------|
 | `description` | `string` | Required. Tells the AI what the tool does. |
-| `schema.params` | `TObject` | TypeBox schema for input parameters. |
-| `schema.result` | `TSchema` | TypeBox schema for the return value. |
+| `schema.params` | `TObject` | Zod schema for input parameters. |
+| `schema.result` | `TSchema` | Zod schema for the return value. |
 | `handler` | `function` | Receives `{ params, context }`. Returns the result. |
 | `name` | `string` | Override the tool name. Defaults to the property key. |
 
@@ -205,7 +205,7 @@ class Prompts {
 | Option | Type | Description |
 |--------|------|-------------|
 | `description` | `string` | What this prompt does. |
-| `args` | `TObject` | TypeBox schema for template arguments. |
+| `args` | `TObject` | Zod schema for template arguments. |
 | `handler` | `function` | Returns an array of `{ role, content }` messages. |
 | `name` | `string` | Override the prompt name. Defaults to the property key. |
 
@@ -286,7 +286,7 @@ class PostTools {
 
 ## Schemas
 
-TypeBox schemas on tools serve double duty:
+Zod schemas on tools serve double duty:
 
 1. **Runtime validation** -- params are validated before your handler runs, results are validated before being sent back
 2. **JSON Schema generation** -- the MCP protocol advertises your tool's input schema so AI clients know what to send

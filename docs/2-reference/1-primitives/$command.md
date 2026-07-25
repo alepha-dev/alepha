@@ -21,9 +21,9 @@ within your Alepha application structure.
 | `name` | `string` | No | The name of the command |
 | `description` | `string` | No | A short description of the command, shown in the help message. |
 | `aliases` | `string[]` | No | An array of alternative names for the command. |
-| `flags` | `T` | No | A TypeBox object schema defining the flags for the command. |
-| `env` | `E` | No | A TypeBox object schema defining required environment variables |
-| `args` | `A` | No | An optional TypeBox schema defining the arguments for the command |
+| `flags` | `T` | No | A Zod object schema defining the flags for the command. |
+| `env` | `E` | No | A Zod object schema defining required environment variables |
+| `args` | `A` | No | An optional Zod schema defining the arguments for the command |
 | `root` | `boolean` | No | Marks this command as the root command |
 | `pre` | `string` | No | Run this command's handler BEFORE the specified target command |
 | `post` | `string` | No | Run this command's handler AFTER the specified target command |

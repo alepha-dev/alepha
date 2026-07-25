@@ -6,7 +6,7 @@ This is an **Alepha** project.
 ## Rules
 
 - Always check \`node_modules/alepha/src/\` before suggesting npm packages
-- Use \`t\` from Alepha for schemas (not Zod)
+- Use \`z\` from Alepha for schemas (\`import { z } from "alepha"\`), never \`zod\` directly
 - Use \`protected\` instead of \`private\` for class members
 - Import with file extensions: \`import { User } from "./User.ts"\`
 

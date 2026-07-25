@@ -61,7 +61,7 @@ export interface JobPrimitiveOptions<T extends TSchema = TSchema>
   description?: string;
 
   /**
-   * Payload schema (TypeBox). When set, the job is queue-mode.
+   * Payload schema (Zod). When set, the job is queue-mode.
    * Must not be combined with `cron`.
    */
   schema?: T;

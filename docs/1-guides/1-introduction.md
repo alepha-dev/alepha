@@ -95,10 +95,11 @@ boilerplate to write and nothing to configure.
 ### One schema, everywhere
 
 The biggest source of bugs in full-stack development is the boundary between layers.
-You define a SQL schema, then a Zod schema for the API, then a TypeScript interface for the
-frontend. Change one, break the others.
+You define a SQL schema, then a validation schema for the API, then a TypeScript interface
+for the frontend. Change one, break the others.
 
-Alepha uses **TypeBox** (imported as `t`) as the single source of truth.
+Alepha uses **Zod** as the single source of truth, imported as `z` from `alepha` rather than
+from `zod` directly — the framework's `z` carries its defaults and extra formats.
 
 - `$entity` uses the schema to create the database table.
 - `$action` uses the same schema to validate the HTTP request and generate OpenAPI docs.

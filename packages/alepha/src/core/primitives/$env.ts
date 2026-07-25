@@ -32,7 +32,7 @@ import { $context } from "./$context.ts";
 export const $env = <T extends TObject>(type: T): Static<T> => {
   const { alepha } = $context();
 
-  // allow to inject TypeBox schemas
+  // allow to inject Zod schemas
   if (!z.schema.isObject(type)) {
     throw new AlephaError("Type must be an TObject");
   }

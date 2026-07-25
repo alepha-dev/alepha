@@ -1,6 +1,8 @@
 # Types
 
-Alepha provides schema validation through the `t` singleton from `"alepha"`. It wraps [TypeBox](https://github.com/sinclairzx81/typebox) with opinionated defaults: objects reject extra properties, strings have length limits, and arrays cap their size.
+Alepha provides schema validation through the `z` singleton from `"alepha"`. It wraps [Zod 4](https://zod.dev) with opinionated defaults: objects reject extra properties, strings have length limits, and arrays cap their size.
+
+Import `z` from `alepha`, not from `zod` — a schema built with the raw library carries none of those defaults.
 
 ## Basic Usage
 
@@ -15,7 +17,7 @@ const userSchema = z.object({
 });
 ```
 
-`t` is a `TypeProvider` instance. All methods return TypeBox schemas that work with standard TypeBox utilities (`Value.Check`, `Value.Decode`, etc.).
+`z` returns plain Zod schemas, so anything that accepts a Zod type accepts them — `.parse()`, `.safeParse()`, `.optional()`, and the rest of the Zod surface all work as usual.
 
 ## Strings
 
@@ -355,14 +357,20 @@ const result = alepha.codec.decode(schema, binaryData, { encoder: "protobuf" });
 
 Validation runs automatically after decoding. Disable it with `validation: false`.
 
-## Accessing TypeBox Directly
+## Accessing Zod Directly
 
-If you need raw TypeBox functionality:
+`z` covers what Alepha needs. For anything it does not wrap, `Type` is the raw
+Zod namespace:
 
 ```typescript
-t.raw   // the TypeBox Type object
+import { Type } from "alepha";
+
+Type.intersection(schemaA, schemaB);
 ```
 
+Schemas built by `z` are ordinary Zod schemas, so the fluent API works on them
+directly too:
+
 ```typescript
-t.raw.Intersect([schemaA, schemaB])
+schemaA.and(schemaB);
 ```
