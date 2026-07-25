@@ -469,6 +469,62 @@ describe("ParameterProvider", () => {
     expect(next).not.toBeNull();
     expect(next?.content).toEqual({ value: "next" });
   });
+
+  it("should resolve the version in force at a given instant", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    const dateTime = alepha.inject(DateTimeProvider);
+    const name = "test.at.param";
+    const now = dateTime.now().toDate().getTime();
+    const hour = 60 * 60 * 1000;
+
+    // v1 live two hours ago, v2 live one hour ago, v3 scheduled in an hour.
+    await provider.save(name, { value: "v1" }, "hash", {
+      activationDate: new Date(now - 2 * hour),
+    });
+    await provider.save(name, { value: "v2" }, "hash", {
+      activationDate: new Date(now - hour),
+    });
+    await provider.save(name, { value: "v3" }, "hash", {
+      activationDate: new Date(now + hour),
+    });
+
+    // An event captured 90 minutes ago must be evaluated with v1 — what was
+    // live then — even though `get()` returns v2 now.
+    expect(
+      (await provider.getVersionAt(name, new Date(now - 90 * 60 * 1000)))
+        ?.content,
+    ).toEqual({ value: "v1" });
+
+    // Now resolves to v2; the scheduled v3 never leaks into an earlier read.
+    expect((await provider.getVersionAt(name, new Date(now)))?.content).toEqual(
+      {
+        value: "v2",
+      },
+    );
+    expect(
+      (await provider.getVersionAt(name, new Date(now + 30 * 60 * 1000)))
+        ?.content,
+    ).toEqual({ value: "v2" });
+
+    // Once v3's activation passes it takes over.
+    expect(
+      (await provider.getVersionAt(name, new Date(now + 2 * hour)))?.content,
+    ).toEqual({ value: "v3" });
+
+    // Before the first version there is nothing to resolve.
+    expect(
+      await provider.getVersionAt(name, new Date(now - 3 * hour)),
+    ).toBeNull();
+
+    // ISO strings are accepted too — the wire format of most event payloads.
+    expect(
+      (await provider.getVersionAt(name, new Date(now).toISOString()))?.content,
+    ).toEqual({ value: "v2" });
+  });
 });
 
 describe("Cross-instance sync", () => {

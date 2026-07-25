@@ -641,6 +641,44 @@ export class ParameterProvider {
   }
 
   /**
+   * Get the version that was IN FORCE at `at` — the latest one whose
+   * `activationDate` is at or before that instant.
+   *
+   * `get()` and {@link loadCurrentAndNext} are now-relative, which is wrong
+   * for domains that price or decide against the time of an EVENT rather than
+   * the time of the read: an event captured offline and uploaded hours later
+   * must be evaluated with the parameters that were live when it happened,
+   * not with whatever is live at ingest. Returns `null` when `at` predates
+   * the first version.
+   *
+   * Deliberately NOT cached: the caller supplies an arbitrary instant, so the
+   * per-name value caches (which model "now") do not apply. Reads hit the
+   * `(organizationId, name, activationDate)` index.
+   */
+  public async getVersionAt(
+    name: string,
+    at: string | Date,
+  ): Promise<Parameter | null> {
+    const instant = (at instanceof Date ? at : new Date(at)).toISOString();
+    const rows = await this.repo.findMany({
+      where: { name, activationDate: { lte: instant } },
+      orderBy: { column: "activationDate", direction: "desc" },
+      limit: 2,
+    });
+
+    // Same-millisecond tie-break as loadCurrentAndNext: the highest version
+    // wins, so two versions scheduled on the same instant resolve stably.
+    if (
+      rows.length > 1 &&
+      new Date(rows[0].activationDate).getTime() ===
+        new Date(rows[1].activationDate).getTime()
+    ) {
+      return [...rows].sort((a, b) => b.version - a.version)[0];
+    }
+    return rows[0] ?? null;
+  }
+
+  /**
    * Rollback to a previous version by creating a new version with old content.
    */
   public async rollback(

@@ -178,6 +178,18 @@ export class ParameterPrimitive<T extends TObject> extends Primitive<
   }
 
   /**
+   * Get the version of this parameter that was in force at `at` — use it when
+   * a decision belongs to the time of an EVENT rather than the time of the
+   * read (an offline capture uploaded later must be evaluated with the values
+   * that were live when it happened). `null` when `at` predates version 1.
+   *
+   * @see ParameterProvider.getVersionAt
+   */
+  public async getVersionAt(at: string | Date) {
+    return this.provider.getVersionAt(this.name, at);
+  }
+
+  /**
    * Delete all versions of this parameter.
    */
   public async delete(): Promise<void> {
