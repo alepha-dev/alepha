@@ -118,10 +118,24 @@ export class DatabaseTypeProvider {
     // Plain text primary key (a slug, an external id). Must come after the
     // numeric branches: `z.bigint()` is a ZodString carrying
     // `format: "bigint"`, so a generic string check up front would swallow it
-    // and strip its identity default. No PG_DEFAULT here — unlike uuid there
-    // is nothing to generate, so the caller supplies the value.
+    // and strip its identity default.
+    //
+    // No PG_DEFAULT: `insertSchema` turns every PG_DEFAULT column optional
+    // because the database fills it in, and nothing fills in a slug — the
+    // caller does. Marking it default made `create({ label })` pass
+    // validation and hand the driver a NULL primary key.
+    //
+    // The cast is the honest part of a type-level gap: `z.uuid()` and
+    // `z.text()` are both `ZodString`, so the single `TString` overload above
+    // cannot distinguish them and still promises `PgDefault` (right for the
+    // 26 uuid PKs in tree, wrong here). A slug PK that omits its id therefore
+    // still compiles; it now fails validation instead of reaching the driver.
+    // Closing the gap needs a nominal uuid type — tracked in REVIEW_2.
     if (z.schema.isString(type)) {
-      return pgAttr(pgAttr(type, PG_PRIMARY_KEY), PG_DEFAULT);
+      return pgAttr(type, PG_PRIMARY_KEY) as PgAttr<
+        PgAttr<TSchema, PgPrimaryKey>,
+        PgDefault
+      >;
     }
 
     throw new AlephaError(`Unsupported type for primary key: ${type}`);

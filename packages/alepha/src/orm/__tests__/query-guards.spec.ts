@@ -116,3 +116,39 @@ describe("query guards", () => {
     });
   });
 });
+
+describe("text primary key insert schema", () => {
+  it("should require the id — a slug PK has no server-side default", async () => {
+    // `PG_DEFAULT` marks a column the database fills in, and `insertSchema`
+    // turns every such column optional. A uuid PK earns it (the DB generates
+    // one) and an integer PK earns it (identity); a plain text PK does not —
+    // there is nothing to generate, so omitting it must not typecheck and
+    // must not reach the driver as a NULL primary key.
+    const slugged = $entity({
+      name: "test_slug_pk_required",
+      schema: z.object({
+        id: db.primaryKey(z.text()),
+        label: z.text(),
+      }),
+    });
+
+    class SlugApp {
+      repository = $repository(slugged);
+    }
+
+    const alepha = Alepha.create({
+      env: { DATABASE_URL: "sqlite://:memory:" },
+    });
+    const app = alepha.inject(SlugApp);
+    await alepha.start();
+
+    // The insert schema is what makes `id` optional at the call site, so
+    // assert on it directly: a runtime NOT NULL violation is the symptom, but
+    // the point of the framework is that this never compiles.
+    expect(z.schema.requiredKeys(slugged.insertSchema)).toContain("id");
+
+    await expect(
+      app.repository.create({ label: "Hello" } as any),
+    ).rejects.toThrow();
+  });
+});

@@ -9,9 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-25**: 170 findings closed — 159 fixed across twenty-three passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
+> **Update 2026-07-25**: 170 findings closed — 159 fixed across twenty-three passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). A twenty-fourth pass re-verified every closed finding against the tree by reading the actual code path; all hold but one, which was re-fixed.
 >
-> **Remaining: 99 open — 0 P0 · 0 P1 · 20 P2 · 79 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
+> **Remaining: 100 open — 0 P0 · 0 P1 · 20 P2 · 80 P3.** (One new P3 raised by the twenty-fourth-pass audit.) Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -395,6 +395,39 @@ Seven of the nine open findings in this group.
 
 Still open here: the Bun/Node `execCapture` divergence (a shell-semantics change on a runtime only reachable through `test:bun`), and `EnvUtils` implicitly loading `.local` variants (documentation vs behaviour, plus a too-broad catch).
 
+### Twenty-fourth pass — 2026-07-25 (audit of everything closed)
+
+Re-verified all 170 findings marked ✅ FIXED / 🗑️ REMOVED by reading the actual
+code path in the current tree, not the pass notes. The eleventh pass had already
+audited the first 96; this one re-checks those and covers passes 12–23 in full.
+
+**All hold but one, and that one was caught by its own comment contradicting its
+code.**
+
+| Area | Item |
+|------|------|
+| orm/DatabaseTypeProvider | **The pass-21 text-primary-key fix was half-applied.** `db.primaryKey(z.text())` returned `pgAttr(pgAttr(type, PG_PRIMARY_KEY), PG_DEFAULT)` while the comment two lines above said "No PG_DEFAULT here — unlike uuid there is nothing to generate, so the caller supplies the value." `insertSchema` turns every PG_DEFAULT column optional, so `create({ label })` on a slug-PK entity passed validation and handed the driver a NULL primary key. Fixed; new assertion on the insert schema itself (`requiredKeys` must contain `id`), which failed first. |
+
+That fix exposes a **type-level gap that stays open** (new P3, listed under orm):
+`z.uuid()` and `z.text()` are both `ZodString`, so the single `TString` overload
+of `primaryKey` cannot tell them apart and must keep promising `PgDefault` —
+right for the 26 uuid PKs in tree, wrong for a slug. A slug PK that omits its id
+therefore still compiles; it now fails validation instead of reaching the driver.
+Closing it needs a nominal uuid type, which is a change to the schema layer, not
+a patch here.
+
+Everything else verified in place, including the ones easiest to regress:
+`ServerLinksProvider.registryCacheKey` (identity + realm), the CORS `OPTIONS`
+twin dedupe and `Vary: Origin`, `stream.pipeline` on the response path, the
+`$etag` TTL and identity scope, `AlsProvider.has(key, scope)`, the keyless
+codec's union/root-wrapper refusals, `RouterProvider.search` backtracking with
+per-segment `decodeParam`, `WebSocketChannelConnection.ROOM_MARKER` stamped on
+both the Node and Durable Object paths, `RetryProvider`'s late-success return,
+`BatchProvider`'s size check before registration, `Alepha.stop()` awaiting a boot
+in flight, the memoised `request.requestId`, HSTS reading `x-forwarded-proto` off
+the request, per-request `$proxy` target resolution, `paginate`'s count honouring
+`opts.tx`, and the column-before-table branch order in `Repository.toDbError`.
+
 ### Twenty-third pass — 2026-07-25 (react)
 
 Every open react P2 — all six. TDD throughout: each fix has a test that failed first against the unmodified tree.
@@ -758,6 +791,11 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 ---
 
 ## orm
+
+### [UNFINISHED] `primaryKey` cannot distinguish a uuid PK from a slug PK at the type level
+- **Severity**: P3
+- **File**: packages/alepha/src/orm/core/providers/DatabaseTypeProvider.ts:118-140
+- **Detail**: `z.uuid()` and `z.text()` are both `zod.ZodString` (the format lives in metadata, not in the type), so the single `TString` overload of `primaryKey` covers both and must promise `PgDefault` — correct for a uuid PK, where the database generates the value, and wrong for a slug PK, where the caller supplies it. The runtime is correct (the implementation branches on `format === "uuid"` and the insert schema requires the id for a slug), so the failure mode is a validation error at runtime instead of a compile error. Fix: a nominal type for `z.uuid()` — a change to the schema layer, not to this file. Raised by the twenty-fourth-pass audit.
 
 ### ✅ FIXED — [BUG] `aggregate()` skips tenant scoping and soft-delete filter when `where` is omitted
 - **Severity**: P1
