@@ -258,10 +258,9 @@ export class DrizzleKitProvider {
     models: Record<string, unknown>,
     provider: DatabaseProvider,
   ): Promise<void> {
-    const { statementsToExecute } = await kit.pushSQLiteSchema(
-      models,
-      provider.db as any,
-    );
+    const { statementsToExecute, warnings, hasDataLoss } =
+      await kit.pushSQLiteSchema(models, provider.db as any);
+    this.reportPushRisks(warnings, hasDataLoss);
     await this.executeStatements(statementsToExecute, provider);
   }
 
@@ -282,10 +281,36 @@ export class DrizzleKitProvider {
     // extends Array directly — no .rows property.
     const wrappedDb = this.wrapDbForDrizzleKit(provider.db);
 
-    const { statementsToExecute } = await kit.pushSchema(models, wrappedDb, [
-      provider.schema,
-    ]);
+    const { statementsToExecute, warnings, hasDataLoss } = await kit.pushSchema(
+      models,
+      wrappedDb,
+      [provider.schema],
+    );
+    this.reportPushRisks(warnings, hasDataLoss);
     await this.executeStatements(statementsToExecute, provider);
+  }
+
+  /**
+   * Surface drizzle-kit's own risk assessment before running the statements.
+   *
+   * `push` destructured only `statementsToExecute` and ran everything, so a
+   * dev-mode `synchronize()` could drop and recreate a column — wiping local
+   * data — without a single line of output. drizzle-kit already computes
+   * `hasDataLoss` and `warnings`; they were only being read by `dryRunPush`.
+   */
+  protected reportPushRisks(
+    warnings: string[] | undefined,
+    hasDataLoss: boolean | undefined,
+  ): void {
+    for (const warning of warnings ?? []) {
+      this.log.warn(`Schema push warning: ${warning}`);
+    }
+
+    if (hasDataLoss) {
+      this.log.warn(
+        "Schema push will DESTROY DATA in this database (drizzle-kit reports data loss). This runs only outside production; review the statements below.",
+      );
+    }
   }
 
   /**

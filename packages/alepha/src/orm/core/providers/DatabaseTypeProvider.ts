@@ -115,6 +115,15 @@ export class DatabaseTypeProvider {
       );
     }
 
+    // Plain text primary key (a slug, an external id). Must come after the
+    // numeric branches: `z.bigint()` is a ZodString carrying
+    // `format: "bigint"`, so a generic string check up front would swallow it
+    // and strip its identity default. No PG_DEFAULT here — unlike uuid there
+    // is nothing to generate, so the caller supplies the value.
+    if (z.schema.isString(type)) {
+      return pgAttr(pgAttr(type, PG_PRIMARY_KEY), PG_DEFAULT);
+    }
+
     throw new AlephaError(`Unsupported type for primary key: ${type}`);
   }
 

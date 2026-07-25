@@ -581,10 +581,16 @@ export abstract class Repository<T extends TObject> {
       );
 
       tasks.push(
-        this.db.$count(this.table, this.toSQL(countWhere)).then((it) => {
-          timers.count = this.dateTimeProvider.nowMillis() - timers.count;
-          return it;
-        }),
+        // Same db resolution as `count()`: `this.db` ignored an explicit
+        // `opts.tx`, so `paginate(..., { count: true, tx })` ran its count
+        // OUTSIDE the transaction — reading rows the transaction had not
+        // committed, or missing rows it had written.
+        (opts.tx === null ? this.provider.db : (opts.tx ?? this.db))
+          .$count(this.table, this.toSQL(countWhere))
+          .then((it: number) => {
+            timers.count = this.dateTimeProvider.nowMillis() - timers.count;
+            return it;
+          }),
       );
     }
 

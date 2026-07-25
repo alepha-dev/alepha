@@ -249,6 +249,51 @@ export class QueryManager {
   }
 
   /**
+   * Catch an operator object whose key is a near-miss for a real one.
+   *
+   * A value like `{ in: [1, 2] }` (the SQL spelling) instead of
+   * `{ inArray: [1, 2] }` has no recognised operator key, so it fell through
+   * to the direct-value branch and produced `eq(column, <object>)` — at best
+   * a serialization error, at worst a query that silently matches nothing.
+   *
+   * Deliberately narrow: only names that are known aliases of real operators
+   * are rejected. A plain object is a legitimate equality value for a JSON
+   * column, and rejecting every unrecognised object would break that.
+   */
+  protected assertNotMistypedOperator(value: any, columnName?: string): void {
+    if (
+      !value ||
+      typeof value !== "object" ||
+      Array.isArray(value) ||
+      value instanceof Date ||
+      isSQLWrapper(value)
+    ) {
+      return;
+    }
+
+    const aliases: Record<string, string> = {
+      in: "inArray",
+      notIn: "notInArray",
+      nin: "notInArray",
+      neq: "ne",
+      not: "ne",
+      equals: "eq",
+      greaterThan: "gt",
+      lessThan: "lt",
+      isNotNULL: "isNotNull",
+    };
+
+    for (const key of Object.keys(value)) {
+      const suggestion = aliases[key];
+      if (suggestion) {
+        throw new AlephaError(
+          `Query filter${columnName ? ` '${columnName}'` : ""} uses unknown operator '${key}'. Did you mean '${suggestion}'? An unrecognised operator object is treated as a literal value, which matches nothing.`,
+        );
+      }
+    }
+  }
+
+  /**
    * Map a filter operator to a SQL query.
    */
   public mapOperatorToSql(
@@ -296,6 +341,7 @@ export class QueryManager {
       operator == null ||
       !this.hasFilterOperatorProperties(operator)
     ) {
+      this.assertNotMistypedOperator(operator, columnName);
       return eq(column, encodeValue(operator));
     }
 
@@ -478,19 +524,35 @@ export class QueryManager {
       );
     }
 
+    // The array operators map to postgres array functions (`@>`, `<@`, `&&`).
+    // SQLite/D1 store a string array as JSON text, so emitting them there
+    // produced invalid SQL or silently wrong semantics. The `ilike` family
+    // above got a sqlite fallback; this one never did. Fail loudly rather
+    // than run a query that means something else.
+    const assertArrayOperatorSupported = (name: string) => {
+      if (dialect === "sqlite") {
+        throw new AlephaError(
+          `Filter operator '${name}' is not supported on sqlite/D1: array columns are stored as JSON text there, so postgres array operators cannot apply. Filter in the handler, or model the values as a related table.`,
+        );
+      }
+    };
+
     if (operator?.arrayContains != null) {
+      assertArrayOperatorSupported("arrayContains");
       conditions.push(
         arrayContains(column, encodeValue(operator.arrayContains)),
       );
     }
 
     if (operator?.arrayContained != null) {
+      assertArrayOperatorSupported("arrayContained");
       conditions.push(
         arrayContained(column, encodeValue(operator.arrayContained)),
       );
     }
 
     if (operator?.arrayOverlaps != null) {
+      assertArrayOperatorSupported("arrayOverlaps");
       conditions.push(
         arrayOverlaps(column, encodeValue(operator.arrayOverlaps)),
       );

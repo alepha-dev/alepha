@@ -9,9 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-25**: 152 findings closed — 141 fixed across twenty passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
+> **Update 2026-07-25**: 157 findings closed — 146 fixed across twenty-one passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
 >
-> **Remaining: 117 open — 0 P0 · 0 P1 · 37 P2 · 80 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
+> **Remaining: 112 open — 0 P0 · 0 P1 · 32 P2 · 80 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -361,6 +361,23 @@ Nine of the eleven open server findings.
 | server/links | `remote.schema()` is removed. It fetched `GET /api/_links/:name/schema`, a route that does not exist (the real one is `POST /api/_links/schemas`), had a TODO inside, and had zero callers — dead *and* broken. |
 
 Left open deliberately: rate-limit's `keyGenerator` / `skipFailedRequests` / `skipSuccessfulRequests` (implement-or-remove is a design call, and the two skip options need a response hook that does not exist), and Apple `form_post` on the Node adapter (needs a Node→web `Request` bridge and cannot be verified end to end here).
+
+### Twenty-first pass — 2026-07-25 (orm)
+
+Five of the seven open ORM findings.
+
+| Area | Fix |
+|------|-----|
+| orm/Repository | `paginate`'s count uses the same db resolution as `count()`. It went through `this.db` directly, so `paginate(..., { count: true, tx })` ran its count **outside the transaction** — reading rows the transaction had not committed, or missing rows it had written. |
+| orm/QueryManager | `arrayContains` / `arrayContained` / `arrayOverlaps` throw on sqlite/D1 instead of emitting postgres array SQL against a JSON-text column. The `ilike` family got a sqlite fallback long ago; this one never did, so the query was invalid or silently meant something else. |
+| orm/QueryManager | A filter object whose key is a near-miss for a real operator (`{ in: [...] }` for `inArray`, `notIn`, `neq`, …) is rejected with the correct name. It had no recognised key, so it fell through to the direct-value branch and produced `eq(column, <object>)` — a query matching nothing. Deliberately narrow: only known aliases are rejected, because a plain object is a legitimate equality value for a JSON column. |
+| orm/DrizzleKitProvider | `push` surfaces drizzle-kit's own `warnings` and `hasDataLoss` before running the statements. They were computed and then dropped (only `dryRunPush` read them), so a dev-mode `synchronize()` could drop and recreate a column — wiping local data — without a line of output. |
+| orm/DatabaseTypeProvider | `db.primaryKey(z.text())` works. The overload accepted any string schema but handled only `format: "uuid"` and threw for the rest, so a slug PK type-checked and crashed at startup. **The obvious fix breaks bigint**: `z.bigint()` is a `ZodString` carrying `format: "bigint"`, so a generic string branch placed before the numeric ones swallows it and strips its identity default — caught by an existing test inserting a bigint PK. The text case is a fallback after the numeric branches, and carries no generated default since there is nothing to generate. |
+
+Left open, with reasons rather than silence:
+
+- **`CloudflareHyperdriveProvider.db` creating a client per access.** This is deliberate and documented — its JSDoc states it avoids Workers' "Cannot perform I/O on behalf of a different request". Caching per request context is a real improvement, but it changes connection lifecycle on the one runtime that cannot be exercised here (no workerd, no Hyperdrive binding).
+- **`SET search_path` before pg migrations on a pooled connection.** Pinning the SET and `migrate()` to one connection needs a reserved connection (or libpq `options=-csearch_path=…` on the URL), and the failure mode — migrate checking out a *different* pooled connection — cannot be reproduced deterministically in this suite. Touching the migration path blind is the wrong trade.
 
 Per-module detail follows. Line numbers reference the tree as it stood when each finding was written (`main` @ 6c7ec9400 for the original passes); the fix passes have since moved code, so treat every line number as a starting hint, not an address — locate by symbol name.
 
@@ -771,12 +788,12 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/orm/postgres/providers/CloudflareHyperdriveProvider.ts:56
 - **Detail**: The `db` getter runs `postgresFn(connectionString, pgOptions)` on **every access** — at least once per repository operation — and nothing calls `client.end()`. N pools per request, defeats statement caching. Fix: cache per request context (ALS key) and close on request end.
 
-### [BUG] `paginate` count query escapes an explicit `opts.tx`
+### ✅ FIXED — [BUG] `paginate` count query escapes an explicit `opts.tx`
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/core/services/Repository.ts:567
 - **Detail**: `paginate`'s count uses `this.db.$count(...)` directly, ignoring `opts.tx` (both explicit-tx and `tx: null` bypass that `count()` at 1196 honors). A `paginate(..., { count: true, tx })` runs its count outside the transaction. Fix: reuse the same db-resolution expression.
 
-### [BUG] SQLite/D1 silently accept PG-only array operators
+### ✅ FIXED — [BUG] SQLite/D1 silently accept PG-only array operators
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/core/services/QueryManager.ts:458
 - **Detail**: `arrayContains`/`arrayContained`/`arrayOverlaps` map to drizzle's PG array functions unconditionally, but sqlite stores string arrays as JSON text — invalid SQL / wrong semantics at runtime. `ilike` family got sqlite fallbacks; array family didn't. Fix: throw "not supported on sqlite" or implement via json_each.
@@ -786,12 +803,12 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/orm/core/services/Repository.ts:826
 - **Detail**: `//setData = this.cast(setData, false) as any;` commented out, so the ON CONFLICT set payload skips validation and codec encoding that every other write path applies. `cast()` already extracts SQL wrappers safely, so it can be re-enabled.
 
-### [UNFINISHED] `db.primaryKey(type)` discards the given type/options; text PK overload throws at runtime
+### ✅ FIXED — [UNFINISHED] `db.primaryKey(type)` discards the given type/options; text PK overload throws at runtime
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/core/providers/DatabaseTypeProvider.ts:88
 - **Detail**: The overload accepts any string schema but only handles `format === "uuid"`, otherwise throws `Unsupported type for primary key` — a plain-text/slug PK compiles but crashes at startup. All branches construct fresh schemas, discarding the caller's constraints; `_options` never used. Fix: honor the passed schema and support text PKs, or remove the overloads.
 
-### [BUG] Drizzle-kit push executes statements ignoring `hasDataLoss` / warnings
+### ✅ FIXED — [BUG] Drizzle-kit push executes statements ignoring `hasDataLoss` / warnings
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/core/providers/DrizzleKitProvider.ts:256
 - **Detail**: `pushSqlite`/`pushPostgres` destructure only `statementsToExecute` and run everything; `warnings` and `hasDataLoss` are consulted only in `dryRunPush`. Dev-mode `synchronize()` will drop/recreate a column and wipe local data with no log line. Also `generateMigration()` has no scan for DROP TABLE on cascade parents — the documented D1 wipe hazard has no safeguard in this layer.
@@ -801,7 +818,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/orm/postgres/providers/NodePostgresProvider.ts:37
 - **Detail**: `db.execute(SET search_path …)` then `migrate(...)` — with postgres.js pooling the SET applies to one pooled connection; migrate() may check out a different one and create tables in `public`. Same pattern in BunPostgresProvider and Hyperdrive (pooled, same race); Pglite safe (single conn). Fix: reserved connection/transaction or SET LOCAL. Also BunPostgresProvider.ts:74 appends `search_path=…` as a plain URL query param — not a libpq keyword, likely ignored (should be `options=-csearch_path=…`).
 
-### [RECO] Unknown filter operators silently become `eq(column, object)`
+### ✅ FIXED — [RECO] Unknown filter operators silently become `eq(column, object)`
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/core/services/QueryManager.ts:282
 - **Detail**: An object value without any known operator key (`{ in: [...] }` instead of `{ inArray: [...] }`, or typos) falls into the direct-value branch and produces `eq(column, <object>)` — at best a serialization error, at worst a query matching nothing, no hint. Fix: throw on object literals with no recognized operator when the column isn't a JSON column. Also `{ column: null }` in a where is silently dropped (reads like IS NULL but returns unfiltered rows) — worth an explicit error or IS NULL semantics.
