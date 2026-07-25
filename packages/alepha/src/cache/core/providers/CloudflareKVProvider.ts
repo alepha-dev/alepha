@@ -52,6 +52,11 @@ export interface KVListKey {
  */
 export const KV_DEFAULT_BINDING = "KV_CACHE";
 
+/**
+ * Cloudflare KV refuses an `expirationTtl` below 60 seconds.
+ */
+export const KV_MIN_EXPIRATION_TTL = 60;
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
@@ -76,6 +81,13 @@ export class CloudflareKVProvider extends CacheProvider {
   protected readonly log = $logger();
 
   protected kv?: KVNamespace;
+
+  /**
+   * Cache names already warned about, so a hot cache does not repeat the
+   * clamp warning on every write. The clamp is a static consequence of
+   * configuration — saying it once is saying it.
+   */
+  protected readonly warnedClamps = new Set<string>();
 
   protected readonly onStart = $hook({
     on: "start",
@@ -148,8 +160,7 @@ export class CloudflareKVProvider extends CacheProvider {
     const options: KVPutOptions = {};
 
     if (ttl) {
-      // KV expects TTL in seconds, we receive milliseconds
-      options.expirationTtl = Math.max(60, Math.ceil(ttl / 1000));
+      options.expirationTtl = this.expirationTtl(ttl, name);
     }
 
     await this.getKV().put(
@@ -223,15 +234,43 @@ export class CloudflareKVProvider extends CacheProvider {
     }
 
     const newValue = current + amount;
-    // KV clamps expirationTtl to a 60-second minimum; shorter windows are
-    // widened accordingly. NOTE: sliding here (each put resets the TTL) —
-    // KV cannot express "keep the original expiry" without another read.
+    // NOTE: sliding here (each put resets the TTL) — KV cannot express "keep
+    // the original expiry" without another read.
     await kv.put(
       kvKey,
       String(newValue),
-      ttl ? { expirationTtl: Math.max(60, Math.ceil(ttl / 1000)) } : undefined,
+      ttl ? { expirationTtl: this.expirationTtl(ttl, name) } : undefined,
     );
     return newValue;
+  }
+
+  /**
+   * Convert a millisecond TTL to KV's `expirationTtl` (seconds), applying
+   * KV's own 60-second floor.
+   *
+   * The clamp is not optional — KV rejects anything shorter — but it used to
+   * be invisible: a `$cache({ ttl: [5, "seconds"] })` deployed to Workers
+   * served entries up to twelve times staler than configured, with nothing
+   * anywhere saying so, and the same code on any other provider honoured the
+   * 5 seconds exactly. Warning once per cache makes the divergence
+   * discoverable at the only moment it can be acted on.
+   */
+  protected expirationTtl(ttlMs: number, name: string): number {
+    const requested = Math.ceil(ttlMs / 1000);
+    if (requested >= KV_MIN_EXPIRATION_TTL) {
+      return requested;
+    }
+
+    if (!this.warnedClamps.has(name)) {
+      this.warnedClamps.add(name);
+      this.log.warn(
+        `Cache '${name}' asks for a ${requested}s TTL, but Cloudflare KV enforces a ` +
+          `${KV_MIN_EXPIRATION_TTL}s minimum — entries will live up to ${KV_MIN_EXPIRATION_TTL}s. ` +
+          "Use a shorter-lived tier (the in-memory L1) if the freshness matters.",
+      );
+    }
+
+    return KV_MIN_EXPIRATION_TTL;
   }
 
   /**

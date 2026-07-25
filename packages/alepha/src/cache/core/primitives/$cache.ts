@@ -13,6 +13,7 @@ import {
   z,
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 import { CacheProvider } from "../providers/CacheProvider.ts";
 import { MemoryCacheProvider } from "../providers/MemoryCacheProvider.ts";
 
@@ -78,8 +79,9 @@ export function $cache(options: any = {}): any {
       const result = await instance.runSingleFlight(key, () =>
         handler(...args),
       );
-      // Fire-and-forget — cache write failures must not break the handler result
-      instance.set(key, result).catch(() => {});
+      // Fire-and-forget — cache write failures must not break the handler
+      // result. `persist` logs, so an outage is visible rather than silent.
+      void instance.persist(key, result);
       return result;
     }) as any as T;
   };
@@ -283,6 +285,7 @@ export class CachePrimitive<
 > extends Primitive<CachePrimitiveOptions<TReturn, TParameter>> {
   protected readonly settings = $state(cacheOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly log = $logger();
   public readonly provider = this.$provider();
 
   protected readonly memoryStore?: Map<string, L1Entry<TReturn>>;
@@ -349,9 +352,35 @@ export class CachePrimitive<
     }
 
     const result = await this.runSingleFlight(key, () => handler(...args));
-    // note: when exception occurs, don't cache the result
-    await this.set(key, result);
+    // note: when exception occurs, don't cache the result.
+    //
+    // Awaited (unlike the middleware path) so the entry is durable before the
+    // caller sees the value — but through `persist`, so a provider outage
+    // cannot fail a request whose answer has already been computed. This used
+    // to be a bare `await this.set(...)`: a Redis blip turned a successful
+    // handler into a 500, and the two modes failed differently for no reason.
+    await this.persist(key, result);
     return result;
+  }
+
+  /**
+   * Write to the cache, treating failure as non-fatal.
+   *
+   * A cache is an optimisation: a write that fails costs a future cache miss,
+   * never the current result. Both the middleware and the primitive path go
+   * through here so they degrade identically — the difference between them is
+   * only whether the caller waits for the write.
+   */
+  public async persist(key: string, value: TReturn): Promise<void> {
+    try {
+      await this.set(key, value);
+    } catch (error) {
+      this.log.warn("Cache write failed; returning the uncached result", {
+        key,
+        container: this.container,
+        error,
+      });
+    }
   }
 
   public key(...args: TParameter): string {

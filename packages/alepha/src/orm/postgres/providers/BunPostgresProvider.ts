@@ -66,12 +66,21 @@ export class BunPostgresProvider extends PostgresProvider {
 
     const { drizzle } = await import("drizzle-orm/bun-sql");
 
-    // Create Bun SQL client with pool options
-    // Set search_path via connection URL so all pool connections use the correct schema
+    // Create Bun SQL client with pool options.
+    //
+    // `search_path` is set through libpq's `options` parameter, which is a
+    // real connection-string keyword applied to every connection the pool
+    // opens. A bare `?search_path=…` was not: libpq has no such keyword, so
+    // it was parsed as an unknown parameter and dropped, and every pooled
+    // connection kept the server's default search_path while the app
+    // believed it was scoped to its schema.
     let connectionUrl = this.url;
     if (this.schema !== "public") {
       const separator = connectionUrl.includes("?") ? "&" : "?";
-      connectionUrl += `${separator}search_path=${this.schema},public`;
+      const searchPath = encodeURIComponent(
+        `-c search_path=${this.schema},public`,
+      );
+      connectionUrl += `${separator}options=${searchPath}`;
     }
     const bunOptions: Record<string, any> = { url: connectionUrl };
     if (this.pgEnv.POOL_MAX != null) {

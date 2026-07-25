@@ -9,9 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-25**: 170 findings closed — 159 fixed across twenty-three passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). A twenty-fourth pass re-verified every closed finding against the tree by reading the actual code path; all hold but one, which was re-fixed.
+> **Update 2026-07-25**: 174 findings closed — 163 fixed across twenty-five passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). A twenty-fourth pass re-verified every closed finding against the tree by reading the actual code path; all hold but one, which was re-fixed.
 >
-> **Remaining: 100 open — 0 P0 · 0 P1 · 20 P2 · 80 P3.** (One new P3 raised by the twenty-fourth-pass audit.) Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
+> **Remaining: 96 open — 0 P0 · 0 P1 · 16 P2 · 80 P3.** (One new P3 raised by the twenty-fourth-pass audit. Four of the remaining P2s are websocket, deliberately out of scope.) Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -394,6 +394,20 @@ Seven of the nine open findings in this group.
 | mcp/transport | Spec compliance: a notification answers **202** (was 204), and an unparseable message answers `id: null` (was a fabricated `0`, which can collide with a real id of 0). Note the malformed-JSON route is unreachable from HTTP — the server's body parser rejects it first — so the reachable case is valid JSON that is not valid JSON-RPC. |
 
 Still open here: the Bun/Node `execCapture` divergence (a shell-semantics change on a runtime only reachable through `test:bun`), and `EnvUtils` implicitly loading `.local` variants (documentation vs behaviour, plus a too-broad catch).
+
+### Twenty-fifth pass — 2026-07-25 (the Cloudflare runtime path)
+
+The four P2s reachable from a Cloudflare deploy, taken together because Lore
+ships to Workers on every push to `main` with no human gate — these fail in
+production or not at all.
+
+| Area | Fix |
+|------|-----|
+| orm/Hyperdrive | The postgres client is memoised **per request**, not per access. A fresh client per request is deliberate (Workers refuse to reuse an I/O object across request contexts), but `db` is touched at least once per repository call, so a handler running five queries opened five clients that could not share a statement cache. The ALS fork *is* the request boundary, so the cache lives there; with no fork (migrations, tests, scripts) it falls back to create-every-time rather than risk leaking one context's client into the next. **Scope correction to the finding:** it also asks for `client.end()` on request end. Not done, deliberately — the Worker's I/O context is destroyed with the request and takes its sockets with it, and there is no fork-teardown hook to hang a close on. Bounding the count at one per request is the part that mattered. |
+| orm/postgres | Migrations run on a **single dedicated connection**. `SET search_path` followed by `migrate()` is two statements against a pool: postgres.js may hand the migration a connection that never saw the SET, so the tables land in `public` while the app reads them from its configured schema. Migrations run once at boot, so they now get their own `max: 1` client (overriding any `POOL_MAX`) and it is closed afterwards. The `public` case skips the extra client entirely. Note the test-mode consequence: `PostgresProvider` generates a throwaway schema per run, so *every* postgres test already exercises this path. |
+| orm/Bun | `search_path` reaches Bun's pool through libpq's `options` keyword (`?options=-c%20search_path%3D...`) instead of a bare `?search_path=...`, which libpq does not recognise and silently drops — every pooled connection kept the server's default while the app believed otherwise. |
+| cache/CloudflareKV | The 60-second TTL floor warns once per cache instead of applying silently. The clamp is correct (KV rejects anything shorter), but a `$cache({ ttl: [5, "seconds"] })` deployed to Workers served entries up to twelve times staler than configured, and the identical code on any other provider honoured the 5 seconds exactly. Once per cache, not per write — the clamp is a static consequence of configuration. First test coverage for this provider. |
+| cache/$cache | Both write paths go through one non-fatal, logged `persist()`. Middleware mode swallowed write failures with a bare `.catch(() => {})` — a provider outage was invisible — while primitive `run()` awaited the write unguarded, so a Redis blip turned a request whose answer had already been computed into a 500. They now degrade identically; the only remaining difference is whether the caller waits for the write. |
 
 ### Twenty-fourth pass — 2026-07-25 (audit of everything closed)
 
@@ -852,7 +866,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/orm/core/services/ModelBuilder.ts:102
 - **Detail**: Builder paths guard with `if ((self as any)[indexDef])` / length checks and *skip* the config when a column lookup fails — a typo'd column in `indexes`/`foreignKeys`/`constraints` produces no constraint and no error; migration generation emits a schema missing it. Silent data-integrity hazard. Fix: throw AlephaError naming entity and bad column.
 
-### [BUG] `CloudflareHyperdriveProvider.db` creates a new postgres client on every access and never closes it
+### ✅ FIXED — [BUG] `CloudflareHyperdriveProvider.db` creates a new postgres client on every access
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/postgres/providers/CloudflareHyperdriveProvider.ts:56
 - **Detail**: The `db` getter runs `postgresFn(connectionString, pgOptions)` on **every access** — at least once per repository operation — and nothing calls `client.end()`. N pools per request, defeats statement caching. Fix: cache per request context (ALS key) and close on request end.
@@ -882,7 +896,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/orm/core/providers/DrizzleKitProvider.ts:256
 - **Detail**: `pushSqlite`/`pushPostgres` destructure only `statementsToExecute` and run everything; `warnings` and `hasDataLoss` are consulted only in `dryRunPush`. Dev-mode `synchronize()` will drop/recreate a column and wipe local data with no log line. Also `generateMigration()` has no scan for DROP TABLE on cascade parents — the documented D1 wipe hazard has no safeguard in this layer.
 
-### [BUG] `SET search_path` before pg migrations runs on one pooled connection
+### ✅ FIXED — [BUG] `SET search_path` before pg migrations runs on one pooled connection
 - **Severity**: P2
 - **File**: packages/alepha/src/orm/postgres/providers/NodePostgresProvider.ts:37
 - **Detail**: `db.execute(SET search_path …)` then `migrate(...)` — with postgres.js pooling the SET applies to one pooled connection; migrate() may check out a different one and create tables in `public`. Same pattern in BunPostgresProvider and Hyperdrive (pooled, same race); Pglite safe (single conn). Fix: reserved connection/transaction or SET LOCAL. Also BunPostgresProvider.ts:74 appends `search_path=…` as a plain URL query param — not a libpq keyword, likely ignored (should be `options=-csearch_path=…`).
@@ -970,7 +984,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/cache/core/providers/CloudflareKVProvider.ts:225 (and redis/providers/NodeRedisProvider.ts:241)
 - **Detail**: `MemoryCacheProvider.incr` stores `this.serialize(newValue)` and DB provider re-serializes `row.count`, but KV `incr` does `kv.put(kvKey, String(newValue))` and Redis `INCRBY` stores raw ASCII digits — `getTyped` then sees first byte 0x30-0x39 and throws `CacheError("Unknown serialization type")`. Same app code passes tests on Memory and crashes on KV/Redis. Fix: fall back to `Number.parseInt` for unmarked numeric payloads, or store the typed marker.
 
-### [BUG] CloudflareKV silently clamps TTL to a 60-second minimum
+### ✅ FIXED — [BUG] CloudflareKV silently clamps TTL to a 60-second minimum
 - **Severity**: P2
 - **File**: packages/alepha/src/cache/core/providers/CloudflareKVProvider.ts:152
 - **Detail**: `options.expirationTtl = Math.max(60, Math.ceil(ttl / 1000))` — a 5s TTL entry lives up to 60s on Workers, with no log or freshness check on read. KV genuinely requires ≥60s, but the divergence is invisible. Fix: wrap clamped values in the SWR-style envelope (or `freshUntil`) so `read()` honors the real TTL, or log a warning.
@@ -995,7 +1009,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/bucket/providers/R2FileStorageProvider.ts:1
 - **Detail**: No spec for `R2FileStorageProvider` (production default on Workers), `CloudflareKVProvider` (production default cache on Workers), or `NodemailerEmailProvider`. R2 download returns a hand-rolled `FileLike` whose `stream`/`arrayBuffer`/`text` all share the single-use `object.body` — calling more than one accessor drains the body; `httpMetadata?.contentType ?? "application/octet-stream"` doesn't catch empty-string content type; neither pinned by tests.
 
-### [BUG] Fire-and-forget vs awaited cache writes — middleware and primitive mode fail differently
+### ✅ FIXED — [BUG] Fire-and-forget vs awaited cache writes — middleware and primitive mode fail differently
 - **Severity**: P2
 - **File**: packages/alepha/src/cache/core/primitives/$cache.ts:82 (vs :345)
 - **Detail**: Middleware mode does `instance.set(key, result).catch(() => {})` — provider outages swallowed with no logging — while primitive-mode `run()` does `await this.set(key, result)`, so a Redis/KV write failure fails the request even though the handler produced a valid result. Fix: make `run()` non-fatal on set-failure (log + return result), and log in the middleware catch.

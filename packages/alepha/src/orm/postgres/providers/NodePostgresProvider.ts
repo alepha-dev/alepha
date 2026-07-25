@@ -31,18 +31,54 @@ export class NodePostgresProvider extends PostgresProvider {
   protected override async executeMigrations(
     migrationsFolder: string,
   ): Promise<void> {
-    // Set search_path so schema-free migration SQL resolves to the correct schema.
-    // postgres.js doesn't support the `connection` startup parameter with pooled
-    // connections (e.g. Neon), so we SET it explicitly before running migrations.
-    if (this.schema !== "public") {
-      await this.db.execute(
-        sql.raw(`SET search_path TO ${this.schema}, public`),
-      );
+    if (!this.needsDedicatedMigrationClient()) {
+      await migrate(this.db, {
+        migrationsFolder,
+        migrationsTable: this.migrationsTable,
+      });
+      return;
     }
-    await migrate(this.db, {
-      migrationsFolder,
-      migrationsTable: this.migrationsTable,
-    });
+
+    // Schema-free migration SQL resolves against `search_path`, and
+    // postgres.js does not support the `connection` startup parameter with
+    // pooled connections (Neon and friends), so it has to be SET explicitly.
+    //
+    // But `SET` followed by `migrate()` is two statements against a POOL:
+    // postgres.js is free to hand the migration a different connection, one
+    // that never saw the SET, and the tables land in `public` while the app
+    // reads them from the configured schema. Migrations run once at boot and
+    // are not a hot path, so they get their own single-connection client —
+    // `max: 1` makes "the session that was SET" and "the session that
+    // migrates" provably the same one.
+    const client = postgres(this.migrationClientOptions());
+    try {
+      const db = drizzle(client);
+      await db.execute(sql.raw(`SET search_path TO ${this.schema}, public`));
+      await migrate(db, {
+        migrationsFolder,
+        migrationsTable: this.migrationsTable,
+      });
+    } finally {
+      await client.end();
+    }
+  }
+
+  /**
+   * Whether migrations need a session-pinned connection — i.e. whether there
+   * is a `search_path` to set at all.
+   */
+  protected needsDedicatedMigrationClient(): boolean {
+    return this.schema !== "public";
+  }
+
+  /**
+   * Client options for the migration-only connection: the app's connection
+   * details, pinned to a single session. `max: 1` overrides any configured
+   * `POOL_MAX` — that setting sizes the app's pool, and a pool is precisely
+   * what must not be used here.
+   */
+  protected migrationClientOptions(): postgres.Options<any> {
+    return { ...this.getClientOptions(), max: 1 };
   }
 
   // -------------------------------------------------------------------------------------------------------------------
