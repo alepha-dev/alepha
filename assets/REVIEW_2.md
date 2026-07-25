@@ -9,9 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-25**: 143 findings closed — 132 fixed across nineteen passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
+> **Update 2026-07-25**: 152 findings closed — 141 fixed across twenty passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
 >
-> **Remaining: 126 open — 0 P0 · 0 P1 · 46 P2 · 80 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
+> **Remaining: 117 open — 0 P0 · 0 P1 · 37 P2 · 80 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -344,6 +344,24 @@ Still open in this cluster (websocket/room, a separate concern): room connection
 | core/Alepha | `boot()` no longer flips `ready` when a `ready` hook stopped the app. It claimed a stopped container was ready, and a later `start()` would short-circuit on that flag and report the stopped app as running. |
 | core/SchemaValidator | `ValidateOptions` is gone rather than implemented. Its `trim` / `nullToUndefined` / `deleteUndefined` were typebox-era leftovers — the class docstring already states that trimming, defaults and unknown-key stripping live in the zod schema now — and all 38 call sites passed them as `false`, explicitly disabling things that did nothing. `CodecManager`'s `validation` is now the boolean switch it always was (`false` to skip). |
 
+### Twentieth pass — 2026-07-25 (server)
+
+Nine of the eleven open server findings.
+
+| Area | Fix |
+|------|-----|
+| server/core | `request.requestId` is memoised per request. The getter minted a fresh `randomUUID` on **every access**, so the id in the log line, the id in the error body and the ids read by middleware were all different — nothing could be correlated. (A test must read it twice *through the request object*; destructuring evaluates the getter once and hides it.) |
+| server/core | HSTS reads `x-forwarded-proto` off the **request**. Testing it on the response — which never carries it — collapsed the check to `isProduction()`, so HSTS went out over plain HTTP in production and never went out over HTTPS anywhere else. |
+| server/static | Precompressed variants advertise `Vary: Accept-Encoding` and carry a **per-encoding ETag**. Serving `.br`/`.gz` under one shared ETag with no `Vary` let a shared cache hand a brotli body to a client that never asked for it, and made 304 revalidation unable to tell the variants apart. (The `Vary`-clobbering half of this finding was fixed earlier, in the CORS pass.) |
+| server/core | The flushing compress stream has backpressure and survives cancellation. It enqueued in flowing mode regardless of `desiredSize` — a slow client plus a large SSR stream buffered without bound — and on cancel `enqueue` threw from inside a `'data'` listener where nothing could catch it. Now gated on a `settled` flag, pauses the source when the consumer falls behind, resumes in `pull`, and tears down in `cancel`. |
+| server/proxy | `target` is resolved **per request**. The function form is documented as runtime resolution but was called exactly once during `configure`, so every request used a frozen string. |
+| server/core | `FileLike.stream()` returns `response.body` instead of throwing "Not implemented" — it broke every consumer piping a downloaded file into a bucket. Guarded with clear errors for an already-consumed or absent body, since a body can only be read once. |
+| server/core | The Node query parser keeps a valueless key as `""`. `?flag` was dropped entirely on Node while `URLSearchParams` on Bun/workerd yields `{ flag: "" }` — the same request reached different handlers on different runtimes. |
+| server/static | A file deleted after boot answers **404** instead of a raw 500. Metadata is captured once at startup, so the stream error was surfacing as an internal error. |
+| server/links | `remote.schema()` is removed. It fetched `GET /api/_links/:name/schema`, a route that does not exist (the real one is `POST /api/_links/schemas`), had a TODO inside, and had zero callers — dead *and* broken. |
+
+Left open deliberately: rate-limit's `keyGenerator` / `skipFailedRequests` / `skipSuccessfulRequests` (implement-or-remove is a design call, and the two skip options need a response hook that does not exist), and Apple `form_post` on the Node adapter (needs a Node→web `Request` bridge and cannot be verified end to end here).
+
 Per-module detail follows. Line numbers reference the tree as it stood when each finding was written (`main` @ 6c7ec9400 for the original passes); the fix passes have since moved code, so treat every line number as a starting hint, not an address — locate by symbol name.
 
 ---
@@ -562,7 +580,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/server/etag/providers/ServerEtagProvider.ts:153,300,452 (options: primitives/$etag.ts:112)
 - **Detail**: `store?: true | DurationLike | CachePrimitiveOptions` is documented (JSDoc example with ttl), but `options.store` is only truth-tested; every `cache.set(key, entry)` passes no TTL. Stored responses live until restart or manual invalidate — stale data + unbounded growth for param/query-keyed routes. Also `createCacheKey` (407) includes no user identity: `$etag(true)` on an authenticated action serves one user's cached body to all others — needs a loud doc warning or vary-by option.
 
-### [BUG] `request.requestId` returns a different UUID on every access
+### ✅ FIXED — [BUG] `request.requestId` returns a different UUID on every access
 - **Severity**: P2
 - **File**: packages/alepha/src/server/core/services/ServerRequestParser.ts:60-62,90-92
 - **Detail**: The getter calls `getRequestId()` unmemoized; without an x-request-id header each access generates a fresh randomUUID — the id logged, the id in the error body, and ids read by middleware all differ; none match the ALS context id. Fix: lazy memo per request; reuse as context id.
@@ -578,17 +596,17 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/server/links/providers/ServerLinksProvider.ts:236-254
 - **Detail**: Found by the eleventh-pass audit, not the original review. The batch handler mapped every rejected sub-action to `{ action, status, error: reason.message }` with no sanitization, while the single-request path strips 5xx messages in production (`sendError`, :416-421). A sub-action throwing `connect ECONNREFUSED db.internal:5432 (user=admin password=hunter2)` shipped that string to the client verbatim — verified with a failing test before the fix. This is the *more* exposed of the two paths: `BatchCollector` batches client `$action` calls into `/api/_batch` by default, so most React-app traffic takes it. Fixed by mirroring `sendError`: status ≥ 500 in production → `"Internal Server Error"`, 4xx messages kept (deliberate, client-facing). Documented in `docs/1-guides/4-server/5-error-handling.md`.
 
-### [BUG] Helmet HSTS "isSecure" check reads response headers instead of request headers
+### ✅ FIXED — [BUG] Helmet HSTS "isSecure" check reads response headers instead of request headers
 - **Severity**: P2
 - **File**: packages/alepha/src/server/core/providers/ServerHelmetProvider.ts:202-205
 - **Detail**: `response.headers["x-forwarded-proto"] === "https"` — that's a request header; responses never have it, so HSTS keys off isProduction() alone (emitted on plain-HTTP prod; never on HTTPS non-prod). Fix: read the request. Related (P3): default-CSP branch tests `Object.keys(csp).length === 0` but csp always has `directives` — `defaultCspDirectives()` unreachable; `{directives:{}}` emits an empty CSP header.
 
-### [BUG] Compression clobbers existing `Vary`; static precompressed files send no `Vary` at all
+### ✅ FIXED — [BUG] Compression clobbers existing `Vary`; static precompressed files send no `Vary` at all
 - **Severity**: P2
 - **File**: packages/alepha/src/server/core/providers/ServerCompressProvider.ts:257; static/providers/ServerStaticProvider.ts:155-164
 - **Detail**: `response.headers.vary = "accept-encoding"` overwrites route-set Vary (cache poisoning). Static serves `.br`/`.gz` with long cache-control, **no Vary: Accept-Encoding**, and the same ETag for all encodings — shared caches can hand brotli to non-brotli clients; 304 revalidation can't distinguish. Fix: append to Vary; per-encoding ETags in static.
 
-### [BUG] Compress streaming path has no backpressure and crashes on client cancel
+### ✅ FIXED — [BUG] Compress streaming path has no backpressure and crashes on client cancel
 - **Severity**: P2
 - **File**: packages/alepha/src/server/core/providers/ServerCompressProvider.ts:197-233
 - **Detail**: `createFlushingCompressStream` uses flowing-mode `reader.on("data")` + `controller.enqueue` regardless of desiredSize — slow client + large SSR stream buffers unbounded. If the output is cancelled, enqueue throws inside the 'data' handler with no try/catch → uncaught. Fix: pull/cancel, respect desiredSize, guard enqueue.
@@ -633,7 +651,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/server/auth/primitives/$auth.ts:464-478
 - **Detail**: `execute.push(allowInsecureRequests)` unconditional, disabling openid-client's HTTPS-only enforcement in production — a misconfigured `http://` issuer silently sends client secrets/auth codes cleartext. Fix: only when `!alepha.isProduction()`.
 
-### [UNFINISHED] `$proxy` "dynamic target" is evaluated once at startup
+### ✅ FIXED — [UNFINISHED] `$proxy` "dynamic target" is evaluated once at startup
 - **Severity**: P2
 - **File**: packages/alepha/src/server/proxy/providers/ServerProxyProvider.ts:32-33
 - **Detail**: `target: () => ...` documented as runtime resolution, but `createProxy` calls it exactly once in configure; every request uses the frozen string. Also `// TODO: Add retry functionality` in $proxy.ts:218. Related P2: proxy forwards all inbound headers verbatim including `host` and hop-by-hop headers (`connection`, upstream `content-length`) — classic proxies strip these.
@@ -643,22 +661,22 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/server/rate-limit/providers/ServerRateLimitProvider.ts:164-177,201-255
 - **Detail**: All three declared in RateLimitOptions and carried through, but checkLimit only calls the built-in IP generateKey and nothing decrements based on response status (no onResponse hook). Silent no-ops. Implement or remove.
 
-### [UNFINISHED] `remote.schema()` targets a route that doesn't exist
+### ✅ FIXED — [UNFINISHED] `remote.schema()` targets a route that doesn't exist
 - **Severity**: P2
 - **File**: packages/alepha/src/server/links/providers/RemotePrimitiveProvider.ts:90-101
 - **Detail**: Fetches `GET {url}/api/_links/${name}/schema`, but the only schema route is `POST /api/_links/schemas`. Nothing calls remote.schema — dead *and* broken, with a TODO inside. Remove or repoint.
 
-### [UNFINISHED] `FileLike.stream()` from HttpClient throws "Not implemented"
+### ✅ FIXED — [UNFINISHED] `FileLike.stream()` from HttpClient throws "Not implemented"
 - **Severity**: P2
 - **File**: packages/alepha/src/server/core/services/HttpClient.ts:350-353
 - **Detail**: File-typed responses return a FileLike whose `stream()` throws AlephaError("Not implemented") even though `response.body` is right there. Any consumer piping a downloaded file to a bucket breaks. Implement as `() => response.body` with a consumed guard.
 
-### [BUG] Node query parser drops valueless keys — diverges from the web adapter
+### ✅ FIXED — [BUG] Node query parser drops valueless keys — diverges from the web adapter
 - **Severity**: P2
 - **File**: packages/alepha/src/server/core/providers/ServerProvider.ts:104-121
 - **Detail**: Hand-rolled parser only records a pair when `eqIdx > start`, so `?flag` is dropped on Node while URLSearchParams yields `{flag: ""}` on Bun/workerd. Fix: bare key → `""`. (Related P3: repeated keys last-win on both adapters — `z.array` query schemas unreachable via standard encoding.)
 
-### [BUG] Static file metadata frozen at boot — stale ETag/Last-Modified after file changes
+### ✅ FIXED — [BUG] Static file metadata frozen at boot — stale ETag/Last-Modified after file changes
 - **Severity**: P2
 - **File**: packages/alepha/src/server/static/providers/ServerStaticProvider.ts:135-137,178-185
 - **Detail**: stat/etag/lastModified/.gz-.br existence computed once at startup. Changed files serve 304s indefinitely; deleted files → raw 500s (stream error) instead of 404; files added after boot 404. Acceptable for immutable dist, but unenforced/undocumented. At minimum map ENOENT → 404.

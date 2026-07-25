@@ -43,6 +43,7 @@ export class ServerRequestParser {
       ...partialRawRequest,
     } as ServerRequestData;
     const self = this;
+    let requestId: string | undefined;
     return {
       method: rawRequest.method,
       url: rawRequest.url,
@@ -58,7 +59,12 @@ export class ServerRequestParser {
       reply: this.alepha.inject(ServerReply, { lifetime: "transient" }),
       // ---------------------------------------------------------------------------------------------------------------
       get requestId() {
-        return self.getRequestId(rawRequest);
+        // Memoised per request: the getter used to mint a fresh randomUUID on
+        // every access, so the id in the log line, the id in the error body
+        // and the ids read by middleware were all different — nothing could
+        // be correlated.
+        requestId ??= self.getRequestId(rawRequest);
+        return requestId;
       },
       get ip() {
         return self.getRequestIp(rawRequest);

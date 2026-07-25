@@ -193,14 +193,21 @@ export class ServerHelmetProvider {
   protected readonly onResponse = $hook({
     on: "server:onResponse",
     priority: "first",
-    handler: ({ response }) => {
+    handler: ({ request, response }) => {
       if (this.options.disabled) {
         return;
       }
 
       // this check is important. Only add HSTS on HTTPS requests.
+      //
+      // Read from the REQUEST: `x-forwarded-proto` is what the proxy told us
+      // about the inbound connection. Testing it on the response — which
+      // never carries it — made the check collapse to `isProduction()`, so
+      // HSTS went out over plain HTTP in production and never went out over
+      // HTTPS anywhere else.
       const isSecure =
-        response.headers["x-forwarded-proto"] === "https" ||
+        request.headers["x-forwarded-proto"] === "https" ||
+        request.protocol === "https" ||
         this.options.isSecure ||
         this.alepha.isProduction();
 

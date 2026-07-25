@@ -202,21 +202,62 @@ export class ServerCompressProvider {
     });
     const reader = Readable.fromWeb(input);
 
+    // `settled` gates every controller call: once the consumer has gone away
+    // (cancel) or the stream has ended, touching the controller throws — and
+    // it used to throw from inside a 'data' listener, where nothing could
+    // catch it.
+    let settled = false;
+
+    const teardown = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      reader.destroy();
+      compressor.destroy();
+    };
+
     return new ReadableStream<Uint8Array>({
       start(controller) {
         compressor.on("data", (chunk: Buffer) => {
-          controller.enqueue(new Uint8Array(chunk));
+          if (settled) {
+            return;
+          }
+          try {
+            controller.enqueue(new Uint8Array(chunk));
+          } catch {
+            // Consumer cancelled mid-stream.
+            teardown();
+            return;
+          }
+          // Backpressure: stop pulling from the source while the consumer is
+          // behind. Without this a slow client plus a large SSR stream
+          // buffered without bound. `pull` resumes us.
+          if ((controller.desiredSize ?? 1) <= 0) {
+            reader.pause();
+          }
         });
 
         compressor.on("end", () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
           controller.close();
         });
 
         compressor.on("error", (err) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
           controller.error(err);
         });
 
         reader.on("data", (chunk: Buffer) => {
+          if (settled) {
+            return;
+          }
           compressor.write(chunk);
           // Force flush after each chunk for streaming
           // Cast to any because flush() exists on zlib streams but not in Transform type
@@ -231,12 +272,24 @@ export class ServerCompressProvider {
         });
 
         reader.on("end", () => {
-          compressor.end();
+          if (!settled) {
+            compressor.end();
+          }
         });
 
         reader.on("error", (err) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
           controller.error(err);
         });
+      },
+      pull() {
+        reader.resume();
+      },
+      cancel() {
+        teardown();
       },
     });
   }

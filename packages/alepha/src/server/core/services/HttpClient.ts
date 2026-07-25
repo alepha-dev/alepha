@@ -404,7 +404,19 @@ export class HttpClient {
       size: Number(response.headers.get("Content-Length") ?? 0),
       lastModified: Date.now(),
       stream: () => {
-        throw new AlephaError("Not implemented");
+        // `response.body` was right there — throwing here broke every
+        // consumer piping a downloaded file straight into a bucket. A body
+        // can only be read once, so say so instead of returning a stream
+        // that silently yields nothing.
+        if (response.bodyUsed) {
+          throw new AlephaError(
+            "This response body has already been consumed; stream() can only be called once.",
+          );
+        }
+        if (!response.body) {
+          throw new AlephaError("This response has no body to stream.");
+        }
+        return response.body;
       },
       arrayBuffer: async () => {
         return await response.arrayBuffer();

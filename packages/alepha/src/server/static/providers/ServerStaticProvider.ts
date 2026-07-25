@@ -152,13 +152,22 @@ export class ServerStaticProvider {
         return;
       }
 
+      // The response body depends on Accept-Encoding when a precompressed
+      // sibling exists, so it MUST vary on it — without this a shared cache
+      // can hand a brotli body to a client that never asked for brotli.
+      let chosenEncoding = "";
       const encoding = headers["accept-encoding"];
+      if (hasBr || hasGzip) {
+        reply.headers.vary = "accept-encoding";
+      }
       if (encoding) {
         if (hasBr && encoding.includes("br")) {
           reply.headers["content-encoding"] = "br";
+          chosenEncoding = "br";
           path += ".br";
         } else if (hasGzip && encoding.includes("gzip")) {
           reply.headers["content-encoding"] = "gzip";
+          chosenEncoding = "gzip";
           path += ".gz";
         }
       }
@@ -175,9 +184,16 @@ export class ServerStaticProvider {
         }
       }
 
-      reply.headers.etag = etag;
+      // Distinct per encoding: identity, gzip and brotli are different
+      // bytes, and one shared ETag made 304 revalidation unable to tell them
+      // apart.
+      const variantEtag = chosenEncoding
+        ? `${etag.slice(0, -1)}-${chosenEncoding}"`
+        : etag;
+
+      reply.headers.etag = variantEtag;
       if (
-        headers["if-none-match"] === etag ||
+        headers["if-none-match"] === variantEtag ||
         headers["if-modified-since"] === lastModified
       ) {
         reply.status = 304;
@@ -189,7 +205,15 @@ export class ServerStaticProvider {
         stream.on("open", () => {
           resolve(stream);
         });
-        stream.on("error", (err) => {
+        stream.on("error", (err: NodeJS.ErrnoException) => {
+          // Metadata is captured once at boot, so a file deleted afterwards
+          // still routes here — and a raw stream error surfaced as a 500.
+          // A missing file is a 404.
+          if (err?.code === "ENOENT") {
+            reply.status = 404;
+            resolve(undefined);
+            return;
+          }
           reject(err);
         });
       });

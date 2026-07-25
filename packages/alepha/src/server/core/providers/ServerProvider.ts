@@ -114,6 +114,11 @@ export class ServerProvider {
           const value = qs.slice(eqIdx + 1, i);
           // Only decode if necessary (contains % or +)
           query[this.fastDecode(key)] = this.fastDecode(value);
+        } else if (eqIdx === -1 && i > start) {
+          // A bare `?flag` with no '='. This used to be dropped entirely,
+          // while URLSearchParams on Bun/workerd yields `{ flag: "" }` — the
+          // same request reached different handlers on different runtimes.
+          query[this.fastDecode(qs.slice(start, i))] = "";
         }
         start = i + 1;
         eqIdx = -1;

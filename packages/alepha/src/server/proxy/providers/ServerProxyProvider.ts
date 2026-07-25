@@ -29,15 +29,13 @@ export class ServerProxyProvider {
     }
 
     const path = options.path;
-    const target =
-      typeof options.target === "function" ? options.target() : options.target;
 
     if (!path.endsWith("/*")) {
       throw new AlephaError("Proxy path should end with '/*'");
     }
 
     // Extract base path without /*
-    const handler = this.createProxyHandler(target, options);
+    const handler = this.createProxyHandler(options.target, options);
 
     for (const method of routeMethods) {
       this.routerProvider.createRoute({
@@ -47,15 +45,25 @@ export class ServerProxyProvider {
       });
     }
 
-    this.log.info("Proxying", { path, target });
+    this.log.info("Proxying", {
+      path,
+      target:
+        typeof options.target === "function" ? "<dynamic>" : options.target,
+    });
   }
 
   public createProxyHandler(
-    target: string,
+    target: ProxyPrimitiveOptions["target"],
     options: Omit<ProxyPrimitiveOptions, "path">,
   ): ServerHandler {
     return async (request) => {
-      const url = new URL(target + request.url.pathname);
+      // Resolved PER REQUEST. The function form is documented as runtime
+      // resolution, but it used to be called exactly once during `configure`
+      // and every request then used that frozen string — so a target that
+      // depends on anything discovered after startup never changed.
+      const resolved = typeof target === "function" ? target() : target;
+
+      const url = new URL(resolved + request.url.pathname);
       if (request.url.search) {
         url.search = request.url.search;
       }

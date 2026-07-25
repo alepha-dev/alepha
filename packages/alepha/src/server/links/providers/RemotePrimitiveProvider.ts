@@ -87,18 +87,6 @@ export class RemotePrimitiveProvider {
       serviceAccount: options.serviceAccount,
       proxy: !!options.proxy,
       internal: !proxy.noInternal,
-      schema: async (opts) => {
-        const { authorization, name } = opts;
-        return await fetch(`${url}${linkPath}/${name}/schema`, {
-          headers: new Headers(
-            authorization
-              ? {
-                  authorization,
-                }
-              : {},
-          ),
-        }).then((it) => it.json()); // TODO: use schema validation for response
-      },
       links: async (opts) => {
         const { authorization } = opts;
         const remoteApi = await this.fetchLinks.run({
@@ -212,11 +200,6 @@ export interface ServerRemote {
    * Links fetcher.
    */
   links: (args: { authorization?: string }) => Promise<ApiRegistryResponse>;
-
-  /**
-   * Fetches schema for the remote service.
-   */
-  schema: (args: { name: string; authorization?: string }) => Promise<any>;
 
   /**
    * Force a default access token provider when not provided.
