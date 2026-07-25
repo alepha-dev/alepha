@@ -30,6 +30,11 @@ export const $retry = (options?: RetryMiddlewareOptions): Middleware => {
 
   alepha.events.on("stop", () => {
     appAbortController?.abort();
+    // Cleared, not just aborted: `??=` below would keep reusing an aborted
+    // controller after a stop→start cycle, and every retry would throw
+    // RetryCancelError immediately for the rest of the process. In-flight
+    // retries already hold the signal, so they still see the abort.
+    appAbortController = undefined;
   });
 
   return createMiddleware({
@@ -154,6 +159,9 @@ export class RetryPrimitive<
 
     this.alepha.events.on("stop", () => {
       this.appAbortController?.abort();
+      // See the middleware above: an aborted controller must not survive into
+      // the next start, or every retry cancels instantly.
+      this.appAbortController = undefined;
     });
   }
 

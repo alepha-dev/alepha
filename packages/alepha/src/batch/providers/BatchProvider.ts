@@ -242,8 +242,6 @@ export class BatchProvider {
 
     // CAUTION: Do not log.debug/info here as it may cause infinite loops if logging is batched
 
-    context.itemStates.set(id, itemState);
-
     // 4. Get or create the partition state
     if (!context.partitions.has(partitionKey)) {
       context.partitions.set(partitionKey, {
@@ -253,7 +251,10 @@ export class BatchProvider {
     }
     const partition = context.partitions.get(partitionKey)!;
 
-    // 5. Check maxQueueSize before adding
+    // 5. Check maxQueueSize BEFORE registering the item state. Registering
+    // first and then throwing left an entry the caller has no id for: it
+    // joined no partition, stayed "pending" forever, and the map grew on
+    // every rejected push — so sustained backpressure leaked memory.
     if (
       context.options.maxQueueSize !== undefined &&
       partition.itemIds.length >= context.options.maxQueueSize
@@ -262,6 +263,8 @@ export class BatchProvider {
         `Batch queue size exceeded for partition '${partitionKey}' (max: ${context.options.maxQueueSize})`,
       );
     }
+
+    context.itemStates.set(id, itemState);
 
     // 6. Add item ID to partition
     partition.itemIds.push(id);

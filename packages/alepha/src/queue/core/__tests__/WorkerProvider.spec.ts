@@ -364,6 +364,106 @@ describe("WorkerProvider", () => {
       await app.stop();
     });
 
+    test("should round-trip a payload through the wire format", async () => {
+      // `push` decoded an already-runtime payload and the worker decoded it
+      // again — two decodes, no encode. `$topic` gets this right (encode at
+      // publish, decode at receive); here anything whose encoded form differs
+      // from its runtime form round-tripped only by luck of JSON.stringify.
+      const received: Array<{ id: string; at: string }> = [];
+
+      const schema = z.object({
+        id: z.text(),
+        at: z.string().meta({ format: "date-time" }),
+      });
+
+      class TestService {
+        queue = $queue({
+          name: "roundtrip",
+          schema,
+          handler: async (msg) => {
+            received.push(msg.payload as { id: string; at: string });
+          },
+        });
+      }
+
+      const app = await createTestApp({ workerInterval: 5 });
+      app.with(TestService);
+      const service = app.inject(TestService);
+      await app.start();
+
+      const sent = { id: "a1", at: "2026-07-25T10:00:00.000Z" };
+      await service.queue.push(sent);
+
+      const deadline = Date.now() + 2000;
+      while (received.length === 0 && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 10));
+      }
+
+      expect(received).toEqual([sent]);
+
+      await app.stop();
+    });
+
+    test("should keep polling after a pop() failure", async () => {
+      // A transient backend error (a Redis blip) used to escape the worker
+      // loop entirely: the .catch logged "crashed" and decremented
+      // workersRunning, so at the default concurrency of 1 polling stopped
+      // for good and queued work silently stopped being processed.
+      let popCalls = 0;
+      const processed: string[] = [];
+
+      class FlakyQueueProvider extends MemoryQueueProvider {
+        public override async pop(name: string) {
+          popCalls++;
+          if (popCalls <= 2) {
+            throw new Error("backend unavailable");
+          }
+          return super.pop(name);
+        }
+      }
+
+      class TestService {
+        queue = $queue({
+          name: "flaky",
+          schema: payloadSchema,
+          handler: async (msg) => {
+            processed.push(msg.payload.id);
+          },
+        });
+      }
+
+      const app = Alepha.create();
+      app.store.mut(queueWorkerOptions, () => ({
+        concurrency: 1,
+        interval: 5,
+        maxInterval: 20,
+      }));
+      app.with({ provide: WorkerProvider, use: TestWorkerProvider });
+      app.with({ provide: QueueProvider, use: FlakyQueueProvider });
+      app.with(TestService);
+
+      const workerProvider = app.inject(TestWorkerProvider);
+      const service = app.inject(TestService);
+      await app.start();
+
+      // Let the failing polls happen first.
+      await new Promise((r) => setTimeout(r, 50));
+
+      // The worker must still be alive to pick this up.
+      expect(workerProvider.workersRunning).toBe(1);
+
+      await service.queue.push({ id: "after-blip", count: 1 });
+
+      const deadline = Date.now() + 2000;
+      while (processed.length === 0 && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 10));
+      }
+
+      expect(processed).toEqual(["after-blip"]);
+
+      await app.stop();
+    });
+
     test("should handle abort signal during wait", async () => {
       class TestService {
         queue = $queue({

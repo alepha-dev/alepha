@@ -9,9 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-25**: 131 findings closed — 120 fixed across sixteen passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
+> **Update 2026-07-25**: 138 findings closed — 127 fixed across eighteen passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
 >
-> **Remaining: 138 open — 0 P0 · 0 P1 · 55 P2 · 83 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
+> **Remaining: 131 open — 0 P0 · 0 P1 · 51 P2 · 80 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -317,6 +317,22 @@ CI had been intermittently red for days, hitting a *different* concurrency test 
 **Correction.** An earlier draft of this section listed `PaymentService` over-refund and `$job` cancel race as still-outstanding flakes. They are not: each was fixed by the commit immediately after the run that caught it — `fe563ef65` and `91c7f1dd6` for the two payments failures (the eighth and tenth passes, labelled "CI follow-up" above), and `1352f016a` for the cancel race. Re-verified here under contention: the payments spec ran 22× (10 sequential + 12 at 4-way parallelism, 550 test executions) and the jobs spec 8× at 4-way parallelism, all clean.
 
 That is the standing pattern in this repo: CI catches a concurrency bug that local runs cannot, and the next commit fixes it. Every historical race failure listed above has been resolved. There is no known outstanding flake.
+
+### Eighteenth pass — 2026-07-25 (queue, topic, retry, batch)
+
+Seven findings whose shared shape is *silently stops working* — nothing throws where anyone can see it.
+
+| Area | Fix |
+|------|-----|
+| queue/WorkerProvider | **A single `pop()` failure killed background processing for good.** `getNextMessage` was unguarded, so one transient backend error (a Redis blip) escaped the worker loop into the `.catch` that logs "crashed" and decrements `workersRunning` — at the default concurrency of 1 the queue stopped being polled entirely, with nothing to restart it but a local `push()`. The fetch is now guarded and backs off on the existing interval schedule. |
+| topic/TopicProvider | `waitForMessage` no longer hangs forever. The subscribe call sat in an un-awaited async IIFE with no catch, so a rejection was swallowed and neither `resolve` nor `reject` ever ran — and the timeout was armed only *after* subscribe resolved, so there was no deadline to rescue the caller (verified: the test hit vitest's 10s limit). The timeout is armed first, subscribe failures reject, and a retained message delivered synchronously from inside `subscribe` no longer leaks its subscription. |
+| retry/RetryProvider | **A success that lands late is a success.** After the handler returned, elapsed time was re-checked and `RetryTimeoutError` thrown — discarding a result whose side effects were already committed, so an outer layer (`$job`) re-ran work that had already completed. `maxDuration` bounds *retrying*; it no longer turns slowness into duplicate execution. A failing handler that exceeds it still times out. |
+| retry/$retry | The app-level `AbortController` is cleared on stop, not merely aborted. `??=` kept reusing the aborted one, so after a stop→start cycle every retry threw `RetryCancelError` immediately for the rest of the process. Both the middleware and the primitive had it. |
+| batch/BatchProvider | `maxQueueSize` rejection no longer leaks. The item state was registered before the check threw, so the entry stayed `pending` forever with no id the caller could use — the map grew on every rejected push, i.e. sustained backpressure leaked memory. Verified: 5 rejected pushes left 5 orphans. |
+| queue/$queue | `push` encodes and the worker decodes, the pairing `$topic.publishMessage` already uses. It used to `decode` an already-runtime payload, so nothing ever encoded. **No observable change today** — probed `encode` vs `decode` across dates, defaults, optionals and nested objects and they are byte-identical with the current codec — so this closes a latent trap rather than a live bug. |
+| queue (docs) | The module JSDoc and `$consumer` advertised "retry mechanisms with exponential backoff", "dead letter queues" and built-in retry. None exists at this layer, and `$queue.ts` itself correctly documents at-most-once. All three sources now say so and point at `$job`; the workerd variant additionally notes that Cloudflare Queues' own broker-level retry/DLQ is configured on the binding, not by this module. |
+
+Still open in this cluster (websocket/room, a separate concern): room connections invisible to graceful stop, headless `$room` engines never evicted, no liveness heartbeat, client `subscribe` map overwriting handlers.
 
 Per-module detail follows. Line numbers reference the tree as it stood when each finding was written (`main` @ 6c7ec9400 for the original passes); the fix passes have since moved code, so treat every line number as a starting hint, not an address — locate by symbol name.
 
@@ -968,7 +984,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/queue/core/providers/WorkerdWorkerProvider.ts:37
 - **Detail**: Base registers `handler: (msg) => consumer.handler.run(msg)` (pipeline-wrapped); workerd override pushes `consumer.options` whose handler is the raw options handler. Middleware (`$retry`/`$lock` in `use`) runs on Node but not Cloudflare. Fix: mirror the base wrapping.
 
-### [BUG] Worker polling loop dies permanently on a `pop()` error
+### ✅ FIXED — [BUG] Worker polling loop dies permanently on a `pop()` error
 - **Severity**: P2
 - **File**: packages/alepha/src/queue/core/providers/WorkerProvider.ts:131-156, 200-212
 - **Detail**: `processMessage` catches handler errors, but `getNextMessage` does not — a throw from `provider.pop()` (Redis blip) escapes the while loop into the .catch that logs "Worker crashed" and decrements workersRunning. With default concurrency 1, polling stops entirely; recovery only when local code calls `push()` (wakeUp). Fix: try/catch around getNextMessage with backoff.
@@ -978,12 +994,12 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/websocket/providers/NodeWebSocketServerProvider.ts:803, 823-843
 - **Detail**: `handleMessage` takes `roomId = parsed.roomId || this.roomIds[0]` from the client frame with no `isInRoom` check, and `reply()` fans out to `options.roomId || roomId` via the cross-instance bus. A client in room A can address any room B per-frame. Cloudflare explicitly forbids cross-room reply (assertReplyRoom throws) — security hole and Node/CF divergence. Fix: validate frame roomId against joined rooms (or drop frame-level roomId like CF).
 
-### [BUG] BatchProvider: `maxQueueSize` rejection leaks the item state
+### ✅ FIXED — [BUG] BatchProvider: `maxQueueSize` rejection leaks the item state
 - **Severity**: P2
 - **File**: packages/alepha/src/batch/providers/BatchProvider.ts:245-264
 - **Detail**: `push()` does `itemStates.set(id, itemState)` before the maxQueueSize check throws; the caller never gets the id, the item joins no partition, stays "pending" forever — map grows on every rejected push under backpressure. Fix: check before set, or delete before throwing.
 
-### [BUG] TopicProvider.waitForMessage: subscribe failure hangs the caller forever
+### ✅ FIXED — [BUG] TopicProvider.waitForMessage: subscribe failure hangs the caller forever
 - **Severity**: P2
 - **File**: packages/alepha/src/topic/core/providers/TopicProvider.ts:131-170
 - **Detail**: Un-awaited async IIFE inside `new Promise`; if `subscribe` rejects, the rejection is swallowed and neither resolve nor reject is called — caller awaits forever, no timeout armed (created after subscribe). Secondary: retained message delivered synchronously resolves before `ref.clear` is assigned, leaking the subscription. Fix: try/catch → reject; arm timeout first.
@@ -1018,7 +1034,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/websocket/interfaces/WebSocketInterfaces.ts:116-119
 - **Detail**: No code reads `options.provider`; always registers with the injected WebSocketServerProvider. Remove or wire up.
 
-### [UNFINISHED] `alepha/queue` module docs promise features `$queue` explicitly does not have
+### ✅ FIXED — [UNFINISHED] `alepha/queue` module docs promise features `$queue` explicitly does not have
 - **Severity**: P3
 - **File**: packages/alepha/src/queue/core/index.ts:24-28 (and index.workerd.ts:45-49; $consumer.ts:22-23, 83)
 - **Detail**: Module JSDoc lists "Retry mechanisms with exponential backoff", "Dead letter queues", "Batch processing"; `$consumer` claims built-in retry/DLQ. None exists at this layer — `$queue.ts` correctly says at-most-once, use `$job`. Correct these generated-reference sources.
@@ -1028,17 +1044,17 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/topic/core/primitives/$topic.ts:281, 292
 - **Detail**: `mqtt: (this.options as any).mqtt` in publish and subscribe — not in TopicPrimitiveOptions, no augmentation in-tree. Declare or drop.
 
-### [BUG] `$queue.push` runs `codec.decode` on an already-runtime payload (double decode)
+### ✅ FIXED — [BUG] `$queue.push` runs `codec.decode` on an already-runtime payload (double decode)
 - **Severity**: P3
 - **File**: packages/alepha/src/queue/core/primitives/$queue.ts:251-266 vs providers/WorkerProvider.ts:224-229
 - **Detail**: `push` serializes `payload: codec.decode(schema, payload)` and processMessage decodes again. `$topic.publishMessage` correctly encodes at publish / decodes at receive. Asymmetric wire formats (dates, binary) only round-trip by luck of JSON.stringify. Fix: encode at push.
 
-### [RECO] RetryProvider: success after `maxDuration` is reported as failure
+### ✅ FIXED — [RECO] RetryProvider: success after `maxDuration` is reported as failure
 - **Severity**: P2
 - **File**: packages/alepha/src/retry/providers/RetryProvider.ts:148-155
 - **Detail**: After the handler *succeeds*, elapsed-time is checked and RetryTimeoutError thrown, discarding the successful result though side effects are committed — outer layers ($job) will re-run an operation that already completed; converts slowness into duplicate execution. Return the result once succeeded (maxDuration should bound *retrying*), or flag the tradeoff in docs.
 
-### [RECO] `$retry` aborted controller persists across app restart
+### ✅ FIXED — [RECO] `$retry` aborted controller persists across app restart
 - **Severity**: P3
 - **File**: packages/alepha/src/retry/primitives/$retry.ts:29-49, 150-171
 - **Detail**: `appAbortController ??= new AbortController()` + stop listener aborts it; after stop→start cycle the controller is still aborted (`??=` won't replace), so every retry throws RetryCancelError immediately. Reset on start (or null on stop).

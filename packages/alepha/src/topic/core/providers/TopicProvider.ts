@@ -135,36 +135,62 @@ export abstract class TopicProvider {
   ): Promise<TopicMessage<T>> {
     const filter = options.filter ?? (() => true);
 
+    const timeoutDuration = options.timeout ?? [10, "seconds"];
+
     return new Promise((resolve, reject) => {
-      const ref: { timeout?: Timeout; clear?: () => void } = {};
+      const ref: {
+        timeout?: Timeout;
+        clear?: () => unknown;
+        settled?: boolean;
+      } = {};
 
-      (async () => {
-        const clear = await this.subscribe(name, (raw) => {
-          const message = this.parseMessage<T>(schema, raw);
-          if (!filter(message)) {
-            return;
-          }
+      const settle = (finish: () => void) => {
+        if (ref.settled) {
+          return;
+        }
+        ref.settled = true;
+        ref.timeout?.clear();
+        ref.clear?.();
+        finish();
+      };
 
-          ref.timeout?.clear();
-          if (ref.clear) {
-            ref.clear();
-          }
-          resolve(message);
-        });
-
-        ref.clear = clear;
-
-        const timeoutDuration = options.timeout ?? [10, "seconds"];
-
-        ref.timeout = this.dateTimeProvider.createTimeout(() => {
-          clear();
+      // Armed BEFORE subscribing. It used to be created only after
+      // `subscribe` resolved, so a slow or hanging broker left the caller
+      // with no deadline at all.
+      ref.timeout = this.dateTimeProvider.createTimeout(() => {
+        settle(() =>
           reject(
             new TopicTimeoutError(
               name,
               this.dateTimeProvider.duration(timeoutDuration).asMilliseconds(),
             ),
-          );
-        }, timeoutDuration);
+          ),
+        );
+      }, timeoutDuration);
+
+      void (async () => {
+        try {
+          const clear = await this.subscribe(name, (raw) => {
+            const message = this.parseMessage<T>(schema, raw);
+            if (!filter(message)) {
+              return;
+            }
+            settle(() => resolve(message));
+          });
+
+          ref.clear = clear;
+
+          // A retained message can be delivered synchronously from inside
+          // `subscribe`, i.e. before `clear` existed — unsubscribe now so the
+          // subscription does not leak.
+          if (ref.settled) {
+            await clear();
+          }
+        } catch (error) {
+          // Previously swallowed: neither resolve nor reject ran and the
+          // caller awaited forever.
+          settle(() => reject(error));
+        }
       })();
     });
   }

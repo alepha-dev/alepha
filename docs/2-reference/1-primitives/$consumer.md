@@ -18,8 +18,11 @@ can process messages from the same queue.
 - Seamless integration with any $queue primitive
 - Full type safety inherited from queue schema
 - Automatic worker management for background processing
-- Built-in error handling and retry mechanisms
 - Support for multiple consumers per queue for horizontal scaling
+
+Delivery is **at-most-once** — a handler error or a crash loses the
+message. There is no retry and no dead-letter queue at this layer; use
+`$job` (alepha/api/jobs) for work that must not be lost.
 
 **Common Use Cases**
 - Email sending and notification services

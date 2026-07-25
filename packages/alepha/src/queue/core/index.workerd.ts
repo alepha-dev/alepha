@@ -38,13 +38,17 @@ declare module "alepha" {
 /**
  * Asynchronous message processing with automatic worker management.
  *
+ * Delivery is **at-most-once** at this layer: a message is popped before the
+ * handler runs, so a handler error or a crash loses it. Alepha adds no retry
+ * and no dead-letter queue on top. **For work that must not be lost, use
+ * `$job` (alepha/api/jobs)** — a durable, DB-backed outbox over this
+ * transport. (Cloudflare Queues has its own broker-level retry/DLQ, configured
+ * on the binding, not by this module.)
+ *
  * **Features:**
  * - Background job queues with type-safe payloads
  * - Queue consumer handlers
  * - Automatic worker threads for non-blocking processing
- * - Retry mechanisms with exponential backoff
- * - Dead letter queues for failed messages
- * - Batch processing support
  * - Configurable concurrency and worker pools
  * - Providers: Memory (dev), Redis (production), Cloudflare Queue (workerd)
  *

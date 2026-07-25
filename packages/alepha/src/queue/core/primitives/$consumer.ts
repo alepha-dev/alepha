@@ -19,8 +19,11 @@ import type { QueuePrimitive } from "./$queue.ts";
  * - Seamless integration with any $queue primitive
  * - Full type safety inherited from queue schema
  * - Automatic worker management for background processing
- * - Built-in error handling and retry mechanisms
  * - Support for multiple consumers per queue for horizontal scaling
+ *
+ * Delivery is **at-most-once** — a handler error or a crash loses the
+ * message. There is no retry and no dead-letter queue at this layer; use
+ * `$job` (alepha/api/jobs) for work that must not be lost.
  *
  * **Common Use Cases**
  * - Email sending and notification services
@@ -79,8 +82,10 @@ export interface ConsumerPrimitiveOptions<T extends TSchema>
    * **Queue Integration Benefits**:
    * - Type safety: Consumer handler gets fully typed message payloads
    * - Schema validation: Messages are validated before reaching the consumer
-   * - Error handling: Failed messages can be retried or moved to dead letter queues
    * - Monitoring: Queue metrics include consumer processing statistics
+   *
+   * Note: a failed message is NOT retried and does not go to a dead-letter
+   * queue — it is lost. Use `$job` when that is unacceptable.
    *
    * @example
    * ```ts

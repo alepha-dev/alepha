@@ -365,6 +365,27 @@ describe("RetryProvider", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
+  test("should return a success that lands after maxDuration", async () => {
+    // The handler committed its side effects and returned a value; throwing
+    // RetryTimeoutError here discarded that result, and an outer layer
+    // (`$job`) would then re-run work that had already completed. maxDuration
+    // bounds RETRYING, not a call that already succeeded.
+    const handler = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      return "committed";
+    });
+
+    const result = await retryProvider.retry({
+      handler,
+      max: 5,
+      maxDuration: [50, "milliseconds"],
+      backoff: 10,
+    });
+
+    expect(result).toBe("committed");
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
   // Bug #7 (Medium): onError not called on final attempt
   test("should call onError on the final failed attempt", async () => {
     const handler = vi.fn(() => {

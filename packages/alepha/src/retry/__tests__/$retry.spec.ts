@@ -16,6 +16,34 @@ describe("$retry", () => {
     await alepha.stop();
   });
 
+  test("should still work after a stop/start cycle", async () => {
+    // The app-level controller was created with `??=` and only ever aborted
+    // on stop, never replaced — so after stop→start every retry threw
+    // RetryCancelError immediately and the middleware was dead for the rest
+    // of the process.
+    class Dummy {
+      calls = 0;
+      work = $pipeline({
+        use: [$retry({ max: 3, backoff: 0 })],
+        handler: () => {
+          this.calls++;
+          return "ok";
+        },
+      });
+    }
+
+    const dummy = alepha.inject(Dummy);
+    await alepha.start();
+
+    expect(await dummy.work.run()).toBe("ok");
+
+    await alepha.stop();
+    await alepha.start();
+
+    expect(await dummy.work.run()).toBe("ok");
+    expect(dummy.calls).toBe(2);
+  });
+
   test("should retry handler up to max retries", async () => {
     class Dummy {
       inc = 0;

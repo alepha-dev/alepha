@@ -255,7 +255,13 @@ export class QueuePrimitive<T extends TSchema> extends Primitive<
           this.name,
           JSON.stringify({
             headers: {},
-            payload: this.alepha.codec.decode(this.options.schema, payload),
+            // Encode on the way out, decode on the way in — the pairing
+            // `$topic.publishMessage` already uses. This used to `decode` an
+            // already-runtime payload, so the worker's decode was the second
+            // one and nothing ever encoded. With the current codec the two
+            // are identical, so this changes no bytes today; it stops a
+            // future encoding change from silently corrupting queue payloads.
+            payload: this.alepha.codec.encode(this.options.schema, payload),
           }),
         ),
       ),

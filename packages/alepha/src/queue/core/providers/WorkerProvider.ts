@@ -131,7 +131,24 @@ export class WorkerProvider {
       const workerLoop = async () => {
         while (this.workersRunning > 0) {
           this.log.trace(`Worker n-${i} is checking for new messages`);
-          const next = await this.getNextMessage();
+
+          // A backend blip must not end the loop. `getNextMessage` talks to
+          // the queue provider (Redis, Cloudflare), so a transient error here
+          // is expected — and letting it escape killed the worker for good:
+          // at the default concurrency of 1 the queue silently stopped being
+          // polled, with nothing to restart it but a local `push()`.
+          let next: NextMessage | undefined;
+          try {
+            next = await this.getNextMessage();
+          } catch (error) {
+            this.log.error(
+              `Worker n-${i} failed to fetch the next message; backing off`,
+              error,
+            );
+            await this.waitForNextMessage(i);
+            continue;
+          }
+
           if (next) {
             this.workerIntervals[i] = 0;
             await this.processMessage(next);

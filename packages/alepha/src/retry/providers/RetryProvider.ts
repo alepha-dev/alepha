@@ -145,14 +145,13 @@ export class RetryProvider {
         }
 
         try {
-          const result = await handler(...args);
-
-          // Check for timeout after handler execution
-          if (this.dateTime.nowMillis() - startTime >= maxDurationMs) {
-            throw new RetryTimeoutError(maxDurationMs);
-          }
-
-          return result;
+          // A success is a success, however late. `maxDuration` bounds how
+          // long we keep RETRYING — it used to be re-checked here and throw,
+          // discarding a result whose side effects were already committed, so
+          // an outer layer (`$job`) re-ran work that had already completed.
+          // Turning slowness into duplicate execution is worse than being
+          // late.
+          return await handler(...args);
         } catch (err) {
           lastError = err as Error;
 

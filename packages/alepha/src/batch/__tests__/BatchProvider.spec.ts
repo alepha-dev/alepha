@@ -724,6 +724,27 @@ describe("BatchProvider", () => {
     );
   });
 
+  test("should not leak item state when maxQueueSize rejects", () => {
+    // The state was registered before the size check threw, so the caller
+    // never got the id, the item joined no partition and stayed "pending"
+    // forever — the map grew on every rejected push under backpressure.
+    const handler = vi.fn();
+    const context = batchProvider.createContext(alepha, {
+      handler,
+      maxQueueSize: 2,
+    });
+
+    batchProvider.push(context, "item-1");
+    batchProvider.push(context, "item-2");
+    const sizeAtLimit = context.itemStates.size;
+
+    for (let i = 0; i < 5; i++) {
+      expect(() => batchProvider.push(context, `rejected-${i}`)).toThrow();
+    }
+
+    expect(context.itemStates.size).toBe(sizeAtLimit);
+  });
+
   test("should enforce maxQueueSize per partition", () => {
     const handler = vi.fn();
     const context = batchProvider.createContext(alepha, {
