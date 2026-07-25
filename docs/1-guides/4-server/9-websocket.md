@@ -6,7 +6,7 @@ Alepha provides real-time, bidirectional messaging through the `$channel` and `$
 
 ## Quick Start
 
-```typescript
+```typescript check
 // channels/ChatChannels.ts
 import { z } from "alepha";
 import { $channel } from "alepha/websocket";
@@ -98,7 +98,7 @@ export function Chat() {
 
 `$channel` declares the "vocabulary" for a WebSocket endpoint — its path and the message shapes flowing in both directions. Channels are just schema definitions; they must be defined as a class property so Alepha can register them.
 
-```typescript
+```typescript check
 import { z } from "alepha";
 import { $channel } from "alepha/websocket";
 

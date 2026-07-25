@@ -113,7 +113,7 @@ requiring a manual mapping layer.
 Alepha does not use decorators (like NestJS) or file-system magic (like Next.js). It uses
 **Primitives** -- factory functions starting with `$` that live directly in your class properties.
 
-```typescript
+```typescript check
 import { z } from "alepha";
 import { $action } from "alepha/server";
 import { $entity, $repository, db } from "alepha/orm";

@@ -4,7 +4,7 @@ Alepha auto-generates OpenAPI 3.0 specifications from your `$action` definitions
 
 ## Setup
 
-```typescript
+```typescript check
 import { $swagger } from "alepha/server/swagger";
 
 class App {

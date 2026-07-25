@@ -2,7 +2,7 @@
 
 `$bucket` provides a file storage abstraction that works across multiple backends: local filesystem, S3-compatible stores, Cloudflare R2, Vercel Blob, Azure Blob Storage, and in-memory (for testing).
 
-```typescript
+```typescript check
 import { $bucket } from "alepha/bucket";
 ```
 
@@ -10,7 +10,7 @@ import { $bucket } from "alepha/bucket";
 
 Declare a bucket as a class property with optional MIME type and size constraints:
 
-```typescript
+```typescript check
 import { $bucket } from "alepha/bucket";
 
 class MediaService {

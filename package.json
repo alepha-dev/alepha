@@ -43,6 +43,7 @@
     "typecheck": "yarn workspaces foreach -Apt -j 4 run typecheck",
     "test": "yarn vitest run",
     "check:deps": "yarn workspaces foreach -Apt exec depcheck .",
+    "check:docs": "yarn workspaces foreach -Apt run check:docs",
     "check:i18n": "yarn workspaces foreach -Apt run check:i18n",
     "check:migrations": "yarn workspaces foreach -Apt run check:migrations",
     "build": "yarn workspaces foreach -Apt run build",

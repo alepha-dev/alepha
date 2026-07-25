@@ -6,7 +6,7 @@ Import `z` from `alepha`, not from `zod` — a schema built with the raw library
 
 ## Basic Usage
 
-```typescript
+```typescript check
 import { z } from "alepha";
 
 const userSchema = z.object({
@@ -266,7 +266,7 @@ z.json()            // Record<string, any> — convenience for JSON blobs
 
 Alepha validates data through `alepha.codec.validate()`. This is the same validation used internally by `$action`, `$env`, and other primitives.
 
-```typescript
+```typescript check
 import { Alepha, z } from "alepha";
 
 const alepha = Alepha.create();

@@ -6,7 +6,7 @@ Alepha provides two primitives for configuration: `$env` for environment variabl
 
 `$env` reads environment variables with schema validation, type coercion, and defaults. Import it from `"alepha"`.
 
-```typescript
+```typescript check
 import { $env, z } from "alepha";
 
 class App {
@@ -67,7 +67,7 @@ Alepha caches parsed env results per schema. Multiple services using the same `z
 
 ### Defining an atom
 
-```typescript
+```typescript check
 import { $atom, z } from "alepha";
 
 const appConfig = $atom({

@@ -6,7 +6,7 @@ import type { Static, TSchema } from "./TypeProvider.ts";
  *
  * Trimming / lowercasing / defaults / unknown-key stripping all live in the
  * schema itself now (zod), so this is a thin wrapper over `schema.parse`.
- * No typebox `Compile`, no `eval` — safe inside Cloudflare Workers.
+ * No compile step, no `eval` — safe inside Cloudflare Workers.
  */
 export class SchemaValidator {
   public validate<T extends TSchema>(schema: T, value: unknown): Static<T> {

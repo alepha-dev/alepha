@@ -108,6 +108,7 @@ export default (alepha: Alepha) => {
           await run([
             `yarn typecheck`,
             `yarn check:deps`,
+            `yarn check:docs`,
             `yarn check:i18n`,
             `yarn check:migrations`,
           ]);
@@ -117,6 +118,10 @@ export default (alepha: Alepha) => {
         }
 
         await run(`yarn copy`);
+        // After `copy`: docs/2-reference and docs/3-packages are generated
+        // from source JSDoc, so checking before it would validate a stale
+        // copy and miss a doc-breaking comment change.
+        await run(`yarn check:docs`);
         await run(`yarn check:deps`);
         await run(`yarn typecheck`);
         await assertServicesUp();

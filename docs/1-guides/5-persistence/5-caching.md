@@ -2,7 +2,7 @@
 
 `$cache` provides a caching system with two modes: automatic function result caching and manual key-value store operations. In-memory by default, with Redis support for distributed environments.
 
-```typescript
+```typescript check
 import { $cache } from "alepha/cache";
 ```
 

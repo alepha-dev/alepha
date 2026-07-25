@@ -31,7 +31,7 @@ Your own modules (accounting, notifications, fulfilment) listen via `$hook` — 
 
 ## Registering the module
 
-```typescript
+```typescript check
 import { Alepha } from "alepha";
 import { AlephaApiPayments } from "alepha/api/payments";
 

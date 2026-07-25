@@ -130,7 +130,7 @@ serves `sitemap.xml` from your `$page` primitives — live at request time, and
 prerendered to `dist/public/sitemap.xml` at build time (so static deployments get
 the file too):
 
-```typescript
+```typescript check
 import { $sitemap } from "alepha/react/sitemap";
 
 class AppRouter {

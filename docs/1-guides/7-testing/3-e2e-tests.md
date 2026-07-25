@@ -42,7 +42,7 @@ npx playwright test
 
 Place test files in the `e2e/` directory:
 
-```typescript
+```typescript check
 // e2e/home.spec.ts
 import { test, expect } from "@playwright/test";
 

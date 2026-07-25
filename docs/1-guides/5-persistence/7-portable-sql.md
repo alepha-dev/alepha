@@ -2,7 +2,7 @@
 
 Repository methods cover most queries, but analytics work — grouping by day, measuring elapsed time, bounding a rolling window — needs raw SQL. Written by hand, that SQL is not portable.
 
-```typescript
+```typescript check
 import { $inject, z } from "alepha";
 import { $repository, DatabaseProvider, SqlExpressionProvider } from "alepha/orm";
 import { sql } from "drizzle-orm";

@@ -73,7 +73,7 @@ On the server, all languages are loaded at startup for SSR.
 
 ## useI18n Hook
 
-```typescript
+```typescript check
 import { useI18n } from "alepha/react/i18n";
 ```
 

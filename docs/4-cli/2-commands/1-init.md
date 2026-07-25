@@ -158,7 +158,7 @@ A TypeScript configuration tuned for modern development:
 
 Only created when `--tailwind` is set:
 
-```typescript
+```typescript check
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 

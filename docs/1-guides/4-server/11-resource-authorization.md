@@ -2,7 +2,7 @@
 
 `$secure` answers *what kind of user is this?* — issuer, roles, permissions. It cannot answer *does this user own row 42?*, because ownership is a property of the data, not of the token.
 
-```typescript
+```typescript check
 import { $inject } from "alepha";
 import { $action } from "alepha/server";
 import { $owns, $secure, OwnedResourceProvider } from "alepha/security";

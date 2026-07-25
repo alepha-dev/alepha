@@ -12,7 +12,7 @@ It's also highly recommended in full-stack mode to make 2 modules: `api` (server
 
 ## Basic Usage
 
-```typescript
+```typescript check
 import { $module } from "alepha";
 
 class PaymentService { /* ... */ }

@@ -81,7 +81,7 @@ const schemas = this.products.getProduct.schema();
 
 `$remote` defines a connection to an external service. Use it when services run as separate deployments.
 
-```typescript
+```typescript check
 import { $remote } from "alepha/server/links";
 import { $env, z } from "alepha";
 

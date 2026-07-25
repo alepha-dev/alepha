@@ -6,7 +6,7 @@ Alepha provides `$atom` for defining typed, validated state and `useStore` for c
 
 Atoms are defined at the module level using `$atom`. Each atom has a unique name, a Zod schema, and an optional default value.
 
-```typescript
+```typescript check
 import { $atom, z } from "alepha";
 
 const counter = $atom({
@@ -77,7 +77,7 @@ const [prefs, setPrefs] = useStore(userPrefs, { theme: "light" });
 
 `useStore` re-renders whenever *any* part of the atom mutates, even fields the component never reads. For an atom with several independent fields, that means unrelated updates trigger renders you don't need. `useSelector` subscribes to a derived slice instead, and only re-renders when that slice actually changes.
 
-```typescript
+```typescript check
 import { $atom, z } from "alepha";
 import { useSelector } from "alepha/react";
 
@@ -179,7 +179,7 @@ const uiPrefs = $atom({
 
 To make `persist: "cookie"` work, register the cookies module once, in code shared between your server and browser entry points:
 
-```typescript
+```typescript check
 import { Alepha } from "alepha";
 import { AlephaServerCookies } from "alepha/server/cookies";
 
@@ -196,7 +196,7 @@ Corrupted or invalid stored values -- a hand-edited cookie, a schema that change
 
 Some values aren't state on their own -- they're computed from other state. `$computed` defines a read-only value derived from one or more atoms (or other computed values), with a static list of dependencies:
 
-```typescript
+```typescript check
 import { $atom, $computed, z } from "alepha";
 
 const cart = $atom({
@@ -292,7 +292,7 @@ Use it for state that must never leave the server -- internal request-scoped dat
 
 ## Example: Feature Flags
 
-```typescript
+```typescript check
 import { $atom, z } from "alepha";
 import { useStore } from "alepha/react";
 

@@ -4,7 +4,7 @@ Alepha uses the `$page` primitive to define React routes. It is a superset of `$
 
 ## Setup
 
-```typescript
+```typescript check
 import { $page } from "alepha/react/router";
 ```
 
@@ -327,7 +327,7 @@ function Nav() {
 
 Determine if a route is active and get anchor props for navigation links.
 
-```typescript
+```typescript check
 import { useActive } from "alepha/react/router";
 
 function NavLink({ href, label }: { href: string; label: string }) {
@@ -352,7 +352,7 @@ const { isActive } = useActive({ href: "/docs", startWith: true });
 
 Manage typed query parameters with a schema.
 
-```typescript
+```typescript check
 import { useQueryParams } from "alepha/react/router";
 import { z } from "alepha";
 
@@ -423,7 +423,7 @@ the `alepha.react.browser.options` atom.
 `<Link>` is still available as a thin wrapper around `<a>` that wires the
 router via `onClick` directly:
 
-```typescript
+```typescript check
 import { Link } from "alepha/react/router";
 
 <Link href="/about">About</Link>

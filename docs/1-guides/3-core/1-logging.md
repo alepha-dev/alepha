@@ -4,7 +4,7 @@ Alepha provides structured logging via the `$logger` primitive from `alepha/logg
 
 ## Basic Usage
 
-```typescript
+```typescript check
 import { $logger } from "alepha/logger";
 
 class UserService {

@@ -43,7 +43,7 @@ If Surge is not installed, the deploy command installs it automatically as a dev
 
 Set a custom Surge domain in `alepha.config.ts`:
 
-```typescript
+```typescript check
 import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
@@ -74,7 +74,7 @@ The `200.html` file serves as the SPA fallback for hosting providers that suppor
 Add the `$sitemap` primitive to a router. It is prerendered to
 `dist/public/sitemap.xml` alongside the static build:
 
-```typescript
+```typescript check
 import { $sitemap } from "alepha/react/sitemap";
 
 class AppRouter {

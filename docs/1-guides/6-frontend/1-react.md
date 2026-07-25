@@ -54,7 +54,7 @@ All core React hooks are imported from `"alepha/react"`.
 
 Returns the current Alepha instance from context. Provides access to the DI container, event system, and store.
 
-```typescript
+```typescript check
 import { useAlepha } from "alepha/react";
 
 function MyComponent() {
@@ -113,7 +113,7 @@ The type parameter `<CountApi>` provides full type safety -- method names, param
 
 Manages async operations with loading state, error handling, cancellation, debounce, and polling.
 
-```typescript
+```typescript check
 import { useAction } from "alepha/react";
 ```
 
@@ -210,7 +210,7 @@ alepha.events.on("react:action:error", ({ error }) => {
 
 Subscribe to Alepha events inside React components. Subscriptions are automatically cleaned up on unmount.
 
-```typescript
+```typescript check
 import { useEvents } from "alepha/react";
 
 function StatusBar() {

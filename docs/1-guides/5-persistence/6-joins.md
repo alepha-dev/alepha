@@ -2,7 +2,7 @@
 
 Relations between tables are not declared on `$entity`. Instead, use the `with` option in repository query methods to perform joins at query time.
 
-```typescript
+```typescript check
 import { z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
 ```

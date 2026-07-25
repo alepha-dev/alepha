@@ -87,13 +87,13 @@ API_KEY=secret123
 
 These are available in your code via `process.env` or the `$env` primitive:
 
-```typescript
-import { $env, t } from "alepha";
+```typescript check
+import { $env, z } from "alepha";
 
 class MyService {
-  protected readonly env = $env(t.object({
-    DATABASE_URL: t.string(),
-    API_KEY: t.string(),
+  protected readonly env = $env(z.object({
+    DATABASE_URL: z.text(),
+    API_KEY: z.text(),
   }));
 
   connect() {
@@ -157,7 +157,7 @@ The first time you run `dev`, Alepha ensures your project has the necessary conf
 
 This means you can literally start with just a `src/main.ts` file:
 
-```typescript
+```typescript check
 // src/main.ts
 import { Alepha } from "alepha";
 

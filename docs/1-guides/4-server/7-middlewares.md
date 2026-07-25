@@ -88,7 +88,7 @@ These are registered with `alepha.with()`.
 
 The `$cors` primitive configures Cross-Origin Resource Sharing. Import from `alepha/server/cors`.
 
-```typescript
+```typescript check
 import { $cors } from "alepha/server/cors";
 
 class App {
@@ -120,7 +120,7 @@ Responses always carry `Vary: Origin`, since the allowed origin is reflected fro
 
 The `$rateLimit` primitive limits request rates per client. Import from `alepha/server/rate-limit`.
 
-```typescript
+```typescript check
 import { $rateLimit } from "alepha/server/rate-limit";
 
 class App {
@@ -144,7 +144,7 @@ class App {
 
 Apply rate limits directly on an action:
 
-```typescript
+```typescript check
 import { $action } from "alepha/server";
 
 class App {
@@ -196,7 +196,7 @@ Serves metrics in Prometheus text format at `/metrics`.
 
 Register multiple modules together:
 
-```typescript
+```typescript check
 import { Alepha } from "alepha";
 import { $cors } from "alepha/server/cors";
 import { $rateLimit } from "alepha/server/rate-limit";

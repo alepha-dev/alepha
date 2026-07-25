@@ -6,7 +6,7 @@ Alepha maps errors to HTTP responses through the `HttpError` class. Unhandled er
 
 Throw an `HttpError` to return a specific HTTP status code and message:
 
-```typescript
+```typescript check
 import { HttpError } from "alepha/server";
 
 throw new HttpError({ status: 404, message: "Product not found" });
@@ -16,7 +16,7 @@ throw new HttpError({ status: 404, message: "Product not found" });
 
 Alepha provides error subclasses for common HTTP statuses:
 
-```typescript
+```typescript check
 import {
   BadRequestError,
   UnauthorizedError,
@@ -146,7 +146,7 @@ Use the `server:onError` hook below to ship the unsanitized error to your logger
 
 Use the `server:onError` hook to intercept errors across all routes:
 
-```typescript
+```typescript check
 import { $hook } from "alepha";
 import { $logger } from "alepha/logger";
 

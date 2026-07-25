@@ -36,7 +36,7 @@ One step, plus env.
 
 **1. Import the module** in your web module:
 
-```ts
+```ts check
 import { $module } from "alepha";
 import { AlephaSigil } from "@alepha/sigil";
 

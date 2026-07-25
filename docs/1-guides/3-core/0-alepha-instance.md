@@ -8,7 +8,7 @@ Unlike tools that rely on global side-effects, Alepha keeps everything contained
 
 Use the static factory method to initialize your app:
 
-```typescript
+```typescript check
 import { Alepha } from "alepha";
 
 const alepha = Alepha.create();

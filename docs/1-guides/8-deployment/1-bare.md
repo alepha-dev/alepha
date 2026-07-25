@@ -48,7 +48,7 @@ The `--runtime=bun` flag uses Bun-specific export conditions during bundling.
 
 Set the target in `alepha.config.ts` to avoid passing flags:
 
-```typescript
+```typescript check
 import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({

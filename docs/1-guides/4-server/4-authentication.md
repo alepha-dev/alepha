@@ -81,7 +81,7 @@ issuer = $issuer({
 
 `$realm` is a higher-level primitive that wraps `$issuer` with built-in user management: registration, login, sessions, password handling, and identity providers.
 
-```typescript
+```typescript check
 import { $realm } from "alepha/api/users";
 
 class App {

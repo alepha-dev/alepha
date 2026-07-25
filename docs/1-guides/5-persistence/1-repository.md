@@ -8,7 +8,7 @@ Alepha main target is PostgreSQL, but SQLite are also supported.
 
 The API is mostly database-agnostic, but some features (e.g. certain column types or operators) may be database-specific.
 
-```typescript
+```typescript check
 import { z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
 ```
@@ -17,7 +17,7 @@ import { $entity, $repository, db } from "alepha/orm";
 
 An entity maps directly to a database table. The schema uses Alepha's `t` type system combined with `db` helpers for database-specific column types.
 
-```typescript
+```typescript check
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 

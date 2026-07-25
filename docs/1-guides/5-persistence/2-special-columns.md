@@ -2,7 +2,7 @@
 
 The `db` object from `alepha/orm` provides helper methods for database-specific column types. These extend the base `t` type system with attributes that control how columns behave at the database level.
 
-```typescript
+```typescript check
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 ```
@@ -107,7 +107,7 @@ When the column is omitted during insert, the database uses the default value.
 
 `db.ref()` creates a foreign key reference to another entity's column.
 
-```typescript
+```typescript check
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
@@ -151,7 +151,7 @@ Available actions: `"cascade"`, `"restrict"`, `"no action"`, `"set null"`, `"set
 
 ## Full Example
 
-```typescript
+```typescript check
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 

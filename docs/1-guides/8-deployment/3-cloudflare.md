@@ -134,7 +134,7 @@ This is identical on Node, Docker, and Cloudflare — no platform-specific timin
 
 ## Configuration
 
-```typescript
+```typescript check
 import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({

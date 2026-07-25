@@ -12,5 +12,5 @@ Validates + coerces a value against a zod schema.
 
 Trimming / lowercasing / defaults / unknown-key stripping all live in the
 schema itself now (zod), so this is a thin wrapper over `schema.parse`.
-No typebox `Compile`, no `eval` — safe inside Cloudflare Workers.
+No compile step, no `eval` — safe inside Cloudflare Workers.
 
