@@ -25,6 +25,24 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
  */
 export class PackCommand {
   protected readonly log = $logger();
+
+  /**
+   * Make a package name safe to use as a filename.
+   *
+   * A scoped name like `@acme/app` carries a path separator, so the archive
+   * path pointed into a directory that does not exist and tar failed.
+   * `@acme/app` → `acme-app`.
+   *
+   * `platform-lib`'s `NamingService` does the same thing for cloud resource
+   * names, but `cli/core` must not depend on `platform-lib` — the dependency
+   * runs the other way.
+   */
+  protected slugify(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
 
@@ -68,7 +86,10 @@ export class PackCommand {
 
       const tag = flags.tag ?? "latest";
       const outputDir = flags.output ?? root;
-      const filename = `${project}-${tag}.tar.gz`;
+      // Slugified: a scoped name like `@acme/app` carries a path separator,
+      // so the archive path pointed into a directory that does not exist and
+      // tar failed. `@acme/app` → `acme-app`.
+      const filename = `${this.slugify(project)}-${tag}.tar.gz`;
       const outputPath = this.fs.join(outputDir, filename);
 
       // Include list: just `dist/` + `migrations/`. Everything else

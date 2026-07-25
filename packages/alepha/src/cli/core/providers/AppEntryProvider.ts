@@ -72,7 +72,12 @@ export class AppEntryProvider {
       appEntry.style = this.options.style;
     }
 
-    const srcFiles = await this.fs.ls(this.fs.join(root, "src"));
+    // `ls` is a raw readdir and throws ENOENT for a missing directory. A
+    // project that configures its entries explicitly has no reason to own a
+    // `src/`, and the raw errno says nothing about what the CLI wanted.
+    const srcFiles = await this.fs
+      .ls(this.fs.join(root, "src"))
+      .catch(() => [] as string[]);
 
     if (!appEntry.server) {
       // find in conventional locations

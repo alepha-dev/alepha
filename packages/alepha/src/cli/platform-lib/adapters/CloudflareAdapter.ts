@@ -662,7 +662,7 @@ export class CloudflareAdapter extends PlatformAdapter {
 
     await this.fs.mkdir(tmpDir, { recursive: true });
 
-    await run(`wrangler d1 export ${dbName} --remote --output=${sqlPath}`, {
+    await run(`wrangler d1 export ${dbName} --remote --output="${sqlPath}"`, {
       alias: `export D1 ${dbName} → ${sqlPath}`,
     });
 

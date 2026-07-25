@@ -128,6 +128,31 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   }
 
   /**
+   * A path counts as a directory when it was created explicitly or when a
+   * file was written beneath it — `writeFile` does not register parents.
+   */
+  protected isExistingDirectory(normalizedPath: string): boolean {
+    if (normalizedPath === "" || normalizedPath === "/") {
+      return true;
+    }
+
+    for (const dirPath of this.directories) {
+      const dir = this.normalizePath(dirPath);
+      if (dir === normalizedPath || dir.startsWith(`${normalizedPath}/`)) {
+        return true;
+      }
+    }
+
+    for (const filePath of this.files.keys()) {
+      if (this.normalizePath(filePath).startsWith(`${normalizedPath}/`)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Create a FileLike object from various sources.
    */
   public createFile(options: CreateFileOptions): FileLike {
@@ -310,9 +335,12 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     // If recursive, create parent directories
     if (options?.recursive) {
       const parts = normalizedPath.split("/").filter(Boolean);
-      let current = "";
+      // Keep the leading slash: rebuilding `/app/src` as `app/src` registered
+      // a key nothing else looks up, so `exists("/app/src")` said no — while
+      // the node provider reports every parent of a `mkdir -p`.
+      let current = normalizedPath.startsWith("/") ? "" : undefined;
       for (const part of parts) {
-        current = current ? `${current}/${part}` : part;
+        current = current === undefined ? part : `${current}/${part}`;
         this.directories.add(current);
       }
     }
@@ -324,6 +352,15 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   public async ls(path: string, options?: LsOptions): Promise<string[]> {
     const normalizedPath = this.normalizePath(path).replace(/\/$/, "");
     const entries = new Set<string>();
+
+    // Match the node provider, which is a raw readdir: a directory that does
+    // not exist is an error, not an empty listing. Returning `[]` here let
+    // callers that would crash in production pass their tests.
+    if (!this.isExistingDirectory(normalizedPath)) {
+      throw new AlephaError(
+        `ENOENT: no such file or directory, scandir '${path}'`,
+      );
+    }
 
     // Find files in the directory
     for (const filePath of this.files.keys()) {

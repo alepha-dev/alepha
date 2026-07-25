@@ -440,7 +440,7 @@ export class DbCommand {
       // node_modules bin and fails.
       const drizzleKit = this.utils.resolveBin("drizzle-kit");
       await this.utils.exec(
-        `node "${drizzleKit}" ${options.command} --config=${drizzleConfigJsPath}${flags}`,
+        `node "${drizzleKit}" ${options.command} --config="${drizzleConfigJsPath}"${flags}`,
         {
           global: true,
           env: {

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { dirname } from "node:path";
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -16,6 +16,15 @@ export class BuildStaticTask extends BuildTask {
   async run(ctx: BuildTaskContext): Promise<void> {
     if (ctx.options.target !== "static") {
       return;
+    }
+
+    // `--prebuilt` deploys have no live container to introspect
+    // (`ctx.alepha` is null in manifest mode), and this target needs one.
+    // Without the guard the build died on a TypeError naming nothing.
+    if (ctx.flags?.prebuilt) {
+      throw new AlephaError(
+        "Target 'static' does not support --prebuilt: it needs a live app to render its pages. Run the build without --prebuilt.",
+      );
     }
 
     const distDir = ctx.options.output?.dist ?? "dist";

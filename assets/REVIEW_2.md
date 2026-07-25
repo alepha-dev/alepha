@@ -9,9 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-25**: 122 findings closed — 111 fixed across fifteen passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
+> **Update 2026-07-25**: 131 findings closed — 120 fixed across sixteen passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
 >
-> **Remaining: 147 open — 0 P0 · 0 P1 · 64 P2 · 83 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
+> **Remaining: 138 open — 0 P0 · 0 P1 · 55 P2 · 83 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -283,6 +283,27 @@ Five findings whose common shape is a write or a schema that goes wrong without 
 | server/auth | `Referer` is parsed defensively. `new URL(referer)` threw on the non-URL values browsers legitimately send from sandboxed origins, so `GET /oauth/login` answered **500** (verified). |
 | server/auth | The token cookie lives as long as the *refresh* token. `expires_in` was used as a fallback Max-Age, and Google reports only `expires_in` (3600) alongside a long-lived refresh token — so the session cookie died after an hour. With no refresh expiry reported the `$cookie` default (30 days) now applies; `expires_in` is still used when there is no refresh token at all, where the session really does end with the access token. |
 | server/auth | The `fallback` object form works. `AccessToken` admits `{ token: () => Async<string> }` — the form the JSDoc example uses, passing a `$serviceAccount` — but the value was interpolated straight into the header, producing `Bearer [object Object]` (verified). |
+
+### Sixteenth pass — 2026-07-25 (cli)
+
+Nine of the ten open CLI findings. The tenth (`platform build`/`deploy` emitting configs with missing bindings) is left open deliberately: fixing it means resolving existing D1/KV ids from the Cloudflare API inside `build()`, which is a design change, not a patch, and cannot be tested without a mocked CF API.
+
+| Area | Fix |
+|------|-----|
+| cli/verify | `alepha verify` runs the tests of a project that uses the framework's own co-located convention. Gating on a `test/` directory alone meant `src/**/*.spec.ts` projects got a **green verify having executed zero tests** — worse than no verification, because it reports success. |
+| cli/gen | `gen env` and `gen openapi` exit non-zero on failure. Both caught everything, logged, and returned — and the CLI only exits non-zero when the handler throws, so a failed generation reported success to CI while writing nothing. |
+| cli/gen | `gen openapi` looks the swagger provider up **by name**. The user's container comes from Vite's SSR module graph, so a class imported in the CLI is a different object for the same source: `inject(class)` missed, silently built a *duplicate* CLI-graph provider, and the "Service not found" branch was unreachable. |
+| cli/build | `--image=1.3.4` names the image `<configured-tag>:1.3.4`, as the flag documents ("`-i=<version>` for specific version"). A bare value was taken as the image *name*, so it silently built `1.3.4:latest`. The explicit `:version` and full `name:tag` forms are unchanged. |
+| cli/build | `--prebuilt` with the `static` or `vercel` target fails with an explanation instead of a `TypeError`. `ctx.alepha` is null in manifest mode and neither task checked. |
+| cli/pack | The artifact name is slugified: `@acme/app` produced `@acme/app-latest.tar.gz`, whose path separator pointed tar at a directory that does not exist. |
+| cli/dev | Multi-app `dev` spawns the detected package manager (npm/pnpm/bun workspaces failed outright on the hardcoded `yarn`) and uses a shell on Windows, where the managers are `.cmd` shims. Ports are numbered over the **full** app list, so `--only api` no longer moves `api` from 5174 to 5173 — OAuth redirect URIs and client configs are pinned to those ports. |
+| cli/AppEntryProvider | A missing `src/` yields no candidates instead of a raw ENOENT. The conventional-locations scan ran even when the project configured its entries explicitly. |
+| cli/db + platform | Interpolated paths are quoted in the drizzle-kit and `wrangler d1 export` shell-outs. *No test:* both need a booted app with real providers to reach; the change is two characters and the neighbouring `sqlite3` line already quoted correctly. |
+
+Two `MemoryFileSystemProvider` divergences surfaced while writing these tests and are fixed with them — the memory provider was **more forgiving than the node one**, so a test could pass while production crashed:
+
+- `mkdir(path, { recursive: true })` rebuilt parents without the leading slash, registering `/app/src` as `app/src`, so `exists("/app/src")` said no. The existing recursive test used a *relative* path, which is why it never caught this.
+- `ls()` returned `[]` for a directory that does not exist, where the node provider (a raw readdir) throws ENOENT. This is exactly what hid the `AppEntryProvider` bug from its own test. Making it faithful broke nothing across 3,926 tests.
 
 Per-module detail follows. Line numbers reference the tree as it stood when each finding was written (`main` @ 6c7ec9400 for the original passes); the fix passes have since moved code, so treat every line number as a starting hint, not an address — locate by symbol name.
 
@@ -1577,12 +1598,12 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/cli/core/tasks/BuildClientTask.ts:121,131
 - **Detail**: `buildClient()` builds into `${distDir}/${publicDir}` (from `ctx.options.output`), but then calls `await this.postBuildCleanUpForIndexHtml();` with no argument, and that method defaults to `dist = "dist/public"`. With a customized `build.output.dist` or `output.public`, the cleanup reads `dist/public/.vite/manifest.json` which doesn't exist → the whole build fails (or silently rewrites the wrong tree if a stale `dist/public/` coexists). Fix: pass `opts.dist` through.
 
-### [BUG] `--image=<version>` builds an image named `<version>:latest` instead of `tag:<version>`
+### ✅ FIXED — [BUG] `--image=<version>` builds an image named `<version>:latest` instead of `tag:<version>`
 - **Severity**: P2
 - **File**: packages/alepha/src/cli/core/tasks/BuildDockerTask.ts:315-337
 - **Detail**: Docs promise `--image=1.3.4` → `tag:1.3.4`, but only a leading-colon value (`--image=:1.3.4`) maps to tag:version; a bare `--image=1.3.4` becomes `imageTag = "1.3.4:latest"` — the version is treated as the image *name*. Silently produces a wrongly-named image. No test covers the `--image` flag.
 
-### [BUG] `--prebuilt` with `vercel`/`static` targets crashes with a null dereference
+### ✅ FIXED — [BUG] `--prebuilt` with `vercel`/`static` targets crashes with a null dereference
 - **Severity**: P2
 - **File**: packages/alepha/src/cli/core/tasks/BuildVercelTask.ts:76; BuildStaticTask.ts:28
 - **Detail**: In prebuilt+manifest mode `ctx.alepha = (null) as unknown as Alepha`; BuildVercelTask and BuildStaticTask have no prebuilt guard: `alepha build -t vercel --prebuilt` reaches `ctx.alepha.primitives("scheduler")` → TypeError on null. Guard on `ctx.flags?.prebuilt` or reject the combination.
@@ -1592,17 +1613,17 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/cli/core/commands/db.ts:132
 - **Detail**: On drift the check prints `run 'alepha db migrations generate'` — but the subcommand is named `create`. Users and CI logs are told to run a command that doesn't exist. Rename the hint or add an alias.
 
-### [BUG] `gen env` / `gen openapi` swallow failures — exit code 0 on error
+### ✅ FIXED — [BUG] `gen env` / `gen openapi` swallow failures — exit code 0 on error
 - **Severity**: P2
 - **File**: packages/alepha/src/cli/core/commands/gen/env.ts:51-53; gen/openapi.ts:61-71
 - **Detail**: Both wrap the whole body in `try { … } catch (err) { this.log.error(…); }` and return normally. CLI only exits non-zero when the handler throws, so a failed generation in CI reports success while writing nothing. Rethrow after logging.
 
-### [BUG] `gen openapi` injects `ServerSwaggerProvider` by class identity across module graphs
+### ✅ FIXED — [BUG] `gen openapi` injects `ServerSwaggerProvider` by class identity across module graphs
 - **Severity**: P2
 - **File**: packages/alepha/src/cli/core/commands/gen/openapi.ts:31-33
 - **Detail**: `alepha` is the user's container loaded via Vite's SSR module graph, while `ServerSwaggerProvider` is imported from the CLI's own graph — distinct class objects (BuildCloudflareTask documents this and looks up by name string). `inject(class)` on a miss instantiates a fresh CLI-graph provider instead of throwing, so the "Service not found" branch is dead and apps get a duplicate provider. Use `alepha.inject("ServerSwaggerProvider")`.
 
-### [BUG] Paths with spaces break `db`/`export` shell-outs (unquoted interpolation)
+### ✅ FIXED — [BUG] Paths with spaces break `db`/`export` shell-outs (unquoted interpolation)
 - **Severity**: P2
 - **File**: packages/alepha/src/cli/core/commands/db.ts:443; platform-lib/adapters/CloudflareAdapter.ts:658
 - **Detail**: `node "${drizzleKit}" generate --config=${drizzleConfigJsPath}` quotes the binary but not the config path (contains project root, may have spaces) — the arg splits. Same for `wrangler d1 export ${dbName} --remote --output=${sqlPath}`. Quote every interpolated path.
@@ -1612,7 +1633,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/cli/platform-lib/adapters/CloudflareAdapter.ts:53-55,147-174
 - **Detail**: `build()` derives `DATABASE_URL`/`CLOUDFLARE_KV_ID` from `this.provisionedD1Id` / `provisionedKVIds`, populated only by `provision()` in the same process. Standalone `platform build`/`deploy` (platform.ts:516, 551) never call provision, so the generated `wrangler.jsonc` silently lacks the D1 binding (or gets `kv_namespaces: [{id: ""}]`), and deploy ships a worker with no database. Resolve existing resource IDs from the API in `build()`.
 
-### [BUG] `AppEntryProvider` crashes with raw ENOENT when `src/` is absent
+### ✅ FIXED — [BUG] `AppEntryProvider` crashes with raw ENOENT when `src/` is absent
 - **Severity**: P2
 - **File**: packages/alepha/src/cli/core/providers/AppEntryProvider.ts:75
 - **Detail**: `await this.fs.ls(join(root, "src"))` runs unconditionally even when custom entries are configured; `ls` is raw `readdir` and throws ENOENT for a missing dir. Guard with `fs.exists` or `.catch(() => [])`.
@@ -1622,7 +1643,7 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/cli/platform-lib/providers/GitHubSecretStore.ts:87-92
 - **Detail**: `set()` writes the plaintext secret to `/tmp/alepha-secret-${key}-${Date.now()}` — hardcoded /tmp, predictable name, default mode — before `gh secret set -f`. On shared machines any local user can read it (or pre-create the path). Write to `node_modules/.alepha/` or use `mkdtemp` + mode 0600. Also uses `Date.now()` (convention: DateTimeProvider).
 
-### [BUG] `alepha verify` skips tests for projects with co-located specs
+### ✅ FIXED — [BUG] `alepha verify` skips tests for projects with co-located specs
 - **Severity**: P2
 - **File**: packages/alepha/src/cli/core/commands/verify.ts:34-36
 - **Detail**: Tests gated on the existence of a `test/` directory only, but the framework supports co-located `src/**/*.spec.ts` — such a project silently gets a green verify with zero tests executed. Gate on `test/` OR a glob hit, or always run vitest with `--passWithNoTests`.
@@ -1632,12 +1653,12 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/cli/core/commands/gen/changelog.ts:26-31,221
 - **Detail**: `GitProvider.exec` uses `promisify(exec)` (true shell) with `` `git ${cmd}` ``, embedding raw flag values (`git log ${fromRef}..${toRef}`). A ref like `HEAD;rm -rf .` executes. The one ShellProvider bypass in the CLI. Route through ShellProvider or `execFile("git", [...])`.
 
-### [BUG] Multi-app `dev` hardcodes `yarn` and shifts ports under `--only`
+### ✅ FIXED — [BUG] Multi-app `dev` hardcodes `yarn` and shifts ports under `--only`
 - **Severity**: P2
 - **File**: packages/alepha/src/cli/core/commands/dev.ts:148,181
 - **Detail**: `spawnApp` always spawns `yarn alepha dev` regardless of detected package manager (npm/pnpm/bun fail; Windows `spawn("yarn")` without shell fails). Ports assigned `5173 + i` over the *filtered* list, so `--only api` gives `api` port 5173 even if it normally runs 5174 — OAuth redirects/client configs pinned to usual ports break.
 
-### [BUG] `pack` breaks for scoped package names
+### ✅ FIXED — [BUG] `pack` breaks for scoped package names
 - **Severity**: P2
 - **File**: packages/alepha/src/cli/core/commands/pack.ts:71-72,116
 - **Detail**: `filename = ${project}-${tag}.tar.gz` uses package name verbatim; `@acme/app` yields `@acme/app-latest.tar.gz` → tar targets a non-existent `@acme/` subdir and fails. Slugify (NamingService.slugify exists).

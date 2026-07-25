@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import type { CronProvider } from "alepha/scheduler";
 import { FileSystemProvider } from "alepha/system";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
@@ -22,6 +22,15 @@ export class BuildVercelTask extends BuildTask {
   async run(ctx: BuildTaskContext): Promise<void> {
     if (ctx.options.target !== "vercel") {
       return;
+    }
+
+    // `--prebuilt` deploys have no live container to introspect
+    // (`ctx.alepha` is null in manifest mode), and this target needs one.
+    // Without the guard the build died on a TypeError naming nothing.
+    if (ctx.flags?.prebuilt) {
+      throw new AlephaError(
+        "Target 'vercel' does not support --prebuilt: it needs a live app to collect its cron jobs and routes. Run the build without --prebuilt.",
+      );
     }
 
     const distDir = ctx.options.output?.dist ?? "dist";

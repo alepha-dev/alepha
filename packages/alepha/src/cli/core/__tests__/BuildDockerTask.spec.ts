@@ -349,4 +349,48 @@ describe("BuildDockerTask", () => {
       ).toBe(true);
     });
   });
+
+  describe("--image flag", () => {
+    // The flag documents itself as "-i=<version> for specific version", but a
+    // bare value was taken as the image NAME — `--image=1.3.4` produced an
+    // image called `1.3.4:latest`, silently misnamed.
+    const dockerOptions: BuildOptions = {
+      target: "docker",
+      runtime: "node",
+      docker: { image: { tag: "registry.example.com/app" } },
+    } as BuildOptions;
+
+    const buildWith = async (image: unknown) => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(
+        createCtx(fs, shell, dockerOptions, { flags: { image } as any }),
+      );
+
+      return shell.calls.map((it) => it.command).join("\n");
+    };
+
+    it("treats a bare value as the version", async () => {
+      expect(await buildWith("1.3.4")).toContain(
+        "registry.example.com/app:1.3.4",
+      );
+    });
+
+    it("still accepts the explicit :version form", async () => {
+      expect(await buildWith(":2.0.0")).toContain(
+        "registry.example.com/app:2.0.0",
+      );
+    });
+
+    it("still accepts a full name:tag value", async () => {
+      expect(await buildWith("other/img:9.9.9")).toContain("other/img:9.9.9");
+    });
+
+    it("defaults to latest with no value", async () => {
+      expect(await buildWith(true)).toContain(
+        "registry.example.com/app:latest",
+      );
+    });
+  });
 });

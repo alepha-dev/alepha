@@ -66,6 +66,17 @@ describe("MemoryFileSystemProvider", () => {
       expect(await fs.exists("a/b/c")).toBe(true);
     });
 
+    it("should create recursive directories from an absolute path", async () => {
+      // Parents were rebuilt without the leading slash, so `/app/src` was
+      // registered as `app/src` and `exists()` said no — diverging from the
+      // node provider, where `mkdir -p` makes every parent visible.
+      await fs.mkdir("/app/src/users", { recursive: true });
+
+      expect(await fs.exists("/app")).toBe(true);
+      expect(await fs.exists("/app/src")).toBe(true);
+      expect(await fs.exists("/app/src/users")).toBe(true);
+    });
+
     it("should throw EEXIST for duplicate non-recursive mkdir", async () => {
       await fs.mkdir("/dir");
       await expect(fs.mkdir("/dir")).rejects.toThrow("EEXIST");

@@ -329,11 +329,20 @@ CMD ["${command}", "index.js"]
       version = flagValue.slice(1);
       imageTag = `${imageConfig.tag}:${version}`;
     } else if (flagValue.includes(":")) {
+      // A full `name:tag` is taken verbatim.
       imageTag = flagValue;
       version = flagValue.split(":")[1];
     } else {
-      imageTag = `${flagValue}:latest`;
-      version = "latest";
+      // A bare value is a VERSION, as the flag documents ("-i=<version> for
+      // specific version"). It used to become the image *name*, so
+      // `--image=1.3.4` silently built `1.3.4:latest`.
+      if (!imageConfig?.tag) {
+        throw new AlephaError(
+          "Flag '--image=<version>' requires 'build.docker.image.tag' in config. Pass a full 'name:tag' to name the image explicitly.",
+        );
+      }
+      version = flagValue;
+      imageTag = `${imageConfig.tag}:${version}`;
     }
 
     const args: string[] = [];

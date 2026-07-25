@@ -121,31 +121,51 @@ export class DevCommand {
   }
 
   /**
+   * Assign each app its port and apply the `--only` filter.
+   *
+   * Ports come from the app's position in the FULL list, before filtering:
+   * an app has to keep the same port whether or not its siblings are running,
+   * because OAuth redirect URIs and client configs are pinned to it. Numbering
+   * the filtered list instead meant `--only api` moved `api` to 5173.
+   */
+  protected selectApps(
+    apps: Array<{ name: string; path: string }>,
+    only?: string,
+  ): Array<{ name: string; path: string; port: number }> {
+    const basePort = 5173;
+    const withPorts = apps.map((app, i) => ({ ...app, port: basePort + i }));
+
+    if (!only) {
+      return withPorts;
+    }
+
+    const filter = only.split(",").map((s) => s.trim().toLowerCase());
+    return withPorts.filter((app) => filter.includes(app.name.toLowerCase()));
+  }
+
+  /**
    * Run multiple apps in parallel with colored prefixed output.
    */
   protected async runMultiple(
-    _root: string,
+    root: string,
     apps: Array<{ name: string; path: string }>,
     flags: Record<string, unknown>,
   ): Promise<void> {
-    const only = flags.only as string | undefined;
+    const selected = this.selectApps(apps, flags.only as string | undefined);
 
-    if (only) {
-      const filter = only.split(",").map((s) => s.trim().toLowerCase());
-      apps = apps.filter((app) => filter.includes(app.name.toLowerCase()));
-    }
-
-    if (apps.length === 0) {
+    if (selected.length === 0) {
       this.log.warn("No apps found to run");
       return;
     }
 
     this.log.debug(
-      `Starting ${apps.length} apps: ${apps.map((a) => a.name).join(", ")}`,
+      `Starting ${selected.length} apps: ${selected.map((a) => a.name).join(", ")}`,
     );
 
-    const basePort = 5173;
-    const processes = apps.map((app, i) => this.spawnApp(app, basePort + i));
+    const packageManager = await this.pm.getPackageManager(root);
+    const processes = selected.map((app) =>
+      this.spawnApp(app, app.port, packageManager),
+    );
 
     // Handle graceful shutdown
     const cleanup = () => {
@@ -177,9 +197,18 @@ export class DevCommand {
   protected spawnApp(
     app: { name: string; path: string },
     port: number,
+    packageManager: "yarn" | "pnpm" | "npm" | "bun" = "yarn",
   ): ReturnType<typeof spawn> {
-    const proc = spawn("yarn", ["alepha", "dev"], {
+    // `yarn` was hardcoded, so npm/pnpm/bun workspaces failed outright. npm
+    // needs `run` before the script name; the others accept it bare.
+    const args =
+      packageManager === "npm" ? ["run", "alepha", "dev"] : ["alepha", "dev"];
+
+    const proc = spawn(packageManager, args, {
       cwd: app.path,
+      // Windows package managers are `.cmd` shims, which `spawn` cannot
+      // execute without a shell.
+      shell: process.platform === "win32",
       stdio: "inherit",
       env: {
         ...process.env,

@@ -1,7 +1,7 @@
-import { $inject, z } from "alepha";
+import { $inject, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { ServerSwaggerProvider } from "alepha/server/swagger";
+import type { ServerSwaggerProvider } from "alepha/server/swagger";
 import { FileSystemProvider } from "alepha/system";
 import { AlephaCliUtils } from "../../services/AlephaCliUtils.ts";
 
@@ -28,8 +28,14 @@ export class OpenApiCommand {
       });
 
       try {
+        // By NAME, not by class: `alepha` is the user's container built from
+        // Vite's SSR module graph, while a class imported here comes from the
+        // CLI's own graph — two distinct objects for the same source. On a
+        // miss `inject(class)` happily instantiates a fresh CLI-graph
+        // provider, so the app got a duplicate and the "Service not found"
+        // branch below was unreachable.
         const openapiProvider = alepha.inject(
-          ServerSwaggerProvider,
+          "ServerSwaggerProvider",
         ) as ServerSwaggerProvider;
 
         await alepha.events.emit("configure", alepha);
@@ -46,8 +52,9 @@ export class OpenApiCommand {
         }
 
         if (!json) {
-          this.log.error("No actions found to generate OpenAPI specification.");
-          return;
+          throw new AlephaError(
+            "No actions found to generate OpenAPI specification.",
+          );
         }
 
         if (flags.out) {
@@ -59,15 +66,19 @@ export class OpenApiCommand {
           this.log.info(JSON.stringify(json, null, 2));
         }
       } catch (err) {
+        // Rethrow: the CLI only exits non-zero when the handler throws, so
+        // logging and returning reported success to CI while writing nothing.
         const message = err instanceof Error ? err.message : String(err);
         if (message.includes("Service not found")) {
-          this.log.error(
+          throw new AlephaError(
             "Missing $swagger() primitive in your server configuration.",
+            { cause: err },
           );
-          return;
         }
 
-        this.log.error(`OpenAPI generation failed - ${message}`, err);
+        throw new AlephaError(`OpenAPI generation failed - ${message}`, {
+          cause: err,
+        });
       }
     },
   });

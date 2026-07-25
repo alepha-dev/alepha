@@ -1,4 +1,4 @@
-import { $inject, z } from "alepha";
+import { $inject, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -49,7 +49,12 @@ export class GenEnvCommand {
           this.log.info(dotEnvFile);
         }
       } catch (err) {
-        this.log.error("Failed to extract environment variables", err);
+        // Rethrow: the CLI only exits non-zero when the handler throws, so
+        // logging and returning reported success to CI while writing nothing.
+        throw new AlephaError(
+          `Failed to extract environment variables - ${err instanceof Error ? err.message : String(err)}`,
+          { cause: err },
+        );
       }
     },
   });
