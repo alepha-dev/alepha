@@ -737,6 +737,7 @@ export class ParameterProvider {
     defaultValue: unknown | null;
     currentValue: unknown | null;
     schema: Record<string, unknown> | null;
+    description: string | null;
   }> {
     let { current, next } = await this.loadCurrentAndNext(name);
 
@@ -782,6 +783,7 @@ export class ParameterProvider {
       defaultValue,
       currentValue,
       schema,
+      description: param?.options.description ?? null,
     };
   }
 

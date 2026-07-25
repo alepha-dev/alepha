@@ -3,6 +3,7 @@ import * as React from "react";
 void React;
 
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
+import type { ControlProps } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
@@ -53,7 +54,29 @@ import { ParameterSaveDialog } from "./parameter-save-dialog.tsx";
  */
 const parameterQuerySchema = z.object({ param: z.string().optional() });
 
-export function AdminParameters() {
+export interface AdminParametersProps {
+  /**
+   * Per-parameter field overrides, keyed by parameter name, forwarded to the
+   * generated form (same shape as `AutoForm`'s `fields`). This is how an app
+   * attaches a domain widget to a field the generic form cannot render well —
+   * a fare zone matrix, a colour picker, a code editor — without forking this
+   * panel. Reach nested fields through `objectProps.controlProps`.
+   *
+   * @example
+   * ```tsx
+   * <AdminParameters
+   *   fields={{
+   *     "ticketing.fares.catalog": {
+   *       payg: { objectProps: { controlProps: { zoneFareCents: { custom: ZoneMatrix } } } },
+   *     },
+   *   }}
+   * />
+   * ```
+   */
+  fields?: Record<string, Record<string, Partial<Omit<ControlProps, "input">>>>;
+}
+
+export function AdminParameters(props: AdminParametersProps = {}) {
   const client = useClient<AdminParameterController>();
   const { tr } = useI18n();
   const toast = useToast();
@@ -223,6 +246,7 @@ export function AdminParameters() {
       <ParameterEditorPane
         key={selected ?? "none"}
         name={selected}
+        fields={selected ? props.fields?.[selected] : undefined}
         reloadKey={reloadKey}
         onSaved={() => {
           setReloadKey((k) => k + 1);
@@ -428,6 +452,8 @@ const TreeNodeView = (props: TreeNodeViewProps) => {
 // ── Pane B: editor ───────────────────────────────────────────────────
 
 interface ParameterEditorPaneProps {
+  /** Per-field overrides for this parameter's generated form. */
+  fields?: Record<string, Partial<Omit<ControlProps, "input">>>;
   name: string | undefined;
   reloadKey: number;
   onSaved: () => void;
@@ -544,6 +570,8 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
     <>
       <ParameterEditorForm
         name={props.name}
+        fields={props.fields}
+        declaredDescription={data.description}
         schema={schema}
         initial={initial}
         schemaHash={data.current?.schemaHash}
@@ -599,6 +627,10 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
 };
 
 interface ParameterEditorFormProps {
+  /** Per-field overrides forwarded to AutoForm (domain widgets). */
+  fields?: Record<string, Partial<Omit<ControlProps, "input">>>;
+  /** `$parameter({ description })` as declared in code. */
+  declaredDescription?: string;
   name: string;
   schema: TObject;
   initial: Record<string, unknown>;
@@ -615,7 +647,10 @@ interface ParameterEditorFormProps {
 }
 
 const ParameterEditorForm = (props: ParameterEditorFormProps) => {
-  const { tr } = useI18n();
+  // `lang` is in the deps of every memo below on purpose: `tr` is a stable
+  // method on the injected provider, so switching language re-renders but
+  // would otherwise hand back the previously memoised (wrong-language) copy.
+  const { tr, lang } = useI18n();
   // Saving is a two-step flow: the AutoForm submit captures the edited content
   // and opens the save dialog, which collects tags before the version is
   // actually persisted via onSubmit.
@@ -632,8 +667,22 @@ const ParameterEditorForm = (props: ParameterEditorFormProps) => {
   );
   const title = useMemo(
     () => tr(`parameters.${props.name}`, { default: labelOf(props.name) }),
-    [props.name, tr],
+    [props.name, tr, lang],
   );
+  /**
+   * What this parameter IS, in order of preference: the dictionary
+   * (`parameters.<name>.desc`, so it can be translated and edited without a
+   * deploy), then the `description` declared on the `$parameter`, then the
+   * tree path as a last resort. A key like "reducedFactor" means nothing to
+   * an operator — this line is what turns the panel into documentation.
+   */
+  const description = useMemo(() => {
+    const key = `parameters.${props.name}.desc`;
+    const translated = tr(key, { default: "" });
+    if (translated && translated !== key) return translated;
+    return props.declaredDescription || undefined;
+  }, [props.name, props.declaredDescription, tr, lang]);
+
   const breadcrumb = useMemo(() => {
     const parts = props.name.split(".");
     parts.pop();
@@ -645,18 +694,21 @@ const ParameterEditorForm = (props: ParameterEditorFormProps) => {
         return tr(`parameters.${path}`, { default: segment });
       })
       .join(" / ");
-  }, [props.name, tr]);
+  }, [props.name, tr, lang]);
 
   return (
     <div className="flex min-h-0 flex-col">
       <AutoForm
         form={form}
+        fields={props.fields as never}
         fill
         card="rounded-none ring-0 border-y"
-        gridClassName="grid-cols-1 lg:grid-cols-2 xl:grid-cols-3"
+        // Two columns, not three: every field now carries help text under it,
+        // and a third of a row turns that help into an unreadable ribbon.
+        gridClassName="grid-cols-1 lg:grid-cols-2"
         icon="cog"
         title={title}
-        description={breadcrumb || undefined}
+        description={description ?? breadcrumb ?? undefined}
         i18nPrefix={`parameters.${props.name}`}
         headerAction={
           props.currentVersion != null ? (

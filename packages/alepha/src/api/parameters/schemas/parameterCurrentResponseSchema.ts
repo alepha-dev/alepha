@@ -11,6 +11,13 @@ export const parameterCurrentResponseSchema = z.object({
   defaultValue: z.json().optional(),
   currentValue: z.json().optional(),
   schema: z.json().optional(),
+  /**
+   * The `$parameter({ description })` of the registered primitive — what this
+   * setting IS, in the words of whoever declared it. Without it the admin UI
+   * can only show a prettified key ("ReducedFactor"), which tells an operator
+   * nothing.
+   */
+  description: z.text().optional(),
 });
 
 export type ParameterCurrentResponse = Static<

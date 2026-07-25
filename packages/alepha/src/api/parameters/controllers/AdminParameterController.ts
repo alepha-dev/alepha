@@ -119,6 +119,7 @@ export class AdminParameterController {
         defaultValue: result.defaultValue ?? undefined,
         currentValue: result.currentValue ?? undefined,
         schema: result.schema ?? undefined,
+        description: result.description ?? undefined,
       };
     },
   });
