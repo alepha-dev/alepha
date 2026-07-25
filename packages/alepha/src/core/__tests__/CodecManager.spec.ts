@@ -1,4 +1,10 @@
-import { $inject, Alepha, CodecManager, TypeBoxError, z } from "alepha";
+import {
+  $inject,
+  Alepha,
+  CodecManager,
+  SchemaValidationError,
+  z,
+} from "alepha";
 import { describe, expect, it } from "vitest";
 import { JsonSchemaCodec } from "../providers/JsonSchemaCodec.ts";
 import { SchemaCodec } from "../providers/SchemaCodec.ts";
@@ -470,7 +476,7 @@ describe("CodecManager", () => {
 
       expect(() =>
         codecManager.decode(schema, { age: "not a number" }),
-      ).toThrow(TypeBoxError);
+      ).toThrow(SchemaValidationError);
     });
 
     it("should decode arrays", () => {
@@ -725,7 +731,7 @@ describe("CodecManager", () => {
   });
 
   describe("error handling", () => {
-    it("should throw TypeBoxError on encoding validation failure", () => {
+    it("should throw SchemaValidationError on encoding validation failure", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
@@ -734,11 +740,11 @@ describe("CodecManager", () => {
       });
 
       expect(() => codecManager.encode(schema, { age: 200 })).toThrow(
-        TypeBoxError,
+        SchemaValidationError,
       );
     });
 
-    it("should throw TypeBoxError when validating invalid decoded data", () => {
+    it("should throw SchemaValidationError when validating invalid decoded data", () => {
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
 
@@ -750,7 +756,7 @@ describe("CodecManager", () => {
 
       expect(() =>
         codecManager.decode(schema, { email: "not-an-email" }),
-      ).toThrow(TypeBoxError);
+      ).toThrow(SchemaValidationError);
     });
 
     it("should throw error on invalid JSON string", () => {

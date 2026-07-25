@@ -1,9 +1,9 @@
 /**
  * TypeProvider — now a thin compatibility shim over `z` (zod 4).
  *
- * typebox is gone. `t` is just `z`, and the legacy `T*` type names are
- * re-aliased to their zod equivalents so existing call-sites keep compiling
- * while they are migrated to `z` / `Infer`.
+ * typebox is gone, and so is the `t` export that fronted it — use `z`. The
+ * legacy `T*` type NAMES survive as aliases of their zod equivalents so
+ * existing call-sites keep compiling while they migrate to `z` / `Infer`.
  */
 import { z as zod } from "zod";
 import type { TFile, TStream } from "../helpers/FileLike.ts";

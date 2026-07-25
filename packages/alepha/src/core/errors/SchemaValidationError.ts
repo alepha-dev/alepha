@@ -7,8 +7,8 @@ export interface ValidationErrorLike {
 
 import { AlephaError } from "./AlephaError.ts";
 
-export class TypeBoxError extends AlephaError {
-  name = "TypeBoxError";
+export class SchemaValidationError extends AlephaError {
+  name = "SchemaValidationError";
 
   public readonly cause: ValidationErrorLike;
   public readonly value: {
@@ -23,7 +23,7 @@ export class TypeBoxError extends AlephaError {
         cause: error,
       },
     );
-    const params = error.params as TypeBoxErrorParams;
+    const params = error.params as SchemaValidationErrorParams;
     if (params?.requiredProperties) {
       this.value = {
         path: `/${params.requiredProperties[0]}`,
@@ -40,6 +40,6 @@ export class TypeBoxError extends AlephaError {
   }
 }
 
-export interface TypeBoxErrorParams {
+export interface SchemaValidationErrorParams {
   requiredProperties?: string[];
 }

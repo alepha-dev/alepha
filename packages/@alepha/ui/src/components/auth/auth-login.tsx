@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Separator } from "@alepha/ui/components/ui/separator";
-import { AlephaError, TypeBoxError, z } from "alepha";
+import { AlephaError, SchemaValidationError, z } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
 import { useAuth } from "alepha/react/auth";
 import { FormValidationError, useForm, useFormState } from "alepha/react/form";
@@ -195,7 +195,7 @@ export function AuthLogin(props: AuthLoginProps) {
 
   const formState = useFormState(form, ["error", "loading"]);
   const formError =
-    formState.error && !(formState.error instanceof TypeBoxError)
+    formState.error && !(formState.error instanceof SchemaValidationError)
       ? formState.error.message
       : undefined;
   const showDivider = credentialsProvider && externalMethods.length > 0;

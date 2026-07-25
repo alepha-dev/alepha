@@ -1,4 +1,4 @@
-import { TypeBoxError } from "alepha";
+import { SchemaValidationError } from "alepha";
 import { HttpError } from "./HttpError.ts";
 
 export class ValidationError extends HttpError {
@@ -6,7 +6,7 @@ export class ValidationError extends HttpError {
     let fullMessage = message;
     let details: string | undefined;
 
-    if (cause instanceof TypeBoxError) {
+    if (cause instanceof SchemaValidationError) {
       const path = cause.cause.instancePath;
       fullMessage = `${message}: ${cause.cause.message}${
         path ? ` (${path})` : ""

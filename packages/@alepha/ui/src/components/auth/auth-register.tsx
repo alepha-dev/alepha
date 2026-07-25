@@ -20,7 +20,7 @@ import {
 } from "@alepha/ui/components/ui/input-otp";
 import { Label } from "@alepha/ui/components/ui/label";
 import { Separator } from "@alepha/ui/components/ui/separator";
-import { TypeBoxError, z } from "alepha";
+import { SchemaValidationError, z } from "alepha";
 import type {
   RealmConfig,
   RegistrationIntentResponse,
@@ -191,7 +191,7 @@ export function AuthRegister(props: AuthRegisterProps) {
 
   const formState = useFormState(form, ["error", "values", "loading"]);
   const formError =
-    formState.error && !(formState.error instanceof TypeBoxError)
+    formState.error && !(formState.error instanceof SchemaValidationError)
       ? formState.error.message
       : undefined;
   const passwordValue = String(formState.values?.password ?? "");

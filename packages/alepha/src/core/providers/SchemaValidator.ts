@@ -1,4 +1,4 @@
-import { TypeBoxError } from "../errors/TypeBoxError.ts";
+import { SchemaValidationError } from "../errors/SchemaValidationError.ts";
 import type { Static, TSchema } from "./TypeProvider.ts";
 
 /**
@@ -13,7 +13,7 @@ export class SchemaValidator {
     const result = schema.safeParse(value);
     if (!result.success) {
       // Map the first zod issue onto the framework's validation-error contract
-      // (`TypeBoxError`), which the HTTP layer, CLI, and ORM all catch.
+      // (`SchemaValidationError`), which the HTTP layer, CLI, and ORM all catch.
       const issue = result.error.issues[0];
       const path = issue?.path?.length ? issue.path.join("/") : "";
       let message = issue?.message ?? "Validation failed";
@@ -26,7 +26,7 @@ export class SchemaValidator {
       ) {
         message = `'${path}' is required`;
       }
-      throw new TypeBoxError({
+      throw new SchemaValidationError({
         message,
         instancePath: path ? `/${path}` : "",
         params: issue,

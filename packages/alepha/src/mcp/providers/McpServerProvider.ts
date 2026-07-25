@@ -1,4 +1,4 @@
-import { $inject, Alepha, TypeBoxError } from "alepha";
+import { $inject, Alepha, SchemaValidationError } from "alepha";
 import { $logger } from "alepha/logger";
 import {
   McpError,
@@ -350,7 +350,7 @@ export class McpServerProvider {
       // JSON-RPC protocol errors, so the model can self-correct.
       // For Zod validation errors we surface the failing path so the
       // model knows which argument was malformed.
-      if (error instanceof TypeBoxError) {
+      if (error instanceof SchemaValidationError) {
         const path = error.value?.path || "/";
         const message = error.value?.message || error.message;
         return {

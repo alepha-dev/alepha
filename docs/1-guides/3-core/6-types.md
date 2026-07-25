@@ -289,7 +289,7 @@ Validation does more than type checking. It applies preprocessing defined by `z.
 - **Null coercion**: `null` values in non-nullable fields become `undefined`, which are then stripped from objects.
 - **Array wrapping**: non-array values passed to an array schema are automatically wrapped into a single-element array (e.g. `"hello"` becomes `["hello"]`).
 
-If validation fails, a `TypeBoxError` is thrown with details about the first failing constraint.
+If validation fails, a `SchemaValidationError` is thrown with details about the first failing constraint.
 
 ### Validation Options
 

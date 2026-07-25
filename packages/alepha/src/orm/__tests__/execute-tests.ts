@@ -1,4 +1,4 @@
-import { type Alepha, TypeBoxError, z } from "alepha";
+import { type Alepha, SchemaValidationError, z } from "alepha";
 import { eq } from "drizzle-orm";
 import { expect } from "vitest";
 import { $entity, $repository, db, sql } from "../core/index.ts";
@@ -64,5 +64,5 @@ export const testExecuteBasicSqlQueries = async (alepha: Alepha) => {
     app.users.query(
       (t) => sql`SELECT ${t.name} FROM ${t} WHERE ${t.name} = ${name}`,
     ),
-  ).rejects.toThrowError(TypeBoxError);
+  ).rejects.toThrowError(SchemaValidationError);
 };

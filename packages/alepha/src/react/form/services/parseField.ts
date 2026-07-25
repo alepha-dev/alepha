@@ -1,4 +1,4 @@
-import { type TSchema, TypeBoxError, z } from "alepha";
+import { SchemaValidationError, type TSchema, z } from "alepha";
 import type { BaseInputField } from "./FormModel.ts";
 import { prettyName } from "./prettyName.ts";
 
@@ -96,8 +96,8 @@ export const parseField = (
     (typeof meta?.description === "string" ? meta.description : undefined);
 
   const error =
-    options.error instanceof TypeBoxError
-      ? (options.error as TypeBoxError).value?.message
+    options.error instanceof SchemaValidationError
+      ? (options.error as SchemaValidationError).value?.message
       : undefined;
 
   // Structural classification via zod guards (the schema is a real zod schema,

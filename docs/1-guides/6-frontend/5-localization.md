@@ -168,8 +168,7 @@ The `timezone` option accepts IANA timezone names.
 
 **Validation error localization:**
 
-`TypeBoxError` is the schema-validation error Alepha throws — the name is a
-leftover from before the Zod migration, the class is current:
+`SchemaValidationError` is the schema-validation error Alepha throws:
 
 ```typescript
 l(validationError)
@@ -211,7 +210,7 @@ import { Localize } from "alepha/react/i18n";
 
 | Prop       | Type                                  | Description                     |
 |------------|---------------------------------------|---------------------------------|
-| `value`    | `string \| number \| Date \| DateTime \| TypeBoxError` | The value to localize. |
+| `value`    | `string \| number \| Date \| DateTime \| SchemaValidationError` | The value to localize. |
 | `number`   | `Intl.NumberFormatOptions`            | Number formatting options.      |
 | `date`     | `string \| Intl.DateTimeFormatOptions` | Date formatting options.       |
 | `timezone` | `string`                              | IANA timezone name.             |

@@ -198,7 +198,7 @@ export abstract class Repository<T extends TObject> {
       );
     }
 
-    // Only wrap database execution errors, not post-processing errors (e.g., TypeBoxError)
+    // Only wrap database execution errors, not post-processing errors (e.g., SchemaValidationError)
     let rows: Array<Record<string, unknown>>;
     try {
       rows = await this.provider.execute(raw);

@@ -7,11 +7,11 @@ import {
   $inject,
   $state,
   Alepha,
+  SchemaValidationError,
   type Static,
   type TObject,
   type TSchema,
   type TUnion,
-  TypeBoxError,
   z,
 } from "alepha";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
@@ -672,7 +672,7 @@ export class CliProvider {
     try {
       return this.alepha.codec.decode(schema, parsed);
     } catch (error) {
-      if (error instanceof TypeBoxError) {
+      if (error instanceof SchemaValidationError) {
         throw new CommandError(
           `Invalid flag: ${error.cause.instancePath || "command"} ${error.cause.message}`,
         );
@@ -720,7 +720,7 @@ export class CliProvider {
     try {
       return this.alepha.codec.decode(schema, result);
     } catch (error) {
-      if (error instanceof TypeBoxError) {
+      if (error instanceof SchemaValidationError) {
         throw new CommandError(
           `Invalid environment variable: ${error.cause.instancePath || "env"} ${error.cause.message}`,
         );
@@ -958,7 +958,7 @@ export class CliProvider {
         return this.parseArgumentValue(argsOnly[0], schema);
       }
     } catch (error) {
-      if (error instanceof TypeBoxError) {
+      if (error instanceof SchemaValidationError) {
         throw new CommandError(`Invalid argument: ${error.value.message}`);
       }
       throw error;

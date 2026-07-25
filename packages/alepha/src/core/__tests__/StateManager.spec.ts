@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Alepha } from "../Alepha.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
-import { TypeBoxError } from "../errors/TypeBoxError.ts";
+import { SchemaValidationError } from "../errors/SchemaValidationError.ts";
 import { $atom } from "../primitives/$atom.ts";
 import { $computed } from "../primitives/$computed.ts";
 import { AlsProvider } from "../providers/AlsProvider.ts";
@@ -345,7 +345,7 @@ describe("StateManager", () => {
       const alepha = Alepha.create();
       expect(() =>
         alepha.store.set(prefs, { theme: "dark", count: "nope" } as any),
-      ).toThrow(TypeBoxError);
+      ).toThrow(SchemaValidationError);
     });
 
     it("strips unknown keys on write", () => {

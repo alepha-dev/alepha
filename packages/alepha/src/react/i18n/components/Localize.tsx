@@ -1,9 +1,9 @@
-import type { TypeBoxError } from "alepha";
+import type { SchemaValidationError } from "alepha";
 import type { DateTime } from "alepha/datetime";
 import { useI18n } from "../hooks/useI18n.ts";
 
 export interface LocalizeProps {
-  value: string | number | Date | DateTime | TypeBoxError;
+  value: string | number | Date | DateTime | SchemaValidationError;
   /**
    * Options for number formatting (when value is a number)
    * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat/NumberFormat

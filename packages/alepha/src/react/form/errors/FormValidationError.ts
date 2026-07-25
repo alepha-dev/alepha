@@ -1,6 +1,6 @@
-import { TypeBoxError } from "alepha";
+import { SchemaValidationError } from "alepha";
 
-export class FormValidationError extends TypeBoxError {
+export class FormValidationError extends SchemaValidationError {
   readonly name = "ValidationError";
 
   constructor(options: {

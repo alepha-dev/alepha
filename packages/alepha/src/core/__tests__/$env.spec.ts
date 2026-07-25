@@ -1,4 +1,11 @@
-import { $env, $inject, Alepha, AlephaError, TypeBoxError, z } from "alepha";
+import {
+  $env,
+  $inject,
+  Alepha,
+  AlephaError,
+  SchemaValidationError,
+  z,
+} from "alepha";
 import { describe, expect, it } from "vitest";
 
 describe("$env", () => {
@@ -44,7 +51,7 @@ describe("$env", () => {
     expect(app.env.URL).toBe("http://localhost/api");
   });
 
-  it("should throw TypeBoxError when required var is missing", () => {
+  it("should throw SchemaValidationError when required var is missing", () => {
     class App {
       env = $env(
         z.object({
@@ -53,7 +60,7 @@ describe("$env", () => {
       );
     }
 
-    expect(() => Alepha.create().inject(App)).toThrow(TypeBoxError);
+    expect(() => Alepha.create().inject(App)).toThrow(SchemaValidationError);
   });
 
   it("should throw AlephaError for non-TObject schema", () => {

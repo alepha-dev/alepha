@@ -1,4 +1,11 @@
-import { $hook, $inject, Alepha, TypeBoxError, TypeProvider, z } from "alepha";
+import {
+  $hook,
+  $inject,
+  Alepha,
+  SchemaValidationError,
+  TypeProvider,
+  z,
+} from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 // Locale-prefix routing is optional: the router module (one-directional
@@ -396,7 +403,7 @@ export class I18nProvider<
     }
 
     // handle Zod errors
-    if (value instanceof TypeBoxError) {
+    if (value instanceof SchemaValidationError) {
       return TypeProvider.translateError(value, this.lang);
     }
 
@@ -433,7 +440,12 @@ export class I18nProvider<
   }
 }
 
-export type I18nLocalizeType = string | number | Date | DateTime | TypeBoxError;
+export type I18nLocalizeType =
+  | string
+  | number
+  | Date
+  | DateTime
+  | SchemaValidationError;
 
 export interface I18nLocalizeOptions {
   /**

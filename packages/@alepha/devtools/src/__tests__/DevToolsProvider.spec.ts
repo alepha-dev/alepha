@@ -67,7 +67,7 @@ describe("DevToolsProvider — POST /__devtools/api/atoms", () => {
       value: { theme: 42 },
     });
 
-    // Before this fix, an invalid value threw a TypeBoxError out of the
+    // Before this fix, an invalid value threw a SchemaValidationError out of the
     // handler (an uncaught 500). The catch must turn it into a normal
     // success:false response, with a message so the devtools UI can show
     // *why* the edit was rejected instead of a silent, unexplained failure.

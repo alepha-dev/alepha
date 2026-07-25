@@ -4,8 +4,8 @@ import {
   $inject,
   Alepha,
   CircularDependencyError,
+  SchemaValidationError,
   type Service,
-  TypeBoxError,
   z,
 } from "alepha";
 import { describe, expect, it } from "vitest";
@@ -82,7 +82,7 @@ describe("$env", () => {
       N2: "efg",
     });
 
-    expect(() => Alepha.create().inject(C)).toThrow(TypeBoxError);
+    expect(() => Alepha.create().inject(C)).toThrow(SchemaValidationError);
   });
 });
 

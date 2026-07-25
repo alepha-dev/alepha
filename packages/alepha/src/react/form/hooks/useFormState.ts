@@ -1,4 +1,4 @@
-import { type TObject, TypeBoxError } from "alepha";
+import { SchemaValidationError, type TObject } from "alepha";
 import { useAlepha } from "alepha/react";
 import { useEffect, useState } from "react";
 import type { FormModel } from "../services/FormModel.ts";
@@ -111,7 +111,7 @@ export const useFormState = <
           if (event.id === form.id) {
             if (
               !path ||
-              (event.error instanceof TypeBoxError &&
+              (event.error instanceof SchemaValidationError &&
                 event.error.value.path === path)
             ) {
               setError(event.error);
