@@ -334,11 +334,7 @@ export class WebSocketRoom {
       try {
         this.getAlepha()
           .inject(SchemaValidator)
-          .validate(endpoint.channel.options.schema.out, message, {
-            trim: false,
-            nullToUndefined: false,
-            deleteUndefined: false,
-          });
+          .validate(endpoint.channel.options.schema.out, message);
 
         const reply = async (opts: {
           message: unknown;
@@ -530,12 +526,7 @@ export class WebSocketRoom {
       roomId,
       clock: this.clock,
       options: endpoint,
-      validate: (message) =>
-        validator.validate(outSchema, message, {
-          trim: false,
-          nullToUndefined: false,
-          deleteUndefined: false,
-        }),
+      validate: (message) => validator.validate(outSchema, message),
       log: (level, message, data) => this.safeLog(level, message, data),
     });
     this.roomEngines.set(key, engine);

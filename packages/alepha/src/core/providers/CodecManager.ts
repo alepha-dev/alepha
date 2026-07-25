@@ -3,7 +3,7 @@ import { $inject } from "../primitives/$inject.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
 import { KeylessJsonSchemaCodec } from "./KeylessJsonSchemaCodec.ts";
 import type { SchemaCodec } from "./SchemaCodec.ts";
-import { SchemaValidator, type ValidateOptions } from "./SchemaValidator.ts";
+import { SchemaValidator } from "./SchemaValidator.ts";
 import type { Static, StaticEncode, TSchema } from "./TypeProvider.ts";
 
 export type Encoding = "object" | "string" | "binary";
@@ -26,9 +26,9 @@ export interface EncodeOptions<T extends Encoding = Encoding> {
   encoder?: string;
 
   /**
-   * Validation options to apply before encoding.
+   * Set to `false` to skip schema validation before encoding.
    */
-  validation?: ValidateOptions | false;
+  validation?: false;
 }
 
 export type EncodeResult<
@@ -49,9 +49,9 @@ export interface DecodeOptions {
   encoder?: string;
 
   /**
-   * Validation options to apply before encoding.
+   * Set to `false` to skip schema validation after decoding.
    */
-  validation?: ValidateOptions | false;
+  validation?: false;
 }
 
 /**
@@ -120,7 +120,7 @@ export class CodecManager {
     const as = options?.as ?? "object";
 
     if (options?.validation !== false) {
-      value = this.schemaValidator.validate(schema, value, options?.validation);
+      value = this.schemaValidator.validate(schema, value);
     }
 
     if (as === "object") {
@@ -156,7 +156,7 @@ export class CodecManager {
     let value = codec.decode(schema, data);
 
     if (options?.validation !== false) {
-      value = this.schemaValidator.validate(schema, value, options?.validation);
+      value = this.schemaValidator.validate(schema, value);
     }
 
     return value as Static<T>;
@@ -167,12 +167,8 @@ export class CodecManager {
    *
    * This is automatically called before encoding or after decoding.
    */
-  public validate<T extends TSchema>(
-    schema: T,
-    value: unknown,
-    options?: ValidateOptions,
-  ): Static<T> {
-    return this.schemaValidator.validate(schema, value, options);
+  public validate<T extends TSchema>(schema: T, value: unknown): Static<T> {
+    return this.schemaValidator.validate(schema, value);
   }
 }
 

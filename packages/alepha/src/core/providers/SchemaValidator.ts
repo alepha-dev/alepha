@@ -1,12 +1,6 @@
 import { TypeBoxError } from "../errors/TypeBoxError.ts";
 import type { Static, TSchema } from "./TypeProvider.ts";
 
-export interface ValidateOptions {
-  trim?: boolean;
-  nullToUndefined?: boolean;
-  deleteUndefined?: boolean;
-}
-
 /**
  * Validates + coerces a value against a zod schema.
  *
@@ -15,11 +9,7 @@ export interface ValidateOptions {
  * No typebox `Compile`, no `eval` — safe inside Cloudflare Workers.
  */
 export class SchemaValidator {
-  public validate<T extends TSchema>(
-    schema: T,
-    value: unknown,
-    _options: ValidateOptions = {},
-  ): Static<T> {
+  public validate<T extends TSchema>(schema: T, value: unknown): Static<T> {
     const result = schema.safeParse(value);
     if (!result.success) {
       // Map the first zod issue onto the framework's validation-error contract
@@ -58,11 +48,7 @@ export class SchemaValidator {
    * Legacy pre-processing entry point. Coercion now happens inside `parse`,
    * so this is a no-op kept for call-site compatibility.
    */
-  public beforeParse(
-    _schema: unknown,
-    value: unknown,
-    _options?: ValidateOptions,
-  ): unknown {
+  public beforeParse(_schema: unknown, value: unknown): unknown {
     return value;
   }
 }

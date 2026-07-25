@@ -9,9 +9,9 @@
 
 **269 findings: 1 P0 · 48 P1 · 129 P2 · 91 P3** (169 bugs, 50 unfinished, 50 recommendations) — 268 from the original passes, plus one P2 found by the eleventh-pass audit (`/api/_batch` 5xx leak).
 
-> **Update 2026-07-25**: 138 findings closed — 127 fixed across eighteen passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
+> **Update 2026-07-25**: 143 findings closed — 132 fixed across nineteen passes (marked ✅ FIXED), plus 11 retired with the deletion of `alepha/api/subscriptions` (marked 🗑️ REMOVED). An eleventh pass re-verified every closed finding against the tree by reading the actual code path; all hold.
 >
-> **Remaining: 131 open — 0 P0 · 0 P1 · 51 P2 · 80 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
+> **Remaining: 126 open — 0 P0 · 0 P1 · 46 P2 · 80 P3.** Every P0 and P1 is closed. Counts here are derived from the ✅/🗑️ markers in the body, which are authoritative.
 
 The framework's core abstractions are sound — password hashing, PKCE, SQL-injection defenses, SSR fork isolation, and the job-outbox hardening all checked out clean. The damage concentrates in four places:
 
@@ -334,6 +334,16 @@ Seven findings whose shared shape is *silently stops working* — nothing throws
 
 Still open in this cluster (websocket/room, a separate concern): room connections invisible to graceful stop, headless `$room` engines never evicted, no liveness heartbeat, client `subscribe` map overwriting handlers.
 
+### Nineteenth pass — 2026-07-25 (core lifecycle)
+
+| Area | Fix |
+|------|-----|
+| core/Alepha | `stop()` awaits a boot in flight instead of returning early. `started` is only set near the END of `boot()`, so stopping during startup did nothing and the boot then completed — leaving the app **running after the caller had awaited `stop()`**. Reachable from `run()`'s SIGTERM trap and from test teardown racing a slow start. The wait is guarded on `started`: a `ready` hook may stop the app from *inside* the boot (`$mode` does), where the boot promise is the call's own ancestor and awaiting it deadlocks — which is exactly what the first attempt did, caught by two `$mode` tests hanging. |
+| core/Alepha | A failed boot unwinds what already started. A `start` hook throwing after earlier services connected left them running: `resetStartup()` clears `started`, so a later `stop()` short-circuited and never emitted `stop` — DB connections and listening sockets leaked with no way to close them. `stop` is emitted with `catch: true` so a failing teardown cannot mask the original error. |
+| core/Alepha | `destroy()` and the `$mode` target reset re-seed the registry with the constructor-owned singletons. Replacing the registry while keeping `this.store`/`this.events`/`this.context`/`this.codec` desynchronised the two, so a later `inject(StateManager)` built a fresh, **empty** instance — env gone, atom and codec registrations gone, no error anywhere. |
+| core/Alepha | `boot()` no longer flips `ready` when a `ready` hook stopped the app. It claimed a stopped container was ready, and a later `start()` would short-circuit on that flag and report the stopped app as running. |
+| core/SchemaValidator | `ValidateOptions` is gone rather than implemented. Its `trim` / `nullToUndefined` / `deleteUndefined` were typebox-era leftovers — the class docstring already states that trimming, defaults and unknown-key stripping live in the zod schema now — and all 38 call sites passed them as `false`, explicitly disabling things that did nothing. `CodecManager`'s `validation` is now the boolean switch it always was (`false` to skip). |
+
 Per-module detail follows. Line numbers reference the tree as it stood when each finding was written (`main` @ 6c7ec9400 for the original passes); the fix passes have since moved code, so treat every line number as a starting hint, not an address — locate by symbol name.
 
 ---
@@ -350,17 +360,17 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/core/providers/StateManager.ts:413-415
 - **Detail**: `get()` resolves ALS values with `this.als.get(key, scope) ?? (scope ? undefined : store[key])`. `AlsProvider.get` returns the stored value, so a legitimate `null` (or `undefined` via `store.del()`) written inside a request fork is nullish-coalesced away and the **app-level** value is returned instead. Verified: app store `k = "app-value"`, then inside `fork()` `set("k", null)` → `get("k")` returns `"app-value"`. `false`/`0` work correctly, only nullish values leak. For request-scoped session/user atoms with nullable schemas ("set to null = logged out") this reads another layer's value. Fix: use `als.has(key)`/`getLayer(key)` to distinguish "absent" from "present = null" before falling back.
 
-### [BUG] `destroy()` and the `alepha.target` boot-reset orphan the core provider singletons
+### ✅ FIXED — [BUG] `destroy()` and the `alepha.target` boot-reset orphan the core provider singletons
 - **Severity**: P2 (incorrect behavior in HMR and `$mode` paths)
 - **File**: packages/alepha/src/core/Alepha.ts:592-605, 682-697
 - **Detail**: The constructor registers `StateManager`/`EventManager`/`AlsProvider`/`CodecManager` in `this.registry`, but `destroy()` and the target-mode branch of `boot()` do `this.registry = new Map()` while `this.store`/`this.events`/... keep the old instances. Any later `inject(StateManager)` (or `$inject` in a re-registered service) constructs a **fresh, empty** instance: verified `alepha.inject(StateManager) !== alepha.store` after `destroy()`, and the new instance's `get("env")` is `undefined`. Same holds inside a `$mode` target's dependency tree. Codec registrations (`alepha.codec.register`) and atom registries diverge the same way. Fix: re-seed the registry with the constructor-owned instances after clearing it (`registry.set(StateManager, { instance: this.store, ... })`, etc.).
 
-### [BUG] Failed boot never emits `stop` — services started before the failure leak resources, and a stale-retry re-runs `configure` on all of them
+### ✅ FIXED — [BUG] Failed boot never emits `stop` — services started before the failure leak resources, and a stale-retry re-runs `configure` on all of them
 - **Severity**: P2
 - **File**: packages/alepha/src/core/Alepha.ts:625-628, 660-662
 - **Detail**: If a `start` hook throws after earlier services' `start` hooks succeeded (DB connected, server listening), `boot()`'s catch calls `resetStartup()` which sets `started = false`; a subsequent `stop()` then hits the `if (!this.started) return;` guard and **never emits `stop`**. Verified: svc1's start hook ran, svc1's stop hook did not after `stop()`. Worse, in the serverless stale-promise path a retrying `start()` re-emits `configure`/`start` to all hooks — including services already partially started (hooks are not cleared by `resetStartup`), so providers must be idempotent but nothing enforces or documents that. Fix: on boot failure, emit `stop` (with `catch: true`) for the phases that completed before rethrowing.
 
-### [BUG] `stop()` during an in-flight `start()` is silently ignored — app keeps running after `stop()` resolves
+### ✅ FIXED — [BUG] `stop()` during an in-flight `start()` is silently ignored — app keeps running after `stop()` resolves
 - **Severity**: P2 (race condition)
 - **File**: packages/alepha/src/core/Alepha.ts:659-672
 - **Detail**: `stop()` only checks `this.started`, which is set near the *end* of `boot()`. Calling `stop()` while `startPromise` is pending returns immediately without stopping; the boot then completes and the app ends up `isStarted() === true` after `stop()` resolved. Verified with a 50 ms async start hook. This is reachable via `run()`'s signal traps (SIGTERM during startup → handler "stops", exits 0, but nothing was actually stopped — moot only because the process exits) and via test teardown racing a slow start. Fix: `stop()` should `await this.startPromise` (or cancel it) before deciding there is nothing to stop.
@@ -375,12 +385,12 @@ Per-module detail follows. Line numbers reference the tree as it stood when each
 - **File**: packages/alepha/src/core/helpers/FileLike.ts:88-97
 - **Detail**: The guard ends with `typeof value.stream.bind(value) === "function"` — when `value.stream` is `undefined` (any plain metadata object `{name, type, size}`), `.bind` dereferences `undefined` and throws `TypeError`. Verified. A type guard must never throw on a near-miss shape. Fix: `typeof value.stream === "function"` (the `.bind` adds nothing).
 
-### [BUG] `$mode` leaves the container in `ready=true, started=false` after its auto-stop
+### ✅ FIXED — [BUG] `$mode` leaves the container in `ready=true, started=false` after its auto-stop
 - **Severity**: P2 (inconsistent lifecycle state)
 - **File**: packages/alepha/src/core/primitives/$mode.ts:70-80, packages/alepha/src/core/Alepha.ts:617-624
 - **Detail**: `$mode`'s `ready` hook calls `await alepha.stop()` *inside* the `ready` emit; `stop()` sets `started=false, ready=false`, but `boot()` then continues and sets `this.ready = true` and logs "App is now ready" — after the app already stopped. Verified: `isReady() === true`, `isStarted() === false`. A subsequent `start()` would short-circuit on `this.ready` and claim the stopped app is running. Harmless when the process exits right after, but wrong for embedded/test use. Fix: `boot()` should not flip `ready` if `stop()` ran during the ready emit (e.g. guard on `this.started`).
 
-### [UNFINISHED] `SchemaValidator.validate` accepts `ValidateOptions` but ignores them entirely
+### ✅ FIXED — [UNFINISHED] `SchemaValidator.validate` accepts `ValidateOptions` but ignores them entirely
 - **Severity**: P2
 - **File**: packages/alepha/src/core/providers/SchemaValidator.ts:18-22, 61-67
 - **Detail**: `validate(schema, value, _options)` discards `trim` / `nullToUndefined` / `deleteUndefined`, yet `CodecManager.encode/decode/validate` still plumb `options.validation` through as if they worked, and the public `EncodeOptions.validation`/`DecodeOptions.validation` types advertise them. `beforeParse` is an explicit no-op stub. Callers passing `{ nullToUndefined: true }` silently get strict behavior. Either delete `ValidateOptions`' dead fields or implement them.

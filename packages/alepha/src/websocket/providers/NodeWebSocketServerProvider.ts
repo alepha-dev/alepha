@@ -234,12 +234,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       roomId,
       clock: this.roomClock,
       options: endpoint,
-      validate: (message) =>
-        this.schemaValidator.validate(outSchema, message, {
-          trim: false,
-          nullToUndefined: false,
-          deleteUndefined: false,
-        }),
+      validate: (message) => this.schemaValidator.validate(outSchema, message),
       log: (level, message, data) => this.log[level](message, data),
     });
     this.roomEngines.set(key, engine);
@@ -914,11 +909,7 @@ export class NodeWebSocketConnection implements WebSocketConnection {
       // Validate message against schema (out = client→server)
       const outSchema = this.endpoint.channel.options.schema.out;
       try {
-        this.schemaValidator.validate(outSchema, message, {
-          trim: false,
-          nullToUndefined: false,
-          deleteUndefined: false,
-        });
+        this.schemaValidator.validate(outSchema, message);
       } catch (err) {
         throw new WebSocketValidationError(
           `Message validation failed: ${(err as Error).message}`,

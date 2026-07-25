@@ -386,11 +386,7 @@ export class WebSocketChannelConnection<
     // Validate outgoing message against schema
     const outSchema = this.channel.options.schema.out;
     try {
-      this.schemaValidator.validate(outSchema, message, {
-        trim: false,
-        nullToUndefined: false,
-        deleteUndefined: false,
-      });
+      this.schemaValidator.validate(outSchema, message);
     } catch (err) {
       this.log.warn("Message validation failed", { error: err });
       throw new AlephaError(

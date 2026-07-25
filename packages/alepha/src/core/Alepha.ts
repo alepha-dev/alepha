@@ -584,6 +584,8 @@ export class Alepha {
     const now = performance.now();
     this.log?.info("Starting App...");
 
+    let startEmitted = false;
+
     try {
       for (const [key] of this.substitutions.entries()) {
         this.inject(key);
@@ -594,6 +596,7 @@ export class Alepha {
         this.store.set("alepha.target", undefined);
         this.modules = [];
         this.registry = new Map();
+        this.seedCoreServices();
         this.primitiveRegistry = new Map();
         this.pendingInstantiations = [];
         this.events.clear();
@@ -610,11 +613,23 @@ export class Alepha {
 
       this.configured = true;
 
+      // From here on some services may hold real resources, so a failure has
+      // to unwind them — see the catch below.
+      startEmitted = true;
+
       await this.events.emit("start", this, { log: true });
 
       this.started = true;
 
       await this.events.emit("ready", this, { log: true });
+
+      // A `ready` hook may stop the app from inside this emit — `$mode` does
+      // exactly that for one-shot commands. Flipping `ready` afterwards
+      // claimed a stopped container was ready, and a later `start()` would
+      // short-circuit on the flag and report it as running.
+      if (!this.started) {
+        return this;
+      }
 
       this.log?.info(
         `App is now ready [${Math.round(performance.now() - now)}ms]`,
@@ -623,6 +638,16 @@ export class Alepha {
       this.ready = true;
       return this;
     } catch (error) {
+      // Unwind whatever already started. A `start` hook throwing after
+      // earlier services connected used to leave them running: resetStartup()
+      // clears `started`, so a later stop() short-circuited and never emitted
+      // `stop` — DB connections and listening sockets leaked with no way to
+      // close them. `catch: true` so one failing teardown cannot mask the
+      // original error, which is what the caller actually needs to see.
+      if (startEmitted) {
+        await this.events.emit("stop", this, { log: true, catch: true });
+      }
+
       this.resetStartup();
       throw error;
     }
@@ -657,6 +682,20 @@ export class Alepha {
    * @return A promise that resolves when the App has stopped.
    */
   public async stop(): Promise<void> {
+    // A boot in flight has to finish before we can decide there is nothing to
+    // stop: `started` is only set near the END of boot(). Returning early
+    // here let the boot complete afterwards, leaving the app running after
+    // the caller had already awaited stop() — reachable from `run()`'s
+    // SIGTERM trap and from test teardown racing a slow start.
+    //
+    // Guarded on `started` because a `ready` hook may stop the app from
+    // *inside* the boot ($mode does exactly this). There `started` is already
+    // true and the boot promise is this call's own ancestor, so awaiting it
+    // would deadlock.
+    if (!this.started && this.startPromise) {
+      await this.startPromise.catch(() => undefined);
+    }
+
     if (!this.started) {
       return;
     }
@@ -669,6 +708,33 @@ export class Alepha {
     this.ready = false;
     this.startPromise = undefined;
     this.startedAt = 0;
+  }
+
+  /**
+   * Put the constructor-owned singletons back into a freshly cleared
+   * registry.
+   *
+   * `this.store` / `this.events` / `this.context` / `this.codec` are held as
+   * direct fields AND registered as services. Replacing the registry without
+   * re-seeding it desynchronised the two: a later `inject(StateManager)`
+   * built a fresh, EMPTY instance while `alepha.store` still pointed at the
+   * populated one — env gone, atom registrations gone, codec registrations
+   * gone, and no error anywhere.
+   */
+  protected seedCoreServices(): void {
+    const core: Array<[Service, object]> = [
+      [StateManager as unknown as Service, this.store],
+      [EventManager as unknown as Service, this.events],
+      [AlsProvider as unknown as Service, this.context],
+      [CodecManager as unknown as Service, this.codec],
+    ];
+
+    for (const [service, instance] of core) {
+      this.registry.set(service, {
+        parents: [],
+        instance,
+      } as ServiceDefinition<any>);
+    }
   }
 
   /**
@@ -685,6 +751,7 @@ export class Alepha {
     // Clear all internal state to prevent duplicate classes on HMR reload
     this.modules = [];
     this.registry = new Map();
+    this.seedCoreServices();
     this.primitiveRegistry = new Map();
     this.pendingInstantiations = [];
     this.substitutions = new Map();

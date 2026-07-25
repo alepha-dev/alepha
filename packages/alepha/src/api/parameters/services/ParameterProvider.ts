@@ -1085,11 +1085,7 @@ export class ParameterProvider {
    */
   protected isValid(schema: TObject, value: unknown): boolean {
     try {
-      this.schemaValidator.validate(schema, value, {
-        trim: false,
-        nullToUndefined: false,
-        deleteUndefined: false,
-      });
+      this.schemaValidator.validate(schema, value);
       return true;
     } catch {
       return false;
