@@ -104,6 +104,7 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
     new: "bg-slate-500/20 text-slate-300",
     accepted: "bg-amber-500/20 text-amber-300",
     completed: "bg-emerald-500/20 text-emerald-300",
+    shelved: "bg-muted text-muted-foreground",
   };
 
   return (

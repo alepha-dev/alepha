@@ -1,6 +1,15 @@
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
-import { CheckSquare, Edit, Signature, Sunrise, Swords, X } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  CheckSquare,
+  Edit,
+  Signature,
+  Sunrise,
+  Swords,
+  X,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
@@ -25,6 +34,8 @@ const QuestHistoryTimeline = (props: QuestHistoryTimelineProps) => {
     if (action === "completed") return "At Long Last";
     if (action === "created") return "A New Dawn";
     if (action === "objective_completed") return "Objective Achieved";
+    if (action === "shelved") return "Set Aside";
+    if (action === "unshelved") return "Back in Play";
     return "Notable Change";
   };
 
@@ -89,6 +100,10 @@ const QuestHistoryTimeline = (props: QuestHistoryTimelineProps) => {
           <CheckSquare className="size-4" />
         ) : it.action === "unassigned" ? (
           <X className="size-4" />
+        ) : it.action === "shelved" ? (
+          <Archive className="size-4" />
+        ) : it.action === "unshelved" ? (
+          <ArchiveRestore className="size-4" />
         ) : (
           <Edit className="size-4" />
         ),

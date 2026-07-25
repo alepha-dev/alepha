@@ -9,7 +9,7 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 import { currentCampaignAtom } from "@/web/app/atoms/currentCampaignAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-type Status = "new" | "accepted" | "completed";
+type Status = "new" | "accepted" | "completed" | "shelved";
 
 interface ChainQuest {
   id: number;
@@ -95,6 +95,9 @@ const collectChain = (
 const statusDot = (status: Status): string => {
   if (status === "completed") return "bg-emerald-500";
   if (status === "accepted") return "bg-amber-500";
+  // Shelved and new both read as "not started"; shelved is dimmer so a
+  // dead-ended questline is visible at a glance.
+  if (status === "shelved") return "bg-muted-foreground/20";
   return "bg-muted-foreground/40";
 };
 

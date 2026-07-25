@@ -32,11 +32,16 @@ export class QuestResourceMapper {
       ...quest,
       objectives,
       metadata: {
+        // Shelving is only reachable from "new", so `shelvedAt` never
+        // coexists with the other two. The precedence is defensive:
+        // a real accept/complete always wins over a stale shelf.
         status: quest.completedAt
           ? "completed"
           : quest.acceptedAt
             ? "accepted"
-            : "new",
+            : quest.shelvedAt
+              ? "shelved"
+              : "new",
         objectivesProgress: {
           completed: completedObjectives,
           total: objectives.length,

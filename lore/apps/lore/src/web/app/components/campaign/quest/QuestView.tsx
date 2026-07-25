@@ -8,6 +8,8 @@ import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
+  Archive,
+  ArchiveRestore,
   Circle,
   FileText,
   History,
@@ -110,12 +112,14 @@ const QuestView = (props: QuestViewProps) => {
       shortId: number;
       title: string;
       completedAt?: string;
+      shelvedAt?: string;
     };
     dependents: Array<{
       id: number;
       shortId: number;
       title: string;
       completedAt?: string;
+      shelvedAt?: string;
     }>;
   }>({ dependents: [] });
 
@@ -185,6 +189,44 @@ const QuestView = (props: QuestViewProps) => {
         ),
       );
       handleClose();
+    },
+  };
+
+  const shelveQuest = {
+    disabled: !questApi.shelveQuest.can(),
+    onClick: async () => {
+      // Shelving a quest others depend on leaves them blocked with no
+      // path forward — call that out before it happens rather than
+      // letting the dependent quietly stall.
+      const blocked = questline.dependents.filter((d) => !d.completedAt);
+      const ok = await dialog.confirm({
+        title: tr("quest.view.shelve.title"),
+        description: blocked.length
+          ? tr("quest.view.shelve.confirmWithDependents", {
+              args: [blocked.map((d) => `#${d.shortId}`).join(", ")],
+            })
+          : tr("quest.view.shelve.confirm"),
+        confirmLabel: tr("quest.view.shelve.confirmButton"),
+        cancelLabel: tr("common.cancel"),
+      });
+      if (!ok) return;
+
+      const updatedQuest = await questApi.shelveQuest({
+        params: { id: quest.id },
+      });
+      updateQuest(updatedQuest);
+      alepha.store.set(currentQuestAtom, updatedQuest);
+    },
+  };
+
+  const unshelveQuest = {
+    disabled: !questApi.unshelveQuest.can(),
+    onClick: async () => {
+      const updatedQuest = await questApi.unshelveQuest({
+        params: { id: quest.id },
+      });
+      updateQuest(updatedQuest);
+      alepha.store.set(currentQuestAtom, updatedQuest);
     },
   };
 
@@ -258,6 +300,16 @@ const QuestView = (props: QuestViewProps) => {
             >
               {quest.priority}
             </Badge>
+
+            {quest.shelvedAt && (
+              <Badge
+                variant="secondary"
+                className="text-muted-foreground shrink-0"
+              >
+                <Archive className="size-3" />
+                {tr("quest.status.shelved")}
+              </Badge>
+            )}
 
             {/* Action cluster — tight gap-0.5 so edit/dup/timer read as
                 one unit instead of three drifting items. */}
@@ -358,9 +410,16 @@ const QuestView = (props: QuestViewProps) => {
                     ? tr("quest.view.questline.unblocked", {
                         args: [String(questline.predecessor.shortId)],
                       })
-                    : tr("quest.view.questline.blockedBy", {
-                        args: [String(questline.predecessor.shortId)],
-                      })}
+                    : questline.predecessor.shelvedAt
+                      ? // A shelved predecessor never completes on its own,
+                        // so say so rather than implying the block will
+                        // clear by itself.
+                        tr("quest.view.questline.blockedByShelved", {
+                          args: [String(questline.predecessor.shortId)],
+                        })
+                      : tr("quest.view.questline.blockedBy", {
+                          args: [String(questline.predecessor.shortId)],
+                        })}
                   <span className="text-muted-foreground">
                     {questline.predecessor.title}
                   </span>
@@ -565,7 +624,24 @@ const QuestView = (props: QuestViewProps) => {
         {!quest.completedAt && (
           <div className="bg-muted border-border sticky bottom-0 z-10 -mx-5 -mb-4 border-t px-8 py-3">
             {!quest.acceptedAt && (
-              <div className="flex flex-1 justify-center">
+              <div className="flex items-center justify-between gap-2">
+                {/* Shelve sits opposite Accept: both are ways of answering
+                    "am I doing this?", so they belong on the same bar. */}
+                {quest.shelvedAt ? (
+                  <Button type="button" variant="outline" {...unshelveQuest}>
+                    <ArchiveRestore className="size-4" />
+                    <span className="hidden sm:inline">
+                      {tr("quest.view.actions.unshelve")}
+                    </span>
+                  </Button>
+                ) : (
+                  <Button type="button" variant="outline" {...shelveQuest}>
+                    <Archive className="size-4" />
+                    <span className="hidden sm:inline">
+                      {tr("quest.view.actions.shelve")}
+                    </span>
+                  </Button>
+                )}
                 <Button
                   type="button"
                   className="bg-blue-600 text-white hover:bg-blue-700"

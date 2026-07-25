@@ -2,9 +2,14 @@ import { type Static, z } from "alepha";
 import { quests } from "../entities/quests.ts";
 
 /**
- * Quest status derived from acceptedAt / completedAt.
+ * Quest status derived from acceptedAt / completedAt / shelvedAt.
  */
-export const questStatusSchema = z.enum(["new", "accepted", "completed"]);
+export const questStatusSchema = z.enum([
+  "new",
+  "accepted",
+  "completed",
+  "shelved",
+]);
 
 /**
  * Computed metadata attached to every quest resource.

@@ -25,9 +25,10 @@ const DESCRIPTION_DESCRIPTION =
 // -----------------------------------------------------------------------------
 
 export const questListParamsSchema = campaignParamsSchema.extend({
-  status: z
-    .enum(["new", "accepted", "completed"])
-    .describe("Filter by quest status")
+  status: questStatusSchema
+    .describe(
+      "Filter by quest status. Omit to list everything still in scope — shelved quests are excluded unless you ask for them explicitly.",
+    )
     .optional(),
   search: z.string().describe("Search quests by title").optional(),
   tag: z
@@ -65,6 +66,7 @@ export const questListResultSchema = z.object({
       createdAt: z.datetime(),
       acceptedAt: z.datetime().optional(),
       completedAt: z.datetime().optional(),
+      shelvedAt: z.datetime().optional(),
     }),
   ),
   total: z.integer(),
@@ -93,6 +95,7 @@ export const questGetResultSchema = z.object({
   updatedAt: z.datetime(),
   acceptedAt: z.datetime().optional(),
   completedAt: z.datetime().optional(),
+  shelvedAt: z.datetime().optional(),
   completionMessage: z.string().optional(),
   completionMessageUpdatedAt: z.datetime().optional(),
   tags: z.array(z.string()),
@@ -166,6 +169,28 @@ export const questAcceptResultSchema = z.object({
   shortId: z.integer(),
   title: z.string(),
   acceptedAt: z.datetime(),
+});
+
+// -----------------------------------------------------------------------------
+// quest_shelve / quest_unshelve
+// -----------------------------------------------------------------------------
+
+export const questShelveParamsSchema = entityRefSchema;
+
+export const questShelveResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  shelvedAt: z.datetime(),
+});
+
+export const questUnshelveParamsSchema = entityRefSchema;
+
+export const questUnshelveResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  status: questStatusSchema,
 });
 
 // -----------------------------------------------------------------------------

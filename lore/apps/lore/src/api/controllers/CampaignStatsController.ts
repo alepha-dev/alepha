@@ -25,6 +25,20 @@ export class CampaignStatsController {
   dt = $inject(DateTimeProvider);
 
   /**
+   * The "this quest is in scope" predicate every stats aggregate filters
+   * on. Soft-deleted quests are gone; shelved quests were deliberately
+   * set aside as out of scope, so they leave both the numerator and the
+   * denominator of every chart — a chapter can hit 100% with shelved
+   * quests left over.
+   *
+   * Completed-based metrics are unaffected by construction: only a "new"
+   * quest can be shelved, so a shelved quest is never a completed one.
+   */
+  protected get liveQuest() {
+    return sql`${this.quests.table.deletedAt} IS NULL AND ${this.quests.table.shelvedAt} IS NULL`;
+  }
+
+  /**
    * Chronicles "Overview" tab: KPI tiles, a cumulative created-vs-completed
    * burn-up chart, a weekly completion-rate trend, and counts of quests that
    * need attention (stale, unassigned, blocked).
@@ -80,13 +94,13 @@ export class CampaignStatsController {
 							SELECT ${cycleHours}
 							FROM ${this.quests.table}
 							WHERE ${this.quests.table.campaignId} = ${params.id}
-								AND ${this.quests.table.deletedAt} IS NULL
+								AND ${this.liveQuest}
 								AND ${this.quests.table.acceptedAt} IS NOT NULL
 								AND ${this.quests.table.completedAt} IS NOT NULL
 						), 0) as avg_cycle_time_hours
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.campaignId} = ${params.id}
-						AND ${this.quests.table.deletedAt} IS NULL
+						AND ${this.liveQuest}
 				`,
         z.object({
           total_quests: z.coerce.number(),
@@ -127,7 +141,7 @@ export class CampaignStatsController {
 						COUNT(*) as count
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.campaignId} = ${params.id}
-						AND ${this.quests.table.deletedAt} IS NULL
+						AND ${this.liveQuest}
 					GROUP BY ${createdAtDay}
 				`,
         z.object({
@@ -144,7 +158,7 @@ export class CampaignStatsController {
 						COUNT(*) as count
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.campaignId} = ${params.id}
-						AND ${this.quests.table.deletedAt} IS NULL
+						AND ${this.liveQuest}
 						AND ${this.quests.table.completedAt} IS NOT NULL
 					GROUP BY ${completedAtDay}
 				`,
@@ -219,7 +233,7 @@ export class CampaignStatsController {
 						) THEN 1 END) as blocked_quests
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.campaignId} = ${params.id}
-						AND ${this.quests.table.deletedAt} IS NULL
+						AND ${this.liveQuest}
 				`,
         z.object({
           stale_quests: z.coerce.number(),
@@ -293,7 +307,7 @@ export class CampaignStatsController {
 						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NOT NULL THEN 1 END) as completed_count
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.campaignId} = ${params.id}
-						AND ${this.quests.table.deletedAt} IS NULL
+						AND ${this.liveQuest}
 				`,
         z.object({
           new_count: z.coerce.number(),
@@ -317,7 +331,7 @@ export class CampaignStatsController {
 						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NULL THEN 1 END) as remaining
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.campaignId} = ${params.id}
-						AND ${this.quests.table.deletedAt} IS NULL
+						AND ${this.liveQuest}
 					GROUP BY ${this.quests.table.zone}
 					ORDER BY (
 						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NOT NULL THEN 1 END)
@@ -347,7 +361,7 @@ export class CampaignStatsController {
 						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NULL THEN 1 END) as remaining
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.campaignId} = ${params.id}
-						AND ${this.quests.table.deletedAt} IS NULL
+						AND ${this.liveQuest}
 					GROUP BY ${this.quests.table.priority}
 					ORDER BY ${priorityOrder}
 				`,
@@ -372,7 +386,7 @@ export class CampaignStatsController {
 						${cycleHours} as avg_hours
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.campaignId} = ${params.id}
-						AND ${this.quests.table.deletedAt} IS NULL
+						AND ${this.liveQuest}
 						AND ${this.quests.table.acceptedAt} IS NOT NULL
 						AND ${this.quests.table.completedAt} IS NOT NULL
 					GROUP BY ${this.quests.table.priority}
@@ -400,7 +414,7 @@ export class CampaignStatsController {
 						${this.quests.table.acceptedAt} as accepted_at
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.campaignId} = ${params.id}
-						AND ${this.quests.table.deletedAt} IS NULL
+						AND ${this.liveQuest}
 						AND ${this.quests.table.acceptedAt} IS NOT NULL
 						AND ${this.quests.table.completedAt} IS NULL
 					ORDER BY ${this.quests.table.acceptedAt} ASC
@@ -501,7 +515,7 @@ export class CampaignStatsController {
 						FROM ${this.quests.table}
 						WHERE ${this.quests.table.campaignId} = ${params.id}
 							AND ${this.quests.table.completedAt} IS NOT NULL
-							AND ${this.quests.table.deletedAt} IS NULL
+							AND ${this.liveQuest}
 						GROUP BY ${this.quests.table.completedBy}
 					) q ON q.completed_by = ${this.characters.table.userId}
 					WHERE ${this.characters.table.campaignId} = ${params.id}
@@ -553,7 +567,7 @@ export class CampaignStatsController {
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.campaignId} = ${params.id}
 						AND ${this.quests.table.completedAt} IS NOT NULL
-						AND ${this.quests.table.deletedAt} IS NULL
+						AND ${this.liveQuest}
 						AND ${this.quests.table.completedAt} >= ${weeksAgo}
 					GROUP BY week, ${this.quests.table.completedBy}
 				`,
@@ -601,7 +615,7 @@ export class CampaignStatsController {
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.campaignId} = ${params.id}
 						AND ${this.quests.table.completedAt} IS NOT NULL
-						AND ${this.quests.table.deletedAt} IS NULL
+						AND ${this.liveQuest}
 					GROUP BY ${this.quests.table.completedBy}
 				`,
         z.object({
