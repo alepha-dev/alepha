@@ -10,7 +10,7 @@ import {
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import type { MqttClient } from "mqtt";
+import type { IClientOptions, MqttClient } from "mqtt";
 import {
   MqttClientProvider,
   type MqttMessageCallback,
@@ -34,6 +34,8 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+const qosSchema = z.union([z.literal(0), z.literal(1), z.literal(2)]);
+
 /**
  * MQTT client configuration atom.
  */
@@ -55,10 +57,47 @@ export const mqttOptions = $atom({
         "When true, the connection is deferred until the first publish or subscribe.",
       )
       .default(false),
+    username: z
+      .string()
+      .describe(
+        "Username for broker authentication. Takes precedence over credentials embedded in MQTT_BROKER_URL.",
+      )
+      .optional(),
+    password: z
+      .string()
+      .describe("Password for broker authentication.")
+      .optional(),
+    reconnectPeriod: z
+      .number()
+      .describe(
+        "Milliseconds between reconnection attempts. 0 disables automatic reconnection.",
+      )
+      .default(1000),
+    will: z
+      .object({
+        topic: z.string().describe("Topic the broker publishes the will to."),
+        payload: z.string().describe("Message body the broker publishes."),
+        qos: qosSchema.describe("QoS used for the will message.").default(0),
+        retain: z
+          .boolean()
+          .describe("Whether the will message is retained.")
+          .default(false),
+      })
+      .describe(
+        "Last Will and Testament — published BY THE BROKER when this client disconnects ungracefully.",
+      )
+      .optional(),
+    connect: z
+      .json()
+      .describe(
+        "Escape hatch: extra mqtt.js `IClientOptions` merged last, overriding everything above.",
+      )
+      .optional(),
   }),
   default: {
     keepalive: 60,
     lazy: false,
+    reconnectPeriod: 1000,
   },
 });
 
@@ -109,6 +148,28 @@ interface MqttSubscription {
  * alepha.with({
  *   provide: MqttClientProvider,
  *   use: MqttJsClientProvider,
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Credentials, reconnection and a Last Will the broker publishes if this
+ * // client dies without saying goodbye.
+ * alepha.set(mqttOptions, {
+ *   clientId: "tvm-042",
+ *   keepalive: 60,
+ *   lazy: false,
+ *   reconnectPeriod: 5_000,
+ *   username: "device",
+ *   password: "s3cret",
+ *   will: {
+ *     topic: "station-1/tvm/42/connection",
+ *     payload: JSON.stringify({ ERROR_COMMUNICATION: 1 }),
+ *     qos: 1,
+ *     retain: true,
+ *   },
+ *   // Anything else mqtt.js accepts, merged last.
+ *   connect: { protocolVersion: 5 },
  * });
  * ```
  */
@@ -282,6 +343,55 @@ export class MqttJsClientProvider extends MqttClientProvider {
   // -----------------------------------------------------------------------------------------------------------------
 
   /**
+   * Build the mqtt.js client options.
+   *
+   * Override this when a value cannot be known at configuration time — a Last
+   * Will topic derived from a device identity resolved at startup, say. This
+   * is the same escape hatch `NodeRedisProvider.createClient()` provides.
+   */
+  protected connectOptions(): IClientOptions {
+    const { clientId, keepalive, reconnectPeriod, username, password, will } =
+      this.options;
+
+    return {
+      clientId,
+      keepalive,
+      reconnectPeriod,
+      ...(will ? { will } : {}),
+      ...this.credentials(username, password),
+      // Last, so it can override anything above.
+      ...(this.options.connect as IClientOptions | undefined),
+    };
+  }
+
+  /**
+   * Resolve the credentials to hand mqtt.js.
+   *
+   * mqtt.js merges our options over the parsed URL and *then* runs
+   * `parseAuthOptions`, which re-derives username/password from the URL's
+   * userinfo — so `mqtt://alice:s3cret@host` silently beats an explicit
+   * `username: "bob"`. Passing `auth: undefined` blanks the URL's userinfo
+   * before that step runs, which is what makes the explicit option win.
+   *
+   * Building an `auth` string instead would not work: `parseAuthOptions`
+   * splits on `/^(.+):(.+)$/`, and the greedy first group mangles any password
+   * containing a colon.
+   *
+   * With no explicit username we return nothing at all, leaving URL
+   * credentials to work exactly as before.
+   */
+  protected credentials(
+    username: string | undefined,
+    password: string | undefined,
+  ): IClientOptions {
+    if (username === undefined) {
+      return {};
+    }
+
+    return { username, password, auth: undefined };
+  }
+
+  /**
    * Open the socket and wire the client's event handlers.
    */
   protected async openConnection(): Promise<void> {
@@ -290,10 +400,7 @@ export class MqttJsClientProvider extends MqttClientProvider {
 
     const { connectAsync } = await import("mqtt");
 
-    const client = await connectAsync(url, {
-      clientId: this.options.clientId,
-      keepalive: this.options.keepalive,
-    });
+    const client = await connectAsync(url, this.connectOptions());
 
     client.on("error", (error) => {
       if (this.alepha.isStarted()) {
