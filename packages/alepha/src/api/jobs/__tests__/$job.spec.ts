@@ -463,10 +463,21 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
     }
 
     expect(received).toEqual({ n: 7 });
-    // Default record: 'error' → success deletes the row.
-    const rows = await app.executions.findMany({
+
+    // Default record: 'error' → success deletes the row. The delete happens
+    // AFTER the handler returns, so waiting on `received` alone raced the
+    // cleanup and read the row mid-flight on a loaded runner.
+    let rows = await app.executions.findMany({
       where: { jobName: { eq: "App.work" } },
     });
+    const rowDeadline = Date.now() + 1500;
+    while (rows.length > 0 && Date.now() < rowDeadline) {
+      await new Promise((r) => setTimeout(r, 25));
+      rows = await app.executions.findMany({
+        where: { jobName: { eq: "App.work" } },
+      });
+    }
+
     expect(rows).toHaveLength(0);
   });
 

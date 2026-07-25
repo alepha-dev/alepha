@@ -305,6 +305,17 @@ Two `MemoryFileSystemProvider` divergences surfaced while writing these tests an
 - `mkdir(path, { recursive: true })` rebuilt parents without the leading slash, registering `/app/src` as `app/src`, so `exists("/app/src")` said no. The existing recursive test used a *relative* path, which is why it never caught this.
 - `ls()` returned `[]` for a directory that does not exist, where the node provider (a raw readdir) throws ENOENT. This is exactly what hid the `AppEntryProvider` bug from its own test. Making it faithful broke nothing across 3,926 tests.
 
+### Seventeenth pass — 2026-07-25 (CI race, not from the review)
+
+CI had been intermittently red for days, hitting a *different* concurrency test each run (`PaymentService` over-refund ×2, `$job` cancel race, `$job` direct mode, `ApiKeyService` revocation). Two of those were chased down here; neither came from a REVIEW_2 finding.
+
+| Area | Fix |
+|------|-----|
+| api/keys | **A revoked API key kept authenticating for up to 15 minutes.** `revoke()` invalidated the validation cache and *then* wrote the row, so a validation already in flight — one that had read the pre-revocation row — wrote it straight back afterwards. `invalidate()` cannot prevent that: it runs before the racing `set`. The service now bumps a `revocationEpoch` on both sides of every revoking write (`revoke`, `revokeByAdmin`, `revokeManyByAdmin`), and `validate()` snapshots it before its read and declines to cache a result whose read spanned a revocation. Reproduced deterministically first — same assertion CI produced (`expected { …(2) } to be null`) — via a `findByTokenHash` seam that holds the read open. |
+| api/jobs (test) | `push without a queue dispatcher processes the row in-process` waited for the handler to run and then immediately asserted the execution row was gone. The delete happens *after* the handler returns, so on a loaded runner the assertion read the row mid-flight. The test now polls for the cleanup instead of the handler. A test bug, not a code bug. |
+
+The remaining flaky tests in that list (`PaymentService` over-refund, `$job` cancel race) are untouched and still liable to fail on a loaded runner.
+
 Per-module detail follows. Line numbers reference the tree as it stood when each finding was written (`main` @ 6c7ec9400 for the original passes); the fix passes have since moved code, so treat every line number as a starting hint, not an address — locate by symbol name.
 
 ---

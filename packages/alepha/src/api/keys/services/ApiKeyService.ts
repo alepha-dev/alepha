@@ -35,6 +35,37 @@ export class ApiKeyService {
     ttl: [15, "minutes"],
   });
 
+  /**
+   * Bumped around every revocation so an in-flight validation can tell that
+   * the row it just read is already stale.
+   *
+   * Invalidating the cache is not enough on its own: a validation that read
+   * the key *before* the revocation still writes it back afterwards, and the
+   * revoked key then authenticates until the 15-minute TTL expires. The
+   * counter is per-isolate, exactly like the cache it guards.
+   */
+  protected revocationEpoch = 0;
+
+  /**
+   * Mark a revocation boundary. Called on both sides of the write so any
+   * validation whose read spans it declines to cache its result.
+   */
+  protected markRevocation(): void {
+    this.revocationEpoch++;
+  }
+
+  /**
+   * Load a key by token hash. Extracted as a seam so the
+   * validate-versus-revoke race can be driven deterministically in tests.
+   */
+  protected async findByTokenHash(hash: string): Promise<ApiKeyEntity | null> {
+    return (
+      (await this.repo.findOne({
+        where: { tokenHash: { eq: hash } },
+      })) ?? null
+    );
+  }
+
   // -------------------------------------------------------------------------
   // Resolver
   // -------------------------------------------------------------------------
@@ -192,12 +223,15 @@ export class ApiKeyService {
       return; // Already revoked
     }
 
-    // Invalidate cache
+    this.markRevocation();
     await this.validationCache.invalidate(apiKey.tokenHash);
 
     await this.repo.updateById(id, {
       revokedAt: this.dateTimeProvider.now().toISOString(),
     });
+
+    this.markRevocation();
+    await this.validationCache.invalidate(apiKey.tokenHash);
 
     this.log.info("API key revoked by admin", {
       apiKeyId: id,
@@ -219,6 +253,7 @@ export class ApiKeyService {
     const toRevoke = keys.filter((k) => !k.revokedAt);
     if (toRevoke.length === 0) return [];
 
+    this.markRevocation();
     await Promise.all(
       toRevoke.map((k) => this.validationCache.invalidate(k.tokenHash)),
     );
@@ -228,6 +263,11 @@ export class ApiKeyService {
       {
         revokedAt: this.dateTimeProvider.now().toISOString(),
       },
+    );
+
+    this.markRevocation();
+    await Promise.all(
+      toRevoke.map((k) => this.validationCache.invalidate(k.tokenHash)),
     );
 
     this.log.info("API keys revoked by admin", { count: toRevoke.length });
@@ -248,11 +288,15 @@ export class ApiKeyService {
       throw new ForbiddenError("Not your API key");
     }
 
+    this.markRevocation();
     await this.validationCache.invalidate(apiKey.tokenHash);
 
     await this.repo.updateById(id, {
       revokedAt: this.dateTimeProvider.now().toISOString(),
     });
+
+    this.markRevocation();
+    await this.validationCache.invalidate(apiKey.tokenHash);
 
     this.log.info("API key revoked", {
       apiKeyId: id,
@@ -288,13 +332,19 @@ export class ApiKeyService {
 
     // If not in cache, look up in database
     if (apiKey === undefined) {
-      apiKey =
-        (await this.repo.findOne({
-          where: { tokenHash: { eq: hash } },
-        })) ?? null;
+      // Snapshot BEFORE the read: if a revocation lands while this query is
+      // in flight, the row we get back is already stale and must not be
+      // cached. `invalidate()` alone could not prevent that — it runs before
+      // our `set`, so the write simply resurrected the pre-revocation row and
+      // the revoked key kept authenticating for the full 15-minute TTL.
+      const epoch = this.revocationEpoch;
+
+      apiKey = await this.findByTokenHash(hash);
 
       // Store in cache (even if null, to prevent repeated lookups)
-      await this.validationCache.set(hash, apiKey);
+      if (epoch === this.revocationEpoch) {
+        await this.validationCache.set(hash, apiKey);
+      }
     }
 
     if (!apiKey) {

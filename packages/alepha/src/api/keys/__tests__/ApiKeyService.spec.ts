@@ -320,6 +320,73 @@ describe("ApiKeyService", () => {
   // Concurrent revocation + validation
   // ---------------------------------------------------------------------------
 
+  it("should not resurrect a revoked key from an in-flight validation", async () => {
+    // The failure CI kept hitting, made deterministic. `revoke()` invalidated
+    // the cache and then wrote the row, so a validation that had already read
+    // the pre-revocation row wrote it back afterwards — and the revoked key
+    // kept authenticating for the full 15-minute TTL.
+    class TestApp {
+      issuer = $issuer({
+        secret: "test-secret",
+        roles: [{ name: "admin", permissions: [{ name: "*" }] }],
+      });
+    }
+
+    let releaseRead: () => void = () => {};
+    const readReached = Promise.withResolvers<void>();
+    const mayFinishRead = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+
+    /** Holds the DB read open so a revocation can land in the middle of it. */
+    class RacingApiKeyService extends ApiKeyService {
+      public raceNextRead = false;
+
+      protected async findByTokenHash(hash: string) {
+        const row = await super.findByTokenHash(hash);
+        if (this.raceNextRead) {
+          this.raceNextRead = false;
+          readReached.resolve();
+          await mayFinishRead;
+        }
+        return row;
+      }
+    }
+
+    const alepha = Alepha.create()
+      .with({ provide: ApiKeyService, use: RacingApiKeyService })
+      .with(AlephaOrmPostgres)
+      .with(AlephaServer)
+      .with(AlephaSecurity)
+      .with(AlephaApiKeys);
+    alepha.inject(TestApp);
+
+    const service = alepha.inject(RacingApiKeyService);
+    await alepha.start();
+
+    const userId = randomUUID();
+    const { apiKey, token } = await service.create({
+      userId,
+      name: "Raced Key",
+      roles: ["admin"],
+    });
+
+    // 1. A validation reads the (still valid) row and stops before caching.
+    service.raceNextRead = true;
+    const inFlight = service.validate(token);
+    await readReached.promise;
+
+    // 2. The key is revoked while that validation is in flight.
+    await service.revoke(apiKey.id, userId);
+
+    // 3. The validation resumes and would cache the row it read in step 1.
+    releaseRead();
+    await inFlight;
+
+    // 4. Every later validation must see the revocation.
+    expect(await service.validate(token)).toBeNull();
+  });
+
   it("should handle concurrent validation and revocation", async () => {
     class TestApp {
       issuer = $issuer({
