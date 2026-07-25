@@ -26,6 +26,7 @@ import { questCreateSchema } from "../schemas/questCreateSchema.ts";
 import {
   type QuestResource,
   questResourceSchema,
+  questStatusSchema,
 } from "../schemas/questResourceSchema.ts";
 import { AchievementEngine } from "../services/AchievementEngine.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
@@ -269,7 +270,7 @@ export class QuestController {
         campaignId: z.integer(),
       }),
       query: pageQuerySchema.extend({
-        status: z.enum(["new", "accepted", "completed"]).optional(),
+        status: questStatusSchema.optional(),
         search: z.string().optional(),
         chapterId: z.integer().optional(),
         zone: z.string().optional(),
@@ -313,12 +314,21 @@ export class QuestController {
       if (query.status === "new") {
         where.acceptedAt = { isNull: true };
         where.completedAt = { isNull: true };
+        where.shelvedAt = { isNull: true };
       } else if (query.status === "accepted") {
         where.acceptedAt = { isNotNull: true };
         where.completedAt = { isNull: true };
       } else if (query.status === "completed") {
         where.completedAt = { isNotNull: true };
         query.sort ??= "-completedAt";
+      } else if (query.status === "shelved") {
+        where.shelvedAt = { isNotNull: true };
+        query.sort ??= "-shelvedAt";
+      } else {
+        // No status filter means "everything I still care about" — shelved
+        // quests are deliberately out of scope, so they only ever surface
+        // through the explicit `shelved` filter.
+        where.shelvedAt = { isNull: true };
       }
 
       query.sort ??= "-updatedAt";
@@ -362,7 +372,7 @@ export class QuestController {
           id: z.integer(),
           shortId: z.integer(),
           title: z.string(),
-          status: z.enum(["new", "accepted", "completed"]),
+          status: questStatusSchema,
           dependsOn: z.integer().optional(),
         }),
       ),
@@ -377,6 +387,7 @@ export class QuestController {
           "title",
           "acceptedAt",
           "completedAt",
+          "shelvedAt",
           "dependsOn",
         ],
       });
@@ -388,7 +399,9 @@ export class QuestController {
           ? "completed"
           : q.acceptedAt
             ? "accepted"
-            : "new") as "new" | "accepted" | "completed",
+            : q.shelvedAt
+              ? "shelved"
+              : "new") as "new" | "accepted" | "completed" | "shelved",
         dependsOn: q.dependsOn ?? undefined,
       }));
     },
@@ -405,6 +418,7 @@ export class QuestController {
             shortId: z.integer(),
             title: z.string(),
             completedAt: z.datetime().optional(),
+            shelvedAt: z.datetime().optional(),
           })
           .optional(),
         dependents: z.array(
@@ -413,6 +427,7 @@ export class QuestController {
             shortId: z.integer(),
             title: z.string(),
             completedAt: z.datetime().optional(),
+            shelvedAt: z.datetime().optional(),
           }),
         ),
       }),
@@ -441,6 +456,7 @@ export class QuestController {
               shortId: predecessor.shortId,
               title: predecessor.title,
               completedAt: predecessor.completedAt,
+              shelvedAt: predecessor.shelvedAt,
             }
           : undefined,
         dependents: dependents.map((d) => ({
@@ -448,6 +464,7 @@ export class QuestController {
           shortId: d.shortId,
           title: d.title,
           completedAt: d.completedAt,
+          shelvedAt: d.shelvedAt,
         })),
       };
     },
@@ -517,6 +534,86 @@ export class QuestController {
     },
   });
 
+  /**
+   * Set a quest aside as out of scope without deleting it. Shelved quests
+   * drop out of the default quest list and out of progress/stats
+   * denominators — the backlog stops showing work nobody intends to do
+   * right now, but the idea survives.
+   *
+   * Only quests still in "new" status can be shelved: an accepted quest
+   * must be abandoned first, so that clearing the assignee, timer and
+   * reminders stays an explicit act rather than a side-effect of shelving.
+   */
+  shelveQuest = $action({
+    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNull: true },
+          completedAt: { isNull: true },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      if (quest.shelvedAt) {
+        return this.mapQuestToResource(quest);
+      }
+
+      quest.shelvedAt = this.dt.nowISOString();
+      quest.shelvedBy = user.id;
+      quest.history.push({
+        at: this.dt.nowISOString(),
+        by: user.id,
+        action: "shelved",
+      });
+
+      await this.quests.save(quest);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  /**
+   * Bring a shelved quest back into the backlog as "new".
+   */
+  unshelveQuest = $action({
+    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          shelvedAt: { isNotNull: true },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      quest.shelvedAt = undefined;
+      quest.shelvedBy = undefined;
+      quest.history.push({
+        at: this.dt.nowISOString(),
+        by: user.id,
+        action: "unshelved",
+      });
+
+      await this.quests.save(quest);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
   acceptQuest = $action({
     use: [$secure({ permissions: ["quest:update"] }), $transactional()],
     schema: {
@@ -556,6 +653,18 @@ export class QuestController {
 
       quest.acceptedAt = this.dt.nowISOString();
       quest.acceptedBy = user.id;
+      // Accepting is a stronger signal than shelving: pick up a shelved
+      // quest and it simply comes back off the shelf, rather than erroring
+      // out and demanding an explicit unshelve first.
+      if (quest.shelvedAt) {
+        quest.shelvedAt = undefined;
+        quest.shelvedBy = undefined;
+        quest.history.push({
+          at: this.dt.nowISOString(),
+          by: user.id,
+          action: "unshelved",
+        });
+      }
       // When kanban is on, drop the freshly-accepted quest into the first
       // configured sub-column so it has a place to live on the board.
       if (campaign.features?.kanban) {

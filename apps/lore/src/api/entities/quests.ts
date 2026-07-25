@@ -40,6 +40,18 @@ export const quests = $entity({
     acceptedAt: z.datetime().optional(),
     completedAt: z.datetime().optional(),
     /**
+     * Set when the quest is shelved — deliberately set aside as out of
+     * scope for now, without deleting it. Only quests still in `new`
+     * status can be shelved, so this is never set alongside `acceptedAt`
+     * or `completedAt`. Shelved quests are hidden from the default quest
+     * list and excluded from progress/stats denominators; they come back
+     * via `unshelveQuest` (or implicitly, by accepting them).
+     */
+    shelvedAt: z.datetime().optional(),
+    shelvedBy: db.ref(z.uuid().optional(), () => users.cols.id, {
+      onDelete: "set null",
+    }),
+    /**
      * Free-form summary set when the quest closes — what was actually
      * done. Editable post-completion via `updateQuest` (campaign memory
      * is meant to be curated). Surfaced to humans in the quest view +
@@ -110,6 +122,8 @@ export const quests = $entity({
             "unassigned",
             "objective_completed",
             "reminder_sent",
+            "shelved",
+            "unshelved",
           ]),
           /**
            * For `objective_completed` entries — the id of the toggled

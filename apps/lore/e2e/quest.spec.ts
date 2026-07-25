@@ -533,6 +533,98 @@ test.describe("Quest", () => {
   });
 
   /**
+   * Shelving: set a quest aside as out of scope without deleting it. The
+   * quest leaves the default board listing, comes back under the "Shelved"
+   * status filter, and unshelves from the quest view.
+   */
+  test("shelve removes a quest from the board until filtered", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `shelve${t}@example.com`;
+    const password = "ShelveTest123!";
+    const campaignTitle = `SC${t}`.slice(0, 20);
+    const questTitle = `ShelveMe${t}`;
+
+    await registerAndVerify(page, email, password);
+    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+
+    const { shortId } = await apiPost<{
+      id: number;
+      shortId: number;
+    }>(page, "createQuest", {
+      campaignId,
+      title: questTitle,
+      description: "Seeded quest for shelve e2e",
+      zone: "Main",
+      priority: "low",
+      difficulty: 1,
+      objectives: [],
+      attachments: [],
+    });
+
+    await test.step("shelve from the quest view", async () => {
+      await page.goto(`/c/${campaignId}/q/${shortId}`);
+      await page.waitForLoadState("networkidle");
+
+      await page.getByRole("button", { name: /^shelve$/i }).click();
+      await expect(
+        page.getByRole("alertdialog", { name: /shelve this quest/i }),
+      ).toBeVisible({ timeout: 5_000 });
+      await page.getByRole("button", { name: /shelve quest/i }).click();
+
+      // The header picks up a muted "Shelved" badge, and the footer flips
+      // to the reverse action.
+      await expect(
+        page.getByRole("button", { name: /^unshelve$/i }),
+      ).toBeVisible({ timeout: 10_000 });
+    });
+
+    await test.step("shelved quest is gone from the default board", async () => {
+      await page.goto(`/c/${campaignId}/`);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByText(questTitle).first()).toBeHidden({
+        timeout: 10_000,
+      });
+    });
+
+    await test.step("Shelved filter brings it back", async () => {
+      // The filter Select trigger carries no accessible name (the Control's
+      // `inputProps` aria-label lands on the hidden input, not the trigger),
+      // so target it by the value it currently displays.
+      await page
+        .getByRole("combobox")
+        .filter({ hasText: "All status" })
+        .click();
+      await page.getByRole("option", { name: "Shelved" }).click();
+      await expect(page.getByText(questTitle).first()).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+
+    await test.step("unshelve returns it to the backlog", async () => {
+      await page.goto(`/c/${campaignId}/q/${shortId}`);
+      await page.waitForLoadState("networkidle");
+      await page.getByRole("button", { name: /^unshelve$/i }).click();
+      await expect(page.getByRole("button", { name: /^shelve$/i })).toBeVisible(
+        { timeout: 10_000 },
+      );
+
+      await page.goto(`/c/${campaignId}/`);
+      await page.waitForLoadState("networkidle");
+      // Board filters persist per campaign (#113), so the "Shelved" choice
+      // from the previous step is still applied — clear it before asserting
+      // the quest is back in the normal listing.
+      await page.getByRole("button", { name: "Reset filters" }).click();
+      await expect(page.getByText(questTitle).first()).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+  });
+
+  /**
    * Board > Row actions > Delete now goes through a confirm dialog
    * (`useDialog().confirm`) before hitting `deleteQuest`. Cancel keeps the
    * row; Confirm removes it. Guards against an accidental one-click delete.

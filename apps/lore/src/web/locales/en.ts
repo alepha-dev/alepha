@@ -265,8 +265,10 @@ export default {
   "quest.tags.placeholder": "Add a tag and press Enter",
   "quest.tags.suggestions": "Reuse:",
   "quest.view.questline.blockedBy": "Blocked by #$1",
+  "quest.view.questline.blockedByShelved": "Blocked by shelved #$1",
   "quest.view.questline.unblocked": "Unblocked — #$1 done",
   "quest.view.questline.unlocks": "Unlocks #$1",
+  "quest.status.shelved": "Shelved",
 
   "campaign.create.name": "Name",
   "campaign.create.name.helper":
@@ -305,6 +307,8 @@ export default {
   "quest.view.experience": "Experience:",
   "quest.view.actions.complete": "Complete Quest",
   "quest.view.actions.abandon": "Abandon Quest",
+  "quest.view.actions.shelve": "Shelve",
+  "quest.view.actions.unshelve": "Unshelve",
   "quest.view.complete.title": "Complete this quest",
   "quest.view.complete.description":
     "Leave a short summary of what was done — what changed, decisions made, what a future reader (human or AI) would need to know.",
@@ -548,6 +552,12 @@ export default {
   "quest.view.abandon.confirm":
     "Are you sure you want to abandon this quest? You will lose all progress on this quest.",
   "quest.view.abandon.confirmButton": "Abandon Quest",
+  "quest.view.shelve.title": "Shelve this quest",
+  "quest.view.shelve.confirm":
+    "Set this quest aside as out of scope? It keeps everything it has and leaves the backlog — filter by Shelved to find it again.",
+  "quest.view.shelve.confirmWithDependents":
+    "Set this quest aside as out of scope? It leaves the backlog, but $1 depends on it and will stay blocked until you unshelve and complete it.",
+  "quest.view.shelve.confirmButton": "Shelve Quest",
   "quest.view.edit": "Edit",
   "quest.view.notes": "Notes",
   "quest.view.notes.placeholder": "Add your notes here...",

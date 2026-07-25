@@ -17,8 +17,12 @@ import {
   questGetResultSchema,
   questListParamsSchema,
   questListResultSchema,
+  questShelveParamsSchema,
+  questShelveResultSchema,
   questTagsParamsSchema,
   questTagsResultSchema,
+  questUnshelveParamsSchema,
+  questUnshelveResultSchema,
   questUpdateParamsSchema,
   questUpdateResultSchema,
 } from "../schemas/index.ts";
@@ -91,9 +95,11 @@ export class QuestTools {
   protected getQuestStatus(quest: {
     acceptedAt?: string;
     completedAt?: string;
-  }): "new" | "accepted" | "completed" {
+    shelvedAt?: string;
+  }): "new" | "accepted" | "completed" | "shelved" {
     if (quest.completedAt) return "completed";
     if (quest.acceptedAt) return "accepted";
+    if (quest.shelvedAt) return "shelved";
     return "new";
   }
 
@@ -128,7 +134,7 @@ export class QuestTools {
    */
   quest_list = $tool({
     description:
-      "List quests for the campaign. Can filter by status (new, accepted, completed), search by title, or filter by a single tag (use `quest_tags` to discover existing tag values).",
+      'List quests for the campaign. Can filter by status (new, accepted, completed, shelved), search by title, or filter by a single tag (use `quest_tags` to discover existing tag values). Shelved quests — deliberately set aside as out of scope — are hidden unless you pass `status: "shelved"`.',
     title: "List quests",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -170,6 +176,7 @@ export class QuestTools {
           createdAt: quest.createdAt,
           acceptedAt: quest.acceptedAt,
           completedAt: quest.completedAt,
+          shelvedAt: quest.shelvedAt,
         })),
         total: result.page.totalElements ?? 0,
         hasMore: !result.page.isLast,
@@ -289,6 +296,68 @@ export class QuestTools {
   });
 
   /**
+   * Shelve a quest — set it aside as out of scope without deleting it.
+   */
+  quest_shelve = $tool({
+    description:
+      "Shelve a quest: set it aside as out of scope for now without deleting it. Shelved quests disappear from the default `quest_list` and from campaign progress/stats, but keep their description, objectives and history — call `quest_unshelve` to bring one back. Only quests still in the 'new' status can be shelved; abandon an accepted quest first. Use this instead of `quest_delete` when the idea is worth keeping but nobody intends to work it now.",
+    title: "Shelve quest",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+    schema: {
+      params: questShelveParamsSchema,
+      result: questShelveResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+      const quest = await this.questController.shelveQuest({
+        params: { id },
+      });
+
+      return {
+        id: quest.id,
+        shortId: quest.shortId,
+        title: quest.title,
+        shelvedAt: quest.shelvedAt!,
+      };
+    },
+  });
+
+  /**
+   * Unshelve a quest — bring it back into the backlog.
+   */
+  quest_unshelve = $tool({
+    description:
+      "Bring a shelved quest back into the backlog as 'new'. Use `quest_list` with `status: \"shelved\"` to see what is currently on the shelf.",
+    title: "Unshelve quest",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+    schema: {
+      params: questUnshelveParamsSchema,
+      result: questUnshelveResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+      const quest = await this.questController.unshelveQuest({
+        params: { id },
+      });
+
+      return {
+        id: quest.id,
+        shortId: quest.shortId,
+        title: quest.title,
+        status: this.getQuestStatus(quest),
+      };
+    },
+  });
+
+  /**
    * Complete a quest.
    */
   quest_complete = $tool({
@@ -367,6 +436,7 @@ export class QuestTools {
         updatedAt: quest.updatedAt,
         acceptedAt: quest.acceptedAt,
         completedAt: quest.completedAt,
+        shelvedAt: quest.shelvedAt,
         completionMessage: quest.completionMessage,
         completionMessageUpdatedAt: quest.completionMessageUpdatedAt,
         tags: quest.tags,

@@ -42,13 +42,14 @@ const getPriorityColor = (priority: string) => {
 const removeHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
 
 /**
- * Board filter shape. Empty by default → "All statuses" (show
- * everything on first load); AlephaTable persists the chosen values per
- * campaign via `persistenceKey` (see #113).
+ * Board filter shape. Empty by default → "All statuses", which means
+ * everything still in scope: shelved quests are excluded server-side
+ * until you ask for them explicitly. AlephaTable persists the chosen
+ * values per campaign via `persistenceKey` (see #113).
  */
 const boardFiltersSchema = z.object({
   search: z.string().optional(),
-  status: z.enum(["new", "accepted", "completed"]).optional(),
+  status: z.enum(["new", "accepted", "completed", "shelved"]).optional(),
   zone: z.string().optional(),
   tag: z.string().optional(),
 });
@@ -130,6 +131,7 @@ const CampaignBoardTable = () => {
                     { label: "New", value: "new" },
                     { label: "Accepted", value: "accepted" },
                     { label: "Completed", value: "completed" },
+                    { label: "Shelved", value: "shelved" },
                   ]}
                   inputProps={{ "aria-label": tr("board.filter.status") }}
                 />
@@ -191,6 +193,7 @@ const CampaignBoardTable = () => {
                 new: "bg-blue-500",
                 accepted: "bg-orange-500",
                 completed: "bg-green-500",
+                shelved: "bg-muted-foreground/50",
               };
               return (
                 <span

@@ -351,6 +351,13 @@
       "when": 1784928723320,
       "tag": "0049_nostalgic_thunderbolts",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "6",
+      "when": 1784994291448,
+      "tag": "0050_complete_kang",
+      "breakpoints": true
     }
   ]
 }

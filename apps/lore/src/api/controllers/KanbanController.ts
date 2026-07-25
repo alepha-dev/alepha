@@ -40,6 +40,10 @@ export class KanbanController {
       const allQuests = await this.quests.findMany({
         where: {
           campaignId: { eq: params.campaignId },
+          // The board has no shelf lane — a shelved quest would otherwise
+          // land back in "New", which is exactly the clutter shelving is
+          // meant to remove. Unshelve from the quest view to get it back.
+          shelvedAt: { isNull: true },
         },
         orderBy: [
           { column: "priority", direction: "desc" },

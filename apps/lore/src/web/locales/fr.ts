@@ -257,8 +257,10 @@ export default {
   "quest.tags.placeholder": "Ajouter une étiquette puis Entrée",
   "quest.tags.suggestions": "Réutiliser :",
   "quest.view.questline.blockedBy": "Bloquée par #$1",
+  "quest.view.questline.blockedByShelved": "Bloquée par #$1, mise de côté",
   "quest.view.questline.unblocked": "Débloquée — #$1 faite",
   "quest.view.questline.unlocks": "Débloque #$1",
+  "quest.status.shelved": "Mise de côté",
 
   "campaign.create.name": "Nom",
   "campaign.create.name.helper": "Un nom marquant pour votre épopée.",
@@ -296,6 +298,8 @@ export default {
   "quest.view.experience": "Expérience :",
   "quest.view.actions.complete": "Marquer comme accomplie",
   "quest.view.actions.abandon": "Abandonner la quête",
+  "quest.view.actions.shelve": "Mettre de côté",
+  "quest.view.actions.unshelve": "Remettre en jeu",
   "quest.view.complete.title": "Terminer cette quête",
   "quest.view.complete.description":
     "Laissez un bref résumé de ce qui a été fait — changements, décisions prises, ce qu'un lecteur futur (humain ou IA) doit savoir.",
@@ -540,6 +544,12 @@ export default {
   "quest.view.abandon.confirm":
     "Êtes-vous sûr de vouloir abandonner cette quête ? Vous perdrez toute progression.",
   "quest.view.abandon.confirmButton": "Abandonner la quête",
+  "quest.view.shelve.title": "Mettre la quête de côté",
+  "quest.view.shelve.confirm":
+    "Mettre cette quête de côté ? Elle conserve tout son contenu et quitte le backlog — filtrez sur « Mise de côté » pour la retrouver.",
+  "quest.view.shelve.confirmWithDependents":
+    "Mettre cette quête de côté ? Elle quitte le backlog, mais $1 en dépend et restera bloquée tant que vous ne l'aurez pas remise en jeu puis terminée.",
+  "quest.view.shelve.confirmButton": "Mettre de côté",
   "quest.view.edit": "Modifier",
   "quest.view.notes": "Notes",
   "quest.view.notes.placeholder": "Ajoutez vos notes ici...",
