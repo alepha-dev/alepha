@@ -67,9 +67,12 @@ const Home = () => {
     // redirect lands here with `?action=createCampaign` but `useAuth()` hasn't
     // synced yet — bail and let the next render retry with `auth.user` set.
     if (!auth.user || !canCreate) return;
-    const url = new URL(window.location.href);
-    url.searchParams.delete("action");
-    window.history.replaceState(null, "", url.toString());
+    // Rewrite history from the route, not from `window.location` — during a
+    // client-side transition the browser URL still holds the *previous* page,
+    // so building on it would strip the param off the wrong address. Clearing
+    // it matters because going Back would otherwise land on
+    // `?action=createCampaign` and bounce forward again.
+    window.history.replaceState(null, "", router.path("home"));
     router.push("campaignCreate");
   }, [router, auth.user, canCreate]);
 
