@@ -4,6 +4,8 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { CampaignController } from "../../api/controllers/CampaignController.ts";
 import { PetitionController } from "../../api/controllers/PetitionController.ts";
 import { QuestController } from "../../api/controllers/QuestController.ts";
+import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
+import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
 import {
   questAcceptParamsSchema,
   questAcceptResultSchema,
@@ -34,6 +36,7 @@ export class QuestTools {
   protected readonly questController = $inject(QuestController);
   protected readonly campaignController = $inject(CampaignController);
   protected readonly petitionController = $inject(PetitionController);
+  protected readonly questMapper = $inject(QuestResourceMapper);
 
   /**
    * Resolve a per-campaign petition `shortId` to its global petition id, so a
@@ -90,17 +93,16 @@ export class QuestTools {
   }
 
   /**
-   * Get quest status from quest data.
+   * Get quest status from quest data. Delegates so the MCP surface cannot
+   * drift from the status the REST resource and the controller's transition
+   * guards report — this used to be a third, independently-ordered copy.
    */
   protected getQuestStatus(quest: {
     acceptedAt?: string;
     completedAt?: string;
     shelvedAt?: string;
-  }): "new" | "accepted" | "completed" | "shelved" {
-    if (quest.completedAt) return "completed";
-    if (quest.acceptedAt) return "accepted";
-    if (quest.shelvedAt) return "shelved";
-    return "new";
+  }): QuestStatus {
+    return this.questMapper.questStatus(quest);
   }
 
   /**

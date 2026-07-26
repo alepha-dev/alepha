@@ -4,14 +4,14 @@ import { $bucket } from "alepha/bucket";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, $transactional, db, pageQuerySchema } from "alepha/orm";
-import { $secure } from "alepha/security";
+import { $secure, type UserAccountToken } from "alepha/security";
 import {
   $action,
   BadRequestError,
   ForbiddenError,
   okSchema,
 } from "alepha/server";
-import { campaigns } from "../entities/campaigns.ts";
+import { type Campaign, campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
 import { petitions } from "../entities/petitions.ts";
 import {
@@ -25,6 +25,7 @@ import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { questCreateSchema } from "../schemas/questCreateSchema.ts";
 import {
   type QuestResource,
+  type QuestStatus,
   questResourceSchema,
   questStatusSchema,
 } from "../schemas/questResourceSchema.ts";
@@ -66,6 +67,47 @@ export class QuestController {
    */
   mapQuestToResource(quest: Quest): QuestResource {
     return this.questMapper.mapQuestToResource(quest);
+  }
+
+  /**
+   * Load a quest for a state-changing endpoint, asserting membership and
+   * the lifecycle precondition separately so each failure gets its own
+   * answer.
+   *
+   * These handlers used to fold the precondition into the `getOne`
+   * where-clause (`acceptedAt: { isNotNull: true }`, …). A quest in the
+   * wrong state then matched no row and came back as the ORM's
+   * `DbEntityNotFoundError` — "Entity from 'quests' was not found" — which
+   * says nothing about what to do next. MCP agents hit this constantly:
+   * `quest_complete` on a quest still in "new" reported the quest as
+   * missing when the real answer was "accept it first".
+   *
+   * Fetching by id keeps 404 honest and turns a precondition failure into
+   * a 400 naming both the current status and the required one. Membership
+   * is asserted before the status is revealed, so a non-member still
+   * learns nothing about the quest beyond its existence — same as before.
+   */
+  protected async getQuestForTransition(
+    id: number,
+    user: UserAccountToken,
+    action: string,
+    allowed: QuestStatus[],
+  ): Promise<{ quest: Quest; campaign: Campaign }> {
+    const quest = await this.quests.getOne({ where: { id: { eq: id } } });
+    const { campaign } = await this.security.assertMember(
+      quest.campaignId,
+      user,
+    );
+
+    const status = this.questMapper.questStatus(quest);
+    if (!allowed.includes(status)) {
+      const expected = allowed.map((s) => `"${s}"`).join(" or ");
+      throw new BadRequestError(
+        `Cannot ${action} quest #${quest.shortId}: it is "${status}", expected ${expected}.`,
+      );
+    }
+
+    return { quest, campaign };
   }
 
   /**
@@ -206,14 +248,12 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          completedAt: { isNull: true },
-        },
-      });
-
-      await this.security.assertMember(quest.campaignId, user);
+      const { quest } = await this.getQuestForTransition(
+        params.id,
+        user,
+        "attach a file to",
+        ["new", "accepted", "shelved"],
+      );
 
       if (quest.attachments.includes(body.fileId)) {
         return this.mapQuestToResource(quest);
@@ -237,14 +277,12 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          completedAt: { isNull: true },
-        },
-      });
-
-      await this.security.assertMember(quest.campaignId, user);
+      const { quest } = await this.getQuestForTransition(
+        params.id,
+        user,
+        "remove an attachment from",
+        ["new", "accepted", "shelved"],
+      );
 
       const updatedAttachments = quest.attachments.filter(
         (id) => id !== params.fileId,
@@ -506,15 +544,12 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          acceptedAt: { isNotNull: true },
-          completedAt: { isNull: true },
-        },
-      });
-
-      await this.security.assertMember(quest.campaignId, user);
+      const { quest } = await this.getQuestForTransition(
+        params.id,
+        user,
+        "abandon",
+        ["accepted"],
+      );
 
       quest.acceptedAt = undefined;
       quest.acceptedBy = undefined;
@@ -553,15 +588,13 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          acceptedAt: { isNull: true },
-          completedAt: { isNull: true },
-        },
-      });
-
-      await this.security.assertMember(quest.campaignId, user);
+      // "shelved" is allowed so re-shelving stays idempotent below.
+      const { quest } = await this.getQuestForTransition(
+        params.id,
+        user,
+        "shelve",
+        ["new", "shelved"],
+      );
 
       if (quest.shelvedAt) {
         return this.mapQuestToResource(quest);
@@ -592,14 +625,12 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          shelvedAt: { isNotNull: true },
-        },
-      });
-
-      await this.security.assertMember(quest.campaignId, user);
+      const { quest } = await this.getQuestForTransition(
+        params.id,
+        user,
+        "unshelve",
+        ["shelved"],
+      );
 
       quest.shelvedAt = undefined;
       quest.shelvedBy = undefined;
@@ -623,17 +654,12 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          acceptedAt: { isNull: true },
-          completedAt: { isNull: true },
-        },
-      });
-
-      const { campaign } = await this.security.assertMember(
-        quest.campaignId,
+      // "shelved" is allowed on purpose — see the un-shelving branch below.
+      const { quest, campaign } = await this.getQuestForTransition(
+        params.id,
         user,
+        "accept",
+        ["new", "shelved"],
       );
 
       // Questline gate (Lore #32): refuse to accept while a non-null
@@ -693,16 +719,11 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          acceptedAt: { isNotNull: true },
-          completedAt: { isNull: true },
-        },
-      });
-      const { campaign } = await this.security.assertMember(
-        quest.campaignId,
+      const { quest, campaign } = await this.getQuestForTransition(
+        params.id,
         user,
+        "move",
+        ["accepted"],
       );
       const columns = campaign.kanbanColumns ?? [];
       if (!columns.includes(body.kanbanColumn)) {
@@ -737,17 +758,11 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          acceptedAt: { isNotNull: true },
-          completedAt: { isNull: true },
-        },
-      });
-
-      const { campaign } = await this.security.assertMember(
-        quest.campaignId,
+      const { quest, campaign } = await this.getQuestForTransition(
+        params.id,
         user,
+        "set a reminder on",
+        ["accepted"],
       );
 
       if (quest.acceptedBy !== user.id) {
@@ -811,15 +826,12 @@ export class QuestController {
       }),
     },
     handler: async ({ params, body, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          completedAt: { isNull: true },
-          acceptedAt: { isNotNull: true },
-        },
-      });
-
-      await this.security.assertMember(quest.campaignId, user);
+      const { quest } = await this.getQuestForTransition(
+        params.id,
+        user,
+        "complete",
+        ["accepted"],
+      );
 
       // Check if all objectives are completed
       if (quest.objectives.length > 0) {
@@ -1105,15 +1117,12 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user, body }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          completedAt: { isNull: true },
-          acceptedAt: { isNotNull: true },
-        },
-      });
-
-      await this.security.assertMember(quest.campaignId, user);
+      const { quest } = await this.getQuestForTransition(
+        params.id,
+        user,
+        "tick an objective on",
+        ["accepted"],
+      );
 
       // Backfill ids for legacy rows before the lookup — preserves the
       // controller's invariant that anything we read out of `objectives`
@@ -1173,16 +1182,11 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          completedAt: { isNull: true },
-        },
-      });
-
-      const { campaign } = await this.security.assertMember(
-        quest.campaignId,
+      const { quest, campaign } = await this.getQuestForTransition(
+        params.id,
         user,
+        "edit the objectives of",
+        ["new", "accepted", "shelved"],
       );
 
       if (quest.createdBy !== user.id && campaign.createdBy !== user.id) {
@@ -1337,15 +1341,12 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          acceptedAt: { isNotNull: true },
-          completedAt: { isNull: true },
-        },
-      });
-
-      await this.security.assertMember(quest.campaignId, user);
+      const { quest } = await this.getQuestForTransition(
+        params.id,
+        user,
+        "start a timer on",
+        ["accepted"],
+      );
 
       // Check if timer is already running (last session has no stoppedAt)
       const sessions = quest.timerSessions || [];
@@ -1376,15 +1377,12 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          acceptedAt: { isNotNull: true },
-          completedAt: { isNull: true },
-        },
-      });
-
-      await this.security.assertMember(quest.campaignId, user);
+      const { quest } = await this.getQuestForTransition(
+        params.id,
+        user,
+        "stop a timer on",
+        ["accepted"],
+      );
 
       // Find the running timer session
       const sessions = quest.timerSessions || [];
