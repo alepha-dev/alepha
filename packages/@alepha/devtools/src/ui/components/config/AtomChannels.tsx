@@ -50,8 +50,9 @@ export const AtomChannels = (props: AtomChannelsProps) => {
           }}
         >
           Declared <span className="dt-mono">serverOnly</span> — excluded from
-          the SSR hydration payload, and devtools never sends its value to this
-          page.
+          the application's SSR hydration payload, so no browser it serves ever
+          receives this value. Devtools reads it straight off the server, which
+          is why it is shown above.
         </div>
       </>
     );

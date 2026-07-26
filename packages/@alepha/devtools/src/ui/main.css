@@ -872,7 +872,21 @@ body:has(.dt-root) {
   color: var(--dt-fg);
   font-family: var(--dt-mono);
   font-size: 11px;
-  padding-inline: 8px;
+}
+
+/**
+ * Horizontal padding is deliberately NOT overridden.
+ *
+ * The shared controls draw a type glyph inside the field and reserve room for
+ * it with their own `pl-*` on the input. A blanket `padding-inline` here beats
+ * that utility on specificity, so the value started underneath the glyph and
+ * the field became unreadable. Any tightening has to leave the leading gutter
+ * alone; the icon is scaled down instead, below.
+ */
+.dt-form .absolute > svg,
+.dt-form svg.absolute {
+  width: 12px;
+  height: 12px;
 }
 
 .dt-form textarea {

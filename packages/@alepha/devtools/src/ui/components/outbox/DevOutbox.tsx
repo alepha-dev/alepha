@@ -21,11 +21,17 @@ const querySchema = z.object({
 });
 
 const relative = (iso: string): string => {
-  const diff = Date.now() - new Date(iso).getTime();
+  const at = new Date(iso).getTime();
+  if (Number.isNaN(at)) return "unknown";
+  const diff = Date.now() - at;
   if (diff < 1000) return "just now";
   if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`;
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  return `${Math.floor(diff / 3_600_000)}h ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  // The capture directory is not cleared between runs, so it accumulates for
+  // as long as the checkout lives. Without a day bucket a week-old message read
+  // "170h ago", which is arithmetic rather than an answer.
+  return `${Math.floor(diff / 86_400_000)}d ago`;
 };
 
 /**

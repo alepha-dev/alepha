@@ -580,27 +580,22 @@ export class DevToolsMetadataProvider {
   public getAtoms(): DevAtomMetadata[] {
     const atomsWithValues = this.alepha.store.getAtoms(false);
 
+    // `serverOnly` is reported but not acted on here. The flag keeps a value
+    // out of the *application's* SSR hydration payload; it is not a general
+    // secrecy marker, and devtools is not the application. This module refuses
+    // to register in production precisely because it already serves the whole
+    // environment — every secret in it — in cleartext, and its atom route
+    // already lets you write these same atoms. Redacting the read while
+    // permitting the write left the one screen that exists to show server
+    // state unable to show it.
     return atomsWithValues.map(({ atom, value }) => {
-      // `serverOnly` is a security guard: its value must never reach a
-      // browser. The atom itself is still listed (a developer can see it
-      // exists and inspect its schema/description) but `defaultValue` and
-      // `currentValue` — the actual secret payload — are never included in
-      // this dev-only metadata response.
-      if (atom.options.serverOnly) {
-        return {
-          name: atom.key,
-          description: atom.options.description,
-          schema: this.toJsonSchema(atom.schema),
-          serverOnly: true,
-        };
-      }
-
       return {
         name: atom.key,
         description: atom.options.description,
         schema: this.toJsonSchema(atom.schema),
         defaultValue: atom.options.default,
         currentValue: value,
+        serverOnly: atom.options.serverOnly,
         persist: (atom.options as any).persist,
       };
     });

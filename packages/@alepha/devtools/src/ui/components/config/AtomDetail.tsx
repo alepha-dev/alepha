@@ -32,7 +32,7 @@ export const AtomDetail = (props: AtomDetailProps) => {
    * object/boolean/number/enum/string. Everything else falls back to JSON.
    */
   const formSchema = useMemo(() => {
-    if (!atom.schema || atom.serverOnly) return null;
+    if (!atom.schema) return null;
     try {
       const converted = jsonSchemaToZod(atom.schema);
       return converted && z.schema.isObject(converted) ? converted : null;
@@ -89,14 +89,19 @@ export const AtomDetail = (props: AtomDetailProps) => {
         <span className="dt-mono" style={{ fontSize: 14 }}>
           {atom.name}
         </span>
-        {atom.serverOnly ? (
-          <span className="dt-chip">server-only</span>
-        ) : (
-          atom.currentValue !== undefined && (
-            <span className="dt-chip" data-tone="accent">
-              set
-            </span>
-          )
+        {/*
+         * Independent facts, so both can show: `server-only` is where the
+         * value can travel, `set` is whether anything has written it.
+         */}
+        {atom.serverOnly && (
+          <span className="dt-chip" title="Not hydrated into the browser">
+            server-only
+          </span>
+        )}
+        {atom.currentValue !== undefined && (
+          <span className="dt-chip" data-tone="accent">
+            set
+          </span>
         )}
         {atom.persist && (
           <span className="dt-chip" data-tone="accent">
@@ -117,153 +122,139 @@ export const AtomDetail = (props: AtomDetailProps) => {
         </div>
       )}
 
-      {atom.serverOnly ? (
-        <>
-          <div className="dt-section-label">Value</div>
-          <div
-            style={{
-              padding: 14,
-              fontSize: 11,
-              color: "var(--dt-fg-faint)",
-              fontStyle: "italic",
+      {/*
+       * `serverOnly` atoms render exactly like any other. The flag says the
+       * application does not hydrate the value into the browser; it does not
+       * say a developer inspecting their own server may not read it — and this
+       * screen is the only place that state is visible at all.
+       */}
+      <div style={{ display: "flex" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="dt-section-label">Current value</div>
+          <div style={{ padding: "10px 14px" }}>
+            <div className="dt-mono dt-atom-value">
+              {atom.currentValue === undefined
+                ? "(using default)"
+                : collapse(atom.currentValue)}
+            </div>
+            <div className="dt-atom-value-sub">live value in the store</div>
+          </div>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            borderLeft: "1px solid var(--dt-border-soft)",
+          }}
+        >
+          <div className="dt-section-label">Default value</div>
+          <div style={{ padding: "10px 14px" }}>
+            <div className="dt-mono dt-atom-value">
+              {atom.defaultValue === undefined
+                ? "(no default)"
+                : collapse(atom.defaultValue)}
+            </div>
+            <div className="dt-atom-value-sub">declared on the atom</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="dt-section-label">
+        Edit · server store
+        <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+          {formSchema && (
+            <button
+              type="button"
+              className="dt-btn"
+              data-on={jsonMode || undefined}
+              onClick={() => setJsonMode(!jsonMode)}
+            >
+              JSON
+            </button>
+          )}
+          <button
+            type="button"
+            className="dt-btn"
+            onClick={() => {
+              // Reset has to reach whichever editor is showing — resetting
+              // only the JSON textarea leaves the form untouched, so the
+              // button looks broken half the time.
+              setJsonText(JSON.stringify(atom.defaultValue, null, 2));
+              setJsonError(null);
+              if (!jsonMode && formSchema) {
+                form.setInitialValues((atom.defaultValue ?? {}) as any);
+              }
+            }}
+            title="Restore the declared default"
+          >
+            <RotateCcw size={11} /> Reset
+          </button>
+          <button
+            type="button"
+            className="dt-btn"
+            data-variant="primary"
+            disabled={jsonMode && !!jsonError}
+            onClick={() => {
+              if (jsonMode) {
+                try {
+                  save(JSON.parse(jsonText));
+                } catch {
+                  setJsonError("Invalid JSON");
+                }
+              } else {
+                save(form.currentValues);
+              }
             }}
           >
-            Hidden. This atom is declared `serverOnly`, so its value is never
-            sent to the browser — only its name, description and schema are.
-          </div>
-        </>
-      ) : (
-        <>
-          <div style={{ display: "flex" }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="dt-section-label">Current value</div>
-              <div style={{ padding: "10px 14px" }}>
-                <div className="dt-mono dt-atom-value">
-                  {atom.currentValue === undefined
-                    ? "(using default)"
-                    : collapse(atom.currentValue)}
-                </div>
-                <div className="dt-atom-value-sub">live value in the store</div>
-              </div>
-            </div>
-            <div
-              style={{
-                flex: 1,
-                minWidth: 0,
-                borderLeft: "1px solid var(--dt-border-soft)",
-              }}
-            >
-              <div className="dt-section-label">Default value</div>
-              <div style={{ padding: "10px 14px" }}>
-                <div className="dt-mono dt-atom-value">
-                  {atom.defaultValue === undefined
-                    ? "(no default)"
-                    : collapse(atom.defaultValue)}
-                </div>
-                <div className="dt-atom-value-sub">declared on the atom</div>
-              </div>
-            </div>
-          </div>
+            <Save size={11} /> Save
+          </button>
+        </span>
+      </div>
 
-          <div className="dt-section-label">
-            Edit · server store
-            <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-              {formSchema && (
-                <button
-                  type="button"
-                  className="dt-btn"
-                  data-on={jsonMode || undefined}
-                  onClick={() => setJsonMode(!jsonMode)}
-                >
-                  JSON
-                </button>
-              )}
-              <button
-                type="button"
-                className="dt-btn"
-                onClick={() => {
-                  // Reset has to reach whichever editor is showing — resetting
-                  // only the JSON textarea leaves the form untouched, so the
-                  // button looks broken half the time.
-                  setJsonText(JSON.stringify(atom.defaultValue, null, 2));
+      <div style={{ padding: 12 }}>
+        {jsonMode || !formSchema ? (
+          <>
+            <textarea
+              className="dt-input dt-mono"
+              style={{ height: 150, padding: 8, resize: "vertical" }}
+              value={jsonText}
+              onChange={(e) => {
+                setJsonText(e.currentTarget.value);
+                try {
+                  JSON.parse(e.currentTarget.value);
                   setJsonError(null);
-                  if (!jsonMode && formSchema) {
-                    form.setInitialValues((atom.defaultValue ?? {}) as any);
-                  }
-                }}
-                title="Restore the declared default"
-              >
-                <RotateCcw size={11} /> Reset
-              </button>
-              <button
-                type="button"
-                className="dt-btn"
-                data-variant="primary"
-                disabled={jsonMode && !!jsonError}
-                onClick={() => {
-                  if (jsonMode) {
-                    try {
-                      save(JSON.parse(jsonText));
-                    } catch {
-                      setJsonError("Invalid JSON");
-                    }
-                  } else {
-                    save(form.currentValues);
-                  }
-                }}
-              >
-                <Save size={11} /> Save
-              </button>
-            </span>
-          </div>
-
-          <div style={{ padding: 12 }}>
-            {jsonMode || !formSchema ? (
-              <>
-                <textarea
-                  className="dt-input dt-mono"
-                  style={{ height: 150, padding: 8, resize: "vertical" }}
-                  value={jsonText}
-                  onChange={(e) => {
-                    setJsonText(e.currentTarget.value);
-                    try {
-                      JSON.parse(e.currentTarget.value);
-                      setJsonError(null);
-                    } catch {
-                      setJsonError("Invalid JSON");
-                    }
-                  }}
-                />
-                {jsonError && (
-                  <div style={{ fontSize: 11, color: "var(--dt-error)" }}>
-                    {jsonError}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="dt-form">
-                {/*
-                 * The section header already owns Reset and Save, so AutoForm's
-                 * bottom bar would put a second Reset on screen.
-                 */}
-                <AutoForm form={form} noSubmit skipBottomBar />
+                } catch {
+                  setJsonError("Invalid JSON");
+                }
+              }}
+            />
+            {jsonError && (
+              <div style={{ fontSize: 11, color: "var(--dt-error)" }}>
+                {jsonError}
               </div>
             )}
-            {status && (
-              <div
-                style={{
-                  marginTop: 8,
-                  fontSize: 11,
-                  color:
-                    status === "Saved" ? "var(--dt-get)" : "var(--dt-error)",
-                }}
-              >
-                {status}
-              </div>
-            )}
+          </>
+        ) : (
+          <div className="dt-form">
+            {/*
+             * The section header already owns Reset and Save, so AutoForm's
+             * bottom bar would put a second Reset on screen.
+             */}
+            <AutoForm form={form} noSubmit skipBottomBar />
           </div>
-        </>
-      )}
+        )}
+        {status && (
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 11,
+              color: status === "Saved" ? "var(--dt-get)" : "var(--dt-error)",
+            }}
+          >
+            {status}
+          </div>
+        )}
+      </div>
 
       <AtomChannels atom={atom} />
 

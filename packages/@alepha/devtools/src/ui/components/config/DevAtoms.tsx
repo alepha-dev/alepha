@@ -109,7 +109,7 @@ export const DevAtoms = () => {
                     {atom.persist && (
                       <span className="dt-nav-count">{atom.persist}</span>
                     )}
-                    {!atom.serverOnly && atom.currentValue !== undefined && (
+                    {atom.currentValue !== undefined && (
                       <span
                         className="dt-nav-count"
                         style={{ color: "var(--dt-accent)" }}

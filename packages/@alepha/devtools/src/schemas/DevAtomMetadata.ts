@@ -22,10 +22,13 @@ export const devAtomMetadataSchema = z.object({
    */
   currentValue: z.any().optional(),
   /**
-   * True when the atom was declared with `serverOnly: true`. Its value must
-   * never reach a browser, so `defaultValue`/`currentValue` are omitted for
-   * these atoms — only the atom's existence, name, description, and schema
-   * are exposed.
+   * True when the atom was declared with `serverOnly: true` — meaning the
+   * *application* never serializes it into its SSR hydration payload.
+   *
+   * It does not redact anything here. Devtools is a server-side tool that
+   * refuses to register in production and already serves the environment in
+   * cleartext; withholding these values would hide exactly the state this
+   * screen exists to show.
    */
   serverOnly: z.boolean().optional(),
   /**
