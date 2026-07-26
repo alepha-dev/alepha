@@ -73,23 +73,33 @@ class App {
 run(App);
 `,
   },
-  queue: {
-    filename: "Process background jobs with automatic retries, scheduling",
+  job: {
+    filename: "Durable background jobs with retries, cron and crash recovery",
     content: `
-import { z, run } from "alepha";
-import { $queue } from "alepha/queue";
+import { z, run, $inject } from "alepha";
+import { $job } from "alepha/api/jobs";
 import { EmailProvider } from "alepha/email";
 
 class App {
   email = $inject(EmailProvider);
 
-  sendEmail = $queue({
+  // queue-mode: await this.sendEmail.push({ to, subject, body })
+  sendEmail = $job({
     schema: z.object({
-      to: z.email(), subject: z.text(), body: z.string()
+      to: z.email(), subject: z.text(), body: z.text()
     }),
-    handler: async ({ payload }) => {
+    retry: { retries: 3 },
+    handler: async ({ payload, attempt }) => {
       const { to, subject, body } = payload;
       await this.email.send(to, subject, body);
+    }
+  });
+
+  // cron-mode: same primitive, declare "cron" instead of "schema"
+  digest = $job({
+    cron: "0 8 * * *",
+    handler: async () => {
+      // ...
     }
   });
 }

@@ -1,5 +1,5 @@
 import { $atom, $inject, $state, type Static, z } from "alepha";
-import type { QueueProvider } from "alepha/queue";
+import { QueueProvider } from "alepha/queue";
 import { RedisProvider } from "alepha/redis";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -30,7 +30,7 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class RedisQueueProvider implements QueueProvider {
+export class RedisQueueProvider extends QueueProvider {
   protected readonly options = $state(redisQueueOptions);
   protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
 

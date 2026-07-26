@@ -36,7 +36,7 @@ Each layer builds on the previous — use only what you need.
 | Layer          | Description | Primitives                                              |
 |----------------|-------------|---------------------------------------------------------|
 | **Foundation** | DI, lifecycle, config | `$inject`, `$env`, `$module`, `$hook`, `$logger`        |
-| **Backend**    | Database, queues, storage, API | `$entity`, `$action`, `$queue`, `$bucket`, `$scheduler` |
+| **Backend**    | Database, storage, API | `$entity`, `$action`, `$repository`, `$bucket`, `$topic` |
 | **Frontend**   | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
 | **Platform**   | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
 

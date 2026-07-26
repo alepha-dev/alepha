@@ -1,7 +1,9 @@
 import { $logger } from "alepha/logger";
-import type { QueueProvider } from "./QueueProvider.ts";
+import { QueueProvider } from "./QueueProvider.ts";
 
-export class MemoryQueueProvider implements QueueProvider {
+// `extends`, not `implements` — otherwise this misses default members added
+// to the base class (it silently lost `pushMany` that way).
+export class MemoryQueueProvider extends QueueProvider {
   protected readonly log = $logger();
   protected queueList: Record<string, string[]> = {};
 
@@ -11,6 +13,13 @@ export class MemoryQueueProvider implements QueueProvider {
     }
 
     this.queueList[queue].push(...messages);
+  }
+
+  public override async pushMany(
+    queue: string,
+    messages: string[],
+  ): Promise<void> {
+    await this.push(queue, ...messages);
   }
 
   public async pop(queue: string): Promise<string | undefined> {

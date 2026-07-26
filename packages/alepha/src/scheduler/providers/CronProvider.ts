@@ -92,7 +92,9 @@ export class CronProvider {
   /**
    * Registers a cron job.
    *
-   * It's automatically done when using the `$scheduler` primitive but can also be used manually.
+   * `$job({ cron })` registers through here automatically. Call this
+   * directly when you need a bare periodic tick with no database — you get
+   * no run history, no retry and no admin view in exchange.
    */
   public createCronJob(
     name: string,

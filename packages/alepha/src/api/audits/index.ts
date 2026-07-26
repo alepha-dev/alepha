@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AlephaApiJobs } from "alepha/api/jobs";
 import { AdminAuditController } from "./controllers/AdminAuditController.ts";
 import { AuditJobs } from "./jobs/AuditJobs.ts";
 import { AuditParameters } from "./parameters/AuditParameters.ts";
@@ -32,5 +33,6 @@ export * from "./services/AuditService.ts";
  */
 export const AlephaApiAudits = $module({
   name: "alepha.api.audits",
+  imports: [AlephaApiJobs],
   services: [AuditService, AdminAuditController, AuditParameters, AuditJobs],
 });

@@ -13,6 +13,21 @@ export abstract class QueueProvider {
   public abstract push(queue: string, message: string): Promise<void>;
 
   /**
+   * Push several messages to the same queue.
+   *
+   * The default implementation just fans out to {@link push}. Backends with a
+   * native batch send (Cloudflare Queues `sendBatch`, Redis pipelines) should
+   * override this — on Cloudflare in particular, one `send()` per message
+   * burns one subrequest per message against the Worker's quota.
+   *
+   * @param queue Name of the queue to push the messages to.
+   * @param messages String messages to be pushed, in order.
+   */
+  public async pushMany(queue: string, messages: string[]): Promise<void> {
+    await Promise.all(messages.map((message) => this.push(queue, message)));
+  }
+
+  /**
    * Pop a message from the queue.
    *
    * @param queue Name of the queue to pop the message from.

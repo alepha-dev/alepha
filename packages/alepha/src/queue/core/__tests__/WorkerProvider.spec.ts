@@ -1,10 +1,9 @@
-import { Alepha, z } from "alepha";
+import { $hook, $inject, Alepha, type Static, type TSchema, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { describe, expect, test, vi } from "vitest";
 import {
-  $consumer,
-  $queue,
   MemoryQueueProvider,
+  QueueCodec,
   QueueProvider,
   queueWorkerOptions,
   WorkerProvider,
@@ -25,12 +24,43 @@ class TestWorkerProvider extends WorkerProvider {
   }
 }
 
+/**
+ * Builds a service that registers one queue consumer on start.
+ *
+ * Replaces the `$queue` / `$consumer` primitives these tests used to declare —
+ * queues are now registered imperatively against `WorkerProvider`.
+ */
+const consumerService = <T extends TSchema>(
+  name: string,
+  schema: T,
+  handler: (message: { payload: Static<T> }) => Promise<void>,
+) =>
+  class TestConsumerService {
+    protected readonly queueProvider = $inject(QueueProvider);
+    protected readonly workerProvider = $inject(WorkerProvider);
+
+    // Default priority, so it lands before WorkerProvider's `priority: "last"`
+    // start hook boots the polling loop.
+    protected readonly registration = $hook({
+      on: "start",
+      handler: () => {
+        this.workerProvider.register({
+          name,
+          schema,
+          provider: this.queueProvider,
+          handler,
+        });
+      },
+    });
+  };
+
 describe("WorkerProvider", () => {
   const createTestApp = async (
     options: {
       workerConcurrency?: number;
       workerInterval?: number;
       workerMaxInterval?: number;
+      queueProvider?: any;
     } = {},
   ) => {
     const app = Alepha.create();
@@ -48,26 +78,36 @@ describe("WorkerProvider", () => {
 
     app.with({
       provide: QueueProvider,
-      use: MemoryQueueProvider,
+      use: options.queueProvider ?? MemoryQueueProvider,
     });
+
+    app.with(QueueCodec);
 
     return app;
   };
 
+  /**
+   * Encode + push + wake, resolved before `start()` so the container lock
+   * does not reject a late inject.
+   */
+  const producerFor = (app: Alepha) => {
+    const provider = app.inject(QueueProvider);
+    const codec = app.inject(QueueCodec);
+    const worker = app.inject(WorkerProvider);
+    return async <T extends TSchema>(
+      queue: string,
+      schema: T,
+      payload: Static<T>,
+    ) => {
+      await provider.push(queue, codec.encode(schema, payload));
+      worker.wakeUp();
+    };
+  };
+
   describe("Worker Lifecycle", () => {
     test("should start workers when consumers are present", async () => {
-      class TestService {
-        queue = $queue({
-          name: "test",
-          schema: payloadSchema,
-          handler: async () => {
-            // Just a dummy handler for this test
-          },
-        });
-      }
-
       const app = await createTestApp();
-      app.with(TestService);
+      app.with(consumerService("test", payloadSchema, async () => {}));
 
       const workerProvider = app.inject(TestWorkerProvider);
       const logSpy = vi.spyOn(workerProvider.log, "debug");
@@ -82,16 +122,8 @@ describe("WorkerProvider", () => {
     });
 
     test("should start multiple workers with concurrency", async () => {
-      class TestService {
-        queue = $queue({
-          name: "test",
-          schema: payloadSchema,
-          handler: async () => {},
-        });
-      }
-
       const app = await createTestApp({ workerConcurrency: 3 });
-      app.with(TestService);
+      app.with(consumerService("test", payloadSchema, async () => {}));
 
       const workerProvider = app.inject(TestWorkerProvider);
       const logSpy = vi.spyOn(workerProvider.log, "debug");
@@ -126,16 +158,8 @@ describe("WorkerProvider", () => {
 
   describe("WakeUp Functionality", () => {
     test("should wake up workers and start missing ones", async () => {
-      class TestService {
-        queue = $queue({
-          name: "test",
-          schema: payloadSchema,
-          handler: async () => {},
-        });
-      }
-
       const app = await createTestApp({ workerConcurrency: 2 });
-      app.with(TestService);
+      app.with(consumerService("test", payloadSchema, async () => {}));
 
       const workerProvider = app.inject(TestWorkerProvider);
       const debugSpy = vi.spyOn(workerProvider.log, "debug");
@@ -156,16 +180,8 @@ describe("WorkerProvider", () => {
     });
 
     test("should create new AbortController on wakeUp", async () => {
-      class TestService {
-        queue = $queue({
-          name: "test",
-          schema: payloadSchema,
-          handler: async () => {},
-        });
-      }
-
       const app = await createTestApp();
-      app.with(TestService);
+      app.with(consumerService("test", payloadSchema, async () => {}));
 
       const workerProvider = app.inject(TestWorkerProvider);
 
@@ -189,23 +205,18 @@ describe("WorkerProvider", () => {
     test("should process messages correctly", async () => {
       const messages: any[] = [];
 
-      class TestService {
-        queue = $queue({
-          schema: payloadSchema,
-          handler: async ({ payload }) => {
-            messages.push(payload);
-          },
-        });
-      }
-
       const app = await createTestApp({ workerInterval: 5 });
-      app.with(TestService);
+      app.with(
+        consumerService("test", payloadSchema, async ({ payload }) => {
+          messages.push(payload);
+        }),
+      );
+      const push = producerFor(app);
 
       await app.start();
 
-      const testService = app.inject(TestService);
-      await testService.queue.push({ id: "msg1", count: 5 });
-      await testService.queue.push({ id: "msg2", count: 10 });
+      await push("test", payloadSchema, { id: "msg1", count: 5 });
+      await push("test", payloadSchema, { id: "msg2", count: 10 });
 
       await expect
         .poll(() => messages.length === 2, { timeout: 1000 })
@@ -219,28 +230,22 @@ describe("WorkerProvider", () => {
     });
 
     test("should handle message processing errors gracefully", async () => {
-      class TestService {
-        queue = $queue({
-          name: "test",
-          schema: payloadSchema,
-          handler: async ({ payload }) => {
-            if (payload.id === "error") {
-              throw new Error("Processing error");
-            }
-          },
-        });
-      }
-
       const app = await createTestApp();
-      app.with(TestService);
+      app.with(
+        consumerService("test", payloadSchema, async ({ payload }) => {
+          if (payload.id === "error") {
+            throw new Error("Processing error");
+          }
+        }),
+      );
+      const push = producerFor(app);
 
       const workerProvider = app.inject(TestWorkerProvider);
       const errorSpy = vi.spyOn(workerProvider.log, "error");
 
       await app.start();
 
-      const testService = app.inject(TestService);
-      await testService.queue.push({ id: "error", count: 1 });
+      await push("test", payloadSchema, { id: "error", count: 1 });
 
       await expect
         .poll(() => errorSpy.mock.calls.length > 0, { timeout: 500 })
@@ -251,53 +256,12 @@ describe("WorkerProvider", () => {
 
       await app.stop();
     });
-
-    test("should handle consumer with queue descriptor", async () => {
-      const messages: any[] = [];
-
-      class TestService {
-        queue = $queue({
-          name: "test",
-          schema: payloadSchema,
-        });
-
-        consumer = $consumer({
-          queue: this.queue,
-          handler: async ({ payload }) => {
-            messages.push(payload);
-          },
-        });
-      }
-
-      const app = await createTestApp();
-      app.with(TestService);
-
-      await app.start();
-
-      const testService = app.inject(TestService);
-      await testService.queue.push({ id: "consumer-test", count: 15 });
-
-      await expect
-        .poll(() => messages.length === 1, { timeout: 500 })
-        .toBeTruthy();
-      expect(messages).toEqual([{ id: "consumer-test", count: 15 }]);
-
-      await app.stop();
-    });
   });
 
   describe("Edge Cases", () => {
     test("should handle malformed JSON messages", async () => {
-      class TestService {
-        queue = $queue({
-          name: "test",
-          schema: payloadSchema,
-          handler: async () => {},
-        });
-      }
-
       const app = await createTestApp();
-      app.with(TestService);
+      app.with(consumerService("test", payloadSchema, async () => {}));
 
       const workerProvider = app.inject(TestWorkerProvider);
       const queueProvider = app.inject(QueueProvider);
@@ -324,16 +288,8 @@ describe("WorkerProvider", () => {
     });
 
     test("should handle schema validation errors", async () => {
-      class TestService {
-        queue = $queue({
-          name: "test",
-          schema: payloadSchema,
-          handler: async () => {},
-        });
-      }
-
       const app = await createTestApp();
-      app.with(TestService);
+      app.with(consumerService("test", payloadSchema, async () => {}));
 
       const workerProvider = app.inject(TestWorkerProvider);
       const queueProvider = app.inject(QueueProvider);
@@ -365,10 +321,9 @@ describe("WorkerProvider", () => {
     });
 
     test("should round-trip a payload through the wire format", async () => {
-      // `push` decoded an already-runtime payload and the worker decoded it
-      // again — two decodes, no encode. `$topic` gets this right (encode at
-      // publish, decode at receive); here anything whose encoded form differs
-      // from its runtime form round-tripped only by luck of JSON.stringify.
+      // The producer encodes and the worker decodes exactly once each.
+      // Anything whose encoded form differs from its runtime form used to
+      // round-trip only by luck of JSON.stringify.
       const received: Array<{ id: string; at: string }> = [];
 
       const schema = z.object({
@@ -376,29 +331,22 @@ describe("WorkerProvider", () => {
         at: z.string().meta({ format: "date-time" }),
       });
 
-      class TestService {
-        queue = $queue({
-          name: "roundtrip",
-          schema,
-          handler: async (msg) => {
-            received.push(msg.payload as { id: string; at: string });
-          },
-        });
-      }
-
       const app = await createTestApp({ workerInterval: 5 });
-      app.with(TestService);
-      const service = app.inject(TestService);
+      app.with(
+        consumerService("roundtrip", schema, async (msg) => {
+          received.push(msg.payload as { id: string; at: string });
+        }),
+      );
+      const push = producerFor(app);
+
       await app.start();
 
       const sent = { id: "a1", at: "2026-07-25T10:00:00.000Z" };
-      await service.queue.push(sent);
+      await push("roundtrip", schema, sent);
 
-      const deadline = Date.now() + 2000;
-      while (received.length === 0 && Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, 10));
-      }
-
+      await expect
+        .poll(() => received.length === 1, { timeout: 2000 })
+        .toBeTruthy();
       expect(received).toEqual([sent]);
 
       await app.stop();
@@ -422,28 +370,19 @@ describe("WorkerProvider", () => {
         }
       }
 
-      class TestService {
-        queue = $queue({
-          name: "flaky",
-          schema: payloadSchema,
-          handler: async (msg) => {
-            processed.push(msg.payload.id);
-          },
-        });
-      }
-
-      const app = Alepha.create();
-      app.store.mut(queueWorkerOptions, () => ({
-        concurrency: 1,
-        interval: 5,
-        maxInterval: 20,
-      }));
-      app.with({ provide: WorkerProvider, use: TestWorkerProvider });
-      app.with({ provide: QueueProvider, use: FlakyQueueProvider });
-      app.with(TestService);
+      const app = await createTestApp({
+        workerInterval: 5,
+        workerMaxInterval: 20,
+        queueProvider: FlakyQueueProvider,
+      });
+      app.with(
+        consumerService("flaky", payloadSchema, async (msg) => {
+          processed.push(msg.payload.id);
+        }),
+      );
+      const push = producerFor(app);
 
       const workerProvider = app.inject(TestWorkerProvider);
-      const service = app.inject(TestService);
       await app.start();
 
       // Let the failing polls happen first.
@@ -452,29 +391,19 @@ describe("WorkerProvider", () => {
       // The worker must still be alive to pick this up.
       expect(workerProvider.workersRunning).toBe(1);
 
-      await service.queue.push({ id: "after-blip", count: 1 });
+      await push("flaky", payloadSchema, { id: "after-blip", count: 1 });
 
-      const deadline = Date.now() + 2000;
-      while (processed.length === 0 && Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, 10));
-      }
-
+      await expect
+        .poll(() => processed.length === 1, { timeout: 2000 })
+        .toBeTruthy();
       expect(processed).toEqual(["after-blip"]);
 
       await app.stop();
     });
 
     test("should handle abort signal during wait", async () => {
-      class TestService {
-        queue = $queue({
-          name: "test",
-          schema: payloadSchema,
-          handler: async () => {},
-        });
-      }
-
       const app = await createTestApp({ workerInterval: 5000 });
-      app.with(TestService);
+      app.with(consumerService("test", payloadSchema, async () => {}));
 
       const workerProvider = app.inject(TestWorkerProvider);
       const warnSpy = vi.spyOn(workerProvider.log, "warn");

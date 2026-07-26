@@ -1,11 +1,11 @@
 import { $inject } from "alepha";
-import { $scheduler } from "alepha/scheduler";
+import { $job } from "alepha/api/jobs";
 import { FileService } from "../services/FileService.ts";
 
 export class FileJobs {
   protected readonly fileService = $inject(FileService);
 
-  public readonly purgeFiles = $scheduler({
+  public readonly purgeFiles = $job({
     name: "api:files:purgeFiles",
     description: "Purge files that are marked for deletion",
     cron: "0 * * * *", // Hourly at minute 0

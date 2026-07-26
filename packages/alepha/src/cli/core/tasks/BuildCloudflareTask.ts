@@ -87,8 +87,8 @@ export interface BuildManifest {
     hasWebSocket: boolean;
   };
   /**
-   * All distinct cron expressions registered by `$scheduler`
-   * primitives. Empty when `hasCron` is false.
+   * All distinct cron expressions registered against `CronProvider` —
+   * i.e. every `$job({ cron })`. Empty when `hasCron` is false.
    */
   crons: string[];
   /**
@@ -308,7 +308,10 @@ export class BuildCloudflareTask extends BuildTask {
     } catch {}
 
     try {
-      hasQueue = ctx.alepha.primitives("$queue").length > 0;
+      // There is no queue primitive to count. A Queue binding is needed only
+      // when `$job` dispatch is routed through a broker, which is exactly
+      // what registering `JobQueueProvider` (via `AlephaApiJobsQueue`) means.
+      hasQueue = !!ctx.alepha.inject("JobQueueProvider");
     } catch {}
 
     let hasWebSocket = false;
@@ -457,9 +460,10 @@ export class BuildCloudflareTask extends BuildTask {
   }
 
   protected discoverCrons(ctx: BuildTaskContext): string[] {
-    if (ctx.alepha.primitives("scheduler").length === 0) {
-      return [];
-    }
+    // `CronProvider` is the single registry of cron expressions — every
+    // `$job({ cron })` lands there. This used to bail early unless a
+    // `scheduler` primitive existed, which would emit zero cron triggers
+    // for an app whose scheduled work is all `$job`.
     let cronProvider: CronProvider | undefined;
     try {
       cronProvider = ctx.alepha.inject("CronProvider") as WorkerdCronProvider;

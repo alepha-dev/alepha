@@ -5,7 +5,7 @@ const CODE_TABS = [
   { key: "server", label: "Server" },
   { key: "react", label: "React" },
   { key: "db", label: "ORM" },
-  { key: "queue", label: "Queue" },
+  { key: "job", label: "Jobs" },
   { key: "command", label: "CLI" },
 ] as const;
 

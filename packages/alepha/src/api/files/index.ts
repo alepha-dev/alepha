@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaBucket } from "alepha/bucket";
 import type { DurationLike } from "alepha/datetime";
 import type { UserAccountToken } from "alepha/security";
@@ -72,5 +73,5 @@ export const AlephaApiFiles = $module({
     FileService,
     FileAccessProvider,
   ],
-  imports: [AlephaBucket, AlephaServerEtag],
+  imports: [AlephaApiJobs, AlephaBucket, AlephaServerEtag],
 });

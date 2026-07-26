@@ -70,7 +70,7 @@ export class BuildVercelTask extends BuildTask {
   }
 
   /**
-   * Collect every registered `$scheduler` / `$job({ cron })` and turn it
+   * Collect every registered `$job({ cron })` and turn it
    * into a Vercel Cron entry. Vercel hits `path` on the configured
    * `schedule`; the entry-point handler routes that to a `serverless:cron`
    * event so `CronProvider` runs the matching job in-process.
@@ -82,11 +82,9 @@ export class BuildVercelTask extends BuildTask {
   protected collectCronJobs(
     ctx: BuildTaskContext,
   ): { path: string; schedule: string }[] {
-    if (ctx.alepha.primitives("scheduler").length === 0) {
-      // `$job` registers cron jobs through the same provider, so the
-      // primitives count covers both `$scheduler` and `$job({ cron })`.
-    }
-
+    // `CronProvider` is the single registry — every `$job({ cron })` lands
+    // there. (This used to open with an empty `if` guarding on a `scheduler`
+    // primitive count; the primitive is gone and the branch did nothing.)
     let cronProvider: CronProvider | undefined;
     try {
       cronProvider = ctx.alepha.inject("CronProvider") as CronProvider;
@@ -106,7 +104,7 @@ export class BuildVercelTask extends BuildTask {
   /**
    * Write .vercel/output/config.json with Build Output API v3 format.
    *
-   * `userCrons` are merged with auto-collected `$scheduler` / `$job({ cron })`
+   * `userCrons` are merged with auto-collected `$job({ cron })`
    * entries — explicit user config wins on conflicting paths.
    */
   protected async writeOutputConfig(

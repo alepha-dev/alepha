@@ -1,18 +1,16 @@
 import { $module, type Alepha } from "alepha";
-import { $consumer } from "./primitives/$consumer.ts";
-import { $queue } from "./primitives/$queue.ts";
 import { CloudflareQueueProvider } from "./providers/CloudflareQueueProvider.ts";
 import { MemoryQueueProvider } from "./providers/MemoryQueueProvider.ts";
+import { QueueCodec } from "./providers/QueueCodec.ts";
 import { QueueProvider } from "./providers/QueueProvider.ts";
 import { WorkerdWorkerProvider } from "./providers/WorkerdWorkerProvider.ts";
 import { WorkerProvider } from "./providers/WorkerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./primitives/$consumer.ts";
-export * from "./primitives/$queue.ts";
 export * from "./providers/CloudflareQueueProvider.ts";
 export * from "./providers/MemoryQueueProvider.ts";
+export * from "./providers/QueueCodec.ts";
 export * from "./providers/QueueProvider.ts";
 export * from "./providers/WorkerdWorkerProvider.ts";
 export * from "./providers/WorkerProvider.ts";
@@ -36,28 +34,29 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Asynchronous message processing with automatic worker management.
+ * Message transport used under `$job`. **Not an application-facing API.**
  *
- * Delivery is **at-most-once** at this layer: a message is popped before the
- * handler runs, so a handler error or a crash loses it. Alepha adds no retry
- * and no dead-letter queue on top. **For work that must not be lost, use
- * `$job` (alepha/api/jobs)** — a durable, DB-backed outbox over this
- * transport. (Cloudflare Queues has its own broker-level retry/DLQ, configured
- * on the binding, not by this module.)
+ * There is no queue primitive. Declare background work with
+ * `$job` (`alepha/api/jobs`) and add `AlephaApiJobsQueue` when you want
+ * dispatch to travel through Cloudflare Queues instead of running in-process.
+ *
+ * On Cloudflare, consumption is push-based: the Worker's `queue` handler
+ * emits `cloudflare:queue` and calls `msg.retry()` when handling throws, so
+ * undeliverable messages reach the `dead_letter_queue` the build writes into
+ * `wrangler.jsonc`. A `$job` handler that throws is caught and recorded by
+ * `JobProvider` instead, and retried by the outbox sweep.
  *
  * **Features:**
- * - Background job queues with type-safe payloads
- * - Queue consumer handlers
- * - Automatic worker threads for non-blocking processing
- * - Configurable concurrency and worker pools
- * - Providers: Memory (dev), Redis (production), Cloudflare Queue (workerd)
+ * - Consumers registered imperatively via `WorkerProvider.register`
+ * - Push-based delivery via the `cloudflare:queue` event (no polling)
+ * - Batch send via `sendBatch` (`QueueProvider.pushMany`, chunked at 100)
+ * - Providers: Memory (test), Cloudflare Queue (workerd)
  *
  * @module alepha.queue
  */
 export const AlephaQueue = $module({
   name: "alepha.queue",
-  primitives: [$queue, $consumer],
-  services: [QueueProvider, WorkerProvider],
+  services: [QueueProvider, WorkerProvider, QueueCodec],
   variants: [
     MemoryQueueProvider,
     CloudflareQueueProvider,

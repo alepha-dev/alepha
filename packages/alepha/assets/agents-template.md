@@ -67,14 +67,45 @@ src/
 | Primitive | Import | Purpose |
 |-----------|--------|---------|
 | `$logger` | `alepha/logger` | Structured logging |
-| `$queue` | `alepha/queue` | Background jobs |
-| `$scheduler` | `alepha/scheduler` | Cron tasks |
+| `$job` | `alepha/api/jobs` | Background jobs AND cron — durable, retried, crash-safe |
 | `$cache` | `alepha/cache` | Cached computations |
 | `$bucket` | `alepha/bucket` | File storage |
 | `$email` | `alepha/email` | Email sending |
 | `$sms` | `alepha/sms` | SMS sending |
 | `$lock` | `alepha/lock` | Distributed locks |
 | `$retry` | `alepha/retry` | Retry with backoff |
+
+**Background work: always reach for `$job`.** It is the only primitive with a
+durable outbox — at-least-once delivery, retries, idempotency keys, priorities,
+crash recovery via a reconciliation sweep, and failure records in the database.
+
+```ts
+import { $job } from "alepha/api/jobs";
+
+class Emails {
+  // queue-mode: declare `schema`, then `await this.welcome.push({ ... })`
+  welcome = $job({
+    schema: z.object({ userId: z.text() }),
+    retry: { retries: 3 },
+    handler: async ({ payload, attempt }) => { /* ... */ },
+  });
+
+  // cron-mode: declare `cron` instead. Never both.
+  sweep = $job({ cron: "0 3 * * *", handler: async () => { /* ... */ } });
+}
+```
+
+`$job` needs a database (it writes to the `jobExecution` table) and registers
+an admin controller — that is why it lives under `alepha/api/`. Register
+`AlephaApiJobs`; add `AlephaApiJobsQueue` only if you want dispatch to go
+through a real broker instead of in-process.
+
+**File uploads.** `$bucket` alone is raw blob storage: upload/download/delete
+against S3, R2 or the local disk, with no database row and no query API. If you
+need file metadata, listing, tags, TTL expiry or HTTP upload endpoints, also
+register `AlephaApiFiles` from `alepha/api/files`. Its bucket options (`ttl`,
+`tags`, `persist`, `user`) type-check even when the module is not registered —
+they are silently ignored in that case.
 
 ### Security (`alepha/security`)
 | Primitive | Purpose |

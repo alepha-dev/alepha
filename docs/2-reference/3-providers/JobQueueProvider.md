@@ -15,6 +15,6 @@ Extends {@link JobDispatcher} and substitutes the default
 `AlephaQueue` (e.g. Cloudflare Queues, Redis, in-memory) instead of
 being processed in-process.
 
-The class is also kept as a `JobQueueProvider` export name for backwards
-compatibility — it has always been the queue path's entry point.
+This talks to `QueueProvider` / `WorkerProvider` directly. The queue is an
+internal transport under `$job`, not something an application declares.
 

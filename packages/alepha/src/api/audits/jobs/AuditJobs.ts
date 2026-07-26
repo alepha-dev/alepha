@@ -1,5 +1,5 @@
 import { $inject } from "alepha";
-import { $scheduler } from "alepha/scheduler";
+import { $job } from "alepha/api/jobs";
 import { AuditParameters } from "../parameters/AuditParameters.ts";
 import { AuditService } from "../services/AuditService.ts";
 
@@ -17,7 +17,7 @@ export class AuditJobs {
    * global default (`auditOptions.retentionDays`). A default of `0` disables
    * cleanup for types without a dedicated retention.
    */
-  public readonly cleanExpired = $scheduler({
+  public readonly cleanExpired = $job({
     name: "api:audits:cleanExpired",
     cron: "0 3 * * *", // Daily at 03:00
     description: "Delete expired audit entries (retention policy)",

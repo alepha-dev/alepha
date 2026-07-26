@@ -85,8 +85,8 @@ The `orgId` and `projectId` can also be set via environment variables (`VERCEL_O
 
 Vercel serverless functions have constraints that affect some Alepha features:
 
-- **Queue** (`$queue`) is not supported
-- **Cron** (`$scheduler`) has limited support -- must be configured manually via the `vercel` config `crons` option
+- **Queue-backed job dispatch** (`AlephaApiJobsQueue`) is not supported -- `$job` still works in direct mode, which is the default
+- **Cron** (`$job({ cron })`) has limited support -- must be configured manually via the `vercel` config `crons` option
 - **Cold starts** -- serverless functions have startup latency on the first request
 - **Execution time limits** -- Vercel imposes per-request timeouts depending on your plan
 
@@ -95,7 +95,7 @@ Vercel serverless functions have constraints that affect some Alepha features:
 If serverless is a goal, prefer Cloudflare Workers with `--target=cloudflare`. Cloudflare Workers have:
 
 - Lower cold start latency
-- Native cron trigger support via `$scheduler`
+- Native cron trigger support via `$job({ cron })`
 - D1 database integration
 - Lower cost at scale
 

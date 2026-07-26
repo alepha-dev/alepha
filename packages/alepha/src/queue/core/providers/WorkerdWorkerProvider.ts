@@ -1,7 +1,5 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
-import { $consumer } from "../primitives/$consumer.ts";
-import { $queue } from "../primitives/$queue.ts";
 import { WorkerProvider } from "./WorkerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -20,29 +18,15 @@ export class WorkerdWorkerProvider extends WorkerProvider {
   protected override readonly log = $logger();
 
   /**
-   * Override start hook — collect consumers but do NOT start polling workers.
+   * Override the start hook — consumers register themselves via
+   * `WorkerProvider.register`; here we must only make sure the polling
+   * workers never start. Cloudflare delivers messages push-based through
+   * the `cloudflare:queue` event instead.
    */
   protected override readonly start = $hook({
     on: "start",
     priority: "last",
     handler: () => {
-      for (const queue of this.alepha.primitives($queue)) {
-        const handler = queue.options.handler;
-        if (handler) {
-          this.consumers.push({ handler, queue });
-        }
-      }
-
-      for (const consumer of this.alepha.primitives($consumer)) {
-        // Mirror the Node WorkerProvider: run through the pipeline-wrapped
-        // handler so `use` middleware ($retry, $lock, ...) applies on
-        // Cloudflare too — pushing the raw options handler silently drops it.
-        this.consumers.push({
-          queue: consumer.options.queue,
-          handler: (msg) => consumer.handler.run(msg),
-        });
-      }
-
       if (this.consumers.length > 0) {
         this.log.debug(
           `Registered ${this.consumers.length} queue consumer${this.consumers.length > 1 ? "s" : ""} for Cloudflare Queue.`,
@@ -61,13 +45,27 @@ export class WorkerdWorkerProvider extends WorkerProvider {
 
   /**
    * Handle incoming messages from Cloudflare Queue.
+   *
+   * Errors are **not** caught here. The generated worker's `queue` handler
+   * calls `msg.retry()` when this emit rejects, which is what feeds the
+   * `dead_letter_queue` the build writes into `wrangler.jsonc`. Swallowing
+   * the error made every message ack unconditionally and turned both
+   * `max_retries` and the DLQ into dead configuration.
+   *
+   * Note this only surfaces *infrastructure* failures (undecodable payload,
+   * backend unreachable). A `$job` handler that throws is caught and
+   * recorded by `JobProvider` itself, so it acks and retries through the
+   * outbox sweep rather than through the broker.
    */
   protected readonly onQueueMessage = $hook({
     on: "cloudflare:queue",
     handler: async (event: { queue: string; message: string }) => {
-      const consumer = this.consumers.find((c) => c.queue.name === event.queue);
+      const consumer = this.consumers.find((c) => c.name === event.queue);
 
       if (!consumer) {
+        // Deliberately ack: an unroutable queue name is usually a consumer
+        // that was removed in a deploy. Retrying would spin the message
+        // until it hits max_retries with no chance of ever succeeding.
         this.log.warn(
           `No consumer found for queue '${event.queue}', skipping message.`,
         );

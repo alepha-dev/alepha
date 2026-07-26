@@ -75,7 +75,7 @@ If your application uses `$bucket` with `R2FileStorageProvider`, the R2 binding 
 
 ## Cron Triggers
 
-`$scheduler` cron expressions are detected at build time and mapped to Cloudflare Cron Triggers in `wrangler.jsonc`:
+`$job({ cron })` expressions are detected at build time and mapped to Cloudflare Cron Triggers in `wrangler.jsonc`:
 
 ```json
 {
@@ -85,7 +85,7 @@ If your application uses `$bucket` with `R2FileStorageProvider`, the R2 binding 
 }
 ```
 
-The Worker's `scheduled` handler dispatches the `cloudflare:scheduled` event, which Alepha routes to the matching `$scheduler` handler.
+The Worker's `scheduled` handler dispatches the `cloudflare:scheduled` event, which Alepha routes to the matching `$job` handler.
 
 ## Build with Mode
 
@@ -103,9 +103,11 @@ If your project has a React frontend, the built client assets are placed in `dis
 
 ## Queue
 
-`$queue` and `$job` are supported via [Cloudflare Queues](https://developers.cloudflare.com/queues/). The build automatically adds the `JOBS_QUEUE` binding and `queue` consumer to `wrangler.jsonc` when queue primitives are detected.
+`$job` dispatch can travel through [Cloudflare Queues](https://developers.cloudflare.com/queues/). The build automatically adds the `JOBS_QUEUE` binding, the `queue` consumer and a dead-letter queue to `wrangler.jsonc` when `AlephaApiJobsQueue` is registered.
 
-At runtime, `CloudflareQueueProvider` replaces the default queue provider and `WorkerdWorkerProvider` handles message consumption via push-based `queue` events (no polling).
+At runtime, `CloudflareQueueProvider` replaces the default queue provider and `WorkerdWorkerProvider` handles message consumption via push-based `queue` events (no polling). Messages are sent in batches of up to 100 per `sendBatch` call, so a `pushMany()` of 500 jobs costs 5 subrequests rather than 500.
+
+A `$job` handler that throws is caught and recorded by `JobProvider`, so it acks and retries through the outbox sweep. Only infrastructure failures — an undecodable message, an unreachable backend — propagate to `msg.retry()` and eventually land in the dead-letter queue.
 
 ## Jobs without a queue (direct mode)
 

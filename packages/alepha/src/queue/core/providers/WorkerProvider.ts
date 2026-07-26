@@ -10,12 +10,7 @@ import {
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $consumer } from "../primitives/$consumer.ts";
-import {
-  $queue,
-  type QueueMessage,
-  type QueuePrimitive,
-} from "../primitives/$queue.ts";
+import { QueueCodec } from "./QueueCodec.ts";
 import { QueueProvider } from "./QueueProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -68,39 +63,34 @@ export class WorkerProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly queueProvider = $inject(QueueProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly codec = $inject(QueueCodec);
 
   protected workerPromises: Array<Promise<void>> = [];
   protected workersRunning = 0;
   protected abortController: AbortController | undefined;
   protected workerIntervals: Record<number, number> = {};
-  protected consumers: Array<Consumer> = [];
+  protected consumers: Array<QueueConsumer> = [];
   protected nextConsumerIndex = 0;
 
   public get isRunning(): boolean {
     return this.workersRunning > 0;
   }
 
+  /**
+   * Register a consumer to be polled by the worker loop.
+   *
+   * Call this before the `start` hook fires — this provider's own start hook
+   * runs at `priority: "last"`, so a registration made from any normal
+   * start hook lands in time.
+   */
+  public register(consumer: QueueConsumer<any>): void {
+    this.consumers.push(consumer);
+  }
+
   protected readonly start = $hook({
     on: "start",
     priority: "last",
     handler: () => {
-      for (const queue of this.alepha.primitives($queue)) {
-        const handler = queue.options.handler;
-        if (handler) {
-          this.consumers.push({
-            handler,
-            queue,
-          });
-        }
-      }
-
-      for (const consumer of this.alepha.primitives($consumer)) {
-        this.consumers.push({
-          queue: consumer.options.queue,
-          handler: (msg) => consumer.handler.run(msg),
-        });
-      }
-
       if (this.consumers.length > 0) {
         this.startWorkers();
         this.log.debug(
@@ -151,7 +141,17 @@ export class WorkerProvider {
 
           if (next) {
             this.workerIntervals[i] = 0;
-            await this.processMessage(next);
+            // Swallow here, NOT in `processMessage`. On this transport the
+            // message is already popped and gone, so there is nothing to
+            // redeliver — logging is all we can do, and the loop must
+            // survive. Push-based transports (Cloudflare) need the error to
+            // escape instead so the broker can retry; see
+            // `WorkerdWorkerProvider.onQueueMessage`.
+            try {
+              await this.processMessage(next);
+            } catch (e) {
+              this.log.error("Failed to process message", e);
+            }
           } else {
             await this.waitForNextMessage(i);
           }
@@ -219,8 +219,7 @@ export class WorkerProvider {
     for (let i = 0; i < len; i++) {
       const idx = (this.nextConsumerIndex + i) % len;
       const consumer = this.consumers[idx];
-      const provider = consumer.queue.provider;
-      const message = await provider.pop(consumer.queue.name);
+      const message = await consumer.provider.pop(consumer.name);
       if (message) {
         this.nextConsumerIndex = (idx + 1) % len;
         return { message, consumer };
@@ -230,23 +229,21 @@ export class WorkerProvider {
 
   /**
    * Process a message from a queue.
+   *
+   * **Throws on failure — deliberately.** Callers decide what a failure
+   * means for their transport: the polling loop logs and moves on (the
+   * message is already gone), while the Cloudflare consumer lets it escape
+   * so the runtime calls `msg.retry()` and the message can reach the
+   * configured dead-letter queue. Catching here made that DLQ unreachable.
    */
   protected async processMessage(response: {
     message: any;
-    consumer: Consumer;
+    consumer: QueueConsumer;
   }) {
     const { message, consumer } = response;
 
-    try {
-      const json = JSON.parse(message);
-      const payload = this.alepha.codec.decode(
-        consumer.queue.options.schema,
-        json.payload,
-      );
-      await this.alepha.context.run(() => consumer.handler({ payload }));
-    } catch (e) {
-      this.log.error("Failed to process message", e);
-    }
+    const payload = this.codec.decode(consumer.schema, message);
+    await this.alepha.context.run(() => consumer.handler({ payload }));
   }
 
   /**
@@ -277,12 +274,37 @@ export class WorkerProvider {
   }
 }
 
-export interface Consumer<T extends TSchema = TSchema> {
-  queue: QueuePrimitive<T>;
-  handler: (message: QueueMessage<T>) => Promise<void>;
+/**
+ * A queue the worker loop should drain.
+ *
+ * Registered imperatively via {@link WorkerProvider.register} rather than
+ * discovered from a primitive — queues are an internal transport under
+ * `$job`, not something applications declare.
+ */
+export interface QueueConsumer<T extends TSchema = TSchema> {
+  /**
+   * Logical queue name, used as the backend key.
+   */
+  name: string;
+
+  /**
+   * Payload schema. Messages are decoded against it before the handler runs.
+   */
+  schema: T;
+
+  /**
+   * Backend this queue lives on.
+   */
+  provider: QueueProvider;
+
+  /**
+   * Invoked once per message. A throw loses the message on polling backends;
+   * see {@link WorkerProvider.processMessage}.
+   */
+  handler: (message: { payload: Static<T> }) => Promise<void>;
 }
 
 export interface NextMessage {
-  consumer: Consumer;
+  consumer: QueueConsumer;
   message: string;
 }

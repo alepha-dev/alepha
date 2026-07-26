@@ -258,13 +258,23 @@ Core primitives:
 - `$entity` - `import { $entity } from "alepha/orm"`
 - `$repository` - `import { $repository } from "alepha/orm"`
 - `$page` - `import { $page } from "alepha/react/router"`
-- `$queue` - `import { $queue } from "alepha/queue"`
-- `$scheduler` - `import { $scheduler } from "alepha/scheduler"`
+- `$job` - `import { $job } from "alepha/api/jobs"`
 - `$cache` - `import { $cache } from "alepha/cache"`
 - `$bucket` - `import { $bucket } from "alepha/bucket"`
 - `$issuer` - `import { $issuer } from "alepha/security"`
 - `$realm` - `import { $realm } from "alepha/api/users"`
 - `$command` - `import { $command } from "alepha/command"`
+
+Picking the right one:
+
+- **Background work and cron** — always `$job`. It is the only primitive for
+  either, and it has a durable outbox: at-least-once delivery, retries,
+  idempotency keys, crash recovery, and failure rows in the database. Declare
+  `schema` for queue-mode (then `push()`) or `cron` for cron-mode, never both.
+  Requires a database. There is no `$scheduler` and no `$queue`.
+- **`$bucket`** — raw blob storage only (upload/download/delete). For file
+  metadata, listing, tags, TTL or HTTP upload endpoints, also register
+  `AlephaApiFiles` from `alepha/api/files`.
 
 React hooks:
 

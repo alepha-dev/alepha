@@ -25,6 +25,11 @@ export const QUEUE_DEFAULT_BINDING = "JOBS_QUEUE";
  */
 export const QUEUE_DEFAULT_MAX_RETRIES = 3;
 
+/**
+ * Maximum number of messages Cloudflare accepts in a single `sendBatch` call.
+ */
+export const QUEUE_MAX_BATCH_SIZE = 100;
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
@@ -78,6 +83,25 @@ export class CloudflareQueueProvider extends QueueProvider {
 
   public async push(queue: string, message: string): Promise<void> {
     await this.getQueue().send({ queue, message });
+  }
+
+  /**
+   * One `sendBatch` call instead of one `send` per message. Cloudflare caps a
+   * batch at 100 messages, so chunk beyond that.
+   */
+  public override async pushMany(
+    queue: string,
+    messages: string[],
+  ): Promise<void> {
+    if (messages.length === 0) return;
+
+    const binding = this.getQueue();
+    for (let i = 0; i < messages.length; i += QUEUE_MAX_BATCH_SIZE) {
+      const chunk = messages.slice(i, i + QUEUE_MAX_BATCH_SIZE);
+      await binding.sendBatch(
+        chunk.map((message) => ({ body: { queue, message } })),
+      );
+    }
   }
 
   /**

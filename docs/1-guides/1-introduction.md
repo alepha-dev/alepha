@@ -21,7 +21,7 @@ Each layer builds on the previous.
 | Layer | Description | Primitives                                              |
 |-------|-------------|---------------------------------------------------------|
 | **Foundation** | DI, lifecycle, config | `$inject`, `$env`, `$module`, `$hook`, `$logger`        |
-| **Backend** | Database, queues, storage, API | `$entity`, `$action`, `$queue`, `$bucket`, `$scheduler` |
+| **Backend** | Database, storage, API | `$entity`, `$action`, `$repository`, `$bucket`, `$topic` |
 | **Frontend** | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
 | **Platform** | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
 | **Admin** | Admin panel & auth UI | `$ui`, `$uiAdmin`, `$uiAuth`                            |
@@ -155,16 +155,15 @@ Common infrastructure needs are built-in primitives:
 | Need | Primitive | What it does |
 |------|-----------|--------------|
 | Background jobs | `$job` | Durable async work: retries, idempotency keys, crash recovery |
-| Message fan-out | `$queue` | At-most-once transport for loss-tolerant events |
 | File uploads | `$bucket` | Store and retrieve files (S3, R2, Vercel Blob) |
-| Cron jobs | `$scheduler` | Run tasks on a schedule |
+| Cron jobs | `$job` | Same primitive, declared with `cron` instead of `schema` |
 | Pub/sub | `$topic` | Publish and subscribe to events |
 | Caching | `$cache` | Cache expensive computations |
 | Distributed locks | `$lock` | Coordinate across processes |
 | Email | `$email` | Send transactional email |
 
 Production builds compile to an optimized bundle deployable to Vercel, Cloudflare, or any VPS.
-Primitives like `$scheduler` automatically map to native platform formats (Cloudflare Triggers, Vercel Cron).
+Declarations like `$job({ cron })` automatically map to native platform formats (Cloudflare Triggers, Vercel Cron).
 
 ## Deployment Targets
 

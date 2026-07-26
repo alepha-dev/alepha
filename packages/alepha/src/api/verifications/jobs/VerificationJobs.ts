@@ -1,7 +1,7 @@
 import { $inject } from "alepha";
+import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
-import { $scheduler } from "alepha/scheduler";
 import { verifications } from "../entities/verifications.ts";
 import { VerificationParameters } from "../parameters/VerificationParameters.ts";
 
@@ -10,7 +10,7 @@ export class VerificationJobs {
   protected readonly verificationParameters = $inject(VerificationParameters);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
-  public readonly cleanExpired = $scheduler({
+  public readonly cleanExpired = $job({
     name: "api:verifications:cleanExpired",
     cron: "0 * * * *", // Hourly at minute 0
     description: "Clean expired verifications",
