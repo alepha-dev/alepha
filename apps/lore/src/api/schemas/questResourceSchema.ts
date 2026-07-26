@@ -31,3 +31,9 @@ export const questResourceSchema = quests.schema.extend({
 });
 
 export type QuestResource = Static<typeof questResourceSchema>;
+
+/**
+ * Lifecycle status of a quest, derived from its timestamp columns by
+ * {@link QuestResourceMapper.questStatus}.
+ */
+export type QuestStatus = Static<typeof questStatusSchema>;
