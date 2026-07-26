@@ -17,6 +17,11 @@ export const devEnvMetadataSchema = z.object({
    * The service class name where this $env is defined
    */
   serviceName: z.text().optional(),
+  /**
+   * The module the declaring service belongs to. Used to group variables by
+   * the subsystem that expects them.
+   */
+  moduleName: z.text().optional(),
 });
 
 export type DevEnvMetadata = Static<typeof devEnvMetadataSchema>;

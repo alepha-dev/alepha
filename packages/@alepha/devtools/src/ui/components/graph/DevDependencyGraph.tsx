@@ -177,10 +177,6 @@ export const DevDependencyGraph = () => {
     [nodes, handleNodeClick],
   );
 
-  const handleExport = useCallback(() => {
-    toast.info("Export feature requires html2canvas library. Coming soon!");
-  }, []);
-
   if (loading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -199,7 +195,6 @@ export const DevDependencyGraph = () => {
         modules={modules}
         nodeCount={nodes.length}
         edgeCount={edges.length}
-        onExport={handleExport}
       />
 
       {circularDeps.length > 0 && (

@@ -229,7 +229,7 @@ Then deploy:
 npx alepha p up
 ```
 
-Alepha scans your code for primitives (`$entity`, `$bucket`, `$queue`, etc.), provisions the matching Cloudflare resources (D1, R2, Queue), builds for Workers, runs migrations, and deploys -- all in one step.
+Alepha scans your code for primitives (`$entity`, `$bucket`, `$job`, etc.), provisions the matching Cloudflare resources (D1, R2, Queue), builds for Workers, runs migrations, and deploys -- all in one step.
 
 Preview what will be created before deploying:
 

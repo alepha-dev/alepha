@@ -1,4 +1,5 @@
 import { $inject, Alepha, type TObject, type TSchema, z } from "alepha";
+import { JobProvider } from "alepha/api/jobs";
 import { $bucket } from "alepha/bucket";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
@@ -15,9 +16,7 @@ import {
   PG_VERSION,
   RepositoryProvider,
 } from "alepha/orm";
-import { $queue } from "alepha/queue";
 import { $page } from "alepha/react/router";
-import { $scheduler } from "alepha/scheduler";
 import { $issuer } from "alepha/security";
 import { $action, ServerProvider } from "alepha/server";
 import { $topic } from "alepha/topic";
@@ -33,14 +32,12 @@ import type {
   DevEntityMetadata,
 } from "../schemas/DevEntityMetadata.ts";
 import type { DevEnvMetadata } from "../schemas/DevEnvMetadata.ts";
+import type { DevJobMetadata } from "../schemas/DevJobMetadata.ts";
 import type { DevMetadata, DevSystem } from "../schemas/DevMetadata.ts";
 import type { DevModuleMetadata } from "../schemas/DevModuleMetadata.ts";
 import type { DevPageMetadata } from "../schemas/DevPageMetadata.ts";
 import type { DevProviderMetadata } from "../schemas/DevProviderMetadata.ts";
-import type { DevQueueMetadata } from "../schemas/DevQueueMetadata.ts";
 import type { DevRealmMetadata } from "../schemas/DevRealmMetadata.ts";
-import type { DevRouteMetadata } from "../schemas/DevRouteMetadata.ts";
-import type { DevSchedulerMetadata } from "../schemas/DevSchedulerMetadata.ts";
 import type { DevTopicMetadata } from "../schemas/DevTopicMetadata.ts";
 
 export class DevToolsMetadataProvider {
@@ -70,10 +67,10 @@ export class DevToolsMetadataProvider {
         secure:
           action.middlewares.some((m) => m?.name === "$secure") || undefined,
         hide: options.hide,
-        body: schema?.body,
-        params: schema?.params,
-        query: schema?.query,
-        response: schema?.response,
+        body: this.toJsonSchema(schema?.body),
+        params: this.toJsonSchema(schema?.params),
+        query: this.toJsonSchema(schema?.query),
+        response: this.toJsonSchema(schema?.response),
         bodyContentType: action.getBodyContentType(),
         middlewares: action.middlewares.filter(Boolean).length
           ? action.middlewares.filter(Boolean)
@@ -82,27 +79,52 @@ export class DevToolsMetadataProvider {
     });
   }
 
-  public getQueues(): DevQueueMetadata[] {
-    const queuePrimitives = this.alepha.primitives($queue);
+  /**
+   * Jobs declared with `$job`.
+   *
+   * Declarative only. Execution counts, last-run and the rows themselves are
+   * runtime state and come from `GET /__devtools/api/jobs`, which reads the
+   * durable outbox table via `JobService`.
+   */
+  public getJobs(): DevJobMetadata[] {
+    let registrations: Array<{ name: string; options: any; kind: string }>;
+    try {
+      registrations = Array.from(
+        this.alepha.inject(JobProvider).getRegisteredJobs().values(),
+      );
+    } catch {
+      // An app that never loaded the jobs module has no JobProvider to
+      // inject, and the container refuses to register one after start. Degrade
+      // to an empty list — the whole /metadata response 500s otherwise.
+      return [];
+    }
 
-    return queuePrimitives.map((queue) => ({
-      name: queue.name,
-      description: queue.options.description,
-      schema: queue.options.schema,
-      provider: this.getProviderName(queue.options.provider),
-    }));
-  }
+    return registrations.map(({ name, options }) => {
+      const mode: DevJobMetadata["mode"] = options.cron
+        ? "cron"
+        : options.schema
+          ? "queue"
+          : "direct";
 
-  public getSchedulers(): DevSchedulerMetadata[] {
-    const schedulerPrimitives = this.alepha.primitives($scheduler);
-
-    return schedulerPrimitives.map((scheduler) => ({
-      name: scheduler.name,
-      description: scheduler.options.description,
-      cron: scheduler.options.cron,
-      interval: scheduler.options.interval,
-      lock: scheduler.options.lock,
-    }));
+      return {
+        name,
+        description: options.description,
+        mode,
+        cron: options.cron,
+        priority: options.priority,
+        // Durations are declared as a `[value, unit]` tuple; stringifying one
+        // directly yields "30,seconds".
+        timeout: Array.isArray(options.timeout)
+          ? options.timeout.join(" ")
+          : options.timeout
+            ? String(options.timeout)
+            : undefined,
+        retries: options.retry?.retries,
+        lock: options.lock,
+        record: options.record,
+        schema: this.toJsonSchema(options.schema),
+      };
+    });
   }
 
   public getTopics(): DevTopicMetadata[] {
@@ -118,7 +140,7 @@ export class DevToolsMetadataProvider {
         topicMap.set(topic.name, {
           name: topic.name,
           description: topic.options.description,
-          schema: topic.options.schema,
+          schema: this.toJsonSchema(topic.options.schema),
           provider: this.getProviderName(topic.options.provider),
           subscribers: 1,
         });
@@ -188,8 +210,8 @@ export class DevToolsMetadataProvider {
         description: page.options.description,
         path: page.options.path,
         parentName: page.options.parent?.name,
-        params: page.options.schema?.params,
-        query: page.options.schema?.query,
+        params: this.toJsonSchema(page.options.schema?.params),
+        query: this.toJsonSchema(page.options.schema?.query),
         hasComponent: !!page.options.component,
         hasLazy: !!page.options.lazy,
         hasResolve: !!page.options.resolve,
@@ -321,9 +343,9 @@ export class DevToolsMetadataProvider {
           indexes,
           foreignKeys,
           constraints,
-          schema: entity.schema,
-          insertSchema: entity.insertSchema,
-          updateSchema: entity.updateSchema,
+          schema: this.toJsonSchema(entity.schema),
+          insertSchema: this.toJsonSchema(entity.insertSchema),
+          updateSchema: this.toJsonSchema(entity.updateSchema),
         };
       });
     } catch {
@@ -380,20 +402,15 @@ export class DevToolsMetadataProvider {
     return false;
   }
 
-  public getRoutes(): DevRouteMetadata[] {
-    // Routes are the base primitive - actions and pages are routes
-    // Showing them separately would be redundant with actions
-    return [];
-  }
-
   public getEnvs(): DevEnvMetadata[] {
     const envSchemas = this.alepha.getEnvSchemas();
 
     return envSchemas.map((item, index) => ({
       propertyKey: `env_${index}`,
-      schema: item.schema,
+      schema: this.toJsonSchema(item.schema),
       values: item.values,
-      serviceName: undefined,
+      serviceName: item.owner?.service,
+      moduleName: item.owner?.module,
     }));
   }
 
@@ -410,7 +427,7 @@ export class DevToolsMetadataProvider {
         return {
           name: atom.key,
           description: atom.options.description,
-          schema: atom.schema,
+          schema: this.toJsonSchema(atom.schema),
           serverOnly: true,
         };
       }
@@ -418,7 +435,7 @@ export class DevToolsMetadataProvider {
       return {
         name: atom.key,
         description: atom.options.description,
-        schema: atom.schema,
+        schema: this.toJsonSchema(atom.schema),
         defaultValue: atom.options.default,
         currentValue: value,
       };
@@ -445,8 +462,7 @@ export class DevToolsMetadataProvider {
     return {
       system: this.getSystem(),
       actions: this.getActions(),
-      queues: this.getQueues(),
-      schedulers: this.getSchedulers(),
+      jobs: this.getJobs(),
       topics: this.getTopics(),
       buckets: this.getBuckets(),
       realms: this.getRealms(),
@@ -455,13 +471,40 @@ export class DevToolsMetadataProvider {
       providers: this.getProviders(),
       modules: this.getModules(),
       entities: this.getEntities(),
-      routes: this.getRoutes(),
       envs: this.getEnvs(),
       atoms: this.getAtoms(),
     };
   }
 
   // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Publish a schema as JSON Schema.
+   *
+   * Every `schema`-ish field on the devtools metadata is typed `z.any()`, so a
+   * raw zod schema handed straight to the response serializes as zod's own
+   * internals (`{ def, type, shape, checks }`) instead of JSON Schema. Every
+   * consumer reads JSON Schema: the UI renders `properties`, and
+   * `jsonSchemaToZod` — written for exactly this round trip — rebuilds a zod
+   * schema for the Try It / record-editor forms. Without this conversion the
+   * schema panes render zod plumbing and every generated form comes up empty.
+   *
+   * Unrepresentable schemas fall back to `undefined` rather than throwing, so
+   * one exotic action can't take down the whole metadata response.
+   */
+  protected toJsonSchema(source?: unknown): any {
+    if (!source) {
+      return undefined;
+    }
+    try {
+      const json: any = z.toJSONSchema(source as any);
+      // The dialect URL is noise for consumers that only read the shape.
+      json.$schema = undefined;
+      return json;
+    } catch {
+      return undefined;
+    }
+  }
 
   protected getProviderName(provider?: "memory" | any): string {
     if (!provider) {

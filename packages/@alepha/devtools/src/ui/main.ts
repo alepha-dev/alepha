@@ -1,4 +1,4 @@
 import { run } from "alepha";
-import { AppRouter } from "./AppRouter.tsx";
+import { DevToolsApp } from "./index.ts";
 
-run(AppRouter);
+run(DevToolsApp);

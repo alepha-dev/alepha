@@ -30,12 +30,17 @@ import { $context } from "./$context.ts";
  * ```
  */
 export const $env = <T extends TObject>(type: T): Static<T> => {
-  const { alepha } = $context();
+  const { alepha, service, module } = $context();
 
   // allow to inject Zod schemas
   if (!z.schema.isObject(type)) {
     throw new AlephaError("Type must be an TObject");
   }
 
-  return alepha.parseEnv(type) as Static<T>;
+  // Pass the declaring service/module through so tooling can attribute each
+  // variable to its source instead of showing one flat, unsourced list.
+  return alepha.parseEnv(type, {
+    service: service?.name,
+    module: module?.name,
+  }) as Static<T>;
 };

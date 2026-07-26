@@ -1,4 +1,5 @@
 import { $hook, $inject, $state, Alepha, z } from "alepha";
+import { JobService } from "alepha/api/jobs";
 import { localEmailOptions } from "alepha/email";
 import { $logger, MemoryDestinationProvider } from "alepha/logger";
 import { RepositoryProvider } from "alepha/orm";
@@ -195,7 +196,7 @@ export class DevToolsProvider {
       const limit = query.limit ? Number(query.limit) : 100;
       entries = entries.slice(offset, offset + limit);
 
-      return { logs: entries, total };
+      return { logs: entries.map((e) => this.stripAnsiEntry(e)), total };
     },
   });
 
@@ -310,6 +311,103 @@ export class DevToolsProvider {
   });
 
   // -------------------------------------------------------------------------------------------------------------------
+  // Jobs — the runtime half
+  //
+  // The metadata response carries what `$job` declares; everything below is
+  // execution state read from the durable outbox table. `JobService` already
+  // assembles all of it for the admin API, so devtools reuses it rather than
+  // re-deriving counts and status transitions.
+  // -------------------------------------------------------------------------------------------------------------------
+
+  protected readonly jobsRoute = $route({
+    method: "GET",
+    path: "/__devtools/api/jobs",
+    silent: true,
+    schema: { response: z.record(z.text(), z.any()) },
+    handler: async () => {
+      const service = this.getJobService();
+      if (!service) return { jobs: [] };
+      return { jobs: await service.listJobs() } as any;
+    },
+  });
+
+  protected readonly jobExecutionsRoute = $route({
+    method: "GET",
+    path: "/__devtools/api/jobs/:name/executions",
+    silent: true,
+    schema: {
+      params: z.object({ name: z.text() }),
+      query: z.object({ status: z.text().optional() }),
+      response: z.record(z.text(), z.any()),
+    },
+    /**
+     * Wrapped in an envelope: `getExecutions` resolves to an array, and a
+     * route declaring a record answers 500 ("expected record, received
+     * array") — the same shape of bug the DELETE endpoint had.
+     */
+    handler: async ({ params, query }) => {
+      const service = this.getJobService();
+      if (!service) return { executions: [] };
+      const result = await service.getExecutions(params.name, {
+        ...(query.status ? { status: query.status } : {}),
+      } as any);
+      return {
+        executions: Array.isArray(result)
+          ? result
+          : ((result as any)?.content ?? []),
+      } as any;
+    },
+  });
+
+  protected readonly jobExecutionRoute = $route({
+    method: "GET",
+    path: "/__devtools/api/jobs/executions/:id",
+    silent: true,
+    schema: {
+      params: z.object({ id: z.text() }),
+      response: z.record(z.text(), z.any()),
+    },
+    handler: async ({ params }) => {
+      const service = this.getJobService();
+      if (!service) return { error: "Jobs module not loaded" };
+      return ((await service.getExecution(params.id)) ?? {}) as any;
+    },
+  });
+
+  protected readonly jobTriggerRoute = $route({
+    method: "POST",
+    path: "/__devtools/api/jobs/:name/trigger",
+    silent: true,
+    schema: {
+      params: z.object({ name: z.text() }),
+      body: z.record(z.text(), z.any()),
+      response: z.record(z.text(), z.any()),
+    },
+    handler: async ({ params, body }) => {
+      const service = this.getJobService();
+      if (!service) return { error: "Jobs module not loaded" };
+      return ((await service.triggerJob(params.name, body as any)) ?? {
+        ok: true,
+      }) as any;
+    },
+  });
+
+  protected readonly jobRetryRoute = $route({
+    method: "POST",
+    path: "/__devtools/api/jobs/executions/:id/retry",
+    silent: true,
+    schema: {
+      params: z.object({ id: z.text() }),
+      response: z.record(z.text(), z.any()),
+    },
+    handler: async ({ params }) => {
+      const service = this.getJobService();
+      if (!service) return { error: "Jobs module not loaded" };
+      return ((await service.retryExecution(params.id)) ?? { ok: true }) as any;
+    },
+  });
+
+  // -------------------------------------------------------------------------------------------------------------------
   // DB CRUD endpoints
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -390,18 +488,69 @@ export class DevToolsProvider {
       params: z.object({ entity: z.text(), id: z.text() }),
       response: z.record(z.text(), z.any()),
     },
+    /**
+     * `deleteById` resolves to the deleted rows — an array — while the
+     * response was declared as a record, so every delete answered 500
+     * ("expected record, received array") *after* removing the row. The client
+     * saw a failure, kept the deleted record selected, and never refreshed.
+     *
+     * A stable `{ deleted, id }` envelope is returned instead of the driver's
+     * own shape, so the contract no longer depends on what the ORM happens to
+     * resolve to.
+     */
     handler: async ({ params }) => {
       const repo = this.getRepository(params.entity);
       if (!repo) {
-        return { error: "Entity not found" };
+        return { deleted: 0, error: "Entity not found" };
       }
 
       const idValue = this.parseId(repo, params.id);
-      return repo.deleteById(idValue) as any;
+      const result = await repo.deleteById(idValue);
+      const deleted = Array.isArray(result) ? result.length : result ? 1 : 0;
+
+      return { deleted, id: params.id };
     },
   });
 
   // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Strip ANSI escape sequences from a log entry before serving it.
+   *
+   * Under `LOG_FORMAT=pretty` some call sites colourise values inside the
+   * message itself (`Listening on ${cyan(url)}`). A terminal renders that;
+   * the devtools UI is HTML, so the raw codes leak through as
+   * `Listening on [36mhttp://…[0m`. The buffer keeps the original — only the
+   * served copy is cleaned.
+   */
+  protected stripAnsiEntry<T extends { message?: string }>(entry: T): T {
+    if (typeof entry?.message !== "string") {
+      return entry;
+    }
+    return { ...entry, message: this.stripAnsi(entry.message) };
+  }
+
+  protected stripAnsi(value: string): string {
+    // Matches CSI SGR sequences (ESC [ ... m) — the colour codes the pretty
+    // formatter emits. Written as \u001b rather than a literal control
+    // byte so the source stays readable and copy-paste safe.
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI sequences are defined by the ESC control character, so matching them requires it
+    return value.replace(/\u001b\[[0-9;]*m/g, "");
+  }
+
+  /**
+   * `JobService`, or `undefined` when the application never loaded the jobs
+   * module. Guarded the same way the repository lookup is: the container
+   * refuses to register a provider after start, so an app without jobs must
+   * degrade to an empty list rather than 500 every job route.
+   */
+  protected getJobService(): JobService | undefined {
+    try {
+      return this.alepha.inject(JobService);
+    } catch {
+      return undefined;
+    }
+  }
 
   protected getRepository(entityName: string) {
     try {

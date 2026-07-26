@@ -18,7 +18,7 @@ export * from "./providers/DevToolsMetadataProvider.ts";
  * - DevTools UI at `GET /devtools`
  * - Application metadata at `GET /devtools/metadata`
  * - Last 10,000 logs at `GET /devtools/logs`
- * - Runtime inspection of actions, queues, schedulers, topics, buckets
+ * - Runtime inspection of actions, jobs, topics, buckets
  * - Log viewer with filtering
  * - React Flow visualization
  * - Provider and module browsing

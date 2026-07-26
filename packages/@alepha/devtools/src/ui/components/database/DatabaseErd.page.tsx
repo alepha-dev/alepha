@@ -1,27 +1,17 @@
-import { devMetadataSchema } from "@alepha/devtools";
-import { useInject } from "alepha/react";
-import { HttpClient } from "alepha/server";
-import { useEffect, useState } from "react";
+import { useMetadata } from "../../hooks/useMetadata.ts";
+import { DevError } from "../shared/DevError.tsx";
 import { DatabaseErd } from "./DatabaseErd.tsx";
 
 const DatabaseErdPage = () => {
-  const http = useInject(HttpClient);
-  const [entities, setEntities] = useState<any[]>([]);
+  const meta = useMetadata();
 
-  useEffect(() => {
-    http
-      .fetch("/__devtools/api/metadata", {
-        schema: { response: devMetadataSchema },
-      })
-      .then((res) => setEntities(res.data.entities ?? []))
-      .catch(() => {});
-  }, [http]);
+  if (meta.error) {
+    return (
+      <DevError what="schema" message={meta.error} onRetry={meta.reload} />
+    );
+  }
 
-  return (
-    <div className="relative flex flex-1">
-      <DatabaseErd entities={entities} />
-    </div>
-  );
+  return <DatabaseErd entities={meta.data?.entities ?? []} />;
 };
 
 export default DatabaseErdPage;

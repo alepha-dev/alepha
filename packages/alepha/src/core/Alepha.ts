@@ -33,6 +33,25 @@ import {
 } from "./providers/TypeProvider.ts";
 
 /**
+ * Where an `$env` schema was declared.
+ *
+ * Recorded so tooling can attribute a variable to the service and module that
+ * expect it — a large application declares environment across dozens of
+ * services, and a flat list gives no clue which subsystem a variable belongs
+ * to.
+ */
+export interface EnvOwner {
+  /**
+   * Name of the declaring service class.
+   */
+  service?: string;
+  /**
+   * Name of the module the declaring service belongs to, if any.
+   */
+  module?: string;
+}
+
+/**
  * Core container of the Alepha framework.
  *
  * It is responsible for managing the lifecycle of services,
@@ -287,6 +306,13 @@ export class Alepha {
    * > It allows us to avoid parsing the same schema multiple times.
    */
   protected cacheEnv: Map<TSchema, any> = new Map();
+
+  /**
+   * Which service/module declared each $env schema, so tooling can attribute
+   * a variable to its source. Kept beside `cacheEnv` rather than inside it so
+   * the parsed-value cache keeps its simple shape.
+   */
+  protected cacheEnvOwner: Map<TSchema, EnvOwner> = new Map();
 
   /**
    * List of modules that are registered in the container.
@@ -756,6 +782,7 @@ export class Alepha {
     this.pendingInstantiations = [];
     this.substitutions = new Map();
     this.cacheEnv = new Map();
+    this.cacheEnvOwner = new Map();
     this.events.clear();
 
     // Reset flags
@@ -1084,6 +1111,7 @@ export class Alepha {
     }
     this.store.set("env", { ...incoming, ...this.env });
     this.cacheEnv.clear();
+    this.cacheEnvOwner.clear();
     return this;
   }
 
@@ -1095,7 +1123,13 @@ export class Alepha {
    * @param schema - The schema object to apply environment variables to.
    * @return The schema object with environment variables applied.
    */
-  public parseEnv<T extends TObject>(schema: T): Static<T> {
+  public parseEnv<T extends TObject>(schema: T, owner?: EnvOwner): Static<T> {
+    if (owner && !this.cacheEnvOwner.has(schema)) {
+      // Recorded even on a cache hit path below, because the first caller to
+      // parse a shared schema is not necessarily the one that declared it.
+      this.cacheEnvOwner.set(schema, owner);
+    }
+
     if (this.cacheEnv.has(schema)) {
       return this.cacheEnv.get(schema) as Static<T>;
     }
@@ -1144,10 +1178,15 @@ export class Alepha {
   public getEnvSchemas(): Array<{
     schema: TSchema;
     values: Record<string, any>;
+    owner?: EnvOwner;
   }> {
-    const result: Array<{ schema: TSchema; values: Record<string, any> }> = [];
+    const result: Array<{
+      schema: TSchema;
+      values: Record<string, any>;
+      owner?: EnvOwner;
+    }> = [];
     for (const [schema, values] of this.cacheEnv.entries()) {
-      result.push({ schema, values });
+      result.push({ schema, values, owner: this.cacheEnvOwner.get(schema) });
     }
     return result;
   }

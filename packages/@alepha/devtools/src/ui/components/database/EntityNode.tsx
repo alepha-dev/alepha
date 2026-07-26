@@ -1,46 +1,77 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
 import { Handle, type NodeProps, Position } from "@xyflow/react";
-import { Key, Link2 } from "lucide-react";
+import { KeyRound, Link2 } from "lucide-react";
 
+/**
+ * A table in the ERD.
+ *
+ * Columns stay visible — the shape of a table is the information you came for.
+ * In compact mode only keys and relations are kept, which is what makes a
+ * 30-table schema legible without losing the join structure.
+ */
 export const EntityNode = (props: NodeProps) => {
-  const entity = props.data as any;
+  const data = props.data as any;
+  const entity = data.entity;
+  const compact: boolean = data.compact ?? false;
+  const dimmed: boolean = data.dimmed ?? false;
+
+  const columns: any[] = entity.columns ?? [];
+  const shown = compact
+    ? columns.filter((c) => c.primaryKey || c.ref)
+    : columns;
 
   return (
-    <div className="bg-card border-border min-w-[240px] overflow-hidden rounded-lg border">
+    <div
+      className="dt-node"
+      data-selected={data.selected || undefined}
+      style={dimmed ? { opacity: 0.28 } : undefined}
+    >
       <Handle type="target" position={Position.Top} />
 
-      {/* Header */}
-      <div className="bg-muted border-border border-b px-3 py-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold">{entity.name}</span>
-          <Badge variant="secondary" className="text-[10px]">
-            {entity.provider}
-          </Badge>
-        </div>
+      <div className="dt-node-head">
+        <span className="dt-node-name">{entity.name}</span>
+        <span
+          style={{
+            marginLeft: "auto",
+            fontFamily: "var(--dt-mono)",
+            fontSize: 9,
+            color: "var(--dt-fg-faint)",
+          }}
+        >
+          {columns.length} cols
+        </span>
       </div>
 
-      {/* Columns */}
-      <div className="flex flex-col">
-        {(entity.columns ?? []).map((col: any) => (
-          <div
-            key={col.name}
-            className="border-border/20 flex flex-nowrap items-center gap-2 border-b px-3 py-1"
+      {shown.map((col) => (
+        <div key={col.name} className="dt-node-col">
+          {col.primaryKey ? (
+            <KeyRound size={9} style={{ color: "var(--dt-patch)" }} />
+          ) : col.ref ? (
+            <Link2 size={9} style={{ color: "var(--dt-info)" }} />
+          ) : (
+            <span style={{ width: 9, flex: "none" }} />
+          )}
+          <span
+            style={{
+              color: col.nullable ? "var(--dt-fg-faint)" : "var(--dt-fg)",
+            }}
           >
-            {col.primaryKey && <Key className="size-2.5 text-yellow-500" />}
-            {col.ref && <Link2 className="size-2.5 text-blue-500" />}
-            {!col.primaryKey && !col.ref && (
-              <span className="inline-block w-2.5" />
-            )}
-            <span className="flex-1 font-mono text-[11px]">{col.name}</span>
-            <span className="text-muted-foreground font-mono text-[10px]">
-              {col.type}
-            </span>
-            {col.nullable && (
-              <span className="text-muted-foreground text-[9px]">?</span>
-            )}
-          </div>
-        ))}
-      </div>
+            {col.name}
+          </span>
+          <span style={{ marginLeft: "auto", color: "var(--dt-fg-faint)" }}>
+            {col.type}
+          </span>
+        </div>
+      ))}
+
+      {compact && shown.length < columns.length && (
+        <div
+          className="dt-node-col"
+          style={{ color: "var(--dt-fg-faint)", fontStyle: "italic" }}
+        >
+          <span style={{ width: 9, flex: "none" }} />+
+          {columns.length - shown.length} more
+        </div>
+      )}
 
       <Handle type="source" position={Position.Bottom} />
     </div>

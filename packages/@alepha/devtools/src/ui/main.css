@@ -1,4 +1,716 @@
 @import "@alepha/ui/styles.css";
+@import "@fontsource-variable/archivo/index.css";
+
+/* ────────────────────────────────────────────────────────────────────────
+ * DevTools v1 — instrument-panel theme.
+ *
+ * DevTools is a dev-only tool with its own visual identity: dark-only, dense,
+ * monospace-forward. These `--dt-*` tokens are the ported design's palette and
+ * are deliberately independent of the shadcn semantic tokens that
+ * `@alepha/ui/styles.css` provides — screens still on the shadcn stack keep
+ * working (the shell forces `.dark`, so they render dark too) while ported
+ * screens read from `--dt-*`.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --dt-bg: #0b0b0c;
+  --dt-panel: #101012;
+  --dt-panel-2: #141417;
+  --dt-border: #232326;
+  --dt-border-soft: #1b1b1e;
+  --dt-fg: #e9e9ea;
+  --dt-fg-dim: #9a9aa2;
+  --dt-fg-faint: #6b6b73;
+  --dt-accent: #ec3013;
+  --dt-accent-soft: rgba(236, 48, 19, 0.14);
+
+  --dt-get: #4ade80;
+  --dt-post: #60a5fa;
+  --dt-put: #fb923c;
+  --dt-patch: #facc15;
+  --dt-delete: #f87171;
+
+  --dt-trace: #6b6b73;
+  --dt-debug: #9a9aa2;
+  --dt-info: #60a5fa;
+  --dt-warn: #facc15;
+  --dt-error: #f87171;
+
+  --dt-sans: "Archivo Variable", Archivo, system-ui, sans-serif;
+  --dt-mono:
+    "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+
+  --dt-nav-w: 200px;
+  --dt-rail-w: 260px;
+  --dt-topbar-h: 44px;
+}
+
+.dt-root {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--dt-bg);
+  color: var(--dt-fg);
+  font-family: var(--dt-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.dt-root ::selection {
+  background: rgba(236, 48, 19, 0.3);
+}
+
+.dt-mono {
+  font-family: var(--dt-mono);
+}
+
+/* Topbar ---------------------------------------------------------------- */
+
+.dt-topbar {
+  height: var(--dt-topbar-h);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-right: 12px;
+  border-bottom: 1px solid var(--dt-border);
+  background: var(--dt-panel);
+}
+
+.dt-brand {
+  width: var(--dt-nav-w);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 14px;
+  height: 100%;
+  border-right: 1px solid var(--dt-border);
+  font-size: 13px;
+}
+
+.dt-brand-mark {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  background: var(--dt-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+/* Search ---------------------------------------------------------------- */
+
+.dt-search {
+  flex: 1;
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--dt-border);
+  background: var(--dt-bg);
+  color: var(--dt-fg-dim);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dt-search:hover {
+  border-color: #34343a;
+}
+
+.dt-kbd {
+  margin-left: auto;
+  font-family: var(--dt-mono);
+  font-size: 10px;
+  color: var(--dt-fg-faint);
+}
+
+/* Buttons --------------------------------------------------------------- */
+
+.dt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--dt-border);
+  background: var(--dt-panel-2);
+  color: var(--dt-fg);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.dt-btn:hover {
+  border-color: #34343a;
+  background: #17171b;
+}
+
+.dt-btn[data-on="true"] {
+  border-color: var(--dt-accent);
+  color: var(--dt-accent);
+}
+
+.dt-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Sidebar --------------------------------------------------------------- */
+
+.dt-nav {
+  width: var(--dt-nav-w);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--dt-border);
+  background: var(--dt-panel);
+  overflow-y: auto;
+}
+
+.dt-nav-group {
+  padding: 14px 14px 4px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dt-fg-faint);
+}
+
+.dt-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 5px 14px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--dt-fg-dim);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-nav-item:hover {
+  color: var(--dt-fg);
+  background: #16161a;
+}
+
+.dt-nav-item[data-active="true"] {
+  color: var(--dt-fg);
+  background: #16161a;
+  border-left-color: var(--dt-accent);
+}
+
+.dt-nav-count {
+  margin-left: auto;
+  font-family: var(--dt-mono);
+  font-size: 10px;
+  color: var(--dt-fg-faint);
+}
+
+.dt-nav-foot {
+  margin-top: auto;
+  padding: 12px 14px;
+  border-top: 1px solid var(--dt-border-soft);
+  font-family: var(--dt-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--dt-fg-faint);
+}
+
+/* Rail (tree) ----------------------------------------------------------- */
+
+.dt-rail {
+  width: var(--dt-rail-w);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--dt-border);
+  overflow: hidden;
+}
+
+.dt-rail-search {
+  flex: none;
+  padding: 8px;
+  border-bottom: 1px solid var(--dt-border-soft);
+}
+
+.dt-input {
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--dt-border);
+  background: var(--dt-bg);
+  color: var(--dt-fg);
+  font: inherit;
+  font-size: 11px;
+  outline: none;
+}
+
+.dt-input:focus {
+  border-color: #34343a;
+}
+
+.dt-input::placeholder {
+  color: var(--dt-fg-faint);
+}
+
+.dt-rail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.dt-group-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--dt-fg-dim);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.dt-group-row:hover {
+  color: var(--dt-fg);
+}
+
+.dt-leaf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 10px 4px 24px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--dt-fg-dim);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-leaf:hover {
+  background: #16161a;
+  color: var(--dt-fg);
+}
+
+.dt-leaf[data-active="true"] {
+  background: #17171b;
+  color: var(--dt-fg);
+  border-left-color: var(--dt-accent);
+}
+
+/* Long identifiers (controller and action names) truncate rather than
+ * overflowing the fixed-width rail. */
+.dt-leaf > span:not(.dt-method),
+.dt-group-row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dt-method {
+  flex: none;
+  width: 34px;
+  font-family: var(--dt-mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Detail ---------------------------------------------------------------- */
+
+.dt-detail {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.dt-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-top: 1px solid var(--dt-border-soft);
+  border-bottom: 1px solid var(--dt-border-soft);
+  background: var(--dt-panel);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dt-fg-faint);
+}
+
+.dt-tab {
+  padding: 8px 2px;
+  margin-right: 18px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--dt-fg-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dt-tab:hover {
+  color: var(--dt-fg);
+}
+
+.dt-tab[data-active="true"] {
+  color: var(--dt-fg);
+  border-bottom-color: var(--dt-accent);
+}
+
+.dt-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border: 1px solid var(--dt-border);
+  font-family: var(--dt-mono);
+  font-size: 10px;
+  color: var(--dt-fg-dim);
+}
+
+.dt-chip[data-tone="accent"] {
+  border-color: rgba(236, 48, 19, 0.4);
+  background: var(--dt-accent-soft);
+  color: #ff8a72;
+}
+
+/* Schema tree ----------------------------------------------------------- */
+
+.dt-schema-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 14px;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.dt-schema-row:hover {
+  background: #121216;
+}
+
+.dt-schema-toggle {
+  width: 12px;
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--dt-fg-faint);
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.dt-schema-name {
+  font-family: var(--dt-mono);
+  color: var(--dt-fg);
+}
+
+.dt-schema-req {
+  color: var(--dt-accent);
+}
+
+.dt-schema-type {
+  font-family: var(--dt-mono);
+  color: var(--dt-fg-faint);
+}
+
+.dt-schema-desc {
+  margin-left: auto;
+  padding-left: 16px;
+  color: var(--dt-fg-faint);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+}
+
+.dt-pre {
+  margin: 0;
+  padding: 10px 14px;
+  font-family: var(--dt-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--dt-fg-dim);
+  overflow-x: auto;
+}
+
+/* Dense form controls -----------------------------------------------------
+ *
+ * `AutoForm` renders shadcn controls, which are sized for an application UI:
+ * tall, rounded, generously spaced. Dropped into the instrument-panel chrome
+ * they read as a different product. Rather than reimplement the form layer,
+ * these overrides re-tune the shadcn primitives to the surrounding density
+ * wherever a `.dt-form` wrapper is present.
+ */
+
+.dt-form {
+  font-size: 11px;
+}
+
+.dt-form input:not([type="checkbox"]):not([type="radio"]),
+.dt-form select,
+.dt-form textarea,
+.dt-form button[role="combobox"] {
+  height: 26px;
+  min-height: 26px;
+  border-radius: 0;
+  border-color: var(--dt-border);
+  background: var(--dt-bg);
+  color: var(--dt-fg);
+  font-family: var(--dt-mono);
+  font-size: 11px;
+  padding-inline: 8px;
+}
+
+.dt-form textarea {
+  height: auto;
+  min-height: 64px;
+  padding-block: 6px;
+}
+
+.dt-form label {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dt-fg-dim);
+}
+
+.dt-form p,
+.dt-form [data-slot="form-description"] {
+  font-size: 10px;
+  color: var(--dt-fg-faint);
+}
+
+.dt-form button:not([role="combobox"]) {
+  border-radius: 0;
+  font-size: 11px;
+}
+
+/* Data table -------------------------------------------------------------- */
+
+.dt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.dt-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--dt-border);
+  background: var(--dt-panel);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dt-fg-faint);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dt-table td {
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--dt-border-soft);
+  font-family: var(--dt-mono);
+  color: var(--dt-fg-dim);
+  white-space: nowrap;
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dt-table tbody tr:hover td {
+  background: #131317;
+  color: var(--dt-fg);
+}
+
+.dt-table tbody tr[data-active="true"] td {
+  background: #17171b;
+  color: var(--dt-fg);
+}
+
+.dt-row-click {
+  cursor: pointer;
+}
+
+/* Toolbar ----------------------------------------------------------------- */
+
+.dt-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--dt-border);
+  background: var(--dt-panel);
+  flex-wrap: wrap;
+}
+
+.dt-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dt-get);
+  animation: dt-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes dt-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes dt-flash {
+  from {
+    background: var(--dt-accent-soft);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+/* React Flow ---------------------------------------------------------------
+ *
+ * React Flow ships light-mode chrome (controls, minimap, edge labels) that
+ * doesn't read the theme. Restyled here so the canvas belongs to the same tool
+ * as everything around it.
+ */
+
+.react-flow__controls {
+  box-shadow: none;
+  border: 1px solid var(--dt-border);
+}
+
+.react-flow__controls-button {
+  background: var(--dt-panel);
+  border-bottom: 1px solid var(--dt-border);
+  fill: var(--dt-fg-dim);
+}
+
+.react-flow__controls-button:hover {
+  background: var(--dt-panel-2);
+  fill: var(--dt-fg);
+}
+
+.react-flow__minimap {
+  background: var(--dt-panel);
+  border: 1px solid var(--dt-border);
+}
+
+.react-flow__minimap-mask {
+  fill: rgba(0, 0, 0, 0.55);
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+.react-flow__edge-text {
+  fill: var(--dt-fg-faint);
+  font-family: var(--dt-mono);
+  font-size: 9px;
+}
+
+.react-flow__edge-textbg {
+  fill: var(--dt-bg);
+}
+
+.react-flow__handle {
+  background: var(--dt-border);
+  border: 0;
+  width: 5px;
+  height: 5px;
+}
+
+/* Entity node ------------------------------------------------------------- */
+
+.dt-node {
+  min-width: 190px;
+  border: 1px solid var(--dt-border);
+  background: var(--dt-panel);
+  overflow: hidden;
+}
+
+.dt-node[data-selected="true"] {
+  border-color: var(--dt-accent);
+}
+
+.dt-node-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--dt-panel-2);
+  cursor: pointer;
+}
+
+.dt-node-head:hover {
+  background: #1a1a1f;
+}
+
+.dt-node-name {
+  font-family: var(--dt-mono);
+  font-size: 12px;
+  color: var(--dt-fg);
+}
+
+.dt-node-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-top: 1px solid var(--dt-border-soft);
+  font-family: var(--dt-mono);
+  font-size: 10px;
+  color: var(--dt-fg-dim);
+}
+
+/* Empty / error states ---------------------------------------------------- */
+
+.dt-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  padding: 40px;
+  text-align: center;
+}
+
+.dt-empty-title {
+  font-size: 13px;
+  color: var(--dt-fg-dim);
+}
+
+.dt-empty-hint {
+  font-family: var(--dt-mono);
+  font-size: 11px;
+  color: var(--dt-fg-faint);
+}
 
 /* ────────────────────────────────────────────────────────────────────────
  * Discreet scrollbars — thin, neutral, fade-on-hover.

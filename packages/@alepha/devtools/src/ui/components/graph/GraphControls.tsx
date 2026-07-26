@@ -1,5 +1,4 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
 import { Checkbox } from "@alepha/ui/components/ui/checkbox";
 import { Input } from "@alepha/ui/components/ui/input";
 import {
@@ -21,7 +20,6 @@ import {
 import {
   Box,
   Boxes,
-  Download,
   GitGraph,
   LayoutGrid,
   Network,
@@ -37,7 +35,6 @@ interface GraphControlsProps {
   modules: string[];
   nodeCount: number;
   edgeCount: number;
-  onExport: () => void;
 }
 
 export const GraphControls = (props: GraphControlsProps) => {
@@ -159,9 +156,11 @@ export const GraphControls = (props: GraphControlsProps) => {
         <Badge variant="secondary">{props.edgeCount} edges</Badge>
       </div>
 
-      <Button size="sm" variant="ghost" onClick={props.onExport}>
-        <Download className="size-3.5" />
-      </Button>
+      {/*
+       * The export control was removed: it only ever raised a "coming soon"
+       * toast. A button that announces its own absence is worse than no
+       * button.
+       */}
     </div>
   );
 };

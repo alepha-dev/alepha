@@ -190,8 +190,10 @@ describe("Alepha CLI E2E", () => {
     }
   });
 
-  test("alepha init --api --react creates project", async () => {
-    const result = await run("yarn alepha init apps/tmp --api --react", ROOT);
+  // `--api` / `--react` were removed when init moved to a single project
+  // shape; the scaffold now always contains both `src/api` and `src/web`.
+  test("alepha init creates project", async () => {
+    const result = await run("yarn alepha init apps/tmp", ROOT);
 
     if (result.exitCode !== 0) {
       console.log("INIT FAILED:");

@@ -1,499 +1,304 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@alepha/ui/components/ui/toggle-group";
-import { useInject } from "alepha/react";
-import { HttpClient } from "alepha/server";
-import { Search, X } from "lucide-react";
-import {
-  type MouseEvent as ReactMouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { z } from "alepha";
+import { useQueryParams } from "alepha/react/router";
+import { Pause, Play, Trash2, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { type LogEntry, useLogTail } from "../../hooks/useLogTail.ts";
+import { DevEmpty } from "../shared/DevEmpty.tsx";
+import { DevError } from "../shared/DevError.tsx";
+import { LogDetail } from "./LogDetail.tsx";
 
-interface LogEntry {
-  level: string;
-  message: string;
-  module: string;
-  service: string;
-  context?: string;
-  data?: any;
-  timestamp: number;
-  stack?: string;
-}
+const LEVELS = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
 
-const LEVEL_CLASS: Record<string, string> = {
-  ERROR: "text-red-500 bg-red-500/10",
-  WARN: "text-yellow-600 bg-yellow-500/10",
-  INFO: "text-blue-500 bg-blue-500/10",
-  DEBUG: "text-muted-foreground bg-muted",
-  TRACE: "text-muted-foreground bg-muted",
+const LEVEL_COLOR: Record<string, string> = {
+  TRACE: "var(--dt-trace)",
+  DEBUG: "var(--dt-debug)",
+  INFO: "var(--dt-info)",
+  WARN: "var(--dt-warn)",
+  ERROR: "var(--dt-error)",
 };
 
-const TYPE_CLASS: Record<string, string> = {
-  http: "text-teal-500 bg-teal-500/10",
-  db: "text-violet-500 bg-violet-500/10",
-};
+const TYPES = [
+  { value: "", label: "All" },
+  { value: "http", label: "HTTP" },
+  { value: "db", label: "DB" },
+];
 
-const detectEventType = (data: any): string | undefined => {
+/**
+ * Filters live in the query string so a narrowed view survives a reload and
+ * can be handed to someone else verbatim.
+ */
+const querySchema = z.object({
+  level: z.text().optional(),
+  type: z.text().optional(),
+  module: z.text().optional(),
+  q: z.text().optional(),
+});
+
+export const detectEventType = (data: any): string | undefined => {
   if (!data || typeof data !== "object") return undefined;
   if (data.status && data.method && data.path && data.duration) return "http";
   if (data.type === "db:query") return "db";
   return undefined;
 };
 
-const TIME_RANGES = [
-  { value: "300000", label: "Last 5m" },
-  { value: "900000", label: "Last 15m" },
-  { value: "1800000", label: "Last 30m" },
-  { value: "3600000", label: "Last 1h" },
-  { value: "21600000", label: "Last 6h" },
-  { value: "86400000", label: "Last 24h" },
-  { value: "0", label: "All time" },
-];
-
-const pad2 = (n: number) => (n < 10 ? `0${n}` : String(n));
-const pad3 = (n: number) => (n < 10 ? `00${n}` : n < 100 ? `0${n}` : String(n));
-
 const formatTime = (ts: number): string => {
   const d = new Date(ts);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}.${pad3(d.getMilliseconds())}`;
+  const p = (n: number, w = 2) => String(n).padStart(w, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
 };
-
-const formatRelative = (ts: number): string => {
-  const diff = Date.now() - ts;
-  if (diff < 1000) return "just now";
-  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`;
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  return `${Math.floor(diff / 3_600_000)}h ago`;
-};
-
-interface ColumnDef {
-  key: string;
-  label: string;
-  defaultWidth: number;
-  minWidth: number;
-}
-
-const COLUMNS: ColumnDef[] = [
-  { key: "time", label: "Time", defaultWidth: 105, minWidth: 60 },
-  { key: "level", label: "Level", defaultWidth: 58, minWidth: 40 },
-  { key: "type", label: "Type", defaultWidth: 60, minWidth: 40 },
-  { key: "context", label: "Context", defaultWidth: 80, minWidth: 40 },
-  { key: "module", label: "Module", defaultWidth: 100, minWidth: 50 },
-];
 
 export const DevLogs = () => {
-  const http = useInject(HttpClient);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [total, setTotal] = useState(0);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-
-  const [level, setLevel] = useState("DEBUG");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [moduleFilter, setModuleFilter] = useState("");
-  const [search, setSearch] = useState("");
-  const [timeRange, setTimeRange] = useState("0");
-
-  const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
-    const widths: Record<string, number> = {};
-    for (const col of COLUMNS) {
-      widths[col.key] = col.defaultWidth;
-    }
-    return widths;
+  const [params, setParams] = useQueryParams(querySchema, {
+    format: "querystring",
   });
+  const [selected, setSelected] = useState<LogEntry | null>(null);
 
-  const resizeRef = useRef<{
-    colKey: string;
-    startX: number;
-    startWidth: number;
-  } | null>(null);
+  const filters = useMemo(
+    () => ({
+      level: params.level ?? "DEBUG",
+      type: params.type ?? "",
+      module: params.module ?? "",
+      search: params.q ?? "",
+    }),
+    [params],
+  );
 
-  useEffect(() => {
-    const onMouseMove = (e: globalThis.MouseEvent) => {
-      if (!resizeRef.current) return;
-      const { colKey, startX, startWidth } = resizeRef.current;
-      const col = COLUMNS.find((c) => c.key === colKey);
-      const minW = col?.minWidth ?? 40;
-      const newWidth = Math.max(minW, startWidth + (e.clientX - startX));
-      setColWidths((prev) => ({ ...prev, [colKey]: newWidth }));
-    };
-    const onMouseUp = () => {
-      resizeRef.current = null;
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
-    return () => {
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-    };
-  }, []);
-
-  const startResize = (colKey: string, e: ReactMouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    resizeRef.current = {
-      colKey,
-      startX: e.clientX,
-      startWidth: colWidths[colKey],
-    };
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  };
+  const tail = useLogTail(filters);
 
   const modules = useMemo(() => {
     const set = new Set<string>();
-    for (const log of logs) {
-      if (log.module) set.add(log.module);
-    }
+    for (const e of tail.entries) if (e.module) set.add(e.module);
     return Array.from(set).sort();
-  }, [logs]);
+  }, [tail.entries]);
 
-  const fetchLogs = useCallback(async () => {
-    if (document.visibilityState !== "visible") return;
-    try {
-      const params = new URLSearchParams();
-      if (level) params.set("level", level);
-      if (typeFilter) params.set("type", typeFilter);
-      if (moduleFilter) params.set("module", moduleFilter);
-      if (search) params.set("search", search);
-      if (timeRange !== "0") {
-        params.set("since", String(Date.now() - Number(timeRange)));
-      }
-      params.set("limit", "500");
+  const patch = (next: Partial<typeof params>) =>
+    setParams({ ...params, ...next });
 
-      const res = await http.fetch(`/__devtools/api/logs?${params.toString()}`);
-      const newLogs = (res.data as any)?.logs ?? [];
-      setLogs(newLogs);
-      setTotal((res.data as any)?.total ?? 0);
-      setSelectedIndex(null);
-    } catch {
-      // silently fail
-    }
-  }, [http, level, typeFilter, moduleFilter, search, timeRange]);
-
-  useEffect(() => {
-    fetchLogs();
-    const interval = setInterval(fetchLogs, 10_000);
-    return () => clearInterval(interval);
-  }, [fetchLogs]);
-
-  const selectedLog = selectedIndex !== null ? logs[selectedIndex] : null;
+  if (tail.error && tail.entries.length === 0) {
+    return <DevError what="logs" message={tail.error} onRetry={tail.reload} />;
+  }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      {/* Filters bar */}
-      <div className="border-border flex shrink-0 items-center gap-3 border-b px-4 py-2">
-        <div className="flex flex-wrap items-center gap-3">
-          <ToggleGroup
-            variant="outline"
-            size="sm"
-            value={[level]}
-            onValueChange={(v) => {
-              const next = v[0];
-              if (next) setLevel(next);
+    <div style={{ display: "flex", flex: 1, minWidth: 0 }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minWidth: 0,
+        }}
+      >
+        <div className="dt-toolbar">
+          {LEVELS.map((lvl) => (
+            <button
+              key={lvl}
+              type="button"
+              className="dt-btn"
+              data-on={filters.level === lvl || undefined}
+              style={{ color: LEVEL_COLOR[lvl] }}
+              onClick={() => patch({ level: lvl })}
+            >
+              {lvl}
+            </button>
+          ))}
+
+          <span
+            style={{ width: 1, height: 18, background: "var(--dt-border)" }}
+          />
+
+          {TYPES.map((t) => (
+            <button
+              key={t.value || "all"}
+              type="button"
+              className="dt-btn"
+              data-on={filters.type === t.value || undefined}
+              onClick={() => patch({ type: t.value || undefined })}
+            >
+              {t.label}
+            </button>
+          ))}
+
+          <select
+            className="dt-input"
+            style={{ width: 150 }}
+            value={filters.module}
+            onChange={(e) =>
+              patch({ module: e.currentTarget.value || undefined })
+            }
+          >
+            <option value="">All modules</option>
+            {modules.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+
+          <input
+            className="dt-input"
+            style={{ width: 200 }}
+            placeholder="Search message, path…"
+            value={filters.search}
+            onChange={(e) => patch({ q: e.currentTarget.value || undefined })}
+          />
+        </div>
+
+        <div className="dt-toolbar" style={{ background: "transparent" }}>
+          <button
+            type="button"
+            className="dt-btn"
+            data-on={tail.following || undefined}
+            onClick={() => tail.setFollowing(!tail.following)}
+          >
+            {tail.following ? <Pause size={11} /> : <Play size={11} />}
+            {tail.following ? "Following" : "Paused"}
+          </button>
+
+          {tail.following && (
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 11,
+                color: "var(--dt-fg-faint)",
+              }}
+            >
+              <span className="dt-live-dot" />
+              live · {tail.ratePerSecond}/s
+            </span>
+          )}
+
+          {!tail.following && tail.pending > 0 && (
+            <button
+              type="button"
+              className="dt-btn"
+              data-on="true"
+              onClick={tail.flush}
+            >
+              {tail.pending} new ↓
+            </button>
+          )}
+
+          <span style={{ marginLeft: "auto" }} />
+          <span
+            className="dt-mono"
+            style={{ fontSize: 10, color: "var(--dt-fg-faint)" }}
+          >
+            {tail.entries.length} shown / {tail.total} buffered
+          </span>
+          <button type="button" className="dt-btn" onClick={tail.clear}>
+            <Trash2 size={11} /> Clear
+          </button>
+        </div>
+
+        <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
+          {tail.entries.length === 0 ? (
+            <DevEmpty
+              title="No logs match the current filters"
+              hint="Widen the level or clear the search"
+              action={{
+                label: "Reset filters",
+                onClick: () => setParams({}),
+              }}
+            />
+          ) : (
+            <table className="dt-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 110 }}>Time</th>
+                  <th style={{ width: 60 }}>Level</th>
+                  <th style={{ width: 50 }}>Type</th>
+                  <th style={{ width: 70 }}>Ctx</th>
+                  <th style={{ width: 130 }}>Module</th>
+                  <th>Message</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tail.entries.map((entry, i) => {
+                  const kind = detectEventType(entry.data);
+                  return (
+                    <tr
+                      key={`${entry.timestamp}-${i}`}
+                      className="dt-row-click"
+                      data-active={
+                        selected?.timestamp === entry.timestamp &&
+                        selected?.message === entry.message
+                          ? true
+                          : undefined
+                      }
+                      onClick={() =>
+                        setSelected(selected === entry ? null : entry)
+                      }
+                    >
+                      <td>{formatTime(entry.timestamp)}</td>
+                      <td style={{ color: LEVEL_COLOR[entry.level] }}>
+                        {entry.level}
+                      </td>
+                      <td
+                        style={{
+                          color:
+                            kind === "http"
+                              ? "var(--dt-get)"
+                              : "var(--dt-post)",
+                        }}
+                      >
+                        {kind ? kind.toUpperCase() : ""}
+                      </td>
+                      <td>{entry.context ?? ""}</td>
+                      <td>{entry.module}</td>
+                      <td
+                        style={{
+                          color:
+                            entry.level === "ERROR"
+                              ? "var(--dt-error)"
+                              : undefined,
+                          maxWidth: "none",
+                        }}
+                      >
+                        {entry.message}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {selected && (
+        <div
+          style={{
+            width: 420,
+            flex: "none",
+            borderLeft: "1px solid var(--dt-border)",
+            overflowY: "auto",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "8px 12px",
+              borderBottom: "1px solid var(--dt-border)",
             }}
           >
-            <ToggleGroupItem value="TRACE">TRACE</ToggleGroupItem>
-            <ToggleGroupItem value="DEBUG">DEBUG</ToggleGroupItem>
-            <ToggleGroupItem value="INFO">INFO</ToggleGroupItem>
-            <ToggleGroupItem value="WARN">WARN</ToggleGroupItem>
-            <ToggleGroupItem value="ERROR">ERROR</ToggleGroupItem>
-          </ToggleGroup>
-          <Select
-            value={typeFilter || "all"}
-            onValueChange={(v) => setTypeFilter(!v || v === "all" ? "" : v)}
-          >
-            <SelectTrigger className="h-8 w-[120px] text-xs">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="http">HTTP</SelectItem>
-              <SelectItem value="db">DB Query</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={moduleFilter || "all"}
-            onValueChange={(v) => setModuleFilter(!v || v === "all" ? "" : v)}
-          >
-            <SelectTrigger className="h-8 w-[150px] text-xs">
-              <SelectValue placeholder="Module" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All modules</SelectItem>
-              {modules.map((m) => (
-                <SelectItem key={m} value={m}>
-                  {m}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={timeRange} onValueChange={(v) => v && setTimeRange(v)}>
-            <SelectTrigger className="h-8 w-[120px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TIME_RANGES.map((r) => (
-                <SelectItem key={r.value} value={r.value}>
-                  {r.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="relative max-w-[300px] flex-1 min-w-[150px]">
-            <Search className="text-muted-foreground absolute left-2 top-1/2 size-3.5 -translate-y-1/2" />
-            <Input
-              placeholder="Search..."
-              className="h-8 pl-8 text-xs"
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-            />
+            <span style={{ fontSize: 11, color: "var(--dt-fg-faint)" }}>
+              Log detail
+            </span>
+            <button
+              type="button"
+              className="dt-btn"
+              style={{ marginLeft: "auto", padding: "0 6px" }}
+              onClick={() => setSelected(null)}
+            >
+              <X size={11} />
+            </button>
           </div>
-          <Badge variant="secondary">{total} total</Badge>
+          <LogDetail entry={selected} />
         </div>
-      </div>
-
-      {/* Main area: table + detail */}
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Table header */}
-          <div className="border-border flex shrink-0 border-b">
-            {COLUMNS.map((col) => (
-              <div
-                key={col.key}
-                className="relative flex items-center px-2 py-1 select-none"
-                style={{
-                  width: colWidths[col.key],
-                  minWidth: col.minWidth,
-                  flexShrink: 0,
-                }}
-              >
-                <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
-                  {col.label}
-                </span>
-                <div
-                  onMouseDown={(e) => startResize(col.key, e)}
-                  className="hover:bg-border absolute right-0 top-0 bottom-0 w-1 cursor-col-resize"
-                />
-              </div>
-            ))}
-            <div className="flex flex-1 items-center px-2 py-1">
-              <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
-                Message
-              </span>
-            </div>
-          </div>
-
-          {/* Table body */}
-          <div className="flex-1 overflow-auto">
-            {logs.length === 0 && (
-              <div className="text-muted-foreground flex items-center justify-center py-8">
-                <p className="text-sm">No logs match the current filters</p>
-              </div>
-            )}
-            {logs.map((entry, i) => {
-              const isSelected = selectedIndex === i;
-              const eventType = detectEventType(entry.data);
-
-              return (
-                <button
-                  type="button"
-                  key={`${entry.timestamp}-${i}`}
-                  onClick={() => setSelectedIndex(isSelected ? null : i)}
-                  className={`border-border/20 flex w-full border-b text-left transition-colors ${
-                    isSelected ? "bg-muted" : "hover:bg-muted/50"
-                  }`}
-                >
-                  <div
-                    className="flex items-center overflow-hidden px-2 py-1"
-                    style={{ width: colWidths.time, flexShrink: 0 }}
-                  >
-                    <span className="text-muted-foreground truncate font-mono text-[11px]">
-                      {formatTime(entry.timestamp)}
-                    </span>
-                  </div>
-
-                  <div
-                    className="flex items-center overflow-hidden px-2 py-1"
-                    style={{ width: colWidths.level, flexShrink: 0 }}
-                  >
-                    <span
-                      className={`rounded px-1 py-0.5 text-[10px] font-bold ${LEVEL_CLASS[entry.level] ?? "bg-muted"}`}
-                    >
-                      {entry.level}
-                    </span>
-                  </div>
-
-                  <div
-                    className="flex items-center overflow-hidden px-2 py-1"
-                    style={{ width: colWidths.type, flexShrink: 0 }}
-                  >
-                    {eventType && (
-                      <span
-                        className={`rounded px-1 py-0.5 text-[10px] font-bold ${TYPE_CLASS[eventType] ?? "bg-muted"}`}
-                      >
-                        {eventType === "http" ? "HTTP" : "DB"}
-                      </span>
-                    )}
-                  </div>
-
-                  <div
-                    className="flex items-center overflow-hidden px-2 py-1"
-                    style={{ width: colWidths.context, flexShrink: 0 }}
-                  >
-                    {entry.context && (
-                      <span className="text-muted-foreground truncate font-mono text-[11px]">
-                        {entry.context}
-                      </span>
-                    )}
-                  </div>
-
-                  <div
-                    className="flex items-center overflow-hidden px-2 py-1"
-                    style={{ width: colWidths.module, flexShrink: 0 }}
-                  >
-                    <span className="text-muted-foreground truncate text-[11px]">
-                      {entry.module}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-1 items-center overflow-hidden px-2 py-1">
-                    <span className="truncate font-mono text-[11px]">
-                      {entry.message}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Detail panel */}
-        {selectedLog && (
-          <div className="border-border flex w-[400px] shrink-0 flex-col overflow-hidden border-l">
-            <div className="border-border flex shrink-0 items-center justify-between border-b px-4 py-2">
-              <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-                Log Detail
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setSelectedIndex(null)}
-              >
-                <X className="size-3.5" />
-              </Button>
-            </div>
-            <div className="flex-1 overflow-auto p-4">
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-wrap gap-2">
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${LEVEL_CLASS[selectedLog.level] ?? "bg-muted"}`}
-                  >
-                    {selectedLog.level}
-                  </span>
-                  {detectEventType(selectedLog.data) && (
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${
-                        TYPE_CLASS[detectEventType(selectedLog.data)!] ??
-                        "bg-muted"
-                      }`}
-                    >
-                      {detectEventType(selectedLog.data) === "http"
-                        ? "HTTP"
-                        : "DB"}
-                    </span>
-                  )}
-                  {selectedLog.module && (
-                    <Badge
-                      variant="outline"
-                      className="cursor-pointer"
-                      onClick={() => setModuleFilter(selectedLog.module)}
-                    >
-                      {selectedLog.module}
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="flex flex-col">
-                  <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-wider">
-                    Timestamp
-                  </p>
-                  <p className="font-mono text-xs">
-                    {new Date(selectedLog.timestamp).toISOString()}
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    {formatRelative(selectedLog.timestamp)}
-                  </p>
-                </div>
-
-                {selectedLog.context && (
-                  <div className="flex flex-col">
-                    <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-wider">
-                      Context
-                    </p>
-                    <p className="font-mono text-xs">{selectedLog.context}</p>
-                  </div>
-                )}
-
-                <div className="flex flex-col">
-                  <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-wider">
-                    Message
-                  </p>
-                  <p className="whitespace-pre-wrap font-mono text-xs">
-                    {selectedLog.message}
-                  </p>
-                </div>
-
-                {selectedLog.service && (
-                  <div className="flex flex-col">
-                    <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-wider">
-                      Service
-                    </p>
-                    <p className="font-mono text-xs">{selectedLog.service}</p>
-                  </div>
-                )}
-
-                {selectedLog.data && (
-                  <div className="flex flex-col">
-                    <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-wider">
-                      Data
-                    </p>
-                    <pre className="bg-muted overflow-auto rounded p-2 text-xs">
-                      {JSON.stringify(selectedLog.data, null, 2)}
-                    </pre>
-                  </div>
-                )}
-
-                {selectedLog.stack && (
-                  <div className="flex flex-col">
-                    <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-wider">
-                      Stack Trace
-                    </p>
-                    <pre className="bg-muted max-h-[300px] overflow-auto rounded p-2 text-[11px]">
-                      {selectedLog.stack}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 };

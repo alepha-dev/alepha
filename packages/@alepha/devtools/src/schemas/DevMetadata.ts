@@ -5,13 +5,11 @@ import { devBucketMetadataSchema } from "./DevBucketMetadata.ts";
 import { devCacheMetadataSchema } from "./DevCacheMetadata.ts";
 import { devEntityMetadataSchema } from "./DevEntityMetadata.ts";
 import { devEnvMetadataSchema } from "./DevEnvMetadata.ts";
+import { devJobMetadataSchema } from "./DevJobMetadata.ts";
 import { devModuleMetadataSchema } from "./DevModuleMetadata.ts";
 import { devPageMetadataSchema } from "./DevPageMetadata.ts";
 import { devProviderMetadataSchema } from "./DevProviderMetadata.ts";
-import { devQueueMetadataSchema } from "./DevQueueMetadata.ts";
 import { devRealmMetadataSchema } from "./DevRealmMetadata.ts";
-import { devRouteMetadataSchema } from "./DevRouteMetadata.ts";
-import { devSchedulerMetadataSchema } from "./DevSchedulerMetadata.ts";
 import { devTopicMetadataSchema } from "./DevTopicMetadata.ts";
 
 export const devSystemSchema = z.object({
@@ -29,8 +27,7 @@ export type DevSystem = Static<typeof devSystemSchema>;
 export const devMetadataSchema = z.object({
   system: devSystemSchema,
   actions: z.array(devActionMetadataSchema),
-  queues: z.array(devQueueMetadataSchema),
-  schedulers: z.array(devSchedulerMetadataSchema),
+  jobs: z.array(devJobMetadataSchema),
   topics: z.array(devTopicMetadataSchema),
   buckets: z.array(devBucketMetadataSchema),
   realms: z.array(devRealmMetadataSchema),
@@ -39,7 +36,6 @@ export const devMetadataSchema = z.object({
   providers: z.array(devProviderMetadataSchema),
   modules: z.array(devModuleMetadataSchema),
   entities: z.array(devEntityMetadataSchema),
-  routes: z.array(devRouteMetadataSchema),
   envs: z.array(devEnvMetadataSchema),
   atoms: z.array(devAtomMetadataSchema),
 });

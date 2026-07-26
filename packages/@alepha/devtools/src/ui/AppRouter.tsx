@@ -13,66 +13,107 @@ export class AppRouter {
     lazy: () => import("./components/dashboard/DevDashboard.tsx"),
   });
 
-  explorer = $page({
-    path: "/explorer",
-    label: "Explorer",
+  // Declared primitives -----------------------------------------------------
+
+  actions = $page({
+    path: "/actions",
+    label: "Actions",
     parent: this.layout,
-    lazy: () => import("./components/explorer/DevExplorer.tsx"),
+    lazy: () => import("./components/actions/DevActions.tsx"),
   });
 
-  // Database parent (tabs + NestedView)
-  db = $page({
-    path: "/db",
+  pages = $page({
+    path: "/pages",
+    label: "Pages",
     parent: this.layout,
-    lazy: () => import("./components/database/DevDatabase.tsx"),
+    lazy: () => import("./components/declared/DevPages.tsx"),
   });
 
-  dbErd = $page({
-    path: "/erd",
-    label: "Database",
-    parent: this.db,
+  jobs = $page({
+    path: "/jobs",
+    label: "Jobs",
+    parent: this.layout,
+    lazy: () => import("./components/jobs/DevJobs.tsx"),
+  });
+
+  topics = $page({
+    path: "/topics",
+    label: "Topics",
+    parent: this.layout,
+    lazy: () => import("./components/declared/DevTopics.tsx"),
+  });
+
+  caches = $page({
+    path: "/caches",
+    label: "Caches",
+    parent: this.layout,
+    lazy: () => import("./components/declared/DevCaches.tsx"),
+  });
+
+  buckets = $page({
+    path: "/buckets",
+    label: "Buckets",
+    parent: this.layout,
+    lazy: () => import("./components/declared/DevBuckets.tsx"),
+  });
+
+  realms = $page({
+    path: "/realms",
+    label: "Realms",
+    parent: this.layout,
+    lazy: () => import("./components/declared/DevRealms.tsx"),
+  });
+
+  // Data --------------------------------------------------------------------
+  //
+  // Flat, one route per nav entry. These used to sit under `/db` and `/conf`
+  // parents that existed only to host a tab bar duplicating the sidebar — and
+  // sharing a first path segment also made both siblings match the nav's
+  // active check at once.
+
+  schema = $page({
+    path: "/schema",
+    label: "Schema",
+    parent: this.layout,
     lazy: () => import("./components/database/DatabaseErd.page.tsx"),
   });
 
-  dbEditor = $page({
-    path: "/editor",
-    label: "Database",
-    parent: this.db,
-    lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
-  });
-
-  dbEditorTable = $page({
-    path: "/editor/:table",
-    parent: this.db,
-    lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
-  });
-
-  dbEditorRecord = $page({
-    path: "/editor/:table/:id",
-    parent: this.db,
-    lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
-  });
-
-  // Configuration parent (tabs + NestedView)
-  conf = $page({
-    path: "/conf",
+  rows = $page({
+    path: "/rows",
+    label: "Rows",
     parent: this.layout,
-    lazy: () => import("./components/configuration/DevConfiguration.tsx"),
+    lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
   });
 
-  confEnv = $page({
+  rowsTable = $page({
+    path: "/rows/:table",
+    parent: this.layout,
+    lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
+  });
+
+  rowsRecord = $page({
+    path: "/rows/:table/:id",
+    parent: this.layout,
+    lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
+  });
+
+  // Config ------------------------------------------------------------------
+
+  env = $page({
     path: "/env",
-    label: "Configuration",
-    parent: this.conf,
-    lazy: () => import("./components/configuration/ConfigEnv.page.tsx"),
+    label: "Environment",
+    parent: this.layout,
+    lazy: () => import("./components/config/DevEnvironment.tsx"),
   });
 
-  confAtoms = $page({
-    path: "/atoms",
-    label: "Configuration",
-    parent: this.conf,
-    lazy: () => import("./components/configuration/ConfigAtoms.page.tsx"),
+  state = $page({
+    path: "/state",
+    label: "State",
+    parent: this.layout,
+    lazy: () => import("./components/config/DevState.tsx"),
   });
+
+  // Diagnostics -------------------------------------------------------------
 
   graph = $page({
     path: "/graph",
@@ -81,18 +122,11 @@ export class AppRouter {
     lazy: () => import("./components/graph/DevDependencyGraph.tsx"),
   });
 
-  emails = $page({
-    path: "/emails",
-    label: "Emails",
+  outbox = $page({
+    path: "/outbox",
+    label: "Outbox",
     parent: this.layout,
-    lazy: () => import("./components/emails/DevEmails.tsx"),
-  });
-
-  sms = $page({
-    path: "/sms",
-    label: "SMS",
-    parent: this.layout,
-    lazy: () => import("./components/sms/DevSms.tsx"),
+    lazy: () => import("./components/outbox/DevOutbox.tsx"),
   });
 
   logs = $page({

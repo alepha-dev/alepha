@@ -33,6 +33,7 @@ ignores:
     - '@tailwindcss/vite'
     - '@types/react-dom'
     - '@types/react-is'
+    - '@fontsource-variable/archivo'
     - '@fontsource-variable/inter'
     - '@fontsource-variable/jetbrains-mono'
     - 'date-fns'

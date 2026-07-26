@@ -1,92 +1,44 @@
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
-import { jsonSchemaToZod, z } from "alepha";
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { z } from "alepha";
 import { useInject } from "alepha/react";
-import { useForm } from "alepha/react/form";
-import { useRouter, useRouterState } from "alepha/react/router";
+import { useQueryParams, useRouter, useRouterState } from "alepha/react/router";
 import { HttpClient } from "alepha/server";
-import { Database, Plus, Search, Trash2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  RefreshCw,
+  Search,
+  Table2,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { TreeView, type TreeViewNode } from "../shared/TreeView.tsx";
+import { useMetadata } from "../../hooks/useMetadata.ts";
+import { DevEmpty } from "../shared/DevEmpty.tsx";
+import { DevError } from "../shared/DevError.tsx";
+import { RecordForm } from "./RecordForm.tsx";
+import { RowCell } from "./RowCell.tsx";
 
-const EMPTY_SCHEMA = z.object({});
+const querySchema = z.object({
+  page: z.text().optional(),
+  size: z.text().optional(),
+  sort: z.text().optional(),
+  q: z.text().optional(),
+});
 
-const toTypeBoxSchema = (jsonSchema: any): any => {
-  if (!jsonSchema) return null;
-  try {
-    const converted = jsonSchemaToZod(jsonSchema);
-    if (converted && z.schema.isObject(converted)) return converted;
-  } catch {
-    // ignore
-  }
-  return null;
-};
-
-interface RecordFormProps {
-  entity: any;
-  record: any;
-  isNew: boolean;
-  onSave: (values: any) => void;
-  onDelete: () => void;
-  pkColumn: string;
-}
-
-const RecordForm = (props: RecordFormProps) => {
-  const schema = useMemo(() => {
-    const jsonSchema = props.isNew
-      ? props.entity.insertSchema
-      : props.entity.updateSchema;
-    return toTypeBoxSchema(jsonSchema) ?? EMPTY_SCHEMA;
-  }, [props.entity, props.isNew]);
-
-  const form = useForm(
-    {
-      schema,
-      handler: () => {},
-      initialValues: props.isNew ? undefined : props.record,
-    },
-    [schema, props.record, props.isNew],
-  );
-
-  return (
-    <div className="flex w-full flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold">
-          {props.isNew
-            ? "New Record"
-            : `Edit Record (${props.pkColumn}: ${props.record?.[props.pkColumn]})`}
-        </p>
-        <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => props.onSave(form.currentValues)}>
-            {props.isNew ? "Create" : "Save"}
-          </Button>
-          {!props.isNew && (
-            <Button size="sm" variant="destructive" onClick={props.onDelete}>
-              <Trash2 className="size-3.5" />
-            </Button>
-          )}
-        </div>
-      </div>
-      <AutoForm form={form} noSubmit />
-    </div>
-  );
-};
-
-const parseEditorPath = (pathname: string) => {
-  const prefix = "/db/editor/";
+const parsePath = (pathname: string) => {
+  const prefix = "/rows/";
   if (!pathname.startsWith(prefix)) return { table: "", recordId: "" };
   const rest = pathname.slice(prefix.length);
-  const slashIdx = rest.indexOf("/");
-  if (slashIdx === -1) return { table: decodeURIComponent(rest), recordId: "" };
+  const slash = rest.indexOf("/");
+  if (slash === -1) return { table: decodeURIComponent(rest), recordId: "" };
   return {
-    table: decodeURIComponent(rest.slice(0, slashIdx)),
-    recordId: decodeURIComponent(rest.slice(slashIdx + 1)),
+    table: decodeURIComponent(rest.slice(0, slash)),
+    recordId: decodeURIComponent(rest.slice(slash + 1)),
   };
 };
 
-interface DatabaseEditorProps {
+export interface DatabaseEditorProps {
   entities: any[];
 }
 
@@ -95,244 +47,528 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
   const http = useInject(HttpClient);
   const router = useRouter();
   const state = useRouterState();
+  const dialog = useDialog();
+  const meta = useMetadata();
+
+  const [params, setParams] = useQueryParams(querySchema, {
+    format: "querystring",
+  });
   const [records, setRecords] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [pageInfo, setPageInfo] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [tableFilter, setTableFilter] = useState("");
+  const [selection, setSelection] = useState<Set<string>>(new Set());
+  const [counts, setCounts] = useState<Record<string, number>>({});
 
-  const { table: selectedEntity, recordId } = parseEditorPath(
-    state.url.pathname,
-  );
+  const { table, recordId } = parsePath(state.url.pathname);
   const isNew = recordId === "new";
+  const entity = entities.find((e) => e.name === table);
+  const columns: any[] = entity?.columns ?? [];
+  const pk = columns.find((c) => c.primaryKey)?.name ?? "id";
 
-  const entity = entities.find((e) => e.name === selectedEntity);
-  const pkColumn =
-    entity?.columns?.find((c: any) => c.primaryKey)?.name ?? "id";
+  const page = Math.max(0, Number(params.page ?? "0") || 0);
+  const size = Math.max(1, Number(params.size ?? "50") || 50);
+  const sort = params.sort ?? "";
+  const search = (params.q ?? "").trim().toLowerCase();
 
-  const fetchRecords = useCallback(async () => {
-    if (!selectedEntity) return;
+  const load = useCallback(async () => {
+    if (!table) return;
     setLoading(true);
+    setError(null);
     try {
+      const qs = new URLSearchParams({
+        page: String(page),
+        size: String(size),
+      });
+      if (sort) qs.set("sort", sort);
       const res = await http.fetch(
-        `/__devtools/api/db/${selectedEntity}/records?size=50`,
+        `/__devtools/api/db/${encodeURIComponent(table)}/records?${qs}`,
       );
-      setRecords((res.data as any)?.content ?? []);
-      setPageInfo((res.data as any)?.page);
-    } catch {
+      const data = res.data as any;
+      setRecords(data?.content ?? []);
+      setTotal(data?.page?.totalElements ?? 0);
+      setSelection(new Set());
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load rows");
       setRecords([]);
     } finally {
       setLoading(false);
     }
-  }, [http, selectedEntity]);
+  }, [http, table, page, size, sort]);
 
   useEffect(() => {
-    fetchRecords();
-  }, [selectedEntity, fetchRecords]);
+    load();
+  }, [load]);
+
+  /**
+   * Row counts for the rail. Fetched once per table with `size=1` so the rail
+   * can show what the mockup shows without pulling every row.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      for (const e of entities) {
+        if (cancelled || counts[e.name] !== undefined) continue;
+        try {
+          const res = await http.fetch(
+            `/__devtools/api/db/${encodeURIComponent(e.name)}/records?page=0&size=1`,
+          );
+          const n = (res.data as any)?.page?.totalElements ?? 0;
+          if (!cancelled) setCounts((prev) => ({ ...prev, [e.name]: n }));
+        } catch {
+          // A table that can't be counted simply shows no badge.
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [entities, http]);
 
   const selectedRecord = useMemo(() => {
     if (!recordId || isNew) return null;
-    return records.find((r) => String(r[pkColumn]) === recordId) ?? null;
-  }, [records, recordId, isNew, pkColumn]);
+    return records.find((r) => String(r[pk]) === recordId) ?? null;
+  }, [records, recordId, isNew, pk]);
 
-  const navigateToEntity = useCallback(
-    (name: string) => {
-      router.push(`/db/editor/${encodeURIComponent(name)}`);
-    },
-    [router],
-  );
+  /**
+   * Client-side row search over the loaded page — the records endpoint takes
+   * no filter, so this narrows what you can see rather than pretending to
+   * query the table.
+   */
+  const visibleRows = useMemo(() => {
+    if (!search) return records;
+    return records.filter((r) =>
+      Object.values(r).some((v) =>
+        String(v ?? "")
+          .toLowerCase()
+          .includes(search),
+      ),
+    );
+  }, [records, search]);
 
-  const navigateToRecord = useCallback(
-    (record: any) => {
-      const id = record[pkColumn];
-      router.push(
-        `/db/editor/${encodeURIComponent(selectedEntity)}/${encodeURIComponent(String(id))}`,
-      );
-    },
-    [router, selectedEntity, pkColumn],
-  );
-
-  const navigateToNew = useCallback(() => {
-    router.push(`/db/editor/${encodeURIComponent(selectedEntity)}/new`);
-  }, [router, selectedEntity]);
-
-  const handleSave = async (data: any) => {
+  const write = async (
+    method: "POST" | "PUT",
+    values: any,
+    id?: string,
+  ): Promise<string | null> => {
     try {
-      if (isNew) {
-        await http.fetch(`/__devtools/api/db/${selectedEntity}/records`, {
-          method: "POST",
-          body: JSON.stringify(data),
-          headers: { "Content-Type": "application/json" },
-        });
-        router.push(`/db/editor/${encodeURIComponent(selectedEntity)}`);
-      } else if (selectedRecord) {
-        const idValue = selectedRecord[pkColumn];
+      const url =
+        method === "POST"
+          ? `/__devtools/api/db/${encodeURIComponent(table)}/records`
+          : `/__devtools/api/db/${encodeURIComponent(table)}/records/${encodeURIComponent(id!)}`;
+      await http.fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      if (method === "POST") {
+        await router.push(`/rows/${encodeURIComponent(table)}`);
+      }
+      await load();
+      return null;
+    } catch (e: any) {
+      return e?.message ?? "Save failed";
+    }
+  };
+
+  const removeIds = async (ids: string[]) => {
+    const ok = await dialog.confirm({
+      title: ids.length > 1 ? `Delete ${ids.length} rows?` : "Delete row?",
+      description:
+        ids.length > 1
+          ? `${ids.length} rows from ${table} — this cannot be undone.`
+          : `${pk}: ${ids[0]} — this cannot be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      for (const id of ids) {
         await http.fetch(
-          `/__devtools/api/db/${selectedEntity}/records/${idValue}`,
-          {
-            method: "PUT",
-            body: JSON.stringify(data),
-            headers: { "Content-Type": "application/json" },
-          },
+          `/__devtools/api/db/${encodeURIComponent(table)}/records/${encodeURIComponent(id)}`,
+          { method: "DELETE" },
         );
       }
-      await fetchRecords();
-    } catch {
-      // ignore
+      await router.push(`/rows/${encodeURIComponent(table)}`);
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? "Delete failed");
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedRecord) return;
-    const idValue = selectedRecord[pkColumn];
-    try {
-      await http.fetch(
-        `/__devtools/api/db/${selectedEntity}/records/${idValue}`,
-        { method: "DELETE" },
-      );
-      router.push(`/db/editor/${encodeURIComponent(selectedEntity)}`);
-      await fetchRecords();
-    } catch {
-      // ignore
-    }
-  };
+  const visibleTables = useMemo(() => {
+    const q = tableFilter.trim().toLowerCase();
+    const list = q
+      ? entities.filter((e) => e.name.toLowerCase().includes(q))
+      : entities;
+    return [...list].sort((a, b) => a.name.localeCompare(b.name));
+  }, [entities, tableFilter]);
 
-  const entityNodes: TreeViewNode[] = useMemo(() => {
-    const filtered = entities.filter((e) =>
-      e.name.toLowerCase().includes(search.toLowerCase()),
+  if (meta.error) {
+    return (
+      <DevError what="tables" message={meta.error} onRetry={meta.reload} />
     );
-    return filtered.map((e) => ({
-      id: `entity:${e.name}`,
-      label: e.name,
-      icon: <Database className="size-3 shrink-0 text-blue-500" />,
-      badge: (
-        <Badge variant="secondary" className="text-[10px]">
-          {e.columns?.length ?? 0}
-        </Badge>
-      ),
-    }));
-  }, [entities, search]);
+  }
 
-  const handleEntitySelect = useCallback(
-    (id: string) => {
-      const name = id.replace(/^entity:/, "");
-      navigateToEntity(name);
-    },
-    [navigateToEntity],
-  );
+  if (!meta.loading && entities.length === 0) {
+    return (
+      <DevEmpty
+        title="No entities declared"
+        hint="Use $entity to declare your data model"
+      />
+    );
+  }
 
-  const emptyOpenNodes = useMemo(() => new Set<string>(), []);
-  const selectedEntityId = selectedEntity ? `entity:${selectedEntity}` : "";
+  const lastPage = Math.max(0, Math.ceil(total / size) - 1);
+  const pageNumbers = Array.from(
+    { length: Math.min(5, lastPage + 1) },
+    (_, i) => Math.max(0, Math.min(lastPage - 4, page - 2)) + i,
+  ).filter((n) => n >= 0 && n <= lastPage);
+
+  const toggleSort = (name: string) => {
+    const asc = `${name},asc`;
+    setParams({
+      ...params,
+      page: "0",
+      sort: sort === asc ? `${name},desc` : asc,
+    });
+  };
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      {/* Entity list */}
-      <div className="border-border flex w-[200px] shrink-0 flex-col border-r">
-        <div className="flex p-2">
-          <div className="relative w-full">
-            <Search className="text-muted-foreground absolute left-2 top-1/2 size-3.5 -translate-y-1/2" />
-            <Input
-              placeholder="Filter tables..."
-              className="h-8 pl-8 text-xs"
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-            />
-          </div>
-        </div>
-        <div className="flex-1 overflow-auto px-2">
-          <TreeView
-            nodes={entityNodes}
-            selectedId={selectedEntityId}
-            openNodes={emptyOpenNodes}
-            onSelect={handleEntitySelect}
-            onToggle={() => {}}
-            showLeafCount={false}
+    <div style={{ display: "flex", flex: 1, minWidth: 0, minHeight: 0 }}>
+      <div className="dt-rail" style={{ width: 210 }}>
+        <div className="dt-rail-search">
+          <input
+            className="dt-input"
+            placeholder="Filter tables…"
+            value={tableFilter}
+            onChange={(e) => setTableFilter(e.currentTarget.value)}
           />
+        </div>
+        <div className="dt-rail-body">
+          {visibleTables.map((e) => (
+            <button
+              key={e.name}
+              type="button"
+              className="dt-leaf"
+              style={{ paddingLeft: 10 }}
+              data-active={e.name === table || undefined}
+              onClick={() => {
+                setParams({});
+                router.push(`/rows/${encodeURIComponent(e.name)}`);
+              }}
+            >
+              <Table2 size={11} style={{ color: "var(--dt-get)" }} />
+              <span className="dt-mono">{e.name}</span>
+              <span className="dt-nav-count">{counts[e.name] ?? ""}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Records list */}
-      {selectedEntity && (
-        <div className="border-border flex w-[200px] shrink-0 flex-col border-r">
-          <div className="border-border flex shrink-0 items-center justify-between border-b px-2 py-2">
-            <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
-              Records{" "}
-              {pageInfo?.totalElements != null && `(${pageInfo.totalElements})`}
-            </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="size-6 p-0"
-              onClick={navigateToNew}
-            >
-              <Plus className="size-3.5 text-teal-500" />
-            </Button>
-          </div>
-          <div className="flex-1 overflow-auto px-2 py-2">
-            <button
-              type="button"
-              data-selected={isNew || undefined}
-              className="hover:bg-muted/50 data-[selected=true]:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1 transition-colors"
-              onClick={navigateToNew}
-            >
-              <Plus className="size-3 shrink-0 text-teal-500" />
-              <span className="text-xs text-teal-500">New Record</span>
-            </button>
-            {loading ? (
-              <p className="text-muted-foreground py-4 text-center text-xs">
-                Loading...
-              </p>
-            ) : (
-              records.map((record, i) => {
-                const idVal = record[pkColumn] ?? i;
-                const isActive = !isNew && String(idVal) === recordId;
-                return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+        }}
+      >
+        {!table ? (
+          <DevEmpty title="Select a table" hint="Pick a table to browse rows" />
+        ) : (
+          <>
+            <div className="dt-toolbar">
+              <span className="dt-mono" style={{ fontSize: 12 }}>
+                {table}
+              </span>
+              <span
+                className="dt-mono"
+                style={{ fontSize: 10, color: "var(--dt-fg-faint)" }}
+              >
+                {columns.length} cols · {total} rows
+              </span>
+
+              <span style={{ position: "relative", display: "flex" }}>
+                <Search
+                  size={11}
+                  style={{
+                    position: "absolute",
+                    left: 7,
+                    top: 8,
+                    color: "var(--dt-fg-faint)",
+                  }}
+                />
+                <input
+                  className="dt-input"
+                  style={{ width: 180, paddingLeft: 22 }}
+                  placeholder="Search rows…"
+                  value={params.q ?? ""}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      q: e.currentTarget.value || undefined,
+                    })
+                  }
+                />
+              </span>
+
+              {sort && (
+                <span className="dt-chip">
+                  {sort}
                   <button
                     type="button"
-                    key={String(idVal)}
-                    data-selected={isActive || undefined}
-                    className="hover:bg-muted/50 data-[selected=true]:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1 transition-colors"
-                    onClick={() => navigateToRecord(record)}
+                    style={{
+                      border: 0,
+                      background: "none",
+                      color: "inherit",
+                      cursor: "pointer",
+                      marginLeft: 4,
+                    }}
+                    onClick={() => setParams({ ...params, sort: undefined })}
                   >
-                    <span className="truncate font-mono text-xs">
-                      {pkColumn}: {String(idVal)}
-                    </span>
+                    ×
                   </button>
-                );
-              })
+                </span>
+              )}
+
+              <span style={{ marginLeft: "auto" }} />
+              <button type="button" className="dt-btn" onClick={load}>
+                <RefreshCw size={11} />
+              </button>
+              <button
+                type="button"
+                className="dt-btn"
+                data-on="true"
+                onClick={() =>
+                  router.push(`/rows/${encodeURIComponent(table)}/new`)
+                }
+              >
+                <Plus size={11} /> New
+              </button>
+            </div>
+
+            {selection.size > 0 && (
+              <div
+                className="dt-toolbar"
+                style={{
+                  background: "rgba(236,48,19,.08)",
+                  borderBottom: "1px solid rgba(236,48,19,.35)",
+                }}
+              >
+                <span style={{ fontSize: 11 }}>
+                  {selection.size} row{selection.size > 1 ? "s" : ""} selected
+                </span>
+                <button
+                  type="button"
+                  className="dt-btn"
+                  style={{ color: "var(--dt-error)" }}
+                  onClick={() => removeIds(Array.from(selection))}
+                >
+                  <Trash2 size={11} /> Delete selected
+                </button>
+              </div>
             )}
-          </div>
-        </div>
-      )}
 
-      {/* Editor panel */}
-      <div className="flex flex-1 overflow-auto p-4">
-        {!selectedEntity && (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="text-muted-foreground text-sm">
-              Select a table to browse records
-            </span>
-          </div>
-        )}
+            {error && (
+              <div
+                style={{
+                  padding: "8px 12px",
+                  fontSize: 11,
+                  color: "var(--dt-error)",
+                  borderBottom: "1px solid var(--dt-border)",
+                }}
+              >
+                {error}
+              </div>
+            )}
 
-        {selectedEntity && !selectedRecord && !isNew && (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="text-muted-foreground text-sm">
-              Select a record or create a new one
-            </span>
-          </div>
-        )}
+            <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
+              {loading && records.length === 0 ? (
+                <div className="dt-empty">
+                  <span className="dt-empty-hint">Loading…</span>
+                </div>
+              ) : visibleRows.length === 0 ? (
+                <DevEmpty
+                  title={search ? "No rows match" : "No rows"}
+                  hint={
+                    search
+                      ? `Nothing matching “${search}”`
+                      : `${table} is empty`
+                  }
+                  action={{
+                    label: "Create the first row",
+                    onClick: () =>
+                      router.push(`/rows/${encodeURIComponent(table)}/new`),
+                  }}
+                />
+              ) : (
+                <table className="dt-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 28 }}>
+                        <input
+                          type="checkbox"
+                          checked={
+                            selection.size > 0 &&
+                            selection.size === visibleRows.length
+                          }
+                          onChange={(e) =>
+                            setSelection(
+                              e.currentTarget.checked
+                                ? new Set(visibleRows.map((r) => String(r[pk])))
+                                : new Set(),
+                            )
+                          }
+                        />
+                      </th>
+                      {columns.map((c) => (
+                        <th
+                          key={c.name}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => toggleSort(c.name)}
+                          title="Sort"
+                        >
+                          {c.name}
+                          {sort.startsWith(`${c.name},`) &&
+                            (sort.endsWith("asc") ? " ▲" : " ▼")}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleRows.map((record, i) => {
+                      const id = String(record[pk] ?? i);
+                      return (
+                        <tr
+                          key={id}
+                          className="dt-row-click"
+                          data-active={id === recordId || undefined}
+                          onClick={() =>
+                            router.push(
+                              `/rows/${encodeURIComponent(table)}/${encodeURIComponent(id)}`,
+                            )
+                          }
+                        >
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={selection.has(id)}
+                              onChange={(e) => {
+                                const next = new Set(selection);
+                                if (e.currentTarget.checked) next.add(id);
+                                else next.delete(id);
+                                setSelection(next);
+                              }}
+                            />
+                          </td>
+                          {columns.map((c) => (
+                            <td key={c.name}>
+                              <RowCell
+                                value={record[c.name]}
+                                column={c}
+                                onFollow={(ent, fid) =>
+                                  router.push(
+                                    `/rows/${encodeURIComponent(ent)}/${encodeURIComponent(fid)}`,
+                                  )
+                                }
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
 
-        {(selectedRecord || isNew) && entity && (
-          <RecordForm
-            entity={entity}
-            record={selectedRecord}
-            isNew={isNew}
-            onSave={handleSave}
-            onDelete={handleDelete}
-            pkColumn={pkColumn}
-          />
+            <div
+              className="dt-toolbar"
+              style={{
+                borderTop: "1px solid var(--dt-border)",
+                borderBottom: 0,
+              }}
+            >
+              <button
+                type="button"
+                className="dt-btn"
+                disabled={page <= 0}
+                onClick={() => setParams({ ...params, page: String(page - 1) })}
+              >
+                <ChevronLeft size={11} />
+              </button>
+              {pageNumbers.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className="dt-btn"
+                  data-on={n === page || undefined}
+                  onClick={() => setParams({ ...params, page: String(n) })}
+                >
+                  {n + 1}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="dt-btn"
+                disabled={page >= lastPage}
+                onClick={() => setParams({ ...params, page: String(page + 1) })}
+              >
+                <ChevronRight size={11} />
+              </button>
+              <select
+                className="dt-input"
+                style={{ width: 90 }}
+                value={String(size)}
+                onChange={(e) =>
+                  setParams({
+                    ...params,
+                    page: "0",
+                    size: e.currentTarget.value,
+                  })
+                }
+              >
+                {[10, 25, 50, 100].map((n) => (
+                  <option key={n} value={String(n)}>
+                    {n} / page
+                  </option>
+                ))}
+              </select>
+              <span style={{ marginLeft: "auto" }} />
+              <span
+                className="dt-mono"
+                style={{ fontSize: 10, color: "var(--dt-fg-faint)" }}
+              >
+                {total} rows
+              </span>
+            </div>
+          </>
         )}
       </div>
+
+      {(selectedRecord || isNew) && entity && (
+        <RecordForm
+          entity={entity}
+          record={selectedRecord}
+          isNew={isNew}
+          pkColumn={pk}
+          onSave={(values) =>
+            isNew
+              ? write("POST", values)
+              : write("PUT", values, String(selectedRecord?.[pk]))
+          }
+          onDuplicate={async (values) => {
+            await write("POST", values);
+          }}
+          onDelete={() =>
+            selectedRecord && removeIds([String(selectedRecord[pk])])
+          }
+          onClose={() => router.push(`/rows/${encodeURIComponent(table)}`)}
+        />
+      )}
     </div>
   );
 };
