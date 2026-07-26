@@ -6,7 +6,7 @@ import { $action } from "alepha/server";
 import { sigils } from "../entities/sigils.ts";
 import { sigilUniqueVisitors } from "../entities/sigilUniqueVisitors.ts";
 import { sigilViews } from "../entities/sigilViews.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { VitalsIngestService } from "../services/VitalsIngestService.ts";
 
 /** Supported lookback windows for the Insights dashboard. */
@@ -100,7 +100,7 @@ export type InsightsResource = Static<typeof insightsSchema>;
  */
 export class InsightsController {
   protected database = $inject(DatabaseProvider);
-  protected security = $inject(AppSecurityProvider);
+  protected security = $inject(CampaignSecurityService);
   protected dt = $inject(DateTimeProvider);
   protected vitalsService = $inject(VitalsIngestService);
   protected sigils = $repository(sigils);

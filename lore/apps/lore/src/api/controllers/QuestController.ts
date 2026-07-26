@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
-import { FileService } from "alepha/api/files";
-import { $bucket } from "alepha/bucket";
+import { $storage, FileService } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, $transactional, db, pageQuerySchema } from "alepha/orm";
@@ -21,7 +20,6 @@ import {
   REMINDER_INTERVAL_MS,
   REMINDER_INTERVAL_VALUES,
 } from "../entities/quests.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { questCreateSchema } from "../schemas/questCreateSchema.ts";
 import {
   type QuestResource,
@@ -30,6 +28,7 @@ import {
   questStatusSchema,
 } from "../schemas/questResourceSchema.ts";
 import { AchievementEngine } from "../services/AchievementEngine.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService, sanitizeHtml } from "../services/QuestService.ts";
@@ -42,14 +41,17 @@ export class QuestController {
   petitions = $repository(petitions);
   characterInfo = $inject(CharacterInfo);
   dt = $inject(DateTimeProvider);
-  security = $inject(AppSecurityProvider);
+  security = $inject(CampaignSecurityService);
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
   achievements = $inject(AchievementEngine);
   questService = $inject(QuestService);
 
-  attachments = $bucket({
-    maxSize: 10 * 1024 * 1024, // 10 MB
+  attachments = $storage({
+    description: "Quest attachments",
+    // Megabytes. This read `10 * 1024 * 1024`, i.e. a ten-million-megabyte
+    // cap — no cap at all.
+    maxSize: 10,
     mimeTypes: [
       "image/jpeg",
       "image/png",
@@ -225,10 +227,7 @@ export class QuestController {
       }),
     },
     handler: async ({ body, user }) => {
-      const file = await this.fileService.uploadFile(body.file, {
-        user,
-        bucket: this.attachments.name,
-      });
+      const file = await this.attachments.upload(body.file, { user });
       return {
         fileId: file.id,
         url: `/api/files/${file.id}`,

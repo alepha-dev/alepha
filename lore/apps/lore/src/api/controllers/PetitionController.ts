@@ -1,7 +1,6 @@
 import { $inject, z } from "alepha";
-import { FileService, files } from "alepha/api/files";
+import { $storage, FileService, files } from "alepha/api/files";
 import { users } from "alepha/api/users";
-import { $bucket } from "alepha/bucket";
 import { $logger } from "alepha/logger";
 import {
   $repository,
@@ -23,7 +22,6 @@ import { FileSystemProvider } from "alepha/system";
 import { campaigns } from "../entities/campaigns.ts";
 import { type Petition, petitions } from "../entities/petitions.ts";
 import { quests } from "../entities/quests.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import {
   type MyPetitionResource,
   myPetitionResourceSchema,
@@ -33,6 +31,7 @@ import {
   petitionResourceSchema,
 } from "../schemas/petitionResourceSchema.ts";
 import { petitionSourceSchema } from "../schemas/petitionSourceSchema.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { PetitionRateLimiter } from "../services/PetitionRateLimiter.ts";
 
 const petitionBodySchema = z.object({
@@ -63,7 +62,7 @@ export class PetitionController {
   protected users = $repository(users);
   protected fileRepo = $repository(files);
   protected rateLimiter = $inject(PetitionRateLimiter);
-  protected security = $inject(AppSecurityProvider);
+  protected security = $inject(CampaignSecurityService);
   protected fileService = $inject(FileService);
   protected fileSystem = $inject(FileSystemProvider);
 
@@ -77,9 +76,9 @@ export class PetitionController {
    * Bucket for petition attachments. Size cap mirrors `petitionOptionsAtom`
    * — the bucket-level limit acts as a hard backstop in case the controller
    * check is bypassed. MIME whitelist is enforced at upload time (not here)
-   * so it can read from the atom rather than baking values into `$bucket`.
+   * so it can read from the atom rather than baking values into `$storage`.
    */
-  attachmentBucket = $bucket({
+  attachmentBucket = $storage({
     name: PetitionRateLimiter.ATTACHMENT_BUCKET,
     maxSize: 5,
   });
@@ -226,8 +225,7 @@ export class PetitionController {
         type: file.type,
       });
 
-      const stored = await this.fileService.uploadFile(reusable, {
-        bucket: this.attachmentBucket.name,
+      const stored = await this.attachmentBucket.upload(reusable, {
         // Stamp the uploader so `assertAttachmentsBelongToUser` can verify
         // the claim at submit time — without it `creator` is null and every
         // attachment claim is rejected as "invalid".
@@ -352,8 +350,10 @@ export class PetitionController {
         throw new NotFoundError("Attachment file missing");
       }
 
-      // The bucket stores blobs under `blobId`, not the file-row `id`.
-      const blob = await this.attachmentBucket.download(file.blobId);
+      // `$storage.download` takes the file row (or its id) and resolves the
+      // blob itself — `blobId` is an internal storage detail now. Passing the
+      // already-loaded row avoids a second lookup.
+      const blob = await this.attachmentBucket.download(file);
       const data = Buffer.from(await blob.arrayBuffer()).toString("base64");
 
       return {
@@ -606,7 +606,7 @@ export class PetitionController {
   });
 
   /**
-   * Owner guard. Delegates to `AppSecurityProvider.assertOwner` and returns
+   * Owner guard. Delegates to `CampaignSecurityService.assertOwner` and returns
    * the resolved campaign for handlers that need it.
    */
   protected async ensureOwner(campaignId: number, user: UserAccountToken) {
@@ -614,7 +614,7 @@ export class PetitionController {
   }
 
   /**
-   * Member guard. Delegates to `AppSecurityProvider.assertMember` for the
+   * Member guard. Delegates to `CampaignSecurityService.assertMember` for the
    * read endpoints (list/detail) that any campaign member may access.
    */
   protected async ensureMember(campaignId: number, user: UserAccountToken) {

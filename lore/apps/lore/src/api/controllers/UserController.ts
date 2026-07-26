@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { FileService } from "alepha/api/files";
-import { UserBuckets, users } from "alepha/api/users";
+import { UserStorage, users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
@@ -8,7 +8,7 @@ import { $action } from "alepha/server";
 export class UserController {
   users = $repository(users);
   fileService = $inject(FileService);
-  userFiles = $inject(UserBuckets);
+  userFiles = $inject(UserStorage);
 
   me = $action({
     use: [$secure({ permissions: ["user:read"] })],
@@ -33,11 +33,7 @@ export class UserController {
       response: users.schema,
     },
     handler: async ({ user, body }) => {
-      // Store the file in the avatars bucket
-      const file = await this.fileService.uploadFile(body.file, {
-        user,
-        bucket: this.userFiles.avatars.name,
-      });
+      const file = await this.userFiles.avatars.upload(body.file, { user });
 
       // Update the user's picture field
       return await this.users.updateById(user.id, {

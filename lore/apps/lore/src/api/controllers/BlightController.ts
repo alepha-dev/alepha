@@ -15,8 +15,8 @@ import {
   sigilBlights,
 } from "../entities/sigilBlights.ts";
 import { sigils } from "../entities/sigils.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { BlightRuleService } from "../services/BlightRuleService.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { QuestService } from "../services/QuestService.ts";
 
 /** Zone every blight-forwarded quest is filed under — predictable triage. */
@@ -71,7 +71,7 @@ export type BlightRuleResource = Static<typeof blightRuleResourceSchema>;
  * exceptions captured by a campaign's sigils.
  *
  * Read endpoints (list + count) are member-gated via
- * `AppSecurityProvider.assertMember` so any campaign member can view the
+ * `CampaignSecurityService.assertMember` so any campaign member can view the
  * inbox; mutations (resolve/forward/delete) stay owner-only via
  * `assertOwner`. Blights are scoped to sigils, sigils are scoped to
  * campaigns — so blight access is resolved by joining through the
@@ -88,7 +88,7 @@ export class BlightController {
   protected log = $logger();
   protected blights = $repository(sigilBlights);
   protected sigils = $repository(sigils);
-  protected security = $inject(AppSecurityProvider);
+  protected security = $inject(CampaignSecurityService);
   protected questService = $inject(QuestService);
   protected ruleService = $inject(BlightRuleService);
 

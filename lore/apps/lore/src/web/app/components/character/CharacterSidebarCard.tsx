@@ -43,7 +43,7 @@ const CharacterSidebarCard = () => {
   const gold = characterInfo.getGold(character.balance);
   const silver = characterInfo.getSilver(character.balance);
   // Real rank: Owner vs Member, the access-rights split the rest of the
-  // app already gates on (AppSecurityProvider.assertOwner /
+  // app already gates on (CampaignSecurityService.assertOwner /
   // assertMember). Owners get the Crown badge next to their name —
   // matches the convention in CharacterIdentity + Settings.
   const isOwner = character.owner === true;

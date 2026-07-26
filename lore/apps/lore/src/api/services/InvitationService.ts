@@ -7,10 +7,10 @@ import { BadRequestError, ForbiddenError } from "alepha/server";
 import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
 import { type InvitationEntity, invitations } from "../entities/invitations.ts";
-import { AppSecurityProvider } from "./../providers/AppSecurityProvider.ts";
 import type { CreateInvitation } from "../schemas/createInvitationSchema.ts";
 import { invitationConfigAtom } from "../schemas/invitationConfigAtom.ts";
 import type { InvitationQuery } from "../schemas/invitationQuerySchema.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 
 declare module "alepha" {
   interface Hooks {
@@ -44,7 +44,7 @@ export class InvitationService {
   protected readonly campaigns = $repository(campaigns);
   protected readonly characters = $repository(characters);
   protected readonly dateTime = $inject(DateTimeProvider);
-  protected readonly security = $inject(AppSecurityProvider);
+  protected readonly security = $inject(CampaignSecurityService);
 
   public async getById(id: string): Promise<InvitationEntity> {
     return this.repo.getById(id);

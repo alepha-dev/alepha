@@ -8,7 +8,7 @@ import { $etag } from "alepha/server/etag";
 import { campaigns } from "../entities/campaigns.ts";
 import { type Chapter, chapters } from "../entities/chapters.ts";
 import { type Quest, quests } from "../entities/quests.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 
 export class ChapterController {
   log = $logger();
@@ -16,7 +16,7 @@ export class ChapterController {
   quests = $repository(quests);
   campaigns = $repository(campaigns);
   dt = $inject(DateTimeProvider);
-  security = $inject(AppSecurityProvider);
+  security = $inject(CampaignSecurityService);
 
   /**
    * Per-campaign sequence for `chapters.number`. Replaces the old MAX+1

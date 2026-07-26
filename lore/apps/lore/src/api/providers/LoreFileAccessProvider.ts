@@ -7,8 +7,8 @@ import { archiveBlobs } from "../entities/archiveBlobs.ts";
 import { campaigns } from "../entities/campaigns.ts";
 import { petitions } from "../entities/petitions.ts";
 import { quests } from "../entities/quests.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { PetitionRateLimiter } from "../services/PetitionRateLimiter.ts";
-import { AppSecurityProvider } from "./AppSecurityProvider.ts";
 
 const attachmentLookupSchema = z.object({
   id: z.integer(),
@@ -25,7 +25,7 @@ const attachmentLookupSchema = z.object({
  * creator-only — this widens it for the well-known buckets.
  */
 export class LoreFileAccessProvider extends FileAccessProvider {
-  protected readonly security = $inject(AppSecurityProvider);
+  protected readonly security = $inject(CampaignSecurityService);
   protected readonly database = $inject(DatabaseProvider);
   protected readonly campaigns = $repository(campaigns);
   protected readonly petitions = $repository(petitions);
@@ -34,7 +34,7 @@ export class LoreFileAccessProvider extends FileAccessProvider {
 
   /**
    * Quest attachments bucket inherits the property name when no `name:` is
-   * passed to `$bucket(...)` — see `QuestController.attachments`.
+   * passed to `$storage(...)` — see `QuestController.attachments`.
    */
   protected static readonly QUEST_ATTACHMENT_BUCKET = "attachments";
   protected static readonly CAMPAIGN_ICON_BUCKET = "campaign-icons";

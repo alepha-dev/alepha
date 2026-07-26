@@ -13,12 +13,12 @@ import { $etag } from "alepha/server/etag";
 import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
 import { quests } from "../entities/quests.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import {
   chroniclesOverviewSchema,
   chroniclesPartySchema,
   chroniclesQuestsSchema,
 } from "../schemas/chroniclesSchemas.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 
 export class CampaignStatsController {
   quests = $repository(quests);
@@ -27,7 +27,7 @@ export class CampaignStatsController {
   users = $repository(users);
   database = $inject(DatabaseProvider);
   sqlx = $inject(SqlExpressionProvider);
-  security = $inject(AppSecurityProvider);
+  security = $inject(CampaignSecurityService);
   dt = $inject(DateTimeProvider);
 
   /**

@@ -36,6 +36,7 @@ import { BeaconIngestService } from "./services/BeaconIngestService.ts";
 import { BlightIngestService } from "./services/BlightIngestService.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { CampaignLimits } from "./services/CampaignLimits.ts";
+import { CampaignSecurityService } from "./services/CampaignSecurityService.ts";
 import { CharacterInfo } from "./services/CharacterInfo.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
@@ -55,7 +56,10 @@ import { VitalsIngestService } from "./services/VitalsIngestService.ts";
 export const LoreApi = $module({
   name: "lore.api",
   services: [
+    // Declares the `$realm`. Nothing injects it — it must be listed here
+    // explicitly or the realm (and every permission) is never registered.
     AppSecurityProvider,
+    CampaignSecurityService,
     // Substituted for the framework's `FileAccessProvider` in
     // `main.server.ts`. Listed here only so DI scanning sees the class.
     LoreFileAccessProvider,

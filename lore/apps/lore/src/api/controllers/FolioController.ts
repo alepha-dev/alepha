@@ -15,12 +15,12 @@ import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
 import { folioRevisions } from "../entities/folioRevisions.ts";
 import { buildFolioSearchText, folios } from "../entities/folios.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import {
   folioLinksSchema,
   folioResourceSchema,
 } from "../schemas/folioResourceSchema.ts";
 import { AchievementEngine } from "../services/AchievementEngine.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import {
   decideRevisionAction,
   FolioHistoryService,
@@ -52,7 +52,7 @@ export class FolioController {
   protected readonly users = $repository(users);
   protected readonly linkService = $inject(FolioLinkService);
   protected readonly historyService = $inject(FolioHistoryService);
-  protected readonly security = $inject(AppSecurityProvider);
+  protected readonly security = $inject(CampaignSecurityService);
   protected readonly achievements = $inject(AchievementEngine);
 
   /**
