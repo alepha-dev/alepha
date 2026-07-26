@@ -62,6 +62,7 @@ export const mcpStreamableHttpOptions = $atom({
     requireAuth: false,
     resourceMetadataPath: "/.well-known/oauth-protected-resource",
   },
+  serverOnly: true,
 });
 
 // Backward-compat alias for the legacy atom name. Prefer

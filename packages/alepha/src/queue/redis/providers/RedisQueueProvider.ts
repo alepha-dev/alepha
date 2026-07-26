@@ -18,6 +18,7 @@ export const redisQueueOptions = $atom({
   default: {
     prefix: "queue",
   },
+  serverOnly: true,
 });
 
 export type RedisQueueOptions = Static<typeof redisQueueOptions.schema>;

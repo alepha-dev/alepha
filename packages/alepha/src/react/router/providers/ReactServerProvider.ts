@@ -727,6 +727,7 @@ export const reactServerOptions = $atom({
       path: "/",
     },
   },
+  serverOnly: true,
 });
 
 export type ReactServerProviderOptions = Static<

@@ -45,6 +45,7 @@ export const swaggerOptions = $atom({
   default: {
     excludeKeys: [],
   },
+  serverOnly: true,
 });
 
 export type ServerSwaggerProviderOptions = Static<typeof swaggerOptions.schema>;

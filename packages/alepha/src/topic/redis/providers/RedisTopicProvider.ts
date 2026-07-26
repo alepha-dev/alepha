@@ -25,6 +25,7 @@ export const redisTopicOptions = $atom({
   default: {
     prefix: "topic",
   },
+  serverOnly: true,
 });
 
 export type RedisTopicOptions = Static<typeof redisTopicOptions.schema>;

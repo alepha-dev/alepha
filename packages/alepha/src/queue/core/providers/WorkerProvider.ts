@@ -45,6 +45,7 @@ export const queueWorkerOptions = $atom({
     maxInterval: 32000,
     concurrency: 1,
   },
+  serverOnly: true,
 });
 
 export type QueueWorkerOptions = Static<typeof queueWorkerOptions.schema>;

@@ -43,6 +43,7 @@ export const jobConfig = $atom({
     logMaxEntries: 100,
     drainTimeout: 30_000,
   },
+  serverOnly: true,
 });
 
 export type JobConfig = Static<typeof jobConfig.schema>;

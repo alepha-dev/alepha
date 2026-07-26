@@ -19,6 +19,7 @@ export const localEmailOptions = $atom({
   default: {
     directory: "node_modules/.alepha/emails",
   },
+  serverOnly: true,
 });
 
 export type LocalEmailProviderOptions = Static<typeof localEmailOptions.schema>;

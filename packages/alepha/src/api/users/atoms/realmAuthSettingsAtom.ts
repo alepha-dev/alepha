@@ -36,6 +36,16 @@ const usernameFieldRequirement = (description: string) =>
     ])
     .describe(description);
 
+/**
+ * Full realm auth configuration — the server's view.
+ *
+ * `serverOnly` because this is the unredacted record: `adminEmails` and
+ * `adminUsernames` are the accounts auto-promoted to admin on login, and
+ * `loginRateLimit` / `registrationIpMaxAttempts` describe exactly how much
+ * brute force the realm tolerates. The browser gets the deliberately narrowed
+ * `publicRealmSettingsSchema` over `/realms/config` instead — this atom is
+ * never part of the hydration payload, and DevTools redacts its value.
+ */
 export const realmAuthSettingsAtom = $atom({
   name: "alepha.api.users.realmAuthSettings",
   schema: z.object({
@@ -202,6 +212,7 @@ export const realmAuthSettingsAtom = $atom({
       // expirationIdle: undefined — opt-in
     },
   },
+  serverOnly: true,
 });
 
 export type RealmAuthSettings = Static<typeof realmAuthSettingsAtom.schema>;

@@ -43,6 +43,7 @@ export const vendorOptions = $atom({
       packages: z.array(z.text()),
     })
     .optional(),
+  serverOnly: true,
 });
 
 /**

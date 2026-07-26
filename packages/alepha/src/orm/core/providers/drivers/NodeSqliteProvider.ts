@@ -59,6 +59,7 @@ export const nodeSqliteOptions = $atom({
       .optional(),
   }),
   default: {},
+  serverOnly: true,
 });
 
 export type NodeSqliteProviderOptions = Static<typeof nodeSqliteOptions.schema>;

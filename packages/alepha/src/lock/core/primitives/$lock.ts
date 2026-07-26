@@ -397,6 +397,7 @@ export const lockOptions = $atom({
   default: {
     prefixKey: "",
   },
+  serverOnly: true,
 });
 
 export type LockAtomOptions = Static<typeof lockOptions.schema>;

@@ -41,6 +41,7 @@ export const corsOptions = $atom({
     headers: ["Content-Type", "Authorization"],
     credentials: false,
   },
+  serverOnly: true,
 });
 
 export type CorsOptions = Static<typeof corsOptions.schema>;

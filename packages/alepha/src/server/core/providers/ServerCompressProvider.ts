@@ -38,6 +38,7 @@ export const compressOptions = $atom({
       "text/css",
     ],
   },
+  serverOnly: true,
 });
 
 export type CompressOptions = Static<typeof compressOptions.schema>;

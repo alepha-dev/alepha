@@ -46,6 +46,7 @@ export const rateLimitOptions = $atom({
       .optional(),
   }),
   default: {},
+  serverOnly: true,
 });
 
 export type RateLimitAtomOptions = Static<typeof rateLimitOptions.schema>;

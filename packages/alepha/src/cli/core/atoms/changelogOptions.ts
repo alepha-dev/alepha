@@ -40,6 +40,7 @@ export const changelogOptions = $atom({
   default: {
     ignore: DEFAULT_IGNORE,
   },
+  serverOnly: true,
 });
 
 export type ChangelogOptions = Static<typeof changelogOptions.schema>;

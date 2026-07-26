@@ -43,6 +43,7 @@ export const i18nOptions = $atom({
       exclude: z.array(z.text()).optional(),
     })
     .optional(),
+  serverOnly: true,
 });
 
 /**

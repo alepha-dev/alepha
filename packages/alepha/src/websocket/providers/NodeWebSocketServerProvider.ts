@@ -48,6 +48,7 @@ export const websocketOptions = $atom({
   default: {
     path: "/ws",
   },
+  serverOnly: true,
 });
 
 export type WebSocketOptions = Static<typeof websocketOptions.schema>;

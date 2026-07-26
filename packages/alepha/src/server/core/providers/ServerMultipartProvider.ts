@@ -42,6 +42,7 @@ export const multipartOptions = $atom({
     fileLimit: 5_000_000,
     fileCount: 10,
   },
+  serverOnly: true,
 });
 
 export type MultipartOptions = Static<typeof multipartOptions.schema>;

@@ -68,6 +68,7 @@ export const nodemailerEmailOptions = $atom({
       .optional(),
   }),
   default: {},
+  serverOnly: true,
 });
 
 export type NodemailerEmailProviderOptions = Static<

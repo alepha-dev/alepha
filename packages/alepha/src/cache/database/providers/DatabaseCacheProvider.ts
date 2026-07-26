@@ -33,6 +33,7 @@ export const databaseCacheOptions = $atom({
     sweepProbability: 0.01,
     sweepBatchSize: 100,
   },
+  serverOnly: true,
 });
 
 export type DatabaseCacheOptions = Static<typeof databaseCacheOptions.schema>;

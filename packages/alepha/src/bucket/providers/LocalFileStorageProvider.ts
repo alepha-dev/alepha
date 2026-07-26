@@ -36,6 +36,7 @@ export const localFileStorageOptions = $atom({
   default: {
     storagePath: "node_modules/.alepha/buckets",
   },
+  serverOnly: true,
 });
 
 export type LocalFileStorageProviderOptions = Static<

@@ -26,6 +26,7 @@ export const mqttTopicOptions = $atom({
   default: {
     prefix: "topic",
   },
+  serverOnly: true,
 });
 
 export type MqttTopicOptions = Static<typeof mqttTopicOptions.schema>;

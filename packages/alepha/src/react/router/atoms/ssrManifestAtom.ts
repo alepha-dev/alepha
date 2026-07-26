@@ -69,4 +69,5 @@ export const ssrManifestAtom = $atom({
   description: "SSR manifest for module preloading",
   schema: ssrManifestAtomSchema,
   default: {},
+  serverOnly: true,
 });

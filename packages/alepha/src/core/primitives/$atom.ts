@@ -92,13 +92,29 @@ export type AtomOptions<T extends ZType, N extends string> = {
   persist?: AtomPersist;
 
   /**
-   * Exclude this atom from the SSR hydration export
-   * (`StateManager.exportAtoms()`).
+   * Keep this atom's *value* server-side. Two mechanisms honour the flag,
+   * and together they are the whole of what it promises:
    *
-   * This is the ONLY guarantee `serverOnly` makes: the value is never
-   * written into the `<script id="__ssr">` JSON block serialized into the
-   * HTML payload. It says nothing about any other channel a value can
-   * reach the browser through.
+   * 1. `StateManager.exportAtoms()` skips the atom, so the value is never
+   *    written into the `<script id="__ssr">` JSON block serialized into
+   *    the HTML payload.
+   * 2. DevTools (`DevToolsMetadataProvider.getAtoms()`) omits
+   *    `defaultValue` and `currentValue` from `/metadata`. The atom is
+   *    still listed with its name, description, and schema — a developer
+   *    can see that it exists and what shape it has, just not what is in
+   *    it.
+   *
+   * It says nothing about any other channel a value can reach the browser
+   * through: an `$action` that returns the value still returns it.
+   *
+   * **Only request-scoped writes were ever at risk.** `exportAtoms` is
+   * called with scope `"current"`, which reads the current ALS layer alone
+   * — no parent walk, no app-store fallback. An atom configured at boot
+   * (every `*Options` atom) therefore never reached the payload to begin
+   * with, so adding the flag there changes no runtime behaviour; it
+   * documents intent and closes the door on a future in-request
+   * `store.set`. The flag only bites for atoms genuinely written inside a
+   * request — `currentResourceAtom`, `currentTenantAtom`.
    *
    * **Cannot be combined with `persist`.** Every persistence adapter
    * (`"cookie"`, `"localStorage"`, `"sessionStorage"`) targets the browser

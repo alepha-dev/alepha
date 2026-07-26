@@ -38,6 +38,10 @@ const qosSchema = z.union([z.literal(0), z.literal(1), z.literal(2)]);
 
 /**
  * MQTT client configuration atom.
+ *
+ * `serverOnly` because the schema carries a plaintext broker `password`: this
+ * value must never enter the SSR hydration payload, and DevTools must not
+ * print it in `/metadata`.
  */
 export const mqttOptions = $atom({
   name: "alepha.mqtt.options",
@@ -99,6 +103,7 @@ export const mqttOptions = $atom({
     lazy: false,
     reconnectPeriod: 1000,
   },
+  serverOnly: true,
 });
 
 export type MqttOptions = Static<typeof mqttOptions.schema>;

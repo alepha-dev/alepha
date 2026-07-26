@@ -27,6 +27,7 @@ export const bodyParserOptions = $atom({
     inflate: true,
     limit: 100_000,
   },
+  serverOnly: true,
 });
 
 export type BodyParserOptions = Static<typeof bodyParserOptions.schema>;

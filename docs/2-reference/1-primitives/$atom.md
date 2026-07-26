@@ -47,5 +47,5 @@ If you need to store complex data, consider using identifiers or references inst
 | `schema` | `T` | Yes |  |
 | `description` | `string` | No |  |
 | `persist` | `AtomPersist` | No | Persist this atom outside the in-memory store |
-| `serverOnly` | `boolean` | No | Exclude this atom from the SSR hydration export (`StateManager.exportAtoms()`) |
+| `serverOnly` | `boolean` | No | Keep this atom's *value* server-side |
 

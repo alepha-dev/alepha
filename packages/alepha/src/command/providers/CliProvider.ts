@@ -59,6 +59,7 @@ export const cliOptions = $atom({
       .optional(),
   }),
   default: {},
+  serverOnly: true,
 });
 
 export type CliProviderOptions = Static<typeof cliOptions.schema>;

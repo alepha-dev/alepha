@@ -30,6 +30,7 @@ export const oauthOptions = $atom({
     loginPath: z.text({ default: "/login" }),
   }),
   default: { realm: "users", resource: "/mcp", loginPath: "/login" },
+  serverOnly: true,
 });
 
 /**

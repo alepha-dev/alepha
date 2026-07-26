@@ -16,6 +16,7 @@ export const devOptions = $atom({
     noViteReactPlugin: z.boolean().default(false).optional(),
   }),
   default: {},
+  serverOnly: true,
 });
 
 /**

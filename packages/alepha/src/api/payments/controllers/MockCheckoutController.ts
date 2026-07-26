@@ -20,6 +20,7 @@ export const mockCheckoutOptions = $atom({
       .default(false),
   }),
   default: { allowInProduction: false },
+  serverOnly: true,
 });
 
 export type MockCheckoutOptions = Static<typeof mockCheckoutOptions.schema>;

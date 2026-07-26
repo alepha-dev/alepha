@@ -21,6 +21,16 @@ import { $atom, z } from "alepha";
  * `id` is a free-form string so the framework stays neutral on tenant identity
  * (slug, UUID, composite). Pick whatever matches the column marked with
  * `PG_ORGANIZATION` in your entities.
+ *
+ * **`serverOnly`.** Unlike every other config atom, this one really is written
+ * inside the request (that is the whole point), so without the flag the
+ * resolved tenant would land in the SSR hydration payload of every page. It is
+ * server-resolution state — which tenant the request was scoped to, and the
+ * value the JWT `tenant` claim is checked against — not view state. A browser
+ * that needs to know the current tenant should be told explicitly (an API
+ * field, or a dedicated app-owned atom), not by reading the framework's
+ * authorization input. See {@link currentUserAtom}, which is deliberately NOT
+ * `serverOnly`: it is what `useAuth` hydrates from.
  */
 export const currentTenantAtom = $atom({
   name: "alepha.security.tenant",
@@ -31,4 +41,5 @@ export const currentTenantAtom = $atom({
       }),
     })
     .optional(),
+  serverOnly: true,
 });

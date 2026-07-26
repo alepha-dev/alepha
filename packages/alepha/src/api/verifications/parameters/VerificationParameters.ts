@@ -28,6 +28,7 @@ export const verificationOptions = $atom({
     },
     purgeDays: 1,
   },
+  serverOnly: true,
 });
 
 export type VerificationOptions = Static<typeof verificationOptions.schema>;

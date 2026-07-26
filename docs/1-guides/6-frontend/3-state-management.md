@@ -288,6 +288,10 @@ const sessionSecret = $atom({
 
 Use it for state that must never leave the server -- internal request-scoped data, secrets touched during rendering. The guarantee reaches further than just the hydration payload: `serverOnly` also withholds the value from the devtools mutation log and metadata endpoints, so it can't leak through those channels either.
 
+**Which atoms need it.** The hydration payload is built from the current request's state layer only -- not from the app-level store. An atom you configure once at boot (`alepha.store.set(myOptions, ...)` in your entry file, a `configure` hook, an env read) was therefore never going to ship in the first place. So on a config atom, `serverOnly` is free: it changes nothing at runtime, it documents the intent, it redacts the value in devtools, and it means a later `store.set` from inside a request handler can't silently start leaking it. The flag genuinely changes behaviour only for atoms you write *during* a request -- resolved tenant, resolved row, anything a middleware stamps per call. Those are exactly the ones worth auditing.
+
+Conversely, do not set it on an atom the browser is meant to read: anything a page loader fills for the client to pick up, anything behind `useStore` (the hook seeds its default into the request layer during SSR, so that value does ship by design), and anything a client-side service reads back after render.
+
 `serverOnly` cannot be combined with `persist` -- every persistence adapter targets the browser by definition, so declaring both throws an `AlephaError` at `$atom()` call time. Pick one.
 
 ## Example: Feature Flags

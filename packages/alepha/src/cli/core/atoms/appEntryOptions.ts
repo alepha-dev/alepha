@@ -8,6 +8,7 @@ export const appEntryOptions = $atom({
     style: z.text().optional(),
   }),
   default: {},
+  serverOnly: true,
 });
 
 export type AppEntryOptions = Static<typeof appEntryOptions.schema>;

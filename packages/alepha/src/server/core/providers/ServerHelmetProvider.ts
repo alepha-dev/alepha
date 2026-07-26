@@ -47,6 +47,7 @@ export const helmetOptions = $atom({
     xXssProtection: false,
     referrerPolicy: "strict-origin-when-cross-origin",
   },
+  serverOnly: true,
 });
 
 export type HelmetOptions = Static<typeof helmetOptions.schema>;

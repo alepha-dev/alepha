@@ -325,6 +325,7 @@ export const buildOptions = $atom({
       .optional(),
   }),
   default: {},
+  serverOnly: true,
 });
 
 /**

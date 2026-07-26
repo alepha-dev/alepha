@@ -35,6 +35,7 @@ export const bunSqliteOptions = $atom({
       .optional(),
   }),
   default: {},
+  serverOnly: true,
 });
 
 export type BunSqliteProviderOptions = Static<typeof bunSqliteOptions.schema>;

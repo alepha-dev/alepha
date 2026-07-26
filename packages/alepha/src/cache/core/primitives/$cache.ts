@@ -238,6 +238,7 @@ export const cacheOptions = $atom({
     enabled: true,
     defaultTtl: 300,
   },
+  serverOnly: true,
 });
 
 export type CacheAtomOptions = Static<typeof cacheOptions.schema>;

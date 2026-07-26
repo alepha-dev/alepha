@@ -19,6 +19,7 @@ export const redisCacheOptions = $atom({
       .optional(),
   }),
   default: {},
+  serverOnly: true,
 });
 
 export type RedisCacheOptions = Static<typeof redisCacheOptions.schema>;

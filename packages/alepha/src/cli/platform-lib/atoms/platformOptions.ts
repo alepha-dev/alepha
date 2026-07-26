@@ -146,6 +146,7 @@ export const platformOptions = $atom({
       ),
     })
     .optional(),
+  serverOnly: true,
 });
 
 /**

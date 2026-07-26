@@ -27,6 +27,7 @@ export const auditOptions = $atom({
   default: {
     retentionDays: 90,
   },
+  serverOnly: true,
 });
 
 export type AuditOptions = Static<typeof auditOptions.schema>;

@@ -18,6 +18,7 @@ export const devtoolsOptions = $atom({
       hideButton: z.boolean().default(false).optional(),
     })
     .optional(),
+  serverOnly: true,
 });
 
 /**
