@@ -1,6 +1,6 @@
 import { z } from "alepha";
 import { useQueryParams } from "alepha/react/router";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 
@@ -26,6 +26,18 @@ export interface DeclaredScreenProps<T> {
    * subscriber count — whatever distinguishes items at a glance).
    */
   metaOf?: (item: T) => string | undefined;
+  /**
+   * Glyph shown before the label. Naming the primitive visually means the rail
+   * still reads as "these are topics" once the screen is one of eight that
+   * share this shell.
+   */
+  icon?: ComponentType<{ size?: number }>;
+  /**
+   * Nesting level, for kinds that form a tree. Renders as indentation only —
+   * rows stay individually selectable at every depth, because a child page is
+   * as much a thing you inspect as its parent.
+   */
+  depthOf?: (item: T) => number;
   renderDetail: (item: T) => ReactNode;
   /**
    * Shown when the application declares none of this kind. Names the primitive
@@ -108,10 +120,11 @@ export const DeclaredScreen = <T,>(props: DeclaredScreenProps<T>) => {
                 key={key}
                 type="button"
                 className="dt-leaf"
-                style={{ paddingLeft: 12 }}
+                style={{ paddingLeft: 12 + (props.depthOf?.(item) ?? 0) * 14 }}
                 data-active={key === selected || undefined}
                 onClick={() => setParams({ selected: key })}
               >
+                {props.icon && <props.icon size={11} />}
                 <span className="dt-mono">{props.labelOf(item)}</span>
                 {annotation && (
                   <span className="dt-nav-count">{annotation}</span>

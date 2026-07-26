@@ -1,6 +1,7 @@
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useEffect, useState } from "react";
+import { collapse } from "./collapseValue.ts";
 
 export interface AtomMutationsProps {
   atomName: string;
@@ -55,7 +56,10 @@ export const AtomMutations = (props: AtomMutationsProps) => {
   if (error) {
     return (
       <>
-        <div className="dt-section-label">Recent mutations</div>
+        <div className="dt-section-label">
+          Recent mutations
+          <span className="dt-live-dot" />
+        </div>
         <div style={{ padding: 14, fontSize: 11, color: "var(--dt-error)" }}>
           {error}
         </div>
@@ -67,7 +71,10 @@ export const AtomMutations = (props: AtomMutationsProps) => {
 
   return (
     <>
-      <div className="dt-section-label">Recent mutations</div>
+      <div className="dt-section-label">
+        Recent mutations
+        <span className="dt-live-dot" />
+      </div>
       <div>
         {entries.map((entry, i) => (
           <div
@@ -86,11 +93,18 @@ export const AtomMutations = (props: AtomMutationsProps) => {
             >
               {new Date(entry.at).toLocaleTimeString()}
             </span>
-            <span className="dt-mono" style={{ color: "var(--dt-fg-faint)" }}>
-              {JSON.stringify(entry.prevValue)}
+            {/*
+             * New value first, then what it replaced. The list is read
+             * newest-first down the page, so leading each row with the
+             * outcome lets you scan one column instead of two.
+             */}
+            <span className="dt-mono dt-atom-value">
+              {collapse(entry.value)}
             </span>
-            <span style={{ color: "var(--dt-fg-faint)" }}>→</span>
-            <span className="dt-mono">{JSON.stringify(entry.value)}</span>
+            <span style={{ color: "var(--dt-fg-faint)" }}>←</span>
+            <span className="dt-mono" style={{ color: "var(--dt-fg-faint)" }}>
+              {collapse(entry.prevValue)}
+            </span>
           </div>
         ))}
       </div>

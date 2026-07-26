@@ -1,3 +1,4 @@
+import { Radio } from "lucide-react";
 import type { DevTopicMetadata } from "../../../schemas/DevTopicMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { SchemaTree } from "../shared/SchemaTree.tsx";
@@ -17,6 +18,7 @@ export const DevTopics = () => {
       keyOf={(t) => t.name}
       labelOf={(t) => t.name}
       metaOf={(t) => `${t.subscribers}`}
+      icon={Radio}
       filterPlaceholder="Filter topics…"
       emptyHint="Use $topic to declare a pub/sub topic"
       renderDetail={(t) => (

@@ -203,7 +203,7 @@ export const RecordForm = (props: RecordFormProps) => {
         <button
           type="button"
           className="dt-btn"
-          data-on="true"
+          data-variant="primary"
           disabled={saving}
           onClick={submit}
         >
@@ -221,7 +221,8 @@ export const RecordForm = (props: RecordFormProps) => {
             <button
               type="button"
               className="dt-btn"
-              style={{ marginLeft: "auto", color: "var(--dt-error)" }}
+              data-variant="danger"
+              style={{ marginLeft: "auto" }}
               onClick={props.onDelete}
               title="Delete row"
             >

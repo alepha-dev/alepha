@@ -1,3 +1,4 @@
+import { ShieldCheck } from "lucide-react";
 import type { DevRealmMetadata } from "../../../schemas/DevRealmMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DeclaredScreen } from "./DeclaredScreen.tsx";
@@ -30,6 +31,7 @@ export const DevRealms = () => {
       keyOf={(r) => r.name}
       labelOf={(r) => r.name}
       metaOf={(r) => r.type}
+      icon={ShieldCheck}
       filterPlaceholder="Filter realms…"
       emptyHint="Use $issuer to declare a security realm"
       renderDetail={(r) => (

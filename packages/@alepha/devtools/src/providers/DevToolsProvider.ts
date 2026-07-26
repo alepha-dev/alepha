@@ -131,6 +131,13 @@ export class DevToolsProvider {
         since: z.text().optional(),
         limit: z.text().optional(),
         offset: z.text().optional(),
+        /**
+         * Millisecond floor on a request's or query's own duration. Filtering
+         * here rather than in the browser keeps the preset honest: the buffer
+         * holds far more than the tail ever ships, so a client-side filter
+         * would only find slow entries that happened to be on screen.
+         */
+        slowerThan: z.text().optional(),
       }),
       response: z.object({
         logs: z.array(z.any()),
@@ -166,6 +173,17 @@ export class DevToolsProvider {
           }
           return false;
         });
+      }
+
+      if (query.slowerThan) {
+        const floor = Number(query.slowerThan);
+        if (Number.isFinite(floor)) {
+          entries = entries.filter((e) => {
+            const duration = (e.data as Record<string, unknown> | undefined)
+              ?.duration;
+            return typeof duration === "number" && duration >= floor;
+          });
+        }
       }
 
       if (query.module) {

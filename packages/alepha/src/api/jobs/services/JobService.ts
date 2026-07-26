@@ -69,7 +69,11 @@ export class JobService {
       z.object({
         job_name: z.string(),
         status: z.string(),
-        count: z.string(),
+        // Postgres returns COUNT(*) as a bigint, which the driver hands back as
+        // a string; SQLite (and therefore D1) returns a plain number. Pinning
+        // this to `string` made the whole listing 500 on every SQLite
+        // deployment. `Number(row.count)` below already accepts either.
+        count: z.union([z.string(), z.number()]),
         last_run: z.union([z.string(), z.number()]).nullable().optional(),
       }),
     );

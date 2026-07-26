@@ -6,22 +6,13 @@ import { type LogEntry, useLogTail } from "../../hooks/useLogTail.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";
 import { LogDetail } from "./LogDetail.tsx";
-
-const LEVELS = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
-
-const LEVEL_COLOR: Record<string, string> = {
-  TRACE: "var(--dt-trace)",
-  DEBUG: "var(--dt-debug)",
-  INFO: "var(--dt-info)",
-  WARN: "var(--dt-warn)",
-  ERROR: "var(--dt-error)",
-};
-
-const TYPES = [
-  { value: "", label: "All" },
-  { value: "http", label: "HTTP" },
-  { value: "db", label: "DB" },
-];
+import { LogToolbar } from "./LogToolbar.tsx";
+import {
+  LEVEL_COLOR,
+  MESSAGE_COLOR,
+  shortContext,
+  shortModule,
+} from "./logFormat.ts";
 
 /**
  * Filters live in the query string so a narrowed view survives a reload and
@@ -32,6 +23,7 @@ const querySchema = z.object({
   type: z.text().optional(),
   module: z.text().optional(),
   q: z.text().optional(),
+  slow: z.text().optional(),
 });
 
 export const detectEventType = (data: any): string | undefined => {
@@ -59,20 +51,12 @@ export const DevLogs = () => {
       type: params.type ?? "",
       module: params.module ?? "",
       search: params.q ?? "",
+      slowerThan: params.slow ?? "",
     }),
     [params],
   );
 
   const tail = useLogTail(filters);
-
-  const modules = useMemo(() => {
-    const set = new Set<string>();
-    for (const e of tail.entries) if (e.module) set.add(e.module);
-    return Array.from(set).sort();
-  }, [tail.entries]);
-
-  const patch = (next: Partial<typeof params>) =>
-    setParams({ ...params, ...next });
 
   if (tail.error && tail.entries.length === 0) {
     return <DevError what="logs" message={tail.error} onRetry={tail.reload} />;
@@ -88,66 +72,20 @@ export const DevLogs = () => {
           minWidth: 0,
         }}
       >
-        <div className="dt-toolbar">
-          {LEVELS.map((lvl) => (
-            <button
-              key={lvl}
-              type="button"
-              className="dt-btn"
-              data-on={filters.level === lvl || undefined}
-              style={{ color: LEVEL_COLOR[lvl] }}
-              onClick={() => patch({ level: lvl })}
-            >
-              {lvl}
-            </button>
-          ))}
-
-          <span
-            style={{ width: 1, height: 18, background: "var(--dt-border)" }}
-          />
-
-          {TYPES.map((t) => (
-            <button
-              key={t.value || "all"}
-              type="button"
-              className="dt-btn"
-              data-on={filters.type === t.value || undefined}
-              onClick={() => patch({ type: t.value || undefined })}
-            >
-              {t.label}
-            </button>
-          ))}
-
-          <select
-            className="dt-input"
-            style={{ width: 150 }}
-            value={filters.module}
-            onChange={(e) =>
-              patch({ module: e.currentTarget.value || undefined })
-            }
-          >
-            <option value="">All modules</option>
-            {modules.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-
-          <input
-            className="dt-input"
-            style={{ width: 200 }}
-            placeholder="Search message, path…"
-            value={filters.search}
-            onChange={(e) => patch({ q: e.currentTarget.value || undefined })}
-          />
-        </div>
+        <LogToolbar
+          filters={params}
+          entries={tail.entries}
+          onChange={setParams}
+        />
 
         <div className="dt-toolbar" style={{ background: "transparent" }}>
           <button
             type="button"
             className="dt-btn"
             data-on={tail.following || undefined}
+            // Green, not the accent: following is a healthy running state, the
+            // same thing the live dot beside it means.
+            style={tail.following ? { color: "var(--dt-get)" } : undefined}
             onClick={() => tail.setFollowing(!tail.following)}
           >
             {tail.following ? <Pause size={11} /> : <Play size={11} />}
@@ -173,7 +111,7 @@ export const DevLogs = () => {
             <button
               type="button"
               className="dt-btn"
-              data-on="true"
+              data-variant="primary"
               onClick={tail.flush}
             >
               {tail.pending} new ↓
@@ -209,8 +147,8 @@ export const DevLogs = () => {
                   <th style={{ width: 110 }}>Time</th>
                   <th style={{ width: 60 }}>Level</th>
                   <th style={{ width: 50 }}>Type</th>
-                  <th style={{ width: 70 }}>Ctx</th>
-                  <th style={{ width: 130 }}>Module</th>
+                  <th style={{ width: 50 }}>Ctx</th>
+                  <th style={{ width: 110 }}>Module</th>
                   <th>Message</th>
                 </tr>
               </thead>
@@ -245,14 +183,19 @@ export const DevLogs = () => {
                       >
                         {kind ? kind.toUpperCase() : ""}
                       </td>
-                      <td>{entry.context ?? ""}</td>
-                      <td>{entry.module}</td>
+                      <td title={entry.context}>
+                        {shortContext(entry.context)}
+                      </td>
+                      <td title={entry.module}>{shortModule(entry.module)}</td>
+                      {/*
+                       * The message carries the level's colour too. Scanning a
+                       * thousand rows, the eye lands on the message column —
+                       * a coloured 40px LEVEL cell on the far left is easy to
+                       * miss.
+                       */}
                       <td
                         style={{
-                          color:
-                            entry.level === "ERROR"
-                              ? "var(--dt-error)"
-                              : undefined,
+                          color: MESSAGE_COLOR[entry.level],
                           maxWidth: "none",
                         }}
                       >

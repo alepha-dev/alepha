@@ -18,6 +18,11 @@ export interface LogFilters {
   type: string;
   module: string;
   search: string;
+  /**
+   * Millisecond floor on entry duration, as a string so it drops straight into
+   * the query string. Empty means no floor.
+   */
+  slowerThan?: string;
 }
 
 export interface UseLogTailResult {
@@ -70,6 +75,7 @@ export const useLogTail = (filters: LogFilters): UseLogTailResult => {
       if (filters.type) q.set("type", filters.type);
       if (filters.module) q.set("module", filters.module);
       if (filters.search) q.set("search", filters.search);
+      if (filters.slowerThan) q.set("slowerThan", filters.slowerThan);
       if (since) q.set("since", String(since + 1));
       q.set("limit", since ? "200" : "300");
       return q.toString();

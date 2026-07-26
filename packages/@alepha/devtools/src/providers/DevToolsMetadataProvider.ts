@@ -17,7 +17,7 @@ import {
   RepositoryProvider,
 } from "alepha/orm";
 import { $page } from "alepha/react/router";
-import { $issuer } from "alepha/security";
+import { $issuer, SecurityProvider } from "alepha/security";
 import { $action, ServerProvider } from "alepha/server";
 import { $topic } from "alepha/topic";
 import type { DevActionMetadata } from "../schemas/DevActionMetadata.ts";
@@ -35,8 +35,10 @@ import type { DevJobMetadata } from "../schemas/DevJobMetadata.ts";
 import type { DevMetadata, DevSystem } from "../schemas/DevMetadata.ts";
 import type { DevModuleMetadata } from "../schemas/DevModuleMetadata.ts";
 import type { DevPageMetadata } from "../schemas/DevPageMetadata.ts";
+import type { DevPermissionMetadata } from "../schemas/DevPermissionMetadata.ts";
 import type { DevProviderMetadata } from "../schemas/DevProviderMetadata.ts";
 import type { DevRealmMetadata } from "../schemas/DevRealmMetadata.ts";
+import type { DevRoleMetadata } from "../schemas/DevRoleMetadata.ts";
 import type { DevStorageMetadata } from "../schemas/DevStorageMetadata.ts";
 import type { DevTopicMetadata } from "../schemas/DevTopicMetadata.ts";
 
@@ -183,6 +185,89 @@ export class DevToolsMetadataProvider {
     }));
   }
 
+  /**
+   * Every permission declared with `$permission`, flattened to `group:name`.
+   *
+   * `SecurityProvider` is the registry both `$permission` and `$role` write
+   * into, so reading it here is the same list the guards consult — not a
+   * re-scan of primitives that could drift from it.
+   */
+  public getPermissions(): DevPermissionMetadata[] {
+    const security = this.getSecurityProvider();
+    if (!security) return [];
+
+    return security.getPermissions().map((permission) => ({
+      name: permission.name,
+      group: permission.group,
+      description: permission.description,
+      id: security.permissionToString(permission),
+    }));
+  }
+
+  /**
+   * Every role, with its grants resolved against the permission registry.
+   *
+   * `effective` and `viaWildcard` are computed here rather than in the browser
+   * because `SecurityProvider.can()` owns the wildcard and `exclude` matching
+   * rules. A second implementation in the UI would be free to disagree with
+   * the one that actually authorizes requests, which is the exact bug this
+   * screen exists to catch.
+   */
+  public getRoles(): DevRoleMetadata[] {
+    const security = this.getSecurityProvider();
+    if (!security) return [];
+
+    const permissions = security.getPermissions();
+
+    return security.getRealms().flatMap((realm) =>
+      realm.roles.map((role) => {
+        const literal = new Set(
+          role.permissions
+            .map((grant) => grant.name)
+            .filter((name) => !name.includes("*")),
+        );
+
+        const effective: string[] = [];
+        const viaWildcard: string[] = [];
+
+        for (const permission of permissions) {
+          const id = security.permissionToString(permission);
+          if (!security.can(role.name, permission)) continue;
+          effective.push(id);
+          if (!literal.has(id)) viaWildcard.push(id);
+        }
+
+        return {
+          name: role.name,
+          description: role.description,
+          realm: realm.name,
+          default: role.default,
+          grants: role.permissions.map((grant) => ({
+            name: grant.name,
+            ownership: grant.ownership,
+            exclude: grant.exclude,
+          })),
+          effective,
+          viaWildcard,
+        };
+      }),
+    );
+  }
+
+  /**
+   * `SecurityProvider` only exists once the security module is registered. An
+   * app without it must still get a `/metadata` response, so resolve it
+   * defensively — the container refuses to register providers after start and
+   * would throw instead.
+   */
+  protected getSecurityProvider(): SecurityProvider | undefined {
+    try {
+      return this.alepha.inject(SecurityProvider);
+    } catch {
+      return undefined;
+    }
+  }
+
   public getCaches(): DevCacheMetadata[] {
     const cachePrimitives = this.alepha.primitives($cache);
 
@@ -274,17 +359,28 @@ export class DevToolsMetadataProvider {
         const schema = entity.schema as TObject;
         const options = entity.options;
 
+        // Resolved once per entity: the JSON Schema is the reliable source for
+        // column types, while the raw zod fields still carry the PG_* symbols
+        // that describe key/audit roles.
+        const jsonProperties: Record<string, any> =
+          this.toJsonSchema(entity.schema)?.properties ?? {};
+
         // Extract columns from schema
         const columns: DevEntityColumn[] = Object.entries(
           schema.properties,
         ).map(([name, field]) => {
           const fieldSchema = field as TSchema & Record<symbol, any>;
           const refData = fieldSchema[PG_REF];
+          const jsonProp = jsonProperties[name];
 
           return {
             name,
-            type: this.getColumnType(fieldSchema),
-            nullable: this.isNullable(fieldSchema),
+            type:
+              this.columnTypeFromJsonSchema(jsonProp) ??
+              this.getColumnType(fieldSchema),
+            nullable:
+              this.isNullableFromJsonSchema(jsonProp) ||
+              this.isNullable(fieldSchema),
             primaryKey: PG_PRIMARY_KEY in fieldSchema,
             identity: PG_IDENTITY in fieldSchema || PG_SERIAL in fieldSchema,
             createdAt: PG_CREATED_AT in fieldSchema,
@@ -355,6 +451,70 @@ export class DevToolsMetadataProvider {
       // RepositoryProvider not available (ORM not used)
       return [];
     }
+  }
+
+  /**
+   * Resolve a column's type from its published JSON Schema.
+   *
+   * Preferred over the zod guards below because JSON Schema has already
+   * normalised the wrappers. `.optional()`, `.default()` and `.nullable()`
+   * each produce a distinct zod wrapper that `z.schema.isString(...)` and
+   * friends return false for, so every wrapped column resolved to "unknown" —
+   * which is why `deletedAt`, `priority`, `ip` and many others rendered
+   * untyped in both the Schema panel and the Rows grid.
+   *
+   * Returns `undefined` when the shape is genuinely unrecognised, so the
+   * caller can fall back.
+   */
+  protected columnTypeFromJsonSchema(prop: any): string | undefined {
+    if (!prop || typeof prop !== "object") return undefined;
+
+    const union = prop.anyOf ?? prop.oneOf;
+    if (Array.isArray(union)) {
+      const nonNull = union.filter((p: any) => p?.type !== "null");
+      if (nonNull.length === 1)
+        return this.columnTypeFromJsonSchema(nonNull[0]);
+    }
+
+    let type = prop.type;
+    if (Array.isArray(type)) {
+      type = type.find((t: string) => t !== "null");
+    }
+
+    if (Array.isArray(prop.enum)) return "enum";
+    if (type === "array") return "array";
+    if (type === "object" || prop.properties) return "json";
+    if (type === "integer") return "integer";
+    if (type === "number") return "number";
+    if (type === "boolean") return "boolean";
+    if (type === "string") {
+      switch (prop.format) {
+        case "uuid":
+          return "uuid";
+        case "date-time":
+          return "datetime";
+        case "date":
+          return "date";
+        case "email":
+          return "email";
+        case "bigint":
+          return "bigint";
+        default:
+          return "text";
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Nullability from JSON Schema — `anyOf: [T, {type:"null"}]` or
+   * `type: [T, "null"]`.
+   */
+  protected isNullableFromJsonSchema(prop: any): boolean {
+    if (!prop || typeof prop !== "object") return false;
+    if (Array.isArray(prop.type) && prop.type.includes("null")) return true;
+    const union = prop.anyOf ?? prop.oneOf;
+    return Array.isArray(union) && union.some((p: any) => p?.type === "null");
   }
 
   protected getColumnType(field: TSchema): string {
@@ -441,6 +601,7 @@ export class DevToolsMetadataProvider {
         schema: this.toJsonSchema(atom.schema),
         defaultValue: atom.options.default,
         currentValue: value,
+        persist: (atom.options as any).persist,
       };
     });
   }
@@ -469,6 +630,8 @@ export class DevToolsMetadataProvider {
       topics: this.getTopics(),
       storages: this.getStorages(),
       realms: this.getRealms(),
+      roles: this.getRoles(),
+      permissions: this.getPermissions(),
       caches: this.getCaches(),
       pages: this.getPages(),
       providers: this.getProviders(),

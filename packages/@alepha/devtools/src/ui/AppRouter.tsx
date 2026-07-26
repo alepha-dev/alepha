@@ -51,8 +51,8 @@ export class AppRouter {
   });
 
   storages = $page({
-    path: "/storages",
-    label: "Storages",
+    path: "/storage",
+    label: "Storage",
     parent: this.layout,
     lazy: () => import("./components/declared/DevStorages.tsx"),
   });
@@ -62,6 +62,13 @@ export class AppRouter {
     label: "Realms",
     parent: this.layout,
     lazy: () => import("./components/declared/DevRealms.tsx"),
+  });
+
+  roles = $page({
+    path: "/roles",
+    label: "Roles",
+    parent: this.layout,
+    lazy: () => import("./components/security/DevRoles.tsx"),
   });
 
   // Data --------------------------------------------------------------------
@@ -106,11 +113,11 @@ export class AppRouter {
     lazy: () => import("./components/config/DevEnvironment.tsx"),
   });
 
-  state = $page({
-    path: "/state",
-    label: "State",
+  atoms = $page({
+    path: "/atoms",
+    label: "Atoms",
     parent: this.layout,
-    lazy: () => import("./components/config/DevState.tsx"),
+    lazy: () => import("./components/config/DevAtoms.tsx"),
   });
 
   // Diagnostics -------------------------------------------------------------

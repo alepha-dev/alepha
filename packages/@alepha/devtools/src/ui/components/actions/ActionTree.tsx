@@ -1,14 +1,7 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { DevActionMetadata } from "../../../schemas/DevActionMetadata.ts";
-
-const METHOD_COLOR: Record<string, string> = {
-  GET: "var(--dt-get)",
-  POST: "var(--dt-post)",
-  PUT: "var(--dt-put)",
-  PATCH: "var(--dt-patch)",
-  DELETE: "var(--dt-delete)",
-};
+import { METHOD_COLOR, shortMethod } from "../shared/methodColor.ts";
 
 export const actionKey = (action: DevActionMetadata): string =>
   `${action.method}:${action.fullPath}`;
@@ -142,9 +135,7 @@ export const ActionTree = (props: ActionTreeProps) => {
                             "var(--dt-fg-faint)",
                         }}
                       >
-                        {action.method.toUpperCase() === "DELETE"
-                          ? "DEL"
-                          : action.method}
+                        {shortMethod(action.method)}
                       </span>
                       <span className="dt-mono">{action.name}</span>
                     </button>

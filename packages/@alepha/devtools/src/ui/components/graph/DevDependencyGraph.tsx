@@ -1,29 +1,15 @@
 import { devMetadataSchema } from "@alepha/devtools";
-import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
 import {
-  Background,
-  BackgroundVariant,
-  MiniMap,
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
-  useReactFlow,
 } from "@xyflow/react";
 import { useAction, useInject } from "alepha/react";
 import "@xyflow/react/dist/style.css";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { HttpClient } from "alepha/server";
-import {
-  AlertTriangle,
-  Crosshair,
-  Lock,
-  LockOpen,
-  Minus,
-  Plus,
-} from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getModuleColor } from "./constants.ts";
 import { GraphControls } from "./GraphControls.tsx";
@@ -186,7 +172,15 @@ export const DevDependencyGraph = () => {
   }
 
   return (
-    <div className="flex h-full w-full min-h-0 flex-1 flex-col gap-3 p-6">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minWidth: 0,
+        minHeight: 0,
+      }}
+    >
       <GraphControls
         filters={filters}
         onFiltersChange={setFilters}
@@ -197,28 +191,41 @@ export const DevDependencyGraph = () => {
         edgeCount={edges.length}
       />
 
+      {/*
+       * The cycle itself, not a count. "3 nodes" tells you a cycle exists;
+       * `app.api → app.web → app.api` tells you which import to delete, which
+       * is the only reason anyone reads this banner.
+       */}
       {circularDeps.length > 0 && (
-        <Alert variant="destructive" className="py-2">
-          <AlertTriangle className="size-4" />
-          <AlertDescription>
-            <div className="flex items-center gap-2">
-              <span className="text-xs">Circular dependencies detected:</span>
-              {circularDeps.slice(0, 3).map((cycle, i) => (
-                <Badge key={i} variant="destructive">
-                  {cycle.length} nodes
-                </Badge>
-              ))}
-              {circularDeps.length > 3 && (
-                <span className="text-muted-foreground text-xs">
-                  +{circularDeps.length - 3} more
-                </span>
-              )}
-            </div>
-          </AlertDescription>
-        </Alert>
+        <div className="dt-banner" data-tone="danger">
+          <AlertTriangle size={12} />
+          <span>
+            {circularDeps.length === 1
+              ? "1 circular dependency:"
+              : `${circularDeps.length} circular dependencies:`}
+          </span>
+          {circularDeps.slice(0, 2).map((cycle, i) => (
+            <span key={i} className="dt-mono" style={{ fontSize: 10 }}>
+              {/*
+               * Close the loop, unless the detector already returned it
+               * closed — repeating the entry node twice reads as a longer
+               * cycle than the one that exists.
+               */}
+              {(cycle[cycle.length - 1] === cycle[0]
+                ? cycle
+                : [...cycle, cycle[0]]
+              ).join(" → ")}
+            </span>
+          ))}
+          {circularDeps.length > 2 && (
+            <span style={{ color: "var(--dt-fg-faint)" }}>
+              +{circularDeps.length - 2} more
+            </span>
+          )}
+        </div>
       )}
 
-      <div className="border-border relative h-full flex-1 rounded-lg border">
+      <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
         <div className="absolute inset-0 flex h-full">
           <ReactFlowProvider>
             <ReactFlow
@@ -235,14 +242,12 @@ export const DevDependencyGraph = () => {
               maxZoom={2}
               proOptions={{ hideAttribution: true }}
             >
-              <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-              <MiniMap
-                nodeColor={(node) =>
-                  getModuleColor((node.data as ProviderNodeData)?.module)
-                }
-                maskColor="rgba(0, 0, 0, 0.5)"
-              />
-              <FlowControls />
+              {/*
+               * No dot grid, no minimap, no zoom rail. The graph is small
+               * enough to read at fit-view, and the minimap in particular
+               * rendered as a bright white rectangle in a dark UI — a
+               * navigation aid for a canvas that does not need navigating.
+               */}
             </ReactFlow>
           </ReactFlowProvider>
 
@@ -258,33 +263,3 @@ export const DevDependencyGraph = () => {
 };
 
 export default DevDependencyGraph;
-
-const FlowControls = () => {
-  const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const [isLocked, setIsLocked] = useState(false);
-
-  return (
-    <div className="bg-card border-border absolute bottom-4 left-4 z-10 flex flex-col gap-1 rounded-lg border p-1">
-      <Button size="sm" variant="ghost" onClick={() => zoomIn()}>
-        <Plus className="size-3.5" />
-      </Button>
-      <Button size="sm" variant="ghost" onClick={() => zoomOut()}>
-        <Minus className="size-3.5" />
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => fitView({ padding: 0.2 })}
-      >
-        <Crosshair className="size-3.5" />
-      </Button>
-      <Button size="sm" variant="ghost" onClick={() => setIsLocked(!isLocked)}>
-        {isLocked ? (
-          <Lock className="size-3.5" />
-        ) : (
-          <LockOpen className="size-3.5" />
-        )}
-      </Button>
-    </div>
-  );
-};

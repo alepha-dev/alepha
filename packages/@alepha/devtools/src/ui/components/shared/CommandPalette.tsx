@@ -58,8 +58,17 @@ export const CommandPalette = (props: CommandPaletteProps) => {
         kind: "atom",
         label: a.name,
         hint: a.description ?? "",
-        href: "/state",
+        href: "/atoms",
         tone: "var(--dt-info)",
+      });
+    }
+    for (const r of m.roles ?? []) {
+      out.push({
+        kind: "role",
+        label: r.name,
+        hint: `${r.effective.length} permissions`,
+        href: "/roles",
+        tone: "var(--dt-warn)",
       });
     }
     return out;

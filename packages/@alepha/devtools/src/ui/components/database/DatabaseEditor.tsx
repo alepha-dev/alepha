@@ -341,7 +341,7 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
               <button
                 type="button"
                 className="dt-btn"
-                data-on="true"
+                data-variant="primary"
                 onClick={() =>
                   router.push(`/rows/${encodeURIComponent(table)}/new`)
                 }
@@ -354,8 +354,9 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
               <div
                 className="dt-toolbar"
                 style={{
-                  background: "rgba(236,48,19,.08)",
-                  borderBottom: "1px solid rgba(236,48,19,.35)",
+                  background: "var(--dt-danger-soft)",
+                  borderBottom:
+                    "1px solid color-mix(in srgb, var(--dt-danger) 35%, transparent)",
                 }}
               >
                 <span style={{ fontSize: 11 }}>
@@ -364,7 +365,7 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
                 <button
                   type="button"
                   className="dt-btn"
-                  style={{ color: "var(--dt-error)" }}
+                  data-variant="danger"
                   onClick={() => removeIds(Array.from(selection))}
                 >
                   <Trash2 size={11} /> Delete selected

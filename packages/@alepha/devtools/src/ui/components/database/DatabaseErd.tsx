@@ -1,8 +1,5 @@
 import {
-  Background,
-  BackgroundVariant,
   type Edge,
-  MiniMap,
   type Node,
   ReactFlow,
   ReactFlowProvider,
@@ -148,20 +145,12 @@ const ErdCanvas = (props: ErdCanvasProps) => {
       proOptions={{ hideAttribution: true }}
       style={{ background: "var(--dt-bg)" }}
     >
-      <Background
-        variant={BackgroundVariant.Dots}
-        gap={22}
-        size={1}
-        color="#26262b"
-      />
-      <MiniMap
-        pannable
-        zoomable
-        bgColor="#101012"
-        maskColor="rgba(0,0,0,.6)"
-        nodeColor="#2a2a31"
-        nodeStrokeColor="#3a3a42"
-      />
+      {/*
+       * A bare canvas. The dot grid and the minimap both drew attention
+       * without carrying information — the toolbar's Fit button is the
+       * navigation affordance, and the tables themselves are what should be
+       * legible here.
+       */}
     </ReactFlow>
   );
 };

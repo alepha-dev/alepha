@@ -1,3 +1,4 @@
+import { HardDrive } from "lucide-react";
 import type { DevStorageMetadata } from "../../../schemas/DevStorageMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DeclaredScreen } from "./DeclaredScreen.tsx";
@@ -27,6 +28,7 @@ export const DevStorages = () => {
       keyOf={(s) => s.name}
       labelOf={(s) => s.name}
       metaOf={(s) => s.provider}
+      icon={HardDrive}
       filterPlaceholder="Filter storages…"
       emptyHint="Use $storage to declare a place to keep files"
       renderDetail={(s) => (

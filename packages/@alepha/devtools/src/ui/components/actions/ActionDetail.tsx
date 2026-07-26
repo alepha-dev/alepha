@@ -1,17 +1,10 @@
 import { useCallback, useState } from "react";
 import type { DevActionMetadata } from "../../../schemas/DevActionMetadata.ts";
 import { useActionHistory } from "../../hooks/useActionHistory.ts";
+import { METHOD_COLOR } from "../shared/methodColor.ts";
 import { SchemaTree } from "../shared/SchemaTree.tsx";
 import { ActionHistory } from "./ActionHistory.tsx";
 import { ActionTryIt } from "./ActionTryIt.tsx";
-
-const METHOD_COLOR: Record<string, string> = {
-  GET: "var(--dt-get)",
-  POST: "var(--dt-post)",
-  PUT: "var(--dt-put)",
-  PATCH: "var(--dt-patch)",
-  DELETE: "var(--dt-delete)",
-};
 
 export interface ActionDetailProps {
   action: DevActionMetadata;

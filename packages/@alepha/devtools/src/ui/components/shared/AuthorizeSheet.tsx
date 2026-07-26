@@ -146,7 +146,7 @@ export const AuthorizeSheet = (props: AuthorizeSheetProps) => {
           <button
             type="button"
             className="dt-btn"
-            data-on="true"
+            data-variant="primary"
             onClick={() => {
               setAuth(draft);
               props.onClose();

@@ -149,17 +149,8 @@ export const DevEnvironment = () => {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }}>
         {grouped.map(([source, vars]) => (
-          <div key={source} style={{ marginBottom: 18 }}>
-            <div
-              className="dt-mono"
-              style={{
-                fontSize: 11,
-                color: "var(--dt-fg-faint)",
-                marginBottom: 8,
-              }}
-            >
-              # {source}
-            </div>
+          <div key={source}>
+            <div className="dt-env-group"># {source}</div>
             {vars.map((v) => (
               <EnvLine key={v.name} variable={v} />
             ))}

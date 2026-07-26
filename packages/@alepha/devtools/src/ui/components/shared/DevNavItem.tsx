@@ -6,6 +6,12 @@ export interface DevNavItemProps {
   count?: number;
   active?: boolean;
   /**
+   * Marks a screen whose content keeps arriving while you are not looking at
+   * it. Shown instead of a count, because a number that is stale the moment it
+   * renders is worse than no number.
+   */
+  live?: boolean;
+  /**
    * Omitted for sections whose screen isn't ported yet. The item still renders
    * — the nav is the map of what the application declares, and hiding the
    * unported half would misrepresent it — but reads as unavailable.
@@ -29,8 +35,12 @@ export const DevNavItem = (props: DevNavItemProps) => {
     >
       <Icon size={13} />
       <span>{props.label}</span>
-      {props.count !== undefined && (
-        <span className="dt-nav-count">{props.count}</span>
+      {props.live ? (
+        <span className="dt-live-dot" style={{ marginLeft: "auto" }} />
+      ) : (
+        props.count !== undefined && (
+          <span className="dt-nav-count">{props.count}</span>
+        )
       )}
     </button>
   );

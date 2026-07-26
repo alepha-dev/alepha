@@ -185,7 +185,7 @@ export const ActionTryIt = (props: ActionTryItProps) => {
         <button
           type="button"
           className="dt-btn"
-          data-on="true"
+          data-variant="primary"
           disabled={sending}
           onClick={send}
         >

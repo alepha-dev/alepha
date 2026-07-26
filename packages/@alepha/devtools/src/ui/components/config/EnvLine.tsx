@@ -1,4 +1,4 @@
-import { Check, Copy } from "lucide-react";
+import { AlertTriangle, Check, Copy } from "lucide-react";
 import { useState } from "react";
 import type { EnvVariable } from "./DevEnvironment.tsx";
 
@@ -30,6 +30,16 @@ export const EnvLine = (props: EnvLineProps) => {
   const sensitive = isSensitive(v.name);
   const unsetRequired = v.required && !hasValue;
 
+  /**
+   * A value present but unparseable against its declared type. This is the
+   * quiet failure the screen exists for: the app booted, the default silently
+   * took over, and nothing anywhere says so.
+   */
+  const mistyped =
+    hasValue &&
+    (v.type === "integer" || v.type === "number") &&
+    !Number.isFinite(Number(v.value));
+
   const copy = () => {
     navigator.clipboard.writeText(String(v.value ?? "")).then(() => {
       setCopied(true);
@@ -38,7 +48,10 @@ export const EnvLine = (props: EnvLineProps) => {
   };
 
   return (
-    <div style={{ marginBottom: 10 }}>
+    <div
+      className="dt-env-line"
+      data-state={mistyped ? "invalid" : unsetRequired ? "missing" : undefined}
+    >
       {v.description?.split("\n").map((line, i) => (
         <div
           key={i}
@@ -58,20 +71,15 @@ export const EnvLine = (props: EnvLineProps) => {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 6,
+          gap: 0,
           lineHeight: 1.8,
         }}
       >
-        <span
-          className="dt-mono"
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: unsetRequired ? "var(--dt-warn)" : "var(--dt-accent)",
-          }}
-        >
-          {v.name}
-        </span>
+        {/*
+         * `NAME=value` with no spaces, so the line is copy-pasteable into a
+         * .env file as it stands rather than being a rendering of one.
+         */}
+        <span className="dt-mono dt-env-name">{v.name}</span>
         <span className="dt-mono" style={{ color: "var(--dt-fg-faint)" }}>
           =
         </span>
@@ -81,6 +89,7 @@ export const EnvLine = (props: EnvLineProps) => {
             className="dt-mono"
             style={{
               fontSize: 11,
+              color: valueColor(v),
               filter: sensitive && !revealed ? "blur(4px)" : undefined,
               cursor: sensitive ? "pointer" : undefined,
               transition: "filter .12s",
@@ -99,25 +108,32 @@ export const EnvLine = (props: EnvLineProps) => {
               color: unsetRequired ? "var(--dt-warn)" : "var(--dt-fg-faint)",
             }}
           >
-            {unsetRequired ? "(required — not set)" : "(not set)"}
+            (not set)
           </span>
         )}
 
-        <span className="dt-chip">{v.format || v.type}</span>
-        {v.required && (
-          <span className="dt-chip" data-tone="accent">
-            required
-          </span>
-        )}
-        {v.defaultValue !== undefined && !hasValue && (
-          <span className="dt-chip">default: {String(v.defaultValue)}</span>
-        )}
+        {/*
+         * Type and constraints are reference, not content — parked at the far
+         * right so the eye can run straight down the names and values.
+         */}
+        <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+          <span className="dt-chip">{v.format || v.type}</span>
+          {v.required && (
+            <span className="dt-chip" data-tone="warn">
+              required
+            </span>
+          )}
+          {v.defaultValue !== undefined && (
+            <span className="dt-chip">default: {String(v.defaultValue)}</span>
+          )}
 
-        {hasValue && (
           <button
             type="button"
             className="dt-schema-toggle"
-            style={{ width: "auto" }}
+            style={{
+              width: "auto",
+              visibility: hasValue ? undefined : "hidden",
+            }}
             onClick={copy}
             title="Copy value"
           >
@@ -127,8 +143,35 @@ export const EnvLine = (props: EnvLineProps) => {
               <Copy size={11} />
             )}
           </button>
-        )}
+        </span>
       </div>
+
+      {mistyped && (
+        <div className="dt-env-note" style={{ color: "var(--dt-danger)" }}>
+          <AlertTriangle size={10} />
+          Expected {v.type}, received "{String(v.value)}".
+          {v.defaultValue !== undefined
+            ? ` Falling back to the default of ${String(v.defaultValue)}.`
+            : " There is no default to fall back to."}
+        </div>
+      )}
+
+      {unsetRequired && (
+        <div className="dt-env-note" style={{ color: "var(--dt-warn)" }}>
+          <AlertTriangle size={10} />
+          Required, and not set. Whatever reads it will throw on first use.
+        </div>
+      )}
     </div>
   );
+};
+
+/**
+ * Values are tinted by what they are, so a port, a URL and an unset variable
+ * are distinguishable without reading them.
+ */
+const valueColor = (v: EnvVariable): string => {
+  if (v.type === "boolean") return "var(--dt-patch)";
+  if (v.type === "integer" || v.type === "number") return "var(--dt-get)";
+  return "var(--dt-fg)";
 };

@@ -37,7 +37,12 @@ export const EntityNode = (props: NodeProps) => {
             color: "var(--dt-fg-faint)",
           }}
         >
-          {columns.length} cols
+          {/*
+           * Which database this table lives in. An app can register more than
+           * one provider, and "these two tables cannot be joined" is a fact
+           * the diagram otherwise hides.
+           */}
+          {entity.provider ?? `${columns.length} cols`}
         </span>
       </div>
 

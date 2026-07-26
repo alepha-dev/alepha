@@ -220,13 +220,26 @@ export const DevJobs = () => {
                 <span
                   style={{ marginLeft: "auto", color: "var(--dt-fg-faint)" }}
                 >
-                  {r ? `${r.recent.ok} ok` : ""}
-                  {r && r.recent.error > 0 && (
-                    <span style={{ color: "var(--dt-error)" }}>
-                      {" "}
-                      {r.recent.error} err
-                    </span>
-                  )}
+                  {/*
+                   * A job that has never run reads "never run", not "0 ok" —
+                   * zero successes and zero failures is not a health signal,
+                   * and rendering it as one makes an idle job look like a
+                   * broken one.
+                   */}
+                  {r &&
+                    (r.recent.ok === 0 && r.recent.error === 0 ? (
+                      "never run"
+                    ) : (
+                      <>
+                        {r.recent.ok > 0 && `${r.recent.ok} ok`}
+                        {r.recent.error > 0 && (
+                          <span style={{ color: "var(--dt-error)" }}>
+                            {r.recent.ok > 0 ? " " : ""}
+                            {r.recent.error} err
+                          </span>
+                        )}
+                      </>
+                    ))}
                 </span>
               </span>
             </button>
@@ -272,7 +285,7 @@ export const DevJobs = () => {
               <button
                 type="button"
                 className="dt-btn"
-                data-on="true"
+                data-variant="primary"
                 style={{ marginLeft: "auto" }}
                 disabled={pushing}
                 onClick={onTrigger}
@@ -294,7 +307,7 @@ export const DevJobs = () => {
                   <button
                     type="button"
                     className="dt-btn"
-                    data-on="true"
+                    data-variant="primary"
                     disabled={pushing}
                     onClick={() => {
                       try {

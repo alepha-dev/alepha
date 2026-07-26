@@ -7,8 +7,10 @@ import { devEnvMetadataSchema } from "./DevEnvMetadata.ts";
 import { devJobMetadataSchema } from "./DevJobMetadata.ts";
 import { devModuleMetadataSchema } from "./DevModuleMetadata.ts";
 import { devPageMetadataSchema } from "./DevPageMetadata.ts";
+import { devPermissionMetadataSchema } from "./DevPermissionMetadata.ts";
 import { devProviderMetadataSchema } from "./DevProviderMetadata.ts";
 import { devRealmMetadataSchema } from "./DevRealmMetadata.ts";
+import { devRoleMetadataSchema } from "./DevRoleMetadata.ts";
 import { devStorageMetadataSchema } from "./DevStorageMetadata.ts";
 import { devTopicMetadataSchema } from "./DevTopicMetadata.ts";
 
@@ -31,6 +33,8 @@ export const devMetadataSchema = z.object({
   topics: z.array(devTopicMetadataSchema),
   storages: z.array(devStorageMetadataSchema),
   realms: z.array(devRealmMetadataSchema),
+  roles: z.array(devRoleMetadataSchema),
+  permissions: z.array(devPermissionMetadataSchema),
   caches: z.array(devCacheMetadataSchema),
   pages: z.array(devPageMetadataSchema),
   providers: z.array(devProviderMetadataSchema),

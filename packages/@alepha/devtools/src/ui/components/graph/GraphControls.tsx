@@ -1,30 +1,3 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { Checkbox } from "@alepha/ui/components/ui/checkbox";
-import { Input } from "@alepha/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@alepha/ui/components/ui/toggle-group";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
-import {
-  Box,
-  Boxes,
-  GitGraph,
-  LayoutGrid,
-  Network,
-  Search,
-} from "lucide-react";
 import type { GraphFilters, LayoutType, ViewMode } from "./types.ts";
 
 interface GraphControlsProps {
@@ -37,130 +10,122 @@ interface GraphControlsProps {
   edgeCount: number;
 }
 
+const LAYOUTS: Array<{ value: LayoutType; label: string }> = [
+  { value: "dagre", label: "Hierarchical" },
+  { value: "circular", label: "Circular" },
+  { value: "force", label: "Force" },
+];
+
+/**
+ * The graph's toolbar: what to draw, and how.
+ *
+ * Named tabs rather than icon buttons — "Modules" and "Services" are the two
+ * graphs this screen can draw, and an unlabelled cube versus an unlabelled
+ * stack-of-cubes made you click one to find out which was which.
+ */
 export const GraphControls = (props: GraphControlsProps) => {
   const isModuleView = props.filters.viewMode === "modules";
 
-  return (
-    <div className="flex flex-wrap items-center gap-3">
-      <ToggleGroup
-        variant="outline"
-        size="sm"
-        value={[props.filters.viewMode]}
-        onValueChange={(v) => {
-          const next = v[0];
-          if (next)
-            props.onFiltersChange({
-              ...props.filters,
-              viewMode: next as ViewMode,
-            });
-        }}
-      >
-        <ToggleGroupItem value="modules">
-          <Tooltip>
-            <TooltipTrigger render={<Boxes className="size-4" />} />
-            <TooltipContent>Modules</TooltipContent>
-          </Tooltip>
-        </ToggleGroupItem>
-        <ToggleGroupItem value="providers">
-          <Tooltip>
-            <TooltipTrigger render={<Box className="size-4" />} />
-            <TooltipContent>Services</TooltipContent>
-          </Tooltip>
-        </ToggleGroupItem>
-      </ToggleGroup>
+  const setView = (viewMode: ViewMode) =>
+    props.onFiltersChange({ ...props.filters, viewMode });
 
-      <div className="relative w-[200px]">
-        <Search className="text-muted-foreground absolute left-2 top-1/2 size-3.5 -translate-y-1/2" />
-        <Input
-          placeholder={
-            isModuleView ? "Search modules..." : "Search services..."
-          }
-          className="h-8 pl-8 text-xs"
-          value={props.filters.search}
+  return (
+    <div className="dt-toolbar">
+      <span className="dt-seg">
+        <button
+          type="button"
+          className="dt-seg-item"
+          style={{ textTransform: "none", letterSpacing: 0, fontSize: 11 }}
+          data-on={isModuleView || undefined}
+          onClick={() => setView("modules")}
+        >
+          Modules
+        </button>
+        <button
+          type="button"
+          className="dt-seg-item"
+          style={{ textTransform: "none", letterSpacing: 0, fontSize: 11 }}
+          data-on={!isModuleView || undefined}
+          onClick={() => setView("providers")}
+        >
+          Services
+        </button>
+      </span>
+
+      <button
+        type="button"
+        className="dt-btn"
+        data-on={!props.filters.hideFramework || undefined}
+        onClick={() =>
+          props.onFiltersChange({
+            ...props.filters,
+            hideFramework: !props.filters.hideFramework,
+          })
+        }
+        title="Include the framework's own modules, not just the application's"
+      >
+        Framework modules
+      </button>
+
+      <input
+        className="dt-input"
+        style={{ width: 180 }}
+        placeholder={isModuleView ? "Find module…" : "Find service…"}
+        value={props.filters.search}
+        onChange={(e) =>
+          props.onFiltersChange({
+            ...props.filters,
+            search: e.currentTarget.value,
+          })
+        }
+      />
+
+      {!isModuleView && (
+        <select
+          className="dt-input"
+          style={{ width: 160 }}
+          value={props.filters.module}
           onChange={(e) =>
             props.onFiltersChange({
               ...props.filters,
-              search: e.currentTarget.value,
+              module: e.currentTarget.value || "all",
             })
-          }
-        />
-      </div>
-
-      {!isModuleView && (
-        <Select
-          value={props.filters.module}
-          onValueChange={(value) =>
-            props.onFiltersChange({ ...props.filters, module: value || "all" })
           }
         >
-          <SelectTrigger className="h-8 w-[200px] text-xs">
-            <SelectValue placeholder="Filter by module" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All modules</SelectItem>
-            {props.modules.map((m) => (
-              <SelectItem key={m} value={m}>
-                {m}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <option value="all">All modules</option>
+          {props.modules.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
       )}
 
-      <label className="flex items-center gap-2 text-xs">
-        <Checkbox
-          checked={props.filters.hideFramework}
-          onCheckedChange={(checked) =>
-            props.onFiltersChange({
-              ...props.filters,
-              hideFramework: checked === true,
-            })
-          }
-        />
-        Hide framework
-      </label>
+      <select
+        className="dt-input"
+        style={{ width: 130 }}
+        value={props.layout}
+        onChange={(e) =>
+          props.onLayoutChange(e.currentTarget.value as LayoutType)
+        }
+      >
+        {LAYOUTS.map((l) => (
+          <option key={l.value} value={l.value}>
+            {l.label}
+          </option>
+        ))}
+      </select>
 
-      <ToggleGroup
-        variant="outline"
-        size="sm"
-        value={[props.layout]}
-        onValueChange={(v) => {
-          const next = v[0];
-          if (next) props.onLayoutChange(next as LayoutType);
+      <span
+        style={{
+          marginLeft: "auto",
+          fontSize: 10,
+          color: "var(--dt-fg-faint)",
         }}
       >
-        <ToggleGroupItem value="dagre">
-          <Tooltip>
-            <TooltipTrigger render={<LayoutGrid className="size-3.5" />} />
-            <TooltipContent>Hierarchical</TooltipContent>
-          </Tooltip>
-        </ToggleGroupItem>
-        <ToggleGroupItem value="circular">
-          <Tooltip>
-            <TooltipTrigger render={<GitGraph className="size-3.5" />} />
-            <TooltipContent>Circular</TooltipContent>
-          </Tooltip>
-        </ToggleGroupItem>
-        <ToggleGroupItem value="force">
-          <Tooltip>
-            <TooltipTrigger render={<Network className="size-3.5" />} />
-            <TooltipContent>Force</TooltipContent>
-          </Tooltip>
-        </ToggleGroupItem>
-      </ToggleGroup>
-
-      <div className="flex items-center gap-1">
-        <Badge variant="secondary">
-          {props.nodeCount} {isModuleView ? "modules" : "services"}
-        </Badge>
-        <Badge variant="secondary">{props.edgeCount} edges</Badge>
-      </div>
-
-      {/*
-       * The export control was removed: it only ever raised a "coming soon"
-       * toast. A button that announces its own absence is worse than no
-       * button.
-       */}
+        {props.nodeCount} {isModuleView ? "modules" : "services"} ·{" "}
+        {props.edgeCount} edges
+      </span>
     </div>
   );
 };

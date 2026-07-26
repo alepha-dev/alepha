@@ -28,6 +28,15 @@ export const devAtomMetadataSchema = z.object({
    * are exposed.
    */
   serverOnly: z.boolean().optional(),
+  /**
+   * Persistence adapter (`cookie`, `localStorage`, `sessionStorage`) when the
+   * atom declares one.
+   *
+   * Mutually exclusive with `serverOnly` — `$atom()` throws when both are
+   * given, because every adapter targets the browser by definition. Together
+   * the two fields say whether a value reaches the client and by which route.
+   */
+  persist: z.text().optional(),
 });
 
 export type DevAtomMetadata = Static<typeof devAtomMetadataSchema>;

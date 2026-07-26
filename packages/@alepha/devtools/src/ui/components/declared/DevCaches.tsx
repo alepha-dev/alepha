@@ -1,3 +1,4 @@
+import { Boxes } from "lucide-react";
 import type { DevCacheMetadata } from "../../../schemas/DevCacheMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DeclaredScreen } from "./DeclaredScreen.tsx";
@@ -28,6 +29,7 @@ export const DevCaches = () => {
       keyOf={(c) => c.name}
       labelOf={(c) => c.name}
       metaOf={(c) => formatTtl(c.ttl)}
+      icon={Boxes}
       filterPlaceholder="Filter caches…"
       emptyHint="Use $cache to declare a cache container"
       renderDetail={(c) => (

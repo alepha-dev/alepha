@@ -15,14 +15,25 @@
 :root {
   --dt-bg: #0b0b0c;
   --dt-panel: #101012;
-  --dt-panel-2: #141417;
-  --dt-border: #232326;
-  --dt-border-soft: #1b1b1e;
+  --dt-panel-2: #18181b;
+  --dt-border: #2e2e33;
+  --dt-border-soft: #1f1f23;
   --dt-fg: #e9e9ea;
-  --dt-fg-dim: #9a9aa2;
+  --dt-fg-dim: #8a8a91;
   --dt-fg-faint: #6b6b73;
-  --dt-accent: #ec3013;
-  --dt-accent-soft: rgba(236, 48, 19, 0.14);
+
+  /**
+   * Blue, not the Alepha brand red.
+   *
+   * Red is load-bearing in a devtool: it means destructive or broken. Spending
+   * it on every Save button leaves nothing to say "this action deletes rows"
+   * or "this endpoint has no guard" with. The accent is therefore blue and
+   * `--dt-danger` owns red outright.
+   */
+  --dt-accent: #3b82f6;
+  --dt-accent-soft: rgba(59, 130, 246, 0.14);
+  --dt-danger: #ef4444;
+  --dt-danger-soft: rgba(239, 68, 68, 0.12);
 
   --dt-get: #4ade80;
   --dt-post: #60a5fa;
@@ -31,7 +42,7 @@
   --dt-delete: #f87171;
 
   --dt-trace: #6b6b73;
-  --dt-debug: #9a9aa2;
+  --dt-debug: #8a8a91;
   --dt-info: #60a5fa;
   --dt-warn: #facc15;
   --dt-error: #f87171;
@@ -43,6 +54,17 @@
   --dt-nav-w: 200px;
   --dt-rail-w: 260px;
   --dt-topbar-h: 44px;
+}
+
+/**
+ * `@alepha/ui/styles.css` sets `body { background: var(--background) }`, and
+ * that token resolves several shades lighter than `--dt-bg`. The shell only
+ * paints `.dt-root`, so any pixel the shell does not cover — overscroll
+ * gutters, the area behind a short page — showed the shadcn grey instead.
+ */
+html:has(.dt-root),
+body:has(.dt-root) {
+  background: var(--dt-bg);
 }
 
 .dt-root {
@@ -57,7 +79,7 @@
 }
 
 .dt-root ::selection {
-  background: rgba(236, 48, 19, 0.3);
+  background: var(--dt-accent-soft);
 }
 
 .dt-mono {
@@ -93,11 +115,34 @@
   width: 18px;
   height: 18px;
   flex: none;
+  border-radius: 4px;
   background: var(--dt-accent);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
+}
+
+/**
+ * Square icon-only button for the topbar affordances that carry no label.
+ */
+.dt-icon-btn {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--dt-border);
+  background: transparent;
+  color: var(--dt-fg-dim);
+  cursor: pointer;
+}
+
+.dt-icon-btn:hover {
+  border-color: #3a3a41;
+  background: #17171b;
+  color: var(--dt-fg);
 }
 
 /* Search ---------------------------------------------------------------- */
@@ -149,9 +194,40 @@
   background: #17171b;
 }
 
+/**
+ * Toggle state — a lighter panel, not a colour. Filters, tabs and mode
+ * switches are "which of these is on", not "this one is important", so they
+ * must not compete with the primary action on the same row.
+ */
 .dt-btn[data-on="true"] {
+  border-color: #3a3a41;
+  background: #202027;
+  color: var(--dt-fg);
+}
+
+/**
+ * The one action a screen is for: Save, + New, Run now. Filled, so exactly one
+ * per toolbar reads as the thing to click.
+ */
+.dt-btn[data-variant="primary"] {
   border-color: var(--dt-accent);
-  color: var(--dt-accent);
+  background: var(--dt-accent);
+  color: #fff;
+}
+
+.dt-btn[data-variant="primary"]:hover:not(:disabled) {
+  border-color: #60a5fa;
+  background: #60a5fa;
+}
+
+.dt-btn[data-variant="danger"] {
+  border-color: var(--dt-danger);
+  background: transparent;
+  color: var(--dt-danger);
+}
+
+.dt-btn[data-variant="danger"]:hover:not(:disabled) {
+  background: var(--dt-danger-soft);
 }
 
 .dt-btn:disabled {
@@ -351,6 +427,54 @@
   color: var(--dt-fg-faint);
 }
 
+/**
+ * Trailing gloss on a section label — says what the section *is* without
+ * shouting it in the same uppercase tracking as the label itself.
+ */
+.dt-section-sub {
+  margin-left: auto;
+  font-size: 9px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--dt-fg-faint);
+  opacity: 0.75;
+}
+
+.dt-rail-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px 4px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dt-fg-dim);
+}
+
+.dt-rail-group-sub {
+  padding: 0 12px 6px;
+  font-size: 9px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--dt-fg-faint);
+}
+
+/**
+ * The colour square that identifies a rail group. Server and hybrid state are
+ * the same kind of object with entirely different blast radii, so the
+ * distinction gets a mark rather than only a heading.
+ */
+.dt-rail-group-mark {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  background: var(--dt-fg-faint);
+}
+
+.dt-rail-group-mark[data-group="hybrid"] {
+  background: var(--dt-accent);
+}
+
 .dt-tab {
   padding: 8px 2px;
   margin-right: 18px;
@@ -383,9 +507,282 @@
 }
 
 .dt-chip[data-tone="accent"] {
-  border-color: rgba(236, 48, 19, 0.4);
+  border-color: color-mix(in srgb, var(--dt-accent) 40%, transparent);
   background: var(--dt-accent-soft);
-  color: #ff8a72;
+  color: #93c5fd;
+}
+
+.dt-chip[data-tone="error"],
+.dt-chip[data-tone="danger"] {
+  border-color: color-mix(in srgb, var(--dt-danger) 45%, transparent);
+  color: var(--dt-danger);
+}
+
+.dt-chip[data-tone="warn"] {
+  border-color: color-mix(in srgb, var(--dt-warn) 45%, transparent);
+  color: var(--dt-warn);
+}
+
+/* Atoms ----------------------------------------------------------------- */
+
+.dt-atom-value {
+  font-size: 12px;
+  color: var(--dt-get);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dt-atom-value-sub {
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--dt-fg-faint);
+}
+
+/* Banner ---------------------------------------------------------------- */
+
+/**
+ * A full-width strip reporting one finding about the screen below it.
+ */
+.dt-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--dt-border);
+  font-size: 11px;
+}
+
+.dt-banner[data-tone="danger"] {
+  border-bottom-color: color-mix(in srgb, var(--dt-danger) 35%, transparent);
+  background: var(--dt-danger-soft);
+  color: var(--dt-danger);
+}
+
+/* Environment ----------------------------------------------------------- */
+
+.dt-env-line {
+  padding: 3px 14px;
+  margin: 0 -14px;
+  border-left: 2px solid transparent;
+}
+
+/**
+ * A variable whose value is present but does not parse, and one that is
+ * required and absent. Both boot the app successfully and both are bugs, so
+ * they get a tinted band rather than a chip that scrolls past unnoticed.
+ */
+.dt-env-line[data-state="invalid"] {
+  border-left-color: var(--dt-danger);
+  background: var(--dt-danger-soft);
+}
+
+.dt-env-line[data-state="missing"] {
+  border-left-color: var(--dt-warn);
+  background: color-mix(in srgb, var(--dt-warn) 8%, transparent);
+}
+
+.dt-env-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dt-fg);
+}
+
+.dt-env-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 14px;
+  font-size: 10px;
+}
+
+.dt-env-group {
+  margin: 18px 0 4px;
+  font-family: var(--dt-mono);
+  font-size: 11px;
+  color: var(--dt-accent);
+}
+
+/* Segmented control ----------------------------------------------------- */
+
+/**
+ * A row of mutually-related toggles drawn as one bordered group, so the eye
+ * reads "pick from this set" rather than "here are five unrelated buttons".
+ */
+.dt-seg {
+  display: inline-flex;
+  border: 1px solid var(--dt-border);
+  overflow: hidden;
+}
+
+.dt-seg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  border: 0;
+  border-left: 1px solid var(--dt-border);
+  background: transparent;
+  color: var(--dt-fg-dim);
+  font-family: var(--dt-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.dt-seg-item:first-child {
+  border-left: 0;
+}
+
+.dt-seg-item:hover {
+  background: #17171b;
+}
+
+.dt-seg-item[data-on="true"] {
+  background: #202027;
+  color: var(--dt-fg);
+}
+
+.dt-seg-count {
+  font-size: 9px;
+  color: var(--dt-fg-faint);
+}
+
+/* Dashboard ------------------------------------------------------------- */
+
+.dt-panel-box {
+  border: 1px solid var(--dt-border);
+  background: var(--dt-panel);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dt-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--dt-border);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dt-fg-faint);
+}
+
+.dt-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 0;
+  /**
+   * Hairlines drawn as insets rather than per-cell borders, so the grid reads
+   * as one divided surface — the outer border already belongs to the
+   * container, and per-cell borders would double up along every seam.
+   */
+  box-shadow:
+    inset -1px 0 0 var(--dt-border),
+    inset 0 -1px 0 var(--dt-border);
+  background: transparent;
+  color: var(--dt-fg);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-tile:hover {
+  background: #16161a;
+}
+
+.dt-tile-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dt-fg-faint);
+}
+
+.dt-tile-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.dt-tile-go {
+  color: var(--dt-fg-faint);
+  opacity: 0;
+}
+
+.dt-tile:hover .dt-tile-go {
+  opacity: 1;
+}
+
+/* Authorization matrix -------------------------------------------------- */
+
+/**
+ * Hug the content instead of stretching. A full-width table with two roles
+ * parks the tick columns against the right edge, a screen away from the
+ * permission they belong to — the one association the whole grid exists to
+ * show.
+ */
+/**
+ * Full width, with the first and last columns absorbing the slack. The tick
+ * columns are fixed-width and sit between them, so they stay near the
+ * permission they belong to instead of drifting to the right edge.
+ */
+.dt-table.dt-matrix th:first-child,
+.dt-table.dt-matrix td:first-child {
+  width: 45%;
+}
+
+.dt-table.dt-matrix th {
+  white-space: nowrap;
+}
+
+.dt-table.dt-matrix th:not(:first-child) {
+  text-align: center;
+}
+
+/**
+ * A group header spanning the whole grid. It is a row rather than a nested
+ * table so every cell below stays in the same column as its role header —
+ * splitting per group would let the columns drift apart.
+ */
+.dt-matrix-group td {
+  padding: 8px 10px 4px;
+  border-top: 1px solid var(--dt-border);
+  background: var(--dt-panel);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dt-fg-dim);
+}
+
+.dt-matrix-group-count {
+  margin-left: 8px;
+  letter-spacing: 0;
+  color: var(--dt-fg-faint);
+}
+
+/**
+ * An endpoint with no `$secure` middleware. Tinting the whole row rather than
+ * one cell is deliberate: this is the finding the screen exists to surface,
+ * and it should be visible while scrolling past at speed.
+ */
+.dt-matrix tr[data-unguarded] td {
+  background: var(--dt-danger-soft);
+}
+
+.dt-matrix tr[data-unguarded] td:first-child {
+  box-shadow: inset 2px 0 0 var(--dt-danger);
 }
 
 /* Schema tree ----------------------------------------------------------- */

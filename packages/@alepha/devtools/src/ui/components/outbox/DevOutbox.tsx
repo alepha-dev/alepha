@@ -96,24 +96,28 @@ export const DevOutbox = () => {
   return (
     <div style={{ display: "flex", flex: 1, minWidth: 0 }}>
       <div className="dt-rail" style={{ width: 320 }}>
-        <div className="dt-rail-search" style={{ display: "flex", gap: 6 }}>
-          {[
-            { value: "", label: "All" },
-            { value: "email", label: "Email" },
-            { value: "sms", label: "SMS" },
-          ].map((f) => (
-            <button
-              key={f.value || "all"}
-              type="button"
-              className="dt-btn"
-              data-on={kindFilter === f.value || undefined}
-              onClick={() =>
-                setParams({ ...params, kind: f.value || undefined })
-              }
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="dt-section-label" style={{ borderTop: 0 }}>
+          Captured
+          <span style={{ letterSpacing: 0 }}>· {messages.length}</span>
+          <span className="dt-seg" style={{ marginLeft: "auto" }}>
+            {[
+              { value: "", label: "All" },
+              { value: "email", label: "Email" },
+              { value: "sms", label: "SMS" },
+            ].map((f) => (
+              <button
+                key={f.value || "all"}
+                type="button"
+                className="dt-seg-item"
+                data-on={kindFilter === f.value || undefined}
+                onClick={() =>
+                  setParams({ ...params, kind: f.value || undefined })
+                }
+              >
+                {f.label}
+              </button>
+            ))}
+          </span>
         </div>
 
         <div className="dt-rail-body">
@@ -149,21 +153,62 @@ export const DevOutbox = () => {
                       style={{ color: "var(--dt-get)" }}
                     />
                   )}
-                  <span className="dt-mono">{m.to}</span>
+                  {/*
+                   * Subject first, recipient underneath. Recipients here are
+                   * long generated addresses that pushed the timestamp off the
+                   * right edge, and they are also the less identifying half —
+                   * you look for "the invite email", not for
+                   * `inviter-1785100491756@example.com`.
+                   */}
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {m.subject ?? m.body.slice(0, 48)}
+                  </span>
                   <span className="dt-nav-count">{relative(m.sentAt)}</span>
                 </span>
                 <span
+                  className="dt-mono"
                   style={{
                     fontSize: 10,
                     color: "var(--dt-fg-faint)",
                     paddingLeft: 17,
+                    maxWidth: "100%",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  {m.subject ?? m.body.slice(0, 48)}
+                  {m.to}
                 </span>
               </button>
             );
           })}
+        </div>
+
+        {/*
+         * Where these came from. Nothing in the app tells you that a "sent"
+         * email landed on disk instead of in an inbox, and the path is what
+         * you need when you go looking outside devtools.
+         */}
+        <div
+          className="dt-mono"
+          style={{
+            flex: "none",
+            padding: "8px 12px",
+            borderTop: "1px solid var(--dt-border-soft)",
+            fontSize: 9,
+            lineHeight: 1.6,
+            color: "var(--dt-fg-faint)",
+          }}
+        >
+          node_modules/.alepha/emails
+          <br />
+          node_modules/.alepha/sms
         </div>
       </div>
 

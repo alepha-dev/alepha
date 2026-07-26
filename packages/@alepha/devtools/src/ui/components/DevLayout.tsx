@@ -10,15 +10,16 @@ import {
   Gauge,
   HardDrive,
   Inbox,
+  KeyRound,
   LayoutDashboard,
   List,
   Lock,
   LockOpen,
   Network,
   Radio,
+  RotateCw,
   ShieldCheck,
   Table2,
-  Terminal,
   Variable,
   Zap,
 } from "lucide-react";
@@ -39,6 +40,10 @@ interface NavEntry {
   href?: string;
   count?: number;
   exact?: boolean;
+  /**
+   * Streams rather than counts — shows a live dot in place of a number.
+   */
+  live?: boolean;
 }
 
 const DevLayout = () => {
@@ -125,8 +130,8 @@ const DevLayout = () => {
             count: d?.caches?.length,
           },
           {
-            href: "/storages",
-            label: "Storages",
+            href: "/storage",
+            label: "Storage",
             icon: HardDrive,
             count: d?.storages?.length,
           },
@@ -135,6 +140,12 @@ const DevLayout = () => {
             label: "Realms",
             icon: ShieldCheck,
             count: d?.realms?.length,
+          },
+          {
+            href: "/roles",
+            label: "Roles",
+            icon: KeyRound,
+            count: d?.roles?.length,
           },
         ],
       },
@@ -163,8 +174,8 @@ const DevLayout = () => {
             count: envCount,
           },
           {
-            href: "/state",
-            label: "State",
+            href: "/atoms",
+            label: "Atoms",
             icon: Gauge,
             count: d?.atoms?.length,
           },
@@ -175,7 +186,7 @@ const DevLayout = () => {
         items: [
           { href: "/graph", label: "Graph", icon: Network },
           { href: "/outbox", label: "Outbox", icon: Inbox },
-          { href: "/logs", label: "Logs", icon: List },
+          { href: "/logs", label: "Logs", icon: List, live: true },
         ],
       },
     ],
@@ -208,10 +219,12 @@ const DevLayout = () => {
           <div className="dt-topbar">
             <div className="dt-brand">
               <span className="dt-brand-mark">
-                <Terminal size={12} />
+                <Zap size={12} />
               </span>
               <span>
-                Alepha <strong>DevTools</strong>
+                {/* The product is Alepha; "DevTools" is which surface of it. */}
+                <strong>Alepha</strong>{" "}
+                <span style={{ color: "var(--dt-fg-dim)" }}>DevTools</span>
               </span>
             </div>
 
@@ -237,11 +250,14 @@ const DevLayout = () => {
               {auth.authorized ? "Authorized" : "Authorize"}
             </button>
 
-            <span className="dt-chip" title="Runtime">
-              {d?.system
-                ? `${d.system.runtime} ${d.system.nodeVersion}`
-                : "connecting…"}
-            </span>
+            <button
+              type="button"
+              className="dt-icon-btn"
+              onClick={meta.reload}
+              title="Reload metadata"
+            >
+              <RotateCw size={12} />
+            </button>
           </div>
 
           <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
@@ -257,6 +273,7 @@ const DevLayout = () => {
                       label={item.label}
                       icon={item.icon}
                       count={item.count}
+                      live={item.live}
                       active={isActive(item.href, item.exact)}
                       onSelect={
                         item.href ? () => router.push(item.href!) : undefined
@@ -265,12 +282,6 @@ const DevLayout = () => {
                   ))}
                 </div>
               ))}
-
-              <div className="dt-nav-foot">
-                @alepha/devtools
-                <br />
-                {d?.system ? `${d.system.mode} · :${d.system.port}` : "…"}
-              </div>
             </nav>
 
             <NestedView />

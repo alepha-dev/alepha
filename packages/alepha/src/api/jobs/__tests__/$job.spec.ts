@@ -411,6 +411,37 @@ describe("$job — admin service", () => {
     expect(byName.get("App.cronA")?.recent.ok).toBe(0);
   });
 
+  /**
+   * The aggregate query only validates its `count` column when at least one
+   * execution row exists — with an empty table the whole `GROUP BY` returns
+   * nothing and a wrong column type is never exercised. Pinning `count` to
+   * `string` (the Postgres bigint shape) therefore passed every test while
+   * 500ing on SQLite/D1, where COUNT(*) comes back as a number.
+   */
+  it("listJobs counts real executions whatever type the driver gives COUNT(*)", async ({
+    expect,
+  }) => {
+    const alepha = makeApp();
+    class App {
+      executions = $repository(jobExecutionEntity);
+      tick = $job({
+        cron: "0 0 * * *",
+        handler: async () => {},
+      });
+    }
+    const app = alepha.inject(App);
+    await alepha.start();
+    await app.tick.trigger();
+
+    const { JobService } = await import("../services/JobService.ts");
+    const list = await alepha.inject(JobService).listJobs();
+    const tick = list.find((l) => l.name === "App.tick");
+
+    expect(tick?.recent.ok).toBe(1);
+    expect(tick?.recent.error).toBe(0);
+    expect(tick?.recent.lastRun).toBeTruthy();
+  });
+
   it("listJobs reports 'direct' when AlephaApiJobsQueue is not loaded", async ({
     expect,
   }) => {
