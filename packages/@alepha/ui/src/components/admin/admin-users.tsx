@@ -3,33 +3,22 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { AdminUsersRolesPicker } from "@alepha/ui/components/admin/admin-users-roles-picker";
+import { AdminUsersStatusFilter } from "@alepha/ui/components/admin/admin-users-status-filter";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Avatar, AvatarFallback } from "@alepha/ui/components/ui/avatar";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { Checkbox } from "@alepha/ui/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@alepha/ui/components/ui/popover";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Static, z } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
-import type { useFieldValue } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Check, Eye, Search, Trash2, UserCheck, UserX } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-
-interface RoleMeta {
-  name: string;
-  default?: boolean;
-  description?: string;
-}
+import { useCallback } from "react";
 
 export interface AdminUsersProps {
   /**
@@ -90,7 +79,7 @@ function applyDefaultHidden<C extends Record<string, unknown>>(
   return next as C;
 }
 
-export function AdminUsers(props: AdminUsersProps) {
+export const AdminUsers = (props: AdminUsersProps) => {
   const client = useClient<AdminUserController>();
   const toast = useToast();
   const { user: currentUser } = useAuth();
@@ -107,9 +96,9 @@ export function AdminUsers(props: AdminUsersProps) {
     {
       handler: ({ signal }) =>
         client.findRoles(
-          { query: { userRealmName: props.userRealmName } } as never,
+          { query: { userRealmName: props.userRealmName } },
           { request: { signal } },
-        ) as Promise<RoleMeta[]>,
+        ),
       onError: () => {},
     },
     [client, props.userRealmName],
@@ -153,7 +142,7 @@ export function AdminUsers(props: AdminUsersProps) {
           params: { id: user.id },
           query: { userRealmName: props.userRealmName },
           body: { roles: next },
-        } as never);
+        });
         await rolesQuery.refetch();
       },
     },
@@ -336,7 +325,7 @@ export function AdminUsers(props: AdminUsersProps) {
                   }}
                 />
               </div>
-              <StatusFilter input={form.input.status} tr={tr} />
+              <AdminUsersStatusFilter input={form.input.status} />
             </div>
           ),
         }}
@@ -386,7 +375,7 @@ export function AdminUsers(props: AdminUsersProps) {
                   </Avatar>
                   <button
                     type="button"
-                    onClick={() => router.push(`/admin/users/${u.id}` as never)}
+                    onClick={() => router.push(`/admin/users/${u.id}`)}
                     className="hover:text-primary inline-flex items-center gap-1.5 truncate text-left font-medium underline-offset-2 hover:underline"
                   >
                     <span className="truncate">{u.email ?? "—"}</span>
@@ -433,7 +422,7 @@ export function AdminUsers(props: AdminUsersProps) {
           roles: {
             label: tr("admin.users.colRoles", { default: "Roles" }),
             cell: (u) => (
-              <RolesPicker
+              <AdminUsersRolesPicker
                 user={u}
                 availableRoles={availableRoles}
                 onToggle={(role, checked) => toggleRole.run(u, role, checked)}
@@ -485,7 +474,7 @@ export function AdminUsers(props: AdminUsersProps) {
           {
             label: tr("admin.users.viewProfile", { default: "View profile" }),
             icon: Eye,
-            onClick: () => router.push(`/admin/users/${u.id}` as never),
+            onClick: () => router.push(`/admin/users/${u.id}`),
           },
           ...(!isSelf(u)
             ? [
@@ -524,151 +513,6 @@ export function AdminUsers(props: AdminUsersProps) {
       />
     </AdminPage>
   );
-}
-
-function RolesPicker({
-  user,
-  availableRoles,
-  onToggle,
-  rolesLabel,
-  noRolesLabel,
-}: {
-  user: UserEntity;
-  availableRoles: RoleMeta[];
-  onToggle: (role: string, checked: boolean) => Promise<void>;
-  rolesLabel: string;
-  noRolesLabel: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [pending, setPending] = useState<string | null>(null);
-  // The users table no longer hard-reloads after a role toggle, so the row's
-  // `user.roles` would stay stale. Track an optimistic override locally so the
-  // label and checkboxes reflect the change immediately; re-sync whenever the
-  // row's roles change (e.g. a table refresh from another action).
-  const [optimisticRoles, setOptimisticRoles] = useState<string[] | null>(null);
-  useEffect(() => {
-    setOptimisticRoles(null);
-  }, [user.roles]);
-
-  const userRoles = optimisticRoles ?? user.roles ?? [];
-  const label =
-    userRoles.length > 0 ? (
-      userRoles.join(", ")
-    ) : (
-      <span className="text-muted-foreground">{noRolesLabel}</span>
-    );
-
-  // If the metadata fetch hasn't landed yet, union the user's roles
-  // with a sane fallback so the popover still renders rows for everything
-  // the user currently has. Default state isn't known until metadata
-  // arrives — only the disable rule degrades.
-  const rows: RoleMeta[] =
-    availableRoles.length > 0
-      ? availableRoles
-      : userRoles.map((name) => ({ name }));
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <button
-            type="button"
-            className="text-left text-sm hover:underline focus:outline-none focus-visible:underline"
-          />
-        }
-      >
-        {label}
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-56 p-1">
-        <div className="px-2 py-1.5 text-xs text-muted-foreground">
-          {rolesLabel}
-        </div>
-        <div className="flex flex-col">
-          {rows.map((role) => {
-            const checked = userRoles.includes(role.name);
-            const disabled = role.default === true || pending === role.name;
-            return (
-              <label
-                key={role.name}
-                className={
-                  disabled
-                    ? "flex cursor-not-allowed items-center gap-2 rounded-sm px-2 py-1.5 text-sm opacity-60"
-                    : "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                }
-              >
-                <Checkbox
-                  checked={checked}
-                  disabled={disabled}
-                  onCheckedChange={async (next) => {
-                    if (disabled) return;
-                    setPending(role.name);
-                    try {
-                      await onToggle(role.name, Boolean(next));
-                      // Reflect the change locally — the table no longer
-                      // reloads the row after a role toggle.
-                      setOptimisticRoles(
-                        next
-                          ? Array.from(new Set([...userRoles, role.name]))
-                          : userRoles.filter((r) => r !== role.name),
-                      );
-                    } finally {
-                      setPending(null);
-                    }
-                  }}
-                />
-                <span className="flex-1">{role.name}</span>
-                {role.default && (
-                  <span className="text-[10px] uppercase text-muted-foreground">
-                    default
-                  </span>
-                )}
-              </label>
-            );
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-type StatusInput = Parameters<typeof useFieldValue>[0];
-
-function StatusFilter({
-  input,
-  tr,
-}: {
-  input: StatusInput;
-  tr: ReturnType<typeof useI18n>["tr"];
-}) {
-  return (
-    <Control
-      input={input}
-      label=""
-      clearable
-      clearLabel={String(
-        tr("admin.users.statusAll", { default: "All status" }),
-      )}
-      triggerClassName="w-40"
-      items={[
-        {
-          value: "verified",
-          label: String(
-            tr("admin.users.statusVerified", { default: "Verified" }),
-          ),
-        },
-        {
-          value: "active",
-          label: tr("admin.users.statusActive", { default: "Active" }),
-        },
-        {
-          value: "disabled",
-          label: String(
-            tr("admin.users.statusDisabled", { default: "Disabled" }),
-          ),
-        },
-      ]}
-    />
-  );
-}
+};
 
 export default AdminUsers;
