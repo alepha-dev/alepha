@@ -106,6 +106,7 @@ export const petitionOptionsAtom = $atom({
       "pdf",
     ],
   },
+  serverOnly: true,
 });
 
 export type PetitionOptions = Static<typeof petitionOptionsAtom.schema>;

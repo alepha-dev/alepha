@@ -14,4 +14,5 @@ export const invitationConfigAtom = $atom({
     maxPendingPerInviter: 100,
     purgeDays: 90,
   },
+  serverOnly: true,
 });

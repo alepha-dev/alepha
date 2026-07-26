@@ -23,6 +23,7 @@ export const folioHistoryAtom = $atom({
   default: {
     maxRevisions: 10,
   },
+  serverOnly: true,
 });
 
 export type FolioHistoryOptions = Static<typeof folioHistoryAtom.schema>;

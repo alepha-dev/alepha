@@ -22,6 +22,7 @@ export const pinnedContentAtom = $atom({
   default: {
     maxChars: 8192,
   },
+  serverOnly: true,
 });
 
 export type PinnedContentOptions = Static<typeof pinnedContentAtom.schema>;
