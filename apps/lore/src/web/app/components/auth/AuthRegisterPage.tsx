@@ -23,15 +23,28 @@ const AuthRegisterPage = (props: AuthRegisterPageProps) => {
   useEffect(() => {
     if (!entry) return;
     if (router.query.redirect) return;
-    const url = new URL(window.location.href);
-    url.searchParams.set("redirect", entry.redirectTo);
+    // Target the route by name and let the router build the URL.
+    //
+    // This used to read `window.location.href`, which is correct on a direct
+    // load and wrong on every client-side navigation: the router renders the
+    // new page first and only writes history afterwards, so an effect firing
+    // during the transition still sees the *previous* page's URL. Arriving
+    // from Home therefore rebuilt the address as `/?redirect=…` and bounced
+    // straight back to Home — the CTA looked like a dead link.
+    //
     // `router.push` with `replace: true` updates both the URL and the router's
     // own query state, so `router.query.redirect` reads the seeded value on the
     // re-render. `history.replaceState` alone leaves `router.query` stale.
     router
-      .push(url.pathname + url.search, { replace: true })
+      .push("register", {
+        replace: true,
+        query: {
+          ...(intentKey ? { intent: intentKey } : {}),
+          redirect: entry.redirectTo,
+        },
+      })
       .catch(() => undefined);
-  }, [entry, router]);
+  }, [entry, intentKey, router]);
 
   const message = entry ? tr(entry.messageKey as any) : undefined;
 

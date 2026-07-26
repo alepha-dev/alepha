@@ -46,3 +46,44 @@ test.describe("Home (SSR)", () => {
     });
   });
 });
+
+/**
+ * The logged-out call to action has to survive a *client-side* transition, not
+ * just a direct load.
+ *
+ * `AuthRegisterPage` seeds `?redirect=` on arrival so the post-register flow
+ * knows where to land. It used to build that URL from `window.location.href` —
+ * correct on a direct load, wrong when clicking through from Home, because the
+ * router renders the new page before it writes history and the effect still
+ * saw `/`. The CTA rewrote the address back to Home and read as a dead link.
+ *
+ * Every register spec navigates straight to `/auth/register`, so none of them
+ * exercised the transition. This one clicks the button a signed-out visitor
+ * actually clicks.
+ */
+test.describe("Home (signed out)", () => {
+  test("'Start your first campaign' reaches the register page", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page
+      .getByRole("link", { name: /start your first campaign/i })
+      .click();
+
+    await expect(page).toHaveURL(/\/auth\/register\?/);
+    // The intent survives, and with it the message and the seeded redirect —
+    // landing on a bare register form would mean the intent was dropped.
+    await expect(page).toHaveURL(/intent=createCampaign/);
+    await expect(page).toHaveURL(/redirect=/);
+    await expect(page.getByText(/before creating a campaign/i)).toBeVisible();
+  });
+
+  test("'Already registered? Sign in' reaches the login page", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.getByRole("link", { name: /already registered/i }).click();
+
+    await expect(page).toHaveURL(/\/auth\/login/);
+  });
+});
