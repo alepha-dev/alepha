@@ -1,7 +1,6 @@
 import { $module } from "alepha";
 import { SessionAudits } from "./audits/SessionAudits.ts";
 import { UserAudits } from "./audits/UserAudits.ts";
-import { UserBuckets } from "./buckets/UserBuckets.ts";
 import { AdminIdentityController } from "./controllers/AdminIdentityController.ts";
 import { AdminSessionController } from "./controllers/AdminSessionController.ts";
 import { AdminUserController } from "./controllers/AdminUserController.ts";
@@ -18,13 +17,13 @@ import { SessionCrudService } from "./services/SessionCrudService.ts";
 import { SessionService } from "./services/SessionService.ts";
 import { UsernameSlugger } from "./services/UsernameSlugger.ts";
 import { UserService } from "./services/UserService.ts";
+import { UserStorage } from "./storage/UserStorage.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./atoms/realmAuthSettingsAtom.ts";
 export * from "./audits/SessionAudits.ts";
 export * from "./audits/UserAudits.ts";
-export * from "./buckets/UserBuckets.ts";
 export * from "./controllers/AdminIdentityController.ts";
 export * from "./controllers/AdminSessionController.ts";
 export * from "./controllers/AdminUserController.ts";
@@ -61,6 +60,7 @@ export * from "./services/SessionCrudService.ts";
 export * from "./services/SessionService.ts";
 export * from "./services/UsernameSlugger.ts";
 export * from "./services/UserService.ts";
+export * from "./storage/UserStorage.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -102,6 +102,6 @@ export const AlephaApiUsers = $module({
     UserNotifications,
     UserAudits,
     SessionAudits,
-    UserBuckets,
+    UserStorage,
   ],
 });

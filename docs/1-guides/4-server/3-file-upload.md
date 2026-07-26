@@ -9,10 +9,10 @@ Use `z.file()` in a body schema. When the body contains a file field, the action
 ```typescript
 import { z } from "alepha";
 import { $action } from "alepha/server";
-import { $bucket } from "alepha/bucket";
+import { $storage } from "alepha/api/files";
 
 class UploadController {
-  bucket = $bucket();
+  uploads = $storage();
 
   upload = $action({
     method: "POST",
@@ -24,9 +24,9 @@ class UploadController {
       }),
       response: z.object({ id: z.text() }),
     },
-    handler: async ({ body }) => {
-      const fileId = await this.bucket.upload(body.file);
-      return { id: fileId };
+    handler: async ({ body, user }) => {
+      const stored = await this.uploads.upload(body.file, { user });
+      return { id: stored.id };
     },
   });
 }
@@ -71,18 +71,22 @@ schema: {
 
 ## Permanent Storage
 
-Temporary files are deleted after the request completes. To keep files permanently, store them using `$bucket`:
+Temporary files are deleted after the request completes. To keep files permanently, store them with `$storage`:
 
 ```typescript
-import { $bucket } from "alepha/bucket";
+import { $storage } from "alepha/api/files";
 
 class FileService {
-  bucket = $bucket();
+  uploads = $storage();
 
   async store(file: FileLike): Promise<string> {
-    return await this.bucket.upload(file);
+    const stored = await this.uploads.upload(file);
+    return stored.id;
   }
 }
 ```
 
-`$bucket` supports multiple backends: S3, Cloudflare R2, Vercel Blob, and local filesystem.
+`upload()` returns the `files` row — hand `.id` to `GET /api/files/:id`, and
+persist it in your own tables. Backends: local filesystem, S3-compatible
+services and Cloudflare R2. See [File Storage](/docs/guides-persistence-storage)
+for constraints, TTL and querying.

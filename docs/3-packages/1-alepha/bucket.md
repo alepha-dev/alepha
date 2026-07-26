@@ -10,22 +10,26 @@ npm install alepha
 
 ## Overview
 
-Unified file storage abstraction across multiple backends.
+Raw blob storage. **Not the application-facing API.**
 
-**Features:**
-- File storage buckets with constraints
-- Unified API across all storage backends
-- MIME type validation
-- File size limits
-- Upload/download/delete operations
-- TTL-based file expiration
-- Providers: Memory (testing), Local filesystem, AWS S3 / Cloudflare R2 / MinIO, Azure Blob Storage, Vercel Blob
+There is no bucket primitive. Declare file storage with `$storage`
+(`alepha/api/files`), which pairs every blob with a `files` row and so can
+offer paginated listing, TTL expiry, tags, checksums, creator tracking and
+HTTP endpoints.
+
+Inject `FileStorageProvider` directly only when you need blobs *without* a
+database — you get `upload` / `download` / `delete` / `deleteMany` /
+`exists` / `list`, keyed by a container name you manage yourself, and
+nothing else.
+
+All backends treat the container name as a **key prefix inside one bucket**
+(`{APP_NAME}/{container}/{fileId}`) or one directory on disk — never a
+separate cloud bucket per container.
+
+**Providers:** Memory (testing), Local filesystem, S3-compatible
+(AWS/MinIO), Cloudflare R2.
 
 ## API Reference
-
-### Primitives
-
-- [`$bucket`](/docs/reference-primitives-$bucket) — Creates a bucket primitive for file storage and management with configurable validation.
 
 ### Providers
 
@@ -39,6 +43,7 @@ Environment variables used to configure this module. These can be set in your `.
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `S3_ACCESS_KEY_ID` | string | **Required** |  |
+| `S3_BUCKET_NAME` | string | **Required** |  |
 | `S3_ENDPOINT` | string | **Required** |  |
 | `S3_REGION` | string | - |  |
 | `S3_SECRET_ACCESS_KEY` | string | **Required** |  |

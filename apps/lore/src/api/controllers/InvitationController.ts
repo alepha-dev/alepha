@@ -1,9 +1,9 @@
 import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { createInvitationSchema } from "../schemas/createInvitationSchema.ts";
 import { invitationResourceSchema } from "../schemas/invitationResourceSchema.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { InvitationService } from "../services/InvitationService.ts";
 
 const inboxItemSchema = invitationResourceSchema.extend({
@@ -15,7 +15,7 @@ export class InvitationController {
   protected readonly url = "/invitations";
   protected readonly group = "invitations";
   protected readonly invitationService = $inject(InvitationService);
-  protected readonly security = $inject(AppSecurityProvider);
+  protected readonly security = $inject(CampaignSecurityService);
 
   /**
    * Create a new invitation.

@@ -290,7 +290,7 @@ export class BuildCloudflareTask extends BuildTask {
     } catch {}
 
     try {
-      hasBucket = ctx.alepha.primitives("$bucket").length > 0;
+      hasBucket = ctx.alepha.primitives("$storage").length > 0;
     } catch {}
 
     try {

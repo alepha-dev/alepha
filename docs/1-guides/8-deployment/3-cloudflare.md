@@ -71,7 +71,7 @@ The build automatically adds the D1 binding to `wrangler.jsonc`:
 
 ## R2 Buckets
 
-If your application uses `$bucket` with `R2FileStorageProvider`, the R2 binding is added to `wrangler.jsonc` automatically.
+If your application declares any `$storage`, the R2 binding is added to `wrangler.jsonc` automatically. R2 keys every object as `{APP_NAME}/{tenantId}/{storage}/{fileId}` inside that one bucket — a storage is a prefix, not a bucket of its own.
 
 ## Cron Triggers
 

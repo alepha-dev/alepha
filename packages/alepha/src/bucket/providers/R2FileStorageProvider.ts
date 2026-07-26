@@ -12,7 +12,6 @@ import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { currentTenantAtom } from "alepha/security";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
-import { $bucket } from "../primitives/$bucket.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -20,8 +19,8 @@ import type { FileStorageProvider } from "./FileStorageProvider.ts";
 /**
  * Cloudflare R2 storage provider.
  *
- * Uses a single R2 bucket binding for all $bucket primitives.
- * Files are organized as: {APP_NAME}/{bucketName}/{fileId}
+ * Uses a single R2 bucket binding for every container.
+ * Files are organized as: {APP_NAME}/{tenantId}/{container}/{fileId}
  *
  * **Required environment variables:**
  * - `R2_BUCKET_NAME` - The actual R2 bucket name in Cloudflare
@@ -46,18 +45,11 @@ import type { FileStorageProvider } from "./FileStorageProvider.ts";
  *
  * @example
  * ```ts
- * // Define buckets with validation rules
- * const avatars = $bucket({
- *   name: "avatars",
- *   maxFileSize: 5 * 1024 * 1024,
- *   allowedMimeTypes: ["image/*"],
- * });
- *
- * const documents = $bucket({
- *   name: "documents",
- *   maxFileSize: 50 * 1024 * 1024,
- *   allowedMimeTypes: ["application/pdf"],
- * });
+ * // Containers come from `$storage` (alepha/api/files)
+ * class Media {
+ *   avatars = $storage({ maxSize: 5, mimeTypes: ["image/png"] });
+ *   documents = $storage({ maxSize: 50, mimeTypes: ["application/pdf"] });
+ * }
  *
  * // Files stored at: myapp/avatars/uuid.png, myapp/documents/uuid.pdf
  * ```
@@ -117,15 +109,6 @@ export class R2FileStorageProvider implements FileStorageProvider {
       this.log.info(
         `R2 storage ready (bucket: ${this.bucketName}, prefix: ${prefixStr || "(none)"})`,
       );
-
-      for (const bucket of this.alepha.primitives($bucket)) {
-        if (bucket.provider !== this) {
-          continue;
-        }
-        this.log.debug(
-          `Bucket '${bucket.name}' -> ${prefixStr}${bucket.name}/`,
-        );
-      }
     },
   });
 

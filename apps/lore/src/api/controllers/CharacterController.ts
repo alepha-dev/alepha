@@ -4,13 +4,13 @@ import { $secure } from "alepha/security";
 import { $action, ForbiddenError, NotFoundError } from "alepha/server";
 import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { AchievementEngine } from "../services/AchievementEngine.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 
 export class CharacterController {
   characters = $repository(characters);
   campaigns = $repository(campaigns);
-  security = $inject(AppSecurityProvider);
+  security = $inject(CampaignSecurityService);
   achievements = $inject(AchievementEngine);
 
   /**

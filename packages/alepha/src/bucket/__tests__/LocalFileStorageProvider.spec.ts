@@ -1,7 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, test } from "vitest";
 import {
-  TestApp,
   testCustomFileId,
   testDeleteFile,
   testDeleteNonExistentFile,
@@ -26,8 +25,7 @@ const alepha = Alepha.create()
     provide: FileStorageProvider,
     use: LocalFileStorageProvider,
   })
-  .with(AlephaBucket)
-  .with(TestApp);
+  .with(AlephaBucket);
 
 const provider = alepha.inject(LocalFileStorageProvider);
 

@@ -21,7 +21,7 @@ Each layer builds on the previous.
 | Layer | Description | Primitives                                              |
 |-------|-------------|---------------------------------------------------------|
 | **Foundation** | DI, lifecycle, config | `$inject`, `$env`, `$module`, `$hook`, `$logger`        |
-| **Backend** | Database, storage, API | `$entity`, `$action`, `$repository`, `$bucket`, `$topic` |
+| **Backend** | Database, storage, API | `$entity`, `$action`, `$repository`, `$storage`, `$topic` |
 | **Frontend** | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
 | **Platform** | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
 | **Admin** | Admin panel & auth UI | `$ui`, `$uiAdmin`, `$uiAuth`                            |
@@ -155,7 +155,7 @@ Common infrastructure needs are built-in primitives:
 | Need | Primitive | What it does |
 |------|-----------|--------------|
 | Background jobs | `$job` | Durable async work: retries, idempotency keys, crash recovery |
-| File uploads | `$bucket` | Store and retrieve files (S3, R2, Vercel Blob) |
+| File uploads | `$storage` | Files with metadata: querying, TTL, tags (S3, R2, disk) |
 | Cron jobs | `$job` | Same primitive, declared with `cron` instead of `schema` |
 | Pub/sub | `$topic` | Publish and subscribe to events |
 | Caching | `$cache` | Cache expensive computations |

@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/system";
-import { describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test } from "vitest";
 import {
   AlephaBucket,
   FileStorageProvider,
@@ -8,7 +8,6 @@ import {
 } from "../index.ts";
 import {
   TEST_IMAGES_BUCKET,
-  TestApp,
   testCustomFileId,
   testDeleteFile,
   testDeleteNonExistentFile,
@@ -24,12 +23,21 @@ import {
 
 const alepha = Alepha.create()
   .with({ provide: FileStorageProvider, use: S3FileStorageProvider })
-  .with(AlephaBucket)
-  .with(TestApp);
+  .with(AlephaBucket);
 
 const provider = alepha.inject(S3FileStorageProvider);
 
 describe("NodeS3BucketProvider", () => {
+  // The provider no longer creates buckets: containers are key prefixes
+  // inside one bucket that you provision. Create it here so the suite is
+  // self-contained (s3mock's `initialBuckets` env is not honoured by the
+  // image we pin).
+  beforeAll(async () => {
+    await fetch(`${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET_NAME}`, {
+      method: "PUT",
+    });
+  });
+
   test("should upload a file and return a fileId", async () => {
     await testUploadAndExistence(provider);
   });

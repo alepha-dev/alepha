@@ -120,7 +120,7 @@ to anything that supports one, since Alepha cannot interrupt synchronous work:
 ```typescript
 report = $job({
   schema: z.object({ id: z.text() }),
-  timeout: "30 seconds",
+  timeout: [30, "seconds"],
   handler: async ({ payload, signal }) => {
     await fetch(`https://example.com/${payload.id}`, { signal });
   },

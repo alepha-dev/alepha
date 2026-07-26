@@ -1,6 +1,5 @@
 export * from "./schemas/DevActionMetadata.ts";
 export * from "./schemas/DevAtomMetadata.ts";
-export * from "./schemas/DevBucketMetadata.ts";
 export * from "./schemas/DevCacheMetadata.ts";
 export * from "./schemas/DevEntityMetadata.ts";
 export * from "./schemas/DevEnvMetadata.ts";
@@ -10,4 +9,5 @@ export * from "./schemas/DevModuleMetadata.ts";
 export * from "./schemas/DevPageMetadata.ts";
 export * from "./schemas/DevProviderMetadata.ts";
 export * from "./schemas/DevRealmMetadata.ts";
+export * from "./schemas/DevStorageMetadata.ts";
 export * from "./schemas/DevTopicMetadata.ts";

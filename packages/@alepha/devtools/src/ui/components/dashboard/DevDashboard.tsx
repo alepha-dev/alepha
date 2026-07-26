@@ -91,10 +91,10 @@ export const DevDashboard = () => {
         href: "/caches",
       },
       {
-        label: "Buckets",
-        count: d.buckets?.length ?? 0,
+        label: "Storages",
+        count: d.storages?.length ?? 0,
         icon: HardDrive,
-        href: "/buckets",
+        href: "/storages",
       },
       {
         label: "Realms",

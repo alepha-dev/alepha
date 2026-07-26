@@ -125,10 +125,10 @@ const DevLayout = () => {
             count: d?.caches?.length,
           },
           {
-            href: "/buckets",
-            label: "Buckets",
+            href: "/storages",
+            label: "Storages",
             icon: HardDrive,
-            count: d?.buckets?.length,
+            count: d?.storages?.length,
           },
           {
             href: "/realms",

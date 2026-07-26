@@ -1,7 +1,6 @@
 import { Alepha } from "alepha";
 import { beforeEach, describe, test } from "vitest";
 import {
-  TestApp,
   testCustomFileId,
   testDeleteFile,
   testDeleteNonExistentFile,
@@ -30,8 +29,7 @@ beforeEach(() => {
       provide: FileStorageProvider,
       use: MemoryFileStorageProvider,
     })
-    .with(AlephaBucket)
-    .with(TestApp);
+    .with(AlephaBucket);
 
   provider = alepha.inject(MemoryFileStorageProvider);
 });

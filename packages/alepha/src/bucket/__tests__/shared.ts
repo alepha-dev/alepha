@@ -1,18 +1,12 @@
 import { Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import { expect } from "vitest";
-import {
-  $bucket,
-  FileNotFoundError,
-  type FileStorageProvider,
-} from "../index.ts";
+import { FileNotFoundError, type FileStorageProvider } from "../index.ts";
 
+// Container names are just key prefixes now — no primitive declares them and
+// no provider pre-creates them, so these are plain strings.
 export const TEST_IMAGES_BUCKET = "test-images";
 export const TEST_DOCUMENTS_BUCKET = "test-documents";
-export class TestApp {
-  images = $bucket({ name: TEST_IMAGES_BUCKET });
-  documents = $bucket({ name: TEST_DOCUMENTS_BUCKET });
-}
 
 const BUCKET_NAME = TEST_IMAGES_BUCKET;
 

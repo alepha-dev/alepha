@@ -5,8 +5,8 @@ import { $action, NotFoundError, okSchema } from "alepha/server";
 import { archiveBlobs } from "../entities/archiveBlobs.ts";
 import { archiveDirectories } from "../entities/archiveDirectories.ts";
 import { folios } from "../entities/folios.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { ArchiveDirectoryService } from "../services/ArchiveDirectoryService.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 
 /**
  * REST surface for the Archive directory tree. Reads scoped via
@@ -18,7 +18,7 @@ export class DirectoryController {
   protected readonly folios = $repository(folios);
   protected readonly blobs = $repository(archiveBlobs);
   protected readonly directoryService = $inject(ArchiveDirectoryService);
-  protected readonly security = $inject(AppSecurityProvider);
+  protected readonly security = $inject(CampaignSecurityService);
 
   /**
    * List the immediate children of `parentDirectoryId` (or the

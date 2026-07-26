@@ -2,7 +2,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import { Alepha, type Service } from "alepha";
 import {
-  $bucket,
   FileStorageProvider,
   LocalFileStorageProvider,
   MemoryFileStorageProvider,
@@ -13,7 +12,12 @@ import type { UserAccountToken } from "alepha/security";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { users } from "../../users/entities/users.ts";
-import { AlephaApiFiles, FileController, FileService } from "../index.ts";
+import {
+  $storage,
+  AlephaApiFiles,
+  FileController,
+  FileService,
+} from "../index.ts";
 
 const adminUser: UserAccountToken = {
   id: "00000000-0000-0000-0000-000000000001",
@@ -35,7 +39,7 @@ const testFileServiceOperations = async (
     .with(AlephaApiFiles);
 
   class Assets {
-    images = $bucket({
+    images = $storage({
       name: randomUUID(),
       ttl: 1000,
     });
@@ -139,7 +143,7 @@ describe("FileService", () => {
       .with(AlephaApiFiles);
 
     class Assets {
-      images = $bucket({ name: randomUUID() });
+      images = $storage({ name: randomUUID() });
     }
 
     const assets = alepha.inject(Assets);
@@ -166,18 +170,21 @@ describe("FileService", () => {
       ),
     ).rejects.toThrow();
 
-    // The blob must not be left behind in the bucket.
-    expect(await assets.images.list()).toEqual([]);
+    // Assert against the BACKEND, not `images.list()` — that is DB-backed
+    // now, so it would be empty whether or not the blob was cleaned up.
+    expect(
+      await alepha.inject(MemoryFileStorageProvider).list(assets.images.name),
+    ).toEqual([]);
   });
 
-  it("removes the orphaned blob when the upload hook's metadata write fails", async () => {
+  it("removes the orphaned blob when uploading through $storage.upload", async () => {
     const alepha = Alepha.create()
       .with(AlephaOrmPostgres)
       .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
       .with(AlephaApiFiles);
 
     class Assets {
-      images = $bucket({ name: randomUUID() });
+      images = $storage({ name: randomUUID() });
     }
 
     const assets = alepha.inject(Assets);
@@ -190,9 +197,8 @@ describe("FileService", () => {
       name: "Broken",
     } as UserAccountToken;
 
-    // Direct bucket.upload (persist defaults to true) drives the
-    // `bucket:file:uploaded` hook, whose metadata insert fails on the
-    // invalid creator UUID after the blob is stored.
+    // Same compensation path, reached through the primitive rather than
+    // `FileService.uploadFile` directly.
     await expect(
       assets.images.upload(
         fs.createFile({
@@ -204,7 +210,9 @@ describe("FileService", () => {
       ),
     ).rejects.toThrow();
 
-    expect(await assets.images.list()).toEqual([]);
+    expect(
+      await alepha.inject(MemoryFileStorageProvider).list(assets.images.name),
+    ).toEqual([]);
   });
 
   it("uploadFile reads a stream-backed file once (no empty blob, real size)", async () => {
@@ -214,7 +222,7 @@ describe("FileService", () => {
       .with(AlephaApiFiles);
 
     class Assets {
-      images = $bucket({ name: randomUUID() });
+      images = $storage({ name: randomUUID() });
     }
 
     const assets = alepha.inject(Assets);
@@ -254,7 +262,7 @@ describe("FileService", () => {
       .with(AlephaApiFiles);
 
     class Assets {
-      images = $bucket({ name: randomUUID() });
+      images = $storage({ name: randomUUID() });
     }
 
     const assets = alepha.inject(Assets);

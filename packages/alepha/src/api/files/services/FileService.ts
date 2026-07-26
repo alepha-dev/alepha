@@ -1,10 +1,6 @@
 import { createHash } from "node:crypto";
-import { $hook, $inject, Alepha, type FileLike } from "alepha";
-import {
-  $bucket,
-  type BucketPrimitive,
-  FileNotFoundError,
-} from "alepha/bucket";
+import { $inject, Alepha, type FileLike } from "alepha";
+import { FileNotFoundError, InvalidFileError } from "alepha/bucket";
 import {
   type DateTime,
   DateTimeProvider,
@@ -12,14 +8,24 @@ import {
 } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, type Page, RepositoryProvider } from "alepha/orm";
-import type { UserAccountToken } from "alepha/security";
 import type { Ok } from "alepha/server";
 import { NotFoundError } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 import { type FileEntity, files } from "../entities/files.ts";
+import {
+  $storage,
+  type StoragePrimitive,
+  type StorageUploadOptions,
+} from "../primitives/$storage.ts";
 import type { FileQuery } from "../schemas/fileQuerySchema.ts";
 import type { FileResource } from "../schemas/fileResourceSchema.ts";
 import type { StorageStats } from "../schemas/storageStatsSchema.ts";
+
+/**
+ * Default storage name used when a caller does not name one (e.g. the HTTP
+ * upload endpoint's optional `bucket` field).
+ */
+export const DEFAULT_STORAGE = "default";
 
 export class FileService {
   protected readonly alepha = $inject(Alepha);
@@ -27,7 +33,6 @@ export class FileService {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly repositoryProvider = $inject(RepositoryProvider);
   protected readonly fileSystem = $inject(FileSystemProvider);
-  protected readonly defaultBucket = $bucket({ name: "default" });
   public readonly fileRepository = $repository(files);
 
   /**
@@ -58,60 +63,6 @@ export class FileService {
     };
   }
 
-  protected onUploadFile = $hook({
-    on: "bucket:file:uploaded",
-    handler: async ({ file, bucket, options, id }) => {
-      if (options.persist === false) {
-        return;
-      }
-
-      const checksum = await this.calculateChecksum(file);
-
-      await this.persistBlobMetadata(bucket, id, () =>
-        this.fileRepository.create({
-          blobId: id,
-          mimeType: file.type,
-          name: file.name,
-          originalName: file.name,
-          size: file.size,
-          creator: options.user?.id,
-          creatorRealm: options.user?.realm,
-          expirationDate: this.getExpirationDate(options.ttl),
-          bucket: bucket.name,
-          checksum,
-        }),
-      );
-    },
-  });
-
-  protected onDeleteBucketFile = $hook({
-    on: "bucket:file:deleted",
-    handler: async ({ bucket, id }) => {
-      await this.fileRepository.deleteMany({
-        blobId: { eq: id },
-        bucket: { eq: bucket.name },
-      });
-    },
-  });
-
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Calculates SHA-256 checksum of a file.
-   *
-   * Reads the whole file into memory. Callers that already hold the bytes
-   * should use {@link hashBuffer} instead to avoid re-reading — re-reading a
-   * one-shot stream either yields the wrong hash or drains a stream another
-   * step still needs.
-   *
-   * @param file - The file to calculate checksum for
-   * @returns Hexadecimal string representation of the SHA-256 hash
-   * @protected
-   */
-  protected async calculateChecksum(file: FileLike): Promise<string> {
-    return this.hashBuffer(await file.arrayBuffer());
-  }
-
   /**
    * Calculates the SHA-256 checksum of an already-read body.
    *
@@ -124,22 +75,21 @@ export class FileService {
   }
 
   /**
-   * Gets a bucket primitive by name.
+   * Resolves a declared `$storage` by name.
    *
-   * @param bucketName - The name of the bucket to retrieve (defaults to "default")
-   * @returns The bucket primitive
-   * @throws {NotFoundError} If the bucket is not found
+   * @param name - Storage name, defaulting to {@link DEFAULT_STORAGE}
+   * @throws {NotFoundError} When no storage with that name is declared
    */
-  public bucket(bucketName: string = this.defaultBucket.name): BucketPrimitive {
-    const bucket = this.alepha
-      .primitives($bucket)
-      .find((it) => it.name === bucketName);
+  public storage(name: string = DEFAULT_STORAGE): StoragePrimitive {
+    const storage = this.alepha
+      .primitives($storage)
+      .find((it) => it.name === name);
 
-    if (!bucket) {
-      throw new NotFoundError(`Bucket '${bucketName}' not found.`);
+    if (!storage) {
+      throw new NotFoundError(`Storage '${name}' not found.`);
     }
 
-    return bucket;
+    return storage;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -252,21 +202,22 @@ export class FileService {
    */
   public async uploadFile(
     file: FileLike,
-    options: {
-      expirationDate?: string | DateTime;
+    options: StorageUploadOptions & {
+      /**
+       * Target storage. Pass the primitive directly (what `$storage.upload`
+       * does) or a name to resolve.
+       */
+      storage?: StoragePrimitive;
       bucket?: string;
-      user?: UserAccountToken;
-      tags?: string[];
     } = {},
   ): Promise<FileEntity> {
-    const bucket = this.bucket(options.bucket);
+    const storage = options.storage ?? this.storage(options.bucket);
 
-    // Read the source exactly once. The checksum and the stored bytes are
-    // both derived from this single buffer, so a one-shot stream is never
-    // read twice — the previous code checksummed the file and then let
-    // bucket.upload read it again, which drained the stream and stored an
-    // empty blob. Uploads are size-capped (bucket maxSize / multipart
-    // limits), so buffering here is intentional and bounded.
+    // Read the source exactly once. The checksum, the size/MIME checks and
+    // the stored bytes all derive from this single buffer, so a one-shot
+    // stream is never read twice — reading it twice either yields the wrong
+    // hash or stores an empty blob. Uploads are size-capped, so buffering
+    // here is intentional and bounded.
     const data = await file.arrayBuffer();
     const checksum = this.hashBuffer(data);
     file = this.fileSystem.createFile({
@@ -275,18 +226,22 @@ export class FileService {
       type: file.type,
     });
 
-    const blobId = await bucket.upload(file, { persist: false });
+    this.assertAllowed(file, storage);
+
+    const blobId = await storage.provider.upload(storage.name, file);
 
     let expirationDate: string | undefined;
     if (options.expirationDate) {
       expirationDate = this.dateTimeProvider
         .of(options.expirationDate)
         .toISOString();
-    } else if (bucket.options.ttl) {
-      expirationDate = this.getExpirationDate(bucket.options.ttl);
+    } else if (options.ttl) {
+      expirationDate = this.getExpirationDate(options.ttl);
+    } else if (storage.options.ttl) {
+      expirationDate = this.getExpirationDate(storage.options.ttl);
     }
 
-    return await this.persistBlobMetadata(bucket, blobId, () =>
+    return await this.persistBlobMetadata(storage, blobId, () =>
       this.fileRepository.create({
         blobId: blobId,
         mimeType: file.type,
@@ -297,11 +252,54 @@ export class FileService {
         creatorRealm: options.user?.realm,
         creatorName: options.user?.name,
         expirationDate,
-        bucket: bucket.name,
+        bucket: storage.name,
         tags: options.tags,
         checksum,
       }),
     );
+  }
+
+  /**
+   * Enforces the storage's MIME and size constraints.
+   *
+   * Runs against a materialized buffer, so `file.size` is always the real
+   * byte count. A streamed body reports `size === 0` until read, which is how
+   * the size cap used to be bypassed.
+   */
+  protected assertAllowed(file: FileLike, storage: StoragePrimitive): void {
+    const { mimeTypes, maxSize = 10 } = storage.options;
+
+    if (mimeTypes) {
+      const mimeType = file.type || "application/octet-stream";
+      if (!mimeTypes.includes(mimeType)) {
+        throw new InvalidFileError(
+          `MIME type ${mimeType} is not allowed in storage ${storage.name}`,
+        );
+      }
+    }
+
+    if (file.size > maxSize * 1024 * 1024) {
+      throw new InvalidFileError(
+        `File size ${file.size} exceeds the maximum size of ${maxSize} MB in storage ${storage.name}`,
+      );
+    }
+  }
+
+  /**
+   * True when a row with this id exists, optionally scoped to one storage.
+   */
+  public async fileExists(id: string, storageName?: string): Promise<boolean> {
+    const where = this.fileRepository.createQueryWhere();
+    where.id = { eq: id };
+    if (storageName) {
+      where.bucket = { eq: storageName };
+    }
+    const rows = await this.fileRepository.findMany({
+      where,
+      limit: 1,
+      columns: ["id"],
+    });
+    return rows.length > 0;
   }
 
   /**
@@ -313,29 +311,30 @@ export class FileService {
    * (a missing blob) over the worse one (a row pointing at nothing).
    *
    * Best-effort: cleanup runs with `skipHook` so it neither re-emits
-   * `bucket:file:deleted` nor touches the (non-existent) DB row, and a failed
    * cleanup is logged rather than thrown. The original write error is always
    * rethrown so callers still see the real failure.
    *
-   * @param bucket - The bucket the blob was uploaded to
-   * @param blobId - The id returned by `bucket.upload`
+   * @param storage - The storage the blob was uploaded to
+   * @param blobId - The id returned by the provider's `upload`
    * @param insert - Thunk performing the metadata insert
    * @returns The created file entity
    */
   protected async persistBlobMetadata(
-    bucket: BucketPrimitive,
+    storage: StoragePrimitive,
     blobId: string,
     insert: () => Promise<FileEntity>,
   ): Promise<FileEntity> {
     try {
       return await insert();
     } catch (error) {
-      await bucket.delete(blobId, true).catch((cleanupError) => {
-        this.log.warn(
-          `Failed to remove orphaned blob ${blobId} from bucket ${bucket.name} after a metadata write failure`,
-          cleanupError,
-        );
-      });
+      await storage.provider
+        .delete(storage.name, blobId)
+        .catch((cleanupError: unknown) => {
+          this.log.warn(
+            `Failed to remove orphaned blob ${blobId} from storage ${storage.name} after a metadata write failure`,
+            cleanupError,
+          );
+        });
       throw error;
     }
   }
@@ -352,9 +351,9 @@ export class FileService {
    */
   public async streamFile(id: string | FileEntity): Promise<FileLike> {
     const entity = await this.getFileById(id);
-    const bucket = this.bucket(entity.bucket);
+    const storage = this.storage(entity.bucket);
 
-    return await bucket.download(entity.blobId);
+    return await storage.provider.download(storage.name, entity.blobId);
   }
 
   /**
@@ -409,23 +408,23 @@ export class FileService {
    */
   public async deleteFile(id: string): Promise<Ok> {
     const file = await this.getFileById(id);
-    const bucket = this.bucket(file.bucket);
+    const storage = this.storage(file.bucket);
 
     // Always delete the database record
     await this.fileRepository.deleteById(file.id);
 
     try {
-      await bucket.delete(file.blobId, true);
+      await storage.provider.delete(storage.name, file.blobId);
     } catch (e) {
       if (e instanceof FileNotFoundError) {
-        // File is already deleted in the bucket, this is okay
+        // Blob is already gone, this is okay
         this.log.debug(
-          `File ${file.blobId} not found in bucket ${bucket.name}, cleaning up database record`,
+          `File ${file.blobId} not found in storage ${storage.name}, cleaning up database record`,
         );
       } else {
         // Other errors (permission, network, etc.) - log but continue to clean up database
         this.log.warn(
-          `Failed to delete file ${file.blobId} from bucket ${bucket.name}`,
+          `Failed to delete file ${file.blobId} from storage ${storage.name}`,
           e,
         );
       }
@@ -459,14 +458,15 @@ export class FileService {
       blobsByBucket.set(f.bucket, list);
     }
 
-    for (const [bucketName, blobIds] of blobsByBucket) {
+    for (const [storageName, blobIds] of blobsByBucket) {
       try {
-        await this.bucket(bucketName).deleteMany(blobIds, true);
+        const storage = this.storage(storageName);
+        await storage.provider.deleteMany(storage.name, blobIds);
       } catch (e) {
         // DB rows already gone — log and continue. Orphaned blobs are
         // recoverable; orphaned DB rows would be worse.
         this.log.warn(
-          `Failed to bulk-delete ${blobIds.length} files from bucket ${bucketName}`,
+          `Failed to bulk-delete ${blobIds.length} files from storage ${storageName}`,
           e,
         );
       }

@@ -1,9 +1,4 @@
-import { $module, type FileLike } from "alepha";
-import {
-  $bucket,
-  type BucketFileOptions,
-  type BucketPrimitive,
-} from "./primitives/$bucket.ts";
+import { $module } from "alepha";
 import { FileStorageProvider } from "./providers/FileStorageProvider.ts";
 import { LocalFileStorageProvider } from "./providers/LocalFileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "./providers/MemoryFileStorageProvider.ts";
@@ -12,7 +7,7 @@ import { S3FileStorageProvider } from "./providers/S3FileStorageProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./errors/FileNotFoundError.ts";
-export * from "./primitives/$bucket.ts";
+export * from "./errors/InvalidFileError.ts";
 export * from "./providers/FileStorageProvider.ts";
 export * from "./providers/LocalFileStorageProvider.ts";
 export * from "./providers/MemoryFileStorageProvider.ts";
@@ -21,55 +16,30 @@ export * from "./providers/S3FileStorageProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-declare module "alepha" {
-  interface Hooks {
-    /**
-     * Triggered when a file is uploaded to a bucket.
-     * Can be used to perform actions after a file is uploaded, like creating a database record!
-     */
-    "bucket:file:uploaded": {
-      id: string;
-      file: FileLike;
-      bucket: BucketPrimitive;
-      options: BucketFileOptions;
-    };
-    /**
-     * Triggered when a file is deleted from a bucket.
-     */
-    "bucket:file:deleted": {
-      id: string;
-      bucket: BucketPrimitive;
-    };
-    /**
-     * Triggered when a file is downloaded from a bucket.
-     */
-    "bucket:file:downloaded": {
-      id: string;
-      file: FileLike;
-      bucket: BucketPrimitive;
-    };
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
- * Unified file storage abstraction across multiple backends.
+ * Raw blob storage. **Not the application-facing API.**
  *
- * **Features:**
- * - File storage buckets with constraints
- * - Unified API across all storage backends
- * - MIME type validation
- * - File size limits
- * - Upload/download/delete operations
- * - TTL-based file expiration
- * - Providers: Memory (testing), Local filesystem, AWS S3 / Cloudflare R2 / MinIO, Azure Blob Storage, Vercel Blob
+ * There is no bucket primitive. Declare file storage with `$storage`
+ * (`alepha/api/files`), which pairs every blob with a `files` row and so can
+ * offer paginated listing, TTL expiry, tags, checksums, creator tracking and
+ * HTTP endpoints.
+ *
+ * Inject `FileStorageProvider` directly only when you need blobs *without* a
+ * database — you get `upload` / `download` / `delete` / `deleteMany` /
+ * `exists` / `list`, keyed by a container name you manage yourself, and
+ * nothing else.
+ *
+ * All backends treat the container name as a **key prefix inside one bucket**
+ * (`{APP_NAME}/{container}/{fileId}`) or one directory on disk — never a
+ * separate cloud bucket per container.
+ *
+ * **Providers:** Memory (testing), Local filesystem, S3-compatible
+ * (AWS/MinIO), Cloudflare R2.
  *
  * @module alepha.bucket
  */
 export const AlephaBucket = $module({
   name: "alepha.bucket",
-  primitives: [$bucket],
   services: [FileStorageProvider],
   variants: [
     MemoryFileStorageProvider,

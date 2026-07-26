@@ -1,7 +1,6 @@
 import { type Static, z } from "alepha";
 import { devActionMetadataSchema } from "./DevActionMetadata.ts";
 import { devAtomMetadataSchema } from "./DevAtomMetadata.ts";
-import { devBucketMetadataSchema } from "./DevBucketMetadata.ts";
 import { devCacheMetadataSchema } from "./DevCacheMetadata.ts";
 import { devEntityMetadataSchema } from "./DevEntityMetadata.ts";
 import { devEnvMetadataSchema } from "./DevEnvMetadata.ts";
@@ -10,6 +9,7 @@ import { devModuleMetadataSchema } from "./DevModuleMetadata.ts";
 import { devPageMetadataSchema } from "./DevPageMetadata.ts";
 import { devProviderMetadataSchema } from "./DevProviderMetadata.ts";
 import { devRealmMetadataSchema } from "./DevRealmMetadata.ts";
+import { devStorageMetadataSchema } from "./DevStorageMetadata.ts";
 import { devTopicMetadataSchema } from "./DevTopicMetadata.ts";
 
 export const devSystemSchema = z.object({
@@ -29,7 +29,7 @@ export const devMetadataSchema = z.object({
   actions: z.array(devActionMetadataSchema),
   jobs: z.array(devJobMetadataSchema),
   topics: z.array(devTopicMetadataSchema),
-  buckets: z.array(devBucketMetadataSchema),
+  storages: z.array(devStorageMetadataSchema),
   realms: z.array(devRealmMetadataSchema),
   caches: z.array(devCacheMetadataSchema),
   pages: z.array(devPageMetadataSchema),

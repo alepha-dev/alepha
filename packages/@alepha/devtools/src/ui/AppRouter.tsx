@@ -50,11 +50,11 @@ export class AppRouter {
     lazy: () => import("./components/declared/DevCaches.tsx"),
   });
 
-  buckets = $page({
-    path: "/buckets",
-    label: "Buckets",
+  storages = $page({
+    path: "/storages",
+    label: "Storages",
     parent: this.layout,
-    lazy: () => import("./components/declared/DevBuckets.tsx"),
+    lazy: () => import("./components/declared/DevStorages.tsx"),
   });
 
   realms = $page({

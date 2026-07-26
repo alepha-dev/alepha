@@ -1,11 +1,10 @@
 import { Alepha } from "alepha";
-import { $bucket } from "alepha/bucket";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import type { UserAccountToken } from "alepha/security";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
-import { FileController, FileService } from "../index.ts";
+import { $storage, FileController, FileService } from "../index.ts";
 
 const adminUser: UserAccountToken = {
   id: "00000000-0000-0000-0000-000000000001",
@@ -21,8 +20,8 @@ const asAdmin = { user: adminUser };
 
 describe("FileController", () => {
   class App {
-    images = $bucket({});
-    documents = $bucket({ name: "documents" });
+    images = $storage({});
+    documents = $storage({ name: "documents" });
   }
 
   let createFile: (
@@ -147,9 +146,10 @@ describe("FileController", () => {
         asAdmin,
       );
 
-      expect(files.content[0].blobId).toBe(file3);
-      expect(files.content[1].blobId).toBe(file2);
-      expect(files.content[2].blobId).toBe(file1);
+      // `upload` returns the row now, so compare ids rather than blob ids.
+      expect(files.content[0].id).toBe(file3.id);
+      expect(files.content[1].id).toBe(file2.id);
+      expect(files.content[2].id).toBe(file1.id);
     });
   });
 

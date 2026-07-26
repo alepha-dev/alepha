@@ -69,7 +69,7 @@ src/
 | `$logger` | `alepha/logger` | Structured logging |
 | `$job` | `alepha/api/jobs` | Background jobs AND cron — durable, retried, crash-safe |
 | `$cache` | `alepha/cache` | Cached computations |
-| `$bucket` | `alepha/bucket` | File storage |
+| `$storage` | `alepha/api/files` | File storage with metadata, TTL, querying |
 | `$email` | `alepha/email` | Email sending |
 | `$sms` | `alepha/sms` | SMS sending |
 | `$lock` | `alepha/lock` | Distributed locks |
@@ -100,12 +100,31 @@ an admin controller — that is why it lives under `alepha/api/`. Register
 `AlephaApiJobs`; add `AlephaApiJobsQueue` only if you want dispatch to go
 through a real broker instead of in-process.
 
-**File uploads.** `$bucket` alone is raw blob storage: upload/download/delete
-against S3, R2 or the local disk, with no database row and no query API. If you
-need file metadata, listing, tags, TTL expiry or HTTP upload endpoints, also
-register `AlephaApiFiles` from `alepha/api/files`. Its bucket options (`ttl`,
-`tags`, `persist`, `user`) type-check even when the module is not registered —
-they are silently ignored in that case.
+**File uploads: always reach for `$storage`.** Every upload writes a `files`
+row next to the blob, which is what makes listing, TTL expiry, tags, checksums
+and creator tracking possible.
+
+```ts
+import { $storage } from "alepha/api/files";
+
+class Media {
+  avatars = $storage({ mimeTypes: ["image/png"], maxSize: 2 }); // maxSize is MB
+  scratch = $storage({ ttl: [1, "day"] }); // expires itself
+
+  async save(file: FileLike, user: UserAccountToken) {
+    const stored = await this.avatars.upload(file, { user });
+    return stored.id; // the `files` row id — use it in your own tables
+  }
+}
+```
+
+`upload()` returns the row, not a blob id. `list()` is a real paginated query.
+A storage is a **key prefix inside one bucket** (`{APP_NAME}/{storage}/{fileId}`),
+never a cloud bucket of its own — so declaring many is free.
+
+Register `AlephaApiFiles`; it needs a database. For blobs *without* one, inject
+`FileStorageProvider` from `alepha/bucket` directly and give up metadata,
+expiry, querying and the HTTP endpoints.
 
 ### Security (`alepha/security`)
 | Primitive | Purpose |

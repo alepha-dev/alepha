@@ -260,7 +260,7 @@ Core primitives:
 - `$page` - `import { $page } from "alepha/react/router"`
 - `$job` - `import { $job } from "alepha/api/jobs"`
 - `$cache` - `import { $cache } from "alepha/cache"`
-- `$bucket` - `import { $bucket } from "alepha/bucket"`
+- `$storage` - `import { $storage } from "alepha/api/files"`
 - `$issuer` - `import { $issuer } from "alepha/security"`
 - `$realm` - `import { $realm } from "alepha/api/users"`
 - `$command` - `import { $command } from "alepha/command"`
@@ -272,9 +272,13 @@ Picking the right one:
   idempotency keys, crash recovery, and failure rows in the database. Declare
   `schema` for queue-mode (then `push()`) or `cron` for cron-mode, never both.
   Requires a database. There is no `$scheduler` and no `$queue`.
-- **`$bucket`** — raw blob storage only (upload/download/delete). For file
-  metadata, listing, tags, TTL or HTTP upload endpoints, also register
-  `AlephaApiFiles` from `alepha/api/files`.
+- **Files** — always `$storage`. Every upload writes a `files` row next to the
+  blob, so you get paginated listing, TTL expiry, tags, checksums and creator
+  tracking. `upload()` returns the row (use `.id`), not a blob id. A storage is
+  a key prefix inside one bucket, never a bucket of its own, so declaring many
+  costs nothing. Requires a database. There is no `$bucket`.
+  For blobs without a database, inject `FileStorageProvider` from
+  `alepha/bucket` and give up all of the above.
 
 React hooks:
 

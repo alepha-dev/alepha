@@ -1,7 +1,6 @@
 import { $inject, Alepha, z } from "alepha";
-import { files } from "alepha/api/files";
+import { $storage, files } from "alepha/api/files";
 import { users } from "alepha/api/users";
-import { $bucket } from "alepha/bucket";
 import { $logger } from "alepha/logger";
 import { $repository, pageQuerySchema } from "alepha/orm";
 import {
@@ -78,11 +77,13 @@ export class CampaignController {
   limits = $inject(CampaignLimits);
 
   /**
-   * Bucket for campaign icons (avatars). Image-only, 2 MB cap.
+   * Campaign icons (avatars). Image-only, 2 MB cap.
    */
-  iconBucket = $bucket({
+  iconBucket = $storage({
     name: "campaign-icons",
-    maxSize: 2 * 1024 * 1024,
+    description: "Campaign icons",
+    // Megabytes. This read `2 * 1024 * 1024` — two million megabytes.
+    maxSize: 2,
     mimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
   });
 

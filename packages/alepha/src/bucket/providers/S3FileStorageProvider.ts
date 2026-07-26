@@ -3,7 +3,6 @@ import { Readable } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import {
   $env,
-  $hook,
   $inject,
   Alepha,
   AlephaError,
@@ -17,7 +16,6 @@ import { currentTenantAtom } from "alepha/security";
 import { FileDetector, FileSystemProvider } from "alepha/system";
 import { S3mini } from "s3mini";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
-import { $bucket } from "../primitives/$bucket.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
 const envSchema = z.object({
@@ -31,6 +29,13 @@ const envSchema = z.object({
    * - DigitalOcean Spaces: `https://<region>.digitaloceanspaces.com`
    */
   S3_ENDPOINT: z.string(),
+
+  /**
+   * The one S3 bucket that holds every container.
+   *
+   * Containers are key prefixes inside it, not separate buckets.
+   */
+  S3_BUCKET_NAME: z.string(),
 
   /**
    * AWS region or "auto" for R2.
@@ -60,7 +65,20 @@ declare module "alepha" {
  * Backed by `s3mini` (zero-dep, ~20 KB). Works with AWS S3, Cloudflare R2,
  * MinIO, DigitalOcean Spaces, Backblaze B2, and any other S3-compatible service.
  *
- * Uses path-style addressing (`<endpoint>/<bucket>`).
+ * Uses path-style addressing (`<endpoint>/<S3_BUCKET_NAME>`), and keys every
+ * object as `{APP_NAME}/{tenantId}/{container}/{fileId}` — the same scheme as
+ * {@link R2FileStorageProvider}.
+ *
+ * **Required environment variables:**
+ * - `S3_ENDPOINT`, `S3_BUCKET_NAME`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`
+ *
+ * **Optional:**
+ * - `S3_REGION` (default `auto`), `APP_NAME` (prefix, for multi-app buckets)
+ *
+ * Earlier versions created **one S3 bucket per container** and provisioned
+ * them at boot. That capped container count at the account's bucket limit and
+ * created infrastructure implicitly. The bucket is now yours to create; the
+ * provider only writes keys into it.
  */
 export class S3FileStorageProvider implements FileStorageProvider {
   protected readonly log = $logger();
@@ -69,66 +87,50 @@ export class S3FileStorageProvider implements FileStorageProvider {
   protected readonly fileSystem = $inject(FileSystemProvider);
   protected readonly fileDetector = $inject(FileDetector);
   protected readonly crypto = $inject(CryptoProvider);
-  protected readonly clients: Map<string, S3mini> = new Map();
+  protected client?: S3mini;
 
   /**
-   * Convert bucket name to S3-compatible format.
-   * S3 bucket names must be lowercase, 3-63 characters, no underscores.
+   * Optional key prefix from `APP_NAME`, so several apps can share one bucket.
    */
-  public convertName(name: string): string {
-    return name.replaceAll("/", "-").replaceAll("_", "-").toLowerCase();
+  public get prefix(): string | undefined {
+    return this.alepha.env.APP_NAME;
   }
 
-  protected getClient(bucketName: string): S3mini {
-    const name = this.convertName(bucketName);
-    let client = this.clients.get(name);
-    if (!client) {
+  protected getClient(): S3mini {
+    if (!this.client) {
       const endpoint = this.env.S3_ENDPOINT.replace(/\/+$/, "");
-      client = new S3mini({
+      this.client = new S3mini({
         accessKeyId: this.env.S3_ACCESS_KEY_ID,
         secretAccessKey: this.env.S3_SECRET_ACCESS_KEY,
         region: this.env.S3_REGION || "auto",
-        endpoint: `${endpoint}/${name}`,
+        endpoint: `${endpoint}/${this.env.S3_BUCKET_NAME}`,
       });
-      this.clients.set(name, client);
     }
-    return client;
+    return this.client;
   }
 
-  protected readonly onStart = $hook({
-    on: "start",
-    handler: async () => {
-      for (const bucket of this.alepha.primitives($bucket)) {
-        if (bucket.provider !== this) {
-          continue;
-        }
-
-        const name = this.convertName(bucket.name);
-        const client = this.getClient(bucket.name);
-
-        this.log.debug(`Preparing S3 bucket '${name}'...`);
-
-        const exists = await client.bucketExists();
-        if (!exists) {
-          this.log.debug(`Creating S3 bucket '${name}'...`);
-          const created = await client.createBucket();
-          if (!created) {
-            throw new AlephaError(`Failed to create S3 bucket '${name}'`);
-          }
-        }
-
-        this.log.info(`S3 bucket '${bucket.name}' OK`);
-      }
-    },
-  });
+  /**
+   * Object key: `{APP_NAME}/{tenantId}/{container}/{fileId}`, with the
+   * optional segments omitted when absent. Mirrors R2 exactly so a container
+   * means the same thing on every backend.
+   */
+  protected key(container: string, fileId: string): string {
+    const parts = [container, fileId];
+    const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
+    if (tenantId) {
+      parts.unshift(tenantId);
+    }
+    if (this.prefix) {
+      parts.unshift(this.prefix);
+    }
+    return parts.join("/");
+  }
 
   /**
-   * Object key, tenant-scoped when a tenant is active (`currentTenantAtom`):
-   * `{tenantId}/{fileId}` within the per-bucket S3 bucket. No tenant → `{fileId}`.
+   * Everything under one container, as a key prefix ending in `/`.
    */
-  protected key(fileId: string): string {
-    const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
-    return tenantId ? `${tenantId}/${fileId}` : fileId;
+  protected containerPrefix(container: string): string {
+    return `${this.key(container, "")}`;
   }
 
   protected createId(mimeType: string): string {
@@ -147,12 +149,12 @@ export class S3FileStorageProvider implements FileStorageProvider {
       `Uploading file '${file.name}' to bucket '${bucketName}' with id '${fileId}'...`,
     );
 
-    const client = this.getClient(bucketName);
+    const client = this.getClient();
 
     try {
       const buffer = new Uint8Array(await file.arrayBuffer());
       await client.putObject(
-        this.key(fileId),
+        this.key(bucketName, fileId),
         buffer,
         file.type || "application/octet-stream",
         undefined,
@@ -178,8 +180,10 @@ export class S3FileStorageProvider implements FileStorageProvider {
       `Downloading file '${fileId}' from bucket '${bucketName}'...`,
     );
 
-    const client = this.getClient(bucketName);
-    const response = await client.getObjectResponse(this.key(fileId));
+    const client = this.getClient();
+    const response = await client.getObjectResponse(
+      this.key(bucketName, fileId),
+    );
 
     if (!response) {
       throw new FileNotFoundError(
@@ -220,15 +224,15 @@ export class S3FileStorageProvider implements FileStorageProvider {
       `Checking existence of file '${fileId}' in bucket '${bucketName}'...`,
     );
 
-    const client = this.getClient(bucketName);
-    const result = await client.objectExists(this.key(fileId));
+    const client = this.getClient();
+    const result = await client.objectExists(this.key(bucketName, fileId));
     return result === true;
   }
 
   public async delete(bucketName: string, fileId: string): Promise<void> {
     this.log.trace(`Deleting file '${fileId}' from bucket '${bucketName}'...`);
 
-    const client = this.getClient(bucketName);
+    const client = this.getClient();
 
     // S3 DELETE is idempotent (204 either way) — check existence explicitly
     // so `delete()` behaves like Memory/Local/R2 and throws on a missing id
@@ -240,7 +244,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
     }
 
     try {
-      await client.deleteObject(this.key(fileId));
+      await client.deleteObject(this.key(bucketName, fileId));
     } catch (error) {
       this.log.error(`Failed to delete file: ${error}`);
       if (error instanceof Error) {
@@ -252,14 +256,15 @@ export class S3FileStorageProvider implements FileStorageProvider {
 
   public async list(bucketName: string): Promise<string[]> {
     this.log.trace(`Listing files in bucket '${bucketName}'...`);
-    const client = this.getClient(bucketName);
-    const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
-    const prefix = tenantId ? `${tenantId}/` : undefined;
+    const client = this.getClient();
+    // Scope to this container. Every container now shares one S3 bucket, so
+    // listing without the prefix would return every other container's keys.
+    const prefix = this.containerPrefix(bucketName);
     // Flat, single-page listing (~1000 keys). Not a search API.
     const objects = await client.listObjects(undefined, prefix);
     if (!objects) return [];
     return objects.map((object) =>
-      prefix && object.Key.startsWith(prefix)
+      object.Key.startsWith(prefix)
         ? object.Key.slice(prefix.length)
         : object.Key,
     );
@@ -273,10 +278,12 @@ export class S3FileStorageProvider implements FileStorageProvider {
     this.log.trace(
       `Deleting ${fileIds.length} files from bucket '${bucketName}'...`,
     );
-    const client = this.getClient(bucketName);
+    const client = this.getClient();
     // S3 DeleteObjects caps at 1000 keys per request.
     for (let i = 0; i < fileIds.length; i += 1000) {
-      const keys = fileIds.slice(i, i + 1000).map((id) => this.key(id));
+      const keys = fileIds
+        .slice(i, i + 1000)
+        .map((id) => this.key(bucketName, id));
       try {
         // bun:s3 client exposes a per-key deleteObject; some SDKs also expose
         // deleteObjects(keys: string[]). Prefer batch when available.

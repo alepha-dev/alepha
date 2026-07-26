@@ -4,14 +4,14 @@ import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { campaigns } from "../entities/campaigns.ts";
 import { quests } from "../entities/quests.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 
 export class KanbanController {
   protected campaigns = $repository(campaigns);
   protected quests = $repository(quests);
-  protected security = $inject(AppSecurityProvider);
+  protected security = $inject(CampaignSecurityService);
   protected questMapper = $inject(QuestResourceMapper);
 
   /**

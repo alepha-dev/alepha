@@ -829,8 +829,8 @@ export class PlatformCommand {
     } catch {}
 
     try {
-      const buckets = alepha.primitives("$bucket");
-      hasBucket = buckets.length > 0;
+      const storages = alepha.primitives("$storage");
+      hasBucket = storages.length > 0;
     } catch {}
 
     try {

@@ -1,10 +1,9 @@
 import { Alepha } from "alepha";
-import { $bucket } from "alepha/bucket";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import type { UserAccountToken } from "alepha/security";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
-import { AdminFileStatsController, FileService } from "../index.ts";
+import { $storage, AdminFileStatsController, FileService } from "../index.ts";
 
 const adminUser: UserAccountToken = {
   id: "00000000-0000-0000-0000-000000000001",
@@ -14,8 +13,8 @@ const adminUser: UserAccountToken = {
 
 describe("AdminFileStatsController", () => {
   class App {
-    images = $bucket({ name: "images" });
-    documents = $bucket({ name: "documents" });
+    images = $storage({ name: "images" });
+    documents = $storage({ name: "documents" });
   }
 
   let createFile: (

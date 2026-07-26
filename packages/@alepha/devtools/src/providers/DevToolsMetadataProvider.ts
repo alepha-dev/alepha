@@ -1,6 +1,6 @@
 import { $inject, Alepha, type TObject, type TSchema, z } from "alepha";
+import { $storage } from "alepha/api/files";
 import { JobProvider } from "alepha/api/jobs";
-import { $bucket } from "alepha/bucket";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -22,7 +22,6 @@ import { $action, ServerProvider } from "alepha/server";
 import { $topic } from "alepha/topic";
 import type { DevActionMetadata } from "../schemas/DevActionMetadata.ts";
 import type { DevAtomMetadata } from "../schemas/DevAtomMetadata.ts";
-import type { DevBucketMetadata } from "../schemas/DevBucketMetadata.ts";
 import type { DevCacheMetadata } from "../schemas/DevCacheMetadata.ts";
 import type {
   DevEntityColumn,
@@ -38,6 +37,7 @@ import type { DevModuleMetadata } from "../schemas/DevModuleMetadata.ts";
 import type { DevPageMetadata } from "../schemas/DevPageMetadata.ts";
 import type { DevProviderMetadata } from "../schemas/DevProviderMetadata.ts";
 import type { DevRealmMetadata } from "../schemas/DevRealmMetadata.ts";
+import type { DevStorageMetadata } from "../schemas/DevStorageMetadata.ts";
 import type { DevTopicMetadata } from "../schemas/DevTopicMetadata.ts";
 
 export class DevToolsMetadataProvider {
@@ -149,15 +149,18 @@ export class DevToolsMetadataProvider {
     return Array.from(topicMap.values());
   }
 
-  public getBuckets(): DevBucketMetadata[] {
-    const bucketPrimitives = this.alepha.primitives($bucket);
-
-    return bucketPrimitives.map((bucket) => ({
-      name: bucket.name,
-      description: bucket.options.description,
-      mimeTypes: bucket.options.mimeTypes,
-      maxSize: bucket.options.maxSize,
-      provider: this.getProviderName(bucket.options.provider),
+  /**
+   * File storages declared with `$storage`, including the default retention
+   * (`ttl`) that only exists because storages are database-backed.
+   */
+  public getStorages(): DevStorageMetadata[] {
+    return this.alepha.primitives($storage).map((storage) => ({
+      name: storage.name,
+      description: storage.options.description,
+      mimeTypes: storage.options.mimeTypes,
+      maxSize: storage.options.maxSize,
+      ttl: storage.options.ttl ? String(storage.options.ttl) : undefined,
+      provider: this.getProviderName(storage.options.provider),
     }));
   }
 
@@ -464,7 +467,7 @@ export class DevToolsMetadataProvider {
       actions: this.getActions(),
       jobs: this.getJobs(),
       topics: this.getTopics(),
-      buckets: this.getBuckets(),
+      storages: this.getStorages(),
       realms: this.getRealms(),
       caches: this.getCaches(),
       pages: this.getPages(),

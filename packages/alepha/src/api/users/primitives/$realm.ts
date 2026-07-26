@@ -38,7 +38,6 @@ import {
 } from "../atoms/realmAuthSettingsAtom.ts";
 import { SessionAudits } from "../audits/SessionAudits.ts";
 import { UserAudits } from "../audits/UserAudits.ts";
-import { UserBuckets } from "../buckets/UserBuckets.ts";
 import type { identities } from "../entities/identities.ts";
 import type { sessions } from "../entities/sessions.ts";
 import { DEFAULT_USER_REALM_NAME, type users } from "../entities/users.ts";
@@ -46,6 +45,7 @@ import { UserJobs } from "../jobs/UserJobs.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { SessionService } from "../services/SessionService.ts";
+import { UserStorage } from "../storage/UserStorage.ts";
 
 export type RealmPrimitive = IssuerPrimitive & WithLinkFn & WithLoginFn;
 
@@ -101,7 +101,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   // Each feature registers its wrapper service which internally uses the module primitives
 
   if (features.avatars) {
-    alepha.with(UserBuckets);
+    alepha.with(UserStorage);
   }
 
   if (features.audits) {

@@ -8,8 +8,8 @@ import { FileSystemProvider } from "alepha/system";
 import { campaigns } from "../entities/campaigns.ts";
 import { chapters } from "../entities/chapters.ts";
 import { quests } from "../entities/quests.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { importResultSchema } from "../schemas/questImportRow.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { QuestCsvFormatter } from "../services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "../services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "../services/QuestImportFormatProvider.ts";
@@ -21,7 +21,7 @@ export class CampaignQuestPortabilityController {
   protected readonly quests = $repository(quests);
   protected readonly campaigns = $repository(campaigns);
   protected readonly chapters = $repository(chapters);
-  protected readonly security = $inject(AppSecurityProvider);
+  protected readonly security = $inject(CampaignSecurityService);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly formatter = $inject(QuestCsvFormatter);

@@ -58,7 +58,7 @@ export default defineConfig({
   //
   // Deploy to Cloudflare in ~10s: \`alepha platform up --env production\`
   // Requires \`wrangler login\` once. D1, R2, KV, Queues and cron triggers
-  // are auto-provisioned from your $repository / $bucket / $cache / $job
+  // are auto-provisioned from your $repository / $storage / $cache / $job
   // declarations — no wrangler.toml to maintain.
 ${plugins}
 });

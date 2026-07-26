@@ -19,7 +19,6 @@ import { $logger } from "alepha/logger";
 import { currentTenantAtom } from "alepha/security";
 import { FileDetector, FileSystemProvider } from "alepha/system";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
-import { $bucket } from "../primitives/$bucket.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -80,21 +79,13 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
+      // Only the root. Per-container directories are created lazily by
+      // `upload`, which already does a recursive mkdir — pre-creating them
+      // meant enumerating a primitive registry this provider no longer knows
+      // (and never needed) anything about.
       try {
         await mkdir(this.storagePath, { recursive: true });
       } catch {}
-
-      for (const bucket of this.alepha.primitives($bucket)) {
-        if (bucket.provider !== this) {
-          continue;
-        }
-
-        await mkdir(join(this.storagePath, bucket.name), {
-          recursive: true,
-        });
-
-        this.log.debug(`Bucket '${bucket.name}' at ${this.storagePath} OK`);
-      }
     },
   });
 

@@ -1,15 +1,14 @@
 import { $inject, z } from "alepha";
-import { FileController, files } from "alepha/api/files";
-import { $bucket } from "alepha/bucket";
+import { $storage, FileController, files } from "alepha/api/files";
 import { $repository, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 import { archiveBlobs } from "../entities/archiveBlobs.ts";
-import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import {
   ARCHIVE_BLOB_BUCKET_NAME,
   ArchiveBlobService,
 } from "../services/ArchiveBlobService.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 
 const hydratedBlobSchema = z.object({
   id: z.uuid(),
@@ -44,18 +43,18 @@ export class BlobController {
   protected readonly frameworkFiles = $repository(files);
   protected readonly blobService = $inject(ArchiveBlobService);
   protected readonly fileController = $inject(FileController);
-  protected readonly security = $inject(AppSecurityProvider);
+  protected readonly security = $inject(CampaignSecurityService);
 
   /**
-   * Bucket for Archive blobs. Registered here so the framework's
-   * `FileService.uploadFile` recognises `?bucket=archive-blobs` —
-   * without this declaration, every Archive upload 404s with
-   * "Bucket 'archive-blobs' not found." Any logged-in user with
+   * Storage for Archive blobs. Declared here so `?bucket=archive-blobs`
+   * resolves — without it every Archive upload 404s with
+   * "Storage 'archive-blobs' not found." Any logged-in user with
    * `file:create` can upload; per-campaign membership is enforced
    * downstream by the `registerBlob` action below.
    */
-  archiveBucket = $bucket({
+  archiveBucket = $storage({
     name: ARCHIVE_BLOB_BUCKET_NAME,
+    description: "Archive blobs",
   });
 
   /**
