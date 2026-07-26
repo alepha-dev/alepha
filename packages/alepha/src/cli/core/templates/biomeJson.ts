@@ -8,7 +8,7 @@ export const biomeJson = () =>
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!dist"]
+    "includes": ["**", "!node_modules", "!dist", "!public"]
   },
   "formatter": {
     "enabled": true,
@@ -17,7 +17,7 @@ export const biomeJson = () =>
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "a11y": {
         "useFocusableInteractive": "off",
         "useSemanticElements": "off",

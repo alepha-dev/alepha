@@ -256,14 +256,14 @@ export class ProjectScaffolder {
    */
   public async ensureMainServerTs(
     root: string,
-    opts: { api?: boolean; react?: boolean; force?: boolean } = {},
+    opts: { react?: boolean; force?: boolean } = {},
   ): Promise<void> {
     const srcDir = this.fs.join(root, "src");
     await this.fs.mkdir(srcDir, { recursive: true });
     await this.ensureFile(
       srcDir,
       "main.server.ts",
-      mainServerTs({ api: opts.api, react: opts.react }),
+      mainServerTs({ react: opts.react }),
       opts.force,
     );
   }
@@ -324,13 +324,12 @@ export class ProjectScaffolder {
    * Creates:
    * - src/main.browser.ts
    * - src/main.css
+   * - vite.config.ts (Tailwind plugin)
    * - src/web/index.ts, src/web/AppRouter.ts, src/web/components/Home.tsx
    */
   public async ensureWebProject(
     root: string,
     opts: {
-      api?: boolean;
-      tailwind?: boolean;
       force?: boolean;
     } = {},
   ): Promise<void> {
@@ -346,17 +345,10 @@ export class ProjectScaffolder {
     await this.ensureFile(root, "public/favicon.svg", logoSvg, opts.force);
 
     // src/main.css
-    await this.ensureFile(
-      root,
-      "src/main.css",
-      mainCss({ tailwind: opts.tailwind }),
-      opts.force,
-    );
+    await this.ensureFile(root, "src/main.css", mainCss(), opts.force);
 
     // vite.config.ts (Tailwind CSS plugin)
-    if (opts.tailwind) {
-      await this.ensureFile(root, "vite.config.ts", viteConfigTs(), opts.force);
-    }
+    await this.ensureFile(root, "vite.config.ts", viteConfigTs(), opts.force);
 
     // Web structure
     await this.ensureFile(
@@ -368,13 +360,13 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/web/AppRouter.ts",
-      webAppRouterTs({ api: opts.api }),
+      webAppRouterTs(),
       opts.force,
     );
     await this.ensureFile(
       root,
       "src/web/components/Home.tsx",
-      webHomeComponentTsx({ api: opts.api }),
+      webHomeComponentTsx(),
       opts.force,
     );
     await this.ensureFile(
@@ -432,14 +424,16 @@ export class ProjectScaffolder {
     root: string;
     flags: {
       pm?: "yarn" | "npm" | "pnpm" | "bun";
-      api?: boolean;
-      react?: boolean;
-      tailwind?: boolean;
       force?: boolean;
       "no-devtools"?: boolean;
     };
     args?: string;
   }) {
+    // Whether the user named a target directory. Distinguishes
+    // `alepha init my-app` (create a project there) from a bare
+    // `alepha init` (fill in whatever is missing, right here).
+    const explicitPath = !!args;
+
     if (!args) {
       // If the current directory doesn't look like an existing project
       // (no package.json), default to creating a `my-app/` subdirectory
@@ -457,16 +451,11 @@ export class ProjectScaffolder {
       await this.fs.mkdir(root, { force: true });
     }
 
-    // Flag cascading: --tailwind → --react
-    if (flags.tailwind) {
-      flags.react = true;
-    }
-
-    const f = flags;
-
-    // When codegen flags are set, target directory must be empty (unless --force)
-    const hasCodegenFlags = flags.api || flags.react || flags.tailwind;
-    if (hasCodegenFlags && !flags.force) {
+    // Creating a project at a named path expects a clean slate, so refuse to
+    // scaffold over someone else's files. A bare `alepha init` is the
+    // fill-in-the-gaps mode and stays safe to run on an existing project —
+    // `ensureFile` never overwrites without `--force`.
+    if (explicitPath && !flags.force) {
       const files = await this.fs.ls(root);
       // Allow a directory that only has package.json (common for monorepo packages)
       const meaningful = files.filter((f) => f !== "package.json");
@@ -484,7 +473,11 @@ export class ProjectScaffolder {
     // monorepo sub-packages where agent files live at workspace root).
     const writeAgentMd = !workspace.isPackage;
 
+    // Expo owns its own client runtime, so it is the one case where the web
+    // module and its Tailwind pipeline are skipped. Everything else gets the
+    // full shape unconditionally.
     const isExpo = await this.pm.hasExpo(root);
+    const web = !isExpo;
 
     // Devtools is on by default for apps and never for workspace packages —
     // a library has no Vite dev shell for the overlay to attach to.
@@ -497,7 +490,12 @@ export class ProjectScaffolder {
       handler: async () => {
         await this.ensureConfig(root, {
           force,
-          packageJson: { ...f, isPackage: workspace.isPackage, devtools },
+          packageJson: {
+            react: web,
+            tailwind: web,
+            isPackage: workspace.isPackage,
+            devtools,
+          },
           tsconfigJson: !workspace.config.tsconfigJson,
           biomeJson: true,
           editorconfig: !workspace.config.editorconfig,
@@ -510,21 +508,11 @@ export class ProjectScaffolder {
         // Create alepha.config.ts with documented options
         await this.ensureAlephaConfig(root, { force, devtools });
 
-        // Create project structure based on flags
-        await this.ensureMainServerTs(root, {
-          api: !!flags.api,
-          react: !!flags.react && !isExpo,
-          force,
-        });
-        if (flags.api) {
-          await this.ensureApiProject(root, { force });
-        }
-        if (flags.react && !isExpo) {
-          await this.ensureWebProject(root, {
-            api: !!flags.api,
-            tailwind: !!flags.tailwind,
-            force,
-          });
+        // Every project gets the same structure
+        await this.ensureMainServerTs(root, { react: web, force });
+        await this.ensureApiProject(root, { force });
+        if (web) {
+          await this.ensureWebProject(root, { force });
         }
       },
     });

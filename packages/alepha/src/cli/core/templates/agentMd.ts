@@ -3,6 +3,32 @@ export const agentMd = (): string => {
 
 This is an **Alepha** project.
 
+## Structure
+
+Every Alepha project has the same layout. There are no variants — put new
+code where this table says it goes.
+
+\`\`\`
+src/
+├── api/                  # Backend
+│   ├── controllers/      # $action endpoints
+│   ├── services/         # Business logic
+│   ├── entities/         # $entity definitions
+│   ├── schemas/          # Request/response schemas
+│   └── index.ts          # ApiModule ($module)
+├── web/                  # Frontend (React, SSR)
+│   ├── components/       # React components
+│   ├── AppRouter.ts      # $page routes
+│   └── index.ts          # WebModule ($module)
+├── main.server.ts        # Server entry
+├── main.browser.ts       # Browser entry
+└── main.css              # Tailwind entry
+\`\`\`
+
+Every directory has an \`index.ts\` exporting a \`$module\` that groups its
+services. Tailwind is already wired up through \`vite.config.ts\` — use
+utility classes, don't add another CSS framework.
+
 ## Rules
 
 - Always check \`node_modules/alepha/src/\` before suggesting npm packages

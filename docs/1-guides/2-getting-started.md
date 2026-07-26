@@ -22,25 +22,22 @@ This creates a `my-app` directory with:
 - `tsconfig.json` configured for TypeScript
 - `alepha.config.ts` with documented build options
 - `biome.json` for formatting and linting
-- `src/main.server.ts` as the entry file
+- `src/api/` with an example controller
+- `src/web/` with a React router and page
+- `src/main.server.ts` and `src/main.browser.ts` as the entry files
 
 Dependencies are installed automatically.
 
-### Init Flags
+Every Alepha project has this same shape — there are no flags to pick a
+flavour. One layout means anyone opening the project, human or AI, already
+knows where things live. If you don't need the frontend, delete `src/web/`.
 
-You can scaffold more structure with flags:
+The only options are `--pm` to choose a package manager, `--force` to
+overwrite existing files, and `--no-devtools`:
 
 ```bash
-npx alepha@latest init my-app --api              # Add API module (src/api/)
-npx alepha@latest init my-app --api --react      # Add API + React frontend (src/web/)
-npx alepha@latest init my-app --api --react --admin  # Full stack with admin panel
-npx alepha@latest init my-app --test             # Include Vitest test directory
-npx alepha@latest init my-app --pm=bun           # Use Bun as package manager
+npx alepha@latest init my-app --pm=bun
 ```
-
-Flag cascading: `--admin` implies `--auth`, which implies `--api` and `--ui`, which implies `--react`.
-
-For this guide, we will start with the simplest possible app.
 
 ## Your First Server
 
@@ -50,17 +47,22 @@ After running `init`, enter the project:
 cd my-app
 ```
 
-Open the entry file. For a minimal project (no flags), it looks like this:
+Open the entry file. It wires up the two generated modules:
 
 ```typescript filename="src/main.server.ts"
 import { Alepha, run } from "alepha";
+import { ApiModule } from "./api/index.ts";
+import { WebModule } from "./web/index.ts";
 
 const alepha = Alepha.create();
+
+alepha.with(ApiModule);
+alepha.with(WebModule);
 
 run(alepha);
 ```
 
-This starts an empty server. Let us add a route. Replace the file contents with:
+To see the smallest thing Alepha can do, strip it back to a single route. Replace the file contents with:
 
 ```typescript filename="src/main.server.ts"
 import { run } from "alepha";
@@ -239,7 +241,7 @@ See the [Platform Plugin](/docs/cli/plugins/platform) guide for full configurati
 
 ## Project Structure
 
-With `--api` and `--react` flags, `alepha init` scaffolds this structure:
+`alepha init` always scaffolds this structure:
 
 ```
 my-app/
@@ -247,10 +249,11 @@ my-app/
   package.json
   tsconfig.json
   biome.json
+  vite.config.ts            # Tailwind plugin
   src/
     main.server.ts          # Server entry point
-    main.browser.ts         # Browser entry point (React apps)
-    main.css                # Global styles (React apps)
+    main.browser.ts         # Browser entry point
+    main.css                # Global styles (@import "tailwindcss")
     api/
       index.ts              # API module definition
       controllers/
@@ -283,14 +286,16 @@ to. To keep the route but drop the floating button, pass
 `devtools({ hideButton: true })` in your config. Removing the dependency later
 turns the plugin into a no-op with a warning rather than breaking config load.
 
-For API-only projects (no `--react`), the `web/` directory and `main.browser.ts` are absent.
+Building an API-only service? Delete `src/web/`, `src/main.browser.ts` and
+`src/main.css`, and drop the `WebModule` line from `main.server.ts`. Expo
+projects skip the web scaffolding automatically.
 
 ### Entry Points
 
-| File | Purpose | When needed |
-|------|---------|-------------|
-| `main.server.ts` | Server entry point | Always |
-| `main.browser.ts` | Browser entry point | React/full-stack only |
+| File | Purpose |
+|------|---------|
+| `main.server.ts` | Server entry point |
+| `main.browser.ts` | Browser entry point |
 
 ### Scaling with Modules
 

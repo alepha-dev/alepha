@@ -48,14 +48,26 @@ export class PackageManagerUtils {
 
   /**
    * Detect the package manager used in the project.
-   * Checks current directory first, then workspace root if in a monorepo.
+   *
+   * Resolution order, strongest evidence first:
+   *
+   * 1. An explicit `--pm` flag
+   * 2. A lockfile in the target directory
+   * 3. The workspace root's package manager, in a monorepo
+   * 4. How the CLI was invoked (`npm_config_user_agent`)
+   * 5. The runtime, when running under Bun
+   * 6. npm
+   *
+   * Step 4 is what makes `bunx alepha init` scaffold a Bun project and
+   * `pnpm dlx alepha init` a pnpm one. It sits below the lockfile and
+   * workspace checks on purpose: an existing project already decided, and
+   * reaching for `npx` inside a Yarn repo should not switch it to npm.
    */
   public async getPackageManager(
     root: string,
     pm?: "yarn" | "pnpm" | "npm" | "bun",
   ): Promise<"yarn" | "pnpm" | "npm" | "bun"> {
     if (pm) return pm;
-    if (this.alepha.isBun()) return "bun";
 
     // Check current directory first
     if (await this.fs.exists(this.fs.join(root, "bun.lock"))) return "bun";
@@ -71,7 +83,45 @@ export class PackageManagerUtils {
       return workspace.packageManager;
     }
 
+    const invoker = this.detectFromUserAgent();
+    if (invoker) {
+      return invoker;
+    }
+
+    if (this.alepha.isBun()) return "bun";
+
     return "npm";
+  }
+
+  /**
+   * Read the package manager that spawned this process.
+   *
+   * Every major package manager sets `npm_config_user_agent` when it runs a
+   * binary, so this survives `npx` / `bunx` / `pnpm dlx` / `yarn dlx` alike.
+   */
+  protected detectFromUserAgent(): "yarn" | "pnpm" | "npm" | "bun" | null {
+    return this.parseUserAgent(process.env.npm_config_user_agent);
+  }
+
+  /**
+   * Parse a `npm_config_user_agent` string.
+   *
+   * The value looks like `pnpm/9.12.0 npm/? node/v22.11.0 darwin arm64`,
+   * so the leading token before the first slash names the manager.
+   */
+  protected parseUserAgent(
+    agent: string | undefined,
+  ): "yarn" | "pnpm" | "npm" | "bun" | null {
+    const name = agent?.trim().split("/")[0];
+    switch (name) {
+      case "yarn":
+      case "pnpm":
+      case "npm":
+      case "bun":
+        return name;
+      default:
+        return null;
+    }
   }
 
   /**

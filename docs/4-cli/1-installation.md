@@ -7,10 +7,10 @@ The Alepha CLI is bundled inside the `alepha` package. No separate installation 
 Create a new project:
 
 ```bash
-npx alepha init
+npx alepha init my-app
 ```
 
-This initializes your project and adds `alepha` as a dependency. From then on, run commands from your project directory:
+This scaffolds a full-stack project — API, React web module, and Tailwind — and adds `alepha` as a dependency. From then on, run commands from your project directory:
 
 ```bash
 npx alepha dev

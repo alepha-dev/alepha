@@ -8,6 +8,11 @@ export class InitCommand {
   /**
    * Ensure the project has the necessary Alepha configuration files.
    * Add the correct dependencies to package.json and install them.
+   *
+   * Every project gets the same full-stack shape — API (`src/api/`), web
+   * (`src/web/`) and Tailwind. There is nothing to opt into. A single
+   * canonical layout is what makes an Alepha project legible at a glance,
+   * to humans and to AI assistants alike.
    */
   public readonly init = $command({
     name: "init",
@@ -23,20 +28,6 @@ export class InitCommand {
       pm: z
         .enum(["yarn", "npm", "pnpm", "bun"])
         .describe("Package manager to use")
-        .optional(),
-      // choose which modules to scaffold
-      api: z
-        .boolean()
-        .describe("Include API module structure (src/api/)")
-        .optional(),
-      react: z
-        .boolean()
-        .meta({ aliases: ["r"] })
-        .describe("Include React dependencies and web module (src/web/)")
-        .optional(),
-      tailwind: z
-        .boolean()
-        .describe("Include Tailwind CSS with Vite plugin. Implies --react")
         .optional(),
       force: z
         .boolean()

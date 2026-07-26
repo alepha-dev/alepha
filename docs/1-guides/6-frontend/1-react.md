@@ -4,13 +4,13 @@ Alepha provides first-class React support with server-side rendering, dependency
 
 ## Project Setup
 
-Scaffold a React project with the Alepha CLI:
+Scaffold a project with the Alepha CLI:
 
 ```bash
-alepha init --react
+alepha init my-app
 ```
 
-This generates two entry points:
+React, SSR and Tailwind are part of every Alepha project — there is no flag to enable them. This generates two entry points:
 
 - `src/main.server.ts` (or `main.ts`) -- server entry, registers modules and starts the app
 - `src/main.browser.ts` -- browser entry, registers browser-side modules and hydrates

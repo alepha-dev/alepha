@@ -4,13 +4,13 @@ Alepha provides type-safe HTTP endpoints through the `$action` primitive. Action
 
 ## Quick Start
 
-Scaffold a new API project:
+Scaffold a new project:
 
 ```bash
-alepha init --api
+alepha init my-api
 ```
 
-This generates a project in current directory with a server entry point, a sample controller, and Zod schemas.
+Every Alepha project ships with `src/api/` — a server entry point, a sample controller, and Zod schemas. Building an API-only service? Delete `src/web/` and the `WebModule` line from `main.server.ts`.
 
 ## Defining Actions
 

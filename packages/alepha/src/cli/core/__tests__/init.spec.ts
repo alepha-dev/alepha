@@ -249,11 +249,22 @@ describe("alepha init", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Minimal Project Structure (default, no flags)
+  // Project Structure — API + web + Tailwind, always. No flags to opt in.
   // ─────────────────────────────────────────────────────────────────────────────
 
-  describe("minimal project structure (default)", () => {
-    it("should create src/main.server.ts", async () => {
+  describe("project structure", () => {
+    it("should reject the removed structure flags", async () => {
+      for (const flag of ["--api", "--react", "-r", "--tailwind"]) {
+        const { fs, cli, cmd, json } = createTestEnv();
+        await setupProject(fs, json);
+
+        await expect(
+          cli.run(cmd.init, { argv: flag, root: "/project" }),
+        ).rejects.toThrowError(/Unknown flag/);
+      }
+    });
+
+    it("should create src/main.server.ts wiring both modules", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
@@ -263,43 +274,19 @@ describe("alepha init", () => {
       expect(
         fs.wasWrittenMatching("/project/src/main.server.ts", /Alepha\.create/),
       ).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/src/main.server.ts", /ApiModule/),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/src/main.server.ts", /WebModule/),
+      ).toBe(true);
     });
 
-    it("should not create api structure without --api flag", async () => {
+    it("should create api structure by default", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
       await cli.run(cmd.init, { root: "/project" });
-
-      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(false);
-      expect(
-        fs.wasWritten("/project/src/api/controllers/HelloController.ts"),
-      ).toBe(false);
-    });
-  });
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // API Project Structure (--api flag)
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  describe("--api flag", () => {
-    it("should create src/main.server.ts with ApiModule import", async () => {
-      const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
-
-      await cli.run(cmd.init, { argv: "--api", root: "/project" });
-
-      expect(fs.wasWritten("/project/src/main.server.ts")).toBe(true);
-      expect(
-        fs.wasWrittenMatching("/project/src/main.server.ts", /ApiModule/),
-      ).toBe(true);
-    });
-
-    it("should create src/api/index.ts with app name from directory", async () => {
-      const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json, "my-cool-app");
-
-      await cli.run(cmd.init, { argv: "--api", root: "/project" });
 
       expect(fs.wasWritten("/project/src/api/index.ts")).toBe(true);
       expect(
@@ -311,7 +298,7 @@ describe("alepha init", () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--api", root: "/project" });
+      await cli.run(cmd.init, { root: "/project" });
 
       expect(
         fs.wasWritten("/project/src/api/controllers/HelloController.ts"),
@@ -323,72 +310,44 @@ describe("alepha init", () => {
         ),
       ).toBe(true);
     });
-  });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // React Project Structure (--react flag)
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  describe("--react flag", () => {
-    it("should create web directory structure", async () => {
+    it("should create web directory structure by default", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--react", root: "/project" });
+      await cli.run(cmd.init, { root: "/project" });
 
       expect(fs.wasWritten("/project/src/web/index.ts")).toBe(true);
       expect(fs.wasWritten("/project/src/web/AppRouter.ts")).toBe(true);
       expect(fs.wasWritten("/project/src/web/components/Home.tsx")).toBe(true);
     });
 
+    it("should wire the router to the API via $client", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(
+        fs.wasWrittenMatching("/project/src/web/AppRouter.ts", /\$client/),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/src/web/AppRouter.ts",
+          /HelloController/,
+        ),
+      ).toBe(true);
+    });
+
     it("should create main.browser.ts for client-side entry", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--react", root: "/project" });
+      await cli.run(cmd.init, { root: "/project" });
 
       expect(fs.wasWritten("/project/src/main.browser.ts")).toBe(true);
       expect(
         fs.wasWrittenMatching("/project/src/main.browser.ts", /WebModule/),
-      ).toBe(true);
-    });
-
-    it("should create main.css", async () => {
-      const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
-
-      await cli.run(cmd.init, { argv: "--react", root: "/project" });
-
-      expect(fs.wasWritten("/project/src/main.css")).toBe(true);
-    });
-
-    it("should not create api structure without --api flag", async () => {
-      const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
-
-      await cli.run(cmd.init, { argv: "--react", root: "/project" });
-
-      // React alone should not create API structure
-      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(false);
-      expect(
-        fs.wasWritten("/project/src/api/controllers/HelloController.ts"),
-      ).toBe(false);
-    });
-
-    it("should create both api and web with --api --react", async () => {
-      const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
-
-      await cli.run(cmd.init, { argv: "--api --react", root: "/project" });
-
-      // Both structures should be created
-      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(true);
-      expect(fs.wasWritten("/project/src/web/index.ts")).toBe(true);
-      expect(
-        fs.wasWrittenMatching("/project/src/main.server.ts", /ApiModule/),
-      ).toBe(true);
-      expect(
-        fs.wasWrittenMatching("/project/src/main.server.ts", /WebModule/),
       ).toBe(true);
     });
   });
@@ -443,15 +402,15 @@ describe("alepha init", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Tailwind CSS (--tailwind flag)
+  // Tailwind CSS — part of the default shape, no flag
   // ─────────────────────────────────────────────────────────────────────────────
 
-  describe("--tailwind flag", () => {
+  describe("tailwind", () => {
     it("should add tailwindcss devDependencies", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--tailwind", root: "/project" });
+      await cli.run(cmd.init, { root: "/project" });
 
       const pkg = await fs.readJsonFile<{
         devDependencies?: Record<string, string>;
@@ -464,7 +423,7 @@ describe("alepha init", () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--tailwind", root: "/project" });
+      await cli.run(cmd.init, { root: "/project" });
 
       expect(fs.wasWritten("/project/vite.config.ts")).toBe(true);
       expect(
@@ -482,93 +441,82 @@ describe("alepha init", () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--tailwind", root: "/project" });
+      await cli.run(cmd.init, { root: "/project" });
 
       expect(fs.wasWritten("/project/src/main.css")).toBe(true);
       expect(
         fs.wasWrittenMatching("/project/src/main.css", /@import "tailwindcss"/),
       ).toBe(true);
     });
-
-    it("should imply --react", async () => {
-      const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
-
-      await cli.run(cmd.init, { argv: "--tailwind", root: "/project" });
-
-      // React web structure should be created
-      expect(fs.wasWritten("/project/src/web/index.ts")).toBe(true);
-      expect(fs.wasWritten("/project/src/main.browser.ts")).toBe(true);
-    });
-
-    it("should not create vite.config.ts without --tailwind", async () => {
-      const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
-
-      await cli.run(cmd.init, { argv: "--react", root: "/project" });
-
-      expect(fs.wasWritten("/project/vite.config.ts")).toBe(false);
-    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Non-empty directory guard (codegen flags)
+  // Non-empty directory guard
+  //
+  // Only applies when a target path is named. A bare `alepha init` is the
+  // fill-in-the-gaps mode and must stay safe on an existing project.
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("non-empty directory guard", () => {
-    it("should reject codegen into non-empty directory", async () => {
+    it("should reject scaffolding into a named non-empty directory", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
-      await fs.writeFile("/project/src/existing.ts", "export {}");
+      await fs.writeFile(
+        "/project/subdir/package.json",
+        json.stringify({ name: "subdir-app" }),
+      );
+      await fs.writeFile("/project/subdir/src/existing.ts", "export {}");
 
       await expect(
-        cli.run(cmd.init, { argv: "--api", root: "/project" }),
+        cli.run(cmd.init, { argv: "subdir", root: "/project" }),
       ).rejects.toThrowError(/Target directory is not empty/);
     });
 
-    it("should allow codegen when only package.json exists", async () => {
+    it("should allow a named directory holding only package.json", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
+      await fs.writeFile(
+        "/project/subdir/package.json",
+        json.stringify({ name: "subdir-app" }),
+      );
 
-      await cli.run(cmd.init, { argv: "--api", root: "/project" });
+      await cli.run(cmd.init, { argv: "subdir", root: "/project" });
 
-      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(true);
+      expect(fs.wasWritten("/project/subdir/src/api/index.ts")).toBe(true);
     });
 
-    it("should allow codegen into non-empty directory with --force", async () => {
+    it("should allow a named non-empty directory with --force", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await fs.writeFile(
+        "/project/subdir/package.json",
+        json.stringify({ name: "subdir-app" }),
+      );
+      await fs.writeFile("/project/subdir/src/existing.ts", "export {}");
+
+      await cli.run(cmd.init, { argv: "subdir --force", root: "/project" });
+
+      expect(fs.wasWritten("/project/subdir/src/api/index.ts")).toBe(true);
+    });
+
+    it("should allow in-place init in a non-empty directory", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
       await fs.writeFile("/project/src/existing.ts", "export {}");
 
-      await cli.run(cmd.init, {
-        argv: "--api --force",
-        root: "/project",
-      });
-
-      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(true);
-    });
-
-    it("should allow non-codegen init in non-empty directory", async () => {
-      const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
-      await fs.writeFile("/project/src/existing.ts", "export {}");
-
-      // No codegen flags — should not throw
+      // No path argument — should not throw
       await cli.run(cmd.init, { root: "/project" });
 
       expect(fs.wasWritten("/project/tsconfig.json")).toBe(true);
     });
 
-    it("should check each codegen flag independently", async () => {
-      for (const flag of ["--react", "--tailwind"]) {
-        const { fs, cli, cmd, json } = createTestEnv();
-        await setupProject(fs, json);
-        await fs.writeFile("/project/src/existing.ts", "export {}");
+    it("should not overwrite existing files during in-place init", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/src/main.server.ts", "// mine");
 
-        await expect(
-          cli.run(cmd.init, { argv: flag, root: "/project" }),
-        ).rejects.toThrowError(/Target directory is not empty/);
-      }
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(await fs.readTextFile("/project/src/main.server.ts")).toBe(
+        "// mine",
+      );
     });
   });
 

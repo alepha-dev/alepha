@@ -106,9 +106,11 @@ The `Api` class is the only contract. `$client<Api>()` derives every call site f
 Requirements: [Node.js](https://nodejs.org/) 22+ or [Bun](https://bun.sh/) 1.3+
 
 ```bash
-npx alepha init my-api  --api     # REST API
-npx alepha init my-app  --react   # React app (SSR)
+npx alepha init my-app   # API + React (SSR) + Tailwind
+cd my-app && npx alepha dev
 ```
+
+Every project gets the same structure — no flavours to choose between.
 
 ## Learn More
 
