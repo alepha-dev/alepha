@@ -43,6 +43,12 @@ export class InitCommand {
         .meta({ aliases: ["f"] })
         .describe("Override existing files")
         .optional(),
+      "no-devtools": z
+        .boolean()
+        .describe(
+          "Skip @alepha/devtools. It is included by default for apps (never for workspace packages) and is dev-only — no production bundle cost",
+        )
+        .optional(),
     }),
     handler: async ({ run, flags, root, args }) => {
       await this.scaffolder.init({ run, flags, root, args });

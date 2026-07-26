@@ -30,7 +30,24 @@ const envSchema = z.object({
         "Default sender (a verified sender address). Accepts a bare address or an RFC 5322 display-name form, e.g. `Lore <noreply@lore.alepha.dev>`.",
     })
     .optional(),
+  CLOUDFLARE_ACCOUNT_ID: z
+    .text({
+      description:
+        "Cloudflare account id. Only needed off Workers, where the REST API stands in for the `SEND_EMAIL` binding.",
+    })
+    .optional(),
+  CLOUDFLARE_API_TOKEN: z
+    .text({
+      description:
+        "Cloudflare API token with the Email Sending scope. Only needed off Workers, alongside `CLOUDFLARE_ACCOUNT_ID`.",
+    })
+    .optional(),
 });
+
+/**
+ * Cloudflare REST API root, used when no Workers binding is available.
+ */
+const CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4";
 
 /**
  * Shape of the Cloudflare Email Sending binding (public beta, 2026-04-16).
@@ -59,16 +76,21 @@ export interface CloudflareEmailSendResult {
 }
 
 /**
- * Email provider using Cloudflare's Email Sending API via a Workers binding.
+ * Email provider using Cloudflare's Email Sending API.
  *
  * Requires the Workers Paid plan and a verified sender address on the
  * `EMAIL_FROM` domain.
  *
- * **Required Cloudflare binding:**
- * - `SEND_EMAIL` — an Email Sending binding in wrangler configuration
+ * Two transports, picked automatically:
+ * - **Workers binding** (`SEND_EMAIL`) when running on Workers. Preferred —
+ *   no egress and no token to rotate.
+ * - **REST API** otherwise, so the same provider keeps working on Node
+ *   (`yarn start`, a container, a cron box). Needs
+ *   `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`.
  *
  * Configuration is provided via environment variables:
  * - `EMAIL_FROM`: Default sender email address
+ * - `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN`: REST fallback only
  *
  * @example
  * ```toml
@@ -99,8 +121,9 @@ export class CloudflareEmailProvider implements EmailProvider {
       // unconditionally so the CF build task can see it and emit the
       // `send_email` binding into wrangler.jsonc — but actually starting
       // on Node (yarn start / yarn dev) would crash because no binding
-      // is wired. Treat that as "inert provider": warn, don't throw.
-      // `send()` later will surface the real error if it's ever called.
+      // is wired. Warn, don't throw: `send()` falls back to the REST API
+      // when CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN are set, and
+      // otherwise surfaces an error naming both options.
       const cloudflareEnv = this.alepha.get("cloudflare.env") as
         | Record<string, unknown>
         | undefined;
@@ -143,7 +166,12 @@ export class CloudflareEmailProvider implements EmailProvider {
     };
 
     try {
-      const result = await this.getBinding().send(message);
+      // Binding first: on Workers it is the cheaper path (no egress, no
+      // token to rotate). REST exists so the same provider still works on
+      // Node — `yarn start`, a container, a cron box.
+      const result = this.binding
+        ? await this.binding.send(message)
+        : await this.sendViaRest(message);
 
       if (result?.status === "bounced") {
         throw new EmailError(
@@ -194,12 +222,67 @@ export class CloudflareEmailProvider implements EmailProvider {
     return name ? { email, name } : { email };
   }
 
-  protected getBinding(): CloudflareEmailBinding {
-    if (!this.binding) {
+  /**
+   * Send through the Email Sending REST API — the off-Workers path.
+   *
+   * Takes the message the binding path already built, so the two cannot
+   * drift in what they put on the wire.
+   *
+   * @see https://developers.cloudflare.com/email-service/api/send-emails/rest-api/
+   */
+  protected async sendViaRest(
+    message: CloudflareEmailSendMessage,
+  ): Promise<CloudflareEmailSendResult> {
+    const accountId = this.env.CLOUDFLARE_ACCOUNT_ID;
+    const apiToken = this.env.CLOUDFLARE_API_TOKEN;
+    if (!accountId || !apiToken) {
       throw new AlephaError(
-        "Cloudflare Email binding not initialized. Call start() first.",
+        `Cloudflare Email is not usable: no '${SEND_EMAIL_DEFAULT_BINDING}' binding (not running on Workers) and no REST credentials. Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN to send over the REST API instead.`,
       );
     }
-    return this.binding;
+
+    const response = await this.httpPost(
+      `${CLOUDFLARE_API_BASE}/accounts/${accountId}/email/sending/send`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${apiToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(message),
+      },
+    );
+
+    const payload = (await response.json().catch(() => undefined)) as
+      | {
+          success?: boolean;
+          result?: CloudflareEmailSendResult;
+          errors?: Array<{ code?: number; message?: string }>;
+        }
+      | undefined;
+
+    if (!response.ok || payload?.success === false) {
+      const detail =
+        payload?.errors
+          ?.map((e) => e.message)
+          .filter(Boolean)
+          .join(", ") || `HTTP ${response.status}`;
+      // Mirror the binding path's 429 shape so the caller's retry logic
+      // does not have to care which transport was used.
+      throw Object.assign(
+        new Error(detail),
+        response.status === 429 ? { status: 429 } : {},
+      );
+    }
+
+    return payload?.result ?? {};
+  }
+
+  /**
+   * The single HTTP seam, isolated so tests can substitute it without
+   * patching global fetch.
+   */
+  protected async httpPost(url: string, init: RequestInit): Promise<Response> {
+    return fetch(url, init);
   }
 }

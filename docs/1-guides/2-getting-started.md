@@ -264,6 +264,25 @@ my-app/
         Home.tsx            # Example React component
 ```
 
+### Devtools
+
+`alepha init` registers the devtools plugin in `alepha.config.ts` and adds
+`@alepha/devtools` to `devDependencies`, so `yarn dev` gives you the inspection
+UI straight away — a floating cog at the bottom-left, or `/__devtools/`
+directly. It covers atoms, modules, database contents, configuration and logs.
+
+It is dev-only (a Vite plugin that lazy-loads the UI), so it adds nothing to a
+production build.
+
+```bash
+npx alepha init --no-devtools   # leave it out entirely
+```
+
+Workspace packages never get it — a library has no dev server for it to attach
+to. To keep the route but drop the floating button, pass
+`devtools({ hideButton: true })` in your config. Removing the dependency later
+turns the plugin into a no-op with a warning rather than breaking config load.
+
 For API-only projects (no `--react`), the `web/` directory and `main.browser.ts` are absent.
 
 ### Entry Points

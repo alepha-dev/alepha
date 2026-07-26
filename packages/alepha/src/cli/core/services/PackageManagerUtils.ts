@@ -424,6 +424,13 @@ export class PackageManagerUtils {
       devDependencies["@types/react"] = alephaDeps["@types/react"];
     }
 
+    // Dev-only (Vite `transformIndexHtml` + lazy `ssrLoadModule`), so it
+    // costs nothing in a production bundle. Versioned in lockstep with
+    // `alepha` itself, hence the same `version` rather than a devDeps lookup.
+    if (modes.devtools) {
+      devDependencies["@alepha/devtools"] = `^${version}`;
+    }
+
     return {
       type: "module",
       dependencies,
@@ -453,4 +460,9 @@ export interface DependencyModes {
    * Whether the project is a workspace package inside a monorepo.
    */
   isPackage?: boolean;
+  /**
+   * Whether to ship the dev-only devtools UI. Resolved by the scaffolder —
+   * default on for apps, always off for workspace packages.
+   */
+  devtools?: boolean;
 }

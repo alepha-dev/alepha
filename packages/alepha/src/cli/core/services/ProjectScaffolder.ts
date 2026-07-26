@@ -237,12 +237,12 @@ export class ProjectScaffolder {
    */
   public async ensureAlephaConfig(
     root: string,
-    opts: { force?: boolean } = {},
+    opts: { force?: boolean; devtools?: boolean } = {},
   ): Promise<void> {
     await this.ensureFile(
       root,
       "alepha.config.ts",
-      alephaConfigTs(),
+      alephaConfigTs({ devtools: opts.devtools }),
       opts.force,
     );
   }
@@ -436,6 +436,7 @@ export class ProjectScaffolder {
       react?: boolean;
       tailwind?: boolean;
       force?: boolean;
+      "no-devtools"?: boolean;
     };
     args?: string;
   }) {
@@ -485,6 +486,10 @@ export class ProjectScaffolder {
 
     const isExpo = await this.pm.hasExpo(root);
 
+    // Devtools is on by default for apps and never for workspace packages —
+    // a library has no Vite dev shell for the overlay to attach to.
+    const devtools = !flags["no-devtools"] && !workspace.isPackage;
+
     const force = !!flags.force;
 
     await run({
@@ -492,7 +497,7 @@ export class ProjectScaffolder {
       handler: async () => {
         await this.ensureConfig(root, {
           force,
-          packageJson: { ...f, isPackage: workspace.isPackage },
+          packageJson: { ...f, isPackage: workspace.isPackage, devtools },
           tsconfigJson: !workspace.config.tsconfigJson,
           biomeJson: true,
           editorconfig: !workspace.config.editorconfig,
@@ -503,7 +508,7 @@ export class ProjectScaffolder {
         });
 
         // Create alepha.config.ts with documented options
-        await this.ensureAlephaConfig(root, { force });
+        await this.ensureAlephaConfig(root, { force, devtools });
 
         // Create project structure based on flags
         await this.ensureMainServerTs(root, {

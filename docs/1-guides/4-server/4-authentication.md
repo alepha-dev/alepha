@@ -94,6 +94,28 @@ class App {
 - **admin** -- Full access to all resources and permissions.
 - **user** -- Access to owned resources only.
 
+### Registration Does Not Confirm Who Has an Account
+
+Registration is deliberately unhelpful about which identifiers are already
+taken, because a helpful answer is an account-enumeration oracle: post an
+address, read the error, learn whether that person has an account here.
+
+The behavior depends on `verifyEmailRequired`:
+
+- **Verification on** — an address already on file gets the *same* response a
+  fresh one gets: an intent id and "check your inbox". No verification code is
+  minted, so the intent can never be completed. The real owner is emailed a
+  `registrationAttempt` notice instead, which carries no code and asks for no
+  action.
+- **Verification off** — a taken username, email or phone all produce one
+  identical error. It never names the field that collided.
+
+Server logs still record which identifier it was, at `debug` level.
+
+If you present registration errors in your own UI, do not try to map the
+generic conflict back to a specific field — there is nothing to map it to,
+and re-deriving it client-side would reopen the hole.
+
 ### Identity Providers
 
 Enable login methods through the `identities` option:

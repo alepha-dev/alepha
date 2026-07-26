@@ -17,4 +17,4 @@ via a Workers binding.
 
 ### Providers
 
-- [`CloudflareEmailProvider`](/docs/reference-providers-cloudflareemailprovider) — Email provider using Cloudflare's Email Sending API via a Workers binding.
+- [`CloudflareEmailProvider`](/docs/reference-providers-cloudflareemailprovider) — Email provider using Cloudflare's Email Sending API.

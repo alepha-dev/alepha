@@ -45,6 +45,14 @@ interface RegistrationIntent {
 
 const INTENT_TTL_MINUTES = 10;
 
+/**
+ * The single rejection used for every taken identifier — username, email or
+ * phone. One message for all three so the response cannot be read as an
+ * answer to "does this person have an account here?".
+ */
+const REGISTRATION_CONFLICT_MESSAGE =
+  "These registration details are not available";
+
 export class RegistrationService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
@@ -241,8 +249,20 @@ export class RegistrationService {
       );
     }
 
-    // Check for existing users (username, email, phone)
-    await this.checkUserAvailability(body, userRealmName);
+    // Check for existing users (username, email, phone).
+    //
+    // A taken email is handled differently from the other two when the realm
+    // verifies email: instead of rejecting — which confirms the address is
+    // registered — the flow continues as if the address were new and mints a
+    // decoy intent below. The stranger sees the ordinary "check your inbox"
+    // response and cannot tell the two cases apart.
+    const conflict = await this.findAvailabilityConflict(body, userRealmName);
+    const emailVerificationRequired =
+      realmSettings?.verifyEmailRequired === true && !!body.email;
+    const decoy = conflict === "email" && emailVerificationRequired;
+    if (conflict && !decoy) {
+      throw new ConflictError(REGISTRATION_CONFLICT_MESSAGE);
+    }
 
     // Validate password against realm policy
     this.credentialService.validatePasswordPolicy(
@@ -260,9 +280,20 @@ export class RegistrationService {
       captcha: false, // validated above, single-use — no gate at complete time
     };
 
-    // Create verification sessions and send codes
+    // Create verification sessions and send codes.
+    //
+    // On the decoy path we deliberately mint no verification: the address
+    // belongs to someone else, and a working code sent to their inbox is a
+    // code the stranger might talk them into reading out. The owner gets a
+    // warning instead. The intent is still stored with `requirements.email`
+    // set, so completing it fails on the code check exactly as a genuine
+    // intent with a wrong code does.
     if (requirements.email && body.email) {
-      await this.sendEmailVerification(body.email, userRealmName);
+      if (decoy) {
+        await this.sendRegistrationAttemptWarning(body.email, userRealmName);
+      } else {
+        await this.sendEmailVerification(body.email, userRealmName);
+      }
     }
 
     if (requirements.phone && body.phoneNumber) {
@@ -442,12 +473,16 @@ export class RegistrationService {
   }
 
   /**
-   * Check if username, email, and phone are available.
+   * Find the first identifier already on file, without throwing.
+   *
+   * Returns which field collided so the caller can decide what to do about
+   * it — the decision differs by field and by realm settings, and the choice
+   * is security-sensitive enough that it does not belong in a lookup.
    */
-  protected async checkUserAvailability(
+  protected async findAvailabilityConflict(
     body: Pick<RegisterRequest, "username" | "email" | "phoneNumber">,
     userRealmName?: string,
-  ): Promise<void> {
+  ): Promise<"username" | "email" | "phoneNumber" | undefined> {
     const realm = this.realmProvider.getRealm(userRealmName);
     const userRepository = this.realmProvider.userRepository(userRealmName);
 
@@ -457,7 +492,7 @@ export class RegistrationService {
       });
       if (existingUser) {
         this.log.debug("Username already taken", { username: body.username });
-        throw new ConflictError("User with this username already exists");
+        return "username";
       }
     }
 
@@ -467,7 +502,7 @@ export class RegistrationService {
       });
       if (existingUser) {
         this.log.debug("Email already taken", { email: body.email });
-        throw new ConflictError("User with this email already exists");
+        return "email";
       }
     }
 
@@ -479,8 +514,50 @@ export class RegistrationService {
         this.log.debug("Phone number already taken", {
           phoneNumber: body.phoneNumber,
         });
-        throw new ConflictError("User with this phone number already exists");
+        return "phoneNumber";
       }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Check if username, email, and phone are available.
+   *
+   * The rejection is deliberately identical whichever field collided. Naming
+   * the field turns this endpoint into an oracle: post a target address and
+   * the error tells you whether that person has an account here, which is
+   * exactly the list an attacker wants for phishing or credential stuffing.
+   * The debug log above still records which field it was, for operators.
+   */
+  protected async checkUserAvailability(
+    body: Pick<RegisterRequest, "username" | "email" | "phoneNumber">,
+    userRealmName?: string,
+  ): Promise<void> {
+    const conflict = await this.findAvailabilityConflict(body, userRealmName);
+    if (conflict) {
+      throw new ConflictError(REGISTRATION_CONFLICT_MESSAGE);
+    }
+  }
+
+  /**
+   * Warn the owner of an address that someone tried to register with it.
+   *
+   * Best-effort: a failure here must not change the response the caller
+   * sees, or the delivery outcome itself becomes the oracle this whole path
+   * exists to close.
+   */
+  protected async sendRegistrationAttemptWarning(
+    email: string,
+    realmName?: string,
+  ): Promise<void> {
+    try {
+      await this.userNotifications(realmName).registrationAttempt.push({
+        contact: email,
+        variables: { email },
+      });
+    } catch (error) {
+      this.log.warn("Failed to send registration attempt warning", { error });
     }
   }
 

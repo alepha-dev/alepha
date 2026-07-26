@@ -99,6 +99,50 @@ export class UserNotifications {
     }),
   });
 
+  /**
+   * Sent to the address a stranger tried to register with.
+   *
+   * The registration endpoint answers a taken address exactly as it answers
+   * a fresh one, so the attempt is invisible to whoever made it. This is the
+   * out-of-band channel that tells the real owner it happened. It carries no
+   * code — there is nothing for the recipient to act on beyond knowing.
+   */
+  public readonly registrationAttempt = $notification({
+    category: "security",
+    description:
+      "Email sent to an existing user when someone attempts to register with their email address.",
+    critical: true,
+    sensitive: true,
+    email: {
+      subject: "Someone tried to sign up with your email address",
+      body: (it) => `
+			<h1>Someone Tried to Sign Up With Your Email</h1>
+			<p>Hi ${it.email},</p>
+			<p>We received a request to create a new account using this email address, but an account already exists for it. No new account was created and nothing about your account has changed.</p>
+			<p>If this was you, you can simply sign in instead — or reset your password if you have forgotten it.</p>
+			<p>If this was not you, no action is required. Someone may have mistyped their own address. If you receive these repeatedly, consider changing your password.</p>
+			<p>Best regards,<br>The Team</p>
+		`,
+    },
+    translations: {
+      fr: {
+        email: {
+          subject: "Quelqu'un a tenté de s'inscrire avec votre adresse e-mail",
+          body: (it) => `
+				<h1>Tentative d'inscription avec votre adresse e-mail</h1>
+				<p>Bonjour ${it.email},</p>
+				<p>Nous avons reçu une demande de création de compte avec cette adresse e-mail, mais un compte existe déjà. Aucun nouveau compte n'a été créé et votre compte n'a pas été modifié.</p>
+				<p>S'il s'agissait de vous, connectez-vous simplement — ou réinitialisez votre mot de passe si vous l'avez oublié.</p>
+				<p>Si ce n'était pas vous, aucune action n'est nécessaire. Quelqu'un a peut-être mal saisi sa propre adresse. Si vous recevez ce message à répétition, envisagez de changer votre mot de passe.</p>
+			`,
+        },
+      },
+    },
+    schema: z.object({
+      email: z.string().meta({ format: "email" }),
+    }),
+  });
+
   public readonly phoneVerification = $notification({
     category: "security",
     description:
