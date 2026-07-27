@@ -47,12 +47,12 @@
     "embla-carousel-react": "^8.6.0",
     "highlight.js": "^11.11.1",
     "input-otp": "^1.4.2",
-    "lucide-react": "^1.25.0",
+    "lucide-react": "^1.27.0",
     "react-day-picker": "^10.0.1",
     "react-is": "^19.2.8",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^4.12.2",
-    "recharts": "3.10.0",
+    "recharts": "3.10.1",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
@@ -73,7 +73,7 @@
     "alepha": "0.24.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "shadcn": "^4.13.1",
+    "shadcn": "^4.15.0",
     "typescript": "^7.0.2"
   }
 }

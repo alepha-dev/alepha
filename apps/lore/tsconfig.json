@@ -1,5 +1,5 @@
 {
-  "extends": "alepha/tsconfig.base",
+  "extends": "../../packages/alepha/tsconfig.base.json",
   "compilerOptions": {
     "types": ["bun"],
     "paths": {
