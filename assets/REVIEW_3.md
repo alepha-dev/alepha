@@ -21,11 +21,11 @@ is the result: the survivors, corrected, plus the still-unbuilt feature backlog.
 
 ## Executive summary
 
-| | Review #2 (2026-07-25) | Review #3 audit | After batches 1–3 |
+| | Review #2 (2026-07-25) | Review #3 audit | After batches 1–4 |
 |---|---|---|---|
-| Open findings | 96 | 91 | **79** |
+| Open findings | 96 | 91 | **78** |
 | P0 / P1 | 0 / 0 | 0 / 0 | **0 / 0** |
-| P2 | 16 | 17 | **5** |
+| P2 | 16 | 17 | **4** |
 | P3 | 80 | 74 | **74** |
 
 **Re-audit outcome** across review #2's 96 open findings:
@@ -37,16 +37,15 @@ is the result: the survivors, corrected, plus the still-unbuilt feature backlog.
 - **1 escalated, then retracted** — `FormValidationError` turned out to work; see below.
 - **81 unchanged.**
 
-**Then batches 1–3 closed 12 more** — twelve of the seventeen P2s. Nothing regressed; no new P0/P1
-surfaced at any point.
+**Then batches 1–4 closed 13 more** — **every P2 except the four websocket ones**. Nothing regressed;
+no new P0/P1 surfaced at any point.
 
 ### Where the remaining risk is
 
-Five P2s remain, and **four are the websocket cluster** review #2 deliberately put out of scope
-(room connections invisible to graceful stop, `Map<roomId, handler>` clobbering subscribers, headless
-room engines never evicted, no heartbeat). The fifth is missing test coverage for
-`R2FileStorageProvider` — the production default on Workers, whose hand-rolled `FileLike` shares a
-single-use body across `stream()` / `arrayBuffer()` / `text()` — and `NodemailerEmailProvider`.
+**The only P2s left are the four websocket ones** review #2 deliberately put out of scope: room
+connections invisible to graceful stop, `Map<roomId, handler>` clobbering a second subscriber,
+headless room engines never evicted, and no ping/pong heartbeat. They are a coherent cluster and
+should be taken as one piece of work, not picked at.
 
 Everything else open is P3: dead code, doc drift, and hardening. The largest concentrations are cli
 (15), react (11), core (10) and orm (10).
@@ -141,6 +140,16 @@ Verified with `yarn lint`, `yarn typecheck`, the full suite (439 files, 4623 tes
 | system/BunShellProvider | **The Node-vs-Bun divergence was already closed — by review #2's own third pass.** The finding says shell features work on Node and break on Bun. Measured against the current tree, Node returns `"hello && echo world"` for `echo hello && echo world`, `"$HOME"` for `echo $HOME`: the POSIX single-quote escaping added in pass 3 made every token a literal argument on Node too, which is the whole point of that escaping. The two runtimes agree today. Rather than "fix" a divergence that no longer exists, the contract is now **pinned on both**: a seven-case table (`&&`, `\|`, `$VAR`, `$(...)`, `;`, quoted args, and an explicit `sh -c` escape hatch) asserted identically in `shellStringContract.spec.ts` (Node) and `BunShellProvider.bun.spec.ts` (Bun), so they cannot drift apart again. |
 | cli/platform | **`platform build` resolves resource ids instead of emitting broken bindings.** `build()` read `provisionedD1Id` / `provisionedKVIds`, which only `provision()` sets and only within the same process. The granular `platform build` / `platform deploy` never call provision, so the generated `wrangler.jsonc` silently lacked the D1 binding (or carried `kv_namespaces: [{ id: "" }]`) and shipped a worker with no database — failing only at the first query. New `resolveExistingResourceIds(ctx)` looks up what already exists on the account (D1, Hyperdrive, KV) and **throws** when the resource is absent, naming `alepha platform provision` as the fix. Lookup only — it never creates anything, so `provision` keeps its job. One test drives `build()` itself so the wiring is covered, not just the helper. |
 
+## Batch 4 — 2026-07-28 — the last non-websocket P2
+
+Verified with `yarn lint`, `yarn typecheck` and the full suite (441 files, 4659 tests).
+
+| Area | Fix |
+|---|---|
+| bucket/R2 | **`R2FileStorageProvider` has a spec** — 21 tests, the first coverage for the production default on Workers. The R2 binding is an object the runtime supplies, so it is *faked* rather than the provider mocked: the whole shared storage-conformance suite (the same twelve cases every other backend passes) runs against an in-memory bucket that mirrors documented R2 semantics, plus R2-specific tests for key layout, `customMetadata` round-trip, `deleteMany` batching, and both start-up failure modes. |
+| bucket/R2 | **`download()` serves repeat reads.** R2 hands back a single-use body — `body`, `arrayBuffer()` and `text()` all drain the same object — and the returned `FileLike` exposed all three over it, so reading twice threw while Memory and Local serve repeat reads happily. The bytes are now materialised once and every accessor is served from that buffer. The upload path already buffered (`file.arrayBuffer()`), so this makes the provider internally consistent as well as consistent with its peers. An empty-string `contentType` now falls back to `application/octet-stream` alongside a missing one. **The shared suite did not catch this** — each of its cases calls exactly one accessor. |
+| email/smtp | **`NodemailerEmailProvider` has a spec** — 15 tests covering the env → transport mapping, credential handling, pooling options from the atom, send/verify/close, and error wrapping. `createTransporter` is protected, so the transport is substituted through a subclass rather than `vi.mock`. The config mapping was extracted into `buildTransporterConfig()` so the test asserts the **real** mapping instead of a copy of it — verified by breaking the `auth` branch and watching two tests fail. |
+
 ### Also found while fixing
 
 - **A stray `packages/alepha/copy/` appeared mid-session** — a byte-identical mirror of `packages/alepha/src/` (327 spec files), untracked and not gitignored. Vitest collected it, so the suite ran twice against a stale second copy and reported failures that did not exist in `src`. **I could not identify what wrote it**: it is not `scripts/build.ts`, `copy-swagger.ts` or `gen-docs.ts`, and a later `yarn build` did *not* recreate it. Removed. Whatever the source, `packages/alepha/copy/` deserves a `.gitignore` entry and a vitest `exclude` — the same defence the config already has for `**/.claude/**` worktrees, and for the same reason.
@@ -149,28 +158,28 @@ Verified with `yarn lint`, `yarn typecheck`, the full suite (439 files, 4623 tes
 
 # Open findings
 
-79 findings remain (91 minus the 12 closed in batches 1–3). Line numbers are against `main` @ `a61c26894` and were
+78 findings remain (91 minus the 13 closed in batches 1–4). Line numbers are against `main` @ `a61c26894` and were
 read during the audit — but **locate by symbol name**, not by line, when acting on them.
 
 ## Priority list — the P2s
 
-**Twelve of seventeen closed** across batches 1–3. Five remain, four of which are the websocket
-cluster review #2 deliberately put out of scope.
+**Thirteen of seventeen closed** across batches 1–4. The four that remain are the websocket cluster
+review #2 deliberately put out of scope.
 
 | # | Module | Finding | Anchor |
 |---|---|---|---|
-| 1 | bucket / email | `R2FileStorageProvider` and `NodemailerEmailProvider` have zero test coverage | — |
-| 2 | websocket | Node graceful stop / management APIs are blind to `$room` connections | `NodeWebSocketServerProvider.ts:294` |
-| 3 | websocket | Second `subscribe` to the same room silently replaces the first handler | `WebSocketClient.ts:72-73` |
-| 4 | websocket | Node headless `$room` engines are never evicted | `NodeWebSocketServerProvider.ts:196-203` |
-| 5 | websocket | No liveness / heartbeat on the Node WebSocket server (zero ping/pong/isAlive) | `NodeWebSocketServerProvider.ts` |
+| 1 | websocket | Node graceful stop / management APIs are blind to `$room` connections | `NodeWebSocketServerProvider.ts:294` |
+| 2 | websocket | Second `subscribe` to the same room silently replaces the first handler | `WebSocketClient.ts:72-73` |
+| 3 | websocket | Node headless `$room` engines are never evicted | `NodeWebSocketServerProvider.ts:196-203` |
+| 4 | websocket | No liveness / heartbeat on the Node WebSocket server (zero ping/pong/isAlive) | `NodeWebSocketServerProvider.ts` |
 
-> 2–5 are the websocket cluster. Left at P2 and left closed-over; reopen deliberately, not by accident.
+> All four are the websocket cluster. Left at P2 and left closed-over; reopen deliberately, not by
+> accident.
 
 Closed: rate-limit options, `Runner` root, notification status filter, audit filter stubs,
 `FormValidationError` (batch 1) · payments `version` guard, parameters `schemaHash`, Apple
 `form_post` (batch 2) · `FileDetector.peekBytes`, Redis `KEYS`, Bun shell parity, Cloudflare platform
-bindings (batch 3).
+bindings (batch 3) · R2 coverage + single-use body, Nodemailer coverage (batch 4).
 
 ---
 
@@ -267,34 +276,28 @@ bindings (batch 3).
 10. **`index.browser.ts` registers a module as a service** — `services: [AlephaDateTime]` where every
     other index uses `imports:`. Harmless copy-paste slip.
 
-## cache + redis + bucket + email + sms — 6 open (1 P2, 5 P3)
+## cache + redis + bucket + email + sms — 5 open (all P3)
 
-> Redis blocking `KEYS` closed in batch 3.
+> Redis blocking `KEYS` closed in batch 3; R2 / Nodemailer coverage and the R2 single-use body in batch 4.
 
-1. **P2 · `R2FileStorageProvider` and `NodemailerEmailProvider` have zero test coverage.** R2 is the
-   production default on Workers. Its `download` returns a hand-rolled `FileLike`
-   (`R2FileStorageProvider.ts:154-166`) whose `stream()` / `arrayBuffer()` / `text()` all share the
-   single-use `object.body` — calling more than one accessor drains the body — and
-   `httpMetadata?.contentType ?? "application/octet-stream"` doesn't catch an empty-string content type.
-   Neither is pinned by a test. (`CloudflareKVProvider` gained a spec in pass 25.)
-2. **P3 · R2 file id embeds an unsanitized user filename extension and diverges from S3/Local.**
+1. **P3 · R2 file id embeds an unsanitized user filename extension and diverges from S3/Local.**
    `R2FileStorageProvider.createId` (:248-252) takes everything after the last `.` of the user-controlled
    filename — `"x.png/../y"` yields extension `"png/../y"`, producing nested attacker-shaped keys
    (contained within the bucket prefix). S3 derives the extension from the MIME type via `FileDetector`
    (`S3FileStorageProvider.ts:136-138`). Same call, two id schemes.
-3. **P3 · Provider divergence in downloaded file metadata.** Local `download` returns `name: fileId` plus
+2. **P3 · Provider divergence in downloaded file metadata.** Local `download` returns `name: fileId` plus
    an extension-guessed type — the original name and type are never persisted
    (`LocalFileStorageProvider.ts:118-125`); Memory preserves both; S3 uses `x-amz-meta-name` (whose
    `decodeURIComponent` can throw `URIError` on foreign objects containing a literal `%`); R2 uses the raw
    name in `customMetadata`. Same call, different `file.name` / `file.type` per backend.
-4. **P3 · `$cache.incr()` bypasses the `disabled` / `enabled` / lifecycle guards** (`$cache.ts:391-404`).
+3. **P3 · `$cache.incr()` bypasses the `disabled` / `enabled` / lifecycle guards** (`$cache.ts:391-404`).
    `read()` and `set()` no-op when `!isStarted() || options.disabled || !settings.enabled`; `incr()` calls
    the provider unconditionally, so a disabled cache still mutates the store (and on KV throws before
    binding init). Add the same guard.
-5. **P3 · CloudflareKV `incr` is non-atomic** (`CloudflareKVProvider.ts:220-238`). Read-then-put loses
+4. **P3 · CloudflareKV `incr` is non-atomic** (`CloudflareKVProvider.ts:220-238`). Read-then-put loses
    updates across isolates. Document the non-atomicity or route through a Durable Object. *(The
    never-expiring half is fixed — `incr` now takes a `ttl`.)*
-6. **P3 · `email:sending` / `sms:sending` hooks always emit `variables: {}`** (`$email.ts:62`,
+5. **P3 · `email:sending` / `sms:sending` hooks always emit `variables: {}`** (`$email.ts:62`,
    `$sms.ts:57`). Vestige of a removed template-rendering design; `template` actually carries the channel
    name. Drop `variables` from the Hooks declaration or pass real data.
 

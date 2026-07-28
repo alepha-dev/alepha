@@ -152,17 +152,37 @@ export class R2FileStorageProvider implements FileStorageProvider {
     }
 
     const originalName = object.customMetadata?.originalName ?? fileId;
+    // An empty content-type is as useless as a missing one, and R2 stores
+    // whatever it was given — so treat both as unknown.
     const contentType =
-      object.httpMetadata?.contentType ?? "application/octet-stream";
+      object.httpMetadata?.contentType || "application/octet-stream";
+
+    // R2 gives back a SINGLE-USE body: `body`, `arrayBuffer()` and `text()`
+    // all drain the same object, so the returned FileLike could be read once
+    // and only once — while Memory and Local serve repeat reads happily.
+    // Materialise once and serve every accessor from that buffer, so the
+    // backend no longer changes the contract. The upload path already buffers
+    // (`file.arrayBuffer()`), so this keeps the provider internally consistent.
+    const bytes = new Uint8Array(await object.arrayBuffer());
 
     return {
       name: originalName,
       type: contentType,
       size: object.size,
       lastModified: object.uploaded.getTime(),
-      stream: () => object.body as unknown as ReadableStream,
-      arrayBuffer: () => object.arrayBuffer(),
-      text: () => object.text(),
+      stream: () =>
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(bytes);
+            controller.close();
+          },
+        }) as unknown as ReadableStream,
+      arrayBuffer: async () =>
+        bytes.buffer.slice(
+          bytes.byteOffset,
+          bytes.byteOffset + bytes.byteLength,
+        ) as ArrayBuffer,
+      text: async () => new TextDecoder().decode(bytes),
     };
   }
 

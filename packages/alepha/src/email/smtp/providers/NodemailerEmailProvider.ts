@@ -188,8 +188,19 @@ export class NodemailerEmailProvider implements EmailProvider {
     }
   }
 
-  protected createTransporter(): Transporter {
-    const transporterConfig = {
+  /**
+   * The SMTP transport configuration derived from env + the options atom.
+   *
+   * Split out from {@link createTransporter} so it can be asserted without
+   * standing up a real transport — otherwise a test that replaces
+   * `createTransporter` ends up checking its own copy of this mapping.
+   *
+   * `auth` is omitted entirely unless BOTH a user and a password are present:
+   * passing `{ user: undefined }` makes nodemailer attempt an anonymous LOGIN
+   * instead of skipping authentication.
+   */
+  protected buildTransporterConfig() {
+    return {
       host: this.host,
       port: this.port,
       secure: this.secure,
@@ -206,6 +217,10 @@ export class NodemailerEmailProvider implements EmailProvider {
       rateDelta: this.options.rateDelta,
       rateLimit: this.options.rateLimit,
     };
+  }
+
+  protected createTransporter(): Transporter {
+    const transporterConfig = this.buildTransporterConfig();
 
     this.log.debug("Creating Nodemailer transporter", {
       host: transporterConfig.host,
