@@ -517,3 +517,98 @@ describe("RoomEngine — headless coordinator methods", () => {
     await expect(engine.call("nope")).rejects.toThrow(/not defined/);
   });
 });
+
+/**
+ * An `onTick` slower than the tick period used to overlap its own next
+ * invocation. For an authoritative simulation two concurrent `state.step(dt)`
+ * calls corrupt the world, so the loop skips the beat instead — mirroring
+ * `CronProvider`'s `executing` guard.
+ */
+describe("RoomEngine tick reentrancy", () => {
+  it("skips a beat while an async onTick is still running", async () => {
+    const clock = new FakeClock();
+    let started = 0;
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const engine = makeEngine(
+      {
+        tickHz: 10,
+        onTick: async () => {
+          started++;
+          await blocked;
+        },
+      },
+      { clock },
+    );
+
+    await engine.join(fakeSocket());
+
+    clock.advance(100);
+    clock.advance(100);
+    clock.advance(100);
+
+    // Three beats, one in-flight handler.
+    expect(started).toBe(1);
+
+    release();
+    await blocked;
+    await new Promise((r) => setTimeout(r, 0));
+
+    // Once it settles, the loop resumes.
+    clock.advance(100);
+    expect(started).toBe(2);
+
+    engine.dispose();
+  });
+
+  it("warns when it skips", async () => {
+    const clock = new FakeClock();
+    const logs: string[] = [];
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const engine = makeEngine(
+      { tickHz: 10, onTick: async () => await blocked },
+      { clock, log: (level, message) => logs.push(`${level}:${message}`) },
+    );
+
+    await engine.join(fakeSocket());
+    clock.advance(100);
+    clock.advance(100);
+
+    expect(
+      logs.some((l) => l.startsWith("warn:") && l.includes("still running")),
+    ).toBe(true);
+
+    release();
+    engine.dispose();
+  });
+
+  it("does not guard a synchronous onTick", async () => {
+    const clock = new FakeClock();
+    let ticks = 0;
+    const engine = makeEngine(
+      {
+        tickHz: 10,
+        onTick: () => {
+          ticks++;
+        },
+      },
+      { clock },
+    );
+
+    await engine.join(fakeSocket());
+    clock.advance(100);
+    clock.advance(100);
+    clock.advance(100);
+
+    expect(ticks).toBe(3);
+
+    engine.dispose();
+  });
+});

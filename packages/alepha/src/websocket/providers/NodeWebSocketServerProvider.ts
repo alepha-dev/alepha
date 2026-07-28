@@ -334,6 +334,33 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       userConns.add(connectionId);
     }
 
+    // Room sockets belong in the same registry as channel sockets. Without
+    // this, `getConnections()` / `getUserConnections()` / `closeConnection()`
+    // could not see them, and the stop hook's close-all loop skipped them —
+    // `wss.close()` on a `noServer` instance does not close established
+    // sockets, so shutdown tore rooms down abruptly (1006) instead of sending
+    // a 1001. It is a thin adapter, not a NodeWebSocketConnection: a room
+    // socket has no per-channel validation or send pipeline of its own.
+    this.connections.set(connectionId, {
+      id: connectionId,
+      userId,
+      channelPath: path,
+      roomIds: [roomId],
+      send: async (message: unknown) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            typeof message === "string" ? message : JSON.stringify(message),
+          );
+        }
+      },
+      close: async (code?: number, reason?: string) => {
+        ws.close(code, reason);
+      },
+      get readyState() {
+        return ws.readyState as unknown as WebSocketState;
+      },
+    });
+
     this.log.info(`WebSocket room connection established: ${connectionId}`, {
       path,
       roomId,
@@ -385,6 +412,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         code,
         reason: reason.toString(),
       });
+      this.connections.delete(connectionId);
       if (userId) {
         const userConns = this.userConnections.get(userId);
         if (userConns) {
@@ -926,7 +954,9 @@ export class NodeWebSocketConnection implements WebSocketConnection {
         exceptUserIds?: string[];
       }) => {
         const targetRoomId = options.roomId || roomId;
-        const exceptConnectionIds = options.exceptConnectionIds || [];
+        // Copy — `push`ing onto the caller's array mutated it, so a reused
+        // options object accumulated a new id on every reply.
+        const exceptConnectionIds = [...(options.exceptConnectionIds ?? [])];
 
         if (options.exceptSelf) {
           exceptConnectionIds.push(this.id);

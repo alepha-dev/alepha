@@ -284,6 +284,12 @@ export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
     );
   }
 
+  /**
+   * `mqtt` is declaration-merged onto `TopicPrimitiveOptions` by
+   * `@alepha/mqtt`, which core cannot import — an optional satellite must not
+   * become a compile-time dependency of the module that declares the base
+   * interface. Hence the cast: the field is real, core just cannot see it.
+   */
   public async subscribe(handler: TopicHandler<T>): Promise<UnSubscribeFn> {
     return this.provider.subscribeHandler<T>(
       this.name,

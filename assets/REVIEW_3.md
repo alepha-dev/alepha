@@ -21,12 +21,12 @@ is the result: the survivors, corrected, plus the still-unbuilt feature backlog.
 
 ## Executive summary
 
-| | Review #2 (2026-07-25) | Review #3 audit | After batches 1–5 |
+| | Review #2 (2026-07-25) | Review #3 audit | After batches 1–6 |
 |---|---|---|---|
-| Open findings | 96 | 91 | **73** |
+| Open findings | 96 | 91 | **69** |
 | P0 / P1 | 0 / 0 | 0 / 0 | **0 / 0** |
-| P2 | 16 | 17 | **4** |
-| P3 | 80 | 74 | **69** |
+| P2 | 16 | 17 | **3** |
+| P3 | 80 | 74 | **66** |
 
 **Re-audit outcome** across review #2's 96 open findings:
 
@@ -37,15 +37,15 @@ is the result: the survivors, corrected, plus the still-unbuilt feature backlog.
 - **1 escalated, then retracted** — `FormValidationError` turned out to work; see below.
 - **81 unchanged.**
 
-**Then batches 1–5 closed 18 more** — **every P2 except the four websocket ones**. Nothing regressed;
-no new P0/P1 surfaced at any point.
+**Then batches 1–6 closed 22 more**, including fourteen of the seventeen P2s. Nothing regressed; no
+new P0/P1 surfaced at any point.
 
 ### Where the remaining risk is
 
-**The only P2s left are the four websocket ones** review #2 deliberately put out of scope: room
-connections invisible to graceful stop, `Map<roomId, handler>` clobbering a second subscriber,
-headless room engines never evicted, and no ping/pong heartbeat. They are a coherent cluster and
-should be taken as one piece of work, not picked at.
+**Three P2s remain, all websocket.** A second `subscribe` to the same room still clobbers the first
+handler (`Map<roomId, handler>`), which needs server support for additive joins; headless `$room`
+engines are never evicted (needs an idle TTL); and there is no ping/pong heartbeat on the Node server
+(needs a ping interval and a missed-pong budget). None is mechanical.
 
 Everything else open is P3: dead code, doc drift, and hardening. The largest concentrations are cli
 (15), react (11) and orm (10).
@@ -167,6 +167,34 @@ Verified with `yarn lint`, `yarn typecheck`, the full suite (442 files, 4666 tes
 escaping, EventManager cross-tier ordering + stale logger, `AlephaCore` missing from the browser/native
 entrypoints, and the acknowledged TODOs (scoped-lifetime warn-once, `__alephaRef` cursor, `StreamLike`).
 
+## Batch 6 — 2026-07-28 — the websocket cluster
+
+Review #2 declared this cluster out of scope. Taken as one piece here. Verified with a full `yarn v`.
+
+| Area | Fix |
+|---|---|
+| websocket/node | **Room sockets are in the connection registry.** `handleRoomConnection` never called `this.connections.set`, so `getConnections()`, `getUserConnections()` and `closeConnection()` could not see room sockets and the stop hook's close-all loop skipped them. `wss.close()` on a `noServer` instance does not close established sockets, so shutting the server down tore rooms' TCP connections down abruptly — clients saw `1006`, not the `1001` "going away" every other connection gets. Registered as a thin adapter rather than a `NodeWebSocketConnection` (a room socket has no per-channel validation or send pipeline of its own), and deregistered on close. Four tests, all failing before. |
+| websocket/RoomEngine | **Tick reentrancy guard.** An async `onTick` slower than `1000/tickHz` overlapped its own next invocation, and for an authoritative simulation two concurrent `state.step(dt)` calls corrupt the world. The loop now skips the beat and warns — a room that cannot keep up is a capacity problem worth surfacing. Mirrors `CronProvider`'s `executing` guard. A synchronous `onTick` is unaffected. |
+| websocket/RoomEngine | `call()` throws `AlephaError` instead of a bare `Error`, per the repo rule. |
+| websocket/node | `reply({ exceptSelf })` no longer **mutates the caller's `exceptConnectionIds` array** — it `push`ed onto it, so a reused options object accumulated a new id on every reply. |
+| websocket/cloudflare | `webSocketMessage` null-checks `deserializeAttachment()`, as `webSocketClose` already did. A frame arriving on a socket whose attachment is gone crashed the connection with `1011`. |
+| websocket | **Dead `$websocket` option `provider?: any` removed** — nothing read it; registration always uses the injected `WebSocketServerProvider`. |
+
+### One finding was invalid
+
+**`(this.options as any).mqtt` in `$topic` is correct, not an escape hatch.** The finding says the
+option is "not in `TopicPrimitiveOptions`, no augmentation in-tree". The augmentation *is* in tree —
+`@alepha/mqtt`'s `MqttTopicProvider` declaration-merges `mqtt?: MqttTopicSettings` onto
+`TopicPrimitiveOptions`, `TopicPublishOptions` and `TopicSubscribeOptions`. Core cannot import an
+optional satellite package to see it, so the cast is the right pattern for reading an optionally
+augmented field from the module that declares the base interface. Documented in place so it is not
+re-reported.
+
+**Still open in websocket (4):** a second `subscribe` to one room clobbers the first handler,
+headless `$room` engines are never evicted, there is no ping/pong heartbeat, and three of the minor
+nits remain (backoff jitter applied after the max clamp, `WorkerProvider` re-pushing consumers on
+restart, Cloudflare `closeConnection()` a silent no-op).
+
 ### Also found while fixing
 
 - **A stray `packages/alepha/copy/` appeared mid-session** — a byte-identical mirror of `packages/alepha/src/` (327 spec files), untracked and not gitignored. Vitest collected it, so the suite ran twice against a stale second copy and reported failures that did not exist in `src`. **I could not identify what wrote it**: it is not `scripts/build.ts`, `copy-swagger.ts` or `gen-docs.ts`, and a later `yarn build` did *not* recreate it. Removed. Whatever the source, `packages/alepha/copy/` deserves a `.gitignore` entry and a vitest `exclude` — the same defence the config already has for `**/.claude/**` worktrees, and for the same reason.
@@ -175,28 +203,28 @@ entrypoints, and the acknowledged TODOs (scoped-lifetime warn-once, `__alephaRef
 
 # Open findings
 
-73 findings remain (91 minus the 18 closed in batches 1–5). Line numbers are against `main` @ `a61c26894` and were
+69 findings remain (91 minus the 22 closed in batches 1–6). Line numbers are against `main` @ `a61c26894` and were
 read during the audit — but **locate by symbol name**, not by line, when acting on them.
 
 ## Priority list — the P2s
 
-**Thirteen of seventeen closed** across batches 1–4. The four that remain are the websocket cluster
-review #2 deliberately put out of scope.
+**Fourteen of seventeen closed** across batches 1–6. The three that remain are all websocket.
 
 | # | Module | Finding | Anchor |
 |---|---|---|---|
-| 1 | websocket | Node graceful stop / management APIs are blind to `$room` connections | `NodeWebSocketServerProvider.ts:294` |
-| 2 | websocket | Second `subscribe` to the same room silently replaces the first handler | `WebSocketClient.ts:72-73` |
-| 3 | websocket | Node headless `$room` engines are never evicted | `NodeWebSocketServerProvider.ts:196-203` |
-| 4 | websocket | No liveness / heartbeat on the Node WebSocket server (zero ping/pong/isAlive) | `NodeWebSocketServerProvider.ts` |
+| 1 | websocket | Second `subscribe` to the same room silently replaces the first handler | `WebSocketClient.ts:72-73` |
+| 2 | websocket | Node headless `$room` engines are never evicted | `NodeWebSocketServerProvider.ts:196-203` |
+| 3 | websocket | No liveness / heartbeat on the Node WebSocket server (zero ping/pong/isAlive) | `NodeWebSocketServerProvider.ts` |
 
-> All four are the websocket cluster. Left at P2 and left closed-over; reopen deliberately, not by
-> accident.
+> #1 needs server support for additive joins (the client currently `reconnect()`s on every new-room
+> subscribe); #2 and #3 need a policy decision — an idle TTL, and a ping interval plus missed-pong
+> budget — rather than a mechanical fix.
 
 Closed: rate-limit options, `Runner` root, notification status filter, audit filter stubs,
 `FormValidationError` (batch 1) · payments `version` guard, parameters `schemaHash`, Apple
 `form_post` (batch 2) · `FileDetector.peekBytes`, Redis `KEYS`, Bun shell parity, Cloudflare platform
-bindings (batch 3) · R2 coverage + single-use body, Nodemailer coverage (batch 4).
+bindings (batch 3) · R2 coverage + single-use body, Nodemailer coverage (batch 4) · room connection
+registry (batch 6).
 
 ---
 
@@ -304,12 +332,10 @@ bindings (batch 3) · R2 coverage + single-use body, Nodemailer coverage (batch 
    `$sms.ts:57`). Vestige of a removed template-rendering design; `template` actually carries the channel
    name. Drop `variables` from the Hooks declaration or pass real data.
 
-## websocket + topic + lock + retry — 8 open (4 P2, 4 P3)
+## websocket + topic + lock + retry — 4 open (3 P2, 1 P3)
 
-1. **P2 · Node graceful stop / management APIs are blind to `$room` connections.**
-   `handleRoomConnection` (`NodeWebSocketServerProvider.ts:294`) never registers in `this.connections`,
-   so `getConnections()`, `getUserConnections()` and `closeConnection()` don't see room sockets and the
-   stop hook's close-all loop skips them — abrupt TCP teardown instead of a `1001` close.
+> Four closed in batch 6 and the `$topic` mqtt finding was invalid. See the fix log.
+
 2. **P2 · Second `subscribe` to the same room silently replaces the first handler.** `subscriptions` is
    `Map<roomId, handler>` (`WebSocketClient.ts:72-73`); a second subscriber overwrites the first and
    either party's unsubscribe deletes the survivor — two components on one room is the normal UI case.
@@ -320,13 +346,6 @@ bindings (batch 3) · R2 coverage + single-use body, Nodemailer coverage (batch 
 4. **P2 · No liveness / heartbeat on the Node WebSocket server.** Zero occurrences of ping, pong or
    isAlive. Half-open TCP connections linger, inflating `maxConnectionsPerUser` (which can lock users out)
    and keeping room tick loops alive for ghosts.
-5. **P3 · `$websocket` option `provider?: any` accepted and ignored** (`WebSocketInterfaces.ts:119`).
-   No code reads it; registration always uses the injected `WebSocketServerProvider`.
-6. **P3 · `(this.options as any).mqtt` escape hatch in `$topic`** (`$topic.ts:281,292`). Not in
-   `TopicPrimitiveOptions`, no augmentation in-tree. Declare it or drop it.
-7. **P3 · `RoomEngine` has no tick reentrancy guard for async `onTick`** (`RoomEngine.ts:221`). An
-   `onTick` slower than `1000/tickHz` overlaps its own next invocation; for authoritative simulation,
-   overlapping `state.step(dt)` corrupts the world. Mirror `CronProvider`'s `executing` guard.
 8. **P3 · Minor correctness nits.** `RoomEngine.call` throws a bare `new Error` (:136) — the repo rule is
    `AlephaError`. Cloudflare `webSocketMessage` doesn't null-check `deserializeAttachment()`
    (`WebSocketRoom.ts:215`) while `webSocketClose` does (:193, :248) — a null attachment crashes the frame

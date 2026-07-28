@@ -114,11 +114,6 @@ export interface WebSocketPrimitiveOptions<
   }) => Promise<void> | void;
 
   /**
-   * Change WebSocket server provider (for custom implementations)
-   */
-  provider?: any;
-
-  /**
    * Whether to enforce security (authentication, authorization) on this WebSocket endpoint
    * Requires alepha/security integration
    */

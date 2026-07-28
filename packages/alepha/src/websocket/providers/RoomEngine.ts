@@ -1,3 +1,4 @@
+import { AlephaError } from "alepha";
 import type {
   RoomClock,
   RoomConnection,
@@ -46,6 +47,11 @@ export class RoomEngine<
   protected starting?: Promise<void>;
   protected tickHandle?: unknown;
   protected lastTickAt = 0;
+  /**
+   * True while an async `onTick` is still in flight, so the loop can skip a
+   * beat rather than run two overlapping simulation steps.
+   */
+  protected ticking = false;
 
   constructor(
     protected readonly deps: RoomEngineDeps<TClient, TServer, TState>,
@@ -133,7 +139,9 @@ export class RoomEngine<
     await this.ensureAlive();
     const fn = this.options.methods?.[method];
     if (!fn) {
-      throw new Error(`Room method '${method}' is not defined on this room.`);
+      throw new AlephaError(
+        `Room method '${method}' is not defined on this room.`,
+      );
     }
     return fn(this.context(), ...args);
   }
@@ -214,26 +222,40 @@ export class RoomEngine<
   }
 
   protected tick(): void {
+    // An async `onTick` slower than 1000/tickHz would otherwise overlap its
+    // own next invocation, and for an authoritative simulation two concurrent
+    // `state.step(dt)` calls corrupt the world. Skip the beat instead, and say
+    // so — a room that cannot keep up is a capacity problem worth surfacing.
+    // Mirrors CronProvider's `executing` guard.
+    if (this.ticking) {
+      this.deps.log?.(
+        "warn",
+        `Skipping tick for room ${this.deps.roomId}: the previous onTick is still running`,
+      );
+      return;
+    }
+
     const now = this.deps.clock.now();
     const dt = now - this.lastTickAt;
     this.lastTickAt = now;
-    try {
-      const result = this.options.onTick?.(this.context(), dt);
-      if (result instanceof Promise) {
-        result.catch((error) =>
-          this.deps.log?.(
-            "error",
-            `Error in onTick for room ${this.deps.roomId}`,
-            error,
-          ),
-        );
-      }
-    } catch (error) {
+
+    const onError = (error: unknown) =>
       this.deps.log?.(
         "error",
         `Error in onTick for room ${this.deps.roomId}`,
         error,
       );
+
+    try {
+      const result = this.options.onTick?.(this.context(), dt);
+      if (result instanceof Promise) {
+        this.ticking = true;
+        result.catch(onError).finally(() => {
+          this.ticking = false;
+        });
+      }
+    } catch (error) {
+      onError(error);
     }
   }
 

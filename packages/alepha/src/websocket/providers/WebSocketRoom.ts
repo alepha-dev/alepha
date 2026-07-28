@@ -212,7 +212,12 @@ export class WebSocketRoom {
    * wrapper for every inbound client frame.
    */
   async webSocketMessage(ws: any, data: string | ArrayBuffer): Promise<void> {
-    const att = ws.deserializeAttachment() as WsAttachment;
+    // `webSocketClose` already null-checks this; without the same guard here a
+    // frame arriving on a socket whose attachment is gone crashed with 1011.
+    const att = ws.deserializeAttachment() as WsAttachment | null;
+    if (!att) {
+      return;
+    }
     const raw =
       typeof data === "string" ? data : new TextDecoder().decode(data);
 
