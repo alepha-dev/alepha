@@ -68,6 +68,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.5",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.17",
     "alepha": "0.24.0",

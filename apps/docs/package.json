@@ -19,7 +19,7 @@
     "@xmldom/xmldom": "^0.9.10",
     "alepha": "^0.24.0",
     "highlight.js": "^11.11.1",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.0",
     "marked": "^18.0.7",
     "marked-highlight": "^2.2.4",
     "react-dom": "^19.2.8",
