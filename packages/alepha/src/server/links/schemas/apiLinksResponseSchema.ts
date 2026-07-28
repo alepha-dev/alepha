@@ -41,6 +41,21 @@ export const apiRegistryResponseSchema = z.object({
   actions: z.record(z.text(), apiActionSchema),
 
   permissions: z.array(z.text()).optional(),
+
+  /**
+   * Names of actions that exist on this server but are not callable by the
+   * current caller.
+   *
+   * Without this, a pruned action is indistinguishable from one that was
+   * never registered, and the client can only answer "not found" (401) to
+   * what is really "not allowed" (403) — so a signed-in user gets bounced
+   * to the login page instead of a refusal.
+   *
+   * Only sent to **authenticated** callers. An anonymous visitor is missing
+   * every action, so listing them would leak the whole action registry for
+   * nothing: their 401 is already the right answer.
+   */
+  restricted: z.array(z.text()).optional(),
 });
 
 export type ApiRegistryResponse = Static<typeof apiRegistryResponseSchema>;

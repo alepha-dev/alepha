@@ -7,6 +7,7 @@ import {
   type ClientRequestOptions,
   type ClientRequestResponse,
   type FetchResponse,
+  ForbiddenError,
   HttpClient,
   type RequestConfigSchema,
   ServerReply,
@@ -45,6 +46,12 @@ export class LinkProvider {
   // Browser/SSR: parsed from the registry response
   protected actionMap = new Map<string, HttpClientLink>();
   protected permissions = new Set<string>();
+  /**
+   * Action names the server reported as existing but not callable by this
+   * caller (see `restricted` in apiRegistryResponseSchema). Populated only
+   * for authenticated callers.
+   */
+  protected restricted = new Set<string>();
   protected lastLoadedRegistry: ApiRegistryResponse | null = null;
 
   // Browser-only: batch collector for coalescing multiple calls
@@ -103,6 +110,7 @@ export class LinkProvider {
     this.lastLoadedRegistry = registry;
     this.permissions.clear();
     this.actionMap.clear();
+    this.restricted.clear();
 
     for (const [name, action] of Object.entries(registry.actions)) {
       this.actionMap.set(name, {
@@ -118,6 +126,12 @@ export class LinkProvider {
     if (registry.permissions) {
       for (const p of registry.permissions) {
         this.permissions.add(p);
+      }
+    }
+
+    if (registry.restricted) {
+      for (const name of registry.restricted) {
+        this.restricted.add(name);
       }
     }
   }
@@ -386,8 +400,27 @@ export class LinkProvider {
         a.name === name && (!options.service || options.service === a.service),
     );
 
+    // Same reason `can()` does this: the `links` getter only calls
+    // loadRegistry on the browser branch, so during SSR `restricted` would
+    // otherwise stay empty and a forbidden action would report 401 on the
+    // server and 403 in the browser — the page would redirect to login on
+    // first paint and only then render the refusal.
+    const registry = this.alepha.store.get("alepha.server.request.apiLinks");
+    if (registry && registry !== this.lastLoadedRegistry) {
+      this.loadRegistry(registry);
+    }
+
     if (!link) {
-      const error = new UnauthorizedError(`Action ${name} not found.`);
+      // An action the server knows about but pruned for this caller is a
+      // permission problem, not a missing route. Saying 401 here sends a
+      // signed-in user to the login page for what is really a refusal —
+      // and leaves the app unable to tell the two apart without matching
+      // on the message text. `restricted` is only populated for
+      // authenticated callers, so anonymous requests still get 401 and
+      // still redirect to login.
+      const error = this.restricted.has(name)
+        ? new ForbiddenError(`Action ${name} is not allowed for this user.`)
+        : new UnauthorizedError(`Action ${name} not found.`);
       // mimic http error handling
       await this.alepha.events.emit("client:onError", {
         route: link,

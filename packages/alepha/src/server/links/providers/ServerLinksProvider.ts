@@ -303,6 +303,9 @@ export class ServerLinksProvider {
 
     const actions: Record<string, any> = {};
     const permissions: string[] = [];
+    // Actions that exist but this caller may not invoke. Collected only for
+    // authenticated callers — see `restricted` in apiRegistryResponseSchema.
+    const restricted: string[] = [];
 
     // Collect permissions not related to $action (virtual permissions)
     for (const permission of securityPermissions ?? []) {
@@ -320,7 +323,10 @@ export class ServerLinksProvider {
     for (const link of this.linkProvider.getServerLinks()) {
       // SKIP REMOTE LINKS, remote links are handled separately for security
       if (link.host) continue;
-      if (!this.isLinkAccessible(link, user)) continue;
+      if (!this.isLinkAccessible(link, user)) {
+        if (user) restricted.push(link.name);
+        continue;
+      }
 
       actions[link.name] = {
         path: link.path,
@@ -373,6 +379,7 @@ export class ServerLinksProvider {
       prefix: this.serverApi.prefix,
       actions,
       permissions: permissions.length > 0 ? permissions : undefined,
+      restricted: restricted.length > 0 ? restricted : undefined,
     };
   }
 
