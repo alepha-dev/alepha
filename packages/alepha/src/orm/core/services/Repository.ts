@@ -378,6 +378,18 @@ export abstract class Repository<T extends TObject> {
       query,
     });
 
+    if (query.distinct && query.with) {
+      // `rawSelectDistinct` selects a FLAT field map, while the join
+      // post-processing below expects drizzle's nested per-table row shape —
+      // `row[this.tableName]` is undefined and the mapping quietly produces
+      // junk. Refuse rather than return garbage.
+      throw new AlephaError(
+        `Query on '${this.tableName}' combines 'distinct' with 'with' (joins), which is not supported: ` +
+          "SELECT DISTINCT returns a flat row that the join mapper cannot reassemble. " +
+          "Drop one of the two, or de-duplicate after the join.",
+      );
+    }
+
     const columns = query.columns ?? query.distinct;
     const builder = query.distinct
       ? this.rawSelectDistinct(opts, query.distinct)
@@ -846,6 +858,18 @@ export abstract class Repository<T extends TObject> {
         opts.now ?? this.dateTimeProvider.nowISOString();
     }
 
+    // With no `updatedAt` column and nothing left after removing the conflict
+    // target and the PK, the SET clause is empty and drizzle rejects the
+    // statement ("No values to set"). Setting the target to itself is a no-op
+    // UPDATE that keeps ON CONFLICT DO UPDATE valid — and, unlike DO NOTHING,
+    // still RETURNs the conflicting row, which the caller expects.
+    if (Object.keys(setData).length === 0) {
+      const source = (data ?? {}) as Record<string, unknown>;
+      for (const key of targetKeys) {
+        setData[key as string] = source[key as string];
+      }
+    }
+
     // The ON CONFLICT payload goes through the same validation and codec
     // encoding as every other write path. Skipping it let a value of the wrong
     // type reach the driver — and sqlite, being dynamically typed, stored it,
@@ -1092,8 +1116,12 @@ export abstract class Repository<T extends TObject> {
     )?.[0];
 
     if (updatedAtField) {
-      (data as any)[updatedAtField.key] =
-        opts.now ?? this.dateTimeProvider.nowISOString();
+      // Shallow-copy before stamping: writing into the caller's object means a
+      // reused patch carries a stale `updatedAt` into the next call.
+      data = {
+        ...(data as Record<string, unknown>),
+        [updatedAtField.key]: opts.now ?? this.dateTimeProvider.nowISOString(),
+      } as typeof data;
     }
 
     where = this.withOrganization(this.withDeletedAt(where, opts));
@@ -1196,6 +1224,11 @@ export abstract class Repository<T extends TObject> {
 
     const deletedAt = this.deletedAt();
     if (deletedAt && !opts.force) {
+      // Stamping the caller's entity is DELIBERATE, not a stray mutation: it
+      // keeps the in-memory object consistent with the row, so a later
+      // `save(entity, { force: true })` writes the soft-delete back instead of
+      // nulling it and resurrecting the row (`save` nulls undefined fields).
+      // `testNoUpdateIfAlreadyDeleted` depends on exactly this.
       opts.now ??= this.dateTimeProvider.nowISOString();
       (entity as any)[deletedAt.key] = opts.now;
     }

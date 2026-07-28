@@ -385,8 +385,11 @@ describe("Database Error Tests", () => {
           expect(error).toBeInstanceOf(DbForeignKeyError);
           expect((error as DbForeignKeyError).status).toBe(409);
           expect((error as DbForeignKeyError).name).toBe("DbForeignKeyError");
+          // SQLite reports a bare "FOREIGN KEY constraint failed" with no
+          // direction, so the message names both possibilities rather than
+          // asserting a DELETE that may not have happened.
           expect((error as DbForeignKeyError).message).toContain(
-            "Cannot delete",
+            "Foreign key constraint failed",
           );
           // SQLite doesn't provide the referencing table name in error
           expect((error as DbForeignKeyError).message).toContain(
@@ -564,6 +567,27 @@ describe("Database Error Tests", () => {
       expect(error.constraintName).toBe("reporting_alert_query_id_fk");
     });
 
+    it("DbForeignKeyError.fromDatabaseError reports a dangling reference as a write, not a delete", async ({
+      expect,
+    }) => {
+      // An INSERT/UPDATE naming a row that does not exist is the other
+      // direction of the same constraint; calling it "Cannot delete" sent
+      // readers looking for a delete that never happened.
+      const dbError = new Error(
+        'insert or update on table "reporting_alert" violates foreign key constraint "reporting_alert_query_id_fk" on table "query_item"' +
+          ' — Key (query_id)=(42) is not present in table "query_item".',
+      );
+
+      const error = DbForeignKeyError.fromDatabaseError(
+        dbError,
+        "reporting_alert",
+      );
+
+      expect(error.message).toBe(
+        "Cannot write reporting_alert: it references a row that does not exist in query_item",
+      );
+    });
+
     it("DbForeignKeyError.fromDatabaseError should handle SQLite error", async ({
       expect,
     }) => {
@@ -575,7 +599,7 @@ describe("Database Error Tests", () => {
       );
 
       expect(error.message).toBe(
-        "Cannot delete parent_table: it is referenced by another entity",
+        "Foreign key constraint failed on parent_table: it either references a missing row, or is still referenced by another entity",
       );
       expect(error.referencingTable).toBeUndefined();
       expect(error.constraintName).toBeUndefined();

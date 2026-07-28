@@ -43,21 +43,30 @@ export class DbForeignKeyError extends DbError {
       /violates foreign key constraint "([^"]+)" on table "([^"]+)"/,
     );
 
+    // Which side of the constraint failed. An INSERT/UPDATE naming a row that
+    // does not exist is "is not present in table"; a DELETE/UPDATE that would
+    // orphan children is "is still referenced". Reporting both as "Cannot
+    // delete" sent readers looking for a delete that never happened.
+    const isDanglingReference = message.includes("is not present in table");
+
     if (pgMatch) {
       const constraintName = pgMatch[1];
       const referencingTable = pgMatch[2];
 
       return new DbForeignKeyError(
-        `Cannot delete ${tableName}: it is referenced by ${referencingTable}`,
+        isDanglingReference
+          ? `Cannot write ${tableName}: it references a row that does not exist in ${referencingTable}`
+          : `Cannot delete ${tableName}: it is referenced by ${referencingTable}`,
         error,
         { referencingTable, constraintName },
       );
     }
 
     // SQLite format:
-    // 'FOREIGN KEY constraint failed' (no table name available)
+    // 'FOREIGN KEY constraint failed' (no table name available, and no way to
+    // tell the two directions apart)
     return new DbForeignKeyError(
-      `Cannot delete ${tableName}: it is referenced by another entity`,
+      `Foreign key constraint failed on ${tableName}: it either references a missing row, or is still referenced by another entity`,
       error,
     );
   }

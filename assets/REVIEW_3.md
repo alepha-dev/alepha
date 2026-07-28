@@ -21,12 +21,12 @@ is the result: the survivors, corrected, plus the still-unbuilt feature backlog.
 
 ## Executive summary
 
-| | Review #2 (2026-07-25) | Review #3 audit | After batches 1–6 |
+| | Review #2 (2026-07-25) | Review #3 audit | After batches 1–7 |
 |---|---|---|---|
-| Open findings | 96 | 91 | **69** |
+| Open findings | 96 | 91 | **63** |
 | P0 / P1 | 0 / 0 | 0 / 0 | **0 / 0** |
 | P2 | 16 | 17 | **3** |
-| P3 | 80 | 74 | **66** |
+| P3 | 80 | 74 | **60** |
 
 **Re-audit outcome** across review #2's 96 open findings:
 
@@ -37,7 +37,7 @@ is the result: the survivors, corrected, plus the still-unbuilt feature backlog.
 - **1 escalated, then retracted** — `FormValidationError` turned out to work; see below.
 - **81 unchanged.**
 
-**Then batches 1–6 closed 22 more**, including fourteen of the seventeen P2s. Nothing regressed; no
+**Then batches 1–7 closed 28 more**, including fourteen of the seventeen P2s. Nothing regressed; no
 new P0/P1 surfaced at any point.
 
 ### Where the remaining risk is
@@ -48,7 +48,7 @@ engines are never evicted (needs an idle TTL); and there is no ping/pong heartbe
 (needs a ping interval and a missed-pong budget). None is mechanical.
 
 Everything else open is P3: dead code, doc drift, and hardening. The largest concentrations are cli
-(15), react (11) and orm (10).
+(15) and react (11).
 
 Review #2's biggest un-swept theme — **options accepted but ignored** — is now closed. All five were
 public APIs that silently did nothing.
@@ -195,6 +195,39 @@ headless `$room` engines are never evicted, there is no ping/pong heartbeat, and
 nits remain (backoff jitter applied after the max clamp, `WorkerProvider` re-pushing consumers on
 restart, Cloudflare `closeConnection()` a silent no-op).
 
+## Batch 7 — 2026-07-28 — orm (5 of 10 closed, two findings corrected)
+
+Verified with a full `yarn v`.
+
+| Area | Fix |
+|---|---|
+| orm | **`distinct` + `with` is refused instead of returning garbage.** `rawSelectDistinct` selects a flat field map while the join post-processing expects drizzle's nested per-table row shape, so `row[tableName]` was undefined and the mapping quietly produced junk (it returned `[]`). Now throws, naming both escapes. |
+| orm | **`updateMany` no longer stamps `updatedAt` onto the caller's patch object** — a reused patch carried a stale timestamp into the next call. Shallow-copies first. |
+| orm | **`upsert` survives a SET clause that would otherwise be empty.** When the conflict target is the only field supplied and the entity has no `updatedAt`, removing the target and the PK left `{}` and drizzle rejected the statement outright (`No values to set` — reproduced). The target is now set to itself: a no-op UPDATE that keeps `ON CONFLICT DO UPDATE` valid and, unlike `DO NOTHING`, still RETURNs the conflicting row the caller expects. |
+| orm | **FK errors no longer assume a DELETE.** A dangling reference from an INSERT/UPDATE (`is not present in table`) is the other direction of the same constraint and was reported as "Cannot delete …", sending readers after a delete that never happened. Postgres now distinguishes the two; SQLite reports a bare `FOREIGN KEY constraint failed` with no direction, so its message names both possibilities rather than picking one. |
+| orm | **`index.browser.ts` lists `AlephaDateTime` under `imports`, not `services`** — it is a module, and every other entrypoint had it right. |
+
+### Two findings were wrong
+
+**`destroy` stamping `deletedAt` onto the caller's entity is deliberate, not a stray mutation.** I
+"fixed" it and `testNoUpdateIfAlreadyDeleted` went red, which is how the intent surfaced: the test
+does `destroy(entity)` then `save(entity, { force: true })`, and `save` nulls undefined fields — so
+without the stamp the follow-up save writes `deletedAt: null` and **resurrects the row**. The
+mutation keeps the in-memory object consistent with the row. Reverted, and the reason is now a
+comment next to the line plus an explicit test, so it does not get "fixed" again.
+
+**The `node:sqlite` raw-query aliasing finding does not reproduce.** The claim is that the
+`db.prepare` shim rewrites user SQL to positional aliases (`__c0`, `__c1`, …), so
+`repository.query()` on a JOIN comes back with the wrong keys. Five tests against a real sqlite
+database — including the exact precondition the rewrite keys on, a JOIN whose column list has
+duplicate *base* names — all pass against the unmodified tree. Either `query()` does not route
+through the shimmed prepare, or `aliasSelectColumns` declines these statements. Not fixed; the tests
+are kept as behaviour pins.
+
+**Still open in orm (4):** the uuid-vs-slug PK type gap (needs a nominal uuid type), `columns` not
+restricting the SQL projection, the per-repository `DbCacheProvider` being `new`'d/unbounded with a
+`JSON.stringify` key, and `createMany` batches not being atomic.
+
 ### Also found while fixing
 
 - **A stray `packages/alepha/copy/` appeared mid-session** — a byte-identical mirror of `packages/alepha/src/` (327 spec files), untracked and not gitignored. Vitest collected it, so the suite ran twice against a stale second copy and reported failures that did not exist in `src`. **I could not identify what wrote it**: it is not `scripts/build.ts`, `copy-swagger.ts` or `gen-docs.ts`, and a later `yarn build` did *not* recreate it. Removed. Whatever the source, `packages/alepha/copy/` deserves a `.gitignore` entry and a vitest `exclude` — the same defence the config already has for `**/.claude/**` worktrees, and for the same reason.
@@ -203,7 +236,7 @@ restart, Cloudflare `closeConnection()` a silent no-op).
 
 # Open findings
 
-69 findings remain (91 minus the 22 closed in batches 1–6). Line numbers are against `main` @ `a61c26894` and were
+63 findings remain (91 minus the 28 closed in batches 1–7). Line numbers are against `main` @ `a61c26894` and were
 read during the audit — but **locate by symbol name**, not by line, when acting on them.
 
 ## Priority list — the P2s
@@ -273,40 +306,23 @@ registry (batch 6).
    everything with a TypeError.
 2. **P3 · Small correctness/DX items** — carried forward from review #2 without re-derivation.
 
-## orm — 10 open (all P3)
+## orm — 4 open (all P3)
+
+> Five closed in batch 7, one retired as not reproducing, and two findings were wrong. See the fix log.
 
 1. **`primaryKey` cannot distinguish a uuid PK from a slug PK at the type level**
    (`DatabaseTypeProvider.ts:118-140`). `z.uuid()` and `z.text()` are both `ZodString`, so the single
    `TString` overload must promise `PgDefault` — right for the 26 uuid PKs in tree, wrong for a slug.
    The runtime is correct (branches on `format === "uuid"`), so a slug PK omitting its id fails
    validation rather than reaching the driver. Closing it needs a nominal uuid type in the schema layer.
-2. **`distinct` + `with` (joins) silently returns garbage** (`Repository.ts:381-384`).
-   `rawSelectDistinct` selects a flat field map while join post-processing expects drizzle's nested
-   per-table shape, so `row[this.tableName]` is undefined. Throw "distinct cannot be combined with with".
-3. **`columns` doesn't restrict the SQL projection** (`Repository.ts:381`). It only narrows the schema
+2. **`columns` doesn't restrict the SQL projection** (`Repository.ts:381`). It only narrows the schema
    used by `clean()`; the SQL still `SELECT *`s. Wide tables pay full I/O.
-4. **Callers' objects are mutated by update paths.** `updateMany` writes `updatedAt` into the caller's
-   data object (`Repository.ts:1089-1095`); `destroy` writes `deletedAt` into the caller's entity.
-   Reused objects carry stale injected fields. (The `findMany` → `query.limit` leg was fixed in pass 4.)
-5. **Per-repository `DbCacheProvider` is `new`'d, unbounded, and key generation can blow up**
+3. **Per-repository `DbCacheProvider` is `new`'d, unbounded, and key generation can blow up**
    (`Repository.ts:101`). Bypasses DI so it isn't substitutable; entries without ttl never expire;
    `buildCacheKey` does `JSON.stringify(query)`, which a `with` clause makes enormous or circular. Raw
    `query()` writes never invalidate.
-6. **`upsert` with no `updatedAt` field can emit an empty SET clause** (`Repository.ts:874-878`). Default
-   `setData` removes conflict-target keys and the PK; an entity without `PG_UPDATED_AT` hands
-   `onConflictDoUpdate` a `{}`. Fall back to `onConflictDoNothing` + re-select, or SET target to itself.
-7. **`createMany` batches are not atomic** (`Repository.ts:750-758`). Batches of 1000 run as independent
+4. **`createMany` batches are not atomic** (`Repository.ts:750-758`). Batches of 1000 run as independent
    INSERTs outside any ambient `$transactional`; a failure in batch N leaves 1..N-1 committed. Undocumented.
-8. **node:sqlite prepare shim renames columns of raw JOIN queries** (`NodeSqliteProvider.ts:226-228`).
-   The `db.prepare` wrapper rewrites *any* SELECT-with-JOIN with duplicate trailing column names to
-   positional aliases `__c0, __c1, …` — including user raw SQL via `repository.query()`, which comes back
-   keyed `__c0…`. Apply the rewrite only inside the `stmt.raw()` path.
-9. **FK error message assumes DELETE** (`DbForeignKeyError.ts:51,60`). Always renders "Cannot delete
-   {table}: it is referenced by …", but FK violations equally arise from INSERT/UPDATE with a dangling
-   reference. Branch on "is not present in table" vs "is still referenced".
-10. **`index.browser.ts` registers a module as a service** — `services: [AlephaDateTime]` where every
-    other index uses `imports:`. Harmless copy-paste slip.
-
 ## cache + redis + bucket + email + sms — 5 open (all P3)
 
 > Redis blocking `KEYS` closed in batch 3; R2 / Nodemailer coverage and the R2 single-use body in batch 4.
@@ -336,17 +352,17 @@ registry (batch 6).
 
 > Four closed in batch 6 and the `$topic` mqtt finding was invalid. See the fix log.
 
-2. **P2 · Second `subscribe` to the same room silently replaces the first handler.** `subscriptions` is
+1. **P2 · Second `subscribe` to the same room silently replaces the first handler.** `subscriptions` is
    `Map<roomId, handler>` (`WebSocketClient.ts:72-73`); a second subscriber overwrites the first and
    either party's unsubscribe deletes the survivor — two components on one room is the normal UI case.
    Every new-room subscribe on an OPEN connection also calls `reconnect()`, tearing down the live socket.
-3. **P2 · Node headless `$room` engines are never evicted.** `callRoom` (:196-203) lazily creates a
+2. **P2 · Node headless `$room` engines are never evicted.** `callRoom` (:196-203) lazily creates a
    `RoomEngine` per `channelPath:roomId` and engines are only deleted in the socket-close path — headless
    coordinator rooms have no sockets, so every distinct roomId ever `call()`ed accumulates forever.
-4. **P2 · No liveness / heartbeat on the Node WebSocket server.** Zero occurrences of ping, pong or
+3. **P2 · No liveness / heartbeat on the Node WebSocket server.** Zero occurrences of ping, pong or
    isAlive. Half-open TCP connections linger, inflating `maxConnectionsPerUser` (which can lock users out)
    and keeping room tick loops alive for ghosts.
-8. **P3 · Minor correctness nits.** `RoomEngine.call` throws a bare `new Error` (:136) — the repo rule is
+4. **P3 · Minor correctness nits.** `RoomEngine.call` throws a bare `new Error` (:136) — the repo rule is
    `AlephaError`. Cloudflare `webSocketMessage` doesn't null-check `deserializeAttachment()`
    (`WebSocketRoom.ts:215`) while `webSocketClose` does (:193, :248) — a null attachment crashes the frame
    with 1011. Node `reply()` mutates the caller's `exceptConnectionIds` via push.
