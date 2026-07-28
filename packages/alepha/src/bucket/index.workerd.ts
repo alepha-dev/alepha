@@ -22,6 +22,17 @@ export * from "./providers/S3FileStorageProvider.ts";
  * (`alepha/api/files`). Inject `FileStorageProvider` directly only when you
  * need blobs without a database.
  *
+ * **Deploying the direct route:** set `R2_BUCKET_NAME` in `.env.<env>`.
+ * `$storage` is a primitive the build can see, so it provisions the bucket
+ * and emits the binding automatically; injecting the provider declares
+ * nothing, and it cannot be inferred either — the build introspects your
+ * app under node, where this module binds Local/Memory/S3, while the R2
+ * binding and its hard `R2_BUCKET_NAME` requirement only exist under
+ * workerd. Without it the worker builds and uploads, then fails to boot
+ * with `SchemaValidationError: 'R2_BUCKET_NAME' is required`. An explicit
+ * value also wins over the derived name, so a pre-existing bucket keeps
+ * its keys.
+ *
  * R2 keys every object as `{APP_NAME}/{container}/{fileId}` inside the single
  * bucket bound as `R2_BUCKET_NAME`.
  *

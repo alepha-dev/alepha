@@ -305,6 +305,28 @@ export class BuildCloudflareTask extends BuildTask {
       hasBucket = ctx.alepha.primitives("$storage").length > 0;
     } catch {}
 
+    // `$storage` is the usual signal, but it is not the only supported way
+    // to use object storage: `alepha/bucket` documents injecting
+    // `FileStorageProvider` directly for "blobs without a database", and
+    // that route declares no primitive.
+    //
+    // It cannot be detected from here either. The build introspects the
+    // app under **node**, where `alepha/bucket` binds Local/Memory/S3; the
+    // R2 binding — and its hard `R2_BUCKET_NAME` requirement — only exists
+    // in the **workerd** variant. So nothing observable at build time says
+    // "this app will need R2 at runtime".
+    //
+    // The result was a worker that built and uploaded but could not boot,
+    // rejected by Cloudflare with a bare
+    // `SchemaValidationError: 'R2_BUCKET_NAME' is required`.
+    //
+    // Setting `R2_BUCKET_NAME` yourself is therefore a first-class way to
+    // declare the need. It provisions the bucket and emits the binding
+    // exactly as `$storage` would.
+    if (!hasBucket && process.env.R2_BUCKET_NAME) {
+      hasBucket = true;
+    }
+
     try {
       // Only count $cache primitives without an explicit `provider`
       // option — those fall back to KV on workerd. Explicit memory /

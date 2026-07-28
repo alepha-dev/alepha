@@ -203,6 +203,18 @@ export class CloudflareAdapter extends PlatformAdapter {
 
     const env: Record<string, string> = {};
 
+    // An app can declare object storage either with `$storage` or by
+    // setting R2_BUCKET_NAME itself (the "blobs without a database" route,
+    // where nothing observable at build time reveals the need — see
+    // BuildCloudflareTask.writeManifest). Forward an explicit value into
+    // the build so resource detection can see it.
+    const declaredBucket = (
+      await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`])
+    ).R2_BUCKET_NAME;
+    if (declaredBucket) {
+      env.R2_BUCKET_NAME = declaredBucket;
+    }
+
     if (ctx.resources.hasDatabase) {
       if (this.provisionedHyperdriveId) {
         env.HYPERDRIVE_ID = this.provisionedHyperdriveId;
@@ -220,7 +232,9 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
 
     if (ctx.resources.hasBucket) {
-      env.R2_BUCKET_NAME = ctx.naming.r2();
+      // An explicit name wins: it may point at a pre-existing bucket whose
+      // objects are already keyed under it, and renaming would orphan them.
+      env.R2_BUCKET_NAME ??= ctx.naming.r2();
     }
 
     if (ctx.resources.hasKV) {
