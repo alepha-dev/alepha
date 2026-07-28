@@ -1405,7 +1405,10 @@ export interface AlephaDump {
 }
 
 export interface AlephaDumpEnvVariable {
-  description: string;
+  /**
+   * Absent for env fields declared without a description.
+   */
+  description?: string;
   default?: string;
   required?: boolean;
   enum?: Array<string>;

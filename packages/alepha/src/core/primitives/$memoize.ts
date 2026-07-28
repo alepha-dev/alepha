@@ -1,4 +1,4 @@
-import { createMiddleware, type Middleware } from "alepha";
+import { createMiddleware, type Middleware } from "./$pipeline.ts";
 
 /**
  * Lightweight in-process memoization middleware.

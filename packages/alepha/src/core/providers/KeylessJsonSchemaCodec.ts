@@ -295,10 +295,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return value;
     }
 
-    if (z.schema.isBigInt(schema)) {
-      return `${value}n`;
-    }
-
     if (z.schema.isArray(schema)) {
       const arrSchema = schema as TArray;
       if (!Array.isArray(value)) return value;
@@ -348,10 +344,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   ): any {
     if (this.isLeaf(schema)) {
       return ctx.arr[ctx.i++];
-    }
-
-    if (z.schema.isBigInt(schema)) {
-      return BigInt(ctx.arr[ctx.i++].slice(0, -1));
     }
 
     if (z.schema.isArray(schema)) {
@@ -413,10 +405,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return value;
     }
 
-    if (z.schema.isBigInt(schema)) {
-      return BigInt(value.slice(0, -1));
-    }
-
     if (z.schema.isArray(schema)) {
       if (!Array.isArray(value)) return value;
       const arrSchema = schema as TArray;
@@ -448,8 +436,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
 
         if (z.schema.isObject(inner)) {
           result[k] = this.interpretDecodeFromValue(inner, v);
-        } else if (z.schema.isBigInt(inner)) {
-          result[k] = BigInt(v.slice(0, -1));
         } else {
           result[k] = v;
         }
@@ -468,10 +454,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   protected genEnc(schema: TSchema, ve: string): string {
     if (this.isLeaf(schema)) {
       return ve;
-    }
-
-    if (z.schema.isBigInt(schema)) {
-      return `${ve}+'n'`;
     }
 
     if (z.schema.isArray(schema)) {
@@ -525,10 +507,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
 
     if (this.isLeaf(schema)) {
       return { code: "", result: "a[i++]" };
-    }
-
-    if (z.schema.isBigInt(schema)) {
-      return { code: "", result: "BigInt(a[i++].slice(0,-1))" };
     }
 
     if (z.schema.isArray(schema)) {
@@ -606,12 +584,9 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     if (this.isLeaf(schema)) {
       return expr;
     }
-    if (z.schema.isBigInt(schema)) {
-      return `BigInt(${expr}.slice(0,-1))`;
-    }
     if (z.schema.isArray(schema)) {
       const items = schema.items as TSchema;
-      if (z.schema.isObject(items) || z.schema.isBigInt(items)) {
+      if (z.schema.isObject(items)) {
         const v = this.nextVar();
         return `${expr}.map(${v}=>${this.genDecFromValue(items, v)})`;
       }
@@ -628,9 +603,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
         const sk = JSON.stringify(k);
         if (z.schema.isObject(inner)) {
           return `${sk}:${this.genDecFromValue(inner, innerExpr)}`;
-        }
-        if (z.schema.isBigInt(inner)) {
-          return `${sk}:BigInt(${innerExpr}.slice(0,-1))`;
         }
         return `${sk}:${innerExpr}`;
       });
@@ -731,24 +703,40 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
 
       if (isOpt) {
         if (val !== null) {
-          result[key] = z.schema.isObject(inner)
-            ? this.reconstructObject(inner, val)
-            : val;
+          result[key] = this.reconstructField(inner, val);
         }
       } else if (isNullable) {
-        result[key] =
-          val === null
-            ? null
-            : z.schema.isObject(inner)
-              ? this.reconstructObject(inner, val)
-              : val;
+        result[key] = val === null ? null : this.reconstructField(inner, val);
       } else {
-        result[key] = z.schema.isObject(inner)
-          ? this.reconstructObject(inner, val)
-          : val;
+        result[key] = this.reconstructField(inner, val);
       }
     }
 
     return result;
+  }
+
+  /**
+   * Rebuild one decoded field value from its keyless (positional) form.
+   *
+   * Nested objects recurse, and so do the ITEMS of an array of objects — the
+   * encoder writes those as nested tuples, and returning the tuple verbatim
+   * silently handed callers `[["x", 1]]` where the schema promised
+   * `[{ a: "x", n: 1 }]`. The interpreted and compiled decode paths already
+   * mapped array items back; only this one did not, so the same schema
+   * decoded differently depending on which path ran.
+   */
+  protected reconstructField(inner: TSchema, val: any): any {
+    if (z.schema.isObject(inner)) {
+      return this.reconstructObject(inner, val);
+    }
+
+    if (z.schema.isArray(inner) && Array.isArray(val)) {
+      const items = (inner as TArray).items as TSchema;
+      if (z.schema.isObject(items)) {
+        return val.map((entry) => this.reconstructObject(items, entry));
+      }
+    }
+
+    return val;
   }
 }

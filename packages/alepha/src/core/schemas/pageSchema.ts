@@ -3,7 +3,6 @@ import {
   type TArray,
   type TObject,
   type TRecord,
-  TypeProvider,
   z,
 } from "../providers/TypeProvider.ts";
 
@@ -133,13 +132,7 @@ export type PageMetadata = Static<typeof pageMetadataSchema>;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-declare module "alepha" {
-  interface TypeProvider {
-    /**
-     * Create a schema for a paginated response.
-     */
-    page<T extends TObject | TRecord>(itemSchema: T): TPage<T>;
-  }
-}
-
-TypeProvider.prototype.page = (itemSchema) => pageSchema(itemSchema);
+// NOTE: this file used to augment `TypeProvider` with a `page()` method and
+// assign it on the prototype. `TypeProvider` is a static-only legacy config
+// holder — nothing ever constructs it — so the instance method was
+// unreachable. `z.page` (ZodProvider) is the live implementation.

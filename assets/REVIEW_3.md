@@ -21,12 +21,12 @@ is the result: the survivors, corrected, plus the still-unbuilt feature backlog.
 
 ## Executive summary
 
-| | Review #2 (2026-07-25) | Review #3 audit | After batches 1–4 |
+| | Review #2 (2026-07-25) | Review #3 audit | After batches 1–5 |
 |---|---|---|---|
-| Open findings | 96 | 91 | **78** |
+| Open findings | 96 | 91 | **73** |
 | P0 / P1 | 0 / 0 | 0 / 0 | **0 / 0** |
 | P2 | 16 | 17 | **4** |
-| P3 | 80 | 74 | **74** |
+| P3 | 80 | 74 | **69** |
 
 **Re-audit outcome** across review #2's 96 open findings:
 
@@ -37,7 +37,7 @@ is the result: the survivors, corrected, plus the still-unbuilt feature backlog.
 - **1 escalated, then retracted** — `FormValidationError` turned out to work; see below.
 - **81 unchanged.**
 
-**Then batches 1–4 closed 13 more** — **every P2 except the four websocket ones**. Nothing regressed;
+**Then batches 1–5 closed 18 more** — **every P2 except the four websocket ones**. Nothing regressed;
 no new P0/P1 surfaced at any point.
 
 ### Where the remaining risk is
@@ -48,7 +48,7 @@ headless room engines never evicted, and no ping/pong heartbeat. They are a cohe
 should be taken as one piece of work, not picked at.
 
 Everything else open is P3: dead code, doc drift, and hardening. The largest concentrations are cli
-(15), react (11), core (10) and orm (10).
+(15), react (11) and orm (10).
 
 Review #2's biggest un-swept theme — **options accepted but ignored** — is now closed. All five were
 public APIs that silently did nothing.
@@ -150,6 +150,23 @@ Verified with `yarn lint`, `yarn typecheck` and the full suite (441 files, 4659 
 | bucket/R2 | **`download()` serves repeat reads.** R2 hands back a single-use body — `body`, `arrayBuffer()` and `text()` all drain the same object — and the returned `FileLike` exposed all three over it, so reading twice threw while Memory and Local serve repeat reads happily. The bytes are now materialised once and every accessor is served from that buffer. The upload path already buffered (`file.arrayBuffer()`), so this makes the provider internally consistent as well as consistent with its peers. An empty-string `contentType` now falls back to `application/octet-stream` alongside a missing one. **The shared suite did not catch this** — each of its cases calls exactly one accessor. |
 | email/smtp | **`NodemailerEmailProvider` has a spec** — 15 tests covering the env → transport mapping, credential handling, pooling options from the atom, send/verify/close, and error wrapping. `createTransporter` is protected, so the transport is substituted through a subclass rather than `vi.mock`. The config mapping was extracted into `buildTransporterConfig()` so the test asserts the **real** mapping instead of a copy of it — verified by breaking the `auth` branch and watching two tests fail. |
 
+## Batch 5 — 2026-07-28 — core (partial: 5 of 10, plus one new bug)
+
+Verified with `yarn lint`, `yarn typecheck`, the full suite (442 files, 4666 tests) and a clean build.
+
+| Area | Fix |
+|---|---|
+| core/codec | **NEW BUG — an array of objects did not round-trip.** Found while pinning bigint behaviour: `{ rows: [{ a: "x", n: 1 }] }` encoded correctly to `[[["x",1]]]` and decoded back to `{ rows: [["x", 1]] }` — the objects were never rebuilt, so callers got tuples where the schema promised objects. `reconstructObject` recursed into nested *objects* but returned arrays verbatim; the interpreted and compiled decode paths both handled it, so the same schema decoded differently depending on which path ran. Extracted `reconstructField` and gave it the array-of-objects case. **Latent, not live** — the keyless codec is opt-in (`encoder: "keyless"`) and nothing in the framework or Lore selects it, which is why no test caught it. Not in review #2's list at all. |
+| core/codec | **Dead bigint branches removed** (nine sites). `z.bigint()` is a `ZodString` with `format: "bigint"`, so `isLeaf()` is true for it and every `"…n"`-suffix encode / `BigInt(v.slice(0,-1))` decode branch sat behind an `isLeaf` early return. Verified before deleting: `{big:"123"}` encodes to `["123"]` (no suffix) and decodes to the string — the round-trip worked by accident. Seven tests now pin the string representation, including precision beyond 2^53, so a future "fix" that reinstates suffix decoding fails loudly instead of silently dropping the last digit. The `isEnum` helper went with them: a real `ZodEnum` returns `false` from it and is already covered by `isScalar`. |
+| core | **`$memoize` no longer imports from the `"alepha"` barrel** — the only real barrel self-import in core, and a cycle through the package entry that the build's circular-dep analysis exists to catch. Now imports `createMiddleware` from `./$pipeline.ts` directly. Build stays clean. |
+| core | **`TypeProvider.prototype.page` augmentation deleted.** `TypeProvider` is a static-only legacy config holder that nothing constructs, so the instance method was unreachable; `z.page` is the live implementation. |
+| core | **`AlephaDumpEnvVariable.description` is optional.** `dump()` assigns `inner?.description ?? prop?.description`, which is `undefined` for env fields without one, while the interface declared it as the only non-optional field — so the devtools env table typed against it could NPE. |
+| core | **`createPagination` uses `> limit`, not `=== limit + 1`.** A caller passing an unsliced result set was told `isLast: true` on a page that clearly had more. |
+
+**Still open in core (5):** the keyless codec's `null`-in-optional+nullable lossiness, `parseEnv` `$KEY`
+escaping, EventManager cross-tier ordering + stale logger, `AlephaCore` missing from the browser/native
+entrypoints, and the acknowledged TODOs (scoped-lifetime warn-once, `__alephaRef` cursor, `StreamLike`).
+
 ### Also found while fixing
 
 - **A stray `packages/alepha/copy/` appeared mid-session** — a byte-identical mirror of `packages/alepha/src/` (327 spec files), untracked and not gitignored. Vitest collected it, so the suite ran twice against a stale second copy and reported failures that did not exist in `src`. **I could not identify what wrote it**: it is not `scripts/build.ts`, `copy-swagger.ts` or `gen-docs.ts`, and a later `yarn build` did *not* recreate it. Removed. Whatever the source, `packages/alepha/copy/` deserves a `.gitignore` entry and a vitest `exclude` — the same defence the config already has for `**/.claude/**` worktrees, and for the same reason.
@@ -158,7 +175,7 @@ Verified with `yarn lint`, `yarn typecheck` and the full suite (441 files, 4659 
 
 # Open findings
 
-78 findings remain (91 minus the 13 closed in batches 1–4). Line numbers are against `main` @ `a61c26894` and were
+73 findings remain (91 minus the 18 closed in batches 1–5). Line numbers are against `main` @ `a61c26894` and were
 read during the audit — but **locate by symbol name**, not by line, when acting on them.
 
 ## Priority list — the P2s
@@ -183,39 +200,25 @@ bindings (batch 3) · R2 coverage + single-use body, Nodemailer coverage (batch 
 
 ---
 
-## core — 10 open (all P3)
+## core — 5 open (all P3)
 
-1. **Keyless codec's bigint branches are unreachable dead code.** `z.bigint()` is a `ZodString` with
-   `format: "bigint"`, and `isLeaf()` (`KeylessJsonSchemaCodec.ts:647`) checks `isScalar` before any
-   `isBigInt` check — the suffix encode / `BigInt(v.slice(0,-1))` decode paths never execute. Delete
-   them plus the `isEnum` helper (:669) which can never match a `ZodEnum`.
-2. **`$memoize` imports from the `"alepha"` barrel inside core** (`$memoize.ts:1`). The only real
-   barrel self-import in core; `index.shared.ts` re-exports it, creating a cycle through the package
-   entry. Exactly the pattern the build's circular-dep analysis exists to flag. → `from "./$pipeline.ts"`.
-3. **`TypeProvider.prototype.page` augments a class that is never instantiated** (`pageSchema.ts:145`).
-   Vestige of the typebox `t` provider; `z.page` is the live implementation. Delete, along with the
-   `TypeProvider.translateError` / `setLocale` no-op stubs.
-4. **`AlephaDumpEnvVariable.description` is typed `string` but can be `undefined`** (`Alepha.ts:1408`).
-   `dump()` assigns `inner?.description ?? prop?.description`; consumers typed against it (the devtools
-   env table) will NPE. Make it optional.
-5. **Keyless codec: `null` in an optional+nullable field decodes to "absent".** The `isOpt` branch wins
+> Five closed in batch 5; see the fix log.
+
+1. **Keyless codec: `null` in an optional+nullable field decodes to "absent".** The `isOpt` branch wins
    over `isNullable`, so `null` is the shared sentinel for both. `{a: null}` with
    `z.integer().nullable().optional()` round-trips to `{}`. Breaks PATCH semantics.
-6. **`parseEnv` `$KEY` templating has no escape and substitutes into undeclared lookalikes**
+2. **`parseEnv` `$KEY` templating has no escape and substitutes into undeclared lookalikes**
    (`Alepha.ts:1146-1160`). No way to include a literal `$` (a password containing `$PORT` gets
    rewritten); longest-first sorting only protects among *declared* keys, so `$PORTX` with `PORT`
    declared becomes `<port>X`. Consider `$$` escaping and `/\$KEY(?![A-Z0-9_])/`.
-7. **EventManager: cross-tier `before`/`after` constraints silently ignored; compiled executors snapshot
+3. **EventManager: cross-tier `before`/`after` constraints silently ignored; compiled executors snapshot
    a stale logger.** `topoSort` runs per priority tier (`EventManager.ts:116-118`), so `priority: "first"`
    + `after: [NormalTierService]` gets no ordering and no warning. Separately `compile()` captures
    `const log = this.log` (:245) before the logger module replaces `alepha.logger`.
-8. **`createPagination` detects "has next page" with exact equality** (`createPagination.ts:54`):
-   `entities.length === limit + 1`. An unsliced array reports `isLast: true` on a page that has more.
-   `> limit` is strictly safer.
-9. **`AlephaCore` exists only in the node and workerd entrypoints** (`core/index.ts:38`,
+4. **`AlephaCore` exists only in the node and workerd entrypoints** (`core/index.ts:38`,
    `index.workerd.ts:22` — duplicated; absent from `index.browser.ts` / `index.native.ts`). Isomorphic
    code importing it compiles server-side and breaks in the browser bundle. Hoist to a shared file.
-10. **Acknowledged TODOs.** (a) scoped-lifetime inject silently falls back to the global singleton when
+5. **Acknowledged TODOs.** (a) scoped-lifetime inject silently falls back to the global singleton when
     no ALS context exists — the planned warn-once is written as a comment and not implemented
     (`Alepha.ts:976`), so "per-request isolation" quietly becomes a cross-request singleton;
     (b) `__alephaRef` cursor not restored on mid-instantiation throw (`ref.ts:60`);

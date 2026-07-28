@@ -51,7 +51,9 @@ export function createPagination<T>(
   sort?: Array<{ column: string; direction: "asc" | "desc" }>,
 ): Page<T> {
   const content = entities.slice(0, limit);
-  const hasNext = entities.length === limit + 1;
+  // `>` not `===`: a caller that passes an unsliced result set (length far
+  // beyond limit+1) would otherwise be told it is on the last page.
+  const hasNext = entities.length > limit;
   const pageNumber = limit > 0 ? Math.floor(offset / limit) : 0;
 
   return {
