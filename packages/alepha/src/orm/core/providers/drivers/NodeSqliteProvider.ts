@@ -16,6 +16,7 @@ import { BetterSQLiteSession } from "drizzle-orm/better-sqlite3/session";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core/db";
 import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core/dialect";
+import { DbError } from "../../errors/DbError.ts";
 import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
@@ -339,6 +340,46 @@ export class NodeSqliteProvider extends DatabaseProvider {
   }
 
   protected async executeMigrations(migrationsFolder: string): Promise<void> {
-    migrate(this.drizzleDb, { migrationsFolder });
+    // Foreign keys MUST be disabled for the duration of the migration, and
+    // it MUST happen here rather than inside the migration SQL.
+    //
+    // SQLite silently ignores `PRAGMA foreign_keys` inside a transaction,
+    // and drizzle wraps migrations in one — so the `PRAGMA foreign_keys=OFF`
+    // that drizzle-kit emits at the top of a generated table-rebuild is a
+    // no-op. Constraints therefore stay live, and because `DROP TABLE`
+    // performs an implicit `DELETE FROM`, every `ON DELETE CASCADE` fires:
+    // a rebuild of a parent table silently empties its children.
+    //
+    // That is not hypothetical. Regenerating a schema for one app produced
+    // a migration that rebuilt `roadmap_items` and `team_members`, and
+    // wiped 2434 rows across five child tables — capacity allocations,
+    // availability, activity tracking, planning phases, skill allocations —
+    // with no error and a "Migration OK" log line.
+    //
+    // Setting the pragma out here, before drizzle opens its transaction, is
+    // the sequence SQLite's own "Making Other Kinds Of Table Schema Changes"
+    // recipe prescribes.
+    const foreignKeysWereOn =
+      (this.sqlite.prepare("PRAGMA foreign_keys").get() as any)
+        ?.foreign_keys === 1;
+
+    if (foreignKeysWereOn) this.sqlite.exec("PRAGMA foreign_keys=OFF");
+    try {
+      migrate(this.drizzleDb, { migrationsFolder });
+
+      // A rebuild that dropped a parent without carrying its children over
+      // would leave orphans. Surface that instead of shipping silent
+      // corruption.
+      const violations = this.sqlite
+        .prepare("PRAGMA foreign_key_check")
+        .all() as unknown[];
+      if (violations.length > 0) {
+        throw new DbError(
+          `Migration left ${violations.length} foreign key violation(s); the database was not migrated cleanly`,
+        );
+      }
+    } finally {
+      if (foreignKeysWereOn) this.sqlite.exec("PRAGMA foreign_keys=ON");
+    }
   }
 }

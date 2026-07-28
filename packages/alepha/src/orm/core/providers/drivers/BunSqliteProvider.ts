@@ -13,6 +13,7 @@ import {
 } from "alepha";
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import type { PgDatabase } from "drizzle-orm/pg-core";
+import { DbError } from "../../errors/DbError.ts";
 import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
@@ -205,6 +206,29 @@ export class BunSqliteProvider extends DatabaseProvider {
 
   protected async executeMigrations(migrationsFolder: string): Promise<void> {
     const { migrate } = await import("drizzle-orm/bun-sqlite/migrator");
-    await migrate(this.bunDb!, { migrationsFolder });
+
+    // See NodeSqliteProvider.executeMigrations for the full reasoning:
+    // SQLite ignores `PRAGMA foreign_keys` inside a transaction, drizzle
+    // wraps migrations in one, and `DROP TABLE` performs an implicit
+    // `DELETE FROM` — so a generated table-rebuild silently cascades every
+    // child row away. The pragma has to be set out here, before drizzle
+    // opens its transaction.
+    const foreignKeysWereOn =
+      (this.sqlite!.query("PRAGMA foreign_keys").get() as any)?.foreign_keys ===
+      1;
+
+    if (foreignKeysWereOn) this.sqlite!.run("PRAGMA foreign_keys=OFF");
+    try {
+      await migrate(this.bunDb!, { migrationsFolder });
+
+      const violations = this.sqlite!.query("PRAGMA foreign_key_check").all();
+      if (violations.length > 0) {
+        throw new DbError(
+          `Migration left ${violations.length} foreign key violation(s); the database was not migrated cleanly`,
+        );
+      }
+    } finally {
+      if (foreignKeysWereOn) this.sqlite!.run("PRAGMA foreign_keys=ON");
+    }
   }
 }
