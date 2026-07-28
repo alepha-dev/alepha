@@ -69,10 +69,16 @@ export class WebSocketChannelConnection<
   protected messageQueue: Array<{ roomId: string; message: Static<TServer> }> =
     [];
 
-  // Room subscriptions: Map<roomId, handler>
+  /**
+   * Room subscriptions, `roomId -> set of handlers`.
+   *
+   * A Set, not a single handler: two components subscribing to the same room
+   * is the ordinary UI case, and with one slot the second overwrote the first
+   * — then either component's unsubscribe deleted the survivor.
+   */
   protected subscriptions = new Map<
     string,
-    (message: Static<TClient>) => void
+    Set<(message: Static<TClient>) => void>
   >();
 
   // Connection state
@@ -151,7 +157,13 @@ export class WebSocketChannelConnection<
     });
 
     // Add subscription
-    this.subscriptions.set(roomId, handler);
+    const existing = this.subscriptions.get(roomId);
+    const alreadyJoined = existing !== undefined;
+    if (existing) {
+      existing.add(handler);
+    } else {
+      this.subscriptions.set(roomId, new Set([handler]));
+    }
 
     // Add callbacks
     if (callbacks?.onConnect) this.onConnectCallbacks.add(callbacks.onConnect);
@@ -159,13 +171,16 @@ export class WebSocketChannelConnection<
       this.onDisconnectCallbacks.add(callbacks.onDisconnect);
     if (callbacks?.onError) this.onErrorCallbacks.add(callbacks.onError);
 
-    // Connect or reconnect to include the new room in the URL
+    // Connect or reconnect to include the new room in the URL.
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       this.log.trace("No active connection, initiating connect");
       this.connect().catch((error) => {
         this.log.error("Failed to connect:", error);
       });
-    } else {
+    } else if (!alreadyJoined) {
+      // Only when the room is NEW to this connection. A second subscriber to
+      // a room we already joined used to tear down the live socket — every
+      // other component on it saw a disconnect for nothing.
       this.log.trace("Reconnecting to include new room subscription", {
         roomId,
       });
@@ -175,7 +190,12 @@ export class WebSocketChannelConnection<
     // Return unsubscribe function
     return () => {
       this.log.debug("Unsubscribing from room", { roomId });
-      this.subscriptions.delete(roomId);
+      const handlers = this.subscriptions.get(roomId);
+      handlers?.delete(handler);
+      // Only drop the room once its LAST subscriber leaves.
+      if (handlers && handlers.size === 0) {
+        this.subscriptions.delete(roomId);
+      }
       if (callbacks?.onConnect)
         this.onConnectCallbacks.delete(callbacks.onConnect);
       if (callbacks?.onDisconnect)
@@ -358,9 +378,11 @@ export class WebSocketChannelConnection<
       if (roomId !== undefined) {
         // Addressed frame: only the room it was sent to. Fanning it to every
         // handler delivered room A's messages to room B.
-        const handler = this.subscriptions.get(roomId);
-        if (handler) {
-          handler(parsed as Static<TClient>);
+        const handlers = this.subscriptions.get(roomId);
+        if (handlers?.size) {
+          for (const handler of handlers) {
+            handler(parsed as Static<TClient>);
+          }
         } else {
           this.log.trace("No handler for room", { roomId });
         }
@@ -369,8 +391,10 @@ export class WebSocketChannelConnection<
 
       // Unaddressed frame (channel-wide emit, or a server that predates the
       // marker) — every subscriber is a legitimate recipient.
-      for (const handler of this.subscriptions.values()) {
-        handler(parsed as Static<TClient>);
+      for (const handlers of this.subscriptions.values()) {
+        for (const handler of handlers) {
+          handler(parsed as Static<TClient>);
+        }
       }
     } catch (err) {
       this.log.error("Error handling message:", err);

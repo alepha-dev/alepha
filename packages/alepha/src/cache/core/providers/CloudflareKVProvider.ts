@@ -217,6 +217,15 @@ export class CloudflareKVProvider extends CacheProvider {
     }
   }
 
+  /**
+   * **Not atomic.** KV has no INCR: this reads, adds, and writes back, so two
+   * isolates incrementing concurrently can lose an update. Fine for cache
+   * statistics and best-effort counters; NOT sufficient on its own for a rate
+   * limiter that must never over-admit — route that through a Durable Object,
+   * or accept that the ceiling is approximate under concurrency.
+   *
+   * Redis and Postgres implement this atomically; only KV cannot.
+   */
   public async incr(
     name: string,
     key: string,

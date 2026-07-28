@@ -221,11 +221,11 @@ export class ReactServerTemplateProvider {
 
     try {
       while (true) {
-        // Backpressure: wait if buffer is full
-        if (controller.desiredSize !== null && controller.desiredSize <= 0) {
-          await new Promise<void>((resolve) => queueMicrotask(resolve));
-        }
-
+        // No backpressure here, deliberately. The previous `if desiredSize <= 0
+        // await queueMicrotask` was a no-op dressed as one: a microtask cannot
+        // let the consumer pull, and it ran once rather than looping. Real
+        // backpressure needs the consumer's `pull` callback, which this
+        // ReadableStream does not expose to us.
         const { done, value } = await reader.read();
         if (done) break;
         controller.enqueue(value);

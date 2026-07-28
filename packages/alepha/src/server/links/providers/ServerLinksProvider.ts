@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
-import { $hook, $inject, $state, Alepha, AlephaError, z } from "alepha";
+import { $hook, $inject, $state, Alepha, z } from "alepha";
 import { $logger } from "alepha/logger";
 import type { SecurityProvider, UserAccountToken } from "alepha/security";
 import {
   $action,
   $route,
   $sse,
+  BadRequestError,
   type ClientRequestEntry,
   type ClientRequestOptions,
   type RequestConfigSchema,
@@ -216,7 +217,9 @@ export class ServerLinksProvider {
     },
     handler: async ({ body }) => {
       if (body.length > ServerLinksProvider.MAX_BATCH_SIZE) {
-        throw new AlephaError(
+        // The caller sent too many entries — that is a bad request, not a
+        // server fault. A bare AlephaError surfaced as a 500.
+        throw new BadRequestError(
           `Batch size ${body.length} exceeds maximum of ${ServerLinksProvider.MAX_BATCH_SIZE}`,
         );
       }

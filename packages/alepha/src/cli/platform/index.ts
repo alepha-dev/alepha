@@ -63,9 +63,15 @@ export const platform = (options: PlatformOptions) => {
   // callbacks, etc.) without restating the production hostname in two
   // places. Honors an explicit env override and any non-production-only
   // setup (we don't override prod-set values).
-  if (!process.env.PUBLIC_URL) {
+  // Only in production. This runs at config IMPORT time, so without the mode
+  // gate a plain `alepha dev` inherited the production hostname and every
+  // absolute link it rendered — OAuth callbacks, email links — pointed at
+  // prod from a dev session.
+  const mode = process.env.NODE_ENV ?? process.env.MODE;
+  if (!process.env.PUBLIC_URL && mode === "production") {
     const productionDomain = options?.environments?.production?.domain;
-    if (productionDomain) {
+    // A wildcard domain is a routing pattern, not a hostname.
+    if (productionDomain && !productionDomain.includes("*")) {
       process.env.PUBLIC_URL = `https://${productionDomain}`;
     }
   }

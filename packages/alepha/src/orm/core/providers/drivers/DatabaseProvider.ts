@@ -35,6 +35,21 @@ export abstract class DatabaseProvider {
   protected abstract readonly builder: ModelBuilder;
   protected readonly kit = $inject(DrizzleKitProvider);
   public abstract readonly db: PgDatabase<any>;
+
+  /**
+   * Open the driver's connection, for drivers that have an explicit one.
+   *
+   * Optional: sqlite-family drivers open lazily on first use and declare
+   * neither. Callers use `provider.connect?.()` — the CLI used to reach for
+   * `(provider as any).connect()` because the base class said nothing.
+   */
+  public connect?(): Promise<void>;
+
+  /**
+   * Close the driver's connection. Optional for the same reason as
+   * {@link connect}.
+   */
+  public close?(): Promise<void>;
   public abstract readonly dialect: "postgresql" | "sqlite";
   public abstract readonly url: string;
 

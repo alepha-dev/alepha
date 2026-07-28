@@ -118,3 +118,92 @@ describe("PackageManagerUtils", () => {
     });
   });
 });
+
+/**
+ * `getWorkspaceContext` treated any ancestor with a lockfile + package.json as
+ * "our workspace root". `alepha init` in a nested directory of an UNRELATED
+ * repository therefore skipped git init / AGENTS.md / package-manager setup
+ * and installed into that repo's root. It also never checked depth 1, so a
+ * package sitting directly under a real workspace root reported no context.
+ */
+describe("getWorkspaceContext — workspace membership", () => {
+  const seed = async (
+    files: Record<string, unknown | string>,
+  ): Promise<TestPackageManagerUtils> => {
+    const alepha = Alepha.create()
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({ provide: ShellProvider, use: MemoryShellProvider });
+    const fs = alepha.inject(MemoryFileSystemProvider);
+    for (const [path, content] of Object.entries(files)) {
+      fs.files.set(
+        path,
+        Buffer.from(
+          typeof content === "string" ? content : JSON.stringify(content),
+        ),
+      );
+    }
+    return alepha.inject(TestPackageManagerUtils);
+  };
+
+  it("recognises a package the root actually declares", async () => {
+    const pm = await seed({
+      "/repo/yarn.lock": "",
+      "/repo/package.json": { name: "root", workspaces: ["packages/*"] },
+      "/repo/packages/app/package.json": { name: "app" },
+    });
+
+    const ctx = await pm.getWorkspaceContext("/repo/packages/app");
+    expect(ctx.isPackage).toBe(true);
+    expect(ctx.workspaceRoot).toBe("/repo");
+  });
+
+  it("recognises a package directly under the root (depth 1)", async () => {
+    const pm = await seed({
+      "/repo/yarn.lock": "",
+      "/repo/package.json": { name: "root", workspaces: ["app"] },
+      "/repo/app/package.json": { name: "app" },
+    });
+
+    const ctx = await pm.getWorkspaceContext("/repo/app");
+    expect(ctx.isPackage).toBe(true);
+  });
+
+  it("refuses an unrelated parent repo that does not declare us", async () => {
+    const pm = await seed({
+      "/other/yarn.lock": "",
+      "/other/package.json": { name: "other", workspaces: ["libs/*"] },
+      "/other/somewhere/mine/package.json": { name: "mine" },
+    });
+
+    const ctx = await pm.getWorkspaceContext("/other/somewhere/mine");
+    expect(ctx.isPackage).toBe(false);
+    expect(ctx.workspaceRoot).toBeNull();
+  });
+
+  it("refuses a parent repo with no workspaces at all", async () => {
+    const pm = await seed({
+      "/other/yarn.lock": "",
+      "/other/package.json": { name: "other" },
+      "/other/nested/mine/package.json": { name: "mine" },
+    });
+
+    expect((await pm.getWorkspaceContext("/other/nested/mine")).isPackage).toBe(
+      false,
+    );
+  });
+
+  it("supports the object form of workspaces", async () => {
+    const pm = await seed({
+      "/repo/pnpm-lock.yaml": "",
+      "/repo/package.json": {
+        name: "root",
+        workspaces: { packages: ["packages/**"] },
+      },
+      "/repo/packages/scope/app/package.json": { name: "app" },
+    });
+
+    expect(
+      (await pm.getWorkspaceContext("/repo/packages/scope/app")).isPackage,
+    ).toBe(true);
+  });
+});

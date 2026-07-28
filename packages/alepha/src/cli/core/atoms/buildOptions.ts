@@ -314,13 +314,6 @@ export const buildOptions = $atom({
         display: z
           .enum(["standalone", "fullscreen", "minimal-ui", "browser"])
           .optional(),
-
-        /**
-         * Enable offline support via service worker.
-         *
-         * TODO: Not yet implemented.
-         */
-        offline: z.boolean().optional(),
       })
       .optional(),
   }),

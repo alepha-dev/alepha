@@ -4,6 +4,8 @@ import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join, relative, resolve } from "node:path";
 import { $hook, $inject, type Alepha, AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import type { InlineConfig, Logger, Plugin, ViteDevServer } from "vite";
 import type { AppEntry } from "../providers/AppEntryProvider.ts";
@@ -57,6 +59,8 @@ export interface PreloadManifest {
  */
 export class ViteUtils {
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly log = $logger();
   protected viteDevServer?: ViteDevServer;
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -103,6 +107,8 @@ export class ViteUtils {
    * Useful for silent builds that only show output on failure.
    */
   public createBufferedLogger(): BufferedLogger {
+    // Captured once so the closures below do not reach for `this`.
+    const now = () => this.dateTime.now().toDate();
     const entries: BufferedLogEntry[] = [];
     const loggedErrors = new WeakSet<Error>();
     const warnedMessages = new Set<string>();
@@ -114,12 +120,12 @@ export class ViteUtils {
       },
 
       info(msg: string) {
-        entries.push({ level: "info", msg, timestamp: new Date() });
+        entries.push({ level: "info", msg, timestamp: now() });
       },
 
       warn(msg: string) {
         hasWarned = true;
-        entries.push({ level: "warn", msg, timestamp: new Date() });
+        entries.push({ level: "warn", msg, timestamp: now() });
       },
 
       warnOnce(msg: string) {
@@ -128,14 +134,14 @@ export class ViteUtils {
         }
         warnedMessages.add(msg);
         hasWarned = true;
-        entries.push({ level: "warn", msg, timestamp: new Date() });
+        entries.push({ level: "warn", msg, timestamp: now() });
       },
 
       error(msg: string, options?: { error?: Error | null }) {
         if (options?.error) {
           loggedErrors.add(options.error);
         }
-        entries.push({ level: "error", msg, timestamp: new Date() });
+        entries.push({ level: "error", msg, timestamp: now() });
       },
 
       clearScreen() {
@@ -421,6 +427,12 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
      * -> We still use devServer and ssrLoadModule for now.
      * -> This is clearly a bad stuff, we need to find better way.
      */
+    // A second `runAlepha` used to overwrite this field and leak the first
+    // server (and its file watchers) for the life of the process.
+    await this.viteDevServer?.close().catch((error) => {
+      this.log.warn("Failed to close the previous Vite dev server", error);
+    });
+
     this.viteDevServer = await createServer({
       server: { middlewareMode: true },
       appType: "custom",

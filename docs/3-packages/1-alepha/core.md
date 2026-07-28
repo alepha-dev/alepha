@@ -12,17 +12,11 @@ npm install alepha
 
 ## Overview
 
-Foundation of the entire framework with dependency injection and lifecycle management.
+Core container of the Alepha framework.
 
-**Features:**
-- Dependency injection for services
-- Service substitution/mocking
-- Type-safe environment variable loading with Zod schemas
-- Lifecycle hooks (start, stop, log, etc.)
-- Module definitions and composition
-- Request-scoped context access via Async Local Storage (ALS)
-- Reactive state management with atoms
-- Full TypeScript generics and type inference
+It is responsible for managing the lifecycle of services,
+handling dependency injection,
+and providing a unified interface for the application.
 
 ## API Reference
 

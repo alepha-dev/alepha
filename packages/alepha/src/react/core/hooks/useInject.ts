@@ -8,5 +8,7 @@ import { useAlepha } from "./useAlepha.ts";
  */
 export const useInject = <T extends object>(service: Service<T>): T => {
   const alepha = useAlepha();
-  return useMemo(() => alepha.inject(service), []);
+  // Keyed on `service`: with an empty dep array a different service class
+  // between renders silently kept the first instance.
+  return useMemo(() => alepha.inject(service), [service]);
 };

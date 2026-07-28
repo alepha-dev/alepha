@@ -131,6 +131,8 @@ export function useAction<Args extends any[], Result = void>(
   const [result, setResult] = useState<Result | undefined>();
   const isExecutingRef = useRef(false);
   const debounceTimerRef = useRef<Timeout | undefined>(undefined);
+  /** Resolves the promise handed to a debounced caller that got superseded. */
+  const pendingDebounce = useRef<(() => void) | undefined>(undefined);
   const abortControllerRef = useRef<AbortController | undefined>(undefined);
   const isMountedRef = useRef(true);
   const intervalRef = useRef<Interval | undefined>(undefined);
@@ -326,15 +328,24 @@ export function useAction<Args extends any[], Result = void>(
       options_: { supersede?: boolean } = {},
     ): Promise<Result | undefined> => {
       if (options.debounce) {
-        // clear existing timer
+        // Settle the superseded call. `cancel()`, unmount, and a newer call
+        // all clear the timer — and the promise returned to THAT caller was
+        // only ever resolved inside the timeout, so `await action.run(...)`
+        // hung forever. Resolving `undefined` matches the declared
+        // `Promise<Result | undefined>`.
+        pendingDebounce.current?.();
         if (debounceTimerRef.current) {
           dateTimeProvider.clearTimeout(debounceTimerRef.current);
         }
 
-        // Set new timer
-        return new Promise((resolve) => {
+        return new Promise<Result | undefined>((resolve) => {
+          pendingDebounce.current = () => {
+            pendingDebounce.current = undefined;
+            resolve(undefined);
+          };
           debounceTimerRef.current = dateTimeProvider.createTimeout(
             async () => {
+              pendingDebounce.current = undefined;
               const result = await executeAction(args, options_);
               resolve(result);
             },
@@ -371,6 +382,7 @@ export function useAction<Args extends any[], Result = void>(
 
   const cancel = useCallback(() => {
     // clear debounce timer
+    pendingDebounce.current?.();
     if (debounceTimerRef.current) {
       dateTimeProvider.clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = undefined;

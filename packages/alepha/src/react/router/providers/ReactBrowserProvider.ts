@@ -215,7 +215,9 @@ export class ReactBrowserProvider {
       this.state.url.pathname + this.state.url.search + this.state.url.hash;
 
     if (committed !== url) {
-      this.pushState(committed);
+      // Forward `replace`: a loader redirect used to always PUSH, so history
+      // grew and Back landed on an entry that immediately redirected again.
+      this.pushState(committed, options?.replace);
       return;
     }
 

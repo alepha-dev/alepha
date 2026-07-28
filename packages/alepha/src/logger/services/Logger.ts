@@ -212,6 +212,11 @@ export class Logger implements LoggerInterface {
     };
 
     if (this.levels[level] > this.levels[this.level]) {
+      // Suppressed for the console, but still EMITTED. Review #3 proposed
+      // early-returning before building the entry; that would starve the
+      // `log` event, which is what feeds the devtools log viewer — a
+      // `LOG_LEVEL=info` process would show no trace/debug there at all.
+      // The expensive half (formatting) is already skipped.
       this.emit(logEntry);
       return;
     }

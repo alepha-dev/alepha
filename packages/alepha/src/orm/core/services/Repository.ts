@@ -98,7 +98,9 @@ export abstract class Repository<T extends TObject> {
   protected readonly relationManager = $inject(PgRelationManager);
   protected readonly queryManager = $inject(QueryManager);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
-  protected readonly dbCache = new DbCacheProvider();
+  // Injected, not `new`'d: bypassing DI made it impossible to substitute in
+  // tests and gave every repository its own unbounded Map.
+  protected readonly dbCache = $inject(DbCacheProvider);
   protected readonly alepha = $inject(Alepha);
 
   static of<T extends TObject>(
@@ -311,6 +313,27 @@ export abstract class Repository<T extends TObject> {
   /**
    * Start a SELECT DISTINCT query on the table.
    */
+  /**
+   * SELECT of only the requested columns. The primary key is always included
+   * so downstream mapping and caching keep working.
+   */
+  protected rawSelectColumns(
+    opts: StatementOptions = {},
+    columns: (keyof Static<T>)[] = [],
+  ) {
+    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
+    const table = this.table as PgTable;
+
+    const fields: Record<string, any> = {};
+    for (const column of [this.id.key, ...columns]) {
+      if (typeof column === "string" && !fields[column]) {
+        fields[column] = this.col(column);
+      }
+    }
+
+    return db.select(fields).from(table);
+  }
+
   protected rawSelectDistinct(
     opts: StatementOptions = {},
     columns: (keyof Static<T>)[] = [],
@@ -393,7 +416,13 @@ export abstract class Repository<T extends TObject> {
     const columns = query.columns ?? query.distinct;
     const builder = query.distinct
       ? this.rawSelectDistinct(opts, query.distinct)
-      : this.rawSelect(opts);
+      : // Narrow the SQL projection too, not just the schema `clean()` uses.
+        // `columns` only affected the returned shape, so a wide table still
+        // paid full row I/O for a two-column read. Joins keep SELECT * — the
+        // join mapper needs every table's columns to reassemble the row.
+        query.columns && !query.with
+        ? this.rawSelectColumns(opts, query.columns)
+        : this.rawSelect(opts);
 
     const joins: Array<PgJoin> = [];
     if (query.with) {
@@ -767,6 +796,11 @@ export abstract class Repository<T extends TObject> {
       data: values,
     });
 
+    // Batches are NOT one atomic unit unless the caller wraps the call in
+    // `$transactional`: a failure in batch N leaves batches 1..N-1 committed.
+    // Documented rather than silently wrapped, because an implicit
+    // transaction around an arbitrarily large insert is its own hazard (lock
+    // duration, WAL growth) and the caller is better placed to decide.
     const batchSize = opts.batchSize ?? 1000;
     const allEntities: Static<T>[] = [];
 

@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
@@ -97,6 +98,7 @@ export interface VendorLock {
  * Handles syncing and diffing vendored packages from a remote git repository.
  */
 export class VendorService {
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly log = $logger();
   protected readonly shell = $inject(ShellProvider);
   protected readonly fs = $inject(FileSystemProvider);
@@ -317,7 +319,7 @@ export class VendorService {
   protected async cloneRemote(remote: string, branch: string): Promise<string> {
     const tmpDir = this.fs.join(
       process.env.TMPDIR || "/tmp",
-      `.alepha-vendor-${Date.now()}`,
+      `.alepha-vendor-${this.dateTime.nowMillis()}`,
     );
 
     this.log.debug(`Cloning ${remote}#${branch} into ${tmpDir}`);
@@ -353,7 +355,7 @@ export class VendorService {
   ): Promise<string> {
     const tmpDir = this.fs.join(
       process.env.TMPDIR || "/tmp",
-      `.alepha-vendor-${Date.now()}`,
+      `.alepha-vendor-${this.dateTime.nowMillis()}`,
     );
 
     this.log.debug(`Cloning ${remote}@${commit} into ${tmpDir}`);

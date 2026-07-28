@@ -54,7 +54,6 @@ export class SmsPrimitive extends Primitive<SmsPrimitiveOptions> {
     await this.alepha.events.emit("sms:sending", {
       to: options.to,
       template: this.name,
-      variables: {},
       provider: this.provider,
       abort: () => {
         throw new AlephaError("SMS sending aborted by hook");

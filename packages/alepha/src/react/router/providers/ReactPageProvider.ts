@@ -180,7 +180,15 @@ export class ReactPageProvider {
    * Find a route by name anywhere in the tree (including nested children).
    * Returns undefined if no page with that name exists.
    */
-  protected findRoute(
+  /**
+   * Non-throwing counterpart to {@link page}.
+   *
+   * Public because callers that hold a possibly-synthetic layer name (the
+   * `not-found` layer the router inserts when no route matched) need to ask
+   * without being thrown at — `page()` throws for unknown names, so the
+   * `?.` in `page(name)?.onLeave?.()` guarded nothing.
+   */
+  public findRoute(
     name: string,
     routes: PageRouteEntry[] = this.pages,
   ): PageRoute | undefined {

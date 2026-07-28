@@ -21,7 +21,6 @@ export class InitCommand {
       .text({
         title: "path",
         trim: true,
-        lowercase: true,
       })
       .optional(),
     flags: z.object({

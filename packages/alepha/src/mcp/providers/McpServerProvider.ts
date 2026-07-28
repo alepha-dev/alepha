@@ -2,6 +2,7 @@ import { $inject, Alepha, SchemaValidationError } from "alepha";
 import { $logger } from "alepha/logger";
 import {
   McpError,
+  McpInvalidParamsError,
   McpMethodNotFoundError,
   McpPromptNotFoundError,
   McpResourceNotFoundError,
@@ -191,6 +192,22 @@ export class McpServerProvider {
         return createErrorResponse(id, {
           code: error.code,
           message: error.message,
+        });
+      }
+      // A schema failure is the CALLER's fault, so it is -32602 Invalid
+      // params, not -32603 Internal error. Prompts and resources validate
+      // their arguments here and every failure used to surface as an internal
+      // error, telling the model nothing it could act on. (Tools take a
+      // different route: SEP-1303 returns them as tool execution errors so
+      // the model can self-correct.)
+      if (error instanceof SchemaValidationError) {
+        const invalid = new McpInvalidParamsError(
+          `Invalid params: ${error.value?.message ?? error.message}` +
+            (error.value?.path ? ` at ${error.value.path}` : ""),
+        );
+        return createErrorResponse(id, {
+          code: invalid.code,
+          message: invalid.message,
         });
       }
       return createErrorResponse(

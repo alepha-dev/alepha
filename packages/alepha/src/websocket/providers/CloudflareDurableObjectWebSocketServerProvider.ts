@@ -149,8 +149,22 @@ export class CloudflareDurableObjectWebSocketServerProvider extends WebSocketSer
     return [];
   }
 
-  public async closeConnection(): Promise<void> {
-    // Connections live inside room DOs; main-isolate close is a no-op in v1.
+  /**
+   * Not supported on this runtime.
+   *
+   * Connections live inside room Durable Objects, and the main isolate holds
+   * no handle to them — there is nothing here to close. It used to return
+   * silently, so a caller believed it had disconnected someone when it had
+   * not. Warn instead: a no-op that looks like success is worse than one that
+   * says what it is.
+   */
+  public async closeConnection(connectionId?: string): Promise<void> {
+    this.log.warn(
+      "closeConnection() is not supported on Cloudflare: connections live " +
+        "inside room Durable Objects and cannot be closed from the main " +
+        "isolate. Close from inside the room instead.",
+      { connectionId },
+    );
   }
 
   protected getNamespace(): DurableObjectNamespaceLike {

@@ -25,6 +25,9 @@ interface PasswordResetIntent {
   expiresAt: string;
 }
 
+/** Password-reset requests allowed per IP per 15-minute window. */
+const RESET_IP_MAX_ATTEMPTS = 20;
+
 const INTENT_TTL_MINUTES = 10;
 
 /**
@@ -74,6 +77,23 @@ export class CredentialService {
     provider: DatabaseCacheProvider,
     name: "api:users:password-reset-intents",
     ttl: [INTENT_TTL_MINUTES, "minutes"],
+  });
+
+  /**
+   * Per-IP throttle for password-reset requests.
+   *
+   * The per-target cooldown and daily limit are scoped to
+   * `(type, target, purpose)`, so one IP could request resets for thousands
+   * of DISTINCT real addresses without ever tripping them — an email-bombing
+   * primitive pointed at other people's inboxes. Registration already has
+   * `registrationIpMaxAttempts`; this is the same idea for the reset flow.
+   *
+   * SQL-backed so `incr()` is atomic, matching RegistrationService.
+   */
+  protected readonly resetIpCache = $cache<number>({
+    provider: DatabaseCacheProvider,
+    name: "api:users:password-reset-ip-rate-limit",
+    ttl: [15, "minutes"],
   });
 
   public users(userRealmName?: string) {
@@ -142,6 +162,19 @@ export class CredentialService {
       .now()
       .add(INTENT_TTL_MINUTES, "minutes")
       .toISOString();
+
+    // Per-IP cap, before any work. See `resetIpCache` for why the per-target
+    // limits are not enough on their own.
+    const request = this.alepha.store.get("alepha.http.request");
+    if (request?.ip) {
+      const attempts = await this.resetIpCache.incr(`reset:ip:${request.ip}`);
+      if (attempts > RESET_IP_MAX_ATTEMPTS) {
+        this.log.warn("Password reset rate limit exceeded", { ip: request.ip });
+        // Same shape as the success path: never reveal whether the address
+        // exists, and do not tell a prober they hit a limit either.
+        return { intentId, expiresAt };
+      }
+    }
 
     // Check if password reset is allowed for this realm
     const realm = this.realmProvider.getRealm(userRealmName);

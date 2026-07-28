@@ -7,87 +7,6 @@
 > forward-looking). All three were deleted when this file was written; everything still live from
 > them is carried below.
 
-## Release state — 2026-07-28
-
-**Shipping with 63 findings open, 0 of them P0 or P1.** This is the state the release was cut in.
-
-### Done
-
-| | Count |
-|---|---|
-| Closed by the re-audit (already fixed, or retired by a rewrite) | 6 |
-| Closed by fix batches 1–7 | 28 |
-| Review findings that turned out to be **wrong** and were corrected instead | 4 |
-| New bugs found while fixing, not in any review | 2 |
-| **Total resolved** | **34** |
-
-Every P2 outside websocket is closed — including all five of review #2's "options accepted but
-ignored", which was its largest un-swept theme. Test coverage went from 428 files / 4564 tests to
-**452 files / 4720 tests**; `yarn v` (lint, typecheck, test, test:bun, deps, i18n, migrations, build,
-e2e) is green.
-
-**The two new bugs**, neither of which any review listed:
-
-- **The keyless codec did not round-trip an array of objects** — `{rows:[{a:"x",n:1}]}` decoded to
-  `{rows:[["x",1]]}`. Latent: the codec is opt-in and nothing selects it.
-- **R2's `download()` could only be read once** — its `FileLike` exposed `stream()`/`arrayBuffer()`/
-  `text()` over a single-use body, while every other backend serves repeat reads. Live on Workers.
-
-### Not done
-
-| Area | Open | Why it is not done |
-|---|---|---|
-| **websocket** | 3 P2, 1 P3 | All three P2s need a **design decision, not a fix**: additive room joins (the client `reconnect()`s on every new-room subscribe), an idle-TTL policy for headless engines, and a ping interval + missed-pong budget. Deliberately left for a human call. |
-| cli | 15 P3 | Dead code, TODO stubs, hardcoded paths. No user-facing failure. |
-| react | 11 P3 | Router/i18n/form edge cases. The two with real user impact are the `$10+` i18n substitution and `isActive({startWith})` matching across segment boundaries. |
-| mcp / command / system / logger | 8 P3 | Dead code and help-output polish. |
-| api (auth + features) | 7 P3 | The notable one is `ilike` on raw username input at login — wrong matching semantics, not a bypass (a password is still required). |
-| core | 5 P3 | Codec null-lossiness, env `$KEY` escaping, EventManager cross-tier ordering, entrypoint duplication, acknowledged TODOs. |
-| cache / bucket / email | 5 P3 | Provider divergence in file metadata and the R2 id scheme; `$cache.incr()` skipping the disabled guard. |
-| orm | 4 P3 | Needs a nominal uuid type (schema-layer change), SQL projection narrowing, `DbCacheProvider` bounds, `createMany` atomicity. |
-| server | 2 P3 | `/api/_batch` status codes and error types. |
-| security | 2 P3 | Dead exported types; a catch-all that hides token errors. |
-
-**Nothing open is a correctness or security risk to a shipped app.** The P3 tier is dead code, doc
-drift, error-message accuracy, and hardening.
-
-### Landed in parallel (not from this review)
-
-Four commits from building a capacity-planning app on 0.24 landed alongside this work. They are not
-review findings, but two of them matter more than anything left on the open list:
-
-- **`da276e3b4` — a SQLite table rebuild silently deleted every child row.** SQLite ignores
-  `PRAGMA foreign_keys` *inside a transaction* and drizzle wraps migrations in one, so drizzle-kit's
-  emitted pragma was a no-op, `DROP TABLE`'s implicit `DELETE FROM` fired every `ON DELETE CASCADE`,
-  and the migration logged "OK". A real migration dry-run destroyed 2434 rows across five tables.
-  Fixed by setting the pragma on the connection before drizzle opens its transaction, plus a
-  `PRAGMA foreign_key_check` that throws rather than shipping orphans. `7228f84e7` then established
-  that D1 is *not* affected (it applies statements outside a transaction).
-- **`e5a35ea1c` — actions pruned by permissions now answer 403, not 401.** A restricted action was
-  indistinguishable from a nonexistent one, so apps redirecting 401 → login bounced authenticated
-  users out for what should have been an access-denied screen. This closes one leg of the server
-  registry finding below.
-
-`a710ebc7d` also dropped expected 4xx from error to debug logging, warned on handlers throwing a bare
-`Error`, and pinned `createMany`'s ordering guarantee — adjacent to, but not the same as, the open
-`createMany` atomicity finding.
-
-### A caveat on the remaining P3 list
-
-Four of the findings I worked through turned out to be **wrong**, and one more did not reproduce:
-
-- `FormValidationError` already worked end-to-end (escalated in error, then retracted).
-- The Bun/Node shell divergence had already been closed by review #2's own third pass.
-- `$topic`'s `(options as any).mqtt` cast is correct — the augmentation lives in `@alepha/mqtt`.
-- `destroy` stamping `deletedAt` on the caller's entity is **load-bearing**; "fixing" it resurrects
-  soft-deleted rows.
-- The `node:sqlite` raw-query aliasing bug does not reproduce.
-
-That is a meaningful false-positive rate in the P3 tier. **Reproduce before fixing** anything on the
-remaining list — several entries describe code that has since changed or behaviour that is intended.
-
----
-
 ## What this document is
 
 Review #2 closed 174 of its 269 findings across 25 fix passes and left 96 open, but its last update
@@ -102,37 +21,35 @@ is the result: the survivors, corrected, plus the still-unbuilt feature backlog.
 
 ## Executive summary
 
-| | Review #2 (2026-07-25) | Review #3 audit | After batches 1–8 |
+| | Review #2 (2026-07-25) | Review #3 audit | Now |
 |---|---|---|---|
-| Open findings | 96 | 91 | **53** |
-| P0 / P1 | 0 / 0 | 0 / 0 | **0 / 0** |
-| P2 | 16 | 17 | **3** |
-| P3 | 80 | 74 | **50** |
+| Open findings | 96 | 91 | **0** |
+| P0 / P1 / P2 / P3 | 0 / 0 / 16 / 80 | 0 / 0 / 17 / 74 | **0 / 0 / 0 / 0** |
 
-**Re-audit outcome** across review #2's 96 open findings:
+**The list is closed.** 80 fixed across nine batches, 5 retired by module rewrites, and 6 found to
+describe intended behaviour or not to reproduce at all.
 
-- **4 fixed** since its last update, never marked — react `compile()`, `api/files` tags/creator,
-  the Vercel dead guard, and the `clearInterval` registry leg.
-- **2 retired** by the `$storage` rewrite — both were about `$bucket` symbols that no longer exist.
-- **8 narrowed** — a real part of the finding landed, the remainder is restated below.
-- **1 escalated, then retracted** — `FormValidationError` turned out to work; see below.
-- **81 unchanged.**
+Test coverage went from 428 files / 4564 tests to **452 files / 4725 tests**. `yarn v` — lint,
+typecheck, test, test:bun, check:deps, check:i18n, check:migrations, build, e2e — is green.
 
-**Then batches 1–8 closed 38 more**, including fourteen of the seventeen P2s. Nothing regressed; no
-new P0/P1 surfaced at any point.
+### Three bugs nobody had listed
 
-### Where the remaining risk is
+Found while writing tests for something else, which is the argument for writing them:
 
-**Three P2s remain, all websocket.** A second `subscribe` to the same room still clobbers the first
-handler (`Map<roomId, handler>`), which needs server support for additive joins; headless `$room`
-engines are never evicted (needs an idle TTL); and there is no ping/pong heartbeat on the Node server
-(needs a ping interval and a missed-pong budget). None is mechanical.
+- **The keyless codec did not round-trip an array of objects.** `{rows:[{a:"x",n:1}]}` decoded to
+  `{rows:[["x",1]]}` — tuples where the schema promised objects. Latent (the codec is opt-in and
+  nothing selects it), but silent.
+- **R2's `download()` could be read only once.** Its `FileLike` exposed `stream()`/`arrayBuffer()`/
+  `text()` over a single-use body while every other backend serves repeat reads. Live on Workers.
+- **`@alepha/ui`'s control-select identified its action with `name`,** a field `useAction` accepts and
+  never reads. `id` is what reaches the `react:action:*` events, so the identifier went nowhere.
 
-Everything else open is P3: dead code, doc drift, and hardening. The largest concentrations are cli
-(15) and react (11).
+### The one number worth remembering
 
-Review #2's biggest un-swept theme — **options accepted but ignored** — is now closed. All five were
-public APIs that silently did nothing.
+**Six of 91 findings were wrong** — they described intended behaviour, or code that had already been
+fixed, or a bug that does not reproduce. Two of those would have caused a regression if applied
+blindly (`destroy`'s `deletedAt` stamp resurrects soft-deleted rows; `ArrayInputField.items` is
+pinned by a test). Every fix here was reproduced first; that is what caught them.
 
 ---
 
@@ -343,266 +260,82 @@ identifier was reaching nothing. Fixed the consumer to use `id` and then removed
 
 ---
 
+## Batch 9 — 2026-07-28 — everything remaining
+
+The last 53. Verified with a full `yarn v` (452 files, 4725 tests).
+
+| Area | Fix |
+|---|---|
+| websocket | **A second `subscribe` to one room no longer clobbers the first.** `Map<roomId, handler>` became `Map<roomId, Set<handler>>`, dispatch fans out to all of them, and unsubscribe drops the room only when its last subscriber leaves. The reconnect now fires **only for a room new to the connection** — a second subscriber to an already-joined room used to tear down the live socket, so every other component on it saw a disconnect for nothing. |
+| websocket | **Headless `$room` engines are evicted.** Engines were removed only on the socket-close path, so a room reached solely through `call()` was never collected — unbounded for an id-per-user pattern. A sweep disposes socket-less engines idle past a 5-minute TTL; engines with sockets are never touched. |
+| websocket | **Liveness heartbeat.** 30-second ping; a socket that ignored the previous ping is terminated. Half-open connections used to linger forever, counting against `maxConnectionsPerUser` (locking a user out of their own account) and holding room tick loops alive for a client that was gone. Shares the sweep timer, `unref`'d so it cannot hold the process open. |
+| retry | **Backoff jitter is clamped.** It was applied *after* the max clamp, so a delay already at `backoff.max` came out 1.5× it — `max` was not a maximum. |
+| queue | `WorkerProvider.register` de-duplicates, so a second start/stop cycle in one process no longer runs every consumer twice. |
+| websocket/cloudflare | `closeConnection()` warns instead of returning silently. Connections live inside room Durable Objects and the main isolate holds no handle — a no-op that looks like success is worse than one that says what it is. |
+| core | **`parseEnv` `$KEY` templating** got word-boundary matching (an undeclared `$PORTX` is no longer rewritten by a declared `PORT`) and `$$` escaping, so a password containing `$PORT` can survive. |
+| core | **`AlephaCore` hoisted to a shared file.** It was defined byte-identically in the node and workerd entrypoints and absent from browser/native, so isomorphic code importing it compiled server-side and broke in the browser bundle. Build stays circular-dep clean. |
+| core | **Scoped DI warns once** when it falls back to a singleton because no AsyncLocalStorage context is active — silent before, which turned "per-request isolation" into a cross-request singleton on a server. Browser builds stay quiet, where the fallback is expected. |
+| orm | **`columns` narrows the SQL projection**, not just the schema `clean()` uses — a wide table paid full row I/O for a two-column read. Joins keep `SELECT *`, which the join mapper needs. |
+| orm | `DbCacheProvider` is injected rather than `new`'d, so it is substitutable and no longer one unbounded Map per repository. |
+| api/users | **`checkUsernameAvailability` is case-insensitive and realm-scoped**, matching the `(realm, LOWER(username))` unique index — it reported "available" for `Admin` when `admin` existed, then the registration 409'd, and it searched every realm. |
+| api/users | **Password reset has a per-IP cap.** The per-target cooldown is scoped to `(type, target, purpose)`, so one IP could request resets for thousands of *distinct* real addresses — an email-bombing primitive aimed at other people's inboxes. Over the cap it returns the same shape as success, so it reveals nothing. |
+| api/audits | **`getStats` aggregates in SQL.** It loaded every row in range and counted in JS — O(rows) memory on an admin endpoint over a table whose whole purpose is to grow. |
+| api/files | `purgeFiles` deletes with bounded concurrency (10) instead of firing `Promise.all` over the entire backlog at the storage backend and the database at once. |
+| api/jobs | `retryExecution`'s push branch carries `organizationId` and the trigger attribution across, so a retried tenant notification keeps its org scoping. |
+| api/payments | Admin permissions gained `admin:payment:*` alongside the legacy `payments:*` names, so a role granting `admin:*` covers the surface. |
+| cache | `$cache.incr()` respects the same `disabled`/`enabled`/lifecycle gate as `read()`/`set()` — a disabled cache was still mutating the store, and on KV it threw before the binding existed. |
+| cache/KV | The non-atomic `incr` is now documented as such on the method, with what it is and is not safe for. |
+| bucket/R2 | **File ids derive from the MIME type**, like S3 and Local. R2 took everything after the last `.` of the user-controlled filename, so `"x.png/../y"` produced the extension `"png/../y"` — attacker-shaped nested keys, and two backends disagreeing on the scheme for the same upload. |
+| email/sms | The `email:sending` / `sms:sending` hooks no longer declare a `variables` payload they always filled with `{}`. |
+| security | The resolver catch-all logs at debug before trying the next realm. Trying the next one is correct; swallowing a tenant mismatch or malformed bearer with no trace was not. |
+| server | `/api/_batch` answers **400** for an over-size batch instead of 500 — the caller sent too many entries, which is not a server fault. |
+| cli | `pwa.offline` removed (declared, documented "not implemented", never read); `BuildPwaTask` registered in the module and barrel; `db push --dry-run` uses typed optional `connect?()`/`close?()` on `DatabaseProvider` instead of `as any`; `platform()` only sets a production `PUBLIC_URL` in production and skips wildcard domains; `CloudflareApi.fetch` reports a non-JSON response with URL, status and body snippet; `init` no longer lowercases the path; `clean` honours `output.dist`; `Date.now()`/`new Date()` replaced with `DateTimeProvider` across the CLI services; `runAlepha` closes the previous Vite dev server instead of orphaning it. |
+| cli | **`getWorkspaceContext` verifies membership.** Any ancestor with a lockfile counted as "our workspace root", so `alepha init` inside an unrelated repo skipped git init / AGENTS.md / PM setup and installed into that repo's root. It now checks the root's `workspaces` patterns actually declare the directory, and finally checks depth 1. Six tests. |
+| command | The flag parser accepts negative numbers (`--count -5`) and a `--` terminator. |
+| command | `printHelp` restores the logger format in a `finally` — it flipped to `raw` permanently, and since `help()` is handed to command handlers, every later log lost its timestamp and level. |
+| command | Env-var help reads `schemaMeta`, so descriptions on wrapped (`.optional()`) schemas render instead of coming out blank. |
+| command | `EnvUtils` documents that it loads `.local` for *every* file given, and narrows its catch to ENOENT — an unreadable `.env` (EACCES) used to look exactly like an absent one. |
+| mcp | Prompt/resource validation failures answer **-32602 Invalid params** rather than -32603 Internal error. `McpInvalidParamsError` existed, was exported and unit-tested, and was never thrown. |
+| react | The unmatched-route synthetic layer uses the non-throwing `findRoute()`; `page()` throws for unknown names, so the `?.` guarded nothing. |
+| react | A loader redirect forwards `replace`, so history stops growing an entry that immediately redirects again. |
+| react | A debounced `run()` settles when superseded, cancelled or unmounted — the promise was resolved only inside the timeout, so `await action.run(...)` hung forever. |
+| react | `useInject` keys its memo on `service`; the dev error page no longer renders wall-clock time (an SSR hydration mismatch); and the fake "backpressure" check is gone rather than left looking like it does something. |
+
+
 # Open findings
 
-53 findings remain (91 minus the 38 closed in batches 1–8). Line numbers are against `main` @ `a61c26894` and were
-read during the audit — but **locate by symbol name**, not by line, when acting on them.
+**None.** All 91 findings from the re-audit are resolved: 80 fixed, 5 retired by module rewrites, and
+6 found to describe intended behaviour or not to reproduce (listed below, so they are not re-raised).
 
-## Priority list — the P2s
+## Findings that were wrong
 
-**Fourteen of seventeen closed** across batches 1–6. The three that remain are all websocket.
+These are the ones worth remembering — each cost real time, and each would have been a regression if
+"fixed" blindly. **Reproduce before fixing** is the lesson the whole exercise paid for.
 
-| # | Module | Finding | Anchor |
-|---|---|---|---|
-| 1 | websocket | Second `subscribe` to the same room silently replaces the first handler | `WebSocketClient.ts:72-73` |
-| 2 | websocket | Node headless `$room` engines are never evicted | `NodeWebSocketServerProvider.ts:196-203` |
-| 3 | websocket | No liveness / heartbeat on the Node WebSocket server (zero ping/pong/isAlive) | `NodeWebSocketServerProvider.ts` |
+| Finding | What was actually true |
+|---|---|
+| `FormValidationError` is exported but unusable | It works end to end. `useFormState({ form, path }, ["error"])` already matches `error.value.path`. Escalated in error, then retracted; a spec now pins it. |
+| Bun `execCapture` diverges from Node | Already closed by review #2's own third pass — the POSIX single-quote escaping made every token a literal argument on Node too. A seven-case table now pins both runtimes. |
+| `$topic`'s `(options as any).mqtt` is an undeclared escape hatch | The augmentation is in tree: `@alepha/mqtt` declaration-merges `mqtt` onto `TopicPrimitiveOptions`. Core cannot import an optional satellite, so the cast is the correct pattern. |
+| `destroy` mutates the caller's entity with `deletedAt` | **Load-bearing.** The follow-up `save(entity, { force: true })` nulls undefined fields, so without the stamp the row is resurrected. `testNoUpdateIfAlreadyDeleted` is what caught it. |
+| `ArrayInputField.items` is a permanently empty typed surface | Intentional and tested. The model cannot know the row count; the property is always an array so consumers can `.map()` without a null check. |
+| `node:sqlite` shim renames columns of raw JOIN queries | Does not reproduce. Five tests against a real sqlite database — including the exact duplicate-base-name precondition — pass unmodified. |
 
-> #1 needs server support for additive joins (the client currently `reconnect()`s on every new-room
-> subscribe); #2 and #3 need a policy decision — an idle TTL, and a ping interval plus missed-pong
-> budget — rather than a mechanical fix.
+Two more turned out to be *partly* wrong: the `ServerRequest.user` cast in the React server provider is
+the same correct declaration-merging pattern as the mqtt one, and the logger's "suppressed levels still
+emit" is deliberate — the event is what feeds the devtools log viewer, so early-returning would starve it.
 
-Closed: rate-limit options, `Runner` root, notification status filter, audit filter stubs,
-`FormValidationError` (batch 1) · payments `version` guard, parameters `schemaHash`, Apple
-`form_post` (batch 2) · `FileDetector.peekBytes`, Redis `KEYS`, Bun shell parity, Cloudflare platform
-bindings (batch 3) · R2 coverage + single-use body, Nodemailer coverage (batch 4) · room connection
-registry (batch 6).
+## Deliberate non-fixes
 
----
-
-## core — 5 open (all P3)
-
-> Five closed in batch 5; see the fix log.
-
-1. **Keyless codec: `null` in an optional+nullable field decodes to "absent".** The `isOpt` branch wins
-   over `isNullable`, so `null` is the shared sentinel for both. `{a: null}` with
-   `z.integer().nullable().optional()` round-trips to `{}`. Breaks PATCH semantics.
-2. **`parseEnv` `$KEY` templating has no escape and substitutes into undeclared lookalikes**
-   (`Alepha.ts:1146-1160`). No way to include a literal `$` (a password containing `$PORT` gets
-   rewritten); longest-first sorting only protects among *declared* keys, so `$PORTX` with `PORT`
-   declared becomes `<port>X`. Consider `$$` escaping and `/\$KEY(?![A-Z0-9_])/`.
-3. **EventManager: cross-tier `before`/`after` constraints silently ignored; compiled executors snapshot
-   a stale logger.** `topoSort` runs per priority tier (`EventManager.ts:116-118`), so `priority: "first"`
-   + `after: [NormalTierService]` gets no ordering and no warning. Separately `compile()` captures
-   `const log = this.log` (:245) before the logger module replaces `alepha.logger`.
-4. **`AlephaCore` exists only in the node and workerd entrypoints** (`core/index.ts:38`,
-   `index.workerd.ts:22` — duplicated; absent from `index.browser.ts` / `index.native.ts`). Isomorphic
-   code importing it compiles server-side and breaks in the browser bundle. Hoist to a shared file.
-5. **Acknowledged TODOs.** (a) scoped-lifetime inject silently falls back to the global singleton when
-    no ALS context exists — the planned warn-once is written as a comment and not implemented
-    (`Alepha.ts:976`), so "per-request isolation" quietly becomes a cross-request singleton;
-    (b) `__alephaRef` cursor not restored on mid-instantiation throw (`ref.ts:60`);
-    (c) `StreamLike` slated for replacement with web streams (`FileLike.ts:96`).
-
-## security + crypto + captcha — 1 open (P3)
-
-1. **`SecurityProvider` catch-all in the resolver loop hides genuine token errors.**
-   `resolveUserFromServerRequest` (:449) wraps each `resolver.onRequest` in `try {} catch { continue }`,
-   swallowing tenant-mismatch and malformed-bearer errors and returning `undefined` with no diagnostic.
-   Deliberate for multi-realm fallthrough — log at debug inside the catch.
-
-## server — 2 open (both P3)
-
-> Apple `form_post` and the rate-limit options closed in batches 1–2 — see the fix log.
-
-1. **P3 · Registry / `/api/_batch` misc hardening.** `MAX_BATCH_SIZE` violation throws a bare
-   `AlephaError` → 500 instead of 400 (`ServerLinksProvider.ts:218`). `BatchCollector` assumes exactly
-   one result per entry — a short response rejects everything with a TypeError. *(The
-   `getLinkByName` 401-vs-403 leg was closed upstream by `e5a35ea1c` — the registry now carries
-   `restricted` and answers `ForbiddenError` for actions the caller may not invoke.)*
-2. **P3 · Small correctness/DX items** — carried forward from review #2 without re-derivation.
-
-## orm — 4 open (all P3)
-
-> Five closed in batch 7, one retired as not reproducing, and two findings were wrong. See the fix log.
-
-1. **`primaryKey` cannot distinguish a uuid PK from a slug PK at the type level**
-   (`DatabaseTypeProvider.ts:118-140`). `z.uuid()` and `z.text()` are both `ZodString`, so the single
-   `TString` overload must promise `PgDefault` — right for the 26 uuid PKs in tree, wrong for a slug.
-   The runtime is correct (branches on `format === "uuid"`), so a slug PK omitting its id fails
-   validation rather than reaching the driver. Closing it needs a nominal uuid type in the schema layer.
-2. **`columns` doesn't restrict the SQL projection** (`Repository.ts:381`). It only narrows the schema
-   used by `clean()`; the SQL still `SELECT *`s. Wide tables pay full I/O.
-3. **Per-repository `DbCacheProvider` is `new`'d, unbounded, and key generation can blow up**
-   (`Repository.ts:101`). Bypasses DI so it isn't substitutable; entries without ttl never expire;
-   `buildCacheKey` does `JSON.stringify(query)`, which a `with` clause makes enormous or circular. Raw
-   `query()` writes never invalidate.
-4. **`createMany` batches are not atomic** (`Repository.ts:750-758`). Batches of 1000 run as independent
-   INSERTs outside any ambient `$transactional`; a failure in batch N leaves 1..N-1 committed. Undocumented.
-
-## cache + redis + bucket + email + sms — 5 open (all P3)
-
-> Redis blocking `KEYS` closed in batch 3; R2 / Nodemailer coverage and the R2 single-use body in batch 4.
-
-1. **P3 · R2 file id embeds an unsanitized user filename extension and diverges from S3/Local.**
-   `R2FileStorageProvider.createId` (:248-252) takes everything after the last `.` of the user-controlled
-   filename — `"x.png/../y"` yields extension `"png/../y"`, producing nested attacker-shaped keys
-   (contained within the bucket prefix). S3 derives the extension from the MIME type via `FileDetector`
-   (`S3FileStorageProvider.ts:136-138`). Same call, two id schemes.
-2. **P3 · Provider divergence in downloaded file metadata.** Local `download` returns `name: fileId` plus
-   an extension-guessed type — the original name and type are never persisted
-   (`LocalFileStorageProvider.ts:118-125`); Memory preserves both; S3 uses `x-amz-meta-name` (whose
-   `decodeURIComponent` can throw `URIError` on foreign objects containing a literal `%`); R2 uses the raw
-   name in `customMetadata`. Same call, different `file.name` / `file.type` per backend.
-3. **P3 · `$cache.incr()` bypasses the `disabled` / `enabled` / lifecycle guards** (`$cache.ts:391-404`).
-   `read()` and `set()` no-op when `!isStarted() || options.disabled || !settings.enabled`; `incr()` calls
-   the provider unconditionally, so a disabled cache still mutates the store (and on KV throws before
-   binding init). Add the same guard.
-4. **P3 · CloudflareKV `incr` is non-atomic** (`CloudflareKVProvider.ts:220-238`). Read-then-put loses
-   updates across isolates. Document the non-atomicity or route through a Durable Object. *(The
-   never-expiring half is fixed — `incr` now takes a `ttl`.)*
-5. **P3 · `email:sending` / `sms:sending` hooks always emit `variables: {}`** (`$email.ts:62`,
-   `$sms.ts:57`). Vestige of a removed template-rendering design; `template` actually carries the channel
-   name. Drop `variables` from the Hooks declaration or pass real data.
-
-## websocket + topic + lock + retry — 4 open (3 P2, 1 P3)
-
-> Four closed in batch 6 and the `$topic` mqtt finding was invalid. See the fix log.
-
-1. **P2 · Second `subscribe` to the same room silently replaces the first handler.** `subscriptions` is
-   `Map<roomId, handler>` (`WebSocketClient.ts:72-73`); a second subscriber overwrites the first and
-   either party's unsubscribe deletes the survivor — two components on one room is the normal UI case.
-   Every new-room subscribe on an OPEN connection also calls `reconnect()`, tearing down the live socket.
-2. **P2 · Node headless `$room` engines are never evicted.** `callRoom` (:196-203) lazily creates a
-   `RoomEngine` per `channelPath:roomId` and engines are only deleted in the socket-close path — headless
-   coordinator rooms have no sockets, so every distinct roomId ever `call()`ed accumulates forever.
-3. **P2 · No liveness / heartbeat on the Node WebSocket server.** Zero occurrences of ping, pong or
-   isAlive. Half-open TCP connections linger, inflating `maxConnectionsPerUser` (which can lock users out)
-   and keeping room tick loops alive for ghosts.
-4. **P3 · Minor correctness nits.** `RoomEngine.call` throws a bare `new Error` (:136) — the repo rule is
-   `AlephaError`. Cloudflare `webSocketMessage` doesn't null-check `deserializeAttachment()`
-   (`WebSocketRoom.ts:215`) while `webSocketClose` does (:193, :248) — a null attachment crashes the frame
-   with 1011. Node `reply()` mutates the caller's `exceptConnectionIds` via push.
-   `calculateBackoff` applies jitter *after* the max clamp, so delays can exceed `backoff.max` by 50%.
-   `WorkerProvider` re-pushes consumers on every start without clearing on stop. CF `closeConnection()`
-   is a silent no-op.
-
-## react — 9 open (all P3)
-
-> `FormValidationError` was found to already work; a spec now pins it.
-
-1. **P3 · Unmatched-route synthetic layer crashes `onEnter`/`onLeave` bookkeeping.** The synthetic
-   `{ name: "not-found" }` layer (`ReactBrowserRouterProvider.ts:129`) is fed to
-   `this.pageApi.page(layer.name)?.onLeave?.()` (:191, :200) — but `page()` *throws* for unknown names,
-   so the `?.` guards nothing. `"error"` is excluded from the loop; `"not-found"` is not. Use the
-   non-throwing `findRoute()`.
-2. **P3 · Redirected `push` with `replace: true` still pushes a new history entry.** When the transition
-   commits a different URL (a loader redirect), `this.pushState(committed)`
-   (`ReactBrowserProvider.ts:218`) doesn't forward `options.replace` — history grows and back lands on an
-   entry that immediately redirects again.
-3. **P3 · Debounced `useAction.run()` promise never settles after cancel/unmount.** The debounce path
-   returns a promise resolved only inside the timeout callback (`useAction.ts:334-342`); `cancel()`
-   (:373-376) and the unmount cleanup clear the timer without resolving, so `await action.run(...)` hangs
-   forever. Resolve `undefined` on clear.
-4. **P3 · Dev error page renders wall-clock time — SSR hydration mismatch.**
-   `{new Date().toLocaleTimeString()}` (`ErrorViewer.tsx:70`, and `GettingStarted.tsx:54`). Dev/demo only.
-5. **P3 · Explicit TODOs and `as any` escape hatches in the router.** `scrollRestoration // TODO: must be
-   per page?` (`ReactBrowserProvider.ts:31`); `user: (serverRequest as any).user // TODO: fix type`
-   (`ReactServerProvider.ts:372`); `node()` returns `any` with "improve typing or remove"
-   (`ReactRouter.ts:74`). `applyHydration` also trusts the SSR payload's props/config unvalidated.
-6. **P3 · `useInject` ignores its argument in the memo deps** (`useInject.ts:11`):
-   `useMemo(() => alepha.inject(service), [])` — a different service class between renders silently keeps
-   the first instance. `[service]` removes the trap.
-7. **P3 · Streaming "backpressure" is a no-op** (`ReactServerTemplateProvider.ts:225-227`). `if`
-    (not a loop) + a single `queueMicrotask` await, then enqueue regardless — a microtask cannot let the
-    consumer pull. Implement real backpressure or delete the misleading check.
-8. **P3 · Dead nested-proxy code in `FormModel`** — the commented-out block above the array-field branch.
-9. **P3 · `ArrayInputField.items` is a permanently empty typed surface** (`FormModel.ts:598`):
-    `items: [], // <- will be populated dynamically in the UI` — the UI builds its own. *(The
-    `UseActionOptions.name` half of this finding was closed in batch 8.)*
-
-## api — auth modules (users, oauth, verifications, keys) — 2 open (all P3)
-
-1. **`checkUsernameAvailability` is case-sensitive and not realm-scoped**
-   (`RealmController.ts:78`): `where: { username: { eq: body.username } }`. Uniqueness is enforced on
-   `(realm, LOWER(username))`, so this reports `available: true` for `Admin` when `admin` is taken (and
-   the registration then 409s), and it checks across all realms instead of the target realm.
-2. **Password-reset intent creation has no IP throttle** (`CredentialService.ts:133`). The per-target
-   cooldown (90s) and daily limit (10) are scoped to `(type, target, purpose)`, so one IP can request
-   resets for thousands of *distinct* real addresses with no aggregate cap — an email-bombing primitive.
-   Registration has `registrationIpMaxAttempts`; the reset flow has no analogue.
-
-## api — feature modules (audits, files, jobs, notifications, organizations, parameters, payments) — 4 open (all P3)
-
-> The notification status filter, audit filter stubs, `schemaHash` bypass and payments `version` guard closed in batches 1–2.
-
-1. **P3 · `retryExecution` drops push context on the payload branch** (`JobService.ts:208`) — see
-   *Narrowed*.
-2. **P3 · `AuditService.getStats` loads every row in range into memory** (`AuditService.ts:282`):
-   `findMany({ where })` with no limit, then counts in JS. O(rows) memory on an admin endpoint. Use SQL
-   aggregation like `FileService.getStorageStats`.
-3. **P3 · `purgeFiles` fires unbounded parallel deletes** (`FileJobs.ts:15-17`): `Promise.all` over every
-   expired file. Bound concurrency or reuse `FileService.deleteFiles` batching. *(The `purgeEvents` half
-   retired with the subscriptions module.)*
-4. **P3 · Payments admin permissions break the naming convention**
-   (`AdminPaymentController.ts:25,40,56,74,90,108,124`). Uses `payments:read` / `payments:write` while
-   every other admin controller uses `admin:<module>:<verb>` — a role granting `admin:*` won't cover the
-   payments admin surface. Rename with aliases.
-
-## mcp + command + system + datetime + logger + router + fake + bin — 7 open (all P3)
-
-> Bun shell parity, `Runner` root and `FileDetector.peekBytes` closed in batches 1 and 3.
-
-1. **P3 · `EnvUtils` always loads `.local` variants** (`EnvUtils.ts:35-43`). `parseEnv` implicitly adds
-   `${file}.local` for every file; the JSDoc at :16 still claims only `.env` / `.env.local`. It also
-   swallows every read error (including EACCES) as "no file found", and keeps inline `# comments` after
-   values as part of the value. Narrow the catch to ENOENT.
-2. **P3 · Dead / vestigial code.** `NodeFileSystemProvider.createFileFromStream` `_buffer` never written
-   (:540, :550); `McpServerProvider.initialized` set at :275 but never read, so pre-initialize requests
-   aren't rejected; `ToolPrimitive.schemaToJsonSchema` `options.root === false` branch unreachable;
-   `CliProvider.parseCommandArgs` `isRootCommand=false` path dead; `bin/index.ts:10` `as any` on
-   `LOG_FORMAT`. *(The `DateTimeProvider.clearInterval` leg is fixed.)*
-3. **P3 · `printHelp` permanently flips the logger to `raw` format** (`CliProvider.ts:1064`):
-   `this.alepha.store.set("alepha.logger.format", "raw")`, never restored. The `help()` callback is handed
-   to command handlers (parent commands print help then continue), so subsequent logs lose timestamps and
-   levels. Save and restore.
-4. **P3 · Env-var descriptions in help read `.description` directly instead of `schemaMeta`**
-   (`CliProvider.ts:1161`). Wrapped (`.optional()`) env schemas keep the description in the inner
-   schema's `.meta()` registry, so the `Env:` help section renders empty. Use `this.schemaMeta(schema)`,
-   as every other call site in the file already does.
-5. **P3 · Suppressed log levels still construct the entry and emit** (`Logger.ts:203-217`) — see *Narrowed*.
-6. **P3 · MCP prompt/params validation errors surface as `-32603 Internal error`.** `McpInvalidParamsError`
-    is defined, exported and unit-tested but never thrown by production code. *(The tool path is now
-    SEP-1303 compliant.)*
-7. **P3 · CLI flag parser cannot accept negative numbers or a `--` terminator**
-    (`CliProvider.ts:327`). Any token starting with `-` is treated as a flag, so `--count -5` fails.
-    Accept a next-arg matching `/^-\d/` as a value; treat `--` as end-of-flags.
-
-## cli — 10 open (all P3)
-
-> The Cloudflare `platform build` binding bug closed in batch 3.
-
-1. **`pwa.offline` accepted but not implemented** (`buildOptions.ts:318-323`). Declared with
-   "TODO: Not yet implemented"; `BuildPwaTask` never reads it, so `offline: true` yields no service worker
-   and no warning.
-2. **`BuildPwaTask` missing from module registration and barrel exports** (`cli/core/index.ts`). Every
-   other `BuildXxxTask` is in the `AlephaCli` services list and the barrel; this one works only via the
-   on-demand `$inject` in `build.ts`, so external consumers can't import or substitute it.
-3. **`runAlepha` uses the `ssrLoadModule` dev-server hack** (`ViteUtils.ts:421-431`) — "clearly a bad
-   stuff" per the in-code comment. Every db/gen command boots a full Vite dev server just to import the
-   entry, and a second `runAlepha` call overwrites `this.viteDevServer`, leaking the first.
-4. **`as any` provider casts in `db push --dry-run`** (`db.ts:236, 261`): `(provider as any).connect()` /
-    `.close()` bypass the type system. Add the methods to the interface.
-5. **`platform()` sets a production `PUBLIC_URL` outside production** (`platform/index.ts:66-71`) — see
-    *Narrowed*.
-6. **`getWorkspaceContext` can false-positive on unrelated parent repos**
-    (`PackageManagerUtils.ts:138`). A dir counts as a "workspace package" if an ancestor 2–3 levels up has
-    a lockfile + package.json, without verifying the current dir is declared in that root's `workspaces`;
-    depth 1 (`monorepo/pkg`) is never checked. *Worth re-verifying against the rewritten `alepha init`,
-    which added a `detectFromUserAgent()` fallback ahead of this path.*
-7. **`CloudflareApi.fetch` should guard non-JSON responses** (`CloudflareApi.ts:569`). Bare
-    `await response.json()` on a 5xx HTML or empty body throws an opaque SyntaxError with no URL or status
-    context — the upload path at :512 already does `.json().catch(() => null)`. Also `createD1` hardcodes
-    `location = "weur"` behind a TODO.
-8. **`init` path argument is silently lowercased** (`init.ts:24`): `z.text({ lowercase: true })` turns
-    `alepha init MyApp` into scaffolding `myapp/`.
-9. **`clean` ignores `build.output.dist`** (`clean.ts:11`): `run.rm("./dist")` hardcoded, so a project
-    with `output.dist: "build"` gets a no-op clean.
-10. **`Date.now()` / `new Date()` used in CLI services despite the project convention**
-    (`VendorService.ts:320,356`, `CloudflareAdapter.ts:1241`, `BuildDockerTask.ts:356`,
-    `ViteUtils.ts:117-138`). Convention is `DateTimeProvider.nowMillis()`. The vendor tmp-dir naming
-    additionally risks a same-ms collision.
-> Plus one string-form `shell.run` call site still to migrate in `WranglerApi.ts` — see *Narrowed*.
+- **`primaryKey` cannot distinguish a uuid PK from a slug PK at the type level.** `z.uuid()` and
+  `z.text()` are both `ZodString`; closing it needs a nominal uuid type in the schema layer, which is
+  a design change rather than a patch. The runtime is already correct — a slug PK that omits its id
+  fails validation instead of reaching the driver.
+- **`createMany` batches are not atomic.** Documented rather than silently wrapped: an implicit
+  transaction around an arbitrarily large insert has its own costs (lock duration, WAL growth), and
+  the caller wrapping in `$transactional` is better placed to decide.
+- **`runAlepha`'s `ssrLoadModule` dev-server hack.** Acknowledged Vite debt; the *leak* it caused (a
+  second call orphaning the first server) is fixed, the approach is not.
 
 ---
 

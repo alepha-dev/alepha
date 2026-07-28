@@ -91,6 +91,63 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   >();
   /** Live room engines, keyed by `channelPath:roomId`. */
   protected roomEngines = new Map<string, RoomEngine<any, any, any>>();
+  /** Last time each engine was touched, for idle eviction. */
+  protected roomEngineTouched = new Map<string, number>();
+  /**
+   * How long a socket-less room engine may sit idle before it is disposed.
+   *
+   * Engines are only removed on the socket-close path, so a HEADLESS room —
+   * one reached solely through `call()` — was never collected: every distinct
+   * roomId ever called accumulated for the life of the process, which for an
+   * id-per-user pattern is unbounded. Sweeping only touches engines with no
+   * sockets, so a live room is never disturbed.
+   */
+  protected static readonly ROOM_IDLE_TTL_MS = 5 * 60_000;
+  protected roomSweeper?: ReturnType<typeof setInterval>;
+  /**
+   * Ping interval. A socket that has not answered a ping by the NEXT tick is
+   * terminated.
+   *
+   * Without this, a half-open TCP connection lingered forever: it kept
+   * counting against `maxConnectionsPerUser` (locking the user out of their
+   * own account) and held room tick loops alive for a client that was gone.
+   */
+  protected static readonly HEARTBEAT_MS = 30_000;
+  /** Sockets that have not answered the last ping. */
+  protected readonly awaitingPong = new WeakSet<WebSocket>();
+  /** Every live socket, for the liveness sweep. */
+  protected readonly sockets = new Set<WebSocket>();
+
+  /**
+   * Ping every socket; terminate the ones that ignored the previous ping.
+   */
+  protected pingConnections(): void {
+    for (const ws of this.sockets) {
+      if (this.awaitingPong.has(ws)) {
+        this.log.debug("Terminating unresponsive WebSocket");
+        this.sockets.delete(ws);
+        this.awaitingPong.delete(ws);
+        ws.terminate();
+        continue;
+      }
+      this.awaitingPong.add(ws);
+      try {
+        ws.ping();
+      } catch {
+        this.sockets.delete(ws);
+      }
+    }
+  }
+
+  /** Track a socket for the liveness sweep. */
+  protected trackSocket(ws: WebSocket): void {
+    this.sockets.add(ws);
+    ws.on("pong", () => this.awaitingPong.delete(ws));
+    ws.on("close", () => {
+      this.sockets.delete(ws);
+      this.awaitingPong.delete(ws);
+    });
+  }
   /** Real timers for the room tick loop. */
   protected readonly roomClock: RoomClock = {
     setInterval: (fn, ms) => setInterval(fn, ms),
@@ -199,7 +256,31 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     method: string,
     args: unknown[] = [],
   ): Promise<unknown> {
+    this.roomEngineTouched.set(
+      `${channelPath}:${roomId}`,
+      this.roomClock.now(),
+    );
     return this.getRoomEngine(channelPath, roomId).call(method, args);
+  }
+
+  /**
+   * Dispose socket-less room engines that have been idle past the TTL.
+   */
+  protected sweepIdleRooms(): void {
+    const now = this.roomClock.now();
+    for (const [key, engine] of this.roomEngines) {
+      if (engine.size > 0) {
+        continue;
+      }
+      const touched = this.roomEngineTouched.get(key) ?? 0;
+      if (now - touched < NodeWebSocketServerProvider.ROOM_IDLE_TTL_MS) {
+        continue;
+      }
+      this.log.debug(`Evicting idle room engine '${key}'`);
+      engine.dispose();
+      this.roomEngines.delete(key);
+      this.roomEngineTouched.delete(key);
+    }
   }
 
   public async broadcastToRoom(
@@ -277,8 +358,10 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
     this.wss?.handleUpgrade(request, socket, head, (ws) => {
       if (roomEndpoint) {
+        this.trackSocket(ws);
         this.handleRoomConnection(ws, roomEndpoint, request, userId);
       } else if (endpoint) {
+        this.trackSocket(ws);
         this.handleConnection(ws, endpoint, request, userId);
       }
     });
@@ -777,6 +860,13 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
       this.wss = new WebSocketServer({ noServer: true });
 
+      // Idle-room sweep + liveness ping share one timer.
+      this.roomSweeper = setInterval(() => {
+        this.sweepIdleRooms();
+        this.pingConnections();
+      }, NodeWebSocketServerProvider.HEARTBEAT_MS);
+      this.roomSweeper.unref?.();
+
       for (const path of this.endpoints.keys()) {
         this.log.debug(`WebSocket endpoint registered: ${path}`);
       }
@@ -830,9 +920,16 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         return;
       }
 
+      if (this.roomSweeper) {
+        clearInterval(this.roomSweeper);
+        this.roomSweeper = undefined;
+      }
+
       // Stop every room tick loop so open timers cannot keep the process alive.
       for (const engine of this.roomEngines.values()) engine.dispose();
       this.roomEngines.clear();
+      this.roomEngineTouched.clear();
+      this.sockets.clear();
 
       // Close all connections (collect into array to avoid mutation during iteration)
       const connections = Array.from(this.connections.values());

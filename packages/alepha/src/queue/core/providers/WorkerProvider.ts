@@ -85,7 +85,13 @@ export class WorkerProvider {
    * start hook lands in time.
    */
   public register(consumer: QueueConsumer<any>): void {
-    this.consumers.push(consumer);
+    // Guard against a restart re-registering the same consumer: `consumers`
+    // was only ever appended to and never cleared on stop, so a second
+    // start()/stop() cycle in one process (tests, a serverless warm reuse)
+    // ran every handler twice.
+    if (!this.consumers.includes(consumer)) {
+      this.consumers.push(consumer);
+    }
   }
 
   protected readonly start = $hook({

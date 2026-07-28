@@ -389,6 +389,18 @@ export class CachePrimitive<
   }
 
   public async incr(key: string, amount = 1): Promise<number> {
+    // Same gate as read()/set(): a disabled cache must not mutate the store,
+    // and on Cloudflare KV an early call throws before the binding exists.
+    // Returning the amount keeps the "as if it were the first increment"
+    // shape callers already handle from a cold cache.
+    if (
+      !this.alepha.isStarted() ||
+      this.options.disabled ||
+      !this.settings.enabled
+    ) {
+      return amount;
+    }
+
     const ttl = this.options.ttl
       ? this.dateTimeProvider.duration(this.options.ttl).as("milliseconds")
       : undefined;

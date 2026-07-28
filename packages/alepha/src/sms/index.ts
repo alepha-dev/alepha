@@ -18,8 +18,8 @@ declare module "alepha" {
   interface Hooks {
     "sms:sending": {
       to: string | string[];
+      /** The channel name (the `$sms` primitive's name), not a template id. */
       template: string;
-      variables: Record<string, unknown>;
       provider: SmsProvider;
       abort(): void;
     };

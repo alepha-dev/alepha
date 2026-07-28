@@ -143,8 +143,9 @@ export class PackageManagerUtils {
       config: { biomeJson: false, editorconfig: false, tsconfigJson: false },
     };
 
-    // Walk up 2–3 levels (covers packages/pkg and packages/scope/pkg)
-    for (let depth = 2; depth <= 3; depth++) {
+    // Walk up 1–3 levels: `monorepo/pkg` (depth 1) was never checked, so a
+    // package directly under the workspace root reported no context at all.
+    for (let depth = 1; depth <= 3; depth++) {
       const segments = Array.from({ length: depth }, () => "..");
       const candidate = this.fs.join(root, ...segments);
 
@@ -152,10 +153,67 @@ export class PackageManagerUtils {
       if (candidate === root) break;
 
       const result = await this.checkWorkspaceRoot(candidate);
-      if (result) return result;
+      // A lockfile + package.json above us is not enough: an unrelated parent
+      // repo would claim `alepha init` and skip git init / AGENTS.md / PM
+      // setup, then install into the wrong root. Only trust the candidate if
+      // it actually declares this directory as one of its workspaces.
+      if (result && (await this.declaresWorkspace(candidate, root))) {
+        return result;
+      }
     }
 
     return noContext;
+  }
+
+  /**
+   * Does `candidate`'s package.json declare `target` among its workspaces?
+   *
+   * Compares resolved paths against the (possibly globbed) `workspaces`
+   * patterns. Unreadable or workspace-less package.json answers false — the
+   * safe direction, since the consequence of a false positive is scaffolding
+   * into someone else's repository.
+   */
+  protected async declaresWorkspace(
+    candidate: string,
+    target: string,
+  ): Promise<boolean> {
+    let patterns: string[];
+    try {
+      const raw = await this.fs.readFile(
+        this.fs.join(candidate, "package.json"),
+      );
+      const pkg = JSON.parse(raw.toString("utf-8")) as {
+        workspaces?: string[] | { packages?: string[] };
+      };
+      patterns = Array.isArray(pkg.workspaces)
+        ? pkg.workspaces
+        : (pkg.workspaces?.packages ?? []);
+    } catch {
+      return false;
+    }
+
+    if (patterns.length === 0) {
+      return false;
+    }
+
+    // `packages/*` -> `^packages/[^/]+$`, `packages/**` -> `^packages/.+$`.
+    // The candidate is always an ancestor of the target (we walked up to it),
+    // so a prefix strip is enough and avoids needing path.relative here.
+    const normalise = (value: string) => value.replace(/\\/g, "/");
+    const from = normalise(candidate).replace(/\/+$/, "");
+    const to = normalise(target);
+    if (!to.startsWith(`${from}/`)) {
+      return false;
+    }
+    const relative = to.slice(from.length + 1);
+
+    return patterns.some((pattern) => {
+      // One pass, so `**` is matched before `*` without needing a sentinel.
+      const source = pattern
+        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+        .replace(/\*\*|\*/g, (token) => (token === "**" ? ".*" : "[^/]*"));
+      return new RegExp(`^${source}/?$`).test(relative);
+    });
   }
 
   protected async checkWorkspaceRoot(

@@ -566,7 +566,11 @@ export class CloudflareApi {
     }
 
     const response = await globalThis.fetch(url, init);
-    const json = (await response.json()) as {
+    // A 5xx from Cloudflare (or a proxy in front of it) answers HTML or an
+    // empty body; `response.json()` then threw a bare SyntaxError naming
+    // neither the URL nor the status, which is a miserable thing to debug.
+    const text = await response.text();
+    let json: {
       success: boolean;
       result: T;
       errors: CloudflareApiError[];
@@ -578,6 +582,16 @@ export class CloudflareApi {
         total_count?: number;
       };
     };
+
+    try {
+      json = JSON.parse(text);
+    } catch {
+      const snippet = text.slice(0, 200).replace(/\s+/g, " ").trim();
+      throw new AlephaError(
+        `Cloudflare API returned a non-JSON response (${method} ${path}, ` +
+          `HTTP ${response.status}): ${snippet || "<empty body>"}`,
+      );
+    }
 
     if (!json.success) {
       const messages = json.errors.map((e) => e.message).join(", ");

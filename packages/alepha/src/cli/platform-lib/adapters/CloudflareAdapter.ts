@@ -14,6 +14,7 @@ import {
   type BuildTaskContext,
 } from "alepha/cli";
 import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 import { S3mini } from "s3mini";
@@ -43,6 +44,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   protected readonly shell = $inject(ShellProvider);
   protected readonly cache = $inject(PlatformCacheProvider);
   protected readonly alepha = $inject(Alepha);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly api = $inject(CloudflareApi);
   protected readonly wrangler = $inject(WranglerApi);
@@ -1295,7 +1297,7 @@ export class CloudflareAdapter extends PlatformAdapter {
         return;
       }
       try {
-        const tokenName = `alepha-teardown-${bucketName}-${Date.now()}`;
+        const tokenName = `alepha-teardown-${bucketName}-${this.dateTime.nowMillis()}`;
         const token = await this.api.createR2Token(tokenName, bucketName);
         mintedTokenId = token.id;
         creds = {

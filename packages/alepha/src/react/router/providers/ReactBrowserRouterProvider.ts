@@ -188,7 +188,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
       for (let i = 0; i < previous.length; i++) {
         const layer = previous[i];
         if (state.layers[i]?.name !== layer.name && layer.name !== "error") {
-          this.pageApi.page(layer.name)?.onLeave?.();
+          this.pageApi.findRoute(layer.name)?.onLeave?.();
         }
       }
     }
@@ -197,7 +197,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     for (let i = 0; i < state.layers.length; i++) {
       const layer = state.layers[i];
       if (previous?.[i]?.name !== layer.name && layer.name !== "error") {
-        this.pageApi.page(layer.name)?.onEnter?.();
+        this.pageApi.findRoute(layer.name)?.onEnter?.();
       }
     }
 

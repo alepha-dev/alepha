@@ -67,7 +67,6 @@ const DevErrorPage = (props: ErrorViewerProps) => {
 
         <div style={dev.meta}>
           {pathname && <span style={dev.metaItem}>{pathname}</span>}
-          <span style={dev.metaItem}>{new Date().toLocaleTimeString()}</span>
           {status && <span style={dev.statusBadge}>{status}</span>}
         </div>
       </div>

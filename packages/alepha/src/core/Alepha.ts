@@ -337,6 +337,8 @@ export class Alepha {
    *  List of all services + how they are provided.
    */
   protected registry: Map<Service, ServiceDefinition> = new Map();
+  /** Services already warned about a scoped -> singleton fallback. */
+  protected readonly scopedFallbackWarned = new Set<Service | string>();
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -973,21 +975,27 @@ export class Alepha {
       opts.parent !== undefined ? opts.parent : (__alephaRef?.parent ?? Alepha);
 
     const transient = lifetime === "transient";
-    // TODO: warn-once when scoped lifetime silently falls back to the global
-    //   singleton registry. This happens when AsyncLocalStorage is not available
-    //   (typically in the browser, where AlsProvider is a no-op) — the user
-    //   asked for per-request isolation and got a cross-request singleton.
-    //   Today this is silent. Plan: detect (this.context.get("registry") === undefined)
-    //   on a "scoped" inject, log a one-shot warning via the Logger module
-    //   ("[alepha] scoped DI requested for <Service> but no AsyncLocalStorage
-    //   context — falling back to singleton. This is expected in browser
-    //   builds; in server runtimes ensure the request is wrapped in
-    //   alepha.context.run()."). Gate behind a Set<Service> so we don't spam.
-    const registry =
-      lifetime === "scoped"
-        ? (this.context.get<Map<Service, ServiceDefinition>>("registry") ??
-          this.registry)
-        : this.registry;
+
+    // `scoped` falls back to the global singleton registry when there is no
+    // AsyncLocalStorage context — expected in browser builds, where
+    // AlsProvider is a no-op, but on a server it means the caller asked for
+    // per-request isolation and silently got a cross-request singleton. Warn
+    // once per service so it is visible without spamming a hot path.
+    let registry = this.registry;
+    if (lifetime === "scoped") {
+      const scoped =
+        this.context.get<Map<Service, ServiceDefinition>>("registry");
+      if (scoped) {
+        registry = scoped;
+      } else if (!this.isBrowser() && !this.scopedFallbackWarned.has(service)) {
+        this.scopedFallbackWarned.add(service);
+        this.log?.warn(
+          `Scoped DI requested for '${typeof service === "string" ? service : service.name}' ` +
+            "but no AsyncLocalStorage context is active — falling back to a singleton. " +
+            "Wrap the request in `alepha.context.run()` to get per-request isolation.",
+        );
+      }
+    }
 
     // If the requested type is the container, the current instance is returned.
     if ((service as any) === Alepha) {
@@ -1157,7 +1165,15 @@ export class Alepha {
         if (typeof config[key] !== "string") continue;
         for (const env of sortedKeys) {
           const before = config[key] as string;
-          config[key] = before.replaceAll(`$${env}`, String(config[env] ?? ""));
+          // Word-boundary match, so a value referencing an UNDECLARED
+          // `$PORTX` is not rewritten by the declared `PORT`. `$$` escapes a
+          // literal `$`, so a password containing `$PORT` can be written
+          // `$$PORT` and survives.
+          config[key] = before.replace(
+            new RegExp(`(\\$\\$)?\\$${env}(?![A-Z0-9_])`, "g"),
+            (match, escaped) =>
+              escaped ? match.slice(1) : String(config[env] ?? ""),
+          );
           if (config[key] !== before) {
             changed = true;
           }

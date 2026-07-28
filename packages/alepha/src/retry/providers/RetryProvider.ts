@@ -225,8 +225,10 @@ export class RetryProvider {
     let delay = Math.min(exponential, max);
 
     if (useJitter) {
-      // Add a random amount of jitter (e.g., up to 50% of the delay)
-      delay = delay * (1 + Math.random() * 0.5);
+      // Up to +50%, then clamp AGAIN. Jitter used to be applied after the
+      // clamp, so a delay already at `max` came out 1.5x it — `backoff.max`
+      // was not actually a maximum.
+      delay = Math.min(delay * (1 + Math.random() * 0.5), max);
     }
 
     return Math.floor(delay);

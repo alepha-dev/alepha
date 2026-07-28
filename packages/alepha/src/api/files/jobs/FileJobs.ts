@@ -12,9 +12,17 @@ export class FileJobs {
     handler: async () => {
       const files = await this.fileService.findExpiredFiles();
 
-      await Promise.all(
-        files.map((file) => this.fileService.deleteFile(file.id)),
-      );
+      // Bounded. `Promise.all` over every expired file fired up to 1000
+      // concurrent deletes at the storage backend and the database at once;
+      // a large backlog took both down rather than draining steadily.
+      const CONCURRENCY = 10;
+      for (let i = 0; i < files.length; i += CONCURRENCY) {
+        await Promise.all(
+          files
+            .slice(i, i + CONCURRENCY)
+            .map((file) => this.fileService.deleteFile(file.id)),
+        );
+      }
     },
   });
 }

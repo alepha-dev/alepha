@@ -59,7 +59,6 @@ export class EmailPrimitive extends Primitive<EmailPrimitiveOptions> {
     await this.alepha.events.emit("email:sending", {
       to: options.to,
       template: this.name,
-      variables: {},
       provider: this.provider,
       abort: () => {
         throw new AlephaError("Email sending aborted by hook");

@@ -310,44 +310,65 @@ export class AuditService {
       where.userRealm = { eq: options.userRealm };
     }
 
-    const all = await this.repo.findMany({ where });
+    // Aggregated in SQL. This used to `findMany({ where })` with no limit and
+    // count in JS — O(rows) memory on an admin endpoint, over a table whose
+    // whole point is to grow without bound.
+    const [byTypeRows, bySeverityRows, bySuccessRows, failures] =
+      await Promise.all([
+        this.repo.aggregate({
+          select: { type: true, id: { count: true } },
+          groupBy: ["type"],
+          where,
+        }),
+        this.repo.aggregate({
+          select: { severity: true, id: { count: true } },
+          groupBy: ["severity"],
+          where,
+        }),
+        this.repo.aggregate({
+          select: { success: true, id: { count: true } },
+          groupBy: ["success"],
+          where,
+        }),
+        this.repo.findMany({
+          where: { ...where, success: { eq: false } },
+          orderBy: { column: "createdAt", direction: "desc" },
+          limit: 10,
+        }),
+      ]);
+
+    // `aggregate` nests per-column results: `{ id: { count } }`.
+    const countOf = (row: Record<string, any>) => Number(row.id?.count ?? 0);
 
     const stats: AuditStats = {
-      total: all.length,
+      total: 0,
       byType: {},
       bySeverity: { info: 0, warning: 0, critical: 0 },
       successRate: 0,
-      recentFailures: [],
+      recentFailures: failures,
     };
 
+    for (const row of byTypeRows as Array<Record<string, any>>) {
+      stats.byType[row.type as string] = countOf(row);
+    }
+
+    for (const row of bySeverityRows as Array<Record<string, any>>) {
+      const severity = row.severity as AuditSeverity;
+      if (severity in stats.bySeverity) {
+        stats.bySeverity[severity] = countOf(row);
+      }
+    }
+
     let successCount = 0;
-
-    for (const entry of all) {
-      // Count by type
-      stats.byType[entry.type] = (stats.byType[entry.type] || 0) + 1;
-
-      // Count by severity
-      const severity = entry.severity as AuditSeverity;
-      stats.bySeverity[severity]++;
-
-      // Count successes
-      if (entry.success) {
-        successCount++;
+    for (const row of bySuccessRows as Array<Record<string, any>>) {
+      const n = countOf(row);
+      stats.total += n;
+      if (row.success) {
+        successCount += n;
       }
     }
 
     stats.successRate = stats.total > 0 ? successCount / stats.total : 1;
-
-    // Get recent failures
-    const failures = all
-      .filter((e) => !e.success)
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
-      .slice(0, 10);
-
-    stats.recentFailures = failures;
 
     return stats;
   }

@@ -204,7 +204,15 @@ export class JobService {
     });
 
     if (execution.payload) {
-      await job.push(execution.payload as any);
+      // Carry the original execution's context across. The push branch used
+      // to drop `organizationId` and `key` entirely, so a retried tenant
+      // notification lost its org scoping — and the retry was attributed to
+      // nobody.
+      await job.push(execution.payload as any, {
+        organizationId: execution.organizationId ?? undefined,
+        triggeredBy: context?.triggeredBy,
+        triggeredByName: context?.triggeredByName,
+      });
     } else {
       await job.trigger({
         triggeredBy: context?.triggeredBy,

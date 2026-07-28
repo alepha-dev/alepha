@@ -11,6 +11,7 @@ import {
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { currentTenantAtom } from "alepha/security";
+import { FileDetector } from "alepha/system";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
@@ -58,6 +59,7 @@ export class R2FileStorageProvider implements FileStorageProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly crypto = $inject(CryptoProvider);
+  protected readonly fileDetector = $inject(FileDetector);
   protected readonly env = $env(
     z.object({
       /**
@@ -118,7 +120,7 @@ export class R2FileStorageProvider implements FileStorageProvider {
     fileId?: string,
   ): Promise<string> {
     const r2 = this.getR2();
-    fileId ??= this.createId(file.name);
+    fileId ??= this.createId(file.type);
     const key = this.key(bucketName, fileId);
 
     this.log.trace(`Uploading '${key}'`);
@@ -265,8 +267,17 @@ export class R2FileStorageProvider implements FileStorageProvider {
     return this.r2;
   }
 
-  protected createId(filename: string): string {
-    const ext = filename.includes(".") ? filename.split(".").pop() : "";
+  /**
+   * MIME-derived, matching S3 and Local.
+   *
+   * It used to take everything after the last `.` of the user-controlled
+   * FILENAME, so `"x.png/../y"` produced the extension `"png/../y"` — an
+   * attacker-shaped, nested key (contained within the bucket prefix, but
+   * still not what anyone intended). Two backends also disagreed on the id
+   * scheme for the same upload.
+   */
+  protected createId(mimeType: string): string {
+    const ext = this.fileDetector.getExtensionFromMimeType(mimeType);
     const id = this.crypto.randomUUID();
     return ext ? `${id}.${ext}` : id;
   }

@@ -241,7 +241,7 @@ export class DbCommand {
             `Dry run for '${providerName}' (${provider.dialect}) ...`,
           );
 
-          await (provider as any).connect();
+          await provider.connect?.();
 
           try {
             const result = await drizzleKitProvider.dryRunPush(provider);
@@ -266,7 +266,7 @@ export class DbCommand {
               }
             }
           } finally {
-            await (provider as any).close();
+            await provider.close?.();
           }
         }
         return;

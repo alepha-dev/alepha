@@ -369,7 +369,12 @@ export class ReactServerProvider {
         this.alepha.store.set(
           "alepha.server.request.apiLinks",
           await this.alepha.inject(ServerLinksProvider).getUserApiLinks({
-            user: (serverRequest as any).user, // TODO: fix type
+            // `user` is declaration-merged onto `ServerRequest` by
+            // `alepha/security`, which react cannot import — an optional
+            // module must not become a compile-time dependency of the router.
+            // Same pattern as `$topic`'s mqtt cast; the field is real, react
+            // just cannot see it.
+            user: (serverRequest as any).user,
             authorization: serverRequest.headers.authorization,
           }),
         );

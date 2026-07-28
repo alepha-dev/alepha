@@ -1,4 +1,5 @@
 import { $inject, AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { FileSystemProvider } from "alepha/system";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
@@ -30,6 +31,7 @@ interface ResolvedCompile {
  * - Builds Docker image when `--image` flag is provided
  */
 export class BuildDockerTask extends BuildTask {
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
 
@@ -353,7 +355,7 @@ CMD ["${command}", "index.js"]
 
     if (imageConfig?.oci) {
       const revision = await this.utils.getGitRevision();
-      const created = new Date().toISOString();
+      const created = this.dateTime.nowISOString();
 
       args.push(`--label "org.opencontainers.image.revision=${revision}"`);
       args.push(`--label "org.opencontainers.image.created=${created}"`);

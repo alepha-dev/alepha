@@ -74,8 +74,16 @@ export class RealmController {
       const realmName = query.realmName;
       const userRepository = this.realmProvider.userRepository(realmName);
 
+      // Case-insensitive AND realm-scoped, matching the
+      // `(realm, LOWER(username))` unique index. `eq` reported
+      // `available: true` for "Admin" when "admin" was taken (the
+      // registration then 409'd), and it searched every realm.
+      const realm = this.realmProvider.getRealm(realmName);
       const existingUser = await userRepository.findOne({
-        where: { username: { eq: body.username } },
+        where: {
+          realm: { eq: realm.name },
+          username: { eqInsensitive: body.username },
+        },
       });
 
       return {

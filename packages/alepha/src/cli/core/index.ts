@@ -33,6 +33,7 @@ import { BuildCloudflareTask } from "./tasks/BuildCloudflareTask.ts";
 import { BuildCompressTask } from "./tasks/BuildCompressTask.ts";
 import { BuildDockerTask } from "./tasks/BuildDockerTask.ts";
 import { BuildPrerenderTask } from "./tasks/BuildPrerenderTask.ts";
+import { BuildPwaTask } from "./tasks/BuildPwaTask.ts";
 import { BuildServerTask } from "./tasks/BuildServerTask.ts";
 import { BuildStaticTask } from "./tasks/BuildStaticTask.ts";
 import { BuildVercelTask } from "./tasks/BuildVercelTask.ts";
@@ -72,6 +73,7 @@ export * from "./tasks/BuildCloudflareTask.ts";
 export * from "./tasks/BuildCompressTask.ts";
 export * from "./tasks/BuildDockerTask.ts";
 export * from "./tasks/BuildPrerenderTask.ts";
+export * from "./tasks/BuildPwaTask.ts";
 export * from "./tasks/BuildServerTask.ts";
 export * from "./tasks/BuildStaticTask.ts";
 export * from "./tasks/BuildTask.ts";
@@ -130,6 +132,7 @@ export const AlephaCli = $module({
     BuildDockerTask,
     BuildPrerenderTask,
     BuildServerTask,
+    BuildPwaTask,
     BuildStaticTask,
     BuildVercelTask,
   ],

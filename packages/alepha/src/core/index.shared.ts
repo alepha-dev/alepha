@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 export * from "./Alepha.ts";
+export * from "./AlephaCore.ts";
 export * from "./constants/KIND.ts";
 export * from "./constants/OPTIONS.ts";
 export * from "./errors/AlephaError.ts";

@@ -595,7 +595,7 @@ export class FormModel<T extends TObject> {
         form: this,
         required,
         initialValue: context.store[key],
-        items: [], // <- will be populated dynamically in the UI
+        items: [], // see ArrayInputField — the UI builds the per-row fields
       } as ArrayInputField<any>;
     }
 
@@ -698,6 +698,16 @@ export interface ObjectInputField<T extends TObject> extends BaseInputField {
   items: SchemaToInput<T>;
 }
 
+/**
+ * An array field.
+ *
+ * `items` is intentionally always `[]` at model level: the model does not know
+ * how many rows exist, so the UI builds the per-row fields itself. The
+ * property is still present and always an array so consumers can
+ * `field.items.map(...)` without a null check — `useForm.browser.spec.tsx`
+ * pins exactly that. Review #3 read it as a "permanently empty typed surface"
+ * and proposed removing it; the test is what says otherwise.
+ */
 export interface ArrayInputField<T extends TSchema> extends BaseInputField {
   items: Array<InputField<T>>;
 }

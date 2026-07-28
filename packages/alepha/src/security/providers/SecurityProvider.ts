@@ -476,8 +476,17 @@ export class SecurityProvider {
 
       try {
         userInfo = await resolver.onRequest(req as any);
-      } catch {
-        // Resolver failed (e.g., wrong key), try next
+      } catch (error) {
+        // Trying the next resolver is deliberate — with several realms
+        // registered, "this one cannot read the token" is the normal case.
+        // But swallowing it silently meant a tenant mismatch or a malformed
+        // bearer ended as a bare `undefined` (i.e. "unauthenticated") with
+        // nothing anywhere to explain why. Debug, so it costs nothing in
+        // production and is there when someone goes looking.
+        this.log.debug(
+          `Auth resolver for realm '${realmName}' declined the request`,
+          error,
+        );
         continue;
       }
 
