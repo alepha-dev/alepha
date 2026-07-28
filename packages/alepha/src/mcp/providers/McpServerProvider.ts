@@ -55,8 +55,6 @@ export class McpServerProvider {
   protected readonly resources = new Map<string, ResourcePrimitive>();
   protected readonly prompts = new Map<string, PromptPrimitive<any>>();
 
-  protected initialized = false;
-
   /**
    * Protocol version negotiated with the client during `initialize`.
    * Used by transports to validate the `MCP-Protocol-Version` header on
@@ -272,7 +270,6 @@ export class McpServerProvider {
       negotiatedProtocolVersion: negotiated,
     });
 
-    this.initialized = true;
     this.negotiatedVersion = negotiated;
 
     return {

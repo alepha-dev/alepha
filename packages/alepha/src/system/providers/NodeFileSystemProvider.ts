@@ -537,7 +537,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       name?: string;
       size?: number;
     } = {},
-  ): FileLike & { _buffer: null | Buffer } {
+  ): FileLike {
     let buffer: Buffer | null = null;
 
     return {
@@ -547,7 +547,6 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       size: options.size ?? 0,
       lastModified: Date.now(),
       stream: () => source,
-      _buffer: null as Buffer | null,
       arrayBuffer: async () => {
         buffer ??= await this.streamToBuffer(source);
         return this.bufferToArrayBuffer(buffer);

@@ -182,7 +182,3 @@ export interface Oauth2ServiceAccountPrimitiveOptions {
 export interface ServiceAccountPrimitive {
   token: () => Promise<string>;
 }
-
-export interface ServiceAccountStore {
-  response?: AccessTokenResponse;
-}

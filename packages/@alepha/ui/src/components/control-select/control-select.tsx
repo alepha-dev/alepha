@@ -703,7 +703,10 @@ const useAsyncLoader = (
 
   useAction(
     {
-      name: "select:loader:init",
+      // `id`, not `name`: `id` is what useAction threads into its
+      // react:action:* events. `name` was accepted and never read, so this
+      // identifier reached nothing.
+      id: "select:loader:init",
       runOnInit: true,
       handler: async () => {
         if (!loader) {

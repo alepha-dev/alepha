@@ -284,6 +284,26 @@ export interface FilterOperators<TValue> {
   ilike?: string;
 
   /**
+   * Case-insensitive EQUALITY — `LOWER(column) = LOWER(value)`.
+   *
+   * Use this, not `ilike`, when you mean "the same string ignoring case".
+   * `ilike` is a pattern match: `_` matches any single character and `%` any
+   * run of them, so a raw user-supplied value is a wildcard expression. On an
+   * identifier lookup that is wrong (and on an auth path, dangerous):
+   * `admi_` matches `admin`, `admix`, … and `findOne` then picks one
+   * arbitrarily.
+   *
+   * Mirrors the shape of a `LOWER(col)` unique index, so a lookup and the
+   * constraint that guards it agree.
+   *
+   * ```ts
+   * // exactly one user, whatever the casing
+   * where: { username: { eqInsensitive: input } }
+   * ```
+   */
+  eqInsensitive?: string;
+
+  /**
    * The inverse of ilike - this case-insensitively tests that a given column
    * does not match a pattern, which can include `%` and `_`
    * characters to match multiple variations. Including `%`

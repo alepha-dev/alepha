@@ -23,7 +23,7 @@
 
 Every P2 outside websocket is closed — including all five of review #2's "options accepted but
 ignored", which was its largest un-swept theme. Test coverage went from 428 files / 4564 tests to
-**449 files / 4702 tests**; `yarn v` (lint, typecheck, test, test:bun, deps, i18n, migrations, build,
+**452 files / 4720 tests**; `yarn v` (lint, typecheck, test, test:bun, deps, i18n, migrations, build,
 e2e) is green.
 
 **The two new bugs**, neither of which any review listed:
@@ -102,12 +102,12 @@ is the result: the survivors, corrected, plus the still-unbuilt feature backlog.
 
 ## Executive summary
 
-| | Review #2 (2026-07-25) | Review #3 audit | After batches 1–7 |
+| | Review #2 (2026-07-25) | Review #3 audit | After batches 1–8 |
 |---|---|---|---|
-| Open findings | 96 | 91 | **63** |
+| Open findings | 96 | 91 | **53** |
 | P0 / P1 | 0 / 0 | 0 / 0 | **0 / 0** |
 | P2 | 16 | 17 | **3** |
-| P3 | 80 | 74 | **60** |
+| P3 | 80 | 74 | **50** |
 
 **Re-audit outcome** across review #2's 96 open findings:
 
@@ -118,7 +118,7 @@ is the result: the survivors, corrected, plus the still-unbuilt feature backlog.
 - **1 escalated, then retracted** — `FormValidationError` turned out to work; see below.
 - **81 unchanged.**
 
-**Then batches 1–7 closed 28 more**, including fourteen of the seventeen P2s. Nothing regressed; no
+**Then batches 1–8 closed 38 more**, including fourteen of the seventeen P2s. Nothing regressed; no
 new P0/P1 surfaced at any point.
 
 ### Where the remaining risk is
@@ -309,6 +309,34 @@ are kept as behaviour pins.
 restricting the SQL projection, the per-repository `DbCacheProvider` being `new`'d/unbounded with a
 `JSON.stringify` key, and `createMany` batches not being atomic.
 
+## Batch 8 — 2026-07-28 — the high-value P3s and a dead-code sweep
+
+Chosen by impact rather than by module. Verified with a full `yarn v`
+(452 files, 4720 tests).
+
+| Area | Fix |
+|---|---|
+| react/i18n | **Placeholder substitution rewritten as one regex pass.** The ascending `result.replace("$" + (i+1), args[i])` loop had two faults: `$1` was replaced before `$10` was ever considered, so `$10` matched the `$1` pass and became `args[0] + "0"`; and a *string* pattern replaces only the first occurrence, so a placeholder used twice was substituted once. A single pass also stops a substituted VALUE being rescanned, so a user string containing `$2` is inserted literally. **The first test I wrote passed by luck** — with args `A1..A10`, `"$10".replace("$1","A1")` yields `"A10"`, the right answer for the wrong reason; using distinct values exposed it as `"one0"`. |
+| react/router | **`isActive({ startWith })` matches on a segment boundary.** A bare `current.startsWith(href)` made `/foo` active on `/foobar` and `/settings` active on `/settings-archive` — and this drives nav highlighting in every sidebar. |
+| orm + api/users | **New `eqInsensitive` filter operator, and the auth path uses it.** Identifier lookups were written with `ilike`, which is a *pattern* match: `_` matches any single character and `%` any run of them, so a raw user-supplied value was a wildcard expression — `admi_` matched `admin`, `admix`, … and `findOne` picked one arbitrarily. `eqInsensitive` is `LOWER(col) = LOWER(value)`: equality with case folding and no metacharacters, mirroring the `(realm, LOWER(username))` unique index that guards it. Migrated the five identifier lookups (login, two availability checks, registration, the username slugger). The admin *search* keeps `ilike` — there a pattern is the point. One test deliberately pins the old wildcard behaviour so the reason the operator exists stays visible. |
+| cli | **`db migrations check` no longer crashes on an empty journal** — it read `.idx` off `undefined` instead of saying "no migrations recorded yet". |
+| cli | **`--compile` wins over `docker.compile: false`.** `flags.compile ? (current.docker?.compile ?? true) : false` let a config value swallow an explicit flag, because the `?? true` only rescued `undefined`. |
+| cli | **`CLOUDFLARE_SERVICES` parse failure names the variable and the input** instead of throwing a bare `SyntaxError`. |
+| cli | **Cloudflare and Vercel honour `output.public`.** Both hardcoded `"public"`, so a project configuring a different directory silently shipped a worker with **no static assets**. Now `ctx.options.output?.public ?? "public"`, the pattern every other build task already used. |
+
+### Dead-code sweep
+
+Deleted, each verified unreferenced first: `FileError` (extended a bare `Error`, violating the repo
+rule, and was exported from three barrels with zero usages), `cli/core/commands/gen/resource.ts` (a
+TODO-only stub, imported nowhere), the exported types `CreateTokenOptions` and `ServiceAccountStore`,
+`NodeFileSystemProvider`'s `_buffer` (declared in the return type, set to `null`, never written), and
+`McpServerProvider.initialized` (assigned once, never read).
+
+**One "dead" field was not dead.** `UseActionOptions.name` is accepted and never read by `useAction`
+— but `@alepha/ui`'s control-select passes `name: "select:loader:init"`, clearly meaning it as the
+action's identifier. `id` is the field actually threaded into the `react:action:*` events, so that
+identifier was reaching nothing. Fixed the consumer to use `id` and then removed `name`.
+
 ### Also found while fixing
 
 - **A stray `packages/alepha/copy/` appeared mid-session** — a byte-identical mirror of `packages/alepha/src/` (327 spec files), untracked and not gitignored. Vitest collected it, so the suite ran twice against a stale second copy and reported failures that did not exist in `src`. **I could not identify what wrote it**: it is not `scripts/build.ts`, `copy-swagger.ts` or `gen-docs.ts`, and a later `yarn build` did *not* recreate it. Removed. Whatever the source, `packages/alepha/copy/` deserves a `.gitignore` entry and a vitest `exclude` — the same defence the config already has for `**/.claude/**` worktrees, and for the same reason.
@@ -317,7 +345,7 @@ restricting the SQL projection, the per-repository `DbCacheProvider` being `new`
 
 # Open findings
 
-63 findings remain (91 minus the 28 closed in batches 1–7). Line numbers are against `main` @ `a61c26894` and were
+53 findings remain (91 minus the 38 closed in batches 1–8). Line numbers are against `main` @ `a61c26894` and were
 read during the audit — but **locate by symbol name**, not by line, when acting on them.
 
 ## Priority list — the P2s
@@ -366,12 +394,9 @@ registry (batch 6).
     (b) `__alephaRef` cursor not restored on mid-instantiation throw (`ref.ts:60`);
     (c) `StreamLike` slated for replacement with web streams (`FileLike.ts:96`).
 
-## security + crypto + captcha — 2 open (P3)
+## security + crypto + captcha — 1 open (P3)
 
-1. **Dead exported types `CreateTokenOptions` and `ServiceAccountStore`** (`$issuer.ts:482`,
-   `$serviceAccount.ts:186`). Referenced nowhere; `ServiceAccountStore.response` doesn't even match the
-   actual `store.cache` field. Remove.
-2. **`SecurityProvider` catch-all in the resolver loop hides genuine token errors.**
+1. **`SecurityProvider` catch-all in the resolver loop hides genuine token errors.**
    `resolveUserFromServerRequest` (:449) wraps each `resolver.onRequest` in `try {} catch { continue }`,
    swallowing tenant-mismatch and malformed-bearer errors and returning `undefined` with no diagnostic.
    Deliberate for multi-realm fallthrough — log at debug inside the catch.
@@ -452,7 +477,7 @@ registry (batch 6).
    `WorkerProvider` re-pushes consumers on every start without clearing on stop. CF `closeConnection()`
    is a silent no-op.
 
-## react — 11 open (all P3)
+## react — 9 open (all P3)
 
 > `FormValidationError` was found to already work; a spec now pins it.
 
@@ -465,48 +490,34 @@ registry (batch 6).
    commits a different URL (a loader redirect), `this.pushState(committed)`
    (`ReactBrowserProvider.ts:218`) doesn't forward `options.replace` — history grows and back lands on an
    entry that immediately redirects again.
-3. **P3 · i18n placeholder substitution corrupts `$10+` and repeated placeholders**
-   (`I18nProvider.ts:437`). `result.replace(\`$${i+1}\`, args[i])` ascending: `$1` is replaced before
-   `$10` is considered, so `$10` becomes `args[0] + "0"`; and string-pattern `replace` hits only the first
-   occurrence. Single regex pass (`/\$(\d+)/g`).
-4. **P3 · Debounced `useAction.run()` promise never settles after cancel/unmount.** The debounce path
+3. **P3 · Debounced `useAction.run()` promise never settles after cancel/unmount.** The debounce path
    returns a promise resolved only inside the timeout callback (`useAction.ts:334-342`); `cancel()`
    (:373-376) and the unmount cleanup clear the timer without resolving, so `await action.run(...)` hangs
    forever. Resolve `undefined` on clear.
-5. **P3 · Dev error page renders wall-clock time — SSR hydration mismatch.**
+4. **P3 · Dev error page renders wall-clock time — SSR hydration mismatch.**
    `{new Date().toLocaleTimeString()}` (`ErrorViewer.tsx:70`, and `GettingStarted.tsx:54`). Dev/demo only.
-6. **P3 · Explicit TODOs and `as any` escape hatches in the router.** `scrollRestoration // TODO: must be
+5. **P3 · Explicit TODOs and `as any` escape hatches in the router.** `scrollRestoration // TODO: must be
    per page?` (`ReactBrowserProvider.ts:31`); `user: (serverRequest as any).user // TODO: fix type`
    (`ReactServerProvider.ts:372`); `node()` returns `any` with "improve typing or remove"
    (`ReactRouter.ts:74`). `applyHydration` also trusts the SSR payload's props/config unvalidated.
-7. **P3 · `ArrayInputField.items` is a permanently empty typed surface** (`FormModel.ts:598`) —
-   `items: [], // <- will be populated dynamically in the UI`; the UI builds its own.
-   `UseActionOptions.name` (`useAction.ts:523`) is accepted and never read.
-8. **P3 · `useInject` ignores its argument in the memo deps** (`useInject.ts:11`):
+6. **P3 · `useInject` ignores its argument in the memo deps** (`useInject.ts:11`):
    `useMemo(() => alepha.inject(service), [])` — a different service class between renders silently keeps
    the first instance. `[service]` removes the trap.
-9. **P3 · Streaming "backpressure" is a no-op** (`ReactServerTemplateProvider.ts:225-227`). `if`
+7. **P3 · Streaming "backpressure" is a no-op** (`ReactServerTemplateProvider.ts:225-227`). `if`
     (not a loop) + a single `queueMicrotask` await, then enqueue regardless — a microtask cannot let the
     consumer pull. Implement real backpressure or delete the misleading check.
-10. **P3 · `isActive({ startWith })` matches across segment boundaries** (`ReactRouter.ts:61`):
-    `current.startsWith(href)` makes `/foo` active on `/foobar`. Drives nav highlighting in every sidebar.
-    Use `startsWith(href + "/") || current === href`.
-11. **P3 · Dead nested-proxy code in `FormModel`** — the commented-out block above the array-field branch.
+8. **P3 · Dead nested-proxy code in `FormModel`** — the commented-out block above the array-field branch.
+9. **P3 · `ArrayInputField.items` is a permanently empty typed surface** (`FormModel.ts:598`):
+    `items: [], // <- will be populated dynamically in the UI` — the UI builds its own. *(The
+    `UseActionOptions.name` half of this finding was closed in batch 8.)*
 
-## api — auth modules (users, oauth, verifications, keys) — 3 open (all P3)
+## api — auth modules (users, oauth, verifications, keys) — 2 open (all P3)
 
-1. **Credentials login looks up the username with `ilike` on raw input** (`SessionService.ts:270`).
-   `where.username = { ilike: username }` passes the user-supplied identifier straight into a LIKE match.
-   `_` (allowed by the default `usernameRegExp`) is a single-char wildcard and `%` a multi-char wildcard,
-   so `admi_` matches `admin`, `admix`, … and `findOne` picks one arbitrarily. A password is still
-   required so this is not a direct bypass, but it is wrong matching semantics on the auth hot path. Same
-   pattern at `UserService.ts:295,376` and `RegistrationService.ts:491`. Match with
-   `LOWER(username) = LOWER(:input)`, mirroring the unique index.
-2. **`checkUsernameAvailability` is case-sensitive and not realm-scoped**
+1. **`checkUsernameAvailability` is case-sensitive and not realm-scoped**
    (`RealmController.ts:78`): `where: { username: { eq: body.username } }`. Uniqueness is enforced on
    `(realm, LOWER(username))`, so this reports `available: true` for `Admin` when `admin` is taken (and
    the registration then 409s), and it checks across all realms instead of the target realm.
-3. **Password-reset intent creation has no IP throttle** (`CredentialService.ts:133`). The per-target
+2. **Password-reset intent creation has no IP throttle** (`CredentialService.ts:133`). The per-target
    cooldown (90s) and daily limit (10) are scoped to `(type, target, purpose)`, so one IP can request
    resets for thousands of *distinct* real addresses with no aggregate cap — an email-bombing primitive.
    Registration has `registrationIpMaxAttempts`; the reset flow has no analogue.
@@ -528,7 +539,7 @@ registry (batch 6).
    every other admin controller uses `admin:<module>:<verb>` — a role granting `admin:*` won't cover the
    payments admin surface. Rename with aliases.
 
-## mcp + command + system + datetime + logger + router + fake + bin — 8 open (all P3)
+## mcp + command + system + datetime + logger + router + fake + bin — 7 open (all P3)
 
 > Bun shell parity, `Runner` root and `FileDetector.peekBytes` closed in batches 1 and 3.
 
@@ -536,75 +547,58 @@ registry (batch 6).
    `${file}.local` for every file; the JSDoc at :16 still claims only `.env` / `.env.local`. It also
    swallows every read error (including EACCES) as "no file found", and keeps inline `# comments` after
    values as part of the value. Narrow the catch to ENOENT.
-2. **P3 · `FileError` extends bare `Error` and is dead code** (`system/errors/FileError.ts:1`). Violates
-   the "always `AlephaError`" rule, has zero usages, and is exported from three barrels
-   (`index.ts`, `index.browser.ts`, `index.workerd.ts`).
-3. **P3 · Dead / vestigial code.** `NodeFileSystemProvider.createFileFromStream` `_buffer` never written
+2. **P3 · Dead / vestigial code.** `NodeFileSystemProvider.createFileFromStream` `_buffer` never written
    (:540, :550); `McpServerProvider.initialized` set at :275 but never read, so pre-initialize requests
    aren't rejected; `ToolPrimitive.schemaToJsonSchema` `options.root === false` branch unreachable;
    `CliProvider.parseCommandArgs` `isRootCommand=false` path dead; `bin/index.ts:10` `as any` on
    `LOG_FORMAT`. *(The `DateTimeProvider.clearInterval` leg is fixed.)*
-4. **P3 · `printHelp` permanently flips the logger to `raw` format** (`CliProvider.ts:1064`):
+3. **P3 · `printHelp` permanently flips the logger to `raw` format** (`CliProvider.ts:1064`):
    `this.alepha.store.set("alepha.logger.format", "raw")`, never restored. The `help()` callback is handed
    to command handlers (parent commands print help then continue), so subsequent logs lose timestamps and
    levels. Save and restore.
-5. **P3 · Env-var descriptions in help read `.description` directly instead of `schemaMeta`**
+4. **P3 · Env-var descriptions in help read `.description` directly instead of `schemaMeta`**
    (`CliProvider.ts:1161`). Wrapped (`.optional()`) env schemas keep the description in the inner
    schema's `.meta()` registry, so the `Env:` help section renders empty. Use `this.schemaMeta(schema)`,
    as every other call site in the file already does.
-6. **P3 · Suppressed log levels still construct the entry and emit** (`Logger.ts:203-217`) — see *Narrowed*.
-7. **P3 · MCP prompt/params validation errors surface as `-32603 Internal error`.** `McpInvalidParamsError`
+5. **P3 · Suppressed log levels still construct the entry and emit** (`Logger.ts:203-217`) — see *Narrowed*.
+6. **P3 · MCP prompt/params validation errors surface as `-32603 Internal error`.** `McpInvalidParamsError`
     is defined, exported and unit-tested but never thrown by production code. *(The tool path is now
     SEP-1303 compliant.)*
-8. **P3 · CLI flag parser cannot accept negative numbers or a `--` terminator**
+7. **P3 · CLI flag parser cannot accept negative numbers or a `--` terminator**
     (`CliProvider.ts:327`). Any token starting with `-` is treated as a flag, so `--count -5` fails.
     Accept a next-arg matching `/^-\d/` as a value; treat `--` as end-of-flags.
 
-## cli — 15 open (all P3)
+## cli — 10 open (all P3)
 
 > The Cloudflare `platform build` binding bug closed in batch 3.
 
-1. **`db migrations check` crashes on an empty journal** (`db.ts:92`).
-   `journal.entries[journal.entries.length - 1]` is `undefined` for zero entries and the next line reads
-   `.idx` → TypeError instead of "no migrations yet".
-2. **`--compile` cannot override `docker.compile: false` from config** (`build.ts:181-183`):
-   `compile: flags.compile ? (current.docker?.compile ?? true) : false` — the `?? true` only rescues
-   `undefined`, so an explicit `--compile` against a config `compile: false` evaluates to `false`.
-3. **`CLOUDFLARE_SERVICES` parsed without a guard** (`BuildCloudflareTask.ts:391-395`). Bare
-   `JSON.parse(raw)` throws an uncontextualised SyntaxError on malformed JSON.
-4. **Cloudflare and Vercel configs ignore a custom `output.public`.** `hasAssets` checks
-   `join(root, distDir, "public")` hardcoded (`BuildCloudflareTask.ts:189`), as does
-   `BuildVercelTask.copyStaticAssets` (:241) — a custom public dir silently produces a worker with no
-   static assets.
-5. **`gen/resource.ts` is a TODO-only stub, not wired anywhere.** A single block comment describing a
-   planned scaffolder; no code, not imported.
-6. **`pwa.offline` accepted but not implemented** (`buildOptions.ts:318-323`). Declared with
+1. **`pwa.offline` accepted but not implemented** (`buildOptions.ts:318-323`). Declared with
    "TODO: Not yet implemented"; `BuildPwaTask` never reads it, so `offline: true` yields no service worker
    and no warning.
-7. **`BuildPwaTask` missing from module registration and barrel exports** (`cli/core/index.ts`). Every
+2. **`BuildPwaTask` missing from module registration and barrel exports** (`cli/core/index.ts`). Every
    other `BuildXxxTask` is in the `AlephaCli` services list and the barrel; this one works only via the
    on-demand `$inject` in `build.ts`, so external consumers can't import or substitute it.
-8. **`runAlepha` uses the `ssrLoadModule` dev-server hack** (`ViteUtils.ts:421-431`) — "clearly a bad
+3. **`runAlepha` uses the `ssrLoadModule` dev-server hack** (`ViteUtils.ts:421-431`) — "clearly a bad
    stuff" per the in-code comment. Every db/gen command boots a full Vite dev server just to import the
    entry, and a second `runAlepha` call overwrites `this.viteDevServer`, leaking the first.
-9. **`as any` provider casts in `db push --dry-run`** (`db.ts:236, 261`): `(provider as any).connect()` /
+4. **`as any` provider casts in `db push --dry-run`** (`db.ts:236, 261`): `(provider as any).connect()` /
     `.close()` bypass the type system. Add the methods to the interface.
-10. **`platform()` sets a production `PUBLIC_URL` outside production** (`platform/index.ts:66-71`) — see
+5. **`platform()` sets a production `PUBLIC_URL` outside production** (`platform/index.ts:66-71`) — see
     *Narrowed*.
-11. **`getWorkspaceContext` can false-positive on unrelated parent repos**
+6. **`getWorkspaceContext` can false-positive on unrelated parent repos**
     (`PackageManagerUtils.ts:138`). A dir counts as a "workspace package" if an ancestor 2–3 levels up has
     a lockfile + package.json, without verifying the current dir is declared in that root's `workspaces`;
     depth 1 (`monorepo/pkg`) is never checked. *Worth re-verifying against the rewritten `alepha init`,
     which added a `detectFromUserAgent()` fallback ahead of this path.*
-12. **`CloudflareApi.fetch` should guard non-JSON responses** (`CloudflareApi.ts:569`). Bare
+7. **`CloudflareApi.fetch` should guard non-JSON responses** (`CloudflareApi.ts:569`). Bare
     `await response.json()` on a 5xx HTML or empty body throws an opaque SyntaxError with no URL or status
     context — the upload path at :512 already does `.json().catch(() => null)`. Also `createD1` hardcodes
     `location = "weur"` behind a TODO.
-13. **`init` path argument is silently lowercased** (`init.ts:24`): `z.text({ lowercase: true })` turns
+8. **`init` path argument is silently lowercased** (`init.ts:24`): `z.text({ lowercase: true })` turns
     `alepha init MyApp` into scaffolding `myapp/`.
-14. **`clean` ignores `build.output.dist`** (`clean.ts:11`): `run.rm("./dist")` hardcoded, so a project
+9. **`clean` ignores `build.output.dist`** (`clean.ts:11`): `run.rm("./dist")` hardcoded, so a project
     with `output.dist: "build"` gets a no-op clean.
-15. **`Date.now()` / `new Date()` used in CLI services despite the project convention**
+10. **`Date.now()` / `new Date()` used in CLI services despite the project convention**
     (`VendorService.ts:320,356`, `CloudflareAdapter.ts:1241`, `BuildDockerTask.ts:356`,
     `ViteUtils.ts:117-138`). Convention is `DateTimeProvider.nowMillis()`. The vendor tmp-dir naming
     additionally risks a same-ms collision.

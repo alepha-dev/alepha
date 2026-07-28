@@ -5,7 +5,6 @@ import { MemoryShellProvider } from "./providers/MemoryShellProvider.ts";
 import { ShellProvider } from "./providers/ShellProvider.ts";
 import { FileDetector } from "./services/FileDetector.ts";
 
-export * from "./errors/FileError.ts";
 export * from "./providers/FileSystemProvider.ts";
 export * from "./providers/MemoryFileSystemProvider.ts";
 export * from "./providers/MemoryShellProvider.ts";

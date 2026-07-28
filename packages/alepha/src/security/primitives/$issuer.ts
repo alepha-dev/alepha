@@ -479,12 +479,6 @@ $issuer[KIND] = IssuerPrimitive;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface CreateTokenOptions {
-  sub: string;
-  roles?: string[];
-  email?: string;
-}
-
 export interface AccessTokenResponse {
   access_token: string;
   token_type: string;

@@ -292,7 +292,10 @@ export class UserService {
     // Check for existing user based on provided unique fields (scoped to realm)
     if (data.username) {
       const existingUser = await this.users(userRealmName).findOne({
-        where: { realm: realm.name, username: { ilike: data.username } },
+        where: {
+          realm: realm.name,
+          username: { eqInsensitive: data.username },
+        },
       });
 
       if (existingUser) {
@@ -373,7 +376,10 @@ export class UserService {
       data.username !== before.username
     ) {
       const existing = await users.findOne({
-        where: { realm: realm.name, username: { ilike: data.username } },
+        where: {
+          realm: realm.name,
+          username: { eqInsensitive: data.username },
+        },
       });
       if (existing && existing.id !== id) {
         throw new ConflictError("User with this username already exists");

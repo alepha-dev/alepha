@@ -89,7 +89,15 @@ export class DbCommand {
         }
 
         const journal = JSON.parse(journalBuffer.toString("utf-8"));
-        const lastMigration = journal.entries[journal.entries.length - 1];
+        const lastMigration = journal.entries?.[journal.entries.length - 1];
+        if (!lastMigration) {
+          // A journal exists but records no migrations yet. Reading `.idx` off
+          // `undefined` threw a bare TypeError instead of saying so.
+          this.log.info(
+            `No migrations recorded yet for '${providerName}'; nothing to compare.`,
+          );
+          continue;
+        }
         const snapshotBuffer = await this.fs.readFile(
           this.fs.join(
             migrationDir,

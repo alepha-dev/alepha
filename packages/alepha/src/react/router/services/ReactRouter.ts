@@ -58,7 +58,11 @@ export class ReactRouter<T extends object> {
       current === href || current === `${href}/` || `${current}/` === href;
 
     if (options.startWith && !isActive) {
-      isActive = current.startsWith(href);
+      // Match on a SEGMENT boundary. A bare `startsWith` made `/foo` active on
+      // `/foobar` — and since this drives nav highlighting, a short parent
+      // href lit up on every unrelated sibling that shared its prefix.
+      const prefix = href.endsWith("/") ? href : `${href}/`;
+      isActive = current.startsWith(prefix);
     }
 
     return isActive;

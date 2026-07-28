@@ -65,7 +65,11 @@ export class BuildVercelTask extends BuildTask {
     await this.writeVcConfig(funcDir);
     await this.writeHandler(funcDir);
     await this.copyServerBundle(dist, funcDir);
-    await this.copyStaticAssets(dist, staticDir);
+    await this.copyStaticAssets(
+      dist,
+      staticDir,
+      ctx.options.output?.public ?? "public",
+    );
     await this.writeProjectConfig(ctx, dist);
   }
 
@@ -232,13 +236,19 @@ export default async (req, res) => {
   }
 
   /**
-   * Move static assets from dist/public/ to .vercel/output/static/.
+   * Move static assets from the build's public directory to
+   * `.vercel/output/static/`.
+   *
+   * The directory name comes from `output.public` — it was hardcoded to
+   * "public", so a project that configured a different one silently shipped
+   * with no static assets at all.
    */
   protected async copyStaticAssets(
     dist: string,
     staticDir: string,
+    publicDirName = "public",
   ): Promise<void> {
-    const publicDir = this.fs.join(dist, "public");
+    const publicDir = this.fs.join(dist, publicDirName);
     if (await this.fs.exists(publicDir)) {
       await this.fs.cp(publicDir, staticDir);
     } else {

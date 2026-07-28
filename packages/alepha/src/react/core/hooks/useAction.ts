@@ -520,8 +520,6 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
    */
   id?: string;
 
-  name?: string;
-
   /**
    * Debounce delay in milliseconds. If specified, the action will only execute
    * after the specified delay has passed since the last call. Useful for search inputs

@@ -178,9 +178,11 @@ export class BuildCommand {
           ...(flags.compile !== undefined && {
             docker: {
               ...current.docker,
-              compile: flags.compile
-                ? (current.docker?.compile ?? true)
-                : false,
+              // The flag is explicit intent and wins outright. The old
+              // `flags.compile ? (current.docker?.compile ?? true) : false`
+              // let a config `compile: false` swallow an explicit `--compile`,
+              // because the `?? true` only rescued `undefined`.
+              compile: flags.compile,
             },
           }),
         };

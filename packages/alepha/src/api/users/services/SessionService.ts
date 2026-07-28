@@ -267,7 +267,11 @@ export class SessionService {
             throw new InvalidCredentialsError();
           }
         }
-        where.username = { ilike: username };
+        // Case-insensitive EQUALITY, not a LIKE pattern. `ilike` on the raw
+        // identifier made `_` and `%` wildcards, so `admi_` matched `admin`
+        // and `findOne` picked one arbitrarily — wrong semantics on the auth
+        // hot path. Mirrors the `(realm, LOWER(username))` unique index.
+        where.username = { eqInsensitive: username };
       } else if (settings.email !== "none" && isEmail) {
         where.email = username;
       } else if (settings.phoneNumber !== "none" && isPhone) {

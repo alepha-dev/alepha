@@ -121,7 +121,7 @@ export class UsernameSlugger {
       const existing = await repo.findOne({
         where: {
           realm: { eq: realm.name },
-          username: { ilike: candidate },
+          username: { eqInsensitive: candidate },
         },
       });
       return !existing;

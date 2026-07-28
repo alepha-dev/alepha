@@ -431,12 +431,25 @@ export class I18nProvider<
     return translation;
   };
 
+  /**
+   * Substitute `$1`, `$2`, … placeholders with their arguments.
+   *
+   * One regex pass, not a loop of `String.replace(string, …)`. The loop had
+   * two faults: it replaced `$1` before it ever considered `$10`, so `$10`
+   * matched the `$1` pass and became `args[0] + "0"`; and a string pattern
+   * replaces only the FIRST occurrence, so a placeholder used twice was
+   * substituted once.
+   *
+   * A single pass also means a substituted VALUE is never rescanned, so a
+   * user-supplied string that happens to contain `$2` is inserted literally
+   * instead of being treated as another placeholder. A placeholder with no
+   * corresponding argument is left as written.
+   */
   protected render(item: string, args: string[]): string {
-    let result = item;
-    for (let i = 0; i < args.length; i++) {
-      result = result.replace(`$${i + 1}`, args[i]);
-    }
-    return result;
+    return item.replace(/\$(\d+)/g, (match, digits: string) => {
+      const index = Number.parseInt(digits, 10) - 1;
+      return index >= 0 && index < args.length ? String(args[index]) : match;
+    });
   }
 }
 

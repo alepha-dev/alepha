@@ -235,6 +235,7 @@ export class QueryManager {
       "notLike",
       "ilike",
       "notIlike",
+      "eqInsensitive",
       "contains",
       "startsWith",
       "endsWith",
@@ -415,6 +416,14 @@ export class QueryManager {
 
     if (operator?.notLike != null) {
       conditions.push(notLike(column, encodeValue(operator.notLike)));
+    }
+
+    if (operator?.eqInsensitive != null) {
+      // Equality, not a pattern: no LIKE metacharacters are involved, so a
+      // raw user-supplied value cannot act as a wildcard.
+      conditions.push(
+        sql`LOWER(${column}) = LOWER(${encodeValue(operator.eqInsensitive)})`,
+      );
     }
 
     if (operator?.ilike != null) {

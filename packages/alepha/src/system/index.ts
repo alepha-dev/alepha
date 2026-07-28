@@ -11,7 +11,6 @@ import { FileDetector } from "./services/FileDetector.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./errors/FileError.ts";
 export * from "./providers/BunShellProvider.ts";
 export * from "./providers/FileSystemProvider.ts";
 export * from "./providers/MemoryFileSystemProvider.ts";

@@ -488,7 +488,10 @@ export class RegistrationService {
 
     if (body.username) {
       const existingUser = await userRepository.findOne({
-        where: { realm: realm.name, username: { ilike: body.username } },
+        where: {
+          realm: realm.name,
+          username: { eqInsensitive: body.username },
+        },
       });
       if (existingUser) {
         this.log.debug("Username already taken", { username: body.username });

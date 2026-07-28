@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { KV_DEFAULT_BINDING } from "alepha/cache";
 import { SEND_EMAIL_DEFAULT_BINDING } from "alepha/email/cloudflare";
 import { QUEUE_DEFAULT_BINDING, QUEUE_DEFAULT_MAX_RETRIES } from "alepha/queue";
@@ -198,7 +198,7 @@ export class BuildCloudflareTask extends BuildTask {
       .replace(/^-+|-+$/g, "")
       .slice(0, 63);
     const hasAssets = await this.fs.exists(
-      this.fs.join(root, distDir, "public"),
+      this.fs.join(root, distDir, ctx.options.output?.public ?? "public"),
     );
 
     const wrangler: WranglerConfig = {
@@ -404,7 +404,18 @@ export class BuildCloudflareTask extends BuildTask {
     if (!raw) {
       return;
     }
-    const services = JSON.parse(raw) as Array<{
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      // A bare SyntaxError here names neither the variable nor the input.
+      throw new AlephaError(
+        `CLOUDFLARE_SERVICES is not valid JSON. Expected an array of ` +
+          `{ binding, service } objects, got: ${raw}`,
+        { cause: error },
+      );
+    }
+    const services = parsed as Array<{
       binding: string;
       service: string;
     }>;
