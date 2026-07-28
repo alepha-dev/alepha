@@ -245,6 +245,51 @@ export class DbCommand {
   });
 
   /**
+   * Record the baseline migration as applied, without executing it.
+   */
+  protected readonly baselineMark = $command({
+    name: "mark",
+    mode: true,
+    description:
+      "Record the baseline migration as already applied, without executing it",
+    args: z
+      .text({
+        title: "path",
+        description: "Path to the Alepha server entry file",
+      })
+      .optional(),
+    flags: drizzleCommandFlags.extend({
+      reset: z
+        .boolean()
+        .describe(
+          "Replace an existing migration history with the baseline. Rewrites bookkeeping rows only; never touches table data.",
+        )
+        .optional(),
+    }),
+    handler: async ({ flags, root }) => {
+      const entry = await this.entryProvider.getAppEntry(root);
+      const alepha = await this.utils.loadAlephaFromServerEntryFile({
+        mode: "production",
+        entry,
+      });
+      const repositoryProvider =
+        alepha.inject<RepositoryProvider>("RepositoryProvider");
+
+      const seen = new Set<string>();
+      for (const primitive of repositoryProvider.getRepositories()) {
+        const provider = primitive.provider;
+        const providerName = provider.name;
+        if (providerName === "" || seen.has(providerName)) continue;
+        seen.add(providerName);
+        if (flags.provider && flags.provider !== providerName) continue;
+
+        const migrationsFolder = this.fs.join(root, "migrations", providerName);
+        await provider.markBaselineApplied(migrationsFolder);
+      }
+    },
+  });
+
+  /**
    * Push database schema changes directly to the database
    */
   protected readonly push = $command({
@@ -412,7 +457,7 @@ export class DbCommand {
     name: "baseline",
     description:
       "Collapse migration history and record a baseline as already applied",
-    children: [this.baselineCreate],
+    children: [this.baselineCreate, this.baselineMark],
     handler: async ({ help }) => {
       help();
     },

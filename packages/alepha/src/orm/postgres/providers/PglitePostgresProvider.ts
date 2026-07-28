@@ -130,7 +130,10 @@ export class PglitePostgresProvider extends DatabaseProvider {
     },
   });
 
-  protected async executeMigrations(migrationsFolder: string): Promise<void> {
+  protected override async runMigrator(
+    migrationsFolder: string,
+    options?: { init?: boolean },
+  ): Promise<{ exitCode?: string } | void> {
     // Set search_path so schema-free migration SQL resolves to the correct schema.
     // PGlite uses a single connection, so SET persists through the migration.
     if (this.schema !== "public") {
@@ -138,9 +141,10 @@ export class PglitePostgresProvider extends DatabaseProvider {
         sql.raw(`SET search_path TO ${this.schema}, public`),
       );
     }
-    await migrate(this.db, {
+    return await migrate(this.db, {
       migrationsFolder,
       migrationsTable: this.migrationsTable,
+      ...options,
     });
   }
 }

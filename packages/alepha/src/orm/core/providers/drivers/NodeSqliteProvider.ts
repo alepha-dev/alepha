@@ -344,7 +344,10 @@ export class NodeSqliteProvider extends DatabaseProvider {
     this.log.debug("Using node:sqlite with sync driver");
   }
 
-  protected async executeMigrations(migrationsFolder: string): Promise<void> {
+  protected override async runMigrator(
+    migrationsFolder: string,
+    options?: { init?: boolean },
+  ): Promise<{ exitCode?: string } | void> {
     // Foreign keys MUST be disabled for the duration of the migration, and
     // it MUST happen here rather than inside the migration SQL.
     //
@@ -370,7 +373,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
 
     if (foreignKeysWereOn) this.sqlite.exec("PRAGMA foreign_keys=OFF");
     try {
-      migrate(this.drizzleDb, { migrationsFolder });
+      const result = migrate(this.drizzleDb, { migrationsFolder, ...options });
 
       // A rebuild that dropped a parent without carrying its children over
       // would leave orphans. Surface that instead of shipping silent
@@ -383,6 +386,8 @@ export class NodeSqliteProvider extends DatabaseProvider {
           `Migration left ${violations.length} foreign key violation(s); the database was not migrated cleanly`,
         );
       }
+
+      return result;
     } finally {
       if (foreignKeysWereOn) this.sqlite.exec("PRAGMA foreign_keys=ON");
     }

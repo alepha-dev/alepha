@@ -22,7 +22,7 @@ import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
  * - SQL execution with error wrapping
  * - Lifecycle hooks (start with migration lock, stop with test cleanup)
  *
- * Subclasses must implement `connect()`, `close()`, and `executeMigrations()`.
+ * Subclasses must implement `connect()`, `close()`, and `runMigrator()`.
  */
 export abstract class PostgresProvider extends DatabaseProvider {
   protected readonly env = $env(databaseEnvSchema);

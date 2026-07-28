@@ -28,15 +28,16 @@ export class NodePostgresProvider extends PostgresProvider {
     return this.pg;
   }
 
-  protected override async executeMigrations(
+  protected override async runMigrator(
     migrationsFolder: string,
-  ): Promise<void> {
+    options?: { init?: boolean },
+  ): Promise<{ exitCode?: string } | void> {
     if (!this.needsDedicatedMigrationClient()) {
-      await migrate(this.db, {
+      return await migrate(this.db, {
         migrationsFolder,
         migrationsTable: this.migrationsTable,
+        ...options,
       });
-      return;
     }
 
     // Schema-free migration SQL resolves against `search_path`, and
@@ -54,9 +55,10 @@ export class NodePostgresProvider extends PostgresProvider {
     try {
       const db = drizzle({ client });
       await db.execute(sql.raw(`SET search_path TO ${this.schema}, public`));
-      await migrate(db, {
+      return await migrate(db, {
         migrationsFolder,
         migrationsTable: this.migrationsTable,
+        ...options,
       });
     } finally {
       await client.end();

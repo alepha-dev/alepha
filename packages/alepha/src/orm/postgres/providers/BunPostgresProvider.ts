@@ -37,18 +37,20 @@ export class BunPostgresProvider extends PostgresProvider {
     return this.bunDb as unknown as PgAsyncDatabase<any>;
   }
 
-  protected override async executeMigrations(
+  protected override async runMigrator(
     migrationsFolder: string,
-  ): Promise<void> {
+    options?: { init?: boolean },
+  ): Promise<{ exitCode?: string } | void> {
     if (this.schema !== "public") {
       await this.db.execute(
         sql.raw(`SET search_path TO ${this.schema}, public`),
       );
     }
     const { migrate } = await import("drizzle-orm/bun-sql/migrator");
-    await migrate(this.bunDb!, {
+    return await migrate(this.bunDb!, {
       migrationsFolder,
       migrationsTable: this.migrationsTable,
+      ...options,
     });
   }
 

@@ -382,10 +382,68 @@ export abstract class DatabaseProvider {
   }
 
   /**
-   * Provider-specific migration execution
-   * MUST be implemented by each provider
+   * Provider-specific migration execution.
+   *
+   * Default implementation delegates to {@link runMigrator}, the
+   * driver-dispatch method shared with {@link markBaselineApplied}. Drivers
+   * whose migration flow doesn't fit that shape — Cloudflare D1 and
+   * Cloudflare Hyperdrive, both fully self-contained, error-wrapped flows
+   * with no baseline-mark support (yet) — override this method directly
+   * instead and never implement `runMigrator`.
    */
-  protected abstract executeMigrations(migrationsFolder: string): Promise<void>;
+  protected async executeMigrations(migrationsFolder: string): Promise<void> {
+    await this.runMigrator(migrationsFolder);
+  }
+
+  /**
+   * Driver-specific dispatch to drizzle's `migrate()`, shared between the
+   * normal migration path (via the default {@link executeMigrations}) and
+   * {@link markBaselineApplied}. Implementations must pass
+   * `{ migrationsFolder, ...options }` through to their driver's own
+   * drizzle migrator import and return its result unchanged — that result
+   * is how drizzle v1 reports the `init: true` guardrails back to the
+   * caller.
+   *
+   * The base implementation throws; every runtime-migrator dialect
+   * (Postgres, local SQLite, PGlite, Bun) overrides it.
+   */
+  protected async runMigrator(
+    migrationsFolder: string,
+    options?: { init?: boolean },
+  ): Promise<{ exitCode?: string } | void> {
+    throw new AlephaError(
+      `Migrations are not supported for driver '${this.driver}'`,
+    );
+  }
+
+  /**
+   * Record the single baseline migration as applied WITHOUT executing it.
+   *
+   * Drizzle v1's migrator ships this natively: `init: true` inserts the
+   * bookkeeping row and returns without running any SQL. It refuses when
+   * the database already has migration rows (`databaseMigrations`) or when
+   * more than one local migration exists (`localMigrations`), which is
+   * exactly the invariant a baseline needs — adopting an existing database
+   * into a fresh migration history must start from a clean bookkeeping
+   * table and a single collapsed baseline file.
+   */
+  public async markBaselineApplied(migrationsFolder: string): Promise<void> {
+    const result = await this.runMigrator(migrationsFolder, { init: true });
+
+    if (result?.exitCode === "databaseMigrations") {
+      throw new AlephaError(
+        "Database already has migration rows. A baseline can only be recorded on a database with no migration history — use 'baseline mark --reset' to replace an existing history.",
+      );
+    }
+
+    if (result?.exitCode === "localMigrations") {
+      throw new AlephaError(
+        "More than one local migration found. Run 'alepha db baseline create' first so exactly one baseline migration exists.",
+      );
+    }
+
+    this.log.info(`Baseline recorded as applied for '${this.name}'`);
+  }
 
   // -------------------------------------------------------------------------------------------------------------------
 

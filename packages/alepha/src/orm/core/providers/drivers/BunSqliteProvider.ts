@@ -204,10 +204,13 @@ export class BunSqliteProvider extends DatabaseProvider {
     },
   });
 
-  protected async executeMigrations(migrationsFolder: string): Promise<void> {
+  protected override async runMigrator(
+    migrationsFolder: string,
+    options?: { init?: boolean },
+  ): Promise<{ exitCode?: string } | void> {
     const { migrate } = await import("drizzle-orm/bun-sqlite/migrator");
 
-    // See NodeSqliteProvider.executeMigrations for the full reasoning:
+    // See NodeSqliteProvider.runMigrator for the full reasoning:
     // SQLite ignores `PRAGMA foreign_keys` inside a transaction, drizzle
     // wraps migrations in one, and `DROP TABLE` performs an implicit
     // `DELETE FROM` — so a generated table-rebuild silently cascades every
@@ -219,7 +222,10 @@ export class BunSqliteProvider extends DatabaseProvider {
 
     if (foreignKeysWereOn) this.sqlite!.run("PRAGMA foreign_keys=OFF");
     try {
-      await migrate(this.bunDb!, { migrationsFolder });
+      const result = await migrate(this.bunDb!, {
+        migrationsFolder,
+        ...options,
+      });
 
       const violations = this.sqlite!.query("PRAGMA foreign_key_check").all();
       if (violations.length > 0) {
@@ -227,6 +233,8 @@ export class BunSqliteProvider extends DatabaseProvider {
           `Migration left ${violations.length} foreign key violation(s); the database was not migrated cleanly`,
         );
       }
+
+      return result;
     } finally {
       if (foreignKeysWereOn) this.sqlite!.run("PRAGMA foreign_keys=ON");
     }
