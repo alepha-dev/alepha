@@ -166,20 +166,17 @@ export class AdminParameterController {
       response: parameterResponseSchema,
     },
     handler: async ({ params, body, user }) => {
-      const result = await this.provider.save(
-        params.name,
-        body.content,
-        body.schemaHash,
-        {
-          activationDate: body.activationDate
-            ? new Date(body.activationDate)
-            : undefined,
-          changeDescription: body.changeDescription,
-          tags: body.tags,
-          creatorId: user?.id,
-          creatorName: this.creatorNameOf(user),
-        },
-      );
+      // Empty hash → `save()` resolves the registered one, so admin writes are
+      // always validated against the current schema.
+      const result = await this.provider.save(params.name, body.content, "", {
+        activationDate: body.activationDate
+          ? new Date(body.activationDate)
+          : undefined,
+        changeDescription: body.changeDescription,
+        tags: body.tags,
+        creatorId: user?.id,
+        creatorName: this.creatorNameOf(user),
+      });
       await this.audit("create", params.name, {
         version: result.version,
         scheduled: result.status !== "current",

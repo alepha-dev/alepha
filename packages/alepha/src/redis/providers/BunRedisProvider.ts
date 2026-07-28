@@ -45,6 +45,9 @@ export class BunRedisProvider extends RedisProvider {
   protected readonly env = $env(envSchema);
   protected client?: Bun.RedisClient;
 
+  /** Keys examined per SCAN round-trip — see NodeRedisProvider.SCAN_COUNT. */
+  protected static readonly SCAN_COUNT = 500;
+
   public get publisher(): Bun.RedisClient {
     if (!this.client?.connected) {
       throw new AlephaError("Redis client is not ready");
@@ -290,14 +293,48 @@ export class BunRedisProvider extends RedisProvider {
     return this.publisher.exists(key);
   }
 
-  public override async keys(pattern: string): Promise<string[]> {
-    const keys = await this.publisher.send("KEYS", [pattern]);
-    if (!Array.isArray(keys)) {
-      return [];
+  /**
+   * One SCAN page. Seam for tests, and the place the page size is decided.
+   */
+  protected async scanPage(
+    cursor: string,
+    pattern: string,
+  ): Promise<{ cursor: string; keys: string[] }> {
+    const reply = await this.publisher.send("SCAN", [
+      cursor,
+      "MATCH",
+      pattern,
+      "COUNT",
+      String(BunRedisProvider.SCAN_COUNT),
+    ]);
+
+    const decode = (key: unknown) =>
+      key instanceof Uint8Array ? Buffer.from(key).toString() : String(key);
+
+    if (!Array.isArray(reply) || reply.length < 2) {
+      return { cursor: "0", keys: [] };
     }
-    return keys.map((key) =>
-      key instanceof Uint8Array ? Buffer.from(key).toString() : String(key),
-    );
+
+    return {
+      cursor: decode(reply[0]),
+      keys: Array.isArray(reply[1]) ? reply[1].map(decode) : [],
+    };
+  }
+
+  public override async keys(pattern: string): Promise<string[]> {
+    // Cursor traversal, not `KEYS` — see NodeRedisProvider.keys for why.
+    const found = new Set<string>();
+    let cursor = "0";
+
+    do {
+      const page = await this.scanPage(cursor, pattern);
+      for (const key of page.keys) {
+        found.add(key);
+      }
+      cursor = page.cursor;
+    } while (cursor !== "0");
+
+    return [...found];
   }
 
   public override async del(keys: string[]): Promise<void> {
@@ -305,7 +342,8 @@ export class BunRedisProvider extends RedisProvider {
       return;
     }
 
-    await this.publisher.send("DEL", keys);
+    // UNLINK frees on a background thread; DEL blocks for the whole free.
+    await this.publisher.send("UNLINK", keys);
   }
 
   // ---------------------------------------------------------

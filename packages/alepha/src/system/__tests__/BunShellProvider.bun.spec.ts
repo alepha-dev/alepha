@@ -71,4 +71,51 @@ describe("BunShellProvider", () => {
       );
     });
   });
+
+  /**
+   * Mirror of `shellStringContract.spec.ts` (Node). Review #2 recorded these
+   * as diverging between the two runtimes; they no longer do, and this table
+   * is what keeps them from drifting apart again. Every token in the string
+   * form is a literal argument — a pipeline needs an explicit `sh -c`.
+   */
+  describe("string form — literal argument contract (parity with Node)", () => {
+    it("does not treat && as a command separator", async () => {
+      const out = await shell.run("echo hello && echo world", {
+        capture: true,
+      });
+      expect(out.trim()).toBe("hello && echo world");
+    });
+
+    it("does not treat | as a pipe", async () => {
+      const out = await shell.run("echo a | tr a b", { capture: true });
+      expect(out.trim()).toBe("a | tr a b");
+    });
+
+    it("does not expand environment variables", async () => {
+      const out = await shell.run("echo $HOME", { capture: true });
+      expect(out.trim()).toBe("$HOME");
+    });
+
+    it("does not evaluate command substitution", async () => {
+      const out = await shell.run("echo $(id -u)", { capture: true });
+      expect(out.trim()).toBe("$(id -u)");
+    });
+
+    it("does not treat ; as a separator", async () => {
+      const out = await shell.run("echo one ; echo two", { capture: true });
+      expect(out.trim()).toBe("one ; echo two");
+    });
+
+    it("keeps quoted arguments together", async () => {
+      const out = await shell.run('echo "one two"', { capture: true });
+      expect(out.trim()).toBe("one two");
+    });
+
+    it("runs a pipeline only when the caller asks for a shell explicitly", async () => {
+      const out = await shell.run(["sh", "-c", "echo a | tr a b"], {
+        capture: true,
+      });
+      expect(out.trim()).toBe("b");
+    });
+  });
 });

@@ -5,7 +5,10 @@ import { $secure, currentTenantAtom } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 import { NotificationJobs } from "../jobs/NotificationJobs.ts";
 import { notificationDetailResourceSchema } from "../schemas/notificationDetailResourceSchema.ts";
-import { notificationQuerySchema } from "../schemas/notificationQuerySchema.ts";
+import {
+  type NotificationQuery,
+  notificationQuerySchema,
+} from "../schemas/notificationQuerySchema.ts";
 import { notificationResourceSchema } from "../schemas/notificationResourceSchema.ts";
 
 export class AdminNotificationController {
@@ -43,25 +46,33 @@ export class AdminNotificationController {
       query: notificationQuerySchema,
       response: z.page(notificationResourceSchema),
     },
-    handler: async ({ query }) => {
-      query.sort ??= "-createdAt";
-      const where = this.executions.createQueryWhere();
-      where.jobName = { eq: this.jobName };
-      const org = this.organizationId;
-      if (org) {
-        where.organizationId = { eq: org };
-      }
-      const page = await this.executions.paginate(
-        query,
-        { where },
-        { count: true },
-      );
-      return {
-        ...page,
-        content: page.content.map((exec) => this.toResource(exec)),
-      } as any;
-    },
+    handler: async ({ query }) => this.list(query) as any,
   });
+
+  /**
+   * Page the notification outbox, scoped to this job and tenant.
+   */
+  protected async list(query: NotificationQuery) {
+    query.sort ??= "-createdAt";
+    const where = this.executions.createQueryWhere();
+    where.jobName = { eq: this.jobName };
+    const org = this.organizationId;
+    if (org) {
+      where.organizationId = { eq: org };
+    }
+    if (query.status) {
+      where.status = { eq: query.status };
+    }
+    const page = await this.executions.paginate(
+      query,
+      { where },
+      { count: true },
+    );
+    return {
+      ...page,
+      content: page.content.map((exec) => this.toResource(exec)),
+    };
+  }
 
   public readonly getNotification = $action({
     path: `${this.url}/:id`,

@@ -1,5 +1,5 @@
 import { $module } from "alepha";
-import { AlephaServer } from "alepha/server";
+import { AlephaServer, type ServerRequest } from "alepha/server";
 import { ServerRateLimitProvider } from "./providers/ServerRateLimitProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -29,6 +29,17 @@ declare module "alepha/server" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * The subset of a request the limiter needs.
+ *
+ * `ip` and `headers` are always present — a `keyGenerator` keying on a header
+ * is the common case and must not have to null-check. The rest is optional so
+ * the limiter still works outside an HTTP context (`$job`, `$pipeline`), where
+ * the caller synthesises a request.
+ */
+export type RateLimitRequest = Pick<ServerRequest, "ip" | "headers"> &
+  Partial<Omit<ServerRequest, "ip" | "headers">>;
+
 export interface RateLimitOptions {
   /**
    * Maximum number of requests per window (default: 100).
@@ -40,14 +51,27 @@ export interface RateLimitOptions {
   windowMs?: number;
   /**
    * Custom key generator function.
+   *
+   * Replaces the default `ip:<address>` bucket. Use it to limit per user,
+   * per tenant, or per API key instead of per address:
+   *
+   * ```typescript
+   * $rateLimit({ max: 100, keyGenerator: (req) => `user:${req.user?.id}` })
+   * ```
    */
-  keyGenerator?: (req: any) => string;
+  keyGenerator?: (req: RateLimitRequest) => string;
   /**
-   * Skip rate limiting for failed requests.
+   * Do not count requests that ended in an error (status >= 400).
+   *
+   * The counter is still incremented up front — that is what makes the check
+   * atomic — and refunded once the outcome is known.
    */
   skipFailedRequests?: boolean;
   /**
-   * Skip rate limiting for successful requests.
+   * Do not count requests that succeeded (status < 400).
+   *
+   * Typical for login endpoints: only failed attempts should consume the
+   * budget. See {@link skipFailedRequests} for the refund mechanics.
    */
   skipSuccessfulRequests?: boolean;
 }

@@ -166,6 +166,22 @@ class MemoryCloudflareApi extends CloudflareApi {
   public override async deleteWorker() {}
 }
 
+/**
+ * Exposes the resource-id resolution `build()` performs, so the standalone
+ * build path can be asserted without driving a full bundle.
+ */
+class AdapterProbe extends CloudflareAdapter {
+  public resolveIds(ctx: PlatformContext) {
+    return this.resolveExistingResourceIds(ctx);
+  }
+  public d1Id() {
+    return this.provisionedD1Id;
+  }
+  public kvId(name: string) {
+    return this.provisionedKVIds.get(name);
+  }
+}
+
 describe("CloudflareAdapter", () => {
   const createTestEnv = () => {
     // Ensure D1 path (not Hyperdrive) — isPostgres() checks process.env.DATABASE_URL
@@ -195,6 +211,33 @@ describe("CloudflareAdapter", () => {
     );
 
     return { alepha, fs, shell, dateTime, adapter, naming, api };
+  };
+
+  /** Same wiring, but with the probe subclass in place of the adapter. */
+  const createProbeEnv = () => {
+    delete process.env.DATABASE_URL;
+
+    const alepha = Alepha.create()
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({ provide: ShellProvider, use: MemoryShellProvider })
+      .with({ provide: CloudflareApi, use: MemoryCloudflareApi });
+
+    const fs = alepha.inject(MemoryFileSystemProvider);
+    const adapter = alepha.inject(AdapterProbe);
+    const naming = alepha.inject(NamingService);
+    const api = alepha.inject(MemoryCloudflareApi);
+
+    fs.files.set(
+      "/project/package.json",
+      Buffer.from(
+        JSON.stringify({
+          name: "test",
+          devDependencies: { wrangler: "^3.0.0" },
+        }),
+      ),
+    );
+
+    return { alepha, fs, adapter, naming, api };
   };
 
   const makeCtx = (
@@ -388,6 +431,121 @@ describe("CloudflareAdapter", () => {
 
       expect(api.queues).toHaveLength(1);
       expect(api.queues[0].queue_name).toBe("acme-portal-production");
+    });
+  });
+
+  /**
+   * `build()` derived DATABASE_URL / CLOUDFLARE_KV_ID from fields that only
+   * `provision()` sets, in the same process. The granular `platform build` and
+   * `platform deploy` commands never call provision, so those fields were
+   * empty and the emitted wrangler config silently lacked the D1 binding (or
+   * carried `kv_namespaces: [{ id: "" }]`) — a worker deployed with no
+   * database, failing only at the first query.
+   */
+  describe("build without a preceding provision", () => {
+    const withDatabase = (naming: NamingService) =>
+      makeCtx(naming, {
+        resources: {
+          hasDatabase: true,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+    const withKV = (naming: NamingService) =>
+      makeCtx(naming, {
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: true,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+    test("resolves an existing D1 id from the account", async ({ expect }) => {
+      const { adapter, naming, api } = createProbeEnv();
+      const ctx = withDatabase(naming);
+
+      api.d1Databases.push({
+        uuid: "existing-d1-uuid",
+        name: "acme-portal-production",
+      });
+
+      await adapter.resolveIds(ctx);
+
+      expect(adapter.d1Id()).toBe("existing-d1-uuid");
+    });
+
+    test("resolves an existing KV id from the account", async ({ expect }) => {
+      const { adapter, naming, api } = createProbeEnv();
+      const ctx = withKV(naming);
+      const kvName = naming.forContext("acme-portal", "production").kv();
+
+      api.kvNamespaces.push({ id: "existing-kv-id", title: kvName });
+
+      await adapter.resolveIds(ctx);
+
+      expect(adapter.kvId(kvName)).toBe("existing-kv-id");
+    });
+
+    test("fails loudly when the D1 database does not exist yet", async ({
+      expect,
+    }) => {
+      const { adapter, naming } = createProbeEnv();
+
+      // Better a build that stops than a worker deployed with no binding.
+      await expect(adapter.resolveIds(withDatabase(naming))).rejects.toThrow(
+        /does not exist/,
+      );
+    });
+
+    test("fails loudly when the KV namespace does not exist yet", async ({
+      expect,
+    }) => {
+      const { adapter, naming } = createProbeEnv();
+
+      await expect(adapter.resolveIds(withKV(naming))).rejects.toThrow(
+        /does not exist/,
+      );
+    });
+
+    test("leaves ids set by a preceding provision alone", async ({
+      expect,
+    }) => {
+      const { adapter, naming, api } = createProbeEnv();
+      const ctx = withDatabase(naming);
+
+      await adapter.provision(ctx, createMockRun());
+      const provisioned = api.d1Databases[0].uuid;
+
+      // A second, unrelated database on the account must not be picked up.
+      api.d1Databases.unshift({ uuid: "other", name: "someone-else" });
+      await adapter.resolveIds(ctx);
+
+      expect(adapter.d1Id()).toBe(provisioned);
+    });
+
+    test("does not look anything up when the app needs no resources", async ({
+      expect,
+    }) => {
+      const { adapter, naming } = createProbeEnv();
+
+      await adapter.resolveIds(makeCtx(naming));
+
+      expect(adapter.d1Id()).toBeUndefined();
+    });
+
+    test("build() itself performs the resolution", async ({ expect }) => {
+      // Pins the wiring, not just the helper: a `build` that skipped the
+      // lookup is exactly the bug, and it fails silently.
+      const { adapter, naming } = createTestEnv();
+
+      await expect(
+        adapter.build(withDatabase(naming), createMockRun()),
+      ).rejects.toThrow(/does not exist/);
     });
   });
 

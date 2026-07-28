@@ -138,8 +138,65 @@ export class CloudflareAdapter extends PlatformAdapter {
   // build
   // -------------------------------------------------------------------------
 
+  /**
+   * Fill in resource ids that `provision()` would have set, by looking up what
+   * already exists on the account.
+   *
+   * `provision()` and `build()` share process state, so a full `platform
+   * deploy` had the ids in hand. The granular commands (`platform build`,
+   * `platform deploy`) never call provision, so those fields were empty and the
+   * generated `wrangler.jsonc` silently came out with no D1 binding — or a KV
+   * binding with an empty id — and the deploy shipped a worker with no
+   * database. Nothing failed; the worker just 500'd on first query.
+   *
+   * Lookup only: this never creates anything (that is `provision`'s job). A
+   * resource the app needs but the account does not have is a hard error, not
+   * a silently missing binding.
+   */
+  protected async resolveExistingResourceIds(ctx: AppContext): Promise<void> {
+    if (ctx.resources.hasDatabase && !this.provisionedD1Id) {
+      if (this.provisionedHyperdriveId) {
+        // Hyperdrive already resolved — nothing to look up.
+      } else if (await this.isPostgres(ctx)) {
+        const name = ctx.naming.hyperdrive();
+        const found = (await this.api.listHyperdrive()).find(
+          (it) => it.name === name,
+        );
+        if (!found) {
+          throw new AlephaError(
+            `Hyperdrive config '${name}' does not exist. Run 'alepha platform provision' before building.`,
+          );
+        }
+        this.provisionedHyperdriveId = found.id;
+      } else {
+        const name = ctx.naming.d1();
+        const found = (await this.api.listD1()).find((it) => it.name === name);
+        if (!found) {
+          throw new AlephaError(
+            `D1 database '${name}' does not exist. Run 'alepha platform provision' before building.`,
+          );
+        }
+        this.provisionedD1Id = found.uuid;
+      }
+    }
+
+    if (ctx.resources.hasKV) {
+      const name = ctx.naming.kv();
+      if (!this.provisionedKVIds.has(name)) {
+        const found = (await this.api.listKV()).find((it) => it.title === name);
+        if (!found) {
+          throw new AlephaError(
+            `KV namespace '${name}' does not exist. Run 'alepha platform provision' before building.`,
+          );
+        }
+        this.provisionedKVIds.set(name, found.id);
+      }
+    }
+  }
+
   async build(ctx: AppContext, run: RunnerMethod): Promise<void> {
     this.configureApi(ctx);
+    await this.resolveExistingResourceIds(ctx);
     const appDir = ctx.root;
 
     const env: Record<string, string> = {};

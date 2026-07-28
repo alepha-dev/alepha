@@ -59,6 +59,13 @@ export class NodeRedisProvider extends RedisProvider {
   protected readonly env = $env(envSchema);
   protected readonly client = this.createClient();
 
+  /**
+   * Keys examined per SCAN round-trip. A hint, not a page size — Redis may
+   * return more or fewer. Big enough to keep the round-trip count sane on a
+   * large keyspace, small enough that no single call blocks the server long.
+   */
+  protected static readonly SCAN_COUNT = 500;
+
   public get publisher(): NodeRedisClient {
     if (!this.client.isReady) {
       throw new AlephaError("Redis client is not ready");
@@ -193,9 +200,40 @@ export class NodeRedisProvider extends RedisProvider {
     return resp > 0;
   }
 
+  /**
+   * One SCAN page. Seam for tests, and the place the page size is decided.
+   */
+  protected async scanPage(
+    cursor: string,
+    pattern: string,
+  ): Promise<{ cursor: string; keys: string[] }> {
+    const reply = await this.publisher.scan(cursor as never, {
+      MATCH: pattern,
+      COUNT: NodeRedisProvider.SCAN_COUNT,
+    });
+    return {
+      cursor: String(reply.cursor),
+      keys: reply.keys.map((key) => key.toString()),
+    };
+  }
+
   public override async keys(pattern: string): Promise<string[]> {
-    const keys = await this.publisher.keys(pattern);
-    return keys.map((key) => key.toString());
+    // Cursor traversal, not `KEYS`. `KEYS` walks the entire keyspace in one
+    // blocking call — on a shared or large Redis that stalls every other
+    // client, and container flush / wildcard invalidate / clear() all land
+    // here. SCAN may return duplicates across pages, hence the Set.
+    const found = new Set<string>();
+    let cursor = "0";
+
+    do {
+      const page = await this.scanPage(cursor, pattern);
+      for (const key of page.keys) {
+        found.add(key);
+      }
+      cursor = page.cursor;
+    } while (cursor !== "0");
+
+    return [...found];
   }
 
   public override async del(keys: string[]): Promise<void> {
@@ -203,7 +241,9 @@ export class NodeRedisProvider extends RedisProvider {
       return;
     }
 
-    await this.publisher.del(keys);
+    // UNLINK reclaims memory on a background thread; DEL blocks for the whole
+    // free. Same semantics for the caller.
+    await this.publisher.unlink(keys);
   }
 
   // ---------------------------------------------------------

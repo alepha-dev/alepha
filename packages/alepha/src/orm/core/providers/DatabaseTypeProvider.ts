@@ -130,7 +130,7 @@ export class DatabaseTypeProvider {
     // cannot distinguish them and still promises `PgDefault` (right for the
     // 26 uuid PKs in tree, wrong here). A slug PK that omits its id therefore
     // still compiles; it now fails validation instead of reaching the driver.
-    // Closing the gap needs a nominal uuid type — tracked in REVIEW_2.
+    // Closing the gap needs a nominal uuid type — tracked in REVIEW_3.
     if (z.schema.isString(type)) {
       return pgAttr(type, PG_PRIMARY_KEY) as PgAttr<
         PgAttr<TSchema, PgPrimaryKey>,

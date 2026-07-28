@@ -278,10 +278,24 @@ export class PaymentService {
       return;
     }
 
-    await this.intentRepo.updateById(intent.id, {
-      status: webhookStatus,
-      providerRaw: raw as any,
-    });
+    // Guarded on the status we validated the transition against. Providers
+    // retry webhooks and can deliver out of order, so two deliveries can pass
+    // the table check against the same snapshot; only the first may write, or
+    // the later one would re-emit a lifecycle event for a transition the
+    // intent already left.
+    const moved = await this.intentRepo
+      .updateOne(
+        { id: { eq: intent.id }, status: { eq: intent.status } },
+        { status: webhookStatus, providerRaw: raw as any },
+      )
+      .catch(() => undefined);
+
+    if (!moved) {
+      this.log.warn(
+        `Ignoring webhook: intent ${intent.id} left '${intent.status}' before the update landed`,
+      );
+      return;
+    }
 
     await this.alepha.events.emit(eventMap[webhookStatus], {
       intentId: intent.id,
@@ -313,10 +327,12 @@ export class PaymentService {
       await this.provider.capturePayment(intent.providerRef, amount);
     }
 
-    const updated = await this.intentRepo.updateById(intent.id, {
-      status: "captured",
-      amount,
-    });
+    const updated = await this.transition(
+      intent.id,
+      "authorized",
+      { status: "captured", amount },
+      "capture",
+    );
 
     await this.alepha.events.emit("payments:captured", {
       intentId: intent.id,
@@ -339,9 +355,12 @@ export class PaymentService {
       await this.provider.voidPayment(intent.providerRef);
     }
 
-    const updated = await this.intentRepo.updateById(intent.id, {
-      status: "voided",
-    });
+    const updated = await this.transition(
+      intent.id,
+      "authorized",
+      { status: "voided" },
+      "void",
+    );
 
     await this.alepha.events.emit("payments:voided", {
       intentId: intent.id,
@@ -526,9 +545,12 @@ export class PaymentService {
     const intent = await this.getIntent(intentId);
     this.assertStatus(intent, "created", "cancel");
 
-    const cancelled = await this.intentRepo.updateById(intent.id, {
-      status: "cancelled",
-    });
+    const cancelled = await this.transition(
+      intent.id,
+      "created",
+      { status: "cancelled" },
+      "cancel",
+    );
 
     await this.alepha.events.emit("payments:cancelled", {
       intentId: intent.id,
@@ -574,5 +596,36 @@ export class PaymentService {
         `Cannot ${operation}: intent ${intent.id} is '${intent.status}', expected '${expected}'`,
       );
     }
+  }
+
+  /**
+   * Move an intent from one status to another, refusing the write if the row
+   * left `from` in the meantime.
+   *
+   * `assertStatus` only ever describes the *snapshot* the caller read. Between
+   * that read and the write, a webhook or a second operator can move the row —
+   * and an unguarded `updateById` would happily overwrite them, emitting a
+   * second lifecycle event for a transition that never legitimately happened.
+   * Folding the expected status into the WHERE clause makes the check and the
+   * write one atomic statement.
+   */
+  protected async transition(
+    intentId: string,
+    from: PaymentIntentEntity["status"],
+    data: Record<string, unknown>,
+    operation: string,
+  ): Promise<PaymentIntentEntity> {
+    const updated = await this.intentRepo
+      .updateOne({ id: { eq: intentId }, status: { eq: from } }, data as never)
+      .catch(() => undefined);
+
+    if (!updated) {
+      const current = await this.getIntent(intentId);
+      throw new PaymentError(
+        `Cannot ${operation}: intent ${intentId} is '${current.status}', expected '${from}'`,
+      );
+    }
+
+    return updated;
   }
 }

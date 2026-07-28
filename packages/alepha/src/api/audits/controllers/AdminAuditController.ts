@@ -227,11 +227,11 @@ export class AdminAuditController {
     },
     handler: async () => {
       const types = this.auditService.getRegisteredTypes();
+      const distinct = await this.auditService.getDistinctFilterValues();
       return {
         types: types.map((t) => t.type),
         actions: types.flatMap((t) => t.actions),
-        resourceTypes: ["user", "session", "file", "order", "payment"],
-        userRealms: ["default"],
+        ...distinct,
       };
     },
   });

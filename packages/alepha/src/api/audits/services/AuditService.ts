@@ -79,6 +79,37 @@ export class AuditService {
   }
 
   /**
+   * Distinct `resourceType` / `userRealm` values present in the audit log.
+   *
+   * Read from the rows rather than a hardcoded list: the set of resource types
+   * an app audits is app-specific, and the realms in play depend on the
+   * deployment. Nulls are dropped — an audit entry without a resource type is
+   * not a filterable value.
+   */
+  public async getDistinctFilterValues(): Promise<{
+    resourceTypes: string[];
+    userRealms: string[];
+  }> {
+    const [resourceTypes, userRealms] = await Promise.all([
+      this.repo.findMany({ distinct: ["resourceType"] }),
+      this.repo.findMany({ distinct: ["userRealm"] }),
+    ]);
+
+    const values = (rows: Array<Record<string, unknown>>, column: string) =>
+      rows
+        .map((row) => row[column])
+        .filter(
+          (value): value is string => typeof value === "string" && !!value,
+        )
+        .sort();
+
+    return {
+      resourceTypes: values(resourceTypes, "resourceType"),
+      userRealms: values(userRealms, "userRealm"),
+    };
+  }
+
+  /**
    * Get current request context if available.
    */
   protected getRequestContext(): ServerRequest | undefined {

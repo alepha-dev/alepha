@@ -509,6 +509,55 @@ export class ServerAuthProvider {
   }
 
   /**
+   * Build a web `Request` for a `form_post` callback, on either runtime.
+   *
+   * Web-request runtimes (workerd, Bun, Deno) hand us one already. The Node
+   * adapter does not — it only carries an `IncomingMessage` — and the code
+   * used to check `raw.web.req` alone, so on plain Node `currentUrl` stayed the
+   * query URL, the authorization code was never read from the body, and Apple
+   * Sign In failed outright. The body is a small form post, so it is buffered
+   * rather than streamed: no `duplex` handling, no `node:stream` import.
+   *
+   * Returns `undefined` for anything that is not a POST — a normal
+   * query-parameter callback keeps using the URL.
+   */
+  protected async toWebRequest(
+    url: URL,
+    raw?: ServerRawRequest,
+  ): Promise<Request | undefined> {
+    if (raw?.web?.req && raw.web.req.method === "POST") {
+      return raw.web.req;
+    }
+
+    const nodeReq = raw?.node?.req;
+    if (!nodeReq || nodeReq.method !== "POST") {
+      return undefined;
+    }
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of nodeReq) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(nodeReq.headers)) {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          headers.append(key, item);
+        }
+      } else if (value !== undefined) {
+        headers.set(key, value);
+      }
+    }
+
+    return new Request(url, {
+      method: "POST",
+      headers,
+      body: Buffer.concat(chunks),
+    });
+  }
+
+  /**
    * Shared callback logic for both GET and POST OAuth2/OIDC callbacks.
    * For form_post response mode (e.g. Apple Sign In), the raw Request object
    * is passed so openid-client can read the authorization code from the POST body.
@@ -535,17 +584,17 @@ export class ServerAuthProvider {
     const redirectUri = authorizationCode.redirectUri ?? "/";
     const loginUri = authorizationCode.loginUri;
 
-    // For form_post response mode (e.g. Apple), pass the raw Request object
-    // so openid-client can read the authorization code from the POST body.
+    // For form_post response mode (e.g. Apple), pass a web Request so
+    // openid-client can read the authorization code from the POST body.
     // Clone first so we can also extract provider-specific fields (e.g. Apple's
     // `user` form field, only sent once on first authorization) without
     // consuming the body that openid-client needs to read.
     let currentUrl: URL | Request = url;
     let externalProfile: Record<string, unknown> | undefined;
-    if (raw?.web?.req && raw.web.req.method === "POST") {
-      const cloned = raw.web.req.clone();
-      currentUrl = raw.web.req;
-      externalProfile = await this.extractFormPostProfile(cloned);
+    const postRequest = await this.toWebRequest(url, raw);
+    if (postRequest) {
+      currentUrl = postRequest;
+      externalProfile = await this.extractFormPostProfile(postRequest.clone());
     }
 
     const externalTokens = await authorizationCodeGrant(oauth, currentUrl, {

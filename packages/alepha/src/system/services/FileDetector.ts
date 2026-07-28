@@ -507,8 +507,13 @@ export class FileDetector {
   }
 
   /**
-   * Reads all bytes from a stream and returns the first N bytes along with a new stream containing all data.
-   * This approach reads the entire stream upfront to avoid complex async handling issues.
+   * Read the first `numBytes` of a stream, and return a stream that still
+   * yields the complete payload.
+   *
+   * Only enough chunks to satisfy the peek are pulled; the rest of the source
+   * is re-attached lazily behind the bytes already consumed. This used to
+   * buffer the ENTIRE stream before looking at 16 magic bytes, so detecting the
+   * type of a multi-GB upload materialised the whole file in memory.
    *
    * @protected
    */
@@ -517,17 +522,39 @@ export class FileDetector {
     numBytes: number,
   ): Promise<{ buffer: Buffer; stream: Readable }> {
     const chunks: Buffer[] = [];
+    let size = 0;
 
-    // Read the entire stream
-    for await (const chunk of stream) {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const iterator = stream[Symbol.asyncIterator]();
+    while (size < numBytes) {
+      const { value, done } = await iterator.next();
+      if (done) {
+        break;
+      }
+      const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value);
+      chunks.push(chunk);
+      size += chunk.length;
     }
 
-    const allData = Buffer.concat(chunks);
-    const buffer = allData.subarray(0, numBytes);
+    const head = Buffer.concat(chunks);
+    const buffer = head.subarray(0, numBytes);
 
-    // Create a new stream with all the data
-    const newStream = Readable.from(allData);
+    // Replay what we consumed, then drain whatever is left of the source. The
+    // iterator is resumed rather than the stream re-read, so no byte is lost
+    // and none is read twice.
+    const newStream = Readable.from(
+      (async function* () {
+        if (head.length > 0) {
+          yield head;
+        }
+        while (true) {
+          const { value, done } = await iterator.next();
+          if (done) {
+            return;
+          }
+          yield value;
+        }
+      })(),
+    );
 
     return { buffer, stream: newStream };
   }

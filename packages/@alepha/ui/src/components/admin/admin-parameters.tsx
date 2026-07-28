@@ -175,7 +175,6 @@ export function AdminParameters(props: AdminParametersProps = {}) {
             params: { name: it.name },
             body: {
               content: it.content as Record<string, any>,
-              schemaHash: "",
               changeDescription: "Imported",
             },
           });
@@ -483,7 +482,6 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
           params: { name: props.name },
           body: {
             content: (current.defaultValue ?? {}) as Record<string, any>,
-            schemaHash: current.current?.schemaHash ?? "",
             changeDescription: "Factory reset to compiled defaults",
           },
         });
@@ -562,7 +560,6 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
     (data.defaultValue as Record<string, unknown> | undefined) ??
     {};
 
-  const schemaHash = data.current?.schemaHash ?? "";
   const exportContent =
     data.current?.content ?? data.currentValue ?? data.defaultValue ?? {};
 
@@ -582,7 +579,6 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
             params: { name: props.name! },
             body: {
               content: content as Record<string, any>,
-              schemaHash,
               tags: meta.tags.length > 0 ? meta.tags : undefined,
               activationDate: meta.activationDate,
             },

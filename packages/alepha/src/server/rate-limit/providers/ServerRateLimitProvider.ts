@@ -7,7 +7,7 @@ import {
   type ServerRequest,
   ServerRouterProvider,
 } from "alepha/server";
-import type { RateLimitOptions } from "../index.ts";
+import type { RateLimitOptions, RateLimitRequest } from "../index.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -17,6 +17,16 @@ export interface RateLimitResult {
   remaining: number;
   resetTime: number;
   retryAfter?: number;
+  /**
+   * The exact counter key this check incremented.
+   *
+   * Callers that know the request outcome pass it back to
+   * {@link ServerRateLimitProvider.refund} so `skipSuccessfulRequests` /
+   * `skipFailedRequests` can un-count the request. Recomputing the key later
+   * is not safe: the fixed window may have rolled over in between, which would
+   * refund the wrong bucket.
+   */
+  key: string;
 }
 
 /**
@@ -78,6 +88,15 @@ export class ServerRateLimitProvider {
   protected static readonly CACHE_NAME = "rate-limit";
 
   /**
+   * In-flight route-path checks awaiting their response status, so a refund
+   * targets the exact counter key that was incremented.
+   */
+  protected readonly pending = new WeakMap<
+    object,
+    { result: RateLimitResult; options: RateLimitOptions }
+  >();
+
+  /**
    * Registered rate limit configurations with their path patterns
    */
   public readonly registeredConfigs: RateLimitRegistration[] = [];
@@ -132,6 +151,36 @@ export class ServerRateLimitProvider {
           message: "Too Many Requests",
         });
       }
+
+      // Remember what this request consumed so `onResponse` can refund it once
+      // the status is known. A WeakMap keyed on the request keeps the public
+      // `ServerRequest` shape unchanged and needs no cleanup.
+      if (
+        rateLimitConfig.skipFailedRequests ||
+        rateLimitConfig.skipSuccessfulRequests
+      ) {
+        this.pending.set(request, { result, options: rateLimitConfig });
+      }
+    },
+  });
+
+  /**
+   * Refund the counter for requests the skip options exclude.
+   *
+   * Runs on the route path only — the `$rateLimit` middleware wraps the
+   * handler and settles its own refund from the thrown/returned outcome.
+   */
+  public readonly onResponse = $hook({
+    on: "server:onResponse",
+    handler: async ({ request, response }) => {
+      const entry = this.pending.get(request);
+      if (!entry) {
+        return;
+      }
+      this.pending.delete(request);
+      await this.refund(entry.result, entry.options, {
+        failed: (response.status ?? 200) >= 400,
+      });
     },
   });
 
@@ -200,11 +249,43 @@ export class ServerRateLimitProvider {
   }
 
   public async checkLimit(
-    req: Pick<ServerRequest, "ip">,
+    req: RateLimitRequest,
     options: RateLimitOptions = {},
   ): Promise<RateLimitResult> {
-    const baseKey = this.generateKey(req);
+    const baseKey = options.keyGenerator?.(req) ?? this.generateKey(req);
     return this.checkLimitByKey(baseKey, options);
+  }
+
+  /**
+   * Un-count a request whose outcome means it should not consume budget.
+   *
+   * No-op unless the matching skip option is set, so callers can invoke it
+   * unconditionally. Failures are logged and swallowed: a refund that does not
+   * land makes the limiter stricter, never weaker, and must not turn a request
+   * that already produced its answer into a 500.
+   */
+  public async refund(
+    result: RateLimitResult,
+    options: RateLimitOptions,
+    outcome: { failed: boolean },
+  ): Promise<void> {
+    const skip = outcome.failed
+      ? options.skipFailedRequests
+      : options.skipSuccessfulRequests;
+
+    if (!skip) {
+      return;
+    }
+
+    try {
+      await this.cacheProvider.incr(
+        ServerRateLimitProvider.CACHE_NAME,
+        result.key,
+        -1,
+      );
+    } catch (error) {
+      this.log.warn("Failed to refund a rate-limit counter", error);
+    }
   }
 
   /**
@@ -241,6 +322,7 @@ export class ServerRateLimitProvider {
       limit: max,
       remaining,
       resetTime,
+      key,
     };
 
     if (!allowed) {
@@ -250,7 +332,7 @@ export class ServerRateLimitProvider {
     return result;
   }
 
-  protected generateKey(req: Pick<ServerRequest, "ip">): string {
+  protected generateKey(req: RateLimitRequest): string {
     // Use req.ip which is resolved by ServerRequestParser with proper trust proxy handling
     return `ip:${req.ip || "unknown"}`;
   }

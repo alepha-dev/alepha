@@ -51,7 +51,7 @@ export const $rateLimit = (
               options,
             )
           : await rateLimitProvider.checkLimit(
-              request ?? { ip: "global" },
+              request ?? { ip: "global", headers: {} },
               options,
             );
 
@@ -66,7 +66,23 @@ export const $rateLimit = (
           });
         }
 
-        return next(...args);
+        // The middleware wraps the handler, so it observes the outcome
+        // directly — no response hook needed, and it works outside HTTP too
+        // ($job, $pipeline), where "failed" simply means the handler threw.
+        if (!options?.skipFailedRequests && !options?.skipSuccessfulRequests) {
+          return next(...args);
+        }
+
+        try {
+          const value = await next(...args);
+          await rateLimitProvider.refund(result, options, { failed: false });
+          return value;
+        } catch (error) {
+          await rateLimitProvider.refund(result, options, {
+            failed: !(error instanceof HttpError) || error.status >= 400,
+          });
+          throw error;
+        }
       };
     },
   });

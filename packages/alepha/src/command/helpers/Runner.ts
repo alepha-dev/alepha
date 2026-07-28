@@ -1,4 +1,5 @@
 import { cp, glob, rm } from "node:fs/promises";
+import { resolve } from "node:path";
 import { $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -111,23 +112,31 @@ export class Runner {
       files: string | string[],
       options: RunOptions = {},
     ): Promise<string> => {
+      const root = options.root;
+
       if (Array.isArray(files) || files.includes("*")) {
         return runFn({
           name:
             options.alias ??
             `rm -rf ${Array.isArray(files) ? files.join(" ") : files}`,
           handler: async () => {
-            for await (const file of glob(files)) {
-              this.log.trace(`Removing ${file}`);
-              await rm(file, { recursive: true, force: true });
+            // `glob` yields paths relative to its cwd, so re-anchor each match
+            // before deleting — otherwise a matched entry would be resolved
+            // against process.cwd() and silently miss (or hit the wrong tree).
+            for await (const file of glob(files, root ? { cwd: root } : {})) {
+              const target = this.resolveIn(root, file);
+              this.log.trace(`Removing ${target}`);
+              await rm(target, { recursive: true, force: true });
             }
           },
         });
       }
-      this.log.trace(`Removing ${files}`);
+
+      const target = this.resolveIn(root, files);
+      this.log.trace(`Removing ${target}`);
       return runFn({
         name: options.alias ?? `rm -rf ${files}`,
-        handler: () => rm(files, { recursive: true, force: true }),
+        handler: () => rm(target, { recursive: true, force: true }),
       });
     };
 
@@ -136,11 +145,13 @@ export class Runner {
       dist: string,
       options: RunOptions = {},
     ): Promise<string> => {
-      this.log.trace(`Copying ${source} to ${dist}`);
+      const from = this.resolveIn(options.root, source);
+      const to = this.resolveIn(options.root, dist);
+      this.log.trace(`Copying ${from} to ${to}`);
       return runFn(
         {
           name: options.alias ?? `cp -r ${source} ${dist}`,
-          handler: () => cp(source, dist, { recursive: true }),
+          handler: () => cp(from, to, { recursive: true }),
         },
         options,
       );
@@ -149,6 +160,17 @@ export class Runner {
     runFn.end = () => this.end();
 
     return runFn;
+  }
+
+  /**
+   * Anchor a caller-supplied path inside `root`.
+   *
+   * Absolute paths are returned untouched — `root` scopes relative work, it
+   * does not confine it — and with no `root` the path keeps resolving against
+   * `process.cwd()`, which is the pre-existing behaviour.
+   */
+  protected resolveIn(root: string | undefined, path: string): string {
+    return root ? resolve(root, path) : path;
   }
 
   protected async exec(
@@ -171,11 +193,12 @@ export class Runner {
    */
   protected async execute(task: Task | Task[]): Promise<string> {
     if (Array.isArray(task)) {
-      await Promise.all(task.map((t) => this.executeTask(t)));
-      return ""; // not supported for now
-    } else {
-      return await this.executeTask(task);
+      const outputs = await Promise.all(task.map((t) => this.executeTask(t)));
+      // Order follows the input array, not completion order, so the result is
+      // deterministic regardless of how the parallel tasks interleave.
+      return outputs.filter(Boolean).join("\n");
     }
+    return await this.executeTask(task);
   }
 
   /**

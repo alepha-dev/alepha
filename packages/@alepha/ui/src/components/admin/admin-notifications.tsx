@@ -108,11 +108,14 @@ export function AdminNotifications() {
           status: {
             label: tr("admin.notifications.colStatus", { default: "Status" }),
             cell: (n) => {
+              // `job_executions.status` — the outbox never wrote
+              // "sent"/"delivered"/"failed", so every badge used to fall
+              // through to the neutral outline variant.
               const s = n.status ?? "pending";
               const variant =
-                s === "sent" || s === "delivered"
+                s === "ok"
                   ? "default"
-                  : s === "failed"
+                  : s === "error"
                     ? "destructive"
                     : "outline";
               return <Badge variant={variant as never}>{s}</Badge>;
