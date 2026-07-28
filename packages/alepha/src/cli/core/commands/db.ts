@@ -195,6 +195,56 @@ export class DbCommand {
   });
 
   /**
+   * Collapse migration history into a single baseline migration.
+   */
+  protected readonly baselineCreate = $command({
+    name: "create",
+    mode: true,
+    description:
+      "Archive existing migrations and generate a single baseline migration from the current schema",
+    args: z
+      .text({
+        title: "path",
+        description: "Path to the Alepha server entry file",
+      })
+      .optional(),
+    flags: drizzleCommandFlags,
+    handler: async ({ args, flags, root }) => {
+      const entry = await this.entryProvider.getAppEntry(root);
+      const alepha = await this.utils.loadAlephaFromServerEntryFile({
+        mode: "development",
+        entry,
+      });
+      const repositoryProvider =
+        alepha.inject<RepositoryProvider>("RepositoryProvider");
+
+      const seen = new Set<string>();
+      for (const primitive of repositoryProvider.getRepositories()) {
+        const providerName = primitive.provider.name;
+        if (providerName === "" || seen.has(providerName)) continue;
+        seen.add(providerName);
+        if (flags.provider && flags.provider !== providerName) continue;
+
+        const migrationsDir = this.fs.join(root, "migrations", providerName);
+        const archived = await this.archiveMigrations(migrationsDir);
+        this.log.info(
+          `Archived ${archived.length} migration(s) for '${providerName}' into .archive/`,
+        );
+      }
+
+      await this.runDrizzleKitCommand({
+        root,
+        args,
+        command: "generate",
+        commandFlags: "--name=baseline",
+        provider: flags.provider,
+        logMessage: (providerName, dialect) =>
+          `Generate '${providerName}' baseline (${dialect}) ...`,
+      });
+    },
+  });
+
+  /**
    * Push database schema changes directly to the database
    */
   protected readonly push = $command({
@@ -356,12 +406,25 @@ export class DbCommand {
   });
 
   /**
+   * Parent command for baseline operations.
+   */
+  protected readonly baseline = $command({
+    name: "baseline",
+    description:
+      "Collapse migration history and record a baseline as already applied",
+    children: [this.baselineCreate],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  /**
    * Parent command for database operations.
    */
   public readonly db = $command({
     name: "db",
     description: "Database management commands",
-    children: [this.migrations, this.push, this.studio],
+    children: [this.migrations, this.baseline, this.push, this.studio],
     handler: async ({ help }) => {
       help();
     },
@@ -574,6 +637,65 @@ export class DbCommand {
     }
 
     return statements;
+  }
+
+  /**
+   * Move a provider's migration files and snapshot metadata into `.archive/`.
+   *
+   * Baselining rewrites history, so the previous files are preserved rather
+   * than deleted — they remain the only record of how the schema was reached.
+   * Refuses to run twice: a second baseline would overwrite the first archive
+   * and lose that record silently.
+   */
+  protected async archiveMigrations(migrationsDir: string): Promise<string[]> {
+    const archiveDir = this.fs.join(migrationsDir, ".archive");
+
+    // `ls().catch(() => null)` rather than `exists()`: a migrations directory
+    // that was only ever populated via nested `writeFile` calls (the normal
+    // case, both on real disk and in tests) may have no directory entry of
+    // its own, so an exact-path `exists()` lookup can miss it. `ls` already
+    // has to resolve "does this directory have anything under it" to do its
+    // job, so it is the reliable check for both a real project checked out
+    // of git and `MemoryFileSystemProvider`.
+    const archiveEntries = await this.fs
+      .ls(archiveDir, { hidden: true })
+      .catch(() => null);
+    if (archiveEntries !== null) {
+      throw new AlephaError(
+        `Archive '${archiveDir}' already exists. This project has been baselined before; remove or rename the archive to baseline again.`,
+      );
+    }
+
+    const entries = await this.fs.ls(migrationsDir).catch(() => []);
+
+    const sqlFiles = entries
+      .map((f) => f.split("/").pop() as string)
+      .filter((f) => f.endsWith(".sql"))
+      .sort();
+
+    if (sqlFiles.length === 0) {
+      return [];
+    }
+
+    for (const file of sqlFiles) {
+      const content = await this.fs.readFile(this.fs.join(migrationsDir, file));
+      await this.fs.writeFile(this.fs.join(archiveDir, file), String(content));
+      await this.fs.rm(this.fs.join(migrationsDir, file));
+    }
+
+    const metaDir = this.fs.join(migrationsDir, "meta");
+    const metaEntries = await this.fs.ls(metaDir).catch(() => []);
+    for (const entry of metaEntries) {
+      const name = entry.split("/").pop() as string;
+      const content = await this.fs.readFile(this.fs.join(metaDir, name));
+      await this.fs.writeFile(
+        this.fs.join(archiveDir, "meta", name),
+        String(content),
+      );
+      await this.fs.rm(this.fs.join(metaDir, name));
+    }
+
+    return sqlFiles;
   }
 
   /**

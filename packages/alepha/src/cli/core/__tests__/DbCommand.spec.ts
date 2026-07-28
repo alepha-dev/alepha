@@ -10,6 +10,7 @@ import { DbCommand } from "../commands/db.ts";
 class TestDbCommand extends DbCommand {
   public testAssertNoDestructiveMigrations =
     this.assertNoDestructiveMigrations.bind(this);
+  public testArchiveMigrations = this.archiveMigrations.bind(this);
 }
 
 describe("DbCommand", () => {
@@ -103,6 +104,71 @@ describe("DbCommand", () => {
           "0045_new.sql",
         ]),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  /**
+   * Baselining must never destroy history — the old migrations move aside so
+   * they stay readable in git, rather than being deleted.
+   */
+  describe("archiveMigrations", () => {
+    it("moves sql files and meta into .archive and reports them", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0000_first.sql",
+        "CREATE TABLE a(id integer);",
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/0001_second.sql",
+        "CREATE TABLE b(id integer);",
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/meta/_journal.json",
+        '{"entries":[]}',
+      );
+
+      const archived = await db.testArchiveMigrations("/app/migrations/sqlite");
+
+      expect(archived).toEqual(["0000_first.sql", "0001_second.sql"]);
+      expect(
+        await fs.exists("/app/migrations/sqlite/.archive/0000_first.sql"),
+      ).toBe(true);
+      expect(
+        await fs.exists("/app/migrations/sqlite/.archive/0001_second.sql"),
+      ).toBe(true);
+      expect(
+        await fs.exists("/app/migrations/sqlite/.archive/meta/_journal.json"),
+      ).toBe(true);
+      expect(await fs.exists("/app/migrations/sqlite/0000_first.sql")).toBe(
+        false,
+      );
+      expect(await fs.exists("/app/migrations/sqlite/meta/_journal.json")).toBe(
+        false,
+      );
+    });
+
+    it("returns an empty list when there is nothing to archive", async () => {
+      const { db } = create();
+
+      expect(await db.testArchiveMigrations("/app/migrations/sqlite")).toEqual(
+        [],
+      );
+    });
+
+    it("refuses to overwrite an existing archive", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0000_first.sql",
+        "CREATE TABLE a(id integer);",
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/.archive/0000_old.sql",
+        "CREATE TABLE old(id integer);",
+      );
+
+      await expect(
+        db.testArchiveMigrations("/app/migrations/sqlite"),
+      ).rejects.toThrowError(/already exists/);
     });
   });
 });
