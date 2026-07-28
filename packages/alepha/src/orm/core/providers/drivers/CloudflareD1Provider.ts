@@ -153,6 +153,27 @@ export class CloudflareD1Provider extends DatabaseProvider {
     },
   });
 
+  /**
+   * Unlike the Node and Bun providers, this one does **not** need to
+   * disable foreign keys around the migration — and must not try.
+   *
+   * Those providers have to, because drizzle wraps migrations in a
+   * transaction and SQLite ignores `PRAGMA foreign_keys` inside one, so
+   * the pragma drizzle-kit emits at the top of a generated table-rebuild
+   * is a no-op and every `ON DELETE CASCADE` fires on `DROP TABLE`.
+   *
+   * D1 is not affected, verified empirically against a real database:
+   *
+   * - a rebuild WITHOUT the pragma cascades (5 children -> 0), so D1 does
+   *   enforce foreign keys;
+   * - the same rebuild WITH drizzle-kit's leading `PRAGMA foreign_keys=OFF`
+   *   preserves them, because `wrangler d1 migrations apply` executes the
+   *   statements outside a transaction, where the pragma takes effect.
+   *
+   * A full 65-statement migration rebuilding 8 tables was replayed against
+   * a copy of a production database (4281 rows) and preserved every row
+   * with no foreign key violations.
+   */
   protected async executeMigrations(migrationsFolder: string): Promise<void> {
     this.log.debug(`Running D1 migrations from '${migrationsFolder}'...`);
     try {
