@@ -154,25 +154,27 @@ export class CloudflareD1Provider extends DatabaseProvider {
   });
 
   /**
-   * Unlike the Node and Bun providers, this one does **not** need to
-   * disable foreign keys around the migration — and must not try.
+   * D1 **is** affected by the migration foreign-key problem — an earlier
+   * revision of this comment claimed otherwise and was wrong.
    *
-   * Those providers have to, because drizzle wraps migrations in a
-   * transaction and SQLite ignores `PRAGMA foreign_keys` inside one, so
-   * the pragma drizzle-kit emits at the top of a generated table-rebuild
-   * is a no-op and every `ON DELETE CASCADE` fires on `DROP TABLE`.
+   * The mistake was testing `wrangler d1 execute --file`, which runs
+   * statements outside a transaction where drizzle-kit's leading
+   * `PRAGMA foreign_keys=OFF` takes effect, while deploys actually use
+   * `wrangler d1 migrations apply`, which runs each migration *inside* a
+   * transaction where SQLite ignores that pragma. Same SQL, same
+   * database, opposite outcomes:
    *
-   * D1 is not affected, verified empirically against a real database:
+   *   wrangler d1 migrations apply  ->  0 of 5 child rows survive
+   *   wrangler d1 execute --file    ->  5 of 5 survive
    *
-   * - a rebuild WITHOUT the pragma cascades (5 children -> 0), so D1 does
-   *   enforce foreign keys;
-   * - the same rebuild WITH drizzle-kit's leading `PRAGMA foreign_keys=OFF`
-   *   preserves them, because `wrangler d1 migrations apply` executes the
-   *   statements outside a transaction, where the pragma takes effect.
+   * It cost a production deploy 2434 rows across five tables.
    *
-   * A full 65-statement migration rebuilding 8 tables was replayed against
-   * a copy of a production database (4281 rows) and preserved every row
-   * with no foreign key violations.
+   * The fix is in the deploy path rather than here: `WranglerApi`
+   * applies migrations with `execute --file` and keeps wrangler's
+   * `d1_migrations` bookkeeping itself. This provider only runs when the
+   * app boots against D1 directly (non-serverless), which is not the
+   * deploy path, so it needs no pragma handling of its own — but do not
+   * assume D1 is immune.
    */
   protected async executeMigrations(migrationsFolder: string): Promise<void> {
     this.log.debug(`Running D1 migrations from '${migrationsFolder}'...`);
