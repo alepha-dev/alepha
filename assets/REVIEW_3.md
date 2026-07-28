@@ -23,7 +23,7 @@
 
 Every P2 outside websocket is closed — including all five of review #2's "options accepted but
 ignored", which was its largest un-swept theme. Test coverage went from 428 files / 4564 tests to
-**453 files / 4744 tests**; `yarn v` (lint, typecheck, test, test:bun, deps, i18n, migrations, build,
+**449 files / 4702 tests**; `yarn v` (lint, typecheck, test, test:bun, deps, i18n, migrations, build,
 e2e) is green.
 
 **The two new bugs**, neither of which any review listed:
@@ -50,6 +50,27 @@ e2e) is green.
 
 **Nothing open is a correctness or security risk to a shipped app.** The P3 tier is dead code, doc
 drift, error-message accuracy, and hardening.
+
+### Landed in parallel (not from this review)
+
+Four commits from building a capacity-planning app on 0.24 landed alongside this work. They are not
+review findings, but two of them matter more than anything left on the open list:
+
+- **`da276e3b4` — a SQLite table rebuild silently deleted every child row.** SQLite ignores
+  `PRAGMA foreign_keys` *inside a transaction* and drizzle wraps migrations in one, so drizzle-kit's
+  emitted pragma was a no-op, `DROP TABLE`'s implicit `DELETE FROM` fired every `ON DELETE CASCADE`,
+  and the migration logged "OK". A real migration dry-run destroyed 2434 rows across five tables.
+  Fixed by setting the pragma on the connection before drizzle opens its transaction, plus a
+  `PRAGMA foreign_key_check` that throws rather than shipping orphans. `7228f84e7` then established
+  that D1 is *not* affected (it applies statements outside a transaction).
+- **`e5a35ea1c` — actions pruned by permissions now answer 403, not 401.** A restricted action was
+  indistinguishable from a nonexistent one, so apps redirecting 401 → login bounced authenticated
+  users out for what should have been an access-denied screen. This closes one leg of the server
+  registry finding below.
+
+`a710ebc7d` also dropped expected 4xx from error to debug logging, warned on handlers throwing a bare
+`Error`, and pinned `createMany`'s ordering guarantee — adjacent to, but not the same as, the open
+`createMany` atomicity finding.
 
 ### A caveat on the remaining P3 list
 
@@ -360,10 +381,10 @@ registry (batch 6).
 > Apple `form_post` and the rate-limit options closed in batches 1–2 — see the fix log.
 
 1. **P3 · Registry / `/api/_batch` misc hardening.** `MAX_BATCH_SIZE` violation throws a bare
-   `AlephaError` → 500 instead of 400 (`ServerLinksProvider.ts:218`). `LinkProvider.getLinkByName`
-   (:388-396) reports not-found as `UnauthorizedError` (401) and emits `client:onError` with
-   `route: undefined`. `BatchCollector` assumes exactly one result per entry — a short response rejects
-   everything with a TypeError.
+   `AlephaError` → 500 instead of 400 (`ServerLinksProvider.ts:218`). `BatchCollector` assumes exactly
+   one result per entry — a short response rejects everything with a TypeError. *(The
+   `getLinkByName` 401-vs-403 leg was closed upstream by `e5a35ea1c` — the registry now carries
+   `restricted` and answers `ForbiddenError` for actions the caller may not invoke.)*
 2. **P3 · Small correctness/DX items** — carried forward from review #2 without re-derivation.
 
 ## orm — 4 open (all P3)
