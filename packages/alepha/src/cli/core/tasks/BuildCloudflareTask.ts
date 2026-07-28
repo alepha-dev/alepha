@@ -180,6 +180,18 @@ export class BuildCloudflareTask extends BuildTask {
     // `^[a-z0-9-]+$` (no uppercase, dots, underscores, spaces, etc.).
     // Without this, running `alepha build -t cloudflare` in a dir like
     // `My App` or `club-0.0.2` produces an unusable `wrangler.jsonc`.
+    //
+    // This is a build-time PLACEHOLDER, not the deployed worker name. A
+    // build is environment-agnostic — the same artifact ships to staging
+    // and production — so the real name is only resolved at deploy time
+    // by `naming.worker()`, as `<name>-<environment>`.
+    //
+    // Consequence worth knowing: pointing wrangler at this config picks
+    // the wrong worker and reports a baffling "Worker does not exist".
+    // Use the name printed by `alepha platform up`, e.g.
+    // `wrangler tail my-app-production`. The file cannot carry a comment
+    // saying so — example-ssr's build-artifacts spec pins it as strict
+    // JSON-parseable.
     const name = basename(root)
       .toLowerCase()
       .replace(/[^a-z0-9-]+/g, "-")

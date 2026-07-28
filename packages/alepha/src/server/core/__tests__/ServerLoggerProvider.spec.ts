@@ -35,6 +35,11 @@ class App {
       });
     },
   });
+  boom = $action({
+    handler: () => {
+      throw new Error("kaboom");
+    },
+  });
 }
 
 const alepha = Alepha.create({
@@ -68,9 +73,12 @@ describe("ServerLoggerProvider", () => {
     expect(log.logs[2].message).toBe("Request completed");
   });
 
-  it("should log incoming request, failure, and completion for error response", async ({
-    expect,
-  }) => {
+  // An expected 4xx is the server working correctly — a missing session,
+  // a role the caller lacks, a malformed body. Logging those at `error`
+  // with a stack buries genuine faults: on a public app the error channel
+  // fills with ordinary unauthenticated traffic and alerting on it is
+  // worthless. They drop to `debug`, below this app's `info` level.
+  it("does not log an expected 4xx at error level", async ({ expect }) => {
     expect(log.logs.length).toBe(0);
     const response = await app.error
       .fetch()
@@ -84,8 +92,17 @@ describe("ServerLoggerProvider", () => {
       requestId: expect.any(String),
     });
     expect(log.logs[0].message).toBe("Incoming request");
+    expect(log.logs[1].message).toBe("Request completed");
+    expect(log.logs.some((l) => l.level === "ERROR")).toBe(false);
+  });
+
+  it("still logs a 5xx at error level", async ({ expect }) => {
+    expect(log.logs.length).toBe(0);
+    await app.boom.fetch().catch(() => undefined);
+
+    expect(log.logs[0].message).toBe("Incoming request");
     expect(log.logs[1].message).toBe("Request has failed");
-    expect(log.logs[2].message).toBe("Request completed");
+    expect(log.logs[1].level).toBe("ERROR");
   });
 
   it("should not log request lifecycle for silent actions but still log custom messages", async ({

@@ -1,6 +1,7 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { HttpError } from "../errors/HttpError.ts";
 
 export class ServerLoggerProvider {
   protected readonly log = $logger();
@@ -41,6 +42,22 @@ export class ServerLoggerProvider {
     on: "server:onError",
     priority: "last",
     handler: ({ error }) => {
+      // An expected 4xx is the server working correctly: a missing
+      // session, a role the caller lacks, a malformed body. Logging
+      // those at `error` with a stack buries genuine faults — on a
+      // public app the error channel becomes almost entirely
+      // unauthenticated traffic, and any alerting on it is worthless.
+      //
+      // 5xx and anything without a status stay at `error`.
+      const status = HttpError.is(error) ? error.status : undefined;
+      if (status && status >= 400 && status < 500) {
+        this.log.debug("Request rejected", {
+          status,
+          message: error.message,
+        });
+        return;
+      }
+
       this.log.error("Request has failed", error);
     },
   });

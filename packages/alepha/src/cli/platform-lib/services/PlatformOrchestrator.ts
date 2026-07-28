@@ -101,6 +101,19 @@ export class PlatformOrchestrator {
     // whether to do a full bundle build or only regenerate deploy config.
     await adapter.build(ctx, run);
     await adapter.migrate(ctx, run);
+    // NOTE: code lands before secrets, which opens a window (~6s observed
+    // on Cloudflare) where the new build runs against the previous
+    // secret set. Harmless for a rotation, but a deploy that introduces a
+    // *newly required* secret will boot without it for that window — and
+    // a provider that fails closed on a missing secret (as Alepha does
+    // for APP_SECRET) will refuse requests until the push lands.
+    //
+    // It is this way round because `secret put` needs the worker to
+    // exist: on a first deploy there is nothing to attach secrets to.
+    // Closing the window properly means pushing secrets first when the
+    // worker already exists and falling back to after when it does not —
+    // worth doing, but it must not break bootstrapping, so it wants a
+    // real deploy test behind it rather than a reordered line.
     const url = await adapter.deploy(ctx, run);
     await adapter.secrets(ctx, run);
 

@@ -214,6 +214,21 @@ export const z = {
   uuid: () => strFmt(zod.guid(), "uuid"),
   url: () => strFmt(zod.url(), "url"),
   datetime: () => strFmt(zod.iso.datetime(), "date-time"),
+  /**
+   * A calendar day (`YYYY-MM-DD`), not an instant.
+   *
+   * **Round-trip is asymmetric and the asymmetry matters.** SQLite stores
+   * the column as epoch-milliseconds, but the ORM hydrates it back as a
+   * date-only *string* — never a `Date`. So a value read from the
+   * database is `"2026-01-01"`, and `new Date("2026-01-01")` parses it as
+   * **UTC** midnight.
+   *
+   * That is a trap for any consumer that then reads it with local
+   * getters (`getMonth()`, `getFullYear()`): west of UTC the instant
+   * belongs to the previous day, and month-bucketing silently shifts by
+   * one. Derive calendar fields from the string, or build a local `Date`
+   * from its parts — do not mix the two.
+   */
   date: () => strFmt(zod.iso.date(), "date"),
   time: () => strFmt(zod.iso.time(), "time"),
   /** bigint as a validated string (no codec). */

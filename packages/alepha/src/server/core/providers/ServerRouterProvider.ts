@@ -451,7 +451,25 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       return;
     }
 
-    // Fallback: unknown error → 500
+    // Fallback: unknown error → 500.
+    //
+    // Outside production, say so loudly. A handler that throws a bare
+    // `Error` for a business rule ("Current password is incorrect") reads
+    // as working in development — the message is passed through — and
+    // then silently becomes a generic "Internal Server Error" the moment
+    // it ships, because 5xx messages are sanitised above. The author
+    // never sees the difference locally, so the mistake survives to
+    // production and the user is told nothing.
+    if (!this.alepha.isProduction()) {
+      this.log.warn(
+        "Handler threw a non-HttpError, so it became a 500 and its message " +
+          "will be replaced by 'Internal Server Error' in production. " +
+          "Throw a BadRequestError / ConflictError / NotFoundError (etc.) " +
+          "to keep the message and send an accurate status.",
+        { error: (error as Error).message },
+      );
+    }
+
     reply.status = 500;
     reply.headers["content-type"] = "application/json";
     reply.body = JSON.stringify({

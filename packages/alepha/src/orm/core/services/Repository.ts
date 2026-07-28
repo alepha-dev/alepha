@@ -738,9 +738,17 @@ export abstract class Repository<T extends TObject> {
    *
    * Inserts are batched in chunks of 1000 to avoid hitting database limits.
    *
+   * **Order is guaranteed**: the returned array is index-aligned with
+   * `values`, across batch boundaries. Callers rely on this to map
+   * generated ids back onto their source rows — a data importer, for
+   * example, rebuilds its old-id → new-id table by zipping the two
+   * arrays, and silently corrupts every foreign key if the order drifts.
+   * Batching changes must preserve it; `createMany preserves input order`
+   * in the repository tests pins it.
+   *
    * @param values The entities to create.
    * @param opts The statement options.
-   * @returns The created entities.
+   * @returns The created entities, in the same order as `values`.
    */
   public async createMany(
     values: Array<Static<TObjectInsert<T>>>,
