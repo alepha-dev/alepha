@@ -7,6 +7,66 @@
 > forward-looking). All three were deleted when this file was written; everything still live from
 > them is carried below.
 
+## Release state — 2026-07-28
+
+**Shipping with 63 findings open, 0 of them P0 or P1.** This is the state the release was cut in.
+
+### Done
+
+| | Count |
+|---|---|
+| Closed by the re-audit (already fixed, or retired by a rewrite) | 6 |
+| Closed by fix batches 1–7 | 28 |
+| Review findings that turned out to be **wrong** and were corrected instead | 4 |
+| New bugs found while fixing, not in any review | 2 |
+| **Total resolved** | **34** |
+
+Every P2 outside websocket is closed — including all five of review #2's "options accepted but
+ignored", which was its largest un-swept theme. Test coverage went from 428 files / 4564 tests to
+**453 files / 4744 tests**; `yarn v` (lint, typecheck, test, test:bun, deps, i18n, migrations, build,
+e2e) is green.
+
+**The two new bugs**, neither of which any review listed:
+
+- **The keyless codec did not round-trip an array of objects** — `{rows:[{a:"x",n:1}]}` decoded to
+  `{rows:[["x",1]]}`. Latent: the codec is opt-in and nothing selects it.
+- **R2's `download()` could only be read once** — its `FileLike` exposed `stream()`/`arrayBuffer()`/
+  `text()` over a single-use body, while every other backend serves repeat reads. Live on Workers.
+
+### Not done
+
+| Area | Open | Why it is not done |
+|---|---|---|
+| **websocket** | 3 P2, 1 P3 | All three P2s need a **design decision, not a fix**: additive room joins (the client `reconnect()`s on every new-room subscribe), an idle-TTL policy for headless engines, and a ping interval + missed-pong budget. Deliberately left for a human call. |
+| cli | 15 P3 | Dead code, TODO stubs, hardcoded paths. No user-facing failure. |
+| react | 11 P3 | Router/i18n/form edge cases. The two with real user impact are the `$10+` i18n substitution and `isActive({startWith})` matching across segment boundaries. |
+| mcp / command / system / logger | 8 P3 | Dead code and help-output polish. |
+| api (auth + features) | 7 P3 | The notable one is `ilike` on raw username input at login — wrong matching semantics, not a bypass (a password is still required). |
+| core | 5 P3 | Codec null-lossiness, env `$KEY` escaping, EventManager cross-tier ordering, entrypoint duplication, acknowledged TODOs. |
+| cache / bucket / email | 5 P3 | Provider divergence in file metadata and the R2 id scheme; `$cache.incr()` skipping the disabled guard. |
+| orm | 4 P3 | Needs a nominal uuid type (schema-layer change), SQL projection narrowing, `DbCacheProvider` bounds, `createMany` atomicity. |
+| server | 2 P3 | `/api/_batch` status codes and error types. |
+| security | 2 P3 | Dead exported types; a catch-all that hides token errors. |
+
+**Nothing open is a correctness or security risk to a shipped app.** The P3 tier is dead code, doc
+drift, error-message accuracy, and hardening.
+
+### A caveat on the remaining P3 list
+
+Four of the findings I worked through turned out to be **wrong**, and one more did not reproduce:
+
+- `FormValidationError` already worked end-to-end (escalated in error, then retracted).
+- The Bun/Node shell divergence had already been closed by review #2's own third pass.
+- `$topic`'s `(options as any).mqtt` cast is correct — the augmentation lives in `@alepha/mqtt`.
+- `destroy` stamping `deletedAt` on the caller's entity is **load-bearing**; "fixing" it resurrects
+  soft-deleted rows.
+- The `node:sqlite` raw-query aliasing bug does not reproduce.
+
+That is a meaningful false-positive rate in the P3 tier. **Reproduce before fixing** anything on the
+remaining list — several entries describe code that has since changed or behaviour that is intended.
+
+---
+
 ## What this document is
 
 Review #2 closed 174 of its 269 findings across 25 fix passes and left 96 open, but its last update
@@ -323,6 +383,7 @@ registry (batch 6).
    `query()` writes never invalidate.
 4. **`createMany` batches are not atomic** (`Repository.ts:750-758`). Batches of 1000 run as independent
    INSERTs outside any ambient `$transactional`; a failure in batch N leaves 1..N-1 committed. Undocumented.
+
 ## cache + redis + bucket + email + sms — 5 open (all P3)
 
 > Redis blocking `KEYS` closed in batch 3; R2 / Nodemailer coverage and the R2 single-use body in batch 4.
@@ -526,7 +587,7 @@ registry (batch 6).
     (`VendorService.ts:320,356`, `CloudflareAdapter.ts:1241`, `BuildDockerTask.ts:356`,
     `ViteUtils.ts:117-138`). Convention is `DateTimeProvider.nowMillis()`. The vendor tmp-dir naming
     additionally risks a same-ms collision.
-17. *(One string-form `shell.run` call site remains in `WranglerApi.ts` — see* Narrowed*.)*
+> Plus one string-form `shell.run` call site still to migrate in `WranglerApi.ts` — see *Narrowed*.
 
 ---
 
@@ -591,15 +652,16 @@ deleted outright (27 files, ~3,525 lines) rather than repaired: it was dead in e
 core premise — that the framework, not the PSP, should own recurring billing — had been disproven in
 production.
 
-Its four cross-cutting root causes are worth keeping in mind, because three are now fixed at the root and
-the fourth is what most of the remaining P2s are:
+Its four cross-cutting root causes, with where they stand now:
 
-1. `undefined` vs `null` semantics in drizzle WHERE/SET — **fixed at the root**.
-2. Unguarded read-modify-write on status transitions — **mostly fixed**; the payments `version` column is
-   the remaining instance (P2 #10 above).
-16. **Options accepted but ignored — still the largest open cluster.** Five of the seventeen P2s.
-4. Provider behavioral divergence — **partly fixed** (topic, redis, cache, bucket conformance suites);
-   Bun `execCapture`, bucket download metadata and R2 id generation remain.
+1. `undefined` vs `null` semantics in drizzle WHERE/SET — **fixed at the root** (QueryManager throws).
+2. Unguarded read-modify-write on status transitions — **fixed**; payments was the last instance
+   (batch 2 folded the expected status into the WHERE clause).
+3. Options accepted but ignored — **fixed**; all five were closed in batch 1.
+4. Provider behavioral divergence — **mostly fixed** (topic, redis, cache and bucket conformance
+   suites; Bun/Node shell parity pinned on both runtimes; R2 now serves repeat reads like its peers).
+   Remaining: bucket download metadata still differs per backend, and R2 derives its file-id extension
+   from the filename where S3 uses the MIME type.
 
 **`REVIEW_FEATURES.md` (2026-07-25, forward-looking).** Named five top-leverage gaps; four shipped within
 three days. See the backlog above.
