@@ -7,7 +7,7 @@ import {
   type SQLLike,
 } from "alepha/orm";
 import { sql } from "drizzle-orm";
-import type { PgDatabase } from "drizzle-orm/pg-core";
+import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 import { postgresEnvSchema } from "../schemas/postgresEnvSchema.ts";
 import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
 
@@ -74,7 +74,7 @@ export abstract class PostgresProvider extends DatabaseProvider {
     return "public";
   }
 
-  public abstract override get db(): PgDatabase<any>;
+  public abstract override get db(): PgAsyncDatabase<any>;
 
   /**
    * Establish the database connection.

@@ -12,10 +12,11 @@ import {
   z,
 } from "alepha";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import type { BetterSQLite3RunResult } from "drizzle-orm/better-sqlite3/session";
 import { BetterSQLiteSession } from "drizzle-orm/better-sqlite3/session";
-import type { PgDatabase } from "drizzle-orm/pg-core";
-import { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core/db";
-import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core/dialect";
+import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
+import { SQLiteAsyncDatabase } from "drizzle-orm/sqlite-core/async/db";
+import { SQLiteDialect } from "drizzle-orm/sqlite-core/dialect";
 import { DbError } from "../../errors/DbError.ts";
 import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
@@ -115,8 +116,8 @@ export class NodeSqliteProvider extends DatabaseProvider {
     }
   }
 
-  public override get db(): PgDatabase<any> {
-    return this.drizzleDb as unknown as PgDatabase<any>;
+  public override get db(): PgAsyncDatabase<any> {
+    return this.drizzleDb as unknown as PgAsyncDatabase<any>;
   }
 
   public override get nativeConnection(): unknown {
@@ -321,21 +322,25 @@ export class NodeSqliteProvider extends DatabaseProvider {
   protected initDrizzle(): void {
     this.shimDatabaseSync();
 
-    const dialect = new SQLiteSyncDialect();
-    const session = new BetterSQLiteSession(this.sqlite, dialect, undefined, {
-      logger: {
-        logQuery: (query: string, params: unknown[]) => {
-          this.log.trace(query, { params });
+    const dialect = new SQLiteDialect();
+    const session = new BetterSQLiteSession(
+      this.sqlite,
+      dialect,
+      {},
+      {
+        logger: {
+          logQuery: (query: string, params: unknown[]) => {
+            this.log.trace(query, { params });
+          },
         },
       },
-    });
-
-    this.drizzleDb = new BaseSQLiteDatabase(
-      "sync",
-      dialect,
-      session,
-      undefined,
     );
+
+    this.drizzleDb = new SQLiteAsyncDatabase<
+      "sync",
+      BetterSQLite3RunResult,
+      {}
+    >("sync", dialect, session, {});
     this.log.debug("Using node:sqlite with sync driver");
   }
 

@@ -20,6 +20,7 @@ import {
   desc,
   and as drizzleAnd,
   eq as drizzleEq,
+  getTableColumns,
   gt,
   gte,
   isSQLWrapper,
@@ -29,17 +30,18 @@ import {
   min,
   ne,
   type SQL,
+  sql,
   sum,
 } from "drizzle-orm";
 import type {
   LockConfig,
   LockStrength,
+  PgAsyncDatabase,
+  PgAsyncTransaction,
   PgColumn,
-  PgDatabase,
   PgInsertValue,
   PgTable,
   PgTableWithColumns,
-  PgTransaction,
   PgUpdateSetSource,
 } from "drizzle-orm/pg-core";
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
@@ -156,7 +158,7 @@ export abstract class Repository<T extends TObject> {
    * by `DatabaseProvider.transactional()`, so that all repository operations
    * inside a `transactional()` block participate in the same transaction.
    */
-  protected get db(): PgDatabase<any> {
+  protected get db(): PgAsyncDatabase<any> {
     const tx = this.alepha.get("alepha.orm.tx");
     return tx ?? this.provider.db;
   }
@@ -187,7 +189,7 @@ export abstract class Repository<T extends TObject> {
       | SQLLike
       | ((
           table: PgTableWithColumns<SchemaToTableConfig<T>>,
-          db: PgDatabase<any>,
+          db: PgAsyncDatabase<any>,
         ) => SQLLike),
     schema?: R,
   ): Promise<Static<R>[]> {
@@ -268,11 +270,66 @@ export abstract class Repository<T extends TObject> {
   }
 
   /**
+   * True when every column of `this.table` is excluded from INSERT column
+   * lists — i.e. an identity ("always") or generated-always column, the
+   * only shape drizzle-orm allows to make a column non-insertable.
+   *
+   * Mirrors drizzle-orm's internal `Column.shouldDisableInsert()` (not part
+   * of its public API — this reads the same information from the public
+   * `generated` / `generatedIdentity` getters instead of calling it).
+   *
+   * drizzle-orm 1.0.0-rc.4's postgres dialect has no special case for a row
+   * with zero insertable columns: `db.insert(table).values({})` still
+   * builds `insert into "table" () values ()`, which both Postgres and
+   * SQLite reject as a syntax error. Verified with a minimal drizzle-orm +
+   * postgres-js reproduction outside Alepha — this is upstream, not
+   * something introduced by Repository's insert building.
+   */
+  protected hasNoInsertableColumns(): boolean {
+    const columns = Object.values(getTableColumns(this.table as PgTable));
+    return (
+      columns.length > 0 &&
+      columns.every(
+        (column) =>
+          (column.generated !== undefined &&
+            column.generated.type !== "byDefault") ||
+          (column.generatedIdentity !== undefined &&
+            column.generatedIdentity.type !== "byDefault"),
+      )
+    );
+  }
+
+  /**
+   * Fallback for `create()` against a table with zero insertable columns
+   * (see {@link hasNoInsertableColumns}): `INSERT ... DEFAULT VALUES` is
+   * the one form both Postgres and SQLite accept for that case.
+   *
+   * The raw `db.execute()` used to run it bypasses drizzle's per-column
+   * `returning()` decode (e.g. a bigint identity column arrives as the raw
+   * driver string, not the JS number the entity schema expects). Rather
+   * than reimplement that decode pipeline, this re-reads the row through
+   * `getById()` — the same structured, decode-aware path a normal insert's
+   * `.returning(this.table)` uses — keyed by the raw primary key value the
+   * insert returned.
+   */
+  protected async insertDefaultValues(
+    opts: StatementOptions,
+  ): Promise<Static<T>> {
+    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
+    const pkColumn = this.id.col;
+    const [row] = await db.execute<Record<string, unknown>>(
+      sql`insert into ${this.table} default values returning ${pkColumn}`,
+    );
+    const pkValue = row[pkColumn.name] as string | number;
+    return this.getById(pkValue, opts);
+  }
+
+  /**
    * Run a transaction.
    */
   public async transaction<T>(
     transaction: (
-      tx: PgTransaction<any, Record<string, any>, any>,
+      tx: PgAsyncTransaction<any, Record<string, any>>,
     ) => Promise<T>,
     config?: PgTransactionConfig,
   ): Promise<T> {
@@ -292,7 +349,7 @@ export abstract class Repository<T extends TObject> {
       // the shared connection, so the db itself acts as the tx handle.
       return this.provider.transactional(() =>
         transaction(
-          this.db as unknown as PgTransaction<any, Record<string, any>, any>,
+          this.db as unknown as PgAsyncTransaction<any, Record<string, any>>,
         ),
       );
     }
@@ -741,10 +798,14 @@ export abstract class Repository<T extends TObject> {
     });
 
     try {
-      const entity = await this.rawInsert(opts)
-        .values(this.cast(data ?? {}, true))
-        .returning(this.table)
-        .then(([it]) => this.clean(it, this.entity.schema));
+      // A table whose only column(s) are identity/generated-always has
+      // nothing for `.values()` to insert — see `hasNoInsertableColumns`.
+      const entity = this.hasNoInsertableColumns()
+        ? await this.insertDefaultValues(opts)
+        : await this.rawInsert(opts)
+            .values(this.cast(data ?? {}, true))
+            .returning(this.table)
+            .then(([it]) => this.clean(it, this.entity.schema));
 
       this.dbCache
         .invalidateTable(this.tableName)
@@ -1948,10 +2009,10 @@ export interface StatementOptions {
    * Transaction to use.
    *
    * - `undefined` — auto-detect from `alepha.store` (implicit transactional context)
-   * - `PgTransaction` — use this specific transaction (explicit)
+   * - `PgAsyncTransaction` — use this specific transaction (explicit)
    * - `null` — force no transaction, bypass implicit context
    */
-  tx?: PgTransaction<any, Record<string, any>> | null;
+  tx?: PgAsyncTransaction<any, Record<string, any>> | null;
 
   /**
    * Lock strength.

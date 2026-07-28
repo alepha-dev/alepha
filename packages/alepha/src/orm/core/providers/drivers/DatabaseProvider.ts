@@ -11,9 +11,9 @@ import { $logger } from "alepha/logger";
 import { type SQLWrapper, sql } from "drizzle-orm";
 import {
   alias,
-  type PgDatabase,
+  type PgAsyncDatabase,
+  type PgAsyncTransaction,
   type PgTableWithColumns,
-  type PgTransaction,
 } from "drizzle-orm/pg-core";
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 import { DbError } from "../../errors/DbError.ts";
@@ -34,7 +34,7 @@ export abstract class DatabaseProvider {
   protected readonly log = $logger();
   protected abstract readonly builder: ModelBuilder;
   protected readonly kit = $inject(DrizzleKitProvider);
-  public abstract readonly db: PgDatabase<any>;
+  public abstract readonly db: PgAsyncDatabase<any>;
 
   /**
    * Open the driver's connection, for drivers that have an explicit one.
@@ -229,7 +229,7 @@ export abstract class DatabaseProvider {
     }
 
     return this.db.transaction(async (tx) => {
-      this.alepha.store.set("alepha.orm.tx", tx as PgTransaction<any>, {
+      this.alepha.store.set("alepha.orm.tx", tx as PgAsyncTransaction<any>, {
         skipEvents: true,
       });
       try {

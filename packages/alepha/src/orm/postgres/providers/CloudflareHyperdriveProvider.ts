@@ -1,7 +1,7 @@
 import { $env, $hook, $inject, AlephaError, AlsProvider, z } from "alepha";
 import { DatabaseProvider, type SQLLike } from "alepha/orm";
 import { sql } from "drizzle-orm";
-import type { PgDatabase } from "drizzle-orm/pg-core";
+import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
 
 /**
@@ -59,7 +59,7 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
    * and creates a new postgres client each time, avoiding the
    * "Cannot perform I/O on behalf of a different request" error.
    */
-  public override get db(): PgDatabase<any> {
+  public override get db(): PgAsyncDatabase<any> {
     if (!this.postgresFn || !this.drizzleFn || !this.bindingName) {
       throw new AlephaError("Hyperdrive database not initialized");
     }
@@ -107,14 +107,22 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
     // request is what actually mattered.
     const cacheKey = `${HYPERDRIVE_DB_ALS_KEY}:${this.bindingName}`;
     if (this.als.exists()) {
-      const cached = this.als.get<PgDatabase<any>>(cacheKey);
+      const cached = this.als.get<PgAsyncDatabase<any>>(cacheKey);
       if (cached) {
         return cached;
       }
     }
 
     const client = this.postgresFn(binding.connectionString, pgOptions);
-    const db = this.drizzleFn(client as any) as unknown as PgDatabase<any>;
+    // drizzle-orm/postgres-js v1's `drizzle()` no longer binds an
+    // already-connected client when passed positionally — only the object
+    // form does (see NodePostgresProvider for the same fix). Passing the
+    // client positionally here would compile (both args are `any`) but
+    // silently open a *new*, unconfigured connection instead of reusing
+    // this one.
+    const db = this.drizzleFn({
+      client,
+    }) as unknown as PgAsyncDatabase<any>;
 
     if (this.als.exists()) {
       this.als.set(cacheKey, db);

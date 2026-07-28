@@ -15,7 +15,10 @@ export class PgRelationManager {
    */
   public buildJoins(
     provider: DatabaseProvider,
-    builder: PgSelectBase<any, any, any>,
+    // rc.4 added a required 4th type param (TSelectMode) to PgSelectBase.
+    // This file is slated for removal in favor of Drizzle v1's
+    // `defineRelations` (see follow-up spec) — minimal arity fix only.
+    builder: PgSelectBase<any, any, any, any>,
     joins: Array<PgJoin>,
     withRelations: PgRelationMap<TObject>,
     table: PgTableWithColumns<any>,

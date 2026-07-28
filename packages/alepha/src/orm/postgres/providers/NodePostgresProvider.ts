@@ -52,7 +52,7 @@ export class NodePostgresProvider extends PostgresProvider {
     // migrates" provably the same one.
     const client = postgres(this.migrationClientOptions());
     try {
-      const db = drizzle(client);
+      const db = drizzle({ client });
       await db.execute(sql.raw(`SET search_path TO ${this.schema}, public`));
       await migrate(db, {
         migrationsFolder,
@@ -95,7 +95,8 @@ export class NodePostgresProvider extends PostgresProvider {
     await client`SELECT 1`; // test connection
 
     this.client = client;
-    this.pg = drizzle(client, {
+    this.pg = drizzle({
+      client,
       logger: {
         // forward logs
         logQuery: (query: string, params: unknown[]) => {

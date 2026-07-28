@@ -2,7 +2,7 @@ import { KIND, type Static, type TObject } from "alepha";
 import type { BuildExtraConfigColumns, SQL } from "drizzle-orm";
 import type {
   PgColumn,
-  PgColumnBuilderBase,
+  PgColumnBuilder,
   PgTableExtraConfigValue,
 } from "drizzle-orm/pg-core";
 import { insertSchema, type TObjectInsert } from "../schemas/insertSchema.ts";
@@ -264,7 +264,7 @@ $entity[KIND] = EntityPrimitive;
  * Convert a schema to columns.
  */
 export type FromSchema<T extends TObject> = {
-  [key in keyof T["properties"]]: PgColumnBuilderBase;
+  [key in keyof T["properties"]]: PgColumnBuilder;
 };
 
 export type SchemaToTableConfig<T extends TObject> = {

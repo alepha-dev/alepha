@@ -1,7 +1,7 @@
 import { AlephaError } from "alepha";
 import { sql } from "drizzle-orm";
-import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
-import type { PgDatabase } from "drizzle-orm/pg-core";
+import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
+import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 import { PostgresProvider } from "./PostgresProvider.ts";
 
 /**
@@ -29,12 +29,12 @@ export class BunPostgresProvider extends PostgresProvider {
   /**
    * Get the Drizzle Postgres database instance.
    */
-  public override get db(): PgDatabase<any> {
+  public override get db(): PgAsyncDatabase<any> {
     if (!this.bunDb) {
       throw new AlephaError("Database not initialized");
     }
 
-    return this.bunDb as unknown as PgDatabase<any>;
+    return this.bunDb as unknown as PgAsyncDatabase<any>;
   }
 
   protected override async executeMigrations(
@@ -64,7 +64,7 @@ export class BunPostgresProvider extends PostgresProvider {
       );
     }
 
-    const { drizzle } = await import("drizzle-orm/bun-sql");
+    const { drizzle } = await import("drizzle-orm/bun-sql/postgres");
 
     // Create Bun SQL client with pool options.
     //

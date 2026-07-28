@@ -1,6 +1,6 @@
 import { $module, type Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
-import type { PgTransaction } from "drizzle-orm/pg-core";
+import type { PgAsyncTransaction } from "drizzle-orm/pg-core";
 import { DbMigrationMode } from "./modes/DbMigrationMode.ts";
 import { $entity } from "./primitives/$entity.ts";
 import { $sequence } from "./primitives/$sequence.ts";
@@ -21,7 +21,7 @@ import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
 
 declare module "alepha" {
   interface State {
-    "alepha.orm.tx"?: PgTransaction<any>;
+    "alepha.orm.tx"?: PgAsyncTransaction<any>;
   }
   interface Hooks {
     /**

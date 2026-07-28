@@ -11,8 +11,8 @@ import {
   type Static,
   z,
 } from "alepha";
-import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
-import type { PgDatabase } from "drizzle-orm/pg-core";
+import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite";
+import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 import { DbError } from "../../errors/DbError.ts";
 import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
@@ -79,7 +79,7 @@ export class BunSqliteProvider extends DatabaseProvider {
   protected readonly options = $state(bunSqliteOptions);
 
   protected sqlite?: Database;
-  protected bunDb?: BunSQLiteDatabase;
+  protected bunDb?: SQLiteBunDatabase;
 
   public get name() {
     return "sqlite";
@@ -105,12 +105,12 @@ export class BunSqliteProvider extends DatabaseProvider {
     }
   }
 
-  public override get db(): PgDatabase<any> {
+  public override get db(): PgAsyncDatabase<any> {
     if (!this.bunDb) {
       throw new AlephaError("Database not initialized");
     }
 
-    return this.bunDb as unknown as PgDatabase<any>;
+    return this.bunDb as unknown as PgAsyncDatabase<any>;
   }
 
   public override get nativeConnection(): unknown {
@@ -145,7 +145,7 @@ export class BunSqliteProvider extends DatabaseProvider {
   public override async execute(
     query: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
-    return (this.bunDb as BunSQLiteDatabase).all(query);
+    return (this.bunDb as SQLiteBunDatabase).all(query);
   }
 
   protected readonly onStart = $hook({

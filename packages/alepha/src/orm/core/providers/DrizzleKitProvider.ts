@@ -2,9 +2,19 @@ import { createRequire } from "node:module";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import type * as DrizzleKit from "drizzle-kit/api";
+import type * as DrizzleKitPostgres from "drizzle-kit/payload/postgres";
+import type * as DrizzleKitSqlite from "drizzle-kit/payload/sqlite";
 import { sql } from "drizzle-orm";
 import type { DatabaseProvider } from "./drivers/DatabaseProvider.ts";
+
+/**
+ * drizzle-kit v1 splits its programmatic API per dialect. Both modules
+ * export the same names, but their `pushSchema` arities differ — postgres
+ * takes an extra `EntitiesFilterConfig` — so call sites still narrow.
+ */
+export type DrizzleKitPayload =
+  | typeof DrizzleKitPostgres
+  | typeof DrizzleKitSqlite;
 
 export class DrizzleKitProvider {
   protected readonly log = $logger();
@@ -17,7 +27,7 @@ export class DrizzleKitProvider {
    * Reads the actual database state, diffs against current entity definitions,
    * and applies changes. No stored snapshots — no drift, no corruption.
    *
-   * - SQLite: uses `pushSQLiteSchema` (requires sync driver — node:sqlite shim or bun-sqlite)
+   * - SQLite: uses `pushSchema` (requires sync driver — node:sqlite shim or bun-sqlite)
    * - PostgreSQL: uses `pushSchema` with schema filters
    *
    * Does nothing in production mode — use file-based migrations instead.
@@ -40,7 +50,7 @@ export class DrizzleKitProvider {
     }
 
     const now = this.dateTime.nowMillis();
-    const kit = this.importDrizzleKit();
+    const kit = this.importDrizzleKit(this.payloadDialect(provider));
     const models = this.getModels(provider);
 
     if (Object.keys(models).length === 0) {
@@ -49,11 +59,7 @@ export class DrizzleKitProvider {
     }
 
     try {
-      if (provider.dialect === "sqlite") {
-        await this.pushSqlite(kit, models, provider);
-      } else {
-        await this.pushPostgres(kit, models, provider);
-      }
+      await this.push(kit, models, provider);
     } catch (error) {
       // Fallback: generate migrations from scratch (no snapshots).
       // Covers drivers that don't support introspection (e.g. PgLite, sqlite-proxy).
@@ -94,27 +100,17 @@ export class DrizzleKitProvider {
     models: Record<string, unknown>;
     snapshot?: any;
   }> {
-    const kit = this.importDrizzleKit();
+    const kit = this.importDrizzleKit(this.payloadDialect(provider));
     const models = options?.withoutSchema
       ? this.getModelsWithoutSchema(provider)
       : this.getModels(provider);
 
     if (Object.keys(models).length > 0) {
-      if (provider.dialect === "sqlite") {
-        const prev = prevSnapshot ?? (await kit.generateSQLiteDrizzleJson({}));
-        const curr = await kit.generateSQLiteDrizzleJson(models);
-        return {
-          models,
-          statements: await kit.generateSQLiteMigration(prev, curr),
-          snapshot: curr,
-        };
-      }
-
-      const prev = prevSnapshot ?? kit.generateDrizzleJson({});
-      const curr = kit.generateDrizzleJson(models);
+      const prev = prevSnapshot ?? (await kit.generateDrizzleJson({}));
+      const curr = await kit.generateDrizzleJson(models);
       return {
         models,
-        statements: await kit.generateMigration(prev, curr),
+        statements: await kit.generateMigration(prev as any, curr as any),
         snapshot: curr,
       };
     }
@@ -224,70 +220,77 @@ export class DrizzleKitProvider {
     warnings: string[];
     hasDataLoss: boolean;
   }> {
-    const kit = this.importDrizzleKit();
+    const kit = this.importDrizzleKit(this.payloadDialect(provider));
     const models = this.getModels(provider);
 
     if (Object.keys(models).length === 0) {
       return { statements: [], warnings: [], hasDataLoss: false };
     }
 
-    let result: {
-      statementsToExecute: string[];
-      warnings: string[];
-      hasDataLoss: boolean;
-    };
+    const result = await this.callPushSchema(kit, models, provider);
 
-    if (provider.dialect === "sqlite") {
-      result = await kit.pushSQLiteSchema(models, provider.db as any);
-    } else {
-      const wrappedDb = this.wrapDbForDrizzleKit(provider.db);
-      result = await kit.pushSchema(models, wrappedDb, [provider.schema]);
-    }
-
+    // v1 replaced the `hasDataLoss` boolean with structured `hints`. Every
+    // hint drizzle raises is a destructive-change confirmation ("about to
+    // delete non-empty table", "about to drop column(s)"), so their presence
+    // is the data-loss signal. Alepha's public shape is preserved.
     return {
-      statements: result.statementsToExecute,
-      warnings: result.warnings,
-      hasDataLoss: result.hasDataLoss,
+      statements: result.sqlStatements,
+      warnings: result.hints.map((h) => h.hint),
+      hasDataLoss: result.hints.length > 0,
     };
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  protected async pushSqlite(
-    kit: typeof DrizzleKit,
+  /**
+   * Invoke the dialect's `pushSchema`.
+   *
+   * Postgres takes an `EntitiesFilterConfig` object where v0 took a plain
+   * `string[]` of schemas; all four of its keys are required even when
+   * undefined. SQLite has no such parameter.
+   */
+  protected async callPushSchema(
+    kit: DrizzleKitPayload,
     models: Record<string, unknown>,
     provider: DatabaseProvider,
-  ): Promise<void> {
-    const { statementsToExecute, warnings, hasDataLoss } =
-      await kit.pushSQLiteSchema(models, provider.db as any);
-    this.reportPushRisks(warnings, hasDataLoss);
-    await this.executeStatements(statementsToExecute, provider);
+  ): Promise<{
+    sqlStatements: string[];
+    hints: Array<{ hint: string; statement?: string }>;
+    apply: () => Promise<void>;
+  }> {
+    if (provider.dialect === "sqlite") {
+      const sqlite = kit as typeof DrizzleKitSqlite;
+      return await sqlite.pushSchema(models, provider.db as any);
+    }
+
+    const postgres = kit as typeof DrizzleKitPostgres;
+    const wrappedDb = this.wrapDbForDrizzleKit(provider.db);
+    return await postgres.pushSchema(models, wrappedDb as any, {
+      schemas: [provider.schema],
+      tables: undefined,
+      entities: undefined,
+      extensions: undefined,
+    });
   }
 
   /**
-   * Push schema changes to PostgreSQL using Drizzle Kit's pushSchema with schema filters.
+   * Push schema changes to the database using drizzle-kit's introspection.
    */
-  protected async pushPostgres(
-    kit: typeof DrizzleKit,
+  protected async push(
+    kit: DrizzleKitPayload,
     models: Record<string, unknown>,
     provider: DatabaseProvider,
   ): Promise<void> {
-    if (provider.schema !== "public") {
+    if (provider.dialect !== "sqlite" && provider.schema !== "public") {
       await this.createSchemaIfNotExists(provider, provider.schema);
     }
 
-    // Drizzle Kit's pushSchema expects execute() to return { rows: T[] }
-    // (node-postgres/pg format), but postgres.js returns a Result that
-    // extends Array directly — no .rows property.
-    const wrappedDb = this.wrapDbForDrizzleKit(provider.db);
-
-    const { statementsToExecute, warnings, hasDataLoss } = await kit.pushSchema(
-      models,
-      wrappedDb,
-      [provider.schema],
+    const result = await this.callPushSchema(kit, models, provider);
+    this.reportPushRisks(
+      result.hints.map((h) => h.hint),
+      result.hints.length > 0,
     );
-    this.reportPushRisks(warnings, hasDataLoss);
-    await this.executeStatements(statementsToExecute, provider);
+    await this.executeStatements(result.sqlStatements, provider);
   }
 
   /**
@@ -412,11 +415,30 @@ export class DrizzleKitProvider {
   }
 
   /**
-   * Try to load the official Drizzle Kit API.
+   * `DatabaseProvider.dialect` is "sqlite" | "postgresql"; drizzle-kit's
+   * payload split uses the same two names. Kept as a method so a future
+   * dialect (mysql) has one place to land.
    */
-  public importDrizzleKit(): typeof DrizzleKit {
+  protected payloadDialect(
+    provider: DatabaseProvider,
+  ): "postgresql" | "sqlite" {
+    return provider.dialect === "sqlite" ? "sqlite" : "postgresql";
+  }
+
+  /**
+   * Load the official Drizzle Kit programmatic API for a dialect.
+   *
+   * v1 removed the single `drizzle-kit/api` entrypoint. `api-*` now holds
+   * only `startStudioServer`; the real surface is `payload/<dialect>`.
+   */
+  public importDrizzleKit(dialect: "postgresql" | "sqlite"): DrizzleKitPayload {
+    const specifier =
+      dialect === "sqlite"
+        ? "drizzle-kit/payload/sqlite"
+        : "drizzle-kit/payload/postgres";
+
     try {
-      return createRequire(import.meta.url)("drizzle-kit/api");
+      return createRequire(import.meta.url)(specifier);
     } catch (_) {
       throw new AlephaError(
         "Drizzle Kit is not installed. Please install it with `npm install -D drizzle-kit`.",

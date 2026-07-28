@@ -1,6 +1,6 @@
 import { $env, $hook, $inject, AlephaError, z } from "alepha";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
-import type { PgDatabase } from "drizzle-orm/pg-core";
+import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
@@ -71,12 +71,12 @@ export class CloudflareD1Provider extends DatabaseProvider {
     return this.env.DATABASE_URL;
   }
 
-  public override get db(): PgDatabase<any> {
+  public override get db(): PgAsyncDatabase<any> {
     if (!this.drizzleDb) {
       throw new AlephaError("D1 database not initialized");
     }
 
-    return this.drizzleDb as unknown as PgDatabase<any>;
+    return this.drizzleDb as unknown as PgAsyncDatabase<any>;
   }
 
   public override async execute(

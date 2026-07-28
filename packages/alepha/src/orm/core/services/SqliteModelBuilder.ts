@@ -12,7 +12,7 @@ import {
   check,
   foreignKey,
   index,
-  type SQLiteColumnBuilderBase,
+  type SQLiteColumnBuilder,
   type SQLiteTableWithColumns,
   sqliteTable,
   unique,
@@ -31,7 +31,7 @@ import {
 } from "../constants/PG_SYMBOLS.ts";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { SequencePrimitive } from "../primitives/$sequence.ts";
-import { ModelBuilder } from "./ModelBuilder.ts";
+import { ModelBuilder, type TableConfigBuilders } from "./ModelBuilder.ts";
 
 export class SqliteModelBuilder extends ModelBuilder {
   public buildTable(
@@ -96,7 +96,12 @@ export class SqliteModelBuilder extends ModelBuilder {
 
     return this.buildTableConfig<any, BuildColumns<string, any, "sqlite">>(
       entity,
-      sqliteBuilders,
+      // drizzle-orm v1's `foreignKey()` requires `columns`/`foreignColumns`
+      // to be non-empty tuples ([AnySQLiteColumn, ...]); `TableConfigBuilders`
+      // types them as `any[]` to stay dialect-agnostic across pg/sqlite.
+      // `ModelBuilder.buildTableConfig` never calls `foreignKey()` with an
+      // empty array (see its `foreignKeys` loop), so this narrows safely.
+      sqliteBuilders as TableConfigBuilders<any>,
       tableResolver,
       (config, self) => {
         // SQLite custom config handler
@@ -363,5 +368,5 @@ export class SqliteModelBuilder extends ModelBuilder {
 }
 
 export type SchemaToSqliteBuilder<T extends TObject> = {
-  [key in keyof T["properties"]]: SQLiteColumnBuilderBase;
+  [key in keyof T["properties"]]: SQLiteColumnBuilder;
 };
