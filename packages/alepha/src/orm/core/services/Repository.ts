@@ -302,9 +302,26 @@ export abstract class Repository<T extends TObject> {
   /**
    * Fallback for `create()` against a table with zero insertable columns
    * (see {@link hasNoInsertableColumns}): `INSERT ... DEFAULT VALUES` is
-   * the one form both Postgres and SQLite accept for that case.
+   * the SQL form Postgres requires for that case.
    *
-   * The raw `db.execute()` used to run it bypasses drizzle's per-column
+   * Postgres-only. `this.db`'s static type is `PgAsyncDatabase<any>`, but
+   * every sqlite provider actually hands back a `SQLiteAsyncDatabase` cast
+   * to that type (see e.g. `NodeSqliteProvider.db`) — the cast hides it
+   * from the type checker, but `SQLiteAsyncDatabase` has no `.execute()`
+   * (its API is `all/delete/get/insert/run/select/selectDistinct/
+   * transaction/update/values/with`), so calling it here would throw
+   * `TypeError: db.execute is not a function` at runtime.
+   *
+   * Reachable only for a sqlite entity whose *every* column is declared
+   * `generatedAlwaysAs` — `SqliteModelBuilder` maps identity/autoincrement
+   * primary keys to `.primaryKey({ autoIncrement: true })`, which sets
+   * neither `generated` nor `generatedIdentity`, so a plain identity-only
+   * sqlite entity never reaches `hasNoInsertableColumns() === true` in the
+   * first place. Narrow enough that an explicit, honest error is preferable
+   * to either a latent crash or new tx-aware plumbing for a path with no
+   * current caller.
+   *
+   * The raw `db.execute()` used for Postgres bypasses drizzle's per-column
    * `returning()` decode (e.g. a bigint identity column arrives as the raw
    * driver string, not the JS number the entity schema expects). Rather
    * than reimplement that decode pipeline, this re-reads the row through
@@ -315,6 +332,12 @@ export abstract class Repository<T extends TObject> {
   protected async insertDefaultValues(
     opts: StatementOptions,
   ): Promise<Static<T>> {
+    if (this.provider.dialect !== "postgresql") {
+      throw new AlephaError(
+        `create() against '${this.tableName}' has nothing to insert (every column is generated), and this fallback is only implemented for the 'postgresql' dialect. Add at least one non-generated column, or ask for '${this.provider.dialect}' support to be added.`,
+      );
+    }
+
     const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
     const pkColumn = this.id.col;
     const [row] = await db.execute<Record<string, unknown>>(

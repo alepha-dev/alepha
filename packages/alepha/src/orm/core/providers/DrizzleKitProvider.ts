@@ -106,7 +106,9 @@ export class DrizzleKitProvider {
       : this.getModels(provider);
 
     if (Object.keys(models).length > 0) {
-      const prev = prevSnapshot ?? (await kit.generateDrizzleJson({}));
+      const prev = prevSnapshot
+        ? this.ensureV7Snapshot(kit, prevSnapshot)
+        : await kit.generateDrizzleJson({});
       const curr = await kit.generateDrizzleJson(models);
       return {
         models,
@@ -120,6 +122,33 @@ export class DrizzleKitProvider {
       statements: [],
       snapshot: {},
     };
+  }
+
+  /**
+   * Upgrade a pre-rc.4 snapshot (drizzle-kit v6 shape) to the v7 shape
+   * `generateMigration` requires.
+   *
+   * v7 snapshots carry a `ddl` array; v6 ones (persisted by every
+   * `migrations/*\/meta/*.json` generated before this upgrade) don't have
+   * one at all — `generateMigration` dereferences it unconditionally and
+   * throws `prev.ddl is not iterable` on anything older. Detected on the
+   * snapshot's own shape (absence of `ddl`) rather than trusting a
+   * `version` field, since the missing array is precisely what crashes.
+   *
+   * Both dialect payloads export `up` for this conversion, so this needs no
+   * dialect branch — only a shape normalization, since postgres's `up`
+   * wraps the result as `{ snapshot, hints }` while sqlite's returns the
+   * snapshot directly.
+   */
+  protected ensureV7Snapshot(kit: DrizzleKitPayload, snapshot: any): any {
+    if (Array.isArray(snapshot?.ddl)) {
+      return snapshot;
+    }
+
+    const upgraded = (kit as any).up(snapshot);
+    return upgraded && typeof upgraded === "object" && "snapshot" in upgraded
+      ? upgraded.snapshot
+      : upgraded;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
