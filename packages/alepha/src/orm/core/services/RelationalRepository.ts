@@ -1,6 +1,7 @@
 import {
   $inject,
   AlephaError,
+  createPagination,
   type Page,
   type PageQuery,
   type TObject,
@@ -28,8 +29,9 @@ import type {
   RowOf,
 } from "../primitives/$relations.ts";
 import { RepositoryProvider } from "../providers/RepositoryProvider.ts";
-import { RelationResolver } from "./RelationResolver.ts";
+import { QueryManager } from "./QueryManager.ts";
 import type { Repository } from "./Repository.ts";
+import { RqbExecutor } from "./RqbExecutor.ts";
 
 /**
  * A repository that understands declared relations.
@@ -50,7 +52,8 @@ export class RelationalRepository<
   TKey extends keyof TSchema & string,
 > {
   protected readonly repositories = $inject(RepositoryProvider);
-  protected readonly resolver = $inject(RelationResolver);
+  protected readonly rqb = $inject(RqbExecutor);
+  protected readonly queryManager = $inject(QueryManager);
 
   constructor(
     public readonly relations: RelationsPrimitive<TSchema, TMap>,
@@ -77,16 +80,9 @@ export class RelationalRepository<
   >(
     query: TArgs = {} as TArgs,
   ): Promise<Array<Resolve<TSchema, TMap, TKey, TArgs>>> {
-    const carried = this.carriedColumns(query);
-
-    const rows = (await this.base.findMany(
-      this.toBaseQuery(query, carried) as never,
-    )) as Array<Record<string, any>>;
-
-    await this.applyIncludes(rows, query);
-    this.dropCarried(rows, carried);
-
-    return rows as Array<Resolve<TSchema, TMap, TKey, TArgs>>;
+    return (await this.rows(query)) as Array<
+      Resolve<TSchema, TMap, TKey, TArgs>
+    >;
   }
 
   /**
@@ -162,17 +158,47 @@ export class RelationalRepository<
     query: TArgs = {} as TArgs,
     options: { count?: boolean } = {},
   ): Promise<Page<Resolve<TSchema, TMap, TKey, TArgs>>> {
-    const carried = this.carriedColumns(query);
+    if (!this.delegates(query)) {
+      const page = await this.base.paginate(
+        pagination,
+        this.toBaseQuery(query) as never,
+        options,
+      );
 
-    const page = await this.base.paginate(
-      pagination,
-      this.toBaseQuery(query, carried) as never,
-      options,
+      return page as Page<Resolve<TSchema, TMap, TKey, TArgs>>;
+    }
+
+    const args = query as Record<string, any>;
+    const limit = args.limit ?? pagination.size ?? 10;
+    const offset = args.offset ?? (pagination.page ?? 0) * limit;
+    const orderBy =
+      args.orderBy ??
+      (pagination.sort
+        ? this.queryManager.parsePaginationSort(pagination.sort)
+        : undefined);
+
+    const [rows, total] = await Promise.all([
+      this.rows({
+        ...args,
+        orderBy,
+        offset,
+        // one extra row is the next-page sentinel `createPagination` looks for
+        limit: limit + 1,
+      } as TArgs),
+      options.count ? this.base.count(args.where as never) : undefined,
+    ]);
+
+    const page = createPagination(
+      rows,
+      limit,
+      offset,
+      orderBy ? this.queryManager.normalizeOrderBy(orderBy) : undefined,
     );
 
-    const rows = page.content as Array<Record<string, any>>;
-    await this.applyIncludes(rows, query);
-    this.dropCarried(rows, carried);
+    page.page.totalElements = total;
+    if (total != null) {
+      page.page.totalPages = Math.ceil(total / limit);
+    }
 
     return page as Page<Resolve<TSchema, TMap, TKey, TArgs>>;
   }
@@ -312,6 +338,32 @@ export class RelationalRepository<
     return this.base.query(...args);
   }
 
+  /**
+   * The statement a read would issue, without running it.
+   *
+   * Worth having because a relational read no longer looks like the query you
+   * wrote: the whole tree compiles to one statement, and this is how you get
+   * it in front of `EXPLAIN`. Relation-free queries have no such gap, so they
+   * are refused here rather than answered from a different code path.
+   */
+  public toSQL(query: RelationalQueryArgs<TSchema, TMap, TKey>): {
+    sql: string;
+    params: Array<unknown>;
+  } {
+    if (!this.delegates(query)) {
+      throw new AlephaError(
+        `toSQL() on '${this.key}' needs a query with relations — without them the read goes through the plain repository.`,
+      );
+    }
+
+    return this.rqb.toSQL({
+      relations: this.relations as never,
+      entityKey: this.key,
+      provider: this.base.provider,
+      query: query as never,
+    });
+  }
+
   /** Grouped aggregates. */
   public aggregate(
     ...args: Parameters<Repository<EntityOf<TSchema, TKey>>["aggregate"]>
@@ -435,71 +487,49 @@ export class RelationalRepository<
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
-   * Translate the relational query into the plain repository's vocabulary.
-   * `select` becomes `columns`; `include` is handled separately.
+   * The rows for a query, however they are best fetched.
+   *
+   * With relations to resolve, this goes to Drizzle's relational query builder
+   * and the whole tree arrives in one statement. Without them there is nothing
+   * to gain and something to lose — caching, `groupBy`, `distinct`, row locks
+   * all live on the plain repository — so a relation-free query stays exactly
+   * the read it was before relations existed.
    */
-  protected toBaseQuery(
+  protected async rows(
     query: RelationalQueryArgs<TSchema, TMap, TKey>,
-    carried: string[] = [],
-  ) {
-    const { include: _include, select, ...rest } = query as Record<string, any>;
-    if (!select) return rest;
-    return { ...rest, columns: [...select, ...carried] };
+  ): Promise<Array<Record<string, any>>> {
+    if (this.delegates(query)) {
+      return await this.rqb.findMany({
+        relations: this.relations as never,
+        entityKey: this.key,
+        provider: this.base.provider,
+        query: query as never,
+      });
+    }
+
+    return (await this.base.findMany(
+      this.toBaseQuery(query) as never,
+    )) as Array<Record<string, any>>;
   }
 
   /**
-   * Columns a `select` left out but an `include` still needs.
-   *
-   * A relation is looked up by the owning row's `from` column, so projecting
-   * it away leaves nothing to match on and every relation silently resolves
-   * to undefined. They are fetched anyway and removed afterwards, so the
-   * result still matches the type the caller was given.
+   * Whether this query goes to the relational query builder.
    */
-  protected carriedColumns(
+  protected delegates(
     query: RelationalQueryArgs<TSchema, TMap, TKey>,
-  ): string[] {
-    const select = query.select as ReadonlyArray<string> | undefined;
+  ): boolean {
     const include = query.include as Record<string, unknown> | undefined;
-    if (!select || !include) return [];
-
-    const declared = (this.relations.map as any)[this.key] as
-      | Record<string, ResolvedRelation>
-      | undefined;
-
-    const needed = new Set<string>();
-    for (const name of Object.keys(include)) {
-      if (!include[name]) continue;
-      const from = declared?.[name]?.from;
-      if (from && !select.includes(from)) needed.add(from);
-    }
-
-    return [...needed];
+    return !!include && Object.keys(include).length > 0;
   }
 
-  protected dropCarried(
-    rows: Array<Record<string, any>>,
-    carried: string[],
-  ): void {
-    if (carried.length === 0) return;
-    for (const row of rows) {
-      for (const column of carried) delete row[column];
-    }
-  }
-
-  protected async applyIncludes(
-    rows: Array<Record<string, any>>,
-    query: RelationalQueryArgs<TSchema, TMap, TKey>,
-  ): Promise<void> {
-    const include = query.include as Record<string, any> | undefined;
-    if (!include || Object.keys(include).length === 0) return;
-
-    await this.resolver.resolve({
-      rows,
-      entityKey: this.key,
-      include,
-      schema: this.relations.schema,
-      map: this.relations.map,
-    });
+  /**
+   * Translate the relational query into the plain repository's vocabulary.
+   * `select` becomes `columns`; `include` is handled separately.
+   */
+  protected toBaseQuery(query: RelationalQueryArgs<TSchema, TMap, TKey>) {
+    const { include: _include, select, ...rest } = query as Record<string, any>;
+    if (!select) return rest;
+    return { ...rest, columns: select };
   }
 }
 

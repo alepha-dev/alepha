@@ -46,9 +46,9 @@ export interface RelationArgs<
   /**
    * Cap the rows returned **per parent**, not across the batch.
    *
-   * Prisma's `take` means the same thing. It costs an in-memory slice after
-   * the batched fetch, because a single query cannot cap per group without
-   * window functions — see `RelationResolver` for when that is avoidable.
+   * Prisma's `take` means the same thing, and here it is a real `limit` on
+   * the relation's own subquery rather than a slice taken afterwards — so a
+   * capped relation reads only what it returns.
    */
   limit?: number;
   /** Project the relation's rows. Narrows the result type too. */

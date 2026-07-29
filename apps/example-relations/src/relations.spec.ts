@@ -714,65 +714,71 @@ describe("relations", () => {
 
   describe("query cost", () => {
     /**
-     * One query for the parents, then one per included relation — regardless
-     * of how many rows came back. A per-row implementation would issue 1 + N.
+     * Depth is free. Each included relation becomes a correlated subquery
+     * inside the parent's statement, so a two-level include still leaves in
+     * one round trip — where resolving relation by relation cost one per
+     * level, and resolving row by row cost 1 + N.
      */
-    it("issues one query per relation, not per row", async () => {
+    it("reads a nested tree in one statement", async () => {
       const { campaign } = await seed(app);
 
-      let queries = 0;
-      alepha.events.on("repository:read:before", () => {
-        queries++;
-      });
-
-      await app.db.campaigns.findMany({
+      const { sql } = app.db.campaigns.toSQL({
         where: { id: { eq: campaign.id } },
         include: { characters: { include: { user: true } } },
       });
 
-      // campaigns + characters + users
-      expect(queries).toBe(3);
+      expect(sql.match(/from "campaigns"/g)).toHaveLength(1);
+      expect(sql).toContain('from "characters"');
+      expect(sql).toContain('from "users"');
     });
 
     /**
-     * Sibling relations are independent — same parent rows, different fields —
-     * so they are issued together rather than one after another. On a remote
-     * database that is the difference between one round trip's latency and one
-     * per relation, which is the entire cost of resolving with several small
-     * queries instead of one large join.
+     * Breadth is free for the same reason: three sibling relations are three
+     * subqueries, not three round trips.
      */
-    it("issues sibling relations concurrently", async () => {
+    it("reads sibling relations in one statement", async () => {
       const { campaign } = await seed(app);
 
-      let inFlight = 0;
-      let peak = 0;
-      alepha.events.on("repository:read:before", () => {
-        inFlight++;
-        peak = Math.max(peak, inFlight);
-      });
-      alepha.events.on("repository:read:after", () => {
-        inFlight--;
-      });
-
-      await app.db.campaigns.findOne({
+      const { sql } = app.db.campaigns.toSQL({
         where: { id: { eq: campaign.id } },
         include: { owner: true, characters: true, quests: true },
       });
 
-      // Three siblings overlapping; sequential resolution would peak at 1.
-      expect(peak).toBeGreaterThan(1);
+      expect(sql.match(/from "campaigns"/g)).toHaveLength(1);
+      for (const table of ["users", "characters", "quests"]) {
+        expect(sql).toContain(`from "${table}"`);
+      }
     });
 
     /**
-     * Depth cannot overlap: a nested include has nothing to key off until the
-     * rows above it have come back.
+     * A many-to-many costs nothing extra either: the junction becomes an inner
+     * join inside the relation's subquery, so it never surfaces as a read of
+     * its own.
      */
-    it("keeps depth sequential", async () => {
+    it("folds the junction of a many-to-many into the same statement", async () => {
+      const { ana } = await seed(app);
+
+      const { sql } = app.db.users.toSQL({
+        where: { id: { eq: ana.id } },
+        include: { watching: true },
+      });
+
+      expect(sql.match(/from "users"/g)).toHaveLength(1);
+      expect(sql).toContain('inner join "quest_watchers"');
+    });
+
+    /**
+     * Statements are invisible from the outside, so the tables a read touched
+     * are announced instead — root first, then each included relation. A cache
+     * keyed on one table would otherwise under-invalidate a tree that spans
+     * several.
+     */
+    it("announces every table a read touched", async () => {
       const { campaign } = await seed(app);
 
-      const order: string[] = [];
+      const tables: string[] = [];
       alepha.events.on("repository:read:before", (event: any) => {
-        order.push(event.tableName);
+        tables.push(event.tableName);
       });
 
       await app.db.campaigns.findOne({
@@ -780,24 +786,7 @@ describe("relations", () => {
         include: { characters: { include: { user: true } } },
       });
 
-      expect(order).toEqual(["campaigns", "characters", "users"]);
-    });
-
-    it("adds exactly one query for the junction on a many-to-many", async () => {
-      const { ana } = await seed(app);
-
-      let queries = 0;
-      alepha.events.on("repository:read:before", () => {
-        queries++;
-      });
-
-      await app.db.users.findMany({
-        where: { id: { eq: ana.id } },
-        include: { watching: true },
-      });
-
-      // users + questWatchers + quests
-      expect(queries).toBe(3);
+      expect(tables).toEqual(["campaigns", "characters", "users"]);
     });
   });
 

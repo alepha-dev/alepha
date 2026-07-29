@@ -26,7 +26,6 @@ export * from "./schemas/insertSchema.ts";
 export * from "./schemas/updateSchema.ts";
 export * from "./services/ModelBuilder.ts";
 export * from "./services/RelationalRepository.ts";
-export * from "./services/RelationResolver.ts";
 export * from "./services/Repository.ts";
 export * from "./types/schema.ts";
 export { drizzle };

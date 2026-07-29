@@ -69,7 +69,7 @@ describe("CampaignService", () => {
     expect(members[0]?.user?.name).toBe("GM");
   });
 
-  it("builds the overview in one query per relation", async () => {
+  it("builds the whole overview in one statement", async () => {
     const gm = await owner();
     const campaign = await service.found({
       title: "Overview",
@@ -87,9 +87,9 @@ describe("CampaignService", () => {
       },
     });
 
-    let queries = 0;
-    alepha.events.on("repository:read:before", () => {
-      queries++;
+    const tables: string[] = [];
+    alepha.events.on("repository:read:before", (event: any) => {
+      tables.push(event.tableName);
     });
 
     const overview = await service.overview(campaign.id);
@@ -99,10 +99,9 @@ describe("CampaignService", () => {
     expect(overview?.characters.map((c) => c.name)).toEqual(["Rill", "Vex"]);
     expect(overview?.quests[0]?.author).toEqual({ name: "GM" });
 
-    // campaigns, owner, characters, characters.user, quests, quests.author.
-    // `quests.blockedBy` costs nothing: every `dependsOn` is null, so there
-    // are no keys to look up and the resolver skips the query entirely.
-    expect(queries).toBe(6);
+    // Six relations across three levels, and still one round trip — the whole
+    // point of compiling the tree into subqueries rather than resolving it.
+    expect(tables).toEqual(["campaigns", "users", "characters", "quests"]);
   });
 
   it("paginates the quest board and resolves relations per page", async () => {
