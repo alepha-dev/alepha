@@ -6,6 +6,7 @@
     "dev": "alepha dev",
     "build": "alepha build --stats=json",
     "typecheck": "tsc --noEmit",
+    "check:migrations": "alepha db migrations check",
     "build:docker": "alepha build --stats=json",
     "build&start": "node dist",
     "deploy": "alepha deploy",
