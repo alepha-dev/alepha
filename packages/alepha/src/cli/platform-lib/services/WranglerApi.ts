@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { AlephaCliUtils, PackageManagerUtils } from "alepha/cli";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -184,5 +184,78 @@ export class WranglerApi {
     }
 
     this.log.info(`Applied ${pending.length} D1 migration(s)`);
+  }
+
+  /**
+   * Record the baseline migration as applied on D1, without executing it.
+   *
+   * Mirrors drizzle's `migrate({ init: true })` guardrails for the wrangler
+   * bookkeeping path: exactly one local migration, and an empty history
+   * unless `reset` is explicitly given.
+   *
+   * `reset` rewrites bookkeeping rows only. No table data is read or written,
+   * so it cannot lose application data — but it does discard the record of
+   * which migrations were previously applied, which is why it is opt-in.
+   */
+  public async d1MigrationsBaseline(
+    dbName: string,
+    configPath: string,
+    root?: string,
+    migrationsDir = "migrations/sqlite",
+    opts: { reset?: boolean } = {},
+  ): Promise<{ replaced: number }> {
+    const run = (args: string) =>
+      this.runShell(`wrangler d1 execute ${dbName} --remote ${args}`, {
+        resolve: true,
+        env: { CI: "1" },
+        root,
+        capture: true,
+      });
+
+    await run(
+      `--command="CREATE TABLE IF NOT EXISTS d1_migrations(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL);"`,
+    );
+
+    const dir = this.fs.join(root ?? ".", migrationsDir);
+    const entries = (await this.fs.exists(dir)) ? await this.fs.ls(dir) : [];
+    const files = entries
+      .map((f) => f.split("/").pop() as string)
+      .filter((f) => f.endsWith(".sql"))
+      .sort();
+
+    if (files.length !== 1) {
+      throw new AlephaError(
+        `Expected exactly one migration in '${dir}' to baseline, found ${files.length}. Run 'alepha db baseline create' first.`,
+      );
+    }
+    const baseline = files[0] as string;
+
+    const listed = await run(
+      `--command="SELECT name FROM d1_migrations;" --json`,
+    );
+    const applied = [...String(listed).matchAll(/"name":\s*"([^"]+)"/g)].map(
+      (m) => m[1] as string,
+    );
+
+    if (applied.length > 0 && !opts.reset) {
+      throw new AlephaError(
+        `Database '${dbName}' already has ${applied.length} recorded migration(s). Pass --reset to replace that history with the baseline (bookkeeping rows only; table data is never touched).`,
+      );
+    }
+
+    if (applied.length > 0) {
+      this.log.warn(
+        `Replacing ${applied.length} recorded migration(s) on '${dbName}' with '${baseline}'`,
+      );
+      this.log.warn(`Previously recorded: ${applied.join(", ")}`);
+      await run(`--command="DELETE FROM d1_migrations;"`);
+    }
+
+    await run(
+      `--command="INSERT INTO d1_migrations (name) VALUES ('${baseline.replace(/'/g, "''")}');"`,
+    );
+
+    this.log.info(`Baseline '${baseline}' recorded as applied on '${dbName}'`);
+    return { replaced: applied.length };
   }
 }

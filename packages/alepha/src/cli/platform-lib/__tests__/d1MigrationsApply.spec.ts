@@ -125,3 +125,112 @@ describe("d1MigrationsApply", () => {
     expect(applied[1]).toContain("0002_second.sql");
   });
 });
+
+/**
+ * The baseline file is pure CREATE TABLE. Recording it must insert a
+ * bookkeeping row and run no migration SQL — otherwise the first deploy
+ * after a baseline would try to recreate every table on a live database.
+ */
+describe("d1MigrationsBaseline", () => {
+  const capture = async (files: string[], appliedNames: string[]) => {
+    const commands: string[] = [];
+
+    class FakeShell {
+      async run(command: string) {
+        commands.push(command);
+        if (command.includes("SELECT name FROM d1_migrations")) {
+          return JSON.stringify([
+            { results: appliedNames.map((name) => ({ name })) },
+          ]);
+        }
+        return "";
+      }
+    }
+    class FakeFs {
+      join(...parts: string[]) {
+        return parts.join("/");
+      }
+      async exists() {
+        return true;
+      }
+      async ls() {
+        return files;
+      }
+    }
+
+    const alepha = Alepha.create();
+    const api = alepha.inject(WranglerApi);
+    Object.assign(api as unknown as Record<string, unknown>, {
+      shell: new FakeShell(),
+      fs: new FakeFs(),
+    });
+
+    const call = (opts?: { reset?: boolean }) =>
+      (
+        api as unknown as {
+          d1MigrationsBaseline: (
+            db: string,
+            cfg: string,
+            root?: string,
+            dir?: string,
+            opts?: { reset?: boolean },
+          ) => Promise<{ replaced: number }>;
+        }
+      ).d1MigrationsBaseline(
+        "mydb",
+        "dist/wrangler.jsonc",
+        ".",
+        "dist/migrations",
+        opts,
+      );
+
+    return { commands, call };
+  };
+
+  it("inserts the baseline row and executes no migration file", async ({
+    expect,
+  }) => {
+    const { commands, call } = await capture(["0000_baseline.sql"], []);
+    await call();
+
+    expect(
+      commands.some((c) =>
+        c.includes(
+          "INSERT INTO d1_migrations (name) VALUES ('0000_baseline.sql')",
+        ),
+      ),
+    ).toBe(true);
+    expect(commands.some((c) => c.includes("--file="))).toBe(false);
+  });
+
+  it("refuses to replace an existing history without reset", async ({
+    expect,
+  }) => {
+    const { call } = await capture(["0000_baseline.sql"], ["0001_old.sql"]);
+
+    await expect(call()).rejects.toThrowError(/--reset/);
+  });
+
+  it("replaces an existing history when reset is given", async ({ expect }) => {
+    const { commands, call } = await capture(
+      ["0000_baseline.sql"],
+      ["0001_old.sql", "0002_old.sql"],
+    );
+
+    const result = await call({ reset: true });
+
+    expect(result.replaced).toBe(2);
+    expect(commands.some((c) => c.includes("DELETE FROM d1_migrations"))).toBe(
+      true,
+    );
+    expect(commands.some((c) => c.includes("--file="))).toBe(false);
+  });
+
+  it("refuses when more than one local migration exists", async ({
+    expect,
+  }) => {
+    const { call } = await capture(["0000_baseline.sql", "0001_extra.sql"], []);
+
+    await expect(call()).rejects.toThrowError(/exactly one/);
+  });
+});
