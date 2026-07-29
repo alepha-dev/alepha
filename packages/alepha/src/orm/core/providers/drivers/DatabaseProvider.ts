@@ -348,6 +348,27 @@ export abstract class DatabaseProvider {
         return;
       }
 
+      // `drizzle-orm@1`'s migrator hard-throws a bare `Error` the instant it
+      // finds `<folder>/meta/_journal.json` — the bookkeeping file every
+      // pre-v1 drizzle-kit project has — naming `drizzle-kit up`, a command
+      // Alepha users never run directly. The three apps in this repo were
+      // baselined onto v1 as part of this upgrade, so that dead end is
+      // invisible here, but it is a real backward-incompatibility for every
+      // downstream consumer of `alepha` that has not yet baselined. Catch it
+      // before it ever reaches drizzle's migrator and point at the actual
+      // remedy instead of leaking drizzle's unreachable-for-us instruction.
+      const legacyJournalExists = await stat(
+        `${migrationsFolder}/meta/_journal.json`,
+      )
+        .then(() => true)
+        .catch(() => false);
+
+      if (legacyJournalExists) {
+        throw new AlephaError(
+          `'${migrationsFolder}' still uses drizzle-kit's pre-v1 migration layout ('meta/_journal.json'). Run 'alepha db baseline create' to collapse it into a single v1 migration, then 'alepha db baseline mark' (Cloudflare D1: 'alepha platform db baseline mark') to record it as applied without re-executing it.`,
+        );
+      }
+
       // For schema-free migrations, ensure the target schema exists
       // before running migration files. The schema is applied via
       // search_path set at the provider's connection level.
