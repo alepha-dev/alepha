@@ -15,6 +15,7 @@ import {
   sigilBlights,
 } from "../entities/sigilBlights.ts";
 import { sigils } from "../entities/sigils.ts";
+import { relations } from "../relations.ts";
 import { BlightRuleService } from "../services/BlightRuleService.ts";
 import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { QuestService } from "../services/QuestService.ts";
@@ -88,6 +89,12 @@ export class BlightController {
   protected log = $logger();
   protected blights = $repository(sigilBlights);
   protected sigils = $repository(sigils);
+  /**
+   * Sigils with their blights attached. The inbox is a campaign's crash list,
+   * which is a two-hop read -- campaign to sigil to blight -- and used to be
+   * two statements plus an id list.
+   */
+  protected sigilsWith = $repository(relations, "sigils");
   protected security = $inject(CampaignSecurityService);
   protected questService = $inject(QuestService);
   protected ruleService = $inject(BlightRuleService);
@@ -117,26 +124,31 @@ export class BlightController {
 
       // All campaign sigils — both the join key for the blight query and the
       // source of the inbox's "filter by sigil" dropdown options.
-      const campaignSigils = await this.sigils.findMany(
-        {
-          where: { campaignId: { eq: params.campaignId } },
-          orderBy: [{ column: "createdAt", direction: "desc" }],
+      // Revoked sigils are included on purpose -- their historical blights
+      // stay visible -- so both levels carry `force`.
+      const campaignSigils = await this.sigilsWith.findMany({
+        where: { campaignId: { eq: params.campaignId } },
+        orderBy: [{ column: "createdAt", direction: "desc" }],
+        force: true,
+        include: {
+          blights: {
+            force: true,
+            orderBy: { column: "count", direction: "desc" },
+          },
         },
-        { force: true },
-      );
+      });
+
       const sigilOptions = campaignSigils.map((s) => ({
         id: s.id,
         label: s.label,
       }));
-      const sigilIds = campaignSigils.map((s) => s.id);
-      if (sigilIds.length === 0) {
+      if (campaignSigils.length === 0) {
         return { items: [], openCount: 0, sigils: [] };
       }
 
-      const all = await this.blights.findMany({
-        where: { sigilId: { inArray: sigilIds } },
-        orderBy: [{ column: "count", direction: "desc" }],
-      });
+      const all = campaignSigils
+        .flatMap((s) => s.blights)
+        .sort((a, b) => b.count - a.count);
 
       const openCount = all.filter((b) => b.status === "open").length;
       const items = query.includeResolved
@@ -166,14 +178,22 @@ export class BlightController {
     handler: async ({ params, user }) => {
       await this.security.assertMember(params.campaignId, user);
 
-      const sigilIds = await this.campaignSigilIds(params.campaignId);
-      if (sigilIds.length === 0) {
-        return { count: 0 };
-      }
-      const open = await this.blights.findMany({
-        where: { sigilId: { inArray: sigilIds }, status: { eq: "open" } },
+      // Same two-hop read as the inbox, counted instead of listed. Revoked
+      // sigils are included, so both levels carry `force`.
+      const sigilsWithOpen = await this.sigilsWith.findMany({
+        where: { campaignId: { eq: params.campaignId } },
+        force: true,
+        select: ["id"],
+        include: {
+          blights: { force: true, where: { status: { eq: "open" } } },
+        },
       });
-      return { count: open.length };
+
+      const count = sigilsWithOpen.reduce(
+        (total, sigil) => total + sigil.blights.length,
+        0,
+      );
+      return { count };
     },
   });
 

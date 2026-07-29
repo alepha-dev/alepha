@@ -43,6 +43,7 @@ export class CampaignController {
    * is the only thing they add.
    */
   campaignsWith = $repository(relations, "campaigns");
+  charactersWith = $repository(relations, "characters");
   usersWith = $repository(relations, "users");
   quests = $repository(quests);
   chapters = $repository(chapters);
@@ -405,16 +406,10 @@ export class CampaignController {
         }),
       ),
     },
-    handler: async ({ params, user }) => {
-      const campaignCharacters = await this.characters.findMany({
+    handler: async ({ params }) => {
+      const campaignCharacters = await this.charactersWith.findMany({
         where: { campaignId: { eq: params.id } },
-      });
-
-      const campaignUsers = await this.users.findMany({
-        limit: campaignCharacters.length,
-        where: {
-          id: { inArray: campaignCharacters.map((char) => char.userId) },
-        },
+        include: { user: true },
       });
 
       const charactersWithUsers: Array<
@@ -424,19 +419,15 @@ export class CampaignController {
       > = [];
 
       for (const character of campaignCharacters) {
-        const characterUser = campaignUsers.find(
-          (it) => it.id === character.userId,
-        );
-        if (!characterUser) {
+        if (!character.user) {
+          // A character whose account is gone. The row survives the user by
+          // design, but the roster has nothing to show for it.
           this.log.warn(
             `User with id ${character.userId} not found for character ${character.id}`,
           );
           continue;
         }
-        charactersWithUsers.push({
-          ...character,
-          user: characterUser,
-        });
+        charactersWithUsers.push({ ...character, user: character.user });
       }
 
       // Sort by owner first, then by creation date

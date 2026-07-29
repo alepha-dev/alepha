@@ -4,11 +4,14 @@ import { $secure } from "alepha/security";
 import { $action, ForbiddenError, NotFoundError } from "alepha/server";
 import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
+import { relations } from "../relations.ts";
 import { AchievementEngine } from "../services/AchievementEngine.ts";
 import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 
 export class CharacterController {
   characters = $repository(characters);
+  /** ...with the campaign each one belongs to, for the cross-campaign list. */
+  charactersWith = $repository(relations, "characters");
   campaigns = $repository(campaigns);
   security = $inject(CampaignSecurityService);
   achievements = $inject(AchievementEngine);
@@ -102,43 +105,23 @@ export class CharacterController {
       ),
     },
     handler: async ({ user }) => {
-      const userCharacters = await this.characters.findMany({
+      const userCharacters = await this.charactersWith.findMany({
         where: { userId: { eq: user.id } },
-      });
-      const userCharacterIds = userCharacters.map((c) => c.id);
-
-      if (userCharacterIds.length === 0) {
-        return [];
-      }
-
-      // Fetch campaigns for each character
-      const userCampaigns = await this.campaigns.findMany({
-        where: { id: { inArray: userCharacters.map((c) => c.campaignId) } },
+        include: { campaign: true },
       });
 
-      return (
-        await Promise.all(
-          userCharacters.map(async (character) => {
-            const campaign = userCampaigns.find(
-              (p) => p.id === character.campaignId,
-            );
-            if (!campaign) {
-              return;
-            }
-
-            return {
-              id: character.id,
-              campaignId: character.campaignId,
-              campaignTitle: campaign?.title ?? "Unknown Campaign",
-              xp: character.xp,
-              balance: character.balance,
-              owner: character.owner,
-              createdAt: character.createdAt,
-              updatedAt: character.updatedAt,
-            };
-          }),
-        )
-      ).filter((it) => !!it);
+      return userCharacters
+        .filter((character) => !!character.campaign)
+        .map((character) => ({
+          id: character.id,
+          campaignId: character.campaignId,
+          campaignTitle: character.campaign?.title ?? "Unknown Campaign",
+          xp: character.xp,
+          balance: character.balance,
+          owner: character.owner,
+          createdAt: character.createdAt,
+          updatedAt: character.updatedAt,
+        }));
     },
   });
 

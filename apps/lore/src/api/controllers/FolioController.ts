@@ -15,6 +15,7 @@ import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
 import { folioRevisions } from "../entities/folioRevisions.ts";
 import { buildFolioSearchText, folios } from "../entities/folios.ts";
+import { relations } from "../relations.ts";
 import {
   folioLinksSchema,
   folioResourceSchema,
@@ -49,6 +50,8 @@ export class FolioController {
   protected readonly directories = $repository(archiveDirectories);
   protected readonly blobs = $repository(archiveBlobs);
   protected readonly revisions = $repository(folioRevisions);
+  /** ...with the author attached, for the campaign activity feed. */
+  protected readonly revisionsWith = $repository(relations, "folioRevisions");
   protected readonly users = $repository(users);
   protected readonly linkService = $inject(FolioLinkService);
   protected readonly historyService = $inject(FolioHistoryService);
@@ -703,29 +706,21 @@ export class FolioController {
       if (campaignFolios.length === 0) return { items: [] };
       const folioById = new Map(campaignFolios.map((f) => [f.id, f]));
 
-      const revisions = await this.revisions.findMany({
+      // The author comes back with the revision. The folio set above still
+      // needs its own query: `$relations` filters on columns, not on a
+      // relation's columns, so "revisions of folios in this campaign" cannot
+      // be expressed as one `where`.
+      const revisions = await this.revisionsWith.findMany({
         where: { folioId: { inArray: campaignFolios.map((f) => f.id) } },
         orderBy: [{ column: "at", direction: "desc" }],
         limit,
+        include: { author: { select: ["id", "username", "email", "picture"] } },
       });
-
-      // Batched user lookup — mirrors QuestJobs.sendDueReminders' pattern.
-      const distinctUserIds = [
-        ...new Set(revisions.flatMap((r) => (r.byUserId ? [r.byUserId] : []))),
-      ];
-      const userRows =
-        distinctUserIds.length > 0
-          ? await this.users.findMany({
-              where: { id: { inArray: distinctUserIds } },
-              columns: ["id", "username", "email", "picture"],
-            })
-          : [];
-      const userById = new Map(userRows.map((u) => [u.id, u]));
 
       return {
         items: revisions.map((r) => {
           const folio = folioById.get(r.folioId);
-          const u = r.byUserId ? userById.get(r.byUserId) : undefined;
+          const u = r.author;
           return {
             id: r.id,
             at: r.at,
