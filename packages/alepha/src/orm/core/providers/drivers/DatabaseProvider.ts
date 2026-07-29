@@ -412,6 +412,15 @@ export abstract class DatabaseProvider {
    * error names "baseline mark" rather than "migrations": D1 and Hyperdrive
    * both migrate fine through their own flows, they just don't support
    * baseline-mark's driver-dispatch shape yet.
+   *
+   * D1 now has a baseline-mark path — `WranglerApi.d1MigrationsBaseline`,
+   * reachable via `alepha platform db baseline mark` — but it does not go
+   * through this method at all (it drives wrangler's own bookkeeping table
+   * directly, with no drizzle migrator involved). `alepha db baseline mark`
+   * (the core command that calls `markBaselineApplied`) redirects D1
+   * providers to that command before ever reaching here; this default throw
+   * still guards a direct `provider.markBaselineApplied()` call and remains
+   * accurate for Hyperdrive, which has no baseline-mark path anywhere yet.
    */
   protected async runMigrator(
     migrationsFolder: string,
@@ -438,7 +447,7 @@ export abstract class DatabaseProvider {
 
     if (result?.exitCode === "databaseMigrations") {
       throw new AlephaError(
-        "Database already has migration rows. A baseline can only be recorded on a database with no migration history — use 'baseline mark --reset' to replace an existing history.",
+        `Database already has migration rows. A baseline can only be recorded on a database with no migration history. Resetting an existing history is not yet supported for the '${this.driver}' driver — clear the migrations bookkeeping table manually first. (Cloudflare D1 supports this via 'alepha platform db baseline mark --reset'.)`,
       );
     }
 

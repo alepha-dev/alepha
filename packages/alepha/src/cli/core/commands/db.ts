@@ -258,14 +258,7 @@ export class DbCommand {
         description: "Path to the Alepha server entry file",
       })
       .optional(),
-    flags: drizzleCommandFlags.extend({
-      reset: z
-        .boolean()
-        .describe(
-          "Replace an existing migration history with the baseline. Rewrites bookkeeping rows only; never touches table data.",
-        )
-        .optional(),
-    }),
+    flags: drizzleCommandFlags,
     handler: async ({ flags, root }) => {
       const entry = await this.entryProvider.getAppEntry(root);
       const alepha = await this.utils.loadAlephaFromServerEntryFile({
@@ -282,6 +275,19 @@ export class DbCommand {
         if (providerName === "" || seen.has(providerName)) continue;
         seen.add(providerName);
         if (flags.provider && flags.provider !== providerName) continue;
+
+        // Cloudflare D1 doesn't go through drizzle's migrator at all — its
+        // deploy path keys off a filename-based bookkeeping table driven by
+        // wrangler (see WranglerApi.d1MigrationsBaseline), which needs the
+        // project/env/tenant naming that only the `platform` command tree
+        // can resolve. Redirect here rather than let `markBaselineApplied`
+        // fall through to `runMigrator`'s generic "driver not supported"
+        // error, which would wrongly suggest the capability doesn't exist.
+        if (provider.driver === "d1") {
+          throw new AlephaError(
+            `'alepha db baseline mark' does not support Cloudflare D1 — use 'alepha platform db baseline mark' instead, which drives the wrangler bookkeeping table directly.`,
+          );
+        }
 
         const migrationsFolder = this.fs.join(root, "migrations", providerName);
 

@@ -4,6 +4,7 @@ import {
   CloudflareAdapter,
   type DetectedResources,
   NamingService,
+  type PlatformContext,
   PlatformInspector,
   PlatformOrchestrator,
   type PlatformPlanOutput,
@@ -12,6 +13,7 @@ import {
   type ResolvedPlatformConfig,
   resolveTenant,
   VercelAdapter,
+  WranglerApi,
 } from "alepha/cli/platform-lib";
 import { $command, EnvUtils } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
@@ -28,6 +30,7 @@ export class PlatformCommand {
   protected readonly color = $inject(ConsoleColorProvider);
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly secretsCommand = $inject(SecretsCommand);
+  protected readonly wrangler = $inject(WranglerApi);
 
   /**
    * Common flags for env targeting.
@@ -677,14 +680,124 @@ export class PlatformCommand {
   });
 
   /**
+   * Record the baseline migration as already applied on a deployed
+   * Cloudflare D1 database, without executing it.
+   *
+   * D1's deploy path doesn't go through drizzle's migrator at all — it
+   * keys off a filename-based `d1_migrations` bookkeeping table driven by
+   * wrangler (see `WranglerApi.d1MigrationsBaseline`), which needs the
+   * project/env/tenant resource naming that only this command tree can
+   * resolve. That's also why `--reset` lives here rather than on core
+   * `alepha db baseline mark`: it rewrites wrangler's bookkeeping rows
+   * only (never table data), and only the D1 path supports it today.
+   */
+  protected readonly baselineMark = $command({
+    name: "mark",
+    description:
+      "Record the baseline migration as already applied on the deployed D1 database, without executing it.",
+    flags: z.object({
+      ...this.envFlags.properties,
+      reset: z
+        .boolean()
+        .describe(
+          "Replace an existing migration history with the baseline. Rewrites bookkeeping rows only; never touches table data.",
+        )
+        .optional(),
+    }),
+    handler: async ({ flags, root, run }) => {
+      const config = await this.inspector.resolveConfig(root);
+      const env = flags.env ?? config.defaultEnv;
+      const envConfig = config.environments[env];
+
+      if (envConfig.adapter !== "cloudflare") {
+        throw new AlephaError(
+          `'platform db baseline mark' only supports Cloudflare D1 today; '${env}' uses the '${envConfig.adapter}' adapter.`,
+        );
+      }
+
+      const envVars = await this.envUtils.parseEnv(root, [`.env.${env}`]);
+      const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
+      if (dbUrl?.startsWith("postgres:")) {
+        throw new AlephaError(
+          `'${env}' is backed by Postgres/Hyperdrive, not D1. Use 'alepha db baseline mark' instead.`,
+        );
+      }
+
+      const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
+      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const namingCtx = this.naming.forContext(config.project, env, tenant);
+      const dbName = namingCtx.d1();
+
+      // No app boot needed below this point — unlike `migrate`/`export`,
+      // this command never calls an adapter method that reads `entry` or
+      // `resources`, so those are stubbed rather than paying for a Vite
+      // boot (or requiring dist/manifest.json) just to baseline-mark.
+      const ctx: PlatformContext = {
+        project: config.project,
+        env,
+        envConfig,
+        root,
+        entry: { root, server: "" },
+        resources: {
+          hasDatabase: true,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+        naming: namingCtx,
+        tenant,
+      };
+
+      await adapter.authenticate(ctx, run);
+
+      const result = await this.wrangler.d1MigrationsBaseline(
+        dbName,
+        "dist/wrangler.jsonc",
+        root,
+        undefined,
+        { reset: flags.reset },
+      );
+
+      if (flags.json) {
+        process.stdout.write(
+          `${JSON.stringify(
+            {
+              status: "succeeded",
+              project: config.project,
+              env,
+              dbName,
+              replaced: result.replaced,
+            },
+            null,
+            2,
+          )}\n`,
+        );
+      }
+    },
+  });
+
+  protected readonly baseline = $command({
+    name: "baseline",
+    description:
+      "Record a baseline as already applied on the deployed database (D1 only).",
+    children: [this.baselineMark],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  /**
    * `db` subgroup — operations against the *deployed* database (export,
-   * migrate). They live under `platform` (not core `alepha db`) because
-   * they need the env config, tenancy, adapter, and resource naming.
+   * migrate, baseline mark). They live under `platform` (not core
+   * `alepha db`) because they need the env config, tenancy, adapter, and
+   * resource naming.
    */
   protected readonly db = $command({
     name: "db",
-    description: "Deployed-database operations (export, migrate).",
-    children: [this.dbExport, this.migrate],
+    description:
+      "Deployed-database operations (export, migrate, baseline mark).",
+    children: [this.dbExport, this.migrate, this.baseline],
     handler: async ({ help, root }) => {
       await this.inspector.resolveConfig(root);
       help();
