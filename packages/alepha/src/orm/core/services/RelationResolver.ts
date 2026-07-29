@@ -1,4 +1,4 @@
-import { $inject, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import type {
   EntitySchema,
@@ -28,6 +28,7 @@ import { RepositoryProvider } from "../providers/RepositoryProvider.ts";
 export class RelationResolver {
   protected readonly log = $logger();
   protected readonly repositories = $inject(RepositoryProvider);
+  protected readonly alepha = $inject(Alepha);
 
   /**
    * Resolve `include` against `rows`, mutating each row to carry its
@@ -41,6 +42,8 @@ export class RelationResolver {
     const declared = (map as any)[entityKey] as
       | Record<string, ResolvedRelation>
       | undefined;
+
+    const pending: Array<() => Promise<void>> = [];
 
     for (const name of Object.keys(include)) {
       const arg = include[name];
@@ -58,8 +61,40 @@ export class RelationResolver {
         );
       }
 
-      await this.resolveOne(ctx, name, relation, arg === true ? {} : arg);
+      pending.push(() =>
+        this.resolveOne(ctx, name, relation, arg === true ? {} : arg),
+      );
     }
+
+    // Sibling relations are independent — they all key off the same parent
+    // rows and write to different fields — so they go out together. On a
+    // remote database that is the difference between one round trip's latency
+    // and one per relation, which is the whole cost of resolving relations
+    // with several small queries instead of one large join.
+    //
+    // Depth stays sequential: a nested include cannot start until the rows it
+    // keys off have come back. That happens inside `resolveOne`.
+    if (pending.length === 0) return;
+
+    if (pending.length === 1 || this.inTransaction()) {
+      // A transaction pins one connection, and most drivers cannot multiplex
+      // statements on it. Correctness beats latency here.
+      for (const run of pending) await run();
+      return;
+    }
+
+    await Promise.all(pending.map((run) => run()));
+  }
+
+  /**
+   * Whether a transaction is currently in scope.
+   *
+   * `Repository` reads the same store key to decide which connection to use,
+   * so this is the same notion of "inside a transaction" the queries
+   * themselves will see.
+   */
+  protected inTransaction(): boolean {
+    return this.alepha.get("alepha.orm.tx") != null;
   }
 
   protected async resolveOne(

@@ -4,7 +4,7 @@ Proof of concept for `$relations` — declared relations with a fully inferred
 `include`, built alongside Drizzle v1.
 
 ```bash
-yarn vitest run apps/example-relations    # 56 tests, 2 files
+yarn vitest run apps/example-relations    # 58 tests, 2 files
 cd apps/example-relations && tsc --noEmit # proves the type assertions
 ```
 
@@ -181,10 +181,19 @@ parent back.
 
 ## Known limitations
 
-- **Not on Drizzle's RQB v2.** The declaration mirrors `defineRelations`
-  closely enough that the executor could be swapped without touching a call
-  site, but RQB needs a static schema object and Alepha builds its tables at
-  runtime from Zod. That bridge is the main open question.
+- **Not on Drizzle's RQB v2 — decided, not deferred.** RQB exists to compile a
+  `with` tree into one query that returns the nested shape. Several small
+  indexed queries were preferred instead: predictable, no cartesian blow-up,
+  independently cacheable, and legible in the logs. Since that is the opposite
+  of what RQB is for, adopting it would mean paying for the runtime-tables to
+  static-types bridge in order to get the behaviour being avoided. The
+  declaration still mirrors `defineRelations`, so the choice stays reversible.
+
+  What the batched strategy costs is round trips, and that is mitigated rather
+  than ignored: sibling relations are issued concurrently, so a three-relation
+  include costs one round trip's latency, not three. Depth stays sequential
+  because it must. Inside a transaction it falls back to sequential, since a
+  transaction pins one connection and most drivers cannot multiplex on it.
 - **To-one foreign keys are optional in `CreateData`** whether or not you
   actually nest that relation — the type cannot see which keys the value will
   carry. Omitting one without nesting fails at the database, not the compiler.

@@ -734,6 +734,55 @@ describe("relations", () => {
       expect(queries).toBe(3);
     });
 
+    /**
+     * Sibling relations are independent — same parent rows, different fields —
+     * so they are issued together rather than one after another. On a remote
+     * database that is the difference between one round trip's latency and one
+     * per relation, which is the entire cost of resolving with several small
+     * queries instead of one large join.
+     */
+    it("issues sibling relations concurrently", async () => {
+      const { campaign } = await seed(app);
+
+      let inFlight = 0;
+      let peak = 0;
+      alepha.events.on("repository:read:before", () => {
+        inFlight++;
+        peak = Math.max(peak, inFlight);
+      });
+      alepha.events.on("repository:read:after", () => {
+        inFlight--;
+      });
+
+      await app.db.campaigns.findOne({
+        where: { id: { eq: campaign.id } },
+        include: { owner: true, characters: true, quests: true },
+      });
+
+      // Three siblings overlapping; sequential resolution would peak at 1.
+      expect(peak).toBeGreaterThan(1);
+    });
+
+    /**
+     * Depth cannot overlap: a nested include has nothing to key off until the
+     * rows above it have come back.
+     */
+    it("keeps depth sequential", async () => {
+      const { campaign } = await seed(app);
+
+      const order: string[] = [];
+      alepha.events.on("repository:read:before", (event: any) => {
+        order.push(event.tableName);
+      });
+
+      await app.db.campaigns.findOne({
+        where: { id: { eq: campaign.id } },
+        include: { characters: { include: { user: true } } },
+      });
+
+      expect(order).toEqual(["campaigns", "characters", "users"]);
+    });
+
     it("adds exactly one query for the junction on a many-to-many", async () => {
       const { ana } = await seed(app);
 
