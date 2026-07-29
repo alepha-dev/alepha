@@ -54,59 +54,16 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface CorsRegistration extends Partial<CorsOptions> {
-  /**
-   * Name identifier for this CORS config.
-   */
-  name?: string;
-  /**
-   * Path patterns to match (supports wildcards like /api/*).
-   */
-  paths?: string[];
-}
-
 export class ServerCorsProvider {
   protected readonly log = $logger();
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly globalOptions = $state(corsOptions);
 
-  /**
-   * Registered CORS configurations with their path patterns
-   */
-  public readonly registeredConfigs: CorsRegistration[] = [];
-
-  /**
-   * Register a CORS configuration (called by primitives)
-   */
-  public registerCors(config: CorsRegistration): void {
-    this.registeredConfigs.push(config);
-  }
-
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      // Apply path-specific CORS configs to routes
-      for (const config of this.registeredConfigs) {
-        if (config.paths) {
-          for (const pattern of config.paths) {
-            const matchedRoutes = this.serverRouterProvider.getRoutes(pattern);
-            for (const route of matchedRoutes) {
-              route.cors = this.buildCorsOptions(config);
-            }
-          }
-        }
-      }
-
-      if (this.registeredConfigs.length > 0) {
-        this.log.info(
-          `Initialized with ${this.registeredConfigs.length} registered CORS configurations.`,
-        );
-      }
-
-      const unsafe = [
-        this.globalOptions,
-        ...this.registeredConfigs.map((it) => this.buildCorsOptions(it)),
-      ].some((it) => it.origin === "*" && it.credentials);
+      const unsafe =
+        this.globalOptions.origin === "*" && this.globalOptions.credentials;
 
       if (unsafe) {
         this.log.warn(
@@ -231,8 +188,11 @@ export class ServerCorsProvider {
   protected readonly onRequest = $hook({
     on: "server:onRequest",
     handler: ({ route, request }) => {
-      // Use route-specific CORS if defined, otherwise use global options
-      const corsConfig = route.cors ?? this.globalOptions;
+      // Route-specific CORS (set via `$route({ cors })`) wins over the
+      // global options; per-action overrides go through the $cors middleware.
+      const corsConfig = route.cors
+        ? this.buildCorsOptions(route.cors)
+        : this.globalOptions;
       this.applyCorsHeaders(request, corsConfig);
     },
   });

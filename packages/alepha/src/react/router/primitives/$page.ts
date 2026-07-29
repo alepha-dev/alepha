@@ -41,7 +41,7 @@ import { ReactPageService } from "../services/ReactPageService.ts";
  *
  * **Performance Optimization**
  * - Static generation for pre-rendered pages at build time
- * - Server-side caching with configurable TTL and providers
+ * - Server-side caching via the `$cache` middleware in `use: [...]`
  * - Code splitting through lazy component loading
  *
  * **Error Handling**
@@ -170,7 +170,7 @@ export interface PagePrimitiveOptions<
   /**
    * Default props to pass to the component when rendering the page.
    *
-   * Resolved props from the `resolve` function will override these default props.
+   * Props returned by the `loader` will override these default props.
    */
   props?: () => Partial<TProps>;
 
@@ -314,7 +314,9 @@ export interface PagePrimitiveOptions<
    *
    * Browser-side: it only works with the build pipeline, which can pre-render the page at build time.
    *
-   * Server-side: It will act as timeless cached page. You can use `cache` to configure the cache behavior.
+   * Server-side: the page is cached automatically — `static: true` pushes a
+   * `$cache({ provider: "memory", ttl: [1, "week"] })` middleware into `use`.
+   * Attach your own `$cache` in `use: [...]` to customize the behavior.
    */
   static?:
     | boolean

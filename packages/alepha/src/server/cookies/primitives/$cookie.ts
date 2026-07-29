@@ -77,12 +77,14 @@ export interface CookiePrimitiveOptions<T extends TSchema> {
   compress?: boolean;
 
   /**
-   * If true, the cookie value will be encrypted. Requires `COOKIE_SECRET` env var.
+   * If true, the cookie value will be encrypted. The key derives from
+   * `APP_SECRET` (via `SecretProvider`).
    */
   encrypt?: boolean;
 
   /**
-   * If true, the cookie will be signed to prevent tampering. Requires `COOKIE_SECRET` env var.
+   * If true, the cookie will be signed to prevent tampering. The key derives
+   * from `APP_SECRET` (via `SecretProvider`).
    */
   sign?: boolean;
 

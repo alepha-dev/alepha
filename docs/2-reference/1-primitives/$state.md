@@ -19,7 +19,11 @@ and will update when the atom's state changes.
 ## Examples
 
 ```ts
-const userState = $atom({ schema: z.object({ name: z.text(), role: z.text() }) });
+const userState = $atom({
+  name: "user.state",
+  schema: z.object({ name: z.text(), role: z.text() }),
+  default: { name: "", role: "guest" },
+});
 
 class UserComponent {
   user = $state(userState); // Reactive reference to atom state

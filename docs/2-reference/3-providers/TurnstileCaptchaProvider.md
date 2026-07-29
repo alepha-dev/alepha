@@ -17,7 +17,7 @@ Free, privacy-friendly, and supports invisible mode.
 
 1. Create a Turnstile widget at https://dash.cloudflare.com/?to=/:account/turnstile
 2. Copy the **Site Key** (public, for the client) and **Secret Key** (private, for the server)
-3. Set `TURNSTILE_SECRET_KEY` in your environment
+3. Set `TURNSTILE_SECRET_KEY` and `TURNSTILE_SITE_KEY` in your environment (both required)
 
 ## Client-side integration
 
@@ -62,5 +62,6 @@ alepha.with({ provide: CaptchaProvider, use: TurnstileCaptchaProvider });
 
 ## Environment Variables
 
-- `TURNSTILE_SECRET_KEY`: The secret key from the Cloudflare Turnstile dashboard.
+- `TURNSTILE_SECRET_KEY`: The secret key from the Cloudflare Turnstile dashboard (required).
+- `TURNSTILE_SITE_KEY`: The public site key, exposed to the client via `getSiteKey()` (required).
 

@@ -59,7 +59,7 @@ The browser entry is optional and resolved the same way: `src/main.browser.ts(x)
 
 You can override any of these in `alepha.config.ts`:
 
-```typescript filename=alepha.config.ts
+```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({

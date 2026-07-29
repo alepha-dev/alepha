@@ -6,7 +6,7 @@ Keep local copies of Alepha packages inside your project. Audit source code, app
 
 Register the plugin in `alepha.config.ts` with the `vendor()` helper:
 
-```typescript filename=alepha.config.ts
+```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
 import { vendor } from "alepha/cli/vendor";
 
@@ -48,7 +48,7 @@ Use cases:
 | `branch` | `string` | `"main"` | Branch to sync from |
 | `dir` | `string` | `".vendor"` | Directory holding the vendored packages (relative to project root); also where `vendor.json` is written |
 
-```typescript filename=alepha.config.ts
+```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
 import { vendor } from "alepha/cli/vendor";
 

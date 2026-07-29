@@ -23,7 +23,7 @@ export interface RemotePrimitiveOptions {
    *
    * @example
    * ```ts
-   * import { $remote } from "alepha/server";
+   * import { $remote } from "alepha/server/links";
    * import { $inject, z } from "alepha";
    *
    * class App {

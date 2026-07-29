@@ -31,7 +31,8 @@ export interface ServePrimitiveOptions {
   disabled?: boolean;
 
   /**
-   * Whether to keep dot files (e.g. `.gitignore`, `.env`) in the served directory.
+   * Whether to exclude dot files (e.g. `.gitignore`, `.env`) from the served
+   * directory. When true (the default), dot files are skipped.
    *
    * @default true
    */
@@ -59,9 +60,8 @@ export interface ServePrimitiveOptions {
   name?: string;
 
   /**
-   * Whether to use cache control headers.
-   *
-   * @default {}
+   * Cache-control configuration. When omitted (or `false`), no cache-control
+   * headers are set; pass `{}` to enable with the defaults below.
    */
   cacheControl?: Partial<CacheControlOptions> | false;
 
@@ -75,16 +75,16 @@ export interface ServePrimitiveOptions {
 
 export interface CacheControlOptions {
   /**
-   * Whether to use cache control headers.
+   * File extensions that receive cache-control headers.
    *
-   * @default [.js, .css]
+   * @default [".js", ".css", ".woff", ".woff2", ".ttf", ".eot", ".otf", ".jpg", ".jpeg", ".png", ".svg", ".gif"]
    */
   fileTypes: string[];
 
   /**
-   * The maximum age of the cache in seconds.
+   * The maximum age of the cache.
    *
-   * @default 60 * 60 * 24 * 2 // 2 days
+   * @default [30, "days"]
    */
   maxAge: DurationLike;
 

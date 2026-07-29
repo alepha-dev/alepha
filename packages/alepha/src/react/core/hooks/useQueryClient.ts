@@ -13,9 +13,11 @@ import { useInject } from "./useInject.ts";
  * ```tsx
  * const queries = useQueryClient();
  *
- * useEvents("folio:updated", ({ campaignId }) => {
- *   queries.invalidate(["folios", campaignId]);
- * });
+ * useEvents({
+ *   "folio:updated": ({ campaignId }) => {
+ *     queries.invalidate(["folios", campaignId]);
+ *   },
+ * }, []);
  * ```
  */
 export function useQueryClient(): UseQueryClientReturn {

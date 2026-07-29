@@ -157,7 +157,7 @@ export interface EnvOwner {
  * Alepha.create()
  * 	 .with(App)
  * 	 .start()
- * 	 .then(alepha => alepha.events.emit("my:custom:hook"));
+ * 	 .then(alepha => alepha.events.emit("my:custom:hook", { arg1: "hello" }));
  * ```
  *
  * 	Hooks are fully typed. You can create your own hooks by using module augmentation:
@@ -442,9 +442,8 @@ export class Alepha {
   /**
    * Returns whether the App is configured.
    *
-   * It means that Alepha#configure() has been called.
-   *
-   * > By default, configure() is called automatically when start() is called, but you can also call it manually.
+   * It means that the `configure` lifecycle hook has been emitted, which
+   * happens automatically at the beginning of `start()`.
    */
   public isConfigured(): boolean {
     return this.configured;
@@ -884,12 +883,11 @@ export class Alepha {
    * class B { value = "b"; }
    * class M { a = $inject(A); }
    *
-   * Alepha.create().with({ provide: A, use: B }).get(M).a.value; // "b"
+   * Alepha.create().with({ provide: A, use: B }).inject(M).a.value; // "b"
    * ```
    *
    * > **Substitution** is an advanced feature that allows you to replace a service with another service.
    * > It's useful for testing or for providing different implementations of a service.
-   * > If you are interested in configuring a service, use Alepha#configure() instead.
    *
    * @param serviceEntry - The service to register in the container.
    * @return Current instance of Alepha.

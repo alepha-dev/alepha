@@ -144,7 +144,7 @@ export class CliProvider {
       // No `-v` alias — it collides with `--version` on the root command.
       aliases: ["verbose"],
       description:
-        "Verbose output: trace-level logs (framework internals) in pretty format. Task output already streams by default.",
+        "Verbose output: trace-level logs (framework internals) in pretty format, and task output streams live.",
       schema: z.boolean(),
     },
   };
@@ -177,8 +177,8 @@ export class CliProvider {
       );
 
       // `--verbose` → raise the logger to trace + pretty format via state
-      // (read live by Logger). Task output already streams to the terminal;
-      // this additionally surfaces the framework's own trace/debug logs.
+      // (read live by Logger). At DEBUG level Runner also switches shelled
+      // task output from captured to streamed, so tool output shows live.
       //
       // An agent session (Claude Code sets CLAUDECODE) implies verbose: the
       // compact `cli` format is tuned for a human watching a terminal, but an

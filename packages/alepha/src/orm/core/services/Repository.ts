@@ -174,7 +174,7 @@ export abstract class Repository<T extends TObject> {
    * @example
    * ```ts
    * class App {
-   *   repository = $repository({ ... });
+   *   repository = $repository(userEntity);
    *   async getAdults() {
    *     const users = repository.table; // Drizzle table object
    *     await repository.query(sql`SELECT * FROM ${users} WHERE ${users.age} > ${18}`);
@@ -460,7 +460,7 @@ export abstract class Repository<T extends TObject> {
   /**
    * Create a Drizzle `select` query based on a JSON query object.
    *
-   * > This method is the base for `find`, `findOne`, `findById`, and `paginate`.
+   * > This method is the base for `findOne`, `findById`, and `paginate`.
    */
   public async findMany<R extends PgRelationMap<T>>(
     query: PgQueryRelations<T, R> = {},
@@ -650,7 +650,7 @@ export abstract class Repository<T extends TObject> {
   /**
    * Find entities with pagination.
    *
-   * It uses the same parameters as `find()`, but adds pagination metadata to the response.
+   * It uses the same parameters as `findMany()`, but adds pagination metadata to the response.
    *
    * > Pagination CAN also do a count query to get the total number of elements.
    */
@@ -808,7 +808,7 @@ export abstract class Repository<T extends TObject> {
    *
    * @param data The entity to create.
    * @param opts The options for creating the entity.
-   * @returns The ID of the created entity.
+   * @returns The created entity.
    */
   public async create(
     data: Static<TObjectInsert<T>>,
@@ -1135,7 +1135,7 @@ export abstract class Repository<T extends TObject> {
    * Difference with `updateById/updateOne`:
    *
    * - requires the entity to be fetched first (whole object is expected)
-   * - check pg.version() if present -> optimistic locking
+   * - check db.version() if present -> optimistic locking
    * - validate entity against schema
    * - undefined values will be set to null, not ignored!
    *

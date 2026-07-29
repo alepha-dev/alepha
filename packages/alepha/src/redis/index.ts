@@ -21,10 +21,9 @@ export * from "./providers/RedisSubscriberProvider.ts";
  * Redis client wrapper.
  *
  * **Features:**
- * - Connection pooling
- * - Automatic reconnection
- * - Command pipelining
+ * - Single managed client connection with automatic reconnection
  * - Pub/sub support
+ * - Node and Bun client implementations
  *
  * @module alepha.redis
  */

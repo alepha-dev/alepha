@@ -20,6 +20,14 @@ export * from "./types/byte.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * PostgreSQL drivers for the Alepha ORM.
+ *
+ * Selected automatically from the `DATABASE_URL` prefix: `postgres://`
+ * (Node/Bun), `pglite://` (embedded), `hyperdrive://` (Cloudflare Workers).
+ *
+ * @module alepha.orm.postgres
+ */
 export const AlephaOrmPostgres = $module({
   name: "alepha.orm.postgres",
   services: [PostgresModelBuilder],

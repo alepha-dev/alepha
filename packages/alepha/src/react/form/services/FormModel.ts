@@ -764,11 +764,12 @@ export type FormCtrlOptions<T extends TObject> = {
   ) => InputHTMLAttributes<unknown>;
 
   /**
-   * If defined, this will generate a unique ID for each field, prefixed with this string.
+   * Prefix for the generated field IDs and `data-testid` attributes.
    *
    * > "username" with id="form-123" will become "form-123-username".
    *
-   * If omitted, IDs will not be generated.
+   * If omitted, a unique ID is generated automatically (via `useId()`), so
+   * field IDs and test IDs always exist.
    */
   id?: string;
 

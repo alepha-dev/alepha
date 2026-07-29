@@ -28,7 +28,7 @@ declare module "alepha" {
  * **Features:**
  * - Translation loading
  * - Locale detection
- * - Pluralization
+ * - Positional interpolation (`$1`, `$2`) and localized dates/numbers
  *
  * @module alepha.react.i18n
  */

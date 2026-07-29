@@ -15,7 +15,7 @@ Declarative CLI command framework.
 **Features:**
 - CLI command definitions
 - Interactive CLI prompts (plain readline)
-- Command execution with streamed, verbose output
+- Command execution with captured output (streamed live at DEBUG level)
 - Environment variable utilities
 - Schema validation for CLI arguments
 

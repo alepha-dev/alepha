@@ -11,8 +11,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select cars made by Ford
-   * db.select().from(cars)
-   *   .where(eq(cars.make, 'Ford'))
+   * repository.findMany({ where: { make: { eq: "Ford" } } })
    * ```
    *
    * @see isNull for a way to test equality to NULL.
@@ -31,8 +30,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select cars not made by Ford
-   * db.select().from(cars)
-   *   .where(ne(cars.make, 'Ford'))
+   * repository.findMany({ where: { make: { ne: "Ford" } } })
    * ```
    *
    * @see isNotNull for a way to test whether a value is not null.
@@ -47,8 +45,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select cars made after 2000.
-   * db.select().from(cars)
-   *   .where(gt(cars.year, 2000))
+   * repository.findMany({ where: { year: { gt: 2000 } } })
    * ```
    *
    * @see gte for greater-than-or-equal
@@ -65,8 +62,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select cars made on or after 2000.
-   * db.select().from(cars)
-   *   .where(gte(cars.year, 2000))
+   * repository.findMany({ where: { year: { gte: 2000 } } })
    * ```
    *
    * @see gt for a strictly greater-than condition
@@ -81,8 +77,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select cars made before 2000.
-   * db.select().from(cars)
-   *   .where(lt(cars.year, 2000))
+   * repository.findMany({ where: { year: { lt: 2000 } } })
    * ```
    *
    * @see lte for greater-than-or-equal
@@ -96,9 +91,8 @@ export interface FilterOperators<TValue> {
    * ## Examples
    *
    * ```ts
-   * // Select cars made before 2000.
-   * db.select().from(cars)
-   *   .where(lte(cars.year, 2000))
+   * // Select cars made in or before 2000.
+   * repository.findMany({ where: { year: { lte: 2000 } } })
    * ```
    *
    * @see lt for a strictly less-than condition
@@ -118,8 +112,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select cars made by Ford or GM.
-   * db.select().from(cars)
-   *   .where(inArray(cars.make, ['Ford', 'GM']))
+   * repository.findMany({ where: { make: { inArray: ["Ford", "GM"] } } })
    * ```
    *
    * @see notInArray for the inverse of this test
@@ -140,8 +133,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select cars made by any company except Ford or GM.
-   * db.select().from(cars)
-   *   .where(notInArray(cars.make, ['Ford', 'GM']))
+   * repository.findMany({ where: { make: { notInArray: ["Ford", "GM"] } } })
    * ```
    *
    * @see inArray for the inverse of this test
@@ -158,8 +150,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select cars that have been discontinued.
-   * db.select().from(cars)
-   *   .where(isNotNull(cars.discontinuedAt))
+   * repository.findMany({ where: { discontinuedAt: { isNotNull: true } } })
    * ```
    *
    * @see isNull for the inverse of this test
@@ -176,8 +167,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select cars that have no discontinuedAt date.
-   * db.select().from(cars)
-   *   .where(isNull(cars.discontinuedAt))
+   * repository.findMany({ where: { discontinuedAt: { isNull: true } } })
    * ```
    *
    * @see isNotNull for the inverse of this test
@@ -197,8 +187,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select cars made between 1990 and 2000
-   * db.select().from(cars)
-   *   .where(between(cars.year, 1990, 2000))
+   * repository.findMany({ where: { year: { between: [1990, 2000] } } })
    * ```
    *
    * @see notBetween for the inverse of this test
@@ -216,8 +205,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Exclude cars made in the 1970s
-   * db.select().from(cars)
-   *   .where(notBetween(cars.year, 1970, 1979))
+   * repository.findMany({ where: { year: { notBetween: [1970, 1979] } } })
    * ```
    *
    * @see between for the inverse of this test
@@ -234,8 +222,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select all cars with 'Turbo' in their names.
-   * db.select().from(cars)
-   *   .where(like(cars.name, '%Turbo%'))
+   * repository.findMany({ where: { name: { like: "%Turbo%" } } })
    * ```
    *
    * @see ilike for a case-insensitive version of this condition
@@ -252,9 +239,8 @@ export interface FilterOperators<TValue> {
    * ## Examples
    *
    * ```ts
-   * // Select all cars that don't have "ROver" in their name.
-   * db.select().from(cars)
-   *   .where(notLike(cars.name, '%Rover%'))
+   * // Select all cars that don't have "Rover" in their name.
+   * repository.findMany({ where: { name: { notLike: "%Rover%" } } })
    * ```
    *
    * @see like for the inverse condition
@@ -274,9 +260,8 @@ export interface FilterOperators<TValue> {
    * ## Examples
    *
    * ```ts
-   * // Select all cars with 'Turbo' in their names.
-   * db.select().from(cars)
-   *   .where(ilike(cars.name, '%Turbo%'))
+   * // Select all cars with 'Turbo' in their names, whatever the casing.
+   * repository.findMany({ where: { name: { ilike: "%Turbo%" } } })
    * ```
    *
    * @see like for a case-sensitive version of this condition
@@ -313,9 +298,8 @@ export interface FilterOperators<TValue> {
    * ## Examples
    *
    * ```ts
-   * // Select all cars that don't have "Rover" in their name.
-   * db.select().from(cars)
-   *   .where(notLike(cars.name, '%Rover%'))
+   * // Select all cars that don't have "Rover" in their name, whatever the casing.
+   * repository.findMany({ where: { name: { notIlike: "%Rover%" } } })
    * ```
    *
    * @see ilike for the inverse condition
@@ -333,9 +317,8 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select all cars with "Turbo" anywhere in their name.
-   * db.select().from(cars)
-   *   .where({ name: { contains: 'Turbo' } })
-   * // Same as: .where(ilike(cars.name, '%Turbo%'))
+   * repository.findMany({ where: { name: { contains: "Turbo" } } })
+   * // Same as: { name: { ilike: "%Turbo%" } }
    * ```
    *
    * @see ilike for manual pattern matching
@@ -354,9 +337,8 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select all cars whose names start with "Ford".
-   * db.select().from(cars)
-   *   .where({ name: { startsWith: 'Ford' } })
-   * // Same as: .where(ilike(cars.name, 'Ford%'))
+   * repository.findMany({ where: { name: { startsWith: "Ford" } } })
+   * // Same as: { name: { ilike: "Ford%" } }
    * ```
    *
    * @see ilike for manual pattern matching
@@ -375,9 +357,8 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select all cars whose names end with "Turbo".
-   * db.select().from(cars)
-   *   .where({ name: { endsWith: 'Turbo' } })
-   * // Same as: .where(ilike(cars.name, '%Turbo'))
+   * repository.findMany({ where: { name: { endsWith: "Turbo" } } })
+   * // Same as: { name: { ilike: "%Turbo" } }
    * ```
    *
    * @see ilike for manual pattern matching
@@ -399,8 +380,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select posts where its tags contain "Typescript" and "ORM".
-   * db.select().from(posts)
-   *   .where(arrayContains(posts.tags, ['Typescript', 'ORM']))
+   * repository.findMany({ where: { tags: { arrayContains: ["Typescript", "ORM"] } } })
    * ```
    *
    * @see arrayContained to find if an array contains all elements of a column or expression
@@ -422,8 +402,7 @@ export interface FilterOperators<TValue> {
    * ```ts
    * // Select posts where its tags contain "Typescript", "ORM" or both,
    * // but filtering posts that have additional tags.
-   * db.select().from(posts)
-   *   .where(arrayContained(posts.tags, ['Typescript', 'ORM']))
+   * repository.findMany({ where: { tags: { arrayContained: ["Typescript", "ORM"] } } })
    * ```
    *
    * @see arrayContains to find if a column or expression contains all elements of an array
@@ -444,8 +423,7 @@ export interface FilterOperators<TValue> {
    *
    * ```ts
    * // Select posts where its tags contain "Typescript", "ORM" or both.
-   * db.select().from(posts)
-   *   .where(arrayOverlaps(posts.tags, ['Typescript', 'ORM']))
+   * repository.findMany({ where: { tags: { arrayOverlaps: ["Typescript", "ORM"] } } })
    * ```
    *
    * @see arrayContains to find if a column or expression contains all elements of an array

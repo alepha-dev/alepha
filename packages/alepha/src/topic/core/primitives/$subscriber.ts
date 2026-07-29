@@ -142,7 +142,7 @@ export interface SubscriberPrimitiveOptions<T extends TopicMessageSchema>
    * - Implement batching for efficiency when processing many similar events
    * - Consider async processing patterns for non-critical operations
    *
-   * @param message - The topic message with validated payload and optional headers
+   * @param message - The topic message with validated payload and optional params
    * @param message.payload - The typed message data based on the topic's schema
    * @returns Promise that resolves when processing is complete
    *

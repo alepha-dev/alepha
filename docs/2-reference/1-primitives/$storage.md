@@ -12,7 +12,9 @@ Declares a named, constrained place to keep files.
 
 A storage is a logical partition — a prefix inside one cloud bucket, or one
 directory on disk. It is **not** a cloud bucket per storage: `S3`, `R2` and
-the local filesystem all key objects as `{APP_NAME}/{storage}/{fileId}`.
+the local filesystem all key objects as
+`{APP_NAME}/{tenantId}/{storage}/{fileId}` (tenant segment when a tenant is
+active).
 
 Every upload writes a row to the `files` table alongside the blob, which is
 what makes {@link StoragePrimitive.list} a real paginated query, and what

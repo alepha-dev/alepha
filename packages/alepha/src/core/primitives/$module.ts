@@ -30,13 +30,14 @@ import type { Atom } from "./$atom.ts";
  * - `variants[]` — module metadata attached but NOT auto-injected. Two typical uses:
  *   (1) alternative implementations picked at register-time via `alepha.with({ provide, use })`;
  *   (2) services whose instantiation is driven externally (e.g., the framework core).
- * - `imports[]` — other modules this one depends on. Wired before `register()` runs.
- * - `atoms[]` — registered on the store.
+ * - `imports[]` — other modules this one depends on. Wired after `register()`
+ *   runs and before `services[]` are injected.
+ * - `atoms[]` — registered on the store, first.
  * - `primitives[]` — tagged with module metadata.
- * - `register(alepha)` — purely additive side-effect hook. Runs AFTER `imports[]`
- *   are wired and BEFORE `services[]` are auto-injected — so substitutions it
- *   records (e.g. `alepha.with({ provide, use })`) apply to the subsequent
- *   auto-injection. It can never suppress auto-registration.
+ * - `register(alepha)` — purely additive side-effect hook. Runs after `atoms[]`
+ *   and BEFORE `imports[]` are wired and `services[]` are auto-injected — so
+ *   substitutions it records (e.g. `alepha.with({ provide, use })`) apply to
+ *   the subsequent auto-injection. It can never suppress auto-registration.
  *
  * ### Why Modules?
  *
@@ -165,7 +166,7 @@ export interface ModulePrimitiveOptions {
 
   /**
    * Other modules this module depends on. They are wired via `alepha.with(Module)`
-   * before `register()` runs and before `services[]` are injected.
+   * after `register()` runs and before `services[]` are injected.
    *
    * Prefer this over calling `alepha.with(OtherModule)` manually inside `register()`.
    */
@@ -177,7 +178,7 @@ export interface ModulePrimitiveOptions {
   primitives?: Array<PrimitiveFactoryLike>;
 
   /**
-   * Additive side-effect hook. Runs AFTER `imports[]` are wired and BEFORE
+   * Additive side-effect hook. Runs BEFORE `imports[]` are wired and
    * `services[]` are auto-injected — so substitutions it records apply to
    * the subsequent injection. Use it for:
    * - variant substitution: `alepha.with({ provide, use })`

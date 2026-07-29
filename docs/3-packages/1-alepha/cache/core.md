@@ -17,7 +17,7 @@ Type-safe caching with TTL support.
 - Configurable TTL
 - Cache invalidation
 - Automatic cache population
-- Providers: Memory (default), Redis
+- Providers: Memory (default on Node), Cloudflare KV (default on workerd), Redis, Database
 
 ## API Reference
 

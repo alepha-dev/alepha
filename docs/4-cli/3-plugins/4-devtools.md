@@ -10,7 +10,7 @@ Projects scaffolded by `alepha init` already have it — the dependency and the 
 npm install --save-dev @alepha/devtools
 ```
 
-```typescript filename=alepha.config.ts
+```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
 import { devtools } from "alepha/cli/devtools";
 

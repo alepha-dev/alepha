@@ -28,7 +28,8 @@ export interface KeylessCodecOptions {
    * Whether to use `new Function()` for code compilation.
    * When false, uses an interpreter-based approach (safer but slower).
    *
-   * @default Auto-detected: false in browser (CSP compatibility), true on server
+   * @default Auto-detected: disabled when `new Function()` throws (e.g. under
+   * a restrictive CSP), enabled otherwise.
    */
   useFunctionCompilation?: boolean;
 }
@@ -59,13 +60,13 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
 
   /**
    * Hook to auto-detect safe mode on configure.
-   * Disables function compilation in browser by default.
+   * Disables function compilation when `new Function()` is unavailable.
    */
   protected onConfigure = $hook({
     on: "configure",
     handler: () => {
-      // Auto-detect: disable function compilation in browser (CSP compatibility)
-      // and test if eval/Function is available
+      // Auto-detect: disable function compilation when eval/Function is
+      // blocked (e.g. by a restrictive CSP)
       this.useFunctionCompilation = this.canUseFunction();
     },
   });

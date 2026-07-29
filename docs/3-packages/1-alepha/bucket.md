@@ -23,8 +23,9 @@ database — you get `upload` / `download` / `delete` / `deleteMany` /
 nothing else.
 
 All backends treat the container name as a **key prefix inside one bucket**
-(`{APP_NAME}/{container}/{fileId}`) or one directory on disk — never a
-separate cloud bucket per container.
+(`{APP_NAME}/{tenantId}/{container}/{fileId}` — the tenant segment appears
+when a tenant is active) or one directory on disk — never a separate cloud
+bucket per container.
 
 **Providers:** Memory (testing), Local filesystem, S3-compatible
 (AWS/MinIO), Cloudflare R2.

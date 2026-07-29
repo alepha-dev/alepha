@@ -26,7 +26,8 @@ import { LockTopicProvider } from "../providers/LockTopicProvider.ts";
  * Distributed lock middleware for `use` arrays in `$action`, `$job`, `$page`, `$pipeline`.
  *
  * Acquires a distributed lock before the handler runs and releases it after completion.
- * Throws `LockAcquireError` if the lock cannot be acquired (unless `wait: true`).
+ * Throws `LockAcquireError` if the lock cannot be acquired — with `wait: true`
+ * it polls first, but still throws when the wait times out.
  *
  * ```ts
  * processOrder = $action({
@@ -171,6 +172,12 @@ export interface LockMiddlewareOptions {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * Options for the class-based `LockPrimitive`, constructed via
+ * `createPrimitive(LockPrimitive, { ... })`. Note this is a different surface
+ * from the exported `$lock(...)` **middleware** above, which takes
+ * {@link LockMiddlewareOptions} and has no `handler`.
+ */
 export interface LockPrimitiveOptions<TFunc extends AsyncFn> {
   /**
    * The function to execute when the lock is successfully acquired.
@@ -232,13 +239,13 @@ export interface LockPrimitiveOptions<TFunc extends AsyncFn> {
    * @example
    * ```ts
    * // Scheduled task - don't wait, just skip if already running
-   * scheduledCleanup = $lock({
+   * scheduledCleanup = createPrimitive(LockPrimitive, {
    *   wait: false,  // Skip if cleanup already running
    *   handler: async () => { } // perform cleanup
    * });
    *
    * // Migration - wait for completion before proceeding
-   * migration = $lock({
+   * migration = createPrimitive(LockPrimitive, {
    *   wait: true,   // All instances wait for migration to complete
    *   handler: async () => { } // perform migration
    * });
@@ -274,13 +281,13 @@ export interface LockPrimitiveOptions<TFunc extends AsyncFn> {
    * @example
    * ```ts
    * // Static lock key - all instances compete for the same lock
-   * globalCleanup = $lock({
+   * globalCleanup = createPrimitive(LockPrimitive, {
    *   name: "system-cleanup",
    *   handler: async () => { } // perform cleanup
    * });
    *
    * // Dynamic lock key - per-user locks, users don't block each other
-   * updateUserProfile = $lock({
+   * updateUserProfile = createPrimitive(LockPrimitive, {
    *   name: (userId: string) => `user-update:${userId}`,
    *   handler: async (userId: string, data: UserData) => {
    *     // Only one update per user at a time, but different users can update concurrently
@@ -317,12 +324,12 @@ export interface LockPrimitiveOptions<TFunc extends AsyncFn> {
    *
    * @example
    * ```ts
-   * quickTask = $lock({
+   * quickTask = createPrimitive(LockPrimitive, {
    *   maxDuration: [2, "minutes"],  // Quick timeout for fast operations
    *   handler: async () => { } // perform quick task
    * });
    *
-   * heavyProcessing = $lock({
+   * heavyProcessing = createPrimitive(LockPrimitive, {
    *   maxDuration: [30, "minutes"], // Longer timeout for heavy work
    *   handler: async () => { } // perform heavy processing
    * });
@@ -358,14 +365,14 @@ export interface LockPrimitiveOptions<TFunc extends AsyncFn> {
    *
    * @example
    * ```ts
-   * fileProcessor = $lock({
+   * fileProcessor = createPrimitive(LockPrimitive, {
    *   gracePeriod: [10, "minutes"],  // Prevent reprocessing same file immediately
    *   handler: async (filePath: string) => {
    *     await this.processFile(filePath);
    *   }
    * });
    *
-   * userOperation = $lock({
+   * userOperation = createPrimitive(LockPrimitive, {
    *   gracePeriod: (userId: string, operation: string) => {
    *     // Dynamic grace based on operation type
    *     return operation === 'migration' ? [30, "minutes"] : [5, "minutes"];

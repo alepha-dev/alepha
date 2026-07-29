@@ -12,7 +12,7 @@ import { useAlepha } from "./useAlepha.ts";
  * useEvents(
  *   {
  *     "react:transition:begin": (ev) => {
- *       console.log("Transition began to:", ev.to);
+ *       console.log("Transition began to:", ev.state.pathname);
  *     },
  *     "react:transition:error": {
  *       priority: "first",

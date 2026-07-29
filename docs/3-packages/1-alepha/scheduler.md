@@ -23,8 +23,10 @@ tick without a database.
 
 **Features:**
 - Cron expression scheduling (e.g., `0 0 * * *`)
-- Distributed locking to prevent duplicate execution across replicas
-- Lifecycle hooks: `begin`, `success`, `error`, `end`
+- Serverless cron dispatch via the `serverless:cron` hook (Vercel, Cloudflare)
+
+For distributed locking and retries around scheduled work, use `$job({ cron })`
+from `alepha/api/jobs` — it layers durability on top of this scheduler.
 
 ## API Reference
 

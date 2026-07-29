@@ -73,8 +73,9 @@ export interface JobPrimitiveOptions<T extends TSchema = TSchema>
   cron?: string;
 
   /**
-   * Retry policy for queue-mode and direct-mode jobs.
-   * Cron-mode jobs do not retry — the next tick re-runs.
+   * Retry policy for queue-mode and direct-mode jobs. Cron-mode jobs that
+   * declare `retry` enqueue a synthetic execution row so failures retry
+   * through the outbox sweep; without `retry`, the next tick simply re-runs.
    *
    * Retries are picked up by the reconciliation sweep, so retry granularity
    * is bounded by `sweepCron` (default 15 minutes). The first retry may run

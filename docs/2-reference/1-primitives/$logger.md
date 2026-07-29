@@ -21,7 +21,7 @@ Create a logger.
 ## Examples
 
 ```ts
-import { $logger } from "alepha";
+import { $logger } from "alepha/logger";
 
 class MyService {
 	log = $logger();

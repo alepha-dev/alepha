@@ -9,7 +9,8 @@ export type { SecureOptions };
  * Browser-side middleware that enforces authentication and authorization.
  *
  * Resolves the user from `currentUserAtom` only (no HTTP header resolution).
- * Checks roles from the user object and permissions from the user's roles.
+ * Checks issuers and roles from the user object; permission checks are left
+ * to the server, which enforces them on the real request.
  *
  * In the browser, an unauthenticated or unauthorized user is not an exception —
  * the middleware short-circuits by returning `undefined` and the handler is not called.

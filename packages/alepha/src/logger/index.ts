@@ -165,7 +165,7 @@ const envSchema = z.object({
    * @example
    * DEBUG=1 # Shorthand for LOG_LEVEL=trace LOG_FORMAT=pretty
    * DEBUG=alepha:* # Enable debug logging for all alepha modules
-   * DEBUG=alepha:orm:* # Enable debug logging for alepha.orm modules
+   * DEBUG=alepha:orm* # Enable debug logging for alepha.orm and its submodules
    * DEBUG=* # Enable debug logging for all modules
    */
   DEBUG: z
@@ -180,8 +180,8 @@ const envSchema = z.object({
    *
    * Default by environment:
    * - dev = info
-   * - prod = info
-   * - test = error
+   * - prod = info (server) / warn (browser)
+   * - test = trace (buffered in memory, printed on failure)
    *
    * Levels are: "trace" | "debug" | "info" | "warn" | "error" | "silent"
    *

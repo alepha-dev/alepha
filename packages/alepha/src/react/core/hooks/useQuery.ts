@@ -42,7 +42,7 @@ import { useSelector } from "./useSelector.ts";
  * const client = useInject(HttpClient);
  * const { data, loading, error, refetch } = useQuery({
  *   handler: async ({ signal }) => {
- *     const res = await client.fetch("/api/users", { request: { signal } });
+ *     const res = await client.fetch("/api/users", { signal });
  *     return res.data;
  *   },
  * }, []);

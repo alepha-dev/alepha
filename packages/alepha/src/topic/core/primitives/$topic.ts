@@ -140,7 +140,7 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
    *
    * The schema must include:
    * - **payload**: Required schema for the main message data
-   * - **headers**: Optional schema for message metadata
+   * - **params**: Optional schema for message parameters
    *
    * This schema:
    * - Validates all messages published to the topic
@@ -165,7 +165,7 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
    *     timestamp: z.number(),
    *     userId: z.text().optional()
    *   }),
-   *   headers: z.object({
+   *   params: z.object({
    *     source: z.text(),
    *     correlationId: z.text()
    *   }).optional()
@@ -198,7 +198,7 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
    * - Consider implementing circuit breakers for resilience
    * - Monitor error rates and patterns for system health
    *
-   * @param message - The topic message with validated payload and headers
+   * @param message - The topic message with validated payload and params
    * @param message.payload - The typed message data based on the schema
    * @returns Promise that resolves when processing is complete
    *

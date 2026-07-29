@@ -1,5 +1,4 @@
 import { $module } from "alepha";
-import type { DateTime } from "alepha/datetime";
 import { AlephaLock } from "alepha/lock";
 import { CronProvider } from "./providers/CronProvider.ts";
 
@@ -13,22 +12,6 @@ export * from "./providers/WorkerdCronProvider.ts";
 
 declare module "alepha" {
   interface Hooks {
-    "scheduler:begin": {
-      name: string;
-      now: DateTime;
-      context: string;
-    };
-
-    "scheduler:success": { name: string; context: string };
-
-    "scheduler:error": {
-      name: string;
-      error: Error;
-      context: string;
-    };
-
-    "scheduler:end": { name: string; context: string };
-
     /**
      * Generic serverless cron trigger event.
      *
@@ -61,8 +44,10 @@ declare module "alepha" {
  *
  * **Features:**
  * - Cron expression scheduling (e.g., `0 0 * * *`)
- * - Distributed locking to prevent duplicate execution across replicas
- * - Lifecycle hooks: `begin`, `success`, `error`, `end`
+ * - Serverless cron dispatch via the `serverless:cron` hook (Vercel, Cloudflare)
+ *
+ * For distributed locking and retries around scheduled work, use `$job({ cron })`
+ * from `alepha/api/jobs` — it layers durability on top of this scheduler.
  *
  * @module alepha.scheduler
  */

@@ -46,7 +46,7 @@ import type { ToolPrimitive } from "../primitives/$tool.ts";
  * and routes incoming JSON-RPC requests to the appropriate handlers.
  *
  * It is transport-agnostic - actual communication is handled by
- * transport providers like StdioMcpTransport or SseMcpTransport.
+ * transport providers like StreamableHttpMcpTransport.
  */
 export class McpServerProvider {
   protected readonly log = $logger();

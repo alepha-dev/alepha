@@ -28,7 +28,7 @@ export * from "./setup.ts";
  * });
  *
  * test("form submission", async () => {
- *   const { alepha } = renderWithAlepha(<MyForm />);
+ *   const { alepha } = await renderWithAlepha(<MyForm />);
  *   // `screen` comes from @testing-library/react
  *
  *   // Fill form fields by their schema keys

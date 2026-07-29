@@ -114,6 +114,6 @@ Guards may be async and run after all other `$secure` checks. `params`, `query`,
 
 ## Browser behaviour
 
-On the client, `$secure` returns `undefined` instead of throwing, and the guard sees empty `params`. A guard that reads request data therefore denies in the browser and is re-evaluated for real on the server. (`$owns` is server-only — it isn't exported from the browser entry.)
+On the client, `$secure` returns `undefined` instead of throwing, and the guard sees empty `params`. A guard that reads request data therefore denies in the browser and is re-evaluated for real on the server. `$owns` goes further: ownership lives in database rows the browser can't load, so its browser variant always returns `undefined` — the server-side gate is what actually enforces it.
 
 That is the safe direction: the UI hides the action, and the API is what actually enforces it. Never treat a client-side pass as authorization.

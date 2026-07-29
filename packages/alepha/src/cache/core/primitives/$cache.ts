@@ -172,10 +172,10 @@ export interface CachePrimitiveOptions<
   provider?: Service<CacheProvider> | "memory";
 
   /**
-   * The time-to-live for the cache in seconds.
+   * The time-to-live for the cache, as a `DurationLike` (e.g. `[10, "minutes"]`).
    * Set 0 to skip expiration.
    *
-   * @default 300 (5 minutes).
+   * @default 300 seconds (5 minutes).
    */
   ttl?: DurationLike;
 

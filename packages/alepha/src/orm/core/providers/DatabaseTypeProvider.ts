@@ -61,9 +61,9 @@ export class DatabaseTypeProvider {
 
   /**
    * Creates a primary key for a given type. Supports:
-   * - `t.integer()` -> PG INT (default)
-   * - `t.bigint()` -> PG BIGINT
-   * - `t.uuid()` -> PG UUID
+   * - `z.integer()` -> PG INT (default)
+   * - `z.bigint()` -> PG BIGINT
+   * - `z.uuid()` -> PG UUID
    */
   public primaryKey(): PgAttr<PgAttr<TInteger, PgPrimaryKey>, PgDefault>;
   public primaryKey(
@@ -261,12 +261,12 @@ export class DatabaseTypeProvider {
  *
  * @example
  * ```ts
- * import { t } from "alepha";
+ * import { z } from "alepha";
  * import { db } from "alepha/orm";
  *
- * const userSchema = t.object({
- *   id: db.primaryKey(t.uuid()),
- *   email: t.email(),
+ * const userSchema = z.object({
+ *   id: db.primaryKey(z.uuid()),
+ *   email: z.email(),
  *   createdAt: db.createdAt(),
  * });
  * ```

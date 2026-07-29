@@ -48,11 +48,11 @@ export interface RunnerMethod {
 /**
  * Runs CLI tasks (shell commands or functions) and logs their lifecycle.
  *
- * Output is intentionally plain and verbose: every task logs a
- * `Starting …` / `Finished … after Ns` line through the standard logger,
- * and shelled commands **stream** their stdout/stderr straight to the
- * terminal (`capture: false`) so tool output — `vite build` warnings,
- * Biome diagnostics, nested `alepha` subcommands — is visible live.
+ * Output is intentionally plain: every task logs a
+ * `Starting …` / `Finished … after Ns` line through the standard logger.
+ * Shelled commands stream their stdout/stderr live only when DEBUG-level
+ * logging is enabled (e.g. `LOG_LEVEL=debug`); at the default level their
+ * output is captured and surfaced on failure.
  */
 export class Runner {
   protected readonly log = $logger();

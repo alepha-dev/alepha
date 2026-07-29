@@ -100,6 +100,17 @@ export const SqliteProvider = NodeSqliteProvider;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * Type-safe data layer over Drizzle ORM.
+ *
+ * **Features:**
+ * - `$entity` schema definitions with Zod + `db` column helpers
+ * - `Repository` CRUD, pagination, joins, and optimistic locking
+ * - Introspection-based dev schema sync, file-based production migrations
+ * - SQLite by default; Postgres via `alepha/orm/postgres`
+ *
+ * @module alepha.orm
+ */
 export const AlephaOrm = $module({
   name: "alepha.orm",
   primitives: [$sequence, $entity],

@@ -18,8 +18,10 @@ router event, or an optimistic write applied before the request settles.
 ```tsx
 const queries = useQueryClient();
 
-useEvents("folio:updated", ({ campaignId }) => {
-  queries.invalidate(["folios", campaignId]);
-});
+useEvents({
+  "folio:updated": ({ campaignId }) => {
+    queries.invalidate(["folios", campaignId]);
+  },
+}, []);
 ```
 

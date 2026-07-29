@@ -107,7 +107,7 @@ declare module "alepha" {
  * // EMAIL_FROM=noreply@example.com
  *
  * // Optionally configure pooling via atom
- * alepha.state.set(nodemailerEmailOptions.key, {
+ * alepha.store.set(nodemailerEmailOptions, {
  *   pool: true,
  *   maxConnections: 5,
  *   rateLimit: 10,

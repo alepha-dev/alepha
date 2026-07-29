@@ -53,7 +53,7 @@ export class NodeHttpServerProvider extends ServerProvider {
     /**
      * Graceful shutdown timeout in ms.
      * After this, remaining connections are forcefully closed.
-     * @default 30000
+     * @default 10000
      */
     shutdownTimeout: 10000,
   };

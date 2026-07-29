@@ -67,17 +67,6 @@ declare module "alepha" {
   }
 }
 
-export interface RateLimitRegistration extends RateLimitOptions {
-  /**
-   * Name identifier for this rate limit.
-   */
-  name?: string;
-  /**
-   * Path patterns to match (supports wildcards like /api/*).
-   */
-  paths?: string[];
-}
-
 export class ServerRateLimitProvider {
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -95,41 +84,6 @@ export class ServerRateLimitProvider {
     object,
     { result: RateLimitResult; options: RateLimitOptions }
   >();
-
-  /**
-   * Registered rate limit configurations with their path patterns
-   */
-  public readonly registeredConfigs: RateLimitRegistration[] = [];
-
-  /**
-   * Register a rate limit configuration (called by primitives)
-   */
-  public registerRateLimit(config: RateLimitRegistration): void {
-    this.registeredConfigs.push(config);
-  }
-
-  protected readonly onStart = $hook({
-    on: "start",
-    handler: async () => {
-      // Apply path-specific rate limit configs to routes
-      for (const config of this.registeredConfigs) {
-        if (config.paths) {
-          for (const pattern of config.paths) {
-            const matchedRoutes = this.serverRouterProvider.getRoutes(pattern);
-            for (const route of matchedRoutes) {
-              route.rateLimit = this.buildRateLimitOptions(config);
-            }
-          }
-        }
-      }
-
-      if (this.registeredConfigs.length > 0) {
-        this.log.info(
-          `Initialized with ${this.registeredConfigs.length} registered rate-limit configurations.`,
-        );
-      }
-    },
-  });
 
   public readonly onRequest = $hook({
     on: "server:onRequest",
@@ -207,24 +161,6 @@ export class ServerRateLimitProvider {
       // Action allowed - no headers to set since actions are internal
     },
   });
-
-  /**
-   * Build complete rate limit options by merging with global defaults
-   */
-  protected buildRateLimitOptions(
-    config: RateLimitRegistration,
-  ): RateLimitOptions {
-    return {
-      max: config.max ?? this.globalOptions.max ?? 100,
-      windowMs: config.windowMs ?? this.globalOptions.windowMs ?? 900_000,
-      keyGenerator: config.keyGenerator,
-      skipFailedRequests:
-        config.skipFailedRequests ?? this.globalOptions.skipFailedRequests,
-      skipSuccessfulRequests:
-        config.skipSuccessfulRequests ??
-        this.globalOptions.skipSuccessfulRequests,
-    };
-  }
 
   /**
    * Set rate limit headers on the response

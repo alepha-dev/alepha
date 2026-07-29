@@ -65,6 +65,25 @@ class SessionService {
 | `provider` | `Class` or `"memory"` | Injected `CacheProvider` | Override the cache backend |
 | `compress` | `boolean` | `false` | Enable gzip compression (60-80% size reduction) |
 | `disabled` | `boolean` | `false` | Disable caching entirely |
+| `memory` | `true` or options | off | Add an in-process L1 memory tier in front of `provider` |
+| `stale` | `DurationLike` | off | Stale-while-revalidate window after `ttl` expires |
+
+### L1 Memory Tier
+
+`memory: true` puts a process-local memory cache in front of the provider. Reads check memory first and fall back to the provider on miss; writes go to both tiers, so your own writes are immediately visible. Each process/isolate has its own L1 — `invalidate()` clears the local L1 plus the remote provider, but other processes keep their L1 until its TTL expires, so use a short L1 TTL to bound the staleness window.
+
+### Stale-While-Revalidate
+
+With `stale` set, a value that outlived its `ttl` remains servable for the `stale` window: reads return the stale value immediately and trigger one background refresh (single-flight per key). Requires a `handler`, since the cache needs to know how to recompute.
+
+```typescript
+getPrices = $cache({
+  ttl: [1, "minute"],
+  stale: [10, "minutes"],
+  memory: true,
+  handler: async () => this.fetchPrices(),
+});
+```
 
 ### TTL Format
 
@@ -77,7 +96,13 @@ ttl: [1, "hour"]
 ttl: [7, "days"]
 ```
 
-The default TTL is 5 minutes (300 seconds). This can be overridden globally via the `CACHE_DEFAULT_TTL` environment variable (in seconds).
+The default TTL is 5 minutes (300 seconds). It can be overridden globally via the `cacheOptions` atom:
+
+```typescript
+import { cacheOptions } from "alepha/cache";
+
+alepha.store.mut(cacheOptions, (c) => ({ ...c, defaultTtl: 600 }));
+```
 
 ## Methods
 
@@ -200,15 +225,29 @@ const alepha = Alepha.create()
 
 ### Redis Key Prefix
 
-Set `REDIS_CACHE_PREFIX` in your environment to add a prefix to all Redis cache keys. Useful for multi-tenant applications or isolating test environments.
+Set a prefix for all Redis cache keys via the `redisCacheOptions` atom — useful for multi-tenant applications or isolating test environments:
 
-## Environment Variables
+```typescript
+import { redisCacheOptions } from "alepha/cache/redis";
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `CACHE_ENABLED` | `boolean` | `true` | Enable or disable all caching globally |
-| `CACHE_DEFAULT_TTL` | `number` | `300` | Default TTL in seconds |
-| `REDIS_CACHE_PREFIX` | `string` | - | Prefix for all Redis cache keys |
+alepha.store.mut(redisCacheOptions, () => ({ prefix: "tenant-a" }));
+```
+
+## Global Configuration
+
+Caching is configured through state atoms, not environment variables:
+
+| Atom | Field | Default | Description |
+|------|-------|---------|-------------|
+| `cacheOptions` | `enabled` | `true` | Enable or disable all caching globally |
+| `cacheOptions` | `defaultTtl` | `300` | Default TTL in seconds |
+| `redisCacheOptions` | `prefix` | - | Prefix for all Redis cache keys |
+
+```typescript
+import { cacheOptions } from "alepha/cache";
+
+alepha.store.mut(cacheOptions, (c) => ({ ...c, enabled: false }));
+```
 
 ## Serialization
 

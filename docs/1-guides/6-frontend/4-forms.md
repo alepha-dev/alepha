@@ -70,6 +70,8 @@ A proxy object where each key corresponds to a schema property. Each field has:
 | `required` | `boolean`                   | Whether the field is required.              |
 | `schema`   | `TSchema`                   | The Zod schema for this field.          |
 | `set`      | `(value: any) => void`      | Programmatically set the field value.       |
+| `initialValue` | `any`                   | The field's initial value (from `initialValues` or schema defaults). |
+| `items`    | `Record<string, InputField>` | Child fields, for object-typed properties — see [Nested Object Fields](#nested-object-fields). |
 | `form`     | `FormModel`                 | Reference back to the parent form.          |
 
 ### form.submit()

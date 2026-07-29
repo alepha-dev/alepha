@@ -79,6 +79,72 @@ export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
     pattern: 'import \\{ t \\} from "alepha"',
     reason: "`t` is not exported from `alepha` — use `z`",
   },
+  // --- symbols removed or renamed before v1; every entry below was found ---
+  // --- stale in the docs during the 2026-07 pre-v1 audit                 ---
+  {
+    pattern: "\\$use",
+    reason: "`$use` was renamed — the atom-injection primitive is `$state`",
+  },
+  {
+    pattern: "\\$transaction",
+    reason:
+      "`$transaction` does not exist — use the `$transactional` middleware in `use: [...]`",
+  },
+  {
+    pattern: "alepha deploy",
+    reason:
+      "there is no top-level `alepha deploy` command — use `alepha p up` / `alepha p deploy`, or the target CLI (wrangler/vercel/surge) directly",
+  },
+  {
+    pattern: "SERVER_API_PREFIX",
+    reason:
+      "no code reads `SERVER_API_PREFIX` — the /api prefix is the `serverApiOptions` atom",
+  },
+  {
+    pattern: "mcpSseOptions",
+    reason: "deprecated alias — use `mcpStreamableHttpOptions`",
+  },
+  {
+    pattern: "SseMcpTransport",
+    reason: "deprecated alias — use `StreamableHttpMcpTransport`",
+  },
+  {
+    pattern: "\\.schema\\(\\)",
+    reason:
+      "actions expose no `schema()` method — schemas are served over the `_links` route",
+  },
+  {
+    pattern: "AlephaCliPlatform",
+    reason:
+      "`AlephaCliPlatform` does not exist — use the `platform({...})` helper in `plugins: [...]` (module: `AlephaCliPlatformPlugin`)",
+  },
+  {
+    pattern: "AlephaCliVendor",
+    reason:
+      "`AlephaCliVendor` does not exist — use the `vendor({...})` helper in `plugins: [...]` (module: `AlephaCliVendorPlugin`)",
+  },
+  {
+    pattern: "page\\.data",
+    reason: "paginate results carry `content`, not `data` — use `page.content`",
+  },
+  {
+    pattern: "form\\.submitting",
+    reason:
+      '`form.submitting` was removed — use `useFormState(form, ["loading"])`',
+  },
+  {
+    pattern: "router\\.navigate",
+    reason:
+      "`router.navigate` does not exist — use `router.push(name, { params })`",
+  },
+  {
+    pattern: "cloudflare-d1:",
+    reason: "the D1 protocol is `d1://`",
+  },
+  {
+    pattern: "db migrations generate",
+    reason: "the subcommand is `create` — `alepha db migrations create`",
+  },
 ];
 
 /**

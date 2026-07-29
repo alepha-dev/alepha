@@ -6,7 +6,7 @@ Deploy your full-stack app to the cloud in one command. The platform plugin prov
 
 Register the plugin in `alepha.config.ts` with the `platform()` helper:
 
-```typescript filename=alepha.config.ts
+```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
 import { platform } from "alepha/cli/platform";
 
@@ -75,7 +75,7 @@ Common flags accepted by most subcommands:
 | `jurisdiction` | `"eu" \| "fedramp"` | Cloudflare data jurisdiction for R2 buckets and D1 databases. |
 | `accountId` | `string` | Cloudflare account ID. Falls back to `CLOUDFLARE_ACCOUNT_ID`, then to the token's account when it is scoped to exactly one. |
 
-```typescript filename=alepha.config.ts
+```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
 import { platform } from "alepha/cli/platform";
 
@@ -330,7 +330,7 @@ Deploys via `wrangler deploy` using the generated `dist/wrangler.jsonc`. Returns
 
 ### Full Example
 
-```typescript filename=alepha.config.ts
+```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
 import { platform } from "alepha/cli/platform";
 

@@ -39,7 +39,7 @@ declare module "alepha/server" {
  *
  * **Features:**
  * - Swagger/OpenAPI configuration
- * - Routes: `GET /swagger/ui`, `GET /swagger.json`
+ * - Routes: `GET /docs` (UI), `GET /docs/json` (spec) — prefix configurable via `$swagger({ prefix })`
  *
  * @module alepha.server.swagger
  */

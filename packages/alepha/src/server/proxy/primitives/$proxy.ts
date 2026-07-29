@@ -92,14 +92,13 @@ export type ProxyPrimitiveOptions = {
   /**
    * Path pattern to match for proxying requests.
    *
-   * Supports wildcards and path parameters:
+   * Must end with `/*` — the wildcard captures the rest of the path to
+   * forward upstream:
    * - `/api/*` - Matches all paths starting with `/api/`
    * - `/api/v1/*` - Matches all paths starting with `/api/v1/`
-   * - `/users/:id` - Matches `/users/123`, `/users/abc`, etc.
    *
    * @example "/api/*"
    * @example "/secure/admin/*"
-   * @example "/users/:id/posts"
    */
   path: string;
 

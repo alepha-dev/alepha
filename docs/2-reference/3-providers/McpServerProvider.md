@@ -14,5 +14,5 @@ This provider maintains registries of tools, resources, and prompts,
 and routes incoming JSON-RPC requests to the appropriate handlers.
 
 It is transport-agnostic - actual communication is handled by
-transport providers like StdioMcpTransport or SseMcpTransport.
+transport providers like StreamableHttpMcpTransport.
 

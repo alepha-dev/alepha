@@ -30,7 +30,7 @@ It provides a declarative way to define pages with powerful features:
 
 **Performance Optimization**
 - Static generation for pre-rendered pages at build time
-- Server-side caching with configurable TTL and providers
+- Server-side caching via the `$cache` middleware in `use: [...]`
 - Code splitting through lazy component loading
 
 **Error Handling**

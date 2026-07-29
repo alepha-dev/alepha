@@ -11,10 +11,11 @@ export type Encoding = "object" | "string" | "binary";
 export interface EncodeOptions<T extends Encoding = Encoding> {
   /**
    * The output encoding format:
+   * - 'object': Returns the validated value as-is
    * - 'string': Returns JSON string
    * - 'binary': Returns Uint8Array (for protobuf, msgpack, etc.)
    *
-   * @default "string"
+   * @default "object"
    */
   as?: T;
 

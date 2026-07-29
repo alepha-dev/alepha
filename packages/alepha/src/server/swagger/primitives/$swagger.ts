@@ -18,7 +18,7 @@ import { createPrimitive, KIND, Primitive } from "alepha";
  *       description: "REST API documentation"
  *     },
  *     excludeTags: ["internal"],
- *     ui: { root: "/swagger" }
+ *     prefix: "/docs", // URL mount point (default)
  *   });
  * }
  * ```

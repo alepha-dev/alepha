@@ -14,10 +14,11 @@ export * from "./providers/ServerCorsProvider.ts";
 declare module "alepha/server" {
   interface ServerRoute {
     /**
-     * Route-specific CORS configuration.
-     * If set, overrides the global CORS options for this route.
+     * Route-specific CORS configuration (settable via `$route`).
+     * If set, overrides the global CORS options for this route;
+     * omitted fields fall back to the global values.
      */
-    cors?: CorsOptions;
+    cors?: Partial<CorsOptions>;
   }
 }
 

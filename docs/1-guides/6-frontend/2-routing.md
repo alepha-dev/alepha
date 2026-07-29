@@ -156,6 +156,37 @@ can: ({ has }) => has("admin")          // hide the nav entry
 can: ({ has }) => has("admin") || "disabled"  // show it greyed out
 ```
 
+### redirect
+
+Redirect to another path when this page is matched — shorthand for throwing a `Redirection` in the loader. The redirect happens before any loader or component rendering.
+
+```typescript
+home = $page({
+  path: "/",
+  redirect: "/dashboard",
+});
+```
+
+### nav
+
+Navigation metadata — declares the page's presence in navigation surfaces (sidebar, breadcrumbs, command palette). A page without `nav` is route-only: reachable by URL but not listed. `label`, `icon`, `description`, and `badge` accept any `ReactNode`. Visibility is UI-only — an entry hides when `nav.hidden` is set, when `nav.permission` isn't fully granted, or when `can()` returns `false`.
+
+```typescript
+users = $page({
+  path: "/users",
+  nav: { label: "Users", icon: <Users /> },
+  lazy: () => import("./pages/Users"),
+});
+```
+
+### props
+
+Default props passed to the component; props returned by the `loader` override them.
+
+```typescript
+props: () => ({ pageSize: 25 })
+```
+
 ## Nested Routing
 
 Define parent-child relationships between pages using `parent` on the child or `children` on the parent. Parent pages render child content using the `<NestedView />` component.
