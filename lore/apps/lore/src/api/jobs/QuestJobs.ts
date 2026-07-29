@@ -7,6 +7,7 @@ import { $repository } from "alepha/orm";
 import { campaigns } from "../entities/campaigns.ts";
 import { quests, REMINDER_INTERVAL_MS } from "../entities/quests.ts";
 import { QuestNotifications } from "../notifications/QuestNotifications.ts";
+import { relations } from "../relations.ts";
 
 const REMINDER_BATCH = 50;
 
@@ -14,6 +15,8 @@ export class QuestJobs {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly quests = $repository(quests);
+  /** ...with the assignee and campaign a reminder email needs. */
+  protected readonly questsWith = $repository(relations, "quests");
   protected readonly campaigns = $repository(campaigns);
   protected readonly users = $repository(users);
   protected readonly questNotifications = $inject(QuestNotifications);
@@ -46,7 +49,9 @@ export class QuestJobs {
     cron: "0 0 * * *",
     handler: async () => {
       const now = this.dt.nowISOString();
-      const due = await this.quests.findMany({
+      // The assignee and the campaign come back with the quest, so the batch
+      // is one statement rather than three.
+      const due = await this.questsWith.findMany({
         where: {
           reminderNextAt: { lte: now, isNotNull: true },
           reminderInterval: { isNotNull: true },
@@ -56,28 +61,9 @@ export class QuestJobs {
         },
         orderBy: [{ column: "reminderNextAt", direction: "asc" }],
         limit: REMINDER_BATCH,
+        include: { acceptedByUser: true, campaign: true },
       });
       if (due.length === 0) return;
-
-      // Resolve recipient + campaign meta in one round-trip each. Both
-      // small lookups; per-row queries would be unnecessary chatter.
-      const userIds = [
-        ...new Set(due.flatMap((q) => (q.acceptedBy ? [q.acceptedBy] : []))),
-      ];
-      const campaignIds = [...new Set(due.map((q) => q.campaignId))];
-
-      const [recipients, campaignRows] = await Promise.all([
-        userIds.length > 0
-          ? this.users.findMany({ where: { id: { inArray: userIds } } })
-          : Promise.resolve([]),
-        campaignIds.length > 0
-          ? this.campaigns.findMany({
-              where: { id: { inArray: campaignIds } },
-            })
-          : Promise.resolve([]),
-      ]);
-      const userById = new Map(recipients.map((u) => [u.id, u]));
-      const campaignById = new Map(campaignRows.map((c) => [c.id, c]));
 
       // Absolute base for the email link. Empty when PUBLIC_URL is unset
       // (links degrade to relative). On Cloudflare it's auto-set from the
@@ -87,8 +73,8 @@ export class QuestJobs {
       for (const quest of due) {
         try {
           if (!quest.acceptedBy || !quest.reminderInterval) continue;
-          const recipient = userById.get(quest.acceptedBy);
-          const campaign = campaignById.get(quest.campaignId);
+          const recipient = quest.acceptedByUser;
+          const campaign = quest.campaign;
           if (!recipient?.email || !campaign) {
             // Assignee deleted or no email — clear the reminder so we
             // don't keep retrying a doomed send forever.

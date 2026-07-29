@@ -8,6 +8,7 @@ import { FileSystemProvider } from "alepha/system";
 import { campaigns } from "../entities/campaigns.ts";
 import { chapters } from "../entities/chapters.ts";
 import { quests } from "../entities/quests.ts";
+import { relations } from "../relations.ts";
 import { importResultSchema } from "../schemas/questImportRow.ts";
 import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { QuestCsvFormatter } from "../services/QuestCsvFormatter.ts";
@@ -19,6 +20,8 @@ const EXPORT_LIMIT = 1000;
 
 export class CampaignQuestPortabilityController {
   protected readonly quests = $repository(quests);
+  /** ...with chapter and the three users a quest names, for the CSV export. */
+  protected readonly questsWith = $repository(relations, "quests");
   protected readonly campaigns = $repository(campaigns);
   protected readonly chapters = $repository(chapters);
   protected readonly security = $inject(CampaignSecurityService);
@@ -45,50 +48,22 @@ export class CampaignQuestPortabilityController {
         where: { id: { eq: params.id } },
       });
 
-      const campaignQuests = await this.quests.findMany({
+      // Chapter title and the three people a quest names come back with the
+      // quest itself, so the export is one statement instead of three.
+      const campaignQuests = await this.questsWith.findMany({
         where: { campaignId: { eq: params.id } },
         orderBy: "shortId",
         limit: EXPORT_LIMIT,
+        include: {
+          chapter: { select: ["id", "title"] },
+          author: true,
+          acceptedByUser: true,
+          completedByUser: true,
+        },
       });
 
-      // Chapter title lookup (one round-trip).
-      const chapterIds = [
-        ...new Set(
-          campaignQuests
-            .map((q) => q.chapterId)
-            .filter((id): id is number => typeof id === "number"),
-        ),
-      ];
-      const chapterTitleById = new Map<number, string>();
-      if (chapterIds.length > 0) {
-        const rows = await this.chapters.findMany({
-          where: { id: { inArray: chapterIds } },
-        });
-        for (const c of rows) chapterTitleById.set(c.id, c.title);
-      }
-
-      // User email lookup (one round-trip).
-      const userIds = [
-        ...new Set(
-          campaignQuests.flatMap((q) =>
-            [q.createdBy, q.acceptedBy, q.completedBy].filter(
-              (v): v is string => typeof v === "string" && v.length > 0,
-            ),
-          ),
-        ),
-      ];
-      const usersRepo = this.realm.userRepository();
-      const userEmailById = new Map<string, string>();
-      if (userIds.length > 0) {
-        const rows = await usersRepo.findMany({
-          where: { id: { inArray: userIds } },
-        });
-        for (const u of rows) {
-          userEmailById.set(u.id, u.email ?? u.username ?? "");
-        }
-      }
-      const emailFor = (id: string | undefined | null): string =>
-        id ? (userEmailById.get(id) ?? "") : "";
+      const emailOf = (u?: { email?: string; username?: string }): string =>
+        u?.email ?? u?.username ?? "";
 
       const status = (
         q: (typeof campaignQuests)[number],
@@ -104,13 +79,10 @@ export class CampaignQuestPortabilityController {
           difficulty: q.difficulty,
           zone: q.zone ?? "",
           kanbanColumn: q.kanbanColumn ?? "",
-          chapter:
-            q.chapterId != null
-              ? (chapterTitleById.get(q.chapterId) ?? "")
-              : "",
-          createdBy: emailFor(q.createdBy),
-          acceptedBy: emailFor(q.acceptedBy),
-          completedBy: emailFor(q.completedBy),
+          chapter: q.chapterId != null ? (q.chapter?.title ?? "") : "",
+          createdBy: emailOf(q.author),
+          acceptedBy: emailOf(q.acceptedByUser),
+          completedBy: emailOf(q.completedByUser),
           createdAt: q.createdAt ? new Date(q.createdAt).toISOString() : "",
           acceptedAt: q.acceptedAt ? new Date(q.acceptedAt).toISOString() : "",
           completedAt: q.completedAt
