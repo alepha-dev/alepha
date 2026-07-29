@@ -106,6 +106,66 @@ export class WranglerApi {
   // -------------------------------------------------------------------------
 
   /**
+   * A single discovered D1 migration: the bookkeeping name recorded in
+   * `d1_migrations.name`, and the SQL file to run for it.
+   */
+  protected async discoverD1Migrations(
+    dir: string,
+  ): Promise<Array<{ name: string; sqlPath: string }>> {
+    // `ls` is a raw readdir and throws ENOENT for a missing directory — an
+    // app with no migrations folder is a valid state, not an error.
+    const entries = (await this.fs.exists(dir)) ? await this.fs.ls(dir) : [];
+
+    const migrations: Array<{ name: string; sqlPath: string }> = [];
+    const unrecognized: string[] = [];
+
+    for (const raw of entries) {
+      const entry = raw.split("/").pop() as string;
+
+      // Pre-v1 drizzle-kit: flat `<name>.sql` files directly in the
+      // directory. Still real for any project not yet baselined onto v1.
+      if (entry.endsWith(".sql")) {
+        migrations.push({ name: entry, sqlPath: this.fs.join(dir, entry) });
+        continue;
+      }
+
+      // drizzle-kit v1: one folder per migration, `<tag>/migration.sql`.
+      // The recorded name is the folder name — the only stable,
+      // unambiguous identifier a v1 migration has (there is no longer a
+      // `meta/_journal.json` `idx`/`tag` to key off).
+      const nestedSqlPath = this.fs.join(dir, entry, "migration.sql");
+      if (await this.fs.exists(nestedSqlPath)) {
+        migrations.push({ name: entry, sqlPath: nestedSqlPath });
+        continue;
+      }
+
+      // `meta/` is the pre-v1 layout's journal + snapshots directory — it
+      // carries no migration SQL by design, not a sign anything is wrong.
+      if (entry === "meta") {
+        continue;
+      }
+
+      unrecognized.push(entry);
+    }
+
+    // The bug this guards against: an empty *discovery result* used to be
+    // indistinguishable from an empty *directory*. drizzle-kit v1's folder
+    // layout made that ambiguity real — every entry in the directory got
+    // silently filtered out by the old flat-`.sql`-only filter, "0 pending
+    // migrations" was reported, and a deploy would apply nothing while
+    // claiming success. If there's something here and none of it looks
+    // like a migration, that must be loud, not a cheerful no-op.
+    if (migrations.length === 0 && unrecognized.length > 0) {
+      throw new AlephaError(
+        `'${dir}' contains ${unrecognized.length} ${unrecognized.length === 1 ? "entry" : "entries"} (${unrecognized.join(", ")}) but none are recognizable as migrations (expected '*.sql' or '<name>/migration.sql'). Refusing to silently apply nothing.`,
+      );
+    }
+
+    migrations.sort((a, b) => a.name.localeCompare(b.name));
+    return migrations;
+  }
+
+  /**
    * Apply D1 migrations remotely.
    */
   /**
@@ -161,25 +221,19 @@ export class WranglerApi {
     );
 
     const dir = this.fs.join(root ?? ".", migrationsDir);
-    // `ls` is a raw readdir and throws ENOENT for a missing directory —
-    // an app with no migrations folder is a valid state, not an error.
-    const entries = (await this.fs.exists(dir)) ? await this.fs.ls(dir) : [];
-    const files = entries
-      .map((f) => f.split("/").pop() as string)
-      .filter((f) => f.endsWith(".sql"))
-      .sort();
+    const migrations = await this.discoverD1Migrations(dir);
 
-    const pending = files.filter((f) => !applied.has(f));
+    const pending = migrations.filter((m) => !applied.has(m.name));
     if (pending.length === 0) {
       this.log.info("No pending D1 migrations");
       return;
     }
 
-    for (const file of pending) {
-      this.log.info(`Applying ${file} ...`);
-      await run(`--file="${this.fs.join(dir, file)}"`);
+    for (const migration of pending) {
+      this.log.info(`Applying ${migration.name} ...`);
+      await run(`--file="${migration.sqlPath}"`);
       await run(
-        `--command="INSERT INTO d1_migrations (name) VALUES ('${file.replace(/'/g, "''")}');"`,
+        `--command="INSERT INTO d1_migrations (name) VALUES ('${migration.name.replace(/'/g, "''")}');"`,
       );
     }
 
@@ -217,18 +271,14 @@ export class WranglerApi {
     );
 
     const dir = this.fs.join(root ?? ".", migrationsDir);
-    const entries = (await this.fs.exists(dir)) ? await this.fs.ls(dir) : [];
-    const files = entries
-      .map((f) => f.split("/").pop() as string)
-      .filter((f) => f.endsWith(".sql"))
-      .sort();
+    const migrations = await this.discoverD1Migrations(dir);
 
-    if (files.length !== 1) {
+    if (migrations.length !== 1) {
       throw new AlephaError(
-        `Expected exactly one migration in '${dir}' to baseline, found ${files.length}. Run 'alepha db baseline create' first.`,
+        `Expected exactly one migration in '${dir}' to baseline, found ${migrations.length}. Run 'alepha db baseline create' first.`,
       );
     }
-    const baseline = files[0] as string;
+    const baseline = (migrations[0] as { name: string }).name;
 
     const listed = await run(
       `--command="SELECT name FROM d1_migrations;" --json`,

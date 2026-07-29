@@ -1,3 +1,4 @@
+import { join as nodeJoin } from "node:path";
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 import { WranglerApi } from "../services/WranglerApi.ts";
@@ -22,8 +23,49 @@ import { WranglerApi } from "../services/WranglerApi.ts";
  * being caught, so this test asserts the command choice directly rather
  * than trusting a comment.
  */
+const ROOT = "dist/migrations";
+
+/**
+ * Models just enough of a real filesystem for migration discovery:
+ * `ls(dir)` returns the immediate child names under `dir` (files and
+ * directories alike, same as a raw `readdir`), and `exists(path)` is true
+ * for both a known file and any directory that has something nested under
+ * it. This is what makes the v1 folder-per-migration layout
+ * (`<tag>/migration.sql`) distinguishable from a directory that merely
+ * *looks* like it might hold one — the bug this whole suite guards against
+ * was exactly that distinction being made carelessly.
+ */
+class FakeFs {
+  constructor(protected readonly paths: Set<string>) {}
+
+  join(...parts: string[]) {
+    // Match `NodeFileSystemProvider.join`'s real behavior (`path.join`),
+    // which normalizes away a leading `.` segment — `join(".", "dist/x")`
+    // is `"dist/x"`, not `"./dist/x"`. A naive `parts.join("/")` here would
+    // silently desync this fixture's path keys from what the method under
+    // test actually looks up.
+    return nodeJoin(...parts);
+  }
+
+  async exists(path: string) {
+    if (this.paths.has(path)) return true;
+    return [...this.paths].some((p) => p.startsWith(`${path}/`));
+  }
+
+  async ls(dir: string) {
+    const prefix = `${dir}/`;
+    const names = new Set<string>();
+    for (const p of this.paths) {
+      if (p.startsWith(prefix)) {
+        names.add(p.slice(prefix.length).split("/")[0] as string);
+      }
+    }
+    return [...names];
+  }
+}
+
 describe("d1MigrationsApply", () => {
-  const capture = async (files: string[]) => {
+  const capture = (relativePaths: string[], appliedNames: string[] = []) => {
     const commands: string[] = [];
 
     class FakeShell {
@@ -32,54 +74,49 @@ describe("d1MigrationsApply", () => {
         // The applied-migrations lookup expects JSON; everything else can
         // return empty.
         if (command.includes("SELECT name FROM d1_migrations")) {
-          return JSON.stringify([{ results: [] }]);
+          return JSON.stringify([
+            { results: appliedNames.map((name) => ({ name })) },
+          ]);
         }
         return "";
       }
     }
-    class FakeFs {
-      join(...parts: string[]) {
-        return parts.join("/");
-      }
-      async exists() {
-        return true;
-      }
-      async ls() {
-        return files;
-      }
-    }
 
+    const paths = new Set(relativePaths.map((p) => `${ROOT}/${p}`));
     const alepha = Alepha.create();
     const api = alepha.inject(WranglerApi);
     // Swap the collaborators the method actually uses.
     Object.assign(api as unknown as Record<string, unknown>, {
       shell: new FakeShell(),
-      fs: new FakeFs(),
+      fs: new FakeFs(paths),
     });
 
-    await (
-      api as unknown as {
-        d1MigrationsApply: (
-          db: string,
-          cfg: string,
-          root?: string,
-          dir?: string,
-        ) => Promise<void>;
-      }
-    ).d1MigrationsApply("mydb", "dist/wrangler.jsonc", ".", "dist/migrations");
+    const call = () =>
+      (
+        api as unknown as {
+          d1MigrationsApply: (
+            db: string,
+            cfg: string,
+            root?: string,
+            dir?: string,
+          ) => Promise<void>;
+        }
+      ).d1MigrationsApply("mydb", "dist/wrangler.jsonc", ".", ROOT);
 
-    return commands;
+    return { commands, call };
   };
 
   it("never invokes `d1 migrations apply`", async ({ expect }) => {
-    const commands = await capture(["0001_init.sql", "0002_rebuild.sql"]);
+    const { commands, call } = capture(["0001_init.sql", "0002_rebuild.sql"]);
+    await call();
     expect(commands.some((c) => c.includes("d1 migrations apply"))).toBe(false);
   });
 
   it("applies each pending migration with `execute --file`", async ({
     expect,
   }) => {
-    const commands = await capture(["0001_init.sql", "0002_rebuild.sql"]);
+    const { commands, call } = capture(["0001_init.sql", "0002_rebuild.sql"]);
+    await call();
 
     const applied = commands.filter((c) => c.includes("--file="));
     expect(applied).toHaveLength(2);
@@ -92,7 +129,8 @@ describe("d1MigrationsApply", () => {
   it("records each applied migration in wrangler's own table", async ({
     expect,
   }) => {
-    const commands = await capture(["0001_init.sql"]);
+    const { commands, call } = capture(["0001_init.sql"]);
+    await call();
 
     expect(
       commands.some((c) =>
@@ -111,11 +149,12 @@ describe("d1MigrationsApply", () => {
   it("ignores non-SQL files and applies in sorted order", async ({
     expect,
   }) => {
-    const commands = await capture([
+    const { commands, call } = capture([
       "0002_second.sql",
       "README.md",
       "0001_first.sql",
     ]);
+    await call();
 
     const applied = commands
       .filter((c) => c.includes("--file="))
@@ -123,6 +162,99 @@ describe("d1MigrationsApply", () => {
     expect(applied).toHaveLength(2);
     expect(applied[0]).toContain("0001_first.sql");
     expect(applied[1]).toContain("0002_second.sql");
+  });
+
+  /**
+   * drizzle-kit v1 never produces the flat `<name>.sql` layout above — it
+   * writes one folder per migration (`<tag>/migration.sql`), and
+   * `drizzle-orm@1`'s own runtime migrator refuses to even read the old
+   * layout. Discovery must recognise this shape too, or (as happened before
+   * this fix) every entry in the directory gets filtered out, "0 pending
+   * migrations" is reported, and a deploy silently applies nothing.
+   */
+  describe("drizzle-kit v1 folder-per-migration layout", () => {
+    it("applies a v1 migration, recording the folder name (not 'migration.sql')", async ({
+      expect,
+    }) => {
+      const { commands, call } = capture([
+        "20260729013337_baseline/migration.sql",
+        "20260729013337_baseline/snapshot.json",
+      ]);
+      await call();
+
+      const applied = commands.filter((c) => c.includes("--file="));
+      expect(applied).toHaveLength(1);
+      expect(applied[0]).toContain(
+        "dist/migrations/20260729013337_baseline/migration.sql",
+      );
+
+      expect(
+        commands.some(
+          (c) =>
+            c.includes("INSERT INTO d1_migrations") &&
+            c.includes("VALUES ('20260729013337_baseline')"),
+        ),
+      ).toBe(true);
+      // The bookkeeping name must be the folder, never the literal
+      // filename — `d1MigrationsBaseline` must record the exact same
+      // string for the two methods to ever agree on "already applied".
+      expect(commands.some((c) => c.includes("'migration.sql'"))).toBe(false);
+    });
+
+    it("applies pre-v1 and v1 migrations together, in chronological order", async ({
+      expect,
+    }) => {
+      const { commands, call } = capture([
+        "0000_old.sql",
+        "20260729013337_baseline/migration.sql",
+      ]);
+      await call();
+
+      const applied = commands
+        .filter((c) => c.includes("--file="))
+        .map((c) => c.split("--file=")[1]);
+      expect(applied).toHaveLength(2);
+      expect(applied[0]).toContain("0000_old.sql");
+      expect(applied[1]).toContain("20260729013337_baseline/migration.sql");
+    });
+
+    it("does not re-run a v1 migration already recorded under its folder name", async ({
+      expect,
+    }) => {
+      const { commands, call } = capture(
+        ["20260729013337_baseline/migration.sql"],
+        ["20260729013337_baseline"],
+      );
+      await call();
+
+      expect(commands.some((c) => c.includes("--file="))).toBe(false);
+      expect(
+        commands.some((c) => c.includes("INSERT INTO d1_migrations")),
+      ).toBe(false);
+    });
+
+    it("ignores a bare 'meta/' directory (pre-v1 journal/snapshots, no SQL)", async ({
+      expect,
+    }) => {
+      // `meta/_journal.json` existing but nothing else in the directory —
+      // legitimately nothing to apply, not an error.
+      const { commands, call } = capture(["meta/_journal.json"]);
+      await call();
+
+      expect(commands.some((c) => c.includes("--file="))).toBe(false);
+    });
+
+    it("refuses to silently apply nothing when the directory holds unrecognisable entries", async ({
+      expect,
+    }) => {
+      // A folder that looks like a v1 migration but has no migration.sql
+      // inside it (corrupt/partial), and nothing else recognisable.
+      const { call } = capture(["20260729013337_baseline/snapshot.json"]);
+
+      await expect(call()).rejects.toThrowError(
+        /none are recognizable as migrations/,
+      );
+    });
   });
 });
 
@@ -132,7 +264,7 @@ describe("d1MigrationsApply", () => {
  * after a baseline would try to recreate every table on a live database.
  */
 describe("d1MigrationsBaseline", () => {
-  const capture = async (files: string[], appliedNames: string[]) => {
+  const capture = (relativePaths: string[], appliedNames: string[]) => {
     const commands: string[] = [];
 
     class FakeShell {
@@ -146,23 +278,13 @@ describe("d1MigrationsBaseline", () => {
         return "";
       }
     }
-    class FakeFs {
-      join(...parts: string[]) {
-        return parts.join("/");
-      }
-      async exists() {
-        return true;
-      }
-      async ls() {
-        return files;
-      }
-    }
 
+    const paths = new Set(relativePaths.map((p) => `${ROOT}/${p}`));
     const alepha = Alepha.create();
     const api = alepha.inject(WranglerApi);
     Object.assign(api as unknown as Record<string, unknown>, {
       shell: new FakeShell(),
-      fs: new FakeFs(),
+      fs: new FakeFs(paths),
     });
 
     const call = (opts?: { reset?: boolean }) =>
@@ -176,13 +298,7 @@ describe("d1MigrationsBaseline", () => {
             opts?: { reset?: boolean },
           ) => Promise<{ replaced: number }>;
         }
-      ).d1MigrationsBaseline(
-        "mydb",
-        "dist/wrangler.jsonc",
-        ".",
-        "dist/migrations",
-        opts,
-      );
+      ).d1MigrationsBaseline("mydb", "dist/wrangler.jsonc", ".", ROOT, opts);
 
     return { commands, call };
   };
@@ -190,7 +306,7 @@ describe("d1MigrationsBaseline", () => {
   it("inserts the baseline row and executes no migration file", async ({
     expect,
   }) => {
-    const { commands, call } = await capture(["0000_baseline.sql"], []);
+    const { commands, call } = capture(["0000_baseline.sql"], []);
     await call();
 
     expect(
@@ -206,13 +322,13 @@ describe("d1MigrationsBaseline", () => {
   it("refuses to replace an existing history without reset", async ({
     expect,
   }) => {
-    const { call } = await capture(["0000_baseline.sql"], ["0001_old.sql"]);
+    const { call } = capture(["0000_baseline.sql"], ["0001_old.sql"]);
 
     await expect(call()).rejects.toThrowError(/--reset/);
   });
 
   it("replaces an existing history when reset is given", async ({ expect }) => {
-    const { commands, call } = await capture(
+    const { commands, call } = capture(
       ["0000_baseline.sql"],
       ["0001_old.sql", "0002_old.sql"],
     );
@@ -229,8 +345,99 @@ describe("d1MigrationsBaseline", () => {
   it("refuses when more than one local migration exists", async ({
     expect,
   }) => {
-    const { call } = await capture(["0000_baseline.sql", "0001_extra.sql"], []);
+    const { call } = capture(["0000_baseline.sql", "0001_extra.sql"], []);
 
     await expect(call()).rejects.toThrowError(/exactly one/);
+  });
+
+  /**
+   * This is the exact command the (corrected) production runbook now runs
+   * against Lore: one v1 baseline folder, nothing previously recorded.
+   */
+  describe("drizzle-kit v1 folder-per-migration layout", () => {
+    it("baselines a v1 migration, recording the folder name", async ({
+      expect,
+    }) => {
+      const { commands, call } = capture(
+        [
+          "20260729013337_baseline/migration.sql",
+          "20260729013337_baseline/snapshot.json",
+        ],
+        [],
+      );
+      await call();
+
+      expect(
+        commands.some((c) =>
+          c.includes(
+            "INSERT INTO d1_migrations (name) VALUES ('20260729013337_baseline')",
+          ),
+        ),
+      ).toBe(true);
+      expect(commands.some((c) => c.includes("--file="))).toBe(false);
+    });
+
+    it("agrees with d1MigrationsApply on the recorded name for the same layout", async ({
+      expect,
+    }) => {
+      // Baseline it first, and read back the exact string it recorded.
+      const baselineRun = capture(
+        ["20260729013337_baseline/migration.sql"],
+        [],
+      );
+      await baselineRun.call();
+      const insertCommand = baselineRun.commands.find((c) =>
+        c.includes("INSERT INTO d1_migrations"),
+      ) as string;
+      const recordedName = insertCommand.match(/VALUES \('([^']+)'\)/)?.[1] as
+        | string
+        | undefined;
+
+      // Then confirm a fresh `d1MigrationsApply` run, seeded with that
+      // exact recorded name as "already applied", treats it as nothing
+      // pending. If the two methods ever disagreed on the name, this would
+      // re-run the baseline SQL against a live, already-baselined database.
+      const applyCommands: string[] = [];
+      class FakeShell {
+        async run(command: string) {
+          applyCommands.push(command);
+          if (command.includes("SELECT name FROM d1_migrations")) {
+            return JSON.stringify([{ results: [{ name: recordedName }] }]);
+          }
+          return "";
+        }
+      }
+      const alepha = Alepha.create();
+      const api = alepha.inject(WranglerApi);
+      Object.assign(api as unknown as Record<string, unknown>, {
+        shell: new FakeShell(),
+        fs: new FakeFs(
+          new Set([`${ROOT}/20260729013337_baseline/migration.sql`]),
+        ),
+      });
+      await (
+        api as unknown as {
+          d1MigrationsApply: (
+            db: string,
+            cfg: string,
+            root?: string,
+            dir?: string,
+          ) => Promise<void>;
+        }
+      ).d1MigrationsApply("mydb", "dist/wrangler.jsonc", ".", ROOT);
+
+      expect(recordedName).toBe("20260729013337_baseline");
+      expect(applyCommands.some((c) => c.includes("--file="))).toBe(false);
+    });
+
+    it("refuses to baseline a directory with no recognisable migrations", async ({
+      expect,
+    }) => {
+      const { call } = capture(["README.md"], []);
+
+      await expect(call()).rejects.toThrowError(
+        /none are recognizable as migrations/,
+      );
+    });
   });
 });
