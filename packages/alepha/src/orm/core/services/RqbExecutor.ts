@@ -153,7 +153,7 @@ export class RqbExecutor {
   ): Record<string, unknown> {
     const out: Record<string, unknown> = {};
 
-    const where = this.toRawFilter(
+    const where = this.toWhere(
       relations,
       entityKey,
       provider,
@@ -208,6 +208,107 @@ export class RqbExecutor {
     }
 
     return out;
+  }
+
+  /**
+   * Split a `where` into the part this repository compiles and the part that
+   * names a relation.
+   *
+   * Drizzle ANDs the keys of a filter, and `RAW` is one key among them — so a
+   * compiled column predicate and a relation filter sit side by side, and the
+   * relation becomes an `EXISTS` over its own subquery. The nested side is
+   * translated the same way, `RAW` included, which is what lets every Alepha
+   * operator work at any depth instead of being re-implemented in Drizzle's
+   * vocabulary.
+   *
+   * The nested predicate goes through the target's own repository, so a
+   * filter on a relation will not match rows that entity hides — a
+   * soft-deleted author does not make its quest match.
+   */
+  protected toWhere(
+    relations: RelationsPrimitive<EntitySchema, RelationMapFor<EntitySchema>>,
+    entityKey: string,
+    provider: DatabaseProvider,
+    where: unknown,
+    force?: boolean,
+  ): Record<string, unknown> | undefined {
+    const declared = this.declared(relations, entityKey);
+
+    const columns: Record<string, unknown> = {};
+    const nested: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(
+      (where ?? {}) as Record<string, unknown>,
+    )) {
+      if (declared[key]) nested[key] = value;
+      else columns[key] = value;
+    }
+
+    this.assertNoBuriedRelation(declared, columns, entityKey);
+
+    const out: Record<string, unknown> = {};
+
+    const raw = this.toRawFilter(
+      relations,
+      entityKey,
+      provider,
+      columns,
+      force,
+    );
+    if (raw) Object.assign(out, raw);
+
+    for (const [name, value] of Object.entries(nested)) {
+      if (value === undefined) continue;
+
+      if (typeof value !== "object" || value === null) {
+        throw new AlephaError(
+          `Filter on relation '${name}' of '${entityKey}' must be an object describing the related rows, e.g. { ${name}: { title: { eq: "x" } } }.`,
+        );
+      }
+
+      const relation = declared[name]!;
+      // `{}` still filters: the join condition alone makes it "has at least
+      // one", scoped by whatever the target hides.
+      out[name] =
+        this.toWhere(relations, relation.target, provider, value, force) ?? {};
+    }
+
+    return Object.keys(out).length > 0 ? out : undefined;
+  }
+
+  /**
+   * Refuse a relation filter nested inside `and` / `or` / `not`.
+   *
+   * Those branches are compiled to SQL here, in one expression, while a
+   * relation filter is an `EXISTS` that Drizzle builds — there is no way to
+   * put one inside the other without re-implementing the boolean tree. Top
+   * level is enough for the queries that want this, and a refusal beats a
+   * predicate that quietly matches nothing.
+   */
+  protected assertNoBuriedRelation(
+    declared: Record<string, ResolvedRelation>,
+    node: unknown,
+    entityKey: string,
+  ): void {
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        this.assertNoBuriedRelation(declared, item, entityKey);
+      }
+      return;
+    }
+
+    if (typeof node !== "object" || node === null) return;
+
+    for (const [key, value] of Object.entries(node)) {
+      if (declared[key]) {
+        throw new AlephaError(
+          `Filter on relation '${key}' of '${entityKey}' appears inside 'and' / 'or' / 'not', which is not supported — a relation filter compiles to EXISTS and cannot be nested in a compiled boolean expression. Lift it to the top level of the where.`,
+        );
+      }
+      if (key === "and" || key === "or" || key === "not") {
+        this.assertNoBuriedRelation(declared, value, entityKey);
+      }
+    }
   }
 
   /**

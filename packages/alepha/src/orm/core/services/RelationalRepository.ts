@@ -186,7 +186,8 @@ export class RelationalRepository<
         limit: limit + 1,
       } as TArgs),
       options.count
-        ? this.base.count(args.where as never, this.toBaseOptions(query))
+        ? (this.assertCountable(args.where),
+          this.base.count(args.where as never, this.toBaseOptions(query)))
         : undefined,
     ]);
 
@@ -205,11 +206,27 @@ export class RelationalRepository<
     return page as Page<Resolve<TSchema, TMap, TKey, TArgs>>;
   }
 
-  /** Row count for a filter. Relations are irrelevant here, so none are run. */
+  /**
+   * Row count for a filter.
+   *
+   * No relations are resolved — a count does not need them. A filter that
+   * *names* one is refused rather than silently counted without it: the
+   * relational engine has no `count`, so the predicate cannot be pushed into
+   * a `COUNT(*)` without rebuilding the `EXISTS` by hand.
+   */
   public async count(
     query: Pick<RelationalQueryArgs<TSchema, TMap, TKey>, "where"> = {},
   ): Promise<number> {
+    this.assertCountable(query.where);
     return await this.base.count(query.where as never);
+  }
+
+  protected assertCountable(where: unknown): void {
+    if (!this.namesRelation(where)) return;
+
+    throw new AlephaError(
+      `Counting '${this.key}' with a filter on a relation is not supported — the count would silently ignore it. Filter on columns, or count the rows a findMany returns.`,
+    );
   }
 
   // --- writes ---------------------------------------------------------------
@@ -524,12 +541,48 @@ export class RelationalRepository<
 
   /**
    * Whether this query goes to the relational query builder.
+   *
+   * An `include` is the obvious case. A `where` that names a relation is the
+   * other one, and it is easy to miss: without this the query would fall to
+   * the plain repository, which knows nothing about relations and would
+   * report the relation name as an unknown column.
    */
   protected delegates(
     query: RelationalQueryArgs<TSchema, TMap, TKey>,
   ): boolean {
     const include = query.include as Record<string, unknown> | undefined;
-    return !!include && Object.keys(include).length > 0;
+    if (include && Object.keys(include).length > 0) return true;
+
+    return this.namesRelation(query.where);
+  }
+
+  /**
+   * Whether a where mentions a declared relation anywhere, including inside
+   * `and` / `or` / `not`.
+   *
+   * The buried case is not supported, but it has to be *detected* here — left
+   * to the plain repository it would surface as "unknown column 'author'",
+   * which says nothing about why. Routing it to the relational path lets the
+   * translation explain itself.
+   */
+  protected namesRelation(node: unknown): boolean {
+    const declared = (this.relations.map as any)[this.key] as
+      | Record<string, unknown>
+      | undefined;
+    if (!declared) return false;
+
+    const walk = (value: unknown): boolean => {
+      if (Array.isArray(value)) return value.some(walk);
+      if (typeof value !== "object" || value === null) return false;
+
+      return Object.entries(value).some(([key, child]) =>
+        declared[key]
+          ? true
+          : (key === "and" || key === "or" || key === "not") && walk(child),
+      );
+    };
+
+    return walk(node);
   }
 
   /**
