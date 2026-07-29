@@ -407,11 +407,18 @@ export class RelationalRepository<
    *
    * Everything runs inside one transaction, so a failure part-way through
    * leaves no half-built graph behind.
+   *
+   * Opened through the *provider* rather than `base.transaction()`, which
+   * hands its callback drizzle's transaction handle but leaves the ambient
+   * marker unset — so repositories inside it keep writing on pooled
+   * connections, outside the `BEGIN`. Every write here goes through a
+   * repository, so that distinction is the whole difference between atomic
+   * and not.
    */
   public async create<const TArgs extends CreateArgs<TSchema, TMap, TKey>>(
     args: TArgs,
   ): Promise<Resolve<TSchema, TMap, TKey, TArgs>> {
-    return (await this.base.transaction(async () => {
+    return (await this.base.provider.transactional(async () => {
       const row = await this.createDeep(this.key, args.data as CreateInput);
       return await this.reread(row, args);
     })) as never;

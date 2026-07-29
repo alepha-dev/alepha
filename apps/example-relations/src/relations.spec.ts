@@ -790,6 +790,51 @@ describe("relations", () => {
     });
   });
 
+  describe("failure modes", () => {
+    /**
+     * A relation the caller explicitly turned off is not a relation at all,
+     * and must not become an empty `with` that changes the statement.
+     */
+    it("ignores a relation included as false", async () => {
+      const { campaign } = await seed(app);
+
+      const rows = await app.db.campaigns.findMany({
+        where: { id: { eq: campaign.id } },
+        include: { owner: false } as never,
+      });
+
+      expect(rows).toHaveLength(1);
+      expect((rows[0] as Record<string, unknown>).owner).toBeUndefined();
+    });
+
+    /**
+     * Adding an `include` moves the read onto a different engine, and a driver
+     * error from that engine has to arrive classified the same way. Otherwise
+     * a caller catching `DbTableNotFoundError` starts missing it the moment
+     * they ask for a relation.
+     */
+    it("classifies a driver error the same with and without a relation", async () => {
+      await seed(app);
+      const provider = app.db.campaigns.base.provider;
+
+      await provider.execute("drop table users" as never);
+      await provider.execute("drop table characters" as never);
+
+      const relational = await app.db.campaigns
+        .findMany({ include: { owner: true } })
+        .then(() => "no error")
+        .catch((error) => error.constructor.name);
+
+      const plain = await app.db.characters.base
+        .findMany({})
+        .then(() => "no error")
+        .catch((error) => error.constructor.name);
+
+      expect(relational).toBe(plain);
+      expect(relational).toBe("DbTableNotFoundError");
+    });
+  });
+
   describe("type safety", () => {
     it("narrows to exactly what was included", async () => {
       const { campaign } = await seed(app);

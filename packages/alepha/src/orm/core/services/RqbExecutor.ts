@@ -58,6 +58,12 @@ export class RqbExecutor {
    */
   protected readonly built = new WeakMap<object, WeakMap<object, unknown>>();
 
+  /** One relation definition per declaration per provider. */
+  protected readonly definitions = new WeakMap<
+    object,
+    WeakMap<object, unknown>
+  >();
+
   /**
    * Read a tree of rows in one statement.
    */
@@ -68,6 +74,10 @@ export class RqbExecutor {
     query: RqbQuery;
   }): Promise<Array<Record<string, any>>> {
     const { relations, entityKey, provider, query } = options;
+
+    const repository = this.repositories.getRepository(
+      relations.schema[entityKey] as EntityPrimitive,
+    );
 
     const db = this.databaseFor(relations, provider) as any;
     const builder = db.query[entityKey];
@@ -85,16 +95,24 @@ export class RqbExecutor {
       });
     }
 
-    const rows = (await builder.findMany(
-      this.toRqbQuery(relations, entityKey, provider, query),
-    )) as Array<Record<string, any>>;
+    // Translated outside the try: an unknown relation or an unresolvable
+    // tenant is a mistake in the query, and its own message says so far better
+    // than a driver-error classification would.
+    const translated = this.toRqbQuery(relations, entityKey, provider, query);
+
+    let rows: Array<Record<string, any>>;
+    try {
+      rows = await builder.findMany(translated);
+    } catch (error) {
+      // Classified by the repository, so an `include` does not change which
+      // error a caller has to catch.
+      throw repository.wrapError(error, "Relational query select has failed");
+    }
 
     const decoded = this.decode(rows, relations, entityKey, query);
 
     await this.alepha.events.emit("repository:read:after", {
-      tableName: this.repositories.getRepository(
-        relations.schema[entityKey] as EntityPrimitive,
-      ).tableName,
+      tableName: repository.tableName,
       query,
       entities: decoded,
     });
@@ -351,6 +369,36 @@ export class RqbExecutor {
     const cached = perSession.get(owner);
     if (cached) return cached;
 
+    const db = this.construct(
+      provider,
+      owner,
+      this.definitionFor(relations, provider),
+    );
+    perSession.set(owner, db);
+    return db;
+  }
+
+  /**
+   * Drizzle's relation definition for a declaration.
+   *
+   * Cached apart from the database because it depends only on the tables,
+   * while the database depends on the session — and on Postgres every
+   * transaction is a new session. Rebuilding the definition per transaction
+   * would mean walking the whole schema on every nested write.
+   */
+  protected definitionFor(
+    relations: RelationsPrimitive<EntitySchema, RelationMapFor<EntitySchema>>,
+    provider: DatabaseProvider,
+  ): unknown {
+    let perProvider = this.definitions.get(relations);
+    if (!perProvider) {
+      perProvider = new WeakMap();
+      this.definitions.set(relations, perProvider);
+    }
+
+    const cached = perProvider.get(provider);
+    if (cached) return cached;
+
     const tables: Record<string, unknown> = {};
     for (const [key, entity] of Object.entries(relations.schema)) {
       tables[key] = provider.table(entity as EntityPrimitive);
@@ -359,13 +407,12 @@ export class RqbExecutor {
     // Cast through `any`: the declaration is built from a runtime map, so the
     // static shape `defineRelations` wants to infer is not available here.
     // Callers get their types from `$relations`, not from this.
-    const drizzleRelations = (defineRelations as any)(tables, (r: any) =>
+    const definition = (defineRelations as any)(tables, (r: any) =>
       this.toDefineRelations(relations, r),
     );
 
-    const db = this.construct(provider, owner, drizzleRelations);
-    perSession.set(owner, db);
-    return db;
+    perProvider.set(provider, definition);
+    return definition;
   }
 
   /**

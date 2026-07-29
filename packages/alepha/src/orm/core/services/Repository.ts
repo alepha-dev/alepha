@@ -1609,6 +1609,18 @@ export abstract class Repository<T extends TObject> {
     ],
   };
 
+  /**
+   * Classify a driver error the way this repository's own statements do.
+   *
+   * Public for the same reason as {@link Repository.readWhere}: a relational
+   * read is issued elsewhere, and a caller catching `DbTableNotFoundError`
+   * from `findMany` should not get a raw driver error back the moment they add
+   * an `include`.
+   */
+  public wrapError(error: unknown, message: string): DbError {
+    return this.handleError(error, message);
+  }
+
   protected handleError(error: unknown, message: string): DbError {
     if (!(error instanceof Error)) {
       return new DbError(message);
