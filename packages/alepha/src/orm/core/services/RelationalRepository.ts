@@ -10,13 +10,22 @@ import type {
   RelationalQueryArgs,
   Resolve,
 } from "../interfaces/RelationInclude.ts";
-import type { CreateArgs } from "../interfaces/RelationWrite.ts";
+import type {
+  CreateArgs,
+  CreateManyArgs,
+  DeleteArgs,
+  UpdateArgs,
+  UpdateManyArgs,
+  UpdateOf,
+  UpsertArgs,
+} from "../interfaces/RelationWrite.ts";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type {
   EntitySchema,
   RelationMapFor,
   RelationsPrimitive,
   ResolvedRelation,
+  RowOf,
 } from "../primitives/$relations.ts";
 import { RepositoryProvider } from "../providers/RepositoryProvider.ts";
 import { RelationResolver } from "./RelationResolver.ts";
@@ -175,6 +184,164 @@ export class RelationalRepository<
     return await this.base.count(query.where as never);
   }
 
+  // --- writes ---------------------------------------------------------------
+  //
+  // Shaped as a single options object, matching the read side. That symmetry
+  // is the point: `where` always means the same thing, and `include` /
+  // `select` work on a written row exactly as on a read one — which the
+  // positional form had no room for.
+
+  /** Insert many rows. Relations are not nested here; use `create` per row. */
+  public async createMany<
+    const TArgs extends CreateManyArgs<TSchema, TMap, TKey>,
+  >(args: TArgs): Promise<Array<RowOf<TSchema, TKey>>> {
+    return (await this.base.createMany(args.data as never)) as never;
+  }
+
+  /**
+   * Update the first row matching `where`.
+   *
+   * `where` is mandatory — an optional filter here would let a forgotten
+   * clause rewrite the whole table.
+   */
+  public async update<const TArgs extends UpdateArgs<TSchema, TMap, TKey>>(
+    args: TArgs,
+  ): Promise<Resolve<TSchema, TMap, TKey, TArgs>> {
+    const row = (await this.base.updateOne(
+      args.where as never,
+      args.data as never,
+    )) as Record<string, any>;
+
+    return (await this.reread(row, args)) as never;
+  }
+
+  /** Update by primary key. Sugar for the common case. */
+  public async updateById(
+    id: string | number,
+    data: UpdateOf<TSchema, TKey>,
+  ): Promise<RowOf<TSchema, TKey>> {
+    return (await this.base.updateById(id, data as never)) as never;
+  }
+
+  /** Update every row matching `where`. Returns the affected ids. */
+  public async updateMany(
+    args: UpdateManyArgs<TSchema, TKey>,
+  ): Promise<Array<number | string>> {
+    return await this.base.updateMany(args.where as never, args.data as never);
+  }
+
+  /**
+   * Insert, or update when the conflict target already exists.
+   *
+   * Omitting `update` does *not* skip the write: the underlying statement
+   * still sets the columns from `create`, so the row ends up with the values
+   * you passed either way. That is idempotent, which is usually what a toggle
+   * wants — but it is a write, not a no-op, and it bumps `updatedAt`.
+   *
+   * `target` needs a matching unique constraint. Without one there is nothing
+   * for ON CONFLICT to match and the statement fails at the database.
+   */
+  public async upsert<const TArgs extends UpsertArgs<TSchema, TMap, TKey>>(
+    args: TArgs,
+  ): Promise<Resolve<TSchema, TMap, TKey, TArgs>> {
+    const row = (await this.base.upsert(args.create as never, {
+      target: args.target as never,
+      set: args.update as never,
+    })) as Record<string, any>;
+
+    return (await this.reread(row, args)) as never;
+  }
+
+  /**
+   * Replace a whole row, honouring optimistic locking when the entity has a
+   * version column.
+   *
+   * Kept positional deliberately: it is a read-modify-write over an entity you
+   * already hold, not a query, so an options object would be dressing.
+   */
+  public async save(entity: RowOf<TSchema, TKey>): Promise<void> {
+    await this.base.save(entity as never);
+  }
+
+  /** Delete the first row matching `where`. Returns the affected ids. */
+  public async delete(
+    args: DeleteArgs<TSchema, TKey>,
+  ): Promise<Array<number | string>> {
+    return await this.base.deleteOne(args.where as never, {
+      force: args.force,
+    });
+  }
+
+  /** Delete by primary key. */
+  public async deleteById(
+    id: string | number,
+    options: { force?: boolean } = {},
+  ): Promise<Array<number | string>> {
+    return await this.base.deleteById(id, options);
+  }
+
+  /** Delete every row matching `where`. */
+  public async deleteMany(
+    args: DeleteArgs<TSchema, TKey>,
+  ): Promise<Array<number | string>> {
+    return await this.base.deleteMany(args.where as never, {
+      force: args.force,
+    });
+  }
+
+  // --- escape hatches -------------------------------------------------------
+
+  /** The drizzle table, for raw SQL. */
+  public get table() {
+    return this.base.table;
+  }
+
+  /** The primary key's name, type and column. */
+  public get id() {
+    return this.base.id;
+  }
+
+  public get tableName(): string {
+    return this.base.tableName;
+  }
+
+  /** Raw SQL, typed by an optional result schema. */
+  public query(
+    ...args: Parameters<Repository<EntityOf<TSchema, TKey>>["query"]>
+  ) {
+    return this.base.query(...args);
+  }
+
+  /** Grouped aggregates. */
+  public aggregate(
+    ...args: Parameters<Repository<EntityOf<TSchema, TKey>>["aggregate"]>
+  ) {
+    return this.base.aggregate(...args);
+  }
+
+  /** Run a callback inside a transaction. */
+  public transaction<R>(fn: (tx: any) => Promise<R>): Promise<R> {
+    return this.base.transaction(fn as never) as Promise<R>;
+  }
+
+  /**
+   * Re-read a written row when the caller asked for relations or a projection.
+   *
+   * Writes return the plain row, so anything richer needs a second read. It is
+   * skipped entirely when neither was requested.
+   */
+  protected async reread(
+    row: Record<string, any>,
+    args: { include?: unknown; select?: unknown },
+  ): Promise<unknown> {
+    if (!args.include && !args.select) return row;
+
+    return await this.getById(row[this.base.id.key as string], {
+      include: args.include,
+      select: args.select,
+    } as never);
+  }
+
   /**
    * Create a row, optionally creating related rows in the same transaction.
    *
@@ -191,23 +358,10 @@ export class RelationalRepository<
    */
   public async create<const TArgs extends CreateArgs<TSchema, TMap, TKey>>(
     args: TArgs,
-  ): Promise<
-    Resolve<
-      TSchema,
-      TMap,
-      TKey,
-      TArgs extends { include: infer I } ? { include: I } : {}
-    >
-  > {
+  ): Promise<Resolve<TSchema, TMap, TKey, TArgs>> {
     return (await this.base.transaction(async () => {
       const row = await this.createDeep(this.key, args.data as CreateInput);
-
-      if (!args.include) {
-        return row;
-      }
-
-      const id = row[this.base.id.key as string];
-      return await this.getById(id, { include: args.include } as never);
+      return await this.reread(row, args);
     })) as never;
   }
 

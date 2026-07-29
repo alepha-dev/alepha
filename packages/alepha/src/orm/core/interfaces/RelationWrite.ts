@@ -1,11 +1,15 @@
-import type { Static } from "alepha";
+import type { Static, TObject } from "alepha";
+import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type {
   EntitySchema,
   Relation,
   RelationMapFor,
+  RowOf,
   SchemaOf,
 } from "../primitives/$relations.ts";
 import type { TObjectInsert } from "../schemas/insertSchema.ts";
+import type { Repository } from "../services/Repository.ts";
+import type { PgQueryWhere } from "./PgQueryWhere.ts";
 import type { IncludeArg, RelationsFor } from "./RelationInclude.ts";
 
 /** The plain insert shape for an entity. */
@@ -95,4 +99,86 @@ export interface CreateArgs<
   data: CreateData<TSchema, TMap, K>;
   /** Re-read the created row with these relations resolved. */
   include?: IncludeArg<TSchema, TMap, K>;
+  /** Project the returned row. */
+  select?: ReadonlyArray<keyof RowOf<TSchema, K>>;
+}
+
+/** Arguments to `createMany`. */
+export interface CreateManyArgs<
+  TSchema extends EntitySchema,
+  TMap extends RelationMapFor<TSchema>,
+  K extends keyof TSchema,
+> {
+  data: Array<CreateData<TSchema, TMap, K>>;
+}
+
+/**
+ * The updatable shape for an entity.
+ *
+ * Derived from the plain repository's own parameter rather than rebuilt from
+ * `TObjectUpdate`, because rebuilding it through a conditional `SchemaOf`
+ * loses the partiality and silently demands every column. Reading it off the
+ * method that will receive it also means the two cannot drift apart.
+ */
+export type UpdateOf<
+  TSchema extends EntitySchema,
+  K extends keyof TSchema,
+> = Parameters<
+  Repository<
+    TSchema[K] extends EntityPrimitive<infer T extends TObject> ? T : never
+  >["updateById"]
+>[1];
+
+/**
+ * Arguments to `update`.
+ *
+ * `where` is mandatory. Making it optional would let a forgotten filter update
+ * the whole table, which is not a mistake worth leaving reachable.
+ */
+export interface UpdateArgs<
+  TSchema extends EntitySchema,
+  TMap extends RelationMapFor<TSchema>,
+  K extends keyof TSchema,
+> {
+  where: PgQueryWhere<SchemaOf<TSchema, K>>;
+  data: UpdateOf<TSchema, K>;
+  include?: IncludeArg<TSchema, TMap, K>;
+  select?: ReadonlyArray<keyof RowOf<TSchema, K>>;
+}
+
+/** Arguments to `updateMany`. */
+export interface UpdateManyArgs<
+  TSchema extends EntitySchema,
+  K extends keyof TSchema,
+> {
+  where: PgQueryWhere<SchemaOf<TSchema, K>>;
+  data: UpdateOf<TSchema, K>;
+}
+
+/**
+ * Arguments to `upsert`.
+ *
+ * `create` is the row to insert; `update` is applied instead when `target`
+ * already exists. Omitting `update` means "insert or leave alone".
+ */
+export interface UpsertArgs<
+  TSchema extends EntitySchema,
+  TMap extends RelationMapFor<TSchema>,
+  K extends keyof TSchema,
+> {
+  create: InsertOf<TSchema, K>;
+  update?: UpdateOf<TSchema, K>;
+  /** Conflict target. Defaults to the primary key. */
+  target?: Array<keyof RowOf<TSchema, K>>;
+  include?: IncludeArg<TSchema, TMap, K>;
+}
+
+/** Arguments to `delete` / `deleteMany`. */
+export interface DeleteArgs<
+  TSchema extends EntitySchema,
+  K extends keyof TSchema,
+> {
+  where: PgQueryWhere<SchemaOf<TSchema, K>>;
+  /** Hard-delete a soft-deletable entity. */
+  force?: boolean;
 }

@@ -90,14 +90,19 @@ export class RelationResolver {
       return;
     }
 
+    // Columns the child rows must carry regardless of `select`:
+    //  - `relation.to` groups them back to this parent;
+    //  - the `from` column of each of the child's *own* includes, or the next
+    //    level down has nothing to stitch on and silently resolves to
+    //    undefined.
+    const required = this.requiredColumns(relation, args, map);
+
     const children = await this.loadChildren({
       schema,
       relation,
       lookupKeys: bridge ? bridge.targetKeys : parentKeys,
       args,
-      // Without a junction, the child's own join column is what groups it back
-      // to its parent, so it must survive a `select` that omits it.
-      requiredColumn: relation.to,
+      required,
       canPushLimit: parentKeys.length === 1 && !bridge,
     });
 
@@ -113,7 +118,31 @@ export class RelationResolver {
       });
     }
 
-    this.stitch(rows, name, relation, children, args, bridge);
+    this.stitch(rows, name, relation, children, args, bridge, required);
+  }
+
+  /**
+   * Columns a child must return whatever `select` says, because the resolver
+   * needs them to stitch. Dropped again before the row is handed back.
+   */
+  protected requiredColumns(
+    relation: ResolvedRelation,
+    args: RelationRuntimeArgs,
+    map: RelationMapFor<any>,
+  ): string[] {
+    const required = new Set<string>([relation.to]);
+
+    const declared = (map as any)[relation.target] as
+      | Record<string, ResolvedRelation>
+      | undefined;
+
+    for (const name of Object.keys(args.include ?? {})) {
+      if (!args.include?.[name]) continue;
+      const from = declared?.[name]?.from;
+      if (from) required.add(from);
+    }
+
+    return [...required];
   }
 
   /**
@@ -155,10 +184,10 @@ export class RelationResolver {
     relation: ResolvedRelation;
     lookupKeys: unknown[];
     args: RelationRuntimeArgs;
-    requiredColumn: string;
+    required: string[];
     canPushLimit: boolean;
   }): Promise<Array<Record<string, any>>> {
-    const { schema, relation, lookupKeys, args, requiredColumn, canPushLimit } =
+    const { schema, relation, lookupKeys, args, required, canPushLimit } =
       options;
 
     const repository = this.repositories.getRepository(
@@ -177,9 +206,9 @@ export class RelationResolver {
     if (args.orderBy !== undefined) query.orderBy = args.orderBy;
 
     if (args.select) {
-      // The grouping column must come back even when the caller did not ask
-      // for it, or there is nothing to stitch on. Stripped again after.
-      query.columns = this.distinct([...args.select, requiredColumn]);
+      // The stitching columns must come back even when the caller did not ask
+      // for them, or there is nothing to match on. Stripped again after.
+      query.columns = this.distinct([...args.select, ...required]);
     }
 
     // `limit` is per parent. With a single parent the batch *is* that parent's
@@ -205,7 +234,8 @@ export class RelationResolver {
     relation: ResolvedRelation,
     children: Array<Record<string, any>>,
     args: RelationRuntimeArgs,
-    bridge?: Bridge,
+    bridge: Bridge | undefined,
+    required: string[],
   ): void {
     const byParent = new Map<unknown, Array<Record<string, any>>>();
 
@@ -225,12 +255,11 @@ export class RelationResolver {
       }
     }
 
-    // Only now is the grouping column expendable — drop it when `select` did
-    // not ask for it, so the row matches the type the caller was handed.
-    const hidden =
-      args.select && !args.select.includes(relation.to)
-        ? relation.to
-        : undefined;
+    // Only now are the stitching columns expendable — drop the ones `select`
+    // did not ask for, so the row matches the type the caller was handed.
+    const hidden = args.select
+      ? required.filter((column) => !args.select!.includes(column))
+      : [];
 
     for (const row of rows) {
       let matched = byParent.get(row[relation.from]) ?? [];
@@ -239,8 +268,12 @@ export class RelationResolver {
         matched = matched.slice(0, args.limit);
       }
 
-      if (hidden) {
-        matched = matched.map(({ [hidden]: _omit, ...rest }) => rest);
+      if (hidden.length > 0) {
+        matched = matched.map((child) => {
+          const copy = { ...child };
+          for (const column of hidden) delete copy[column];
+          return copy;
+        });
       }
 
       row[name] = relation.kind === "many" ? matched : matched[0];

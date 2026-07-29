@@ -18,6 +18,12 @@ export const questWatchers = $entity({
     }),
     userId: db.ref(z.uuid(), () => users.cols.id, { onDelete: "cascade" }),
   }),
+  indexes: [
+    // A junction row is the pair, so the pair is unique. It also gives
+    // `upsert` a conflict target to aim at — without it there is nothing for
+    // ON CONFLICT to match and the statement fails.
+    { columns: ["questId", "userId"], unique: true },
+  ],
 });
 
 export type QuestWatcher = Static<typeof questWatchers.schema>;

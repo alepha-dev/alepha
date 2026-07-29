@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { $client, $repository } from "alepha/orm";
+import { $repositories, $repository } from "alepha/orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { characters } from "./entities/characters.ts";
 import { users } from "./entities/users.ts";
@@ -13,7 +13,7 @@ import { relations } from "./relations.ts";
  * comparison is honest rather than rhetorical.
  */
 class App {
-  db = $client(relations);
+  db = $repositories(relations);
 
   plainUsers = $repository(users);
   plainCharacters = $repository(characters);
@@ -22,53 +22,53 @@ class App {
 const seed = async (app: App) => {
   const { db } = app;
 
-  const ana = await db.users.base.create({
-    email: "ana@example.com",
-    name: "Ana",
+  const ana = await db.users.create({
+    data: { email: "ana@example.com", name: "Ana" },
   });
-  const bo = await db.users.base.create({
-    email: "bo@example.com",
-    name: "Bo",
+  const bo = await db.users.create({
+    data: { email: "bo@example.com", name: "Bo" },
   });
 
-  const campaign = await db.campaigns.base.create({
-    title: "The Sunken Archive",
-    ownerId: ana.id,
+  const campaign = await db.campaigns.create({
+    data: { title: "The Sunken Archive", ownerId: ana.id },
   });
-  const empty = await db.campaigns.base.create({
-    title: "No Members Yet",
-    ownerId: bo.id,
+  const empty = await db.campaigns.create({
+    data: { title: "No Members Yet", ownerId: bo.id },
   });
 
-  const vex = await db.characters.base.create({
-    name: "Vex",
-    level: 3,
-    campaignId: campaign.id,
-    userId: ana.id,
+  const vex = await db.characters.create({
+    data: { name: "Vex", level: 3, campaignId: campaign.id, userId: ana.id },
   });
-  const rill = await db.characters.base.create({
-    name: "Rill",
-    level: 5,
-    campaignId: campaign.id,
-    userId: bo.id,
+  const rill = await db.characters.create({
+    data: { name: "Rill", level: 5, campaignId: campaign.id, userId: bo.id },
   });
 
-  const first = await db.quests.base.create({
-    title: "Find the archive",
-    campaignId: campaign.id,
-    createdBy: ana.id,
+  const first = await db.quests.create({
+    data: {
+      title: "Find the archive",
+      campaignId: campaign.id,
+      createdBy: ana.id,
+    },
   });
-  const second = await db.quests.base.create({
-    title: "Open the vault",
-    campaignId: campaign.id,
-    createdBy: bo.id,
-    dependsOn: first.id,
+  const second = await db.quests.create({
+    data: {
+      title: "Open the vault",
+      campaignId: campaign.id,
+      createdBy: bo.id,
+      dependsOn: first.id,
+    },
   });
 
   // Ana watches both quests; Bo watches only the first.
-  await db.questWatchers.base.create({ questId: first.id, userId: ana.id });
-  await db.questWatchers.base.create({ questId: second.id, userId: ana.id });
-  await db.questWatchers.base.create({ questId: first.id, userId: bo.id });
+  await db.questWatchers.create({
+    data: { questId: first.id, userId: ana.id },
+  });
+  await db.questWatchers.create({
+    data: { questId: second.id, userId: ana.id },
+  });
+  await db.questWatchers.create({
+    data: { questId: first.id, userId: bo.id },
+  });
 
   return { ana, bo, campaign, empty, vex, rill, first, second };
 };
@@ -252,7 +252,9 @@ describe("relations", () => {
 
     it("is empty when nothing links", async () => {
       const { bo } = await seed(app);
-      await app.db.questWatchers.base.deleteMany({ userId: { eq: bo.id } });
+      await app.db.questWatchers.deleteMany({
+        where: { userId: { eq: bo.id } },
+      });
 
       const found = await app.db.users.findOne({
         where: { id: { eq: bo.id } },
@@ -551,14 +553,162 @@ describe("relations", () => {
       ).toBe(1);
     });
 
-    it("base exposes every unchanged operation, fully typed", async () => {
+    it("updateById is sugar for the common case", async () => {
       const { campaign } = await seed(app);
 
-      const updated = await app.db.campaigns.base.updateById(campaign.id, {
+      const updated = await app.db.campaigns.updateById(campaign.id, {
         title: "Renamed",
       });
 
       expect(updated.title).toBe("Renamed");
+    });
+
+    /**
+     * `.base` still exists for anything relations do not change, but nothing
+     * in this file needs it any more — which was the point of delegating.
+     */
+    it("base is still reachable for raw access", async () => {
+      await seed(app);
+
+      expect(app.db.campaigns.base.tableName).toBe("campaigns");
+      expect(app.db.campaigns.tableName).toBe("campaigns");
+      expect(app.db.campaigns.table).toBeDefined();
+    });
+  });
+
+  describe("the write surface", () => {
+    it("create returns the row, and with include when asked", async () => {
+      const { ana } = await seed(app);
+
+      const plain = await app.db.campaigns.create({
+        data: { title: "Plain", ownerId: ana.id },
+      });
+      expect(plain.title).toBe("Plain");
+      // @ts-expect-error nothing was included, so `owner` is not on the type.
+      plain.owner;
+
+      const rich = await app.db.campaigns.create({
+        data: { title: "Rich", ownerId: ana.id },
+        include: { owner: true },
+      });
+      expect(rich.owner?.name).toBe("Ana");
+    });
+
+    it("createMany inserts in order", async () => {
+      const { ana } = await seed(app);
+
+      const rows = await app.db.campaigns.createMany({
+        data: [
+          { title: "One", ownerId: ana.id },
+          { title: "Two", ownerId: ana.id },
+        ],
+      });
+
+      expect(rows.map((r) => r.title)).toEqual(["One", "Two"]);
+    });
+
+    it("update takes where and data, and can include", async () => {
+      const { campaign } = await seed(app);
+
+      const updated = await app.db.campaigns.update({
+        where: { id: { eq: campaign.id } },
+        data: { title: "Renamed" },
+        include: { owner: { select: ["name"] } },
+      });
+
+      expect(updated.title).toBe("Renamed");
+      expect(updated.owner).toEqual({ name: "Ana" });
+    });
+
+    it("updateMany returns the affected ids", async () => {
+      const { campaign } = await seed(app);
+
+      const ids = await app.db.characters.updateMany({
+        where: { campaignId: { eq: campaign.id } },
+        data: { level: 9 },
+      });
+
+      expect(ids).toHaveLength(2);
+      const after = await app.db.characters.findMany({
+        where: { campaignId: { eq: campaign.id } },
+      });
+      expect(after.every((c) => c.level === 9)).toBe(true);
+    });
+
+    /**
+     * Idempotent rather than a no-op: the second call still writes, but the
+     * unique constraint means it updates the existing row instead of adding a
+     * duplicate. That is what a "watch this" toggle wants.
+     */
+    it("upsert does not duplicate on a repeated call", async () => {
+      const { first, ana } = await seed(app);
+
+      const before = await app.db.questWatchers.count();
+
+      await app.db.questWatchers.upsert({
+        create: { questId: first.id, userId: ana.id },
+        target: ["questId", "userId"],
+      });
+
+      expect(await app.db.questWatchers.count()).toBe(before);
+    });
+
+    it("upsert applies update when the row exists", async () => {
+      const { campaign, ana } = await seed(app);
+
+      const row = await app.db.campaigns.upsert({
+        create: { id: campaign.id, title: "Ignored", ownerId: ana.id },
+        update: { title: "Upserted" },
+        target: ["id"],
+      });
+
+      expect(row.title).toBe("Upserted");
+    });
+
+    it("delete and deleteMany take where", async () => {
+      const { campaign } = await seed(app);
+
+      await app.db.characters.delete({
+        where: { campaignId: { eq: campaign.id }, name: { eq: "Vex" } },
+      });
+      expect(await app.db.characters.count()).toBe(1);
+
+      await app.db.characters.deleteMany({
+        where: { campaignId: { eq: campaign.id } },
+      });
+      expect(await app.db.characters.count()).toBe(0);
+    });
+
+    it("deleteById removes one row", async () => {
+      const { vex } = await seed(app);
+
+      await app.db.characters.deleteById(vex.id);
+
+      expect(await app.db.characters.findById(vex.id)).toBeUndefined();
+    });
+
+    it("save round-trips a whole entity", async () => {
+      const { campaign } = await seed(app);
+
+      const row = await app.db.campaigns.getById(campaign.id);
+      row.title = "Saved";
+      await app.db.campaigns.save(row);
+
+      expect((await app.db.campaigns.getById(campaign.id)).title).toBe("Saved");
+    });
+
+    /**
+     * `where` is mandatory on update and delete. An optional filter here would
+     * let a forgotten clause rewrite or empty the whole table.
+     */
+    it("requires where on update and delete", async () => {
+      await seed(app);
+
+      // @ts-expect-error `where` is not optional.
+      await app.db.campaigns.update({ data: { title: "x" } }).catch(() => {});
+
+      // @ts-expect-error `where` is not optional.
+      await app.db.campaigns.deleteMany({}).catch(() => {});
     });
   });
 

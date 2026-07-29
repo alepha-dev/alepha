@@ -9,8 +9,9 @@ import { $repository } from "./$repository.ts";
 /**
  * One relation-aware repository per entity, in a single binding.
  *
- * `$repository(relations, "campaigns")` is the explicit form; this is the
- * ergonomic one for a service that touches several entities.
+ * `$repository(relations, "campaigns")` is the explicit form for one entity;
+ * this is the ergonomic one for a service that touches several. Plural name,
+ * plural result — `$repository` always hands back exactly one repository.
  *
  * It also removes a footgun: binding every entity at once means each one is
  * registered with the database provider before any schema is built, so a
@@ -20,7 +21,7 @@ import { $repository } from "./$repository.ts";
  * @example
  * ```ts
  * class CampaignService {
- *   db = $client(relations);
+ *   db = $repositories(relations);
  *
  *   async members(id: number) {
  *     return await this.db.characters.findMany({
@@ -31,13 +32,13 @@ import { $repository } from "./$repository.ts";
  * }
  * ```
  */
-export const $client = <
+export const $repositories = <
   TSchema extends EntitySchema,
   TMap extends RelationMapFor<TSchema>,
 >(
   relations: RelationsPrimitive<TSchema, TMap>,
-): Client<TSchema, TMap> => {
-  const client = {} as Client<TSchema, TMap>;
+): Repositories<TSchema, TMap> => {
+  const repositories = {} as Repositories<TSchema, TMap>;
 
   // Eager, not lazy. `$repository` reads the injection context, which only
   // exists while the surrounding class field is initialising — a Proxy that
@@ -45,13 +46,13 @@ export const $client = <
   for (const key of Object.keys(relations.schema) as Array<
     keyof TSchema & string
   >) {
-    (client as any)[key] = $repository(relations, key);
+    (repositories as any)[key] = $repository(relations, key);
   }
 
-  return client;
+  return repositories;
 };
 
-export type Client<
+export type Repositories<
   TSchema extends EntitySchema,
   TMap extends RelationMapFor<TSchema>,
 > = {

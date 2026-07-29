@@ -4,11 +4,11 @@ Proof of concept for `$relations` — declared relations with a fully inferred
 `include`, built alongside Drizzle v1.
 
 ```bash
-yarn vitest run apps/example-relations    # 37 tests
+yarn vitest run apps/example-relations    # 56 tests, 2 files
 cd apps/example-relations && tsc --noEmit # proves the type assertions
 ```
 
-Both pass. The typecheck is the more interesting one: the spec contains eight
+Both pass. The typecheck is the more interesting one: the specs contain ten
 `@ts-expect-error` directives, and TypeScript treats an *unused* one as an
 error — so a green `tsc` is proof that every negative case really is rejected.
 
@@ -43,7 +43,7 @@ Bind one entity, or all of them:
 
 ```ts
 class CampaignService {
-  db = $client(relations);                      // every entity
+  db = $repositories(relations);                   // every entity
   campaigns = $repository(relations, "campaigns"); // or just one
 }
 ```
@@ -117,8 +117,10 @@ all this shape.
 | limiting a relation | `limit` is **per parent**, like Prisma's `take` |
 | projection | `select` on the root *and* on any relation; narrows the type |
 | nested writes | `create({ data: { …, characters: { create: [...] } } })` |
-| method parity | `findMany` `findOne` `getOne` `findById` `getById` `paginate` `count` |
-| escape hatch | `.base` — every unchanged operation, fully typed |
+| reads | `findMany` `findOne` `getOne` `findById` `getById` `paginate` `count` |
+| writes | `create` `createMany` `update` `updateById` `updateMany` `upsert` `save` `delete` `deleteById` `deleteMany` |
+| raw access | `table` `id` `tableName` `query` `aggregate` `transaction` |
+| escape hatch | `.base` — the plain repository, still fully typed |
 
 ### Type safety, proven by `tsc`
 
@@ -162,6 +164,13 @@ relation is stitched on would otherwise silently resolve everything to
 undefined. Those columns are fetched anyway and removed before the row is
 returned, so the result matches the type. Two tests cover it — one at the root,
 one on a relation.
+
+**Writes take a single options object, like reads.** `create({ data, include })`,
+`update({ where, data })`, `delete({ where })`. `where` is mandatory on update
+and delete — an optional filter there would let a forgotten clause rewrite the
+whole table. The by-id shortcuts (`updateById`, `deleteById`, `findById`) stay
+positional because they carry no query. `save` stays positional too: it is a
+read-modify-write over a row you already hold, not a query.
 
 **Nested writes are ordered by where the foreign key lives.** A to-one related
 row is created *before* the row referencing it; a to-many child *after*. The
