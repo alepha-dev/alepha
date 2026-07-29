@@ -52,7 +52,7 @@ class FakeFs {
     return [...this.paths].some((p) => p.startsWith(`${path}/`));
   }
 
-  async ls(dir: string) {
+  async ls(dir: string, options?: { hidden?: boolean }) {
     const prefix = `${dir}/`;
     const names = new Set<string>();
     for (const p of this.paths) {
@@ -60,7 +60,14 @@ class FakeFs {
         names.add(p.slice(prefix.length).split("/")[0] as string);
       }
     }
-    return [...names];
+    // Match `NodeFileSystemProvider.ls`'s real behavior: dotfiles are
+    // hidden unless explicitly requested. A directory holding only
+    // `.archive/` must be indistinguishable from a real empty directory
+    // ONLY when the caller does not pass `{ hidden: true }`.
+    const visible = options?.hidden
+      ? [...names]
+      : [...names].filter((name) => !name.startsWith("."));
+    return visible;
   }
 }
 
@@ -96,12 +103,11 @@ describe("d1MigrationsApply", () => {
         api as unknown as {
           d1MigrationsApply: (
             db: string,
-            cfg: string,
             root?: string,
             dir?: string,
           ) => Promise<void>;
         }
-      ).d1MigrationsApply("mydb", "dist/wrangler.jsonc", ".", ROOT);
+      ).d1MigrationsApply("mydb", ".", ROOT);
 
     return { commands, call };
   };
@@ -146,14 +152,10 @@ describe("d1MigrationsApply", () => {
     ).toBe(true);
   });
 
-  it("ignores non-SQL files and applies in sorted order", async ({
+  it("applies migrations in sorted order regardless of directory order", async ({
     expect,
   }) => {
-    const { commands, call } = capture([
-      "0002_second.sql",
-      "README.md",
-      "0001_first.sql",
-    ]);
+    const { commands, call } = capture(["0002_second.sql", "0001_first.sql"]);
     await call();
 
     const applied = commands
@@ -162,6 +164,23 @@ describe("d1MigrationsApply", () => {
     expect(applied).toHaveLength(2);
     expect(applied[0]).toContain("0001_first.sql");
     expect(applied[1]).toContain("0002_second.sql");
+  });
+
+  /**
+   * A stray non-migration file used to be silently ignored. Now that the
+   * anti-silence guard fires on ANY unrecognized entry (see below), a
+   * directory that genuinely holds one has to fail loudly instead — the
+   * same reasoning that makes a corrupt migration folder unsafe to ignore
+   * applies equally to a README nobody meant to leave there.
+   */
+  it("refuses when the directory holds a non-migration file", async ({
+    expect,
+  }) => {
+    const { call } = capture(["0001_first.sql", "README.md"]);
+
+    await expect(call()).rejects.toThrowError(
+      /none are recognizable as migrations/,
+    );
   });
 
   /**
@@ -255,6 +274,82 @@ describe("d1MigrationsApply", () => {
         /none are recognizable as migrations/,
       );
     });
+
+    /**
+     * The guard above only fired when discovery found ZERO recognisable
+     * migrations. One valid migration alongside one corrupt folder (an
+     * aborted `generate`, a bad merge, a partial checkout) left
+     * `migrations.length === 1`, so the guard stayed quiet and the corrupt
+     * folder was silently dropped from the production deploy while the run
+     * reported success — the exact bug class this whole file guards
+     * against, one abstraction layer up.
+     */
+    it("refuses to silently drop a corrupt migration alongside a valid one", async ({
+      expect,
+    }) => {
+      const { call } = capture([
+        "20260729013337_baseline/migration.sql",
+        "20260801000000_addcol/snapshot.json",
+      ]);
+
+      await expect(call()).rejects.toThrowError(
+        /none are recognizable as migrations/,
+      );
+    });
+
+    /**
+     * `.archive/` is baselining's own output (`archiveMigrations` in
+     * `db.ts`) and never a sign anything is wrong — a directory holding
+     * only `.archive/` (plus the empty `meta/` that `archiveMigrations`
+     * leaves in place) legitimately has zero pending migrations, the same
+     * as a bare `meta/` above. `ls` must be able to SEE `.archive` to make
+     * that determination deliberately rather than by the accident of it
+     * being invisible either way.
+     */
+    it("ignores a directory holding only .archive/ (legitimately nothing pending)", async ({
+      expect,
+    }) => {
+      const { commands, call } = capture([".archive/0000_old.sql"]);
+      await call();
+
+      expect(commands.some((c) => c.includes("--file="))).toBe(false);
+    });
+
+    it("ignores .archive/ when real migrations are present", async ({
+      expect,
+    }) => {
+      const { commands, call } = capture([
+        ".archive/0000_old.sql",
+        "20260729013337_baseline/migration.sql",
+      ]);
+      await call();
+
+      const applied = commands.filter((c) => c.includes("--file="));
+      expect(applied).toHaveLength(1);
+      expect(applied[0]).toContain("20260729013337_baseline/migration.sql");
+    });
+
+    /**
+     * Before `ls` was called with `{ hidden: true }`, ANY dotfile — not
+     * just `.archive` — was invisible to discovery, not only the ones this
+     * method explicitly recognises. A stray hidden entry that is neither
+     * `.archive` nor `meta` (a leftover `.env.local`, an editor swap dir,
+     * anything unexpected) used to be silently invisible right alongside a
+     * real migration, rather than failing the same anti-silence guard a
+     * visible unrecognisable entry already triggers.
+     */
+    it("refuses on a stray hidden entry that isn't .archive or meta", async ({
+      expect,
+    }) => {
+      const { call } = capture([
+        "20260729013337_baseline/migration.sql",
+        ".mystery/leftover",
+      ]);
+
+      await expect(call()).rejects.toThrowError(
+        /none are recognizable as migrations/,
+      );
+    });
   });
 });
 
@@ -292,13 +387,12 @@ describe("d1MigrationsBaseline", () => {
         api as unknown as {
           d1MigrationsBaseline: (
             db: string,
-            cfg: string,
             root?: string,
             dir?: string,
             opts?: { reset?: boolean },
           ) => Promise<{ replaced: number }>;
         }
-      ).d1MigrationsBaseline("mydb", "dist/wrangler.jsonc", ".", ROOT, opts);
+      ).d1MigrationsBaseline("mydb", ".", ROOT, opts);
 
     return { commands, call };
   };
@@ -419,12 +513,11 @@ describe("d1MigrationsBaseline", () => {
         api as unknown as {
           d1MigrationsApply: (
             db: string,
-            cfg: string,
             root?: string,
             dir?: string,
           ) => Promise<void>;
         }
-      ).d1MigrationsApply("mydb", "dist/wrangler.jsonc", ".", ROOT);
+      ).d1MigrationsApply("mydb", ".", ROOT);
 
       expect(recordedName).toBe("20260729013337_baseline");
       expect(applyCommands.some((c) => c.includes("--file="))).toBe(false);

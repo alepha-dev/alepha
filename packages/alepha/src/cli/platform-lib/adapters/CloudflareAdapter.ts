@@ -795,7 +795,6 @@ export class CloudflareAdapter extends PlatformAdapter {
 
         await this.wrangler.d1MigrationsApply(
           dbName,
-          "dist/wrangler.jsonc",
           ctx.root,
           // Where the copy above put them.
           this.fs.join("dist", "migrations"),

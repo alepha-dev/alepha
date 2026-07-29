@@ -114,7 +114,14 @@ export class WranglerApi {
   ): Promise<Array<{ name: string; sqlPath: string }>> {
     // `ls` is a raw readdir and throws ENOENT for a missing directory — an
     // app with no migrations folder is a valid state, not an error.
-    const entries = (await this.fs.exists(dir)) ? await this.fs.ls(dir) : [];
+    // `{ hidden: true }`: `ls` hides dotfiles by default, so a directory
+    // holding only `.archive/` (baselining's own output, alongside the
+    // empty `meta/` it leaves behind) would otherwise read back as an
+    // EMPTY directory rather than an unusable one — indistinguishable from
+    // "nothing to do" instead of failing the guard below.
+    const entries = (await this.fs.exists(dir))
+      ? await this.fs.ls(dir, { hidden: true })
+      : [];
 
     const migrations: Array<{ name: string; sqlPath: string }> = [];
     const unrecognized: string[] = [];
@@ -141,7 +148,10 @@ export class WranglerApi {
 
       // `meta/` is the pre-v1 layout's journal + snapshots directory — it
       // carries no migration SQL by design, not a sign anything is wrong.
-      if (entry === "meta") {
+      // `.archive/` is baselining's own output (see `archiveMigrations` in
+      // `db.ts`) — visible now that `ls` above is called with
+      // `{ hidden: true }`, and equally not a sign anything is wrong.
+      if (entry === "meta" || entry === ".archive") {
         continue;
       }
 
@@ -155,7 +165,14 @@ export class WranglerApi {
     // migrations" was reported, and a deploy would apply nothing while
     // claiming success. If there's something here and none of it looks
     // like a migration, that must be loud, not a cheerful no-op.
-    if (migrations.length === 0 && unrecognized.length > 0) {
+    //
+    // This must fire whenever ANY entry is unrecognized, not only when
+    // NOTHING was recognized. A directory with one valid migration next to
+    // one corrupt folder (an aborted `generate`, a bad merge, a partial
+    // checkout) used to pass silently — `migrations.length` was 1, so the
+    // old `migrations.length === 0 &&` guard never fired, and the corrupt
+    // folder was quietly dropped from the deploy while it reported success.
+    if (unrecognized.length > 0) {
       throw new AlephaError(
         `'${dir}' contains ${unrecognized.length} ${unrecognized.length === 1 ? "entry" : "entries"} (${unrecognized.join(", ")}) but none are recognizable as migrations (expected '*.sql' or '<name>/migration.sql'). Refusing to silently apply nothing.`,
       );
@@ -202,7 +219,6 @@ export class WranglerApi {
    */
   public async d1MigrationsApply(
     dbName: string,
-    configPath: string,
     root?: string,
     migrationsDir = "migrations/sqlite",
   ): Promise<void> {
@@ -259,7 +275,6 @@ export class WranglerApi {
    */
   public async d1MigrationsBaseline(
     dbName: string,
-    configPath: string,
     root?: string,
     migrationsDir = "migrations/sqlite",
     opts: { reset?: boolean } = {},

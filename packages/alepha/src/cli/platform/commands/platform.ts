@@ -761,7 +761,6 @@ export class PlatformCommand {
 
       const result = await this.wrangler.d1MigrationsBaseline(
         dbName,
-        "dist/wrangler.jsonc",
         root,
         undefined,
         { reset: flags.reset },
