@@ -747,7 +747,27 @@ export class DbCommand {
       .filter((f) => f.endsWith(".sql"))
       .sort();
 
-    if (sqlFiles.length === 0) {
+    // drizzle-kit v1: one folder per migration, `<tag>/migration.sql`, no
+    // flat `.sql` file anywhere. From this branch on, every project this
+    // command touches is v1-native — a flat-only archive silently no-ops on
+    // a first baseline (`sqlFiles.length === 0` returns `[]` without ever
+    // creating `.archive/`), and `generate --name=baseline` then runs
+    // against the still-present v1 history, producing an INCREMENTAL
+    // migration mislabeled "baseline" instead of a true one.
+    const v1Folders: string[] = [];
+    for (const raw of entries) {
+      const name = raw.split("/").pop() as string;
+      if (name === "meta" || name.endsWith(".sql")) continue;
+      const hasMigrationSql = await this.fs.exists(
+        this.fs.join(migrationsDir, name, "migration.sql"),
+      );
+      if (hasMigrationSql) {
+        v1Folders.push(name);
+      }
+    }
+    v1Folders.sort();
+
+    if (sqlFiles.length === 0 && v1Folders.length === 0) {
       return [];
     }
 
@@ -779,7 +799,38 @@ export class DbCommand {
       await this.fs.rm(this.fs.join(metaDir, name));
     }
 
-    return sqlFiles;
+    // Move each v1 folder's files (migration.sql, snapshot.json, ...) one
+    // file at a time, mirroring the flat-`.sql`/`meta` archiving above,
+    // rather than a directory-level `mv`. `MemoryFileSystemProvider` only
+    // tracks directories that were explicitly `mkdir`'d — every migration
+    // folder in these tests (and every one `writeFile` alone can produce)
+    // is registered purely through its nested file paths, so a directory
+    // `mv` would find nothing to move.
+    for (const tag of v1Folders) {
+      const folderDir = this.fs.join(migrationsDir, tag);
+      const archiveFolderDir = this.fs.join(archiveDir, tag);
+      const folderEntries = await this.fs.ls(folderDir).catch(() => []);
+
+      await this.fs
+        .mkdir(archiveFolderDir, { recursive: true })
+        .catch(() => null);
+
+      for (const entry of folderEntries) {
+        const name = entry.split("/").pop() as string;
+        const content = await this.fs.readFile(this.fs.join(folderDir, name));
+        await this.fs.writeFile(
+          this.fs.join(archiveFolderDir, name),
+          String(content),
+        );
+        await this.fs.rm(this.fs.join(folderDir, name));
+      }
+
+      await this.fs
+        .rm(folderDir, { recursive: true, force: true })
+        .catch(() => null);
+    }
+
+    return [...sqlFiles, ...v1Folders];
   }
 
   /**

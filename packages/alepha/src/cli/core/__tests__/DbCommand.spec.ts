@@ -320,6 +320,75 @@ describe("DbCommand", () => {
         db.testArchiveMigrations("/app/migrations/sqlite"),
       ).rejects.toThrowError(/already exists/);
     });
+
+    /**
+     * Every project this branch touches is v1-native from here on — a flat
+     * `.sql`-only archive silently no-ops on a first baseline (returns `[]`,
+     * never creates `.archive/`) and `generate --name=baseline` then runs
+     * against the still-present v1 history, producing an INCREMENTAL
+     * migration mislabeled "baseline". `archiveMigrations` must move v1
+     * folders (`<tag>/migration.sql`, `<tag>/snapshot.json`) aside too, not
+     * only flat `.sql` files.
+     */
+    it("moves a v1 folder-per-migration layout into .archive, file by file", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260101000000_baseline/migration.sql",
+        "CREATE TABLE a(id integer);",
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260101000000_baseline/snapshot.json",
+        '{"id":"baseline"}',
+      );
+
+      const archived = await db.testArchiveMigrations("/app/migrations/sqlite");
+
+      expect(archived).toEqual(["20260101000000_baseline"]);
+      expect(
+        await fs.exists(
+          "/app/migrations/sqlite/.archive/20260101000000_baseline/migration.sql",
+        ),
+      ).toBe(true);
+      expect(
+        await fs.exists(
+          "/app/migrations/sqlite/.archive/20260101000000_baseline/snapshot.json",
+        ),
+      ).toBe(true);
+      expect(
+        await fs.exists(
+          "/app/migrations/sqlite/20260101000000_baseline/migration.sql",
+        ),
+      ).toBe(false);
+      expect(
+        await fs.exists(
+          "/app/migrations/sqlite/20260101000000_baseline/snapshot.json",
+        ),
+      ).toBe(false);
+    });
+
+    it("archives flat .sql files and v1 folders together, and reports both", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0000_first.sql",
+        "CREATE TABLE a(id integer);",
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260101000000_baseline/migration.sql",
+        "CREATE TABLE b(id integer);",
+      );
+
+      const archived = await db.testArchiveMigrations("/app/migrations/sqlite");
+
+      expect(archived).toEqual(["0000_first.sql", "20260101000000_baseline"]);
+      expect(
+        await fs.exists("/app/migrations/sqlite/.archive/0000_first.sql"),
+      ).toBe(true);
+      expect(
+        await fs.exists(
+          "/app/migrations/sqlite/.archive/20260101000000_baseline/migration.sql",
+        ),
+      ).toBe(true);
+    });
   });
 
   /**
