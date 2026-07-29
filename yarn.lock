@@ -6522,6 +6522,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"example-relations@workspace:apps/example-relations":
+  version: 0.0.0-use.local
+  resolution: "example-relations@workspace:apps/example-relations"
+  dependencies:
+    alepha: "npm:^0.24.0"
+  languageName: unknown
+  linkType: soft
+
 "example-ssr@workspace:apps/example-ssr":
   version: 0.0.0-use.local
   resolution: "example-ssr@workspace:apps/example-ssr"
