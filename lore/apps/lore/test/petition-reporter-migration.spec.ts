@@ -29,7 +29,7 @@ import { describe, expect, it } from "vitest";
 
 const migrationPath = fileURLToPath(
   new URL(
-    "../migrations/sqlite/0039_petition_reporter_email.sql",
+    "../migrations/sqlite/.archive/0039_petition_reporter_email.sql",
     import.meta.url,
   ),
 );

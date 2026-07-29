@@ -21,7 +21,7 @@ import { describe, expect, it } from "vitest";
 
 const migrationPath = fileURLToPath(
   new URL(
-    "../migrations/sqlite/0041_petition_reporter_user_id_restore.sql",
+    "../migrations/sqlite/.archive/0041_petition_reporter_user_id_restore.sql",
     import.meta.url,
   ),
 );

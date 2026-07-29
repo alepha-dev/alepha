@@ -13,7 +13,10 @@ import { describe, expect, it } from "vitest";
  * See CLAUDE.md "Migration safety on D1".
  */
 const migrationPath = fileURLToPath(
-  new URL("../migrations/sqlite/0019_clear_rocket_racer.sql", import.meta.url),
+  new URL(
+    "../migrations/sqlite/.archive/0019_clear_rocket_racer.sql",
+    import.meta.url,
+  ),
 );
 
 describe("sigils migration safety", () => {
