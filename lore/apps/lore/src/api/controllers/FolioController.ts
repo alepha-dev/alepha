@@ -15,6 +15,7 @@ import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
 import { folioRevisions } from "../entities/folioRevisions.ts";
 import { buildFolioSearchText, folios } from "../entities/folios.ts";
+import { relations } from "../relations.ts";
 import {
   folioLinksSchema,
   folioResourceSchema,
@@ -49,6 +50,8 @@ export class FolioController {
   protected readonly directories = $repository(archiveDirectories);
   protected readonly blobs = $repository(archiveBlobs);
   protected readonly revisions = $repository(folioRevisions);
+  /** ...with the author attached, for the campaign activity feed. */
+  protected readonly revisionsWith = $repository(relations, "folioRevisions");
   protected readonly users = $repository(users);
   protected readonly linkService = $inject(FolioLinkService);
   protected readonly historyService = $inject(FolioHistoryService);
@@ -693,39 +696,22 @@ export class FolioController {
       await this.security.assertMember(query.campaignId, user);
       const limit = query.limit ?? 50;
 
-      // Folio set for this campaign — small per campaign, so one fetch
-      // + in-memory join is cheaper than a SQL join through Drizzle's
-      // query builder (and keeps the repository abstraction).
-      const campaignFolios = await this.folios.findMany({
-        where: { campaignId: { eq: query.campaignId } },
-        columns: ["id", "shortId", "title"],
-      });
-      if (campaignFolios.length === 0) return { items: [] };
-      const folioById = new Map(campaignFolios.map((f) => [f.id, f]));
-
-      const revisions = await this.revisions.findMany({
-        where: { folioId: { inArray: campaignFolios.map((f) => f.id) } },
+      // One statement: the campaign is reached by filtering on the revision's
+      // folio, and the folio and author both come back attached.
+      const revisions = await this.revisionsWith.findMany({
+        where: { folio: { campaignId: { eq: query.campaignId } } },
         orderBy: [{ column: "at", direction: "desc" }],
         limit,
+        include: {
+          folio: { select: ["id", "shortId", "title"] },
+          author: { select: ["id", "username", "email", "picture"] },
+        },
       });
-
-      // Batched user lookup — mirrors QuestJobs.sendDueReminders' pattern.
-      const distinctUserIds = [
-        ...new Set(revisions.flatMap((r) => (r.byUserId ? [r.byUserId] : []))),
-      ];
-      const userRows =
-        distinctUserIds.length > 0
-          ? await this.users.findMany({
-              where: { id: { inArray: distinctUserIds } },
-              columns: ["id", "username", "email", "picture"],
-            })
-          : [];
-      const userById = new Map(userRows.map((u) => [u.id, u]));
 
       return {
         items: revisions.map((r) => {
-          const folio = folioById.get(r.folioId);
-          const u = r.byUserId ? userById.get(r.byUserId) : undefined;
+          const folio = r.folio;
+          const u = r.author;
           return {
             id: r.id,
             at: r.at,
