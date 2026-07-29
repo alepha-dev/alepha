@@ -156,10 +156,15 @@ export abstract class DatabaseProvider {
     const hasAlias = (entity as any).$alias;
 
     if (hasAlias) {
+      // `alias()` rewrites every column's `tableName`, so the aliased table is
+      // deliberately a different type from the original. Now that columns
+      // carry their value types this no longer overlaps structurally, and the
+      // cast has to go through `unknown`. Callers still see the un-aliased
+      // type, which is what they query against.
       return alias(
         table as PgTableWithColumns<SchemaToTableConfig<T>>,
         hasAlias,
-      ) as PgTableWithColumns<SchemaToTableConfig<T>>;
+      ) as unknown as PgTableWithColumns<SchemaToTableConfig<T>>;
     }
 
     return table as PgTableWithColumns<SchemaToTableConfig<T>>;

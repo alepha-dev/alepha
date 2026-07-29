@@ -109,18 +109,14 @@ export const resultInference = async (db: Db) => {
     with: { owner: true, characters: true },
   });
 
-  // RESULT: the *structure* infers, the column value types do not.
+  // RESULT: full inference, through Alepha's own derived table types.
   //
-  // With real `sqliteTable` definitions these are `string`. Going through
-  // `PgTableWithColumns<SchemaToTableConfig<T>>` they come back `unknown` —
-  // Alepha types every dialect's table as Pg-shaped, and that is not faithful
-  // enough for RQB's result inference to recover the column types.
-  //
-  // So the bridge is not blocked, it is incomplete: it needs a dialect-correct
-  // table type per entity, not a Pg-shaped stand-in.
-  const title: unknown = rows[0]!.title;
-  const ownerName: unknown = rows[0]!.owner?.name;
-  const characterName: unknown = rows[0]!.characters[0]?.name;
+  // These were `unknown` until SchemaToTableConfig stopped declaring every
+  // column as a bare `PgColumn` — the value type was being dropped before
+  // Drizzle ever saw it. Nothing about the dialect was ever the problem.
+  const title: string = rows[0]!.title;
+  const ownerName: string | undefined = rows[0]!.owner?.name;
+  const characterName: string | undefined = rows[0]!.characters[0]?.name;
 
   return [title, ownerName, characterName];
 };
