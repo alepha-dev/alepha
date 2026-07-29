@@ -89,8 +89,8 @@ export class NodeSqliteProvider extends DatabaseProvider {
   protected readonly builder = $inject(SqliteModelBuilder);
   protected readonly options = $state(nodeSqliteOptions);
 
-  protected sqlite!: DatabaseSync;
-  protected drizzleDb!: any;
+  protected sqlite?: DatabaseSync;
+  protected drizzleDb?: any;
 
   public get name() {
     return "sqlite";
@@ -129,6 +129,20 @@ export class NodeSqliteProvider extends DatabaseProvider {
   }
 
   /**
+   * Narrow `this.sqlite` to a connected handle, or throw with a clear
+   * message. Every call site below runs after `connect()` in normal use
+   * (either via the `start` hook or a CLI command's explicit
+   * `connect?.()`) — this only fires if that invariant was violated, e.g.
+   * a call after `close()` with no matching `connect()`.
+   */
+  protected requireSqlite(): DatabaseSync {
+    if (!this.sqlite) {
+      throw new AlephaError("Database not initialized");
+    }
+    return this.sqlite;
+  }
+
+  /**
    * SQLite transaction override.
    *
    * The base class uses `this.db.transaction()` which goes through drizzle's
@@ -146,10 +160,8 @@ export class NodeSqliteProvider extends DatabaseProvider {
       return fn();
     }
 
-    return this.runExclusiveNativeTransaction(
-      (sql) => this.sqlite.exec(sql),
-      fn,
-    );
+    const sqlite = this.requireSqlite();
+    return this.runExclusiveNativeTransaction((sql) => sqlite.exec(sql), fn);
   }
 
   public override async execute(
@@ -191,11 +203,16 @@ export class NodeSqliteProvider extends DatabaseProvider {
   }
 
   /**
-   * Close the connection opened by {@link connect}.
+   * Close the connection opened by {@link connect}, and clear the cached
+   * handle and drizzle instance derived from it — otherwise a later
+   * `connect()` would see `this.sqlite` still set and no-op, leaving the
+   * provider holding a closed handle instead of reconnecting.
    */
   public override async close(): Promise<void> {
     if (this.sqlite) {
       this.sqlite.close();
+      this.sqlite = undefined;
+      this.drizzleDb = undefined;
     }
   }
 
@@ -350,7 +367,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
 
     const dialect = new SQLiteDialect();
     const session = new BetterSQLiteSession(
-      this.sqlite,
+      this.requireSqlite(),
       dialect,
       {},
       {
@@ -393,18 +410,18 @@ export class NodeSqliteProvider extends DatabaseProvider {
     // Setting the pragma out here, before drizzle opens its transaction, is
     // the sequence SQLite's own "Making Other Kinds Of Table Schema Changes"
     // recipe prescribes.
+    const sqlite = this.requireSqlite();
     const foreignKeysWereOn =
-      (this.sqlite.prepare("PRAGMA foreign_keys").get() as any)
-        ?.foreign_keys === 1;
+      (sqlite.prepare("PRAGMA foreign_keys").get() as any)?.foreign_keys === 1;
 
-    if (foreignKeysWereOn) this.sqlite.exec("PRAGMA foreign_keys=OFF");
+    if (foreignKeysWereOn) sqlite.exec("PRAGMA foreign_keys=OFF");
     try {
       const result = migrate(this.drizzleDb, { migrationsFolder, ...options });
 
       // A rebuild that dropped a parent without carrying its children over
       // would leave orphans. Surface that instead of shipping silent
       // corruption.
-      const violations = this.sqlite
+      const violations = sqlite
         .prepare("PRAGMA foreign_key_check")
         .all() as unknown[];
       if (violations.length > 0) {
@@ -415,7 +432,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
 
       return result;
     } finally {
-      if (foreignKeysWereOn) this.sqlite.exec("PRAGMA foreign_keys=ON");
+      if (foreignKeysWereOn) sqlite.exec("PRAGMA foreign_keys=ON");
     }
   }
 }
