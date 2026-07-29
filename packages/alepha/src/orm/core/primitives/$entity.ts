@@ -309,7 +309,21 @@ export type SchemaToColumn<
     data: NonNullable<TData>;
     driverParam: unknown;
     notNull: undefined extends TData ? false : true;
-    hasDefault: false;
+    /**
+     * Always `true`, which is a deliberate looseness on the *insert* side.
+     *
+     * This config is derived from the select schema, which cannot say which
+     * columns have a database default — a generated primary key looks exactly
+     * like a required one. Claiming `false` would make drizzle demand every
+     * column on a raw `db.insert(table).values(...)`, including the ones the
+     * database fills in.
+     *
+     * Nothing is lost by it: what actually validates an insert is the entity's
+     * own `insertSchema`, applied in `Repository.cast()`. This only affects
+     * raw drizzle inserts, which were equally permissive before the columns
+     * carried their types at all.
+     */
+    hasDefault: true;
     isPrimaryKey: false;
     isAutoincrement: false;
     hasRuntimeDefault: false;
