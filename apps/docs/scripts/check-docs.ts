@@ -15,6 +15,12 @@ import { DocsChecker, type DocUnit } from "./DocsChecker.ts";
  *    motivated this command: the docs told every AI to import `t` from
  *    `alepha` for months after `t` was deleted.
  *
+ *    "Every doc" means more than `docs/`. The same `t` survived in the root
+ *    README, in the package README that npm renders, and in the AGENTS.md
+ *    template shipped to users, that last one being how an assistant learns
+ *    the API in the first place. A scan that stops at `docs/` misses the
+ *    three files most likely to be read.
+ *
  * 2. **Compiled fences** — TypeScript blocks that opt in with a `check`
  *    marker (```ts check) are compiled against the real framework types.
  *    Opt-in rather than blanket, because two thirds of the fences in
@@ -35,6 +41,17 @@ export class CheckDocsCommand {
    */
   protected readonly excluded = ["superpowers"];
 
+  /**
+   * Documentation that lives outside `docs/`, in reach order: the repository
+   * front page, the page npm renders, and the template an AI assistant is
+   * handed when a project is scaffolded.
+   */
+  protected readonly extraDocs = [
+    "README.md",
+    "packages/alepha/README.md",
+    "packages/alepha/assets/agents-template.md",
+  ];
+
   check = $command({
     name: "check:docs",
     description: "Check the docs for stale symbols and compile marked examples",
@@ -45,6 +62,14 @@ export class CheckDocsCommand {
       let files: string[] = [];
       await run("scan docs", async () => {
         files = await this.listMarkdown(docsDir);
+
+        for (const relative of this.extraDocs) {
+          const path = join(root, relative);
+          if (await this.fs.exists(path)) {
+            files.push(path);
+          }
+        }
+
         this.log.info(`Scanning ${files.length} markdown files`);
       });
 

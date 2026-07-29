@@ -20,47 +20,47 @@ Alepha
 
 Alepha is a full-stack TypeScript framework built for the agentic era.
 
-Everything between your code and the runtime — HTTP server, routing, auth, queues, storage, jobs, SSR — is rewritten clean and integrated for Node, Bun, and Cloudflare Workers. Two load-bearing layers are deliberately *not* reinvented: **React** for UI and **Drizzle** for SQL. No library glue, no config sprawl: one small, consistent surface of typed primitives.
+Everything between your code and the runtime (HTTP server, routing, auth, queues, storage, jobs, SSR) is rewritten clean and integrated for Node, Bun, and Cloudflare Workers. Two load-bearing layers are deliberately *not* reinvented: **React** for UI and **Drizzle** for SQL. No library glue, no config sprawl: one small, consistent surface of typed primitives.
 
-That small surface is the point. AI coding agents (Claude Code, Codex) work best against a narrow, predictable API — so they generate predictable, consistent code you can actually review.
+That small surface is the point. AI coding agents (Claude Code, Codex) work best against a narrow, predictable API, so they generate predictable, consistent code you can actually review.
 
-- **One schema, everywhere** — Database, API validation, TypeScript types, React forms — all from one definition
-- **One surface** — Every feature is a typed `$primitive`. No third-party glue to wire up or keep in sync
-- **Multi-runtime** — Same code runs on Node, Bun, and Cloudflare Workers
-- **Deploy anywhere** — Cloudflare, Vercel, Docker, bare metal
+- **One schema, everywhere**: database, API validation, TypeScript types and React forms, all from one definition
+- **One surface**: every feature is a typed `$primitive`. No third-party glue to wire up or keep in sync
+- **Multi-runtime**: the same code runs on Node, Bun, and Cloudflare Workers
+- **Deploy anywhere**: Cloudflare, Vercel, Docker, bare metal
 
 ## Architecture
 
-Each layer builds on the previous — use only what you need.
+Each layer builds on the previous. Use only what you need.
 
 | Layer          | Description | Primitives                                              |
 |----------------|-------------|---------------------------------------------------------|
 | **Foundation** | DI, lifecycle, config | `$inject`, `$env`, `$module`, `$hook`, `$logger`        |
-| **Backend**    | Database, storage, API | `$entity`, `$action`, `$repository`, `$storage`, `$topic` |
+| **Backend**    | Database, storage, API | `$entity`, `$relations`, `$repository`, `$action`, `$storage` |
 | **Frontend**   | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
 | **Platform**   | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
 
 ## Built for agents
 
-Every feature is one typed `$primitive` — no decorators, no file-system magic, no runtime metadata. An agent reading the code sees exactly what it does, in one place.
+Every feature is one typed `$primitive`: no decorators, no file-system magic, no runtime metadata. An agent reading the code sees exactly what it does, in one place.
 
-For UI, Alepha keeps **React** as the coding interface — agents write standard React components, the most familiar surface in their training data, with no framework-specific dialect to get wrong. For SQL it builds on **Drizzle**, but wraps it completely: you write one typed `$entity` schema and a `$repository`, never Drizzle itself. One is a proven interface agents already know; the other is a proven engine they never have to think about.
+For UI, Alepha keeps **React** as the coding interface, so agents write standard React components, the most familiar surface in their training data, with no framework-specific dialect to get wrong. For SQL it builds on **Drizzle**, but wraps it completely: you write a typed `$entity`, declare how entities relate with `$relations`, and read them through a `$repository`, never Drizzle itself. Underneath, a relational read compiles to a single statement using whatever each dialect is best at: lateral joins on Postgres, correlated subqueries on SQLite and D1. One is a proven interface agents already know; the other is a proven engine they never have to think about.
 
 The smaller and more consistent the surface, the more reliably an agent generates correct code against it. Point your AI assistant at [`alepha.dev/llms.txt`](https://alepha.dev/llms.txt) for the full machine-readable API.
 
 ## Example
 
-Define an API, call it from a React page — typed end-to-end, no codegen, no glue.
+Define an API, call it from a React page. Typed end-to-end, no codegen, no glue.
 
 ```tsx
 // src/Api.ts
-import { t } from "alepha";
+import { z } from "alepha";
 import { $action } from "alepha/server";
 import { $entity, $repository, db } from "alepha/orm";
 
 const viewEntity = $entity({
   name: "views",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
     createdAt: db.createdAt(),
   }),
@@ -71,8 +71,8 @@ export class Api {
 
   inc = $action({
     schema: { // ← validates + generates OpenAPI
-      response: t.object({
-        count: t.number()
+      response: z.object({
+        count: z.number()
       })
     },
     handler: async () => {
@@ -99,7 +99,7 @@ export class AppRouter {
 }
 ```
 
-The `Api` class is the only contract. `$client<Api>()` derives every call site from it — change a handler's return type and the page stops compiling.
+The `Api` class is the only contract. `$client<Api>()` derives every call site from it. Change a handler's return type and the page stops compiling.
 
 ## Getting Started
 
@@ -110,10 +110,10 @@ npx alepha init my-app   # API + React (SSR) + Tailwind
 cd my-app && npx alepha dev
 ```
 
-Every project gets the same structure — no flavours to choose between.
+Every project gets the same structure, with no flavours to choose between.
 
 ## Learn More
 
 - [Documentation](https://alepha.dev)
-- [llms.txt](https://alepha.dev/llms.txt) — for AI assistants
+- [llms.txt](https://alepha.dev/llms.txt) for AI assistants
 - [GitHub](https://github.com/feunard/alepha)

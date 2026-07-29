@@ -60,7 +60,9 @@ src/
 | Primitive | Purpose |
 |-----------|---------|
 | `$entity` | Database table definition |
+| `$relations` | How entities relate; read with `include` |
 | `$repository` | Type-safe CRUD operations |
+| `$repositories` | One binding per entity of a `$relations` schema |
 | `$sequence` | Auto-increment sequences |
 
 ### Infrastructure
@@ -178,15 +180,15 @@ import { useI18n } from "alepha/react/i18n";
 
 ### API Endpoint
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $action } from "alepha/server";
 
 class UserController {
   getUser = $action({
     path: "/users/:id",
     schema: {
-      params: t.object({ id: t.uuid() }),
-      response: t.object({ id: t.uuid(), email: t.email() }),
+      params: z.object({ id: z.uuid() }),
+      response: z.object({ id: z.uuid(), email: z.email() }),
     },
     handler: async ({ params }) => this.userRepo.findById(params.id),
   });
@@ -195,14 +197,14 @@ class UserController {
 
 ### Entity & Repository
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
 
 export const userEntity = $entity({
   name: "users",
-  schema: t.object({
+  schema: z.object({
     id: db.primaryKey(),
-    email: t.email(),
+    email: z.email(),
     createdAt: db.createdAt(),
   }),
 });
@@ -214,7 +216,7 @@ class UserService {
 
 ### Page with Loader
 ```tsx
-import { t } from "alepha";
+import { z } from "alepha";
 import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 
@@ -223,7 +225,7 @@ class AppRouter {
 
   userDetail = $page({
     path: "/users/:id",
-    schema: { params: t.object({ id: t.uuid() }) },
+    schema: { params: z.object({ id: z.uuid() }) },
     loader: async ({ params }) => ({
       user: await this.api.getUser({ params })
     }),
@@ -234,14 +236,14 @@ class AppRouter {
 
 ### Form
 ```tsx
-import { t } from "alepha";
+import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 
 function LoginForm() {
   const form = useForm({
-    schema: t.object({
-      email: t.email(),
-      password: t.text(),
+    schema: z.object({
+      email: z.email(),
+      password: z.text(),
     }),
     handler: async (values) => {
       await api.login(values);
@@ -258,36 +260,42 @@ function LoginForm() {
 }
 ```
 
-## Schema Types (`t`)
+## Schema Types (`z`)
+
+Alepha's `z` is a Zod 4 wrapper. Import it from `alepha`, never from `zod`.
 
 ```typescript
-import { t } from "alepha";
+import { z } from "alepha";
 
-t.string()              // Basic string
-t.text()                // String with maxLength, trim, lowercase options
-t.email()               // Email validation
-t.uuid()                // UUID validation
-t.number()              // Number
-t.integer()             // Integer
-t.boolean()             // Boolean
-t.date()                // Date
-t.array(t.string())     // Array
-t.object({ ... })       // Object
-t.optional(t.string())  // Optional
-t.nullable(t.string())  // Nullable
-t.enum(["a", "b"])      // Enum
-t.literal("value")      // Literal
-t.union([...])          // Union
+z.string()              // Basic string
+z.text()                // String with maxLength, trim, lowercase options
+z.email()               // Email validation
+z.uuid()                // UUID validation
+z.number()              // Number
+z.integer()             // Integer
+z.boolean()             // Boolean
+z.date()                // Date
+z.datetime()            // ISO date-time
+z.array(z.string())     // Array
+z.object({ ... })       // Object
+z.enum(["a", "b"])      // Enum
+z.literal("value")      // Literal
+z.union([...])          // Union
+z.record(z.text(), z.any())  // Record
+
+z.string().optional()   // Optional: a method, not z.optional(...)
+z.string().nullable()   // Nullable: likewise
 ```
 
 ## Common Mistakes
 
 1. Using decorators → Use primitives (`$action`, not `@Get()`)
-2. Using Zod → Use `t` from Alepha
+2. Importing from `zod` → import `z` from `alepha` (it is a Zod 4 wrapper)
 3. Using Express patterns → No `app.get()`, `router.use()`
 4. Using `$inject` across modules → Use `$client` instead
 5. Using async constructors → Use `$hook({ on: "start" })`
 6. Manual instantiation → Let DI container manage
+7. Fetching ids, then fetching rows with `inArray` → declare a `$relations` and use `include`
 
 ## Source Code
 
