@@ -382,14 +382,43 @@ export class DrizzleKitProvider {
       try {
         await provider.execute(sql.raw(statement));
       } catch (error: any) {
-        const message = error?.message ?? "";
-        if (message.includes("already exists")) {
+        if (this.errorMentions(error, "already exists")) {
           this.log.debug(`Skipped (already exists): ${statement.slice(0, 80)}`);
           continue;
         }
         throw error;
       }
     }
+  }
+
+  /**
+   * Report whether an error, or anything in its `cause` chain, mentions a
+   * fragment of driver text.
+   *
+   * drizzle rc.4 wraps driver errors in `DrizzleQueryError`, whose own message
+   * is `Failed query: <sql>` — the driver's actual text ("table X already
+   * exists") moved down into `cause`. Matching only the top-level message
+   * therefore stopped working silently at the upgrade, which turned a
+   * recoverable "already exists" into a hard startup failure against any
+   * pre-existing development database, and made `yarn v` pass on a clean tree
+   * then fail on every subsequent run.
+   *
+   * The `seen` set guards against a self-referential cause chain, which would
+   * otherwise hang the process rather than surface the original error.
+   */
+  protected errorMentions(error: unknown, fragment: string): boolean {
+    const seen = new Set<unknown>();
+    let current: any = error;
+
+    while (current && typeof current === "object" && !seen.has(current)) {
+      seen.add(current);
+      if (String(current.message ?? "").includes(fragment)) {
+        return true;
+      }
+      current = current.cause;
+    }
+
+    return false;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
