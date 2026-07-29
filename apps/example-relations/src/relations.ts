@@ -2,12 +2,19 @@ import { $relations } from "alepha/orm";
 import { campaigns } from "./entities/campaigns.ts";
 import { characters } from "./entities/characters.ts";
 import { quests } from "./entities/quests.ts";
+import { questWatchers } from "./entities/questWatchers.ts";
 import { users } from "./entities/users.ts";
 
 /**
  * Every entity, keyed by the name relations address it by.
  */
-export const schema = { users, campaigns, characters, quests };
+export const schema = {
+  users,
+  campaigns,
+  characters,
+  quests,
+  questWatchers,
+};
 
 /**
  * The whole relation graph, in one place.
@@ -31,6 +38,15 @@ export const relations = $relations(schema, (r) => ({
     campaigns: r.many.campaigns({
       from: r.users.id,
       to: r.campaigns.ownerId,
+    }),
+    /**
+     * Many-to-many. Both sides hop through the junction, and each names its
+     * own column on it. Hopping only one side throws at declaration time,
+     * because there would be nothing to match on the other.
+     */
+    watching: r.many.quests({
+      from: r.users.id.through(r.questWatchers.userId),
+      to: r.quests.id.through(r.questWatchers.questId),
     }),
   },
 
@@ -61,5 +77,10 @@ export const relations = $relations(schema, (r) => ({
      * The self relation. Nothing special is required to declare it.
      */
     blockedBy: r.one.quests({ from: r.quests.dependsOn, to: r.quests.id }),
+    /** The other side of the many-to-many. */
+    watchers: r.many.users({
+      from: r.quests.id.through(r.questWatchers.questId),
+      to: r.users.id.through(r.questWatchers.userId),
+    }),
   },
 }));

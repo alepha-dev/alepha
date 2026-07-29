@@ -21,6 +21,9 @@ import { RepositoryProvider } from "../providers/RepositoryProvider.ts";
  * truncates the wrong thing. Batching sidesteps both, behaves identically on
  * every dialect (including D1, where a lateral join is not available), and
  * keeps the query count proportional to the number of *relations*, not rows.
+ *
+ * Nothing here is stored on the instance. The resolver is a shared singleton,
+ * so per-resolution state would be shared across concurrent requests.
  */
 export class RelationResolver {
   protected readonly log = $logger();
@@ -30,14 +33,8 @@ export class RelationResolver {
    * Resolve `include` against `rows`, mutating each row to carry its
    * relations. Recurses for nested includes.
    */
-  public async resolve(options: {
-    rows: Array<Record<string, any>>;
-    entityKey: string;
-    include: Record<string, any>;
-    schema: EntitySchema;
-    map: RelationMapFor<any>;
-  }): Promise<void> {
-    const { rows, entityKey, include, schema, map } = options;
+  public async resolve(ctx: ResolveContext): Promise<void> {
+    const { rows, entityKey, include, map } = ctx;
 
     if (rows.length === 0) return;
 
@@ -46,7 +43,8 @@ export class RelationResolver {
       | undefined;
 
     for (const name of Object.keys(include)) {
-      if (include[name] === undefined || include[name] === false) continue;
+      const arg = include[name];
+      if (arg === undefined || arg === false) continue;
 
       const relation = declared?.[name];
       if (!relation) {
@@ -60,88 +58,246 @@ export class RelationResolver {
         );
       }
 
-      await this.resolveOne({
-        rows,
-        name,
-        relation,
-        nested:
-          typeof include[name] === "object" ? include[name].include : undefined,
-        schema,
-        map,
-      });
+      await this.resolveOne(ctx, name, relation, arg === true ? {} : arg);
     }
   }
 
-  protected async resolveOne(options: {
-    rows: Array<Record<string, any>>;
-    name: string;
-    relation: ResolvedRelation;
-    nested?: Record<string, any>;
-    schema: EntitySchema;
-    map: RelationMapFor<any>;
-  }): Promise<void> {
-    const { rows, name, relation, nested, schema, map } = options;
-
-    const targetEntity = schema[relation.target];
-    if (!targetEntity) {
-      throw new AlephaError(
-        `Relation '${name}' targets '${relation.target}', which is not in the schema passed to $relations().`,
-      );
-    }
+  protected async resolveOne(
+    ctx: ResolveContext,
+    name: string,
+    relation: ResolvedRelation,
+    args: RelationRuntimeArgs,
+  ): Promise<void> {
+    const { rows, schema, map } = ctx;
 
     // Distinct, non-null join values. A null foreign key cannot match, and
     // including it would widen the IN list for nothing.
-    const keys = [
-      ...new Set(
-        rows
-          .map((row) => row[relation.from])
-          .filter((value) => value !== null && value !== undefined),
-      ),
-    ];
+    const parentKeys = this.distinct(rows.map((row) => row[relation.from]));
 
-    if (keys.length === 0) {
-      for (const row of rows) {
-        row[name] = relation.kind === "many" ? [] : undefined;
-      }
+    if (parentKeys.length === 0) {
+      this.assignEmpty(rows, name, relation);
       return;
     }
 
-    const repository = this.repositories.getRepository(targetEntity);
-    const children = await repository.findMany({
-      where: { [relation.to]: { inArray: keys } } as any,
-      // `findMany` defaults to no limit, but a to-many relation can legitimately
-      // return more rows than parents — make the intent explicit rather than
-      // relying on that default staying put.
-      limit: undefined,
+    // For a many-to-many the junction decides which targets belong to which
+    // parent, so it is fetched first and the target query keys off it.
+    const bridge = relation.through
+      ? await this.loadJunction(schema, relation, parentKeys)
+      : undefined;
+
+    if (bridge && bridge.targetKeys.length === 0) {
+      this.assignEmpty(rows, name, relation);
+      return;
+    }
+
+    const children = await this.loadChildren({
+      schema,
+      relation,
+      lookupKeys: bridge ? bridge.targetKeys : parentKeys,
+      args,
+      // Without a junction, the child's own join column is what groups it back
+      // to its parent, so it must survive a `select` that omits it.
+      requiredColumn: relation.to,
+      canPushLimit: parentKeys.length === 1 && !bridge,
     });
 
-    // Recurse before stitching so nested relations are present on the child
-    // objects the parent ends up holding.
-    if (nested && Object.keys(nested).length > 0) {
+    // Recurse before stitching, so nested relations are already present on the
+    // child objects the parent ends up holding.
+    if (args.include && Object.keys(args.include).length > 0) {
       await this.resolve({
-        rows: children as Array<Record<string, any>>,
+        rows: children,
         entityKey: relation.target,
-        include: nested,
+        include: args.include,
         schema,
         map,
       });
     }
 
-    const grouped = new Map<unknown, Array<Record<string, any>>>();
-    for (const child of children as Array<Record<string, any>>) {
-      const key = child[relation.to];
-      const bucket = grouped.get(key);
-      if (bucket) bucket.push(child);
-      else grouped.set(key, [child]);
-    }
+    this.stitch(rows, name, relation, children, args, bridge);
+  }
 
-    for (const row of rows) {
-      const matched = grouped.get(row[relation.from]) ?? [];
-      row[name] = relation.kind === "many" ? matched : matched[0];
+  /**
+   * Fetch the junction rows for a many-to-many and index target -> parents.
+   */
+  protected async loadJunction(
+    schema: EntitySchema,
+    relation: ResolvedRelation,
+    parentKeys: unknown[],
+  ): Promise<Bridge> {
+    const through = relation.through!;
+    const repository = this.repositories.getRepository(
+      this.entityOrThrow(schema, through.entity, relation),
+    );
+
+    const links = (await repository.findMany({
+      where: { [through.fromColumn]: { inArray: parentKeys } } as any,
+    })) as Array<Record<string, any>>;
+
+    const parentByTarget = new Map<unknown, unknown[]>();
+    for (const link of links) {
+      const target = link[through.toColumn];
+      if (target === null || target === undefined) continue;
+
+      const bucket = parentByTarget.get(target);
+      if (bucket) bucket.push(link[through.fromColumn]);
+      else parentByTarget.set(target, [link[through.fromColumn]]);
     }
 
     this.log.debug(
-      `Resolved '${name}': ${children.length} row(s) for ${keys.length} key(s) in 1 query`,
+      `Resolved junction '${through.entity}': ${links.length} link(s) in 1 query`,
     );
+
+    return { parentByTarget, targetKeys: [...parentByTarget.keys()] };
   }
+
+  protected async loadChildren(options: {
+    schema: EntitySchema;
+    relation: ResolvedRelation;
+    lookupKeys: unknown[];
+    args: RelationRuntimeArgs;
+    requiredColumn: string;
+    canPushLimit: boolean;
+  }): Promise<Array<Record<string, any>>> {
+    const { schema, relation, lookupKeys, args, requiredColumn, canPushLimit } =
+      options;
+
+    const repository = this.repositories.getRepository(
+      this.entityOrThrow(schema, relation.target, relation),
+    );
+
+    const match = { [relation.to]: { inArray: lookupKeys } };
+
+    // A caller-supplied `where` narrows the batch rather than replacing the
+    // key match, so a filter can never widen a relation to rows that do not
+    // belong to the parent.
+    const query: Record<string, unknown> = {
+      where: args.where ? { and: [match, args.where] } : match,
+    };
+
+    if (args.orderBy !== undefined) query.orderBy = args.orderBy;
+
+    if (args.select) {
+      // The grouping column must come back even when the caller did not ask
+      // for it, or there is nothing to stitch on. Stripped again after.
+      query.columns = this.distinct([...args.select, requiredColumn]);
+    }
+
+    // `limit` is per parent. With a single parent the batch *is* that parent's
+    // set, so it can be pushed into SQL; otherwise it is sliced in memory
+    // after grouping, because one query cannot cap per group without window
+    // functions.
+    if (args.limit !== undefined && canPushLimit) query.limit = args.limit;
+
+    const children = (await repository.findMany(query as any)) as Array<
+      Record<string, any>
+    >;
+
+    this.log.debug(
+      `Resolved '${relation.target}': ${children.length} row(s) for ${lookupKeys.length} key(s) in 1 query`,
+    );
+
+    return children;
+  }
+
+  protected stitch(
+    rows: Array<Record<string, any>>,
+    name: string,
+    relation: ResolvedRelation,
+    children: Array<Record<string, any>>,
+    args: RelationRuntimeArgs,
+    bridge?: Bridge,
+  ): void {
+    const byParent = new Map<unknown, Array<Record<string, any>>>();
+
+    for (const child of children) {
+      const childKey = child[relation.to];
+
+      // Through a junction one child can belong to many parents; directly, to
+      // exactly one.
+      const parents = bridge
+        ? (bridge.parentByTarget.get(childKey) ?? [])
+        : [childKey];
+
+      for (const parent of parents) {
+        const bucket = byParent.get(parent);
+        if (bucket) bucket.push(child);
+        else byParent.set(parent, [child]);
+      }
+    }
+
+    // Only now is the grouping column expendable — drop it when `select` did
+    // not ask for it, so the row matches the type the caller was handed.
+    const hidden =
+      args.select && !args.select.includes(relation.to)
+        ? relation.to
+        : undefined;
+
+    for (const row of rows) {
+      let matched = byParent.get(row[relation.from]) ?? [];
+
+      if (args.limit !== undefined && matched.length > args.limit) {
+        matched = matched.slice(0, args.limit);
+      }
+
+      if (hidden) {
+        matched = matched.map(({ [hidden]: _omit, ...rest }) => rest);
+      }
+
+      row[name] = relation.kind === "many" ? matched : matched[0];
+    }
+  }
+
+  protected assignEmpty(
+    rows: Array<Record<string, any>>,
+    name: string,
+    relation: ResolvedRelation,
+  ): void {
+    for (const row of rows) {
+      row[name] = relation.kind === "many" ? [] : undefined;
+    }
+  }
+
+  protected entityOrThrow(
+    schema: EntitySchema,
+    key: string,
+    relation: ResolvedRelation,
+  ) {
+    const entity = schema[key];
+    if (!entity) {
+      throw new AlephaError(
+        `Relation to '${relation.target}' needs '${key}', which is not in the schema passed to $relations().`,
+      );
+    }
+    return entity;
+  }
+
+  protected distinct<T>(values: T[]): T[] {
+    return [
+      ...new Set(
+        values.filter((value) => value !== null && value !== undefined),
+      ),
+    ];
+  }
+}
+
+export interface ResolveContext {
+  rows: Array<Record<string, any>>;
+  entityKey: string;
+  include: Record<string, any>;
+  schema: EntitySchema;
+  map: RelationMapFor<any>;
+}
+
+interface Bridge {
+  /** target key -> every parent that reaches it through the junction */
+  parentByTarget: Map<unknown, unknown[]>;
+  targetKeys: unknown[];
+}
+
+interface RelationRuntimeArgs {
+  where?: unknown;
+  orderBy?: unknown;
+  limit?: number;
+  select?: string[];
+  include?: Record<string, any>;
 }

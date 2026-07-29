@@ -1,14 +1,14 @@
 # example-relations
 
 Proof of concept for `$relations` — declared relations with a fully inferred
-`include`, built on Drizzle v1.
+`include`, built alongside Drizzle v1.
 
 ```bash
-yarn vitest run apps/example-relations   # 14 tests
+yarn vitest run apps/example-relations    # 37 tests
 cd apps/example-relations && tsc --noEmit # proves the type assertions
 ```
 
-Both pass. The typecheck is the more interesting one: the spec contains six
+Both pass. The typecheck is the more interesting one: the spec contains eight
 `@ts-expect-error` directives, and TypeScript treats an *unused* one as an
 error — so a green `tsc` is proof that every negative case really is rejected.
 
@@ -19,7 +19,7 @@ error — so a green `tsc` is proof that every negative case really is rejected.
 Entities are unchanged. Relations go in one separate statement:
 
 ```ts
-export const schema = { users, campaigns, characters, quests };
+export const schema = { users, campaigns, characters, quests, questWatchers };
 
 export const relations = $relations(schema, (r) => ({
   campaigns: {
@@ -30,26 +30,42 @@ export const relations = $relations(schema, (r) => ({
     }),
   },
   quests: {
-    author: r.one.users({ from: r.quests.createdBy, to: r.users.id }),
     blockedBy: r.one.quests({ from: r.quests.dependsOn, to: r.quests.id }),
+    watchers: r.many.users({
+      from: r.quests.id.through(r.questWatchers.questId),
+      to: r.users.id.through(r.questWatchers.userId),
+    }),
   },
 }));
 ```
 
-Then bind and query:
+Bind one entity, or all of them:
 
 ```ts
-class CampaignController {
-  campaigns = $repository(relations, "campaigns");
+class CampaignService {
+  db = $client(relations);                      // every entity
+  campaigns = $repository(relations, "campaigns"); // or just one
 }
+```
 
-const campaign = await this.campaigns.findOne({
+Then query:
+
+```ts
+const campaign = await this.db.campaigns.findOne({
   where: { id: { eq: 1 } },
-  include: { owner: true, characters: { include: { user: true } } },
+  select: ["id", "title"],
+  include: {
+    owner: { select: ["name"] },
+    characters: {
+      where: { level: { gte: 3 } },
+      orderBy: { column: "level", direction: "desc" },
+      limit: 5,
+      include: { user: true },
+    },
+  },
 });
 
-campaign?.owner?.email;              // string | undefined
-campaign?.characters[0]?.user?.name; // string | undefined
+campaign?.characters[0]?.user?.name; // string | undefined, fully inferred
 ```
 
 Both sides of every join are typed. Swapping `r.campaigns.id` for
@@ -76,7 +92,7 @@ const members = await this.users.findMany({
 With relations:
 
 ```ts
-const members = await this.characters.findMany({
+const members = await this.db.characters.findMany({
   where: { campaignId: { eq: params.id } },
   include: { user: true },
 });
@@ -84,6 +100,33 @@ const members = await this.characters.findMany({
 
 Lore has **30 `inArray` fetches paired with 29 `new Map()` lookups**. They are
 all this shape.
+
+---
+
+## Features
+
+| | |
+|---|---|
+| to-one | `include: { owner: true }` → `User \| undefined` |
+| to-many | `include: { characters: true }` → `Character[]` |
+| self relations | `quests.blockedBy` → `quests.dependsOn` → `quests.id` |
+| many-to-many | `.through(junction)` on both sides; junction never leaks |
+| nesting | arbitrary depth, `include` inside `include` |
+| filtering a relation | `include: { characters: { where: … } }` |
+| ordering a relation | `include: { characters: { orderBy: … } }` |
+| limiting a relation | `limit` is **per parent**, like Prisma's `take` |
+| projection | `select` on the root *and* on any relation; narrows the type |
+| nested writes | `create({ data: { …, characters: { create: [...] } } })` |
+| method parity | `findMany` `findOne` `getOne` `findById` `getById` `paginate` `count` |
+| escape hatch | `.base` — every unchanged operation, fully typed |
+
+### Type safety, proven by `tsc`
+
+- a relation you did not include is **absent from the type**, not `undefined`
+- an undeclared relation in `include` is a compile error *and* a named runtime error
+- `select` narrows the row — reading an unselected column does not compile
+- to-many is an array; to-one must be narrowed before use
+- a join between mismatched column types does not compile
 
 ---
 
@@ -95,61 +138,51 @@ self reference Lore actually has — fail with `TS7022: 'quests' implicitly has
 type 'any' because it is referenced directly or indirectly in its own
 initializer`. Same for any mutual reference. The `() => any` in `db.ref` is
 load-bearing: that `any` is what breaks the cycle. Drizzle's `defineRelations`
-and Prisma's codegen both land here for the same reason. The spec proves the
-self relation works (`quests.blockedBy`).
+and Prisma's codegen both land here for the same reason.
 
 **Resolution is batched, not joined.** One query for the parents, then one per
 included relation, regardless of row count — the spec asserts exactly 3 queries
-for a two-level include. A SQL join multiplies parent rows by their children,
-so the parent has to be de-duplicated back out, and on a `limit`ed query the
-multiplication truncates the wrong thing. Two tests pin the cases a join gets
-wrong: an empty relation stays `[]` rather than dropping the parent, and
-`limit: 1` returns one parent with both its children.
+for a two-level include, and 3 for a many-to-many (parent, junction, target). A
+SQL join multiplies parent rows by their children, so the parent has to be
+de-duplicated back out, and on a `limit`ed query the multiplication truncates
+the wrong thing. Two tests pin the cases a join gets wrong: an empty relation
+stays `[]` rather than dropping the parent, and `limit: 1` returns one parent
+with both its children.
 
 It also behaves identically on every dialect, including D1, where a lateral
 join isn't available. That matters here — Lore runs on D1.
 
-**Shaped after `defineRelations` deliberately.** The declaration mirrors
-Drizzle's API closely enough that the resolver behind it could be swapped for
-Drizzle's relational query builder without touching a single call site. This
-PoC does not use RQB v2 yet: it needs a static schema object, and Alepha builds
-its tables at runtime from Zod. That bridge is real work and is the main open
-question — see below.
+**Per-parent `limit` costs an in-memory slice.** One query cannot cap per group
+without window functions, so the rows are fetched and sliced after grouping.
+With a single parent the limit is pushed into SQL instead. This is the one
+place where the batched strategy is measurably worse than a lateral join.
+
+**Join columns are carried, then dropped.** `select` that omits the column a
+relation is stitched on would otherwise silently resolve everything to
+undefined. Those columns are fetched anyway and removed before the row is
+returned, so the result matches the type. Two tests cover it — one at the root,
+one on a relation.
+
+**Nested writes are ordered by where the foreign key lives.** A to-one related
+row is created *before* the row referencing it; a to-many child *after*. The
+whole graph runs in one transaction — a test asserts a failing child rolls the
+parent back.
 
 ---
 
-## What works
+## Known limitations
 
-- to-one, to-many, self relations
-- arbitrary nesting (`include: { characters: { include: { user: true } } }`)
-- `include` narrows the result to exactly what was asked for — a relation you
-  did not include is **absent from the type**, not `undefined`
-- an undeclared relation is a compile error, and still a named runtime error
-  for untyped callers
-- `where` / `limit` / `offset` / `orderBy` pass through untouched
-- `.base` exposes the plain repository, so `create`, `upsert`, `aggregate` and
-  raw `query` all still work
-
-## What does not, yet
-
-- **Drizzle RQB v2 as the executor.** Batching works and is dialect-portable,
-  but a single round trip would be better where the dialect supports it. The
-  blocker is the runtime-tables to static-types bridge.
-- **Filtering or ordering *on* a relation** — `include: { quests: { where: … } }`
-  is not implemented. This is the most likely next thing Lore would want.
-- **Selecting columns on an included relation.** Related to the existing
-  `columns:` gap, where projection narrows the runtime row but not the type.
-- **Many-to-many** (`through`). Lore has no junction tables today, so it was
-  not worth guessing at.
-- **Write-side nesting** (Prisma's nested `create`). Deliberately out of scope.
-
-## Known rough edges
-
-- Entities must be bound in dependency order within a class — a foreign key is
-  resolved against tables registered before it. Pre-existing, not introduced
-  here, but relations make it easier to hit.
-- `$repository(relations, "campaigns")` addresses the entity by key rather than
-  by the entity object. Necessary: nested includes follow that key to find the
-  target's relations, and a structural lookup would misfire the moment two
-  entities shared a shape. A `$client(relations).campaigns` form would read
-  more like Prisma but fights Alepha's per-controller DI.
+- **Not on Drizzle's RQB v2.** The declaration mirrors `defineRelations`
+  closely enough that the executor could be swapped without touching a call
+  site, but RQB needs a static schema object and Alepha builds its tables at
+  runtime from Zod. That bridge is the main open question.
+- **To-one foreign keys are optional in `CreateData`** whether or not you
+  actually nest that relation — the type cannot see which keys the value will
+  carry. Omitting one without nesting fails at the database, not the compiler.
+- **`update` has no nested form.** Only `create` does. Nested updates need
+  connect/disconnect/upsert semantics, which is a design question rather than
+  an implementation gap.
+- **No aggregate or `_count` on relations.** Prisma's `_count` is a common ask.
+- **Ordering by a related column** (`orderBy: { owner: { name: "asc" } }`) is
+  not possible under batching — the parent query cannot see the child. This is
+  the strongest argument for a join-based executor.

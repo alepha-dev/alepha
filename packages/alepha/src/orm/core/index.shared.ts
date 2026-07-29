@@ -18,6 +18,7 @@ export * from "./interfaces/FilterOperators.ts";
 export * from "./interfaces/PgQuery.ts";
 export * from "./interfaces/PgQueryWhere.ts";
 export * from "./interfaces/RelationInclude.ts";
+export * from "./interfaces/RelationWrite.ts";
 export * from "./primitives/$entity.ts";
 export * from "./primitives/$relations.ts";
 export * from "./providers/DatabaseTypeProvider.ts";

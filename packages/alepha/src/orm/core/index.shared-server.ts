@@ -9,6 +9,7 @@ export * from "./errors/DbError.ts";
 export * from "./errors/DbMigrationError.ts";
 export * from "./errors/DbVersionMismatchError.ts";
 export * from "./index.shared.ts";
+export * from "./primitives/$client.ts";
 export * from "./primitives/$repository.ts";
 export * from "./primitives/$seed.ts";
 export * from "./primitives/$sequence.ts";
