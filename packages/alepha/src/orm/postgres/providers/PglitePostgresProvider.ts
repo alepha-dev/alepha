@@ -83,50 +83,79 @@ export class PglitePostgresProvider extends DatabaseProvider {
     return rows;
   }
 
+  /**
+   * Open the PGlite connection outside the normal `start` lifecycle.
+   *
+   * CLI commands that load the app via `loadAlephaFromServerEntryFile` set
+   * `ALEPHA_CLI_IMPORT`, which makes `run(alepha)` return before
+   * `alepha.start()` — so nothing else opens this connection. Those commands
+   * (e.g. `db baseline mark`) call this directly, matching the
+   * `connect?()`/`close?()` pattern `db push --dry-run` already uses.
+   *
+   * No-ops when this provider owns no entities, same as the old `onStart`
+   * behaviour — nothing downstream needs a connection in that case.
+   */
+  public override async connect(): Promise<void> {
+    if (this.client) {
+      return;
+    }
+
+    if (Object.keys(this.kit.getModels(this)).length === 0) {
+      return;
+    }
+
+    const module = PglitePostgresProvider.importPglite();
+    if (!module) {
+      throw new AlephaError(
+        "@electric-sql/pglite is not installed. Please install it to use the pglite driver.",
+      );
+    }
+
+    const { drizzle } = createRequire(import.meta.url)("drizzle-orm/pglite");
+    const path = this.url;
+
+    if (path !== ":memory:") {
+      await mkdir(path, { recursive: true }).catch(() => null);
+      this.client = new module.PGlite(path);
+    } else {
+      this.client = new module.PGlite();
+    }
+
+    this.pglite = drizzle({
+      client: this.client,
+    });
+
+    this.log.info(`Using PGlite database at ${path}`);
+  }
+
+  /**
+   * Close the connection opened by {@link connect}.
+   */
+  public override async close(): Promise<void> {
+    if (this.client) {
+      this.log.debug("Closing PGlite connection...");
+      await this.client.close();
+      this.client = undefined;
+      this.pglite = undefined;
+      this.log.info("PGlite connection closed");
+    }
+  }
+
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      if (Object.keys(this.kit.getModels(this)).length === 0) {
-        return;
+      await this.connect();
+
+      if (this.client) {
+        await this.migrate();
       }
-
-      const module = PglitePostgresProvider.importPglite();
-      if (!module) {
-        throw new AlephaError(
-          "@electric-sql/pglite is not installed. Please install it to use the pglite driver.",
-        );
-      }
-
-      const { drizzle } = createRequire(import.meta.url)("drizzle-orm/pglite");
-      const path = this.url;
-
-      if (path !== ":memory:") {
-        await mkdir(path, { recursive: true }).catch(() => null);
-        this.client = new module.PGlite(path);
-      } else {
-        this.client = new module.PGlite();
-      }
-
-      this.pglite = drizzle({
-        client: this.client,
-      });
-
-      await this.migrate();
-
-      this.log.info(`Using PGlite database at ${path}`);
     },
   });
 
   protected readonly onStop = $hook({
     on: "stop",
     handler: async () => {
-      if (this.client) {
-        this.log.debug("Closing PGlite connection...");
-        await this.client.close();
-        this.client = undefined;
-        this.pglite = undefined;
-        this.log.info("PGlite connection closed");
-      }
+      await this.close();
     },
   });
 

@@ -284,7 +284,18 @@ export class DbCommand {
         if (flags.provider && flags.provider !== providerName) continue;
 
         const migrationsFolder = this.fs.join(root, "migrations", providerName);
-        await provider.markBaselineApplied(migrationsFolder);
+
+        // `loadAlephaFromServerEntryFile` never calls `alepha.start()` (it
+        // sets `ALEPHA_CLI_IMPORT`, which short-circuits `run(alepha)`
+        // before the lifecycle starts), so no provider's `start` hook has
+        // opened a connection yet. Open and close it explicitly here,
+        // mirroring `push --dry-run` below.
+        await provider.connect?.();
+        try {
+          await provider.markBaselineApplied(migrationsFolder);
+        } finally {
+          await provider.close?.();
+        }
       }
     },
   });

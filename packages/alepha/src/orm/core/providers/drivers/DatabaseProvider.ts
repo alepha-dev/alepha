@@ -405,14 +405,20 @@ export abstract class DatabaseProvider {
    * caller.
    *
    * The base implementation throws; every runtime-migrator dialect
-   * (Postgres, local SQLite, PGlite, Bun) overrides it.
+   * (Postgres, local SQLite, PGlite, Bun) overrides it. Cloudflare D1 and
+   * Cloudflare Hyperdrive do not — they fully override
+   * {@link executeMigrations} instead, so this default is only reachable
+   * through {@link markBaselineApplied} for those two, which is why the
+   * error names "baseline mark" rather than "migrations": D1 and Hyperdrive
+   * both migrate fine through their own flows, they just don't support
+   * baseline-mark's driver-dispatch shape yet.
    */
   protected async runMigrator(
     migrationsFolder: string,
     options?: { init?: boolean },
   ): Promise<{ exitCode?: string } | void> {
     throw new AlephaError(
-      `Migrations are not supported for driver '${this.driver}'`,
+      `'baseline mark' does not yet support the '${this.driver}' driver`,
     );
   }
 

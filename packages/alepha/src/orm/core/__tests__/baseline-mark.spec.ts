@@ -136,4 +136,40 @@ describe("markBaselineApplied", () => {
     expect(error).toBeInstanceOf(AlephaError);
     expect((error as Error).message).toMatch(/more than one local migration/i);
   });
+
+  /**
+   * `alepha db baseline mark` loads the app via
+   * `loadAlephaFromServerEntryFile`, which sets `ALEPHA_CLI_IMPORT` and so
+   * never calls `alepha.start()` (see `core/index.ts`'s early return on that
+   * flag). Database connections normally open in each provider's `start`
+   * hook, so the CLI's container reaches `markBaselineApplied` UNCONNECTED —
+   * `boot()` above, which calls `alepha.start()`, does not reproduce that.
+   *
+   * The CLI command is responsible for calling `provider.connect?.()` /
+   * `provider.close?.()` around the call, mirroring `db push --dry-run`'s
+   * existing pattern. This test reproduces that exact precondition instead
+   * of the started-container shortcut.
+   */
+  it("works against an unstarted container, mirroring the CLI's precondition", async () => {
+    writeBaselineMigration(migrationsFolder, "20260729120000_baseline");
+
+    const alepha = Alepha.create({
+      env: { DATABASE_URL: "sqlite://:memory:", DATABASE_SYNC: false },
+    });
+    alepha.inject(App);
+    // Deliberately no `await alepha.start()`.
+    const provider = alepha.inject(DatabaseProvider);
+
+    await provider.connect?.();
+    try {
+      await provider.markBaselineApplied(migrationsFolder);
+
+      const bookkeeping = await provider.execute(
+        sql`SELECT name FROM __drizzle_migrations`,
+      );
+      expect(bookkeeping).toHaveLength(1);
+    } finally {
+      await provider.close?.();
+    }
+  });
 });

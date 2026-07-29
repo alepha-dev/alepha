@@ -148,45 +148,75 @@ export class BunSqliteProvider extends DatabaseProvider {
     return (this.bunDb as SQLiteBunDatabase).all(query);
   }
 
+  /**
+   * Open the sqlite connection outside the normal `start` lifecycle.
+   *
+   * CLI commands that load the app via `loadAlephaFromServerEntryFile` set
+   * `ALEPHA_CLI_IMPORT`, which makes `run(alepha)` return before
+   * `alepha.start()` — so nothing else opens this connection. Those commands
+   * (e.g. `db baseline mark`) call this directly, matching the
+   * `connect?()`/`close?()` pattern `db push --dry-run` already uses.
+   */
+  public override async connect(): Promise<void> {
+    if (this.sqlite) {
+      return;
+    }
+
+    // Check if we're running in Bun
+    if (typeof Bun === "undefined") {
+      throw new AlephaError(
+        "BunSqliteProvider requires the Bun runtime. Use NodeSqliteProvider for Node.js.",
+      );
+    }
+
+    const { Database } = await import("bun:sqlite");
+    const { drizzle } = await import("drizzle-orm/bun-sqlite");
+
+    const filepath = this.url.replace("sqlite://", "").replace("sqlite:", "");
+
+    if (filepath !== ":memory:" && filepath !== "") {
+      const dir = dirname(filepath);
+      if (dir) {
+        await mkdir(dir, { recursive: true }).catch(() => null);
+      }
+    }
+
+    this.sqlite = new Database(filepath);
+
+    this.bunDb = drizzle({
+      client: this.sqlite,
+      logger: {
+        logQuery: (query: string, params: unknown[]) => {
+          this.log.trace(query, { params });
+        },
+      },
+    });
+
+    this.log.info(`Using Bun SQLite database at ${filepath}`);
+  }
+
+  /**
+   * Close the connection opened by {@link connect}.
+   */
+  public override async close(): Promise<void> {
+    if (this.sqlite) {
+      this.log.debug("Closing Bun SQLite connection...");
+      this.sqlite.close();
+      this.sqlite = undefined;
+      this.bunDb = undefined;
+      this.log.info("Bun SQLite connection closed");
+    }
+  }
+
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      // Check if we're running in Bun
-      if (typeof Bun === "undefined") {
-        throw new AlephaError(
-          "BunSqliteProvider requires the Bun runtime. Use NodeSqliteProvider for Node.js.",
-        );
-      }
-
-      const { Database } = await import("bun:sqlite");
-      const { drizzle } = await import("drizzle-orm/bun-sqlite");
-
-      const filepath = this.url.replace("sqlite://", "").replace("sqlite:", "");
-
-      if (filepath !== ":memory:" && filepath !== "") {
-        const dir = dirname(filepath);
-        if (dir) {
-          await mkdir(dir, { recursive: true }).catch(() => null);
-        }
-      }
-
-      this.sqlite = new Database(filepath);
-
-      this.bunDb = drizzle({
-        client: this.sqlite,
-        logger: {
-          logQuery: (query: string, params: unknown[]) => {
-            this.log.trace(query, { params });
-          },
-        },
-      });
+      await this.connect();
 
       // Never migrate in serverless mode - migrations should be applied during deployment
       if (!this.alepha.isServerless()) {
         await this.migrate();
       }
-
-      this.log.info(`Using Bun SQLite database at ${filepath}`);
     },
   });
 
@@ -194,13 +224,7 @@ export class BunSqliteProvider extends DatabaseProvider {
     on: "stop",
     priority: "last",
     handler: async () => {
-      if (this.sqlite) {
-        this.log.debug("Closing Bun SQLite connection...");
-        this.sqlite.close();
-        this.sqlite = undefined;
-        this.bunDb = undefined;
-        this.log.info("Bun SQLite connection closed");
-      }
+      await this.close();
     },
   });
 
