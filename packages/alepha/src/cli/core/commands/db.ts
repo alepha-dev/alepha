@@ -75,37 +75,17 @@ export class DbCommand {
         }
 
         const migrationDir = this.fs.join(rootDir, "migrations", providerName);
+        const lastSnapshot = await this.resolveLastSnapshot(migrationDir);
 
-        const journalBuffer = await this.fs
-          .readFile(this.fs.join(migrationDir, "meta", "_journal.json"))
-          .catch(() => null);
-
-        // `continue`, not `return`: a journal-less or clean provider must not
+        // `continue`, not `return`: a snapshot-less or clean provider must not
         // exit the whole handler and mask drift in the remaining providers
         // (e.g. a clean Postgres hiding a drifted SQLite/D1 migration set).
-        if (!journalBuffer) {
-          this.log.info(`No migration journal found for '${providerName}'.`);
-          continue;
-        }
-
-        const journal = JSON.parse(journalBuffer.toString("utf-8"));
-        const lastMigration = journal.entries?.[journal.entries.length - 1];
-        if (!lastMigration) {
-          // A journal exists but records no migrations yet. Reading `.idx` off
-          // `undefined` threw a bare TypeError instead of saying so.
+        if (!lastSnapshot) {
           this.log.info(
             `No migrations recorded yet for '${providerName}'; nothing to compare.`,
           );
           continue;
         }
-        const snapshotBuffer = await this.fs.readFile(
-          this.fs.join(
-            migrationDir,
-            "meta",
-            `${String(lastMigration.idx).padStart(4, "0")}_snapshot.json`,
-          ),
-        );
-        const lastSnapshot = JSON.parse(snapshotBuffer.toString("utf-8"));
 
         const { statements: migrationStatements } =
           await drizzleKitProvider.generateMigration(provider, lastSnapshot, {
@@ -739,6 +719,11 @@ export class DbCommand {
       return [];
     }
 
+    // `writeFile` on a real filesystem does not create missing parent
+    // directories (unlike the in-memory test double), so `.archive/` and
+    // `.archive/meta/` must be created explicitly before the first write.
+    await this.fs.mkdir(archiveDir, { recursive: true }).catch(() => null);
+
     for (const file of sqlFiles) {
       const content = await this.fs.readFile(this.fs.join(migrationsDir, file));
       await this.fs.writeFile(this.fs.join(archiveDir, file), String(content));
@@ -747,6 +732,11 @@ export class DbCommand {
 
     const metaDir = this.fs.join(migrationsDir, "meta");
     const metaEntries = await this.fs.ls(metaDir).catch(() => []);
+    if (metaEntries.length > 0) {
+      await this.fs
+        .mkdir(this.fs.join(archiveDir, "meta"), { recursive: true })
+        .catch(() => null);
+    }
     for (const entry of metaEntries) {
       const name = entry.split("/").pop() as string;
       const content = await this.fs.readFile(this.fs.join(metaDir, name));
@@ -758,6 +748,74 @@ export class DbCommand {
     }
 
     return sqlFiles;
+  }
+
+  /**
+   * Locate the most recently recorded schema snapshot for a migrations
+   * directory, across both layouts drizzle-kit has used:
+   *
+   * - pre-v1 (`meta/_journal.json` + `meta/<idx>_snapshot.json`): the format
+   *   every migration in this repo was generated in before the v1 upgrade.
+   * - v1 (one `<tag>/` folder per migration, each with its own
+   *   `snapshot.json`, no journal at all): what `drizzle-kit generate`
+   *   produces now. `drizzle-orm@1`'s own `readMigrationFiles` refuses to
+   *   even look at the old layout — it throws telling the caller to run
+   *   `drizzle-kit up` — so once a project's migrations are in the new
+   *   layout, this method must be too, or `check` silently stops comparing
+   *   anything.
+   *
+   * Returns `null` when nothing is recorded yet, so callers can tell that
+   * apart from "found a snapshot" without inspecting shape.
+   */
+  protected async resolveLastSnapshot(
+    migrationDir: string,
+  ): Promise<any | null> {
+    const journalBuffer = await this.fs
+      .readFile(this.fs.join(migrationDir, "meta", "_journal.json"))
+      .catch(() => null);
+
+    if (journalBuffer) {
+      const journal = JSON.parse(journalBuffer.toString("utf-8"));
+      const lastMigration = journal.entries?.[journal.entries.length - 1];
+      if (!lastMigration) {
+        return null;
+      }
+      const snapshotBuffer = await this.fs.readFile(
+        this.fs.join(
+          migrationDir,
+          "meta",
+          `${String(lastMigration.idx).padStart(4, "0")}_snapshot.json`,
+        ),
+      );
+      return JSON.parse(snapshotBuffer.toString("utf-8"));
+    }
+
+    // v1 layout: folder names are timestamp-prefixed (YYYYMMDDHHMMSS_name),
+    // so a plain string sort orders them chronologically — the same
+    // assumption drizzle-kit's own folder scan relies on.
+    const entries = await this.fs.ls(migrationDir).catch(() => []);
+    const folders: string[] = [];
+    for (const entry of entries) {
+      const name = entry.split("/").pop() as string;
+      if (name === "meta" || name === ".archive") continue;
+      const hasSnapshot = await this.fs.exists(
+        this.fs.join(migrationDir, name, "snapshot.json"),
+      );
+      if (hasSnapshot) {
+        folders.push(name);
+      }
+    }
+
+    if (folders.length === 0) {
+      return null;
+    }
+
+    folders.sort();
+    const lastFolder = folders[folders.length - 1];
+    const snapshotBuffer = await this.fs.readFile(
+      this.fs.join(migrationDir, lastFolder, "snapshot.json"),
+    );
+    return JSON.parse(snapshotBuffer.toString("utf-8"));
   }
 
   /**

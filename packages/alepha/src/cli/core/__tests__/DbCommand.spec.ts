@@ -14,6 +14,7 @@ class TestDbCommand extends DbCommand {
   public testAssertNoDestructiveMigrations =
     this.assertNoDestructiveMigrations.bind(this);
   public testArchiveMigrations = this.archiveMigrations.bind(this);
+  public testResolveLastSnapshot = this.resolveLastSnapshot.bind(this);
   public readonly testBaselineMark = this.baselineMark;
 }
 
@@ -197,6 +198,90 @@ describe("DbCommand", () => {
       await expect(
         db.testArchiveMigrations("/app/migrations/sqlite"),
       ).rejects.toThrowError(/already exists/);
+    });
+  });
+
+  /**
+   * `alepha db migrations check` diffs the current schema against the most
+   * recently recorded snapshot. drizzle-kit v1 changed where that snapshot
+   * lives (one folder per migration, no `meta/_journal.json`), and
+   * `drizzle-orm@1`'s runtime migrator refuses to even read the old layout.
+   * `resolveLastSnapshot` must understand both, or `check` silently stops
+   * comparing anything the moment a project's migrations are regenerated
+   * or baselined under v1.
+   */
+  describe("resolveLastSnapshot", () => {
+    it("reads the last snapshot from a pre-v1 journal + meta layout", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/meta/_journal.json",
+        JSON.stringify({
+          entries: [
+            { idx: 0, tag: "0000_first" },
+            { idx: 1, tag: "0001_second" },
+          ],
+        }),
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/meta/0000_snapshot.json",
+        JSON.stringify({ id: "old" }),
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/meta/0001_snapshot.json",
+        JSON.stringify({ id: "latest" }),
+      );
+
+      const snapshot = await db.testResolveLastSnapshot(
+        "/app/migrations/sqlite",
+      );
+
+      expect(snapshot).toEqual({ id: "latest" });
+    });
+
+    it("returns null when a pre-v1 journal exists but records nothing yet", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/meta/_journal.json",
+        JSON.stringify({ entries: [] }),
+      );
+
+      expect(
+        await db.testResolveLastSnapshot("/app/migrations/sqlite"),
+      ).toBeNull();
+    });
+
+    it("reads the last snapshot from a v1 folder-per-migration layout", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260101000000_baseline/migration.sql",
+        "CREATE TABLE a(id integer);",
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260101000000_baseline/snapshot.json",
+        JSON.stringify({ id: "baseline" }),
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260201000000_add_widgets/migration.sql",
+        "CREATE TABLE widgets(id integer);",
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260201000000_add_widgets/snapshot.json",
+        JSON.stringify({ id: "latest" }),
+      );
+
+      const snapshot = await db.testResolveLastSnapshot(
+        "/app/migrations/sqlite",
+      );
+
+      expect(snapshot).toEqual({ id: "latest" });
+    });
+
+    it("returns null when there is nothing to compare in either layout", async () => {
+      const { db } = create();
+
+      expect(
+        await db.testResolveLastSnapshot("/app/migrations/sqlite"),
+      ).toBeNull();
     });
   });
 
