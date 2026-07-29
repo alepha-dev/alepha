@@ -67,6 +67,15 @@ export const relations = $relations(schema, (r) => ({
     user: r.one.users({ from: r.characters.userId, to: r.users.id }),
   },
 
+  /**
+   * A junction is a normal entity, so it can be traversed directly too --
+   * nothing about `.through()` above makes these unavailable.
+   */
+  questWatchers: {
+    quest: r.one.quests({ from: r.questWatchers.questId, to: r.quests.id }),
+    user: r.one.users({ from: r.questWatchers.userId, to: r.users.id }),
+  },
+
   quests: {
     campaign: r.one.campaigns({
       from: r.quests.campaignId,
