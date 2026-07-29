@@ -19,6 +19,12 @@ export const quests = $entity({
      */
     deletedAt: db.deletedAt(),
     /**
+     * A JSON array column, like `quests.tags` and `quests.objectives` in Lore.
+     * `Repository.clean()` decodes these; the RQB spike has to show whether
+     * they survive the engine swap.
+     */
+    tags: db.default(z.array(z.string()), []),
+    /**
      * Self-referencing FK. This exact shape is why relations cannot be
      * inferred from `db.ref` — making the reference generic enough to carry
      * its target through the type makes this line fail with TS7022.
