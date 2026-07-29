@@ -1,4 +1,4 @@
-import { Alepha, z } from "alepha";
+import { Alepha, AlephaError, z } from "alepha";
 import { CliProvider } from "alepha/command";
 import { $entity, $repository, db } from "alepha/orm";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
@@ -27,7 +27,7 @@ class FakeCliUtils extends AlephaCliUtils {
 
   public override async loadAlephaFromServerEntryFile(): Promise<Alepha> {
     if (!this.userAlepha) {
-      throw new Error("test did not provide a user container");
+      throw new AlephaError("test did not provide a user container");
     }
     return this.userAlepha;
   }

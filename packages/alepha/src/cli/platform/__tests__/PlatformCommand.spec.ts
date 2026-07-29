@@ -64,7 +64,7 @@ class FakeFs {
 
 describe("PlatformCommand", () => {
   describe("db baseline mark", () => {
-    const create = (config: Record<string, unknown> = {}) => {
+    const create = async (config: Record<string, unknown> = {}) => {
       const alepha = Alepha.create()
         .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
         .with({ provide: CloudflareAdapter, use: FakeCloudflareAdapter });
@@ -87,7 +87,10 @@ describe("PlatformCommand", () => {
         ...config,
       } as any);
 
-      fs.writeFile("/project/package.json", JSON.stringify({ name: "my-app" }));
+      await fs.writeFile(
+        "/project/package.json",
+        JSON.stringify({ name: "my-app" }),
+      );
 
       const writes: string[] = [];
       const captureStdout = async (fn: () => Promise<void>) => {
@@ -118,16 +121,11 @@ describe("PlatformCommand", () => {
     it("resolves the D1 db name and passes --reset through to d1MigrationsBaseline", async ({
       expect,
     }) => {
-      const { fs, cli, cmd, shell, captureStdout } = create();
+      const { cli, cmd, shell, captureStdout } = await create();
       shell.appliedNames = ["0001_old.sql", "0002_old.sql"];
-      // `vitest.config.ts` sets a global `process.env.DATABASE_URL` (used by
-      // other suites' Postgres tests) that the handler's fallback would
-      // otherwise pick up — set an explicit D1 URL so this test isn't at the
-      // mercy of ambient process env.
-      await fs.writeFile(
-        "/project/.env.production",
-        "DATABASE_URL=d1://DB\nPUBLIC_URL=https://example.com",
-      );
+      // No `.env.production` written: the Postgres/Hyperdrive guard only
+      // reads `.env.<env>` (never `process.env`), so an absent file
+      // correctly falls through to the D1 path, exercised for real here.
 
       const output = await captureStdout(() =>
         cli.run(cmd.testBaselineMark, {
@@ -160,12 +158,8 @@ describe("PlatformCommand", () => {
     it("refuses without --reset when the deployed database has history, and touches nothing", async ({
       expect,
     }) => {
-      const { fs, cli, cmd, shell } = create();
+      const { cli, cmd, shell } = await create();
       shell.appliedNames = ["0001_old.sql"];
-      await fs.writeFile(
-        "/project/.env.production",
-        "DATABASE_URL=d1://DB\nPUBLIC_URL=x",
-      );
 
       await expect(
         cli.run(cmd.testBaselineMark, {
@@ -185,11 +179,7 @@ describe("PlatformCommand", () => {
     it("names D1 resources with the tenant prefix when --tenant is given", async ({
       expect,
     }) => {
-      const { fs, cli, cmd, shell } = create({ tenancy: "optional" });
-      await fs.writeFile(
-        "/project/.env.production",
-        "DATABASE_URL=d1://DB\nPUBLIC_URL=x",
-      );
+      const { cli, cmd, shell } = await create({ tenancy: "optional" });
 
       await cli.run(cmd.testBaselineMark, {
         root: "/project",
@@ -206,7 +196,7 @@ describe("PlatformCommand", () => {
     it("refuses when the environment's adapter is not cloudflare", async ({
       expect,
     }) => {
-      const { cli, cmd } = create({
+      const { cli, cmd } = await create({
         environments: { production: { adapter: "vercel" } },
       });
 
@@ -221,7 +211,7 @@ describe("PlatformCommand", () => {
     it("refuses when the environment is backed by Postgres/Hyperdrive, not D1", async ({
       expect,
     }) => {
-      const { fs, cli, cmd } = create();
+      const { fs, cli, cmd } = await create();
       await fs.writeFile(
         "/project/.env.production",
         "DATABASE_URL=postgres://user:pass@host/db",

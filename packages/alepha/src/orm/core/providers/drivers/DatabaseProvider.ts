@@ -426,6 +426,11 @@ export abstract class DatabaseProvider {
     migrationsFolder: string,
     options?: { init?: boolean },
   ): Promise<{ exitCode?: string } | void> {
+    if (this.driver === "d1") {
+      throw new AlephaError(
+        "D1 does not support baseline-mark through this method — use 'alepha platform db baseline mark', which drives wrangler's bookkeeping table directly.",
+      );
+    }
     throw new AlephaError(
       `'baseline mark' does not yet support the '${this.driver}' driver`,
     );

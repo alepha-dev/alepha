@@ -715,9 +715,17 @@ export class PlatformCommand {
         );
       }
 
+      // Deliberately `.env.<env>` only — no `process.env.DATABASE_URL`
+      // fallback. Unlike `plan`'s use of the same lookup (a display label
+      // only), this gates a hard refusal: a deployed D1 environment's
+      // `DATABASE_URL` is a Cloudflare secret, not a local env var, so it's
+      // routinely absent from `.env.<env>` — and falling back to whatever
+      // the operator happens to have exported would make this guard trip on
+      // an unrelated local Postgres database, sending a real D1 deploy to
+      // `alepha db baseline mark`, which then hard-refuses D1 with no
+      // working path left.
       const envVars = await this.envUtils.parseEnv(root, [`.env.${env}`]);
-      const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
-      if (dbUrl?.startsWith("postgres:")) {
+      if (envVars.DATABASE_URL?.startsWith("postgres:")) {
         throw new AlephaError(
           `'${env}' is backed by Postgres/Hyperdrive, not D1. Use 'alepha db baseline mark' instead.`,
         );
