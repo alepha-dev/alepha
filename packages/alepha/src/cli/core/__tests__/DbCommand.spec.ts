@@ -15,6 +15,9 @@ class TestDbCommand extends DbCommand {
     this.assertNoDestructiveMigrations.bind(this);
   public testArchiveMigrations = this.archiveMigrations.bind(this);
   public testResolveLastSnapshot = this.resolveLastSnapshot.bind(this);
+  public testResolveMigrationSqlPath = this.resolveMigrationSqlPath.bind(this);
+  public testStripPublicSchemaFromMigrations =
+    this.stripPublicSchemaFromMigrations.bind(this);
   public readonly testBaselineMark = this.baselineMark;
 }
 
@@ -133,6 +136,124 @@ describe("DbCommand", () => {
           "0045_new.sql",
         ]),
       ).resolves.toBeUndefined();
+    });
+
+    /**
+     * The caller passes top-level directory ENTRY NAMES (from an `ls`
+     * diff), not filenames. Under drizzle-kit v1 a newly generated
+     * migration is a folder (`<tag>/migration.sql`), so an entry-name
+     * filter of `.endsWith(".sql")` drops it before its content is ever
+     * read — the guard runs, finds nothing, and reports clean regardless
+     * of what the migration actually contains. This is the only automated
+     * defence against the D1 cascade-wipe bomb, so a v1-layout migration
+     * containing DROP TABLE must be caught, not silently waved through.
+     */
+    it("rejects a v1-layout migration folder containing DROP TABLE", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260729140502_drop_it/migration.sql",
+        'ALTER TABLE "quests" ADD COLUMN "note" text;\nDROP TABLE "campaigns";',
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260729140502_drop_it/snapshot.json",
+        "{}",
+      );
+
+      await expect(
+        db.testAssertNoDestructiveMigrations("/app/migrations/sqlite", [
+          "20260729140502_drop_it",
+        ]),
+      ).rejects.toThrowError(/DROP TABLE/);
+    });
+
+    it("accepts a v1-layout migration folder with no table drops", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260729140502_add_col/migration.sql",
+        'ALTER TABLE "quests" ADD COLUMN "note" text;',
+      );
+
+      await expect(
+        db.testAssertNoDestructiveMigrations("/app/migrations/sqlite", [
+          "20260729140502_add_col",
+        ]),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  /**
+   * drizzle-kit generates `REFERENCES "public"."table"(...)` even for
+   * schema-free models, which breaks a non-public `search_path` deploy.
+   * Like the destructive-migration guard above, this used to filter
+   * directory entries by `.endsWith(".sql")` — dead on arrival for
+   * drizzle-kit v1's folder-per-migration layout.
+   */
+  describe("stripPublicSchemaFromMigrations", () => {
+    it("strips public schema qualifiers from a flat pre-v1 migration file", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0001_init.sql",
+        'REFERENCES "public"."users"("id")',
+      );
+
+      await db.testStripPublicSchemaFromMigrations("/app/migrations/sqlite");
+
+      expect(
+        await fs.readTextFile("/app/migrations/sqlite/0001_init.sql"),
+      ).toBe('REFERENCES "users"("id")');
+    });
+
+    it("strips public schema qualifiers from a v1-layout migration folder", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260729140502_init/migration.sql",
+        'REFERENCES "public"."users"("id")',
+      );
+
+      await db.testStripPublicSchemaFromMigrations("/app/migrations/sqlite");
+
+      expect(
+        await fs.readTextFile(
+          "/app/migrations/sqlite/20260729140502_init/migration.sql",
+        ),
+      ).toBe('REFERENCES "users"("id")');
+    });
+  });
+
+  describe("resolveMigrationSqlPath", () => {
+    it("resolves a flat '<name>.sql' entry to itself", async () => {
+      const { db, fs } = create();
+      await fs.writeFile("/app/migrations/sqlite/0001_init.sql", "CREATE;");
+
+      expect(
+        await db.testResolveMigrationSqlPath(
+          "/app/migrations/sqlite",
+          "0001_init.sql",
+        ),
+      ).toBe("/app/migrations/sqlite/0001_init.sql");
+    });
+
+    it("resolves a v1 folder entry to its migration.sql", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260729140502_init/migration.sql",
+        "CREATE;",
+      );
+
+      expect(
+        await db.testResolveMigrationSqlPath(
+          "/app/migrations/sqlite",
+          "20260729140502_init",
+        ),
+      ).toBe("/app/migrations/sqlite/20260729140502_init/migration.sql");
+    });
+
+    it("returns null for an entry that is neither a .sql file nor a migration folder", async () => {
+      const { db } = create();
+
+      expect(
+        await db.testResolveMigrationSqlPath("/app/migrations/sqlite", "meta"),
+      ).toBeNull();
     });
   });
 
@@ -282,6 +403,45 @@ describe("DbCommand", () => {
       expect(
         await db.testResolveLastSnapshot("/app/migrations/sqlite"),
       ).toBeNull();
+    });
+
+    /**
+     * A project mid-upgrade has both: a `meta/_journal.json` from before
+     * v1, and a v1 folder from an `alepha db migrations create` run after
+     * upgrading. v1's `generate` never touches `meta/_journal.json` again,
+     * so the journal is frozen the instant a v1 folder exists — it can only
+     * be stale from that point on. The v1 folder must win, or `check`
+     * compares against a snapshot a later migration already superseded,
+     * reports drift that migration already covers, and `create` would
+     * generate a duplicate on top of it.
+     */
+    it("prefers a newer v1 folder over a stale pre-v1 journal", async () => {
+      const { db, fs } = create();
+      // Pre-v1 history: journal points at the old snapshot.
+      await fs.writeFile(
+        "/app/migrations/sqlite/meta/_journal.json",
+        JSON.stringify({ entries: [{ idx: 0, tag: "0000_first" }] }),
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/meta/0000_snapshot.json",
+        JSON.stringify({ id: "stale-pre-v1" }),
+      );
+      // A v1 migration generated after the upgrade — newer, but the
+      // journal has no idea it exists.
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260729140502_add_widgets/migration.sql",
+        "CREATE TABLE widgets(id integer);",
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260729140502_add_widgets/snapshot.json",
+        JSON.stringify({ id: "current" }),
+      );
+
+      const snapshot = await db.testResolveLastSnapshot(
+        "/app/migrations/sqlite",
+      );
+
+      expect(snapshot).toEqual({ id: "current" });
     });
   });
 

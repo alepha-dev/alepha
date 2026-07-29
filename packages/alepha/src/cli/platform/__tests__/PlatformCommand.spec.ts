@@ -1,3 +1,4 @@
+import { join as nodeJoin } from "node:path";
 import { Alepha } from "alepha";
 import {
   CloudflareAdapter,
@@ -48,23 +49,52 @@ class FakeShell {
   }
 }
 
+/**
+ * Models just enough of a real filesystem for migration discovery: `ls(dir)`
+ * returns the immediate child names under `dir` (files and directories
+ * alike, same as a raw `readdir`), and `exists(path)` is true for a known
+ * file or a directory with something nested under it.
+ *
+ * The previous version of this fixture returned a fixed file list
+ * regardless of the directory queried, and `exists()` was unconditionally
+ * `true` for any path. That shape structurally cannot distinguish the v1
+ * folder-per-migration layout (`<tag>/migration.sql`) from an empty
+ * directory or from a directory that merely looks like it might hold one —
+ * so this end-to-end suite could pass without ever exercising v1 discovery
+ * through the actual `alepha platform db baseline mark` command surface,
+ * even after the underlying `WranglerApi` logic was fixed and unit-tested
+ * elsewhere.
+ */
 class FakeFs {
-  public files: string[] = ["0000_baseline.sql"];
+  constructor(protected readonly paths: Set<string>) {}
 
   join(...parts: string[]) {
-    return parts.join("/");
+    return nodeJoin(...parts);
   }
-  async exists() {
-    return true;
+
+  async exists(path: string) {
+    if (this.paths.has(path)) return true;
+    return [...this.paths].some((p) => p.startsWith(`${path}/`));
   }
-  async ls() {
-    return this.files;
+
+  async ls(dir: string) {
+    const prefix = `${dir}/`;
+    const names = new Set<string>();
+    for (const p of this.paths) {
+      if (p.startsWith(prefix)) {
+        names.add(p.slice(prefix.length).split("/")[0] as string);
+      }
+    }
+    return [...names];
   }
 }
 
 describe("PlatformCommand", () => {
   describe("db baseline mark", () => {
-    const create = async (config: Record<string, unknown> = {}) => {
+    const create = async (
+      config: Record<string, unknown> = {},
+      migrationPaths: string[] = ["migrations/sqlite/0000_baseline.sql"],
+    ) => {
       const alepha = Alepha.create()
         .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
         .with({ provide: CloudflareAdapter, use: FakeCloudflareAdapter });
@@ -75,7 +105,9 @@ describe("PlatformCommand", () => {
 
       const wrangler = alepha.inject(WranglerApi);
       const shell = new FakeShell();
-      const wranglerFs = new FakeFs();
+      const wranglerFs = new FakeFs(
+        new Set(migrationPaths.map((p) => nodeJoin("/project", p))),
+      );
       Object.assign(wrangler as unknown as Record<string, unknown>, {
         shell,
         fs: wranglerFs,
@@ -153,6 +185,45 @@ describe("PlatformCommand", () => {
       const parsed = JSON.parse(output);
       expect(parsed.dbName).toBe("my-app-production");
       expect(parsed.replaced).toBe(2);
+    });
+
+    /**
+     * This is the exact command the production runbook now runs against
+     * Lore's D1: one drizzle-kit v1 baseline folder
+     * (`<tag>/migration.sql`), nothing previously recorded. Covered at the
+     * unit level in `d1MigrationsApply.spec.ts`, but the command surface
+     * that will actually be invoked — naming resolution, flag parsing,
+     * `WranglerApi` injection, all of it — was only ever exercised here
+     * against the flat pre-v1 layout, so a regression in how this command
+     * wires up to v1 discovery would not have been caught.
+     */
+    it("baselines a drizzle-kit v1 layout migration, recording the folder name", async ({
+      expect,
+    }) => {
+      const { cli, cmd, shell, captureStdout } = await create({}, [
+        "migrations/sqlite/20260729013337_baseline/migration.sql",
+        "migrations/sqlite/20260729013337_baseline/snapshot.json",
+      ]);
+
+      const output = await captureStdout(() =>
+        cli.run(cmd.testBaselineMark, {
+          root: "/project",
+          argv: "--env production --json",
+        }),
+      );
+
+      expect(
+        shell.commands.some((c) =>
+          c.includes(
+            "INSERT INTO d1_migrations (name) VALUES ('20260729013337_baseline')",
+          ),
+        ),
+      ).toBe(true);
+      expect(shell.commands.some((c) => c.includes("--file="))).toBe(false);
+
+      const parsed = JSON.parse(output);
+      expect(parsed.dbName).toBe("my-app-production");
+      expect(parsed.replaced).toBe(0);
     });
 
     it("refuses without --reset when the deployed database has history, and touches nothing", async ({

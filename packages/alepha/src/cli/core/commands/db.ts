@@ -585,6 +585,37 @@ export class DbCommand {
   }
 
   /**
+   * Resolve a migrations-directory entry to the actual `.sql` file it
+   * represents, across both drizzle-kit layouts:
+   *
+   * - pre-v1: the entry itself IS the SQL file (`<name>.sql`).
+   * - v1: the entry is a folder holding `migration.sql`
+   *   (`<tag>/migration.sql`) — drizzle-kit v1 never produces a flat file.
+   *
+   * Returns `null` for anything that isn't a migration under either layout
+   * (e.g. `meta/`, `.archive/`), so callers can skip it without guessing.
+   *
+   * Shared by `assertNoDestructiveMigrations` and
+   * `stripPublicSchemaFromMigrations` — both used to filter on
+   * `.endsWith(".sql")` alone, which matched nothing once `generate`
+   * started producing v1's folder layout: the destructive-migration guard
+   * (the only automated defence against the D1 cascade-wipe bomb) ran
+   * clean on every v1 migration regardless of content, and the Postgres
+   * `"public".` qualifier strip silently stopped running at all.
+   */
+  protected async resolveMigrationSqlPath(
+    migrationsDir: string,
+    entry: string,
+  ): Promise<string | null> {
+    if (entry.endsWith(".sql")) {
+      return this.fs.join(migrationsDir, entry);
+    }
+
+    const nestedSqlPath = this.fs.join(migrationsDir, entry, "migration.sql");
+    return (await this.fs.exists(nestedSqlPath)) ? nestedSqlPath : null;
+  }
+
+  /**
    * Remove `"public".` schema qualifiers from FK REFERENCES in SQL migration files.
    *
    * drizzle-kit generates `REFERENCES "public"."table"(...)` even for schema-free
@@ -593,19 +624,19 @@ export class DbCommand {
   protected async stripPublicSchemaFromMigrations(
     migrationsDir: string,
   ): Promise<void> {
-    const files = await this.fs.ls(migrationsDir).catch(() => []);
+    const entries = await this.fs.ls(migrationsDir).catch(() => []);
 
-    for (const file of files) {
-      if (!file.endsWith(".sql")) continue;
+    for (const entry of entries) {
+      const sqlPath = await this.resolveMigrationSqlPath(migrationsDir, entry);
+      if (!sqlPath) continue;
 
-      const filePath = this.fs.join(migrationsDir, file);
-      const content = await this.fs.readFile(filePath);
+      const content = await this.fs.readFile(sqlPath);
       const sql = content.toString("utf-8");
       const cleaned = sql.replaceAll('"public".', "");
 
       if (cleaned !== sql) {
-        await this.fs.writeFile(filePath, cleaned);
-        this.log.debug(`Stripped "public". qualifiers from ${file}`);
+        await this.fs.writeFile(sqlPath, cleaned);
+        this.log.debug(`Stripped "public". qualifiers from ${entry}`);
       }
     }
   }
@@ -631,9 +662,10 @@ export class DbCommand {
     const offenders: string[] = [];
 
     for (const file of files) {
-      if (!file.endsWith(".sql")) continue;
+      const sqlPath = await this.resolveMigrationSqlPath(migrationsDir, file);
+      if (!sqlPath) continue;
 
-      const content = await this.fs.readFile(this.fs.join(migrationsDir, file));
+      const content = await this.fs.readFile(sqlPath);
       const drops = this.findDropTableStatements(content.toString("utf-8"));
 
       for (const drop of drops) {
@@ -764,32 +796,24 @@ export class DbCommand {
    *   layout, this method must be too, or `check` silently stops comparing
    *   anything.
    *
+   * v1 folders are checked FIRST, journal second — not the other way
+   * around. A project mid-upgrade (pre-v1 history on disk, then `alepha db
+   * migrations create` run under v1) has both: a frozen `meta/_journal.json`
+   * that v1's `generate` never touches again, and a v1 folder that is
+   * unconditionally newer than anything the journal could describe the
+   * moment it exists. Treating the journal as authoritative whenever it's
+   * present — the previous behavior — would compare against the stale
+   * pre-v1 snapshot even after a v1 migration made it obsolete, reporting
+   * drift a migration already covers and risking a duplicate on `create`.
+   * The journal is therefore only consulted when there are no v1 folders
+   * at all, i.e. the project hasn't been touched by v1 yet.
+   *
    * Returns `null` when nothing is recorded yet, so callers can tell that
    * apart from "found a snapshot" without inspecting shape.
    */
   protected async resolveLastSnapshot(
     migrationDir: string,
   ): Promise<any | null> {
-    const journalBuffer = await this.fs
-      .readFile(this.fs.join(migrationDir, "meta", "_journal.json"))
-      .catch(() => null);
-
-    if (journalBuffer) {
-      const journal = JSON.parse(journalBuffer.toString("utf-8"));
-      const lastMigration = journal.entries?.[journal.entries.length - 1];
-      if (!lastMigration) {
-        return null;
-      }
-      const snapshotBuffer = await this.fs.readFile(
-        this.fs.join(
-          migrationDir,
-          "meta",
-          `${String(lastMigration.idx).padStart(4, "0")}_snapshot.json`,
-        ),
-      );
-      return JSON.parse(snapshotBuffer.toString("utf-8"));
-    }
-
     // v1 layout: folder names are timestamp-prefixed (YYYYMMDDHHMMSS_name),
     // so a plain string sort orders them chronologically — the same
     // assumption drizzle-kit's own folder scan relies on.
@@ -806,14 +830,35 @@ export class DbCommand {
       }
     }
 
-    if (folders.length === 0) {
+    if (folders.length > 0) {
+      folders.sort();
+      const lastFolder = folders[folders.length - 1];
+      const snapshotBuffer = await this.fs.readFile(
+        this.fs.join(migrationDir, lastFolder, "snapshot.json"),
+      );
+      return JSON.parse(snapshotBuffer.toString("utf-8"));
+    }
+
+    // Pre-v1 layout, and only reached when no v1 folder exists.
+    const journalBuffer = await this.fs
+      .readFile(this.fs.join(migrationDir, "meta", "_journal.json"))
+      .catch(() => null);
+
+    if (!journalBuffer) {
       return null;
     }
 
-    folders.sort();
-    const lastFolder = folders[folders.length - 1];
+    const journal = JSON.parse(journalBuffer.toString("utf-8"));
+    const lastMigration = journal.entries?.[journal.entries.length - 1];
+    if (!lastMigration) {
+      return null;
+    }
     const snapshotBuffer = await this.fs.readFile(
-      this.fs.join(migrationDir, lastFolder, "snapshot.json"),
+      this.fs.join(
+        migrationDir,
+        "meta",
+        `${String(lastMigration.idx).padStart(4, "0")}_snapshot.json`,
+      ),
     );
     return JSON.parse(snapshotBuffer.toString("utf-8"));
   }

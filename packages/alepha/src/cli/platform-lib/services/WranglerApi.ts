@@ -161,7 +161,13 @@ export class WranglerApi {
       );
     }
 
-    migrations.sort((a, b) => a.name.localeCompare(b.name));
+    // Deploy order depends on this. `localeCompare` with no locale pinned
+    // uses the host's default locale and ICU collation, which orders case
+    // and punctuation differently from plain code-unit order — the wrong
+    // instrument for a deterministic ordering that decides whether a table
+    // rebuild runs before its table exists. An explicit code-unit
+    // comparator is locale-independent by construction.
+    migrations.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     return migrations;
   }
 
