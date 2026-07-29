@@ -4,17 +4,18 @@ Keep local copies of Alepha packages inside your project. Audit source code, app
 
 ## Quick Start
 
-Register the plugin in `alepha.config.ts`:
+Register the plugin in `alepha.config.ts` with the `vendor()` helper:
 
 ```typescript filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
-import { AlephaCliVendor } from "alepha/cli/vendor";
+import { vendor } from "alepha/cli/vendor";
 
 export default defineConfig({
-  services: [AlephaCliVendor],
-  vendor: {
-    packages: ["alepha"],
-  },
+  plugins: [
+    vendor({
+      packages: ["alepha"],
+    }),
+  ],
 });
 ```
 
@@ -22,48 +23,44 @@ export default defineConfig({
 alepha vendor sync
 ```
 
-Your `packages/` directory now contains the vendored source. Your workspace resolves these local copies instead of the published npm packages.
+Your `.vendor/` directory now contains the vendored source, plus a `vendor.json` lock file recording the remote and the exact commit that was synced.
 
 ## What It Does
 
-The vendor plugin clones the Alepha repository, copies the packages you specify into your project, strips test files and build artifacts, and runs `install` so everything resolves correctly.
+The vendor plugin shallow-clones the Alepha repository, copies the packages you specify into your project's vendor directory (`.vendor/` by default), strips test files and build artifacts, records the synced commit in `vendor.json`, and runs your package manager's `install` so everything resolves correctly.
 
 Use cases:
 
 - **Auditing** -- review Alepha internals without trusting a published package
+- **AI tooling** -- give agents the full framework source to read alongside your app
 - **Patching** -- fix a bug locally before the next release
 - **Offline work** -- develop without network access to the registry
 - **Compliance** -- meet corporate policies that require vendored dependencies
 
-## Options
-
-| Flag | Description |
-|------|-------------|
-| `--force`, `-f` | Skip local modification check and overwrite (`sync` only) |
-
 ## Configuration
 
-Register the plugin and list the packages you want to vendor in `alepha.config.ts`:
-
-```typescript filename=alepha.config.ts
-import { AlephaCliVendor } from "alepha/cli/vendor";
-import { defineConfig } from "alepha/cli/config";
-
-export default defineConfig({
-  services: [AlephaCliVendor],
-  vendor: {
-    packages: ["alepha", "@alepha/payments-stripe"],
-  },
-});
-```
-
-### Config Options
+`vendor()` accepts the following options:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `packages` | `string[]` | -- | Package directory names to vendor (required) |
-| `remote` | `string` | Alepha git remote | Git remote URL to clone from |
+| `remote` | `string` | `"https://github.com/feunard/alepha"` | Git remote URL to clone from |
 | `branch` | `string` | `"main"` | Branch to sync from |
+| `dir` | `string` | `".vendor"` | Directory holding the vendored packages (relative to project root); also where `vendor.json` is written |
+
+```typescript filename=alepha.config.ts
+import { defineConfig } from "alepha/cli/config";
+import { vendor } from "alepha/cli/vendor";
+
+export default defineConfig({
+  plugins: [
+    vendor({
+      branch: "main",
+      packages: ["alepha", "@alepha/payments-stripe"],
+    }),
+  ],
+});
+```
 
 ## Commands
 
@@ -77,39 +74,58 @@ alepha vendor sync
 
 The command:
 
-1. Shallow-clones the remote repository
-2. Checks for local modifications (aborts if found)
-3. Replaces each package directory under `packages/`
+1. Compares your local copy against the last-synced commit (from `vendor.json`) and aborts if you have local modifications
+2. Shallow-clones the remote repository at the configured branch
+3. Replaces each package directory under the vendor directory
 4. Removes test files and build artifacts
-5. Runs the package manager install
+5. Updates `vendor.json` with the new commit hash
+6. Runs the package manager install
+
+| Flag | Description |
+|------|-------------|
+| `--force`, `-f` | Skip the local modification check and overwrite |
+| `--remote` | Override the configured remote for this invocation; accepts any git-clone URL, including local paths (`file:///abs/path/to/alepha`) |
 
 > **Local Changes Protection**
 >
-> If you have local modifications, `sync` aborts and shows a diff. Use `--force` to overwrite.
+> If you have local modifications since the last sync, `sync` aborts and shows a diff. Use `--force` to overwrite.
 
 ### diff
 
-Compare local packages against the remote HEAD.
+Show your local modifications since the last sync.
 
 ```bash
 alepha vendor diff
 ```
 
-Shows file-level changes per package -- added, modified, and removed files -- with a summary of total changes.
+Reads the commit hash from `vendor.json`, clones the remote at that exact commit, and compares your local files against it. Shows file-level changes per package -- added, modified, and removed files -- with line-level detail for modifications. If you have never synced, it reports no changes.
 
 > **Before Syncing**
 >
-> Run `diff` before `sync` to see what changed upstream, or to verify that your local patches are still intact.
+> Run `diff` before `sync` to verify which local patches you still carry -- those are exactly what a plain `sync` refuses to overwrite.
+
+## The Lock File
+
+Each sync writes `<dir>/vendor.json`:
+
+```json
+{
+  "remote": "https://github.com/feunard/alepha",
+  "commit": "e55f17563..."
+}
+```
+
+This pins the baseline used by `diff` and the local-modification check, and lets any downstream tool (CI script, AI agent) re-fetch the same sources without reading your `alepha.config.ts`.
 
 ## Ignored Files
 
-The plugin automatically strips non-production files during sync and diff:
+The plugin strips non-production files during sync and ignores them during diff:
 
-**Files:** `*.spec.ts`, `*.spec.tsx`, `LICENSE`
+**Files:** `*.spec.ts`, `*.spec.tsx`, `LICENSE`, `tsdown.config.ts`
 
 **Directories:** `__tests__/`, `node_modules/`, `dist/`, `assets/swagger-ui/`
 
-These are removed after copying so the vendored packages contain only source code.
+The vendored packages contain only source code.
 
 ## Workflow
 
@@ -119,10 +135,10 @@ A typical workflow:
 # Initial vendor
 alepha vendor sync
 
-# Check what changed upstream since last sync
+# Check which local patches you carry
 alepha vendor diff
 
-# Pull latest (if no local patches)
+# Pull latest (aborts if local patches exist)
 alepha vendor sync
 
 # Pull latest (overwrite local patches)
@@ -131,7 +147,7 @@ alepha vendor sync --force
 
 ## Tips
 
-**Run `diff` before `sync`.** Always check what changed upstream before pulling. You don't want to overwrite a local fix.
+**Run `diff` before `sync`.** Know which local patches you're carrying before pulling -- `--force` discards them all.
 
 **Commit after syncing.** Vendor updates should be their own commit. This makes it easy to revert if something breaks.
 

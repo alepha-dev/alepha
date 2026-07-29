@@ -1,6 +1,6 @@
 # Types
 
-Alepha provides schema validation through the `z` singleton from `"alepha"`. It wraps [Zod 4](https://zod.dev) with opinionated defaults: objects reject extra properties, strings have length limits, and arrays cap their size.
+Alepha provides schema validation through the `z` singleton from `"alepha"`. It wraps [Zod 4](https://zod.dev) with opinionated defaults: `z.text()` strings carry length limits and trimming, format types are tagged for the ORM and OpenAPI, and objects strip unknown keys.
 
 Import `z` from `alepha`, not from `zod` — a schema built with the raw library carries none of those defaults.
 
@@ -52,22 +52,12 @@ z.longText()    // same as z.text({ size: "long" })   — 1024 chars
 z.richText()    // same as z.text({ size: "rich" })   — 65535 chars
 ```
 
-### Default Length Limits
+### Length Limits
 
-These static properties control the defaults. Override them at startup if needed:
-
-```typescript
-TypeProvider.DEFAULT_STRING_MAX_LENGTH       // 255
-TypeProvider.DEFAULT_SHORT_STRING_MAX_LENGTH  // 64
-TypeProvider.DEFAULT_LONG_STRING_MAX_LENGTH   // 1024
-TypeProvider.DEFAULT_RICH_STRING_MAX_LENGTH   // 65535
-```
+The size presets cap at 64 (`short`), 255 (`regular`), 1024 (`long`), and 65535 (`rich`) characters. An explicit `maxLength` overrides the preset cap:
 
 ```typescript
-import { TypeProvider } from "alepha/core";
-
-TypeProvider.DEFAULT_STRING_MAX_LENGTH = 512;
-TypeProvider.DEFAULT_RICH_STRING_MAX_LENGTH = 100000;
+z.text({ maxLength: 1_000_000 })   // overrides the 255 default
 ```
 
 ## Numbers
@@ -75,7 +65,7 @@ TypeProvider.DEFAULT_RICH_STRING_MAX_LENGTH = 100000;
 ```typescript
 z.number()    // any number
 z.integer()   // integer (no fractional part)
-z.int32()     // integer clamped to signed 32-bit range (-2147483647 to 2147483647)
+z.int32()     // integer clamped to signed 32-bit range (-2147483648 to 2147483647)
 z.int64()     // JS-safe integer (-9007199254740991 to 9007199254740991)
 ```
 
@@ -90,36 +80,26 @@ z.number().gt(0)
 
 ## Objects
 
-Objects reject additional properties by default:
+Objects silently strip unknown keys (standard Zod behavior):
 
 ```typescript
 const schema = z.object({
   name: z.text(),
   email: z.email(),
 });
-// { name: "alice", email: "a@b.c", extra: true } → validation error
+// { name: "alice", email: "a@b.c", extra: true } → { name: "alice", email: "a@b.c" }
 ```
 
-To allow additional properties:
-
-```typescript
-z.object({ name: z.text() }).meta({ additionalProperties: true })
-```
+Use zod's `.strict()` if you want extra keys to be rejected instead.
 
 ## Arrays
 
-Arrays are limited to 1000 items by default:
+Arrays are unbounded by default. Add explicit bounds where the input is untrusted:
 
 ```typescript
-z.array(z.string())                      // max 1000 items
+z.array(z.string())                      // no cap
 z.array(z.string()).max(50)              // max 50 items
 z.array(z.string()).min(1)               // at least 1 item
-```
-
-Override the global default:
-
-```typescript
-TypeProvider.DEFAULT_ARRAY_MAX_ITEMS = 5000;
 ```
 
 ## Modifiers
@@ -150,8 +130,6 @@ user.partial()                              // all fields optional
 user.pick({ id: true, name: true })         // only id and name
 user.omit({ id: true })                     // name and email only
 ```
-
-All three preserve the `additionalProperties: false` default.
 
 ### Extend
 
@@ -203,7 +181,7 @@ z.url()   // validates URL format
 
 ```typescript
 z.file()                      // file-like object (browser File API compatible)
-z.file({ maxSize: 1048576 })  // with size limit (bytes)
+z.file({ maxSize: 1048576 })  // maxSize is metadata (OpenAPI docs), not runtime-enforced
 z.stream()                    // experimental streaming type
 ```
 
@@ -212,7 +190,7 @@ z.stream()                    // experimental streaming type
 ### Email
 
 ```typescript
-z.email()   // validates email format, auto-trims and lowercases
+z.email()   // validates email format (no trimming or lowercasing — whitespace is rejected)
 ```
 
 ### Phone (E.164)
@@ -233,7 +211,7 @@ z.bcp47()   // validates BCP 47 tags, e.g. "en", "en-US", "fr-CA"
 z.datetime()   // ISO 8601 date-time, e.g. "2024-01-15T10:30:00Z"
 z.date()       // ISO 8601 date, e.g. "2024-01-15"
 z.time()       // ISO 8601 time, e.g. "10:30:00"
-z.duration()   // ISO 8601 duration, e.g. "P1DT12H"
+z.duration()   // string tagged with the ISO 8601 duration format (not runtime-validated)
 ```
 
 ## Enums
@@ -244,8 +222,6 @@ String enums with built-in validation:
 z.enum(["ACTIVE", "INACTIVE", "BANNED"])
 // validates that the value is one of the listed strings
 ```
-
-Enum values are validated both by pattern matching and by an `enum` constraint on the schema.
 
 ## Other Types
 
@@ -277,29 +253,21 @@ const schema = z.object({
 
 const result = alepha.codec.validate(schema, {
   name: "  Alice  ",
-  email: "ALICE@EXAMPLE.COM",
+  email: "alice@example.com",
 });
 // result: { name: "Alice", email: "alice@example.com" }
 ```
 
-Validation does more than type checking. It applies preprocessing defined by `z.text()`:
+Validation is a thin wrapper over `schema.safeParse` — everything beyond type checking lives **in the schema itself**:
 
-- **Trimming**: strings created with `z.text()` are trimmed by default.
-- **Lowercase**: strings with `lowercase: true` (like `z.email()`) are lowercased.
-- **Null coercion**: `null` values in non-nullable fields become `undefined`, which are then stripped from objects.
-- **Array wrapping**: non-array values passed to an array schema are automatically wrapped into a single-element array (e.g. `"hello"` becomes `["hello"]`).
+- **Trimming**: strings created with `z.text()` are trimmed by default (`trim: false` opts out).
+- **Lowercase**: strings created with `z.text({ lowercase: true })` are lowercased.
+- **Unknown keys**: objects strip keys not declared in the schema.
+- **Defaults**: `.default(...)` values are applied.
+
+There is no extra coercion layer: `null` in a non-nullable field is a validation error, and a non-array value passed to an array schema is rejected, not wrapped.
 
 If validation fails, a `SchemaValidationError` is thrown with details about the first failing constraint.
-
-### Validation Options
-
-```typescript
-alepha.codec.validate(schema, value, {
-  trim: true,              // apply text trimming (default: true)
-  nullToUndefined: true,   // convert null to undefined for non-nullable fields (default: true)
-  deleteUndefined: true,   // remove undefined keys from objects (default: true)
-});
-```
 
 ## Encoding
 

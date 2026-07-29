@@ -1,6 +1,6 @@
 # Routing
 
-Alepha uses the `$page` primitive to define React routes. It is a superset of `$route` designed specifically for React pages with support for data loading, code splitting, SSR, SSG, nested routing, and type-safe parameters.
+Alepha uses the `$page` primitive to define React routes, with support for data loading, code splitting, SSR, SSG, nested routing, and type-safe parameters.
 
 ## Setup
 
@@ -128,33 +128,32 @@ static: {
 }
 ```
 
-### client
+### ssr
 
-Force client-side only rendering (no SSR). Uses the `<ClientOnly />` component internally.
-
-```typescript
-client: true
-```
-
-### cache
-
-Server-side caching configuration. Automatically set when `static: true`.
+Disable server-side rendering for the page component (`@default true`). With `ssr: false` the component renders client-side only (wrapped in `<ClientOnly />` internally), but the **loader still runs on the server** — data fetching is unaffected. The value is decided at the leaf and inherited as a default by descendants: `ssr: false` on a parent acts as the default for its children, and a child can override with `ssr: true`.
 
 ```typescript
-cache: {
-  store: {
-    provider: "memory",
-    ttl: [1, "hour"],
-  },
-}
+ssr: false
 ```
+
+### use
+
+Attach middlewares to the page — this is how you add server-side caching or access control:
+
+```typescript
+use: [$cache({ ttl: [1, "hour"] })]
+use: [$secure({ permissions: ["admin"] })]
+```
+
+When `static: true` is set, the framework automatically applies `$cache({ provider: "memory", ttl: [1, "week"] })` to the page.
 
 ### can
 
-Permission-based access control. Return `false` to block access (results in 403).
+UI-affordance predicate for the page's navigation entry — **not security**. Navigation surfaces (sidebar, breadcrumbs, command palette) consult it to hide or disable the entry; the router never does, and nothing returns a 403. For real access control, gate the page with `use: [$secure({ permissions })]`, which is server-enforced.
 
 ```typescript
-can: () => userHasPermission("admin")
+can: ({ has }) => has("admin")          // hide the nav entry
+can: ({ has }) => has("admin") || "disabled"  // show it greyed out
 ```
 
 ## Nested Routing

@@ -18,11 +18,7 @@ That's it. Your app is running. Make changes and watch them appear instantly.
 
 ## What It Does
 
-The `dev` command is smart about what kind of project you're running:
-
-### Full-Stack App (with alepha/react)
-
-If you have `alepha/react` installed, Alepha knows you're building a web application:
+The `dev` command runs your app through a Vite dev server:
 
 ```bash
 alepha dev
@@ -35,42 +31,48 @@ You get:
 - **SSR in development** — Same rendering behavior as production
 - **Source maps** — Debug your actual TypeScript code
 
-### Backend Only
+Backend-only projects (no browser entry) run through the same Vite server — you still get instant reload on save, without a bundler/watcher setup of your own.
 
-No React? Alepha assumes you're building a server, CLI tool, or worker:
+### Workspace Mode
 
-```bash
-alepha dev
-# → Runs your entry file with tsx in watch mode
-# → Restarts on file changes
-```
-
-You get:
-- **Watch mode** — Server restarts when you save
-- **Fast compilation** — tsx compiles TypeScript on the fly
-- **Environment variables** — Automatically loads `.env` files
-
-### Expo (React Native)
-
-If you have Expo in your dependencies, `dev` hands off to Expo's toolchain:
+Run `alepha dev` from a workspace root with an `apps/` directory, and it spawns every app in parallel:
 
 ```bash
 alepha dev
-# → Runs `expo start`
+# → api   http://localhost:5173
+# → web   http://localhost:5174
 ```
+
+- Each app gets a port from its position in the `apps/` listing, starting at 5173. Ports are stable: `--only web` keeps `web` on the same port it has when all apps run, so OAuth redirect URIs and client configs stay valid.
+- Log lines are prefixed with the app name (via `APP_NAME`).
+- `--only api,web` filters which apps start.
+- Scoped directories (`apps/@myorg/api`) are supported.
 
 ## Entry Point Detection
 
-Alepha looks for your entry file in this order:
+Alepha looks for your server entry under `src/`, in this order:
 
-1. `src/main.ts`
-2. `src/main.server.ts`
-3. `src/index.ts`
-4. `src/server.ts`
+1. `src/main.server.ts` (or `.tsx`)
+2. `src/main.ts` (or `.tsx`)
+
+The browser entry is optional and resolved the same way: `src/main.browser.ts(x)`, then `src/main.ts(x)`. A stylesheet is picked up from `src/main.css`, `src/styles.css`, or `src/style.css`.
+
+You can override any of these in `alepha.config.ts`:
+
+```typescript filename=alepha.config.ts
+import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  entry: {
+    server: "src/server.ts",
+    browser: "src/client.ts",
+  },
+});
+```
 
 > **Entry Point Required**
 >
-> If no entry file is found, the command will fail with a helpful error message.
+> If no server entry is found, the command fails with the list of paths it tried.
 
 ## Environment Variables
 
@@ -104,21 +106,21 @@ class MyService {
 
 ## Vite Integration
 
-Under the hood, full-stack apps use Vite. The Alepha Vite plugin handles:
+Under the hood, the dev server is Vite, fully configured by the Alepha CLI:
 
 - **React Fast Refresh** — Edit components without losing state
 - **Server-Side Rendering** — Your pages render on the server during development
 - **API Routes** — Define `$action` endpoints that work seamlessly
 - **Static Assets** — Import images, fonts, and other assets directly
 
-Your `vite.config.ts` is minimal because the plugin does the heavy lifting:
+Your `vite.config.ts` stays minimal because the CLI does the heavy lifting — the file exists only so extra Vite plugins (like Tailwind) can hook in:
 
 ```typescript
-import alepha from "@alepha/vite";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [alepha()],
+  plugins: [tailwindcss()],
 });
 ```
 
@@ -126,14 +128,7 @@ export default defineConfig({
 
 ### Server-Side Code
 
-Your server code runs in Node.js. Use standard debugging:
-
-```bash
-# With Node inspector
-node --inspect node_modules/.bin/tsx watch src/main.ts
-
-# Or use VS Code's debugger with a launch.json config
-```
+Your server code runs in Node.js. Use standard debugging — `--inspect` on the CLI process, or VS Code's debugger with a `launch.json` config.
 
 ### Client-Side Code
 
@@ -150,12 +145,7 @@ LOG_LEVEL=trace alepha dev   # Everything
 
 ## Auto-Configuration
 
-The first time you run `dev`, Alepha ensures your project has the necessary configuration:
-
-- Creates `tsconfig.json` if missing
-- Creates `vite.config.ts` if missing (for web apps)
-
-This means you can literally start with just a `src/main.ts` file:
+The first time you run `dev`, Alepha creates a `tsconfig.json` if it's missing. This means you can literally start with just a `src/main.ts` file:
 
 ```typescript check
 // src/main.ts
@@ -165,11 +155,9 @@ const alepha = Alepha.create();
 await alepha.start();
 ```
 
-And `alepha dev` will set up everything else.
-
 > **Zero Config Start**
 >
-> Missing config files are created automatically. You don't need to run `alepha init` first — just start coding.
+> You don't need to run `alepha init` first — just start coding. `init` gives you the full scaffold; `dev` only needs an entry file.
 
 ## Tips
 

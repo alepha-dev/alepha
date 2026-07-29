@@ -495,7 +495,10 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
   handler: (...args: [...Args, ActionContext]) => Async<Result>;
 
   /**
-   * Custom error handler. If provided, prevents default error re-throw.
+   * Custom error handler. With or without one, errors are never re-thrown by
+   * `run` — they are captured in `error` state and emitted as
+   * `react:action:error`, so fire-and-forget calls can't produce unhandled
+   * promise rejections.
    */
   onError?: (error: Error) => void | Promise<void>;
 

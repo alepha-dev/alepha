@@ -276,8 +276,14 @@ $secure({
   issuers?: string[],
   roles?: string[],
   permissions?: (string | Permission)[],
-  guard?: (user: UserAccountToken) => boolean,
+  guard?: (ctx: SecureGuardContext) => Async<boolean>,
 })
+```
+
+The `guard` receives a context object — `{ user, params, query, body, request?, alepha }` — and may be async:
+
+```typescript
+guard: ({ user, params }) => user.id === params.id
 ```
 
 ### Check Order
@@ -326,7 +332,7 @@ adminPanel = $action({
 
 // Custom guard — runs after all other checks
 ownProfile = $action({
-  use: [$secure({ guard: (user) => user.id === params.id })],
+  use: [$secure({ guard: ({ user, params }) => user.id === params.id })],
   handler: () => { /* ... */ },
 });
 
@@ -336,7 +342,7 @@ adminManage = $action({
     issuers: ["main"],
     roles: ["admin"],
     permissions: ["admin:manage"],
-    guard: (user) => !!user.email,
+    guard: ({ user }) => !!user.email,
   })],
   handler: () => { /* ... */ },
 });
@@ -344,14 +350,14 @@ adminManage = $action({
 
 ### Browser Behavior
 
-On the server, `$secure` throws errors (401/403). In the browser, it returns `undefined` instead — the handler is never called. Use `action.can()` to conditionally render UI:
+On the server, `$secure` throws errors (401/403). In the browser, it returns `undefined` instead — the handler is never called. On `$client` virtual actions, `can()` checks authorization without calling:
 
 ```typescript
 // Browser: returns undefined if unauthorized, "ok" if authorized
 const result = await action();
 
-// Use action.can() to check without calling
-if (action.can()) {
+// $client actions expose can() to check without calling
+if (client.myAction.can()) {
   // render the button
 }
 ```

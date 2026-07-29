@@ -13,7 +13,8 @@ export type { SecureOptions };
  *
  * In the browser, an unauthenticated or unauthorized user is not an exception —
  * the middleware short-circuits by returning `undefined` and the handler is not called.
- * Components should use `action.can()` to conditionally render UI elements.
+ * Components should use `can()` on `$client` virtual actions to conditionally
+ * render UI elements.
  *
  * ```typescript
  * class OrderController {

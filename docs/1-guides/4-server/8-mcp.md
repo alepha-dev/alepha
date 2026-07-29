@@ -7,8 +7,8 @@ Alepha ships with first-class MCP support. You define tools, resources, and prom
 ## Quick Start
 
 ```typescript
-import { z, run } from "alepha";
-import { AlephaMcp, $tool, $resource } from "alepha/mcp";
+import { Alepha, z, run } from "alepha";
+import { AlephaMcp, StreamableHttpMcpTransport, $tool, $resource } from "alepha/mcp";
 import { AlephaServer } from "alepha/server";
 
 class MyMcp {
@@ -38,11 +38,12 @@ run(
   Alepha.create()
     .with(AlephaServer)
     .with(AlephaMcp)
+    .with(StreamableHttpMcpTransport)
     .with(MyMcp),
 );
 ```
 
-Your MCP server is now available at `GET /mcp` (SSE) and `POST /mcp` (JSON-RPC).
+Your MCP server is now available at `POST /mcp` (Streamable HTTP, JSON-RPC). Transports are opt-in — `AlephaMcp` provides the server; wiring `StreamableHttpMcpTransport` exposes it over HTTP.
 
 ## Three Primitives
 
@@ -222,23 +223,24 @@ run(
   Alepha.create()
     .with(AlephaServer)
     .with(AlephaMcp)
+    .with(StreamableHttpMcpTransport)
     .with(TaskTools)
     .with(Resources)
     .with(Prompts),
 );
 ```
 
-Primitives auto-register with the MCP server when instantiated. No manual wiring needed.
+Primitives auto-register with the MCP server when instantiated — only the transport needs explicit wiring.
 
 For larger apps, group MCP classes into a module:
 
 ```typescript
 import { $module } from "alepha";
-import { SseMcpTransport } from "alepha/mcp";
+import { StreamableHttpMcpTransport } from "alepha/mcp";
 
 export const MyAppMcp = $module({
   name: "myapp.mcp",
-  services: [SseMcpTransport, TaskTools, ProjectTools, Resources],
+  services: [StreamableHttpMcpTransport, TaskTools, ProjectTools, Resources],
 });
 ```
 
@@ -379,17 +381,17 @@ Available error classes:
 
 ## Transport
 
-The default transport uses **Server-Sent Events** (SSE):
+The HTTP transport is **Streamable HTTP** (MCP spec 2025-03-26+), a single endpoint:
 
-- `GET /mcp` -- SSE stream for server-to-client messages
-- `POST /mcp` -- JSON-RPC endpoint for client-to-server requests
+- `POST /mcp` -- JSON-RPC endpoint; single responses return `application/json`
+- `GET /mcp` -- returns `405 Method Not Allowed` (the legacy two-endpoint SSE pattern is deliberately not served)
 
-The SSE path is configurable:
+The path is configurable (keep it outside `/api`, which belongs to the `$action` dispatcher):
 
 ```typescript
-import { mcpSseOptions } from "alepha/mcp";
+import { mcpStreamableHttpOptions } from "alepha/mcp";
 
-alepha.store.set(mcpSseOptions, { path: "/api/mcp" });
+alepha.store.mut(mcpStreamableHttpOptions, (o) => ({ ...o, path: "/my-mcp" }));
 ```
 
 ## Naming Convention

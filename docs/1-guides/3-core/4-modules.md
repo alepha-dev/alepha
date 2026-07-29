@@ -63,15 +63,17 @@ LOG_LEVEL=billing:debug,info
 interface ModulePrimitiveOptions {
   name: string;                            // required
   services?: Array<Service>;               // services to register
+  imports?: Array<Service<Module>>;        // other modules this one depends on
+  variants?: Array<Service>;               // opt-in services (not auto-registered)
   primitives?: Array<PrimitiveFactoryLike>; // primitive factories to associate
   atoms?: Array<Atom<any>>;                // atoms to register in state
-  register?: (alepha: Alepha) => void;     // custom registration logic
+  register?: (alepha: Alepha) => void;     // extra registration logic
 }
 ```
 
-## Automatic vs Manual Registration
+## Registration Order
 
-By default, all services in the `services` array are instantiated automatically:
+All services in the `services` array are instantiated automatically:
 
 ```typescript
 const mod = $module({
@@ -80,24 +82,35 @@ const mod = $module({
 });
 ```
 
-If you provide a `register` function, automatic registration is disabled. You must handle all registration manually:
+A `register` function adds custom logic — conditional providers, atom seeding, environment checks — but it never suppresses auto-registration: `services` are always injected. The ordering guarantee is: `imports` are wired first, then `register()` runs, then `services` are injected.
 
 ```typescript
 const mod = $module({
   name: "my.module",
   services: [A, B, C],
   register: (alepha) => {
-    alepha.with(B); // only B is registered
-    // A and C are NOT registered unless explicitly added
+    if (process.env.FEATURE_X) {
+      alepha.with({ provide: A, use: SpecialA });
+    }
   },
 });
 ```
 
-This is useful for conditional registration or specific initialization order.
+Services listed in `variants` are *not* auto-registered — they're opt-in implementations the user wires explicitly with `alepha.with(...)` (e.g. a transport choice).
 
 ## Module Dependencies
 
-Modules can contain other modules in their `services` array:
+Declare dependencies on other modules with `imports` — preferred over nesting modules in `services`:
+
+```typescript
+const ServerModule = $module({
+  name: "server",
+  imports: [CoreModule, DatabaseModule],
+  services: [ServerProvider],
+});
+```
+
+Modules can also contain other modules in their `services` array:
 
 ```typescript
 class RandomService {
@@ -185,4 +198,4 @@ console.log(alepha.graph());
 // }
 ```
 
-Alepha has also a built-in graph visualization tool in `alepha/devtools` that shows module boundaries and dependencies.
+The [devtools plugin](/docs/cli-plugins-devtools) (`@alepha/devtools`) also includes a graph visualization that shows module boundaries and dependencies.

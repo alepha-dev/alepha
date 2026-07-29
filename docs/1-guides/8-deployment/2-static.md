@@ -28,16 +28,16 @@ dist/
     assets/          # JS, CSS, images
 ```
 
-## Deploy to Surge
+## Deploy
 
-`alepha deploy` detects the static build output (`dist/public/404.html`) and deploys to Surge:
+The output in `dist/public/` is plain HTML/CSS/JS — deploy it to any static host. With [Surge](https://surge.sh) (which the generated `CNAME` file targets):
 
 ```bash
 alepha build --target=static
-alepha deploy
+npx surge dist/public
 ```
 
-If Surge is not installed, the deploy command installs it automatically as a dev dependency.
+Cloudflare Pages, Netlify, or GitHub Pages work just as well — point them at `dist/public/`.
 
 ## Configure Domain
 

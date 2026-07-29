@@ -19,10 +19,10 @@ If any command fails, fix the issue before committing. Do not skip these steps.
 `alepha verify` runs the full pipeline:
 
 ```
-clean -> lint -> typecheck -> test -> check-dependencies -> build -> clean
+clean -> lint -> typecheck -> test -> db migrations check -> build -> clean
 ```
 
-This is the same pipeline used in CI. Run it before opening a pull request:
+The `test` step is skipped when the project has no tests, and `db migrations check` runs only when a `migrations/` directory exists. This is the same pipeline you should use in CI. Run it before opening a pull request:
 
 ```bash
 npx alepha verify
@@ -36,17 +36,15 @@ Uses [Biome](https://biomejs.dev/) with `--fix` enabled. Automatically formats c
 
 ### yarn typecheck
 
-Runs `tsc --noEmit` across the entire monorepo. Catches type errors without producing output files.
+Runs `tsc --noEmit`. Catches type errors without producing output files.
 
 ### yarn test
 
-Runs [Vitest](https://vitest.dev/) with two environments:
-- **Node.js**: all `*.spec.ts` files (excluding `*.browser.spec.*`)
-- **Browser (jsdom)**: all `*.browser.spec.ts` files
+Runs [Vitest](https://vitest.dev/). Specs live in `test/` or co-located as `*.spec.ts`; browser tests use the `*.browser.spec.ts(x)` extension with a jsdom project in `vitest.config.ts` (see [React Tests](/docs/guides-testing-react-tests)).
 
 ### yarn build
 
-Builds all workspace packages using `tsdown`. Runs as part of `yarn v`.
+Builds the project for production. Build failures are verification failures — if it can't build, it can't ship.
 
 ## Verbose Output
 
@@ -56,8 +54,4 @@ For detailed output from any Alepha CLI command, set these environment variables
 LOG_FORMAT=pretty LOG_LEVEL=trace npx alepha build
 ```
 
-This is the default for CI environments.
-
-```yaml
-
-> Verbose is automatically enabled when command is run by Claude Code, making it easier to debug issues.
+> Verbose output is automatically enabled when a command is run by Claude Code, making it easier to debug issues.

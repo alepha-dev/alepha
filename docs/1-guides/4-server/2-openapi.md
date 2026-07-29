@@ -100,7 +100,7 @@ schema: {
 
 ## Security in OpenAPI
 
-When `AlephaSecurity` is registered, all actions are documented with Bearer JWT authentication by default. Actions with `secure: false` are excluded from the security requirement.
+Actions that carry the `$secure` middleware (`use: [$secure(...)]`) are documented with a Bearer JWT security requirement; the `bearerAuth` scheme is emitted whenever at least one such action exists. Actions without `$secure` carry no security requirement.
 
 ## OAuth Configuration
 

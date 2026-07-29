@@ -69,10 +69,13 @@ $action({ path: "/users" })       // GET /api/users
 $action({ path: "/users/:id" })   // GET /api/users/:id
 ```
 
-The prefix is configurable via the `SERVER_API_PREFIX` environment variable:
+The prefix is configurable via the `serverApiOptions` atom:
 
-```bash
-SERVER_API_PREFIX=/v1  # now: GET /v1/users
+```typescript
+import { serverApiOptions } from "alepha/server";
+
+alepha.store.mut(serverApiOptions, (o) => ({ ...o, prefix: "/v1" }));
+// now: GET /v1/users
 ```
 
 If `path` is omitted, the property key is used:
@@ -115,7 +118,7 @@ update = $action({
 });
 ```
 
-Supported methods: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`.
+Supported methods: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, `CONNECT`, `TRACE`.
 
 ## Schema Object
 

@@ -148,16 +148,18 @@ Returns paginated results with metadata.
 
 ```typescript
 const page = await this.repo.paginate(
-  { page: 0, size: 10, sort: "name,asc" },
+  { page: 0, size: 10, sort: "name" },
   { where: { price: { gt: 0 } } },
   { count: true },
 );
 
-// page.data        -> T[]
+// page.content     -> T[]
 // page.page.size   -> number
 // page.page.totalElements -> number (when count: true)
 // page.page.totalPages    -> number (when count: true)
 ```
+
+The `sort` string is a comma-separated column list; prefix a column with `-` for descending order: `"name"`, `"-createdAt"`, `"role,-name"`.
 
 ### count
 
@@ -388,6 +390,7 @@ Where clauses accept either a direct value (shorthand for `eq`) or an object wit
 | `notLike` | Negated pattern match (case-sensitive) |
 | `ilike` | Pattern match (case-insensitive) |
 | `notIlike` | Negated pattern match (case-insensitive) |
+| `eqInsensitive` | Case-insensitive equality |
 | `contains` | Case-insensitive substring match. Equivalent to `ilike: '%value%'` |
 | `startsWith` | Case-insensitive prefix match. Equivalent to `ilike: 'value%'` |
 | `endsWith` | Case-insensitive suffix match. Equivalent to `ilike: '%value'` |
@@ -416,7 +419,7 @@ Combine conditions with `and`, `or`, or negate with `not`:
 }
 ```
 
-You can also pass a raw Drizzle `SQLWrapper` as the where clause for full SQL control.
+Where clauses also support `exists` / `notExists` subquery conditions at the top level, and you can pass a raw Drizzle `SQLWrapper` as the where clause for full SQL control.
 
 ## Transactions
 
@@ -431,23 +434,25 @@ await this.repo.transaction(async (tx) => {
 
 All repository methods accept `{ tx }` in their options parameter to participate in the transaction.
 
-For transactions with built-in retry on version conflicts, use the `$transaction` primitive:
+To wrap a whole handler in a transaction without drilling `{ tx }` through every call, use the `$transactional` middleware:
 
 ```typescript
-import { $transaction } from "alepha/orm";
+import { $action } from "alepha/server";
+import { $transactional } from "alepha/orm";
 
 class OrderService {
-  processOrder = $transaction({
-    handler: async (tx, orderId: string) => {
-      const order = await this.orders.getById(orderId, { tx });
-      await this.orders.updateById(orderId, { status: "processed" }, { tx });
-      return order;
+  processOrder = $action({
+    use: [$transactional()],
+    handler: async ({ body }) => {
+      await this.orders.create(body);       // auto-uses the transaction
+      await this.audit.create({ ... });     // auto-uses the transaction
+      // throw → rollback, return → commit
     },
   });
 }
 ```
 
-`$transaction` automatically retries when a `DbVersionMismatchError` occurs.
+Every repository operation inside the handler automatically participates in the transaction. Nesting is safe — a nested `$transactional` reuses the outer transaction.
 
 ## Repository.of
 

@@ -257,9 +257,9 @@ Beyond reading and writing, `alepha.store` exposes a few helpers for working wit
 **`reset(atom)`** restores the atom's declared default value. It's also exposed directly on the `alepha` instance:
 
 ```typescript
-alepha.store.set(counter, { value: 99 });
+alepha.store.set(counter, { count: 99 });
 alepha.reset(counter); // same as alepha.store.reset(counter)
-alepha.store.get(counter); // { value: 0 }
+alepha.store.get(counter); // { count: 0 }
 ```
 
 **`watch(target, callback)`** subscribes to an atom, a `$computed` value, or a raw state key outside of React, and returns an unsubscribe function:

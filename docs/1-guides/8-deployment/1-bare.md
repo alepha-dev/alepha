@@ -29,8 +29,9 @@ SERVER_HOST=0.0.0.0 SERVER_PORT=8080 node dist
 dist/
   index.js       # Server entry point
   public/        # Client assets (if React frontend exists)
-  drizzle/       # Database migrations (if using $entity)
 ```
+
+Database migrations stay in your project's `migrations/` directory — run them with `alepha db migrations apply` against the target database (the docker target copies them into the image for you).
 
 If no React frontend is present, only `index.js` is generated.
 

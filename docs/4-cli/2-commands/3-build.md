@@ -1,6 +1,6 @@
 # Build Command
 
-Build your project for production. The `build` command compiles, optimizes, and prepares your app for deployment — whether that's a Node.js server, Vercel, or Cloudflare Workers.
+Build your project for production. The `build` command compiles, optimizes, and prepares your app for deployment — whether that's a Node.js server, Docker, Vercel, Cloudflare Workers, or a static site.
 
 ## Quick Start
 
@@ -12,13 +12,16 @@ Your production-ready app is now in the `dist/` folder.
 
 ## What It Does
 
-The build process handles everything:
+The build runs a fixed pipeline of tasks:
 
 1. **Cleans the dist folder** — Fresh start, no stale files
 2. **Builds the client** — Compiles React, bundles assets, optimizes for browsers
-3. **Builds the server** — Compiles your backend code for Node.js
+3. **Builds the server** — Compiles your backend code for the target runtime
 4. **Copies assets** — Moves static files to the right places
-5. **Generates deployment configs** — Vercel, Cloudflare (if requested)
+5. **Generates the PWA manifest** — If `pwa` is configured
+6. **Prerenders pages** — Sitemap and static pages, when applicable
+7. **Generates deployment configs** — Vercel, Cloudflare, Docker, static (if requested)
+8. **Pre-compresses assets** — Writes `.br` (Brotli) copies of client assets
 
 ## Output Structure
 
@@ -45,10 +48,14 @@ node dist/index.js
 
 | Flag | Description |
 |------|-------------|
-| `--target`, `-t` | Deployment target: `bare`, `docker`, `vercel`, `cloudflare`, or `static` |
+| `--target`, `-t` | Deployment target: `bare`, `docker`, `vercel`, `cloudflare` (alias: `cf`), or `static` |
 | `--runtime`, `-r` | JavaScript runtime: `node`, `bun`, or `workerd` |
 | `--stats` | Generate build statistics report (use `--stats=json` for JSON output) |
 | `--image`, `-i` | Build Docker image (`-i` for latest, `-i=<version>` for specific version). Requires `--target=docker` |
+| `--compile`, `-c` | Compile the server to a single static binary. Requires `--target=docker --runtime=bun` |
+| `--prebuilt` | Skip the bundle steps; only regenerate the target-specific deploy config (e.g. `wrangler.jsonc`) when `dist/` is already built |
+
+Some targets force a runtime: `cloudflare` always uses `workerd`, `vercel` always uses `node`.
 
 ## Deployment Targets
 
@@ -67,6 +74,21 @@ scp -r dist/ user@server:/app
 # On the server
 cd /app && node index.js
 ```
+
+### Docker
+
+```bash
+alepha build --target=docker
+```
+
+Generates a `Dockerfile` alongside the build. Add `--image` to build the image in one go:
+
+```bash
+alepha build --target=docker --image           # tag:latest
+alepha build --target=docker --image=1.3.4     # tag:1.3.4
+```
+
+With `--runtime=bun --compile`, the server is compiled to a single static binary via `bun build --compile` and packaged in a minimal distroless base image.
 
 ### Vercel
 
@@ -99,7 +121,7 @@ cd dist && vercel --prod
 ### Cloudflare Workers
 
 ```bash
-alepha build --target=cloudflare
+alepha build --target=cloudflare    # or -t cf
 ```
 
 Creates Cloudflare Workers configuration:
@@ -108,18 +130,29 @@ Creates Cloudflare Workers configuration:
 dist/
 ├── main.cloudflare.js  # Worker entry point
 ├── wrangler.jsonc      # Wrangler configuration
+├── manifest.json       # Build manifest (detected resources, declared env keys)
 └── public/             # Static assets (if any)
 ```
 
 > **D1 Database Support**
 >
-> If your `DATABASE_URL` starts with `cloudflare-d1:`, the D1 binding is automatically configured in `wrangler.jsonc`.
+> If your `DATABASE_URL` uses the `d1://` protocol (as injected by the [platform plugin](/docs/cli-plugins-platform)), the D1 binding is automatically configured in `wrangler.jsonc`.
 
 Then deploy:
 
 ```bash
 cd dist && wrangler deploy
 ```
+
+Or let `alepha p up` drive the whole pipeline — provisioning, build, migrations, deploy, and secrets.
+
+### Static Site
+
+```bash
+alepha build --target=static
+```
+
+Prerenders your pages to plain HTML/CSS/JS for any static host. Not compatible with `--prebuilt` (prerendering needs a live app).
 
 ## SEO Features
 
@@ -194,31 +227,40 @@ API_URL=https://api.myapp.com
 >
 > Environment variables are embedded at build time. For variables that should differ between environments, use runtime configuration instead.
 
-## Vite Plugin Configuration
+## Build Configuration
 
-Advanced build options can be configured in `vite.config.ts`:
+Defaults for the build command live in the `build` section of `alepha.config.ts`. Command-line flags override them:
 
-```typescript
-import alepha from "@alepha/vite";
-import { defineConfig } from "vite";
+```typescript filename=alepha.config.ts
+import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
-  plugins: [
-    alepha({
-      // Build options
-      stats: true,
-      vercel: true,
-      client: {
-        precompress: true,  // Generate .gz and .br files
-      },
-    }),
-  ],
+  build: {
+    target: "docker",
+    runtime: "bun",
+    stats: true,
+    docker: {
+      image: { tag: "ghcr.io/myorg/myapp", oci: true },
+      compile: true,
+    },
+    pwa: {
+      name: "My App",
+      themeColor: "#0f172a",
+    },
+  },
 });
 ```
 
-> **Config vs Flags**
->
-> These defaults are used when you run `alepha build` without flags. Command-line flags override config file settings.
+Available options mirror the flags (`stats`, `target`, `runtime`) plus per-target configuration:
+
+| Section | Description |
+|---------|-------------|
+| `output` | Override `dist` and `public` directory names |
+| `vercel` | Project name/IDs and cron configuration |
+| `cloudflare` | Extra `wrangler.jsonc` config merged into the generated file |
+| `docker` | Base image, run command, global installs, image tag/args/OCI labels, `compile` mode |
+| `static` | Surge domain for the generated `CNAME` file |
+| `pwa` | Web app manifest: name, short name, colors, display mode |
 
 ## Client-Side Optimization
 
@@ -229,7 +271,7 @@ The build automatically:
 - **Tree shakes** — Removes unused code
 - **Code splits** — Creates separate chunks for routes
 - **Hashes filenames** — Enables aggressive caching
-- **Compresses assets** — Optional pre-compression with gzip/brotli
+- **Pre-compresses assets** — Writes Brotli (`.br`) copies of JS/CSS/SVG/HTML
 
 ## Server-Side Optimization
 
@@ -245,7 +287,7 @@ The server build:
 
 ## Backend-Only Projects
 
-If you don't have `alepha/react` installed, the build only creates the server:
+If your project has no browser entry, the build only creates the server:
 
 ```bash
 alepha build
@@ -267,7 +309,7 @@ A typical deployment workflow:
 alepha verify
 
 # 2. Build for production
-alepha build --vercel
+alepha build --target=vercel
 
 # 3. Deploy
 cd dist && vercel --prod

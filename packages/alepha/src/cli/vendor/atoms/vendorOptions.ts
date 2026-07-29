@@ -14,7 +14,7 @@ export const vendorOptions = $atom({
       /**
        * Git remote URL.
        *
-       * @default "git@github.com:feunard/alepha.git"
+       * @default "https://github.com/feunard/alepha"
        */
       remote: z.text().optional(),
 

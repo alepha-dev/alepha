@@ -117,11 +117,12 @@ Manages async operations with loading state, error handling, cancellation, debou
 import { useAction } from "alepha/react";
 ```
 
-**Returns:** `{ run, loading, error, cancel, result }`
+**Returns:** `{ run, refetch, loading, error, cancel, result }`
 
 | Property  | Type                  | Description                                |
 |-----------|-----------------------|--------------------------------------------|
 | `run`     | `(...args) => Promise` | Execute the action                        |
+| `refetch` | `() => Promise`       | Re-execute the action, aborting any in-flight request (never dropped by the double-click dedup guard) |
 | `loading` | `boolean`             | True while executing                      |
 | `error`   | `Error \| undefined`  | Error from last failed execution          |
 | `cancel`  | `() => void`          | Cancel debounce timer or abort in-flight  |
@@ -132,7 +133,7 @@ import { useAction } from "alepha/react";
 | Option      | Type                  | Description                                      |
 |-------------|-----------------------|--------------------------------------------------|
 | `handler`   | `(...args, ctx) => Promise` | The async function to execute. Receives an `ActionContext` with an `AbortSignal` as the last argument. |
-| `onError`   | `(error) => void`     | Custom error handler. Prevents re-throw if set.  |
+| `onError`   | `(error) => void`     | Custom error handler. Errors are never re-thrown by `run` — they land in `error` state and the `react:action:error` event, so fire-and-forget calls can't produce unhandled rejections. |
 | `onSuccess` | `(result) => void`    | Called after successful execution.                |
 | `id`        | `string`              | Identifier for debugging and analytics.           |
 | `debounce`  | `number`              | Delay in milliseconds before executing.           |

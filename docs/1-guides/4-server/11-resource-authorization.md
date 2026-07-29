@@ -89,7 +89,7 @@ $owns({
 })
 ```
 
-Checks run in order: owner first, then membership. Both denials raise the same message on purpose — a different message per branch tells an attacker whether the resource exists and who owns it.
+Checks run in order: owner first, then membership. When you supply the `message` option, it's used for **both** denials on purpose — a different message per branch tells an attacker whether the resource exists and who owns it. (Without a custom `message`, the defaults differ; set one for endpoints where that distinction matters.)
 
 ## Privileged identities
 
@@ -114,6 +114,6 @@ Guards may be async and run after all other `$secure` checks. `params`, `query`,
 
 ## Browser behaviour
 
-On the client, `$secure` and `$owns` return `undefined` instead of throwing, and the guard sees empty `params`. A guard that reads request data therefore denies in the browser and is re-evaluated for real on the server.
+On the client, `$secure` returns `undefined` instead of throwing, and the guard sees empty `params`. A guard that reads request data therefore denies in the browser and is re-evaluated for real on the server. (`$owns` is server-only — it isn't exported from the browser entry.)
 
 That is the safe direction: the UI hides the action, and the API is what actually enforces it. Never treat a client-side pass as authorization.

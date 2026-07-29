@@ -86,18 +86,21 @@ These are registered with `alepha.with()`.
 
 ### CORS
 
-The `$cors` primitive configures Cross-Origin Resource Sharing. Import from `alepha/server/cors`.
+Cross-Origin Resource Sharing comes from the `AlephaServerCors` module. Register it and configure the `corsOptions` atom for global behavior:
 
 ```typescript check
-import { $cors } from "alepha/server/cors";
+import { Alepha } from "alepha";
+import { AlephaServerCors, corsOptions } from "alepha/server/cors";
 
-class App {
-  cors = $cors({
-    origin: "https://app.example.com",
-    credentials: true,
-  });
-}
+const alepha = Alepha.create().with(AlephaServerCors);
+alepha.store.mut(corsOptions, (o) => ({
+  ...o,
+  origin: "https://app.example.com",
+  credentials: true,
+}));
 ```
+
+For per-action CORS, attach the `$cors` middleware instead: `use: [$cors({ origin: "..." })]`.
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -106,9 +109,6 @@ class App {
 | `headers` | `["Content-Type", "Authorization"]` | Allowed request headers |
 | `credentials` | `false` | Allow credentials (cookies, auth headers) |
 | `maxAge` | - | Preflight cache duration in seconds |
-| `paths` | - | Path patterns to match (e.g. `["/api/*"]`) |
-
-When `paths` is provided, the CORS configuration applies only to matching routes. Without `paths`, it applies globally.
 
 Alepha automatically creates an `OPTIONS` preflight route for every path when the CORS module is active — including `GET`-only paths, which browsers preflight as soon as the request carries a non-simple header such as `Authorization`.
 
@@ -118,15 +118,16 @@ Responses always carry `Vary: Origin`, since the allowed origin is reflected fro
 
 ### Rate Limiting
 
-The `$rateLimit` primitive limits request rates per client. Import from `alepha/server/rate-limit`.
+Rate limiting comes from the `AlephaServerRateLimit` module. Register it and configure the `rateLimitOptions` atom for a global limit, or attach the `$rateLimit` middleware to individual actions:
 
 ```typescript check
+import { $action } from "alepha/server";
 import { $rateLimit } from "alepha/server/rate-limit";
 
 class App {
-  limit = $rateLimit({
-    max: 100,
-    windowMs: 15 * 60 * 1000,  // 15 minutes
+  login = $action({
+    use: [$rateLimit({ max: 100, windowMs: 15 * 60 * 1000 })],
+    handler: async () => "ok",
   });
 }
 ```
@@ -135,7 +136,6 @@ class App {
 |--------|---------|-------------|
 | `max` | `100` | Maximum requests per window |
 | `windowMs` | `900000` (15 min) | Window duration in milliseconds |
-| `paths` | - | Path patterns to apply to |
 | `keyGenerator` | - | Custom function to generate rate limit keys per request |
 | `skipFailedRequests` | `false` | Do not count failed requests |
 | `skipSuccessfulRequests` | `false` | Do not count successful requests |
@@ -198,19 +198,19 @@ Register multiple modules together:
 
 ```typescript check
 import { Alepha } from "alepha";
-import { $cors } from "alepha/server/cors";
-import { $rateLimit } from "alepha/server/rate-limit";
+import { AlephaServerCors, corsOptions } from "alepha/server/cors";
+import { AlephaServerRateLimit, rateLimitOptions } from "alepha/server/rate-limit";
 import { AlephaServerHealth } from "alepha/server/health";
 
-class App {
-  cors = $cors({ origin: "https://app.example.com" });
-  limit = $rateLimit({ max: 100, windowMs: 15 * 60 * 1000 });
-}
-
-Alepha.create()
+const alepha = Alepha.create()
   .with(AlephaServerHealth)
-  .with(App)
-  .start();
+  .with(AlephaServerCors)
+  .with(AlephaServerRateLimit);
+
+alepha.store.mut(corsOptions, (o) => ({ ...o, origin: "https://app.example.com" }));
+alepha.store.mut(rateLimitOptions, (o) => ({ ...o, max: 100, windowMs: 15 * 60 * 1000 }));
+
+await alepha.start();
 ```
 
 Module order in `.with()` calls does not affect execution order. Alepha uses hook priorities internally to ensure correct ordering (e.g., CORS headers are set before the handler runs).

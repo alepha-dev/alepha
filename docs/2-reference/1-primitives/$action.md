@@ -31,7 +31,8 @@ $action({ path: "/users/:id" }) // → GET /api/users/:id
 $action({ path: "/hello" })     // → GET /api/hello
 ```
 
-This prefix is configurable via the `SERVER_API_PREFIX` environment variable.
+This prefix is configurable via the `serverApiOptions` atom
+(`alepha.store.mut(serverApiOptions, (o) => ({ ...o, prefix: "/v1" }))`).
 HTTP method defaults to GET, or POST if body schema is provided.
 
 **Common Use Cases**

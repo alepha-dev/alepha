@@ -4,7 +4,18 @@ Alepha provides testing utilities for React components through `alepha/react/tes
 
 ## File Naming Convention
 
-Browser test files must use the `.browser.spec.ts` or `.browser.spec.tsx` extension. Vitest automatically runs these files in the jsdom environment.
+Browser test files use the `.browser.spec.ts` or `.browser.spec.tsx` extension. Configure a Vitest project in your `vitest.config.ts` that routes these files to the jsdom environment:
+
+```typescript
+projects: [
+  {
+    test: {
+      include: ["src/**/*.browser.spec.{ts,tsx}"],
+      environment: "jsdom",
+    },
+  },
+]
+```
 
 ```
 src/
@@ -92,11 +103,12 @@ import {
   waitForFormSubmit,
   setupJsdomMocks,
 } from "alepha/react/testing";
+import { screen } from "@testing-library/react";
 
 beforeAll(() => setupJsdomMocks());
 
 test("should submit login form", async () => {
-  const { screen, alepha } = await renderWithAlepha(<LoginForm />);
+  const { alepha } = await renderWithAlepha(<LoginForm />);
 
   await fillForm(screen, "login-form", {
     email: "alice@example.com",

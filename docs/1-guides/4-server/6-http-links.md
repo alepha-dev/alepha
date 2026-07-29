@@ -58,7 +58,6 @@ Each property on a `$client` proxy returns a `VirtualAction` with these methods:
 | `action.run(config)` | Same as calling the action directly. Local-first. |
 | `action.fetch(config)` | Always makes an HTTP request, even if the action is local. |
 | `action.can()` | Returns `true` if the current user has permission to call this action. |
-| `action.schema()` | Returns the body and response schemas of the action. |
 
 ```typescript
 // Direct call (local-first)
@@ -71,10 +70,6 @@ const response = await this.products.getProduct.fetch({ params: { id } });
 if (this.products.getProduct.can()) {
   // user has access
 }
-
-// Schema introspection
-const schemas = this.products.getProduct.schema();
-// schemas.body, schemas.response
 ```
 
 ## $remote -- Remote Service Access
@@ -107,7 +102,13 @@ import { $remote } from "alepha/server/links";
 import { $serviceAccount } from "alepha/security";
 
 class Gateway {
-  sa = $serviceAccount({ secret: "shared-secret" });
+  sa = $serviceAccount({
+    oauth2: {
+      url: "https://auth.internal/oauth2/token",
+      clientId: "gateway",
+      clientSecret: "your-client-secret",
+    },
+  });
 
   payments = $remote({
     url: "https://payments.internal",

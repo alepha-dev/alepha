@@ -7,7 +7,7 @@ import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 ```
 
-The `db` object is an instance of `DatabaseTypeProvider`. An older alias `pg` is deprecated in favor of `db`.
+The `db` object is an instance of `DatabaseTypeProvider`.
 
 ## Primary Key
 
@@ -180,7 +180,7 @@ const user = $entity({
 
 ```typescript
 const userPage = db.page(user.schema);
-// Produces: { data: User[], page: { size, totalElements, totalPages } }
+// Produces: { content: User[], page: { size, totalElements, totalPages, ... } }
 ```
 
 This is used internally by `Repository.paginate()` and can be used in action response schemas.

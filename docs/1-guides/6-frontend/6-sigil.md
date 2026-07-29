@@ -52,23 +52,26 @@ export const WebModule = $module({
 |-----|----------|-------|
 | `SIGIL_ID` | to enable | The sigil UUID. A **server-only secret** — never prefix with `VITE_`. |
 | `LORE_URL` | no | Override the Lore origin (default `https://lore.alepha.dev`). |
+| `SIGIL_FEATURES` | no | Comma-separated enabled features (`petition,blights,beacon,vitals`). Absent = all enabled; acts purely as a filter — the app-side kill switch for individual capabilities. |
 
 ## Activation
 
 Sigil is active **only when `alepha.isProduction()` and `SIGIL_ID` is set**.
 In development it is silently inert. In production without `SIGIL_ID` it logs a
 gentle warning and stays disabled (no fail-fast). The floating feedback button
-auto-mounts on every page via the framework's `RootComponentsProvider` slot —
-you don't place any JSX, and there is no stylesheet to import (the button is
-inline-styled).
+auto-mounts via the framework's `RootComponentsProvider` slot — you don't place
+any JSX, and there is no stylesheet to import (the button is inline-styled). It
+renders only when the `petition` feature is enabled, and skips any path matching
+the configured `excludedPaths` globs (re-evaluated on SPA navigation).
 
 ## What each capability needs
 
-The **telemetry** capabilities (`beacon` / `blights` / `vitals`) are gated on the
-Lore side by the campaign's feature flags **and** the sigil's `kinds`; the module
-sends everything it can and Lore ignores capabilities a given sigil hasn't
-enabled. The **petition** button just opens the campaign's first-party request
-page, which enforces login and the campaign's `petitions` feature itself.
+The **telemetry** capabilities (`beacon` / `blights` / `vitals`) are gated on
+both sides: the app filters buckets whose feature is off before forwarding
+(views→beacon, errors→blights, vitals→vitals — driven by `SIGIL_FEATURES`), and
+Lore additionally gates by the campaign's feature flags and the sigil's `kinds`.
+The **petition** button just opens the campaign's first-party request page,
+which enforces login and the campaign's `petitions` feature itself.
 
 ## Privacy
 

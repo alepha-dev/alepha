@@ -28,7 +28,7 @@ class App {
 }
 ```
 
-You can add "appName" to all log entries by setting the `APP_NAME` environment variable:
+You can add an `app` field to all log entries by setting the `APP_NAME` environment variable:
 
 ```bash
 APP_NAME=my-app
@@ -81,7 +81,7 @@ LOG_LEVEL=alepha.*:debug,*.test:silent,info
 
 Defaults by environment:
 - **dev**: `info`
-- **prod**: `info`
+- **prod**: `info` (server) / `warn` (browser)
 - **test**: `trace` (but logs go to memory, only printed on test failure)
 
 ### LOG_FORMAT
@@ -144,7 +144,7 @@ alepha.events.on("log", (event) => {
 
 ## Testing
 
-In test mode, Alepha routes logs to `MemoryDestinationProvider` by default. Logs are buffered in memory and only printed to the console if a test fails.
+In test mode, Alepha routes logs to `MemoryDestinationProvider` by default (unless `LOG_LEVEL` or `DEBUG` is set, which switches back to console output). Logs are buffered in memory and only printed to the console if a test fails.
 
 To capture and assert on logs in tests:
 

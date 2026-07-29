@@ -47,7 +47,7 @@ yarn add @alepha/payments-stripe
 
 ### Webhook security
 
-Stripe signs webhook payloads with HMAC-SHA256. `StripePaymentProvider.parseWebhook` calls `stripe.webhooks.constructEvent(body, signature, secret)` and throws if the signature is missing or invalid. This is the only authentication on `/api/payments/webhook`.
+Stripe signs webhook payloads with HMAC-SHA256. `StripePaymentProvider.parseWebhook` calls `stripe.webhooks.constructEventAsync(body, signature, secret)` (the async variant — the sync one relies on Node's synchronous crypto, which doesn't exist on workerd) and throws if the signature is missing or invalid. This is the only authentication on `/api/payments/webhook`.
 
 ### Webhook provisioning
 

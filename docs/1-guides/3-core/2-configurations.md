@@ -40,7 +40,7 @@ const alepha = Alepha.create({
 });
 ```
 
-Values from `process.env` take precedence. This means `.env` files loaded before the process starts (e.g. via `alepha dev`) are available automatically.
+Values passed to `Alepha.create({ env })` take precedence over `process.env`. Variables from `.env` files loaded before the process starts (e.g. via `alepha dev`) are available automatically through `process.env`.
 
 ### Variable interpolation
 
@@ -84,7 +84,7 @@ The `name` uniquely identifies the atom in the state store. The `schema` defines
 
 Recommended naming convention for `name` is dot-separated, e.g. `"app.config"`, `"user.settings"`, etc.
 
-If the schema has all optional fields (via `.optional()`), the `default` is optional too. Otherwise, `default` is required.
+If the schema itself is optional (wrapped with `.optional()`, e.g. `z.object({...}).optional()`), the `default` is optional too. Otherwise — even when every field inside the object is optional — `default` is required.
 
 ### Reading and writing atoms
 
@@ -104,12 +104,12 @@ alepha.store.set(appConfig, { theme: "dark", language: "fr" });
 alepha.set(appConfig, { theme: "dark", language: "fr" });
 ```
 
-### Injecting atoms with $use
+### Injecting atoms with $state
 
-`$use` creates a reactive getter that always returns the current atom value:
+`$state` creates a reactive getter that always returns the current atom value:
 
 ```typescript
-import { $atom, $use, z } from "alepha";
+import { $atom, $state, z } from "alepha";
 
 const count = $atom({
   name: "count",
@@ -118,7 +118,7 @@ const count = $atom({
 });
 
 class Counter {
-  count = $use(count);
+  count = $state(count);
 
   current() {
     return this.count.value; // always reads current state
@@ -126,7 +126,7 @@ class Counter {
 }
 ```
 
-Under the hood, `$use` registers the atom and replaces the property with a getter that reads from the state store. When the state changes, the next property access returns the updated value:
+Under the hood, `$state` registers the atom and replaces the property with a getter that reads from the state store. When the state changes, the next property access returns the updated value:
 
 ```typescript
 const alepha = Alepha.create();

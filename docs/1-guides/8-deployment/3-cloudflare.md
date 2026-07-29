@@ -21,14 +21,18 @@ Required for deployment:
 
 ## Deploy
 
-`alepha deploy` detects the `wrangler.jsonc` in `dist/` and runs Wrangler:
+The recommended path is the [platform plugin](/docs/cli-plugins-platform), which provisions resources, builds, migrates, deploys, and pushes secrets in one command (installing Wrangler automatically if missing):
+
+```bash
+alepha p up
+```
+
+To deploy a build manually instead:
 
 ```bash
 alepha build --target=cloudflare
-alepha deploy
+cd dist && wrangler deploy
 ```
-
-If Wrangler is not installed, the deploy command installs it automatically as a dev dependency.
 
 ## Local Testing
 
@@ -57,21 +61,22 @@ DATABASE_URL=d1://my-database:00000000-0000-0000-0000-000000000000
 
 Format: `d1://<database-name>:<database-id>`
 
-The build automatically adds the D1 binding to `wrangler.jsonc`:
+The build automatically adds the D1 binding to `wrangler.jsonc` (the binding is always named `DB`), and rewrites the deployed `DATABASE_URL` to reference it:
 
 ```json
 {
   "d1_databases": [{
-    "binding": "my-database",
+    "binding": "DB",
     "database_name": "my-database",
     "database_id": "00000000-0000-0000-0000-000000000000"
-  }]
+  }],
+  "vars": { "DATABASE_URL": "d1://DB" }
 }
 ```
 
 ## R2 Buckets
 
-If your application declares any `$storage`, the R2 binding is added to `wrangler.jsonc` automatically. R2 keys every object as `{APP_NAME}/{tenantId}/{storage}/{fileId}` inside that one bucket — a storage is a prefix, not a bucket of its own.
+The R2 binding is added to `wrangler.jsonc` when `R2_BUCKET_NAME` is set at build time — the platform plugin sets it automatically when your app declares any `$storage`; for a manual build, set it yourself in the environment. R2 keys every object as `{APP_NAME}/{tenantId}/{storage}/{fileId}` inside that one bucket — a storage is a prefix, not a bucket of its own.
 
 ## Cron Triggers
 
@@ -159,5 +164,5 @@ DATABASE_URL=d1://alepha-app:00000000-0000-0000-0000-000000000000
 
 # Build and deploy
 alepha build --target=cloudflare --mode production
-alepha deploy
+cd dist && wrangler deploy
 ```

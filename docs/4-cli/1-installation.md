@@ -32,6 +32,9 @@ After `alepha init`, your `package.json` includes ready-to-use scripts:
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build",
+    "test": "alepha test",
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
     "verify": "alepha verify"
   }
 }

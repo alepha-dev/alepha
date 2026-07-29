@@ -36,11 +36,11 @@ Spread `form.props` on the `<form>` element and `form.input.<field>.props` on ea
 | Option          | Type                                | Description                                      |
 |-----------------|-------------------------------------|--------------------------------------------------|
 | `schema`        | `TObject`                           | Zod schema defining fields and validation.   |
-| `handler`       | `(values, { form }) => unknown`     | Called on submit with validated values.           |
+| `handler`       | `(values) => unknown`               | Called on submit with validated values.           |
 | `initialValues` | `Partial<Static<T>>`               | Pre-populate fields with existing data.          |
 | `id`            | `string`                            | Prefix for field IDs and `data-testid` attributes. |
 | `onChange`      | `(key, value, store) => void`       | Called on every field change.                    |
-| `onError`       | `(error, { form }) => void`         | Called when submission throws an error.          |
+| `onError`       | `(error) => void`                   | Called when submission throws an error.          |
 | `onReset`       | `() => void`                        | Called when the form is reset.                   |
 | `onCreateField` | `(name, schema) => InputHTMLAttributes` | Customize generated input attributes.        |
 
@@ -78,15 +78,19 @@ Triggers form submission programmatically. Validates values against the schema, 
 
 ### form.reset(event)
 
-Clears all form values and emits a `form:reset` event.
+Restores the form to its initial values (empty if no `initialValues` were given) and emits a `form:reset` event.
 
 ### form.currentValues
 
 Returns the current form values as a restructured object (nested keys like `address.city` become `{ address: { city: ... } }`).
 
-### form.submitting
+### Submission state
 
-Boolean indicating if a submission is in progress.
+To react to an in-progress submission (e.g. disable the submit button), use the `useFormState` hook:
+
+```typescript
+const { loading } = useFormState(form, ["loading"]);
+```
 
 ## Automatic Type Detection
 
@@ -97,14 +101,16 @@ Input types are automatically inferred from the schema:
 | `z.integer()`    | `number`         |
 | `z.number()`     | `number`         |
 | `z.boolean()`    | `checkbox`       |
-| `z.email()`      | `email`          |
 | `z.text()`       | `text`           |
 | Field named `password` | `password`  |
+| Field named `email` | `email`       |
 | Field named `url` | `url`           |
 | `z.date()`       | `date`           |
 | `z.time()`       | `time`           |
 | `z.datetime()`   | `datetime-local` |
-| `z.file()`       | `file`           |
+| `z.binary()`     | `file`           |
+
+Note that `email`/`password`/`url` are detected from the **field name**, not the schema — a `z.email()` schema on a field named `contact` renders as plain `text`.
 
 String constraints like `maxLength` and `minLength` are also applied to the input attributes.
 
@@ -181,8 +187,8 @@ Forms emit events on the Alepha event system:
 
 | Event                 | Payload                          | Description                    |
 |-----------------------|----------------------------------|--------------------------------|
-| `form:change`         | `{ id, path, value }`           | A field value changed.         |
-| `form:reset`          | `{ id, values }`                | Form was reset.                |
+| `form:change`         | `{ id, path, value, initial? }` | A field value changed (`initial: true` marks programmatic resets). |
+| `form:reset`          | `{ id }`                        | Form was reset.                |
 | `form:submit:begin`   | `{ id }`                        | Submission started.            |
 | `form:submit:success` | `{ id, values }`                | Submission succeeded.          |
 | `form:submit:error`   | `{ id, error }`                 | Submission failed.             |

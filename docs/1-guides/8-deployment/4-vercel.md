@@ -22,38 +22,37 @@ Required for deployment:
 
 ## Deploy
 
-`alepha deploy` detects the `vercel.json` in `dist/` and runs the Vercel CLI:
+Deploy through the [platform plugin](/docs/cli-plugins-platform), which drives the whole pipeline and installs the Vercel CLI automatically if missing:
+
+```bash
+alepha p up --env production
+```
+
+Or deploy a build manually with the Vercel CLI's prebuilt mode:
 
 ```bash
 alepha build --target=vercel
-alepha deploy
+cd dist && vercel deploy --prebuilt --prod
 ```
-
-For production deployment:
-
-```bash
-alepha deploy --mode production
-```
-
-If the Vercel CLI is not installed, the deploy command installs it automatically as a dev dependency.
 
 ## Generated Output
 
-The build produces:
+The build produces a [Vercel Build Output API v3](https://vercel.com/docs/build-output-api/v3) tree:
 
-- `dist/vercel.json` -- Route rewrites and build configuration
-- `dist/api/index.js` -- Serverless function entry point
-- `dist/public/` -- Static client assets (if React frontend exists)
+- `dist/.vercel/output/config.json` -- Version 3 config with routes (filesystem first, everything else to the function)
+- `dist/.vercel/output/functions/index.func/` -- The serverless function: handler, bundled server, `package.json`, `.vc-config.json`
+- `dist/.vercel/output/static/` -- Static client assets (moved from `dist/public/`)
 - `dist/.vercel/project.json` -- Project linking (if `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` are set)
 
-The `vercel.json` rewrites all routes to the serverless function:
+The generated `config.json` routes all non-file requests to the function:
 
 ```json
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index.js" }],
-  "buildCommand": "",
-  "installCommand": "",
-  "outputDirectory": "public"
+  "version": 3,
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index" }
+  ]
 }
 ```
 
@@ -86,7 +85,7 @@ The `orgId` and `projectId` can also be set via environment variables (`VERCEL_O
 Vercel serverless functions have constraints that affect some Alepha features:
 
 - **Queue-backed job dispatch** (`AlephaApiJobsQueue`) is not supported -- `$job` still works in direct mode, which is the default
-- **Cron** (`$job({ cron })`) has limited support -- must be configured manually via the `vercel` config `crons` option
+- **Cron** (`$job({ cron })`) is auto-collected at build time: each cron job becomes a Vercel cron entry hitting `/_alepha/cron/<name>` (guarded by `CRON_SECRET`); entries you define in the `vercel` config `crons` option win on path conflicts
 - **Cold starts** -- serverless functions have startup latency on the first request
 - **Execution time limits** -- Vercel imposes per-request timeouts depending on your plan
 

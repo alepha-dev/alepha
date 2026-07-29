@@ -30,7 +30,7 @@ export class VendorCommand {
   protected resolveOptions() {
     if (!this.options) {
       throw new AlephaError(
-        'Missing vendor configuration. Add a "vendor" section to alepha.config.ts.',
+        "Missing vendor configuration. Register vendor({ packages: [...] }) from alepha/cli/vendor in the plugins of alepha.config.ts.",
       );
     }
     return {

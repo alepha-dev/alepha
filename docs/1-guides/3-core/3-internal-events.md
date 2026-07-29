@@ -29,7 +29,8 @@ configure  ->  start  ->  ready  ->  (APP RUNNING)  ->  stop
 Register hooks with the `$hook` primitive. It must be a class property.
 
 ```typescript
-import { $hook, $logger } from "alepha";
+import { $hook } from "alepha";
+import { $logger } from "alepha/logger";
 
 class DatabaseService {
   log = $logger();
@@ -62,7 +63,7 @@ $hook({
 });
 ```
 
-`priority: "first"` places the hook at the front of the execution queue. `priority: "last"` places it at the end. Without a priority, hooks execute in registration order (which follows dependency order).
+`priority: "first"` places the hook at the front of the execution queue. `priority: "last"` places it at the end. Without a priority, hooks execute in registration order (which follows dependency order). For finer ordering relative to specific services, `before` and `after` accept a service class (or an array of them) that this hook must run before or after.
 
 ### Hook call tracking
 
@@ -93,6 +94,8 @@ interface Hooks {
     value: any;
     prevValue: any;
   };
+  "state:register": { atom: Atom };  // an atom was registered
+  echo: unknown;                     // free-form event for testing/debugging
 }
 ```
 

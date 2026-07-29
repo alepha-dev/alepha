@@ -8,7 +8,7 @@ No Webpack, no Babel, no ESLint configuration.
 You need one of the following:
 
 - [Node.js 22+](https://nodejs.org/) (recommended for beginners)
-- [Bun 1.1+](https://bun.sh/)
+- [Bun 1.3+](https://bun.sh/)
 
 ## Create a Project
 
@@ -211,15 +211,16 @@ Add the platform plugin to your config:
 
 ```typescript filename="alepha.config.ts"
 import { defineConfig } from "alepha/cli/config";
-import { AlephaCliPlatform } from "alepha/cli/platform";
+import { platform } from "alepha/cli/platform";
 
 export default defineConfig({
-  services: [AlephaCliPlatform],
-  platform: {
-    environments: {
-      production: { adapter: "cloudflare" },
-    },
-  },
+  plugins: [
+    platform({
+      environments: {
+        production: { adapter: "cloudflare" },
+      },
+    }),
+  ],
 });
 ```
 

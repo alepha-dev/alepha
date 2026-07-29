@@ -44,7 +44,7 @@ Out of the box this gives you:
 - `GET/POST/DELETE/PATCH /api/payments/payment-methods/...` — list, add, remove, set default.
 - `POST /api/payments/webhook` — PSP webhook ingress (no `$secure` middleware; the provider verifies authenticity).
 - `/api/admin/payments/...` — capture, void, refund, cancel, list intents, record cash payments.
-- A daily cron (`api:payments:expireStaleIntents`) that expires intents stuck in `processing` for more than 30 minutes.
+- A cron running every 5 minutes (`api:payments:expireStaleIntents`) that expires intents stuck in `processing` for more than 30 minutes.
 
 `AlephaApiPayments` registers `MemoryPaymentProvider` as the default provider — you can boot the module with no PSP configured and exercise the full flow end-to-end via the dev-only mock checkout page at `/payments/mock-checkout/:id`.
 

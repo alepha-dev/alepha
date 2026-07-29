@@ -66,11 +66,11 @@ Runs `tsc --noEmit`. Your types must be correct. No `any` sneaking through, no m
 alepha test
 ```
 
-Runs Vitest (if it's installed). Your tests must pass. All of them.
+Runs Vitest (embedded in `alepha` — nothing to install). Your tests must pass. All of them.
 
 > **Optional Step**
 >
-> This step is skipped if Vitest isn't in your `devDependencies`.
+> This step is skipped if the project has no tests — no `test/` directory and no `*.spec.ts(x)` files under `src/`.
 
 ### 5. Database Migrations Check
 

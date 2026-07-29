@@ -42,7 +42,6 @@ interface FileLike {
   type: string;           // MIME type (e.g. "image/png")
   size: number;           // Size in bytes
   lastModified: number;   // Timestamp in milliseconds
-  filepath?: string;      // Temporary file path on disk
 
   stream(): StreamLike;           // Read as stream
   arrayBuffer(): Promise<ArrayBuffer>;  // Read into memory
@@ -50,7 +49,7 @@ interface FileLike {
 }
 ```
 
-During the request, uploaded files are written to temporary files in the OS temp directory. They are automatically cleaned up after the response is sent. This approach keeps memory usage low for large files.
+Uploads are buffered: the request body is read into memory before your handler runs, and each file field arrives as an in-memory, Blob-backed `FileLike`. This is why the size limits above exist — buffering very large uploads would exhaust memory. For large files, prefer presigned upload URLs from [`$storage`](/docs/guides-persistence-storage) so the bytes never transit your server.
 
 > FileLike is a minimal interface inspired by the Web File API.
 > It allows to use browser input file directly without mapping!

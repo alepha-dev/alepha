@@ -1,6 +1,6 @@
 # Migrations
 
-Alepha manages database schema migrations through Drizzle Kit. The behavior differs between development, testing, and production environments.
+Alepha manages database schema migrations through the embedded Drizzle Kit. The behavior differs between development, testing, and production environments.
 
 ## Development Mode
 
@@ -10,32 +10,35 @@ In development, `alepha dev` automatically synchronizes your entity schemas to t
 alepha dev
 ```
 
-When the application starts, `DrizzleKitProvider.synchronize()` compares the current entity schemas against a stored snapshot and generates migration statements. These are executed automatically. The schema snapshot is stored in:
-
-- **PostgreSQL**: The `drizzle.__drizzle_dev_migrations` table.
-- **SQLite**: A local file at `node_modules/.alepha/sqlite-<app>-<provider>.json`.
+When the application starts, `DrizzleKitProvider.synchronize()` introspects the actual database state, diffs it against your current entity definitions, and applies the changes. There are no stored snapshots — no drift, no corruption; the database itself is the source of truth.
 
 This means you can change entity schemas freely during development. The framework detects differences and applies them on startup.
 
 ## Testing Mode
 
-In test environments, `synchronize()` generates migration statements from scratch (no prior snapshot) and executes them. This ensures tests always start with a clean, up-to-date schema.
-
-The framework skips `DROP SCHEMA` statements during execution to prevent accidental data loss.
+In test environments, `synchronize()` generates the schema from scratch and executes it, so tests always start with a clean, up-to-date schema. (`CREATE SCHEMA` statements are rewritten to `CREATE SCHEMA IF NOT EXISTS` so repeated runs are safe.)
 
 ## Production Mode
 
-In production, `synchronize()` does nothing. You must handle migrations explicitly.
+In production, `synchronize()` does nothing. You must handle migrations explicitly with migration files.
 
 ### Generate Migrations
 
 Use the Alepha CLI to generate migration files from your entity schemas:
 
 ```bash
-alepha db migrations generate
+alepha db migrations create
 ```
 
-This explores your application metadata, collects all registered entities, and invokes Drizzle Kit's migration generator.
+This explores your application metadata, collects all registered entities, and invokes Drizzle Kit's migration generator. Files are written to `migrations/<provider>/` (e.g. `migrations/postgres/`).
+
+### Check for Drift
+
+```bash
+alepha db migrations check
+```
+
+Fails if your entity schemas have changed since the last migration was generated — `alepha verify` runs this automatically when a `migrations/` directory exists, so a forgotten migration fails CI instead of production.
 
 ### Apply Migrations
 
@@ -50,11 +53,15 @@ alepha db migrations apply
 Use the `--mode` flag to specify which `.env` file to load for the database connection:
 
 ```bash
-alepha db migrations generate --mode production
+alepha db migrations create --mode production
 alepha db migrations apply --mode production
 ```
 
 This loads `.env.production` for the `DATABASE_URL` and other environment variables.
+
+### More Database Commands
+
+The full command surface — `alepha db push [--dry-run]` for prototyping without migration files, `alepha db baseline create/mark` for collapsing migration history, and `alepha db studio` for a database browser — is documented in the [Db Command](/docs/cli-commands-db) reference.
 
 ## Multi-Instance Safety
 
@@ -62,12 +69,7 @@ When running multiple application instances (e.g., behind a load balancer), use 
 
 ## Cloudflare D1 (SQLite)
 
-For Cloudflare Workers using D1, migrations must be applied manually before deploy since there is no persistent connection during cold start:
-
-```bash
-alepha db migrations generate
-alepha db migrations apply --mode production # <- will use D1 driver based on DATABASE_URL of .env.production
-```
+For Cloudflare Workers using D1, migrations run against the deployed database before your code ships. If you deploy with the [platform plugin](/docs/cli-plugins-platform), `alepha p up` handles this for you (via `wrangler d1 migrations apply`); to run them alone, use `alepha p db migrate`.
 
 ## Database URL Configuration
 
@@ -77,6 +79,7 @@ The database driver is selected based on the `DATABASE_URL` environment variable
 |-------------------|--------|
 | `postgres://`     | PostgreSQL (Node.js or Bun, selected automatically) |
 | `pglite://`       | PGlite (embedded PostgreSQL) |
+| `hyperdrive://`   | Cloudflare Hyperdrive (Postgres from Workers) |
 | `d1://`           | Cloudflare D1 |
 | Other / no prefix | SQLite (Node.js or Bun, selected automatically) |
 
@@ -87,6 +90,7 @@ The database driver is selected based on the `DATABASE_URL` environment variable
 alepha dev
 
 # Production - explicit migration workflow
-alepha db migrations generate              # generate migration files
+alepha db migrations create                   # generate migration files
+alepha db migrations check                    # CI: fail on schema drift
 alepha db migrations apply --mode production  # apply to production database
 ```

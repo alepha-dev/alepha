@@ -172,7 +172,7 @@ Tune the `jobConfig` atom:
 ```typescript
 import { jobConfig } from "alepha/api/jobs";
 
-alepha.set(jobConfig, { sweepCron: "*/5 * * * *" });
+alepha.store.mut(jobConfig, (c) => ({ ...c, sweepCron: "*/5 * * * *" }));
 ```
 
 | Key | Default | Description |
