@@ -13,6 +13,12 @@ export const quests = $entity({
     }),
     createdBy: db.ref(z.uuid(), () => users.cols.id, { onDelete: "cascade" }),
     /**
+     * Soft delete, exactly as `apps/lore/src/api/entities/quests.ts` has it.
+     * `Repository` filters this out of every read automatically — which is the
+     * behaviour the RQB spike has to prove it can keep.
+     */
+    deletedAt: db.deletedAt(),
+    /**
      * Self-referencing FK. This exact shape is why relations cannot be
      * inferred from `db.ref` — making the reference generic enough to carry
      * its target through the type makes this line fail with TS7022.
