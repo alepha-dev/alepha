@@ -162,7 +162,7 @@ export class RelationalRepository<
       const page = await this.base.paginate(
         pagination,
         this.toBaseQuery(query) as never,
-        options,
+        { ...options, ...this.toBaseOptions(query) },
       );
 
       return page as Page<Resolve<TSchema, TMap, TKey, TArgs>>;
@@ -185,7 +185,9 @@ export class RelationalRepository<
         // one extra row is the next-page sentinel `createPagination` looks for
         limit: limit + 1,
       } as TArgs),
-      options.count ? this.base.count(args.where as never) : undefined,
+      options.count
+        ? this.base.count(args.where as never, this.toBaseOptions(query))
+        : undefined,
     ]);
 
     const page = createPagination(
@@ -516,6 +518,7 @@ export class RelationalRepository<
 
     return (await this.base.findMany(
       this.toBaseQuery(query) as never,
+      this.toBaseOptions(query),
     )) as Array<Record<string, any>>;
   }
 
@@ -534,9 +537,22 @@ export class RelationalRepository<
    * `select` becomes `columns`; `include` is handled separately.
    */
   protected toBaseQuery(query: RelationalQueryArgs<TSchema, TMap, TKey>) {
-    const { include: _include, select, ...rest } = query as Record<string, any>;
+    const {
+      include: _include,
+      force: _force,
+      select,
+      ...rest
+    } = query as Record<string, any>;
     if (!select) return rest;
     return { ...rest, columns: select };
+  }
+
+  /**
+   * `force` is a statement option on the plain repository rather than part of
+   * the query, so it is peeled back off on the way down.
+   */
+  protected toBaseOptions(query: RelationalQueryArgs<TSchema, TMap, TKey>) {
+    return { force: (query as { force?: boolean }).force };
   }
 }
 

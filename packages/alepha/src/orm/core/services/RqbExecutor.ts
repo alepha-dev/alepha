@@ -153,7 +153,13 @@ export class RqbExecutor {
   ): Record<string, unknown> {
     const out: Record<string, unknown> = {};
 
-    const where = this.toRawFilter(relations, entityKey, provider, query.where);
+    const where = this.toRawFilter(
+      relations,
+      entityKey,
+      provider,
+      query.where,
+      query.force,
+    );
     if (where) out.where = where;
 
     if (query.select) out.columns = this.toColumns(query.select);
@@ -218,6 +224,7 @@ export class RqbExecutor {
     entityKey: string,
     provider: DatabaseProvider,
     where: unknown,
+    force?: boolean,
   ): Record<string, unknown> | undefined {
     const entity = relations.schema[entityKey];
     if (!entity) return undefined;
@@ -225,7 +232,7 @@ export class RqbExecutor {
     const repository = this.repositories.getRepository(
       entity as EntityPrimitive,
     );
-    const scoped = repository.readWhere(where);
+    const scoped = repository.readWhere(where, { force });
 
     const build = (table: any) =>
       this.queryManager.toSQL(scoped as never, {
@@ -514,6 +521,7 @@ export class RqbExecutor {
 
 export interface RqbQuery {
   where?: unknown;
+  force?: boolean;
   orderBy?: unknown;
   limit?: number;
   offset?: number;

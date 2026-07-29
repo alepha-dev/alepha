@@ -913,3 +913,67 @@ describe("relations", () => {
     });
   });
 });
+
+describe("force", () => {
+  let alepha: Alepha;
+  let app: App;
+
+  beforeEach(async () => {
+    alepha = Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
+    app = alepha.inject(App);
+    await alepha.start();
+  });
+
+  /**
+   * Some views want the history a soft delete hides — a crash inbox still
+   * shows reports from a source that has since been revoked. `force` is that
+   * escape hatch on the plain repository, and a relation is a read like any
+   * other, so it takes the same flag.
+   */
+  it("hides a soft-deleted relation row by default", async () => {
+    const { campaign, second } = await seed(app);
+    await app.db.quests.deleteById(second.id);
+
+    const found = await app.db.campaigns.findOne({
+      where: { id: { eq: campaign.id } },
+      include: { quests: true },
+    });
+
+    expect(found?.quests.map((q) => q.title)).toEqual(["Find the archive"]);
+  });
+
+  it("shows it again when the relation asks for force", async () => {
+    const { campaign, second } = await seed(app);
+    await app.db.quests.deleteById(second.id);
+
+    const found = await app.db.campaigns.findOne({
+      where: { id: { eq: campaign.id } },
+      include: { quests: { force: true } },
+    });
+
+    expect(found?.quests.map((q) => q.title).sort()).toEqual([
+      "Find the archive",
+      "Open the vault",
+    ]);
+  });
+
+  /**
+   * It binds to the level that asked for it. A forced parent must not quietly
+   * un-hide every relation hanging off it.
+   */
+  it("applies to one level only", async () => {
+    const { second } = await seed(app);
+    await app.db.quests.deleteById(second.id);
+
+    const forced = await app.db.quests.findMany({ force: true });
+    expect(forced).toHaveLength(2);
+
+    const campaigns = await app.db.campaigns.findMany({
+      force: true,
+      include: { quests: true },
+    });
+    expect(campaigns.flatMap((c) => c.quests).map((q) => q.title)).toEqual([
+      "Find the archive",
+    ]);
+  });
+});

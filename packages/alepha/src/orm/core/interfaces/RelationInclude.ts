@@ -44,6 +44,17 @@ export interface RelationArgs<
   where?: PgQueryWhere<SchemaOf<TSchema, K>>;
   orderBy?: OrderBy<RowOf<TSchema, K>>;
   /**
+   * Read rows the repository would normally hide.
+   *
+   * Today that means soft-deleted ones: `deletedAt` is filtered out of every
+   * read, and some views want the history anyway — a blight inbox still shows
+   * crashes reported by a sigil that has since been revoked. It is the same
+   * flag the plain repository takes, and it applies to this level only, so a
+   * parent can ask for deleted rows without its relations doing the same.
+   */
+  force?: boolean;
+
+  /**
    * Cap the rows returned **per parent**, not across the batch.
    *
    * Prisma's `take` means the same thing, and here it is a real `limit` on
@@ -147,6 +158,17 @@ export interface RelationalQueryArgs<
   orderBy?: OrderBy<Static<SchemaOf<TSchema, K>>>;
   limit?: number;
   offset?: number;
+  /**
+   * Read rows the repository would normally hide.
+   *
+   * Today that means soft-deleted ones: `deletedAt` is filtered out of every
+   * read, and some views want the history anyway — a blight inbox still shows
+   * crashes reported by a sigil that has since been revoked. It is the same
+   * flag the plain repository takes, and it applies to this level only, so a
+   * parent can ask for deleted rows without its relations doing the same.
+   */
+  force?: boolean;
+
   select?: ReadonlyArray<keyof RowOf<TSchema, K>>;
   include?: IncludeArg<TSchema, TMap, K>;
 }
