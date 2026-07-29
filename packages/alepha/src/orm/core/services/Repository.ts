@@ -1609,6 +1609,18 @@ export abstract class Repository<T extends TObject> {
     ],
   };
 
+  /**
+   * Classify a driver error the way this repository's own statements do.
+   *
+   * Public for the same reason as {@link Repository.readWhere}: a relational
+   * read is issued elsewhere, and a caller catching `DbTableNotFoundError`
+   * from `findMany` should not get a raw driver error back the moment they add
+   * an `include`.
+   */
+  public wrapError(error: unknown, message: string): DbError {
+    return this.handleError(error, message);
+  }
+
   protected handleError(error: unknown, message: string): DbError {
     if (!(error instanceof Error)) {
       return new DbError(message);
@@ -1664,6 +1676,62 @@ export abstract class Repository<T extends TObject> {
     }
 
     return new DbError(message, error);
+  }
+
+  /**
+   * The predicate this repository adds to every read, on top of the caller's.
+   *
+   * Public because some relational reads do not pass through `findMany` at
+   * all: the relational query builder issues one statement for a whole tree.
+   * Sharing the predicate rather than reproducing it is what keeps soft delete
+   * and tenancy true of those statements too — including the strict-tenancy
+   * refusal, which throws here exactly as it would on a direct read.
+   */
+  public readWhere(
+    where: unknown = {},
+    opts: { force?: boolean } = {},
+  ): unknown {
+    return this.withOrganization(
+      this.withDeletedAt((where ?? {}) as PgQueryWhereOrSQL<T>, opts),
+    );
+  }
+
+  /**
+   * Validate and decode a row this repository did not fetch itself.
+   *
+   * `columns` narrows the schema the way a projection does. `keep` names
+   * properties to carry across untouched, which is how relation fields
+   * survive: they belong to another entity's schema and would otherwise be
+   * rejected as unknown.
+   */
+  public cleanRow(
+    row: Record<string, unknown>,
+    options: {
+      columns?: ReadonlyArray<string>;
+      keep?: ReadonlyArray<string>;
+    } = {},
+  ): Record<string, unknown> {
+    const carried: Record<string, unknown> = {};
+    const columnsOnly: Record<string, unknown> = { ...row };
+
+    for (const key of options.keep ?? []) {
+      if (key in columnsOnly) {
+        carried[key] = columnsOnly[key];
+        delete columnsOnly[key];
+      }
+    }
+
+    let schema: TObject = this.entity.schema;
+    if (options.columns) {
+      schema = schema.pick(
+        Object.fromEntries(options.columns.map((c) => [c, true])) as never,
+      ) as TObject;
+    }
+
+    return {
+      ...(this.clean(columnsOnly, schema) as Record<string, unknown>),
+      ...carried,
+    };
   }
 
   protected withDeletedAt(

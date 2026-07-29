@@ -267,11 +267,67 @@ export type FromSchema<T extends TObject> = {
   [key in keyof T["properties"]]: PgColumnBuilder;
 };
 
+/**
+ * Map a column's TypeScript value onto Drizzle's `dataType` tag.
+ *
+ * Drizzle's `ColumnDataType` union has no `date` or `json` member — both are
+ * `object` there — so anything that is not a primitive lands on `object`.
+ */
+export type SchemaToDataType<T> = T extends string
+  ? "string"
+  : T extends number
+    ? "number"
+    : T extends boolean
+      ? "boolean"
+      : T extends bigint
+        ? "bigint"
+        : T extends Array<any>
+          ? "array"
+          : "object";
+
+/**
+ * A Drizzle column that still carries its value type.
+ *
+ * `PgColumn`'s **first** type parameter is the data type and the config is the
+ * **second**, so a bare `PgColumn` silently defaults both away. That single
+ * detail cost this codebase two separate bugs: query results came back
+ * `unknown` through anything that reads the table type, and `columns:`
+ * projection never narrowed a result — the compiler kept promising fields that
+ * had already been stripped at runtime.
+ */
+export type SchemaToColumn<
+  TName extends string,
+  TTable extends string,
+  TData,
+> = PgColumn<
+  SchemaToDataType<NonNullable<TData>>,
+  {
+    name: TName;
+    tableName: TTable;
+    dataType: SchemaToDataType<NonNullable<TData>>;
+    columnType: string;
+    data: NonNullable<TData>;
+    driverParam: unknown;
+    notNull: undefined extends TData ? false : true;
+    hasDefault: false;
+    isPrimaryKey: false;
+    isAutoincrement: false;
+    hasRuntimeDefault: false;
+    enumValues: undefined;
+    generated: undefined;
+    identity: undefined;
+  }
+>;
+
 export type SchemaToTableConfig<T extends TObject> = {
   name: string;
   schema: string | undefined;
   columns: {
-    [key in keyof T["properties"]]: PgColumn;
+    [key in keyof Static<T> & string]: SchemaToColumn<
+      key,
+      string,
+      Static<T>[key]
+    >;
   };
   dialect: string;
 };

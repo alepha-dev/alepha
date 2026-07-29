@@ -631,23 +631,38 @@ export class QueryManager {
 
     // Mode 2: Single object -> convert to array
     if (!Array.isArray(orderBy) && typeof orderBy === "object") {
-      return [
-        {
-          column: orderBy.column,
-          direction: orderBy.direction ?? "asc",
-        },
-      ];
+      return [this.orderByClause(orderBy, orderBy)];
     }
 
     // Mode 3: Array -> normalize each item with default direction
     if (Array.isArray(orderBy)) {
-      return orderBy.map((item) => ({
-        column: item.column,
-        direction: item.direction ?? "asc",
-      }));
+      return orderBy.map((item) => this.orderByClause(item, orderBy));
     }
 
     return [];
+  }
+
+  /**
+   * One clause, refusing a shape that has no column.
+   *
+   * `{ title: "asc" }` looks like an order-by and is not one — the shape is
+   * `{ column, direction }`. Left alone it reaches the database as
+   * `order by "undefined"`, and the driver's answer names a column nobody
+   * wrote. TypeScript rejects it; this is for the callers TypeScript does not
+   * reach.
+   */
+  protected orderByClause(
+    item: any,
+    orderBy: unknown,
+  ): { column: string; direction: "asc" | "desc" } {
+    if (typeof item?.column !== "string") {
+      throw new AlephaError(
+        `Invalid orderBy: expected { column, direction? }, got ${JSON.stringify(orderBy)}. ` +
+          "A plain { column: direction } map is not the same shape.",
+      );
+    }
+
+    return { column: item.column, direction: item.direction ?? "asc" };
   }
 
   /**
