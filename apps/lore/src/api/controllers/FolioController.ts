@@ -696,30 +696,21 @@ export class FolioController {
       await this.security.assertMember(query.campaignId, user);
       const limit = query.limit ?? 50;
 
-      // Folio set for this campaign — small per campaign, so one fetch
-      // + in-memory join is cheaper than a SQL join through Drizzle's
-      // query builder (and keeps the repository abstraction).
-      const campaignFolios = await this.folios.findMany({
-        where: { campaignId: { eq: query.campaignId } },
-        columns: ["id", "shortId", "title"],
-      });
-      if (campaignFolios.length === 0) return { items: [] };
-      const folioById = new Map(campaignFolios.map((f) => [f.id, f]));
-
-      // The author comes back with the revision. The folio set above still
-      // needs its own query: `$relations` filters on columns, not on a
-      // relation's columns, so "revisions of folios in this campaign" cannot
-      // be expressed as one `where`.
+      // One statement: the campaign is reached by filtering on the revision's
+      // folio, and the folio and author both come back attached.
       const revisions = await this.revisionsWith.findMany({
-        where: { folioId: { inArray: campaignFolios.map((f) => f.id) } },
+        where: { folio: { campaignId: { eq: query.campaignId } } },
         orderBy: [{ column: "at", direction: "desc" }],
         limit,
-        include: { author: { select: ["id", "username", "email", "picture"] } },
+        include: {
+          folio: { select: ["id", "shortId", "title"] },
+          author: { select: ["id", "username", "email", "picture"] },
+        },
       });
 
       return {
         items: revisions.map((r) => {
-          const folio = folioById.get(r.folioId);
+          const folio = r.folio;
           const u = r.author;
           return {
             id: r.id,
