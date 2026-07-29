@@ -41,8 +41,19 @@ export interface RelationArgs<
   TMap extends RelationMapFor<TSchema>,
   K extends keyof TSchema,
 > {
-  where?: PgQueryWhere<SchemaOf<TSchema, K>>;
+  where?: WhereArg<TSchema, TMap, K>;
   orderBy?: OrderBy<RowOf<TSchema, K>>;
+  /**
+   * Read rows the repository would normally hide.
+   *
+   * Today that means soft-deleted ones: `deletedAt` is filtered out of every
+   * read, and some views want the history anyway — a blight inbox still shows
+   * crashes reported by a sigil that has since been revoked. It is the same
+   * flag the plain repository takes, and it applies to this level only, so a
+   * parent can ask for deleted rows without its relations doing the same.
+   */
+  force?: boolean;
+
   /**
    * Cap the rows returned **per parent**, not across the batch.
    *
@@ -55,6 +66,30 @@ export interface RelationArgs<
   select?: ReadonlyArray<keyof RowOf<TSchema, K>>;
   include?: IncludeArg<TSchema, TMap, K>;
 }
+
+/**
+ * A `where` that can also name a relation.
+ *
+ * Column filters are unchanged; a key that matches a declared relation takes
+ * a nested `where` describing the related rows, and compiles to an `EXISTS`.
+ * `{}` is meaningful — it means "has at least one", scoped by whatever the
+ * target entity hides.
+ *
+ * Only the top level accepts relation keys. Inside `and` / `or` / `not` they
+ * are refused at runtime, because that branch is compiled to one SQL
+ * expression and an `EXISTS` cannot be folded into it.
+ */
+export type WhereArg<
+  TSchema extends EntitySchema,
+  TMap extends RelationMapFor<TSchema>,
+  K extends keyof TSchema,
+> = PgQueryWhere<SchemaOf<TSchema, K>> & {
+  [R in keyof RelationsFor<TSchema, TMap, K>]?: WhereArg<
+    TSchema,
+    TMap,
+    TargetOf<RelationsFor<TSchema, TMap, K>[R]> & keyof TSchema
+  >;
+};
 
 /**
  * What `include` accepts: any declared relation, either `true` or an object
@@ -143,10 +178,21 @@ export interface RelationalQueryArgs<
   TMap extends RelationMapFor<TSchema>,
   K extends keyof TSchema,
 > {
-  where?: PgQueryWhere<SchemaOf<TSchema, K>>;
+  where?: WhereArg<TSchema, TMap, K>;
   orderBy?: OrderBy<Static<SchemaOf<TSchema, K>>>;
   limit?: number;
   offset?: number;
+  /**
+   * Read rows the repository would normally hide.
+   *
+   * Today that means soft-deleted ones: `deletedAt` is filtered out of every
+   * read, and some views want the history anyway — a blight inbox still shows
+   * crashes reported by a sigil that has since been revoked. It is the same
+   * flag the plain repository takes, and it applies to this level only, so a
+   * parent can ask for deleted rows without its relations doing the same.
+   */
+  force?: boolean;
+
   select?: ReadonlyArray<keyof RowOf<TSchema, K>>;
   include?: IncludeArg<TSchema, TMap, K>;
 }

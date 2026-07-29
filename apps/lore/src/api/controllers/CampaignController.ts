@@ -26,6 +26,7 @@ import { chapters } from "../entities/chapters.ts";
 import { type Character, characters } from "../entities/characters.ts";
 import { quests } from "../entities/quests.ts";
 import type { User } from "../entities/users.ts";
+import { relations } from "../relations.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { AchievementEngine } from "../services/AchievementEngine.ts";
 import { CampaignLimits } from "../services/CampaignLimits.ts";
@@ -36,6 +37,14 @@ export class CampaignController {
   alepha = $inject(Alepha);
   campaigns = $repository(campaigns);
   characters = $repository(characters);
+  /**
+   * Relation-aware views of the two tables above, for the reads that used to
+   * fetch one and then look up the other. Same tables, same rows — `include`
+   * is the only thing they add.
+   */
+  campaignsWith = $repository(relations, "campaigns");
+  charactersWith = $repository(relations, "characters");
+  usersWith = $repository(relations, "users");
   quests = $repository(quests);
   chapters = $repository(chapters);
   users = $repository(users);
@@ -164,24 +173,25 @@ export class CampaignController {
       response: z.array(campaigns.schema),
     },
     handler: async ({ user, query }) => {
-      const userCharacters = await this.characters.findMany({
-        where: { userId: { eq: user.id } },
+      // Membership is a many-to-many through `characters`, so the two-step
+      // fetch-ids-then-fetch-rows collapses into the relation itself.
+      const me = await this.usersWith.findById(user.id, {
+        include: {
+          campaigns: {
+            orderBy: { column: "updatedAt", direction: "desc" },
+          },
+        },
       });
 
-      const characterCampaignIds = userCharacters.map((it) => it.campaignId);
-      if (characterCampaignIds.length === 0) {
-        return [];
-      }
+      const all = me?.campaigns ?? [];
+      const size = query.size ?? all.length;
+      const page = query.page ?? 0;
 
-      const result = await this.campaigns.paginate(
-        {
-          size: query.size ?? characterCampaignIds.length,
-          sort: query.sort ?? "-updatedAt",
-          page: query.page ?? 0,
-        },
-        { where: { id: { inArray: characterCampaignIds } } },
-      );
-      return result.content;
+      // Paging in memory is the honest translation here: the previous query
+      // paged a filter whose id list had already been read in full, so the
+      // work was never bounded by page size to begin with. The per-user
+      // ownership limit keeps the list small.
+      return all.slice(page * size, page * size + size);
     },
   });
 
@@ -204,38 +214,25 @@ export class CampaignController {
     handler: async ({ user }) => {
       const maxCampaignsPerUser = await this.limits.maxCampaignsPerUser();
 
-      const userCharacters = await this.characters.findMany({
-        where: { userId: { eq: user.id } },
-      });
-      const characterCampaignIds = userCharacters.map((it) => it.campaignId);
+      const [me, ownedCount] = await Promise.all([
+        this.usersWith.findById(user.id, {
+          include: {
+            campaigns: {
+              orderBy: { column: "updatedAt", direction: "desc" },
+            },
+          },
+        }),
+        this.campaigns.count({ createdBy: { eq: user.id } }),
+      ]);
 
-      const ownedCount = await this.campaigns.count({
-        createdBy: { eq: user.id },
-      });
-      const canCreate = ownedCount < maxCampaignsPerUser;
-
-      if (characterCampaignIds.length === 0) {
-        return {
-          campaigns: [],
-          totalCount: 0,
-          ownedCount,
-          maxCampaigns: maxCampaignsPerUser,
-          canCreate,
-        };
-      }
-
-      const result = await this.campaigns.findMany({
-        where: { id: { inArray: characterCampaignIds } },
-        orderBy: [{ column: "updatedAt", direction: "desc" }],
-        limit: characterCampaignIds.length,
-      });
+      const result = me?.campaigns ?? [];
 
       return {
         campaigns: result,
         totalCount: result.length,
         ownedCount,
         maxCampaigns: maxCampaignsPerUser,
-        canCreate,
+        canCreate: ownedCount < maxCampaignsPerUser,
       };
     },
   });
@@ -250,17 +247,15 @@ export class CampaignController {
       }),
       response: z.array(users.schema),
     },
-    handler: async ({ params, user }) => {
-      const campaignCharacters = await this.characters.findMany({
-        where: { campaignId: { eq: params.id } },
+    handler: async ({ params }) => {
+      // One statement: the membership hop through `characters` is the
+      // relation's business, not the handler's. No duplicates to guard
+      // against — `characters` is unique on (userId, campaignId).
+      const campaign = await this.campaignsWith.findById(params.id, {
+        include: { members: true },
       });
 
-      const userIds = campaignCharacters.map((it) => it.userId);
-
-      return await this.users.findMany({
-        where: { id: { inArray: userIds } },
-        limit: userIds.length,
-      });
+      return campaign?.members ?? [];
     },
   });
 
@@ -411,16 +406,10 @@ export class CampaignController {
         }),
       ),
     },
-    handler: async ({ params, user }) => {
-      const campaignCharacters = await this.characters.findMany({
+    handler: async ({ params }) => {
+      const campaignCharacters = await this.charactersWith.findMany({
         where: { campaignId: { eq: params.id } },
-      });
-
-      const campaignUsers = await this.users.findMany({
-        limit: campaignCharacters.length,
-        where: {
-          id: { inArray: campaignCharacters.map((char) => char.userId) },
-        },
+        include: { user: true },
       });
 
       const charactersWithUsers: Array<
@@ -430,19 +419,15 @@ export class CampaignController {
       > = [];
 
       for (const character of campaignCharacters) {
-        const characterUser = campaignUsers.find(
-          (it) => it.id === character.userId,
-        );
-        if (!characterUser) {
+        if (!character.user) {
+          // A character whose account is gone. The row survives the user by
+          // design, but the roster has nothing to show for it.
           this.log.warn(
             `User with id ${character.userId} not found for character ${character.id}`,
           );
           continue;
         }
-        charactersWithUsers.push({
-          ...character,
-          user: characterUser,
-        });
+        charactersWithUsers.push({ ...character, user: character.user });
       }
 
       // Sort by owner first, then by creation date

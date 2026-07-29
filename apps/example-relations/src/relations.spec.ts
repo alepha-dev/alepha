@@ -913,3 +913,215 @@ describe("relations", () => {
     });
   });
 });
+
+describe("force", () => {
+  let alepha: Alepha;
+  let app: App;
+
+  beforeEach(async () => {
+    alepha = Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
+    app = alepha.inject(App);
+    await alepha.start();
+  });
+
+  /**
+   * Some views want the history a soft delete hides — a crash inbox still
+   * shows reports from a source that has since been revoked. `force` is that
+   * escape hatch on the plain repository, and a relation is a read like any
+   * other, so it takes the same flag.
+   */
+  it("hides a soft-deleted relation row by default", async () => {
+    const { campaign, second } = await seed(app);
+    await app.db.quests.deleteById(second.id);
+
+    const found = await app.db.campaigns.findOne({
+      where: { id: { eq: campaign.id } },
+      include: { quests: true },
+    });
+
+    expect(found?.quests.map((q) => q.title)).toEqual(["Find the archive"]);
+  });
+
+  it("shows it again when the relation asks for force", async () => {
+    const { campaign, second } = await seed(app);
+    await app.db.quests.deleteById(second.id);
+
+    const found = await app.db.campaigns.findOne({
+      where: { id: { eq: campaign.id } },
+      include: { quests: { force: true } },
+    });
+
+    expect(found?.quests.map((q) => q.title).sort()).toEqual([
+      "Find the archive",
+      "Open the vault",
+    ]);
+  });
+
+  /**
+   * It binds to the level that asked for it. A forced parent must not quietly
+   * un-hide every relation hanging off it.
+   */
+  it("applies to one level only", async () => {
+    const { second } = await seed(app);
+    await app.db.quests.deleteById(second.id);
+
+    const forced = await app.db.quests.findMany({ force: true });
+    expect(forced).toHaveLength(2);
+
+    const campaigns = await app.db.campaigns.findMany({
+      force: true,
+      include: { quests: true },
+    });
+    expect(campaigns.flatMap((c) => c.quests).map((q) => q.title)).toEqual([
+      "Find the archive",
+    ]);
+  });
+});
+
+describe("filtering by a relation", () => {
+  let alepha: Alepha;
+  let app: App;
+
+  beforeEach(async () => {
+    alepha = Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
+    app = alepha.inject(App);
+    await alepha.start();
+  });
+
+  /**
+   * The query that could not be written before: filter the root by a column
+   * of a related row. It compiles to `EXISTS`, so the root rows are not
+   * multiplied and nothing needs de-duplicating afterwards.
+   */
+  it("filters a root query by a to-one relation's column", async () => {
+    await seed(app);
+
+    const found = await app.db.campaigns.findMany({
+      where: { owner: { name: { eq: "Ana" } } },
+    });
+
+    expect(found.map((c) => c.title)).toEqual(["The Sunken Archive"]);
+  });
+
+  it("filters by a to-many relation's column", async () => {
+    await seed(app);
+
+    const found = await app.db.campaigns.findMany({
+      where: { quests: { title: { eq: "Open the vault" } } },
+    });
+
+    expect(found.map((c) => c.title)).toEqual(["The Sunken Archive"]);
+  });
+
+  /** An empty object still filters: it means "has at least one". */
+  it("treats an empty relation filter as a presence check", async () => {
+    await seed(app);
+
+    const found = await app.db.campaigns.findMany({ where: { quests: {} } });
+
+    expect(found.map((c) => c.title)).toEqual(["The Sunken Archive"]);
+  });
+
+  it("combines a column filter and a relation filter", async () => {
+    await seed(app);
+
+    const found = await app.db.campaigns.findMany({
+      where: {
+        title: { like: "%Archive%" },
+        owner: { name: { eq: "Ana" } },
+      },
+    });
+    expect(found.map((c) => c.title)).toEqual(["The Sunken Archive"]);
+
+    const none = await app.db.campaigns.findMany({
+      where: {
+        title: { like: "%Archive%" },
+        owner: { name: { eq: "Bo" } },
+      },
+    });
+    expect(none).toEqual([]);
+  });
+
+  it("nests two relations deep", async () => {
+    await seed(app);
+
+    const found = await app.db.quests.findMany({
+      where: { campaign: { owner: { name: { eq: "Ana" } } } },
+    });
+
+    expect(found.map((q) => q.title).sort()).toEqual([
+      "Find the archive",
+      "Open the vault",
+    ]);
+  });
+
+  /**
+   * The predicate goes through the target's own repository, so a relation
+   * filter inherits what that entity hides. A soft-deleted quest must not
+   * make its campaign match.
+   */
+  it("does not match through a soft-deleted related row", async () => {
+    const { second } = await seed(app);
+    await app.db.quests.deleteById(second.id);
+
+    const found = await app.db.campaigns.findMany({
+      where: { quests: { title: { eq: "Open the vault" } } },
+    });
+
+    expect(found).toEqual([]);
+  });
+
+  it("stays one statement", async () => {
+    const { campaign } = await seed(app);
+
+    const { sql } = app.db.campaigns.toSQL({
+      where: { owner: { name: { eq: "Ana" } } },
+      include: { characters: true },
+    });
+
+    expect(sql).toContain("exists");
+    expect(sql.match(/from "campaigns"/g)).toHaveLength(1);
+    expect(campaign.id).toBeTypeOf("number");
+  });
+
+  /**
+   * Refused rather than silently wrong: `and` / `or` compile to one SQL
+   * expression here, and an EXISTS cannot be folded into it.
+   */
+  it("refuses a relation filter buried in and/or", async () => {
+    await seed(app);
+
+    await expect(
+      app.db.campaigns.findMany({
+        where: {
+          and: [{ owner: { name: { eq: "Ana" } } }],
+        } as never,
+      }),
+    ).rejects.toThrow(/inside 'and'/);
+  });
+
+  /**
+   * A count cannot carry the filter, so it says so instead of returning a
+   * number that quietly ignored it.
+   */
+  it("refuses to count with a relation filter", async () => {
+    await seed(app);
+
+    await expect(
+      app.db.campaigns.count({ where: { quests: {} } }),
+    ).rejects.toThrow(/not supported/);
+
+    await expect(
+      app.db.campaigns.paginate({}, { where: { quests: {} } }, { count: true }),
+    ).rejects.toThrow(/not supported/);
+  });
+
+  it("rejects an undeclared relation in a where at compile time", async () => {
+    await seed(app);
+
+    await app.db.campaigns
+      // @ts-expect-error `author` is not a relation of campaigns.
+      .findMany({ where: { author: { name: { eq: "Ana" } } } })
+      .catch(() => {});
+  });
+});

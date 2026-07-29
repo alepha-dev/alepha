@@ -96,7 +96,7 @@ class ProductService {
 }
 ```
 
-Relations between tables are NOT handled by `$entity`. Instead, use the `with` option in repository query methods to perform joins. See [Joins](./6-joins.md) for full documentation.
+Relations between tables are NOT handled by `$entity`. Declare them separately with `$relations` and read them with `include` — see [Relations](./6-relations.md). For a one-off SQL join written per query, the `with` option is still there; see [Joins](./7-joins.md).
 
 ## Query Methods
 

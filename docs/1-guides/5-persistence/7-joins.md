@@ -1,6 +1,8 @@
 # Joins
 
-Relations between tables are not declared on `$entity`. Instead, use the `with` option in repository query methods to perform joins at query time.
+The `with` option performs a SQL join at query time, written per query.
+
+> **Most reads want [Relations](./6-relations.md) instead.** `$relations` declares the graph once and reads it with `include`, which handles one-to-many, many-to-many and nesting — all of which `with` cannot. Reach for `with` when you want a flat one-to-one join written inline, or a SQL join condition that is not a foreign key.
 
 ```typescript check
 import { z } from "alepha";
@@ -401,8 +403,10 @@ const page = await this.players.paginate(
 
 ## Limitations
 
-- **No one-to-many joins.** The `with` option produces one-to-one joins (each row gets one joined object). For one-to-many relationships (e.g. a user's posts), run a separate query on the child table.
-- **No `orderBy` on joined columns.** Sorting is limited to columns on the base table.
-- **No `columns` selection on joined tables.** The full joined entity is always returned.
+These are limitations of `with`, not of relations — [Relations](./6-relations.md) covers every one of the first three.
+
+- **No one-to-many joins.** The `with` option produces one-to-one joins (each row gets one joined object). For one-to-many relationships (e.g. a user's posts), use `include`.
+- **No `orderBy` on joined columns.** Sorting is limited to columns on the base table. `include` orders each relation independently.
+- **No `columns` selection on joined tables.** The full joined entity is always returned. `include` takes a `select` per relation.
 - **No aggregate queries with joins.** Use `repository.aggregate()` separately or raw SQL via `repository.query()`.
 - **SQL join conditions require PostgreSQL.** SQLite only supports the tuple syntax `["localCol", entity.cols.foreignCol]`.
