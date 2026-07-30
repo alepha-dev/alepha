@@ -626,6 +626,13 @@ function Combobox(props: ComboboxProps) {
         ((a: ComboOption, b: ComboOption) => a.value === b.value) as never
       }
       filter={null}
+      // Base UI leaves `autoHighlight` off by default, so nothing is
+      // highlighted while typing and Enter has no target — the user has to
+      // click a row (including the `createNewEntry` one). Highlighting the
+      // first match makes Enter pick it, which is what a search field is
+      // expected to do. It only engages while the query is non-empty, so
+      // opening the popup still starts with no preselection.
+      autoHighlight
       onInputValueChange={(v) => {
         setQuery(v);
         props.onSearch?.(v);
