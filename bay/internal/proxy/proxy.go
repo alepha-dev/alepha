@@ -151,6 +151,31 @@ func (p *Proxy) serveStatic(w http.ResponseWriter, r *http.Request, path string)
 func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, app state.App) {
 	target := &url.URL{Scheme: "http", Host: net.JoinHostPort("127.0.0.1", itoa(app.Port))}
 	rp := httputil.NewSingleHostReverseProxy(target)
+
+	// Tell the app what the CLIENT asked for, not what we are dialling.
+	//
+	// Bay terminates TLS and forwards over plain loopback, so without these an
+	// app building an absolute URL emits `http://` and its own hostname is
+	// `127.0.0.1:<port>`. That is not cosmetic: an OAuth server advertises its
+	// endpoints by absolute URL, so discovery hands clients a cleartext address
+	// for the one exchange that must never be cleartext.
+	//
+	// `NewSingleHostReverseProxy` sets `X-Forwarded-For` and nothing else, and
+	// Alepha reads the rest when `TRUST_PROXY` is on — which is the default.
+	inner := rp.Director
+	rp.Director = func(req *http.Request) {
+		scheme := "http"
+		if r.TLS != nil {
+			scheme = "https"
+		}
+		// Overwritten, never appended: these come from the outside world and a
+		// client that sends its own must not be able to make an app believe a
+		// request arrived over TLS when it did not.
+		req.Header.Set("X-Forwarded-Proto", scheme)
+		req.Header.Set("X-Forwarded-Host", r.Host)
+		inner(req)
+	}
+
 	rp.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, err error) {
 		p.log.Error("upstream unreachable", "app", app.Key(), "port", app.Port, "err", err)
 		http.Error(w, "app unavailable", http.StatusBadGateway)

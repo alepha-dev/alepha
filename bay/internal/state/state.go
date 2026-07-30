@@ -22,7 +22,6 @@ type App struct {
 	Release  string `json:"release"` // directory name under releases/
 	Port     int    `json:"port"`    // loopback port the app listens on
 	Runtime  string `json:"runtime"`
-	Sleeping bool   `json:"sleeping"`
 	// ControlAPI is true when the operator granted this app access to Bay's
 	// control API, by putting its unix user in the control group.
 	//
@@ -151,14 +150,13 @@ func (s *Store) Get(key string) (App, bool) {
 // Runtime-owned fields are carried forward from the existing record rather than
 // taken from the argument. A deploy builds a fresh App from the artifact and
 // knows nothing about them, so replacing wholesale silently reset them on every
-// redeploy — `Sleeping` already did, and `LastBackupAt` would have, which is
-// worse: the staleness warning would go quiet exactly when someone redeploys.
+// redeploy — `LastBackupAt` would have, which is worse than most: the staleness
+// warning would go quiet exactly when someone redeploys.
 func (s *Store) Upsert(app App) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i, a := range s.state.Apps {
 		if a.Key() == app.Key() {
-			app.Sleeping = a.Sleeping
 			// Carried forward so a redeploy without the flag does not silently
 			// revoke a grant the operator made on purpose.
 			if a.ControlAPI {

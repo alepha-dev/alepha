@@ -139,7 +139,9 @@ func TestUpsertPreservesRuntimeOwnedFields(t *testing.T) {
 	if err := s.RecordBackupSuccess("lore/production", "apps/lore/production/db/x.gz", time.Unix(1700000000, 0)); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.mutate("lore/production", func(a *App) { a.Sleeping = true }); err != nil {
+	// The operator's grant is the other runtime-owned field: revoking it on a
+	// redeploy would quietly cut an app off from the control API it was given.
+	if err := s.mutate("lore/production", func(a *App) { a.ControlAPI = true }); err != nil {
 		t.Fatal(err)
 	}
 
@@ -161,8 +163,8 @@ func TestUpsertPreservesRuntimeOwnedFields(t *testing.T) {
 	if got.LastBackupKey == "" {
 		t.Fatal("LastBackupKey must survive a redeploy")
 	}
-	if !got.Sleeping {
-		t.Fatal("Sleeping must survive a redeploy")
+	if !got.ControlAPI {
+		t.Fatal("ControlAPI must survive a redeploy")
 	}
 }
 

@@ -122,7 +122,7 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 	}
 	mgr, cfg, err := s.backupManager()
 	if err != nil || mgr == nil {
-		writeError(w, http.StatusPreconditionFailed, "backups are not configured; PUT /config/s3 first")
+		writeError(w, http.StatusPreconditionFailed, "backups are not configured: run `bay config s3 --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set")
 		return
 	}
 	runtime, dbPath, err := s.appPaths(app)
@@ -166,7 +166,7 @@ func (s *server) handleListBackups(w http.ResponseWriter, r *http.Request) {
 	}
 	mgr, _, err := s.backupManager()
 	if err != nil || mgr == nil {
-		writeError(w, http.StatusPreconditionFailed, "backups are not configured")
+		writeError(w, http.StatusPreconditionFailed, "backups are not configured: run `bay config s3 --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set")
 		return
 	}
 	entries, err := mgr.List(r.Context(), app.Name, app.Env)
@@ -199,7 +199,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 	}
 	mgr, _, err := s.backupManager()
 	if err != nil || mgr == nil {
-		writeError(w, http.StatusPreconditionFailed, "backups are not configured")
+		writeError(w, http.StatusPreconditionFailed, "backups are not configured: run `bay config s3 --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set")
 		return
 	}
 	runtime, dbPath, err := s.appPaths(app)
