@@ -99,6 +99,33 @@ export class CloudflareAdapter extends PlatformAdapter {
   // authenticate
   // -------------------------------------------------------------------------
 
+  /**
+   * Hands off to `wrangler login`, which owns Cloudflare credentials.
+   *
+   * Deliberately not reimplemented: wrangler already stores, refreshes and
+   * scopes the token, and a second store would drift from the one every other
+   * wrangler invocation reads.
+   */
+  async login(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+    await run({
+      name: "wrangler login",
+      handler: async () => {
+        await this.wrangler.ensureInstalled(ctx.root);
+        await this.wrangler.login();
+      },
+    });
+  }
+
+  async logout(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+    await run({
+      name: "wrangler logout",
+      handler: async () => {
+        await this.wrangler.ensureInstalled(ctx.root);
+        await this.shell.run("wrangler logout", { root: ctx.root });
+      },
+    });
+  }
+
   async authenticate(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
     this.configureApi(ctx);
     await run({

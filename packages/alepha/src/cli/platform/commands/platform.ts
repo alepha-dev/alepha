@@ -15,7 +15,7 @@ import {
   VercelAdapter,
   WranglerApi,
 } from "alepha/cli/platform-lib";
-import { $command, EnvUtils } from "alepha/command";
+import { $command, EnvUtils, type RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { SecretsCommand } from "./SecretsCommand.ts";
 
@@ -330,6 +330,85 @@ export class PlatformCommand {
           )}\n`,
         );
       }
+    },
+  });
+
+  // -----------------------------------------------------------------------
+  // alepha platform auth login|logout
+  // -----------------------------------------------------------------------
+
+  /**
+   * Runs the adapter's interactive login or logout.
+   *
+   * Shared by both subcommands: they differ by one word, and duplicating the
+   * environment resolution would let them drift.
+   */
+  protected async runAuth(
+    action: "login" | "logout",
+    ctx: { flags: { env?: string }; root: string; run: RunnerMethod },
+  ): Promise<void> {
+    if (!ctx.flags.env) {
+      // Credentials are per-environment because environments can live on
+      // different hosts or accounts; guessing one would log into the wrong
+      // place with no sign that it happened.
+      throw new AlephaError(
+        "--env is required: each environment has its own credential.",
+      );
+    }
+    const config = await this.inspector.resolveConfig(ctx.root);
+    const apps = await this.resolveApps(
+      ctx.root,
+      config,
+      this.isServerless(
+        config.environments[ctx.flags.env]?.adapter ?? "cloudflare",
+      ),
+    );
+    await this.orchestrator.auth({
+      root: ctx.root,
+      env: ctx.flags.env,
+      entry: apps[0].entry,
+      resources: apps[0].resources,
+      run: ctx.run,
+      action,
+    });
+  }
+
+  /**
+   * `alepha platform auth login`.
+   *
+   * The mechanism belongs to the adapter — `wrangler login` for Cloudflare, a
+   * device-code flow for Bay — because credentials are the provider's
+   * vocabulary, and a second store would drift from the one every other tool
+   * reads.
+   *
+   * Separate from `up`, which must never block: it runs in CI, where nothing
+   * can answer a prompt. This is what a human runs once.
+   */
+  protected readonly authLogin = $command({
+    name: "login",
+    description: "Log in to the platform for an environment",
+    flags: this.envFlags,
+    handler: async ({ flags, root, run }) =>
+      await this.runAuth("login", { flags, root, run }),
+  });
+
+  /**
+   * `alepha platform auth logout`.
+   */
+  protected readonly authLogout = $command({
+    name: "logout",
+    description: "Discard the stored credential for an environment",
+    flags: this.envFlags,
+    handler: async ({ flags, root, run }) =>
+      await this.runAuth("logout", { flags, root, run }),
+  });
+
+  protected readonly auth = $command({
+    name: "auth",
+    description: "Manage platform credentials",
+    children: [this.authLogin, this.authLogout],
+    handler: async ({ help }) => {
+      help();
     },
   });
 
@@ -824,6 +903,7 @@ export class PlatformCommand {
       this.up,
       this.down,
       this.status,
+      this.auth,
       this.build,
       this.deploy,
       this.db,

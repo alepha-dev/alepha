@@ -147,6 +147,36 @@ export abstract class PlatformAdapter {
   abstract authenticate(ctx: PlatformContext, run: RunnerMethod): Promise<void>;
 
   /**
+   * Interactively obtain a credential and store it.
+   *
+   * Separate from {@link authenticate}, which must never block: `up` runs in CI,
+   * where nothing can answer a prompt. This is what a human runs once, and each
+   * adapter answers it in its own currency — `wrangler login` for Cloudflare, a
+   * device-code flow for Bay.
+   *
+   * The default refuses rather than silently doing nothing: an adapter with no
+   * interactive login has some other way in, and saying so beats a command that
+   * appears to succeed and changes nothing.
+   */
+  async login(_ctx: PlatformContext, _run: RunnerMethod): Promise<void> {
+    throw new AlephaError(
+      `The '${this.constructor.name}' adapter has no interactive login. ` +
+        "Authenticate with the provider's own CLI, or supply its token through " +
+        "the environment.",
+    );
+  }
+
+  /**
+   * Discard the stored credential.
+   */
+  async logout(_ctx: PlatformContext, _run: RunnerMethod): Promise<void> {
+    throw new AlephaError(
+      `The '${this.constructor.name}' adapter has no interactive logout. ` +
+        "Its credential is held by the provider's own CLI or by the environment.",
+    );
+  }
+
+  /**
    * Build artifacts for a single app.
    */
   abstract build(ctx: AppContext, run: RunnerMethod): Promise<void>;

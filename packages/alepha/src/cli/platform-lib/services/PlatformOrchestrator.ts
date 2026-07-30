@@ -56,6 +56,45 @@ export class PlatformOrchestrator {
   }
 
   // -------------------------------------------------------------------------
+  // auth
+  // -------------------------------------------------------------------------
+
+  /**
+   * Runs the adapter's interactive login or logout.
+   *
+   * Each adapter answers in its own currency — `wrangler login` for Cloudflare,
+   * a device-code flow for Bay — so the command stays one thing to learn while
+   * the mechanism stays the adapter's business.
+   */
+  public async auth(options: {
+    root: string;
+    env: string;
+    entry: AppEntry;
+    resources: DetectedResources;
+    run: RunnerMethod;
+    action: "login" | "logout";
+  }): Promise<void> {
+    const config = await this.inspector.resolveConfig(options.root);
+    const envConfig = config.environments[options.env];
+    if (!envConfig) {
+      throw new AlephaError(
+        `No environment "${options.env}" in alepha.config.ts.`,
+      );
+    }
+    const adapter = this.resolveAdapter(envConfig.adapter);
+    const ctx: PlatformContext = {
+      project: config.project,
+      env: options.env,
+      envConfig,
+      root: options.root,
+      entry: options.entry,
+      resources: options.resources,
+      naming: this.naming.forContext(config.project, options.env),
+    };
+    await adapter[options.action](ctx, options.run);
+  }
+
+  // -------------------------------------------------------------------------
   // up
   // -------------------------------------------------------------------------
 
