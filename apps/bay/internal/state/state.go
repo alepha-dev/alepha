@@ -16,12 +16,12 @@ import (
 
 // App is one deployed application instance (app + env).
 type App struct {
-	Name     string `json:"name"`
-	Env      string `json:"env"`
-	Domain   string `json:"domain"`
-	Release  string `json:"release"` // directory name under releases/
-	Port     int    `json:"port"`    // loopback port the app listens on
-	Runtime  string `json:"runtime"`
+	Name    string `json:"name"`
+	Env     string `json:"env"`
+	Domain  string `json:"domain"`
+	Release string `json:"release"` // directory name under releases/
+	Port    int    `json:"port"`    // loopback port the app listens on
+	Runtime string `json:"runtime"`
 	// ControlAPI is true when the operator granted this app access to Bay's
 	// control API, by putting its unix user in the control group.
 	//
