@@ -9,6 +9,7 @@ export * from "./providers/WebSocketServerProvider.ts";
 export * from "./services/RoomManager.ts";
 export * from "./services/WebSocketClient.ts";
 export * from "./services/WebSocketTopicService.ts";
+export * from "./websocketOptions.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
