@@ -16,6 +16,9 @@ class TestServerTask extends BuildServerTask {
 
   public testNeutralize = (code: string) =>
     this.neutralizeWorkerdCreateRequire(code);
+
+  public testStubImportMetaUrl = (code: string, fileName: string) =>
+    this.stubWorkerdImportMetaUrl(code, fileName);
 }
 
 /**
@@ -149,6 +152,69 @@ describe("BuildServerTask DO re-export", () => {
       const out = createTask().testNeutralize(chunk);
       expect(out).toContain("var m=b.length");
       expect(out).not.toContain("c(import.meta.url)");
+    });
+  });
+
+  /**
+   * Vite's SSR build leaves the standard asset idiom
+   * `new URL("./rel.png", import.meta.url)` untouched (it is valid on Node),
+   * but on Cloudflare `import.meta.url` is `undefined` during deploy-time
+   * script validation, so any module-scope occurrence throws
+   * `Uncaught TypeError: Invalid URL string.` (validation error 10021) before
+   * the worker ever runs — e.g. a browser-only sprite module statically
+   * reachable from a `$page` tree. The workerd plugin therefore stubs every
+   * remaining `import.meta.url` with the chunk's own stable `file:///` URL.
+   */
+  describe("stubWorkerdImportMetaUrl", () => {
+    const createTask = () => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+      return alepha.inject(TestServerTask);
+    };
+
+    it("makes a module-scope new URL(rel, import.meta.url) construct a valid URL", ({
+      expect,
+    }) => {
+      const chunk =
+        'var s=new URL("../../assets/Shadow.png",import.meta.url).href;';
+      const out = createTask().testStubImportMetaUrl(chunk, "BrcTAm3C.js");
+      expect(out).not.toContain("import.meta.url");
+      // Evaluating the rewritten chunk must not throw and must yield a URL.
+      const href = new Function(`${out}return s;`)();
+      expect(href).toBe("file:///assets/Shadow.png");
+    });
+
+    it("stubs every occurrence, not just the first", ({ expect }) => {
+      const chunk =
+        "var a=import.meta.url,b=import.meta.url;var c=[a,b].join();";
+      const out = createTask().testStubImportMetaUrl(chunk, "x.js");
+      expect(out).not.toContain("import.meta.url");
+      expect(out).toContain('"file:///server/x.js"');
+    });
+
+    it("leaves longer member names untouched", ({ expect }) => {
+      const chunk = "var a=import.meta.urlish;";
+      expect(createTask().testStubImportMetaUrl(chunk, "x.js")).toBe(chunk);
+    });
+
+    it("composes with the createRequire neutralization: banner first, stub second", ({
+      expect,
+    }) => {
+      const chunk =
+        'import{createRequire as i}from"node:module";var S=i(import.meta.url);' +
+        'var s=new URL("./a.png",import.meta.url).href;';
+      const task = createTask();
+      const out = task.testStubImportMetaUrl(
+        task.testNeutralize(chunk),
+        "y.js",
+      );
+      expect(out).not.toContain("import.meta.url");
+      // The banner stayed an inert factory (throws only when CALLED)...
+      expect(out).toMatch(/var S=\(\(\)=>\{const r=/);
+      // ...and the asset URL is a plain valid string construction.
+      expect(out).toContain('new URL("./a.png","file:///server/y.js")');
     });
   });
 });

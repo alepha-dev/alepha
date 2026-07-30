@@ -323,12 +323,24 @@ export class BuildServerTask extends BuildTask {
    * error 10021). The banner is injected at output time, after module
    * resolution, so a `resolveId`-level shim of `node:module` cannot catch it;
    * only a `renderChunk` rewrite can.
+   *
+   * The same undefined `import.meta.url` also breaks the standard Vite asset
+   * idiom `new URL("./rel.png", import.meta.url)`, which Vite's SSR build
+   * leaves untouched (it is valid on Node) — any module-scope occurrence in a
+   * workerd chunk throws `Uncaught TypeError: Invalid URL string.` at
+   * validation. After the createRequire calls are neutralized (their pattern
+   * matches on the literal `import.meta.url` token, so order matters), every
+   * remaining `import.meta.url` is stubbed with the chunk's own stable
+   * `file:///` URL (see {@link stubWorkerdImportMetaUrl}).
    */
   protected workerdCreateRequirePlugin(): vite.Plugin {
     return {
       name: "alepha:workerd-create-require",
-      renderChunk: (code: string) => {
-        const rewritten = this.neutralizeWorkerdCreateRequire(code);
+      renderChunk: (code: string, chunk: { fileName: string }) => {
+        const rewritten = this.stubWorkerdImportMetaUrl(
+          this.neutralizeWorkerdCreateRequire(code),
+          chunk.fileName,
+        );
         return rewritten === code ? null : { code: rewritten, map: null };
       },
     };
@@ -381,6 +393,28 @@ export class BuildServerTask extends BuildTask {
       output = output.replace(callPattern, `$1${inertFactory}`);
     }
     return output;
+  }
+
+  /**
+   * Replace every remaining `import.meta.url` token in a workerd chunk with
+   * the chunk's own stable `file:///server/<fileName>` URL string.
+   *
+   * On Cloudflare, `import.meta.url` is `undefined` during deploy-time script
+   * validation (and stays useless at runtime), so any module-scope
+   * `new URL(rel, import.meta.url)` — the standard Vite asset idiom, which
+   * the SSR build deliberately leaves untouched — kills the upload with
+   * `Invalid URL string.` (error 10021). Stubbing in the chunk's own module
+   * URL keeps the closest possible Node semantics: relative asset paths
+   * resolve to deterministic (if fictional) `file:///` URLs instead of
+   * throwing, which is all a browser-only module dragged into the server
+   * bundle by a `$page` tree needs.
+   *
+   * Runs AFTER {@link neutralizeWorkerdCreateRequire}: that rewrite matches
+   * on the literal `import.meta.url` token inside the createRequire call.
+   */
+  protected stubWorkerdImportMetaUrl(code: string, fileName: string): string {
+    const stub = JSON.stringify(`file:///server/${fileName}`);
+    return code.replace(/import\.meta\.url\b/g, stub);
   }
 
   /**
