@@ -1,28 +1,35 @@
-import { $hook, $inject, Alepha } from "alepha";
+import { $hook, $inject, Alepha, z } from "alepha";
 import type { RealmController } from "alepha/api/users";
 import { $page, ReactRouter, Redirection } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import type { BayAppController } from "../api/controllers/BayAppController.ts";
+import type { DeviceController } from "../api/controllers/DeviceController.ts";
 
 export class AppRouter {
   protected readonly alepha = $inject(Alepha);
   protected readonly router = $inject(ReactRouter);
   protected readonly bayApi = $client<BayAppController>();
   protected readonly realmApi = $client<RealmController>();
+  protected readonly deviceApi = $client<DeviceController>();
 
   layout = $page({
     // A thunk, not an array: field initializers run top to bottom, so naming
     // `this.home` directly here would capture `undefined`.
-    children: () => [this.home, this.login, this.register],
+    children: () => [this.home, this.login, this.register, this.device],
     lazy: () => import("./components/Layout.tsx"),
     errorHandler: (error: unknown, state) => {
       // Every page below requires an admin session. Send an unauthenticated
       // visitor to the login form rather than rendering an error they cannot
       // act on.
       if (HttpError.is(error, 401) && state.url.pathname !== "/auth/login") {
+        // Query included, not just the path: `/device?user_code=…` is the one
+        // destination people arrive at by clicking a link, and dropping the
+        // code sends them back to their terminal to retype it.
         return new Redirection(
-          `/auth/login?redirect=${encodeURIComponent(state.url.pathname)}`,
+          `/auth/login?redirect=${encodeURIComponent(
+            state.url.pathname + state.url.search,
+          )}`,
         );
       }
       return;
@@ -74,6 +81,34 @@ export class AppRouter {
   });
 
   /**
+   * Approves a terminal waiting on the device grant.
+   *
+   * Under the layout, so an unauthenticated visitor is sent to sign in first:
+   * the whole point of this page is that an authenticated human decides.
+   */
+  device = $page({
+    path: "/device",
+    name: "device",
+    head: { title: "Approve a terminal › Bay" },
+    lazy: () => import("./components/DevicePage.tsx"),
+    schema: {
+      query: z.object({ user_code: z.text({ default: "" }) }),
+    },
+    // Pre-filled from `verification_uri_complete` so anyone who can follow a
+    // link is spared retyping the code.
+    //
+    // The lookup runs in the loader, not on submit: it is admin-guarded, so an
+    // unauthenticated visitor is redirected while still on the way in and comes
+    // back with the code intact.
+    loader: async ({ query }) => ({
+      userCode: query.user_code,
+      initialStatus: (
+        await this.deviceApi.lookup({ query: { userCode: query.user_code } })
+      ).status,
+    }),
+  });
+
+  /**
    * Push an expired session back to the login form instead of letting a page
    * fail silently mid-navigation.
    */
@@ -87,7 +122,10 @@ export class AppRouter {
         this.router.state.url.pathname !== loginPath
       ) {
         await this.router.push(loginPath, {
-          query: { redirect: this.router.state.url.pathname },
+          query: {
+            redirect:
+              this.router.state.url.pathname + this.router.state.url.search,
+          },
         });
       }
     },

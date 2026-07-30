@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { BayAppController } from "./controllers/BayAppController.ts";
+import { DeviceController } from "./controllers/DeviceController.ts";
 import { BaySecurityProvider } from "./providers/BaySecurityProvider.ts";
 import { BayControlService } from "./services/BayControlService.ts";
 
@@ -11,5 +12,6 @@ export const BayUiApi = $module({
     BaySecurityProvider,
     BayControlService,
     BayAppController,
+    DeviceController,
   ],
 });

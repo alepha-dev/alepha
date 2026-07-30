@@ -23,9 +23,15 @@ export class BaySecurityProvider {
   env = $env(
     z.object({
       /**
-       * The operator's email. Auto-promoted to `admin` on login.
+       * The operators' emails, comma-separated. Auto-promoted to `admin` on
+       * login.
+       *
+       * A list rather than one address: a machine can have more than one person
+       * responsible for it, and the alternative — swapping the single value —
+       * takes admin away from whoever held it, which is exactly the wrong thing
+       * to do to add a colleague.
        */
-      BAY_UI_ADMIN_EMAIL: z.email().optional(),
+      BAY_UI_ADMIN_EMAIL: z.text().optional(),
 
       /**
        * Opens self-registration. Leave unset in normal operation.
@@ -47,7 +53,9 @@ export class BaySecurityProvider {
       audits: true,
       jobs: false,
       notifications: false,
-      oauth: false,
+      // The device grant lives in this module: `alepha platform auth login`
+      // needs an authorization server to talk to.
+      oauth: true,
     },
     settings: {
       username: "email",
@@ -58,9 +66,10 @@ export class BaySecurityProvider {
       // machine on first boot.
       resetPasswordAllowed: false,
       verifyEmailRequired: false,
-      adminEmails: this.env.BAY_UI_ADMIN_EMAIL
-        ? [this.env.BAY_UI_ADMIN_EMAIL]
-        : [],
+      adminEmails: (this.env.BAY_UI_ADMIN_EMAIL ?? "")
+        .split(",")
+        .map((email) => email.trim())
+        .filter(Boolean),
     },
     identities: {
       credentials: true,

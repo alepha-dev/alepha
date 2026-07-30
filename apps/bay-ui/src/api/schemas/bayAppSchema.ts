@@ -10,4 +10,12 @@ export const bayAppSchema = z.object({
   release: z.text(),
   port: z.integer(),
   runtime: z.text(),
+  /**
+   * Whether the app is answering right now.
+   *
+   * Optional because an older bay-go does not report it, and a missing value
+   * must not read as "stopped" — the list would then accuse healthy apps of
+   * being down on the strength of the binary's age.
+   */
+  running: z.boolean().optional(),
 });

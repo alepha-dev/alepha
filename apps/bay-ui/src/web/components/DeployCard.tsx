@@ -76,11 +76,11 @@ const DeployCard = () => {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">Name (optional)</Label>
             <Input
               id="name"
               value={name}
-              placeholder="my-app"
+              placeholder="from the artifact"
               onChange={(event) => setName(event.target.value)}
             />
           </div>
@@ -126,7 +126,7 @@ const DeployCard = () => {
         <div>
           <Button
             onClick={deploy.run}
-            disabled={!file || !name || !env || deploy.loading}
+            disabled={!file || !env || deploy.loading}
           >
             <Upload />
             {deploy.loading ? "Deploying…" : "Deploy"}

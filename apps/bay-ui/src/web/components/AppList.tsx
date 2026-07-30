@@ -1,3 +1,4 @@
+import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
@@ -10,7 +11,15 @@ import {
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useAction, useClient } from "alepha/react";
 import { useRouter } from "alepha/react/router";
-import { DatabaseBackup, ExternalLink, Square } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  DatabaseBackup,
+  ExternalLink,
+  Square,
+  Trash2,
+} from "lucide-react";
+import { useState } from "react";
 import type { BayAppController } from "../../api/controllers/BayAppController.ts";
 import type { BayApp } from "../../api/services/BayControlService.ts";
 
@@ -44,10 +53,49 @@ const AppList = (props: AppListProps) => {
     [],
   );
 
+  /**
+   * Unregisters an app, keeping its data.
+   *
+   * The non-purging form on purpose — the same default as `bay remove`. Erasing
+   * a database is not something to offer behind a row button; someone who
+   * really means it can run `bay remove --purge`, where the warning is printed
+   * and the intent is explicit.
+   */
+  const remove = useAction<[BayApp]>(
+    {
+      handler: async (app) => {
+        const confirmed = await dialog.confirm({
+          title: `Remove ${app.name}/${app.env}?`,
+          description: `${app.domain} stops being served. Its database and uploads are KEPT — redeploying the same name brings it back.`,
+          confirmLabel: "Remove",
+          destructive: true,
+        });
+        if (!confirmed) {
+          return;
+        }
+        await bayApi.removeApp({ params: { name: app.name, env: app.env } });
+        await router.reload();
+      },
+    },
+    [],
+  );
+
+  /**
+   * The one action here with nothing visible to show for itself.
+   *
+   * Stopping an app changes the list; a backup leaves the page identical
+   * whether it uploaded or failed on missing S3 credentials. Without this,
+   * clicking Backup and clicking Backup-on-a-Bay-with-no-bucket look the same,
+   * and someone walks away believing they have a snapshot.
+   */
+  const [backedUp, setBackedUp] = useState<string | undefined>();
+
   const backup = useAction<[BayApp]>(
     {
       handler: async (app) => {
+        setBackedUp(undefined);
         await bayApi.backupApp({ params: { name: app.name, env: app.env } });
+        setBackedUp(`${app.name}/${app.env}`);
       },
     },
     [],
@@ -72,48 +120,83 @@ const AppList = (props: AppListProps) => {
         <CardTitle>Apps</CardTitle>
         <CardDescription>{props.apps.length} deployed</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col divide-y">
-        {props.apps.map((app) => (
-          <div
-            key={`${app.name}/${app.env}`}
-            className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
-          >
-            <div className="flex min-w-0 flex-1 flex-col">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{app.name}</span>
-                <Badge variant="secondary">{app.env}</Badge>
+      <CardContent className="flex flex-col gap-3">
+        {(backup.error || stop.error || remove.error) && (
+          <Alert variant="destructive">
+            <AlertCircle />
+            <AlertDescription>
+              {(backup.error ?? stop.error ?? remove.error)?.message}
+            </AlertDescription>
+          </Alert>
+        )}
+        {backedUp && !backup.error && (
+          <Alert>
+            <CheckCircle2 />
+            <AlertDescription>Backed up {backedUp}.</AlertDescription>
+          </Alert>
+        )}
+        <div className="flex flex-col divide-y">
+          {props.apps.map((app) => (
+            <div
+              key={`${app.name}/${app.env}`}
+              className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
+            >
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{app.name}</span>
+                  <Badge variant="secondary">{app.env}</Badge>
+                  {/*
+                    Only the bad case is called out. A running app is the norm
+                    and needs no decoration; a stopped one is the thing someone
+                    scanning this list has to notice.
+                  */}
+                  {app.running === false && (
+                    <Badge variant="destructive">Stopped</Badge>
+                  )}
+                </div>
+                <a
+                  href={`https://${app.domain}/`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="truncate text-sm text-muted-foreground hover:underline"
+                >
+                  {app.domain}
+                  <ExternalLink className="ml-1 inline size-3" />
+                </a>
               </div>
-              <a
-                href={`https://${app.domain}/`}
-                target="_blank"
-                rel="noreferrer"
-                className="truncate text-sm text-muted-foreground hover:underline"
+              <span className="text-sm text-muted-foreground">
+                {app.release}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={backup.loading}
+                onClick={() => backup.run(app)}
               >
-                {app.domain}
-                <ExternalLink className="ml-1 inline size-3" />
-              </a>
+                <DatabaseBackup />
+                Backup
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={stop.loading}
+                onClick={() => stop.run(app)}
+              >
+                <Square />
+                Stop
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={remove.loading}
+                onClick={() => remove.run(app)}
+              >
+                <Trash2 />
+                Remove
+              </Button>
             </div>
-            <span className="text-sm text-muted-foreground">{app.release}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={backup.loading}
-              onClick={() => backup.run(app)}
-            >
-              <DatabaseBackup />
-              Backup
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={stop.loading}
-              onClick={() => stop.run(app)}
-            >
-              <Square />
-              Stop
-            </Button>
-          </div>
-        ))}
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
