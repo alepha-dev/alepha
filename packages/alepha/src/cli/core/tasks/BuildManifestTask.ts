@@ -169,11 +169,22 @@ export class BuildManifestTask extends BuildTask {
     let hasWebSocket = false;
     let websocketPaths: string[] = [];
     try {
-      const websocketPrimitives = ctx.alepha.primitives("$websocket");
-      hasWebSocket = websocketPrimitives.length > 0;
-      websocketPaths = websocketPrimitives.map(
-        (p: any) => p.options.channel.options.path,
-      );
+      // Union of both realtime primitives: a `$room` rides the same worker
+      // upgrade branch and the same `AlephaWebSocketDurableObject` as a
+      // `$websocket`, so a rooms-only app must still record its channel
+      // paths — otherwise the `--prebuilt` deploy path emits a worker with
+      // no WebSocket wiring. Dedup'd: a `$room` may share its `$channel`
+      // path with a `$websocket`.
+      const realtimePrimitives = [
+        ...ctx.alepha.primitives("$websocket"),
+        ...ctx.alepha.primitives("$room"),
+      ];
+      websocketPaths = [
+        ...new Set(
+          realtimePrimitives.map((p: any) => p.options.channel.options.path),
+        ),
+      ];
+      hasWebSocket = websocketPaths.length > 0;
     } catch {}
 
     try {
