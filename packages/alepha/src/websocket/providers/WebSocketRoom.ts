@@ -32,6 +32,14 @@ export interface WsAttachment {
   userId?: string;
   roomId: string;
   channelPath: string;
+  /**
+   * The upgrade URL's query parameters (first value per key), carried through
+   * the hibernation attachment so `RoomSocket.query` survives isolate resets.
+   * The Node provider exposes the same map; without it here, an application
+   * that names the joining entity by query hint (`?hero=…`) refuses every
+   * join on workerd while working perfectly in dev.
+   */
+  query?: Record<string, string>;
 }
 
 /**
@@ -121,6 +129,7 @@ export class WebSocketRoom {
     const userId = request.headers.get("x-alepha-ws-user") ?? undefined;
     const connectionId =
       request.headers.get("x-alepha-ws-conn") ?? `ws-${crypto.randomUUID()}`;
+    const query = Object.fromEntries(url.searchParams);
 
     // @ts-expect-error WebSocketPair is a Workers runtime global, not available in Node's lib.dom types.
     const pair = new WebSocketPair();
@@ -133,6 +142,7 @@ export class WebSocketRoom {
       userId,
       roomId,
       channelPath,
+      query,
     };
     server.serializeAttachment(attachment);
 
@@ -554,6 +564,7 @@ export class WebSocketRoom {
     return {
       id: att.connectionId,
       userId: att.userId,
+      query: att.query,
       data,
       sendRaw: (payload) => {
         try {

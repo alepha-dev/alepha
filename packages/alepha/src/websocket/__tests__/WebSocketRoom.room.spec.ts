@@ -72,6 +72,7 @@ function fakeCtx() {
  */
 async function setup() {
   const events: string[] = [];
+  const queries: Array<Readonly<Record<string, string>> | undefined> = [];
 
   class Game {
     world = $channel({
@@ -88,6 +89,7 @@ async function setup() {
       state: () => ({ tick: 0, moves: [] }),
       onJoin: (_room, conn) => {
         events.push(`join:${conn.id}`);
+        queries.push(conn.query);
       },
       onMessage: (room, _conn, msg: { move: string }) => {
         room.state.moves.push(msg.move);
@@ -114,7 +116,7 @@ async function setup() {
   const clock = new FakeClock();
   const ctx = fakeCtx();
   const room = new WebSocketRoom(ctx as any, {}, clock);
-  return { room, ctx, clock, events };
+  return { room, ctx, clock, events, queries };
 }
 
 /**
@@ -127,6 +129,7 @@ async function join(
   ctx: ReturnType<typeof fakeCtx>,
   roomId: string,
   connectionId: string,
+  query?: Record<string, string>,
 ): Promise<FakeWs> {
   const ws = new FakeWs(null);
   const attachment = {
@@ -134,6 +137,7 @@ async function join(
     userId: undefined,
     roomId,
     channelPath: "/ws/world",
+    query,
   };
   ctx.acceptWebSocket(ws);
   ws.serializeAttachment(attachment);
@@ -155,6 +159,21 @@ describe("WebSocketRoom hosting a $room engine", () => {
       JSON.stringify({ type: "tick", n: 1 }),
       JSON.stringify({ type: "tick", n: 2 }),
     ]);
+  });
+
+  /**
+   * The Node provider has always exposed the upgrade URL's query parameters on
+   * `conn.query`; the Cloudflare path must carry them through the hibernation
+   * attachment or an application that identifies the joining entity by query
+   * hint (e.g. `/ws/world?roomId=…&hero=…`) silently refuses every join on
+   * workerd while working perfectly in dev.
+   */
+  it("exposes the upgrade query parameters on the joining socket", async () => {
+    const { room, ctx, queries } = await setup();
+
+    await join(room, ctx, "lobby", "c1", { hero: "h-42", roomId: "lobby" });
+
+    expect(queries).toEqual([{ hero: "h-42", roomId: "lobby" }]);
   });
 
   it("routes a validated client message into onMessage", async () => {
@@ -208,5 +227,25 @@ describe("WebSocketRoom hosting a $room engine", () => {
 
     clock2.advance(50);
     expect(ws.sent.length).toBe(beforeAlarm + 1); // ticks resumed to the socket
+  });
+
+  /**
+   * The watchdog rebuilds a `RoomSocket` from the deserialized attachment, not
+   * from the original `fetch` request, so the query hint an application relied
+   * on to identify the joining entity (e.g. lindocara's `?hero=`) must survive
+   * that round-trip too — otherwise a room that outlives one isolate reset
+   * loses `conn.query` on every connection it rehydrates.
+   */
+  it("still exposes the upgrade query on a connection rehydrated after an isolate reset", async () => {
+    const { room, ctx, queries } = await setup();
+    await join(room, ctx, "lobby", "c1", { hero: "h-42", roomId: "lobby" });
+    queries.length = 0; // only interested in the rehydrated join below
+
+    // Simulate an isolate reset: a brand-new room over the SAME hibernation
+    // sockets, whose attachment is all that survives.
+    const room2 = new WebSocketRoom(ctx as any, {}, new FakeClock());
+    await room2.alarm(); // watchdog re-hydrates c1, calling onJoin again
+
+    expect(queries).toEqual([{ hero: "h-42", roomId: "lobby" }]);
   });
 });
