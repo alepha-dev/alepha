@@ -83,6 +83,10 @@ func main() {
 		err = cmdList(os.Args[2:])
 	case "status":
 		err = cmdStatus(os.Args[2:])
+	case "releases":
+		err = cmdReleases(os.Args[2:])
+	case "rollback":
+		err = cmdRollback(os.Args[2:])
 	case "stop":
 		err = cmdStop(os.Args[2:])
 	case "token":
@@ -125,6 +129,9 @@ func usage() {
   bay list
   bay status                      # releases + backup freshness
   bay stop    <name/env>
+  bay releases <name/env>          # what you could roll back to
+  bay rollback <name/env> [--to RELEASE] [--confirm]
+              # code only: migrations are forward-only and stay applied
   bay token
   bay version
   bay config s3 --endpoint URL --bucket NAME [--keep N]
@@ -684,6 +691,67 @@ func cmdStatus(args []string) error {
 		return fmt.Errorf("%d problem(s) above", problems)
 	}
 	return nil
+}
+
+func cmdReleases(args []string) error {
+	key, err := appKey(args, "releases")
+	if err != nil {
+		return err
+	}
+	res, err := call(http.MethodGet, "http://"+controlAddr()+"/apps/"+key+"/releases", nil)
+	if err != nil {
+		return err
+	}
+	fmt.Println(res)
+	return nil
+}
+
+// cmdRollback swaps an app back to an earlier release.
+//
+// `--confirm` is only needed when migrations were applied since the target. The
+// server decides that, not this client: a confirmation that fires when there is
+// no risk teaches people to pass the flag reflexively.
+func cmdRollback(args []string) error {
+	key, err := appKey(args, "rollback")
+	if err != nil {
+		return err
+	}
+	query := ""
+	for i, arg := range args {
+		switch arg {
+		case "--to":
+			if i < len(args)-1 {
+				query = addParam(query, "to", args[i+1])
+			}
+		case "--confirm":
+			query = addParam(query, "confirm", "yes")
+		}
+	}
+	res, err := call(http.MethodPost, "http://"+controlAddr()+"/apps/"+key+"/rollback"+query, nil)
+	if err != nil {
+		return err
+	}
+	fmt.Println(res)
+	return nil
+}
+
+func addParam(query, k, v string) string {
+	if query == "" {
+		return "?" + k + "=" + v
+	}
+	return query + "&" + k + "=" + v
+}
+
+// appKey validates the "name/env" argument shared by the per-app commands.
+func appKey(args []string, cmd string) (string, error) {
+	if len(args) == 0 {
+		return "", errors.New("usage: bay " + cmd + " <name/env>")
+	}
+	key := args[0]
+	if !strings.Contains(key, "/") {
+		return "", errors.New("expected <name/env>, got " + key)
+	}
+	return key, nil
 }
 
 func cmdStop(args []string) error {
