@@ -128,3 +128,77 @@ jobs:
       - name: Publish to NPM
         run: |
           yarn workspaces foreach --no-private -Apt npm publish --tolerate-republish --access public
+
+      # ──────────────────────────────────────────────────────────────────
+      # Bay artifacts.
+      #
+      # These have to come after `yarn build`: bay-ui resolves `alepha` through
+      # the workspace's generated `exports`, which point at `packages/*/dist`.
+      #
+      # Filenames carry NO version. GitHub serves every asset at two URLs, and
+      # the mutable one only works when the name is constant:
+      #
+      #   .../releases/download/<version>/bay-linux-amd64   immutable, auditable
+      #   .../releases/latest/download/bay-linux-amd64      what `curl | sh` uses
+      #
+      # Put the version in the filename and you lose the second one. The version
+      # is already carried by the release the asset hangs on — and, for the
+      # binary, by `bay version`.
+      # ──────────────────────────────────────────────────────────────────
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/bay/go.mod
+          cache-dependency-path: apps/bay/go.sum
+
+      - name: Build Bay binaries
+        working-directory: apps/bay
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          for arch in amd64 arm64; do
+            # CGO off so the binary is static and runs on any glibc/musl.
+            # -trimpath keeps build paths out of it; -s -w drop the symbol table.
+            GOOS=linux GOARCH="$arch" CGO_ENABLED=0 go build \
+              -trimpath \
+              -ldflags "-s -w -X main.version=${VERSION}" \
+              -o "$RUNNER_TEMP/artifacts/bay-linux-${arch}" \
+              ./cmd/bay
+          done
+
+      - name: Pack bay-ui
+        working-directory: apps/bay-ui
+        run: |
+          # `--target=bare` is the default and is what matters: a Cloudflare
+          # (workerd) bundle has no node-runnable entry point, and Bay refuses
+          # it at deploy time.
+          yarn alepha build
+          yarn alepha pack --output "$RUNNER_TEMP/artifacts"
+          # `pack` names it `<project>-<tag>.tar.gz` with tag "latest". Rename to
+          # a constant, version-free name: "latest" is actively misleading on an
+          # asset downloaded from an immutable per-version URL.
+          mv "$RUNNER_TEMP/artifacts/bay-ui-latest.tar.gz" \
+             "$RUNNER_TEMP/artifacts/bay-ui.tar.gz"
+
+      - name: Checksum Bay artifacts
+        working-directory: ${{ runner.temp }}/artifacts
+        run: |
+          # The installer downloads a binary and runs it as root — the highest
+          # privilege operation in the whole system. Without this, a truncated
+          # download and a tampered one are indistinguishable from a good one.
+          sha256sum bay-linux-amd64 bay-linux-arm64 bay-ui.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Attach Bay artifacts to the release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          # Same tag as above: the action updates the existing release rather
+          # than creating a second one. Adding assets here instead of reordering
+          # the release creation keeps a working pipeline untouched.
+          tag_name: ${{ steps.version.outputs.version }}
+          files: |
+            ${{ runner.temp }}/artifacts/bay-linux-amd64
+            ${{ runner.temp }}/artifacts/bay-linux-arm64
+            ${{ runner.temp }}/artifacts/bay-ui.tar.gz
+            ${{ runner.temp }}/artifacts/SHA256SUMS

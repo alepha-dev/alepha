@@ -107,13 +107,13 @@ export class PackCommand {
 
       if (!includes.includes("dist")) {
         throw new AlephaError(
-          "dist/ missing — run `alepha build --target=cloudflare` before `alepha pack`.",
+          "dist/ missing — run `alepha build` before `alepha pack`.",
         );
       }
       const manifestPath = this.fs.join(root, "dist", "manifest.json");
       if (!(await this.fs.exists(manifestPath))) {
         throw new AlephaError(
-          `dist/manifest.json missing — required for prebuilt deploys. Rebuild with the current alepha version (\`alepha build --target=cloudflare\`).`,
+          `dist/manifest.json missing — required for prebuilt deploys. Rebuild with the current alepha version (\`alepha build\`).`,
         );
       }
 
