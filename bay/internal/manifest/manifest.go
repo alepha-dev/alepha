@@ -134,18 +134,6 @@ func (m *Manifest) applyDefaults() {
 	}
 }
 
-// Subdomain returns the host label for an environment.
-//
-// Production keeps the bare name so the common case reads well; every other
-// environment is suffixed. Bay composes this with its own base domain, so
-// deploying an app needs no domain argument and no config file.
-func (m *Manifest) Subdomain(env string) string {
-	if env == "" || env == "production" {
-		return m.Name
-	}
-	return m.Name + "-" + env
-}
-
 func (m *Manifest) validate() error {
 	if m.Name == "" {
 		return fmt.Errorf("manifest has no project name")

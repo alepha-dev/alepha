@@ -158,3 +158,21 @@ func TestSwapReleaseIsAtomicAndChecksTheTarget(t *testing.T) {
 		t.Fatalf("a failed swap must leave current alone, got %s", resolved)
 	}
 }
+
+func TestSubdomainComposition(t *testing.T) {
+	// Production reads well bare; anything else is suffixed, so staging never
+	// collides with production on the same base domain.
+	//
+	// Composed from the EFFECTIVE name — the one that also keys the instance —
+	// rather than from the manifest, so `--name` cannot produce an app registered
+	// under one name and served under another.
+	if got := subdomain("lore", "production"); got != "lore" {
+		t.Fatalf("production should be bare, got %q", got)
+	}
+	if got := subdomain("lore", ""); got != "lore" {
+		t.Fatalf("empty env should behave as production, got %q", got)
+	}
+	if got := subdomain("lore", "staging"); got != "lore-staging" {
+		t.Fatalf("got %q", got)
+	}
+}

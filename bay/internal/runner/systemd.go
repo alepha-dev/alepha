@@ -176,6 +176,13 @@ func (s *Systemd) Start(spec Spec) error {
 	if out, err := exec.Command("systemctl", "daemon-reload").CombinedOutput(); err != nil {
 		return fmt.Errorf("daemon-reload: %w: %s", err, out)
 	}
+	// Clear a previous start-limit hit. An app that crash-looped — a bad release,
+	// a missing directory — trips systemd's rate limiter, and the unit then stays
+	// in `failed` refusing to start even once the cause is fixed. Without this a
+	// deploy cannot repair a crash loop, and the operator has to SSH in to run
+	// `reset-failed` by hand, which is exactly the intervention Bay exists to
+	// remove. Errors ignored: nothing to reset is the normal case.
+	_ = exec.Command("systemctl", "reset-failed", unitName(spec.Key)).Run()
 	if out, err := exec.Command("systemctl", "restart", unitName(spec.Key)).CombinedOutput(); err != nil {
 		return fmt.Errorf("start %s: %w: %s", unitName(spec.Key), err, out)
 	}

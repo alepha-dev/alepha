@@ -177,24 +177,6 @@ func TestSleepEligibility(t *testing.T) {
 	}
 }
 
-func TestSubdomainComposition(t *testing.T) {
-	m, err := read(t, `{"project":"lore"}`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Production reads well bare; anything else is suffixed, so staging never
-	// collides with production on the same base domain.
-	if got := m.Subdomain("production"); got != "lore" {
-		t.Fatalf("production should be bare, got %q", got)
-	}
-	if got := m.Subdomain(""); got != "lore" {
-		t.Fatalf("empty env should behave as production, got %q", got)
-	}
-	if got := m.Subdomain("staging"); got != "lore-staging" {
-		t.Fatalf("got %q", got)
-	}
-}
-
 func TestLegacyReleaseNamesTheMigration(t *testing.T) {
 	// A release unpacked by an older Bay has a hand-written manifest at the
 	// archive root. Without this the message is "read manifest: no such file",

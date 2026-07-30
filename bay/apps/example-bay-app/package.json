@@ -1,0 +1,29 @@
+{
+  "private": true,
+  "name": "example-bay-app",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "alepha dev",
+    "build": "alepha build",
+    "typecheck": "tsc --noEmit",
+    "check:migrations": "alepha db migrations check",
+    "db:generate": "alepha db migrations create",
+    "pack": "alepha build && alepha pack"
+  },
+  "dependencies": {
+    "alepha": "workspace:*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "better-sqlite3": "^13.0.1",
+    "drizzle-kit": "1.0.0-rc.4",
+    "vite": "^8.1.5"
+  },
+  "dependenciesMeta": {
+    "better-sqlite3": {
+      "built": true
+    }
+  }
+}
