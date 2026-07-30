@@ -46,6 +46,19 @@ const (
 	readyTimeout       = 60 * time.Second
 )
 
+// version is stamped at link time by the release workflow:
+//
+//	go build -ldflags "-X main.version=0.25.0"
+//
+// "dev" for any locally built binary, which is the honest answer — a hand-built
+// binary corresponds to no release.
+//
+// This exists because "which binary is running?" is the first question when
+// something is wrong, and the release/redeploy coupling makes it load-bearing:
+// a Bay newer than its releases refuses to start apps whose release predates
+// the derived manifest, and the operator needs to see that mismatch.
+var version = "dev"
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -80,6 +93,8 @@ func main() {
 		err = cmdBackups(os.Args[2:])
 	case "restore":
 		err = cmdRestore(os.Args[2:])
+	case "version", "--version", "-v":
+		fmt.Println(version)
 	default:
 		usage()
 		os.Exit(2)
@@ -102,10 +117,8 @@ func usage() {
               # without --domain: <manifest.name>[-<env>].<base-domain>
   bay list
   bay stop    <name/env>
-
-Client commands accept --control ADDR (default 127.0.0.1:7717, or $BAY_CONTROL)
-and read $BAY_TOKEN.
   bay token
+  bay version
   bay config s3 --endpoint URL --bucket NAME [--keep N]
                 # credentials from BAY_S3_ACCESS_KEY / BAY_S3_SECRET_KEY
   bay backup  <name/env>          # snapshot + verify + upload
@@ -113,7 +126,8 @@ and read $BAY_TOKEN.
   bay restore <name/env> [--key K] # destructive; keeps the old db aside
 
 Every command except "serve" is a thin client of the control API — the same API
-bay-ui will call. There is no second code path.
+bay-ui calls. There is no second code path. Client commands accept
+--control ADDR (default 127.0.0.1:7717, or $BAY_CONTROL) and read $BAY_TOKEN.
 `)
 }
 
