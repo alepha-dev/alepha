@@ -53,6 +53,42 @@ describe("Alepha#inject", () => {
     expect(alepha.has(BaseLogger, { inSubstitutions: false })).toBe(false);
   });
 
+  /**
+   * A `provide`/`use` substitution keys the registry by the SUBSTITUTE class,
+   * so a by-name lookup for the substituted base class must follow the
+   * substitution exactly as an inject-by-class does. The generated Cloudflare
+   * worker entry injects `"WebSocketServerProvider"` by name while the
+   * websocket module registers it as `{ provide: WebSocketServerProvider,
+   * use: CloudflareDurableObjectWebSocketServerProvider }` — without the
+   * fallback every WebSocket upgrade on workerd died with
+   * `Service not found: WebSocketServerProvider`.
+   */
+  it("should resolve a substituted service by name", ({ expect }) => {
+    class BaseProvider {
+      who(): string {
+        return "base";
+      }
+    }
+
+    class EdgeProvider extends BaseProvider {
+      who(): string {
+        return "edge";
+      }
+    }
+
+    const alepha = new Alepha().with({
+      provide: BaseProvider,
+      use: EdgeProvider,
+    });
+
+    const byName = alepha.inject<BaseProvider>("BaseProvider");
+    expect(byName).toBeInstanceOf(EdgeProvider);
+    expect(byName.who()).toBe("edge");
+
+    // Same singleton as the class-keyed path.
+    expect(byName).toBe(alepha.inject(BaseProvider));
+  });
+
   it("should handle scoped lifetime", ({ expect }) => {
     class Request {
       id = randomUUID();

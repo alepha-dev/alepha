@@ -1006,6 +1006,17 @@ export class Alepha {
           return value.instance as T;
         }
       }
+      // A `provide`/`use` substitution keys the registry by the SUBSTITUTE
+      // class, so a by-name lookup for the substituted base class finds no
+      // registry entry — follow the substitution through the class-keyed
+      // path exactly as `inject(BaseClass)` would (e.g. the generated
+      // Cloudflare worker entry injecting "WebSocketServerProvider" by name
+      // while the websocket module provides it via a substitution).
+      for (const key of this.substitutions.keys()) {
+        if (key.name === service) {
+          return this.inject(key as Service<T>, { parent, lifetime });
+        }
+      }
       throw new AlephaError(`Service not found: ${service}`);
     }
 
