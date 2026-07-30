@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 // App is one deployed application instance (app + env).
@@ -22,6 +23,26 @@ type App struct {
 	Port     int    `json:"port"`    // loopback port the app listens on
 	Runtime  string `json:"runtime"`
 	Sleeping bool   `json:"sleeping"`
+	// Backups is true when Bay provisioned the app's database and can therefore
+	// snapshot it. Derived from the manifest at deploy time.
+	//
+	// An app on a BYO `DATABASE_URL` has nothing Bay could back up, and without
+	// this it would sit at "never backed up" forever — a warning that is both
+	// permanent and wrong, which is how people learn to ignore warnings.
+	Backups bool `json:"backups"`
+
+	// LastBackupAt is when this app last had a VERIFIED backup uploaded, RFC3339
+	// UTC. Empty means never.
+	//
+	// This is the observable the whole backup story rests on. A timer that runs
+	// is not what protects data — noticing that it stopped is, and that needs a
+	// timestamp someone can look at.
+	LastBackupAt string `json:"lastBackupAt,omitempty"`
+	// LastBackupKey is the S3 object the last successful run wrote.
+	LastBackupKey string `json:"lastBackupKey,omitempty"`
+	// LastBackupError is when and why the most recent attempt failed. Cleared on
+	// the next success.
+	LastBackupError string `json:"lastBackupError,omitempty"`
 }
 
 // Key is the stable identifier for an app instance.
@@ -113,18 +134,69 @@ func (s *Store) Get(key string) (App, bool) {
 	return App{}, false
 }
 
-// Upsert inserts or replaces an app and persists immediately.
+// Upsert inserts or replaces an app's DEPLOY-owned fields and persists.
+//
+// Runtime-owned fields are carried forward from the existing record rather than
+// taken from the argument. A deploy builds a fresh App from the artifact and
+// knows nothing about them, so replacing wholesale silently reset them on every
+// redeploy — `Sleeping` already did, and `LastBackupAt` would have, which is
+// worse: the staleness warning would go quiet exactly when someone redeploys.
 func (s *Store) Upsert(app App) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i, a := range s.state.Apps {
 		if a.Key() == app.Key() {
+			app.Sleeping = a.Sleeping
+			app.LastBackupAt = a.LastBackupAt
+			app.LastBackupKey = a.LastBackupKey
+			app.LastBackupError = a.LastBackupError
 			s.state.Apps[i] = app
 			return s.flush()
 		}
 	}
 	s.state.Apps = append(s.state.Apps, app)
 	return s.flush()
+}
+
+// RecordBackupSuccess stamps a completed backup.
+func (s *Store) RecordBackupSuccess(key, s3Key string, at time.Time) error {
+	return s.mutate(key, func(a *App) {
+		a.LastBackupAt = at.UTC().Format(time.RFC3339)
+		a.LastBackupKey = s3Key
+		// Cleared on success so a stale reason never outlives the failure.
+		a.LastBackupError = ""
+	})
+}
+
+// RecordBackupFailure stores why the last attempt failed.
+//
+// `LastBackupAt` is deliberately NOT advanced: it means "last time we had a
+// usable backup", so a run of failures keeps ageing it and the staleness
+// warning keeps growing. Recording the reason separately is what distinguishes
+// "backups are failing" from "the scheduler stopped" — without it the two look
+// identical from the outside.
+func (s *Store) RecordBackupFailure(key, reason string, at time.Time) error {
+	return s.mutate(key, func(a *App) {
+		a.LastBackupError = at.UTC().Format(time.RFC3339) + ": " + reason
+	})
+}
+
+// SetRelease repoints an app at another release (deploy swap, rollback).
+func (s *Store) SetRelease(key, release string) error {
+	return s.mutate(key, func(a *App) { a.Release = release })
+}
+
+// mutate applies fn to one app and persists, or reports that it is unknown.
+func (s *Store) mutate(key string, fn func(*App)) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.state.Apps {
+		if s.state.Apps[i].Key() == key {
+			fn(&s.state.Apps[i])
+			return s.flush()
+		}
+	}
+	return fmt.Errorf("unknown app %q", key)
 }
 
 // Token returns the control-plane token, generating one on first use.

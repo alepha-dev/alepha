@@ -33,6 +33,7 @@ import (
 	"github.com/alepha/bay/internal/proxy"
 	"github.com/alepha/bay/internal/runner"
 	"github.com/alepha/bay/internal/runtimes"
+	"github.com/alepha/bay/internal/schedule"
 	"github.com/alepha/bay/internal/state"
 	"github.com/alepha/bay/internal/tlsconf"
 )
@@ -44,6 +45,9 @@ const (
 	defaultTLSAddr     = ":8443"
 	stopGrace          = 15 * time.Second
 	readyTimeout       = 60 * time.Second
+	// defaultBackupInterval is deliberately ON by default. Backups that must be
+	// switched on are backups that stay off.
+	defaultBackupInterval = 24 * time.Hour
 )
 
 // version is stamped at link time by the release workflow:
@@ -77,6 +81,8 @@ func main() {
 		err = cmdDeploy(os.Args[2:])
 	case "list":
 		err = cmdList(os.Args[2:])
+	case "status":
+		err = cmdStatus(os.Args[2:])
 	case "stop":
 		err = cmdStop(os.Args[2:])
 	case "token":
@@ -113,9 +119,11 @@ func usage() {
               [--tls] [--tls-addr :8443] [--acme-ca URL] [--acme-email MAIL]
               [--acme-ca-root FILE.pem]   # trust a private CA (Pebble, step-ca)
               [--acme-http-port N] [--acme-tls-port N]   # challenge ports, default 80/443
+              [--backup-interval 24h]   # 0 disables; needs "bay config s3"
   bay deploy  <app.tar.gz> --name NAME [--env ENV] [--domain HOST]
               # without --domain: <manifest.name>[-<env>].<base-domain>
   bay list
+  bay status                      # releases + backup freshness
   bay stop    <name/env>
   bay token
   bay version
@@ -152,6 +160,8 @@ func cmdServe(args []string) error {
 	runtimesDir := ""
 	baseDomain := ""
 	useTLS := false
+	backupInterval := defaultBackupInterval
+	badBackupInterval := ""
 	for i, arg := range args {
 		if arg == "--tls" {
 			useTLS = true
@@ -182,7 +192,19 @@ func cmdServe(args []string) error {
 			acmeHTTPPort, _ = strconv.Atoi(args[i+1])
 		case "--acme-tls-port":
 			acmeTLSPort, _ = strconv.Atoi(args[i+1])
+		case "--backup-interval":
+			d, parseErr := time.ParseDuration(args[i+1])
+			if parseErr == nil {
+				backupInterval = d
+			} else {
+				// Refusing is better than silently falling back to the default:
+				// a typo would leave someone believing backups are configured.
+				badBackupInterval = args[i+1]
+			}
 		}
+	}
+	if badBackupInterval != "" {
+		return fmt.Errorf("--backup-interval %q is not a duration (try 24h, 12h, 0 to disable)", badBackupInterval)
 	}
 	root, err := filepath.Abs(root)
 	if err != nil {
@@ -310,10 +332,20 @@ func cmdServe(args []string) error {
 		}
 	}
 
+	// Scheduled backups. Started after the apps are up so the first catch-up run
+	// snapshots databases that are being served, which is the state a restore has
+	// to cope with anyway.
+	backupCtx, stopBackups := context.WithCancel(context.Background())
+	defer stopBackups()
+	go srv.backupLoop(backupCtx, backupInterval)
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 	log.Info("shutting down")
+	// Before draining: a backup in flight holds the app's runtime and would
+	// outlive the process it belongs to.
+	stopBackups()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -566,6 +598,91 @@ func cmdList([]string) error {
 		return err
 	}
 	fmt.Println(res)
+	return nil
+}
+
+// cmdStatus renders what an operator needs to decide whether anything is wrong.
+//
+// The backup column is the reason this command exists. A schedule that runs is
+// not what protects data — noticing that it stopped is — and nobody notices by
+// reading JSON. So the age is spelled out, and a stale one is called out rather
+// than left for the reader to compute.
+func cmdStatus(args []string) error {
+	interval := defaultBackupInterval
+	for i, arg := range args {
+		if arg == "--backup-interval" && i < len(args)-1 {
+			if d, err := time.ParseDuration(args[i+1]); err == nil {
+				interval = d
+			}
+		}
+	}
+
+	raw, err := call(http.MethodGet, "http://"+controlAddr()+"/apps", nil)
+	if err != nil {
+		return err
+	}
+	var apps []struct {
+		Name            string `json:"name"`
+		Env             string `json:"env"`
+		Domain          string `json:"domain"`
+		Release         string `json:"release"`
+		Backups         bool   `json:"backups"`
+		LastBackupAt    string `json:"lastBackupAt"`
+		LastBackupError string `json:"lastBackupError"`
+	}
+	if err := json.Unmarshal([]byte(raw), &apps); err != nil {
+		return fmt.Errorf("parse control api response: %w", err)
+	}
+	if len(apps) == 0 {
+		fmt.Println("no apps deployed")
+		return nil
+	}
+
+	now := time.Now()
+	problems := 0
+	for _, a := range apps {
+		fmt.Printf("%s/%s\n", a.Name, a.Env)
+		fmt.Printf("  domain   %s\n", a.Domain)
+		fmt.Printf("  release  %s\n", a.Release)
+
+		switch {
+		case !a.Backups:
+			// Not a warning: there is nothing Bay could have backed up — either the
+			// app declares no database, or it supplied its own DATABASE_URL. Bay
+			// cannot tell which from here, so the message does not claim a cause it
+			// does not know. Said out loud regardless, because "no backup" must
+			// never be something the reader infers from an absent line.
+			fmt.Printf("  backup   no Bay-managed database — nothing to snapshot\n")
+		default:
+			stale, age := schedule.Stale(a.LastBackupAt, now, interval)
+			switch {
+			case a.LastBackupAt == "":
+				fmt.Printf("  backup   NEVER\n")
+			default:
+				fmt.Printf("  backup   %s (%s ago)\n", a.LastBackupAt, age.Round(time.Minute))
+			}
+			if stale {
+				problems++
+				fmt.Printf("           ⚠ stale — expected every %s\n", interval)
+			}
+		}
+		if a.LastBackupError != "" {
+			problems++
+			fmt.Printf("           ⚠ last attempt failed: %s\n", a.LastBackupError)
+		}
+		// Deliberately not printed: what is NOT covered even on success. A restore
+		// gives back the database and not storage/, and someone reading a healthy
+		// line should know that before they need it.
+		if a.Backups {
+			fmt.Printf("           storage/ is not backed up\n")
+		}
+		fmt.Println()
+	}
+	if problems > 0 {
+		// Non-zero exit so this is usable from a cron or a monitor without
+		// parsing the text.
+		return fmt.Errorf("%d problem(s) above", problems)
+	}
 	return nil
 }
 
