@@ -229,6 +229,13 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         // Parse and validate JWT
         const { result } = await this.jwt.parse(token, this.name);
 
+        // Only an access token authenticates. Authorization codes, refresh
+        // tokens and id_tokens are signed with this same key and would
+        // otherwise pass straight through.
+        if (!this.jwt.isAccessToken(this.name, result.protectedHeader)) {
+          return null;
+        }
+
         // Anti-replay: a token minted on tenant A must not authenticate on
         // tenant B. This is the primary auth path for `$realm`-based apps —
         // skipping the check here would make it dead code.
@@ -392,6 +399,8 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         tenant,
       },
       this.name,
+      // Marks this JWT as the only kind that may be presented as a Bearer.
+      { header: { typ: this.jwt.accessTokenTyp } },
     );
 
     const response: AccessTokenResponse = {

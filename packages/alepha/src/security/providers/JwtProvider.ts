@@ -35,6 +35,42 @@ export class JwtProvider {
   protected readonly encoder = new TextEncoder();
 
   /**
+   * `typ` header stamped on every access token we mint, and required of any
+   * JWT presented as a Bearer for a realm we sign for. See `isAccessToken`.
+   */
+  public readonly accessTokenTyp = "access";
+
+  /**
+   * True when this process holds the signing key for `name` — i.e. every valid
+   * token for that realm was minted here, so its `typ` header is ours to trust.
+   */
+  public isTokenIssuer(name: string): boolean {
+    return (
+      this.signers.has(name) ||
+      this.keystore.some((it) => it.name === name && !!it.secretKey)
+    );
+  }
+
+  /**
+   * Guard against token-type confusion. A realm we sign for mints several
+   * kinds of JWT with the SAME key: access tokens, refresh tokens
+   * (`typ: "refresh"`), OAuth authorization codes (`typ: "oauth_code"`) and
+   * id_tokens (`typ: "JWT"`). Without this check every one of them
+   * authenticates as its subject — which deletes PKCE, because merely seeing a
+   * code (browser history, `Referer`, proxy logs) would be enough to act as
+   * the user, with no `code_verifier` and without touching `/oauth/token`.
+   *
+   * Enforced only for realms whose key we hold: an external IdP picks its own
+   * `typ`, so requiring ours would reject every federated token.
+   */
+  public isAccessToken(name: string, header: { typ?: string }): boolean {
+    if (!this.isTokenIssuer(name)) {
+      return true;
+    }
+    return header.typ === this.accessTokenTyp;
+  }
+
+  /**
    * Adds a key loader to the embedded keystore.
    *
    * @param name

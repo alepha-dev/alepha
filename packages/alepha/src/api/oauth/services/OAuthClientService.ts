@@ -75,6 +75,13 @@ export class OAuthClientService {
   protected readonly usedCodes = new Set<string>();
 
   /**
+   * Stand-in label substituted for the `*` of a registered redirect_uri so the
+   * pattern can be parsed by `new URL()` like any other. Must be a valid
+   * single hostname label; see `redirectUriMatches`.
+   */
+  protected readonly wildcardLabel = "alepha-wildcard-label";
+
+  /**
    * Registry of realm issuers used to mint access tokens. Populated by
    * `$realm` (via `registerIssuer`) so the OAuth module does not depend on the
    * realm wiring directly.
@@ -390,11 +397,41 @@ export class OAuthClientService {
     if (!pattern.includes("*")) {
       return pattern === candidate;
     }
-    // Escape every regex metachar (incl. the `*` and the dots), then turn the
-    // single escaped `*` into a one-label match (`[^.]+` — no dots).
-    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const rx = new RegExp(`^${escaped.replace("\\*", "[^.]+")}$`);
-    return rx.test(candidate);
+    // Never match the raw strings. `/`, `?`, `#` and `\` all terminate the
+    // authority in WHATWG URL parsing, so any character class applied to the
+    // pattern text can be escaped out of the host: `https://evil?.alepha.club/cb`
+    // has host `evil`, yet a dot-free class accepts it. Compare parsed URLs
+    // instead, and let the wildcard stand for one hostname label, nothing else.
+    let expected: URL;
+    let actual: URL;
+    try {
+      expected = new URL(pattern.replace("*", this.wildcardLabel));
+      actual = new URL(candidate);
+    } catch {
+      return false;
+    }
+
+    if (
+      expected.protocol !== actual.protocol ||
+      expected.port !== actual.port ||
+      expected.pathname !== actual.pathname ||
+      expected.search !== actual.search ||
+      expected.hash !== actual.hash
+    ) {
+      return false;
+    }
+
+    const expectedLabels = expected.hostname.split(".");
+    const actualLabels = actual.hostname.split(".");
+    if (expectedLabels.length !== actualLabels.length) {
+      return false;
+    }
+    return expectedLabels.every((label, i) => {
+      const candidateLabel = actualLabels[i] ?? "";
+      return label === this.wildcardLabel
+        ? /^[a-z0-9-]+$/.test(candidateLabel)
+        : label === candidateLabel;
+    });
   }
 
   /**

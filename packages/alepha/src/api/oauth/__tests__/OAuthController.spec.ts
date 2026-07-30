@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
-import { $issuer, type UserAccount } from "alepha/security";
+import { $issuer, SecurityProvider, type UserAccount } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 import { renderConsentPage } from "../helpers/consentPage.ts";
@@ -357,6 +357,193 @@ describe("OAuthController refresh_token grant", () => {
     expect(typeof refreshBody.access_token).toBe("string");
     expect(refreshBody.token_type).toBe("Bearer");
     expect(typeof refreshBody.id_token).toBe("string");
+  });
+});
+
+describe("OAuth consent cannot be skipped by the request", () => {
+  /**
+   * Same shape as the authorize+token boot, but the `App` instance is returned
+   * so a test can mint a genuine access token for an already-logged-in victim.
+   */
+  const boot = async () => {
+    class App {
+      issuer = $issuer({ name: "users", secret: "test-secret" });
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const service = alepha.inject(OAuthClientService);
+    service.registerIssuer(
+      "users",
+      app.issuer,
+      async (id) => ({ id, roles: [] }) as UserAccount,
+    );
+
+    const { hostname } = alepha.inject(ServerProvider);
+    return { alepha, app, hostname, service };
+  };
+
+  const authorize = async (
+    hostname: string,
+    accessToken: string,
+    params: Record<string, string>,
+  ) => {
+    const query = new URLSearchParams({
+      response_type: "code",
+      code_challenge: "x",
+      code_challenge_method: "S256",
+      ...params,
+    });
+    return fetch(`${hostname}/oauth/authorize?${query}`, {
+      redirect: "manual",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+  };
+
+  it("answers consent_required when an untrusted client asks for prompt=none", async ({
+    expect,
+  }) => {
+    const { app, hostname, service } = await boot();
+    const redirectUri = "https://evil.example/cb";
+    const client = await service.register({
+      realm: "users",
+      clientName: "Registered By Anyone",
+      redirectUris: [redirectUri],
+      scopes: ["mcp"],
+    });
+    // The victim is logged into the AS — the cookie is Lax, so it rides along
+    // on a cross-site top-level GET and the user resolves.
+    const { access_token } = await app.issuer.createToken({
+      id: "victim-user-id",
+      roles: [],
+    } as UserAccount);
+
+    const resp = await authorize(hostname, access_token, {
+      client_id: client.clientId,
+      redirect_uri: redirectUri,
+      prompt: "none",
+      state: "s1",
+    });
+
+    expect(resp.status).toBe(302);
+    const location = new URL(resp.headers.get("location") ?? "");
+    // prompt=none means "do not show UI", never "consent is granted".
+    expect(location.searchParams.get("code")).toBeNull();
+    expect(location.searchParams.get("error")).toBe("consent_required");
+    expect(location.searchParams.get("state")).toBe("s1");
+  });
+
+  it("still skips consent for a trusted first-party client", async ({
+    expect,
+  }) => {
+    const { app, hostname, service } = await boot();
+    const redirectUri = "https://app.alepha.club/auth/callback";
+    const client = await service.register({
+      realm: "users",
+      clientName: "First Party",
+      redirectUris: [redirectUri],
+      scopes: ["openid"],
+      trusted: true,
+    });
+    const { access_token } = await app.issuer.createToken({
+      id: "user-1",
+      roles: [],
+    } as UserAccount);
+
+    const resp = await authorize(hostname, access_token, {
+      client_id: client.clientId,
+      redirect_uri: redirectUri,
+    });
+
+    expect(resp.status).toBe(302);
+    const location = new URL(resp.headers.get("location") ?? "");
+    expect(location.searchParams.get("code")).toBeTruthy();
+  });
+});
+
+describe("OAuth bearer tokens are access tokens only", () => {
+  const boot = async () => {
+    class App {
+      issuer = $issuer({ name: "users", secret: "test-secret" });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const service = alepha.inject(OAuthClientService);
+    service.registerIssuer(
+      "users",
+      app.issuer,
+      async (id) => ({ id, roles: [] }) as UserAccount,
+    );
+
+    return { alepha, app, service };
+  };
+
+  const resolve = (alepha: Alepha, token: string) =>
+    alepha.inject(SecurityProvider).resolveUserFromServerRequest({
+      url: new URL("https://app.com/mcp"),
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+  it("refuses an authorization code presented as a Bearer token", async ({
+    expect,
+  }) => {
+    const { alepha, service } = await boot();
+
+    const code = await service.createAuthorizationCode("users", {
+      userId: "victim-user-id",
+      clientId: "mcp_x",
+      redirectUri: "https://evil.example/cb",
+      codeChallenge: "x",
+      scopes: ["mcp"],
+    });
+
+    // Seeing a code — browser history, Referer, proxy logs — must not be
+    // enough to act as its subject. Otherwise PKCE protects nothing: the
+    // attacker never has to reach /oauth/token at all.
+    expect(await resolve(alepha, code)).toBeUndefined();
+  });
+
+  it("refuses an id_token presented as a Bearer token", async ({ expect }) => {
+    const { alepha, service } = await boot();
+
+    const idToken = await service.issueIdToken("users", {
+      userId: "victim-user-id",
+      clientId: "mcp_x",
+      issuer: "https://app.com",
+    });
+
+    expect(await resolve(alepha, idToken)).toBeUndefined();
+  });
+
+  it("still accepts a genuine access token", async ({ expect }) => {
+    const { alepha, app } = await boot();
+
+    const { access_token } = await app.issuer.createToken({
+      id: "user-1",
+      roles: [],
+    } as UserAccount);
+
+    expect((await resolve(alepha, access_token))?.id).toBe("user-1");
   });
 });
 

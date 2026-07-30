@@ -105,6 +105,10 @@ export class ServerSecurityProvider {
             roles,
           },
           user?.realm ?? this.securityProvider.getRealms()[0]?.name,
+          // Stands in for a real access token, so it must carry the same `typ`
+          // the resolvers require — otherwise the helper mints a token the
+          // server refuses (see JwtProvider.isAccessToken).
+          { header: { typ: this.jwtProvider.accessTokenTyp } },
         );
 
         request.headers.set("authorization", `Bearer ${token}`);
