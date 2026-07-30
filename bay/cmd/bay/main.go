@@ -28,6 +28,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alepha/bay/internal/control"
 	"github.com/alepha/bay/internal/deploy"
 	"github.com/alepha/bay/internal/manifest"
 	"github.com/alepha/bay/internal/proxy"
@@ -48,6 +49,10 @@ const (
 	// defaultBackupInterval is deliberately ON by default. Backups that must be
 	// switched on are backups that stay off.
 	defaultBackupInterval = 24 * time.Hour
+	// defaultControlGroup is the unix group whose members may reach the control
+	// socket. Membership is the whole authorization: joining it is equivalent to
+	// being handed the token.
+	defaultControlGroup = "bay-control"
 )
 
 // version is stamped at link time by the release workflow:
@@ -126,6 +131,7 @@ func usage() {
               [--backup-interval 24h]   # 0 disables; needs "bay config s3"
   bay deploy  <app.tar.gz> --name NAME [--env ENV] [--domain HOST]
               # without --domain: <manifest.name>[-<env>].<base-domain>
+              [--allow-control-api]   # ⚠ root-equivalent; apps get NO access by default
   bay list
   bay status                      # releases + backup freshness
   bay stop    <name/env>
@@ -161,7 +167,7 @@ type server struct {
 }
 
 func cmdServe(args []string) error {
-	root, addr, control := defaultRoot, defaultProxyAddr, defaultControlAddr
+	root, addr, controlTCP := defaultRoot, defaultProxyAddr, defaultControlAddr
 	tlsAddr, acmeCA, acmeEmail, acmeCARoot := defaultTLSAddr, "", "", ""
 	acmeHTTPPort, acmeTLSPort := 0, 0 // 0 = CertMagic defaults, i.e. 80 and 443
 	runtimesDir := ""
@@ -169,6 +175,8 @@ func cmdServe(args []string) error {
 	useTLS := false
 	backupInterval := defaultBackupInterval
 	badBackupInterval := ""
+	controlSocket := ""
+	controlGroup := defaultControlGroup
 	for i, arg := range args {
 		if arg == "--tls" {
 			useTLS = true
@@ -186,7 +194,7 @@ func cmdServe(args []string) error {
 		case "--addr":
 			addr = args[i+1]
 		case "--control":
-			control = args[i+1]
+			controlTCP = args[i+1]
 		case "--tls-addr":
 			tlsAddr = args[i+1]
 		case "--acme-ca":
@@ -199,6 +207,10 @@ func cmdServe(args []string) error {
 			acmeHTTPPort, _ = strconv.Atoi(args[i+1])
 		case "--acme-tls-port":
 			acmeTLSPort, _ = strconv.Atoi(args[i+1])
+		case "--control-socket":
+			controlSocket = args[i+1]
+		case "--control-group":
+			controlGroup = args[i+1]
 		case "--backup-interval":
 			d, parseErr := time.ParseDuration(args[i+1])
 			if parseErr == nil {
@@ -223,6 +235,10 @@ func cmdServe(args []string) error {
 	runtimesDir, err = filepath.Abs(runtimesDir)
 	if err != nil {
 		return err
+	}
+
+	if controlSocket == "" {
+		controlSocket = filepath.Join(root, "control.sock")
 	}
 
 	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -317,7 +333,16 @@ func cmdServe(args []string) error {
 	}
 
 	proxySrv := &http.Server{Addr: addr, Handler: httpHandler}
-	controlSrv := &http.Server{Addr: control, Handler: srv.controlHandler(token)}
+	mux := srv.controlMux()
+	// TCP needs the token: a loopback socket has no notion of who is calling, so
+	// a shared secret is the only thing standing between the control API and any
+	// local process.
+	controlSrv := &http.Server{Addr: controlTCP, Handler: authMiddleware(token, mux)}
+	// The unix socket needs NO token, and that is the point: its authorization is
+	// the file mode, enforced by the kernel. Reaching it already required being
+	// root or in the control group, so demanding a secret on top would only mean
+	// writing that secret into a file for every legitimate caller to read.
+	socketSrv := &http.Server{Handler: mux}
 
 	go func() {
 		log.Info("proxy listening", "addr", addr)
@@ -326,11 +351,30 @@ func cmdServe(args []string) error {
 		}
 	}()
 	go func() {
-		log.Info("control api listening", "addr", control)
+		log.Info("control api listening", "addr", controlTCP, "auth", "bearer token")
 		if err := controlSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("control api stopped", "err", err)
 		}
 	}()
+
+	if ln, reachableBy, err := control.Listen(controlSocket, controlGroup); err != nil {
+		// Not fatal. The socket is a convenience over the TCP listener, and Bay
+		// is the reverse proxy — refusing to start would take every site down
+		// over an access path that has an alternative.
+		log.Error("control socket unavailable; falling back to the token over TCP",
+			"path", controlSocket, "err", err)
+	} else {
+		defer ln.Close()
+		// Logged because "who can talk to the root-equivalent API" is the fact an
+		// operator should be handed, not have to derive from a mode bit.
+		log.Info("control socket listening", "path", controlSocket,
+			"auth", "unix permissions", "reachableBy", reachableBy)
+		go func() {
+			if err := socketSrv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Error("control socket stopped", "err", err)
+			}
+		}()
+	}
 
 	// Bring previously deployed apps back up after a bay restart.
 	for _, app := range store.Apps() {
@@ -358,6 +402,7 @@ func cmdServe(args []string) error {
 	defer cancel()
 	_ = proxySrv.Shutdown(ctx)
 	_ = controlSrv.Shutdown(ctx)
+	_ = socketSrv.Shutdown(ctx)
 	srv.runner.StopAll(stopGrace)
 	return nil
 }
@@ -405,6 +450,7 @@ func (s *server) start(app state.App) error {
 			WritablePaths: writable,
 			MemoryMax:     "512M",
 			TasksMax:      256,
+			ControlGroup:  controlGroupFor(app),
 		},
 	}
 	if err := s.runner.Start(spec); err != nil {
@@ -413,8 +459,26 @@ func (s *server) start(app state.App) error {
 	if err := waitReady(app.Port, readyTimeout); err != nil {
 		return fmt.Errorf("%s never became ready: %w", app.Key(), err)
 	}
+	if app.ControlAPI {
+		s.log.Warn("app has ROOT-EQUIVALENT control API access",
+			"app", app.Key(),
+			"why", "granted with --allow-control-api",
+			"means", "may deploy code, read other apps' secrets, delete backups")
+	}
 	s.log.Info("app ready", "app", app.Key(), "port", app.Port, "domain", app.Domain)
 	return nil
+}
+
+// controlGroupFor returns the control group when this app was granted access.
+//
+// Empty for every app by default: nothing reaches the control API unless an
+// operator said so. Warned about on every start, not just at grant time — a
+// privilege that was reviewed once, months ago, is one nobody remembers.
+func controlGroupFor(app state.App) string {
+	if !app.ControlAPI {
+		return ""
+	}
+	return defaultControlGroup
 }
 
 func waitReady(port int, timeout time.Duration) error {
@@ -435,7 +499,9 @@ func waitReady(port int, timeout time.Duration) error {
 // control API — the single contract, consumed by the CLI and later by bay-ui
 // ---------------------------------------------------------------------------
 
-func (s *server) controlHandler(token string) http.Handler {
+// controlMux builds the routes. Authorization is applied per listener by the
+// caller: a bearer token on TCP, unix permissions on the socket.
+func (s *server) controlMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /apps", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, s.store.Apps())
@@ -450,7 +516,7 @@ func (s *server) controlHandler(token string) http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"stopped": key})
 	})
 	s.registerBackupRoutes(mux)
-	return authMiddleware(token, mux)
+	return mux
 }
 
 func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
@@ -480,9 +546,14 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// Stop the previous process before swapping `current` under it.
 	_ = s.runner.Stop(name+"/"+env, stopGrace)
 
+	allowControl := q.Get("allowControlApi") == "yes"
+	if allowControl {
+		s.log.Warn("granting ROOT-EQUIVALENT control API access", "app", name+"/"+env)
+	}
 	res, err := deploy.Run(deploy.Options{
 		Root: s.root, Artifact: tmp.Name(), Name: name, Env: env,
 		Domain: domain, BaseDomain: s.store.BaseDomain(),
+		AllowControlAPI: allowControl,
 	}, s.store)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -572,9 +643,19 @@ func cmdDeploy(args []string) error {
 	if len(args) == 0 {
 		return errors.New("usage: bay deploy <app.tar.gz> --name NAME --domain HOST [--env ENV]")
 	}
-	zipPath := args[0]
+	artifact := args[0]
 	name, env, domain := "", "production", ""
-	for i := 1; i < len(args)-1; i++ {
+	allowControl := false
+	for i := 1; i < len(args); i++ {
+		// Checked before the value-taking flags so a trailing --allow-control-api
+		// is not silently dropped by the i<len-1 bound.
+		if args[i] == "--allow-control-api" {
+			allowControl = true
+			continue
+		}
+		if i >= len(args)-1 {
+			continue
+		}
 		switch args[i] {
 		case "--name":
 			name = args[i+1]
@@ -584,13 +665,21 @@ func cmdDeploy(args []string) error {
 			domain = args[i+1]
 		}
 	}
-	body, err := os.Open(zipPath)
+	body, err := os.Open(artifact)
 	if err != nil {
 		return err
 	}
 	defer body.Close()
 
 	url := fmt.Sprintf("http://%s/apps?name=%s&env=%s&domain=%s", controlAddr(), name, env, domain)
+	if allowControl {
+		// Said out loud on the way out, not just recorded. This grant is
+		// root-equivalent and the operator should read it as they type it.
+		fmt.Fprintln(os.Stderr,
+			"⚠ granting "+name+"/"+env+" ROOT-EQUIVALENT access to Bay's control API: "+
+				"it will be able to deploy code, read other apps' secrets and delete backups")
+		url += "&allowControlApi=yes"
+	}
 	res, err := call(http.MethodPost, url, body)
 	if err != nil {
 		return err
@@ -816,24 +905,72 @@ var controlFlag string
 // readControlFlag extracts `--control ADDR` from a client command's arguments.
 func readControlFlag(args []string) {
 	for i, arg := range args {
-		if arg == "--control" && i < len(args)-1 {
+		if i >= len(args)-1 {
+			continue
+		}
+		switch arg {
+		case "--control":
 			controlFlag = args[i+1]
-			return
+		case "--control-socket":
+			socketFlag = args[i+1]
 		}
 	}
 }
 
-func call(method, url string, body io.Reader) (string, error) {
-	token := os.Getenv("BAY_TOKEN")
-	if token == "" {
-		return "", errors.New("BAY_TOKEN is unset — run `bay token` and export it")
+// controlSocketPath returns the socket to prefer, if one is reachable.
+//
+// Tried before the token because on the host itself the socket is both the
+// simpler path and the safer one: no secret has to be fetched, exported, or left
+// in a shell history. `--control-socket` and $BAY_SOCKET override; otherwise the
+// default sits next to the state file.
+func controlSocketPath() string {
+	if p := socketFlag; p != "" {
+		return p
 	}
+	if p := os.Getenv("BAY_SOCKET"); p != "" {
+		return p
+	}
+	// Only worth guessing when the default root is in play; a custom --root moves
+	// it, and silently probing the wrong path would be worse than not probing.
+	candidate := filepath.Join(defaultRoot, "control.sock")
+	if info, err := os.Lstat(candidate); err == nil && info.Mode()&os.ModeSocket != 0 {
+		return candidate
+	}
+	return ""
+}
+
+// socketFlag holds --control-socket for client commands.
+var socketFlag string
+
+func call(method, url string, body io.Reader) (string, error) {
+	client := &http.Client{Timeout: 5 * time.Minute}
+	token := os.Getenv("BAY_TOKEN")
+
+	if sock := controlSocketPath(); sock != "" {
+		// Dial the socket instead of the network. The URL's host is ignored by the
+		// transport but still has to parse, so callers can keep composing
+		// http://host/path exactly as before.
+		client.Transport = &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, "unix", sock)
+			},
+		}
+	} else if token == "" {
+		return "", errors.New(
+			"no control socket found and BAY_TOKEN is unset — run this on the Bay host, " +
+				"or run `bay token` and export it (see --control-socket / $BAY_SOCKET)")
+	}
+
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	res, err := (&http.Client{Timeout: 5 * time.Minute}).Do(req)
+	// Sent even over the socket: harmless there (the listener ignores it) and it
+	// keeps a single code path for both transports.
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	res, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("control api unreachable (is `bay serve` running?): %w", err)
 	}
