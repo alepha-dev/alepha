@@ -1,8 +1,8 @@
 import { Alepha, run } from "alepha";
-import { BayUiWeb } from "./web/index.ts";
+import { PulseWeb } from "./web/index.ts";
 
 const alepha = Alepha.create();
 
-alepha.with(BayUiWeb);
+alepha.with(PulseWeb);
 
 run(alepha);

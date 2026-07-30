@@ -1,19 +1,21 @@
 {
   "private": true,
-  "name": "bay-ui",
+  "name": "pulse",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "alepha dev",
-    "lint": "alepha lint",
-    "typecheck": "alepha typecheck",
     "build": "alepha build",
     "check:migrations": "alepha db migrations check",
     "db:generate": "alepha db migrations create",
+    "dev": "alepha dev",
+    "lint": "alepha lint",
     "pack": "alepha build && alepha pack",
-    "start": "alepha build && LOG_LEVEL=debug LOG_FORMAT=pretty DATABASE_URL=:memory: node dist"
+    "start": "alepha build && LOG_LEVEL=debug LOG_FORMAT=pretty DATABASE_URL=:memory: node dist",
+    "test": "alepha test",
+    "typecheck": "alepha typecheck"
   },
   "dependencies": {
+    "@alepha/telemetry": "workspace:*",
     "@alepha/ui": "workspace:*",
     "alepha": "workspace:*",
     "lucide-react": "^1.27.0",

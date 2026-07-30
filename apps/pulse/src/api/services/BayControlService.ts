@@ -41,7 +41,7 @@ export interface BayDeployResult {
  * **Reached over a unix socket, and holds no secret.** The control API is
  * root-equivalent — it deploys code, reads secrets, can delete every backup — so
  * the question is not how to protect a token but how to avoid having one. On the
- * socket the authorization is the file mode, arbitrated by the kernel: bay-ui can
+ * socket the authorization is the file mode, arbitrated by the kernel: pulse can
  * connect because an operator put its unix user in the control group, and there
  * is no string that could leak from this process, its logs, or its backups.
  *
@@ -61,7 +61,7 @@ export class BayControlService {
       BAY_SOCKET: z.text({
         default: "/run/bay/control.sock",
         description:
-          "Unix socket of the bay-go control API. Reachable only by members of the control group — bay-ui holds no token.",
+          "Unix socket of the bay-go control API. Reachable only by members of the control group — pulse holds no token.",
       }),
     }),
   );
@@ -110,7 +110,7 @@ export class BayControlService {
       query.set("domain", args.domain);
     }
     // Deliberately never passes `allowControlApi`. Granting an app
-    // root-equivalent access is an operator act, and bay-ui has no per-user
+    // root-equivalent access is an operator act, and pulse has no per-user
     // permission model for it yet — so it does not offer it at all rather than
     // offer it to everyone who can log in.
     const bytes = Buffer.from(await args.file.arrayBuffer());

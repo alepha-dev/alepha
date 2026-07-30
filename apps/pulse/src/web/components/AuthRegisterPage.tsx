@@ -8,7 +8,7 @@ export interface AuthRegisterPageProps {
 /**
  * Sign-up page — reachable only during the initial bootstrap.
  *
- * `BAY_UI_ALLOW_REGISTRATION` gates the realm, so with the flag unset the realm
+ * `PULSE_ALLOW_REGISTRATION` gates the realm, so with the flag unset the realm
  * rejects registration and the login page stops linking here. The page itself
  * stays routed: a route that 404s while the realm still advertises sign-up is
  * worse than one that renders a form the server will refuse.

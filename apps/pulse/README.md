@@ -1,16 +1,48 @@
-# bay-ui
+# pulse
 
-Le panneau de contrôle de [Bay](../bay/README.md) — une app Alepha, déployée par
-Bay comme n'importe quelle autre.
+Le panneau de contrôle de [Bay](../bay/README.md), et le récepteur de la
+télémétrie des apps enrôlées — une app Alepha, déployée par Bay comme n'importe
+quelle autre.
+
+## ⚠️ Renommée depuis `bay-ui` : la première mise à jour est une migration
+
+Cette app s'appelait `bay-ui`. Pour Bay, **le nom EST l'identité** : `--name`
+pilote à la fois la clé d'instance et le sous-domaine, et il prend par défaut le
+`project` du manifeste, lui-même issu du `name` du `package.json`.
+
+Un `alepha platform up` après le renommage ne redéploie donc pas l'instance
+existante : il en **crée une nouvelle**, avec une base vide — celle qui porte les
+apps enrôlées, les hash de clés d'ingest et le compte admin — sur un
+sous-domaine `pulse.…`, pendant que l'ancienne continue de servir.
+
+Avant le premier déploiement, au choix :
+
+```bash
+# Option A — déplacer l'instance (recommandé)
+bay stop bay-ui/production
+mv /opt/bay/data/apps/bay-ui/production /opt/bay/data/apps/pulse/production
+# puis réécrire la clé et le `domain` dans state.json, Bay arrêté
+
+# Option B — garder le nom historique
+bay deploy pulse.tar.gz --name bay-ui --domain admin.example.com
+```
+
+Dans les deux cas, **épingler `--domain` explicitement** : un redéploiement
+conserve le domaine d'une instance existante, mais une instance neuve prend
+celui dérivé de son nom.
+
+Vérification après bascule : `bay list` montre **une seule** instance, sur le
+domaine attendu, et la page de login accepte le compte existant — preuve que la
+base est bien l'ancienne.
 
 ## Pourquoi c'est une app séparée
 
-> **Tout ce qui doit continuer à fonctionner pendant que bay-ui est cassée reste
+> **Tout ce qui doit continuer à fonctionner pendant que pulse est cassée reste
 > dans bay-go.**
 
-bay-ui sera cassée un jour, et ce jour-là il faut encore pouvoir déployer,
+pulse sera cassée un jour, et ce jour-là il faut encore pouvoir déployer,
 redémarrer et restaurer. Donc bay-go garde le proxy, le TLS, le déploiement et
-les backups ; bay-ui n'est qu'un client de son API de contrôle. Il n'y a pas de
+les backups ; pulse n'est qu'un client de son API de contrôle. Il n'y a pas de
 second chemin de code : le CLI `bay` appelle exactement les mêmes endpoints.
 
 ## Le token ne va jamais dans le navigateur
@@ -18,9 +50,9 @@ second chemin de code : le CLI `bay` appelle exactement les mêmes endpoints.
 L'API de contrôle est équivalente à root — elle déploie du code, lit des secrets
 et peut supprimer tous les backups. `BAY_TOKEN` vit donc **uniquement** dans
 `BayControlService`, côté serveur, et le navigateur ne parle qu'aux `$action` de
-bay-ui, chacun derrière `$secure({ roles: ["admin"] })`.
+pulse, chacun derrière `$secure({ roles: ["admin"] })`.
 
-Conséquence : bay-ui n'expose que les opérations qu'elle a choisi de réexposer.
+Conséquence : pulse n'expose que les opérations qu'elle a choisi de réexposer.
 Une opération qu'elle ne forwarde pas est inatteignable depuis le navigateur,
 même pour un admin authentifié.
 
@@ -31,20 +63,20 @@ un panneau d'infrastructure est au mieux un vecteur de spam. Deux étapes :
 
 ```bash
 # 1. premier boot, inscription ouverte
-BAY_UI_ADMIN_EMAIL=vous@example.com \
-BAY_UI_ALLOW_REGISTRATION=true \
+PULSE_ADMIN_EMAIL=vous@example.com \
+PULSE_ALLOW_REGISTRATION=true \
 BAY_URL=http://127.0.0.1:7717 BAY_TOKEN=$(bay token) \
   node dist
 
 # 2. créez le compte sur /auth/register, puis retirez le flag et redéployez
 ```
 
-`BAY_UI_ALLOW_REGISTRATION` ne gouverne **que** l'inscription. L'autorisation
+`PULSE_ALLOW_REGISTRATION` ne gouverne **que** l'inscription. L'autorisation
 n'en dépend pas : chaque endpoint exige le rôle `admin`, et c'est
-`BAY_UI_ADMIN_EMAIL` qui l'accorde — à la connexion, à la seule adresse
+`PULSE_ADMIN_EMAIL` qui l'accorde — à la connexion, à la seule adresse
 déclarée. Un compte créé par quelqu'un d'autre ne peut rien faire.
 
-⚠️ `BAY_UI_ALLOW_REGISTRATION` est un booléen : le framework n'accepte que
+⚠️ `PULSE_ALLOW_REGISTRATION` est un booléen : le framework n'accepte que
 `true` / `false` littéraux pour un booléen d'environnement. `=1` fait échouer le
 démarrage (bruyamment, avec le nom de la variable).
 
@@ -54,10 +86,10 @@ démarrage (bruyamment, avec le nom de la variable).
 |---|---|
 | `BAY_URL` | base de l'API de contrôle, `http://127.0.0.1:7717` par défaut |
 | `BAY_TOKEN` | sortie de `bay token`. **Équivalent root.** |
-| `BAY_UI_ADMIN_EMAIL` | promue `admin` à la connexion |
-| `BAY_UI_ALLOW_REGISTRATION` | ouvre l'inscription, pour l'amorçage seulement |
+| `PULSE_ADMIN_EMAIL` | promue `admin` à la connexion |
+| `PULSE_ALLOW_REGISTRATION` | ouvre l'inscription, pour l'amorçage seulement |
 
-## En phase 1, bay-ui tourne sur la machine du dev
+## En phase 1, pulse tourne sur la machine du dev
 
 Elle ne s'auto-héberge pas encore. L'API de contrôle reste sur loopback et on
 l'atteint par un **tunnel SSH** :
@@ -68,7 +100,7 @@ ssh -L 7717:127.0.0.1:7717 ovh-bay
 
 Ça n'ajoute aucune surface d'attaque, là où exposer le port demanderait ensuite
 de le défendre. Sans cette simplification il faudrait résoudre « qui déploie
-bay-ui » avant d'avoir déployé quoi que ce soit.
+pulse » avant d'avoir déployé quoi que ce soit.
 
 ## Pièges rencontrés en la construisant
 

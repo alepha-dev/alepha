@@ -6364,28 +6364,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bay-ui@workspace:apps/bay-ui":
-  version: 0.0.0-use.local
-  resolution: "bay-ui@workspace:apps/bay-ui"
-  dependencies:
-    "@alepha/ui": "workspace:*"
-    "@tailwindcss/vite": "npm:^4.3.3"
-    "@types/react": "npm:^19.2.17"
-    "@types/react-dom": "npm:^19.2.3"
-    alepha: "workspace:*"
-    better-sqlite3: "npm:^13.0.1"
-    drizzle-kit: "npm:1.0.0-rc.4"
-    lucide-react: "npm:^1.27.0"
-    react: "npm:^19.2.8"
-    react-dom: "npm:^19.2.8"
-    tailwindcss: "npm:^4.3.3"
-    vite: "npm:^8.1.5"
-  dependenciesMeta:
-    better-sqlite3:
-      built: true
-  languageName: unknown
-  linkType: soft
-
 "benchmark@workspace:apps/benchmark":
   version: 0.0.0-use.local
   resolution: "benchmark@workspace:apps/benchmark"
@@ -12526,6 +12504,29 @@ __metadata:
   checksum: 10c0/c3eed999781a35f7fd935f398b6d8920b6fb00bbc14287bc6de78128ccc1a02c89b95b56742bf7cf0362cc333c61d138532049c7dedc7a328ef13343eff81210
   languageName: node
   linkType: hard
+
+"pulse@workspace:apps/pulse":
+  version: 0.0.0-use.local
+  resolution: "pulse@workspace:apps/pulse"
+  dependencies:
+    "@alepha/telemetry": "workspace:*"
+    "@alepha/ui": "workspace:*"
+    "@tailwindcss/vite": "npm:^4.3.3"
+    "@types/react": "npm:^19.2.17"
+    "@types/react-dom": "npm:^19.2.3"
+    alepha: "workspace:*"
+    better-sqlite3: "npm:^13.0.1"
+    drizzle-kit: "npm:1.0.0-rc.4"
+    lucide-react: "npm:^1.27.0"
+    react: "npm:^19.2.8"
+    react-dom: "npm:^19.2.8"
+    tailwindcss: "npm:^4.3.3"
+    vite: "npm:^8.1.5"
+  dependenciesMeta:
+    better-sqlite3:
+      built: true
+  languageName: unknown
+  linkType: soft
 
 "punycode@npm:^2.3.1":
   version: 2.3.1

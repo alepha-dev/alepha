@@ -6,7 +6,7 @@ import DeployCard from "./DeployCard.tsx";
 
 export interface AppsPageProps {
   /**
-   * Whether bay-ui has a `BAY_TOKEN` at all. Distinguished from an empty app
+   * Whether pulse has a `BAY_TOKEN` at all. Distinguished from an empty app
    * list so "nothing configured" never reads as "a Bay with no apps".
    */
   configured: boolean;
@@ -20,7 +20,7 @@ const AppsPage = (props: AppsPageProps) => {
         <AlertCircle />
         <AlertDescription>
           No Bay is configured. Run <code>bay token</code> on the server, then
-          set <code>BAY_URL</code> and <code>BAY_TOKEN</code> for bay-ui.
+          set <code>BAY_URL</code> and <code>BAY_TOKEN</code> for pulse.
         </AlertDescription>
       </Alert>
     );

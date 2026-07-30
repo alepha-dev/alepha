@@ -22,7 +22,7 @@ import type { BayAppController } from "../../api/controllers/BayAppController.ts
  * `dist/manifest.json`) plus `migrations/`. Nothing here asks the operator to
  * describe the app: the resources it needs, its crons and its runtime are all
  * read out of the manifest, which the build filled in by introspecting the
- * primitives. The only thing bay-ui has to ask is which environment this
+ * primitives. The only thing pulse has to ask is which environment this
  * deploy is, because that is not a property of the artifact.
  */
 const DeployCard = () => {

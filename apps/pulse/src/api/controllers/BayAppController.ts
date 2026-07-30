@@ -5,11 +5,11 @@ import { bayAppSchema } from "../schemas/bayAppSchema.ts";
 import { BayControlService } from "../services/BayControlService.ts";
 
 /**
- * bay-ui's own API — the only surface the browser talks to.
+ * pulse's own API — the only surface the browser talks to.
  *
  * Every endpoint is `admin`-only and every one of them re-exposes a *narrowed*
  * bay-go operation. The browser never receives `BAY_TOKEN`, never learns the
- * control API's address, and cannot reach operations bay-ui chose not to
+ * control API's address, and cannot reach operations pulse chose not to
  * forward. That indirection is the whole point: the control API deploys code,
  * reads secrets and can delete every backup, so it gets exactly one caller.
  */
@@ -17,7 +17,7 @@ export class BayAppController {
   protected readonly bay = $inject(BayControlService);
 
   /**
-   * Whether bay-ui can reach a Bay at all.
+   * Whether pulse can reach a Bay at all.
    *
    * Deliberately reachable by any signed-in user and deliberately separate from
    * `listApps`: "not configured yet" and "Bay is down" call for different
@@ -28,7 +28,7 @@ export class BayAppController {
     method: "GET",
     path: "/bay/status",
     use: [$secure({ roles: ["admin"] })],
-    description: "Whether bay-ui is configured to reach a Bay",
+    description: "Whether pulse is configured to reach a Bay",
     schema: {
       response: z.object({
         configured: z.boolean(),

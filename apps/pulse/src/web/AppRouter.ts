@@ -66,7 +66,7 @@ export class AppRouter {
   /**
    * Sign-up — the initial bootstrap only.
    *
-   * `BAY_UI_ALLOW_REGISTRATION` gates the realm, not this route: with the flag
+   * `PULSE_ALLOW_REGISTRATION` gates the realm, not this route: with the flag
    * unset the realm refuses registration and the login page stops linking here.
    * Keeping the route mounted avoids a 404 on a link the realm itself rendered.
    */
