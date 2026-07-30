@@ -1,6 +1,6 @@
 # Alepha Lore
 
-Gamified campaign management app built with [Alepha](https://github.com/feunard/alepha). Think World of Warcraft quest system: users create **campaigns**, forge **quests** with objectives, recruit a **party** of users, and progress together — earning XP and leveling up their **characters** across **zones**.
+Campaign management app built with [Alepha](https://github.com/feunard/alepha). Users create **campaigns**, forge **quests** with objectives, invite **members**, and progress together across **zones**. The RPG vocabulary describes the work, never the person — there is no XP, gold, level or achievement system (see "De-gamification" below).
 
 It has since grown well past a quest tracker. The load-bearing surfaces today are **quests** (roadmap + in-flight work), **folios** (campaign memory, wiki-linked, optionally end-to-end encrypted), **petitions** (inbound bug/feature triage), **blights** (deduplicated crash telemetry from partner sites via **sigils**), and the **archive** (directory tree + binary blobs). All five are exposed over **MCP**, which is the primary consumer.
 
@@ -18,7 +18,7 @@ The production Alepha Lore instance hosts the campaign we actually use to run th
 
 **Write back what's worth keeping.** When a session produces a non-obvious decision, gotcha, or architectural fact about Lore/Alepha, persist it as a folio (`folio_create` / `folio_update` with good `tags` + `summary`). When in-flight work changes scope or completes, reflect it on the matching quest. Conversation history is ephemeral; folios and quests are the project's long-term memory.
 
-The codebase used to use the technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`. As of the great rename, code identifiers, DB tables, HTTP routes, MCP tools, and URL params all match the user-facing vocabulary: `campaign`/`quest`/`zone`/`character`/`chronicles`/`difficulty`. A **user** is the account; a **character** is that user's per-campaign gamified entity. There is no longer a translation layer.
+The codebase used to use the technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`. As of the great rename, code identifiers, DB tables, HTTP routes, MCP tools, and URL params all match the user-facing vocabulary: `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty`. A **user** is the account; a **member** is that user's membership row in a campaign. Identity (name, picture) always comes from the account — the per-campaign "character" concept was removed in the 2026-07 de-gamification pass.
 
 All user-facing strings still go through `I18n.ts` for EN/FR localization.
 
@@ -54,11 +54,11 @@ apps/lore/                # This app
 └── public/               # Static assets served at /
 ```
 
-**Controllers (21)** — `AdminInvitation`, `Blight`, `Blob`, `Campaign`, `CampaignQuestPortability`, `CampaignStats`, `Chapter`, `Character`, `Directory`, `Folio`, `Identity`, `Insights`, `Invitation`, `Kanban`, `Petition`, `Quest`, `Session`, `Sigil`, `SigilIngest`, `User`, `Version`.
+**Controllers (20)** — `AdminInvitation`, `Blight`, `Blob`, `Campaign`, `CampaignQuestPortability`, `CampaignStats`, `Chapter`, `Directory`, `Folio`, `Identity`, `Insights`, `Invitation`, `Kanban`, `Petition`, `Quest`, `Session`, `Sigil`, `SigilIngest`, `User`, `Version`.
 
-**Entities (23)** — `archiveBlobs`, `archiveDirectories`, `archiveNames`, `blightIgnoreRules`, `campaigns`, `chapters`, `characters`, `files`, `folioLinks`, `folioRevisions`, `folios`, `identities`, `invitations`, `petitions`, `quests`, `sessions`, `sigilBlightRate`, `sigilBlights`, `sigils`, `sigilUniqueVisitors`, `sigilViews`, `sigilVitals`, `users`.
+**Entities (23)** — `archiveBlobs`, `archiveDirectories`, `archiveNames`, `blightIgnoreRules`, `campaigns`, `chapters`, `files`, `members`, `folioLinks`, `folioRevisions`, `folios`, `identities`, `invitations`, `petitions`, `quests`, `sessions`, `sigilBlightRate`, `sigilBlights`, `sigils`, `sigilUniqueVisitors`, `sigilViews`, `sigilVitals`, `users`.
 
-**Services (25)** — `AchievementEngine`, `ArchiveBlobService`, `ArchiveDirectoryService`, `ArchiveNameService`, `BeaconIngestService`, `BlightIngestService`, `BlightRuleService`, `CampaignLimits`, `CharacterInfo`, `FolioHistoryService`, `FolioLinkService`, `InvitationService`, `PetitionRateLimiter`, `PinnedFolioFolder`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestRunner`, `SigilIngestSupport`, `SigilService`, `VitalsIngestService`, plus `bot-ua-patterns` and `parsers/`.
+**Services (23)** — `ArchiveBlobService`, `ArchiveDirectoryService`, `ArchiveNameService`, `BeaconIngestService`, `BlightIngestService`, `BlightRuleService`, `CampaignLimits`, `FolioHistoryService`, `FolioLinkService`, `InvitationService`, `PetitionRateLimiter`, `PinnedFolioFolder`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestRunner`, `SigilIngestSupport`, `SigilService`, `VitalsIngestService`, plus `bot-ua-patterns` and `parsers/`.
 
 **MCP tools** — `ArchiveTools`, `CampaignTools`, `ChapterTools`, `FolioTools`, `PetitionTools`, `QuestTools`, `SigilTools`.
 
@@ -70,19 +70,17 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 |------|------------|-------------|-------|
 | `/` | `home` | `home/Home.tsx` | Campaign list |
 | `/new-campaign` | `campaignCreate` | `campaign/CampaignCreate.tsx` | New campaign form |
-| `/c/:campaignId` | `campaign` | `campaign/CampaignView.tsx` | Campaign layout — sets `currentCampaignAtom` + chapters/character/quests on load |
+| `/c/:campaignId` | `campaign` | `campaign/CampaignView.tsx` | Campaign layout — sets `currentCampaignAtom` + chapters/member/quests on load |
 | `/c/:campaignId/` | `campaignBoard` | `campaign/CampaignBoardTable.tsx` | Quest list grouped by zone |
 | `/c/:campaignId/chapters` | `campaignChapters` | `campaign/chapters/CampaignChapters.tsx` | Chapters list |
 | `/c/:campaignId/kanban` | `campaignKanban` | `kanban/KanbanBoard.tsx` | Drag & drop columns |
 | `/c/:campaignId/chronicles` | `campaignChronicles` | `campaign/CampaignStats.tsx` | Stats / chronicles layout |
 | `/c/:campaignId/chronicles/` | `chroniclesOverview` | chronicles page | Overview |
 | `/c/:campaignId/chronicles/quests` | `chroniclesQuests` | chronicles page | Quest analytics |
-| `/c/:campaignId/chronicles/party` | `chroniclesParty` | `campaign/chronicles/ChroniclesParty.tsx` | Per-character contribution |
+| `/c/:campaignId/chronicles/party` | `chroniclesParty` | `campaign/chronicles/ChroniclesParty.tsx` | Per-member contribution |
 | `/c/:campaignId/petitions` | `campaignPetitions` | `campaign/petitions/CampaignPetitions.tsx` | Owner inbox: triage bug/feature requests |
 | `/c/:campaignId/blights` | `campaignBlights` | blights page | Crash-telemetry inbox (sigil-fed) |
 | `/c/:campaignId/insights` | `campaignInsights` | insights page | Beacon / vitals analytics |
-| `/c/:campaignId/character` | `campaignMyCharacter` | `character/MyCharacterPage.tsx` | Character sheet + achievements |
-| `/c/:campaignId/roster` | `campaignRoster` | `character/RosterPage.tsx` | Party list — 404s on solo campaigns (<2 characters) |
 | `/c/:campaignId/q/:shortId` | `campaignQuest` | `campaign/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
 | `/c/:campaignId/q/:shortId/graph` | `campaignQuestGraph` | `campaign/quest/QuestGraph.tsx` | Quest dependency graph |
 | `/c/:campaignId/archive` | `campaignFolios` | `folios/FoliosLayout.tsx` | Folio + archive index (note: path is `/archive`, route name is still `campaignFolios`) |
@@ -91,7 +89,7 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/c/:campaignId/archive/:shortId/edit` | `campaignFoliosFolioEdit` | `folios/FolioEditPage.tsx` | Folio editor |
 | `/c/:campaignId/settings` | `campaignSettings` | `campaign/settings/CampaignSettings.tsx` | Settings layout (sub-routes below) |
 | `/c/:campaignId/settings/` | `campaignSettingsBanner` | `…/CampaignSettingsGeneralPage.tsx` | General / banner |
-| `/c/:campaignId/settings/characters` | `campaignSettingsCharacters` | `…/CampaignSettingsCharactersPage.tsx` | Members & pending invitations |
+| `/c/:campaignId/settings/members` | `campaignSettingsMembers` | `…/CampaignSettingsMembersPage.tsx` | Members & pending invitations — the future home of per-member access rights |
 | `/c/:campaignId/settings/zones` | `campaignSettingsZones` | `…/CampaignSettingsZonesPage.tsx` | Zones config |
 | `/c/:campaignId/settings/kanban` | `campaignSettingsKanban` | `…/CampaignSettingsKanbanPage.tsx` | Kanban columns config |
 | `/c/:campaignId/settings/folios` | `campaignSettingsFolios` | `…/CampaignSettingsFoliosPage.tsx` | Folios config |
@@ -111,7 +109,7 @@ Live in `src/web/app/atoms/`. The campaign route loader fills the `current*` ato
 
 **Per-campaign (set by `campaign` route loader)**
 - `currentCampaignAtom` — campaign metadata
-- `currentCampaignCharacterAtom` — the viewer's character for this campaign
+- `currentCampaignMemberAtom` — the viewer's membership row for this campaign
 - `currentAssignedQuestsAtom` — quests assigned to the viewer
 - `currentChaptersAtom` — chapter list
 
@@ -271,35 +269,26 @@ Surfaced at `/c/:id/archive` and over MCP via `ArchiveTools`.
 
 Two languages: English (`en`) and French (`fr`). All translations in `src/web/app/services/I18n.ts`. Always use `tr()` from `useI18n<I18n, "en">()` — never hardcode strings.
 
-## Gamification System
+## De-gamification (2026-07)
 
-Defined in `src/api/services/CharacterInfo.ts`:
-- **20 levels** with increasing XP thresholds (D&D-style 1–20 cap)
-- **XP** earned from completing quests (`difficulty × 150 + priority bonus`)
-- **Gold/Silver** accrues from quest rewards (`balance` is a silver ledger; `gold = floor(balance / 100)`)
-- **Ranks**: F, C, B, A, S (mapped from quest difficulty 1–5 — a quest property, not a character one)
-- **Characters** are per-campaign — each user has a separate character (and separate progression) per campaign
-- **Achievements** (`AchievementEngine`) are server-evaluated badge keys appended to `characters.achievements`. One may be equipped as a Title. The registry currently ships two (`hard_worker`, `bookkeeper`); adding more is a registry edit, no schema work.
+Lore has **no gamification currency**: no XP, no gold, no levels, no achievements, no titles, no per-campaign alias/avatar. All of it was removed in two passes (spec: `docs/superpowers/specs/2026-07-30-lore-degamification-design.md`):
 
-### ⚠️ There is no Shop, no paywall, and no level gating
+- First pass killed the wall: `FeaturePaywallService` / Shop / `requiredLevel` quest gating. Ex-walled features (Chronicles, Quest Reminder, …) are plain `campaign.features.*` owner toggles.
+- Second pass removed the remaining cosmetic progression and collapsed `characters` into `members` (migration `20260730154120_heavy_nova`: `ALTER TABLE characters RENAME TO members` + column drops — no rebuild, D1-safe). `CharacterInfo`, `AchievementEngine`, `CharacterController`, the character sheet, roster, XP bar and level-up animation are gone.
 
-Removed deliberately. A previous design sold campaign features (Chronicles, Quest Reminder, Quest Gating) for gold via a single-payer Shop, and let quests carry `requiredLevel` / `recommendedLevel` gates. **All of it is gone**:
+What survives, deliberately:
 
-- `FeaturePaywallService`, `FeatureRegistry`, `FeaturePaywallController`, `CampaignShopPage` — deleted.
-- `quests.recommendedLevel` / `quests.requiredLevel` — dropped (migration `0049`).
-- `campaign.features.questGating` — removed from the schema.
-- **Chronicles is now free** for any campaign member.
-- **Quest Reminder** is gated only on the `features.questReminder` owner toggle.
-- `campaigns.unlockedFeatures` / `campaigns.unlockHistory` — **kept in the schema as `@deprecated` dead columns**. Nothing reads or writes them. They stay because dropping a `campaigns` column risks the D1 rebuild path, and `campaigns` is the CASCADE parent that wiped prod in 2026-05. Same treatment as the vestigial `public` column.
+- **Quest rank letters F/C/B/A/S** — derived from quest difficulty 1–5 in `src/web/app/components/campaign/quest/questRank.ts`. A property of the task, never of the person.
+- The RPG **vocabulary** (campaigns, quests, zones, folios, blights, sigils) — flavor, not mechanics.
+- `campaigns.unlockedFeatures` / `unlockHistory` / `public` — **`@deprecated` dead columns**. Nothing reads or writes them; they stay because dropping a `campaigns` column risks the D1 rebuild path and `campaigns` is the CASCADE parent that wiped prod in 2026-05.
 
-XP and gold still accrue on quest completion and still drive levels and the level-up animation — they are **cosmetic progression only**. Gold has no sink. Do not reintroduce a spend mechanic without an explicit decision; the wall was removed because it gated real work behind grinding.
+Do not reintroduce progression mechanics without an explicit decision — the goal is a neutral tool usable with other people; the metaphor describes the work, never the person.
 
 ## Key Dependencies
 
 - `@dnd-kit/core` — drag & drop (kanban, quest board)
-- `@alepha/ui` `MarkdownView` + a plain `<Textarea>` (`src/web/app/components/shared/TextEditor.tsx`) — quest/folio descriptions are markdown, no WYSIWYG
+- `@mdxeditor/editor` — the shared WYSIWYG markdown editor (`src/web/app/components/shared/markdown-editor/MarkdownEditor.tsx`): lazy client-only, markdown-features-only, source-mode toggle, per-context image upload (folios → archive blobs; quests → attachments, embedded ids merged server-side by `QuestService.mergeEmbeddedAttachments`). Rendering stays `@alepha/ui` `MarkdownView`. The petition request form keeps a plain textarea (its own paste/drag attachment flow)
 - `recharts` — chronicles charts
-- `framer-motion` — keyed animations (level up screen, transitions)
 - `tw-animate-css` — generic enter/exit keyframe utilities used from Tailwind classes (replaces the old `animate.css`)
 
 ## Commands
@@ -380,12 +369,10 @@ Re-verify this rule exists after any Cloudflare zone reconfiguration. Without it
 - `quest-csv-*.spec.ts` — generic + format-specific CSV import/export, plus the Trello round-trip
 - `quest-objective-history.spec.ts` — objective state history tracking
 - `quest-reminder.spec.ts` — quest reminder/notification logic
-- `quest-reward-delta.spec.ts` — **regression guard**: `completeQuest` reports the per-quest award, not the character's lifetime totals (MCP `quest_complete` used to return the accumulators)
 - `folio-protected-history.spec.ts` — **regression guard**: the protection-domain invariant (no plaintext left in `folio_revisions` after encrypting; pinned revisions are not exempt)
 - `folio-*.spec.ts` — links, backlinks, tidy, pinning, permissions, history, activity, blob links
 - `sigil-*.spec.ts` / `vitals-ingest.spec.ts` / `blight-controller.spec.ts` — ingest, origin gating, rate limiting, purge jobs, migration safety
 - `archive-module.spec.ts` — directory tree + blobs
-- `achievement-engine.spec.ts` — predicate evaluation + grant idempotency
 - Shared fixtures live in `test/fixtures/`
 
 ### E2E convention: one file per feature
@@ -397,13 +384,13 @@ Re-verify this rule exists after any Cloudflare zone reconfiguration. Without it
 - `register.spec.ts` — registration form + email verification
 - `settings-features.spec.ts` — campaign feature toggles
 - `theme-flicker.spec.ts` — theme no-flash boot
-- `invitation.spec.ts` — owner invites → user accepts → joins campaign as a character (drives the email-link round-trip)
+- `invitation.spec.ts` — owner invites → user accepts → joins campaign as a member (drives the email-link round-trip)
 - `protected-folio.spec.ts` — end-to-end encrypted folios (passphrase round-trip, wrong-passphrase rejection, no plaintext on the wire)
 - `quest-import-export.spec.ts` — Data settings page CSV export (import side is covered by the unit specs)
 - `archive.spec.ts` — directory tree navigation + blob upload
 - `blights.spec.ts` / `sigil.spec.ts` — sigil issuance, ingest, blight triage + forward-to-quest
 - `campaign-wizard.spec.ts` — 3-step create wizard
-- `my-character.spec.ts` / `character-identity.spec.ts` / `roster.spec.ts` — character sheet, alias/avatar, party list
+- `members.spec.ts` — settings members list, identity hover-card, dead `/character` + `/roster` URLs 404
 - `home.spec.ts`, `admin-user-detail.spec.ts`
 - `security-public-campaign.spec.ts` — regression guard: non-member account hits 403 on every campaign endpoint after the public-campaign purge
 - `security-file-access.spec.ts` — regression guard: `/api/files/:id` IDOR fix via `LoreFileAccessProvider` (only owners/members can download an attachment)
@@ -448,7 +435,7 @@ rm node_modules/.alepha/sqlite.db
 yarn dev   # recreates + runs migrations from migrations/sqlite/
 ```
 
-Clears all campaigns, characters, sessions, etc. Migrations auto-apply on boot. Optionally also `rm -rf node_modules/.alepha/emails/` to clear the inbox.
+Clears all campaigns, members, sessions, etc. Migrations auto-apply on boot. Optionally also `rm -rf node_modules/.alepha/emails/` to clear the inbox.
 
 ### Playwright tips
 

@@ -157,7 +157,7 @@ const CampaignActionsCreateButton = () => {
               {isOwner && (
                 <DropdownMenuItem onClick={() => setShowInvite(true)}>
                   <UserPlus className="size-4" />
-                  {tr("campaign.menu.create-character")}
+                  {tr("campaign.menu.invite-member")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -190,17 +190,17 @@ const CampaignActionsCreateButton = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {tr("campaign.settings.characters.invite.title")}
+              {tr("campaign.settings.members.invite.title")}
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3">
             <p className="text-muted-foreground text-sm">
-              {tr("campaign.settings.characters.invite.description", {
+              {tr("campaign.settings.members.invite.description", {
                 args: [campaign.title],
               })}
             </p>
             <div className="flex flex-col gap-1.5">
-              <Label>{tr("campaign.settings.characters.invite.email")}</Label>
+              <Label>{tr("campaign.settings.members.invite.email")}</Label>
               <div className="relative">
                 <Mail className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />
                 <Input
@@ -217,10 +217,10 @@ const CampaignActionsCreateButton = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowInvite(false)}>
-              {tr("campaign.settings.characters.invite.cancel")}
+              {tr("campaign.settings.members.invite.cancel")}
             </Button>
             <Button onClick={handleInvite} disabled={inviteLoading}>
-              {tr("campaign.settings.characters.invite.submit")}
+              {tr("campaign.settings.members.invite.submit")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -5,18 +5,6 @@ export default {
   "language.en": "English",
   "language.fr": "Français",
 
-  "editor.bold": "Bold (⌘B)",
-  "editor.italic": "Italic (⌘I)",
-  "editor.heading": "Heading",
-  "editor.quote": "Quote",
-  "editor.list": "Bulleted list",
-  "editor.orderedList": "Numbered list",
-  "editor.code": "Inline code",
-  "editor.link": "Link (⌘K)",
-  "editor.preview": "Preview",
-  "editor.edit": "Edit",
-  "editor.preview.empty": "Nothing to preview yet.",
-
   "header.actions.profile": "Profile",
   "header.actions.login": "Sign In",
   "header.actions.logout": "Logout",
@@ -216,13 +204,11 @@ export default {
 
   "campaign.menu.create-quest": "Create Quest",
   "campaign.menu.create-folio": "New Folio",
-  "campaign.menu.create-character": "New Character",
+  "campaign.menu.invite-member": "Invite Member",
   "campaign.menu.create-petition": "New Petition",
   "campaign.menu.create-more": "More create actions",
   "campaign.menu.board": "Board",
   "campaign.menu.kanban": "Kanban",
-  "campaign.menu.myCharacter": "Sheet",
-  "campaign.menu.roster": "Roster",
   "campaign.menu.chronicles": "Chronicles",
   "campaign.menu.folios": "Archive",
   "campaign.menu.settings": "Settings",
@@ -302,9 +288,6 @@ export default {
   "quest.graph.noDescription": "(no description)",
   "quest.graph.pickAQuest":
     "Pick a quest on the timeline to see its description.",
-  "quest.view.rewards": "Rewards",
-  "quest.view.receive": "You will receive:",
-  "quest.view.experience": "Experience:",
   "quest.view.actions.complete": "Complete Quest",
   "quest.view.actions.abandon": "Abandon Quest",
   "quest.view.actions.shelve": "Shelve",
@@ -330,15 +313,15 @@ export default {
 
   "quest.view.history": "History",
 
-  "campaign.settings.characters.title": "Characters",
-  "campaign.settings.characters.empty": "No characters in this campaign yet.",
-  "campaign.settings.characters.invite.action": "Invite",
-  "campaign.settings.characters.invite.title": "Invite a user",
-  "campaign.settings.characters.invite.description":
+  "campaign.settings.members.title": "Members",
+  "campaign.settings.members.empty": "No members in this campaign yet.",
+  "campaign.settings.members.invite.action": "Invite",
+  "campaign.settings.members.invite.title": "Invite a user",
+  "campaign.settings.members.invite.description":
     'Enter the email address of the user you want to invite to "$1".',
-  "campaign.settings.characters.invite.email": "Email Address",
-  "campaign.settings.characters.invite.cancel": "Cancel",
-  "campaign.settings.characters.invite.submit": "Send Invitation",
+  "campaign.settings.members.invite.email": "Email Address",
+  "campaign.settings.members.invite.cancel": "Cancel",
+  "campaign.settings.members.invite.submit": "Send Invitation",
 
   "campaign.settings.danger.title": "Danger Zone",
   "campaign.settings.actions.delete": "Delete this campaign",
@@ -346,16 +329,16 @@ export default {
     "Sometimes retreat is the only option. All quests and progress will be lost forever.",
   "campaign.settings.actions.leave": "Leave this campaign",
   "campaign.settings.actions.leave.helper":
-    "You will lose your character, XP and balance for this campaign. Any unfinished quests you accepted will be released.",
+    "Any unfinished quests you accepted will be released to other members.",
   "campaign.settings.leave.modal.title": "Leave campaign",
   "campaign.settings.leave.modal.description":
-    "Are you sure you want to leave $1? This will remove your character, XP and balance for this campaign. Quests you have not completed will be released to other characters.",
+    "Are you sure you want to leave $1? Quests you have not completed will be released to other members.",
   "campaign.settings.leave.modal.cancel": "Cancel",
   "campaign.settings.leave.modal.submit": "Leave campaign",
 
   "campaign.settings.general.title": "Campaign",
   "campaign.settings.nav.banner": "General",
-  "campaign.settings.nav.characters": "Characters",
+  "campaign.settings.nav.members": "Members",
   "campaign.settings.nav.zones": "Zones",
   "campaign.settings.data.title": "Data",
   "campaign.settings.data.export.title": "Export quests",
@@ -406,7 +389,7 @@ export default {
   "chronicles.overview.kpi.open": "Open",
   "chronicles.overview.kpi.completedThisWeek": "Completed this week",
   "chronicles.overview.kpi.cycleTime": "Avg cycle time",
-  "chronicles.overview.kpi.activeCharacters": "Active characters",
+  "chronicles.overview.kpi.activeMembers": "Active members",
   "chronicles.overview.kpi.completionHint": "$1/$2 quests",
   "chronicles.overview.kpi.weekDeltaHint": "$1 vs last week",
   "chronicles.overview.burnup.title": "Burn-up",
@@ -436,8 +419,6 @@ export default {
   "chronicles.party.leaderboard.title": "Leaderboard",
   "chronicles.party.leaderboard.empty": "No party members yet.",
   "chronicles.party.label.quests": "quests",
-  "chronicles.party.label.xp": "XP",
-  "chronicles.party.label.gold": "gold",
   "chronicles.party.contribution.title": "Contribution",
   "chronicles.party.contribution.empty": "Not enough activity yet.",
   "chronicles.party.idle.title": "Idle members",
@@ -585,7 +566,7 @@ export default {
   "quest.item.bonus": "Bonus",
   "quest.item.bonus.description": "This quest is optional.",
   "quest.item.highPriority": "High Priority !",
-  "quest.item.highPriority.description": "Which means more rewards.",
+  "quest.item.highPriority.description": "Tackle this one first.",
 
   "quest.group.quests": "$1 quests",
   "quest.group.quests.one": "1 quest",
@@ -595,30 +576,12 @@ export default {
   "zone.rename.name": "Zone Name",
   "zone.rename.submit": "Rename",
 
-  "character.sheet.level": "Level $1",
-  "character.sheet.identity.title": "Identity",
-  "character.sheet.identity.name": "Name",
-  "character.sheet.identity.avatar": "Avatar",
-  "character.sheet.identity.title.label": "Title",
-  "character.sheet.achievements.title": "Achievements",
-
-  "character.roster.title": "Roster — $1 characters",
-  "character.roster.empty": "No characters yet.",
-  "character.roster.sort.level": "Level",
-  "character.roster.sort.joined": "Joined",
-
   "error.title": "Oh no! Something went wrong.",
   "error.description":
     "We apologize for the inconvenience. Please try again later or contact support if the issue persists.",
   "error.back": "Back",
   "error.reload": "Reload App",
   "error.home": "Home",
-
-  "xp.bar.title": "Experience Bar",
-  "xp.bar.description":
-    "Shows your current experience progress towards the next level.",
-  "xp.levelUp.title": "Level Up!",
-  "xp.levelUp.subtitle": "Level $1",
 
   "common.cancel": "Cancel",
   "common.noResults": "No results",

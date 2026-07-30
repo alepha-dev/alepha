@@ -179,6 +179,69 @@ describe("BuildCloudflareTask", () => {
       expect(wrangler.durable_objects).toBeUndefined();
       expect(wrangler.migrations).toBeUndefined();
     });
+
+    /**
+     * `ctx.options.cloudflare.config` is spread into the wrangler BEFORE the
+     * enhancers run, so a user-supplied `migrations` array is already present
+     * here. Blindly pushing `{ tag: "v1" }` on top of it produced either a
+     * duplicate tag (wrangler error) or a duplicated class declaration.
+     */
+    it("skips the migration when a user migration already declares the DO class", () => {
+      const task = createTask();
+      task.setHasWebSocket(true);
+
+      const wrangler: Record<string, any> = {
+        migrations: [
+          { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
+        ],
+      };
+      task.testEnhanceDurableObjects(wrangler);
+
+      expect(wrangler.migrations).toEqual([
+        { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
+      ]);
+      // The binding itself is still required.
+      expect(wrangler.durable_objects.bindings).toEqual([
+        {
+          name: "ALEPHA_WEBSOCKET",
+          class_name: "AlephaWebSocketDurableObject",
+        },
+      ]);
+    });
+
+    it("picks the first free tag when user migrations already occupy v1", () => {
+      const task = createTask();
+      task.setHasWebSocket(true);
+
+      const wrangler: Record<string, any> = {
+        migrations: [{ tag: "v1", new_classes: ["MyOwnDurableObject"] }],
+      };
+      task.testEnhanceDurableObjects(wrangler);
+
+      expect(wrangler.migrations).toEqual([
+        { tag: "v1", new_classes: ["MyOwnDurableObject"] },
+        { tag: "v2", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
+      ]);
+    });
+
+    it("does not double the DO binding when the user config already declares it", () => {
+      const task = createTask();
+      task.setHasWebSocket(true);
+
+      const wrangler: Record<string, any> = {
+        durable_objects: {
+          bindings: [
+            {
+              name: "ALEPHA_WEBSOCKET",
+              class_name: "AlephaWebSocketDurableObject",
+            },
+          ],
+        },
+      };
+      task.testEnhanceDurableObjects(wrangler);
+
+      expect(wrangler.durable_objects.bindings).toHaveLength(1);
+    });
   });
 
   describe("writeWorkerEntryPoint", () => {
@@ -241,6 +304,27 @@ describe("BuildCloudflareTask", () => {
         expect(fs.wasWrittenMatching(ENTRY, /endpoint\.options\.secure/)).toBe(
           false,
         );
+      });
+
+      /**
+       * A `$room` registers on the provider's room registry, not the
+       * `$websocket` endpoint registry — `getEndpoint(path)` returns
+       * `undefined` for a room-only path, which silently skipped the 401
+       * check and let anonymous sockets into a `$room({ secure: true })`.
+       */
+      it("falls back to the room endpoint for the secure-401 check", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(true);
+        task.setWebsocketPaths(["/ws/world"]);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /wsProvider\.getEndpoint\(url\.pathname\) \?\?\s*wsProvider\.getRoomEndpoint\(url\.pathname\)/,
+          ),
+        ).toBe(true);
       });
 
       it("strips any client-forged x-alepha-ws-user header before trusting it", async () => {
@@ -322,6 +406,89 @@ describe("BuildCloudflareTask", () => {
           /\["\/ws\/chat"\]/,
         ),
       ).toBe(true);
+    });
+  });
+
+  describe("generateCloudflare (live probe)", () => {
+    const WRANGLER = "/root/dist/wrangler.jsonc";
+    const ENTRY = "/root/dist/main.cloudflare.js";
+
+    /**
+     * Minimal fake of the workspace's live `ctx.alepha`: `primitives` answers
+     * per primitive name; every `inject` the task makes (CronProvider, the CF
+     * email provider) is already wrapped in try/catch, so throwing is enough
+     * to mean "absent".
+     */
+    const fakeAlephaWith = (byName: Record<string, string[]>) =>
+      ({
+        primitives: (name: string) =>
+          (byName[name] ?? []).map((path) => ({
+            options: { channel: { options: { path } } },
+          })),
+        inject: () => {
+          throw new Error("not available in this fake");
+        },
+      }) as any;
+
+    const contextFor = (byName: Record<string, string[]>) =>
+      ({
+        root: "/root",
+        options: {},
+        platformOptions: null,
+        manifest: undefined,
+        alepha: fakeAlephaWith(byName),
+      }) as any;
+
+    /**
+     * lindocara's shape: the realtime layer is `$room` only (no `$websocket`
+     * primitive at all). Without the union, the build emitted a worker with
+     * no upgrade branch, no DO binding and no DO class export.
+     */
+    it("wires a $room-only app exactly like a $websocket one", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      await task.testGenerateCloudflare(
+        contextFor({ $room: ["/ws/world", "/ws/party", "/ws/presence"] }),
+        "dist",
+      );
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      expect(wrangler.durable_objects.bindings).toEqual([
+        {
+          name: "ALEPHA_WEBSOCKET",
+          class_name: "AlephaWebSocketDurableObject",
+        },
+      ]);
+      expect(wrangler.migrations).toEqual([
+        { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
+      ]);
+
+      expect(
+        fs.wasWrittenMatching(
+          ENTRY,
+          /export \{ AlephaWebSocketDurableObject \} from "\.\/index\.js"/,
+        ),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          ENTRY,
+          /\["\/ws\/world","\/ws\/party","\/ws\/presence"\]/,
+        ),
+      ).toBe(true);
+    });
+
+    it("dedups a channel path shared by a $websocket and a $room", async () => {
+      const { task, fs } = createTaskWithFs();
+
+      await task.testGenerateCloudflare(
+        contextFor({ $websocket: ["/ws/chat"], $room: ["/ws/chat"] }),
+        "dist",
+      );
+
+      expect(fs.wasWrittenMatching(ENTRY, /\["\/ws\/chat"\]/)).toBe(true);
+      expect(
+        fs.wasWrittenMatching(ENTRY, /\["\/ws\/chat","\/ws\/chat"\]/),
+      ).toBe(false);
     });
   });
 });

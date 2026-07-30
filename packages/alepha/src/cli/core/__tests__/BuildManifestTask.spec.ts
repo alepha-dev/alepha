@@ -31,6 +31,24 @@ const fakeAlepha = {
   },
 } as any;
 
+/**
+ * Same fake, but with the primitive answers parameterized per name — for the
+ * `$websocket` / `$room` union cases.
+ */
+const fakeAlephaWithPrimitives = (byName: Record<string, string[]>) =>
+  ({
+    primitives: (name: string) =>
+      (byName[name] ?? []).map((path) => ({
+        options: { channel: { options: { path } } },
+      })),
+    inject: () => {
+      throw new AlephaError("not available in this fake");
+    },
+    dump: () => {
+      throw new AlephaError("not available in this fake");
+    },
+  }) as any;
+
 describe("BuildManifestTask", () => {
   const createTask = () => {
     const alepha = Alepha.create().with({
@@ -63,6 +81,43 @@ describe("BuildManifestTask", () => {
       const manifest = readManifest(fs);
       expect(manifest.websocketPaths).toEqual(["/ws/chat"]);
       expect(manifest.resources.hasWebSocket).toBe(true);
+    });
+
+    /**
+     * A `$room` rides the same worker upgrade branch and the same Durable
+     * Object as a `$websocket`, so an app whose realtime layer is rooms-only
+     * must still record `hasWebSocket` + its channel paths — otherwise the
+     * `--prebuilt` deploy path emits a worker with no WebSocket wiring.
+     */
+    it("unions $room channel paths into websocketPaths", async () => {
+      const { task, fs } = createTask();
+      const ctx = contextFor();
+      ctx.alepha = fakeAlephaWithPrimitives({
+        $room: ["/ws/world", "/ws/party", "/ws/presence"],
+      });
+
+      await task.testWriteManifest(ctx, "dist");
+
+      const manifest = readManifest(fs);
+      expect(manifest.websocketPaths).toEqual([
+        "/ws/world",
+        "/ws/party",
+        "/ws/presence",
+      ]);
+      expect(manifest.resources.hasWebSocket).toBe(true);
+    });
+
+    it("dedups a channel path shared by a $websocket and a $room", async () => {
+      const { task, fs } = createTask();
+      const ctx = contextFor();
+      ctx.alepha = fakeAlephaWithPrimitives({
+        $websocket: ["/ws/chat"],
+        $room: ["/ws/chat"],
+      });
+
+      await task.testWriteManifest(ctx, "dist");
+
+      expect(readManifest(fs).websocketPaths).toEqual(["/ws/chat"]);
     });
 
     it("derives `project` from the workspace directory name, slugified", async () => {

@@ -119,10 +119,10 @@ export class BuildServerTask extends BuildTask {
     // the wrangler `durable_objects`/`migrations` config to be reachable at the
     // edge, it must ride out through the app's own server bundle as a real
     // named export. Only do this for a workerd build of an app that actually
-    // uses `$websocket` — every other build stays untouched.
+    // uses `$websocket` or `$room` — every other build stays untouched.
     this.exportDurableObject =
       (opts.conditions?.includes("workerd") ?? false) &&
-      opts.alepha.primitives("$websocket").length > 0;
+      this.usesWebSocket(opts.alepha);
 
     // For the entry chunk to carry the named export, build from a generated
     // entry that both runs the real app entry (for its side effects) and
@@ -282,14 +282,28 @@ export class BuildServerTask extends BuildTask {
    * the generated Cloudflare worker entry (`main.cloudflare.js` does
    * `export { AlephaWebSocketDurableObject } from "./index.js"`).
    *
-   * Returns an empty string for any build that is not a workerd + `$websocket`
-   * build, keeping `dist/index.js` byte-identical to before in every other case.
+   * Returns an empty string for any build that is not a workerd +
+   * `$websocket`/`$room` build, keeping `dist/index.js` byte-identical to
+   * before in every other case.
    */
   protected durableObjectReexport(entryFile: string): string {
     if (!this.exportDurableObject) {
       return "";
     }
     return `export { AlephaWebSocketDurableObject } from "./server/${entryFile}";\n`;
+  }
+
+  /**
+   * Whether the workspace's realtime layer needs the Durable Object export:
+   * true when it registers `$websocket` OR `$room` primitives. A rooms-only
+   * app (no `$websocket` at all) still runs inside
+   * `AlephaWebSocketDurableObject`, so it needs the exact same re-export.
+   */
+  protected usesWebSocket(alepha: Alepha): boolean {
+    return (
+      alepha.primitives("$websocket").length > 0 ||
+      alepha.primitives("$room").length > 0
+    );
   }
 
   /**

@@ -52,15 +52,19 @@ export class BuildCloudflareTask extends BuildTask {
     "// Changes to this file will be lost when the code is regenerated.\n";
 
   /**
-   * Whether the workspace registers any `$websocket` primitive. Gates
-   * `enhanceDurableObjects` — resolved in `generateCloudflare` from either
-   * `ctx.manifest` (prebuilt/manifest mode) or a live `ctx.alepha` probe.
+   * Whether the workspace registers any `$websocket` OR `$room` primitive —
+   * both ride the same worker upgrade branch and the same
+   * `AlephaWebSocketDurableObject`, so a rooms-only app needs the exact same
+   * wiring. Gates `enhanceDurableObjects` — resolved in `generateCloudflare`
+   * from either `ctx.manifest` (prebuilt/manifest mode) or a live
+   * `ctx.alepha` probe.
    */
   protected hasWebSocket = false;
 
   /**
-   * Registered `$websocket` channel paths (e.g. `/ws/chat`), resolved in
-   * `generateCloudflare` alongside `hasWebSocket` — from a live `ctx.alepha`
+   * Registered realtime channel paths (e.g. `/ws/chat`) — the dedup'd union
+   * of every `$websocket` and `$room` channel — resolved in
+   * `generateCloudflare` alongside `hasWebSocket`. From a live `ctx.alepha`
    * probe, or from `ctx.manifest.websocketPaths` in prebuilt/manifest mode
    * (see `BuildManifestTask`, which captures the same paths at artifact-build
    * time so the manifest-only deploy path — Alepha Rocket `--prebuilt` —
@@ -150,11 +154,21 @@ export class BuildCloudflareTask extends BuildTask {
       this.websocketPaths = ctx.manifest.websocketPaths ?? [];
     } else {
       try {
-        const websocketPrimitives = ctx.alepha.primitives("$websocket");
-        this.hasWebSocket = websocketPrimitives.length > 0;
-        this.websocketPaths = websocketPrimitives.map(
-          (p: any) => p.options.channel.options.path,
-        );
+        // Union of both realtime primitives: a `$room` registers on its
+        // `$channel` path exactly like a `$websocket`, and a rooms-only app
+        // (no `$websocket` at all) still needs the upgrade branch, the DO
+        // binding and the DO class export. Dedup'd — a `$room` may share its
+        // channel with a `$websocket` on the same path.
+        const realtimePrimitives = [
+          ...ctx.alepha.primitives("$websocket"),
+          ...ctx.alepha.primitives("$room"),
+        ];
+        this.websocketPaths = [
+          ...new Set(
+            realtimePrimitives.map((p: any) => p.options.channel.options.path),
+          ),
+        ];
+        this.hasWebSocket = this.websocketPaths.length > 0;
       } catch {
         this.hasWebSocket = false;
         this.websocketPaths = [];
@@ -398,14 +412,21 @@ export class BuildCloudflareTask extends BuildTask {
   }
 
   /**
-   * Durable Object binding + SQLite migration for the `$websocket` primitive
-   * on Cloudflare. Gated on `hasWebSocket` (resolved in `generateCloudflare`
-   * from `ctx.manifest` or a live `ctx.alepha` probe) — a workerd app with no
-   * `$websocket` usage gets no binding and no migration.
+   * Durable Object binding + SQLite migration for the `$websocket`/`$room`
+   * primitives on Cloudflare. Gated on `hasWebSocket` (resolved in
+   * `generateCloudflare` from `ctx.manifest` or a live `ctx.alepha` probe) —
+   * a workerd app with no realtime usage gets no binding and no migration.
    *
    * `new_sqlite_classes` (rather than `new_classes`) is required because
    * `AlephaWebSocketDurableObject` uses the SQLite-backed Durable Object
    * storage API.
+   *
+   * The user's `cloudflare.config` is spread into the wrangler BEFORE the
+   * enhancers run, so a user-supplied `migrations`/`durable_objects` block is
+   * already present here. The push must be idempotent: skip when a user
+   * migration already declares the DO class, and never reuse an occupied
+   * migration tag — a duplicated tag or class declaration is a wrangler
+   * deploy error.
    */
   protected enhanceDurableObjects(wrangler: WranglerConfig): void {
     if (!this.hasWebSocket) {
@@ -414,14 +435,37 @@ export class BuildCloudflareTask extends BuildTask {
 
     wrangler.durable_objects ??= {};
     wrangler.durable_objects.bindings = wrangler.durable_objects.bindings || [];
-    wrangler.durable_objects.bindings.push({
-      name: WEBSOCKET_DO_BINDING,
-      class_name: WEBSOCKET_DO_CLASS,
-    });
+    const bindings = wrangler.durable_objects.bindings as Array<{
+      name?: string;
+      class_name?: string;
+    }>;
+    if (!bindings.some((b) => b.class_name === WEBSOCKET_DO_CLASS)) {
+      bindings.push({
+        name: WEBSOCKET_DO_BINDING,
+        class_name: WEBSOCKET_DO_CLASS,
+      });
+    }
 
     wrangler.migrations = wrangler.migrations || [];
-    wrangler.migrations.push({
-      tag: "v1",
+    const migrations = wrangler.migrations as Array<Record<string, unknown>>;
+    const declaresClass = (value: unknown): boolean =>
+      Array.isArray(value) && value.includes(WEBSOCKET_DO_CLASS);
+    if (
+      migrations.some(
+        (m) =>
+          declaresClass(m.new_sqlite_classes) || declaresClass(m.new_classes),
+      )
+    ) {
+      return;
+    }
+
+    const tags = new Set(migrations.map((m) => m.tag));
+    let n = 1;
+    while (tags.has(`v${n}`)) {
+      n += 1;
+    }
+    migrations.push({
+      tag: `v${n}`,
       new_sqlite_classes: [WEBSOCKET_DO_CLASS],
     });
   }
@@ -523,10 +567,15 @@ export class BuildCloudflareTask extends BuildTask {
           __alepha.log.warn("Failed to resolve WebSocket user identity", err);
         }
 
-        // \`getEndpoint\` returns the \`WebSocketPrimitiveOptions\` config object
-        // directly (see registerEndpoint in the providers) — \`secure\` is a
-        // top-level field, there is no \`.options\` wrapper on it.
-        const endpoint = wsProvider.getEndpoint(url.pathname);
+        // \`getEndpoint\` covers \`$websocket\` endpoints; a \`$room\` registers on
+        // the provider's room registry instead, so fall back to
+        // \`getRoomEndpoint\` — without it, \`$room({ secure })\` was silently
+        // unenforced. Both return their primitive options object directly
+        // (see registerEndpoint/registerRoom in the providers) — \`secure\` is
+        // a top-level field, there is no \`.options\` wrapper on it.
+        const endpoint =
+          wsProvider.getEndpoint(url.pathname) ??
+          wsProvider.getRoomEndpoint(url.pathname);
         if (endpoint && endpoint.secure && !userId) {
           return new Response("Unauthorized", { status: 401 });
         }

@@ -124,6 +124,35 @@ export class QuestService {
   }
 
   /**
+   * Collect quest-attachment file ids embedded in markdown text (the
+   * editor emits `![alt](/api/files/<uuid>)`) and merge them into the
+   * given attachments list.
+   *
+   * Runs server-side on every write that carries markdown (description,
+   * note, completion message) so embedded images become quest
+   * attachments regardless of the author — web editor or MCP agent.
+   * Being listed in `quest.attachments` is what lets
+   * `LoreFileAccessProvider` resolve the file to a campaign and grant
+   * every member read access; an unmerged embed would 403 for anyone
+   * but its uploader.
+   */
+  mergeEmbeddedAttachments(
+    texts: Array<string | undefined>,
+    current: string[],
+  ): string[] {
+    const found = new Set(current);
+    const pattern =
+      /\/api\/files\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi;
+    for (const text of texts) {
+      if (!text) continue;
+      for (const match of text.matchAll(pattern)) {
+        found.add(match[1]);
+      }
+    }
+    return [...found];
+  }
+
+  /**
    * Create a quest. Holds the shared mechanics:
    * 1. allocate the next per-campaign `shortId`,
    * 2. sanitize the (attacker-controllable) rich-text description,
@@ -159,7 +188,10 @@ export class QuestService {
       difficulty: input.difficulty ?? 2,
       estimateMinutes: input.estimateMinutes ?? undefined,
       objectives: this.ensureObjectiveIds(input.objectives ?? []),
-      attachments: input.attachments ?? [],
+      attachments: this.mergeEmbeddedAttachments(
+        [input.description],
+        input.attachments ?? [],
+      ),
       tags: normalizeQuestTags(input.tags ?? []),
       dependsOn: input.dependsOn ?? undefined,
       petitionId: input.petitionId,

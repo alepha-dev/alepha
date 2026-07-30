@@ -102,6 +102,15 @@ alepha build --target=cloudflare --mode production
 
 This loads `.env` and `.env.production` before building.
 
+## WebSockets and Rooms
+
+Apps registering `$websocket` or `$room` primitives get their realtime wiring automatically — the two are treated identically, so a rooms-only app needs no extra configuration:
+
+- the worker entry gets a WebSocket upgrade branch routing each registered channel path to a Durable Object
+- `wrangler.jsonc` gets the `ALEPHA_WEBSOCKET` Durable Object binding and its SQLite migration (skipped if your own `cloudflare.config.migrations` already declares `AlephaWebSocketDurableObject`; otherwise the first free `v<n>` tag is used)
+- the server bundle re-exports the `AlephaWebSocketDurableObject` class so wrangler can resolve it
+- `secure: true` on either primitive rejects unauthenticated upgrades with a 401
+
 ## Static Assets
 
 If your project has a React frontend, the built client assets are placed in `dist/public/` and served via Cloudflare's asset binding.

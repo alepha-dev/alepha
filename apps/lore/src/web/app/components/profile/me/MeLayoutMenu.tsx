@@ -2,7 +2,6 @@ import { useRouter } from "alepha/react/router";
 import {
   KeyRound,
   Mail,
-  MapPinned,
   MessageSquareWarning,
   Plug,
   RadioTower,
@@ -25,12 +24,6 @@ const MeLayoutMenu = () => {
         icon={<User className="size-4" />}
       >
         Profile
-      </MeLayoutNavLink>
-      <MeLayoutNavLink
-        href={meRouter.path("characters")}
-        icon={<MapPinned className="size-4" />}
-      >
-        Campaigns
       </MeLayoutNavLink>
       <MeLayoutNavLink
         href={meRouter.path("invitations")}

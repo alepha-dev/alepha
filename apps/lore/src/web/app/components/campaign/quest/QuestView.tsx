@@ -10,7 +10,6 @@ import { Link, useRouter } from "alepha/react/router";
 import {
   Archive,
   ArchiveRestore,
-  Circle,
   FileText,
   History,
   Hourglass,
@@ -18,7 +17,6 @@ import {
   ListChecks,
   Paperclip,
   Pencil,
-  PiggyBank,
   ScrollText,
   Settings as SettingsIcon,
   Signature,
@@ -32,11 +30,9 @@ import {
 import { useEffect, useState } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
 import { currentCampaignAtom } from "@/web/app/atoms/currentCampaignAtom.ts";
-import { currentCampaignCharacterAtom } from "@/web/app/atoms/currentCampaignCharacterAtom.ts";
 import { currentQuestAtom } from "@/web/app/atoms/currentQuestAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import AttachmentBadge from "./AttachmentBadge.tsx";
@@ -96,7 +92,6 @@ const QuestView = (props: QuestViewProps) => {
   const alepha = useAlepha();
   const questApi = useClient<QuestController>();
   const router = useRouter<AppRouter>();
-  const info = useInject(CharacterInfo);
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const dt = useInject(DateTimeProvider);
@@ -163,8 +158,6 @@ const QuestView = (props: QuestViewProps) => {
       router.push("campaignBoard", { meta: { deleted: true } });
     }
   };
-
-  const money = info.getMoneyFromQuest(quest);
 
   const abandonQuest = {
     disabled: !questApi.abandonQuest.can(),
@@ -560,41 +553,6 @@ const QuestView = (props: QuestViewProps) => {
               </QuestViewCollapsibleBlock>
             )}
 
-          {/* Rewards (collapsible, default expanded) */}
-          <QuestViewCollapsibleBlock
-            icon={<PiggyBank className="size-5" />}
-            label={tr("quest.view.rewards")}
-            defaultOpen
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-sm">{tr("quest.view.receive")}</span>
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 text-sm">
-                  {info.getGold(money)}
-                  <Circle
-                    className="size-3"
-                    fill="var(--color-gold)"
-                    color="var(--color-gold)"
-                  />
-                </span>
-                <span className="flex items-center gap-1 text-sm">
-                  {info.getSilver(money)}
-                  <Circle
-                    className="size-3"
-                    fill="var(--color-silver)"
-                    color="var(--color-silver)"
-                  />
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm">{tr("quest.view.experience")}</span>
-              <span className="text-sm font-bold">
-                {info.getXpFromQuest(quest)} XP
-              </span>
-            </div>
-          </QuestViewCollapsibleBlock>
-
           {/* History (collapsible, default collapsed) */}
           <QuestViewCollapsibleBlock
             icon={<History className="size-5" />}
@@ -719,14 +677,11 @@ const QuestView = (props: QuestViewProps) => {
         onConfirm={async (message) => {
           setCompleting(true);
           try {
-            const { character, ...updatedQuest } = await questApi.completeQuest(
-              {
-                params: { id: quest.id },
-                body: { message },
-              },
-            );
+            const updatedQuest = await questApi.completeQuest({
+              params: { id: quest.id },
+              body: { message },
+            });
             updateQuest(updatedQuest);
-            alepha.store.set(currentCampaignCharacterAtom, character);
             alepha.store.set(
               currentAssignedQuestsAtom,
               (alepha.store.get(currentAssignedQuestsAtom) ?? []).filter(

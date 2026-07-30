@@ -155,11 +155,22 @@ export class DbCommand {
           description: "Name for the generated migration file",
         })
         .optional(),
+      hints: z
+        .text({
+          description:
+            "JSON array of drizzle-kit hints resolving ambiguous diffs (e.g. rename-vs-create). drizzle-kit exits with code 2 and prints the exact JSON to pass when a hint is required.",
+        })
+        .optional(),
     }),
     handler: async ({ args, flags, root }) => {
       const parts: string[] = [];
       if (flags.custom) parts.push(`--custom=1`);
       if (flags.name) parts.push(`--name=${flags.name}`);
+      if (flags.hints) {
+        // The hints value is a JSON array (double quotes only) — wrap it in
+        // single quotes so it survives the shell as one argument.
+        parts.push(`--hints='${flags.hints}'`);
+      }
       const commandFlags = parts.length > 0 ? parts.join(" ") : undefined;
 
       await this.runDrizzleKitCommand({

@@ -93,8 +93,8 @@ const ChroniclesOverview = (props: ChroniclesOverviewProps) => {
       value: cycleTime,
     },
     {
-      label: tr("chronicles.overview.kpi.activeCharacters"),
-      value: kpis.activeCharacters,
+      label: tr("chronicles.overview.kpi.activeMembers"),
+      value: kpis.activeMembers,
     },
   ];
 

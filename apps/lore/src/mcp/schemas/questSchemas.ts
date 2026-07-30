@@ -14,7 +14,7 @@ import {
 const PRIORITY_DESCRIPTION =
   "Quest priority. Ordered low → high: optional < low < medium < high. `optional` is below `low`.";
 const DIFFICULTY_DESCRIPTION =
-  "Quest difficulty from 1 (trivial) to 5 (epic). Higher means harder; affects XP and gold rewards.";
+  "Quest difficulty from 1 (trivial) to 5 (epic). Higher means harder.";
 const ZONE_DESCRIPTION =
   "Functional area or module within the campaign — analogous to an Epic in Jira, or a module/package in a codebase (e.g. 'auth', 'billing', 'ui'). Required (every quest must have a zone). Free-form string, NOT constrained to a pre-declared list — passing a new value implicitly registers it on the campaign on first use. Case-SENSITIVE: 'Auth' and 'auth' are distinct zones, so reuse the exact casing of existing ones. Call campaign_info to see the campaign's current zones before picking a value.";
 const DESCRIPTION_DESCRIPTION =
@@ -211,8 +211,6 @@ export const questCompleteResultSchema = z.object({
   shortId: z.integer(),
   title: z.string(),
   completedAt: z.datetime(),
-  xpEarned: z.integer().optional(),
-  moneyEarned: z.integer().optional(),
 });
 
 // -----------------------------------------------------------------------------

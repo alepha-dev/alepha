@@ -13,7 +13,7 @@ export const chroniclesOverviewSchema = z.object({
     completedThisWeek: z.integer(),
     completedLastWeek: z.integer(),
     avgCycleTimeHours: z.number(),
-    activeCharacters: z.integer(),
+    activeMembers: z.integer(),
   }),
   // Cumulative created vs completed, one point per day, oldest first.
   burnup: z.array(
@@ -74,8 +74,6 @@ export const chroniclesPartySchema = z.object({
       name: z.string(),
       picture: z.string().optional(),
       questsCompleted: z.integer(),
-      xp: z.integer(),
-      gold: z.integer(),
     }),
   ),
   // Top contributors' names — drives the dynamic stacked-area ChartConfig.

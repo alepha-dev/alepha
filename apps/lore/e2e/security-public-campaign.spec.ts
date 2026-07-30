@@ -98,7 +98,7 @@ test.describe("Campaign membership gate", () => {
       const reads = [
         "getCampaignById",
         "getZones",
-        "getCampaignCharacters",
+        "getCampaignMembers",
         "getCampaignUsers",
         "getChroniclesOverview",
         "getChroniclesQuests",

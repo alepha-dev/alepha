@@ -98,7 +98,14 @@ export class BuildClientTask extends BuildTask {
           "react/jsx-dev-runtime",
         ],
       },
-      publicDir: "public",
+      // Deliberately NOT set here. Vite's own `build()` auto-loads the app's
+      // vite.config.ts and merges it under this inline config — an inline
+      // scalar wins over the loaded file on the same key, so hardcoding
+      // `publicDir: "public"` used to silently discard an app-configured
+      // `publicDir` (e.g. a monorepo app whose static assets live in a
+      // sibling package) on every build. Leaving the key unset lets the
+      // app's own config supply it, and Vite's built-in "public" default
+      // apply only when the app never configured one.
       build: {
         outDir: opts.dist,
         manifest: true,
