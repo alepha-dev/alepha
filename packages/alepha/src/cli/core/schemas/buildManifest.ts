@@ -43,7 +43,7 @@ export interface BuildManifest {
   environments: Record<
     string,
     {
-      adapter: "cloudflare" | "vercel";
+      adapter: "cloudflare" | "vercel" | "bay";
       domain?: string;
       zone?: string;
       jurisdiction?: "eu" | "fedramp";

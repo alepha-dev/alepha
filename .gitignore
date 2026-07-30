@@ -30,3 +30,6 @@ BUGS.md
 .superpowers
 
 .fleet
+
+# Artifacts produced by `alepha pack` — one per deploy, in the workspace root.
+*.tar.gz

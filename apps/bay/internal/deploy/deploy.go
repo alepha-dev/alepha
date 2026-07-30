@@ -109,7 +109,17 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		return nil, fmt.Errorf("artifact declares no project name and no --name was given")
 	}
 
+	key := opts.Name + "/" + opts.Env
+	existing, isRedeploy := store.Get(key)
+
 	domain := opts.Domain
+	if domain == "" && isRedeploy {
+		// A redeploy keeps the domain it is already served on. Recomposing it
+		// would silently MOVE a running app whenever someone omitted the flag —
+		// the old host would start 404-ing while the registry looked healthy. A
+		// domain is changed on purpose or not at all.
+		domain = existing.Domain
+	}
 	if domain == "" {
 		if opts.BaseDomain == "" {
 			return nil, fmt.Errorf("no base domain configured; pass --domain or start bay with --base-domain")
@@ -130,7 +140,7 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	// Two apps on one domain is not a conflict Bay may resolve by picking: the
 	// proxy would route to whichever matched first, so one deploy would silently
 	// shadow another and the loser would look deployed while serving nothing.
-	if owner, taken := store.ClaimedBy(domain); taken && owner != opts.Name+"/"+opts.Env {
+	if owner, taken := store.ClaimedBy(domain); taken && owner != key {
 		return nil, fmt.Errorf(
 			"domain %s is already served by %s; pass a different --domain, or remove that app first",
 			domain, owner)
@@ -140,7 +150,7 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	if existing, ok := store.Get(opts.Name + "/" + opts.Env); ok {
+	if isRedeploy {
 		port = existing.Port // keep the port stable across redeploys
 	}
 

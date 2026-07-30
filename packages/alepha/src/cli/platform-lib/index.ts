@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { BayAdapter } from "./adapters/BayAdapter.ts";
 import { CloudflareAdapter } from "./adapters/CloudflareAdapter.ts";
 import { VercelAdapter } from "./adapters/VercelAdapter.ts";
 import { GitHubSecretStore } from "./providers/GitHubSecretStore.ts";
@@ -30,6 +31,7 @@ import { WranglerApi } from "./services/WranglerApi.ts";
 export const AlephaPlatformLibPlugin = $module({
   name: "alepha.cli.platform-lib",
   services: [
+    BayAdapter,
     CloudflareAdapter,
     CloudflareApi,
     VercelAdapter,
@@ -46,6 +48,7 @@ export const AlephaPlatformLibPlugin = $module({
   ],
 });
 
+export * from "./adapters/BayAdapter.ts";
 export * from "./adapters/CloudflareAdapter.ts";
 export * from "./adapters/PlatformAdapter.ts";
 export * from "./adapters/VercelAdapter.ts";

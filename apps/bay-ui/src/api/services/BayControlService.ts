@@ -118,6 +118,13 @@ export class BayControlService {
     await this.call("POST", `/apps/${name}/${env}/stop`);
   }
 
+  /**
+   * Unregisters an app. Never purges: see the controller for why.
+   */
+  async remove(name: string, env: string): Promise<Record<string, unknown>> {
+    return await this.call("DELETE", `/apps/${name}/${env}`);
+  }
+
   async backup(name: string, env: string): Promise<Record<string, unknown>> {
     return await this.call("POST", `/apps/${name}/${env}/backup`);
   }

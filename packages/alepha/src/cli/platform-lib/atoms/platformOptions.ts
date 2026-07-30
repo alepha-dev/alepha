@@ -86,7 +86,19 @@ export const platformOptions = $atom({
             "Environment name (e.g. 'production', 'staging', 'preview'). Used in resource naming and selected via --env.",
         }),
         z.object({
-          adapter: z.enum(["cloudflare", "vercel"]),
+          adapter: z.enum(["cloudflare", "vercel", "bay"]),
+          /**
+           * Base URL of the Bay control panel this environment deploys to,
+           * e.g. `"https://admin.bay.alepha.dev"`. Only read by the `bay`
+           * adapter.
+           *
+           * A Bay is a machine someone owns, so unlike Cloudflare there is no
+           * global endpoint to assume. Committing it is fine — it is a public
+           * hostname, and the credential is what protects it.
+           *
+           * `$BAY_ENDPOINT` overrides, so a fork or a second Bay needs no edit.
+           */
+          endpoint: z.text().optional(),
           /**
            * Custom domain for the deployed worker (e.g. "api.example.com").
            *
@@ -158,7 +170,9 @@ export type PlatformOptions = Static<typeof platformOptions.schema>;
  * Configuration for a single named environment.
  */
 export interface EnvironmentConfig {
-  adapter: "cloudflare" | "vercel";
+  adapter: "cloudflare" | "vercel" | "bay";
+  /** Base URL of the Bay control panel (`bay` adapter only). */
+  endpoint?: string;
   domain?: string;
   zone?: string;
   vars?: Record<string, string>;

@@ -36,8 +36,13 @@ export class BaySecurityProvider {
 
   realm = $realm({
     features: {
-      // Everything off: an infra panel needs a login, not a social product.
-      apiKeys: false,
+      // Needed by `alepha platform up`: a CLI has no browser to complete an
+      // interactive login, and CI has nobody at the keyboard at all. A device
+      // flow is worth adding later for a developer's machine; it cannot
+      // replace this.
+      apiKeys: true,
+      // Everything else off: an infra panel needs a login, not a social
+      // product.
       avatars: false,
       audits: true,
       jobs: false,
