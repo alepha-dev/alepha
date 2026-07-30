@@ -1,0 +1,10 @@
+# Anchored with a leading slash on purpose. A bare `bay` matches ANY path
+# component of that name, so it swallowed the whole `cmd/bay/` directory — the
+# CLI, the server and the control API — and `git add apps/bay` would have
+# committed a module with no `main` package. Nothing catches that: Go is not in
+# the CI pipeline.
+/bay
+/bay-data/
+
+# Artifacts produced by `alepha pack`.
+*.tar.gz
