@@ -123,6 +123,9 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		Release: release,
 		Port:    port,
 		Runtime: m.Runtime,
+		// Only a Bay-provisioned database can be snapshotted; a BYO DATABASE_URL
+		// leaves dbPath empty.
+		Backups: dbPath != "",
 	}
 	if err := store.Upsert(app); err != nil {
 		return nil, err

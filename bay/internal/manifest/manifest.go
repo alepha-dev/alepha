@@ -74,13 +74,17 @@ type Manifest struct {
 	Cron           []string
 }
 
-// LoadFromRelease reads the manifest out of an unpacked release directory.
+// LoadFromRelease reads and validates the manifest of an unpacked release.
+//
+// The ONLY way in. `load` is unexported so no caller outside this package can
+// compose the manifest's path by hand — one that did was left reading the old
+// pre-`dist/` location after the move, and neither the compiler nor a passing
+// test suite noticed. Making the path uncomposable closes the class.
 func LoadFromRelease(releaseDir string) (*Manifest, error) {
-	return Load(filepath.Join(releaseDir, filepath.FromSlash(Path)))
+	return load(filepath.Join(releaseDir, filepath.FromSlash(Path)))
 }
 
-// Load reads and validates a manifest from disk.
-func Load(path string) (*Manifest, error) {
+func load(path string) (*Manifest, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		// A release unpacked by an older Bay carries a hand-written manifest at

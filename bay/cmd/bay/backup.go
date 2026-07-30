@@ -16,6 +16,7 @@ import (
 	"github.com/alepha/bay/internal/manifest"
 	"github.com/alepha/bay/internal/runtimes"
 	"github.com/alepha/bay/internal/s3"
+	"github.com/alepha/bay/internal/schedule"
 	"github.com/alepha/bay/internal/state"
 )
 
@@ -45,7 +46,7 @@ func (s *server) backupManager() (*backup.Manager, *state.S3Config, error) {
 // appPaths resolves the runtime binary and managed database path for an app.
 func (s *server) appPaths(app state.App) (runtime, dbPath string, err error) {
 	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
-	m, err := manifest.Load(filepath.Join(instance, "current", "manifest.json"))
+	m, err := manifest.LoadFromRelease(filepath.Join(instance, "current"))
 	if err != nil {
 		return "", "", err
 	}
@@ -394,4 +395,113 @@ func cmdRestore(args []string) error {
 	}
 	fmt.Println(res)
 	return nil
+}
+
+// ---------------------------------------------------------------------------
+// scheduled backups
+// ---------------------------------------------------------------------------
+
+// backupLoop takes scheduled backups for every app whose database Bay owns.
+//
+// In-process rather than a systemd timer so the scheduler and the observable
+// share one state: `lastBackupAt` is a field of the same `state.json` this
+// process already owns and flushes atomically. With a timer, one invocation
+// would write the timestamp and another would read it, and "did it stop?" —
+// the question that actually protects data — would have two sources of truth.
+func (s *server) backupLoop(ctx context.Context, interval time.Duration) {
+	if interval <= 0 {
+		// Loud, because silence here is indistinguishable from a working
+		// schedule right up until someone needs a backup.
+		s.log.Warn("scheduled backups are OFF (--backup-interval 0); " +
+			"nothing is backed up unless you run `bay backup`")
+		return
+	}
+	s.log.Info("scheduled backups on", "interval", interval)
+
+	// The tick is only a prompt to re-examine state, never the schedule itself —
+	// that lives in `schedule.Due`, read from the recorded timestamp. So a run
+	// missed while Bay was down is taken on the first tick after boot, through
+	// the same code path as any other run.
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
+	s.runDueBackups(ctx, interval)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.runDueBackups(ctx, interval)
+		}
+	}
+}
+
+// runDueBackups backs up every app that is due, one at a time.
+//
+// Sequential on purpose: each backup spawns the app's own runtime to run
+// `VACUUM INTO`, then gzips and uploads. Doing several at once on a 2-vCPU box
+// would compete with the apps it is meant to protect. Being sequential also
+// makes overlapping runs impossible without a lock.
+func (s *server) runDueBackups(ctx context.Context, interval time.Duration) {
+	mgr, cfg, err := s.backupManager()
+	if err != nil || mgr == nil {
+		// Not configured. `bay backup` says so on demand; repeating it every
+		// minute in the log would bury everything else.
+		return
+	}
+	now := time.Now()
+	for _, app := range s.store.Apps() {
+		if !app.Backups {
+			continue
+		}
+		if !schedule.Due(app.LastBackupAt, now, interval) {
+			continue
+		}
+		s.backupOne(ctx, mgr, cfg, app)
+	}
+}
+
+// backupOne runs one scheduled backup and records the outcome either way.
+func (s *server) backupOne(ctx context.Context, mgr *backup.Manager, cfg *state.S3Config, app state.App) {
+	key := app.Key()
+	runtime, dbPath, err := s.appPaths(app)
+	if err != nil {
+		s.recordBackupFailure(key, "resolve paths", err)
+		return
+	}
+	res, err := mgr.Backup(ctx, app.Name, app.Env, runtime, dbPath)
+	if err != nil {
+		s.recordBackupFailure(key, "backup", err)
+		return
+	}
+	if err := s.store.RecordBackupSuccess(key, res.Key, time.Now()); err != nil {
+		s.log.Error("backup succeeded but recording it failed", "app", key, "err", err)
+	}
+	s.log.Info("scheduled backup", "app", key, "key", res.Key,
+		"raw", res.RawBytes, "stored", res.StoredBytes)
+
+	// Retention runs here and not on a schedule of its own: pruning is only
+	// meaningful right after a new backup exists, and `Prune` returning what it
+	// deleted is what keeps retention from being indistinguishable from backups
+	// quietly disappearing.
+	if keep := cfg.Keep; keep > 0 {
+		removed, err := mgr.Prune(ctx, app.Name, app.Env, keep)
+		if err != nil {
+			s.log.Error("prune failed", "app", key, "err", err)
+		} else if len(removed) > 0 {
+			s.log.Info("pruned old backups", "app", key, "removed", len(removed), "keep", keep)
+		}
+	}
+}
+
+// recordBackupFailure logs and persists why an attempt failed.
+//
+// Persisted as well as logged because a log line scrolls away, and the whole
+// point of the record is that someone can ask later.
+func (s *server) recordBackupFailure(key, stage string, cause error) {
+	reason := stage + ": " + cause.Error()
+	s.log.Error("scheduled backup failed", "app", key, "stage", stage, "err", cause)
+	if err := s.store.RecordBackupFailure(key, reason, time.Now()); err != nil {
+		s.log.Error("could not record the backup failure", "app", key, "err", err)
+	}
 }

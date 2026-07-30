@@ -23,9 +23,8 @@ func write(t *testing.T, body string) string {
 	return release
 }
 
-// load reads a manifest body, defaulting `project` so tests that don't care
-// about naming don't all have to spell it out.
-func load(t *testing.T, body string) (*Manifest, error) {
+// read lays out a release from a manifest body and loads it.
+func read(t *testing.T, body string) (*Manifest, error) {
 	t.Helper()
 	return LoadFromRelease(write(t, body))
 }
@@ -35,7 +34,7 @@ func TestReadsTheFrameworkBuildManifest(t *testing.T) {
 	// own artifact contract rather than a Bay-specific manifest, so declaring
 	// `$repository` in app code is what provisions the database — nobody has to
 	// say it a second time by hand.
-	m, err := load(t, `{
+	m, err := read(t, `{
 		"version": 1,
 		"project": "lore",
 		"defaultEnv": "production",
@@ -76,7 +75,7 @@ func TestIgnoresFieldsMeantForOtherConsumers(t *testing.T) {
 	// `environments`, `tenancy`, `websocketPaths`, `email` and `env` belong to
 	// the Cloudflare/Rocket deploy paths. A newer build adding more of them must
 	// not break an older Bay.
-	if _, err := load(t, `{
+	if _, err := read(t, `{
 		"project": "lore",
 		"tenancy": "optional",
 		"environments": {"production": {"adapter": "cloudflare"}},
@@ -90,7 +89,7 @@ func TestIgnoresFieldsMeantForOtherConsumers(t *testing.T) {
 func TestRejectsExactVersionPin(t *testing.T) {
 	// An exact pin recreates the very problem Bay owning the runtime solves:
 	// patching a CVE would need a rebuild and a redeploy per app.
-	_, err := load(t, `{"project":"a","runtime":"node","runtimeVersion":"26.5.0"}`)
+	_, err := read(t, `{"project":"a","runtime":"node","runtimeVersion":"26.5.0"}`)
 	if err == nil {
 		t.Fatal("expected an exact version pin to be rejected")
 	}
@@ -100,7 +99,7 @@ func TestRejectsExactVersionPin(t *testing.T) {
 }
 
 func TestAcceptsMajorPin(t *testing.T) {
-	m, err := load(t, `{"project":"a","runtime":"node","runtimeVersion":"26"}`)
+	m, err := read(t, `{"project":"a","runtime":"node","runtimeVersion":"26"}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +110,7 @@ func TestAcceptsMajorPin(t *testing.T) {
 
 func TestDefaults(t *testing.T) {
 	// Artifacts built before `runtime`/`entry` existed carry neither.
-	m, err := load(t, `{"project":"a"}`)
+	m, err := read(t, `{"project":"a"}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +126,7 @@ func TestRejectsWorkerdArtifact(t *testing.T) {
 	// A Cloudflare-targeted bundle is resolved against workerd export
 	// conditions and has no node-runnable entry point. Caught here it names the
 	// fix; caught three steps later it only says "never became ready".
-	_, err := load(t, `{"project":"a","runtime":"workerd"}`)
+	_, err := read(t, `{"project":"a","runtime":"workerd"}`)
 	if err == nil {
 		t.Fatal("expected a workerd artifact to be rejected")
 	}
@@ -137,7 +136,7 @@ func TestRejectsWorkerdArtifact(t *testing.T) {
 }
 
 func TestRejectsUnknownRuntime(t *testing.T) {
-	if _, err := load(t, `{"project":"a","runtime":"deno"}`); err == nil {
+	if _, err := read(t, `{"project":"a","runtime":"deno"}`); err == nil {
 		t.Fatal("expected unknown runtime to be rejected")
 	}
 }
@@ -145,7 +144,7 @@ func TestRejectsUnknownRuntime(t *testing.T) {
 func TestRejectsMissingProject(t *testing.T) {
 	// The domain is composed from the name, so an artifact without one cannot be
 	// placed on a host at all.
-	if _, err := load(t, `{}`); err == nil {
+	if _, err := read(t, `{}`); err == nil {
 		t.Fatal("expected a manifest with no project name to be rejected")
 	}
 }
@@ -161,7 +160,7 @@ func TestMissingManifestIsAnError(t *testing.T) {
 func TestSleepEligibility(t *testing.T) {
 	// An app with crons runs them in-process; sleeping it would silently stop
 	// them. The manifest makes that decidable without Bay parsing cron at all.
-	withCron, err := load(t, `{"project":"a","crons":["0 3 * * *"]}`)
+	withCron, err := read(t, `{"project":"a","crons":["0 3 * * *"]}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +168,7 @@ func TestSleepEligibility(t *testing.T) {
 		t.Fatal("an app declaring crons must never be scaled to zero")
 	}
 
-	without, err := load(t, `{"project":"a","crons":[]}`)
+	without, err := read(t, `{"project":"a","crons":[]}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +178,7 @@ func TestSleepEligibility(t *testing.T) {
 }
 
 func TestSubdomainComposition(t *testing.T) {
-	m, err := load(t, `{"project":"lore"}`)
+	m, err := read(t, `{"project":"lore"}`)
 	if err != nil {
 		t.Fatal(err)
 	}

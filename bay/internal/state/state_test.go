@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestPersistsAcrossReopen(t *testing.T) {
@@ -120,5 +121,94 @@ func TestUsedPortsReportsClaims(t *testing.T) {
 	used := s.UsedPorts()
 	if !used[5001] || !used[5002] {
 		t.Fatalf("claimed ports not reported: %v", used)
+	}
+}
+
+func TestUpsertPreservesRuntimeOwnedFields(t *testing.T) {
+	// A deploy builds a fresh App from the artifact and knows nothing about
+	// backup bookkeeping or sleep state. Replacing wholesale reset them on every
+	// redeploy — which for `LastBackupAt` means the staleness warning goes quiet
+	// exactly when someone touches the app.
+	s, err := Open(filepath.Join(t.TempDir(), "state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Upsert(App{Name: "lore", Env: "production", Port: 5000}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordBackupSuccess("lore/production", "apps/lore/production/db/x.gz", time.Unix(1700000000, 0)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.mutate("lore/production", func(a *App) { a.Sleeping = true }); err != nil {
+		t.Fatal(err)
+	}
+
+	// A redeploy: same key, fresh record, new release.
+	if err := s.Upsert(App{Name: "lore", Env: "production", Port: 5000, Release: "2026-07-30-120000"}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, ok := s.Get("lore/production")
+	if !ok {
+		t.Fatal("app vanished")
+	}
+	if got.Release != "2026-07-30-120000" {
+		t.Fatalf("deploy-owned field should be taken from the argument, got %q", got.Release)
+	}
+	if got.LastBackupAt == "" {
+		t.Fatal("LastBackupAt must survive a redeploy")
+	}
+	if got.LastBackupKey == "" {
+		t.Fatal("LastBackupKey must survive a redeploy")
+	}
+	if !got.Sleeping {
+		t.Fatal("Sleeping must survive a redeploy")
+	}
+}
+
+func TestBackupFailureKeepsTheLastGoodTimestamp(t *testing.T) {
+	// `LastBackupAt` means "last time we had a usable backup". Advancing it on a
+	// failure would make a run of failures look healthy.
+	s, err := Open(filepath.Join(t.TempDir(), "state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Upsert(App{Name: "a", Env: "production"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordBackupSuccess("a/production", "k", time.Unix(1700000000, 0)); err != nil {
+		t.Fatal(err)
+	}
+	good, _ := s.Get("a/production")
+
+	if err := s.RecordBackupFailure("a/production", "bucket unreachable", time.Unix(1700086400, 0)); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := s.Get("a/production")
+
+	if after.LastBackupAt != good.LastBackupAt {
+		t.Fatalf("a failure must not advance LastBackupAt: %q → %q", good.LastBackupAt, after.LastBackupAt)
+	}
+	if after.LastBackupError == "" {
+		t.Fatal("the reason must be recorded, or a failing backup is indistinguishable from a stopped scheduler")
+	}
+
+	// And a later success clears it, so a stale reason never outlives the failure.
+	if err := s.RecordBackupSuccess("a/production", "k2", time.Unix(1700172800, 0)); err != nil {
+		t.Fatal(err)
+	}
+	healed, _ := s.Get("a/production")
+	if healed.LastBackupError != "" {
+		t.Fatalf("success must clear the error, got %q", healed.LastBackupError)
+	}
+}
+
+func TestMutateRejectsUnknownApp(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordBackupSuccess("ghost/production", "k", time.Unix(0, 0)); err == nil {
+		t.Fatal("recording against an unknown app must fail loudly, not silently no-op")
 	}
 }
