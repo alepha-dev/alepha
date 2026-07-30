@@ -7,9 +7,9 @@ import {
 } from "./_helpers.ts";
 
 /**
- * Quest feature e2e: seeded via API (the Zone combobox is not creatable from
- * scratch in the UI), then driven through the real shadcn UI for open →
- * accept → complete.
+ * Quest feature e2e: seeded via API to keep the setup cheap, then driven
+ * through the real shadcn UI for open → accept → complete. Creating a zone
+ * from the Zone combobox has its own test at the bottom of this file.
  *
  * Per the Lore CLAUDE.md convention, each big feature owns its own spec file.
  * Campaign create + auth are covered by the helpers — kept here as setup,
@@ -676,6 +676,70 @@ test.describe("Quest", () => {
       await expect(page.getByText(questTitle).first()).toBeHidden({
         timeout: 10_000,
       });
+    });
+  });
+
+  /**
+   * Petition #17: typing a new zone name and pressing Enter must create it.
+   * Base UI's `autoHighlight` is off by default, so nothing was highlighted
+   * while typing and Enter had no target — the `+ Create "…"` row could only
+   * be clicked. Also covers the non-regression side: a query that matches an
+   * existing zone selects that zone rather than creating a near-duplicate.
+   */
+  test("zone combobox creates a zone on Enter", async ({ page }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `zone${t}@example.com`;
+    const password = "ZoneTest123!";
+    const campaignTitle = `ZC${t}`.slice(0, 20);
+
+    await registerAndVerify(page, email, password);
+    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+
+    const zoneCombobox = page.getByRole("combobox", { name: "Zone" });
+    const zoneSearch = page.getByRole("combobox", { name: "Search…" });
+
+    const openQuestForm = async () => {
+      await page.getByRole("button", { name: "Create Quest" }).click();
+      await expect(zoneCombobox).toBeVisible({ timeout: 10_000 });
+    };
+
+    await page.goto(`/c/${campaignId}/`);
+    await openQuestForm();
+
+    await test.step("Enter creates the typed zone", async () => {
+      await zoneCombobox.click();
+      await zoneSearch.fill("Donjon");
+      await expect(
+        page.getByRole("option", { name: 'Create "Donjon"' }),
+      ).toBeVisible({ timeout: 5_000 });
+      await zoneSearch.press("Enter");
+      // The trigger shows the freshly created entry — no click on the
+      // "+ Create" row needed.
+      await expect(zoneCombobox).toContainText("Donjon");
+    });
+
+    await test.step("the created zone reaches the quest", async () => {
+      await page.getByRole("textbox", { name: "Name" }).fill(`Q${t}`);
+      await page.locator("form button[type=submit]").click();
+      await page.waitForURL(/\/c\/\d+\/q\/\d+/, { timeout: 15_000 });
+      await page.goto(`/c/${campaignId}/settings/zones`);
+      await expect(page.getByRole("cell", { name: "Donjon" })).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+
+    await test.step("Enter on a partial query picks the existing zone", async () => {
+      await page.goto(`/c/${campaignId}/`);
+      await openQuestForm();
+      await zoneCombobox.click();
+      await zoneSearch.fill("Don");
+      await expect(page.getByRole("option", { name: "Donjon" })).toBeVisible({
+        timeout: 5_000,
+      });
+      await zoneSearch.press("Enter");
+      await expect(zoneCombobox).toContainText("Donjon");
     });
   });
 });
