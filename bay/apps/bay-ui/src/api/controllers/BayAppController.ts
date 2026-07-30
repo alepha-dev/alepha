@@ -103,6 +103,27 @@ export class BayAppController {
     },
   });
 
+  /**
+   * Unregisters an app, keeping its data.
+   *
+   * The destructive variant is not exposed here at all. Purging deletes a
+   * database and its uploads with no way back, and a control panel that offers
+   * it next to an ordinary "remove" invites the mistake — `bay remove --purge`
+   * on the host is a deliberate enough act to be the only way in.
+   */
+  removeApp = $action({
+    method: "DELETE",
+    path: "/bay/apps/:name/:env",
+    use: [$secure({ roles: ["admin"] })],
+    description: "Unregister an app, keeping its data",
+    schema: {
+      params: z.object({ name: z.text(), env: z.text() }),
+      response: z.record(z.text(), z.any()),
+    },
+    handler: async ({ params }) =>
+      (await this.bay.remove(params.name, params.env)) as any,
+  });
+
   backupApp = $action({
     method: "POST",
     path: "/bay/apps/:name/:env/backup",
