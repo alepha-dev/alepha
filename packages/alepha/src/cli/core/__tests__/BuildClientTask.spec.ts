@@ -106,4 +106,33 @@ describe("BuildClientTask", () => {
 
     expect(await fs.exists("dist/public/index.html")).toBe(true);
   });
+
+  it("should not force Vite's static-asset `publicDir` on the inline config, so the app's own vite.config.ts publicDir survives Vite's own file+inline merge", async ({
+    expect,
+  }) => {
+    // Regression: this option used to be hardcoded to the literal "public"
+    // on the inline config handed to Vite's `build()`. Vite merges the
+    // caller's inline config OVER whatever it auto-loads from the app's own
+    // vite.config.ts, so a hardcoded scalar here silently discarded an
+    // app-configured `publicDir` (e.g. a monorepo app whose static assets
+    // live in a sibling package) every single build. Leaving the key unset
+    // lets Vite's real merge/default behavior decide: the app's configured
+    // `publicDir` wins, and Vite's own "public" default applies only when
+    // the app never configured one.
+    const { task, fs, vite } = setup();
+
+    await fs.mkdir("dist/public/node_modules/.alepha", { recursive: true });
+    await fs.writeFile(
+      "dist/public/.vite/manifest.json",
+      JSON.stringify({ "node_modules/.alepha/index.html": { file: "e.js" } }),
+    );
+    await fs.writeFile(
+      "dist/public/node_modules/.alepha/index.html",
+      "<html></html>",
+    );
+
+    await task.run(createContext(undefined));
+
+    expect(vite.configs[0].publicDir).toBeUndefined();
+  });
 });
