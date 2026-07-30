@@ -14,5 +14,6 @@ type Sandbox struct {
 	// groups, which for `bay serve` in development means root's. Development is
 	// therefore MORE permissive than production, not less — worth knowing before
 	// concluding from a dev run that a grant is working.
-	ControlGroup string
+	ControlGroup     string
+	ControlSocketDir string
 }

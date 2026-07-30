@@ -51,6 +51,16 @@ type Sandbox struct {
 	MemoryMax string
 	// TasksMax caps thread/process count. Zero means the systemd default.
 	TasksMax int
+	// ControlSocketDir is the directory holding the control socket. Added to the
+	// writable paths ONLY for a granted app.
+	//
+	// Connecting to a unix socket needs write access to its inode, and
+	// `ProtectSystem=strict` mounts everything read-only — so a granted app
+	// cannot reach the socket without this. A separate directory from the state
+	// root on purpose: granting write access to `/opt/bay/data` would hand the
+	// app `state.json`, which holds the control token and the S3 credentials. The
+	// grant must widen exactly one thing.
+	ControlSocketDir string
 	// ControlGroup, when set, is added as a supplementary group so the app can
 	// reach Bay's control socket.
 	//
@@ -213,6 +223,11 @@ func (s *Systemd) render(spec Spec, sandbox Sandbox, user string) string {
 		w("ReadWritePaths=%s", p)
 	}
 	if sandbox.ControlGroup != "" {
+		if sandbox.ControlSocketDir != "" {
+			// Connecting needs write access on the socket inode, and
+			// ProtectSystem=strict makes everything read-only.
+			w("ReadWritePaths=%s", sandbox.ControlSocketDir)
+		}
 		w("")
 		w("# ⚠ ROOT-EQUIVALENT. This app may call Bay's control API: deploy code,")
 		w("# read every other app's secrets, delete every backup. Granted by the")

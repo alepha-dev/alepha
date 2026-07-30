@@ -1,6 +1,6 @@
-import { $env, $inject, AlephaError, type FileLike, z } from "alepha";
+import { request } from "node:http";
+import { $env, AlephaError, type FileLike, z } from "alepha";
 import { $logger } from "alepha/logger";
-import { HttpClient, HttpError } from "alepha/server";
 
 /**
  * One app instance as bay-go reports it.
@@ -12,6 +12,10 @@ export interface BayApp {
   release: string;
   port: number;
   runtime: string;
+  controlApi?: boolean;
+  backups?: boolean;
+  lastBackupAt?: string;
+  lastBackupError?: string;
 }
 
 /**
@@ -27,52 +31,50 @@ export interface BayDeployResult {
 /**
  * Server-side client for bay-go's control API.
  *
- * **This is the only thing that holds `BAY_TOKEN`, and it never runs in the
- * browser.** The control API is root-equivalent — it deploys code, reads
- * secrets and can delete every backup — so the token must never be handed to a
- * client, not even to an authenticated admin's browser. bay-ui therefore
- * re-exposes only the operations it wants, behind its own `$action`s and its
- * own authorization.
+ * **Reached over a unix socket, and holds no secret.** The control API is
+ * root-equivalent — it deploys code, reads secrets, can delete every backup — so
+ * the question is not how to protect a token but how to avoid having one. On the
+ * socket the authorization is the file mode, arbitrated by the kernel: bay-ui can
+ * connect because an operator put its unix user in the control group, and there
+ * is no string that could leak from this process, its logs, or its backups.
  *
- * The API listens on loopback. In phase 1 bay-ui runs in dev on the developer's
- * machine and reaches it through an SSH tunnel
- * (`ssh -L 7717:127.0.0.1:7717 ovh-bay`), which keeps the control plane off the
- * network entirely rather than exposing a port and defending it.
+ * Uses `node:http` rather than the framework's `HttpClient` because `fetch` has
+ * no way to dial a unix socket — undici can, but only through a dispatcher that
+ * `HttpClient` does not expose. `socketPath` is the standard answer and this
+ * service is server-only, so nothing is lost.
  */
 export class BayControlService {
   protected readonly log = $logger();
-  protected readonly http = $inject(HttpClient);
 
   protected readonly env = $env(
     z.object({
       /**
-       * Base URL of bay-go's control API, e.g. `http://127.0.0.1:7717`.
+       * Path to bay-go's control socket.
        */
-      BAY_URL: z.text({
-        default: "http://127.0.0.1:7717",
+      BAY_SOCKET: z.text({
+        default: "/run/bay/control.sock",
         description:
-          "Base URL of the bay-go control API. Loopback by default — reach a remote Bay through an SSH tunnel rather than exposing the port.",
-      }),
-      /**
-       * Bearer token printed by `bay token`.
-       */
-      BAY_TOKEN: z.text({
-        default: "",
-        description:
-          "Bearer token for the bay-go control API, from `bay token`. Root-equivalent: never expose it to a browser.",
+          "Unix socket of the bay-go control API. Reachable only by members of the control group — bay-ui holds no token.",
       }),
     }),
   );
 
   /**
-   * Reports whether bay-ui is configured to reach a Bay at all.
+   * Reports whether the control socket is there to be talked to.
    *
-   * Surfaced in the UI instead of letting every call fail with a connection
-   * error: "not configured" and "Bay is down" need different reactions from
-   * whoever is looking at the screen.
+   * Distinguished from a failed call on purpose: "Bay is not reachable from
+   * here" and "Bay refused what you asked" call for different reactions, and
+   * collapsing them hides which one it is. Checked by connecting rather than by
+   * stat-ing, because a socket that exists but rejects us — wrong group — looks
+   * identical on disk to one that works.
    */
-  get configured(): boolean {
-    return !!this.env.BAY_TOKEN;
+  async reachable(): Promise<boolean> {
+    try {
+      await this.call("GET", "/apps");
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async listApps(): Promise<BayApp[]> {
@@ -84,16 +86,11 @@ export class BayControlService {
   /**
    * Uploads an artifact and deploys it.
    *
-   * The artifact goes up as the raw request body, exactly as `bay deploy` sends
-   * it — bay-go reads the body straight into a temp file, so there is no
-   * multipart envelope to unwrap on its side.
-   *
-   * The bytes are read out explicitly. `z.file()` hands the handler a
-   * `FileLike` — a plain object with `name` / `type` / `size` / `stream()` /
-   * `arrayBuffer()`, NOT a native `Blob`. `fetch` doesn't recognise it, so
-   * passing it straight through as `body` serialises it as `[object Object]`
-   * and Bay rejects the upload with `not a gzip archive: gzip: invalid header`
-   * — an error that points at the artifact when the artifact was fine.
+   * The bytes are read out explicitly: `z.file()` hands the handler a `FileLike`
+   * — a plain object with `stream()` / `arrayBuffer()`, NOT a native `Blob` — and
+   * passing it straight to a request body serialises it as `[object Object]`,
+   * which Bay then rejects as `not a gzip archive`, blaming an artifact that was
+   * fine.
    */
   async deploy(args: {
     file: FileLike;
@@ -105,7 +102,11 @@ export class BayControlService {
     if (args.domain) {
       query.set("domain", args.domain);
     }
-    const bytes = new Uint8Array(await args.file.arrayBuffer());
+    // Deliberately never passes `allowControlApi`. Granting an app
+    // root-equivalent access is an operator act, and bay-ui has no per-user
+    // permission model for it yet — so it does not offer it at all rather than
+    // offer it to everyone who can log in.
+    const bytes = Buffer.from(await args.file.arrayBuffer());
     return await this.call<BayDeployResult>(
       "POST",
       `/apps?${query.toString()}`,
@@ -121,57 +122,102 @@ export class BayControlService {
     return await this.call("POST", `/apps/${name}/${env}/backup`);
   }
 
+  async releases(name: string, env: string): Promise<unknown> {
+    return await this.call("GET", `/apps/${name}/${env}/releases`);
+  }
+
+  async rollback(
+    name: string,
+    env: string,
+    to?: string,
+    confirm?: boolean,
+  ): Promise<unknown> {
+    const query = new URLSearchParams();
+    if (to) {
+      query.set("to", to);
+    }
+    if (confirm) {
+      query.set("confirm", "yes");
+    }
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return await this.call("POST", `/apps/${name}/${env}/rollback${suffix}`);
+  }
+
   /**
-   * Performs one control-API call and turns a failure into something readable.
+   * Performs one control-API call over the socket.
    *
-   * bay-go answers errors in Alepha's own shape, so `HttpClient` throws a real
-   * `HttpError` whose `message` is the sentence Bay wrote for an operator —
-   * "rebuild with `alepha build --target=bare`", "this release was unpacked by
-   * an older Bay". Those are surfaced as-is rather than replaced with a generic
-   * failure.
+   * bay-go answers errors in Alepha's own shape, so `message` is the sentence it
+   * wrote for an operator — "rebuild with `alepha build --target=bare`",
+   * "redeploy the app to migrate it". Surfaced as-is: replacing it with a generic
+   * failure throws away the only part that says what to do.
    */
-  protected async call<T>(
-    method: string,
-    path: string,
-    body?: BodyInit,
-  ): Promise<T> {
-    if (!this.configured) {
-      throw new AlephaError(
-        "BAY_TOKEN is not set — bay-ui cannot reach the Bay control API. Run `bay token` on the server and set BAY_URL / BAY_TOKEN.",
+  protected call<T>(method: string, path: string, body?: Buffer): Promise<T> {
+    const socketPath = this.env.BAY_SOCKET;
+    return new Promise<T>((resolve, reject) => {
+      const req = request(
+        {
+          socketPath,
+          path,
+          method,
+          headers: body
+            ? {
+                "content-type": "application/octet-stream",
+                "content-length": body.length,
+              }
+            : {},
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on("data", (c) => chunks.push(c));
+          res.on("end", () => {
+            const raw = Buffer.concat(chunks).toString("utf8");
+            let parsed: any;
+            try {
+              parsed = raw ? JSON.parse(raw) : undefined;
+            } catch {
+              reject(
+                new AlephaError(
+                  `Bay answered ${res.statusCode} with a body that is not JSON: ${raw.slice(0, 200)}`,
+                ),
+              );
+              return;
+            }
+            if ((res.statusCode ?? 500) >= 400) {
+              // Bay ANSWERED — it just said no. Kept distinct from a transport
+              // failure below: relabelling a 400 as "unreachable" sends the
+              // reader to check the socket when the real problem is the artifact
+              // they uploaded.
+              this.log.warn("bay refused the request", {
+                path,
+                status: res.statusCode,
+                reason: parsed?.message,
+              });
+              reject(
+                new AlephaError(
+                  `Bay refused the request: ${parsed?.message ?? res.statusCode}`,
+                ),
+              );
+              return;
+            }
+            resolve(parsed as T);
+          });
+        },
       );
-    }
-
-    const url = `${this.env.BAY_URL.replace(/\/$/, "")}${path}`;
-    let res: Awaited<ReturnType<HttpClient["fetch"]>>;
-    try {
-      res = await this.http.fetch(url, {
-        method,
-        body,
-        headers: { authorization: `Bearer ${this.env.BAY_TOKEN}` },
+      req.on("error", (error) => {
+        // Only a genuine transport failure reaches here: the socket is absent,
+        // or this process is not in the control group. Name the path — the
+        // alternative is "ECONNREFUSED" with nothing to act on.
+        this.log.error("bay control socket unreachable", { socketPath, error });
+        reject(
+          new AlephaError(
+            `Bay control socket unreachable at ${socketPath}. Is bay running, and is this app in the control group (deploy it with \`--allow-control-api\`)?`,
+          ),
+        );
       });
-    } catch (error) {
-      // Bay ANSWERED — it just said no. Re-throw so its message survives:
-      // relabelling a 400 as "unreachable" sends whoever is reading to check
-      // the tunnel when the real problem is the artifact they uploaded.
-      if (HttpError.is(error)) {
-        this.log.warn("bay refused the request", {
-          url,
-          status: error.status,
-          reason: error.message,
-        });
-        throw new AlephaError(`Bay refused the request: ${error.message}`);
+      if (body) {
+        req.write(body);
       }
-      // Only a genuine transport failure reaches here: the tunnel is down or
-      // Bay is not running. Name the URL — the alternative is an operator
-      // staring at "fetch failed" with no idea whether they mistyped BAY_URL.
-      this.log.error("bay control api unreachable", { url, error });
-      throw new AlephaError(
-        `Bay control API unreachable at ${url}. Is \`bay serve\` running, and the SSH tunnel up?`,
-      );
-    }
-
-    // No `data.error` check here: HttpClient throws on any status >= 400, so an
-    // error body never reaches this point.
-    return res.data as T;
+      req.end();
+    });
   }
 }

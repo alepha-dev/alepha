@@ -157,13 +157,16 @@ bay-ui calls. There is no second code path. Client commands accept
 // ---------------------------------------------------------------------------
 
 type server struct {
-	root     string
-	runtimes string
-	store    *state.Store
-	runner   runner.Runner
-	isolated bool
-	tls      *tlsconf.Manager
-	log      *slog.Logger
+	// controlSocket is where the control API listens, so a granted app can be
+	// given write access to exactly that directory and nothing more.
+	controlSocket string
+	root          string
+	runtimes      string
+	store         *state.Store
+	runner        runner.Runner
+	isolated      bool
+	tls           *tlsconf.Manager
+	log           *slog.Logger
 }
 
 func cmdServe(args []string) error {
@@ -263,7 +266,8 @@ func cmdServe(args []string) error {
 		log.Warn("apps run WITHOUT isolation (no systemd or not root): " +
 			"a compromise in one app reaches all the others")
 	}
-	srv := &server{root: root, runtimes: runtimesDir, store: store, runner: sup, isolated: isolated, log: log}
+	srv := &server{root: root, runtimes: runtimesDir, store: store, runner: sup,
+		isolated: isolated, log: log, controlSocket: controlSocket}
 
 	router := proxy.New(root, store, log)
 	var httpHandler http.Handler = router
@@ -451,6 +455,8 @@ func (s *server) start(app state.App) error {
 			MemoryMax:     "512M",
 			TasksMax:      256,
 			ControlGroup:  controlGroupFor(app),
+			// Widened only for a granted app; empty otherwise.
+			ControlSocketDir: controlSocketDirFor(app, s.controlSocket),
 		},
 	}
 	if err := s.runner.Start(spec); err != nil {
@@ -474,6 +480,14 @@ func (s *server) start(app state.App) error {
 // Empty for every app by default: nothing reaches the control API unless an
 // operator said so. Warned about on every start, not just at grant time — a
 // privilege that was reviewed once, months ago, is one nobody remembers.
+// controlSocketDirFor returns the directory to make writable for a granted app.
+func controlSocketDirFor(app state.App, socketPath string) string {
+	if !app.ControlAPI || socketPath == "" {
+		return ""
+	}
+	return filepath.Dir(socketPath)
+}
+
 func controlGroupFor(app state.App) string {
 	if !app.ControlAPI {
 		return ""

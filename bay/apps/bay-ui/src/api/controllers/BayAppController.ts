@@ -34,7 +34,7 @@ export class BayAppController {
         configured: z.boolean(),
       }),
     },
-    handler: async () => ({ configured: this.bay.configured }),
+    handler: async () => ({ configured: await this.bay.reachable() }),
   });
 
   listApps = $action({
