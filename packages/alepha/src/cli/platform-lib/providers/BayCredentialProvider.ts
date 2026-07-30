@@ -3,6 +3,22 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 /**
+ * What `platform auth login` obtained from one Bay.
+ *
+ * The refresh token is the reason this is a record and not a string: the access
+ * token lives fifteen minutes, so a credential that stored only that one would
+ * be useless a quarter of an hour after logging in — with nothing to renew it
+ * from and no way to say why.
+ */
+export interface BayCredential {
+  accessToken: string;
+  /** Absent for `$BAY_API_KEY`, and for a credential stored before refresh. */
+  refreshToken?: string;
+  /** Epoch millis the access token stops being accepted. */
+  expiresAt?: number;
+}
+
+/**
  * Stores the credential for each Bay a developer has logged into.
  *
  * **User-scoped, not project-scoped.** `PlatformCacheProvider` lives in
@@ -29,17 +45,18 @@ export class BayCredentialProvider {
    * `$BAY_API_KEY` wins, so CI can supply one without a file and without a
    * login — the same code path a laptop uses after `platform auth login`.
    */
-  async get(endpoint: string): Promise<string | undefined> {
+  async get(endpoint: string): Promise<BayCredential | undefined> {
     if (process.env.BAY_API_KEY) {
-      return process.env.BAY_API_KEY;
+      // No expiry and no refresh: an API key is revoked, never renewed.
+      return { accessToken: process.env.BAY_API_KEY };
     }
     const store = await this.read();
     return store[this.normalize(endpoint)];
   }
 
-  async set(endpoint: string, token: string): Promise<void> {
+  async set(endpoint: string, credential: BayCredential): Promise<void> {
     const store = await this.read();
-    store[this.normalize(endpoint)] = token;
+    store[this.normalize(endpoint)] = credential;
     await this.write(store);
   }
 
@@ -62,17 +79,29 @@ export class BayCredentialProvider {
     return endpoint.replace(/\/$/, "").toLowerCase();
   }
 
-  protected async read(): Promise<Record<string, string>> {
+  protected async read(): Promise<Record<string, BayCredential>> {
+    let raw: Record<string, unknown>;
     try {
-      return JSON.parse(await readFile(this.path(), "utf8"));
+      raw = JSON.parse(await readFile(this.path(), "utf8"));
     } catch {
       // Absent or unreadable: an empty store means "not logged in", which is
       // the honest reading of both.
       return {};
     }
+    const store: Record<string, BayCredential> = {};
+    for (const [key, value] of Object.entries(raw)) {
+      // A file written before refresh existed holds a bare token string.
+      // Reading it as a credential with no expiry is right: it cannot be
+      // renewed, and the next login replaces it.
+      store[key] =
+        typeof value === "string"
+          ? { accessToken: value }
+          : (value as BayCredential);
+    }
+    return store;
   }
 
-  protected async write(store: Record<string, string>): Promise<void> {
+  protected async write(store: Record<string, BayCredential>): Promise<void> {
     const path = this.path();
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, JSON.stringify(store, null, 2));
