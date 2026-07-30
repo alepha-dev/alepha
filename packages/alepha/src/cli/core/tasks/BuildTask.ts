@@ -2,7 +2,7 @@ import type { Alepha } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import type { BuildOptions } from "../atoms/buildOptions.ts";
 import type { AppEntry } from "../providers/AppEntryProvider.ts";
-import type { BuildManifest } from "./BuildCloudflareTask.ts";
+import type { BuildManifest } from "../schemas/buildManifest.ts";
 
 export interface BuildTaskContext {
   /**

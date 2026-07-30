@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { afterEach, describe, it } from "vitest";
-import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
+import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
 
 /**
  * Object storage can be declared two ways, and only one of them is
@@ -38,7 +38,7 @@ describe("R2 resource detection", () => {
 
     const captured: Record<string, unknown>[] = [];
     // The task uses $inject, so it must come from a container.
-    const task = Alepha.create().inject(BuildCloudflareTask);
+    const task = Alepha.create().inject(BuildManifestTask);
 
     const ctx = {
       root: "/tmp/app",
@@ -55,12 +55,7 @@ describe("R2 resource detection", () => {
     // `writeManifest` is protected; reach it the same way the build does.
     const self = task as unknown as {
       fs: unknown;
-      writeManifest: (
-        ctx: unknown,
-        root: string,
-        distDir: string,
-        name: string,
-      ) => Promise<void>;
+      writeManifest: (ctx: unknown, distDir: string) => Promise<void>;
     };
     self.fs = {
       join: (...p: string[]) => p.join("/"),
@@ -70,9 +65,13 @@ describe("R2 resource detection", () => {
       async exists() {
         return false;
       },
+      async mkdir() {},
+      async readJsonFile() {
+        throw new Error("no package.json in this fake");
+      },
     };
 
-    await self.writeManifest(ctx, "/tmp/app", "dist", "app");
+    await self.writeManifest(ctx, "dist");
     return captured[0] as { resources: { hasBucket: boolean } };
   };
 

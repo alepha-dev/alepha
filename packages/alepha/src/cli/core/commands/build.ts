@@ -16,6 +16,7 @@ import { BuildClientTask } from "../tasks/BuildClientTask.ts";
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
 import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
 import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";
+import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
 import { BuildPrerenderTask } from "../tasks/BuildPrerenderTask.ts";
 import { BuildPwaTask } from "../tasks/BuildPwaTask.ts";
 import { BuildServerTask } from "../tasks/BuildServerTask.ts";
@@ -44,6 +45,9 @@ export class BuildCommand {
     $inject(BuildAssetsTask),
     $inject(BuildPwaTask),
     $inject(BuildPrerenderTask),
+    // Before the target-specific config tasks: `dist/` exists by now, and
+    // anything generating deploy config may want to read what was captured.
+    $inject(BuildManifestTask),
     $inject(BuildVercelTask),
     $inject(BuildCloudflareTask),
     $inject(BuildDockerTask),
@@ -303,7 +307,7 @@ export class BuildCommand {
       );
       return JSON.parse(
         raw,
-      ) as import("../tasks/BuildCloudflareTask.ts").BuildManifest;
+      ) as import("../schemas/buildManifest.ts").BuildManifest;
     } catch {
       return null;
     }

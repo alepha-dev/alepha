@@ -1,4 +1,4 @@
-import { Alepha, AlephaError } from "alepha";
+import { Alepha } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
@@ -13,7 +13,6 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testEnhanceQueue = this.enhanceQueue.bind(this);
   public testEnhanceDurableObjects = this.enhanceDurableObjects.bind(this);
   public testWriteWorkerEntryPoint = this.writeWorkerEntryPoint.bind(this);
-  public testWriteManifest = this.writeManifest.bind(this);
   public testGenerateCloudflare = this.generateCloudflare.bind(this);
 
   public setHasWebSocket(value: boolean): void {
@@ -278,43 +277,6 @@ describe("BuildCloudflareTask", () => {
         ).toBe(false);
         expect(fs.wasWrittenMatching(ENTRY, /Upgrade/)).toBe(false);
       });
-    });
-  });
-
-  describe("writeManifest", () => {
-    /**
-     * Minimal fake of the workspace's live `ctx.alepha` — only `primitives`
-     * is exercised meaningfully; every other lookup `writeManifest` makes
-     * (`inject`, `dump`) is wrapped in try/catch there, so a throwing stub is
-     * enough to exercise the "resource absent" paths without a real Alepha
-     * instance.
-     */
-    const fakeAlepha = {
-      primitives: (name: string) =>
-        name === "$websocket"
-          ? [{ options: { channel: { options: { path: "/ws/chat" } } } }]
-          : [],
-      inject: () => {
-        throw new AlephaError("not available in this fake");
-      },
-      dump: () => {
-        throw new AlephaError("not available in this fake");
-      },
-    } as any;
-
-    it("captures registered $websocket channel paths into the manifest", async () => {
-      const { task, fs } = createTaskWithFs();
-
-      const ctx = { alepha: fakeAlepha, platformOptions: null } as any;
-
-      await task.testWriteManifest(ctx, "/root", "dist", "my-app");
-
-      const manifest = JSON.parse(
-        fs.getFileContent("/root/dist/manifest.json") ?? "{}",
-      );
-
-      expect(manifest.websocketPaths).toEqual(["/ws/chat"]);
-      expect(manifest.resources.hasWebSocket).toBe(true);
     });
   });
 
