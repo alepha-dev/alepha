@@ -17,6 +17,7 @@ import { QuestController } from "./controllers/QuestController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
+import { SourceIngestController } from "./controllers/SourceIngestController.ts";
 import { UserController } from "./controllers/UserController.ts";
 import { VersionController } from "./controllers/VersionController.ts";
 import { ChapterJobs } from "./jobs/ChapterJobs.ts";
@@ -105,6 +106,7 @@ export const LoreApi = $module({
     PetitionController,
     SigilController,
     SigilIngestController,
+    SourceIngestController,
     BlightController,
     InsightsController,
     VersionController,
