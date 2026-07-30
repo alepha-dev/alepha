@@ -1,7 +1,10 @@
-import { $module } from "alepha";
+import { $module, z } from "alepha";
 import { $email } from "./primitives/$email.ts";
 import { EmailProvider } from "./providers/EmailProvider.ts";
-import { LocalEmailProvider } from "./providers/LocalEmailProvider.ts";
+import {
+  LocalEmailProvider,
+  localEmailOptions,
+} from "./providers/LocalEmailProvider.ts";
 import { MemoryEmailProvider } from "./providers/MemoryEmailProvider.ts";
 
 // Exports
@@ -66,6 +69,24 @@ export const AlephaEmail = $module({
         provide: EmailProvider,
         use: LocalEmailProvider,
       });
+      // Relocate scratch data out of the bundle when the host asks for it.
+      // See DATA_DIR below.
+      const env = alepha.parseEnv(dataDirEnvSchema);
+      if (env.DATA_DIR) {
+        alepha.store.set(localEmailOptions.key, {
+          directory: `${env.DATA_DIR}/emails`,
+        });
+      }
     }
   },
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+const dataDirEnvSchema = z.object({
+  DATA_DIR: z.text({
+    default: "",
+    description:
+      "Root directory for local scratch data (emails, sms). Defaults to node_modules/.alepha, which sits inside the deployed bundle — set this to a writable path outside it on any host that unpacks releases read-only.",
+  }),
 });

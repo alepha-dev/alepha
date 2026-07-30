@@ -1,6 +1,9 @@
-import { $module } from "alepha";
+import { $module, z } from "alepha";
 import { FileStorageProvider } from "./providers/FileStorageProvider.ts";
-import { LocalFileStorageProvider } from "./providers/LocalFileStorageProvider.ts";
+import {
+  LocalFileStorageProvider,
+  localFileStorageOptions,
+} from "./providers/LocalFileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "./providers/MemoryFileStorageProvider.ts";
 import { S3FileStorageProvider } from "./providers/S3FileStorageProvider.ts";
 
@@ -48,6 +51,7 @@ export const AlephaBucket = $module({
     S3FileStorageProvider,
   ],
   register: (alepha) => {
+    const env = alepha.parseEnv(envSchema);
     const useS3 = !!alepha.env.S3_ENDPOINT;
     alepha.with({
       optional: true,
@@ -59,5 +63,53 @@ export const AlephaBucket = $module({
             ? S3FileStorageProvider
             : LocalFileStorageProvider,
     });
+
+    // Let the host decide where local blobs live, the same way `DATABASE_URL`
+    // lets it decide where the database lives.
+    //
+    // Without this the default (`node_modules/.alepha/buckets`) sits inside the
+    // deployed bundle, so a self-hosted platform that unpacks each release into
+    // its own directory silently destroys every uploaded file on redeploy.
+    const blobPath =
+      env.STORAGE_PATH || (env.DATA_DIR ? `${env.DATA_DIR}/buckets` : "");
+    if (blobPath) {
+      alepha.store.set(localFileStorageOptions.key, { storagePath: blobPath });
+    }
   },
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+const envSchema = z.object({
+  /**
+   * Root directory for local scratch data shared across modules.
+   *
+   * The defaults of the local providers live under `node_modules/.alepha`, i.e.
+   * inside the deployed bundle. Any host that unpacks each release into its own
+   * directory therefore loses that data on redeploy — set this to a writable
+   * path outside the bundle.
+   *
+   * @example
+   * DATA_DIR=/var/lib/myapp/scratch
+   */
+  DATA_DIR: z.text({
+    default: "",
+    description:
+      "Root directory for local scratch data. Blobs land in <DATA_DIR>/buckets unless STORAGE_PATH is set explicitly.",
+  }),
+
+  /**
+   * Directory where the local file storage provider keeps blobs.
+   *
+   * Takes precedence over `DATA_DIR`. Only used when no `S3_ENDPOINT` is set,
+   * which selects the S3 provider instead.
+   *
+   * @example
+   * STORAGE_PATH=/var/lib/myapp/storage
+   */
+  STORAGE_PATH: z.text({
+    default: "",
+    description:
+      "Directory where the local file storage provider keeps blobs. Must live outside the deployed bundle to survive a redeploy. Ignored when S3_ENDPOINT is set.",
+  }),
 });
