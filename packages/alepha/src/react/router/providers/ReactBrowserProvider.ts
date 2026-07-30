@@ -226,7 +226,15 @@ export class ReactBrowserProvider {
 
   protected async render(options: RouterRenderOptions = {}): Promise<void> {
     const myTransitionId = options.transitionId ?? ++this.transitionId;
-    const previous = options.previous ?? this.state.layers;
+    // `this.state` is undefined until the FIRST successful (non-redirect) render commits it
+    // (the getter reads an atom nothing has ever `set` yet). The redirect-follow-up call below
+    // (`return await this.render({ url: redirect, transitionId: myTransitionId })`) omits
+    // `previous` entirely, so when the very first render's route loader throws a Redirection,
+    // this.state is still unset — fall back to an empty layer stack instead of crashing when
+    // reading `.layers` off `undefined`.
+    // Optional-chained with a `[]` fallback, matching the same defensive read this file already
+    // uses for `this.state?.url.pathname` a few lines below.
+    const previous = options.previous ?? this.state?.layers ?? [];
     const url = options.url ?? this.url;
     const start = this.dateTimeProvider.now();
 
