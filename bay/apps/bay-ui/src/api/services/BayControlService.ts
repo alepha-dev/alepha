@@ -12,6 +12,13 @@ export interface BayApp {
   release: string;
   port: number;
   runtime: string;
+  /**
+   * Whether the app is answering right now, asked of the supervisor per call.
+   *
+   * Distinct from being registered: a stopped or crashed app stays in the list,
+   * and without this the two are indistinguishable.
+   */
+  running?: boolean;
   controlApi?: boolean;
   backups?: boolean;
   lastBackupAt?: string;
