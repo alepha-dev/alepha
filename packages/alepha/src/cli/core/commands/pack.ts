@@ -117,6 +117,29 @@ export class PackCommand {
         );
       }
 
+      // An app that declares a database but ships no migrations is packed
+      // silently and then fails at runtime with missing tables, far from the
+      // cause. The mismatch is knowable here, so it is refused here.
+      //
+      // It is a real shape, not a hypothetical: in a monorepo the migrations
+      // often live in a shared package (`packages/server/migrations`) while the
+      // deployable workspace is `apps/<name>`, and a self-hosted runtime
+      // resolves `migrations/<dialect>` relative to its own working directory —
+      // so only what `pack` includes ever exists.
+      const manifest = await this.fs.readJsonFile<{
+        resources?: { hasDatabase?: boolean };
+      }>(manifestPath);
+      if (manifest.resources?.hasDatabase && !includes.includes("migrations")) {
+        throw new AlephaError(
+          "This app declares a database but there is no `migrations/` next to " +
+            "`dist/`, so the artifact would deploy with no schema and fail at " +
+            "runtime with missing tables.\n\n" +
+            "Generate them with `alepha db migrations create`, or — if they live " +
+            "in another workspace — make them reachable from this one before " +
+            "packing.",
+        );
+      }
+
       // macOS sets COPYFILE_DISABLE=0 by default; tar will then include
       // AppleDouble `._*` files. Force it off here so the tarball is
       // portable. Also pass explicit excludes for `node_modules`,
