@@ -216,3 +216,19 @@ export const newUserContext = async (
   await registerAndVerify(page, email, "GoodPassw0rd");
   return { ctx, page, email };
 };
+
+/**
+ * Type into the shared MDXEditor-based markdown editor. The editor is a
+ * contenteditable (not a <textarea>), so `getByPlaceholder(...).fill()`
+ * no longer works. `nth` picks among several editors on screen (0-based).
+ */
+export async function fillMarkdownEditor(
+  page: import("@playwright/test").Page,
+  text: string,
+  nth = 0,
+): Promise<void> {
+  const editor = page.locator('.lore-mdx [contenteditable="true"]').nth(nth);
+  await editor.waitFor({ state: "visible", timeout: 10_000 });
+  await editor.click();
+  await editor.fill(text);
+}

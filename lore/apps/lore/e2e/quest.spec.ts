@@ -417,11 +417,10 @@ test.describe("Quest", () => {
         .getByRole("button", { name: /complete.*quest/i })
         .first()
         .click();
-      // Dialog presents a textarea — fill the first textarea on screen.
-      // The QuestDescription block lives behind a collapsible that's
-      // closed by default, so the only visible textarea is the summary.
-      const editor = page.locator("textarea").first();
+      // Dialog presents the shared markdown editor (contenteditable).
+      const editor = page.locator('.lore-mdx [contenteditable="true"]').first();
       await expect(editor).toBeVisible({ timeout: 10_000 });
+      await editor.click();
       await editor.fill(summaryText);
       await page
         .getByRole("button", { name: /complete with summary/i })

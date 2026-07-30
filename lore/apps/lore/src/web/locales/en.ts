@@ -5,18 +5,6 @@ export default {
   "language.en": "English",
   "language.fr": "Français",
 
-  "editor.bold": "Bold (⌘B)",
-  "editor.italic": "Italic (⌘I)",
-  "editor.heading": "Heading",
-  "editor.quote": "Quote",
-  "editor.list": "Bulleted list",
-  "editor.orderedList": "Numbered list",
-  "editor.code": "Inline code",
-  "editor.link": "Link (⌘K)",
-  "editor.preview": "Preview",
-  "editor.edit": "Edit",
-  "editor.preview.empty": "Nothing to preview yet.",
-
   "header.actions.profile": "Profile",
   "header.actions.login": "Sign In",
   "header.actions.logout": "Logout",

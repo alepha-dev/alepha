@@ -10,7 +10,8 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useState } from "react";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import TextEditor from "../../shared/TextEditor.tsx";
+import MarkdownEditor from "../../shared/markdown-editor/MarkdownEditor.tsx";
+import { useQuestImageUpload } from "../../shared/markdown-editor/useQuestImageUpload.ts";
 
 export interface QuestSummaryEditDialogProps {
   open: boolean;
@@ -23,6 +24,7 @@ export interface QuestSummaryEditDialogProps {
 
 const QuestSummaryEditDialog = (props: QuestSummaryEditDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
+  const imageUploadHandler = useQuestImageUpload();
   const [value, setValue] = useState(props.initialValue ?? "");
 
   // Re-prime when the dialog re-opens against a different quest / value.
@@ -43,11 +45,12 @@ const QuestSummaryEditDialog = (props: QuestSummaryEditDialogProps) => {
             {tr("quest.view.editSummary.description")}
           </DialogDescription>
         </DialogHeader>
-        <TextEditor
+        <MarkdownEditor
           value={value}
           onChange={setValue}
           placeholder={tr("quest.view.complete.placeholder")}
-          rows={10}
+          imageUploadHandler={imageUploadHandler}
+          minHeight={200}
         />
         <DialogFooter className="gap-2">
           <Button

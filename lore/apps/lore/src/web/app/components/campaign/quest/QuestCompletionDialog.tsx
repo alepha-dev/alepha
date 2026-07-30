@@ -11,7 +11,8 @@ import { useI18n } from "alepha/react/i18n";
 import { Swords } from "lucide-react";
 import { useState } from "react";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import TextEditor from "../../shared/TextEditor.tsx";
+import MarkdownEditor from "../../shared/markdown-editor/MarkdownEditor.tsx";
+import { useQuestImageUpload } from "../../shared/markdown-editor/useQuestImageUpload.ts";
 
 export interface QuestCompletionDialogProps {
   open: boolean;
@@ -22,6 +23,7 @@ export interface QuestCompletionDialogProps {
 
 const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
+  const imageUploadHandler = useQuestImageUpload();
   const [message, setMessage] = useState("");
 
   const handleClose = (open: boolean) => {
@@ -49,11 +51,12 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
             {tr("quest.view.complete.description")}
           </DialogDescription>
         </DialogHeader>
-        <TextEditor
+        <MarkdownEditor
           value={message}
           onChange={setMessage}
           placeholder={tr("quest.view.complete.placeholder")}
-          rows={10}
+          imageUploadHandler={imageUploadHandler}
+          minHeight={200}
         />
         <DialogFooter className="gap-2">
           <Button

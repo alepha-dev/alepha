@@ -17,6 +17,8 @@ import { currentFolioAtom } from "../../atoms/currentFolioAtom.ts";
 import { folioTagsAtom } from "../../atoms/folioTagsAtom.ts";
 import { userFoliosAtom } from "../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import MarkdownEditor from "../shared/markdown-editor/MarkdownEditor.tsx";
+import { useArchiveImageUpload } from "../shared/markdown-editor/useArchiveImageUpload.ts";
 import {
   forgetProtectedKey,
   getProtectedKey,
@@ -64,6 +66,14 @@ const FolioEditor = (props: FolioEditorProps) => {
 
   const isEdit = !!props.folio;
   const crypto = useInject(CryptoProvider);
+
+  // Image uploads land in the campaign Archive as blobs — disabled on
+  // protected folios (the bytes would sit unencrypted next to encrypted
+  // content).
+  const imageUploadHandler = useArchiveImageUpload(
+    campaign?.id,
+    !props.folio?.protected,
+  );
 
   // Encryption is no longer chosen at create time. A clear folio is
   // encrypted from the view (FolioView → FolioPassphraseDialog). The
@@ -263,10 +273,10 @@ const FolioEditor = (props: FolioEditorProps) => {
           </p>
         )}
 
-        <Control
-          input={form.input.content}
-          area
+        <FolioContentField
+          form={form}
           placeholder={tr("folios.content-placeholder")}
+          imageUploadHandler={imageUploadHandler}
         />
 
         {props.folio?.pinned && (
@@ -278,6 +288,29 @@ const FolioEditor = (props: FolioEditorProps) => {
         )}
       </form>
     </div>
+  );
+};
+
+/**
+ * The folio body, edited as markdown through the shared WYSIWYG editor.
+ * Wired to the form manually (rather than through `Control custom`) so
+ * the per-folio image upload handler can be passed down.
+ */
+const FolioContentField = (props: {
+  form: ReturnType<typeof useForm<typeof folioFormSchema>>;
+  placeholder: string;
+  imageUploadHandler?: (file: File) => Promise<string>;
+}) => {
+  const values = useFormValues(props.form);
+
+  return (
+    <MarkdownEditor
+      value={(values.content as string) ?? ""}
+      onChange={(v) => props.form.input.content.set(v)}
+      placeholder={props.placeholder}
+      imageUploadHandler={props.imageUploadHandler}
+      minHeight={420}
+    />
   );
 };
 
