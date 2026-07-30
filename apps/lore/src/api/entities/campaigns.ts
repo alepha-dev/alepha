@@ -46,7 +46,7 @@ export type CampaignFeatures = Static<typeof campaignFeaturesSchema>;
  * `questReminder`, `questChrono`) are intentionally
  * absent from this object. Including them here changes the column's
  * Drizzle DEFAULT — and on D1 that triggers a table rebuild
- * (`DROP TABLE campaigns`) which cascade-wipes characters, quests,
+ * (`DROP TABLE campaigns`) which cascade-wipes members, quests,
  * chapters, folios, petitions. See CLAUDE.md "Migration safety on D1".
  *
  * They're optional in the schema and default to `false` via the
@@ -127,7 +127,7 @@ export const campaigns = $entity({
      *
      * They are kept in the schema ON PURPOSE: dropping a column from
      * `campaigns` risks the Drizzle/D1 table-rebuild path, and `campaigns`
-     * is a CASCADE parent of characters/quests/chapters/folios/petitions —
+     * is a CASCADE parent of members/quests/chapters/folios/petitions —
      * exactly the shape that wiped production on 2026-05-13. Same
      * treatment as the `public` column above. A future PR can drop them
      * with a hand-written, verified `ALTER TABLE ... DROP COLUMN`.

@@ -367,7 +367,7 @@ export class QuestTools {
       "Mark a quest as complete. All objectives must be completed first. Pass `message` with a short summary of what was actually done — the summary is persisted on the quest, shown in the UI, and returned by `quest_get` / `campaign_context` so future agents working on this campaign can read it. Leaving it blank is allowed but wastes a free way to hand context to the next session.",
     title: "Complete quest",
     annotations: {
-      // destructive: state-altering, awards XP and gold; cannot be undone
+      // destructive: state-altering; cannot be undone
       destructiveHint: true,
       idempotentHint: true,
     },
@@ -387,11 +387,6 @@ export class QuestTools {
         shortId: result.shortId,
         title: result.title,
         completedAt: result.completedAt!,
-        // Per-completion award, computed server-side. Reading
-        // `character.xp` / `.balance` here would report the character's
-        // lifetime totals as this quest's reward.
-        xpEarned: result.xpEarned,
-        moneyEarned: result.moneyEarned,
       };
     },
   });

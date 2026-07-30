@@ -24,7 +24,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 type RouteName =
   | "campaignSettingsBanner"
-  | "campaignSettingsCharacters"
+  | "campaignSettingsMembers"
   | "campaignSettingsZones"
   | "campaignSettingsKanban"
   | "campaignSettingsFolios"
@@ -34,7 +34,7 @@ type RouteName =
 
 type NavLabelKey =
   | "campaign.settings.nav.banner"
-  | "campaign.settings.nav.characters"
+  | "campaign.settings.nav.members"
   | "campaign.settings.nav.zones"
   | "campaign.settings.nav.kanban"
   | "campaign.settings.nav.folios"
@@ -69,8 +69,8 @@ const NAV_GROUPS: NavGroup[] = [
         icon: MapPin,
       },
       {
-        route: "campaignSettingsCharacters",
-        labelKey: "campaign.settings.nav.characters",
+        route: "campaignSettingsMembers",
+        labelKey: "campaign.settings.nav.members",
         icon: Users,
       },
     ],

@@ -5,8 +5,8 @@ import { $logger } from "alepha/logger";
 import { $repository, type Page } from "alepha/orm";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 import { campaigns } from "../entities/campaigns.ts";
-import { characters } from "../entities/characters.ts";
 import { type InvitationEntity, invitations } from "../entities/invitations.ts";
+import { members } from "../entities/members.ts";
 import type { CreateInvitation } from "../schemas/createInvitationSchema.ts";
 import { invitationConfigAtom } from "../schemas/invitationConfigAtom.ts";
 import type { InvitationQuery } from "../schemas/invitationQuerySchema.ts";
@@ -42,7 +42,7 @@ export class InvitationService {
   protected readonly repo = $repository(invitations);
   protected readonly users = $repository(users);
   protected readonly campaigns = $repository(campaigns);
-  protected readonly characters = $repository(characters);
+  protected readonly members = $repository(members);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly security = $inject(CampaignSecurityService);
 
@@ -254,11 +254,9 @@ export class InvitationService {
       acceptedBy.id,
     );
     if (!alreadyMember) {
-      await this.characters.create({
+      await this.members.create({
         campaignId: Number(invitation.resourceId),
         userId: acceptedBy.id,
-        xp: 0,
-        balance: 0,
         owner: false,
       });
     }
@@ -439,13 +437,13 @@ export class InvitationService {
     campaignId: string,
     userId: string,
   ): Promise<boolean> {
-    const character = await this.characters.findOne({
+    const member = await this.members.findOne({
       where: {
         campaignId: { eq: Number(campaignId) },
         userId: { eq: userId },
       },
     });
-    return !!character;
+    return !!member;
   }
 
   protected assertOwnedByEmail(

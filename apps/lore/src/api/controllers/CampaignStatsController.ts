@@ -11,7 +11,7 @@ import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 import { campaigns } from "../entities/campaigns.ts";
-import { characters } from "../entities/characters.ts";
+import { members } from "../entities/members.ts";
 import { quests } from "../entities/quests.ts";
 import {
   chroniclesOverviewSchema,
@@ -22,7 +22,7 @@ import { CampaignSecurityService } from "../services/CampaignSecurityService.ts"
 
 export class CampaignStatsController {
   quests = $repository(quests);
-  characters = $repository(characters);
+  members = $repository(members);
   campaigns = $repository(campaigns);
   users = $repository(users);
   database = $inject(DatabaseProvider);
@@ -109,14 +109,14 @@ export class CampaignStatsController {
         }),
       );
 
-      const [characterAgg] = await this.database.run(
+      const [memberAgg] = await this.database.run(
         sql`
-					SELECT COUNT(*) as active_characters
-					FROM ${this.characters.table}
-					WHERE ${this.characters.table.campaignId} = ${params.id}
+					SELECT COUNT(*) as active_members
+					FROM ${this.members.table}
+					WHERE ${this.members.table.campaignId} = ${params.id}
 				`,
         z.object({
-          active_characters: z.coerce.number(),
+          active_members: z.coerce.number(),
         }),
       );
 
@@ -127,7 +127,7 @@ export class CampaignStatsController {
         completedThisWeek: Number(kpiAgg?.completed_this_week) || 0,
         completedLastWeek: Number(kpiAgg?.completed_last_week) || 0,
         avgCycleTimeHours: Number(kpiAgg?.avg_cycle_time_hours) || 0,
-        activeCharacters: Number(characterAgg?.active_characters) || 0,
+        activeMembers: Number(memberAgg?.active_members) || 0,
       };
 
       // Daily created counts over the campaign's lifetime.
@@ -452,10 +452,10 @@ export class CampaignStatsController {
   });
 
   /**
-   * Chronicles "Party" tab: a per-character leaderboard (completed quests, XP,
-   * gold), a weekly per-contributor contribution matrix for a stacked-area
-   * chart, and an "idle" list of members who have not completed a quest in the
-   * last 14 days.
+   * Chronicles "Party" tab: a per-member leaderboard (completed quests), a
+   * weekly per-contributor contribution matrix for a stacked-area chart, and
+   * an "idle" list of members who have not completed a quest in the last 14
+   * days.
    *
    * Same access model as `getChroniclesOverview`: members-only + the
    * Members-only. Date computations dialect-branch (SQLite epoch-ms
@@ -488,20 +488,18 @@ export class CampaignStatsController {
 				)
 			`;
 
-      // Leaderboard — one row per character in the campaign, LEFT-JOINed to
+      // Leaderboard — one row per member in the campaign, LEFT-JOINed to
       // the per-user completed-quest count and the users table for the name.
       const leaderboardQuery = await this.database.run(
         sql`
 					SELECT
-						${this.characters.table.userId} as user_id,
+						${this.members.table.userId} as user_id,
 						${userName} as name,
-						${this.characters.table.picture} as picture,
-						${this.characters.table.xp} as xp,
-						${this.characters.table.balance} as gold,
+						${this.users.table.picture} as picture,
 						COALESCE(q.completed_count, 0) as quests_completed
-					FROM ${this.characters.table}
+					FROM ${this.members.table}
 					LEFT JOIN ${this.users.table}
-						ON ${this.users.table.id} = ${this.characters.table.userId}
+						ON ${this.users.table.id} = ${this.members.table.userId}
 					LEFT JOIN (
 						SELECT
 							${this.quests.table.completedBy} as completed_by,
@@ -511,16 +509,14 @@ export class CampaignStatsController {
 							AND ${this.quests.table.completedAt} IS NOT NULL
 							AND ${this.liveQuest}
 						GROUP BY ${this.quests.table.completedBy}
-					) q ON q.completed_by = ${this.characters.table.userId}
-					WHERE ${this.characters.table.campaignId} = ${params.id}
-					ORDER BY quests_completed DESC, ${this.characters.table.xp} DESC
+					) q ON q.completed_by = ${this.members.table.userId}
+					WHERE ${this.members.table.campaignId} = ${params.id}
+					ORDER BY quests_completed DESC
 				`,
         z.object({
           user_id: z.string(),
           name: z.string().nullish(),
           picture: z.string().nullish(),
-          xp: z.coerce.number(),
-          gold: z.coerce.number(),
           quests_completed: z.coerce.number(),
         }),
       );
@@ -530,8 +526,6 @@ export class CampaignStatsController {
         name: row.name ?? String(row.user_id).slice(0, 8),
         picture: row.picture ?? undefined,
         questsCompleted: Number(row.quests_completed) || 0,
-        xp: Number(row.xp) || 0,
-        gold: Number(row.gold) || 0,
       }));
 
       // Top 5 contributors by completed quests (only those with completions).

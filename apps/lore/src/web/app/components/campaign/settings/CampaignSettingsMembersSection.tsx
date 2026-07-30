@@ -11,41 +11,38 @@ import {
 import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { useClient, useInject } from "alepha/react";
+import { useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { Localize, useI18n } from "alepha/react/i18n";
-import { Circle, Mail, Plus, Users } from "lucide-react";
+import { Mail, Plus, Users } from "lucide-react";
 import { useState } from "react";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { Campaign } from "@/api/entities/campaigns.ts";
-import type { Character } from "@/api/entities/characters.ts";
 import type { InvitationEntity } from "@/api/entities/invitations.ts";
+import type { Member } from "@/api/entities/members.ts";
 import type { User } from "@/api/entities/users.ts";
-import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
-import { CharacterIdentity } from "@/web/app/components/shared/CharacterIdentity.tsx";
+import { MemberIdentity } from "@/web/app/components/shared/MemberIdentity.tsx";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-export interface CampaignSettingsCharactersSectionProps {
+export interface CampaignSettingsMembersSectionProps {
   campaign: Campaign;
-  characters: Array<Character & { user: User }>;
+  members: Array<Member & { user: User }>;
   pendingInvitations: Array<InvitationEntity>;
 }
 
-const CampaignSettingsCharactersSection = (
-  props: CampaignSettingsCharactersSectionProps,
+const CampaignSettingsMembersSection = (
+  props: CampaignSettingsMembersSectionProps,
 ) => {
-  const characterInfo = useInject(CharacterInfo);
   const toaster = useToast();
   const invitationApi = useClient<InvitationController>();
   const auth = useAuth();
-  const { l } = useI18n();
   const { tr } = useI18n<I18n, "en">();
 
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const characters = props.characters;
+  const members = props.members;
   const pendingInvitations = props.pendingInvitations ?? [];
 
   const handleInvite = async () => {
@@ -79,17 +76,17 @@ const CampaignSettingsCharactersSection = (
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {tr("campaign.settings.characters.invite.title")}
+              {tr("campaign.settings.members.invite.title")}
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3">
             <p className="text-muted-foreground text-sm">
-              {tr("campaign.settings.characters.invite.description", {
+              {tr("campaign.settings.members.invite.description", {
                 args: [props.campaign.title],
               })}
             </p>
             <div className="flex flex-col gap-1.5">
-              <Label>{tr("campaign.settings.characters.invite.email")}</Label>
+              <Label>{tr("campaign.settings.members.invite.email")}</Label>
               <div className="relative">
                 <Mail className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />
                 <Input
@@ -106,10 +103,10 @@ const CampaignSettingsCharactersSection = (
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
-              {tr("campaign.settings.characters.invite.cancel")}
+              {tr("campaign.settings.members.invite.cancel")}
             </Button>
             <Button onClick={handleInvite} disabled={loading}>
-              {tr("campaign.settings.characters.invite.submit")}
+              {tr("campaign.settings.members.invite.submit")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -119,74 +116,37 @@ const CampaignSettingsCharactersSection = (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm">
-              {tr("campaign.settings.characters.title")}
+              {tr("campaign.settings.members.title")}
             </span>
             <Badge variant="secondary">
-              {characters.length + pendingInvitations.length}
+              {members.length + pendingInvitations.length}
             </Badge>
           </div>
           {props.campaign.createdBy === auth.user?.id && (
             <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
               <Plus className="size-3.5" />
-              {tr("campaign.settings.characters.invite.action")}
+              {tr("campaign.settings.members.invite.action")}
             </Button>
           )}
         </div>
 
         <div className="flex flex-col gap-2">
-          {characters.map((character) => {
-            const level = characterInfo.getLevelByXp(character.xp);
-            const gold = characterInfo.getGold(character.balance);
-            const silver = characterInfo.getSilver(character.balance);
-
-            return (
-              <Card key={character.id} className="py-3 shadow">
-                <CardContent className="flex items-center gap-4 px-3">
-                  <div className="flex flex-1 items-center gap-3">
-                    <CharacterIdentity character={character} variant="card" />
-                    <span className="text-muted-foreground text-xs">
-                      {character.user.email}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col">
-                      <span className="text-muted-foreground text-xs">
-                        Lv. {level}
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {l(character.xp)} XP
-                      </span>
-                    </div>
-                    <div className="flex gap-1">
-                      {gold > 0 && (
-                        <div className="flex items-center gap-0.5">
-                          <span className="text-xs font-medium">{gold}</span>
-                          <Circle
-                            className="size-2 fill-current"
-                            style={{ color: "var(--color-gold)" }}
-                          />
-                        </div>
-                      )}
-                      {silver > 0 && (
-                        <div className="flex items-center gap-0.5">
-                          <span className="text-xs font-medium">{silver}</span>
-                          <Circle
-                            className="size-2 fill-current"
-                            style={{ color: "var(--color-silver)" }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
+          {members.map((member) => (
+            <Card key={member.id} className="py-3 shadow">
+              <CardContent className="flex items-center gap-4 px-3">
+                <div className="flex flex-1 items-center gap-3">
+                  <MemberIdentity member={member} variant="card" />
                   <span className="text-muted-foreground text-xs">
-                    <Localize value={character.createdAt} date="fromNow" />
+                    {member.user.email}
                   </span>
-                </CardContent>
-              </Card>
-            );
-          })}
+                </div>
+
+                <span className="text-muted-foreground text-xs">
+                  <Localize value={member.createdAt} date="fromNow" />
+                </span>
+              </CardContent>
+            </Card>
+          ))}
 
           {pendingInvitations.map((invitation) => (
             <Card key={invitation.id} className="py-3 shadow opacity-80">
@@ -209,12 +169,12 @@ const CampaignSettingsCharactersSection = (
             </Card>
           ))}
 
-          {characters.length === 0 && pendingInvitations.length === 0 && (
+          {members.length === 0 && pendingInvitations.length === 0 && (
             <Card className="shadow">
               <CardContent className="flex flex-col items-center justify-center gap-2">
                 <Users className="size-8 opacity-50" />
                 <span className="text-muted-foreground text-center text-sm">
-                  {tr("campaign.settings.characters.empty")}
+                  {tr("campaign.settings.members.empty")}
                 </span>
               </CardContent>
             </Card>
@@ -225,4 +185,4 @@ const CampaignSettingsCharactersSection = (
   );
 };
 
-export default CampaignSettingsCharactersSection;
+export default CampaignSettingsMembersSection;

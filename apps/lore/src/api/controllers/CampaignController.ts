@@ -23,12 +23,11 @@ import {
   defaultCampaignFeatures,
 } from "../entities/campaigns.ts";
 import { chapters } from "../entities/chapters.ts";
-import { type Character, characters } from "../entities/characters.ts";
+import { type Member, members } from "../entities/members.ts";
 import { quests } from "../entities/quests.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
-import { AchievementEngine } from "../services/AchievementEngine.ts";
 import { CampaignLimits } from "../services/CampaignLimits.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 
@@ -36,14 +35,14 @@ export class CampaignController {
   log = $logger();
   alepha = $inject(Alepha);
   campaigns = $repository(campaigns);
-  characters = $repository(characters);
+  members = $repository(members);
   /**
    * Relation-aware views of the two tables above, for the reads that used to
    * fetch one and then look up the other. Same tables, same rows — `include`
    * is the only thing they add.
    */
   campaignsWith = $repository(relations, "campaigns");
-  charactersWith = $repository(relations, "characters");
+  membersWith = $repository(relations, "members");
   usersWith = $repository(relations, "users");
   quests = $repository(quests);
   chapters = $repository(chapters);
@@ -53,7 +52,7 @@ export class CampaignController {
 
   /**
    * Campaign-member gate: the campaign creator, or any user holding a
-   * character in it. Privileged identities bypass both.
+   * membership in it. Privileged identities bypass both.
    */
   protected ownsAsMember = () =>
     $owns({
@@ -62,7 +61,7 @@ export class CampaignController {
       owner: "createdBy",
       cast: Number,
       via: {
-        repository: () => this.characters,
+        repository: () => this.members,
         resource: "campaignId",
         user: "userId",
       },
@@ -82,7 +81,6 @@ export class CampaignController {
       message: "Only the campaign owner can perform this action",
     });
   questMapper = $inject(QuestResourceMapper);
-  achievements = $inject(AchievementEngine);
   limits = $inject(CampaignLimits);
 
   /**
@@ -132,29 +130,11 @@ export class CampaignController {
         createdBy: user.id,
       });
 
-      const ownerCharacter = await this.characters.create({
+      await this.members.create({
         campaignId: campaign.id,
         userId: user.id,
-        xp: 0,
-        balance: 0,
         owner: true,
       });
-
-      // Founder achievement: granted on the owner's character at creation.
-      const granted = await this.achievements.evaluate(
-        { type: "character.created" },
-        {
-          character: ownerCharacter,
-          campaignZones: campaign.zones ?? [],
-        },
-      );
-      if (granted.length > 0) {
-        ownerCharacter.achievements = this.achievements.grant(
-          ownerCharacter,
-          granted,
-        );
-        await this.characters.save(ownerCharacter);
-      }
 
       return campaign;
     },
@@ -173,7 +153,7 @@ export class CampaignController {
       response: z.array(campaigns.schema),
     },
     handler: async ({ user, query }) => {
-      // Membership is a many-to-many through `characters`, so the two-step
+      // Membership is a many-to-many through `members`, so the two-step
       // fetch-ids-then-fetch-rows collapses into the relation itself.
       const me = await this.usersWith.findById(user.id, {
         include: {
@@ -248,9 +228,9 @@ export class CampaignController {
       response: z.array(users.schema),
     },
     handler: async ({ params }) => {
-      // One statement: the membership hop through `characters` is the
+      // One statement: the membership hop through `members` is the
       // relation's business, not the handler's. No duplicates to guard
-      // against — `characters` is unique on (userId, campaignId).
+      // against — `members` is unique on (userId, campaignId).
       const campaign = await this.campaignsWith.findById(params.id, {
         include: { members: true },
       });
@@ -345,20 +325,18 @@ export class CampaignController {
         id: z.integer(),
       }),
       response: campaigns.schema.extend({
-        character: characters.schema.optional(),
+        member: members.schema.optional(),
         quests: z.array(questResourceSchema),
         /**
-         * Total number of characters in this campaign (including the
-         * viewer). Drives the conditional sidebar reveal of the Roster
-         * page — it only appears when the campaign has at least 2.
+         * Total number of members in this campaign (including the viewer).
          */
-        characterCount: z.integer(),
+        memberCount: z.integer(),
       }),
     },
     handler: async ({ params, user }) => {
       const campaign = this.owned.get<Campaign>();
 
-      const character = await this.characters.findOne({
+      const member = await this.members.findOne({
         where: {
           campaignId: { eq: params.id },
           userId: { eq: user.id },
@@ -373,8 +351,8 @@ export class CampaignController {
         },
       });
 
-      const campaignCharacters = await this.characters.findMany({
-        where: { campaignId: { eq: params.id } },
+      const memberCount = await this.members.count({
+        campaignId: { eq: params.id },
       });
 
       return {
@@ -382,13 +360,13 @@ export class CampaignController {
         quests: campaignQuests.map((quest) =>
           this.questMapper.mapQuestToResource(quest),
         ),
-        character,
-        characterCount: campaignCharacters.length,
+        member,
+        memberCount,
       };
     },
   });
 
-  getCampaignCharacters = $action({
+  getCampaignMembers = $action({
     use: [
       $secure({ permissions: ["campaign:read"] }),
       $etag({
@@ -401,37 +379,37 @@ export class CampaignController {
         id: z.integer(),
       }),
       response: z.array(
-        characters.schema.extend({
+        members.schema.extend({
           user: users.schema,
         }),
       ),
     },
     handler: async ({ params }) => {
-      const campaignCharacters = await this.charactersWith.findMany({
+      const campaignMembers = await this.membersWith.findMany({
         where: { campaignId: { eq: params.id } },
         include: { user: true },
       });
 
-      const charactersWithUsers: Array<
-        Character & {
+      const membersWithUsers: Array<
+        Member & {
           user: User;
         }
       > = [];
 
-      for (const character of campaignCharacters) {
-        if (!character.user) {
-          // A character whose account is gone. The row survives the user by
-          // design, but the roster has nothing to show for it.
+      for (const member of campaignMembers) {
+        if (!member.user) {
+          // A membership whose account is gone. The row survives the user by
+          // design, but the members list has nothing to show for it.
           this.log.warn(
-            `User with id ${character.userId} not found for character ${character.id}`,
+            `User with id ${member.userId} not found for member ${member.id}`,
           );
           continue;
         }
-        charactersWithUsers.push({ ...character, user: character.user });
+        membersWithUsers.push({ ...member, user: member.user });
       }
 
       // Sort by owner first, then by creation date
-      return charactersWithUsers.sort((a, b) => {
+      return membersWithUsers.sort((a, b) => {
         if (a.owner && !b.owner) return -1;
         if (!a.owner && b.owner) return 1;
         return (
@@ -451,7 +429,7 @@ export class CampaignController {
     },
     handler: async ({ params, user }) => {
       await this.campaigns.deleteById(params.id);
-      await this.characters.deleteMany({
+      await this.members.deleteMany({
         campaignId: { eq: params.id },
       });
       await this.quests.deleteMany({
@@ -483,14 +461,14 @@ export class CampaignController {
         );
       }
 
-      const character = await this.characters.findOne({
+      const member = await this.members.findOne({
         where: {
           userId: { eq: user.id },
           campaignId: { eq: params.id },
         },
       });
 
-      if (!character) {
+      if (!member) {
         // Idempotent: leaving a campaign you're not a member of is a no-op.
         return { ok: true };
       }
@@ -509,8 +487,7 @@ export class CampaignController {
         },
       );
 
-      // Drops the user's XP, balance and character state in this campaign.
-      await this.characters.deleteById(character.id);
+      await this.members.deleteById(member.id);
 
       return { ok: true };
     },

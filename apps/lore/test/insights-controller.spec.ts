@@ -441,14 +441,12 @@ describe("InsightsController", () => {
     const campaignId = await createCampaign(ctx, owner);
     await createSigil(ctx, campaignId, owner);
 
-    // Seed a non-owner character so `member` belongs to the campaign
+    // Seed a non-owner membership so `member` belongs to the campaign
     // (the invitation flow is more plumbing than this test needs).
-    const charactersRepo = (ctx.campaignController as any).characters;
-    await charactersRepo.create({
+    const membersRepo = (ctx.campaignController as any).members;
+    await membersRepo.create({
       userId: member.id,
       campaignId,
-      xp: 0,
-      balance: 0,
       owner: false,
     });
 

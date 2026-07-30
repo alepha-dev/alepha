@@ -2,7 +2,7 @@ import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { ForbiddenError } from "alepha/server";
 import { type Campaign, campaigns } from "../entities/campaigns.ts";
-import { type Character, characters } from "../entities/characters.ts";
+import { type Member, members } from "../entities/members.ts";
 
 /**
  * Campaign access gates.
@@ -19,11 +19,11 @@ import { type Character, characters } from "../entities/characters.ts";
  */
 export class CampaignSecurityService {
   campaigns = $repository(campaigns);
-  characters = $repository(characters);
+  members = $repository(members);
 
   /**
    * Membership gate. Requires the caller to be the campaign owner or a
-   * member (character row exists). Used for every campaign-scoped read
+   * member (membership row exists). Used for every campaign-scoped read
    * AND write — Lore campaigns are always private; there is no
    * non-member visibility path.
    *
@@ -42,22 +42,22 @@ export class CampaignSecurityService {
       return { campaign };
     }
 
-    const character = await this.characters.findOne({
+    const member = await this.members.findOne({
       where: {
         campaignId: { eq: campaignId },
         userId: { eq: user.id },
       },
     });
 
-    if (!character) {
+    if (!member) {
       throw new ForbiddenError("Not a member of this campaign");
     }
-    return { campaign, character };
+    return { campaign, member };
   }
 
   /**
    * Non-throwing **literal** membership check — `true` when the caller created
-   * the campaign or holds a character in it.
+   * the campaign or holds a membership in it.
    *
    * Unlike {@link assertMember}, this deliberately does NOT honor the
    * `user.ownership` privileged-identity bypass: that bypass governs *access*
@@ -75,13 +75,13 @@ export class CampaignSecurityService {
     if (campaign.createdBy === user.id) {
       return true;
     }
-    const character = await this.characters.findOne({
+    const member = await this.members.findOne({
       where: {
         campaignId: { eq: campaignId },
         userId: { eq: user.id },
       },
     });
-    return !!character;
+    return !!member;
   }
 
   /**
@@ -111,5 +111,5 @@ export class CampaignSecurityService {
 
 export interface CampaignGuard {
   campaign: Campaign;
-  character?: Character;
+  member?: Member;
 }

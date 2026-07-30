@@ -6,7 +6,6 @@ import { CampaignController } from "./controllers/CampaignController.ts";
 import { CampaignQuestPortabilityController } from "./controllers/CampaignQuestPortabilityController.ts";
 import { CampaignStatsController } from "./controllers/CampaignStatsController.ts";
 import { ChapterController } from "./controllers/ChapterController.ts";
-import { CharacterController } from "./controllers/CharacterController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
 import { IdentityController } from "./controllers/IdentityController.ts";
@@ -28,7 +27,6 @@ import { InvitationNotifications } from "./notifications/InvitationNotifications
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
-import { AchievementEngine } from "./services/AchievementEngine.ts";
 import { ArchiveBlobService } from "./services/ArchiveBlobService.ts";
 import { ArchiveDirectoryService } from "./services/ArchiveDirectoryService.ts";
 import { ArchiveNameService } from "./services/ArchiveNameService.ts";
@@ -37,7 +35,6 @@ import { BlightIngestService } from "./services/BlightIngestService.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { CampaignLimits } from "./services/CampaignLimits.ts";
 import { CampaignSecurityService } from "./services/CampaignSecurityService.ts";
-import { CharacterInfo } from "./services/CharacterInfo.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { InvitationService } from "./services/InvitationService.ts";
@@ -63,8 +60,6 @@ export const LoreApi = $module({
     // Substituted for the framework's `FileAccessProvider` in
     // `main.server.ts`. Listed here only so DI scanning sees the class.
     LoreFileAccessProvider,
-    CharacterInfo,
-    AchievementEngine,
     ArchiveNameService,
     ArchiveDirectoryService,
     ArchiveBlobService,
@@ -97,7 +92,6 @@ export const LoreApi = $module({
     CampaignController,
     UserController,
     SessionController,
-    CharacterController,
     ChapterController,
     IdentityController,
     CampaignStatsController,

@@ -70,12 +70,10 @@ const addMember = async (
   userId: string,
   campaignId: number,
 ): Promise<void> => {
-  const charactersRepo = (ctx.campaignController as any).characters;
-  await charactersRepo.create({
+  const membersRepo = (ctx.campaignController as any).members;
+  await membersRepo.create({
     userId,
     campaignId,
-    xp: 0,
-    balance: 0,
     owner: false,
   });
 };

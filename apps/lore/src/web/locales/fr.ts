@@ -191,13 +191,11 @@ export default {
 
   "campaign.menu.create-quest": "Créer quête",
   "campaign.menu.create-folio": "Nouveau folio",
-  "campaign.menu.create-character": "Nouveau personnage",
+  "campaign.menu.invite-member": "Inviter un membre",
   "campaign.menu.create-petition": "Nouvelle pétition",
   "campaign.menu.create-more": "Autres actions de création",
   "campaign.menu.board": "Tableau",
   "campaign.menu.kanban": "Kanban",
-  "campaign.menu.myCharacter": "Fiche",
-  "campaign.menu.roster": "Équipée",
   "campaign.menu.chronicles": "Chroniques",
   "campaign.menu.folios": "Archive",
   "campaign.menu.settings": "Paramètres",
@@ -293,9 +291,6 @@ export default {
   "quest.graph.noDescription": "(pas de description)",
   "quest.graph.pickAQuest":
     "Sélectionnez une quête sur la timeline pour voir sa description.",
-  "quest.view.rewards": "Récompenses",
-  "quest.view.receive": "Vous obtiendrez :",
-  "quest.view.experience": "Expérience :",
   "quest.view.actions.complete": "Marquer comme accomplie",
   "quest.view.actions.abandon": "Abandonner la quête",
   "quest.view.actions.shelve": "Mettre de côté",
@@ -322,16 +317,16 @@ export default {
 
   "quest.view.history": "Historique",
 
-  "campaign.settings.characters.title": "Personnages",
-  "campaign.settings.characters.empty":
-    "Aucun personnage dans cette campagne pour le moment.",
-  "campaign.settings.characters.invite.action": "Inviter",
-  "campaign.settings.characters.invite.title": "Inviter un utilisateur",
-  "campaign.settings.characters.invite.description":
+  "campaign.settings.members.title": "Membres",
+  "campaign.settings.members.empty":
+    "Aucun membre dans cette campagne pour le moment.",
+  "campaign.settings.members.invite.action": "Inviter",
+  "campaign.settings.members.invite.title": "Inviter un utilisateur",
+  "campaign.settings.members.invite.description":
     "Entrez l'adresse e-mail de l'utilisateur que vous souhaitez inviter dans « $1 ».",
-  "campaign.settings.characters.invite.email": "Adresse e-mail",
-  "campaign.settings.characters.invite.cancel": "Annuler",
-  "campaign.settings.characters.invite.submit": "Envoyer l'invitation",
+  "campaign.settings.members.invite.email": "Adresse e-mail",
+  "campaign.settings.members.invite.cancel": "Annuler",
+  "campaign.settings.members.invite.submit": "Envoyer l'invitation",
 
   "campaign.settings.danger.title": "Zone à risques",
   "campaign.settings.actions.delete": "Détruire cette campagne",
@@ -339,16 +334,16 @@ export default {
     "Parfois, il faut abandonner le combat… mais sachez que toutes les quêtes et les progrès seront perdus.",
   "campaign.settings.actions.leave": "Quitter cette campagne",
   "campaign.settings.actions.leave.helper":
-    "Vous perdrez votre personnage, votre XP et votre bourse pour cette campagne. Les quêtes que vous aviez acceptées sans les terminer seront libérées.",
+    "Les quêtes que vous aviez acceptées sans les terminer seront libérées pour les autres membres.",
   "campaign.settings.leave.modal.title": "Quitter la campagne",
   "campaign.settings.leave.modal.description":
-    "Voulez-vous vraiment quitter $1 ? Votre personnage, votre XP et votre bourse pour cette campagne seront supprimés. Les quêtes non terminées seront libérées.",
+    "Voulez-vous vraiment quitter $1 ? Les quêtes non terminées seront libérées pour les autres membres.",
   "campaign.settings.leave.modal.cancel": "Annuler",
   "campaign.settings.leave.modal.submit": "Quitter la campagne",
 
   "campaign.settings.general.title": "Campagne",
   "campaign.settings.nav.banner": "Général",
-  "campaign.settings.nav.characters": "Personnages",
+  "campaign.settings.nav.members": "Membres",
   "campaign.settings.nav.zones": "Zones",
   "campaign.settings.data.title": "Data",
   "campaign.settings.data.export.title": "Exporter les quêtes",
@@ -399,7 +394,7 @@ export default {
   "chronicles.overview.kpi.open": "En cours",
   "chronicles.overview.kpi.completedThisWeek": "Terminées cette semaine",
   "chronicles.overview.kpi.cycleTime": "Temps de cycle moyen",
-  "chronicles.overview.kpi.activeCharacters": "Personnages actifs",
+  "chronicles.overview.kpi.activeMembers": "Membres actifs",
   "chronicles.overview.kpi.completionHint": "$1/$2 quêtes",
   "chronicles.overview.kpi.weekDeltaHint":
     "$1 par rapport à la semaine dernière",
@@ -431,8 +426,6 @@ export default {
   "chronicles.party.leaderboard.empty":
     "Aucun membre dans le groupe pour le moment.",
   "chronicles.party.label.quests": "quêtes",
-  "chronicles.party.label.xp": "XP",
-  "chronicles.party.label.gold": "or",
   "chronicles.party.contribution.title": "Contribution",
   "chronicles.party.contribution.empty": "Pas assez d'activité pour le moment.",
   "chronicles.party.idle.title": "Membres inactifs",
@@ -578,7 +571,7 @@ export default {
   "quest.item.bonus": "Bonus",
   "quest.item.bonus.description": "Cette quête est optionnelle.",
   "quest.item.highPriority": "Priorité haute !",
-  "quest.item.highPriority.description": "Ce qui signifie plus de récompenses.",
+  "quest.item.highPriority.description": "À traiter en priorité.",
 
   "quest.group.quests": "$1 quêtes",
   "quest.group.quests.one": "1 quête",
@@ -588,30 +581,12 @@ export default {
   "zone.rename.name": "Nom de la zone",
   "zone.rename.submit": "Renommer",
 
-  "character.sheet.level": "Niveau $1",
-  "character.sheet.identity.title": "Identité",
-  "character.sheet.identity.name": "Nom",
-  "character.sheet.identity.avatar": "Avatar",
-  "character.sheet.identity.title.label": "Titre",
-  "character.sheet.achievements.title": "Hauts faits",
-
-  "character.roster.title": "Équipée — $1 personnages",
-  "character.roster.empty": "Aucun personnage pour le moment.",
-  "character.roster.sort.level": "Niveau",
-  "character.roster.sort.joined": "Arrivée",
-
   "error.title": "Oups ! Quelque chose s'est mal passé.",
   "error.description":
     "Nous nous excusons pour le désagrément. Veuillez réessayer plus tard ou contacter le support.",
   "error.back": "Retour",
   "error.reload": "Recharger",
   "error.home": "Accueil",
-
-  "xp.bar.title": "Barre d'expérience",
-  "xp.bar.description":
-    "Affiche votre progression actuelle vers le prochain niveau.",
-  "xp.levelUp.title": "Niveau supérieur !",
-  "xp.levelUp.subtitle": "Niveau $1",
 
   "common.cancel": "Annuler",
   "common.noResults": "Aucun résultat",
