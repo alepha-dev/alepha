@@ -53,15 +53,28 @@ export interface MarkdownEditorInnerProps {
  */
 const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
   const ref = useRef<MDXEditorMethods>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   // Last value we emitted — used to tell "external reset" (e.g. a folio
   // decrypt filling the form) apart from our own onChange echo.
   const lastEmitted = useRef(props.value);
 
   useEffect(() => {
-    if (props.value !== lastEmitted.current) {
-      lastEmitted.current = props.value;
-      ref.current?.setMarkdown(props.value);
+    if (props.value === lastEmitted.current) {
+      return;
     }
+    // While the user is typing, the owning form can re-render with a
+    // value that lags one keystroke behind what we just emitted. Treating
+    // that stale echo as an external reset rewrites the document under
+    // the cursor and silently drops recent input (it ate list items in
+    // manual testing). External programmatic fills (folio decrypt, dialog
+    // re-prime) happen while the editor is NOT focused — so only sync
+    // when focus is elsewhere.
+    const active = document.activeElement;
+    if (active && wrapperRef.current?.contains(active)) {
+      return;
+    }
+    lastEmitted.current = props.value;
+    ref.current?.setMarkdown(props.value);
   }, [props.value]);
 
   const plugins = useMemo(() => {
@@ -129,6 +142,7 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
 
   return (
     <div
+      ref={wrapperRef}
       style={
         props.minHeight
           ? ({ "--lore-mdx-min-h": `${props.minHeight}px` } as never)

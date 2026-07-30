@@ -177,8 +177,11 @@ body::before {
  * needs the same mapping.
  * ──────────────────────────────────────────────────────────────────────── */
 
-.lore-mdx,
-.mdxeditor-popup-container {
+/* Double the class for specificity: MDXEditor's own stylesheet defines
+ * the same variables on `.mdxeditor` and loads AFTER main.css (it ships
+ * inside the lazy editor chunk), so a single-class selector loses. */
+.lore-mdx.lore-mdx,
+.mdxeditor-popup-container.mdxeditor-popup-container {
   --basePageBg: var(--background);
   --baseBase: var(--muted);
   --baseBgSubtle: var(--muted);
@@ -226,6 +229,66 @@ body::before {
   min-height: var(--lore-mdx-min-h, 16rem);
   font-size: 0.875rem;
   line-height: 1.625;
+}
+
+/* Content typography — Tailwind's preflight flattens h1/ul/ol inside the
+ * contenteditable, so restore the same scale MarkdownView uses for
+ * rendering. Editing and viewing should look like the same document. */
+.lore-mdx-content h1 {
+  margin: 1rem 0 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.lore-mdx-content h2 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.lore-mdx-content h3 {
+  margin: 0.75rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.lore-mdx-content ul {
+  margin: 0.75rem 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.lore-mdx-content ol {
+  margin: 0.75rem 0;
+  padding-left: 1.25rem;
+  list-style: decimal;
+}
+
+/* Task-list items render their own checkbox — no disc marker on top. */
+.lore-mdx-content li[role="checkbox"] {
+  list-style: none;
+}
+
+.lore-mdx-content blockquote {
+  margin: 0.75rem 0;
+  border-left: 2px solid var(--border);
+  padding-left: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.lore-mdx-content code {
+  border-radius: 0.25rem;
+  background: var(--muted);
+  padding: 0.125rem 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.lore-mdx-content hr {
+  margin: 1rem 0;
+  border-color: var(--border);
 }
 
 /* Source mode: match the old font-mono textarea feel. */
