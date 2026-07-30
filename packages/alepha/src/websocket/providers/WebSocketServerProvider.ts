@@ -131,6 +131,29 @@ export abstract class WebSocketServerProvider {
       return undefined;
     }
 
+    // Browser WebSocket handshakes cannot carry an `Authorization` header — the encrypted
+    // session cookie is their only credential. HTTP requests get the cookie→authorization
+    // conversion from ServerAuthProvider's `server:onRequest` hook; an upgrade bypasses that
+    // pipeline, so the equivalent conversion runs here before the resolver chain (whose
+    // resolvers only read `authorization`).
+    if (!handshake.headers.authorization && handshake.headers.cookie) {
+      try {
+        const auth = this.alepha.inject("ServerAuthProvider") as {
+          accessTokenFromCookieHeader(
+            header: string,
+          ): Promise<string | undefined>;
+        };
+        const token = await auth.accessTokenFromCookieHeader(
+          handshake.headers.cookie,
+        );
+        if (token) {
+          handshake.headers.authorization = `Bearer ${token}`;
+        }
+      } catch {
+        // No auth module registered — bearer-only apps keep working unchanged.
+      }
+    }
+
     if (!security) {
       return undefined;
     }

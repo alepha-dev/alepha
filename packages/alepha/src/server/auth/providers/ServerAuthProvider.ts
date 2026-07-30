@@ -15,6 +15,7 @@ import {
 } from "alepha/server";
 import {
   $cookie,
+  CookieParser,
   type Cookies,
   ServerCookiesProvider,
 } from "alepha/server/cookies";
@@ -42,6 +43,7 @@ export class ServerAuthProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
+  protected readonly cookieParser = $inject(CookieParser);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly serverLinksProvider = $inject(ServerLinksProvider);
 
@@ -836,6 +838,31 @@ export class ServerAuthProvider {
     }
 
     return identity;
+  }
+
+  /**
+   * Resolve a bearer access token from a raw `Cookie` request header — the WebSocket upgrade
+   * path.
+   *
+   * Browsers cannot attach an `Authorization` header to a WebSocket handshake, so for a web
+   * client the encrypted `tokens` cookie is the ONLY auth channel a socket upgrade carries.
+   * Ordinary HTTP requests get the cookie→authorization conversion from this provider's
+   * `server:onRequest` hook, but an upgrade never runs the server pipeline, so
+   * `WebSocketServerProvider.resolveUserId` calls this directly. Refresh side effects (an
+   * updated or deleted cookie) cannot reach the client here — there is no HTTP response to
+   * carry a `Set-Cookie` — which is acceptable: the next ordinary HTTP request performs the
+   * same refresh and persists it.
+   */
+  public async accessTokenFromCookieHeader(
+    cookieHeader: string,
+  ): Promise<string | undefined> {
+    const cookies: Cookies = {
+      req: this.cookieParser.parseRequestCookies(cookieHeader),
+      res: {},
+    };
+    const tokens = await this.cookiesToTokens(cookies);
+    if (!tokens) return undefined;
+    return this.extractAccessToken(tokens);
   }
 
   /**

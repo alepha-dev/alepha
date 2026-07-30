@@ -10,6 +10,7 @@ import { CookieParser } from "./services/CookieParser.ts";
 export * from "./primitives/$cookie.ts";
 export * from "./providers/AtomCookiePersistence.ts";
 export * from "./providers/ServerCookiesProvider.ts";
+export * from "./services/CookieParser.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
