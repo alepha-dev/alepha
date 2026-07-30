@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { OAuthController } from "./controllers/OAuthController.ts";
+import { DeviceCodeService } from "./services/DeviceCodeService.ts";
 import { OAuthClientService } from "./services/OAuthClientService.ts";
 
 export {
@@ -9,6 +10,7 @@ export {
 export type { OAuthClientEntity } from "./entities/oauthClientEntity.ts";
 export { oauthClientEntity } from "./entities/oauthClientEntity.ts";
 export { buildOpenIdConfiguration } from "./helpers/oidcMetadata.ts";
+export * from "./services/DeviceCodeService.ts";
 export type { RegisterClientOptions } from "./services/OAuthClientService.ts";
 export { OAuthClientService } from "./services/OAuthClientService.ts";
 
@@ -35,5 +37,5 @@ export { OAuthClientService } from "./services/OAuthClientService.ts";
  */
 export const AlephaOAuth = $module({
   name: "alepha.api.oauth",
-  services: [OAuthClientService, OAuthController],
+  services: [OAuthClientService, DeviceCodeService, OAuthController],
 });

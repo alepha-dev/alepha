@@ -10,8 +10,14 @@ import {
 import { buildOpenIdConfiguration } from "../helpers/oidcMetadata.ts";
 import { authorizeDecisionBodySchema } from "../schemas/authorizeDecisionBodySchema.ts";
 import { authorizeQuerySchema } from "../schemas/authorizeQuerySchema.ts";
+import { deviceAuthorizationBodySchema } from "../schemas/deviceAuthorizationBodySchema.ts";
 import { registerClientBodySchema } from "../schemas/registerClientBodySchema.ts";
 import { tokenRequestBodySchema } from "../schemas/tokenRequestBodySchema.ts";
+import {
+  DEVICE_CODE_TTL_SECONDS,
+  DEVICE_POLL_INTERVAL_SECONDS,
+  DeviceCodeService,
+} from "../services/DeviceCodeService.ts";
 import { OAuthClientService } from "../services/OAuthClientService.ts";
 
 /**
@@ -28,8 +34,22 @@ export const oauthOptions = $atom({
     realm: z.text({ default: "users" }),
     resource: z.text({ default: "/mcp" }),
     loginPath: z.text({ default: "/login" }),
+    /**
+     * Page where a human approves a device authorization (RFC 8628). Handed to
+     * the device as `verification_uri` so it can print it.
+     *
+     * Optional so adding it does not break every existing caller of
+     * `alepha.set(oauthOptions, …)` — the sibling fields are required, and any
+     * app already configuring them would stop compiling.
+     */
+    devicePath: z.text({ default: "/device" }).optional(),
   }),
-  default: { realm: "users", resource: "/mcp", loginPath: "/login" },
+  default: {
+    realm: "users",
+    resource: "/mcp",
+    loginPath: "/login",
+    devicePath: "/device",
+  },
   serverOnly: true,
 });
 
@@ -42,6 +62,7 @@ export class OAuthController {
   protected readonly log = $logger();
   protected readonly options = $state(oauthOptions);
   protected readonly clients = $inject(OAuthClientService);
+  protected readonly deviceCodes = $inject(DeviceCodeService);
   protected readonly jwt = $inject(JwtProvider);
 
   /**
@@ -290,6 +311,41 @@ export class OAuthController {
    * `refresh_token` grant (exchanges a refresh token for a fresh access
    * token, so a client stays connected without re-running the flow).
    */
+  /**
+   * POST /oauth/device_authorization — RFC 8628 §3.2.
+   *
+   * Unauthenticated on purpose: the device has no credential yet, which is the
+   * situation the grant exists for. What protects it is that a code is worth
+   * nothing until a human with a session approves it.
+   */
+  deviceAuthorization = $route({
+    method: "POST",
+    path: "/oauth/device_authorization",
+    schema: { body: deviceAuthorizationBodySchema },
+    use: [],
+    handler: async ({ body, url, reply }) => {
+      reply.headers["content-type"] = "application/json";
+      const record = await this.deviceCodes.start({
+        clientId: body.client_id ?? "cli",
+        scopes: (body.scope ?? "").split(" ").filter(Boolean),
+        resource: body.resource,
+      });
+      const base = this.baseUrl(url);
+      const verificationUri = `${base}${this.options.devicePath ?? "/device"}`;
+      reply.body = JSON.stringify({
+        device_code: record.deviceCode,
+        user_code: record.userCode,
+        verification_uri: verificationUri,
+        // RFC 8628 §3.3.1: the same page with the code pre-filled, so anyone
+        // who CAN follow a link is spared retyping it. The plain URI is still
+        // required, for whoever cannot.
+        verification_uri_complete: `${verificationUri}?user_code=${encodeURIComponent(record.userCode)}`,
+        expires_in: DEVICE_CODE_TTL_SECONDS,
+        interval: DEVICE_POLL_INTERVAL_SECONDS,
+      });
+    },
+  });
+
   token = $route({
     method: "POST",
     path: "/oauth/token",
@@ -350,6 +406,44 @@ export class OAuthController {
             );
           }
           reply.body = JSON.stringify(response);
+          return;
+        }
+
+        if (
+          body.grant_type === "urn:ietf:params:oauth:grant-type:device_code"
+        ) {
+          const result = await this.deviceCodes.poll(body.device_code ?? "");
+          if (result.status !== "approved") {
+            // RFC 8628 §3.5 names each of these, and a device is expected to
+            // act differently on each: keep waiting, back off, give up, or
+            // report a refusal. Collapsing them into one error would make a
+            // correct client impossible to write.
+            const errors = {
+              pending: "authorization_pending",
+              slow_down: "slow_down",
+              denied: "access_denied",
+              expired: "expired_token",
+            } as const;
+            reply.status = 400;
+            reply.body = JSON.stringify({ error: errors[result.status] });
+            return;
+          }
+          const tokens = await this.clients.issueAccessToken(
+            this.options.realm,
+            {
+              userId: result.userId,
+              scopes: result.scopes,
+              resource: result.resource,
+              clientId: body.client_id,
+            },
+          );
+          reply.body = JSON.stringify({
+            access_token: tokens.access_token,
+            token_type: "Bearer",
+            expires_in: tokens.expires_in,
+            refresh_token: tokens.refresh_token,
+            scope: result.scopes.join(" "),
+          });
           return;
         }
 

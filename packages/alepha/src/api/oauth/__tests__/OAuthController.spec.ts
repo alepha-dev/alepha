@@ -359,3 +359,105 @@ describe("OAuthController refresh_token grant", () => {
     expect(typeof refreshBody.id_token).toBe("string");
   });
 });
+
+describe("device authorization grant", () => {
+  const boot = async () => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    await alepha.start();
+    return alepha;
+  };
+
+  it("advertises the grant so a device can discover it", async ({ expect }) => {
+    const alepha = await boot();
+    const { hostname } = alepha.inject(ServerProvider);
+
+    const meta = await fetch(
+      `${hostname}/.well-known/oauth-authorization-server`,
+    ).then((r) => r.json());
+
+    // Discovered rather than configured into every client.
+    expect(meta.device_authorization_endpoint).toBe(
+      `${hostname}/oauth/device_authorization`,
+    );
+    expect(meta.grant_types_supported).toContain(
+      "urn:ietf:params:oauth:grant-type:device_code",
+    );
+  });
+
+  it("issues a code pair and a verification URI a human can use", async ({
+    expect,
+  }) => {
+    const alepha = await boot();
+    const { hostname } = alepha.inject(ServerProvider);
+
+    const res = await fetch(`${hostname}/oauth/device_authorization`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_id: "cli", scope: "openid" }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.user_code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    expect(body.verification_uri).toBe(`${hostname}/device`);
+    // RFC 8628 §3.3.1 — the same page with the code filled in, for anyone who
+    // can follow a link. The plain URI stays, for anyone who cannot.
+    expect(body.verification_uri_complete).toContain("user_code=");
+    expect(body.interval).toBeGreaterThan(0);
+    expect(body.expires_in).toBeGreaterThan(0);
+  });
+
+  it("tells a polling device to keep waiting, in the words RFC 8628 defines", async ({
+    expect,
+  }) => {
+    const alepha = await boot();
+    const { hostname } = alepha.inject(ServerProvider);
+
+    const start = await fetch(`${hostname}/oauth/device_authorization`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_id: "cli" }),
+    }).then((r) => r.json());
+
+    const res = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        device_code: start.device_code,
+        client_id: "cli",
+      }),
+    });
+    expect(res.status).toBe(400);
+    // A correct client branches on this exact string; anything friendlier would
+    // make it unimplementable.
+    expect((await res.json()).error).toBe("authorization_pending");
+  });
+
+  it("refuses an unknown device code as expired, saying nothing more", async ({
+    expect,
+  }) => {
+    const alepha = await boot();
+    const { hostname } = alepha.inject(ServerProvider);
+
+    const res = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        device_code: "made-up",
+        client_id: "cli",
+      }),
+    });
+    // Not "no such code": that would confirm which codes ever existed.
+    expect((await res.json()).error).toBe("expired_token");
+  });
+});
