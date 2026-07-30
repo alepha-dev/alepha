@@ -5,14 +5,14 @@ import { type Static, z } from "alepha";
  *
  * Used by both the trusted server-to-server `$route` (`POST /sigils/:id/ingest`
  * in `SigilIngestController`) and the in-process path (`SigilIngestRunner`,
- * invoked by `LoreSigilForwardProvider` when Lore dogfoods its own sigil).
+ * invoked by `LoreTelemetrySinkProvider` when Lore dogfoods its own sigil).
  *
  * All three capability buckets are optional: a caller sends only what it has.
  * `country` and `visitor` are stamped by the caller and apply to the whole
  * batch (the daily visitor hash is derived server-side, never the raw IP).
  *
- * Length constraints mirror the `@alepha/sigil` schemas but are declared
- * locally to avoid importing from `@alepha/sigil` (that barrel pulls React).
+ * Length constraints mirror the `@alepha/telemetry` schemas but are declared
+ * locally to avoid importing from `@alepha/telemetry` (that barrel pulls React).
  */
 export const sigilIngestBodySchema = z.object({
   /**

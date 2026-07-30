@@ -1,4 +1,4 @@
-import { AlephaSigil } from "@alepha/sigil";
+import { AlephaTelemetry } from "@alepha/telemetry";
 import { $module } from "alepha";
 import { AlephaCrypto } from "alepha/crypto";
 import { I18nProvider } from "alepha/react/i18n";
@@ -21,7 +21,7 @@ import { ThemesProvider } from "./services/ThemesProvider.ts";
 
 export const LoreWebApp = $module({
   name: "lore.web.app",
-  imports: [AlephaReactUi, AlephaCrypto, AlephaSigil],
+  imports: [AlephaReactUi, AlephaCrypto, AlephaTelemetry],
   services: [I18n, ThemesProvider, AppRouter, MeRouter],
   atoms: [
     campaignDirectoriesAtom,

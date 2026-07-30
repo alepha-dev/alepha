@@ -1,0 +1,65 @@
+{
+  "name": "@alepha/telemetry",
+  "private": true,
+  "description": "Telemetry for Alepha apps: views, vitals, errors and server metrics, pushed to a sink.",
+  "author": "Feunard",
+  "version": "0.20.1",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "browser": "./src/index.browser.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./server": "./src/server/index.ts",
+    "./messages": "./src/shared/telemetryMessages.ts",
+    "./context": "./src/shared/telemetryPetitionContext.ts",
+    "./vitals": "./src/shared/schemas/telemetryVitalsBuckets.ts",
+    "./fingerprint": "./src/shared/telemetryFingerprint.ts",
+    "./envelope": "./src/shared/schemas/telemetryEnvelope.ts",
+    "./config": "./src/shared/schemas/telemetryConfig.ts"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "alepha": "0.24.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tsdown": "^0.22.14",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "peerDependencies": {
+    "alepha": "0.24.0",
+    "react": "*",
+    "react-dom": "*"
+  },
+  "scripts": {
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "tsdown"
+  },
+  "homepage": "https://github.com/feunard/alepha",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
+  "keywords": [
+    "alepha",
+    "telemetry",
+    "metrics",
+    "observability"
+  ]
+}

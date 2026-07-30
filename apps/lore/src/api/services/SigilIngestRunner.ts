@@ -30,9 +30,9 @@ export type SigilIngestOutcome = "ok" | "not-found" | "feature-off";
  *
  * Both entry points share this so the gating logic lives in exactly one place:
  * - {@link SigilIngestController} — the trusted server-to-server `$route`.
- * - `LoreSigilForwardProvider` — the in-process path used when Lore dogfoods
+ * - `LoreTelemetrySinkProvider` — the in-process path used when Lore dogfoods
  *   its own sigil (a Cloudflare Worker cannot fetch its own hostname, so the
- *   HTTP self-call in the base `SigilForwardProvider` is bypassed).
+ *   HTTP self-call in the base `TelemetrySinkProvider` is bypassed).
  */
 export class SigilIngestRunner {
   protected log = $logger();
@@ -120,7 +120,7 @@ export class SigilIngestRunner {
       if (vitalsOn && kinds.includes("vitals")) {
         try {
           // body.vitals metric is `string` here (the schema can't know the
-          // VitalMetric enum without importing @alepha/sigil which pulls
+          // VitalMetric enum without importing @alepha/telemetry which pulls
           // React). VitalsIngestService silently drops unknown metrics, so the
           // cast is safe — invalid values are filtered inside the service.
           // biome-ignore lint/suspicious/noExplicitAny: see above

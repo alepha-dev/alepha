@@ -4,8 +4,8 @@ import { createCampaignViaWizard, registerAndVerify } from "./_helpers.ts";
 /**
  * Sigils — telemetry server-to-server contract (approach b2).
  *
- * The `@alepha/sigil` telemetry flow is server-to-server: the partner app's
- * `SigilForwardProvider` POSTs to `POST /sigils/:id/ingest` using only the
+ * The `@alepha/telemetry` telemetry flow is server-to-server: the partner app's
+ * `TelemetrySinkProvider` POSTs to `POST /sigils/:id/ingest` using only the
  * sigil UUID as a credential. Petitions are NOT part of this contract anymore
  * — the sigil feedback button just opens the first-party Lore request page
  * (`/c/:campaignId/request`); the module resolves the campaign via
