@@ -73,6 +73,16 @@ func main() {
 		usage()
 		os.Exit(2)
 	}
+	// Asking for help must never do anything. `serve` in particular starts a
+	// daemon that binds ports and takes over the state directory, and every
+	// parse loop below ignores what it does not recognise — so without this,
+	// `bay serve --help` silently boots a server.
+	for _, arg := range os.Args[1:] {
+		if arg == "--help" || arg == "-h" {
+			usage()
+			os.Exit(0)
+		}
+	}
 	var err error
 	// Every command except `serve` is a client of the control API, so they all
 	// honour `--control`. `serve` parses it itself, as the address to LISTEN on.
@@ -156,6 +166,37 @@ bay-ui calls. There is no second code path. Client commands accept
 `)
 }
 
+// checkFlags refuses any `--flag` a command does not know.
+//
+// Every parse loop here is a hand-rolled `switch` that ignores what it does not
+// match, so a typo is silent: `--base-domian` starts a Bay with no base domain,
+// `--nmae` deploys under the manifest's project instead of the one asked for.
+// Both look like success. This is the same reasoning `--backup-interval`
+// already applies to its value, applied to the names as well.
+//
+// `boolFlags` stand alone; `valueFlags` consume the argument after them, which
+// is skipped so a value that happens to start with `--` is not mistaken for a
+// flag.
+func checkFlags(args []string, boolFlags, valueFlags map[string]bool) error {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if !strings.HasPrefix(arg, "--") {
+			continue
+		}
+		switch {
+		case boolFlags[arg]:
+		case valueFlags[arg]:
+			if i == len(args)-1 {
+				return fmt.Errorf("%s needs a value", arg)
+			}
+			i++
+		default:
+			return fmt.Errorf("unknown flag %q (run `bay --help`)", arg)
+		}
+	}
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 // serve
 // ---------------------------------------------------------------------------
@@ -184,6 +225,18 @@ func cmdServe(args []string) error {
 	badBackupInterval := ""
 	controlSocket := ""
 	controlGroup := defaultControlGroup
+	if err := checkFlags(args,
+		map[string]bool{"--tls": true},
+		map[string]bool{
+			"--root": true, "--runtimes": true, "--base-domain": true,
+			"--addr": true, "--control": true, "--tls-addr": true,
+			"--acme-ca": true, "--acme-email": true, "--acme-ca-root": true,
+			"--acme-http-port": true, "--acme-tls-port": true,
+			"--control-socket": true, "--control-group": true,
+			"--backup-interval": true,
+		}); err != nil {
+		return err
+	}
 	for i, arg := range args {
 		if arg == "--tls" {
 			useTLS = true
@@ -522,7 +575,7 @@ func waitReady(port int, timeout time.Duration) error {
 func (s *server) controlMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /apps", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, s.store.Apps())
+		writeJSON(w, http.StatusOK, s.listApps())
 	})
 	mux.HandleFunc("POST /apps", s.handleDeploy)
 	mux.HandleFunc("DELETE /apps/{name}/{env}", s.handleRemove)
@@ -536,6 +589,32 @@ func (s *server) controlMux() *http.ServeMux {
 	})
 	s.registerBackupRoutes(mux)
 	return mux
+}
+
+// listedApp is a registered app plus whether it is actually answering.
+//
+// The stored record says what was deployed, never what is happening now: after
+// `bay stop`, or after a process dies on its own, the list looked exactly like a
+// healthy app. An operator reading it could not tell a running site from a dead
+// one, which is the first thing the list exists to answer.
+//
+// Asked of the runner per request rather than written down on stop, so a crash
+// reads the same as a deliberate stop — the truth, not the intent.
+type listedApp struct {
+	state.App
+	Running bool `json:"running"`
+}
+
+func (s *server) listApps() []listedApp {
+	apps := s.store.Apps()
+	out := make([]listedApp, 0, len(apps))
+	for _, app := range apps {
+		out = append(out, listedApp{
+			App:     app,
+			Running: s.runner.Running(app.Name + "/" + app.Env),
+		})
+	}
+	return out
 }
 
 func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
@@ -700,6 +779,12 @@ func cmdDeploy(args []string) error {
 		return errors.New("usage: bay deploy <app.tar.gz> --name NAME --domain HOST [--env ENV]")
 	}
 	artifact := args[0]
+	if err := checkFlags(args[1:],
+		map[string]bool{"--allow-control-api": true},
+		map[string]bool{"--name": true, "--env": true, "--domain": true,
+			"--control": true, "--control-socket": true}); err != nil {
+		return err
+	}
 	name, env, domain := "", "production", ""
 	allowControl := false
 	for i := 1; i < len(args); i++ {
@@ -844,6 +929,11 @@ func cmdRemove(args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := checkFlags(args[1:],
+		map[string]bool{"--purge": true},
+		map[string]bool{"--control": true, "--control-socket": true}); err != nil {
+		return err
+	}
 	url := "http://" + controlAddr() + "/apps/" + key
 	for _, arg := range args {
 		if arg == "--purge" {
@@ -881,6 +971,12 @@ func cmdReleases(args []string) error {
 func cmdRollback(args []string) error {
 	key, err := appKey(args, "rollback")
 	if err != nil {
+		return err
+	}
+	if err := checkFlags(args[1:],
+		map[string]bool{"--confirm": true},
+		map[string]bool{"--to": true, "--control": true,
+			"--control-socket": true}); err != nil {
 		return err
 	}
 	query := ""
