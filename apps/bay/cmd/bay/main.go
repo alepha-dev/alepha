@@ -92,6 +92,8 @@ func main() {
 		err = cmdReleases(os.Args[2:])
 	case "rollback":
 		err = cmdRollback(os.Args[2:])
+	case "remove":
+		err = cmdRemove(os.Args[2:])
 	case "stop":
 		err = cmdStop(os.Args[2:])
 	case "token":
@@ -129,12 +131,14 @@ func usage() {
               [--acme-ca-root FILE.pem]   # trust a private CA (Pebble, step-ca)
               [--acme-http-port N] [--acme-tls-port N]   # challenge ports, default 80/443
               [--backup-interval 24h]   # 0 disables; needs "bay config s3"
-  bay deploy  <app.tar.gz> --name NAME [--env ENV] [--domain HOST]
-              # without --domain: <manifest.name>[-<env>].<base-domain>
+  bay deploy  <app.tar.gz> [--name NAME] [--env ENV] [--domain HOST]
+              # --name defaults to the artifact's project, and drives BOTH the
+              # instance key and the subdomain: one app, one identity
               [--allow-control-api]   # ⚠ root-equivalent; apps get NO access by default
   bay list
   bay status                      # releases + backup freshness
   bay stop    <name/env>
+  bay remove  <name/env> [--purge]  # unregister; data is KEPT unless --purge
   bay releases <name/env>          # what you could roll back to
   bay rollback <name/env> [--to RELEASE] [--confirm]
               # code only: migrations are forward-only and stay applied
@@ -521,6 +525,7 @@ func (s *server) controlMux() *http.ServeMux {
 		writeJSON(w, http.StatusOK, s.store.Apps())
 	})
 	mux.HandleFunc("POST /apps", s.handleDeploy)
+	mux.HandleFunc("DELETE /apps/{name}/{env}", s.handleRemove)
 	mux.HandleFunc("POST /apps/{name}/{env}/stop", func(w http.ResponseWriter, r *http.Request) {
 		key := r.PathValue("name") + "/" + r.PathValue("env")
 		if err := s.runner.Stop(key, stopGrace); err != nil {
@@ -538,10 +543,6 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	name, env, domain := q.Get("name"), q.Get("env"), q.Get("domain")
 	if env == "" {
 		env = "production"
-	}
-	if name == "" {
-		writeError(w, http.StatusBadRequest, "name is required")
-		return
 	}
 
 	tmp, err := os.CreateTemp("", "bay-upload-*.tar.gz")
@@ -599,6 +600,47 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 		"url":           "https://" + res.App.Domain + "/",
 		"sleepEligible": res.Manifest.SleepEligible(),
 		"restore":       restore,
+	})
+}
+
+// handleRemove stops an app and unregisters it.
+//
+// Data is KEPT by default — the database, the uploads and the `.env` stay on
+// disk. Removing an app from the registry is usually "stop serving this", and a
+// command that also destroys data cannot be undone by redeploying. `?purge=yes`
+// asks for the destructive version, and says what it deleted.
+func (s *server) handleRemove(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("name") + "/" + r.PathValue("env")
+	app, existed, err := s.store.Remove(key)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !existed {
+		writeError(w, http.StatusNotFound, "unknown app "+key)
+		return
+	}
+	if err := s.runner.Stop(key, stopGrace); err != nil {
+		s.log.Error("stop failed while removing", "app", key, "err", err)
+	}
+
+	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
+	purged := false
+	if r.URL.Query().Get("purge") == "yes" {
+		if err := os.RemoveAll(instance); err != nil {
+			writeError(w, http.StatusInternalServerError, "purge: "+err.Error())
+			return
+		}
+		purged = true
+	}
+	s.log.Info("removed app", "app", key, "domain", app.Domain, "purged", purged)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"removed": key,
+		"domain":  app.Domain,
+		"purged":  purged,
+		// Said even when nothing was deleted, so "where did my data go" never
+		// needs asking.
+		"dataKeptAt": map[string]any{"path": instance, "kept": !purged},
 	})
 }
 
@@ -793,6 +835,28 @@ func cmdStatus(args []string) error {
 		// parsing the text.
 		return fmt.Errorf("%d problem(s) above", problems)
 	}
+	return nil
+}
+
+// cmdRemove unregisters an app, keeping its data unless asked otherwise.
+func cmdRemove(args []string) error {
+	key, err := appKey(args, "remove")
+	if err != nil {
+		return err
+	}
+	url := "http://" + controlAddr() + "/apps/" + key
+	for _, arg := range args {
+		if arg == "--purge" {
+			fmt.Fprintln(os.Stderr,
+				"⚠ --purge deletes "+key+"'s database, uploads and .env. This cannot be undone by redeploying.")
+			url += "?purge=yes"
+		}
+	}
+	res, err := call(http.MethodDelete, url, nil)
+	if err != nil {
+		return err
+	}
+	fmt.Println(res)
 	return nil
 }
 

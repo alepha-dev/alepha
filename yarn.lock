@@ -6544,6 +6544,22 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"example-bay-app@workspace:apps/example-bay-app":
+  version: 0.0.0-use.local
+  resolution: "example-bay-app@workspace:apps/example-bay-app"
+  dependencies:
+    alepha: "workspace:*"
+    better-sqlite3: "npm:^13.0.1"
+    drizzle-kit: "npm:1.0.0-rc.4"
+    react: "npm:^19.2.8"
+    react-dom: "npm:^19.2.8"
+    vite: "npm:^8.1.5"
+  dependenciesMeta:
+    better-sqlite3:
+      built: true
+  languageName: unknown
+  linkType: soft
+
 "example-relations@workspace:apps/example-relations":
   version: 0.0.0-use.local
   resolution: "example-relations@workspace:apps/example-relations"

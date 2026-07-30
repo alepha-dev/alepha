@@ -216,6 +216,31 @@ func (s *Store) mutate(key string, fn func(*App)) error {
 	return fmt.Errorf("unknown app %q", key)
 }
 
+// ClaimedBy reports which app already serves a domain, if any.
+func (s *Store) ClaimedBy(domain string) (string, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, a := range s.state.Apps {
+		if a.Domain == domain {
+			return a.Key(), true
+		}
+	}
+	return "", false
+}
+
+// Remove unregisters an app. Returns false when it was not registered.
+func (s *Store) Remove(key string) (App, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, a := range s.state.Apps {
+		if a.Key() == key {
+			s.state.Apps = append(s.state.Apps[:i], s.state.Apps[i+1:]...)
+			return a, true, s.flush()
+		}
+	}
+	return App{}, false, nil
+}
+
 // Token returns the control-plane token, generating one on first use.
 func (s *Store) Token(generate func() string) (string, error) {
 	s.mu.Lock()

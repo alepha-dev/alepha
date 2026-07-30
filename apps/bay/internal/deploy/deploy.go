@@ -71,28 +71,69 @@ type Result struct {
 // Run unpacks, provisions and registers an app. It does not start it — the
 // caller decides, because starting is what needs a health check around it.
 func Run(opts Options, store *state.Store) (*Result, error) {
-	instance := filepath.Join(opts.Root, "apps", opts.Name, opts.Env)
-	release := time.Now().UTC().Format("2006-01-02-150405")
-	releaseDir := filepath.Join(instance, "releases", release)
+	// Unpacked to a staging directory first: the instance path depends on the
+	// name, and the name may come from the manifest, which is inside the archive.
+	staging, err := os.MkdirTemp(opts.Root, ".unpack-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(staging)
+	// MkdirTemp creates 0700, and this directory becomes the release the app
+	// runs from — leaving it that way makes systemd fail at CHDIR with
+	// "Permission denied", which names neither the directory nor the mode.
+	if err := os.Chmod(staging, 0o755); err != nil {
+		return nil, err
+	}
 
-	if err := untar(opts.Artifact, releaseDir); err != nil {
+	if err := untar(opts.Artifact, staging); err != nil {
 		return nil, fmt.Errorf("unpack: %w", err)
 	}
 
-	m, err := manifest.LoadFromRelease(releaseDir)
+	m, err := manifest.LoadFromRelease(staging)
 	if err != nil {
 		return nil, err
 	}
 
+	// One identity per app. `--name` used to key the instance while the domain
+	// was composed from the manifest, so `--name demo` on an artifact called
+	// `example-bay-app` registered `demo/production` and served it at
+	// `example-bay-app.…` — two names for one thing, and neither wrong enough to
+	// notice until you try to find it.
+	//
+	// The artifact still supplies the default; the flag overrides both or
+	// neither.
+	if opts.Name == "" {
+		opts.Name = m.Name
+	}
+	if opts.Name == "" {
+		return nil, fmt.Errorf("artifact declares no project name and no --name was given")
+	}
+
 	domain := opts.Domain
 	if domain == "" {
-		if m.Name == "" {
-			return nil, fmt.Errorf("manifest has no name and no --domain was given")
-		}
 		if opts.BaseDomain == "" {
 			return nil, fmt.Errorf("no base domain configured; pass --domain or start bay with --base-domain")
 		}
-		domain = m.Subdomain(opts.Env) + "." + opts.BaseDomain
+		domain = subdomain(opts.Name, opts.Env) + "." + opts.BaseDomain
+	}
+
+	instance := filepath.Join(opts.Root, "apps", opts.Name, opts.Env)
+	release := time.Now().UTC().Format("2006-01-02-150405")
+	releaseDir := filepath.Join(instance, "releases", release)
+	if err := os.MkdirAll(filepath.Dir(releaseDir), 0o755); err != nil {
+		return nil, err
+	}
+	if err := os.Rename(staging, releaseDir); err != nil {
+		return nil, fmt.Errorf("place release: %w", err)
+	}
+
+	// Two apps on one domain is not a conflict Bay may resolve by picking: the
+	// proxy would route to whichever matched first, so one deploy would silently
+	// shadow another and the loser would look deployed while serving nothing.
+	if owner, taken := store.ClaimedBy(domain); taken && owner != opts.Name+"/"+opts.Env {
+		return nil, fmt.Errorf(
+			"domain %s is already served by %s; pass a different --domain, or remove that app first",
+			domain, owner)
 	}
 
 	port, err := allocatePort(store.UsedPorts())
@@ -218,6 +259,18 @@ func provision(instance string, m *manifest.Manifest, port int) (dbPath string, 
 		return "", false, err
 	}
 	return dbPath, dbCreated, nil
+}
+
+// subdomain composes the host label for an app instance.
+//
+// Production keeps the bare name so the common case reads well; every other
+// environment is suffixed, so staging never collides with production on the
+// same base domain.
+func subdomain(name, env string) string {
+	if env == "" || env == "production" {
+		return name
+	}
+	return name + "-" + env
 }
 
 // userSupplied reports whether a key was set by the user rather than by Bay.
