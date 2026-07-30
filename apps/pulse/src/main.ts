@@ -1,6 +1,7 @@
 import { Alepha, run } from "alepha";
 import { oauthOptions } from "alepha/api/oauth";
 import { PulseApi } from "./api/index.ts";
+import { PulseMcp } from "./mcp/index.ts";
 import { PulseWeb } from "./web/index.ts";
 
 const alepha = Alepha.create({
@@ -20,6 +21,7 @@ alepha.set(oauthOptions, {
 });
 
 alepha.with(PulseApi);
+alepha.with(PulseMcp);
 alepha.with(PulseWeb);
 
 run(alepha);
