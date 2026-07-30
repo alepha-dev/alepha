@@ -836,6 +836,12 @@ export class QuestController {
       if (message) {
         quest.completionMessage = message;
         quest.completionMessageUpdatedAt = quest.completedAt;
+        // Embedded editor images become quest attachments so every
+        // member can read them (see mergeEmbeddedAttachments).
+        quest.attachments = this.questService.mergeEmbeddedAttachments(
+          [message],
+          quest.attachments,
+        );
       }
 
       await this.quests.save(quest);
@@ -1023,6 +1029,12 @@ export class QuestController {
       ) {
         patch.completionMessageUpdatedAt = this.dt.nowISOString();
       }
+      // Markdown carried by this patch may embed editor-uploaded images —
+      // fold their file ids into attachments so members can read them.
+      patch.attachments = this.questService.mergeEmbeddedAttachments(
+        [body.description, body.completionMessage],
+        (patch.attachments as string[] | undefined) ?? quest.attachments,
+      );
       // Don't append a "updated" history entry on a completed quest — we
       // only allow the summary edit, the rest of the quest is frozen.
       if (!quest.completedAt) {
@@ -1268,6 +1280,12 @@ export class QuestController {
 
       const updated = await this.quests.updateById(params.id, {
         note: sanitizedNote,
+        // Embedded editor images become quest attachments so every
+        // member can read them (see mergeEmbeddedAttachments).
+        attachments: this.questService.mergeEmbeddedAttachments(
+          [sanitizedNote],
+          quest.attachments,
+        ),
       });
 
       return this.mapQuestToResource(updated);

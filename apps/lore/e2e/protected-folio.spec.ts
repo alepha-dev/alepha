@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { createCampaignViaWizard, registerAndVerify } from "./_helpers.ts";
+import {
+  createCampaignViaWizard,
+  fillMarkdownEditor,
+  registerAndVerify,
+} from "./_helpers.ts";
 
 /**
  * Protected folios (Lore quest #50) — end-to-end encrypted folios. As of
@@ -67,7 +71,7 @@ test.describe("Protected folio", () => {
 
       // The folio title input is the one with the "Untitled" placeholder.
       await page.getByPlaceholder(/^untitled$/i).fill(folioTitle);
-      await page.getByPlaceholder(/start writing markdown/i).fill(folioBody);
+      await fillMarkdownEditor(page, folioBody);
 
       // No encryption toggle any more — save as a clear folio, land on
       // its view.

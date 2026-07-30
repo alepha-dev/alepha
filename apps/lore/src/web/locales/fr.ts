@@ -2,18 +2,6 @@ export default {
   "language.en": "English",
   "language.fr": "Français",
 
-  "editor.bold": "Gras (⌘B)",
-  "editor.italic": "Italique (⌘I)",
-  "editor.heading": "Titre",
-  "editor.quote": "Citation",
-  "editor.list": "Liste à puces",
-  "editor.orderedList": "Liste numérotée",
-  "editor.code": "Code en ligne",
-  "editor.link": "Lien (⌘K)",
-  "editor.preview": "Aperçu",
-  "editor.edit": "Éditer",
-  "editor.preview.empty": "Rien à prévisualiser pour l'instant.",
-
   "header.actions.profile": "Héros",
   "header.actions.login": "Se connecter",
   "header.actions.logout": "Deconnexion",

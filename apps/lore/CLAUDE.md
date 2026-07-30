@@ -287,7 +287,7 @@ Do not reintroduce progression mechanics without an explicit decision — the go
 ## Key Dependencies
 
 - `@dnd-kit/core` — drag & drop (kanban, quest board)
-- `@alepha/ui` `MarkdownView` + a plain `<Textarea>` (`src/web/app/components/shared/TextEditor.tsx`) — quest/folio descriptions are markdown, no WYSIWYG
+- `@mdxeditor/editor` — the shared WYSIWYG markdown editor (`src/web/app/components/shared/markdown-editor/MarkdownEditor.tsx`): lazy client-only, markdown-features-only, source-mode toggle, per-context image upload (folios → archive blobs; quests → attachments, embedded ids merged server-side by `QuestService.mergeEmbeddedAttachments`). Rendering stays `@alepha/ui` `MarkdownView`. The petition request form keeps a plain textarea (its own paste/drag attachment flow)
 - `recharts` — chronicles charts
 - `tw-animate-css` — generic enter/exit keyframe utilities used from Tailwind classes (replaces the old `animate.css`)
 

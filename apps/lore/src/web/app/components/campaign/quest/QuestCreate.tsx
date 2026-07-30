@@ -35,9 +35,9 @@ import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuests
 import { currentCampaignAtom } from "@/web/app/atoms/currentCampaignAtom.ts";
 import { kanbanCampaignAtom } from "@/web/app/atoms/kanbanCampaignAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import TextEditor from "../../shared/TextEditor.tsx";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
+import QuestDescriptionEditor from "./QuestDescriptionEditor.tsx";
 import QuestEstimateInput from "./QuestEstimateInput.tsx";
 import QuestTagInput from "./QuestTagInput.tsx";
 
@@ -163,7 +163,7 @@ const QuestCreate = (props: QuestCreateProps) => {
           description={tr("quest.create.description.helper")}
           input={form.input.description}
           icon={FileText}
-          custom={TextEditor as never}
+          custom={QuestDescriptionEditor as never}
         />
 
         <Separator />
