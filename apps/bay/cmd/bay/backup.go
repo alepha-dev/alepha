@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alepha/bay/internal/backup"
+	"github.com/alepha/bay/internal/deploy"
 	"github.com/alepha/bay/internal/manifest"
 	"github.com/alepha/bay/internal/runtimes"
 	"github.com/alepha/bay/internal/s3"
@@ -83,6 +84,8 @@ func (s *server) registerBackupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /apps/{name}/{env}/backup", s.handleBackup)
 	mux.HandleFunc("GET /apps/{name}/{env}/backups", s.handleListBackups)
 	mux.HandleFunc("POST /apps/{name}/{env}/restore", s.handleRestore)
+	mux.HandleFunc("GET /apps/{name}/{env}/releases", s.handleReleases)
+	mux.HandleFunc("POST /apps/{name}/{env}/rollback", s.handleRollback)
 }
 
 func (s *server) handleConfigS3(w http.ResponseWriter, r *http.Request) {
@@ -504,4 +507,147 @@ func (s *server) recordBackupFailure(key, stage string, cause error) {
 	if err := s.store.RecordBackupFailure(key, reason, time.Now()); err != nil {
 		s.log.Error("could not record the backup failure", "app", key, "err", err)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// rollback
+// ---------------------------------------------------------------------------
+
+// handleRollback repoints an app at an earlier release and restarts it.
+//
+// Rollback returns CODE, not data. Alepha migrations are forward-only, so the
+// database stays where the newer release left it. Whether the older code can
+// live with that is a judgement Bay is not entitled to make — so when
+// migrations were applied since the target, it refuses without `?confirm=yes`
+// and names them.
+func (s *server) handleRollback(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("name") + "/" + r.PathValue("env")
+	app, ok := s.store.Get(key)
+	if !ok {
+		writeError(w, http.StatusNotFound, "unknown app "+key)
+		return
+	}
+	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
+
+	releases, err := deploy.Releases(instance)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	target := r.URL.Query().Get("to")
+	if target == "" {
+		// Default: the release immediately before the running one. Found by
+		// position in the list rather than "second newest", so it still works
+		// after a rollback has already moved `current` backwards.
+		idx := -1
+		for i, rel := range releases {
+			if rel == app.Release {
+				idx = i
+				break
+			}
+		}
+		if idx < 0 || idx+1 >= len(releases) {
+			writeError(w, http.StatusPreconditionFailed,
+				"no earlier release retained for "+key+"; nothing to roll back to")
+			return
+		}
+		target = releases[idx+1]
+	}
+	if target == app.Release {
+		writeError(w, http.StatusPreconditionFailed, key+" already runs "+target)
+		return
+	}
+
+	pending, err := deploy.MigrationsSince(instance, app.Release, target)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if pending == nil {
+		// A nil slice serialises to `null`, and every client would then have to
+		// guard before reading `.length`. An empty list is the honest shape.
+		pending = []string{}
+	}
+	if len(pending) > 0 && r.URL.Query().Get("confirm") != "yes" {
+		writeError(w, http.StatusPreconditionRequired,
+			fmt.Sprintf(
+				"%d migration(s) were applied since %s and cannot be undone — Alepha migrations are forward-only. "+
+					"The database will stay as %s left it. Repeat with ?confirm=yes if the older code can live with that.",
+				len(pending), target, app.Release),
+			map[string]any{"from": app.Release, "to": target, "migrations": pending},
+		)
+		return
+	}
+
+	from := app.Release
+	// Stop BEFORE swapping. The process was spawned with `current` resolved at
+	// exec time, so a swap under a live process leaves it serving the old code
+	// while the symlink claims otherwise — the one state worse than downtime.
+	// Deploy does the same, for the same reason.
+	if err := s.runner.Stop(key, stopGrace); err != nil {
+		writeError(w, http.StatusInternalServerError, "stop app: "+err.Error())
+		return
+	}
+	if err := deploy.SwapRelease(instance, target); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := s.store.SetRelease(key, target); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	app.Release = target
+
+	if err := s.start(app); err != nil {
+		// Deliberately NOT rolled forward again. An app that will not start on
+		// either release needs a human, and thrashing `current` between two
+		// broken states only makes the logs harder to read.
+		writeError(w, http.StatusBadGateway,
+			"rolled back to "+target+" but the app did not become ready: "+err.Error(),
+			map[string]any{"from": from, "to": target, "migrations": pending},
+		)
+		return
+	}
+	s.log.Info("rolled back", "app", key, "from", from, "to", target)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"app":  key,
+		"from": from,
+		"to":   target,
+		// Echoed on success too: the operator has just accepted a database that
+		// is ahead of the code, and that fact should not disappear from the
+		// output the moment it works.
+		"migrationsNotUndone": pending,
+	})
+}
+
+// handleReleases lists what an app could be rolled back to.
+func (s *server) handleReleases(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("name") + "/" + r.PathValue("env")
+	app, ok := s.store.Get(key)
+	if !ok {
+		writeError(w, http.StatusNotFound, "unknown app "+key)
+		return
+	}
+	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
+	releases, err := deploy.Releases(instance)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	out := make([]map[string]any, 0, len(releases))
+	for _, rel := range releases {
+		entry := map[string]any{"release": rel, "current": rel == app.Release}
+		if rel != app.Release {
+			pending, err := deploy.MigrationsSince(instance, app.Release, rel)
+			if err == nil {
+				if pending == nil {
+					pending = []string{}
+				}
+				entry["migrationsNotUndone"] = pending
+			}
+		}
+		out = append(out, entry)
+	}
+	writeJSON(w, http.StatusOK, out)
 }
