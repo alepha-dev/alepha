@@ -46,7 +46,10 @@ type Options struct {
 	// argument and no config file anywhere.
 	Domain     string
 	BaseDomain string
-	Runtime    string // absolute path to the node/bun binary
+	// AllowControlAPI grants the app access to Bay's control API. Operator-only:
+	// see state.App.ControlAPI for why the manifest may not decide this.
+	AllowControlAPI bool
+	Runtime         string // absolute path to the node/bun binary
 }
 
 // Result reports what was deployed.
@@ -127,8 +130,22 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		// leaves dbPath empty.
 		Backups: dbPath != "",
 	}
+	// Preserved across redeploys unless the caller asks again: revoking should be
+	// deliberate, not a side effect of forgetting a flag. `Upsert` carries the
+	// existing value forward, so only an explicit grant flips it on.
+	if opts.AllowControlAPI {
+		app.ControlAPI = true
+	}
 	if err := store.Upsert(app); err != nil {
 		return nil, err
+	}
+	// Read back what was actually persisted. `Upsert` carries runtime-owned
+	// fields forward onto its own copy, so the local literal still holds the
+	// zero values — and reporting those made a redeploy claim it had revoked a
+	// control-API grant that was in fact intact. A response that contradicts the
+	// stored state is worse than no response.
+	if saved, ok := store.Get(app.Key()); ok {
+		app = saved
 	}
 	return &Result{
 		App: app, Manifest: m, Release: release,

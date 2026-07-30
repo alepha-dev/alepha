@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/alepha/bay/internal/control"
 )
 
 // Systemd supervises apps as systemd units.
@@ -49,6 +51,14 @@ type Sandbox struct {
 	MemoryMax string
 	// TasksMax caps thread/process count. Zero means the systemd default.
 	TasksMax int
+	// ControlGroup, when set, is added as a supplementary group so the app can
+	// reach Bay's control socket.
+	//
+	// Emitted into the unit rather than only applied with `usermod` so the grant
+	// is legible where an operator looks: `systemctl cat` shows, in one line,
+	// that this app administers its own host. A privilege that only exists in
+	// /etc/group is a privilege nobody reviews.
+	ControlGroup string
 }
 
 func unitName(key string) string {
@@ -111,6 +121,14 @@ func (s *Systemd) Start(spec Spec) error {
 	user := UserName(spec.Key)
 	if err := EnsureUser(user); err != nil {
 		return err
+	}
+	if sandbox.ControlGroup != "" {
+		// systemd resolves SupplementaryGroups at start, so the group must exist
+		// first — otherwise the unit refuses to start with a message about an
+		// unknown group rather than about the grant.
+		if err := control.EnsureGroupExists(sandbox.ControlGroup); err != nil {
+			return fmt.Errorf("control group for %s: %w", spec.Key, err)
+		}
 	}
 
 	// Every ReadWritePaths entry must exist, or systemd refuses to start the unit
@@ -193,6 +211,13 @@ func (s *Systemd) render(spec Spec, sandbox Sandbox, user string) string {
 		// Each of these exists because the manifest declared the resource that
 		// needs it. Nothing else on the filesystem is writable.
 		w("ReadWritePaths=%s", p)
+	}
+	if sandbox.ControlGroup != "" {
+		w("")
+		w("# ⚠ ROOT-EQUIVALENT. This app may call Bay's control API: deploy code,")
+		w("# read every other app's secrets, delete every backup. Granted by the")
+		w("# operator with `--allow-control-api`, never by the artifact.")
+		w("SupplementaryGroups=%s", sandbox.ControlGroup)
 	}
 	if sandbox.MemoryMax != "" {
 		w("MemoryMax=%s", sandbox.MemoryMax)

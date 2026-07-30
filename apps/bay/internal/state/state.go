@@ -23,6 +23,18 @@ type App struct {
 	Port     int    `json:"port"`    // loopback port the app listens on
 	Runtime  string `json:"runtime"`
 	Sleeping bool   `json:"sleeping"`
+	// ControlAPI is true when the operator granted this app access to Bay's
+	// control API, by putting its unix user in the control group.
+	//
+	// Granted by the operator, never by the artifact. A manifest travels inside
+	// the archive, so letting it decide would let an app declare itself
+	// administrator of its own host — harmless while one person deploys
+	// everything, and a privilege escalation the moment bay-ui accepts an upload
+	// from someone else.
+	//
+	// This is root-equivalent: an app that can reach the control API can deploy
+	// code, read every other app's secrets, and delete every backup.
+	ControlAPI bool `json:"controlApi"`
 	// Backups is true when Bay provisioned the app's database and can therefore
 	// snapshot it. Derived from the manifest at deploy time.
 	//
@@ -147,6 +159,11 @@ func (s *Store) Upsert(app App) error {
 	for i, a := range s.state.Apps {
 		if a.Key() == app.Key() {
 			app.Sleeping = a.Sleeping
+			// Carried forward so a redeploy without the flag does not silently
+			// revoke a grant the operator made on purpose.
+			if a.ControlAPI {
+				app.ControlAPI = true
+			}
 			app.LastBackupAt = a.LastBackupAt
 			app.LastBackupKey = a.LastBackupKey
 			app.LastBackupError = a.LastBackupError
