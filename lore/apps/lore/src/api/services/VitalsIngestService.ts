@@ -3,7 +3,7 @@ import {
   METRICS,
   VITALS_BUCKETS,
   type VitalMetric,
-} from "@alepha/sigil/vitals";
+} from "@alepha/telemetry/vitals";
 import { $inject, z } from "alepha";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { sigilVitals } from "../entities/sigilVitals.ts";
@@ -45,7 +45,7 @@ const VALID_METRICS: Set<string> = new Set(METRICS);
  * - normalize the page `path` (drop `?query` and `#fragment`),
  * - enforce the per-sigil / per-day distinct-path cap (DB-derived),
  * - map each `value` to a `bucketIndex` via the fixed `VITALS_BUCKETS`
- *   boundaries exported from `@alepha/sigil/vitals`,
+ *   boundaries exported from `@alepha/telemetry/vitals`,
  * - upsert (`INSERT … ON CONFLICT DO UPDATE count = count + 1`) each bucket
  *   row so storage is bounded by *(path × metric × bucket)* cardinality,
  * - expose `computeP75` to derive a p75 approximation from stored bucket

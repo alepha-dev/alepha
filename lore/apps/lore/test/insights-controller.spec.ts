@@ -1,4 +1,4 @@
-import { VITALS_BUCKETS } from "@alepha/sigil/vitals";
+import { VITALS_BUCKETS } from "@alepha/telemetry/vitals";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

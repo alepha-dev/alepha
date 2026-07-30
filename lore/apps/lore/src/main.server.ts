@@ -1,4 +1,3 @@
-import { SigilForwardProvider, sigilOptions } from "@alepha/sigil/server";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
 import { oauthOptions } from "alepha/api/oauth";
@@ -7,7 +6,6 @@ import { AlephaEmailCloudflare } from "alepha/email/cloudflare";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
 import { LoreApi } from "./api/index.ts";
 import { LoreFileAccessProvider } from "./api/providers/LoreFileAccessProvider.ts";
-import { LoreSigilForwardProvider } from "./api/providers/LoreSigilForwardProvider.ts";
 import { LoreMcp } from "./mcp/index.ts";
 import { LoreWebApp } from "./web/app/index.ts";
 
@@ -54,23 +52,12 @@ alepha.set(oauthOptions, {
 alepha.with(LoreApi);
 alepha.with(LoreMcp);
 
-// Lore dogfoods its own sigil, so it is BOTH the partner app and the receiver.
-// Substitute the sigil's HTTP forward provider with an in-process one BEFORE
-// `LoreWebApp` loads `AlephaSigil` (which declares `SigilForwardProvider` —
-// substituting after that point trips the DI guard). This avoids the
-// Cloudflare Worker self-call (the Worker fetching its own hostname) that made
-// `/sigil/request` 404 and silently dropped telemetry. `LoreApi` is loaded
-// first so the in-process provider's `SigilService` / `SigilIngestRunner`
-// dependencies are available.
-alepha.with({ provide: SigilForwardProvider, use: LoreSigilForwardProvider });
-
-// Lore embeds its own sigil — suppress the feedback button on the petition
-// request page itself (the button there would just point back at the same
-// form). SIGIL_ID / SIGIL_FEATURES come from env; this only adds the path
-// filter. Set server-side (the secret-bearing options atom never reaches the
-// browser); the per-request publisher copies excludedPaths into the public
-// client atom for the embed.
-alepha.set(sigilOptions, { excludedPaths: ["/c/*/request"] });
+// Lore no longer sends telemetry to itself.
+//
+// It used to be both the partner app and the receiver, which required an
+// in-process forward provider to work around a Worker being unable to fetch its
+// own hostname. Lore is re-enrolled as an ordinary app once Pulse exists — the
+// sink is then a different host and none of that machinery is needed.
 
 alepha.with(LoreWebApp);
 alepha.with(LoreWebAdmin);
