@@ -37,7 +37,7 @@ export class CampaignLimits {
   }
 
   /**
-   * Maximum number of members (characters) on a single campaign.
+   * Maximum number of members on a single campaign.
    */
   public async maxMembersPerCampaign(): Promise<number> {
     return (await this.limits.get()).maxMembersPerCampaign;

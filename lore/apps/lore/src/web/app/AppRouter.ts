@@ -25,7 +25,7 @@ import { currentArchivePathAtom } from "./atoms/currentArchivePathAtom.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
 import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
 import { currentCampaignAtom } from "./atoms/currentCampaignAtom.ts";
-import { currentCampaignCharacterAtom } from "./atoms/currentCampaignCharacterAtom.ts";
+import { currentCampaignMemberAtom } from "./atoms/currentCampaignMemberAtom.ts";
 import { currentChaptersAtom } from "./atoms/currentChaptersAtom.ts";
 import { currentFolioAtom } from "./atoms/currentFolioAtom.ts";
 import { currentPetitionCountAtom } from "./atoms/currentPetitionCountAtom.ts";
@@ -59,7 +59,7 @@ export class AppRouter {
     const head: Head = {
       title: "Alepha Lore",
       description:
-        "Alepha Lore - gamified project and knowledge management for builders.",
+        "Alepha Lore - project and knowledge management for builders.",
     };
 
     head.link = [
@@ -246,8 +246,6 @@ export class AppRouter {
       this.campaignPetitions,
       this.campaignBlights,
       this.campaignInsights,
-      this.campaignMyCharacter,
-      this.campaignRoster,
     ],
     path: "/c/:campaignId",
     schema: {
@@ -273,7 +271,7 @@ export class AppRouter {
     },
     lazy: () => import("./components/campaign/CampaignView.tsx"),
     loader: async ({ params }) => {
-      const { character, quests, ...campaign } =
+      const { member, quests, ...campaign } =
         await this.campaignApi.getCampaignById({
           params: {
             id: params.campaignId,
@@ -307,7 +305,7 @@ export class AppRouter {
         : 0;
 
       this.alepha.store.set(currentCampaignAtom, campaign);
-      this.alepha.store.set(currentCampaignCharacterAtom, character);
+      this.alepha.store.set(currentCampaignMemberAtom, member);
       this.alepha.store.set(currentAssignedQuestsAtom, quests);
       this.alepha.store.set(currentChaptersAtom, chapters);
       this.alepha.store.set(currentPetitionCountAtom, {
@@ -320,7 +318,7 @@ export class AppRouter {
       };
     },
     onLeave: () => {
-      this.alepha.store.set(currentCampaignCharacterAtom, undefined);
+      this.alepha.store.set(currentCampaignMemberAtom, undefined);
       this.alepha.store.set(currentCampaignAtom, undefined);
       this.alepha.store.set(currentAssignedQuestsAtom, []);
       this.alepha.store.set(currentChaptersAtom, undefined);
@@ -394,34 +392,6 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › Chapters`,
     }),
     lazy: () => import("./components/campaign/chapters/CampaignChapters.tsx"),
-  });
-
-  campaignMyCharacter = $page({
-    name: "campaignMyCharacter",
-    path: "/character",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › My Character`,
-    }),
-    lazy: () => import("./components/character/MyCharacterPage.tsx"),
-  });
-
-  campaignRoster = $page({
-    name: "campaignRoster",
-    path: "/roster",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Roster`,
-    }),
-    lazy: () => import("./components/character/RosterPage.tsx"),
-    loader: () => {
-      // Hard-block direct access to /roster on solo campaigns. The sidebar
-      // already hides the entry, but a direct URL or stale bookmark should
-      // 404 cleanly rather than render an empty page.
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (campaign && (campaign.characterCount ?? 0) < 2) {
-        throw new NotFoundError("Roster not available for solo campaigns");
-      }
-      return {};
-    },
   });
 
   campaignKanban = $page({
@@ -520,7 +490,7 @@ export class AppRouter {
     path: "/settings",
     children: () => [
       this.campaignSettingsBanner,
-      this.campaignSettingsCharacters,
+      this.campaignSettingsMembers,
       this.campaignSettingsZones,
       this.campaignSettingsKanban,
       this.campaignSettingsFolios,
@@ -544,30 +514,28 @@ export class AppRouter {
       import("./components/campaign/settings/CampaignSettingsGeneralPage.tsx"),
   });
 
-  campaignSettingsCharacters = $page({
-    name: "campaignSettingsCharacters",
-    path: "/characters",
+  campaignSettingsMembers = $page({
+    name: "campaignSettingsMembers",
+    path: "/members",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Characters`,
+      title: `${previous?.title ?? ""} › Members`,
     }),
     lazy: () =>
-      import(
-        "./components/campaign/settings/CampaignSettingsCharactersPage.tsx"
-      ),
+      import("./components/campaign/settings/CampaignSettingsMembersPage.tsx"),
     loader: async () => {
       const campaign = this.alepha.store.get(currentCampaignAtom);
       if (!campaign) {
         throw new NotFoundError("Campaign not found");
       }
-      const [characters, pendingInvitations] = await Promise.all([
-        this.campaignApi.getCampaignCharacters({
+      const [members, pendingInvitations] = await Promise.all([
+        this.campaignApi.getCampaignMembers({
           params: { id: campaign.id },
         }),
         this.invitationApi
           .listCampaignInvitations({ params: { campaignId: campaign.id } })
           .catch(() => []),
       ]);
-      return { characters, pendingInvitations };
+      return { members, pendingInvitations };
     },
   });
 

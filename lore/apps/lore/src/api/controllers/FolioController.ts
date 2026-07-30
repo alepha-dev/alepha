@@ -12,7 +12,6 @@ import {
 import { archiveBlobs } from "../entities/archiveBlobs.ts";
 import { archiveDirectories } from "../entities/archiveDirectories.ts";
 import { campaigns } from "../entities/campaigns.ts";
-import { characters } from "../entities/characters.ts";
 import { folioRevisions } from "../entities/folioRevisions.ts";
 import { buildFolioSearchText, folios } from "../entities/folios.ts";
 import { relations } from "../relations.ts";
@@ -20,7 +19,6 @@ import {
   folioLinksSchema,
   folioResourceSchema,
 } from "../schemas/folioResourceSchema.ts";
-import { AchievementEngine } from "../services/AchievementEngine.ts";
 import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import {
   decideRevisionAction,
@@ -46,7 +44,6 @@ export class FolioController {
   log = $logger();
   folios = $repository(folios);
   protected readonly campaigns = $repository(campaigns);
-  protected readonly characters = $repository(characters);
   protected readonly directories = $repository(archiveDirectories);
   protected readonly blobs = $repository(archiveBlobs);
   protected readonly revisions = $repository(folioRevisions);
@@ -56,7 +53,6 @@ export class FolioController {
   protected readonly linkService = $inject(FolioLinkService);
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly security = $inject(CampaignSecurityService);
-  protected readonly achievements = $inject(AchievementEngine);
 
   /**
    * Per-campaign sequence for `folios.shortId`. Powers the human-friendly
@@ -471,39 +467,6 @@ export class FolioController {
       // folio as it stands right after insert — gives the History tab a
       // baseline to diff later edits against.
       await this.historyService.appendRevision(folio, user.id, "create");
-
-      // Achievement hook: bookkeeper triggers when the campaign reaches
-      // its 5th folio. Best-effort — a failure here must not undo the
-      // folio insert.
-      try {
-        const character = await this.characters.findOne({
-          where: {
-            campaignId: { eq: body.campaignId },
-            userId: { eq: user.id },
-          },
-        });
-        if (character) {
-          const campaign = await this.campaigns.getOne({
-            where: { id: { eq: body.campaignId } },
-          });
-          const granted = await this.achievements.evaluate(
-            { type: "folio.saved" },
-            {
-              character,
-              campaignZones: campaign.zones ?? [],
-            },
-          );
-          if (granted.length > 0) {
-            character.achievements = this.achievements.grant(
-              character,
-              granted,
-            );
-            await this.characters.save(character);
-          }
-        }
-      } catch (err) {
-        this.log.warn(`achievement hook (folio.saved) failed: ${String(err)}`);
-      }
 
       return folio;
     },

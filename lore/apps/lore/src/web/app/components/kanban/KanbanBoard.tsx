@@ -19,7 +19,6 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Campaign } from "@/api/entities/campaigns.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
-import { currentCampaignCharacterAtom } from "../../atoms/currentCampaignCharacterAtom.ts";
 import {
   kanbanCampaignAtom,
   kanbanReloadAtom,
@@ -235,16 +234,12 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           body: { kanbanColumn: toSubColumn },
         });
       } else if (fromStatus === "accepted" && toKind === "completed") {
-        // completeQuest awards XP/gold server-side and returns the updated
-        // character. Push it into the character atom (and drop the quest from
-        // the assigned list) so the XP bar + level-up animation react — exactly
-        // as QuestView does on the normal completion path. Without this the
-        // reward is persisted but the UI never shows it (petition #10).
-        const { character } = await questApi.completeQuest({
+        await questApi.completeQuest({
           params: { id: quest.id },
           body: {},
         });
-        alepha.store.set(currentCampaignCharacterAtom, character);
+        // Drop the quest from the viewer's assigned list, exactly as
+        // QuestView does on the normal completion path.
         alepha.store.set(
           currentAssignedQuestsAtom,
           (alepha.store.get(currentAssignedQuestsAtom) ?? []).filter(

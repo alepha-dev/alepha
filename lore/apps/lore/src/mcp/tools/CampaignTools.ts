@@ -95,7 +95,7 @@ export class CampaignTools {
    */
   campaign_info = $tool({
     description:
-      "Get lightweight metadata about a campaign — zones, currently-active quests for the calling user, character stats. Call this before `quest_create` to see existing zones and reuse them with correct casing. For a richer orientation that also includes the folio index, prefer `campaign_context`.",
+      "Get lightweight metadata about a campaign — zones, currently-active quests for the calling user, membership info. Call this before `quest_create` to see existing zones and reuse them with correct casing. For a richer orientation that also includes the folio index, prefer `campaign_context`.",
     title: "Campaign info",
     annotations: {
       readOnlyHint: true,
@@ -129,13 +129,7 @@ export class CampaignTools {
           priority: quest.priority,
           difficulty: quest.difficulty,
         })),
-        character: result.character
-          ? {
-              xp: result.character.xp,
-              balance: result.character.balance,
-              owner: result.character.owner,
-            }
-          : undefined,
+        isOwner: result.member?.owner ?? false,
       };
     },
   });
@@ -166,7 +160,7 @@ export class CampaignTools {
 
       // Reuse `getCampaignById` so quest scoping (acceptedBy === user) and
       // membership checks stay in one place. One round-trip for the campaign
-      // + character + active quests.
+      // + membership + active quests.
       const result = await this.campaignController.getCampaignById({
         params: { id: campaignId },
       });
@@ -232,13 +226,7 @@ export class CampaignTools {
         },
         pinnedFolios,
         pinnedFoliosTruncated,
-        character: result.character
-          ? {
-              xp: result.character.xp,
-              balance: result.character.balance,
-              owner: result.character.owner,
-            }
-          : undefined,
+        isOwner: result.member?.owner ?? false,
       };
     },
   });

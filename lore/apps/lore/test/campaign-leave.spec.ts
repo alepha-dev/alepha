@@ -103,7 +103,7 @@ describe("CampaignController leaveCampaign", () => {
     expect(result.data.ok).toBe(true);
   });
 
-  it("removes the member's character so the campaign drops out of getMyCampaigns", async ({
+  it("removes the membership so the campaign drops out of getMyCampaigns", async ({
     expect,
   }) => {
     const owner = await createTestUser(ctx);
@@ -116,12 +116,10 @@ describe("CampaignController leaveCampaign", () => {
     // Direct repo insert — the standard membership path is through
     // invitations, which is more plumbing than this test needs. Reach into
     // the controller's repository to seed a non-owner character.
-    const charactersRepo = (ctx.campaignController as any).characters;
-    await charactersRepo.create({
+    const membersRepo = (ctx.campaignController as any).members;
+    await membersRepo.create({
       userId: member.id,
       campaignId: created.data.id,
-      xp: 100,
-      balance: 25,
       owner: false,
     });
 

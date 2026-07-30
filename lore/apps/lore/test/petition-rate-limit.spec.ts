@@ -8,7 +8,7 @@ import { AlephaServer, HttpError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { PetitionController } from "../src/api/controllers/PetitionController.ts";
-import { characters } from "../src/api/entities/characters.ts";
+import { members } from "../src/api/entities/members.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { PetitionRateLimiter } from "../src/api/services/PetitionRateLimiter.ts";
 
@@ -151,14 +151,13 @@ describe("petition rate limit", () => {
     const member = await createTestUser(ctx);
     const campaignId = await createCampaign(ctx, owner);
 
-    // Make `member` a real campaign member (non-owner character row).
-    const charactersRepo = ctx.alepha
+    // Make `member` a real campaign member (non-owner membership row).
+    const membersRepo = ctx.alepha
       .inject(RepositoryProvider)
-      .getRepository(characters);
-    await charactersRepo.create({
+      .getRepository(members);
+    await membersRepo.create({
       userId: member.id,
       campaignId,
-      xp: 0,
       owner: false,
     });
 

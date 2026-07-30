@@ -11,7 +11,6 @@ import {
   okSchema,
 } from "alepha/server";
 import { type Campaign, campaigns } from "../entities/campaigns.ts";
-import { characters } from "../entities/characters.ts";
 import { petitions } from "../entities/petitions.ts";
 import {
   normalizeQuestTags,
@@ -27,9 +26,7 @@ import {
   questResourceSchema,
   questStatusSchema,
 } from "../schemas/questResourceSchema.ts";
-import { AchievementEngine } from "../services/AchievementEngine.ts";
 import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
-import { CharacterInfo } from "../services/CharacterInfo.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService, sanitizeHtml } from "../services/QuestService.ts";
 
@@ -37,14 +34,11 @@ export class QuestController {
   log = $logger();
   quests = $repository(quests);
   campaigns = $repository(campaigns);
-  characters = $repository(characters);
   petitions = $repository(petitions);
-  characterInfo = $inject(CharacterInfo);
   dt = $inject(DateTimeProvider);
   security = $inject(CampaignSecurityService);
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
-  achievements = $inject(AchievementEngine);
   questService = $inject(QuestService);
 
   attachments = $storage({
@@ -794,10 +788,8 @@ export class QuestController {
   });
 
   completeQuest = $action({
-    // Writes `quests` then `characters` (award + achievements). Without the
-    // transaction a failed character save leaves the quest closed and the
-    // reward silently dropped, and two concurrent completions both pass the
-    // `completedAt IS NULL` read and double-award.
+    // Transactional so two concurrent completions cannot both pass the
+    // `completedAt IS NULL` read.
     use: [$secure({ permissions: ["quest:update"] }), $transactional()],
     schema: {
       params: z.object({
@@ -812,17 +804,7 @@ export class QuestController {
          */
         message: z.string().meta({ size: "rich" }).optional(),
       }),
-      response: questResourceSchema.extend({
-        character: characters.schema,
-        /**
-         * XP and money awarded by THIS completion. Distinct from
-         * `character.xp` / `character.balance`, which are lifetime
-         * accumulators — MCP `quest_complete` used to report the
-         * accumulators as the per-quest award.
-         */
-        xpEarned: z.integer(),
-        moneyEarned: z.integer(),
-      }),
+      response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const { quest } = await this.getQuestForTransition(
@@ -844,18 +826,6 @@ export class QuestController {
         }
       }
 
-      const character = await this.characters.getOne({
-        where: {
-          campaignId: { eq: quest.campaignId },
-          userId: { eq: user.id },
-        },
-      });
-
-      const xp = this.characterInfo.getXpFromQuest(quest);
-      const money = this.characterInfo.getMoneyFromQuest(quest);
-
-      character.xp += xp;
-      character.balance += money;
       quest.completedAt = this.dt.nowISOString();
       quest.completedBy = user.id;
       quest.kanbanColumn = undefined;
@@ -868,36 +838,9 @@ export class QuestController {
         quest.completionMessageUpdatedAt = quest.completedAt;
       }
 
-      // Persist the quest first so the achievement predicates (which COUNT
-      // completed quests) see the row we just transitioned. Character is
-      // saved after, with any newly-granted achievements folded in.
       await this.quests.save(quest);
 
-      const campaign = await this.campaigns.getOne({
-        where: { id: { eq: quest.campaignId } },
-      });
-      const newAchievements = await this.achievements.evaluate(
-        { type: "quest.completed" },
-        {
-          character,
-          campaignZones: campaign.zones ?? [],
-        },
-      );
-      if (newAchievements.length > 0) {
-        character.achievements = this.achievements.grant(
-          character,
-          newAchievements,
-        );
-      }
-
-      await this.characters.save(character);
-
-      return {
-        ...this.mapQuestToResource(quest),
-        character,
-        xpEarned: xp,
-        moneyEarned: money,
-      };
+      return this.mapQuestToResource(quest);
     },
   });
 

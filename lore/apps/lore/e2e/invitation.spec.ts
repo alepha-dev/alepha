@@ -6,7 +6,7 @@ import {
 } from "./_helpers.ts";
 
 test.describe("Invitation flow (in-app inbox)", () => {
-  test("owner invites → invitee finds invite in profile inbox → accepts → joins as character", async ({
+  test("owner invites → invitee finds invite in profile inbox → accepts → joins as member", async ({
     page,
     browser,
     baseURL,
@@ -20,7 +20,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
 
     const b = await newUserContext(browser, baseURL!, "invitee");
     try {
-      await page.goto(`/c/${campaignId}/settings/characters`);
+      await page.goto(`/c/${campaignId}/settings/members`);
       await page.waitForLoadState("domcontentloaded");
       await page.getByRole("button", { name: /^invite$/i }).click();
       await expect(
@@ -80,7 +80,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
 
     const b = await newUserContext(browser, baseURL!, "decliner");
     try {
-      await page.goto(`/c/${campaignId}/settings/characters`);
+      await page.goto(`/c/${campaignId}/settings/members`);
       await page.waitForLoadState("domcontentloaded");
       await page.getByRole("button", { name: /^invite$/i }).click();
       await page.getByPlaceholder("user@example.com").fill(b.email);
@@ -134,7 +134,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     const campaignId = await createCampaignViaWizard(page, campaignTitle);
 
     const invitedEmail = `target-${Date.now()}@example.com`;
-    await page.goto(`/c/${campaignId}/settings/characters`);
+    await page.goto(`/c/${campaignId}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
     await page.getByRole("button", { name: /^invite$/i }).click();
     await page.getByPlaceholder("user@example.com").fill(invitedEmail);
@@ -170,7 +170,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       `Dup${Date.now()}`.slice(0, 20),
     );
 
-    await page.goto(`/c/${campaignId}/settings/characters`);
+    await page.goto(`/c/${campaignId}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
 
     await page.getByRole("button", { name: /^invite$/i }).click();
@@ -205,7 +205,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       `Slf${Date.now()}`.slice(0, 20),
     );
 
-    await page.goto(`/c/${campaignId}/settings/characters`);
+    await page.goto(`/c/${campaignId}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
 
     await page.getByRole("button", { name: /^invite$/i }).click();

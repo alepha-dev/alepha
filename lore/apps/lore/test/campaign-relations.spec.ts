@@ -7,7 +7,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import { CampaignController } from "../src/api/controllers/CampaignController.ts";
-import { characters } from "../src/api/entities/characters.ts";
+import { members } from "../src/api/entities/members.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 /**
@@ -32,8 +32,8 @@ interface TestContext {
   fakeProvider: FakeProvider;
 }
 
-class CharacterProbe {
-  repository = $repository(characters);
+class MemberProbe {
+  repository = $repository(members);
 }
 
 const setup = async (): Promise<TestContext> => {
@@ -53,7 +53,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaFake);
   alepha.with(LoreApi);
 
-  alepha.inject(CharacterProbe);
+  alepha.inject(MemberProbe);
   await alepha.start();
 
   return {
@@ -96,14 +96,14 @@ describe("CampaignController reads through relations", () => {
    * endpoints regress silently, so it is pinned here rather than left to the
    * migration that created it.
    */
-  it("allows only one character per user per campaign", async ({ expect }) => {
+  it("allows only one membership per user per campaign", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const created = await ctx.campaignController.createCampaign.fetch(
-      { body: { title: "One character each" } },
+      { body: { title: "One membership each" } },
       { user: owner },
     );
 
-    const repository = ctx.alepha.inject(CharacterProbe).repository;
+    const repository = ctx.alepha.inject(MemberProbe).repository;
 
     // The owner already holds one from campaign creation.
     const existing = await repository.findMany({
@@ -115,7 +115,6 @@ describe("CampaignController reads through relations", () => {
       repository.create({
         userId: owner.id,
         campaignId: created.data.id,
-        xp: 0,
       }),
     ).rejects.toThrow();
   });
@@ -131,11 +130,10 @@ describe("CampaignController reads through relations", () => {
       { user: owner },
     );
 
-    const repository = ctx.alepha.inject(CharacterProbe).repository;
+    const repository = ctx.alepha.inject(MemberProbe).repository;
     await repository.create({
       userId: member.id,
       campaignId: created.data.id,
-      xp: 0,
     });
 
     const response = await ctx.campaignController.getCampaignUsers.fetch(
@@ -156,12 +154,12 @@ describe("CampaignController reads through relations", () => {
       { user: owner },
     );
 
-    const repository = ctx.alepha.inject(CharacterProbe).repository;
+    const repository = ctx.alepha.inject(MemberProbe).repository;
     const existing = await repository.findMany({
       where: { campaignId: { eq: created.data.id } },
     });
-    for (const character of existing) {
-      await repository.deleteById(character.id);
+    for (const member of existing) {
+      await repository.deleteById(member.id);
     }
 
     const response = await ctx.campaignController.getCampaignUsers.fetch(
@@ -234,10 +232,9 @@ describe("CampaignController reads through relations", () => {
       { user: owner },
     );
 
-    await ctx.alepha.inject(CharacterProbe).repository.create({
+    await ctx.alepha.inject(MemberProbe).repository.create({
       userId: member.id,
       campaignId: joined.data.id,
-      xp: 0,
     });
 
     const response = await ctx.campaignController.getMyCampaigns.fetch(

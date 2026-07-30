@@ -356,7 +356,7 @@ export class ChapterController {
     }
 
     lines.push(
-      `> ${completed.length} quest(s) completed across ${byZone.size} zone(s) by ${contributors.size} character(s)`,
+      `> ${completed.length} quest(s) completed across ${byZone.size} zone(s) by ${contributors.size} member(s)`,
     );
     lines.push("");
 

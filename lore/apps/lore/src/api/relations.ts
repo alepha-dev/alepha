@@ -5,10 +5,10 @@ import { archiveDirectories } from "./entities/archiveDirectories.ts";
 import { blightIgnoreRules } from "./entities/blightIgnoreRules.ts";
 import { campaigns } from "./entities/campaigns.ts";
 import { chapters } from "./entities/chapters.ts";
-import { characters } from "./entities/characters.ts";
 import { folioLinks } from "./entities/folioLinks.ts";
 import { folioRevisions } from "./entities/folioRevisions.ts";
 import { folios } from "./entities/folios.ts";
+import { members } from "./entities/members.ts";
 import { petitions } from "./entities/petitions.ts";
 import { quests } from "./entities/quests.ts";
 import { sigilBlights } from "./entities/sigilBlights.ts";
@@ -32,7 +32,7 @@ import { sigils } from "./entities/sigils.ts";
 export const schema = {
   users,
   campaigns,
-  characters,
+  members,
   chapters,
   quests,
   petitions,
@@ -48,34 +48,34 @@ export const schema = {
 
 export const relations = $relations(schema, (r) => ({
   users: {
-    characters: r.many.characters({
+    memberships: r.many.members({
       from: r.users.id,
-      to: r.characters.userId,
+      to: r.members.userId,
     }),
     /**
-     * A user's campaigns, through the character that makes them a member.
+     * A user's campaigns, through the membership row.
      *
-     * Safe as a plain many-to-many because `characters` carries a unique
-     * index on `(userId, campaignId)`: one character per user per campaign,
+     * Safe as a plain many-to-many because `members` carries a unique
+     * index on `(userId, campaignId)`: one membership per user per campaign,
      * so a campaign cannot come back twice. Drop that index and this relation
      * starts duplicating rows — which is why `campaign-relations.spec.ts`
      * pins it.
      */
     campaigns: r.many.campaigns({
-      from: r.users.id.through(r.characters.userId),
-      to: r.campaigns.id.through(r.characters.campaignId),
+      from: r.users.id.through(r.members.userId),
+      to: r.campaigns.id.through(r.members.campaignId),
     }),
   },
 
   campaigns: {
-    characters: r.many.characters({
+    memberships: r.many.members({
       from: r.campaigns.id,
-      to: r.characters.campaignId,
+      to: r.members.campaignId,
     }),
     /** The other side of the same junction, subject to the same index. */
     members: r.many.users({
-      from: r.campaigns.id.through(r.characters.campaignId),
-      to: r.users.id.through(r.characters.userId),
+      from: r.campaigns.id.through(r.members.campaignId),
+      to: r.users.id.through(r.members.userId),
     }),
     quests: r.many.quests({ from: r.campaigns.id, to: r.quests.campaignId }),
     chapters: r.many.chapters({
@@ -102,10 +102,10 @@ export const relations = $relations(schema, (r) => ({
     }),
   },
 
-  characters: {
-    user: r.one.users({ from: r.characters.userId, to: r.users.id }),
+  members: {
+    user: r.one.users({ from: r.members.userId, to: r.users.id }),
     campaign: r.one.campaigns({
-      from: r.characters.campaignId,
+      from: r.members.campaignId,
       to: r.campaigns.id,
     }),
   },

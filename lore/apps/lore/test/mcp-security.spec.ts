@@ -1164,16 +1164,14 @@ describe("MCP Security Integration", () => {
       );
       const campaignId = campaign.data.id;
 
-      // Seed `member` as a genuine non-owner character on the campaign via a
+      // Seed `member` as a genuine non-owner member on the campaign via a
       // direct repo insert — the standard path is through invitations, which
       // is more plumbing than this test needs (same pattern as
       // campaign-leave.spec.ts).
-      const charactersRepo = (campaignCtrl as any).characters;
-      await charactersRepo.create({
+      const membersRepo = (campaignCtrl as any).members;
+      await membersRepo.create({
         userId: member.id,
         campaignId,
-        xp: 0,
-        balance: 0,
         owner: false,
       });
 

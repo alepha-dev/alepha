@@ -15,7 +15,6 @@ import {
   History,
   Inbox,
   KanbanSquare,
-  Users,
 } from "lucide-react";
 import {
   type CampaignFeatures,
@@ -27,8 +26,6 @@ import { currentBlightCountAtom } from "../../atoms/currentBlightCountAtom.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { currentPetitionCountAtom } from "../../atoms/currentPetitionCountAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
-import CharacterSidebarCard from "../character/CharacterSidebarCard.tsx";
-import ExperienceBar from "../misc/ExperienceBar.tsx";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import CampaignActionsCreateButton from "./CampaignActionsCreateButton.tsx";
 import CampaignSwitcher from "./CampaignSwitcher.tsx";
@@ -60,8 +57,6 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   campaignPetitions: "campaign.menu.petitions",
   campaignBlights: "campaign.menu.blights",
   campaignInsights: "campaign.menu.insights",
-  campaignMyCharacter: "campaign.menu.myCharacter",
-  campaignRoster: "campaign.menu.roster",
   campaignSettings: "campaign.menu.settings",
   campaignSettingsBanner: "campaign.menu.settings",
   campaignSettingsZones: "campaign.menu.settings",
@@ -168,21 +163,8 @@ const CampaignView = () => {
     active: name === "campaignChronicles" || name.startsWith("chronicles"),
   });
 
-  // Bottom strip — no header. Personal/meta entries: people, config.
+  // Bottom strip — no header. Personal/meta entries: config.
   const personalItems: NavGroup["items"] = [];
-  // Roster appears only when there's a party of 2+ characters. Solo
-  // campaigns simply don't see the entry — no greyed-out item.
-  if ((campaign.characterCount ?? 0) >= 2) {
-    personalItems.push({
-      label: tr("campaign.menu.roster"),
-      icon: Users,
-      href: router.path("campaignRoster", { params: { campaignId } }),
-      active: name === "campaignRoster",
-    });
-  }
-  // Character Sheet entry intentionally not pushed here — the
-  // CharacterSidebarCard mounted in the AppShell `sidebarFooter` is
-  // the entry point to /character.
   personalItems.push({
     label: tr("campaign.menu.settings"),
     icon: Cog,
@@ -238,7 +220,6 @@ const CampaignView = () => {
       variant="inset"
       brand={<CampaignSwitcher />}
       nav={nav}
-      sidebarFooter={<CharacterSidebarCard />}
       breadcrumbs={breadcrumbs}
       topbarActions={
         <>
@@ -277,9 +258,6 @@ const CampaignView = () => {
               <NestedView />
             </div>
           )}
-        </div>
-        <div className="shrink-0 border-t bg-background">
-          <ExperienceBar />
         </div>
       </div>
     </AppShell>

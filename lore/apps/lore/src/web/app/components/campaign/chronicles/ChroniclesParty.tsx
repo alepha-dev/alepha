@@ -22,9 +22,9 @@ export interface ChroniclesPartyProps {
 
 /**
  * Chronicles "Party" page — a flat dashboard of who carries the campaign:
- * an XP leaderboard, a stacked contribution area chart with one series per
- * contributor, and a roster of idle members. Receives the loader result
- * directly as `props.party`.
+ * a completed-quests leaderboard, a stacked contribution area chart with
+ * one series per contributor, and a list of idle members. Receives the
+ * loader result directly as `props.party`.
  */
 const ChroniclesParty = (props: ChroniclesPartyProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -82,18 +82,6 @@ const ChroniclesParty = (props: ChroniclesPartyProps) => {
                   </span>{" "}
                   <span className="text-muted-foreground text-xs">
                     {tr("chronicles.party.label.quests")}
-                  </span>
-                </span>
-                <span className="shrink-0 text-right tabular-nums">
-                  <span className="font-semibold">{member.xp}</span>{" "}
-                  <span className="text-muted-foreground text-xs">
-                    {tr("chronicles.party.label.xp")}
-                  </span>
-                </span>
-                <span className="shrink-0 text-right tabular-nums">
-                  <span className="font-semibold">{member.gold}</span>{" "}
-                  <span className="text-muted-foreground text-xs">
-                    {tr("chronicles.party.label.gold")}
                   </span>
                 </span>
               </div>

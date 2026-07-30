@@ -1,12 +1,10 @@
-import { useInject } from "alepha/react";
-import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
+import { getQuestRank } from "./questRank.ts";
 
 export interface QuestDifficultyProps {
   difficulty: number;
 }
 
 const QuestDifficulty = (props: QuestDifficultyProps) => {
-  const info = useInject(CharacterInfo);
   const { difficulty } = props;
 
   const ringClass =
@@ -27,7 +25,7 @@ const QuestDifficulty = (props: QuestDifficultyProps) => {
       className={`flex size-[25px] items-center justify-center rounded-md border bg-background ${ringClass}`}
     >
       <span className="text-sm font-bold leading-none">
-        {info.getRank(difficulty)}
+        {getQuestRank(difficulty)}
       </span>
     </div>
   );

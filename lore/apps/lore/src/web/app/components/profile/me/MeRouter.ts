@@ -1,7 +1,6 @@
 import type { ApiKeyController } from "alepha/api/keys";
 import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
-import type { CharacterController } from "@/api/controllers/CharacterController.ts";
 import type { IdentityController } from "@/api/controllers/IdentityController.ts";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { SessionController } from "@/api/controllers/SessionController.ts";
@@ -9,7 +8,6 @@ import type { UserController } from "@/api/controllers/UserController.ts";
 
 export class MeRouter {
   sessionApi = $client<SessionController>();
-  characterApi = $client<CharacterController>();
   identityApi = $client<IdentityController>();
   userApi = $client<UserController>();
   apiKeyApi = $client<ApiKeyController>();
@@ -18,17 +16,6 @@ export class MeRouter {
   me = $page({
     path: "/auth/profile",
     lazy: () => import("./MeLayout.tsx"),
-  });
-
-  characters = $page({
-    parent: this.me,
-    path: "/characters",
-    lazy: () => import("../characters/MyCharacters.tsx"),
-    loader: async () => {
-      return {
-        characters: await this.characterApi.getMyCharacters(),
-      };
-    },
   });
 
   identities = $page({
@@ -47,14 +34,12 @@ export class MeRouter {
     path: "/",
     lazy: () => import("../MyProfile.tsx"),
     loader: async () => {
-      const [user, characters, identities] = await Promise.all([
+      const [user, identities] = await Promise.all([
         this.userApi.me(),
-        this.characterApi.getMyCharacters(),
         this.identityApi.getMyIdentities(),
       ]);
       return {
         user,
-        characters,
         identities,
       };
     },

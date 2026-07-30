@@ -47,13 +47,10 @@ export const campaignInfoResultSchema = z.object({
   zones: z.array(z.string()),
   createdAt: z.datetime(),
   activeQuests: z.array(questOrientationRefSchema),
-  character: z
-    .object({
-      xp: z.integer(),
-      balance: z.integer(),
-      owner: z.boolean(),
-    })
-    .optional(),
+  /**
+   * `true` when the calling user owns (created) this campaign.
+   */
+  isOwner: z.boolean(),
 });
 
 // -----------------------------------------------------------------------------
@@ -137,17 +134,9 @@ export const campaignContextResultSchema = z.object({
    */
   pinnedFoliosTruncated: z.boolean(),
   /**
-   * Calling user's character in this campaign (XP, gold/silver balance,
-   * owner flag). Omitted on public campaigns where the caller has no
-   * character yet.
+   * `true` when the calling user owns (created) this campaign.
    */
-  character: z
-    .object({
-      xp: z.integer(),
-      balance: z.integer(),
-      owner: z.boolean(),
-    })
-    .optional(),
+  isOwner: z.boolean(),
   /**
    * ISO 639-1 code (e.g. "fr", "ja") the owner picked as the preferred
    * language for AI-generated content. When set, agents should write
