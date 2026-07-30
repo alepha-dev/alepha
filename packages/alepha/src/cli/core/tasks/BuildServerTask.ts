@@ -97,6 +97,10 @@ export class BuildServerTask extends BuildTask {
     plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
 
+    if (opts.conditions?.includes("workerd")) {
+      plugins.push(this.workerdCreateRequirePlugin());
+    }
+
     if (opts.stats) {
       plugins.push(
         viteAnalyzer({
@@ -304,6 +308,79 @@ export class BuildServerTask extends BuildTask {
       alepha.primitives("$websocket").length > 0 ||
       alepha.primitives("$room").length > 0
     );
+  }
+
+  /**
+   * Output plugin for workerd builds that rewrites every
+   * `createRequire(import.meta.url)` call in the emitted chunks into an inert
+   * require factory (see {@link neutralizeWorkerdCreateRequire}).
+   *
+   * Rolldown injects that exact call as a top-of-chunk CJS-interop banner
+   * whenever a bundled CommonJS module references `require` — and on
+   * Cloudflare, `import.meta.url` is `undefined` during script validation, so
+   * `createRequire(undefined)` throws before the worker ever runs
+   * (`Uncaught TypeError: The argument 'path' must be a file URL…`, deploy
+   * error 10021). The banner is injected at output time, after module
+   * resolution, so a `resolveId`-level shim of `node:module` cannot catch it;
+   * only a `renderChunk` rewrite can.
+   */
+  protected workerdCreateRequirePlugin(): vite.Plugin {
+    return {
+      name: "alepha:workerd-create-require",
+      renderChunk: (code: string) => {
+        const rewritten = this.neutralizeWorkerdCreateRequire(code);
+        return rewritten === code ? null : { code: rewritten, map: null };
+      },
+    };
+  }
+
+  /**
+   * Rewrite `createRequire(import.meta.url)` calls (under whatever local alias
+   * the chunk imports `createRequire` from `node:module` as) into an inline
+   * factory returning a require that throws only when actually CALLED.
+   *
+   * Both behaviours that exist in real bundles are preserved:
+   * - the dead interop banner (`var r = createRequire(import.meta.url)` with
+   *   zero call sites, e.g. pixi.js pulled into an SSR bundle) becomes
+   *   harmless instead of throwing at startup/validation, and
+   * - a lazy `createRequire(import.meta.url)(pkg)` inside a try/catch (e.g.
+   *   drizzle-kit's optional import) still reaches its catch with a clear
+   *   error, exactly as it would on a runtime with no node_modules.
+   *
+   * The import itself is left in place: `nodejs_compat` provides
+   * `node:module` at link time, so only the eager call is the problem.
+   */
+  protected neutralizeWorkerdCreateRequire(code: string): string {
+    const aliases = new Set<string>();
+    const importPattern =
+      /import\s*\{([^}]*)\}\s*from\s*["'`]node:module["'`]/g;
+    for (const match of code.matchAll(importPattern)) {
+      for (const specifier of match[1].split(",")) {
+        const [imported, local] = specifier
+          .split(/\s+as\s+/)
+          .map((part) => part.trim());
+        if (imported === "createRequire") {
+          aliases.add(local ?? imported);
+        }
+      }
+    }
+
+    const inertFactory =
+      `(()=>{const r=(id)=>{` +
+      `throw new Error("createRequire is unavailable on workerd; cannot require "+JSON.stringify(id))` +
+      `};r.resolve=r;return r})()`;
+
+    let output = code;
+    for (const alias of aliases) {
+      const escaped = alias.replace(/[$\\]/g, "\\$&");
+      // Manual left boundary: `\b` misbehaves when the alias starts with `$`.
+      const callPattern = new RegExp(
+        `(^|[^\\w$.])${escaped}\\(import\\.meta\\.url\\)`,
+        "g",
+      );
+      output = output.replace(callPattern, `$1${inertFactory}`);
+    }
+    return output;
   }
 
   /**
