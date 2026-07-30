@@ -148,6 +148,50 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       this.awaitingPong.delete(ws);
     });
   }
+  /**
+   * The HTTP server this provider attached its `upgrade` listener to, and the
+   * listener itself — kept so `stop` can detach them. Required in Vite dev
+   * mode, where the HTTP server OUTLIVES the Alepha instance: every dev
+   * reload builds a fresh provider against the same long-lived Vite server,
+   * so a listener that is never removed accumulates once per reload, each
+   * stale one racing `wss.handleUpgrade` on a closed WebSocketServer.
+   */
+  protected attachedUpgradeServer?: {
+    on(event: "upgrade", listener: (...args: any[]) => void): unknown;
+    removeListener(
+      event: "upgrade",
+      listener: (...args: any[]) => void,
+    ): unknown;
+  };
+  protected upgradeListener?: (
+    request: IncomingMessage,
+    socket: any,
+    head: Buffer,
+  ) => void;
+
+  /**
+   * The server to attach the WebSocket `upgrade` listener to. Standalone Node
+   * runs own their server (`alepha.node.server`). Under `alepha dev`, Vite
+   * owns the HTTP server and Alepha rides it — the same pattern the request
+   * middleware uses — so fall back to the Vite dev server's `httpServer`
+   * (stored as `alepha.vite.server` by ViteDevServerProvider.loadAlepha,
+   * which runs before this ready hook).
+   */
+  protected resolveUpgradeServer():
+    | NodeWebSocketServerProvider["attachedUpgradeServer"]
+    | undefined {
+    const own = this.alepha.store.get("alepha.node.server");
+    if (own) return own;
+    const vite = this.alepha.store.get("alepha.vite.server" as any) as
+      | {
+          httpServer?:
+            | NodeWebSocketServerProvider["attachedUpgradeServer"]
+            | null;
+        }
+      | undefined;
+    return vite?.httpServer ?? undefined;
+  }
+
   /** Real timers for the room tick loop. */
   protected readonly roomClock: RoomClock = {
     setInterval: (fn, ms) => setInterval(fn, ms),
@@ -401,6 +445,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     const roomSocket: RoomSocket = {
       id: connectionId,
       userId,
+      query: Object.fromEntries(url.searchParams),
       data: {},
       sendRaw: (data) => {
         if (ws.readyState === WebSocket.OPEN) ws.send(data);
@@ -895,15 +940,19 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         return;
       }
 
-      // Attach upgrade handler to the HTTP server (must be done after HTTP server starts)
-      const httpServer = this.alepha.store.get("alepha.node.server");
+      // Attach upgrade handler to the HTTP server (must be done after HTTP server starts).
+      // See resolveUpgradeServer for the Vite-dev fallback, and
+      // attachedUpgradeServer for why the listener is kept for detachment.
+      const httpServer = this.resolveUpgradeServer();
       if (httpServer) {
-        httpServer.on("upgrade", (request, socket, head) => {
+        this.upgradeListener = (request, socket, head) => {
           this.handleUpgrade(request, socket, head).catch((error) => {
             this.log.error("Unhandled error during WebSocket upgrade:", error);
             socket.destroy();
           });
-        });
+        };
+        this.attachedUpgradeServer = httpServer;
+        httpServer.on("upgrade", this.upgradeListener);
         this.log.debug("WebSocket upgrade handler attached to HTTP server");
       } else {
         this.log.warn(
@@ -923,6 +972,18 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       if (this.roomSweeper) {
         clearInterval(this.roomSweeper);
         this.roomSweeper = undefined;
+      }
+
+      // Detach the upgrade listener: in Vite dev the HTTP server outlives this
+      // provider (see attachedUpgradeServer), so leaving it would leak one
+      // dead handler per dev reload.
+      if (this.attachedUpgradeServer && this.upgradeListener) {
+        this.attachedUpgradeServer.removeListener(
+          "upgrade",
+          this.upgradeListener,
+        );
+        this.attachedUpgradeServer = undefined;
+        this.upgradeListener = undefined;
       }
 
       // Stop every room tick loop so open timers cannot keep the process alive.

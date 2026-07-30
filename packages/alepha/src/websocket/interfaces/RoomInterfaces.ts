@@ -28,6 +28,14 @@ export interface RoomSocket {
   /** Authenticated user id, when the channel is `secure`. */
   readonly userId?: string;
   /**
+   * The upgrade URL's query parameters, verbatim (first value per key). The
+   * roomId is already extracted from these, but an application may carry extra
+   * identity hints here (e.g. lindocara's `?hero=` beside `?roomId=`) that its
+   * `onJoin` re-validates server-side. Untrusted client input by definition —
+   * never authorize from it without re-derivation.
+   */
+  readonly query?: Readonly<Record<string, string>>;
+  /**
    * Per-connection mutable bag the application owns (e.g. lindocara stores the
    * hero id, last acked input seq, AOI cursor here). Never serialized by the
    * engine.
@@ -46,6 +54,8 @@ export interface RoomSocket {
 export interface RoomConnection {
   readonly id: string;
   readonly userId?: string;
+  /** See {@link RoomSocket.query} — untrusted upgrade-URL query parameters. */
+  readonly query?: Readonly<Record<string, string>>;
   data: Record<string, unknown>;
 }
 
