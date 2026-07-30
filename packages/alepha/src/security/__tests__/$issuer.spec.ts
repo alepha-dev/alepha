@@ -1,8 +1,49 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { describe, test } from "vitest";
 import { $issuer, currentTenantAtom, SecurityProvider } from "../index.ts";
+
+describe("$issuer federated tokens", () => {
+  /**
+   * The `typ: "access"` requirement (see `JwtProvider.isAccessToken`) must
+   * apply ONLY to realms we sign for. An external IdP picks its own `typ` —
+   * Keycloak sends `Bearer`, most OIDC providers send `JWT` — so enforcing
+   * ours here would reject every federated token, which is how relying
+   * parties that forward an id_token as their Bearer authenticate.
+   */
+  test("accepts an external IdP token whose typ is not ours", async ({
+    expect,
+  }) => {
+    const { privateKey, publicKey } = await generateKeyPair("RS256", {
+      extractable: true,
+    });
+    const jwk = { ...(await exportJWK(publicKey)), kid: "idp-1", alg: "RS256" };
+
+    class App {
+      issuer = $issuer({ name: "federated", jwks: { keys: [jwk] } });
+    }
+
+    const alepha = Alepha.create();
+    alepha.inject(App);
+    await alepha.start();
+
+    const token = await new SignJWT({ sub: "external-user", roles: [] })
+      .setProtectedHeader({ alg: "RS256", kid: "idp-1", typ: "JWT" })
+      .setExpirationTime("1h")
+      .sign(privateKey);
+
+    const user = await alepha
+      .inject(SecurityProvider)
+      .resolveUserFromServerRequest({
+        url: new URL("https://app.com/api"),
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+    expect(user?.id).toBe("external-user");
+  });
+});
 
 describe("$issuer", () => {
   const roles = [

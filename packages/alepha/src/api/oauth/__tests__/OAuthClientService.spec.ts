@@ -55,6 +55,64 @@ describe("OAuthClientService.register", () => {
   });
 });
 
+describe("OAuthClientService wildcard redirect_uri", () => {
+  const setup = async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const service = alepha.inject(OAuthClientService);
+    await alepha.start();
+    const client = await service.register({
+      realm: "users",
+      clientName: "Pooled Client",
+      redirectUris: ["https://*.alepha.club/auth/callback"],
+      scopes: ["openid"],
+    });
+    return { service, client };
+  };
+
+  it("matches exactly one host label", async ({ expect }) => {
+    const { service, client } = await setup();
+
+    expect(
+      service.isRedirectUriAllowed(
+        client,
+        "https://b14.alepha.club/auth/callback",
+      ),
+    ).toBe(true);
+    // The wildcard stands for a label, not for "zero or more labels".
+    expect(
+      service.isRedirectUriAllowed(client, "https://alepha.club/auth/callback"),
+    ).toBe(false);
+    expect(
+      service.isRedirectUriAllowed(
+        client,
+        "https://a.b.alepha.club/auth/callback",
+      ),
+    ).toBe(false);
+  });
+
+  it("refuses candidates whose authority ends before the pattern's host", async ({
+    expect,
+  }) => {
+    const { service, client } = await setup();
+
+    // Every one of these parses to a host that is NOT under alepha.club: `/`,
+    // `?`, `#` and `\` all terminate the authority in WHATWG URL parsing, so a
+    // dot-free character class over the raw string is not a host check.
+    for (const candidate of [
+      "https://[2001:db8::1]/.alepha.club/auth/callback",
+      "https://2130706433/.alepha.club/auth/callback",
+      "https://evil?.alepha.club/auth/callback",
+      "https://evil#.alepha.club/auth/callback",
+      "https://evil\\.alepha.club/auth/callback",
+    ]) {
+      expect(
+        service.isRedirectUriAllowed(client, candidate),
+        `must not accept ${candidate}`,
+      ).toBe(false);
+    }
+  });
+});
+
 describe("OAuthClientService.intersectScopes", () => {
   const setup = async () => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);

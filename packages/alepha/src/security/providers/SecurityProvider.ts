@@ -113,6 +113,13 @@ export class SecurityProvider {
         // Parse and validate JWT
         const { result } = await this.jwt.parse(token, realmName);
 
+        // Only an access token authenticates. Authorization codes, refresh
+        // tokens and id_tokens are signed with this same key and would
+        // otherwise pass straight through.
+        if (!this.jwt.isAccessToken(realmName, result.protectedHeader)) {
+          return null;
+        }
+
         if (!this.matchesTenantClaim(result.payload)) {
           return null;
         }

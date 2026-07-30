@@ -76,7 +76,9 @@ describe("WebSocketServerProvider.resolveUserId", () => {
     const provider = alepha.inject(TestProvider);
     await alepha.start();
 
-    const token = await jwt.create({ sub: "user-123" });
+    const token = await jwt.create({ sub: "user-123" }, undefined, {
+      header: { typ: jwt.accessTokenTyp },
+    });
 
     const userId = await provider.resolveUserId({
       url: "http://x/ws",
@@ -174,7 +176,9 @@ describe("NodeWebSocketServerProvider auth + rooms", () => {
     const provider = alepha.inject(NodeTestProvider);
     await alepha.start();
 
-    const token = await jwt.create({ sub: "user-456" });
+    const token = await jwt.create({ sub: "user-456" }, undefined, {
+      header: { typ: jwt.accessTokenTyp },
+    });
 
     const userId = await provider.testResolveUserIdFromUpgrade({
       url: "/ws",
@@ -259,7 +263,9 @@ describe("NodeWebSocketServerProvider auth + rooms", () => {
     alepha.inject(Controller);
     await alepha.start();
 
-    const token = await jwt.create({ sub: "user-789" });
+    const token = await jwt.create({ sub: "user-789" }, undefined, {
+      header: { typ: jwt.accessTokenTyp },
+    });
     const hostname = alepha
       .inject(NodeHttpServerProvider)
       .hostname.replace("http://", "ws://");
@@ -330,7 +336,9 @@ describe("NodeWebSocketServerProvider auth + rooms", () => {
     alepha.inject(Controller);
     await alepha.start();
 
-    const token = await jwt.create({ sub: "user-max" });
+    const token = await jwt.create({ sub: "user-max" }, undefined, {
+      header: { typ: jwt.accessTokenTyp },
+    });
     const hostname = alepha
       .inject(NodeHttpServerProvider)
       .hostname.replace("http://", "ws://");

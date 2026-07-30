@@ -173,11 +173,17 @@ export class OAuthController {
         return;
       }
       const silent = query.prompt === "none";
-      // Skip the consent screen for `prompt=none` (silent SSO) AND for trusted
-      // first-party clients (the AS's own product — consent is for third-party
-      // apps). A non-silent trusted client still sends an unauthenticated user
-      // through login first; it just never shows the "wants to connect" page.
-      const skipConsent = silent || client.trusted === true;
+      // Consent is skipped ONLY for trusted first-party clients (the AS's own
+      // product — consent is for third-party apps). A non-silent trusted client
+      // still sends an unauthenticated user through login first; it just never
+      // shows the "wants to connect" page.
+      //
+      // `prompt` is attacker-controlled and must never widen this. OIDC Core
+      // §3.1.2.1 defines `prompt=none` as "display no UI", and requires
+      // `consent_required` when the client has no pre-configured consent — it
+      // does not mean "consent is granted". Letting it skip consent turned any
+      // self-registered DCR client plus one link into a silent account takeover.
+      const skipConsent = client.trusted === true;
 
       if (!user) {
         if (silent) {
@@ -196,9 +202,20 @@ export class OAuthController {
         return;
       }
 
+      if (silent && !skipConsent) {
+        // Authenticated, but this client has no standing consent and we are
+        // forbidden from asking for it (OIDC Core §3.1.2.6). The client is
+        // expected to retry without `prompt=none`, which shows the screen.
+        const redirect = new URL(query.redirect_uri);
+        redirect.searchParams.set("error", "consent_required");
+        if (query.state) redirect.searchParams.set("state", query.state);
+        reply.redirect(redirect.toString(), 302);
+        return;
+      }
+
       if (skipConsent) {
-        // Authenticated + (prompt=none OR trusted client) → skip consent and
-        // mint the code directly (silent SSO + first-party login).
+        // Authenticated + trusted client → skip consent and mint the code
+        // directly (first-party login).
         const code = await this.clients.createAuthorizationCode(
           this.options.realm,
           {
