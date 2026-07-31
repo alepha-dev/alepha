@@ -4,4 +4,3 @@ export * from "./commonSchemas.ts";
 export * from "./folioSchemas.ts";
 export * from "./petitionSchemas.ts";
 export * from "./questSchemas.ts";
-export * from "./sigilSchemas.ts";

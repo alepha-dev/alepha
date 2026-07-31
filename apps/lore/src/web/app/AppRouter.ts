@@ -14,7 +14,6 @@ import type { CampaignStatsController } from "../../api/controllers/CampaignStat
 import type { ChapterController } from "../../api/controllers/ChapterController.ts";
 import type { DirectoryController } from "../../api/controllers/DirectoryController.ts";
 import type { FolioController } from "../../api/controllers/FolioController.ts";
-import type { InsightsController } from "../../api/controllers/InsightsController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { KanbanController } from "../../api/controllers/KanbanController.ts";
 import type { PetitionController } from "../../api/controllers/PetitionController.ts";
@@ -46,7 +45,6 @@ export class AppRouter {
   kanbanApi = $client<KanbanController>();
   petitionApi = $client<PetitionController>();
   blightApi = $client<BlightController>();
-  insightsApi = $client<InsightsController>();
   chapterApi = $client<ChapterController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
@@ -245,7 +243,6 @@ export class AppRouter {
       this.campaignKanban,
       this.campaignPetitions,
       this.campaignBlights,
-      this.campaignInsights,
     ],
     path: "/c/:campaignId",
     schema: {
@@ -351,30 +348,6 @@ export class AppRouter {
         count: res.openCount,
       });
       return { items: res.items, openCount: res.openCount };
-    },
-  });
-
-  campaignInsights = $page({
-    name: "campaignInsights",
-    path: "/insights",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Insights`,
-    }),
-    lazy: () => import("./components/campaign/insights/CampaignInsights.tsx"),
-    loader: async () => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
-      }
-      // Gate purely on the module toggle — no paywall (quest #91).
-      if (!campaign.features?.beacon) {
-        throw new NotFoundError("Beacons not enabled for this campaign");
-      }
-      const insights = await this.insightsApi.getInsights({
-        params: { campaignId: campaign.id },
-        query: { range: "7d" },
-      });
-      return { insights };
     },
   });
 
@@ -494,7 +467,6 @@ export class AppRouter {
       this.campaignSettingsZones,
       this.campaignSettingsKanban,
       this.campaignSettingsFolios,
-      this.campaignSettingsSigils,
       this.campaignSettingsSources,
       this.campaignSettingsChapters,
       this.campaignSettingsQuests,
@@ -578,16 +550,6 @@ export class AppRouter {
     }),
     lazy: () =>
       import("./components/campaign/settings/CampaignSettingsFoliosPage.tsx"),
-  });
-
-  campaignSettingsSigils = $page({
-    name: "campaignSettingsSigils",
-    path: "/sigils",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Sigils`,
-    }),
-    lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsSigilsPage.tsx"),
   });
 
   /**

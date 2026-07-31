@@ -52,91 +52,87 @@ test.describe("Blights", () => {
     await expect(page.getByText(/something went wrong/i)).toHaveCount(0);
   });
 
-  test("sigil filter, ignore rules, and mass delete", async ({ page }) => {
+  test("a source files blights and the inbox shows them", async ({
+    page,
+    request,
+  }) => {
     test.setTimeout(90_000);
 
     const t = Date.now();
-    const email = `blightui${t}@example.com`;
-    const campaignTitle = `BU${t}`.slice(0, 20);
+    const email = `source${t}@example.com`;
+    const campaignTitle = `SR${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, "BlightTest123!");
     const campaignId = await createCampaignViaWizard(page, campaignTitle);
 
-    // Enable the sigils master toggle + the blights capability, then mint a
-    // blights-capable sigil and ingest two distinct crashes through the
-    // trusted server-to-server endpoint.
-    const sigilId = await page.evaluate(async (id) => {
+    const token = await page.evaluate(async (id) => {
       const enable = await fetch(`/api/updateCampaignById/${id}`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ features: { sigils: true, blights: true } }),
+        body: JSON.stringify({ features: { blights: true } }),
       });
-      if (!enable.ok)
-        throw new Error(`enable: ${enable.status} ${await enable.text()}`);
+      if (!enable.ok) throw new Error(`enable: ${enable.status}`);
 
-      const created = await fetch(`/api/c/${id}/sigils`, {
+      const created = await fetch(`/api/c/${id}/sources`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label: "ui sigil", kinds: ["blights"] }),
+        body: JSON.stringify({ name: "e2e pulse" }),
       });
-      if (!created.ok)
-        throw new Error(`sigil: ${created.status} ${await created.text()}`);
-      const sigil = await created.json();
+      if (!created.ok) throw new Error(`source: ${created.status}`);
+      return (await created.json()).token as string;
+    }, campaignId);
 
-      const ingest = await fetch(`/sigils/${sigil.id}/ingest`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          errors: [
+    /**
+     * Filed through Playwright's request context, deliberately NOT the page.
+     *
+     * Two reasons it cannot go through the page. Alepha patches the browser's
+     * `fetch` to attach the session bearer, which silently replaces the source
+     * key; and any request carrying the session cookie is resolved as that
+     * user. A reporter holds no cookie and no session — this is what one looks
+     * like.
+     */
+    const file = async (windowCount: number) => {
+      const res = await request.post("/api/blights/ingest", {
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        data: {
+          fingerprints: [
             {
+              fingerprint: "e2e-fp-1",
               name: "TypeError",
               message: "x is not a function",
+              stackSample: "TypeError: x\n    at f (app.js:1:1)",
               origin: "server",
+              windowCount,
+              firstSeenAt: new Date().toISOString(),
+              lastSeenAt: new Date().toISOString(),
             },
-            { name: "RangeError", message: "out of range", origin: "server" },
           ],
-        }),
+        },
       });
-      if (ingest.status !== 204)
-        throw new Error(`ingest: ${ingest.status} ${await ingest.text()}`);
+      if (!res.ok()) {
+        throw new Error(`ingest: ${res.status()} ${await res.text()}`);
+      }
+      return await res.json();
+    };
 
-      return sigil.id as string;
-    }, campaignId);
-    expect(sigilId).toBeTruthy();
+    await file(3);
+    // A second batch for the same fingerprint must merge, not duplicate.
+    const result = await file(4);
+    expect(result.accepted).toBe(1);
 
     await page.goto(`/c/${campaignId}/blights`);
     await page.waitForLoadState("networkidle");
 
-    // Both crashes are listed.
-    await expect(page.getByText("TypeError")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("RangeError")).toBeVisible();
-
-    // The "filter by sigil" dropdown is present (defaults to "All sigils").
-    await expect(page.getByText("All sigils")).toBeVisible();
-
-    // Ignore-rules dialog: open it, add a rule, see it listed.
-    await page.getByRole("button", { name: "Ignore rules" }).click();
-    await expect(page.getByText(/Drop incoming crashes/i)).toBeVisible();
-    await page.getByPlaceholder("e.g. Unknown club").fill("Unknown club");
-    await page.getByRole("button", { name: "Add", exact: true }).click();
-    await expect(page.getByText("Unknown club", { exact: true })).toBeVisible({
+    await expect(page.getByText("x is not a function")).toBeVisible({
       timeout: 10_000,
     });
-    // Close the dialog (Escape).
-    await page.keyboard.press("Escape");
-
-    // Mass delete: select all rows, click the pill action, confirm in the
-    // in-app AlertDialog (useDialog — never window.confirm), inbox empties.
-    await page.getByLabel("Select all rows").click();
-    await page.getByRole("button", { name: "Delete selected" }).click();
-    await page
-      .getByRole("alertdialog")
-      .getByRole("button", { name: "Delete", exact: true })
-      .click();
-
-    await expect(page.getByText(/No blights\./i)).toBeVisible({
+    // 3 + 4 on one row: the real magnitude, not two rows of one.
+    await expect(page.getByText("7", { exact: true }).first()).toBeVisible({
       timeout: 10_000,
     });
   });
