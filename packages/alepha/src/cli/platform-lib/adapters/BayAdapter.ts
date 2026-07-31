@@ -1,10 +1,10 @@
 import { join } from "node:path";
 import { $inject, AlephaError } from "alepha";
+import { PackageManagerUtils } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
-import { PackageManagerUtils } from "../../core/services/PackageManagerUtils.ts";
 import type { BayCredential } from "../providers/BayCredentialProvider.ts";
 import { BayCredentialProvider } from "../providers/BayCredentialProvider.ts";
 import {

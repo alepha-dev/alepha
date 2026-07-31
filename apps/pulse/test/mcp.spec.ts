@@ -3,7 +3,7 @@ import { $repository } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 import { errorGroups } from "../src/api/entities/errorGroups.ts";
 import { pulseApps } from "../src/api/entities/pulseApps.ts";
-import { BayAdminApi } from "../src/api/index.ts";
+import { PulseApi } from "../src/api/index.ts";
 import { AppKeyService } from "../src/api/services/AppKeyService.ts";
 import { IngestService } from "../src/api/services/IngestService.ts";
 import { PulseMcp } from "../src/mcp/index.ts";
@@ -22,7 +22,7 @@ const setup = async () => {
       DATABASE_URL: ":memory:",
     },
   })
-    .with(BayAdminApi)
+    .with(PulseApi)
     .with(PulseMcp);
   const tools = alepha.inject(PulseTools);
   const ingest = alepha.inject(IngestService);

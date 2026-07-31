@@ -3,7 +3,7 @@ import type { RealmController } from "alepha/api/users";
 import { $page, ReactRouter, Redirection } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
-import type { AppDetailController } from "../api/controllers/AppDetailController.ts";
+import type { AppUsageController } from "../api/controllers/AppUsageController.ts";
 import type { BayAppController } from "../api/controllers/BayAppController.ts";
 import type { DeviceController } from "../api/controllers/DeviceController.ts";
 
@@ -11,20 +11,14 @@ export class AppRouter {
   protected readonly alepha = $inject(Alepha);
   protected readonly router = $inject(ReactRouter);
   protected readonly bayApi = $client<BayAppController>();
+  protected readonly usageApi = $client<AppUsageController>();
   protected readonly realmApi = $client<RealmController>();
   protected readonly deviceApi = $client<DeviceController>();
-  protected readonly detailApi = $client<AppDetailController>();
 
   layout = $page({
     // A thunk, not an array: field initializers run top to bottom, so naming
     // `this.home` directly here would capture `undefined`.
-    children: () => [
-      this.home,
-      this.app,
-      this.login,
-      this.profile,
-      this.device,
-    ],
+    children: () => [this.home, this.login, this.profile, this.device],
     lazy: () => import("./components/Layout.tsx"),
     errorHandler: (error: unknown, state) => {
       // Every page below requires an admin session. Send an unauthenticated
@@ -66,25 +60,29 @@ export class AppRouter {
   });
 
   /**
-   * One app's page. The tab lives in the query rather than the path so that
-   * switching tabs is a navigation the browser's back button understands.
+   * One app's supervisor history — memory, CPU, restarts.
+   *
+   * `env` is not in the path: Bay's own list is keyed by `name/env` but every
+   * instance on this panel is `production`, and a URL nobody can type is worse
+   * than an assumption stated out loud. Widen it when a second env exists.
    */
-  app = $page({
+  appUsage = $page({
     path: "/apps/:slug",
-    name: "app",
-    head: { title: "App › Bay" },
-    lazy: () => import("./components/AppDetailPage.tsx"),
+    name: "appUsage",
+    head: { title: "Usage › Bay" },
+    lazy: () => import("./components/AppUsagePage.tsx"),
     schema: {
       params: z.object({ slug: z.text() }),
-      query: z.object({ tab: z.text({ default: "overview" }) }),
+      query: z.object({ hours: z.text({ default: "6" }) }),
     },
-    loader: async ({ params, query }) => ({
-      slug: params.slug,
-      tab: query.tab,
-      overview: await this.detailApi.overview({
-        params: { slug: params.slug },
-      }),
-    }),
+    loader: async ({ params, query }) => {
+      const hours = Number(query.hours) || 6;
+      const res = await this.usageApi.appUsage({
+        params: { name: params.slug, env: "production" },
+        query: { hours },
+      });
+      return { appKey: res.appKey, hours, points: res.points };
+    },
   });
 
   login = $page({

@@ -9,7 +9,6 @@ import { metricsPoints } from "../../api/entities/metricsPoints.ts";
 import { pulseApps } from "../../api/entities/pulseApps.ts";
 import { uniquesDaily } from "../../api/entities/uniquesDaily.ts";
 import { viewsHourly } from "../../api/entities/viewsHourly.ts";
-import { BayControlService } from "../../api/services/BayControlService.ts";
 
 /** Nothing returns more rows than this, whatever is asked for. */
 const MAX_ROWS = 100;
@@ -37,7 +36,6 @@ const SILENCE_FACTOR = 2;
  */
 export class PulseTools {
   protected readonly dateTime = $inject(DateTimeProvider);
-  protected readonly bay = $inject(BayControlService);
 
   protected readonly apps = $repository(pulseApps);
   protected readonly errors = $repository(errorGroups);
@@ -70,7 +68,6 @@ export class PulseTools {
     },
     handler: async () => {
       const apps = await this.apps.findMany({ limit: MAX_ROWS });
-      const running = await this.runningByName();
       const since = this.hoursAgo(24);
 
       const rows = [];
@@ -84,7 +81,7 @@ export class PulseTools {
           slug: app.slug,
           name: app.name,
           kind: app.kind,
-          status: this.statusOf(app.slug, app.kind, beat?.lastSeenAt, running),
+          status: this.statusOf(beat?.lastSeenAt),
           release: beat?.release,
           lastSeenAt: beat?.lastSeenAt,
           errors24h: groups
@@ -298,41 +295,23 @@ export class PulseTools {
   }
 
   /**
-   * What Bay's supervisor says about each of its apps, keyed by name.
-   *
-   * Best-effort: a Pulse whose Bay is unreachable still answers about the apps
-   * it observes, which are mostly not Bay's anyway.
-   */
-  protected async runningByName(): Promise<Map<string, boolean>> {
-    try {
-      const apps = await this.bay.listApps();
-      return new Map(apps.map((a) => [a.name, a.running !== false]));
-    } catch {
-      return new Map();
-    }
-  }
-
-  /**
    * Crosses the two signals that say whether an app is alive.
    *
    * Silence alone cannot tell a crash from a deliberate stop, and reporting a
    * stopped app as broken is how a monitor teaches its reader to ignore it.
    */
-  protected statusOf(
-    slug: string,
-    kind: string,
-    lastSeenAt: string | undefined,
-    running: Map<string, boolean>,
-  ): string {
-    const fresh =
-      !!lastSeenAt &&
-      lastSeenAt >= this.hoursAgo(0, SILENCE_FACTOR * 300 * 1000);
-
-    if (kind === "bay" && running.has(slug)) {
-      if (!running.get(slug)) return fresh ? "stopping" : "stopped";
-      return fresh ? "up" : "silent";
-    }
+  /**
+   * Whether an app is still reporting — which is not the same as running.
+   *
+   * This used to cross-reference Bay's supervisor to tell a crash from a
+   * deliberate stop. That made Pulse know what a deployment is, and Pulse has
+   * to work for an app on Cloudflare or Vercel where there is no supervisor to
+   * ask. "Is the process alive" is bay-admin's question; this one only knows
+   * whether anything arrived recently, and says exactly that.
+   */
+  protected statusOf(lastSeenAt: string | undefined): string {
     if (!lastSeenAt) return "never reported";
+    const fresh = lastSeenAt >= this.hoursAgo(0, SILENCE_FACTOR * 300 * 1000);
     return fresh ? "up" : "silent";
   }
 

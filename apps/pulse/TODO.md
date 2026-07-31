@@ -79,10 +79,28 @@ heures. Après le rename, vérifie que chaque provider est bien dans `services`,
 l'enregistrement » (trois de ces tests-là passaient avec l'enregistrement
 supprimé).
 
-### Le code serveur à extraire de `apps/bay-admin`
+### Le serveur est déjà là
 
-`apps/bay-admin` s'appelait `apps/pulse` jusqu'ici et contient **le serveur Pulse
-déjà écrit**. Il faut le déplacer ici et le retirer de là-bas.
+Le code serveur a été déplacé de `apps/bay-admin` vers ici (2026-08-01) :
+entités, ingest, clés d'app, forwarder Lore, outils MCP. Il boote et ses tests
+passent. **bay-admin ne contient plus une ligne de Pulse**, et Pulse ne connaît
+plus Bay — le couplage inverse (`BayAppSyncService`, le croisement de statut
+avec le superviseur) a été supprimé, pas déplacé : Pulse doit marcher pour une
+app sur Cloudflare ou Vercel, où il n'y a aucun superviseur à interroger.
+
+Ce qui manque, dans l'ordre :
+
+1. **L'interface.** `src/web/` n'a qu'une page d'attente. La page de détail
+   d'app (4 onglets + sparkline) qui servait de base est dans l'historique git,
+   à `apps/bay-admin/src/web/components/AppDetailPage.tsx` avant le split — un
+   `git log --diff-filter=D --follow` la retrouve.
+2. **L'amorçage.** `PulseSecurityProvider` déclare le realm mais rien ne crée le
+   premier compte. Copie `BootstrapService` de bay-admin : mot de passe généré,
+   imprimé une fois.
+3. **L'enrôlement.** `PulseAppController` sait créer et révoquer des clés ; il
+   n'y a pas d'UI pour s'en servir.
+
+Ancien contenu de cette section (la liste des fichiers à déplacer) : fait.
 
 À **déplacer vers `apps/pulse`** :
 

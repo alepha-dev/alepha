@@ -5,8 +5,7 @@ import { errorGroups } from "../src/api/entities/errorGroups.ts";
 import { pulseApps } from "../src/api/entities/pulseApps.ts";
 import { uniquesDaily } from "../src/api/entities/uniquesDaily.ts";
 import { viewsHourly } from "../src/api/entities/viewsHourly.ts";
-import { BayAdminApi } from "../src/api/index.ts";
-import { bayAppSchema } from "../src/api/schemas/bayAppSchema.ts";
+import { PulseApi } from "../src/api/index.ts";
 import { AppKeyService } from "../src/api/services/AppKeyService.ts";
 import { IngestService } from "../src/api/services/IngestService.ts";
 
@@ -30,7 +29,7 @@ const setup = async () => {
       // suites; Pulse is SQLite, and each test wants its own empty one.
       DATABASE_URL: ":memory:",
     },
-  }).with(BayAdminApi);
+  }).with(PulseApi);
   const ingest = alepha.inject(IngestService);
   const keys = alepha.inject(AppKeyService);
   const probe = alepha.inject(Probe);
@@ -167,56 +166,5 @@ describe("AppKeyService", () => {
     expect(keys.bearer("tk_abc")).toBeUndefined();
     expect(keys.bearer("Bearer ")).toBeUndefined();
     expect(keys.bearer(undefined)).toBeUndefined();
-  });
-});
-
-describe("bayAppSchema", () => {
-  it("should carry the supervisor's usage reading through to the browser", () => {
-    /*
-      The response schema is what gets serialized, so a field it does not name
-      is dropped on the way out.
-
-      `usage` was added to the TypeScript interface, to the client type and to
-      the component that renders it. Typecheck was green, the API answered 200,
-      and the browser received a list with no usage in it — no error, nothing in
-      a log, just a column that was silently always empty.
-    */
-    const parsed = bayAppSchema.parse({
-      name: "demo",
-      env: "production",
-      domain: "demo.example.com",
-      release: "2026-07-31-120000",
-      port: 4000,
-      runtime: "node",
-      running: true,
-      usage: {
-        memoryBytes: 94371840,
-        cpuSeconds: 12.5,
-        tasks: 17,
-        restarts: 2,
-        startedAt: "2026-07-31T09:14:22Z",
-        pid: 4213,
-      },
-    });
-
-    expect(parsed.usage?.memoryBytes).toBe(94371840);
-    expect(parsed.usage?.restarts).toBe(2);
-    expect(parsed.usage?.startedAt).toBe("2026-07-31T09:14:22Z");
-  });
-
-  it("should accept an app the supervisor knows nothing about", () => {
-    // An unsupervised child process in development, or an older bay-go. The
-    // absence must not be an error, and must not become a zero.
-    const parsed = bayAppSchema.parse({
-      name: "demo",
-      env: "production",
-      domain: "demo.example.com",
-      release: "2026-07-31-120000",
-      port: 4000,
-      runtime: "node",
-    });
-
-    expect(parsed.usage).toBeUndefined();
-    expect(parsed.running).toBeUndefined();
   });
 });

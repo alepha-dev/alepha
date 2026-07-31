@@ -9,7 +9,6 @@ import { metricsPoints } from "../entities/metricsPoints.ts";
 import { pulseApps } from "../entities/pulseApps.ts";
 import { uniquesDaily } from "../entities/uniquesDaily.ts";
 import { viewsHourly } from "../entities/viewsHourly.ts";
-import { BayControlService } from "../services/BayControlService.ts";
 
 /** Nothing is returned unbounded, whatever the window asked for. */
 const MAX_ROWS = 500;
@@ -23,7 +22,6 @@ const MAX_ROWS = 500;
  */
 export class AppDetailController {
   protected readonly dateTime = $inject(DateTimeProvider);
-  protected readonly bay = $inject(BayControlService);
 
   protected readonly apps = $repository(pulseApps);
   protected readonly errors = $repository(errorGroups);
@@ -198,17 +196,14 @@ export class AppDetailController {
   ): Promise<string> {
     const fresh = !!lastSeenAt && lastSeenAt >= this.hoursAgo(0, 600_000);
 
-    if (kind === "bay") {
-      try {
-        const app = (await this.bay.listApps()).find((a) => a.name === slug);
-        if (app && app.running === false) {
-          return "stopped";
-        }
-      } catch {
-        // A Bay we cannot reach says nothing about the app; fall through to
-        // what the app itself reported.
-      }
-    }
+    // Silence is all Pulse has.
+    //
+    // It used to ask Bay whether the process was actually stopped, which made
+    // this app know what a deployment is — and Pulse has to work for something
+    // on Cloudflare or Vercel, where there is no supervisor to ask. Whether a
+    // process is running is bay-admin's question; whether an app has stopped
+    // reporting is this one's, and they are not the same question even when
+    // they happen to have the same answer.
     if (!lastSeenAt) return "never reported";
     return fresh ? "up" : "silent";
   }

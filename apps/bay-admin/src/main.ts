@@ -2,12 +2,11 @@ import { Alepha, run } from "alepha";
 import { oauthOptions } from "alepha/api/oauth";
 import { bodyParserOptions, multipartOptions } from "alepha/server";
 import { BayAdminApi } from "./api/index.ts";
-import { PulseMcp } from "./mcp/index.ts";
-import { PulseWeb } from "./web/index.ts";
+import { BayAdminWeb } from "./web/index.ts";
 
 const alepha = Alepha.create({
   env: {
-    APP_NAME: "BAY_UI",
+    APP_NAME: "BAY_ADMIN",
   },
 });
 
@@ -51,7 +50,6 @@ alepha.set(bodyParserOptions, {
 });
 
 alepha.with(BayAdminApi);
-alepha.with(PulseMcp);
-alepha.with(PulseWeb);
+alepha.with(BayAdminWeb);
 
 run(alepha);

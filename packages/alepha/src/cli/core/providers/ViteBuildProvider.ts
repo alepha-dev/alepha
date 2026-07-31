@@ -19,6 +19,22 @@ export class ViteBuildProvider {
     return alepha;
   }
 
+  /**
+   * Whether the app declares a browser entry of its own.
+   *
+   * `!== server` is load-bearing. `browser` is not left empty for a
+   * server-only app — it resolves to the SERVER entry — so a bare truthiness
+   * check is true for every app in the repo. The first version of this did
+   * exactly that, and every server-only app started trying to bundle its
+   * controllers for the browser: `"$action" is not exported by
+   * server/core/index.browser.ts`, from a build that had been green for
+   * months.
+   */
+  protected hasDistinctBrowserEntry(): boolean {
+    const entry = this.appEntry;
+    return !!entry?.browser && entry.browser !== entry.server;
+  }
+
   public hasClient(): boolean {
     if (!this.alepha) {
       throw new AlephaError("ViteBuildProvider not initialized");
@@ -32,7 +48,7 @@ export class ViteBuildProvider {
     // of its page tree) finishes analysis without it. The build then completes,
     // reports success, and ships with no client bundle and no public assets.
     // Found in an app that does exactly that.
-    if (this.appEntry?.browser) {
+    if (this.hasDistinctBrowserEntry()) {
       return true;
     }
     try {
