@@ -119,6 +119,7 @@ export * from "./primitives/$route.ts";
 export * from "./primitives/$sse.ts";
 export * from "./providers/BunHttpServerProvider.ts";
 export * from "./providers/NodeHttpServerProvider.ts";
+export * from "./providers/ServerBodyParserProvider.ts";
 export * from "./providers/ServerCompressProvider.ts";
 export * from "./providers/ServerHealthProvider.ts";
 export * from "./providers/ServerHelmetProvider.ts";
