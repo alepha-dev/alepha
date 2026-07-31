@@ -1,6 +1,7 @@
 import { request } from "node:http";
 import { $env, AlephaError, type FileLike, z } from "alepha";
 import { $logger } from "alepha/logger";
+import { HttpError } from "alepha/server";
 
 /**
  * One app instance as bay-go reports it.
@@ -231,10 +232,23 @@ export class BayControlService {
                 status: res.statusCode,
                 reason: parsed?.message,
               });
+              // Re-thrown with Bay's OWN status, not as a generic error.
+              //
+              // An `AlephaError` leaves the controller as a 500, so a refusal
+              // Bay explained perfectly — "domain X is already served by Y;
+              // pass a different --domain, or remove that app first" — reached
+              // the CLI as `Internal Server Error`. The operator is then
+              // debugging the panel instead of reading the sentence that tells
+              // them exactly what to do.
+              //
+              // 5xx from Bay stays 5xx: that one really is the panel's problem
+              // to report as a failure of its own upstream.
+              const status = res.statusCode ?? 500;
               reject(
-                new AlephaError(
-                  `Bay refused the request: ${parsed?.message ?? res.statusCode}`,
-                ),
+                new HttpError({
+                  status: status < 500 ? status : 502,
+                  message: `Bay refused the request: ${parsed?.message ?? status}`,
+                }),
               );
               return;
             }
