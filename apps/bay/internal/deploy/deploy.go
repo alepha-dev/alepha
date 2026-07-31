@@ -33,7 +33,7 @@ import (
 // bayOwnedKeys are the env vars Bay manages. Everything else in a .env belongs
 // to the user and must survive a redeploy untouched — otherwise the first
 // redeploy silently wipes STRIPE_KEY and the app comes up degraded.
-var bayOwnedKeys = []string{"DATABASE_URL", "APP_SECRET", "STORAGE_PATH", "DATA_DIR", "SERVER_PORT", "SERVER_HOST"}
+var bayOwnedKeys = []string{"NODE_ENV", "DATABASE_URL", "APP_SECRET", "STORAGE_PATH", "DATA_DIR", "SERVER_PORT", "SERVER_HOST"}
 
 // Options describes one deployment.
 type Options struct {
@@ -57,6 +57,12 @@ type Result struct {
 	App      state.App
 	Manifest *manifest.Manifest
 	Release  string
+	// Previous is the release this app was serving before, empty on a first
+	// deploy. Returned rather than left for the caller to read, because `Run`
+	// writes the new release into the store as part of its job: a caller that
+	// looks it up afterwards gets the release being deployed and silently
+	// believes there is nothing to roll back to.
+	Previous string
 	// DatabasePath is the managed SQLite file, empty when the app brought its
 	// own DATABASE_URL.
 	DatabasePath string
@@ -111,6 +117,10 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 
 	key := opts.Name + "/" + opts.Env
 	existing, isRedeploy := store.Get(key)
+	previous := ""
+	if isRedeploy {
+		previous = existing.Release
+	}
 
 	domain := opts.Domain
 	if domain == "" && isRedeploy {
@@ -128,7 +138,12 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	}
 
 	instance := filepath.Join(opts.Root, "apps", opts.Name, opts.Env)
-	release := time.Now().UTC().Format("2006-01-02-150405")
+	// Second resolution, because a release name is something an operator types
+	// into `bay rollback` — but two deploys within the same second would then
+	// collide, and the failure was a bare `rename: file exists` naming two
+	// temporary paths. Suffixed only when it actually collides, so the common
+	// name stays clean.
+	release := uniqueRelease(instance, time.Now().UTC().Format("2006-01-02-150405"))
 	releaseDir := filepath.Join(instance, "releases", release)
 	if err := os.MkdirAll(filepath.Dir(releaseDir), 0o755); err != nil {
 		return nil, err
@@ -199,9 +214,28 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		app = saved
 	}
 	return &Result{
-		App: app, Manifest: m, Release: release,
+		App: app, Manifest: m, Release: release, Previous: previous,
 		DatabasePath: dbPath, DatabaseCreated: dbCreated,
 	}, nil
+}
+
+// uniqueRelease returns a release name not already taken under this instance.
+//
+// Bounded rather than looping forever: past a handful of deploys inside one
+// second something is wrong upstream, and failing with the ordinary
+// already-exists error is better than spinning.
+func uniqueRelease(instance, base string) string {
+	dir := filepath.Join(instance, "releases")
+	if _, err := os.Stat(filepath.Join(dir, base)); os.IsNotExist(err) {
+		return base
+	}
+	for i := 2; i < 100; i++ {
+		candidate := fmt.Sprintf("%s-%d", base, i)
+		if _, err := os.Stat(filepath.Join(dir, candidate)); os.IsNotExist(err) {
+			return candidate
+		}
+	}
+	return base
 }
 
 // provision creates the durable, per-instance resources and writes the .env.
@@ -264,6 +298,27 @@ func provision(instance string, m *manifest.Manifest, port int) (dbPath string, 
 	// Pin to IPv4 loopback: left to itself the runtime resolves "localhost" to
 	// ::1 and the proxy dialling 127.0.0.1 gets connection refused.
 	env["SERVER_HOST"] = "127.0.0.1"
+
+	/*
+		An Alepha bundle already knows it is production — `alepha build`
+		replaces `process.env.NODE_ENV` with the literal at build time, so
+		`isProduction()` is true and the graceful shutdown drain is on without
+		this line. Verified on a running instance before adding it.
+
+		Set anyway, because the OS environment and the bundle's belief should
+		not disagree. Anything reading `process.env.NODE_ENV` at runtime rather
+		than through the bundle's substitution — a native addon, a dependency
+		loaded outside the bundle, a shell dropped into the unit — sees the
+		unset variable and concludes development. That is a small class of
+		bugs, but a confusing one: half the process thinks it is in production.
+
+		Always "production", including for a `staging` instance. Node's
+		convention has three values and staging is not one of them; what Bay
+		runs is a built artifact being served to someone.
+
+		Bay-owned, so it cannot be set to something else in the app's .env.
+	*/
+	env["NODE_ENV"] = "production"
 
 	if err := writeEnvFile(envPath, env); err != nil {
 		return "", false, err

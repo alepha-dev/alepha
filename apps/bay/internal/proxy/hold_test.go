@@ -195,3 +195,92 @@ func TestOnlyDialFailuresAreHeld(t *testing.T) {
 		t.Error("only dial failures are safe to retry with an unread body")
 	}
 }
+
+func TestABodylessRequestSurvivesAResetConnection(t *testing.T) {
+	/*
+		The gap a dial-only retry leaves.
+
+		Bay keeps connections to an app alive between requests. When the app
+		shuts down it destroys those sockets, and the next request that picks
+		one up fails with `connection reset by peer` — the request WAS written,
+		so this is not a refused dial and was not retried. Seen once in 503
+		requests during a real redeploy.
+
+		Safe here because there is no body: the method is idempotent by
+		construction and a duplicate costs nothing.
+	*/
+	var served atomic.Int32
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := &httptest.Server{
+		Listener: l,
+		Config: &http.Server{Handler: http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				if served.Add(1) == 1 {
+					// Cut the connection without answering, the way a process
+					// dying does.
+					conn, _, _ := w.(http.Hijacker).Hijack()
+					conn.(*net.TCPConn).SetLinger(0)
+					conn.Close()
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			})},
+	}
+	srv.Start()
+	t.Cleanup(srv.Close)
+	_, portStr, _ := net.SplitHostPort(l.Addr().String())
+	port, _ := strconv.Atoi(portStr)
+
+	p := newTestProxy(t)
+	app := state.App{Name: "restarting", Env: "production", Port: port}
+	p.HoldFor(app.Key(), 5*time.Second)
+
+	rec := httptest.NewRecorder()
+	p.forward(rec, httptest.NewRequest(http.MethodGet, "/", nil), app)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("a reset with no body must be retried, got %d", rec.Code)
+	}
+}
+
+func TestAPostIsNotRetriedAfterAReset(t *testing.T) {
+	// The request was written and the app may have processed it. Bay cannot
+	// tell, so a 502 the user can retry themselves is the safer failure than
+	// an order placed twice.
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := &httptest.Server{
+		Listener: l,
+		Config: &http.Server{Handler: http.HandlerFunc(
+			func(w http.ResponseWriter, _ *http.Request) {
+				conn, _, _ := w.(http.Hijacker).Hijack()
+				conn.(*net.TCPConn).SetLinger(0)
+				conn.Close()
+			})},
+	}
+	srv.Start()
+	t.Cleanup(srv.Close)
+	_, portStr, _ := net.SplitHostPort(l.Addr().String())
+	port, _ := strconv.Atoi(portStr)
+
+	p := newTestProxy(t)
+	app := state.App{Name: "restarting", Env: "production", Port: port}
+	p.HoldFor(app.Key(), time.Minute)
+
+	start := time.Now()
+	rec := httptest.NewRecorder()
+	p.forward(rec, httptest.NewRequest(http.MethodPost, "/orders",
+		strings.NewReader("payload")), app)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("a POST cut mid-flight must not be replayed, got %d", rec.Code)
+	}
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		t.Fatalf("and it must fail fast rather than sit in the hold, took %s", elapsed)
+	}
+}

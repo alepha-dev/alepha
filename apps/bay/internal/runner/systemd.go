@@ -3,6 +3,7 @@
 package runner
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -51,6 +52,19 @@ type Sandbox struct {
 	MemoryMax string
 	// TasksMax caps thread/process count. Zero means the systemd default.
 	TasksMax int
+	// StopGrace is how long the app gets to shut down cleanly after SIGTERM,
+	// before systemd kills it.
+	//
+	// An Alepha app traps SIGTERM and runs its `stop` hooks: the HTTP server
+	// refuses new connections and waits out the in-flight ones (10s by
+	// default), then database pools close and buffered telemetry flushes. Cut
+	// that short and a request in progress dies mid-response.
+	//
+	// Zero leaves systemd's default of 90 seconds — which is the opposite
+	// problem. An app whose event loop is wedged never answers SIGTERM at all,
+	// and it is also the app most likely to be rolled back, so the full 90
+	// seconds gets spent with the site down.
+	StopGrace time.Duration
 	// ControlSocketDir is the directory holding the control socket. Added to the
 	// writable paths ONLY for a granted app.
 	//
@@ -208,6 +222,13 @@ func (s *Systemd) render(spec Spec, sandbox Sandbox, user string) string {
 	w("ExecStart=%s %s", spec.Runtime, spec.Entry)
 	w("Restart=always")
 	w("RestartSec=2")
+	if sandbox.StopGrace > 0 {
+		// The one number that governs shutdown. Bay's own `grace` argument used
+		// to be a separate value that `Stop` silently ignored, so the timeout
+		// actually in force was systemd's 90-second default — measured at 92
+		// seconds holding up a rollback on a real host.
+		w("TimeoutStopSec=%d", int(sandbox.StopGrace.Seconds()))
+	}
 	w("")
 	w("# Sandbox. Everything below is the difference between one compromised app")
 	w("# and the whole host.")
@@ -258,11 +279,26 @@ func (s *Systemd) render(spec Spec, sandbox Sandbox, user string) string {
 
 // Stop stops the unit, letting systemd apply the graceful shutdown timeout.
 func (s *Systemd) Stop(key string, grace time.Duration) error {
-	cmd := exec.Command("systemctl", "stop",
+	// systemd enforces the grace itself, from the unit's TimeoutStopSec — it
+	// is the one holding the SIGTERM-then-SIGKILL clock, and `systemctl stop`
+	// blocks until that clock runs out.
+	//
+	// The bound here is on the CALL, and it is deliberately longer: if
+	// systemctl has not returned by then, systemd is not doing what its own
+	// unit says, and Bay must not block on it forever with a deploy half done.
+	ctx, cancel := context.WithTimeout(context.Background(), grace+stopCallMargin)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "systemctl", "stop",
 		"--job-mode=replace",
 		unitName(key)+".service",
 	)
 	if out, err := cmd.CombinedOutput(); err != nil {
+		if ctx.Err() != nil {
+			return fmt.Errorf(
+				"stop %s: systemctl did not return within %s (unit grace is %s)",
+				key, grace+stopCallMargin, grace)
+		}
 		text := strings.TrimSpace(string(out))
 		// Stopping something that is not loaded is not a failure: callers stop
 		// before deploying, and the first deploy has nothing to stop.
@@ -273,6 +309,11 @@ func (s *Systemd) Stop(key string, grace time.Duration) error {
 	}
 	return nil
 }
+
+// stopCallMargin is how much longer than the unit's own grace Bay waits for
+// `systemctl stop` to return. Enough for systemd to send SIGKILL and reap;
+// short enough that a broken systemd does not wedge a deploy.
+const stopCallMargin = 10 * time.Second
 
 // Running reports whether systemd considers the unit active.
 func (s *Systemd) Running(key string) bool {

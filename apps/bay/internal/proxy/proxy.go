@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alepha/bay/internal/state"
@@ -27,6 +28,10 @@ type Proxy struct {
 	// holds names the apps Bay is deliberately restarting; requests for those
 	// wait for the new process instead of getting a 502. See hold.go.
 	holds holdSet
+	// tr is the connection pool to the apps, owned so that dropping idle
+	// connections at the start of a deploy affects nothing else.
+	transportOnce sync.Once
+	tr            *http.Transport
 }
 
 func New(root string, store *state.Store, log *slog.Logger) *Proxy {
@@ -196,7 +201,7 @@ func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, app state.App) {
 	}
 
 	rp.Transport = holdTransport{
-		base:     http.DefaultTransport,
+		base:     p.transport(),
 		holding:  func() bool { return p.holding(app.Key()) },
 		interval: 200 * time.Millisecond,
 	}
