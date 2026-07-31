@@ -1,4 +1,6 @@
+import { randomBytes } from "node:crypto";
 import { $inject, z } from "alepha";
+import { CryptoProvider, SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -17,6 +19,8 @@ export class PulseAppController {
   protected readonly apps = $repository(pulseApps);
   protected readonly keys = $inject(AppKeyService);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly crypto = $inject(CryptoProvider);
+  protected readonly secrets = $inject(SecretProvider);
 
   list = $action({
     method: "GET",
@@ -87,6 +91,82 @@ export class PulseAppController {
       });
 
       return { id: app.id, slug: app.slug, token: key.token };
+    },
+  });
+
+  /**
+   * Sets how much this app should send.
+   *
+   * The reason the config is fetched at runtime rather than read from the app's
+   * env: an app drowning its sink has to be turnable down from the sink's side,
+   * now, without a redeploy of the app. Merged into whatever is already stored
+   * so tuning one knob does not silently reset the others.
+   */
+  setAppetite = $action({
+    method: "POST",
+    path: "/pulse/apps/:id/appetite",
+    use: [$secure({ roles: ["admin"] })],
+    description: "Tune what this app collects and how often",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      body: z.object({
+        metricsIntervalSec: z.integer().min(5).optional(),
+        enabled: z.record(z.text(), z.boolean()).optional(),
+        sampling: z.record(z.text(), z.number()).optional(),
+      }),
+      response: z.object({ appetite: z.record(z.text(), z.any()) }),
+    },
+    handler: async ({ params, body }) => {
+      const app = await this.apps.findOne({ where: { id: params.id } });
+      const appetite = {
+        ...((app?.appetite ?? {}) as Record<string, unknown>),
+        ...Object.fromEntries(
+          Object.entries(body).filter(([, v]) => v !== undefined),
+        ),
+      };
+      await this.apps.updateById(params.id, { appetite } as any);
+      return { appetite } as any;
+    },
+  });
+
+  /**
+   * Points an app's error groups at a Lore campaign.
+   *
+   * The key is encrypted before it is stored: Pulse's database is backed up to
+   * S3 by Bay, and a campaign-scoped credential sitting in cleartext inside a
+   * backup is an avoidable leak — the backup travels further, and lives longer,
+   * than the database.
+   */
+  configureLore = $action({
+    method: "POST",
+    path: "/pulse/apps/:id/lore",
+    use: [$secure({ roles: ["admin"] })],
+    description: "Forward this app's error groups to a Lore campaign",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      body: z.object({
+        url: z.text({ minLength: 1, maxLength: 2000 }),
+        campaignId: z.integer(),
+        key: z.text({ minLength: 1, maxLength: 512 }),
+      }),
+      response: z.object({ ok: z.boolean() }),
+    },
+    handler: async ({ params, body }) => {
+      const salt = randomBytes(16).toString("hex");
+      const derived = await this.crypto.deriveKeyFromPassphrase(
+        this.secrets.secretKey,
+        salt,
+      );
+      const keyCipher = await this.crypto.encryptWithPassphrase(
+        body.key,
+        derived,
+        salt,
+      );
+
+      await this.apps.updateById(params.id, {
+        lore: { url: body.url, campaignId: body.campaignId, keyCipher },
+      } as any);
+      return { ok: true };
     },
   });
 

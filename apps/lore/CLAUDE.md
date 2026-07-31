@@ -177,9 +177,7 @@ User-submitted bug reports / feature requests that the campaign owner triages.
 **Submission flow (login required)** — there are **two** live entry points; both land on `POST /campaigns/:id/petitions`:
 - `/c/:campaignId/request` — first-party form on lore (`CampaignPetitionRequest.tsx`, route `campaignPetitionRequest`). Anonymous visitors see a sign-in CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).
 - External "report a bug" buttons on third-party sites are plain `<a target="_blank" rel="noopener noreferrer">` anchors pointing to `/c/:id/request?path=<encoded>&url=<encoded>&type=bug` — no embedded JS, no screenshot capture, no widget. The page reads query params, persists them to `sessionStorage` (key `lor.petition.draft.<campaignId>`), cleans the URL via `history.replaceState`, and re-reads after the OAuth round-trip. Cleared on successful submit.
-- The **sigil in-app dialog** (`@alepha/sigil` embed, when the sigil's `kinds` include `petition`) is the second path.
-
-> A comment in `entities/campaigns.ts` used to claim petitions arrive *only* via the sigil dialog. That is not true — the first-party `/request` form is still wired and still shipped. If you remove one of the two paths, fix both the entity comment and this section.
+> There is now **one** path plus external links. The sigil in-app dialog is gone with the package rename: `@alepha/telemetry` mounts nothing in a host app's React tree, and hands out the petition URL through `usePetitionUrl()` for the app to render where it likes.
 
 **Reporter-facing views** — `/me/petitions` (own submissions across campaigns) and `/c/:id/p/:petitionId` (single status page, readable by the reporter or the campaign owner).
 
@@ -250,14 +248,16 @@ This is a **confidentiality requirement**, not a tidiness one. Before it existed
 
 ## Sigils, Blights, Beacon, Vitals
 
-A **sigil** is a credential issued to a partner site. The site embeds `@alepha/sigil`, which posts telemetry back to Lore. What a sigil may send is scoped by its `kinds` and by campaign-level `features` toggles (`sigils` is the master switch; `blights`, `beacon`, `vitals` are per-capability).
+A **source** is a credential issued to an *observer* — in practice a Pulse instance — which has already deduplicated what it sends. Sigils were the previous model: credentials handed to *websites* so they could push raw telemetry straight here. That whole surface is gone; `sigils` and its tables remain in the schema, vestigial, because dropping a table on D1 cascade-wipes its children.
 
-- **Blights** — deduplicated uncaught exceptions, keyed by `fingerprint`. The owner triages them in the inbox (`/c/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` zone, provenance recorded in `quests.source`). Purged on a retention window (`campaign.retentionDays ?? 30`) by `SigilJobs`; resolved and `quest:`-forwarded rows are kept as audit trail.
-- **Beacon / Vitals** — pageviews, unique visitors, and web-vitals samples, surfaced on `/c/:id/insights`.
+Sources are managed at `/c/:id/settings/sources` (owner-only, key shown once), and `features.blights` is still the master switch for the inbox.
+
+- **Blights** — one row per distinct failure, keyed by `fingerprint`, with a count. The owner triages them in the inbox (`/c/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` zone, provenance recorded in `quests.source`). Purged on a retention window (`campaign.retentionDays ?? 30`) by `BlightJobs`, which sweeps both the current `blights` table and the legacy `sigil_blights`; resolved and `quest:`-forwarded rows are kept as audit trail.
+- **Analytics moved out.** Pageviews, unique visitors and web-vitals live in Pulse now (`apps/pulse`), which is where the apps report. Lore keeps the editorial half — deciding which failures become work.
 
 > ⚠️ **`name`, `message`, `stack`, `sourceUrl` on a blight are 100% attacker-controlled** and are shown to the campaign owner — the highest-value target. Render as escaped plain text only. Never markdown, never `dangerouslySetInnerHTML`.
 
-Read endpoints are member-gated; mutations are owner-only. Ingest endpoints are **public and unauthenticated** — see the Cloudflare WAF runbook section below, which is a required deploy step.
+Read endpoints are member-gated; mutations are owner-only. **Ingest is no longer public**: `POST /api/blights/ingest` requires a campaign source key, and there is no unauthenticated write path left.
 
 ## Archive (directories + blobs)
 
@@ -342,20 +342,20 @@ Mitigations, in order of preference:
 
 **CI auto-deploys to prod on every push to `main`** (alepha monorepo's `.github/workflows/ci.yml` → `deploy-lore-production` job → `yarn alepha platform up --env production` from `apps/lore`). There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
 
-## Sigils ingestion — Cloudflare WAF (deploy runbook step)
+## ⚠️ The Cloudflare WAF rule on `/sigils/` is now dead weight — remove it
 
-The Sigils ingestion endpoints (`POST /sigils/:id/blights`, and `POST /sigils/:id/beacon` once #86 lands) are **public, unauthenticated, and `fetch()`ed from arbitrary partner pages**. Every request — even one that fails a gate — costs a Cloudflare Worker invocation plus one or more D1 reads. The `ingestKey` check, the `Origin` allow-list, and the bot-UA filter are all *application-layer* gates: they protect **inbox integrity** (no junk blights), but they run *after* the Worker has already spun up and hit the DB. They do **not** bound request volume or cost.
+Lore no longer exposes any public, unauthenticated ingestion endpoint. The
+`/sigils/*` routes are gone: what files blights now is an enrolled source
+presenting a key (`POST /api/blights/ingest`), so there is nothing left for a
+per-IP rate limit to protect.
 
-The app-layer per-IP **novelty** rate limit (`sigil_blight_rate`, 10 new fingerprints / IP / day) is likewise an inbox-integrity control, not a throughput control — a known fingerprint always increments, and a hostile client can still hammer the endpoint with malformed or repeated payloads.
+**Manual step, in the Cloudflare dashboard** — it was never in code, so it will
+not disappear with a deploy: `lore.alepha.dev` zone → Security → WAF → Rate
+limiting rules → delete the rule matching
+`http.request.uri.path contains "/sigils/"`.
 
-**What bounds cost/volume is a Cloudflare WAF rate-limit rule — and it must be configured manually in the Cloudflare dashboard; it is not in code or in the `alepha platform` deploy.** Treat it as a required deploy runbook step for the Sigils feature:
-
-1. Cloudflare dashboard → `lore.alepha.dev` zone → **Security → WAF → Rate limiting rules**.
-2. New rule, matching `(http.request.uri.path contains "/sigils/" and http.request.method eq "POST")`.
-3. Characteristic: client IP. Threshold: ~60 requests / 1 min (the embed bundle batches "every 5s or 10 events", so a legit page emits ≤12 req/min — 60 leaves ample headroom).
-4. Action: **Block** (or Managed Challenge) for 1 min.
-
-Re-verify this rule exists after any Cloudflare zone reconfiguration. Without it, a single abusive origin can run up Worker + D1 cost unbounded even though it never lands a row.
+Harmless if left (it matches nothing), but a rule nobody can explain is a rule
+someone will one day widen or copy.
 
 ## Tests
 

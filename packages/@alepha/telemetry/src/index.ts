@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { TelemetryBrowserProvider } from "./browser/TelemetryBrowserProvider.ts";
+import { TelemetryMetricsProvider } from "./server/TelemetryMetricsProvider.ts";
 import { TelemetryProxyController } from "./server/TelemetryProxyController.ts";
 import { TelemetryServerErrors } from "./server/TelemetryServerErrors.ts";
 import { TelemetrySinkProvider } from "./server/TelemetrySinkProvider.ts";
@@ -35,6 +36,7 @@ export const AlephaTelemetry = $module({
   atoms: [telemetryOptions, telemetryClientAtom],
   services: [
     TelemetrySinkProvider,
+    TelemetryMetricsProvider,
     TelemetryProxyController,
     TelemetryServerErrors,
     TelemetryBrowserProvider,

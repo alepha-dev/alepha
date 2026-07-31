@@ -67,6 +67,13 @@ export class TelemetryMetricsProvider {
         this.requestStarts.delete(request as object);
       }
 
+      // Refreshed here, not only when something is ingested. An app with no
+      // errors and no browser traffic never calls `ingest`, so it would never
+      // learn its appetite — and since metrics are what would trigger the
+      // ingest, it would stay on the default forever. The fetch is TTL-guarded,
+      // so this costs one request a minute at most.
+      await this.sink.refreshConfig();
+
       const now = this.dateTime.nowMillis();
       if (now - this.lastSampleAt < this.sink.metricsIntervalSec() * 1000) {
         return;

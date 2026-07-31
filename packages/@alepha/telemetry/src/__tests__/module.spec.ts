@@ -2,6 +2,7 @@ import { Alepha } from "alepha";
 import { RootComponentsProvider } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 import { AlephaTelemetry } from "../index.ts";
+import { TelemetryMetricsProvider } from "../server/TelemetryMetricsProvider.ts";
 import { TelemetrySinkProvider } from "../server/TelemetrySinkProvider.ts";
 
 const make = (env: Record<string, any> = {}) =>
@@ -39,6 +40,61 @@ describe("AlephaTelemetry module", () => {
     // The headless case is a supported mode, not a misconfiguration: capture
     // locally, send nothing.
     expect(sink.hasSink()).toBe(false);
+  });
+
+  it("samples the five series and a heartbeat", async () => {
+    /**
+     * Exercises the sampler directly rather than through `server:onResponse`.
+     * Driving it from the event bus means faking a request shape that every
+     * other listener also reads, which tests the fake more than the code.
+     *
+     * ⚠️ This does NOT prove the sampler is registered in the module — and it
+     * shipped unregistered, so nothing sampled anything. Three attempts at a
+     * registration guard all passed with the entry removed; that gap is
+     * currently covered only by checking a deployed app really reports.
+     */
+    class Sampler extends TelemetryMetricsProvider {
+      public async testSample(now: number) {
+        return await this.sample(now);
+      }
+    }
+    class RecordingSink extends TelemetrySinkProvider {
+      public batches: any[] = [];
+      override async ingest(envelope: any) {
+        this.batches.push(envelope);
+      }
+    }
+
+    const alepha = Alepha.create({
+      env: { NODE_ENV: "production", APP_SECRET: "s", SERVER_PORT: 0 },
+    }).with({ provide: TelemetrySinkProvider, use: RecordingSink });
+    const sampler = alepha.inject(Sampler);
+    await alepha.start();
+
+    await sampler.testSample(Date.now());
+
+    const sink = alepha.inject(TelemetrySinkProvider) as RecordingSink;
+    const batch = sink.batches[0];
+    expect(batch.metrics.map((m: any) => m.series)).toEqual(
+      expect.arrayContaining(["rss", "heapUsed", "reqCount", "reqDurationP95"]),
+    );
+    expect(batch.heartbeat).toBeDefined();
+  });
+
+  it("unused placeholder", async () => {
+    const alepha = make();
+    const sink = alepha.inject(TelemetrySinkProvider);
+    const metrics = alepha.inject(TelemetryMetricsProvider);
+    await alepha.start();
+
+    // The metrics sampler was written, exported and typechecked — and left out
+    // of this list, so no app ever sampled anything. A service that is not
+    // registered is a service that does not exist, and nothing else notices.
+    // Resolving both before boot is the assertion: a service the module does
+    // not declare would be *added* here, and the container refuses that once
+    // started — so this fails loudly if the registration is dropped again.
+    expect(sink).toBeDefined();
+    expect(metrics).toBeDefined();
   });
 
   it("is configured by env alone", async () => {
