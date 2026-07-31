@@ -222,13 +222,16 @@ func (s *Systemd) render(spec Spec, sandbox Sandbox, user string) string {
 	w("ExecStart=%s %s", spec.Runtime, spec.Entry)
 	w("Restart=always")
 	w("RestartSec=2")
-	if sandbox.StopGrace > 0 {
-		// The one number that governs shutdown. Bay's own `grace` argument used
-		// to be a separate value that `Stop` silently ignored, so the timeout
-		// actually in force was systemd's 90-second default — measured at 92
-		// seconds holding up a rollback on a real host.
-		w("TimeoutStopSec=%d", int(sandbox.StopGrace.Seconds()))
-	}
+	// The one number that governs shutdown. Bay's own `grace` argument used to
+	// be a separate value that `Stop` silently ignored, so the timeout actually
+	// in force was systemd's 90-second default — measured at 92 seconds holding
+	// up a rollback on a real host.
+	//
+	// Always emitted, never conditional on the caller having set it: a unit
+	// without this line falls back to those 90 seconds, so "the field was left
+	// at zero" and "the bug is back" would be the same thing, and nothing would
+	// say so.
+	w("TimeoutStopSec=%d", int(stopGraceOf(sandbox).Seconds()))
 	w("")
 	w("# Sandbox. Everything below is the difference between one compromised app")
 	w("# and the whole host.")
@@ -309,6 +312,24 @@ func (s *Systemd) Stop(key string, grace time.Duration) error {
 	}
 	return nil
 }
+
+/*
+stopGraceOf returns the shutdown budget for this unit.
+
+The fallback is not a preference — it is a floor. An Alepha app answering
+SIGTERM stops accepting connections and waits out the in-flight requests for up
+to 10 seconds before its pools close and its buffers flush, so anything under
+that cuts off a request that was already being served.
+*/
+func stopGraceOf(sandbox Sandbox) time.Duration {
+	if sandbox.StopGrace > 0 {
+		return sandbox.StopGrace
+	}
+	return defaultStopGrace
+}
+
+// defaultStopGrace applies when a caller did not say. See stopGraceOf.
+const defaultStopGrace = 30 * time.Second
 
 // stopCallMargin is how much longer than the unit's own grace Bay waits for
 // `systemctl stop` to return. Enough for systemd to send SIGKILL and reap;
