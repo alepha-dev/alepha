@@ -96,37 +96,59 @@ navigateur, même pour un admin authentifié.
 
 ## Amorçage
 
-L'inscription est **fermée par défaut** — un formulaire d'inscription ouvert sur
-un panneau d'infrastructure est au mieux un vecteur de spam. Deux étapes :
+Rien à faire. Au premier démarrage, bay-admin crée le compte `admin` et
+**imprime son mot de passe une seule fois** :
 
-```bash
-# 1. premier boot, inscription ouverte
-PULSE_ADMIN_EMAIL=vous@example.com \
-PULSE_ALLOW_REGISTRATION=true \
-BAY_SOCKET=/opt/bay/data/control.sock \
-  node dist
-
-# 2. créez le compte sur /auth/register, puis retirez le flag et redéployez
+```
+  ┌─────────────────────────────────────────────────────────┐
+  │  bay-admin account created — this is shown ONCE         │
+  └─────────────────────────────────────────────────────────┘
+     username   admin
+     password   9whgk-yukjx-qxh5d-jwwan
 ```
 
-`PULSE_ALLOW_REGISTRATION` ne gouverne **que** l'inscription. L'autorisation
-n'en dépend pas : chaque endpoint exige le rôle `admin`, et c'est
-`PULSE_ADMIN_EMAIL` qui l'accorde — à la connexion, à la seule adresse
-déclarée. Un compte créé par quelqu'un d'autre ne peut rien faire.
+Puis on le change depuis `/profile`.
 
-⚠️ `PULSE_ALLOW_REGISTRATION` est un booléen : le framework n'accepte que
-`true` / `false` littéraux pour un booléen d'environnement. `=1` fait échouer le
-démarrage (bruyamment, avec le nom de la variable).
+**Pourquoi pas `admin:admin`.** bay-admin est joignable en HTTPS depuis
+n'importe où, et elle déploie du code, lit les secrets de toutes les apps
+hébergées et supprime les backups. Un défaut connu sur un panneau comme
+celui-là est trouvé par un scanner en quelques heures — et la fenêtre n'est pas
+« jusqu'à ce que l'opérateur le change », c'est « depuis le premier boot »,
+avant que qui que ce soit se soit connecté une seule fois. C'est le même
+raisonnement qui a fait supprimer le token TCP de Bay ; y remettre `admin:admin`
+serait pire.
+
+`BAY_ADMIN_PASSWORD` permet de le choisir — pour une installation automatisée,
+ou pour quelqu'un qui veut une valeur connue. Il n'est lu qu'au boot qui crée le
+compte ; le changer ensuite ne fait rien, parce qu'à ce moment-là le mot de
+passe vit haché en base et la page profil est ce qui le change.
+
+## Ni email, ni inscription
+
+Le realm n'a **que** username + password.
+
+Pas d'email : un champ email sur un realm sans fournisseur de mail est un champ
+qui promet la récupération de compte et la vérification d'adresse, et ne livre
+ni l'une ni l'autre. Mieux vaut pas d'adresse qu'une adresse à laquelle
+personne ne peut écrire.
+
+Pas de formulaire d'inscription : un seul compte est créé, au premier boot, et
+un second opérateur est ajouté par un premier. Un formulaire ouvert sur un
+panneau d'infrastructure est une entrée, pas une commodité.
+
+`BAY_ADMIN_USERNAME` accepte une liste séparée par des virgules — ce sont les
+noms promus `admin` à la connexion. Une liste plutôt qu'un nom : une machine
+peut avoir plusieurs responsables, et l'alternative (remplacer une valeur
+unique) retire admin à celui qui l'avait, ce qui est exactement le contraire de
+ce qu'on veut faire pour ajouter un collègue.
 
 ## Variables
 
 | | |
 |---|---|
 | `BAY_SOCKET` | chemin du socket de contrôle, `<root>/control.sock` |
-| `PULSE_ADMIN_EMAIL` | promue `admin` à la connexion |
-| `PULSE_ALLOW_REGISTRATION` | ouvre l'inscription, pour l'amorçage seulement |
-
-Les préfixes `PULSE_*` sont un reliquat du renommage et devront suivre.
+| `BAY_ADMIN_USERNAME` | noms promus `admin` à la connexion, séparés par des virgules (défaut `admin`) |
+| `BAY_ADMIN_PASSWORD` | mot de passe du compte d'amorçage. Généré et imprimé une fois si absent. |
 
 ## Pièges rencontrés en la construisant
 

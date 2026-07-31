@@ -132,6 +132,7 @@ function View(props: {
                   </AlertDescription>
                 </Alert>
                 <Button
+                  nativeButton={false}
                   render={<a href={props.loginPath ?? "/auth/login"} />}
                   className="w-full"
                 >
@@ -160,6 +161,7 @@ function View(props: {
                   </AlertDescription>
                 </Alert>
                 <Button
+                  nativeButton={false}
                   render={<a href={props.loginPath ?? "/auth/login"} />}
                   className="w-full"
                 >

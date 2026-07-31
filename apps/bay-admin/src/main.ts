@@ -1,6 +1,6 @@
 import { Alepha, run } from "alepha";
 import { oauthOptions } from "alepha/api/oauth";
-import { PulseApi } from "./api/index.ts";
+import { BayAdminApi } from "./api/index.ts";
 import { PulseMcp } from "./mcp/index.ts";
 import { PulseWeb } from "./web/index.ts";
 
@@ -11,7 +11,7 @@ const alepha = Alepha.create({
 });
 
 // The OAuth authorization server needs to know where a human approves a device
-// login, and where to send an unauthenticated one first. Set before PulseApi
+// login, and where to send an unauthenticated one first. Set before BayAdminApi
 // registers the realm.
 alepha.set(oauthOptions, {
   realm: "default",
@@ -20,7 +20,7 @@ alepha.set(oauthOptions, {
   devicePath: "/device",
 });
 
-alepha.with(PulseApi);
+alepha.with(BayAdminApi);
 alepha.with(PulseMcp);
 alepha.with(PulseWeb);
 

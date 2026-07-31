@@ -433,7 +433,11 @@ export function AuthRegister(props: AuthRegisterProps) {
         </CardContent>
       </Card>
       {!isVerifying && (
-        <Button variant="ghost" render={<a href={props.cancelPath ?? "/"} />}>
+        <Button
+          variant="ghost"
+          nativeButton={false}
+          render={<a href={props.cancelPath ?? "/"} />}
+        >
           {tr("auth.register.cancel", { default: "Cancel" })}
         </Button>
       )}

@@ -2,50 +2,42 @@ import { $env, z } from "alepha";
 import { $realm } from "alepha/api/users";
 
 /**
- * Realm configuration for pulse.
+ * Realm configuration for bay-admin.
  *
- * pulse is a control panel for a machine that hosts other people's
+ * bay-admin is a control panel for a machine that hosts other people's
  * applications: every action it exposes is root-equivalent in effect. So the
- * realm is deliberately the narrowest thing that still lets one operator log
- * in — credentials only, no social identities, no avatars, no notifications.
+ * realm is the narrowest thing that still lets one operator log in —
+ * a username and a password, nothing else.
  *
- * **Registration is closed by default.** An open sign-up form on an
- * infrastructure panel is a spam vector at best. The bootstrap is two steps and
- * documented in the README: set `PULSE_ALLOW_REGISTRATION=1` for the first
- * boot, create the admin account, then unset it.
+ * **No email.** Not a simplification for its own sake: an email field on a
+ * realm with no mail provider is a field that promises password recovery and
+ * account verification, and delivers neither. Better to have no address than
+ * one nobody can send to.
  *
- * Authorization itself does not depend on that flag: every endpoint requires
- * the `admin` role, and `adminEmails` is what grants it — on login, to the one
- * address the operator declared. An account created by anyone else can do
- * nothing at all.
+ * **Registration is closed, permanently.** There is no sign-up form. The one
+ * account is created at first boot by {@link BootstrapService}; a second
+ * operator is added by an existing one. An open form on an infrastructure
+ * panel is a spam vector at best.
  */
 export class BaySecurityProvider {
   env = $env(
     z.object({
       /**
-       * The operators' emails, comma-separated. Auto-promoted to `admin` on
-       * login.
+       * Usernames auto-promoted to `admin` on login, comma-separated.
        *
-       * A list rather than one address: a machine can have more than one person
-       * responsible for it, and the alternative — swapping the single value —
-       * takes admin away from whoever held it, which is exactly the wrong thing
-       * to do to add a colleague.
+       * A list rather than one name: a machine can have more than one person
+       * responsible for it, and the alternative — swapping a single value —
+       * takes admin away from whoever held it, which is exactly the wrong
+       * thing to do to add a colleague.
        */
-      PULSE_ADMIN_EMAIL: z.text().optional(),
-
-      /**
-       * Opens self-registration. Leave unset in normal operation.
-       */
-      PULSE_ALLOW_REGISTRATION: z.boolean().default(false),
+      BAY_ADMIN_USERNAME: z.text({ default: "admin" }),
     }),
   );
 
   realm = $realm({
     features: {
       // Needed by `alepha platform up`: a CLI has no browser to complete an
-      // interactive login, and CI has nobody at the keyboard at all. A device
-      // flow is worth adding later for a developer's machine; it cannot
-      // replace this.
+      // interactive login, and CI has nobody at the keyboard at all.
       apiKeys: true,
       // Everything else off: an infra panel needs a login, not a social
       // product.
@@ -58,17 +50,18 @@ export class BaySecurityProvider {
       oauth: true,
     },
     settings: {
-      username: "email",
-      // Closed unless explicitly opened for the initial bootstrap.
-      registrationAllowed: !!this.env.PULSE_ALLOW_REGISTRATION,
-      // No mail provider is configured, so a reset link would go nowhere and a
-      // verification requirement would lock the operator out of their own
-      // machine on first boot.
+      username: "required",
+      // No email at all. See the class comment.
+      email: "none",
+      // Closed. The bootstrap account is created server-side at first boot.
+      registrationAllowed: false,
+      // Both would need a mail provider, and there is no address to send to.
+      // Recovery is `bay-admin reset-password` on the host, which is the right
+      // level of proof for a machine you must already be able to log into.
       resetPasswordAllowed: false,
       verifyEmailRequired: false,
-      adminEmails: (this.env.PULSE_ADMIN_EMAIL ?? "")
-        .split(",")
-        .map((email) => email.trim())
+      adminUsernames: this.env.BAY_ADMIN_USERNAME.split(",")
+        .map((name) => name.trim())
         .filter(Boolean),
     },
     identities: {

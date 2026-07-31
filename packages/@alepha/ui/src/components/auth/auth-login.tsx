@@ -332,7 +332,7 @@ export function AuthLogin(props: AuthLoginProps) {
           )}
         </CardContent>
       </Card>
-      <Button variant="ghost" render={<a href="/" />}>
+      <Button variant="ghost" nativeButton={false} render={<a href="/" />}>
         {tr("auth.login.cancel", { default: "Cancel" })}
       </Button>
     </div>

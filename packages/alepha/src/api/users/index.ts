@@ -4,6 +4,7 @@ import { UserAudits } from "./audits/UserAudits.ts";
 import { AdminIdentityController } from "./controllers/AdminIdentityController.ts";
 import { AdminSessionController } from "./controllers/AdminSessionController.ts";
 import { AdminUserController } from "./controllers/AdminUserController.ts";
+import { MyPasswordController } from "./controllers/MyPasswordController.ts";
 import { MySessionController } from "./controllers/MySessionController.ts";
 import { RealmController } from "./controllers/RealmController.ts";
 import { UserController } from "./controllers/UserController.ts";
@@ -27,6 +28,7 @@ export * from "./audits/UserAudits.ts";
 export * from "./controllers/AdminIdentityController.ts";
 export * from "./controllers/AdminSessionController.ts";
 export * from "./controllers/AdminUserController.ts";
+export * from "./controllers/MyPasswordController.ts";
 export * from "./controllers/MySessionController.ts";
 export * from "./controllers/RealmController.ts";
 export * from "./controllers/UserController.ts";
@@ -93,6 +95,7 @@ export const AlephaApiUsers = $module({
     UserController,
     AdminUserController,
     AdminSessionController,
+    MyPasswordController,
     MySessionController,
     AdminIdentityController,
     RealmController,

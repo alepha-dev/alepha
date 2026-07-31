@@ -336,7 +336,11 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
             )}
           </CardContent>
         </Card>
-        <Button variant="ghost" render={<a href={redirect} />}>
+        <Button
+          variant="ghost"
+          nativeButton={false}
+          render={<a href={redirect} />}
+        >
           {tr("auth.reset.cancel", { default: "Cancel" })}
         </Button>
       </div>
