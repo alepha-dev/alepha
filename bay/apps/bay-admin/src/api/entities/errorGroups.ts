@@ -9,7 +9,7 @@ import { pulseApps } from "./pulseApps.ts";
  * crash loop is one fact with a count, and storing it a thousand times would
  * cost a thousand times more to learn the same thing.
  *
- * `fingerprint` comes from `@alepha/telemetry/fingerprint`, computed identically
+ * `fingerprint` comes from `@alepha/pulse-client/fingerprint`, computed identically
  * by the app that sends, this table, and the forwarder that hands groups to
  * Lore. It survives a deploy: bundle hashes and line numbers are normalised
  * away, so a bug that is not fixed keeps its history instead of reappearing as
