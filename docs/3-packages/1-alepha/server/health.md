@@ -13,10 +13,9 @@ npm install alepha
 Application health monitoring endpoints.
 
 **Features:**
-- `GET /health` endpoint
+- `GET /health` and `GET /healthz`
 
-## API Reference
+supervisors read to tell a listening app from a serving one — an app cannot
+usefully opt out of being checkable. Importing this module is now a no-op
+beyond `AlephaServer` itself; drop it.
 
-### Providers
-
-- [`ServerHealthProvider`](/docs/reference-providers-serverhealthprovider) — Register `/health` & `/healthz` endpoint.

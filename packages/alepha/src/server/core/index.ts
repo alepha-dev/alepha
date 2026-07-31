@@ -22,6 +22,7 @@ import { BunHttpServerProvider } from "./providers/BunHttpServerProvider.ts";
 import { NodeHttpServerProvider } from "./providers/NodeHttpServerProvider.ts";
 import { ServerBodyParserProvider } from "./providers/ServerBodyParserProvider.ts";
 import { ServerCompressProvider } from "./providers/ServerCompressProvider.ts";
+import { ServerHealthProvider } from "./providers/ServerHealthProvider.ts";
 import { ServerHelmetProvider } from "./providers/ServerHelmetProvider.ts";
 import { ServerLoggerProvider } from "./providers/ServerLoggerProvider.ts";
 import { ServerMultipartProvider } from "./providers/ServerMultipartProvider.ts";
@@ -119,6 +120,7 @@ export * from "./primitives/$sse.ts";
 export * from "./providers/BunHttpServerProvider.ts";
 export * from "./providers/NodeHttpServerProvider.ts";
 export * from "./providers/ServerCompressProvider.ts";
+export * from "./providers/ServerHealthProvider.ts";
 export * from "./providers/ServerHelmetProvider.ts";
 export * from "./providers/ServerLoggerProvider.ts";
 export * from "./providers/ServerMultipartProvider.ts";
@@ -155,6 +157,7 @@ export const AlephaServer = $module({
   services: [
     ServerBodyParserProvider,
     ServerCompressProvider,
+    ServerHealthProvider,
     ServerHelmetProvider,
     ServerMultipartProvider,
     HttpClient,

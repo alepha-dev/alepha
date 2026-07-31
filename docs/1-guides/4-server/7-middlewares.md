@@ -162,19 +162,19 @@ class App {
 
 ### Health Check
 
-`AlephaServerHealth` adds a `GET /health` endpoint that returns `200 OK`. Import from `alepha/server/health`.
+`GET /health` and `GET /healthz` are part of `AlephaServer` — every server has them, with nothing to import.
 
-```typescript
-import { Alepha } from "alepha";
-import { AlephaServerHealth } from "alepha/server/health";
-
-Alepha.create()
-  .with(AlephaServerHealth)
-  .with(App)
-  .start();
+```json
+{ "message": "OK", "uptime": 42, "date": "2026-07-31T17:26:36Z", "ready": true }
 ```
 
-Use this for load balancer health probes and container orchestration readiness checks.
+`ready` is the field that matters. It follows the container's lifecycle, so it is `false` for exactly as long as the app is still starting — which is longer than you might expect, because a process binds its port *before* it runs its migrations.
+
+That gap is why this is not opt-in. A supervisor or load balancer starting your app cannot ask it to expose a readiness endpoint; without one, the best it can do is open a TCP connection, which succeeds while the app is still building its database. It then sends traffic the app cannot serve. Alepha exposes `/health` universally so the caller can tell *listening* from *working*.
+
+Put your reverse proxy in front of it: `/health` describes your internals and belongs on loopback, not on the public host. [Bay](https://github.com/feunard/alepha/tree/main/apps/bay) returns 404 for it on the public interface.
+
+`AlephaServerHealth` still exists and is a no-op. Drop it from your imports.
 
 ### Metrics
 
@@ -192,6 +192,8 @@ Alepha.create()
 
 Serves metrics in Prometheus text format at `/metrics`.
 
+Opt-in, unlike `/health`: it pulls in `prom-client`, and an app that nothing scrapes should not carry it. Set `METRICS_TOKEN` on anything internet-facing, or mask the path at your proxy.
+
 ## Combining Middlewares
 
 Register multiple modules together:
@@ -200,10 +202,8 @@ Register multiple modules together:
 import { Alepha } from "alepha";
 import { AlephaServerCors, corsOptions } from "alepha/server/cors";
 import { AlephaServerRateLimit, rateLimitOptions } from "alepha/server/rate-limit";
-import { AlephaServerHealth } from "alepha/server/health";
 
 const alepha = Alepha.create()
-  .with(AlephaServerHealth)
   .with(AlephaServerCors)
   .with(AlephaServerRateLimit);
 
