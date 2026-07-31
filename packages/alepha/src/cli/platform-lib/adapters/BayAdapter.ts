@@ -4,6 +4,7 @@ import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
+import { PackageManagerUtils } from "../../core/services/PackageManagerUtils.ts";
 import type { BayCredential } from "../providers/BayCredentialProvider.ts";
 import { BayCredentialProvider } from "../providers/BayCredentialProvider.ts";
 import {
@@ -56,6 +57,7 @@ export class BayAdapter extends PlatformAdapter {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
   protected readonly credentials = $inject(BayCredentialProvider);
+  protected readonly pm = $inject(PackageManagerUtils);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -343,6 +345,24 @@ export class BayAdapter extends PlatformAdapter {
   }
 
   /**
+   * Composes an `alepha` CLI invocation for whatever package manager the
+   * project actually uses.
+   *
+   * `yarn` was hardcoded, so deploying an npm, pnpm or bun workspace failed at
+   * the build step with the package manager's own error — for lindocara, a
+   * yarn complaint about a lockfile that does not exist because the project
+   * has a `package-lock.json`. Nothing in the message mentioned Bay, the
+   * adapter, or yarn being an assumption.
+   *
+   * `npm` needs `run` before a binary from `node_modules/.bin`; the others take
+   * it directly. Same distinction `dev.ts` already makes.
+   */
+  protected async cli(ctx: PlatformContext, args: string): Promise<string> {
+    const pm = await this.pm.getPackageManager(ctx.root);
+    return pm === "npm" ? `npm run alepha -- ${args}` : `${pm} alepha ${args}`;
+  }
+
+  /**
    * Builds the artifact Bay consumes.
    *
    * `--target=bare` and nothing else. A workerd bundle is resolved against
@@ -358,7 +378,7 @@ export class BayAdapter extends PlatformAdapter {
     await run({
       name: "build (bay)",
       handler: async () => {
-        await this.shell.run("yarn alepha build --target=bare", {
+        await this.shell.run(await this.cli(ctx, "build --target=bare"), {
           root: ctx.root,
         });
       },
@@ -376,7 +396,7 @@ export class BayAdapter extends PlatformAdapter {
     await run({
       name: "pack",
       handler: async () => {
-        await this.shell.run("yarn alepha pack", { root: ctx.root });
+        await this.shell.run(await this.cli(ctx, "pack"), { root: ctx.root });
         artifact = join(ctx.root, `${ctx.project}-latest.tar.gz`);
         if (!(await this.fs.exists(artifact))) {
           throw new AlephaError(`\`alepha pack\` produced no ${artifact}.`);

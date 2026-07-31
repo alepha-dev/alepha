@@ -1,5 +1,6 @@
 import { Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { BayAdapter } from "../adapters/BayAdapter.ts";
 import type { PlatformContext } from "../adapters/PlatformAdapter.ts";
@@ -40,6 +41,10 @@ class TestBayAdapter extends BayAdapter {
   public requests: Array<Record<string, unknown>> = [];
   /** Every wait the poll loop asked for, in order. */
   public waits: number[] = [];
+
+  public testCli(ctx: PlatformContext, args: string): Promise<string> {
+    return this.cli(ctx, args);
+  }
 
   public testApiKey(ctx: PlatformContext): Promise<string> {
     return this.apiKey(ctx);
@@ -277,5 +282,59 @@ describe("BayAdapter device polling", () => {
       }),
     ).rejects.toThrowError(/Gave up waiting/);
     expect(adapter.requests).toHaveLength(0);
+  });
+});
+
+describe("BayAdapter — the package manager it shells out to", () => {
+  /*
+    `yarn` was hardcoded in `build` and `pack`.
+
+    Deploying an npm workspace therefore failed at the build step with yarn's
+    own error — for lindocara, a complaint about a missing lockfile entry,
+    because the project has a `package-lock.json` and no `yarn.lock`. Nothing
+    in the message mentioned Bay, the adapter, or that yarn was an assumption.
+    The same bug had already been found and fixed in `dev.ts`; this copy was
+    missed.
+  */
+  const withLockfile = async (lockfile: string) => {
+    const alepha = Alepha.create()
+      .with({
+        provide: BayCredentialProvider,
+        use: MemoryBayCredentialProvider,
+      })
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+    const fs = alepha.inject(MemoryFileSystemProvider);
+    await fs.writeFile(`/project/${lockfile}`, "");
+    const adapter = alepha.inject(TestBayAdapter);
+    return await adapter.testCli(
+      { ...context(), root: "/project" } as PlatformContext,
+      "build --target=bare",
+    );
+  };
+
+  it("should use yarn for a yarn workspace", async () => {
+    expect(await withLockfile("yarn.lock")).toBe(
+      "yarn alepha build --target=bare",
+    );
+  });
+
+  it("should use npm — with `run --`, since npm needs it — for an npm workspace", async () => {
+    // The distinction that matters: `npm alepha …` is not a command. Without
+    // `run --`, npm treats `alepha` as a subcommand it does not have.
+    expect(await withLockfile("package-lock.json")).toBe(
+      "npm run alepha -- build --target=bare",
+    );
+  });
+
+  it("should use pnpm for a pnpm workspace", async () => {
+    expect(await withLockfile("pnpm-lock.yaml")).toBe(
+      "pnpm alepha build --target=bare",
+    );
+  });
+
+  it("should use bun for a bun workspace", async () => {
+    expect(await withLockfile("bun.lock")).toBe(
+      "bun alepha build --target=bare",
+    );
   });
 });
