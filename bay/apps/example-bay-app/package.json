@@ -12,6 +12,7 @@
     "pack": "alepha build && alepha pack"
   },
   "dependencies": {
+    "@alepha/telemetry": "workspace:*",
     "alepha": "workspace:*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
