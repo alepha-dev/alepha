@@ -1,17 +1,12 @@
 import { $module } from "alepha";
-import { AppDetailController } from "./controllers/AppDetailController.ts";
+import { AppUsageController } from "./controllers/AppUsageController.ts";
 import { BayAppController } from "./controllers/BayAppController.ts";
 import { DeviceController } from "./controllers/DeviceController.ts";
-import { IngestController } from "./controllers/IngestController.ts";
-import { PulseAppController } from "./controllers/PulseAppController.ts";
-import { ForwardJobs } from "./jobs/ForwardJobs.ts";
+import { AppUsageJobs } from "./jobs/AppUsageJobs.ts";
 import { BaySecurityProvider } from "./providers/BaySecurityProvider.ts";
-import { AppKeyService } from "./services/AppKeyService.ts";
-import { BayAppSyncService } from "./services/BayAppSyncService.ts";
+import { AppUsageService } from "./services/AppUsageService.ts";
 import { BayControlService } from "./services/BayControlService.ts";
 import { BootstrapService } from "./services/BootstrapService.ts";
-import { IngestService } from "./services/IngestService.ts";
-import { LoreForwardService } from "./services/LoreForwardService.ts";
 
 export const BayAdminApi = $module({
   name: "bay-admin.api",
@@ -23,17 +18,12 @@ export const BayAdminApi = $module({
     // form and no mail provider, so without this nobody can ever log in.
     BootstrapService,
     BayControlService,
-    BayAppSyncService,
     BayAppController,
     DeviceController,
-    // Telemetry intake. Its own credential, its own realm — see
-    // `IngestController` for why the two never overlap.
-    AppKeyService,
-    IngestService,
-    IngestController,
-    PulseAppController,
-    AppDetailController,
-    LoreForwardService,
-    ForwardJobs,
+    // The supervisor series: what each app costs, sampled from Bay every
+    // minute. Infrastructure, not telemetry — no app reports anything.
+    AppUsageService,
+    AppUsageController,
+    AppUsageJobs,
   ],
 });

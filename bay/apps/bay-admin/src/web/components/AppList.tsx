@@ -157,7 +157,9 @@ const AppList = (props: AppListProps) => {
                     type="button"
                     className="font-medium hover:underline"
                     onClick={() =>
-                      void router.push("app", { params: { slug: app.name } })
+                      void router.push("appUsage", {
+                        params: { slug: app.name },
+                      })
                     }
                   >
                     {app.name}

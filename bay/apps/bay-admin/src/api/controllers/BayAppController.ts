@@ -2,7 +2,6 @@ import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { bayAppSchema } from "../schemas/bayAppSchema.ts";
-import { BayAppSyncService } from "../services/BayAppSyncService.ts";
 import { BayControlService } from "../services/BayControlService.ts";
 
 /**
@@ -16,10 +15,9 @@ import { BayControlService } from "../services/BayControlService.ts";
  */
 export class BayAppController {
   protected readonly bay = $inject(BayControlService);
-  protected readonly sync = $inject(BayAppSyncService);
 
   /**
-   * Whether pulse can reach a Bay at all.
+   * Whether bay-admin can reach a Bay at all.
    *
    * Deliberately reachable by any signed-in user and deliberately separate from
    * `listApps`: "not configured yet" and "Bay is down" call for different
@@ -30,7 +28,7 @@ export class BayAppController {
     method: "GET",
     path: "/bay/status",
     use: [$secure({ roles: ["admin"] })],
-    description: "Whether pulse is configured to reach a Bay",
+    description: "Whether bay-admin is configured to reach a Bay",
     schema: {
       response: z.object({
         configured: z.boolean(),
@@ -49,8 +47,6 @@ export class BayAppController {
     },
     handler: async () => {
       // Enrol anything Bay has gained since the last look, so opening an app's
-      // page never lands on a row Pulse does not know about.
-      await this.sync.sync();
       return await this.bay.listApps();
     },
   });
