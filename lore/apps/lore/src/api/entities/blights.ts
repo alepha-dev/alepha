@@ -37,7 +37,7 @@ export const blights = $entity({
       .optional(),
     /**
      * `sha256(errorName + ":" + normalizedFirstFrame)`, computed by the sender
-     * with the shared helper from `@alepha/telemetry/fingerprint`.
+     * with the shared helper from `@alepha/pulse-client/fingerprint`.
      *
      * No app identifier inside, unlike the sigil-era fingerprint: scoping is
      * carried by the campaign here and by the app on Pulse's side. That also
