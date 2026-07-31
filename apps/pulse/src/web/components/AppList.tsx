@@ -143,7 +143,20 @@ const AppList = (props: AppListProps) => {
             >
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">{app.name}</span>
+                  {/*
+                    The name is the way in. An app row that shows a status but
+                    cannot be opened makes the reader hunt for where the detail
+                    lives.
+                  */}
+                  <button
+                    type="button"
+                    className="font-medium hover:underline"
+                    onClick={() =>
+                      void router.push("app", { params: { slug: app.name } })
+                    }
+                  >
+                    {app.name}
+                  </button>
                   <Badge variant="secondary">{app.env}</Badge>
                   {/*
                     Only the bad case is called out. A running app is the norm

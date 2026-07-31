@@ -3,6 +3,7 @@ import type { RealmController } from "alepha/api/users";
 import { $page, ReactRouter, Redirection } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
+import type { AppDetailController } from "../api/controllers/AppDetailController.ts";
 import type { BayAppController } from "../api/controllers/BayAppController.ts";
 import type { DeviceController } from "../api/controllers/DeviceController.ts";
 
@@ -12,11 +13,18 @@ export class AppRouter {
   protected readonly bayApi = $client<BayAppController>();
   protected readonly realmApi = $client<RealmController>();
   protected readonly deviceApi = $client<DeviceController>();
+  protected readonly detailApi = $client<AppDetailController>();
 
   layout = $page({
     // A thunk, not an array: field initializers run top to bottom, so naming
     // `this.home` directly here would capture `undefined`.
-    children: () => [this.home, this.login, this.register, this.device],
+    children: () => [
+      this.home,
+      this.app,
+      this.login,
+      this.register,
+      this.device,
+    ],
     lazy: () => import("./components/Layout.tsx"),
     errorHandler: (error: unknown, state) => {
       // Every page below requires an admin session. Send an unauthenticated
@@ -51,6 +59,28 @@ export class AppRouter {
       ]);
       return { configured: status.configured, apps };
     },
+  });
+
+  /**
+   * One app's page. The tab lives in the query rather than the path so that
+   * switching tabs is a navigation the browser's back button understands.
+   */
+  app = $page({
+    path: "/apps/:slug",
+    name: "app",
+    head: { title: "App › Pulse" },
+    lazy: () => import("./components/AppDetailPage.tsx"),
+    schema: {
+      params: z.object({ slug: z.text() }),
+      query: z.object({ tab: z.text({ default: "overview" }) }),
+    },
+    loader: async ({ params, query }) => ({
+      slug: params.slug,
+      tab: query.tab,
+      overview: await this.detailApi.overview({
+        params: { slug: params.slug },
+      }),
+    }),
   });
 
   login = $page({

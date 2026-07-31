@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AppDetailController } from "./controllers/AppDetailController.ts";
 import { BayAppController } from "./controllers/BayAppController.ts";
 import { DeviceController } from "./controllers/DeviceController.ts";
 import { IngestController } from "./controllers/IngestController.ts";
@@ -25,6 +26,7 @@ export const PulseApi = $module({
     IngestService,
     IngestController,
     PulseAppController,
+    AppDetailController,
     LoreForwardService,
     ForwardJobs,
   ],
