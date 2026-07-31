@@ -4,6 +4,7 @@ import { BlightController } from "./controllers/BlightController.ts";
 import { BlobController } from "./controllers/BlobController.ts";
 import { CampaignController } from "./controllers/CampaignController.ts";
 import { CampaignQuestPortabilityController } from "./controllers/CampaignQuestPortabilityController.ts";
+import { CampaignSourceController } from "./controllers/CampaignSourceController.ts";
 import { CampaignStatsController } from "./controllers/CampaignStatsController.ts";
 import { ChapterController } from "./controllers/ChapterController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
@@ -107,6 +108,7 @@ export const LoreApi = $module({
     SigilController,
     SigilIngestController,
     SourceIngestController,
+    CampaignSourceController,
     BlightController,
     InsightsController,
     VersionController,

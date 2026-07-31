@@ -495,6 +495,7 @@ export class AppRouter {
       this.campaignSettingsKanban,
       this.campaignSettingsFolios,
       this.campaignSettingsSigils,
+      this.campaignSettingsSources,
       this.campaignSettingsChapters,
       this.campaignSettingsQuests,
     ],
@@ -587,6 +588,24 @@ export class AppRouter {
     }),
     lazy: () =>
       import("./components/campaign/settings/CampaignSettingsSigilsPage.tsx"),
+  });
+
+  /**
+   * Sources — which systems may file blights here.
+   *
+   * Lives alongside the sigils page while both credentials exist. Sigils go
+   * once every reporter has moved over; the two are never merged, because a
+   * sigil authenticated a website pushing raw telemetry and a source
+   * authenticates an observer pushing aggregates.
+   */
+  campaignSettingsSources = $page({
+    name: "campaignSettingsSources",
+    path: "/sources",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Sources`,
+    }),
+    lazy: () =>
+      import("./components/campaign/settings/CampaignSettingsSourcesPage.tsx"),
   });
 
   campaignSettingsChapters = $page({
