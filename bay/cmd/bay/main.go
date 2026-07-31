@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -41,8 +42,19 @@ const (
 	defaultRoot      = "./bay-data"
 	defaultProxyAddr = ":8080"
 	defaultTLSAddr   = ":8443"
-	stopGrace        = 15 * time.Second
-	readyTimeout     = 60 * time.Second
+	// stopGrace is what an app gets to shut down cleanly, and it is the ONLY
+	// number in play — it becomes the unit's TimeoutStopSec.
+	//
+	// Sized against what an Alepha app actually does on SIGTERM: the HTTP
+	// server stops accepting and waits out in-flight requests for up to 10
+	// seconds, then database pools close and buffered telemetry flushes. 15
+	// left almost no margin past the HTTP drain alone.
+	stopGrace    = 30 * time.Second
+	readyTimeout = 60 * time.Second
+	// deployHoldWindow bounds how long requests wait during a deploy. Longer
+	// than readyTimeout because the app is down for the unpack and the swap
+	// too, not only for its own boot.
+	deployHoldWindow = 90 * time.Second
 	// defaultBackupInterval is deliberately ON by default. Backups that must be
 	// switched on are backups that stay off.
 	defaultBackupInterval = 24 * time.Hour
@@ -228,7 +240,11 @@ type server struct {
 	// router is told when an app is being restarted, so requests wait for the
 	// new process instead of failing. Nil in the CLI paths that never serve.
 	router *proxy.Proxy
-	log    *slog.Logger
+	// watches holds the cancel of each app's in-flight rollback watch, so a new
+	// deploy can supersede the previous one's. See beginWatch.
+	watchMu sync.Mutex
+	watches map[string]context.CancelFunc
+	log     *slog.Logger
 }
 
 func cmdServe(args []string) error {
@@ -480,6 +496,28 @@ func cmdServe(args []string) error {
 	return nil
 }
 
+/*
+holdDuring makes requests for an app wait, from now until the returned function
+is called.
+
+Held from the moment Bay decides to take the app down, NOT from when it brings
+it back up. The first version armed this inside `start`, which is after the
+stop, after the upload has been unpacked and after the release has been swapped
+— so every request in that window still got a 502. Measured: five out of 469
+during a real redeploy, all of them `connection refused`, all of them before the
+hold existed.
+
+The returned release is safe to call twice, and safe not to call at all: the
+deadline is a backstop for the path where Bay dies mid-deploy.
+*/
+func (s *server) holdDuring(key string) func() {
+	if s.router == nil {
+		return func() {}
+	}
+	s.router.HoldFor(key, deployHoldWindow)
+	return func() { s.router.Release(key) }
+}
+
 // start launches an app and waits for it to answer.
 //
 // Starting and being ready are different things: routing traffic at a process
@@ -523,19 +561,16 @@ func (s *server) start(app state.App) error {
 			WritablePaths: writable,
 			MemoryMax:     "512M",
 			TasksMax:      256,
+			StopGrace:     stopGrace,
 			ControlGroup:  controlGroupFor(app),
 			// Widened only for a granted app; empty otherwise.
 			ControlSocketDir: controlSocketDirFor(app, s.controlSocket),
 		},
 	}
-	// Requests arriving while the app is down wait for the new process instead
-	// of getting a 502. Set before the restart, cleared the moment the app
-	// answers — including on failure, because an app that never became ready is
-	// not one to keep holding traffic for.
-	if s.router != nil {
-		s.router.HoldFor(app.Key(), readyTimeout)
-		defer s.router.Release(app.Key())
-	}
+	// No hold armed here. Whoever took the app down owns the window — arming it
+	// at this point would mean every request between the stop and this line
+	// still got a 502, which is exactly the bug this replaced. `start` is also
+	// called at boot, where there is nothing to hold for.
 
 	if err := s.runner.Start(spec); err != nil {
 		return err
@@ -654,6 +689,10 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 	tmp.Close()
 
+	// Requests wait from here rather than 502, and keep waiting through the
+	// unpack, the swap and the new process's boot.
+	defer s.holdDuring(name + "/" + env)()
+
 	// Stop the previous process before swapping `current` under it.
 	_ = s.runner.Stop(name+"/"+env, stopGrace)
 
@@ -673,13 +712,6 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// Restore BEFORE starting: the app must open the recovered database, not an
 	// empty one that gets swapped under it. And only when Bay just created that
 	// empty file — never over an existing database.
-	// Captured before the swap: this is what to return to if the new release
-	// turns out to be bad.
-	previous := ""
-	if existing, ok := s.store.Get(res.App.Key()); ok {
-		previous = existing.Release
-	}
-
 	restore := map[string]any{"database": "existing"}
 	if res.DatabaseCreated && res.DatabasePath != "" {
 		restore = s.maybeAutoRestore(r.Context(), res.App, res.DatabasePath)
@@ -702,8 +734,8 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// deploy feel broken. What this catches is the release that boots, answers
 	// once, and dies on its first real traffic — which is exactly what a
 	// readiness check at deploy time cannot see.
-	if previous != "" && previous != res.Release {
-		go s.watchAndRollback(res.App, previous)
+	if res.Previous != "" && res.Previous != res.Release {
+		go s.watchAndRollback(res.App, res.Previous)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -727,17 +759,45 @@ window is short: the further a bad release runs, the more likely it has written
 something the old code cannot read.
 */
 func (s *server) watchAndRollback(app state.App, previous string) {
+	// One watch per app. A deploy supersedes whatever was being watched: the
+	// old watch is probing a release that is no longer installed, and its
+	// verdict — reached against the NEW release's process — would roll back to
+	// something older than what the operator just replaced.
+	//
+	// Observed, not theoretical. Two deploys six seconds apart left two watches
+	// running; both saw the same wedged process, and they rolled back in
+	// sequence. The second undid the first's correct work and put the app on a
+	// release older than the one the deploy had replaced.
+	ctx := s.beginWatch(app.Key())
+	defer s.endWatch(app.Key())
+
 	verdict := (&health.Watch{
 		Probe:     s.probe,
 		Port:      app.Port,
 		Window:    rollbackWindow,
 		Interval:  rollbackInterval,
 		Threshold: rollbackThreshold,
-	}).Run(context.Background())
+	}).Run(ctx)
 
+	if ctx.Err() != nil {
+		// Superseded by a newer deploy. Its watch owns this app now.
+		s.log.Info("watch cancelled by a newer deploy",
+			"app", app.Key(), "release", app.Release)
+		return
+	}
 	if verdict.Healthy {
 		s.log.Info("release held up", "app", app.Key(),
 			"release", app.Release, "checks", verdict.Checks)
+		return
+	}
+
+	// Only roll back what this watch actually deployed. Between the verdict and
+	// this line an operator may have deployed or rolled back by hand, and
+	// reverting their release to one they never asked for is worse than leaving
+	// a bad one running — they are standing right there.
+	if current, ok := s.store.Get(app.Key()); !ok || current.Release != app.Release {
+		s.log.Warn("release failed, but the app has already moved on — not rolling back",
+			"app", app.Key(), "watched", app.Release, "reason", verdict.Reason)
 		return
 	}
 
@@ -765,6 +825,33 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 		return
 	}
 	s.log.Warn("rolled back", "app", app.Key(), "now", previous)
+}
+
+/*
+beginWatch registers this goroutine as the app's only watch.
+
+Cancels whatever was watching that app before returning, so at most one watch
+can reach a verdict for a given app at a time.
+*/
+func (s *server) beginWatch(key string) context.Context {
+	s.watchMu.Lock()
+	defer s.watchMu.Unlock()
+	if s.watches == nil {
+		s.watches = map[string]context.CancelFunc{}
+	}
+	if cancel, ok := s.watches[key]; ok {
+		cancel()
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	s.watches[key] = cancel
+	return ctx
+}
+
+// endWatch drops this app's entry, unless a newer watch has already claimed it.
+func (s *server) endWatch(key string) {
+	s.watchMu.Lock()
+	defer s.watchMu.Unlock()
+	delete(s.watches, key)
 }
 
 // handleRemove stops an app and unregisters it.

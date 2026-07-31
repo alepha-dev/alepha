@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -47,11 +48,25 @@ type holdSet struct {
 // on an app that is never coming.
 func (p *Proxy) HoldFor(key string, d time.Duration) {
 	p.holds.mu.Lock()
-	defer p.holds.mu.Unlock()
 	if p.holds.until == nil {
 		p.holds.until = map[string]time.Time{}
 	}
 	p.holds.until[key] = time.Now().Add(d)
+	p.holds.mu.Unlock()
+
+	// Drop the pooled connections to every app now, before the one being
+	// deployed is stopped.
+	//
+	// A keep-alive connection sitting idle in the pool is the one hole this
+	// otherwise closes: the app destroys it on shutdown, and the next request
+	// that picks it up fails with `connection reset by peer` rather than a
+	// refused dial — so it is not a retry candidate and becomes a 502. Seen
+	// once in 503 requests during a real redeploy.
+	//
+	// Closing them makes the next request dial fresh, and a fresh dial against
+	// a stopped app IS a refused connection, which is held. Costs a handshake
+	// on loopback, once per deploy.
+	p.transport().CloseIdleConnections()
 }
 
 // Release stops holding requests for this app.
@@ -66,6 +81,21 @@ func (p *Proxy) holding(key string) bool {
 	defer p.holds.mu.Unlock()
 	deadline, ok := p.holds.until[key]
 	return ok && time.Now().Before(deadline)
+}
+
+/*
+transport is the shared connection pool to every app.
+
+Its own, not `http.DefaultTransport`: `CloseIdleConnections` is pool-wide, and
+calling it on the default transport would also drop connections belonging to
+anything else in the process that happens to use it.
+*/
+func (p *Proxy) transport() *http.Transport {
+	p.transportOnce.Do(func() {
+		t, _ := http.DefaultTransport.(*http.Transport)
+		p.tr = t.Clone()
+	})
+	return p.tr
 }
 
 /*
@@ -86,6 +116,39 @@ type holdTransport struct {
 	interval time.Duration
 }
 
+/*
+retryable reports whether this failure can be tried again without risk.
+
+A refused dial always can: it happens before a single byte is written, so the
+app cannot have seen the request at all. That covers POST and PUT too, which
+matters — a form submitted during a deploy is exactly what must not be lost.
+
+A connection RESET is different. The request was written, and Bay cannot tell
+whether the app processed it before dying. Retried only when there is no body,
+where the method is idempotent by construction and a duplicate costs nothing.
+For a POST, a 502 the user can retry themselves is the safer failure than an
+order placed twice.
+*/
+func retryable(err error, req *http.Request) bool {
+	if isDialFailure(err) {
+		return true
+	}
+	if req.Body != nil && req.Body != http.NoBody {
+		return false
+	}
+	return isConnectionLoss(err)
+}
+
+// isConnectionLoss reports whether the upstream dropped the connection without
+// answering — as an app does to its idle sockets when it shuts down.
+func isConnectionLoss(err error) bool {
+	if errors.Is(err, io.EOF) || errors.Is(err, syscall.ECONNRESET) {
+		return true
+	}
+	var opErr *net.OpError
+	return errors.As(err, &opErr) && errors.Is(opErr.Err, syscall.ECONNRESET)
+}
+
 func (t holdTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// The transport closes the request body when a dial fails, which would
 	// leave the retry nothing to send. A dial failure happens before a single
@@ -103,7 +166,7 @@ func (t holdTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	for {
 		res, err := t.base.RoundTrip(attempt)
-		if err == nil || !isDialFailure(err) || !t.holding() {
+		if err == nil || !retryable(err, attempt) || !t.holding() {
 			return res, err
 		}
 		select {

@@ -231,6 +231,10 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 	}
 	defer cleanup()
 
+	// A restore swaps the database under the app, so it has to stop. Requests
+	// wait rather than fail for the length of it.
+	defer s.holdDuring(app.Key())()
+
 	if err := s.runner.Stop(app.Key(), stopGrace); err != nil {
 		writeError(w, http.StatusInternalServerError, "stop app: "+err.Error())
 		return
@@ -585,6 +589,8 @@ func (s *server) handleRollback(w http.ResponseWriter, r *http.Request) {
 	// exec time, so a swap under a live process leaves it serving the old code
 	// while the symlink claims otherwise — the one state worse than downtime.
 	// Deploy does the same, for the same reason.
+	defer s.holdDuring(key)()
+
 	if err := s.runner.Stop(key, stopGrace); err != nil {
 		writeError(w, http.StatusInternalServerError, "stop app: "+err.Error())
 		return
