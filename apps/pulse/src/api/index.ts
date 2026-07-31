@@ -5,6 +5,7 @@ import { PulseAppController } from "./controllers/PulseAppController.ts";
 import { ForwardJobs } from "./jobs/ForwardJobs.ts";
 import { PulseSecurityProvider } from "./providers/PulseSecurityProvider.ts";
 import { AppKeyService } from "./services/AppKeyService.ts";
+import { BootstrapService } from "./services/BootstrapService.ts";
 import { IngestService } from "./services/IngestService.ts";
 import { LoreForwardService } from "./services/LoreForwardService.ts";
 
@@ -23,6 +24,7 @@ export const PulseApi = $module({
   name: "pulse.api",
   services: [
     PulseSecurityProvider,
+    BootstrapService,
     AppKeyService,
     IngestService,
     IngestController,

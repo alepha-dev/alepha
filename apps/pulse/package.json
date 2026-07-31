@@ -16,11 +16,15 @@
   },
   "dependencies": {
     "@alepha/pulse-client": "workspace:*",
+    "@alepha/ui": "workspace:*",
     "alepha": "workspace:*",
+    "lucide-react": "^1.27.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "better-sqlite3": "^13.0.1",

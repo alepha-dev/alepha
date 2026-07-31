@@ -1,17 +1,20 @@
 import { $module } from "alepha";
+import { AlephaReactAuth } from "alepha/react/auth";
+import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
 import { AppRouter } from "./AppRouter.ts";
 
 /**
  * Pulse's web layer.
  *
- * ⚠️ A placeholder. The real UI — app list, error groups, analytics, the
- * metric series — has to be built; the page it grew from is in git history at
- * `apps/bay-admin/src/web/components/AppDetailPage.tsx`, before this app was
- * split out. See `TODO.md`.
+ * `AlephaReactI18n` and `AlephaReactAuth` are imported even though this app
+ * ships one language: the `@alepha/ui` blocks call `useI18n()` and `useAuth()`
+ * at render or submit time, so a missing module surfaces as a
+ * `ContainerLockedError` inside a form somebody just submitted rather than as
+ * a startup failure.
  */
 export const PulseWeb = $module({
   name: "pulse.web",
-  imports: [AlephaReactUi],
+  imports: [AlephaReactUi, AlephaReactI18n, AlephaReactAuth],
   services: [AppRouter],
 });

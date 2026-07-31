@@ -1,3 +1,4 @@
+import { VITALS_BUCKETS, type VitalMetric } from "@alepha/pulse-client/vitals";
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
@@ -9,6 +10,7 @@ import { metricsPoints } from "../entities/metricsPoints.ts";
 import { pulseApps } from "../entities/pulseApps.ts";
 import { uniquesDaily } from "../entities/uniquesDaily.ts";
 import { viewsHourly } from "../entities/viewsHourly.ts";
+import { vitalsHourly } from "../entities/vitalsHourly.ts";
 
 /** Nothing is returned unbounded, whatever the window asked for. */
 const MAX_ROWS = 500;
@@ -28,6 +30,7 @@ export class AppDetailController {
   protected readonly beats = $repository(heartbeats);
   protected readonly views = $repository(viewsHourly);
   protected readonly uniques = $repository(uniquesDaily);
+  protected readonly vitals = $repository(vitalsHourly);
   protected readonly metrics = $repository(metricsPoints);
 
   overview = $action({
@@ -117,6 +120,19 @@ export class AppDetailController {
         views: z.integer(),
         uniques: z.integer(),
         topPaths: z.array(z.object({ path: z.text(), count: z.integer() })),
+        topCountries: z.array(
+          z.object({ country: z.text(), count: z.integer() }),
+        ),
+        /** Views per day, oldest first, with empty days present as zero. */
+        timeline: z.array(z.object({ day: z.text(), count: z.integer() })),
+        /**
+         * p75 per Web Vital, computed from the stored histograms.
+         *
+         * Absent when nothing was collected for that metric — reported as a
+         * missing key rather than as zero, because "fast" and "unmeasured"
+         * must not look the same on a performance page.
+         */
+        vitals: z.record(z.text(), z.number()),
       }),
     },
     handler: async ({ params, query }) => {
@@ -136,6 +152,28 @@ export class AppDetailController {
         await this.uniques.findMany({ where: { appId: app.id }, limit: 5000 })
       ).filter((u) => u.day >= since.slice(0, 10));
 
+      const byCountry = new Map<string, number>();
+      for (const row of rows) {
+        byCountry.set(
+          row.country,
+          (byCountry.get(row.country) ?? 0) + row.count,
+        );
+      }
+
+      // Every day in the window, including the empty ones. A bar chart that
+      // silently omits a day with no traffic draws a continuous line over an
+      // outage, which is the opposite of what someone is looking for.
+      const byDay = new Map<string, number>();
+      for (let i = query.days - 1; i >= 0; i--) {
+        byDay.set(this.hoursAgo(i * 24).slice(0, 10), 0);
+      }
+      for (const row of rows) {
+        const day = row.hour.slice(0, 10);
+        if (byDay.has(day)) {
+          byDay.set(day, (byDay.get(day) ?? 0) + row.count);
+        }
+      }
+
       return {
         views: rows.reduce((sum, r) => sum + r.count, 0),
         uniques: uniques.length,
@@ -143,6 +181,12 @@ export class AppDetailController {
           .sort((a, b) => b[1] - a[1])
           .slice(0, 10)
           .map(([path, count]) => ({ path, count })),
+        topCountries: [...byCountry.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 8)
+          .map(([country, count]) => ({ country, count })),
+        timeline: [...byDay.entries()].map(([day, count]) => ({ day, count })),
+        vitals: await this.vitalsP75(app.id, since),
       };
     },
   });
@@ -212,5 +256,56 @@ export class AppDetailController {
     return new Date(
       this.dateTime.nowMillis() - hours * 3_600_000 - extraMs,
     ).toISOString();
+  }
+
+  /**
+   * p75 per metric, reconstructed from the stored histograms.
+   *
+   * Nothing keeps raw samples — a page view produces one increment in one
+   * bucket, so storage is bounded by (metric × path × hour) rather than by
+   * traffic. The cost is that a percentile is approximate: this returns the
+   * UPPER boundary of the bucket the 75th sample falls in, which overstates
+   * rather than understates. On a page that says whether a site is fast, that
+   * is the right direction to be wrong in.
+   *
+   * The overflow bucket has no upper boundary, so it reports the last one —
+   * the honest reading there is "at least this", and the UI shows it as poor
+   * either way.
+   */
+  protected async vitalsP75(
+    appId: string,
+    since: string,
+  ): Promise<Record<string, number>> {
+    const rows = (
+      await this.vitals.findMany({ where: { appId }, limit: 5000 })
+    ).filter((row) => row.hour >= since.slice(0, 13));
+
+    const totals = new Map<string, number[]>();
+    for (const row of rows) {
+      const bounds = VITALS_BUCKETS[row.metric as VitalMetric];
+      const counts =
+        totals.get(row.metric) ?? new Array(bounds.length + 1).fill(0);
+      for (const [index, count] of Object.entries(row.bucketCounts)) {
+        counts[Number(index)] = (counts[Number(index)] ?? 0) + Number(count);
+      }
+      totals.set(row.metric, counts);
+    }
+
+    const out: Record<string, number> = {};
+    for (const [metric, counts] of totals) {
+      const samples = counts.reduce((sum, n) => sum + n, 0);
+      if (!samples) continue;
+      const target = samples * 0.75;
+      let seen = 0;
+      const bounds = VITALS_BUCKETS[metric as VitalMetric];
+      for (let i = 0; i < counts.length; i++) {
+        seen += counts[i];
+        if (seen >= target) {
+          out[metric] = bounds[Math.min(i, bounds.length - 1)];
+          break;
+        }
+      }
+    }
+    return out;
   }
 }
