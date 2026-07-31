@@ -22,7 +22,7 @@ export class AppRouter {
       this.home,
       this.app,
       this.login,
-      this.register,
+      this.profile,
       this.device,
     ],
     lazy: () => import("./components/Layout.tsx"),
@@ -50,14 +50,18 @@ export class AppRouter {
     head: { title: "Apps › Bay" },
     lazy: () => import("./components/AppsPage.tsx"),
     loader: async () => {
-      // `status` is fetched alongside the list so the page can tell "no Bay
-      // configured" from "a Bay with no apps yet" — they look identical
-      // otherwise, and only one of them is something the operator must fix.
-      const [status, apps] = await Promise.all([
-        this.bayApi.status(),
-        this.bayApi.listApps(),
-      ]);
-      return { configured: status.configured, apps };
+      // `status` first, and the list only if it answered.
+      //
+      // Fetching both together was the point of `status` — telling "no Bay
+      // configured" from "a Bay with no apps yet" — but `listApps` throws when
+      // the socket is unreachable, and a throwing loader means the page never
+      // renders. The operator got a stack trace where the page had a written
+      // explanation of exactly this situation waiting for them.
+      const status = await this.bayApi.status();
+      if (!status.configured) {
+        return { configured: false, apps: [] };
+      }
+      return { configured: true, apps: await this.bayApi.listApps() };
     },
   });
 
@@ -68,7 +72,7 @@ export class AppRouter {
   app = $page({
     path: "/apps/:slug",
     name: "app",
-    head: { title: "App › Pulse" },
+    head: { title: "App › Bay" },
     lazy: () => import("./components/AppDetailPage.tsx"),
     schema: {
       params: z.object({ slug: z.text() }),
@@ -94,20 +98,17 @@ export class AppRouter {
   });
 
   /**
-   * Sign-up — the initial bootstrap only.
+   * The operator's own account — a password change, and nothing else.
    *
-   * `PULSE_ALLOW_REGISTRATION` gates the realm, not this route: with the flag
-   * unset the realm refuses registration and the login page stops linking here.
-   * Keeping the route mounted avoids a 404 on a link the realm itself rendered.
+   * There is no sign-up route to pair it with: this realm creates exactly one
+   * account, at first boot, and an open form on an infrastructure panel would
+   * be a way in rather than a convenience.
    */
-  register = $page({
-    path: "/auth/register",
-    name: "register",
-    head: { title: "Create the admin account › Bay" },
-    lazy: () => import("./components/AuthRegisterPage.tsx"),
-    loader: async () => ({
-      realmConfig: await this.realmApi.getRealmConfig(),
-    }),
+  profile = $page({
+    path: "/profile",
+    name: "profile",
+    head: { title: "Profile › Bay" },
+    lazy: () => import("./components/ProfilePage.tsx"),
   });
 
   /**

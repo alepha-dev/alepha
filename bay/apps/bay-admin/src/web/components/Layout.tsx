@@ -1,7 +1,8 @@
 import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
+import { DropdownMenuItem } from "@alepha/ui/components/ui/dropdown-menu";
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
 import { NestedView, useRouter } from "alepha/react/router";
-import { Anchor } from "lucide-react";
+import { Anchor, UserCog } from "lucide-react";
 
 /**
  * Shell for every page — a title bar and the outlet, nothing else.
@@ -28,7 +29,19 @@ const Layout = () => {
               Alepha application server
             </span>
             <div className="ml-auto">
-              <ButtonUser onSignIn={() => router.push("/auth/login")} />
+              {/*
+                Custom menu because the default one leads with an email, and
+                this realm has none. Profile is the only destination worth
+                offering: it is where the bootstrap password gets replaced.
+              */}
+              <ButtonUser onSignIn={() => router.push("/auth/login")}>
+                <ButtonUser.Email />
+                <DropdownMenuItem onClick={() => router.push("profile")}>
+                  <UserCog className="size-4" />
+                  Profile
+                </DropdownMenuItem>
+                <ButtonUser.LogoutMenuItem />
+              </ButtonUser>
             </div>
           </div>
         </header>
