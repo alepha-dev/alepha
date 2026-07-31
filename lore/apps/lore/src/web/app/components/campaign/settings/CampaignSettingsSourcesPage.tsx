@@ -3,13 +3,17 @@ import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Input } from "@alepha/ui/components/ui/input";
+import { Switch } from "@alepha/ui/components/ui/switch";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { AlertCircle, Copy, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { CampaignSourceController } from "@/api/controllers/CampaignSourceController.ts";
 import { currentCampaignAtom } from "@/web/app/atoms/currentCampaignAtom.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
+import { useCampaignFeatureToggle } from "./useCampaignFeatureToggle.ts";
 
 interface SourceRow {
   id: string;
@@ -37,6 +41,13 @@ const CampaignSettingsSourcesPage = () => {
   const dialog = useDialog();
   const api = useClient<CampaignSourceController>();
   const [campaign] = useStore(currentCampaignAtom);
+  const { tr } = useI18n<I18n, "en">();
+
+  // These two moved here with the sigils page. `blights` is the master switch
+  // for the inbox a source writes into, and `petitions` for the other inbound
+  // channel — both belong beside the credential that feeds them.
+  const blights = useCampaignFeatureToggle("blights");
+  const petitions = useCampaignFeatureToggle("petitions");
 
   const [sources, setSources] = useState<SourceRow[]>([]);
   const [name, setName] = useState("");
@@ -104,6 +115,43 @@ const CampaignSettingsSourcesPage = () => {
           instance. Each holds its own key and can be revoked on its own.
         </span>
       </div>
+
+      <Card className="bg-card divide-y gap-0 rounded-lg border py-0">
+        <CardContent className="flex flex-col gap-2 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium">
+              {tr("blights.feature.title")}
+            </span>
+            <span className="text-muted-foreground text-xs">
+              {tr("blights.feature.description")}
+            </span>
+          </div>
+          <div className="flex justify-start sm:justify-end">
+            <Switch
+              checked={blights.enabled}
+              onCheckedChange={(value) => void blights.toggle(value === true)}
+              aria-label={tr("blights.feature.title")}
+            />
+          </div>
+        </CardContent>
+        <CardContent className="flex flex-col gap-2 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium">
+              {tr("petitions.feature.title")}
+            </span>
+            <span className="text-muted-foreground text-xs">
+              {tr("petitions.feature.description")}
+            </span>
+          </div>
+          <div className="flex justify-start sm:justify-end">
+            <Switch
+              checked={petitions.enabled}
+              onCheckedChange={(value) => void petitions.toggle(value === true)}
+              aria-label={tr("petitions.feature.title")}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {freshToken && (
         <Alert>

@@ -372,7 +372,7 @@ export default {
   "campaign.settings.zones.never": "—",
   "campaign.settings.nav.kanban": "Kanban",
   "campaign.settings.nav.folios": "Folios",
-  "campaign.settings.nav.sigils": "Sigils",
+  "campaign.settings.nav.sources": "Sources",
   "campaign.settings.nav.chapters": "Chapitres",
   "campaign.settings.nav.quests": "Quêtes",
   "campaign.chronicles.nav.overview": "Vue d'ensemble",
@@ -583,23 +583,9 @@ export default {
   "campaign.menu.blights": "Fléaux",
   "campaign.menu.insights": "Analyses",
 
-  "insights.tab.analytics": "Analyses",
-  "insights.tab.performance": "Performances",
   "insights.range.1d": "Aujourd'hui",
   "insights.range.7d": "7 jours",
   "insights.range.30d": "30 jours",
-  "insights.uniqueVisitors": "Visiteurs uniques",
-  "insights.uniqueVisitors.note":
-    "Visiteurs distincts sans cookie — la métrique de référence fiable.",
-  "insights.totalViews": "Vues totales",
-  "insights.totalViews.note": "Approximatif — indicatif, non exact.",
-  "insights.totalViews.tooltip":
-    "Nombre brut de pages vues. L'endpoint /beacon n'a pas de limite de débit par IP : ce chiffre est gonflable. Fiez-vous plutôt au nombre de visiteurs uniques.",
-  "insights.overTime": "Vues dans le temps",
-  "insights.topCountries": "Principaux pays",
-  "insights.topPaths": "Pages les plus vues",
-  "insights.empty": "Aucune page vue enregistrée sur cette période.",
-  "insights.error": "Échec du chargement des analyses. Veuillez réessayer.",
   "insights.vitals.title": "Web Vitals",
   "insights.vitals.subtitle": "75e centile",
   "insights.vitals.lcp": "LCP",
@@ -611,10 +597,6 @@ export default {
   "insights.vitals.good": "Bon",
   "insights.vitals.needsImprovement": "À améliorer",
   "insights.vitals.poor": "Médiocre",
-
-  "beacon.feature.title": "Beacons",
-  "beacon.feature.description":
-    "Collectez des statistiques de pages respectueuses de la vie privée depuis les sigils dotés de la capacité Beacon.",
 
   "blights.empty":
     "Aucun fléau. Les plantages capturés par vos sigils apparaîtront ici.",
@@ -661,10 +643,6 @@ export default {
   "blights.feature.description":
     "Collectez et triez les exceptions non interceptées remontées par les sigils dotés de la capacité Fléaux.",
 
-  "vitals.feature.title": "Vitals",
-  "vitals.feature.description":
-    "Collectez les Core Web Vitals (LCP, CLS, INP, FCP, TTFB) depuis les pages partenaires via les sigils dotés de la capacité Vitals.",
-
   "petitions.feature.title": "Pétitions",
   "petitions.feature.description":
     "Permet aux sigils dotés de la capacité Pétition de recevoir des soumissions depuis les sites partenaires.",
@@ -673,27 +651,6 @@ export default {
   "petitions.empty.status": "Aucune pétition $1.",
   "petitions.empty.selectOne": "Sélectionnez une pétition dans la liste",
   "petitions.back": "Retour",
-  "sigils.title": "Sigils",
-  "sigils.subtitle":
-    "Chaque sigil est un identifiant révocable. Utilisez-le comme SIGIL_ID d'une app partenaire ; l'app choisit les capacités actives via SIGIL_FEATURES.",
-  "sigils.empty":
-    "Aucun sigil pour l'instant. Créez-en un pour connecter une app à Lore.",
-  "sigils.create.label": "Libellé",
-  "sigils.create.labelPlaceholder": "shop.example.com checkout",
-  "sigils.create.submit": "Créer le sigil",
-  "sigils.features.title": "Fonctionnalités",
-  "sigils.features.subtitle":
-    "Activez les Sigils, puis choisissez les capacités acceptées par l'endpoint d'ingestion.",
-  "sigils.action.copyId": "Copier l'ID",
-  "sigils.action.delete": "Supprimer",
-  "sigils.action.new": "Nouveau sigil",
-  "sigils.dialog.cancel": "Annuler",
-  "sigils.delete.confirmTitle": "Supprimer ce sigil ?",
-  "sigils.delete.confirmDescription":
-    "Cette action supprime définitivement le sigil ainsi que tous ses fléaux et données beacon capturés. Son endpoint d'ingestion cessera d'accepter des données immédiatement. Cette action est irréversible.",
-  "sigils.toast.created": "Sigil créé",
-  "sigils.toast.copied": "ID du sigil copié",
-  "sigils.toast.deleted": "Sigil supprimé",
   "petitions.filter.pending": "En attente",
   "petitions.filter.accepted": "Acceptées",
   "petitions.filter.rejected": "Rejetées",

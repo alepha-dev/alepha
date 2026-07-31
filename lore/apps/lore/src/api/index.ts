@@ -10,21 +10,18 @@ import { ChapterController } from "./controllers/ChapterController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
 import { IdentityController } from "./controllers/IdentityController.ts";
-import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
 import { PetitionController } from "./controllers/PetitionController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
-import { SigilController } from "./controllers/SigilController.ts";
-import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { SourceIngestController } from "./controllers/SourceIngestController.ts";
 import { UserController } from "./controllers/UserController.ts";
 import { VersionController } from "./controllers/VersionController.ts";
+import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { ChapterJobs } from "./jobs/ChapterJobs.ts";
 import { InvitationJobs } from "./jobs/InvitationJobs.ts";
 import { QuestJobs } from "./jobs/QuestJobs.ts";
-import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
@@ -32,8 +29,6 @@ import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { ArchiveBlobService } from "./services/ArchiveBlobService.ts";
 import { ArchiveDirectoryService } from "./services/ArchiveDirectoryService.ts";
 import { ArchiveNameService } from "./services/ArchiveNameService.ts";
-import { BeaconIngestService } from "./services/BeaconIngestService.ts";
-import { BlightIngestService } from "./services/BlightIngestService.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { CampaignLimits } from "./services/CampaignLimits.ts";
 import { CampaignSecurityService } from "./services/CampaignSecurityService.ts";
@@ -47,10 +42,7 @@ import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
-import { SigilIngestRunner } from "./services/SigilIngestRunner.ts";
-import { SigilIngestSupport } from "./services/SigilIngestSupport.ts";
-import { SigilService } from "./services/SigilService.ts";
-import { VitalsIngestService } from "./services/VitalsIngestService.ts";
+import { VestigialEntities } from "./services/VestigialEntities.ts";
 
 export const LoreApi = $module({
   name: "lore.api",
@@ -71,7 +63,8 @@ export const LoreApi = $module({
     InvitationJobs,
     ChapterJobs,
     QuestJobs,
-    SigilJobs,
+    BlightJobs,
+    VestigialEntities,
     QuestNotifications,
     InvitationNotifications,
     PetitionRateLimiter,
@@ -82,13 +75,7 @@ export const LoreApi = $module({
     QuestImportFormatProvider,
     QuestService,
     CampaignLimits,
-    SigilService,
-    SigilIngestSupport,
-    SigilIngestRunner,
-    BlightIngestService,
     BlightRuleService,
-    BeaconIngestService,
-    VitalsIngestService,
     // Controllers
     QuestController,
     CampaignController,
@@ -105,12 +92,9 @@ export const LoreApi = $module({
     DirectoryController,
     BlobController,
     PetitionController,
-    SigilController,
-    SigilIngestController,
     SourceIngestController,
     CampaignSourceController,
     BlightController,
-    InsightsController,
     VersionController,
   ],
 });

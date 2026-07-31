@@ -9,6 +9,7 @@ import {
   okSchema,
 } from "alepha/server";
 import type { BlightIgnoreRule } from "../entities/blightIgnoreRules.ts";
+import { blights } from "../entities/blights.ts";
 import {
   QUEST_STATUS_PREFIX,
   type SigilBlight,
@@ -88,6 +89,12 @@ export type BlightRuleResource = Static<typeof blightRuleResourceSchema>;
 export class BlightController {
   protected log = $logger();
   protected blights = $repository(sigilBlights);
+  /**
+   * Where reports land now. Read alongside the legacy table for the length of
+   * the retention window, after which `BlightJobs` has emptied that one and
+   * this branch can be the only one.
+   */
+  protected currentBlights = $repository(blights);
   protected sigils = $repository(sigils);
   /**
    * Sigils with their blights attached. The inbox is a campaign's crash list,
@@ -142,13 +149,22 @@ export class BlightController {
         id: s.id,
         label: s.label,
       }));
-      if (campaignSigils.length === 0) {
-        return { items: [], openCount: 0, sigils: [] };
-      }
 
-      const all = campaignSigils
-        .flatMap((s) => s.blights)
-        .sort((a, b) => b.count - a.count);
+      const all = [
+        ...campaignSigils.flatMap((s) => s.blights),
+        // Adapted to the legacy row shape so the inbox renders one list. The
+        // two fields it lacks are exactly the two the sigil model added: which
+        // credential reported it, and the hashed IPs it was seen from.
+        ...(
+          await this.currentBlights.findMany({
+            where: { campaignId: { eq: params.campaignId } },
+          })
+        ).map((b) => ({
+          ...b,
+          sigilId: b.sourceId ?? "",
+          recentIps: [] as string[],
+        })),
+      ].sort((a, b) => b.count - a.count);
 
       const openCount = all.filter((b) => b.status === "open").length;
       const items = query.includeResolved

@@ -379,7 +379,7 @@ export default {
   "campaign.settings.zones.never": "—",
   "campaign.settings.nav.kanban": "Kanban",
   "campaign.settings.nav.folios": "Folios",
-  "campaign.settings.nav.sigils": "Sigils",
+  "campaign.settings.nav.sources": "Sources",
   "campaign.settings.nav.chapters": "Chapters",
   "campaign.settings.nav.quests": "Quests",
   "campaign.chronicles.nav.overview": "Overview",
@@ -590,23 +590,9 @@ export default {
   "campaign.menu.blights": "Blights",
   "campaign.menu.insights": "Insights",
 
-  "insights.tab.analytics": "Analytics",
-  "insights.tab.performance": "Performance",
   "insights.range.1d": "Today",
   "insights.range.7d": "7 days",
   "insights.range.30d": "30 days",
-  "insights.uniqueVisitors": "Unique visitors",
-  "insights.uniqueVisitors.note":
-    "Cookieless distinct visitors — the trustworthy headline metric.",
-  "insights.totalViews": "Total views",
-  "insights.totalViews.note": "Best-effort — directional, not exact.",
-  "insights.totalViews.tooltip":
-    "Raw pageview count. The /beacon endpoint has no per-IP throughput cap, so this number is inflatable. Trust the unique-visitor count instead.",
-  "insights.overTime": "Views over time",
-  "insights.topCountries": "Top countries",
-  "insights.topPaths": "Top pages",
-  "insights.empty": "No pageviews recorded in this range yet.",
-  "insights.error": "Failed to load insights. Please try again.",
   "insights.vitals.title": "Web Vitals",
   "insights.vitals.subtitle": "75th percentile",
   "insights.vitals.lcp": "LCP",
@@ -618,10 +604,6 @@ export default {
   "insights.vitals.good": "Good",
   "insights.vitals.needsImprovement": "Needs work",
   "insights.vitals.poor": "Poor",
-
-  "beacon.feature.title": "Beacons",
-  "beacon.feature.description":
-    "Collect privacy-first pageview analytics from sigils with the Beacon capability.",
 
   "blights.empty":
     "No blights. Crashes captured from your sigils will appear here.",
@@ -667,10 +649,6 @@ export default {
   "blights.feature.description":
     "Collect and triage uncaught exceptions reported by sigils with the Blights capability.",
 
-  "vitals.feature.title": "Vitals",
-  "vitals.feature.description":
-    "Collect Core Web Vitals (LCP, CLS, INP, FCP, TTFB) from partner pages via sigils with the Vitals capability.",
-
   "petitions.feature.title": "Petitions",
   "petitions.feature.description":
     "Allow sigils with the Petition capability to receive feedback submissions from partner sites.",
@@ -679,26 +657,6 @@ export default {
   "petitions.empty.status": "No $1 petitions.",
   "petitions.empty.selectOne": "Select a petition from the list",
   "petitions.back": "Back",
-  "sigils.title": "Sigils",
-  "sigils.subtitle":
-    "Each sigil is a revocable id. Set it as a partner app's SIGIL_ID; the app picks which capabilities run via SIGIL_FEATURES.",
-  "sigils.empty": "No sigils yet. Create one to connect an app to Lore.",
-  "sigils.create.label": "Label",
-  "sigils.create.labelPlaceholder": "shop.example.com checkout",
-  "sigils.create.submit": "Create sigil",
-  "sigils.features.title": "Features",
-  "sigils.features.subtitle":
-    "Turn Sigils on, then choose which capabilities the ingest endpoint accepts.",
-  "sigils.action.copyId": "Copy ID",
-  "sigils.action.delete": "Delete",
-  "sigils.action.new": "New sigil",
-  "sigils.dialog.cancel": "Cancel",
-  "sigils.delete.confirmTitle": "Delete this sigil?",
-  "sigils.delete.confirmDescription":
-    "This permanently removes the sigil and all of its captured blights and beacon data. Its ingest endpoint will stop accepting data immediately. This cannot be undone.",
-  "sigils.toast.created": "Sigil created",
-  "sigils.toast.copied": "Sigil ID copied to clipboard",
-  "sigils.toast.deleted": "Sigil deleted",
   "petitions.filter.pending": "Pending",
   "petitions.filter.accepted": "Accepted",
   "petitions.filter.rejected": "Rejected",

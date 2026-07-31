@@ -3,6 +3,7 @@ import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
+import { blights } from "../entities/blights.ts";
 import { campaigns } from "../entities/campaigns.ts";
 import { sigilBlights } from "../entities/sigilBlights.ts";
 import { sigils } from "../entities/sigils.ts";
@@ -14,17 +15,19 @@ export const DEFAULT_RETENTION_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Background jobs for the Sigils / Blights surface.
+ * Keeps the blights inbox from growing without bound.
  *
- * Currently a single hourly purge: deletes stale `open` blights so the inbox
- * does not grow without bound. Follows the `ChapterJobs` pattern — a `$job`
- * with a `cron` schedule and a `DateTimeProvider`-driven "now".
+ * Purges BOTH tables. `blights` is where reports land now; `sigil_blights` is
+ * the legacy one, still read by the inbox during the retention window and
+ * emptied by this same sweep — which is what lets that branch of the controller
+ * be deleted later without anyone migrating rows by hand.
  */
-export class SigilJobs {
+export class BlightJobs {
   protected readonly log = $logger();
   protected readonly campaigns = $repository(campaigns);
   protected readonly sigils = $repository(sigils);
-  protected readonly blights = $repository(sigilBlights);
+  protected readonly legacyBlights = $repository(sigilBlights);
+  protected readonly blights = $repository(blights);
   protected readonly dt = $inject(DateTimeProvider);
 
   /**
@@ -59,12 +62,21 @@ export class SigilJobs {
             { where: { campaignId: { eq: campaign.id } } },
             { force: true },
           );
+          // The current table is scoped straight to the campaign — no sigil
+          // indirection to resolve.
+          const purged = await this.blights.deleteMany({
+            campaignId: { eq: campaign.id },
+            status: { eq: "open" },
+            lastSeenAt: { lt: cutoff },
+          });
+          totalDeleted += purged.length;
+
           if (campaignSigils.length === 0) continue;
           const sigilIds = campaignSigils.map((s) => s.id);
 
           // Hard-delete only OPEN blights past the cutoff. `sigil_blights`
           // has no `deletedAt`, so `deleteMany` is a real DELETE.
-          const deleted = await this.blights.deleteMany({
+          const deleted = await this.legacyBlights.deleteMany({
             sigilId: { inArray: sigilIds },
             status: { eq: "open" },
             lastSeenAt: { lt: cutoff },

@@ -101,6 +101,11 @@ export class CampaignSourceController {
         tokenHash: this.crypto.hash(token),
         tokenPrefix: token.slice(0, 12),
         tokenSuffix: token.slice(-6),
+        // Written explicitly rather than left to the column default: what a
+        // key may do is an authorization decision, and one that silently
+        // depends on a default being applied is one that fails closed at the
+        // worst moment — or open at a worse one.
+        scopes: ["blight:write"],
         createdBy: user.id,
       });
 
