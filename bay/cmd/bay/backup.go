@@ -347,7 +347,7 @@ func cmdConfigS3(args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := call(http.MethodPut, "http://"+controlAddr()+"/config/s3", bytesReader(body))
+	res, err := call(http.MethodPut, controlHost+"/config/s3", bytesReader(body))
 	if err != nil {
 		return err
 	}
@@ -360,7 +360,7 @@ func cmdBackup(args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := call(http.MethodPost, "http://"+controlAddr()+"/apps/"+key+"/backup", nil)
+	res, err := call(http.MethodPost, controlHost+"/apps/"+key+"/backup", nil)
 	if err != nil {
 		return err
 	}
@@ -373,7 +373,7 @@ func cmdBackups(args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := call(http.MethodGet, "http://"+controlAddr()+"/apps/"+key+"/backups", nil)
+	res, err := call(http.MethodGet, controlHost+"/apps/"+key+"/backups", nil)
 	if err != nil {
 		return err
 	}
@@ -386,7 +386,7 @@ func cmdRestore(args []string) error {
 	if err != nil {
 		return err
 	}
-	url := "http://" + controlAddr() + "/apps/" + key + "/restore?confirm=yes"
+	url := controlHost + "/apps/" + key + "/restore?confirm=yes"
 	for i := 0; i < len(args)-1; i++ {
 		if args[i] == "--key" {
 			url += "&key=" + args[i+1]

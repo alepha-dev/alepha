@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/alepha/bay/internal/state"
 )
@@ -23,6 +24,9 @@ type Proxy struct {
 	root  string
 	store *state.Store
 	log   *slog.Logger
+	// holds names the apps Bay is deliberately restarting; requests for those
+	// wait for the new process instead of getting a 502. See hold.go.
+	holds holdSet
 }
 
 func New(root string, store *state.Store, log *slog.Logger) *Proxy {
@@ -38,6 +42,21 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	app, ok := p.store.ByDomain(host)
 	if !ok {
 		http.Error(w, "no app registered for host "+host, http.StatusNotFound)
+		return
+	}
+
+	// Operational endpoints are loopback-only.
+	//
+	// `/health` says whether an app has finished migrating and `/metrics`
+	// describes its heap, its event loop and its per-route latency. Bay reads
+	// both over loopback, which is the only place they are of any use — served
+	// on the public host they hand a stranger a live readout of how to time an
+	// attack, and a free way to tell whether one landed.
+	//
+	// 404 rather than 403: the difference between "you may not" and "there is
+	// nothing here" is a difference an attacker can act on.
+	if isOperational(r.URL.Path) {
+		http.NotFound(w, r)
 		return
 	}
 
@@ -176,6 +195,12 @@ func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, app state.App) {
 		inner(req)
 	}
 
+	rp.Transport = holdTransport{
+		base:     http.DefaultTransport,
+		holding:  func() bool { return p.holding(app.Key()) },
+		interval: 200 * time.Millisecond,
+	}
+
 	rp.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, err error) {
 		p.log.Error("upstream unreachable", "app", app.Key(), "port", app.Port, "err", err)
 		http.Error(w, "app unavailable", http.StatusBadGateway)
@@ -195,4 +220,20 @@ func itoa(i int) string {
 		i /= 10
 	}
 	return string(buf[pos:])
+}
+
+/*
+isOperational reports whether a path is one Bay consumes rather than a
+visitor.
+
+Exact matches only. A prefix test would swallow an app's own `/metrics-guide`
+or `/healthcare`, and silently 404ing a real page is worse than exposing the
+two paths it protects.
+*/
+func isOperational(path string) bool {
+	switch path {
+	case "/health", "/healthz", "/metrics":
+		return true
+	}
+	return false
 }

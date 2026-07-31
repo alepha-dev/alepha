@@ -63,8 +63,10 @@ func (a App) Key() string { return a.Name + "/" + a.Env }
 type State struct {
 	Version int   `json:"version"`
 	Apps    []App `json:"apps"`
-	// Token is the control-plane bearer token.
-	Token string `json:"token"`
+	// No control-plane token any more: the API listens on a unix socket and
+	// authorizes by file mode. The field is gone rather than deprecated, so the
+	// next write drops the old secret from state.json instead of leaving it on
+	// disk for a reader who assumes anything still honours it.
 	// BaseDomain is what app subdomains are composed against. It belongs to the
 	// Bay installation, not to any artifact — the same artifact must be
 	// deployable on any Bay without editing it.
@@ -237,19 +239,6 @@ func (s *Store) Remove(key string) (App, bool, error) {
 		}
 	}
 	return App{}, false, nil
-}
-
-// Token returns the control-plane token, generating one on first use.
-func (s *Store) Token(generate func() string) (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.state.Token == "" {
-		s.state.Token = generate()
-		if err := s.flush(); err != nil {
-			return "", err
-		}
-	}
-	return s.state.Token, nil
 }
 
 // BaseDomain returns the configured base domain, if any.

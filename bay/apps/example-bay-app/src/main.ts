@@ -1,5 +1,6 @@
 import { AlephaTelemetry } from "@alepha/telemetry";
 import { Alepha, run } from "alepha";
+import { AlephaServerMetrics } from "alepha/server/metrics";
 import { HousekeepingJobs } from "./api/HousekeepingJobs.ts";
 import { UploadsApi } from "./api/UploadsApi.ts";
 import { VisitsApi } from "./api/VisitsApi.ts";
@@ -18,5 +19,11 @@ alepha.with(AppRouter);
 // `TELEMETRY_SINK` points at. Without those env vars it captures locally and
 // sends nothing, so adding the module is safe in any environment.
 alepha.with(AlephaTelemetry);
+
+// Prometheus-style runtime detail — heap, event loop, per-route latency —
+// served on `/metrics`. Safe to enable because Bay refuses that path on the
+// public host and reads it over loopback; on an app exposed directly it would
+// hand a stranger a live readout of the process.
+alepha.with(AlephaServerMetrics);
 
 run(alepha);
