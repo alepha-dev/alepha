@@ -318,23 +318,24 @@ describe("BayAdapter — the package manager it shells out to", () => {
     );
   });
 
-  it("should use npm — with `run --`, since npm needs it — for an npm workspace", async () => {
-    // The distinction that matters: `npm alepha …` is not a command. Without
-    // `run --`, npm treats `alepha` as a subcommand it does not have.
+  it("should run the binary, not a script, for an npm workspace", async () => {
+    // Two ways to get this wrong, and the first fix hit the second: `npm
+    // alepha …` is not a command, and `npm run alepha` looks for a
+    // package.json SCRIPT by that name, which an app has no reason to declare.
     expect(await withLockfile("package-lock.json")).toBe(
-      "npm run alepha -- build --target=bare",
+      "npx alepha build --target=bare",
     );
   });
 
-  it("should use pnpm for a pnpm workspace", async () => {
+  it("should use pnpm exec for a pnpm workspace", async () => {
     expect(await withLockfile("pnpm-lock.yaml")).toBe(
-      "pnpm alepha build --target=bare",
+      "pnpm exec alepha build --target=bare",
     );
   });
 
-  it("should use bun for a bun workspace", async () => {
+  it("should use bunx for a bun workspace", async () => {
     expect(await withLockfile("bun.lock")).toBe(
-      "bun alepha build --target=bare",
+      "bunx alepha build --target=bare",
     );
   });
 });

@@ -354,12 +354,23 @@ export class BayAdapter extends PlatformAdapter {
    * has a `package-lock.json`. Nothing in the message mentioned Bay, the
    * adapter, or yarn being an assumption.
    *
-   * `npm` needs `run` before a binary from `node_modules/.bin`; the others take
-   * it directly. Same distinction `dev.ts` already makes.
+   * Each manager has its own way to run a binary out of `node_modules/.bin`,
+   * and only yarn takes it bare. `npm run alepha` was the first attempt at this
+   * and is wrong for a different reason: `run` looks for a package.json SCRIPT
+   * named `alepha`, which an app has no reason to declare.
    */
   protected async cli(ctx: PlatformContext, args: string): Promise<string> {
     const pm = await this.pm.getPackageManager(ctx.root);
-    return pm === "npm" ? `npm run alepha -- ${args}` : `${pm} alepha ${args}`;
+    switch (pm) {
+      case "yarn":
+        return `yarn alepha ${args}`;
+      case "pnpm":
+        return `pnpm exec alepha ${args}`;
+      case "bun":
+        return `bunx alepha ${args}`;
+      default:
+        return `npx alepha ${args}`;
+    }
   }
 
   /**
