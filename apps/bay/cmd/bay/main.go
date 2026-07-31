@@ -9,10 +9,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"crypto/subtle"
 	"crypto/x509"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,6 +27,7 @@ import (
 
 	"github.com/alepha/bay/internal/control"
 	"github.com/alepha/bay/internal/deploy"
+	"github.com/alepha/bay/internal/health"
 	"github.com/alepha/bay/internal/manifest"
 	"github.com/alepha/bay/internal/proxy"
 	"github.com/alepha/bay/internal/runner"
@@ -40,12 +38,11 @@ import (
 )
 
 const (
-	defaultRoot        = "./bay-data"
-	defaultProxyAddr   = ":8080"
-	defaultControlAddr = "127.0.0.1:7717"
-	defaultTLSAddr     = ":8443"
-	stopGrace          = 15 * time.Second
-	readyTimeout       = 60 * time.Second
+	defaultRoot      = "./bay-data"
+	defaultProxyAddr = ":8080"
+	defaultTLSAddr   = ":8443"
+	stopGrace        = 15 * time.Second
+	readyTimeout     = 60 * time.Second
 	// defaultBackupInterval is deliberately ON by default. Backups that must be
 	// switched on are backups that stay off.
 	defaultBackupInterval = 24 * time.Hour
@@ -53,6 +50,12 @@ const (
 	// socket. Membership is the whole authorization: joining it is equivalent to
 	// being handed the token.
 	defaultControlGroup = "bay-control"
+	// How long a new release is watched before it is considered settled.
+	// Minutes, not hours: past that a failure is an incident for an operator,
+	// and undoing a release that has served correctly is worse than the fault.
+	rollbackWindow    = 2 * time.Minute
+	rollbackInterval  = 10 * time.Second
+	rollbackThreshold = 3
 )
 
 // version is stamped at link time by the release workflow:
@@ -84,8 +87,8 @@ func main() {
 		}
 	}
 	var err error
-	// Every command except `serve` is a client of the control API, so they all
-	// honour `--control`. `serve` parses it itself, as the address to LISTEN on.
+	// Every command except `serve` is a client of the control API, reached over
+	// the unix socket. `--control-socket` is the only thing to resolve.
 	if os.Args[1] != "serve" {
 		readControlFlag(os.Args[2:])
 	}
@@ -106,8 +109,6 @@ func main() {
 		err = cmdRemove(os.Args[2:])
 	case "stop":
 		err = cmdStop(os.Args[2:])
-	case "token":
-		err = cmdToken(os.Args[2:])
 	case "config":
 		if len(os.Args) > 2 && os.Args[2] == "s3" {
 			err = cmdConfigS3(os.Args[3:])
@@ -135,7 +136,7 @@ func main() {
 func usage() {
 	fmt.Fprint(os.Stderr, `bay — Alepha application server (PoC)
 
-  bay serve   [--root DIR] [--runtimes DIR] [--addr :8080] [--control 127.0.0.1:7717]
+  bay serve   [--root DIR] [--runtimes DIR] [--addr :8080]
               [--base-domain bay.example.com]
               [--tls] [--tls-addr :8443] [--acme-ca URL] [--acme-email MAIL]
               [--acme-ca-root FILE.pem]   # trust a private CA (Pebble, step-ca)
@@ -152,7 +153,6 @@ func usage() {
   bay releases <name/env>          # what you could roll back to
   bay rollback <name/env> [--to RELEASE] [--confirm]
               # code only: migrations are forward-only and stay applied
-  bay token
   bay version
   bay config s3 --endpoint URL --bucket NAME [--keep N]
                 # credentials from BAY_S3_ACCESS_KEY / BAY_S3_SECRET_KEY
@@ -161,8 +161,19 @@ func usage() {
   bay restore <name/env> [--key K] # destructive; keeps the old db aside
 
 Every command except "serve" is a thin client of the control API — the same API
-bay-ui calls. There is no second code path. Client commands accept
---control ADDR (default 127.0.0.1:7717, or $BAY_CONTROL) and read $BAY_TOKEN.
+bay-admin calls. There is no second code path.
+
+That API listens on a unix socket and nothing else. It can create users, read
+every app's secrets and delete every backup, so it is root-equivalent, and a
+loopback TCP port with a shared secret is the wrong shape for that: any process
+on the host can reach the port, the secret ends up in a shell history and an
+environment variable, and a bind-address typo publishes it to the internet. The
+socket's authorization is the file mode, enforced by the kernel — reaching it
+already requires being root or in the control group.
+
+Remote access is bay-admin's job: it authenticates people, over HTTPS, and
+speaks to this socket on their behalf. Client commands accept --control-socket
+PATH (or $BAY_SOCKET) and must run on the Bay host.
 `)
 }
 
@@ -211,11 +222,17 @@ type server struct {
 	runner        runner.Runner
 	isolated      bool
 	tls           *tlsconf.Manager
-	log           *slog.Logger
+	// probe answers "is this app serving?", which is a different question from
+	// "is something listening?" — see internal/health.
+	probe *health.Probe
+	// router is told when an app is being restarted, so requests wait for the
+	// new process instead of failing. Nil in the CLI paths that never serve.
+	router *proxy.Proxy
+	log    *slog.Logger
 }
 
 func cmdServe(args []string) error {
-	root, addr, controlTCP := defaultRoot, defaultProxyAddr, defaultControlAddr
+	root, addr := defaultRoot, defaultProxyAddr
 	tlsAddr, acmeCA, acmeEmail, acmeCARoot := defaultTLSAddr, "", "", ""
 	acmeHTTPPort, acmeTLSPort := 0, 0 // 0 = CertMagic defaults, i.e. 80 and 443
 	runtimesDir := ""
@@ -229,7 +246,7 @@ func cmdServe(args []string) error {
 		map[string]bool{"--tls": true},
 		map[string]bool{
 			"--root": true, "--runtimes": true, "--base-domain": true,
-			"--addr": true, "--control": true, "--tls-addr": true,
+			"--addr": true, "--tls-addr": true,
 			"--acme-ca": true, "--acme-email": true, "--acme-ca-root": true,
 			"--acme-http-port": true, "--acme-tls-port": true,
 			"--control-socket": true, "--control-group": true,
@@ -253,8 +270,6 @@ func cmdServe(args []string) error {
 			baseDomain = args[i+1]
 		case "--addr":
 			addr = args[i+1]
-		case "--control":
-			controlTCP = args[i+1]
 		case "--tls-addr":
 			tlsAddr = args[i+1]
 		case "--acme-ca":
@@ -306,7 +321,6 @@ func cmdServe(args []string) error {
 	if err != nil {
 		return err
 	}
-	token, err := store.Token(func() string { return "bay_" + mustHex(24) })
 	if err != nil {
 		return err
 	}
@@ -324,9 +338,11 @@ func cmdServe(args []string) error {
 			"a compromise in one app reaches all the others")
 	}
 	srv := &server{root: root, runtimes: runtimesDir, store: store, runner: sup,
-		isolated: isolated, log: log, controlSocket: controlSocket}
+		isolated: isolated, log: log, controlSocket: controlSocket,
+		probe: &health.Probe{}}
 
 	router := proxy.New(root, store, log)
+	srv.router = router
 	var httpHandler http.Handler = router
 
 	// TLS is obtained synchronously at startup: a certificate that cannot be
@@ -394,16 +410,21 @@ func cmdServe(args []string) error {
 	}
 
 	proxySrv := &http.Server{Addr: addr, Handler: httpHandler}
-	mux := srv.controlMux()
-	// TCP needs the token: a loopback socket has no notion of who is calling, so
-	// a shared secret is the only thing standing between the control API and any
-	// local process.
-	controlSrv := &http.Server{Addr: controlTCP, Handler: authMiddleware(token, mux)}
-	// The unix socket needs NO token, and that is the point: its authorization is
-	// the file mode, enforced by the kernel. Reaching it already required being
-	// root or in the control group, so demanding a secret on top would only mean
-	// writing that secret into a file for every legitimate caller to read.
-	socketSrv := &http.Server{Handler: mux}
+	// The control API listens on a unix socket and nowhere else.
+	//
+	// It can create users, read every app's secrets and delete every backup.
+	// A loopback TCP port with a shared secret was the wrong shape for that:
+	// every process on the host could reach the port, the secret had to live in
+	// a shell history and an environment variable to be usable, and a typo in
+	// the bind address published it to the internet. The socket's authorization
+	// is the file mode, enforced by the kernel, and reaching it already
+	// requires being root or in the control group.
+	//
+	// Remote access has not gone away — it moved to bay-admin, which
+	// authenticates people over HTTPS and speaks to this socket for them. That
+	// is a system that can have accounts, revocation and an audit trail;
+	// a bearer token in an environment variable can have none of the three.
+	socketSrv := &http.Server{Handler: srv.controlMux()}
 
 	go func() {
 		log.Info("proxy listening", "addr", addr)
@@ -411,31 +432,23 @@ func cmdServe(args []string) error {
 			log.Error("proxy stopped", "err", err)
 		}
 	}()
+	// Fatal now that it is the only way in. A Bay that serves traffic but
+	// cannot be deployed to, rolled back or stopped is a Bay nobody can fix,
+	// and it would fail at the worst possible moment — the next incident.
+	ln, reachableBy, err := control.Listen(controlSocket, controlGroup)
+	if err != nil {
+		return fmt.Errorf("control socket %s: %w", controlSocket, err)
+	}
+	defer ln.Close()
+	// Logged because "who can talk to the root-equivalent API" is the fact an
+	// operator should be handed, not have to derive from a mode bit.
+	log.Info("control socket listening", "path", controlSocket,
+		"auth", "unix permissions", "reachableBy", reachableBy)
 	go func() {
-		log.Info("control api listening", "addr", controlTCP, "auth", "bearer token")
-		if err := controlSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Error("control api stopped", "err", err)
+		if err := socketSrv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("control socket stopped", "err", err)
 		}
 	}()
-
-	if ln, reachableBy, err := control.Listen(controlSocket, controlGroup); err != nil {
-		// Not fatal. The socket is a convenience over the TCP listener, and Bay
-		// is the reverse proxy — refusing to start would take every site down
-		// over an access path that has an alternative.
-		log.Error("control socket unavailable; falling back to the token over TCP",
-			"path", controlSocket, "err", err)
-	} else {
-		defer ln.Close()
-		// Logged because "who can talk to the root-equivalent API" is the fact an
-		// operator should be handed, not have to derive from a mode bit.
-		log.Info("control socket listening", "path", controlSocket,
-			"auth", "unix permissions", "reachableBy", reachableBy)
-		go func() {
-			if err := socketSrv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Error("control socket stopped", "err", err)
-			}
-		}()
-	}
 
 	// Bring previously deployed apps back up after a bay restart.
 	for _, app := range store.Apps() {
@@ -462,7 +475,6 @@ func cmdServe(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = proxySrv.Shutdown(ctx)
-	_ = controlSrv.Shutdown(ctx)
 	_ = socketSrv.Shutdown(ctx)
 	srv.runner.StopAll(stopGrace)
 	return nil
@@ -516,10 +528,19 @@ func (s *server) start(app state.App) error {
 			ControlSocketDir: controlSocketDirFor(app, s.controlSocket),
 		},
 	}
+	// Requests arriving while the app is down wait for the new process instead
+	// of getting a 502. Set before the restart, cleared the moment the app
+	// answers — including on failure, because an app that never became ready is
+	// not one to keep holding traffic for.
+	if s.router != nil {
+		s.router.HoldFor(app.Key(), readyTimeout)
+		defer s.router.Release(app.Key())
+	}
+
 	if err := s.runner.Start(spec); err != nil {
 		return err
 	}
-	if err := waitReady(app.Port, readyTimeout); err != nil {
+	if err := s.probe.WaitReady(app.Port, readyTimeout); err != nil {
 		return fmt.Errorf("%s never became ready: %w", app.Key(), err)
 	}
 	if app.ControlAPI {
@@ -550,20 +571,6 @@ func controlGroupFor(app state.App) string {
 		return ""
 	}
 	return defaultControlGroup
-}
-
-func waitReady(port int, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", addr, 500*time.Millisecond)
-		if err == nil {
-			conn.Close()
-			return nil
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	return fmt.Errorf("timeout after %s", timeout)
 }
 
 // ---------------------------------------------------------------------------
@@ -603,16 +610,26 @@ func (s *server) controlMux() *http.ServeMux {
 type listedApp struct {
 	state.App
 	Running bool `json:"running"`
+	// Usage is what the app is costing right now — memory, CPU, restarts.
+	// Absent when the supervisor has nothing to say, which is the honest
+	// answer for an unsupervised child process or a stopped app. A snapshot,
+	// with no history: keeping a series in the orchestrator would mean losing
+	// it on every Bay upgrade, so that belongs upstack.
+	Usage *runner.Usage `json:"usage,omitempty"`
 }
 
 func (s *server) listApps() []listedApp {
 	apps := s.store.Apps()
 	out := make([]listedApp, 0, len(apps))
 	for _, app := range apps {
-		out = append(out, listedApp{
+		entry := listedApp{
 			App:     app,
-			Running: s.runner.Running(app.Name + "/" + app.Env),
-		})
+			Running: s.runner.Running(app.Key()),
+		}
+		if usage, ok := s.runner.Usage(app.Key()); ok {
+			entry.Usage = &usage
+		}
+		out = append(out, entry)
 	}
 	return out
 }
@@ -656,6 +673,13 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// Restore BEFORE starting: the app must open the recovered database, not an
 	// empty one that gets swapped under it. And only when Bay just created that
 	// empty file — never over an existing database.
+	// Captured before the swap: this is what to return to if the new release
+	// turns out to be bad.
+	previous := ""
+	if existing, ok := s.store.Get(res.App.Key()); ok {
+		previous = existing.Release
+	}
+
 	restore := map[string]any{"database": "existing"}
 	if res.DatabaseCreated && res.DatabasePath != "" {
 		restore = s.maybeAutoRestore(r.Context(), res.App, res.DatabasePath)
@@ -673,6 +697,15 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 			s.log.Error("certificate for new domain failed", "domain", res.App.Domain, "err", err)
 		}
 	}
+	// Watched in the background: the deploy has succeeded as far as the caller
+	// is concerned, and holding the response open for a minute would make every
+	// deploy feel broken. What this catches is the release that boots, answers
+	// once, and dies on its first real traffic — which is exactly what a
+	// readiness check at deploy time cannot see.
+	if previous != "" && previous != res.Release {
+		go s.watchAndRollback(res.App, previous)
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"app":           res.App,
 		"release":       res.Release,
@@ -680,6 +713,58 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 		"sleepEligible": res.Manifest.SleepEligible(),
 		"restore":       restore,
 	})
+}
+
+/*
+watchAndRollback undoes a release that fails in its first minutes.
+
+Only ever back to the release that was serving a moment ago — the one that was
+demonstrably working. Walking further back would be guessing, and each step
+takes the app further from what the operator believes is deployed.
+
+Code only. Migrations are forward-only and stay applied, which is why this
+window is short: the further a bad release runs, the more likely it has written
+something the old code cannot read.
+*/
+func (s *server) watchAndRollback(app state.App, previous string) {
+	verdict := (&health.Watch{
+		Probe:     s.probe,
+		Port:      app.Port,
+		Window:    rollbackWindow,
+		Interval:  rollbackInterval,
+		Threshold: rollbackThreshold,
+	}).Run(context.Background())
+
+	if verdict.Healthy {
+		s.log.Info("release held up", "app", app.Key(),
+			"release", app.Release, "checks", verdict.Checks)
+		return
+	}
+
+	s.log.Error("release failed its health window, rolling back",
+		"app", app.Key(), "bad", app.Release, "to", previous,
+		"reason", verdict.Reason, "checks", verdict.Checks)
+
+	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
+	if err := deploy.SwapRelease(instance, previous); err != nil {
+		// Nothing left to try automatically. Said loudly rather than retried:
+		// an app stuck between two releases needs a human, and a loop here
+		// would bury the one line that says so.
+		s.log.Error("ROLLBACK FAILED — app is on a bad release",
+			"app", app.Key(), "err", err)
+		return
+	}
+	if err := s.store.SetRelease(app.Key(), previous); err != nil {
+		s.log.Error("rolled back on disk but not in state", "app", app.Key(), "err", err)
+	}
+
+	app.Release = previous
+	if err := s.start(app); err != nil {
+		s.log.Error("ROLLBACK FAILED — previous release did not start",
+			"app", app.Key(), "err", err)
+		return
+	}
+	s.log.Warn("rolled back", "app", app.Key(), "now", previous)
 }
 
 // handleRemove stops an app and unregisters it.
@@ -720,22 +805,6 @@ func (s *server) handleRemove(w http.ResponseWriter, r *http.Request) {
 		// Said even when nothing was deleted, so "where did my data go" never
 		// needs asking.
 		"dataKeptAt": map[string]any{"path": instance, "kept": !purged},
-	})
-}
-
-// authMiddleware enforces the bearer token.
-//
-// The control API is root-equivalent and lives on loopback, where any local
-// process can reach it — unlike a unix socket, file permissions protect
-// nothing here, so the token is not optional.
-func authMiddleware(token string, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		next.ServeHTTP(w, r)
 	})
 }
 
@@ -782,7 +851,7 @@ func cmdDeploy(args []string) error {
 	if err := checkFlags(args[1:],
 		map[string]bool{"--allow-control-api": true},
 		map[string]bool{"--name": true, "--env": true, "--domain": true,
-			"--control": true, "--control-socket": true}); err != nil {
+			"--control-socket": true}); err != nil {
 		return err
 	}
 	name, env, domain := "", "production", ""
@@ -812,7 +881,7 @@ func cmdDeploy(args []string) error {
 	}
 	defer body.Close()
 
-	url := fmt.Sprintf("http://%s/apps?name=%s&env=%s&domain=%s", controlAddr(), name, env, domain)
+	url := fmt.Sprintf(controlHost+"/apps?name=%s&env=%s&domain=%s", name, env, domain)
 	if allowControl {
 		// Said out loud on the way out, not just recorded. This grant is
 		// root-equivalent and the operator should read it as they type it.
@@ -830,7 +899,7 @@ func cmdDeploy(args []string) error {
 }
 
 func cmdList([]string) error {
-	res, err := call(http.MethodGet, "http://"+controlAddr()+"/apps", nil)
+	res, err := call(http.MethodGet, controlHost+"/apps", nil)
 	if err != nil {
 		return err
 	}
@@ -854,18 +923,20 @@ func cmdStatus(args []string) error {
 		}
 	}
 
-	raw, err := call(http.MethodGet, "http://"+controlAddr()+"/apps", nil)
+	raw, err := call(http.MethodGet, controlHost+"/apps", nil)
 	if err != nil {
 		return err
 	}
 	var apps []struct {
-		Name            string `json:"name"`
-		Env             string `json:"env"`
-		Domain          string `json:"domain"`
-		Release         string `json:"release"`
-		Backups         bool   `json:"backups"`
-		LastBackupAt    string `json:"lastBackupAt"`
-		LastBackupError string `json:"lastBackupError"`
+		Name            string        `json:"name"`
+		Env             string        `json:"env"`
+		Domain          string        `json:"domain"`
+		Release         string        `json:"release"`
+		Running         bool          `json:"running"`
+		Usage           *runner.Usage `json:"usage"`
+		Backups         bool          `json:"backups"`
+		LastBackupAt    string        `json:"lastBackupAt"`
+		LastBackupError string        `json:"lastBackupError"`
 	}
 	if err := json.Unmarshal([]byte(raw), &apps); err != nil {
 		return fmt.Errorf("parse control api response: %w", err)
@@ -881,6 +952,25 @@ func cmdStatus(args []string) error {
 		fmt.Printf("%s/%s\n", a.Name, a.Env)
 		fmt.Printf("  domain   %s\n", a.Domain)
 		fmt.Printf("  release  %s\n", a.Release)
+
+		// A registered app that is not running is the loudest thing this
+		// command can say, and it used to say nothing at all.
+		if !a.Running {
+			problems++
+			fmt.Printf("  process  ⚠ NOT RUNNING\n")
+		} else if u := a.Usage; u != nil {
+			fmt.Printf("  process  %s, %s cpu%s\n",
+				humanBytes(u.MemoryBytes), time.Duration(u.CPUSeconds*float64(time.Second)).Round(time.Second),
+				uptimeSuffix(u.StartedAt, now))
+			// Restarts are what distinguishes an app that is up from an app
+			// that keeps coming back up. `is-active` cannot tell them apart.
+			if u.Restarts > 0 {
+				problems++
+				fmt.Printf("           ⚠ restarted %d time(s) — check logs/app.log\n", u.Restarts)
+			}
+		} else {
+			fmt.Printf("  process  running\n")
+		}
 
 		switch {
 		case !a.Backups:
@@ -923,6 +1013,34 @@ func cmdStatus(args []string) error {
 	return nil
 }
 
+// humanBytes renders a byte count an operator can read at a glance.
+//
+// Rounded to one decimal: the difference between 431.2M and 431.7M has never
+// changed anyone's mind, and the extra digits make a column harder to scan.
+func humanBytes(n int64) string {
+	switch {
+	case n >= 1<<30:
+		return fmt.Sprintf("%.1fG", float64(n)/(1<<30))
+	case n >= 1<<20:
+		return fmt.Sprintf("%.0fM", float64(n)/(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%.0fK", float64(n)/(1<<10))
+	default:
+		return fmt.Sprintf("%dB", n)
+	}
+}
+
+// uptimeSuffix says how long the CURRENT run has lasted.
+//
+// Empty when systemd did not report a start time rather than printing "up 0s",
+// which would read as an app that just restarted.
+func uptimeSuffix(startedAt, now time.Time) string {
+	if startedAt.IsZero() {
+		return ""
+	}
+	return fmt.Sprintf(", up %s", now.Sub(startedAt).Round(time.Second))
+}
+
 // cmdRemove unregisters an app, keeping its data unless asked otherwise.
 func cmdRemove(args []string) error {
 	key, err := appKey(args, "remove")
@@ -931,10 +1049,10 @@ func cmdRemove(args []string) error {
 	}
 	if err := checkFlags(args[1:],
 		map[string]bool{"--purge": true},
-		map[string]bool{"--control": true, "--control-socket": true}); err != nil {
+		map[string]bool{"--control-socket": true}); err != nil {
 		return err
 	}
-	url := "http://" + controlAddr() + "/apps/" + key
+	url := controlHost + "/apps/" + key
 	for _, arg := range args {
 		if arg == "--purge" {
 			fmt.Fprintln(os.Stderr,
@@ -955,7 +1073,7 @@ func cmdReleases(args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := call(http.MethodGet, "http://"+controlAddr()+"/apps/"+key+"/releases", nil)
+	res, err := call(http.MethodGet, controlHost+"/apps/"+key+"/releases", nil)
 	if err != nil {
 		return err
 	}
@@ -975,8 +1093,7 @@ func cmdRollback(args []string) error {
 	}
 	if err := checkFlags(args[1:],
 		map[string]bool{"--confirm": true},
-		map[string]bool{"--to": true, "--control": true,
-			"--control-socket": true}); err != nil {
+		map[string]bool{"--to": true, "--control-socket": true}); err != nil {
 		return err
 	}
 	query := ""
@@ -990,7 +1107,7 @@ func cmdRollback(args []string) error {
 			query = addParam(query, "confirm", "yes")
 		}
 	}
-	res, err := call(http.MethodPost, "http://"+controlAddr()+"/apps/"+key+"/rollback"+query, nil)
+	res, err := call(http.MethodPost, controlHost+"/apps/"+key+"/rollback"+query, nil)
 	if err != nil {
 		return err
 	}
@@ -1025,7 +1142,7 @@ func cmdStop(args []string) error {
 	if !strings.Contains(key, "/") {
 		key += "/production"
 	}
-	res, err := call(http.MethodPost, "http://"+controlAddr()+"/apps/"+key+"/stop", nil)
+	res, err := call(http.MethodPost, controlHost+"/apps/"+key+"/stop", nil)
 	if err != nil {
 		return err
 	}
@@ -1033,59 +1150,23 @@ func cmdStop(args []string) error {
 	return nil
 }
 
-func cmdToken(args []string) error {
-	root := defaultRoot
-	for i := 0; i < len(args)-1; i++ {
-		if args[i] == "--root" {
-			root = args[i+1]
-		}
-	}
-	abs, err := filepath.Abs(root)
-	if err != nil {
-		return err
-	}
-	store, err := state.Open(filepath.Join(abs, "state.json"))
-	if err != nil {
-		return err
-	}
-	token, err := store.Token(func() string { return "bay_" + mustHex(24) })
-	if err != nil {
-		return err
-	}
-	fmt.Println(token)
-	return nil
-}
+/*
+controlHost is the host part of every control-API URL.
 
-// controlAddr resolves where the client should reach the control API.
-//
-// `--control` is accepted on every client command as well as on `serve`: it was
-// silently ignored on the client side, so `bay deploy --control 127.0.0.1:7799`
-// dialled the default port and failed with a bare `connection refused`. A flag
-// accepted-but-ignored is worse than no flag at all.
-func controlAddr() string {
-	if a := controlFlag; a != "" {
-		return a
-	}
-	if a := os.Getenv("BAY_CONTROL"); a != "" {
-		return a
-	}
-	return defaultControlAddr
-}
+The transport dials a unix socket, so the host is never resolved and never
+connected to — but net/http still needs the URL to parse, and a request with no
+Host header is rejected before it reaches the socket. A name rather than an
+address so nothing about this reads as a network destination.
+*/
+const controlHost = "http://bay"
 
-// controlFlag holds `--control` when a client command was given one. Set once
-// in main, before any command runs.
-var controlFlag string
-
-// readControlFlag extracts `--control ADDR` from a client command's arguments.
+// readControlFlag extracts `--control-socket PATH` from a client command.
 func readControlFlag(args []string) {
 	for i, arg := range args {
 		if i >= len(args)-1 {
 			continue
 		}
-		switch arg {
-		case "--control":
-			controlFlag = args[i+1]
-		case "--control-socket":
+		if arg == "--control-socket" {
 			socketFlag = args[i+1]
 		}
 	}
@@ -1118,31 +1199,27 @@ var socketFlag string
 
 func call(method, url string, body io.Reader) (string, error) {
 	client := &http.Client{Timeout: 5 * time.Minute}
-	token := os.Getenv("BAY_TOKEN")
 
-	if sock := controlSocketPath(); sock != "" {
-		// Dial the socket instead of the network. The URL's host is ignored by the
-		// transport but still has to parse, so callers can keep composing
-		// http://host/path exactly as before.
-		client.Transport = &http.Transport{
-			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				return (&net.Dialer{}).DialContext(ctx, "unix", sock)
-			},
-		}
-	} else if token == "" {
+	sock := controlSocketPath()
+	if sock == "" {
 		return "", errors.New(
-			"no control socket found and BAY_TOKEN is unset — run this on the Bay host, " +
-				"or run `bay token` and export it (see --control-socket / $BAY_SOCKET)")
+			"no control socket found — these commands run on the Bay host, " +
+				"as root or as a member of the control group " +
+				"(see --control-socket / $BAY_SOCKET). " +
+				"For remote deploys, use bay-admin")
+	}
+	// Dial the socket instead of the network. The URL's host is ignored by the
+	// transport but still has to parse, so callers keep composing
+	// http://bay/path exactly as before.
+	client.Transport = &http.Transport{
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
+		},
 	}
 
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return "", err
-	}
-	// Sent even over the socket: harmless there (the listener ignores it) and it
-	// keeps a single code path for both transports.
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	res, err := client.Do(req)
 	if err != nil {
@@ -1186,11 +1263,3 @@ func appKeyArg(args []string, usage string) (string, error) {
 }
 
 func bytesReader(b []byte) io.Reader { return bytes.NewReader(b) }
-
-func mustHex(n int) string {
-	buf := make([]byte, n)
-	if _, err := rand.Read(buf); err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(buf)
-}

@@ -6,8 +6,9 @@ import DeployCard from "./DeployCard.tsx";
 
 export interface AppsPageProps {
   /**
-   * Whether pulse has a `BAY_TOKEN` at all. Distinguished from an empty app
-   * list so "nothing configured" never reads as "a Bay with no apps".
+   * Whether bay-admin can reach Bay's control socket at all. Distinguished
+   * from an empty app list so "cannot reach Bay" never reads as "a Bay with no
+   * apps".
    */
   configured: boolean;
   apps: BayApp[];
@@ -19,8 +20,9 @@ const AppsPage = (props: AppsPageProps) => {
       <Alert variant="destructive">
         <AlertCircle />
         <AlertDescription>
-          No Bay is configured. Run <code>bay token</code> on the server, then
-          set <code>BAY_URL</code> and <code>BAY_TOKEN</code> for pulse.
+          Bay's control socket is unreachable. bay-admin must run on the Bay
+          host, deployed with <code>--allow-control-api</code>, and{" "}
+          <code>BAY_SOCKET</code> must point at it.
         </AlertDescription>
       </Alert>
     );

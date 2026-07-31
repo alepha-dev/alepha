@@ -19,10 +19,35 @@ export interface BayApp {
    * and without this the two are indistinguishable.
    */
   running?: boolean;
+  /**
+   * What the supervisor is spending on this app right now.
+   *
+   * Absent when it has nothing to say — an unsupervised child process, an app
+   * that is not running. A snapshot with no history: keeping a series belongs
+   * here, in bay-admin, not in the orchestrator that loses it on every upgrade.
+   */
+  usage?: BayAppUsage;
   controlApi?: boolean;
   backups?: boolean;
   lastBackupAt?: string;
   lastBackupError?: string;
+}
+
+/**
+ * A live reading of what one app costs, as bay-go's supervisor reports it.
+ */
+export interface BayAppUsage {
+  memoryBytes?: number;
+  cpuSeconds?: number;
+  tasks?: number;
+  /**
+   * Automatic restarts since the unit was last started by hand. The most
+   * useful number here: an app quietly crash-looping looks perfectly healthy
+   * from the outside.
+   */
+  restarts: number;
+  startedAt?: string;
+  pid?: number;
 }
 
 /**

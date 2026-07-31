@@ -6,13 +6,13 @@ import { BayAppSyncService } from "../services/BayAppSyncService.ts";
 import { BayControlService } from "../services/BayControlService.ts";
 
 /**
- * pulse's own API — the only surface the browser talks to.
+ * bay-admin's own API — the only surface the browser talks to.
  *
  * Every endpoint is `admin`-only and every one of them re-exposes a *narrowed*
- * bay-go operation. The browser never receives `BAY_TOKEN`, never learns the
- * control API's address, and cannot reach operations pulse chose not to
- * forward. That indirection is the whole point: the control API deploys code,
- * reads secrets and can delete every backup, so it gets exactly one caller.
+ * bay-go operation. The browser never learns the control socket's path and
+ * cannot reach operations bay-admin chose not to forward. That indirection is
+ * the whole point: the control API deploys code, reads secrets and can delete
+ * every backup, so it gets exactly one caller.
  */
 export class BayAppController {
   protected readonly bay = $inject(BayControlService);

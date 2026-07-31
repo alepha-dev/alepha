@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "pulse",
+  "name": "bay-admin",
   "version": "0.1.0",
   "type": "module",
   "scripts": {

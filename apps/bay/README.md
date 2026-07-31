@@ -65,9 +65,11 @@ yarn alepha pack -o /tmp   # émet /tmp/example-api-latest.tar.gz
 cd -
 
 ./bay serve --root /tmp/bay-root --base-domain bay.localhost &
-export BAY_CONTROL=127.0.0.1:7717
-export BAY_TOKEN=$(./bay token --root /tmp/bay-root)
-./bay deploy /tmp/example-api-latest.tar.gz --name example-api
+# Aucun token : le control API écoute sur /tmp/bay-root/control.sock, et
+# `bay deploy` le trouve tout seul. Il faut donc être sur la machine Bay, root
+# ou membre du groupe `bay-control`.
+./bay deploy /tmp/example-api-latest.tar.gz --name example-api \
+  --control-socket /tmp/bay-root/control.sock
 
 curl -H "Host: example-api.bay.localhost" http://127.0.0.1:8080/
 ```

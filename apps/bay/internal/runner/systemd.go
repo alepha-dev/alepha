@@ -280,6 +280,29 @@ func (s *Systemd) Running(key string) bool {
 	return strings.TrimSpace(string(out)) == "active"
 }
 
+/*
+Usage asks systemd what the unit is costing.
+
+One `systemctl show` rather than reading the cgroup files directly: the cgroup
+path depends on the slice, on the cgroup version and on whether the unit was
+delegated, and getting it wrong reports another app's numbers rather than none.
+systemd already knows all of it.
+*/
+func (s *Systemd) Usage(key string) (Usage, bool) {
+	out, err := exec.Command("systemctl", "show", unitName(key)+".service",
+		"--property="+strings.Join(usageProperties, ",")).Output()
+	if err != nil {
+		return Usage{}, false
+	}
+	u := parseUsage(string(out))
+	// A unit that has never run reports nothing worth showing, and a PID of
+	// zero with a memory charge of zero is not a measurement.
+	if u.PID == 0 && u.MemoryBytes == 0 {
+		return Usage{}, false
+	}
+	return u, true
+}
+
 // StopAll is a no-op: units outlive Bay on purpose.
 //
 // Bay is the reverse proxy. If it crashes or is upgraded, the apps must keep

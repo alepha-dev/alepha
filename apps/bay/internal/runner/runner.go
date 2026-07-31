@@ -42,7 +42,21 @@ type Runner interface {
 	Stop(key string, grace time.Duration) error
 	Running(key string) bool
 	StopAll(grace time.Duration)
+	// Usage reports what the supervisor knows about the app right now, or
+	// false when it knows nothing — an unsupervised child process, an app that
+	// is not running, a host without cgroups.
+	Usage(key string) (Usage, bool)
 }
+
+/*
+Usage reports nothing for a plain child process.
+
+Bay could read /proc for an RSS figure, but a child inherits Bay's own limits
+and shares its cgroup, so there is no memory budget to report it against and no
+restart count to report at all. Half a measurement presented as a full one is
+how an operator ends up trusting a number that means something else.
+*/
+func (c *Child) Usage(string) (Usage, bool) { return Usage{}, false }
 
 // Child supervises plain child processes.
 //

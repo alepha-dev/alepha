@@ -9,7 +9,8 @@ import {
   CardTitle,
 } from "@alepha/ui/components/ui/card";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useAction, useClient } from "alepha/react";
+import { DateTimeProvider } from "alepha/datetime";
+import { useAction, useClient, useInject } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 import {
   AlertCircle,
@@ -21,7 +22,10 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import type { BayAppController } from "../../api/controllers/BayAppController.ts";
-import type { BayApp } from "../../api/services/BayControlService.ts";
+import type {
+  BayApp,
+  BayAppUsage,
+} from "../../api/services/BayControlService.ts";
 
 export interface AppListProps {
   apps: BayApp[];
@@ -29,6 +33,7 @@ export interface AppListProps {
 
 const AppList = (props: AppListProps) => {
   const bayApi = useClient<BayAppController>();
+  const dt = useInject(DateTimeProvider);
   const router = useRouter();
   const dialog = useDialog();
 
@@ -166,6 +171,17 @@ const AppList = (props: AppListProps) => {
                   {app.running === false && (
                     <Badge variant="destructive">Stopped</Badge>
                   )}
+                  {/*
+                    Restarts, and only restarts, get a badge. `running` cannot
+                    tell an app that is up from an app that keeps coming back
+                    up — between two crashes a loop reports as perfectly
+                    healthy, which is how one goes unnoticed for a week.
+                  */}
+                  {(app.usage?.restarts ?? 0) > 0 && (
+                    <Badge variant="destructive">
+                      {app.usage?.restarts}× restarted
+                    </Badge>
+                  )}
                 </div>
                 <a
                   href={`https://${app.domain}/`}
@@ -177,9 +193,14 @@ const AppList = (props: AppListProps) => {
                   <ExternalLink className="ml-1 inline size-3" />
                 </a>
               </div>
-              <span className="text-sm text-muted-foreground">
-                {app.release}
-              </span>
+              <div className="flex flex-col items-end text-sm text-muted-foreground">
+                <span>{app.release}</span>
+                {app.usage && (
+                  <span className="text-xs tabular-nums">
+                    {formatUsage(app.usage, dt)}
+                  </span>
+                )}
+              </div>
               <Button
                 variant="outline"
                 size="sm"
@@ -213,6 +234,28 @@ const AppList = (props: AppListProps) => {
       </CardContent>
     </Card>
   );
+};
+
+/**
+ * Renders a supervisor reading as one scannable line.
+ *
+ * Every field is optional because Bay reports nothing rather than zero when it
+ * does not know — a zero would read as a measured fact. So each piece is
+ * emitted only if present, and an entirely empty reading renders nothing at
+ * all instead of an em-dash that suggests a broken app.
+ */
+const formatUsage = (usage: BayAppUsage, dt: DateTimeProvider): string => {
+  const parts: string[] = [];
+  if (usage.memoryBytes) {
+    parts.push(`${(usage.memoryBytes / 1024 / 1024).toFixed(0)} MB`);
+  }
+  if (usage.startedAt) {
+    // `fromNow()` rather than a hand-rolled subtraction: it goes through
+    // DateTimeProvider, so the clock stays substitutable in tests, and it
+    // reads the same as every other relative time in the codebase.
+    parts.push(`up ${dt.of(usage.startedAt).fromNow(true)}`);
+  }
+  return parts.join(" · ");
 };
 
 export default AppList;
