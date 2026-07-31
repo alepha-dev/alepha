@@ -1,5 +1,5 @@
-import type { TelemetryEnvelope } from "@alepha/telemetry/envelope";
-import { telemetryFingerprintSource } from "@alepha/telemetry/fingerprint";
+import type { PulseEnvelope } from "@alepha/pulse-client/envelope";
+import { pulseFingerprintSource } from "@alepha/pulse-client/fingerprint";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
@@ -41,7 +41,7 @@ export class IngestService {
    */
   async absorb(
     app: PulseApp,
-    envelope: TelemetryEnvelope & { country?: string; visitor?: string },
+    envelope: PulseEnvelope & { country?: string; visitor?: string },
   ): Promise<{ accepted: Record<string, number> }> {
     const now = new Date(this.dateTime.nowMillis()).toISOString();
     const accepted: Record<string, number> = {};
@@ -81,12 +81,12 @@ export class IngestService {
    */
   protected async absorbErrors(
     app: PulseApp,
-    errors: NonNullable<TelemetryEnvelope["errors"]>,
+    errors: NonNullable<PulseEnvelope["errors"]>,
     now: string,
   ): Promise<number> {
     for (const error of errors) {
       const fingerprint = this.crypto.hash(
-        telemetryFingerprintSource(error.name, error.stack),
+        pulseFingerprintSource(error.name, error.stack),
       );
       const seen = error.count ?? 1;
 
@@ -121,7 +121,7 @@ export class IngestService {
 
   protected async absorbViews(
     app: PulseApp,
-    views: NonNullable<TelemetryEnvelope["views"]>,
+    views: NonNullable<PulseEnvelope["views"]>,
     country: string | undefined,
     visitor: string | undefined,
     now: string,
@@ -164,7 +164,7 @@ export class IngestService {
 
   protected async absorbVitals(
     app: PulseApp,
-    vitals: NonNullable<TelemetryEnvelope["vitals"]>,
+    vitals: NonNullable<PulseEnvelope["vitals"]>,
     now: string,
   ): Promise<number> {
     const hour = this.hourBucket(now);
@@ -204,7 +204,7 @@ export class IngestService {
 
   protected async absorbMetrics(
     app: PulseApp,
-    metrics: NonNullable<TelemetryEnvelope["metrics"]>,
+    metrics: NonNullable<PulseEnvelope["metrics"]>,
   ): Promise<number> {
     await this.metrics.createMany(
       metrics.map((metric) => ({
@@ -219,7 +219,7 @@ export class IngestService {
 
   protected async absorbHeartbeat(
     app: PulseApp,
-    heartbeat: NonNullable<TelemetryEnvelope["heartbeat"]>,
+    heartbeat: NonNullable<PulseEnvelope["heartbeat"]>,
     now: string,
   ): Promise<void> {
     const row = {

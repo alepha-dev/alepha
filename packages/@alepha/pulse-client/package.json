@@ -1,0 +1,67 @@
+{
+  "name": "@alepha/pulse-client",
+  "private": true,
+  "description": "Reports page views, vitals, errors and server metrics from an Alepha app to a Pulse instance.",
+  "author": "Feunard",
+  "version": "0.20.1",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "browser": "./src/index.browser.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./server": "./src/server/index.ts",
+    "./messages": "./src/shared/pulseMessages.ts",
+    "./context": "./src/shared/pulsePetitionContext.ts",
+    "./vitals": "./src/shared/schemas/pulseVitalsBuckets.ts",
+    "./fingerprint": "./src/shared/pulseFingerprint.ts",
+    "./envelope": "./src/shared/schemas/pulseEnvelope.ts",
+    "./config": "./src/shared/schemas/pulseConfig.ts"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "alepha": "0.24.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tsdown": "^0.22.14",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "peerDependencies": {
+    "alepha": "0.24.0",
+    "react": "*",
+    "react-dom": "*"
+  },
+  "scripts": {
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "tsdown"
+  },
+  "homepage": "https://github.com/feunard/alepha",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
+  "keywords": [
+    "alepha",
+    "pulse",
+    "analytics",
+    "errors",
+    "metrics",
+    "observability"
+  ]
+}

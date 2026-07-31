@@ -10,7 +10,7 @@ import { pulseApps } from "./pulseApps.ts";
  * cost. Keeping raw values would grow with traffic to compute the same
  * percentiles.
  *
- * The bucket boundaries come from `@alepha/telemetry/vitals`, shared so the
+ * The bucket boundaries come from `@alepha/pulse-client/vitals`, shared so the
  * chart and the ingest agree on what "good" means.
  */
 export const vitalsHourly = $entity({

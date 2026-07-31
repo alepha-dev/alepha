@@ -1,0 +1,225 @@
+import { Alepha } from "alepha";
+import { HttpClient } from "alepha/server";
+import { describe, expect, it } from "vitest";
+import { PulseSinkProvider } from "../PulseSinkProvider.ts";
+
+/**
+ * Records what the sink was asked, and answers whatever the test queued.
+ *
+ * Substituted through DI rather than mocked: the provider's whole job is
+ * deciding *what* and *when* to send, and that is only observable from the
+ * calls it makes.
+ */
+class RecordingHttpClient extends HttpClient {
+  public calls: Array<{ url: string; body: any; headers: any }> = [];
+  public configResponse: any = {};
+  public failNext = false;
+
+  async fetch(url: string, opts: any): Promise<any> {
+    this.calls.push({ url, body: opts?.body, headers: opts?.headers });
+    if (this.failNext) {
+      this.failNext = false;
+      throw new Error("sink unreachable");
+    }
+    if (url.endsWith("/api/ingest/config")) {
+      return { data: this.configResponse, status: 200 } as any;
+    }
+    return { data: {}, status: 204 } as any;
+  }
+}
+
+const make = (env: Record<string, any> = {}) =>
+  Alepha.create({
+    env: {
+      NODE_ENV: "production",
+      APP_SECRET: "test-secret",
+      SERVER_PORT: 0,
+      ...env,
+    },
+  }).with({ provide: HttpClient, use: RecordingHttpClient });
+
+const withSink = () =>
+  make({
+    PULSE_SINK: "https://pulse.example.com/",
+    PULSE_KEY: "tk_secret",
+  });
+
+const ingests = (http: RecordingHttpClient) =>
+  http.calls.filter((c) => c.url.endsWith("/api/ingest"));
+
+const anError = (message: string, frame = "at f (app.js:1:1)") => ({
+  name: "TypeError",
+  message,
+  stack: `TypeError: ${message}\n    ${frame}`,
+  sourceUrl: "https://app/",
+});
+
+describe("PulseSinkProvider", () => {
+  it("sends nothing at all without a sink", async () => {
+    const alepha = make();
+    const sink = alepha.inject(PulseSinkProvider);
+    await alepha.start();
+
+    await sink.ingest({ errors: [anError("boom")] });
+    await sink.flush();
+
+    expect(sink.hasSink()).toBe(false);
+    expect(alepha.inject(HttpClient) as RecordingHttpClient).toHaveProperty(
+      "calls",
+      [],
+    );
+  });
+
+  it("collapses a crash loop into one line with a count", async () => {
+    const alepha = withSink();
+    const sink = alepha.inject(PulseSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    // The same failure a thousand times is one fact, not a thousand.
+    for (let i = 0; i < 50; i++) {
+      await sink.ingest({ errors: [anError("boom")] });
+    }
+    await sink.flush();
+
+    const sent = JSON.parse(ingests(http).at(-1)!.body);
+    expect(sent.errors).toHaveLength(1);
+    expect(sent.errors[0].count).toBe(50);
+  });
+
+  it("keeps the first sample, not the most recent one", async () => {
+    const alepha = withSink();
+    const sink = alepha.inject(PulseSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    // Same fingerprint (same name + frame), different message text.
+    await sink.ingest({ errors: [anError("user 1 missing")] });
+    await sink.ingest({ errors: [anError("user 2 missing")] });
+    await sink.flush();
+
+    const sent = JSON.parse(ingests(http).at(-1)!.body);
+    expect(sent.errors[0].message).toBe("user 1 missing");
+    expect(sent.errors[0].count).toBe(2);
+  });
+
+  it("keeps distinct throw sites apart", async () => {
+    const alepha = withSink();
+    const sink = alepha.inject(PulseSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    await sink.ingest({ errors: [anError("boom", "at render (a.js:1:1)")] });
+    await sink.ingest({ errors: [anError("boom", "at save (b.js:2:2)")] });
+    await sink.flush();
+
+    expect(JSON.parse(ingests(http).at(-1)!.body).errors).toHaveLength(2);
+  });
+
+  it("presents the key as a bearer, and never in the body", async () => {
+    const alepha = withSink();
+    const sink = alepha.inject(PulseSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    await sink.ingest({ views: [{ path: "/" }] });
+    await sink.flush();
+
+    const call = ingests(http).at(-1)!;
+    expect(call.headers.authorization).toBe("Bearer tk_secret");
+    expect(call.body).not.toContain("tk_secret");
+  });
+
+  it("normalises a trailing slash on the sink origin", async () => {
+    const alepha = withSink();
+    const sink = alepha.inject(PulseSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    await sink.ingest({ views: [{ path: "/" }] });
+    await sink.flush();
+
+    expect(ingests(http).at(-1)!.url).toBe(
+      "https://pulse.example.com/api/ingest",
+    );
+  });
+
+  it("drops a tracker the sink turned off, at the source", async () => {
+    const alepha = withSink();
+    const sink = alepha.inject(PulseSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    http.configResponse = { enabled: { views: false } };
+    await alepha.start();
+
+    await sink.ingest({ views: [{ path: "/" }], errors: [anError("boom")] });
+    await sink.flush();
+
+    // The point of a kill-switch is to stop the traffic, not to move where it
+    // is discarded.
+    const sent = JSON.parse(ingests(http).at(-1)!.body);
+    expect(sent.views).toBeUndefined();
+    expect(sent.errors).toHaveLength(1);
+  });
+
+  it("keeps collecting when the sink never answers", async () => {
+    const alepha = withSink();
+    const sink = alepha.inject(PulseSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+    http.failNext = true;
+
+    // A sink that is down must not silence an app's telemetry.
+    await sink.ingest({ errors: [anError("boom")] });
+    await sink.flush();
+
+    expect(sink.enabledTrackers().errors).toBe(true);
+  });
+
+  it("does not accumulate forever when flushes keep failing", async () => {
+    const alepha = withSink();
+    const sink = alepha.inject(PulseSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    await sink.ingest({ errors: [anError("boom")] });
+    http.failNext = true;
+    await sink.flush();
+
+    // Losing a batch is a gap in a chart; holding every batch is an outage.
+    const before = ingests(http).length;
+    await sink.flush();
+    expect(ingests(http).length).toBe(before);
+  });
+
+  it("stops asking for config more than once a minute", async () => {
+    const alepha = withSink();
+    const sink = alepha.inject(PulseSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    await sink.refreshConfig();
+    await sink.refreshConfig();
+    await sink.refreshConfig();
+
+    expect(
+      http.calls.filter((c) => c.url.endsWith("/api/ingest/config")),
+    ).toHaveLength(1);
+  });
+
+  it("flushes what it is holding when the app stops", async () => {
+    const alepha = withSink();
+    const sink = alepha.inject(PulseSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    // The batch a process holds when it stops describes why it stopped.
+    await sink.ingest({ errors: [anError("last words")] });
+    expect(ingests(http)).toHaveLength(0);
+
+    await alepha.stop();
+
+    expect(JSON.parse(ingests(http).at(-1)!.body).errors[0].message).toBe(
+      "last words",
+    );
+  });
+});

@@ -1,5 +1,5 @@
-import { telemetryConfig } from "@alepha/telemetry/config";
-import { telemetryEnvelope } from "@alepha/telemetry/envelope";
+import { pulseConfig } from "@alepha/pulse-client/config";
+import { pulseEnvelope } from "@alepha/pulse-client/envelope";
 import { $inject, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $action, HttpError } from "alepha/server";
@@ -40,7 +40,7 @@ export class IngestController {
     path: "/ingest",
     description: "Telemetry intake for an enrolled app (bearer = ingest key)",
     schema: {
-      body: telemetryEnvelope.extend({
+      body: pulseEnvelope.extend({
         country: z.string().max(8).optional(),
         visitor: z.string().max(128).optional(),
       }),
@@ -68,7 +68,7 @@ export class IngestController {
     description: "What the sink currently wants from this app",
     schema: {
       headers: z.object({ authorization: z.string().optional() }),
-      response: telemetryConfig,
+      response: pulseConfig,
     },
     handler: async ({ headers }) => {
       const app = await this.resolve(headers.authorization);

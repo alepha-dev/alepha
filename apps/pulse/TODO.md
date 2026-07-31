@@ -45,34 +45,34 @@ mauvaise app.
 
 ## 2. Ce qui existe déjà et qu'il faut réutiliser
 
-### `@alepha/telemetry` → à renommer `@alepha/pulse-client`
+### `@alepha/pulse-client` → à renommer `@alepha/pulse-client`
 
-`packages/@alepha/telemetry/` est le SDK côté app. **Il est fini, testé, et
+`packages/@alepha/pulse-client/` est le SDK côté app. **Il est fini, testé, et
 tourne en production sur le VPS.** Ne le réécris pas.
 
 Ce qu'il fait :
 
 - `src/browser/` — pageviews, web-vitals (LCP/CLS/INP), erreurs navigateur,
-  envoyés à `POST /api/telemetry/ingest` de l'app elle-même.
-- `src/server/TelemetryProxyController.ts` — l'app relaie vers Pulse. Le
+  envoyés à `POST /api/pulse/ingest` de l'app elle-même.
+- `src/server/PulseProxyController.ts` — l'app relaie vers Pulse. Le
   navigateur ne connaît jamais la clé d'app. Le hash visiteur est salé avec
   `request.headers.host` + un sel qui tourne chaque jour → pas de cookie, pas de
   bandeau de consentement.
-- `src/server/TelemetrySinkProvider.ts` — agrège les erreurs par empreinte,
+- `src/server/PulseSinkProvider.ts` — agrège les erreurs par empreinte,
   bufferise, flush toutes les 10 s ou au plafond (`CAPS`). Pas de timer : le
   flush est décidé au moment de `ingest()`.
-- `src/server/TelemetryMetricsProvider.ts` — échantillonne `rss`, `heapUsed`,
+- `src/server/PulseMetricsProvider.ts` — échantillonne `rss`, `heapUsed`,
   `eventLoopDelayP95`, `reqCount`, `reqDurationP95`.
-- `src/shared/telemetryFingerprint.ts` — normalise les stacks (hashes de bundle,
+- `src/shared/pulseFingerprint.ts` — normalise les stacks (hashes de bundle,
   `:ligne:colonne`) pour que la même erreur d'un déploiement à l'autre reste un
   seul groupe.
 
-**Tâche 1 : `git mv packages/@alepha/telemetry packages/@alepha/pulse-client`**,
-renommer le module `alepha.telemetry` → `alepha.pulse`, les préfixes
-`Telemetry*` → `Pulse*`, et la variable d'env. Le nom actuel est trompeur : ce
+**Tâche 1 : `git mv packages/@alepha/pulse-client packages/@alepha/pulse-client`**,
+renommer le module `alepha.pulse` → `alepha.pulse`, les préfixes
+`Pulse*` → `Pulse*`, et la variable d'env. Le nom actuel est trompeur : ce
 n'est pas de la télémétrie générique, c'est le client d'un serveur précis.
 
-⚠️ Piège vécu : `TelemetryMetricsProvider` a été écrit, exporté, typechecké — et
+⚠️ Piège vécu : `PulseMetricsProvider` a été écrit, exporté, typechecké — et
 **absent du tableau `services` du `$module`**. Rien ne l'a détecté pendant des
 heures. Après le rename, vérifie que chaque provider est bien dans `services`, et
 écris un test qui appelle réellement le sampler plutôt qu'un test qui « vérifie
@@ -198,11 +198,11 @@ on D1 » avant de toucher à `apps/lore/migrations/sqlite/`.
 
 ## 4. Contexte qui fait gagner des heures
 
-- **La spec** : `docs/superpowers/specs/2026-07-30-pulse-telemetry-lore-design.md`.
+- **La spec** : `docs/superpowers/specs/2026-07-30-pulse-pulse-lore-design.md`.
   Elle est ouverte aux modifications — tu auras plus de contexte qu'elle.
 - **Le folio Lore #11** (campagne Alepha, id `1`) : décisions de conception.
   Passe par `campaign_context` puis `folio_get`.
-- **Pas d'OpenTelemetry.** Évalué, écarté par Nicolas. Ne relance pas le sujet.
+- **Pas d'OpenPulse.** Évalué, écarté par Nicolas. Ne relance pas le sujet.
 - **Pas de cookie.** Le hash visiteur salé par jour + par host est délibéré :
   c'est ce qui évite le bandeau de consentement ePrivacy.
 - Conventions du repo dans `CLAUDE.md` : jamais `private` (utilise `protected`),
@@ -214,5 +214,3 @@ on D1 » avant de toucher à `apps/lore/migrations/sqlite/`.
 - Alepha patche le `fetch` du navigateur pour y attacher le bearer de session,
   ce qui **remplace silencieusement une clé de source** dans un test Playwright.
   Utilise la fixture `request` isolée, pas `page.request`.
-- Une règle WAF Cloudflare sur `/sigils/` doit encore être supprimée à la main
-  dans le dashboard.

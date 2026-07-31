@@ -71,9 +71,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/telemetry@workspace:*, @alepha/telemetry@workspace:packages/@alepha/telemetry":
+"@alepha/pulse-client@workspace:*, @alepha/pulse-client@workspace:packages/@alepha/pulse-client":
   version: 0.0.0-use.local
-  resolution: "@alepha/telemetry@workspace:packages/@alepha/telemetry"
+  resolution: "@alepha/pulse-client@workspace:packages/@alepha/pulse-client"
   dependencies:
     "@types/react": "npm:^19.2.17"
     "@types/react-dom": "npm:^19.2.3"
@@ -6368,7 +6368,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "bay-admin@workspace:apps/bay-admin"
   dependencies:
-    "@alepha/telemetry": "workspace:*"
+    "@alepha/pulse-client": "workspace:*"
     "@alepha/ui": "workspace:*"
     "@tailwindcss/vite": "npm:^4.3.3"
     "@types/react": "npm:^19.2.17"
@@ -8483,7 +8483,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "example-bay-app@workspace:apps/example-bay-app"
   dependencies:
-    "@alepha/telemetry": "workspace:*"
+    "@alepha/pulse-client": "workspace:*"
     alepha: "workspace:*"
     better-sqlite3: "npm:^13.0.1"
     drizzle-kit: "npm:1.0.0-rc.4"
@@ -10482,7 +10482,7 @@ __metadata:
   resolution: "lore@workspace:apps/lore"
   dependencies:
     "@alepha/devtools": "workspace:*"
-    "@alepha/telemetry": "workspace:*"
+    "@alepha/pulse-client": "workspace:*"
     "@alepha/ui": "workspace:*"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/utilities": "npm:^3.2.2"

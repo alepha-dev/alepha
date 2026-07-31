@@ -78,7 +78,7 @@ export const sigils = $entity({
     /**
      * VESTIGIAL — kept only because dropping a `sigils` column is a D1 cascade
      * bomb (see `revokedAt`). Path-based suppression of the embed's petition
-     * button is now **host-app config** (`@alepha/telemetry`'s `telemetryOptions`
+     * button is now **host-app config** (`@alepha/pulse-client`'s `pulseOptions`
      * atom / `SIGIL_FEATURES`), not per-sigil Lore state. Nothing reads this
      * column anymore; new rows default to `[]`. Do not remove.
      */

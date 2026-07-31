@@ -145,7 +145,7 @@ export class BlightController {
         },
       });
 
-      const telemetryOptions = campaignSigils.map((s) => ({
+      const pulseOptions = campaignSigils.map((s) => ({
         id: s.id,
         label: s.label,
       }));
@@ -174,7 +174,7 @@ export class BlightController {
       return {
         items: items.map((b) => this.toResource(b)),
         openCount,
-        sigils: telemetryOptions,
+        sigils: pulseOptions,
       };
     },
   });

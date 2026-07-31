@@ -76,7 +76,7 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
   // Sigil options for the "filter by sigil" dropdown, hydrated from the list
   // response so members (who can't hit the owner-only sigil list) still get
   // the filter populated.
-  const [telemetryOptions, setSigilOptions] = useState<
+  const [pulseOptions, setSigilOptions] = useState<
     { id: string; label: string }[]
   >([]);
 
@@ -200,7 +200,7 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
                   triggerClassName="w-full"
                   items={[
                     { label: tr("blights.filter.allSigils"), value: "all" },
-                    ...telemetryOptions.map((s) => ({
+                    ...pulseOptions.map((s) => ({
                       label: s.label,
                       value: s.id,
                     })),
