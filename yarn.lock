@@ -8460,6 +8460,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "example-bay-app@workspace:apps/example-bay-app"
   dependencies:
+    "@alepha/telemetry": "workspace:*"
     alepha: "workspace:*"
     better-sqlite3: "npm:^13.0.1"
     drizzle-kit: "npm:1.0.0-rc.4"

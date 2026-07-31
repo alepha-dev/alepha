@@ -2,6 +2,7 @@ import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { bayAppSchema } from "../schemas/bayAppSchema.ts";
+import { BayAppSyncService } from "../services/BayAppSyncService.ts";
 import { BayControlService } from "../services/BayControlService.ts";
 
 /**
@@ -15,6 +16,7 @@ import { BayControlService } from "../services/BayControlService.ts";
  */
 export class BayAppController {
   protected readonly bay = $inject(BayControlService);
+  protected readonly sync = $inject(BayAppSyncService);
 
   /**
    * Whether pulse can reach a Bay at all.
@@ -45,7 +47,12 @@ export class BayAppController {
     schema: {
       response: z.array(bayAppSchema),
     },
-    handler: async () => await this.bay.listApps(),
+    handler: async () => {
+      // Enrol anything Bay has gained since the last look, so opening an app's
+      // page never lands on a row Pulse does not know about.
+      await this.sync.sync();
+      return await this.bay.listApps();
+    },
   });
 
   /**

@@ -7,6 +7,7 @@ import { PulseAppController } from "./controllers/PulseAppController.ts";
 import { ForwardJobs } from "./jobs/ForwardJobs.ts";
 import { BaySecurityProvider } from "./providers/BaySecurityProvider.ts";
 import { AppKeyService } from "./services/AppKeyService.ts";
+import { BayAppSyncService } from "./services/BayAppSyncService.ts";
 import { BayControlService } from "./services/BayControlService.ts";
 import { IngestService } from "./services/IngestService.ts";
 import { LoreForwardService } from "./services/LoreForwardService.ts";
@@ -18,6 +19,7 @@ export const PulseApi = $module({
     // explicitly or the realm (and every permission) is never registered.
     BaySecurityProvider,
     BayControlService,
+    BayAppSyncService,
     BayAppController,
     DeviceController,
     // Telemetry intake. Its own credential, its own realm — see
