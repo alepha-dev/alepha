@@ -192,7 +192,9 @@ Alepha.create()
 
 Serves metrics in Prometheus text format at `/metrics`.
 
-Opt-in, unlike `/health`: it pulls in `prom-client`, and an app that nothing scrapes should not carry it. Set `METRICS_TOKEN` on anything internet-facing, or mask the path at your proxy.
+Opt-in, unlike `/health`: it pulls in `prom-client`, and an app that nothing scrapes should not carry it.
+
+Set `METRICS_TOKEN` if the app itself is reachable from the network. Alepha warns at startup when it is — production, no token, and `SERVER_HOST` bound to something other than loopback. An app on loopback behind a proxy gets no warning: the proxy decides what the internet sees.
 
 ## Combining Middlewares
 

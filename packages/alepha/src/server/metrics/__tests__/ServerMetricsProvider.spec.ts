@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
-import { AlephaServerMetrics } from "../index.ts";
+import { AlephaServerMetrics, ServerMetricsProvider } from "../index.ts";
 
 describe("ServerMetricsProvider", () => {
   it("should expose metrics endpoint with process metrics", async ({
@@ -46,5 +46,37 @@ describe("ServerMetricsProvider", () => {
     });
     expect(ok.status).toBe(200);
     expect(await ok.text()).toContain("process_cpu_seconds_total");
+  });
+});
+
+describe("ServerMetricsProvider exposure warning", () => {
+  /**
+   * A test subclass, because the decision is what matters — whether the warning
+   * fires — and asserting on log output would tie the test to its wording.
+   */
+  class TestMetricsProvider extends ServerMetricsProvider {
+    public testIsLoopbackOnly = () => this.isLoopbackOnly();
+  }
+
+  const loopbackFor = (host: string) =>
+    Alepha.create({ env: { SERVER_HOST: host } })
+      .inject(TestMetricsProvider)
+      .testIsLoopbackOnly();
+
+  it("should treat a loopback bind as not reachable", ({ expect }) => {
+    // The normal shape behind a reverse proxy: the proxy decides what the
+    // internet sees, and a self-hosted supervisor typically refuses /metrics on
+    // the public host outright. Warning here fires on every boot of every
+    // correctly-configured app, which is how people learn to skip warnings.
+    for (const host of ["localhost", "127.0.0.1", "::1"]) {
+      expect(loopbackFor(host)).toBe(true);
+    }
+  });
+
+  it("should treat a bind on all interfaces as reachable", ({ expect }) => {
+    // The one case the warning is genuinely for.
+    for (const host of ["0.0.0.0", "::", "10.0.0.4"]) {
+      expect(loopbackFor(host)).toBe(false);
+    }
   });
 });

@@ -37,9 +37,13 @@ export class ServerMetricsProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: () => {
-      if (this.alepha.isProduction() && !this.env.METRICS_TOKEN) {
+      if (
+        this.alepha.isProduction() &&
+        !this.env.METRICS_TOKEN &&
+        !this.isLoopbackOnly()
+      ) {
         this.log.warn(
-          "/metrics is exposed without authentication — set METRICS_TOKEN to protect it in production.",
+          "/metrics is reachable from the network without authentication — set METRICS_TOKEN, or bind SERVER_HOST to loopback and put a proxy in front.",
         );
       }
       collectDefaultMetrics({
@@ -54,6 +58,30 @@ export class ServerMetricsProvider {
       });
     },
   });
+
+  /**
+   * Reports whether the server only accepts connections from this machine.
+   *
+   * The warning above is about being reachable, not about being unauthenticated
+   * — and an app bound to loopback is not reachable. That is the normal shape
+   * behind a reverse proxy, where the proxy decides what the internet may see;
+   * a self-hosted supervisor typically refuses `/metrics` on the public host
+   * outright.
+   *
+   * Warning there anyway is worse than saying nothing. It fires on every boot
+   * of every correctly-configured app, and a warning that is usually wrong is
+   * how people learn to skip warnings — including the one time it is right,
+   * which is `SERVER_HOST=0.0.0.0` with no token.
+   */
+  protected isLoopbackOnly(): boolean {
+    const host = String(this.alepha.env.SERVER_HOST ?? "").trim();
+    return (
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host === "::1" ||
+      host === "[::1]"
+    );
+  }
 
   protected readonly onRequest = $hook({
     on: "server:onRequest",
