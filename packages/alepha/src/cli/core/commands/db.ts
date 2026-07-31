@@ -960,7 +960,11 @@ export class DbCommand {
     );
 
     const config: Record<string, any> = {
-      schema: entitiesJsPath,
+      // drizzle-kit treats `schema` as a glob, and a backslash is an escape
+      // character there rather than a separator. On Windows the path is
+      // perfectly valid and the file is right where it says — the glob simply
+      // matches nothing, so the generated migration comes out empty.
+      schema: entitiesJsPath.replaceAll("\\", "/"),
       out: `./migrations/${options.providerName}`,
       dialect: options.dialect,
       dbCredentials: {
@@ -1033,13 +1037,20 @@ export class DbCommand {
       ? "kit.getModelsWithoutSchema(provider)"
       : "kit.getModels(provider)";
 
+    // Interpolated as JSON, not into bare quotes: `entry` is a filesystem path
+    // and `provider` a name, and either containing a quote or a backslash —
+    // every Windows path contains backslashes — produces a module that does not
+    // parse, or worse, one that parses as something else.
+    const entrySpecifier = JSON.stringify(entry);
+    const providerName = JSON.stringify(provider);
+
     return `
-import "${entry}";
+import ${entrySpecifier};
 import { DrizzleKitProvider, Repository } from "alepha/orm";
 
 const alepha = globalThis.__alepha;
 const kit = alepha.inject(DrizzleKitProvider);
-const provider = alepha.services(Repository).find((it) => it.provider.name === "${provider}").provider;
+const provider = alepha.services(Repository).find((it) => it.provider.name === ${providerName}).provider;
 const models = ${getModelsCall};
 
 ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")}
