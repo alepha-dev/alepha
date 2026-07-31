@@ -5,9 +5,10 @@ package runner
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
-func renderUnit(t *testing.T) string {
+func renderUnitWith(t *testing.T, stopGrace time.Duration) string {
 	t.Helper()
 	s := &Systemd{UnitDir: t.TempDir()}
 	return s.render(
@@ -22,9 +23,15 @@ func renderUnit(t *testing.T) string {
 			Instance:      "/opt/bay/data/apps/demo/production",
 			WritablePaths: []string{"/opt/bay/data/apps/demo/production/scratch"},
 			MemoryMax:     "512M",
+			StopGrace:     stopGrace,
 		},
 		"bay-demo-production",
 	)
+}
+
+func renderUnit(t *testing.T) string {
+	t.Helper()
+	return renderUnitWith(t, 30*time.Second)
 }
 
 func TestUnitCapsTheStopTimeout(t *testing.T) {
@@ -39,10 +46,29 @@ func TestUnitCapsTheStopTimeout(t *testing.T) {
 		nearly all of it systemd waiting on a process that was never going to
 		answer.
 	*/
-	unit := renderUnit(t)
+	unit := renderUnitWith(t, 30*time.Second)
 
-	if !strings.Contains(unit, "TimeoutStopSec=") {
-		t.Fatal("without a cap, a wedged app holds its own rollback hostage for 90s")
+	if !strings.Contains(unit, "TimeoutStopSec=30") {
+		t.Fatalf("the grace the caller asked for must reach the unit:\n%s", unit)
+	}
+}
+
+func TestUnitCapsTheStopTimeoutEvenWhenNobodyAskedFor(t *testing.T) {
+	/*
+		A caller that leaves StopGrace at zero used to get no `TimeoutStopSec`
+		line at all — which means systemd's 90-second default, which is the bug
+		this was added to fix. "The field was left unset" and "the bug is back"
+		were the same thing, and nothing said so.
+
+		This test exists because the first version of the one above passed a
+		zero-valued Sandbox and asserted only that the directive appeared
+		somewhere. It failed on CI, on Linux, where the code it covers actually
+		compiles.
+	*/
+	unit := renderUnitWith(t, 0)
+
+	if !strings.Contains(unit, "TimeoutStopSec=30") {
+		t.Fatalf("a unit with no explicit grace must still be capped:\n%s", unit)
 	}
 }
 
