@@ -1,6 +1,7 @@
 import { VITALS_BUCKETS } from "@alepha/sigil/vitals";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
+import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -38,6 +39,17 @@ class Probe {
 
 interface TestContext {
   alepha: Alepha;
+  /**
+   * The instant the whole test is pinned to.
+   *
+   * Every window in this file is derived twice — once by the fixtures, once by
+   * the controller — and they used to be derived from two different clocks:
+   * `new Date()` here, `DateTimeProvider.nowMillis()` there. A run that crossed
+   * UTC midnight between seeding and asserting moved the controller's window
+   * off the fixtures' days and failed for no reason. `pause()` makes it one
+   * clock, and this is the value both sides read.
+   */
+  nowMs: number;
   adminUserController: AdminUserController;
   campaignController: CampaignController;
   sigilController: SigilController;
@@ -64,10 +76,16 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(LoreApi);
 
   const probe = alepha.inject(Probe);
+  const dateTime = alepha.inject(DateTimeProvider);
   await alepha.start();
+
+  // Freeze before anything reads the clock, so the fixtures and the controller
+  // cannot disagree about what day it is.
+  dateTime.pause();
 
   return {
     alepha,
+    nowMs: dateTime.nowMillis(),
     adminUserController: alepha.inject(AdminUserController),
     campaignController: alepha.inject(CampaignController),
     sigilController: alepha.inject(SigilController),
@@ -115,16 +133,20 @@ const createSigil = async (
   return created.data.id;
 };
 
-/** `YYYY-MM-DD` for `daysAgo` days before today, UTC. */
-const dayUtc = (daysAgo: number): string => {
-  const day = new Date();
+/**
+ * `YYYY-MM-DD` for `daysAgo` days before the pinned instant, UTC.
+ */
+const dayUtc = (ctx: TestContext, daysAgo: number): string => {
+  const day = new Date(ctx.nowMs);
   day.setUTCDate(day.getUTCDate() - daysAgo);
   return day.toISOString().slice(0, 10);
 };
 
-/** `YYYY-MM-DDTHH` for a given UTC hour of a day `daysAgo` back. */
-const hourUtc = (daysAgo: number, hour: number): string =>
-  `${dayUtc(daysAgo)}T${String(hour).padStart(2, "0")}`;
+/**
+ * `YYYY-MM-DDTHH` for a given UTC hour of a day `daysAgo` back.
+ */
+const hourUtc = (ctx: TestContext, daysAgo: number, hour: number): string =>
+  `${dayUtc(ctx, daysAgo)}T${String(hour).padStart(2, "0")}`;
 
 describe("InsightsController", () => {
   let ctx: TestContext;
@@ -143,24 +165,28 @@ describe("InsightsController", () => {
 
     await ctx.probe.views.create({
       sigilId,
-      hour: hourUtc(0, 9),
+      hour: hourUtc(ctx, 0, 9),
       path: "/",
       country: "FR",
       count: 10,
     });
     await ctx.probe.views.create({
       sigilId,
-      hour: hourUtc(2, 13),
+      hour: hourUtc(ctx, 2, 13),
       path: "/about",
       country: "US",
       count: 5,
     });
     for (const visitorHash of ["h1", "h2"]) {
-      await ctx.probe.uniques.create({ sigilId, day: dayUtc(0), visitorHash });
+      await ctx.probe.uniques.create({
+        sigilId,
+        day: dayUtc(ctx, 0),
+        visitorHash,
+      });
     }
     await ctx.probe.uniques.create({
       sigilId,
-      day: dayUtc(2),
+      day: dayUtc(ctx, 2),
       visitorHash: "h3",
     });
 
@@ -180,26 +206,26 @@ describe("InsightsController", () => {
 
     await ctx.probe.views.create({
       sigilId,
-      hour: hourUtc(0, 1),
+      hour: hourUtc(ctx, 0, 1),
       path: "/",
       country: "FR",
       count: 4,
     });
     await ctx.probe.views.create({
       sigilId,
-      hour: hourUtc(20, 1),
+      hour: hourUtc(ctx, 20, 1),
       path: "/old",
       country: "FR",
       count: 99,
     });
     await ctx.probe.uniques.create({
       sigilId,
-      day: dayUtc(0),
+      day: dayUtc(ctx, 0),
       visitorHash: "h1",
     });
     await ctx.probe.uniques.create({
       sigilId,
-      day: dayUtc(20),
+      day: dayUtc(ctx, 20),
       visitorHash: "old",
     });
 
@@ -225,21 +251,21 @@ describe("InsightsController", () => {
 
     await ctx.probe.views.create({
       sigilId,
-      hour: hourUtc(0, 8),
+      hour: hourUtc(ctx, 0, 8),
       path: "/",
       country: "FR",
       count: 3,
     });
     await ctx.probe.views.create({
       sigilId,
-      hour: hourUtc(0, 8),
+      hour: hourUtc(ctx, 0, 8),
       path: "/",
       country: "US",
       count: 12,
     });
     await ctx.probe.views.create({
       sigilId,
-      hour: hourUtc(1, 8),
+      hour: hourUtc(ctx, 1, 8),
       path: "/x",
       country: "FR",
       count: 4,
@@ -263,14 +289,14 @@ describe("InsightsController", () => {
 
     await ctx.probe.views.create({
       sigilId,
-      hour: hourUtc(0, 8),
+      hour: hourUtc(ctx, 0, 8),
       path: "/",
       country: "FR",
       count: 30,
     });
     await ctx.probe.views.create({
       sigilId,
-      hour: hourUtc(0, 8),
+      hour: hourUtc(ctx, 0, 8),
       path: "/about",
       country: "US",
       count: 10,
@@ -300,21 +326,21 @@ describe("InsightsController", () => {
     // thing a `substr(hour, 1, 10)` group has to get right.
     await ctx.probe.views.create({
       sigilId,
-      hour: hourUtc(0, 9),
+      hour: hourUtc(ctx, 0, 9),
       path: "/",
       country: "FR",
       count: 6,
     });
     await ctx.probe.views.create({
       sigilId,
-      hour: hourUtc(0, 17),
+      hour: hourUtc(ctx, 0, 17),
       path: "/",
       country: "FR",
       count: 4,
     });
     await ctx.probe.views.create({
       sigilId,
-      hour: hourUtc(3, 12),
+      hour: hourUtc(ctx, 3, 12),
       path: "/",
       country: "US",
       count: 2,
@@ -327,9 +353,9 @@ describe("InsightsController", () => {
 
     expect(res.data.timeline).toHaveLength(7);
     const byDate = new Map(res.data.timeline.map((p) => [p.date, p.views]));
-    expect(byDate.get(dayUtc(0))).toBe(10);
-    expect(byDate.get(dayUtc(3))).toBe(2);
-    expect(byDate.get(dayUtc(1))).toBe(0);
+    expect(byDate.get(dayUtc(ctx, 0))).toBe(10);
+    expect(byDate.get(dayUtc(ctx, 3))).toBe(2);
+    expect(byDate.get(dayUtc(ctx, 1))).toBe(0);
   });
 
   it("counts a visitor seen in two environments on one day once", async ({
@@ -342,17 +368,17 @@ describe("InsightsController", () => {
 
     await ctx.probe.uniques.create({
       sigilId: prod,
-      day: dayUtc(0),
+      day: dayUtc(ctx, 0),
       visitorHash: "shared",
     });
     await ctx.probe.uniques.create({
       sigilId: staging,
-      day: dayUtc(0),
+      day: dayUtc(ctx, 0),
       visitorHash: "shared",
     });
     await ctx.probe.uniques.create({
       sigilId: staging,
-      day: dayUtc(0),
+      day: dayUtc(ctx, 0),
       visitorHash: "other",
     });
 
@@ -392,7 +418,7 @@ describe("InsightsController", () => {
       // whose upper boundary is 2500.
       await ctx.probe.vitals.create({
         sigilId,
-        hour: hourUtc(0, 10),
+        hour: hourUtc(ctx, 0, 10),
         metric: "lcp",
         path: "/",
         bucketCounts: { "0": 1, "2": 2, "6": 1 },
@@ -420,14 +446,14 @@ describe("InsightsController", () => {
       // boundary. Averaging the two p75s would have said otherwise.
       await ctx.probe.vitals.create({
         sigilId: prod,
-        hour: hourUtc(0, 10),
+        hour: hourUtc(ctx, 0, 10),
         metric: "lcp",
         path: "/",
         bucketCounts: { "0": 3 },
       });
       await ctx.probe.vitals.create({
         sigilId: staging,
-        hour: hourUtc(0, 11),
+        hour: hourUtc(ctx, 0, 11),
         metric: "lcp",
         path: "/",
         bucketCounts: { "6": 1 },
@@ -451,7 +477,7 @@ describe("InsightsController", () => {
 
       await ctx.probe.vitals.create({
         sigilId,
-        hour: hourUtc(20, 10),
+        hour: hourUtc(ctx, 20, 10),
         metric: "lcp",
         path: "/",
         bucketCounts: { "0": 5 },
@@ -481,7 +507,7 @@ describe("InsightsController", () => {
       // not the chart's.
       await ctx.probe.vitals.create({
         sigilId,
-        hour: hourUtc(0, 10),
+        hour: hourUtc(ctx, 0, 10),
         metric: "cls",
         path: "/",
         bucketCounts: { "0": 1 },

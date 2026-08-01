@@ -25,7 +25,7 @@ describe("AlephaSigil module", () => {
     await alepha.start();
 
     // This package used to mount a floating button and a screenshot dialog into
-    // every app that imported it. A telemetry package that injects DOM has to be
+    // every app that imported it. A reporting package that injects DOM has to be
     // styled, translated and kept out of the app's own layout — for one link.
     expect(roots.rootComponents).toHaveLength(0);
   });

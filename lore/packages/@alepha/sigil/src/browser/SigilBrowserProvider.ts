@@ -5,7 +5,7 @@ import { SigilQueue } from "./SigilQueue.ts";
 import { SigilVitals } from "./SigilVitals.ts";
 
 /**
- * Browser bootstrap: subscribes to framework hooks, batches telemetry, and
+ * Browser bootstrap: subscribes to framework hooks, batches what it observes, and
  * posts the envelope to the same-origin `/api/sigil/ingest` proxy. No
  * credential lives here. Active in production + browser only.
  *

@@ -39,7 +39,25 @@ interface TestContext {
   fakeProvider: FakeProvider;
 }
 
-const setup = async (): Promise<TestContext> => {
+/**
+ * A token service that mints one token, forever.
+ *
+ * Substituted in to force the *other* unique index on `sigils` — `tokenHash` —
+ * to be the one that refuses an insert. It is the only unique index a test can
+ * trip deterministically: the `(campaignId, app, environment)` one is guarded
+ * by a `findOne` that a single-connection in-memory database never lets a
+ * second caller slip past, which is exactly why the handler cannot rely on
+ * that check alone in production.
+ */
+class FixedTokenService extends SigilTokenService {
+  override mint(): { token: string; hash: string; prefix: string } {
+    return { token: "sg_fixed", hash: "fixed-hash", prefix: "sg_fixed" };
+  }
+}
+
+const setup = async (
+  configure?: (alepha: Alepha) => void,
+): Promise<TestContext> => {
   const alepha = Alepha.create({
     env: {
       LOG_LEVEL: "error",
@@ -47,6 +65,10 @@ const setup = async (): Promise<TestContext> => {
       DATABASE_URL: ":memory:",
     },
   });
+
+  // Substitutions go in before any module registers the real service — the
+  // container refuses a swap once something has been resolved.
+  configure?.(alepha);
 
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
@@ -393,5 +415,65 @@ describe("SigilController", () => {
       ),
       404,
     );
+  });
+});
+
+describe("SigilController — unique-index violations", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup((alepha) =>
+      alepha.with({ provide: SigilTokenService, use: FixedTokenService }),
+    );
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("turns a constraint violation into a 409, not a 500", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const campaignId = await createCampaign(ctx, owner);
+
+    await ctx.sigilController.createSigil.fetch(
+      { params: { campaignId }, body: { app: "lore", environment: "prod" } },
+      { user: owner },
+    );
+
+    // Different environment, so the handler's own duplicate check passes — the
+    // insert reaches the `tokenHash` unique index and the driver refuses it.
+    // Without the catch this is an unhandled DbConflictError and a 500.
+    await expectStatus(
+      ctx.sigilController.createSigil.fetch(
+        {
+          params: { campaignId },
+          body: { app: "lore", environment: "staging" },
+        },
+        { user: owner },
+      ),
+      409,
+    );
+
+    // And the message points at the token, not at a sigil that does not exist:
+    // the same status has to mean two different things to the caller.
+    const error: unknown = await ctx.sigilController.createSigil
+      .fetch(
+        {
+          params: { campaignId },
+          body: { app: "lore", environment: "staging" },
+        },
+        { user: owner },
+      )
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(HttpError);
+    expect((error as HttpError).message).toMatch(/unique token/i);
+
+    const list = await ctx.sigilController.listSigils.fetch(
+      { params: { campaignId } },
+      { user: owner },
+    );
+    expect(list.data.items).toHaveLength(1);
   });
 });

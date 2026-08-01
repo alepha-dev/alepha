@@ -64,7 +64,7 @@ describe("SigilProxyController.ingest", () => {
   });
 
   it("accepts even when there is no sink configured", async () => {
-    // The browser must not learn anything about the app's telemetry setup from
+    // The browser must not learn anything about the app's sigil setup from
     // this endpoint, and a 200 costs nothing: whether the batch travels is the
     // sink provider's decision, made after this returns.
     const alepha = make();

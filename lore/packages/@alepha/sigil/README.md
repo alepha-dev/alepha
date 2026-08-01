@@ -1,9 +1,10 @@
 # @alepha/sigil
 
-The reporting half of Sigil. Add it to an Alepha app and the app reports page
-views, Web Vitals, and client and server errors to a Sigil instance you name.
+The reporting half of a sigil. Add it to an Alepha app and the app reports page
+views, Web Vitals, and client and server errors to the sink you name — a Lore
+instance, or anything else that serves the two sigil endpoints.
 
-Named for the server it talks to, not for what it collects. The previous name
+Named for the credential it holds, not for what it collects. The previous name
 (`@alepha/telemetry`) suggested a generic collector you could point anywhere;
 it is not — it speaks one protocol, to one kind of endpoint.
 
@@ -19,8 +20,8 @@ Then set two server-side variables:
 
 | | |
 |---|---|
-| `SIGIL_SINK` | origin of the Sigil instance, e.g. `https://sigil.example.com` |
-| `SIGIL_KEY` | per-app enrolment key issued by that instance — **secret, server-only** |
+| `SIGIL_SINK` | origin of the sink, e.g. `https://lore.example.com` |
+| `SIGIL_KEY` | the sigil token the sink minted for this app + environment — **secret, server-only** |
 
 Both are optional, and their absence is a supported mode rather than a
 misconfiguration: without a sink the module still captures, and aggregated

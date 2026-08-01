@@ -1,33 +1,34 @@
 import { $atom, type Static, z } from "alepha";
 
 /**
- * Server-side sigil configuration — the single source of truth that replaces
- * the old `SigilSinkProvider.config`. It holds the secret `id`, so it is
- * declared `serverOnly` and **never serialized to the browser**.
+ * The host app's own opinion about what it reports — the only knob the app
+ * owner turns, as opposed to the ones the sink dictates.
  *
- * Two things keep it server-side, and only one of them is a guarantee. It is
- * set exclusively in the app store, never inside a request context, so
- * `exportAtoms("current")` — which reads only the current ALS layer — would
- * skip it anyway; but that is a convention a future boot-order change or an
- * in-request `store.set` could silently break. `serverOnly: true` is the part
- * that actually holds: the atom is excluded from the hydration payload
- * unconditionally, and DevTools redacts its value from `/metadata`.
+ * Everything else about what gets collected comes from the sink at runtime
+ * (`GET /sigils/config`, cached in `SigilSinkProvider`), because a kill-switch
+ * that needs a redeploy is a kill-switch nobody reaches in time.
+ * `excludedPaths` is the exception: only the app knows which of its own routes
+ * carry an id, a token or a name in the path, and the sink has no business
+ * being told.
  *
- * Populated from env at boot (`SIGIL_ID`, `LORE_URL`, `SIGIL_FEATURES`) and/or
- * from host code — e.g. `alepha.store.set(sigilOptions, { excludedPaths: [...] })`
- * to suppress the petition button on matching host pages.
+ * Set from host code, never from env:
  *
- * Per request, the non-secret subset (features + excludedPaths) is copied into
- * {@link sigilClientAtom} for SSR delivery to the browser.
+ * ```ts
+ * alepha.store.set(sigilOptions, { excludedPaths: ["/reset-password/*"] });
+ * ```
+ *
+ * `serverOnly` is belt-and-braces rather than a confidentiality boundary: the
+ * atom once held a secret sigil id, and no longer does. `excludedPaths` itself
+ * is copied verbatim into {@link sigilClientAtom} and hydrated into the page,
+ * because `SigilRoot` has to apply it in the browser — so treat the list as
+ * public and keep secrets out of it. The credential lives in `SIGIL_KEY` and
+ * never touches this atom.
  */
 export const sigilOptions = $atom({
   name: "alepha.sigil.options",
   description:
-    "Server-side sigil config: id + loreOrigin + features + excludedPaths. Never serialized — holds the secret id.",
+    "Server-side sigil config: which of the app's own paths are never reported. Not serialized to the browser.",
   schema: z.object({
-    id: z.string().optional(),
-    loreOrigin: z.string().optional(),
-    features: z.array(z.string()).optional(),
     excludedPaths: z.array(z.string()).optional(),
   }),
   default: {},

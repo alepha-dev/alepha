@@ -107,7 +107,7 @@ const CampaignView = () => {
     });
   }
   // Audience = owner-facing surfaces fed by the campaign's audience and its
-  // Sigils embeds — voluntary feedback (Petitions), crash telemetry
+  // Sigils embeds — voluntary feedback (Petitions), crash reports
   // (Blights), pageview analytics (Insights). All feature-gated, so the
   // group only appears when at least one is enabled.
   const audienceItems: NavGroup["items"] = [];

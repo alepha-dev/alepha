@@ -52,12 +52,14 @@ alepha.set(oauthOptions, {
 alepha.with(LoreApi);
 alepha.with(LoreMcp);
 
-// Lore no longer sends telemetry to itself.
+// Lore does not report to itself.
 //
-// It used to be both the partner app and the receiver, which required an
-// in-process forward provider to work around a Worker being unable to fetch its
-// own hostname. Lore is re-enrolled as an ordinary app once Sigil exists — the
-// sink is then a different host and none of that machinery is needed.
+// It was once both the reporting app and the sink, which needed an in-process
+// forward provider to work around a Worker being unable to fetch its own
+// hostname. `LoreWebApp` still registers `AlephaSigil`, but neither SIGIL_SINK
+// nor SIGIL_KEY is set for Lore, so its server half stays headless: it captures
+// locally and sends nothing. `SigilIngestController` receives what *other* apps
+// send. Re-enrolling Lore would mean pointing it at a different host.
 
 alepha.with(LoreWebApp);
 alepha.with(LoreWebAdmin);

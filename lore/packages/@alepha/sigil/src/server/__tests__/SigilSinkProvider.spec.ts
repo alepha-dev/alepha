@@ -182,7 +182,7 @@ describe("SigilSinkProvider", () => {
     await alepha.start();
     http.failNext = true;
 
-    // A sink that is down must not silence an app's telemetry.
+    // A sink that is down must not silence an app's reporting.
     await sink.ingest({ errors: [anError("boom")] });
     await sink.flush();
 

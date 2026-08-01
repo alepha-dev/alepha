@@ -14,7 +14,7 @@ import { sigilVitalsHourly } from "../entities/sigilVitalsHourly.ts";
 import { BlightRuleService } from "./BlightRuleService.ts";
 
 /**
- * Turns one telemetry envelope into rows.
+ * Turns one sigil envelope into rows.
  *
  * Everything here is an upsert into a bucket, never an append of an event. That
  * is the whole storage strategy: what an operator asks of this data is always
@@ -68,7 +68,8 @@ export class SigilIngestService {
    *
    * `lastSeenAt` is stamped whatever happens, including for a batch every gate
    * rejected. It answers "did this environment report", which is Lore's own
-   * bookkeeping — not a heartbeat the app sends.
+   * bookkeeping — the app never sends a liveness signal of its own, and this
+   * is deliberately not one: an app that reports nothing is silent here too.
    */
   async absorb(sigil: Sigil, envelope: SigilForwarded): Promise<void> {
     const now = new Date(this.dateTime.nowMillis()).toISOString();

@@ -39,7 +39,7 @@ interface AggregatedError {
 }
 
 /**
- * Owns the app's relationship with its telemetry sink: what to collect, how
+ * Owns the app's relationship with its sink: what to collect, how
  * much, and when to send it.
  *
  * **Aggregates before sending.** Errors are keyed by fingerprint inside the
@@ -84,7 +84,7 @@ export class SigilSinkProvider {
 
       if (!this.hasSink()) {
         this.log.info(
-          "Telemetry has no sink (SIGIL_SINK / SIGIL_KEY unset) — capturing locally, sending nothing.",
+          "No sink configured (SIGIL_SINK / SIGIL_KEY unset) — capturing locally, sending nothing.",
         );
       }
 
@@ -144,7 +144,7 @@ export class SigilSinkProvider {
    * become the app's problem.
    *
    * Fail-open on the last known config: a sink that is down must not silence an
-   * app's telemetry, and must not make it emit more either. Concurrent callers
+   * app's reporting, and must not make it emit more either. Concurrent callers
    * share one in-flight request — a cold start behind a burst of traffic should
    * not turn into a burst of config fetches.
    */
@@ -170,7 +170,7 @@ export class SigilSinkProvider {
         // previous appetite is the only behaviour that is safe in both
         // directions.
         this.log.warn(
-          `Telemetry config refresh failed for ${this.sinkOrigin()}; keeping the last known one`,
+          `Sigil config refresh failed for ${this.sinkOrigin()}; keeping the last known one`,
           error,
         );
         // Back off as if it had succeeded, so a dead sink is asked once a
@@ -333,7 +333,7 @@ export class SigilSinkProvider {
     } catch (error) {
       // A sink that refuses or is unreachable must never surface as an app
       // error: the app is working, its observer is not.
-      this.log.warn(`Telemetry flush failed for ${this.sinkOrigin()}`, error);
+      this.log.warn(`Sigil flush failed for ${this.sinkOrigin()}`, error);
     }
   }
 
@@ -346,7 +346,7 @@ export class SigilSinkProvider {
   protected report(envelope: SigilEnvelope): void {
     for (const error of envelope.errors ?? []) {
       this.log.warn(
-        `[telemetry] ${error.name}: ${error.message}${
+        `[sigil] ${error.name}: ${error.message}${
           (error.count ?? 1) > 1 ? ` (×${error.count})` : ""
         }`,
         { sourceUrl: error.sourceUrl, origin: error.origin },
