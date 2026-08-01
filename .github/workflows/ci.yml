@@ -7,6 +7,14 @@ on:
   push:
     branches:
       - main
+  # Without this, the only CI run that ever happens is the one on `main` — the
+  # same event that deploys Lore to production. Verification and deployment
+  # were literally the same moment, so a branch could only be proven green by
+  # shipping it. PRs get the full checks/test/bay/e2e matrix; the deploy jobs
+  # opt out below.
+  pull_request:
+    branches:
+      - main
   workflow_run:
     workflows: ["Release"]
     types:
@@ -222,6 +230,11 @@ jobs:
     # Docs deploy doesn't require the e2e job — only that the codebase
     # is lint/typecheck-clean and tests pass.
     needs: [checks, test]
+    # Publishing to GitHub Pages is a real side effect, so it must not fire for
+    # a proposed change. Phrased as "not a PR" rather than copying
+    # `deploy-lore-production`'s `push && ref == main`: docs also deploy on the
+    # `workflow_run` (Release) trigger, and that has to keep working.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
