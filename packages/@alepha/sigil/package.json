@@ -1,7 +1,7 @@
 {
   "name": "@alepha/sigil",
   "private": true,
-  "description": "Reports page views, vitals, errors and server metrics from an Alepha app to a Sigil instance.",
+  "description": "Reports page views, vitals and errors from an Alepha app to a Sigil instance.",
   "author": "Feunard",
   "version": "0.20.1",
   "type": "module",
@@ -61,7 +61,6 @@
     "sigil",
     "analytics",
     "errors",
-    "metrics",
     "observability"
   ]
 }

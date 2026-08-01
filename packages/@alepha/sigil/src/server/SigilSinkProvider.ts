@@ -3,8 +3,8 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { HttpClient } from "alepha/server";
 import {
+  SIGIL_CONFIG_DEFAULTS,
   type SigilConfig,
-  TELEMETRY_CONFIG_DEFAULTS,
 } from "../shared/schemas/sigilConfig.ts";
 import type { SigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
 import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
@@ -23,7 +23,7 @@ const FLUSH_WINDOW_MS = 10_000;
 const CONFIG_TTL_MS = 60_000;
 
 /** Envelope caps, mirroring the schema so a flush never builds a 413. */
-const CAPS = { views: 50, errors: 20, vitals: 50, metrics: 60 } as const;
+const CAPS = { views: 50, errors: 20, vitals: 50 } as const;
 
 /**
  * One error, and how many times it happened since the last flush.
@@ -67,8 +67,6 @@ export class SigilSinkProvider {
   protected readonly pendingErrors = new Map<string, AggregatedError>();
   protected pendingViews: NonNullable<SigilEnvelope["views"]> = [];
   protected pendingVitals: NonNullable<SigilEnvelope["vitals"]> = [];
-  protected pendingMetrics: NonNullable<SigilEnvelope["metrics"]> = [];
-  protected pendingHeartbeat?: SigilEnvelope["heartbeat"];
   /** Stamps of the batch being built. Last writer wins; they rarely differ. */
   protected pendingStamp: { country?: string; visitor?: string } = {};
   protected oldestPendingAt?: number;
@@ -94,7 +92,7 @@ export class SigilSinkProvider {
       this.alepha.events.on("react:server:render:begin", () => {
         this.alepha.store.set(sigilClientAtom, {
           enabled: this.enabledTrackers(),
-          sampling: this.config.sampling ?? TELEMETRY_CONFIG_DEFAULTS.sampling,
+          sampling: this.config.sampling ?? SIGIL_CONFIG_DEFAULTS.sampling,
           excludedPaths:
             this.alepha.store.get(sigilOptions).excludedPaths ?? [],
           petitionUrl: this.config.petitionUrl,
@@ -134,13 +132,6 @@ export class SigilSinkProvider {
    */
   public enabledTrackers(): Record<SigilTracker, boolean> {
     return { ...allTrackersEnabled(), ...(this.config.enabled ?? {}) };
-  }
-
-  public metricsIntervalSec(): number {
-    return (
-      this.config.metricsIntervalSec ??
-      TELEMETRY_CONFIG_DEFAULTS.metricsIntervalSec
-    );
   }
 
   public petitionUrl(): string | undefined {
@@ -211,12 +202,6 @@ export class SigilSinkProvider {
     }
     if (envelope.vitals?.length && enabled.vitals) {
       this.pendingVitals.push(...envelope.vitals);
-    }
-    if (envelope.metrics?.length && enabled.metrics) {
-      this.pendingMetrics.push(...envelope.metrics);
-    }
-    if (envelope.heartbeat && enabled.metrics) {
-      this.pendingHeartbeat = envelope.heartbeat;
     }
     if (envelope.errors?.length && enabled.errors) {
       for (const error of envelope.errors) {
@@ -290,9 +275,7 @@ export class SigilSinkProvider {
     return (
       this.pendingErrors.size > 0 ||
       this.pendingViews.length > 0 ||
-      this.pendingVitals.length > 0 ||
-      this.pendingMetrics.length > 0 ||
-      this.pendingHeartbeat !== undefined
+      this.pendingVitals.length > 0
     );
   }
 
@@ -305,7 +288,6 @@ export class SigilSinkProvider {
     if (this.pendingErrors.size >= CAPS.errors) return true;
     if (this.pendingViews.length >= CAPS.views) return true;
     if (this.pendingVitals.length >= CAPS.vitals) return true;
-    if (this.pendingMetrics.length >= CAPS.metrics) return true;
     return now - (this.oldestPendingAt ?? now) >= FLUSH_WINDOW_MS;
   }
 
@@ -326,10 +308,6 @@ export class SigilSinkProvider {
       ...(this.pendingVitals.length
         ? { vitals: this.pendingVitals.slice(0, CAPS.vitals) }
         : {}),
-      ...(this.pendingMetrics.length
-        ? { metrics: this.pendingMetrics.slice(0, CAPS.metrics) }
-        : {}),
-      ...(this.pendingHeartbeat ? { heartbeat: this.pendingHeartbeat } : {}),
       ...(this.pendingErrors.size
         ? { errors: [...this.pendingErrors.values()].slice(0, CAPS.errors) }
         : {}),
@@ -379,8 +357,6 @@ export class SigilSinkProvider {
     this.pendingErrors.clear();
     this.pendingViews = [];
     this.pendingVitals = [];
-    this.pendingMetrics = [];
-    this.pendingHeartbeat = undefined;
     this.pendingStamp = {};
     this.oldestPendingAt = undefined;
   }

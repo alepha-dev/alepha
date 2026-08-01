@@ -33,7 +33,7 @@ describe("SigilBrowserProvider", () => {
     // The sink turned views off: nothing is collected, rather than collected
     // and discarded later.
     alepha.store.set(sigilClientAtom, {
-      enabled: { views: false, errors: true, vitals: true, metrics: true },
+      enabled: { views: false, errors: true, vitals: true },
       sampling: { views: 1, errors: 1, vitals: 1 },
       excludedPaths: [],
     });

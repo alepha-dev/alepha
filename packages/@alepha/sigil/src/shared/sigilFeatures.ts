@@ -6,19 +6,13 @@
  * - `views`   — page views.
  * - `errors`  — client and server errors.
  * - `vitals`  — web-vitals samples.
- * - `metrics` — periodic server metrics and the heartbeat.
  *
  * `petition` is deliberately absent from this list: it is a link the sink hands
  * out, not something collected. It had no business among trackers.
  */
-export const TELEMETRY_TRACKERS = [
-  "views",
-  "errors",
-  "vitals",
-  "metrics",
-] as const;
+export const SIGIL_TRACKERS = ["views", "errors", "vitals"] as const;
 
-export type SigilTracker = (typeof TELEMETRY_TRACKERS)[number];
+export type SigilTracker = (typeof SIGIL_TRACKERS)[number];
 
 /**
  * Every tracker on.
@@ -28,7 +22,7 @@ export type SigilTracker = (typeof TELEMETRY_TRACKERS)[number];
  * is the sink that decides to want less.
  */
 export const allTrackersEnabled = (): Record<SigilTracker, boolean> =>
-  Object.fromEntries(TELEMETRY_TRACKERS.map((t) => [t, true])) as Record<
+  Object.fromEntries(SIGIL_TRACKERS.map((t) => [t, true])) as Record<
     SigilTracker,
     boolean
   >;

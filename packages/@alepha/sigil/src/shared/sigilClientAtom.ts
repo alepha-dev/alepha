@@ -1,5 +1,5 @@
 import { $atom, type Static, z } from "alepha";
-import { TELEMETRY_TRACKERS } from "./sigilFeatures.ts";
+import { SIGIL_TRACKERS } from "./sigilFeatures.ts";
 
 /**
  * The public telemetry config handed to the browser through SSR hydration:
@@ -27,7 +27,7 @@ export const sigilClientAtom = $atom({
     petitionUrl: z.string().optional(),
   }),
   default: {
-    enabled: Object.fromEntries(TELEMETRY_TRACKERS.map((t) => [t, true])),
+    enabled: Object.fromEntries(SIGIL_TRACKERS.map((t) => [t, true])),
     sampling: { views: 1, errors: 1, vitals: 1 },
     excludedPaths: [],
   },

@@ -15,9 +15,9 @@ alepha.with(UploadsApi);
 alepha.with(HousekeepingJobs);
 alepha.with(AppRouter);
 
-// Reports views, vitals, errors and server metrics to whatever
-// `SIGIL_SINK` points at. Without those env vars it captures locally and
-// sends nothing, so adding the module is safe in any environment.
+// Reports views, vitals and errors to whatever `SIGIL_SINK` points at.
+// Without those env vars it captures locally and sends nothing, so adding
+// the module is safe in any environment.
 alepha.with(AlephaSigil);
 
 // Prometheus-style runtime detail — heap, event loop, per-route latency —

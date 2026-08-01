@@ -1,8 +1,8 @@
 # Sigil (analytics, vitals & errors)
 
 `@alepha/sigil` makes an Alepha app report what it is doing: page views,
-Web Vitals, client and server errors, and periodic server metrics — to a
-**Sigil** instance the app names.
+Web Vitals, and client and server errors — to a **Sigil** instance the app
+names.
 
 ```typescript
 import { Alepha } from "alepha";
