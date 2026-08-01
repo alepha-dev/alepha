@@ -156,14 +156,7 @@ export class SigilSinkProvider {
 
     this.configInFlight = (async () => {
       try {
-        const res = await this.http.fetch(
-          `${this.sinkOrigin()}${SIGIL_CONFIG_PATH}`,
-          {
-            method: "GET",
-            headers: { authorization: `Bearer ${this.env.SIGIL_KEY}` },
-          },
-        );
-        this.config = (res.data ?? {}) as SigilConfig;
+        this.config = await this.fetchConfig();
         this.configFetchedAt = this.dateTime.nowMillis();
       } catch (error) {
         // Deliberately not fatal, and deliberately not a reset: keeping the
@@ -322,19 +315,55 @@ export class SigilSinkProvider {
     }
 
     try {
-      await this.http.fetch(`${this.sinkOrigin()}${SIGIL_INGEST_PATH}`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${this.env.SIGIL_KEY}`,
-        },
-        body: JSON.stringify({ ...envelope, ...stamp }),
-      });
+      await this.deliver({ ...envelope, ...stamp });
     } catch (error) {
       // A sink that refuses or is unreachable must never surface as an app
       // error: the app is working, its observer is not.
       this.log.warn(`Sigil flush failed for ${this.sinkOrigin()}`, error);
     }
+  }
+
+  /**
+   * Asks the sink how much to send. The only GET this provider makes.
+   *
+   * Its own method, alongside {@link deliver}, because an app can BE its own
+   * sink — Lore reports to itself — and on workerd a Worker cannot fetch its
+   * own hostname: the subrequest fails, and since both callers are fail-open
+   * it fails silently, leaving an app that looks enrolled and reports nothing.
+   * A host in that position substitutes this provider and answers both in
+   * process. Everything else — aggregation, the flush window, the caps, the
+   * fail-open handling around these two calls — is shared, so the in-process
+   * path cannot drift into behaving differently from the networked one.
+   *
+   * Throws on failure; the caller decides what that means.
+   */
+  protected async fetchConfig(): Promise<SigilConfig> {
+    const res = await this.http.fetch(
+      `${this.sinkOrigin()}${SIGIL_CONFIG_PATH}`,
+      {
+        method: "GET",
+        headers: { authorization: `Bearer ${this.env.SIGIL_KEY}` },
+      },
+    );
+    return (res.data ?? {}) as SigilConfig;
+  }
+
+  /**
+   * Hands one batch to the sink. The only POST this provider makes.
+   *
+   * @see {@link fetchConfig} for why it is separable.
+   */
+  protected async deliver(
+    payload: SigilEnvelope & { country?: string; visitor?: string },
+  ): Promise<void> {
+    await this.http.fetch(`${this.sinkOrigin()}${SIGIL_INGEST_PATH}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${this.env.SIGIL_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
   }
 
   /**

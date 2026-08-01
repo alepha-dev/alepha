@@ -1,3 +1,4 @@
+import { SigilSinkProvider } from "@alepha/sigil/server";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
 import { oauthOptions } from "alepha/api/oauth";
@@ -6,6 +7,7 @@ import { AlephaEmailCloudflare } from "alepha/email/cloudflare";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
 import { LoreApi } from "./api/index.ts";
 import { LoreFileAccessProvider } from "./api/providers/LoreFileAccessProvider.ts";
+import { LoreSigilSinkProvider } from "./api/providers/LoreSigilSinkProvider.ts";
 import { LoreMcp } from "./mcp/index.ts";
 import { LoreWebApp } from "./web/app/index.ts";
 
@@ -52,14 +54,17 @@ alepha.set(oauthOptions, {
 alepha.with(LoreApi);
 alepha.with(LoreMcp);
 
-// Lore does not report to itself.
+// Lore reports to Lore, and this line is what makes that possible.
 //
-// It was once both the reporting app and the sink, which needed an in-process
-// forward provider to work around a Worker being unable to fetch its own
-// hostname. `LoreWebApp` still registers `AlephaSigil`, but neither SIGIL_SINK
-// nor SIGIL_KEY is set for Lore, so its server half stays headless: it captures
-// locally and sends nothing. `SigilIngestController` receives what *other* apps
-// send. Re-enrolling Lore would mean pointing it at a different host.
+// It is both the reporting app and the sink, so the ordinary transport would
+// have the Worker fetch its own hostname — a subrequest Cloudflare refuses.
+// Both call sites in `SigilSinkProvider` are fail-open, so that refusal shows
+// up nowhere: Lore would look enrolled and report nothing. The substitution
+// answers those two calls in process instead, against its own services.
+//
+// It must come BEFORE `LoreWebApp`, which is what registers `AlephaSigil` and
+// therefore the provider being replaced here.
+alepha.with({ provide: SigilSinkProvider, use: LoreSigilSinkProvider });
 
 alepha.with(LoreWebApp);
 alepha.with(LoreWebAdmin);
