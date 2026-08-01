@@ -27,6 +27,7 @@ docs/superpowers
 apps/ride/*
 !apps/ride/package.json
 BUGS.md
+assets/docs
 .superpowers
 
 .fleet

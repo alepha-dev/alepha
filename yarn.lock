@@ -8522,9 +8522,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"example-ws@workspace:apps/others/example-ws":
+"example-ws@workspace:apps/example-ws":
   version: 0.0.0-use.local
-  resolution: "example-ws@workspace:apps/others/example-ws"
+  resolution: "example-ws@workspace:apps/example-ws"
   dependencies:
     alepha: "npm:^0.24.0"
     react: "npm:^19.2.8"
