@@ -67,7 +67,7 @@ export class BlightTools {
   blight_resolve = $tool({
     title: "Resolve a blight",
     description:
-      "Close a blight — it leaves the open inbox and the row stays for audit. Use once the underlying failure is fixed. The decision is PERMANENT: a later report of the same fingerprint keeps raising `count` and `lastSeenAt` but does NOT reopen the row, by design — a triage decision must not be undone by the next batch. So resolving a bug that is still happening hides it from the inbox for good; to check whether a failure is still live, read the Errors segment of Insights, which is filtered on `lastSeenAt` and exists for exactly that question. Campaign owner only.",
+      'Close a blight — it leaves the open inbox and the row stays for audit. Use once the underlying failure is fixed. The decision is PERMANENT: a later report of the same fingerprint keeps raising `count` and `lastSeenAt` but does NOT reopen the row, by design — a triage decision must not be undone by the next batch. So resolving a bug that is still happening hides it from the inbox for good; to check whether a failure is still live, call `insights_read` with segments=["errors"] first — its groups are per environment and filtered on `lastSeenAt`, which is the question this inbox cannot answer. Campaign owner only.',
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
       params: blightResolveParamsSchema,
