@@ -42,6 +42,43 @@ func TestWaitReadyAcceptsAReadyApp(t *testing.T) {
 	}
 }
 
+func TestWaitReadyBlamesTheAppRatherThanItsOwnDeadline(t *testing.T) {
+	/*
+		`lastErr` used to be overwritten on every pass, so the message came from
+		the FINAL probe — and the final probe is, by construction, the one the
+		deadline cuts off. An app that had answered `ready=false` three times
+		was therefore reported as `context deadline exceeded`, which sends an
+		operator to check the network for an app that was answering perfectly
+		well and simply was not ready. The folio's rule, exactly: never label a
+		response as a transport failure.
+
+		It is also what made `TestWaitReadyRefusesAnAppThatIsListeningButNotReady`
+		flaky. That test only passed when the last probe happened to land clear
+		of the deadline — true on an idle Mac, false about one run in six on a
+		loaded Linux box, where it failed on a message it never meant to assert.
+
+		Deterministic here rather than hopeful: the first probe answers, every
+		later one blocks until the context is cancelled. No timing to lose.
+	*/
+	var probes atomic.Int32
+	port := serveOn(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if probes.Add(1) == 1 {
+			fmt.Fprint(w, `{"ready":false}`)
+			return
+		}
+		<-r.Context().Done()
+	}))
+
+	err := (&Probe{}).WaitReady(port, 600*time.Millisecond)
+
+	if err == nil {
+		t.Fatal("an app that never becomes ready must not pass")
+	}
+	if !strings.Contains(err.Error(), "ready=false") {
+		t.Fatalf("the diagnosis must survive the deadline that ended the wait, got %v", err)
+	}
+}
+
 func TestWaitReadyRefusesAnAppThatIsListeningButNotReady(t *testing.T) {
 	// The bug this package exists for. An Alepha app binds its port before it
 	// has run migrations; the old TCP-only probe called that ready and Bay sent
