@@ -235,10 +235,17 @@ describe("Pulse → Lore, against the real receiver", () => {
     await pulse.forward.collect();
     await pulse.forward.drain();
 
+    // Derived from `forwardedAt` rather than hard-coded. The re-forward rule is
+    // `forwardedAt < lastSeenAt`, and `forwardedAt` is stamped from the real
+    // clock — a fixed timestamp makes the test pass or fail depending on the
+    // hour it runs at, which is how this one first went green then red.
     const group = (await pulse.probe.errors.findMany({}))[0];
+    const seenAgain = new Date(
+      new Date(group.forwardedAt!).getTime() + 60_000,
+    ).toISOString();
     await pulse.probe.errors.updateById(group.id, {
       count: 9,
-      lastSeenAt: "2026-08-01T12:00:00.000Z",
+      lastSeenAt: seenAgain,
     } as any);
 
     expect(await pulse.forward.collect()).toBe(1);
@@ -246,7 +253,7 @@ describe("Pulse → Lore, against the real receiver", () => {
 
     const filed = await lore.probe.blights.findMany({});
     expect(filed).toHaveLength(1);
-    expect(filed[0].lastSeenAt).toBe("2026-08-01T12:00:00.000Z");
+    expect(filed[0].lastSeenAt).toBe(seenAgain);
     void app;
   });
 
