@@ -7,7 +7,12 @@ import { users } from "./users.ts";
 /**
  * Petitions are user-submitted bug reports or feature requests. They land in
  * an inbox the campaign owner triages: each petition is either accepted (and
- * promoted to a quest, linked via `promotedQuestId`) or rejected.
+ * promoted to one or more quests) or rejected.
+ *
+ * The link lives on the quest, as `quests.petitionId` — there is no
+ * `promotedQuestId` column here, and there never was one. Keeping the pointer
+ * on that side is what allows an accepted petition to spawn several quests,
+ * and it means deleting a quest leaves no dangling reference to chase.
  *
  * Submitters must be authenticated — anonymous submissions are not allowed.
  * Petitions can carry attachments (screenshots, CSVs, logs) to give triagers
