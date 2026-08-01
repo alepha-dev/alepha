@@ -133,7 +133,13 @@ export class QueryManager {
           }
         }
 
-        if (Array.isArray(operator)) {
+        // Only `and` / `or` carry a list of nested CONDITIONS. Any other key is
+        // a column name, and an array under a column name is a VALUE — the
+        // shorthand `PgQueryWhereOperators` documents for an array column
+        // (`{ tags: ["x", "y"] }`). Recursing into it treated each element as a
+        // condition object, so `Object.keys("x")` asked for a column literally
+        // named `0` and the query died with "Column '0' not found".
+        if (Array.isArray(operator) && (key === "and" || key === "or")) {
           const operations: SQL[] = operator
             .map((it) => {
               if (isSQLWrapper(it)) {
@@ -151,21 +157,12 @@ export class QueryManager {
           // Combine with the sibling conditions instead of returning early —
           // an early return here silently DROPPED every other key of the
           // where (e.g. `{ userId: {...}, or: [...] }` matched ALL users).
-          if (key === "and") {
-            const combined = and(...operations);
-            if (combined) {
-              conditions.push(combined);
-            }
-            continue;
+          const combined =
+            key === "and" ? and(...operations) : or(...operations);
+          if (combined) {
+            conditions.push(combined);
           }
-
-          if (key === "or") {
-            const combined = or(...operations);
-            if (combined) {
-              conditions.push(combined);
-            }
-            continue;
-          }
+          continue;
         }
 
         if (key === "not") {
@@ -402,12 +399,16 @@ export class QueryManager {
       conditions.push(notInArray(column, encodeArray(operator.notInArray)));
     }
 
+    // Presence is NOT the signal — the VALUE is. `!= null` made
+    // `{ isNull: false }` emit `IS NULL`, the exact opposite predicate, because
+    // `false != null` is true. Nothing in the where builder is allowed to mean
+    // the reverse of what it reads as, so both flags now branch on the boolean.
     if (operator?.isNull != null) {
-      conditions.push(isNull(column));
+      conditions.push(operator.isNull ? isNull(column) : isNotNull(column));
     }
 
     if (operator?.isNotNull != null) {
-      conditions.push(isNotNull(column));
+      conditions.push(operator.isNotNull ? isNotNull(column) : isNull(column));
     }
 
     if (operator?.like != null) {
