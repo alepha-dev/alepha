@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
-import { $repository } from "alepha/orm";
+import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { describe, it } from "vitest";
+import { blights } from "../src/api/entities/blights.ts";
 import { campaigns } from "../src/api/entities/campaigns.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
@@ -48,5 +49,35 @@ describe("sigil entities", () => {
   it("buckets views by the hour, not the day", async ({ expect }) => {
     expect(sigilViewsHourly.schema.shape.hour).toBeDefined();
     expect((sigilViewsHourly.schema.shape as any).date).toBeUndefined();
+  });
+
+  it("declares a real foreign key from blights.sigilId to sigils.id", async ({
+    expect,
+  }) => {
+    // Regression guard: `.optional()` chained *after* `db.ref(...)` returns a
+    // new wrapper that the model builder's `PG_REF in value` check never
+    // sees (`pgAttr` mutates the schema object `db.ref()` returns, and
+    // `.optional()` wraps rather than mutates) — so the column silently gets
+    // no FK constraint at all. `.optional()` must be applied to the type
+    // passed *into* `db.ref(...)`, not chained onto its result.
+    class Repos {
+      campaigns = $repository(campaigns);
+      users = $repository(users);
+      sigils = $repository(sigils);
+      blights = $repository(blights);
+    }
+    const alepha = Alepha.create().with(Repos);
+    alepha.inject(Repos);
+    await alepha.start();
+
+    const provider = alepha.inject(DatabaseProvider);
+    const foreignKeys = await provider.execute(
+      sql`PRAGMA foreign_key_list(blights)`,
+    );
+
+    const sigilForeignKey = foreignKeys.find((row) => row.table === "sigils");
+    expect(sigilForeignKey).toBeDefined();
+    expect(sigilForeignKey?.from).toBe("sigil_id");
+    expect(sigilForeignKey?.on_delete).toBe("SET NULL");
   });
 });

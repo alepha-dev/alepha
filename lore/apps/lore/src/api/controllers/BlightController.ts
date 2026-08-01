@@ -9,9 +9,13 @@ import {
   okSchema,
 } from "alepha/server";
 import type { BlightIgnoreRule } from "../entities/blightIgnoreRules.ts";
-import { type Blight, blights } from "../entities/blights.ts";
+import {
+  type Blight,
+  blights,
+  QUEST_STATUS_PREFIX,
+} from "../entities/blights.ts";
 import { campaignSources } from "../entities/campaignSources.ts";
-import { QUEST_STATUS_PREFIX, sigilBlights } from "../entities/sigilBlights.ts";
+import { sigilBlights } from "../entities/sigilBlights.ts";
 import { sigils } from "../entities/sigils.ts";
 import { BlightRuleService } from "../services/BlightRuleService.ts";
 import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";

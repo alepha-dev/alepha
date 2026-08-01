@@ -26,9 +26,9 @@ export const blights = $entity({
      * Which sigil filed it. Nulled rather than cascaded on sigil deletion:
      * revoking a token must not erase the bugs it reported.
      */
-    sigilId: db
-      .ref(z.uuid(), () => sigils.cols.id, { onDelete: "set null" })
-      .optional(),
+    sigilId: db.ref(z.uuid().optional(), () => sigils.cols.id, {
+      onDelete: "set null",
+    }),
     /**
      * `sha256(errorName + ":" + normalizedFirstFrame)`, computed by the
      * client with the shared helper from `@alepha/sigil/fingerprint`.
@@ -71,3 +71,11 @@ export const blights = $entity({
 
 export type Blight = Static<typeof blights.schema>;
 export type BlightInsert = Static<typeof blights.insertSchema>;
+
+/**
+ * Prefix used in a blight's `status` column when it has been forwarded to a
+ * quest: the status becomes `quest:<questId>`. Shared between the controller
+ * (which writes / detects it) and the inbox UI (which strips it for display)
+ * so the literal string and its length never drift apart.
+ */
+export const QUEST_STATUS_PREFIX = "quest:";
