@@ -4,109 +4,51 @@ import { campaigns } from "./campaigns.ts";
 import { users } from "./users.ts";
 
 /**
- * The capabilities a sigil may grant. Declared once here and reused by the
- * SigilController body schema and the Settings → Sigils UI so the literal
- * list never drifts. NB: `"petition"` is singular — it names the per-sigil
- * capability, distinct from the campaign-level `petitions` feature
- * toggle that gates it.
+ * The capabilities a sigil may grant.
  */
 export const SIGIL_KINDS = ["petition", "blights", "beacon", "vitals"] as const;
 
 export type SigilKind = (typeof SIGIL_KINDS)[number];
 
 /**
- * A **sigil** is a scoped, revocable, owner-issued identifier that lets a
- * partner server forward telemetry and petitions to Lore via the trusted
- * server-to-server ingest endpoints (`POST /sigils/:id/ingest`,
- * `POST /sigils/:id/petition`).
+ * A **sigil** is one environment of one application: `lore` in `production` is
+ * a different sigil from `lore` in `staging`, and they report separately.
  *
- * - `id` — a random, opaque identifier and the primary key. It is the
- *   **sole credential** on the trusted server-to-server ingest path (the
- *   sigil UUID is the only thing that authenticates `POST /sigils/:id/*`).
- *   Stored as a `text` PRIMARY KEY column. NB: the type is `z.uuid()` rather
- *   than a free-form 16-hex string because the Alepha SQLite model builder
- *   only honors `PRIMARY KEY` on uuid-format strings — a plain `z.string()`
- *   PK silently degrades to a non-PK column.
- * - `ingestKey` — VESTIGIAL. A random secret that once gated the now-deleted
- *   browser-embed `.js` surface (removed in "remove legacy sigil embed
- *   surface"). No live code path reads or verifies it anymore; it is minted
- *   on insert only to satisfy the `NOT NULL` constraint and kept in the
- *   schema only because dropping it is a D1 cascade bomb (see `revokedAt`).
+ * That is the unit because it is the unit a question is asked about. "Did the
+ * deploy break anything" is meaningless across environments, and an error
+ * budget shared between staging and production is nobody's budget.
  *
- * A sigil scopes what a site may do (`kinds`). Deleting a sigil
- * hard-deletes the row (the `revokedAt` column is vestigial — see its
- * field doc).
+ * The credential is a `sg_`-prefixed token shown once at creation and stored
+ * as a hash. `tokenPrefix` exists so the UI can name a key it cannot
+ * reconstruct.
  */
 export const sigils = $entity({
   name: "sigils",
   schema: z.object({
-    /**
-     * Random opaque identifier and the ingest credential — a partner server
-     * holds it and presents it as the `:id` in `POST /sigils/:id/*`. `text`
-     * PRIMARY KEY; see the entity-level note on why the type is `z.uuid()`.
-     */
     id: db.primaryKey(z.uuid()),
-    /**
-     * VESTIGIAL secret — once gated the now-deleted browser-embed surface.
-     * Nothing reads it today; minted on insert only to satisfy `NOT NULL`.
-     * See the entity-level doc.
-     */
-    ingestKey: z.string().min(1).max(128),
     campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
-    /**
-     * Human-readable label for the owner's inventory, e.g.
-     * "shop.example.com checkout".
-     */
+    /** Application name, e.g. `lore`. Free-form; the operator names it. */
+    app: z.string().min(1).max(100),
+    /** Stage, e.g. `production` / `staging`. Free-form for the same reason. */
+    environment: z.string().min(1).max(50),
+    /** Display label, defaulted to `<app> / <environment>` at creation. */
     label: z.string().min(1).max(200),
-    /**
-     * VESTIGIAL — kept because dropping it on D1 is a cascade bomb (same
-     * precedent as `revokedAt` and `campaign.public`). Never enforced: the
-     * proxy model means Lore only ever sees server-to-server calls and never
-     * receives the real browser `Origin`. Do not add enforcement logic here.
-     */
-    allowedOrigins: db.default(z.array(z.string().max(200)).max(20), []),
-    /**
-     * Server-side authorization gate — the capability buckets this sigil's
-     * ingest endpoint will accept (subset of `SIGIL_KINDS`). No longer scoped
-     * per-sigil in the UI: `SigilController.createSigil` sets it to ALL kinds,
-     * and the partner app narrows what's actually sent via `SIGIL_FEATURES`.
-     * Kept as defense-in-depth alongside the campaign-level `features` toggle.
-     */
+    tokenHash: z.string().min(1).max(256),
+    /** First characters of the token, so the UI can name it. */
+    tokenPrefix: z.string().min(1).max(32),
+    /** Capability buckets this sigil's ingest endpoint accepts. */
     kinds: db.default(z.array(z.string().max(50)).max(10), []),
-    /**
-     * VESTIGIAL — kept only because dropping a `sigils` column is a D1 cascade
-     * bomb (see `revokedAt`). Path-based suppression of the embed's petition
-     * button is now **host-app config** (`@alepha/pulse-client`'s `pulseOptions`
-     * atom / `SIGIL_FEATURES`), not per-sigil Lore state. Nothing reads this
-     * column anymore; new rows default to `[]`. Do not remove.
-     */
-    excludedPaths: db.default(z.array(z.string().max(200)).max(50), []),
-    /**
-     * The user who issued the sigil. NULLABLE on purpose: a future
-     * migration-seeded "Lore-self" sigil (#90) has no human creator and
-     * must still be a valid row.
-     */
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id),
     createdAt: db.createdAt(),
-    /**
-     * VESTIGIAL — kept only because dropping it is a D1 cascade bomb.
-     *
-     * Sigils were once soft-revoked (this column flipped non-null); they
-     * are now HARD-deleted by `SigilController.deleteSigil`, so no live row
-     * ever carries a value here. The column is intentionally NOT removed:
-     * dropping a column from `sigils` makes drizzle-kit emit a table
-     * rebuild (`CREATE __new` / `INSERT SELECT` / `DROP TABLE sigils` /
-     * `RENAME`), and on Cloudflare D1 the `DROP TABLE` cascade-wipes
-     * `sigil_blights` / `sigil_views` / etc. (see CLAUDE.md "Migration
-     * safety on D1"). Same precedent as the retained `campaign.public`
-     * column. Leave it untouched.
-     */
-    revokedAt: db.deletedAt(),
+    /** Last time this sigil reported anything. Drives the "silent" badge. */
+    lastSeenAt: z.string().optional(),
   }),
   indexes: [
-    { columns: ["campaignId", "revokedAt"] },
+    { columns: ["campaignId"] },
+    { columns: ["tokenHash"], unique: true },
+    { columns: ["campaignId", "app", "environment"], unique: true },
     { columns: ["createdBy"] },
   ],
 });

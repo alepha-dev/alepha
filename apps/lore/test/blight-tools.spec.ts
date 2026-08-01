@@ -9,20 +9,16 @@ import { AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { blights } from "../src/api/entities/blights.ts";
-import { campaignSources } from "../src/api/entities/campaignSources.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 import { BlightTools } from "../src/mcp/tools/BlightTools.ts";
-import { SourceTools } from "../src/mcp/tools/SourceTools.ts";
 
 /**
- * The source tools exist so an agent can wire an observer to a campaign
- * without a browser. Every other step of that flow — enrol the app in Pulse,
- * point it at Lore — is already an API call; this was the one that was not.
+ * The blights inbox over MCP: triage happens in a conversation, and the
+ * alternative is a browser.
  */
 
 class Probe {
-  sources = $repository(campaignSources);
   blights = $repository(blights);
 }
 
@@ -41,7 +37,6 @@ const setup = async () => {
   alepha.with(LoreMcp);
 
   const probe = alepha.inject(Probe);
-  const tools = alepha.inject(SourceTools);
   const blightTools = alepha.inject(BlightTools);
   const campaignApi = alepha.inject(CampaignController);
   const users = alepha.inject(UserService);
@@ -80,17 +75,15 @@ const setup = async () => {
     campaignApi.createCampaign({ body: { title: "Elsewhere" } } as any),
   );
 
-  return { alepha, probe, tools, blightTools, campaign, otherCampaign, call };
+  return { alepha, probe, blightTools, campaign, otherCampaign, call };
 };
 
 describe("Lore MCP — blights", () => {
   /*
-    These were deleted with `SigilTools`, which took the whole file when the
-    sigil half went away. The controller behind them survived — but split in
-    two: `listBlights` read the live table while resolve, forward and delete
-    looked rows up in the vestigial `sigilBlights`. So every triage action on
-    anything Pulse filed answered "Blight not found", for a row the inbox had
-    just displayed.
+    The regression these guard: `listBlights` once read the live table while
+    resolve, forward and delete looked rows up in a second, vestigial one. So
+    every triage action answered "Blight not found", for a row the inbox had
+    just displayed. One table, scoped by `campaignId`, is what fixed it.
   */
 
   const fileBlight = async (
@@ -105,8 +98,6 @@ describe("Lore MCP — blights", () => {
       message: "Cannot read properties of undefined",
       stack: "TypeError\n    at cart (app.js:1:1)",
       sourceUrl: "https://demo.example.com/cart",
-      release: "2026-08-01-a",
-      pulseUrl: "https://pulse.example.com/apps/demo?view=errors",
       origin: "client",
       count: 7,
       firstSeenAt: "2026-08-01T10:00:00.000Z",
@@ -114,9 +105,10 @@ describe("Lore MCP — blights", () => {
       ...over,
     } as any);
 
-  it("should list what a source filed, with the link back to Pulse", async () => {
-    // `pulseUrl` and `sourceId` were being stripped on the way out: the
-    // response schema still named `sigilId`, and a schema is what serializes.
+  it("should list everything the row carries, not a subset", async () => {
+    // A schema is what serializes: any field the tool result schema omits is
+    // silently dropped on the way out, however well the row is populated. This
+    // asserts the whole payload an agent triages from survives the round trip.
     const { probe, blightTools, campaign, call } = await setup();
     await fileBlight(probe, campaign.id);
 
@@ -124,10 +116,14 @@ describe("Lore MCP — blights", () => {
 
     expect(res.openCount).toBe(1);
     expect(res.blights[0]).toMatchObject({
+      fingerprint: "fp-1",
       name: "TypeError",
+      message: "Cannot read properties of undefined",
+      stack: "TypeError\n    at cart (app.js:1:1)",
+      sourceUrl: "https://demo.example.com/cart",
+      origin: "client",
       count: 7,
-      release: "2026-08-01-a",
-      pulseUrl: "https://pulse.example.com/apps/demo?view=errors",
+      status: "open",
     });
   });
 

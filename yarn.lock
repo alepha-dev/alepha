@@ -71,10 +71,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/pulse-client@workspace:*, @alepha/pulse-client@workspace:packages/@alepha/pulse-client":
+"@alepha/sigil@workspace:*, @alepha/sigil@workspace:packages/@alepha/sigil":
   version: 0.0.0-use.local
-  resolution: "@alepha/pulse-client@workspace:packages/@alepha/pulse-client"
+  resolution: "@alepha/sigil@workspace:packages/@alepha/sigil"
   dependencies:
+    "@testing-library/dom": "npm:^10.4.1"
+    "@testing-library/react": "npm:^16.3.2"
     "@types/react": "npm:^19.2.17"
     "@types/react-dom": "npm:^19.2.3"
     alepha: "npm:0.24.0"
@@ -8488,7 +8490,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "example-bay-app@workspace:apps/example-bay-app"
   dependencies:
-    "@alepha/pulse-client": "workspace:*"
+    "@alepha/sigil": "workspace:*"
     alepha: "workspace:*"
     better-sqlite3: "npm:^13.0.1"
     drizzle-kit: "npm:1.0.0-rc.4"
@@ -10487,7 +10489,7 @@ __metadata:
   resolution: "lore@workspace:apps/lore"
   dependencies:
     "@alepha/devtools": "workspace:*"
-    "@alepha/pulse-client": "workspace:*"
+    "@alepha/sigil": "workspace:*"
     "@alepha/ui": "workspace:*"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/utilities": "npm:^3.2.2"
@@ -12538,7 +12540,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "pulse@workspace:apps/pulse"
   dependencies:
-    "@alepha/pulse-client": "workspace:*"
+    "@alepha/sigil": "workspace:*"
     "@alepha/ui": "workspace:*"
     "@tailwindcss/vite": "npm:^4.3.3"
     "@types/react": "npm:^19.2.17"

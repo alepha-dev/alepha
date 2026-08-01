@@ -4,6 +4,11 @@ ignores:
     - '@alepha/mantine'
     - '@alepha/mqtt'
     - '@alepha/devtools'
+    # Self-referenced by its own spec, which resolves `@alepha/sigil/react`
+    # through the package's `exports` map — the only way to prove that subpath
+    # is reachable outside the `browser` condition. Same treatment as the other
+    # workspace packages above.
+    - '@alepha/sigil'
     - '@vitejs/plugin-react'
     - 'jsdom'
     - '@vitest/coverage-v8'

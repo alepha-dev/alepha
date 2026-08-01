@@ -624,8 +624,7 @@ export class FolioController {
    * caps at 50 rows by construction.
    *
    * Bounded by the per-folio retention cap × folio count, so no cursor
-   * pagination in v1. Revisit if this query shows up in slow-query
-   * telemetry.
+   * pagination in v1. Revisit if this query shows up in the slow-query log.
    */
   listCampaignActivity = $action({
     use: [$secure({ permissions: ["folio:read"] })],

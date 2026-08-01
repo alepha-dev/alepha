@@ -19,6 +19,7 @@ class TestDbCommand extends DbCommand {
   public testStripPublicSchemaFromMigrations =
     this.stripPublicSchemaFromMigrations.bind(this);
   public readonly testBaselineMark = this.baselineMark;
+  public readonly testCreate = this.create;
 }
 
 /**
@@ -646,6 +647,33 @@ describe("DbCommand", () => {
       const shape = (cmd.testBaselineMark.flags as unknown as { shape: object })
         .shape;
       expect(Object.keys(shape)).not.toContain("reset");
+    });
+  });
+
+  describe("migrations create", () => {
+    /**
+     * `--hints` carries a JSON document, not a label. drizzle-kit demands
+     * every ambiguous rename-vs-create in a diff be resolved in a SINGLE
+     * invocation, so rewriting one entity family already needs a dozen
+     * entries — far past `z.text()`'s default 255-character cap, which
+     * rejected the flag outright rather than truncating it.
+     */
+    it("accepts a --hints array long enough to resolve a whole entity family", () => {
+      const { db } = create();
+
+      const hints = JSON.stringify(
+        Array.from({ length: 11 }, (_, index) => ({
+          type: "create",
+          kind: "column",
+          entity: ["public", "sigils", `column_${index}`],
+        })),
+      );
+      expect(hints.length).toBeGreaterThan(255);
+
+      const flags = db.testCreate.flags as unknown as {
+        safeParse: (value: unknown) => { success: boolean };
+      };
+      expect(flags.safeParse({ hints }).success).toBe(true);
     });
   });
 });

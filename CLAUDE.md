@@ -71,8 +71,10 @@ Alepha uses a hybrid monorepo structure:
 **Specialized Packages**
 - `@alepha/ui` - Shared shadcn Base UI Nova components. Edit `src/components/` directly. Stock shadcn primitives can be refreshed with `yarn w @alepha/ui sync`, which fetches them from the public `ui.shadcn.com/r/styles/base-nova` registry. Our own blocks (controls, admin, auth, app-shell, alepha-table, …) are not touched by `sync` — they're hand-maintained.
 - `@alepha/devtools` - Development tools and inspection UI
+- `@alepha/sigil` - The reporting half of a sigil: an app sends its page views, Web Vitals and errors to the sink named by `SIGIL_SINK` + `SIGIL_KEY`. Lore is the sink (`apps/lore`, `SigilIngestController`)
 - `@alepha/payments-stripe` - Stripe payments backend
-- `@alepha/protobuf` - Protocol Buffers support
+- `@alepha/payments-mollie` - Mollie payments backend
+- `@alepha/mqtt` - MQTT transport
 
 ### Lore (`apps/lore`)
 

@@ -32,12 +32,12 @@ Lore lives inside the **Alepha monorepo** at `apps/lore`. The Alepha framework i
 apps/lore/                # This app
 ├── src/                  # App source
 │   ├── api/              # Backend
-│   │   ├── controllers/  # 21 controllers — see list below
+│   │   ├── controllers/  # 20 controllers — see list below
 │   │   ├── entities/     # 23 entities — see list below
-│   │   ├── providers/    # AppSecurityProvider (membership/owner gates), LoreFileAccessProvider (per-file IDOR gate), LoreSigilForwardProvider (in-process sigil forward)
-│   │   ├── jobs/         # ChapterJobs, InvitationJobs, QuestJobs (reminder sweep), SigilJobs (blight purge)
+│   │   ├── providers/    # AppSecurityProvider (membership/owner gates), LoreFileAccessProvider (per-file IDOR gate)
+│   │   ├── jobs/         # BlightJobs (retention purge), ChapterJobs, InvitationJobs, QuestJobs (reminder sweep)
 │   │   ├── schemas/      # Request/response schemas
-│   │   └── services/     # 25 services — see list below
+│   │   └── services/     # 18 services — see list below
 │   ├── mcp/              # MCP protocol integration (tools, resources)
 │   ├── web/
 │   │   ├── app/          # Main SPA
@@ -56,11 +56,11 @@ apps/lore/                # This app
 
 **Controllers (20)** — `AdminInvitation`, `Blight`, `Blob`, `Campaign`, `CampaignQuestPortability`, `CampaignStats`, `Chapter`, `Directory`, `Folio`, `Identity`, `Insights`, `Invitation`, `Kanban`, `Petition`, `Quest`, `Session`, `Sigil`, `SigilIngest`, `User`, `Version`.
 
-**Entities (23)** — `archiveBlobs`, `archiveDirectories`, `archiveNames`, `blightIgnoreRules`, `campaigns`, `chapters`, `files`, `members`, `folioLinks`, `folioRevisions`, `folios`, `identities`, `invitations`, `petitions`, `quests`, `sessions`, `sigilBlightRate`, `sigilBlights`, `sigils`, `sigilUniqueVisitors`, `sigilViews`, `sigilVitals`, `users`.
+**Entities (23)** — `archiveBlobs`, `archiveDirectories`, `archiveNames`, `blightIgnoreRules`, `blights`, `campaigns`, `chapters`, `files`, `folioLinks`, `folioRevisions`, `folios`, `identities`, `invitations`, `members`, `petitions`, `quests`, `sessions`, `sigilErrorGroups`, `sigils`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `users`.
 
-**Services (23)** — `ArchiveBlobService`, `ArchiveDirectoryService`, `ArchiveNameService`, `BeaconIngestService`, `BlightIngestService`, `BlightRuleService`, `CampaignLimits`, `FolioHistoryService`, `FolioLinkService`, `InvitationService`, `PetitionRateLimiter`, `PinnedFolioFolder`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestRunner`, `SigilIngestSupport`, `SigilService`, `VitalsIngestService`, plus `bot-ua-patterns` and `parsers/`.
+**Services (18)** — `ArchiveBlobService`, `ArchiveDirectoryService`, `ArchiveNameService`, `BlightRuleService`, `CampaignLimits`, `CampaignSecurityService`, `FolioHistoryService`, `FolioLinkService`, `InvitationService`, `PetitionRateLimiter`, `PinnedFolioFolder`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
 
-**MCP tools** — `ArchiveTools`, `CampaignTools`, `ChapterTools`, `FolioTools`, `PetitionTools`, `QuestTools`, `SigilTools`.
+**MCP tools (8)** — `ArchiveTools`, `BlightTools`, `CampaignTools`, `ChapterTools`, `FolioTools`, `PetitionTools`, `QuestTools`, `SigilTools`.
 
 ## Routes
 
@@ -80,7 +80,7 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/c/:campaignId/chronicles/party` | `chroniclesParty` | `campaign/chronicles/ChroniclesParty.tsx` | Per-member contribution |
 | `/c/:campaignId/petitions` | `campaignPetitions` | `campaign/petitions/CampaignPetitions.tsx` | Owner inbox: triage bug/feature requests |
 | `/c/:campaignId/blights` | `campaignBlights` | blights page | Crash-telemetry inbox (sigil-fed) |
-| `/c/:campaignId/insights` | `campaignInsights` | insights page | Beacon / vitals analytics |
+| `/c/:campaignId/insights` | `campaignInsights` | insights page | Beacon / vitals analytics + per-environment error budget |
 | `/c/:campaignId/q/:shortId` | `campaignQuest` | `campaign/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
 | `/c/:campaignId/q/:shortId/graph` | `campaignQuestGraph` | `campaign/quest/QuestGraph.tsx` | Quest dependency graph |
 | `/c/:campaignId/archive` | `campaignFolios` | `folios/FoliosLayout.tsx` | Folio + archive index (note: path is `/archive`, route name is still `campaignFolios`) |
@@ -97,7 +97,8 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/c/:campaignId/settings/sigils` | `campaignSettingsSigils` | `…/CampaignSettingsSigilsPage.tsx` | Sigil inventory + module toggles |
 | `/c/:campaignId/settings/chapters` | `campaignSettingsChapters` | settings page | Chapter config |
 | `/c/:campaignId/request` | `campaignPetitionRequest` | `campaign/petitions/CampaignPetitionRequest.tsx` | First-party petition form (login required). Top-level, **not** nested under the `campaign` layout — no membership check |
-| `/c/:campaignId/p/:petitionId` | `campaignPetitionStatus` | `campaign/petitions/CampaignPetitionStatus.tsx` | Reporter-facing status page; readable by reporter or campaign owner |
+
+A reporter follows their own submissions at `/me/petitions` (`myPetitions`, declared in `src/web/app/components/profile/me/MeRouter.ts`, not in `AppRouter`). The old per-petition status page (`/c/:id/p/:petitionId`) was retired in its favour.
 
 HTTP API routes follow the same vocabulary: `/campaigns/:id/export`, `/quests/attachments`, `/kanban/:campaignId`. MCP tools are `campaign_*`, `quest_*`, `chapter_*`, `folio_*`, `petition_*`.
 
@@ -177,7 +178,7 @@ User-submitted bug reports / feature requests that the campaign owner triages.
 **Submission flow (login required)** — there are **two** live entry points; both land on `POST /campaigns/:id/petitions`:
 - `/c/:campaignId/request` — first-party form on lore (`CampaignPetitionRequest.tsx`, route `campaignPetitionRequest`). Anonymous visitors see a sign-in CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).
 - External "report a bug" buttons on third-party sites are plain `<a target="_blank" rel="noopener noreferrer">` anchors pointing to `/c/:id/request?path=<encoded>&url=<encoded>&type=bug` — no embedded JS, no screenshot capture, no widget. The page reads query params, persists them to `sessionStorage` (key `lor.petition.draft.<campaignId>`), cleans the URL via `history.replaceState`, and re-reads after the OAuth round-trip. Cleared on successful submit.
-> There is now **one** path plus external links. The sigil in-app dialog is gone with the package rename: `@alepha/pulse-client` mounts nothing in a host app's React tree, and hands out the petition URL through `usePetitionUrl()` for the app to render where it likes.
+> There is now **one** path plus external links. The screenshot-capturing in-app dialog is gone with the package rename. `@alepha/sigil` mounts nothing *automatically*; it ships an opt-in React surface at `@alepha/sigil/react` — `<SigilRoot />` (a floating feedback button that links out to the petition form) and `usePetitionUrl()` for an app that renders its own link. The subpath is condition-free so an SSR host resolves it on the server pass too.
 
 **Reporter-facing views** — `/me/petitions` (own submissions across campaigns) and `/c/:id/p/:petitionId` (single status page, readable by the reporter or the campaign owner).
 
@@ -248,16 +249,35 @@ This is a **confidentiality requirement**, not a tidiness one. Before it existed
 
 ## Sigils, Blights, Beacon, Vitals
 
-A **source** is a credential issued to an *observer* — in practice a Pulse instance — which has already deduplicated what it sends. Sigils were the previous model: credentials handed to *websites* so they could push raw telemetry straight here. That whole surface is gone; `sigils` and its tables remain in the schema, vestigial, because dropping a table on D1 cascade-wipes its children.
+A **sigil** is one environment of one application — `lore` in `production` is a different sigil from `lore` in `staging`, and they report separately, because an error budget shared between environments is nobody's budget. It authenticates with a `sg_`-prefixed bearer token, stored hashed and shown once at creation; `tokenPrefix` exists so the UI can name a credential it cannot reconstruct.
 
-Sources are managed at `/c/:id/settings/sources` (owner-only, key shown once), and `features.blights` is still the master switch for the inbox.
+Managed at `/c/:id/settings/sigils` (`SigilController`, reads member-gated, mutations owner-gated — no role, no allowlist: owning the campaign is the whole gate). `features.sigils` is the master switch, with `petitions` / `blights` / `beacon` / `vitals` as the per-capability toggles `GET /sigils/config` reports back to the app.
 
-- **Blights** — one row per distinct failure, keyed by `fingerprint`, with a count. The owner triages them in the inbox (`/c/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` zone, provenance recorded in `quests.source`). Purged on a retention window (`campaign.retentionDays ?? 30`) by `BlightJobs`, which sweeps both the current `blights` table and the legacy `sigil_blights`; resolved and `quest:`-forwarded rows are kept as audit trail.
-- **Analytics moved out.** Pageviews, unique visitors and web-vitals live in Pulse now (`apps/pulse`), which is where the apps report. Lore keeps the editorial half — deciding which failures become work.
+**The toggles are enforced, not advertised.** `SigilIngestService.gatesFor` intersects the campaign's features with the sigil's `kinds`, and both `absorb` (the write gate) and `/sigils/config` (the advertisement) call it — one definition, so the sink cannot invite a payload it then discards. Enforcing on write is not redundant with the config poll: `sigils.kinds` is written once at creation and has **no update path anywhere**, and the reporting client fails open on any config error, so gating on the token alone left an owner's "off" switch as a suggestion.
+
+**Rotate, don't delete.** All four aggregate tables cascade on `sigilId`, so deleting a sigil to revoke a leaked token also erases that environment's views, vitals, uniques and error groups. `rotateSigil` re-mints `tokenHash`/`tokenPrefix` in place — the old token stops resolving immediately (`verify` looks a sigil up *by* its hash) and every row survives. The UI says which is which; so do the MCP tool descriptions.
+
+- **Blights** — one row per distinct failure, keyed by `fingerprint`, with a count. The owner triages them in the inbox (`/c/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` zone, provenance recorded in `quests.source`). Purged on a retention window (`campaign.retentionDays ?? 30`) by `BlightJobs`; resolved and `quest:`-forwarded rows are kept as audit trail. A blight survives its sigil — `blights.sigilId` is `ON DELETE SET NULL`.
+- **Insights** (`/c/:id/insights`, gated on `features.beacon`) — three segments over one payload: **Analytics** (page views, unique visitors), **Performance** (web-vitals p75) and **Errors** (the per-environment error budget), read out of `sigil_views_hourly` / `sigil_uniques_daily` / `sigil_vitals_hourly` / `sigil_error_groups`. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is a `substr(hour, 1, 10)` group over the same rows. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token.
+  - The **Errors** segment is the only place `sigil_error_groups` is read. It answers "is this still happening *in production*", which the Blights inbox cannot: the inbox keys on `(campaignId, fingerprint)` so a triage decision does not fork, which necessarily merges staging into production. Filtered on `lastSeenAt` (still failing), ordered by `count`, capped at 20.
 
 > ⚠️ **`name`, `message`, `stack`, `sourceUrl` on a blight are 100% attacker-controlled** and are shown to the campaign owner — the highest-value target. Render as escaped plain text only. Never markdown, never `dangerouslySetInnerHTML`.
 
-Read endpoints are member-gated; mutations are owner-only. **Ingest is no longer public**: `POST /api/blights/ingest` requires a campaign source key, and there is no unauthenticated write path left.
+Read endpoints are member-gated; mutations are owner-only. **Ingest has its own credential**: `POST /sigils/ingest` and `GET /sigils/config` (`SigilIngestController`, `$route` so they sit at the root) accept a sigil bearer token and nothing else — a logged-in member cannot post telemetry, and a sigil token opens nothing but those two routes.
+
+**The reporting half is a package, not an app.** `packages/@alepha/sigil` is what an enrolled app imports; it reads `SIGIL_SINK` + `SIGIL_KEY` (the token minted above) from env, aggregates errors by fingerprint before they leave the process, and polls `/sigils/config` for a kill-switch it obeys immediately. The two wire paths are one definition (`@alepha/sigil/paths`) imported by both ends — the client fails open, so a path disagreement is silent in both directions and has drifted once already. Lore itself sets neither variable: it is the sink, and a Cloudflare Worker cannot fetch its own hostname.
+
+**Where to look**
+
+- Entities: `src/api/entities/sigils.ts` (the credential + `(campaignId, app, environment)` unique index), `blights.ts`, `sigilErrorGroups.ts`, `sigilViewsHourly.ts`, `sigilUniquesDaily.ts`, `sigilVitalsHourly.ts`
+- Owner CRUD: `src/api/controllers/SigilController.ts` (create / list / rotate / delete)
+- Ingest: `src/api/controllers/SigilIngestController.ts` + `src/api/services/SigilIngestService.ts`
+- Credential: `src/api/services/SigilTokenService.ts` (mint / verify / bearer)
+- Triage: `src/api/controllers/BlightController.ts`, `src/api/services/BlightRuleService.ts`, `src/api/jobs/BlightJobs.ts`
+- Analytics: `src/api/controllers/InsightsController.ts`
+- UI: `src/web/app/components/campaign/settings/CampaignSettingsSigilsPage.tsx` (+ `…SigilRow`, `…SigilToken`), `campaign/blights/CampaignBlights.tsx`, `campaign/insights/CampaignInsights.tsx` (+ `…Analytics`, `…Performance`, `…Errors`)
+- MCP: `src/mcp/tools/SigilTools.ts`, `src/mcp/tools/BlightTools.ts`
+- E2E: `e2e/sigil.spec.ts` — enrol → ingest → triage → rotate → delete, with ingest driven through Playwright's isolated `request` fixture (the page's `fetch` is patched to attach the session bearer, which would replace the sigil token)
 
 ## Archive (directories + blobs)
 
@@ -342,24 +362,36 @@ Mitigations, in order of preference:
 
 **CI auto-deploys to prod on every push to `main`** (alepha monorepo's `.github/workflows/ci.yml` → `deploy-lore-production` job → `yarn alepha platform up --env production` from `apps/lore`). There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
 
-## ⚠️ The Cloudflare WAF rule on `/sigils/` is now dead weight — remove it
+## ⚠️ The Cloudflare WAF rule on `/sigils/` has a job again — keep it
 
-Lore no longer exposes any public, unauthenticated ingestion endpoint. The
-`/sigils/*` routes are gone: what files blights now is an enrolled source
-presenting a key (`POST /api/blights/ingest`), so there is nothing left for a
-per-IP rate limit to protect.
+**This section previously said the rule was dead weight and told you to delete
+it. That was true while nothing served `/sigils/`. It is false now — do not
+delete it.**
 
-**Manual step, in the Cloudflare dashboard** — it was never in code, so it will
-not disappear with a deploy: `lore.alepha.dev` zone → Security → WAF → Rate
-limiting rules → delete the rule matching
+Lore is a telemetry sink again, and `/sigils/ingest` + `/sigils/config`
+(`SigilIngestController`, `$route` so they sit at the root rather than under
+`/api`) are publicly reachable by construction: apps report to them from every
+machine they run on. They authenticate with a bearer sigil token and answer 401
+to anything else — but an unauthenticated caller still costs a request, a token
+lookup and a SHA-256, and the token itself sits in cleartext on every host that
+runs the reporting app, so a leaked one is a plausible flood.
+
+There is **no in-app rate limiter on this path**. The old `sigil_blight_rate`
+table was dropped in the sigil-family rebuild and nothing replaced it. The
+Cloudflare rate-limiting rule is currently the only thing in front of these two
+endpoints.
+
+**Where it lives** — the dashboard, not code, so it will not reappear from a
+deploy if someone removes it: `lore.alepha.dev` zone → Security → WAF → Rate
+limiting rules → the rule matching
 `http.request.uri.path contains "/sigils/"`.
 
-Harmless if left (it matches nothing), but a rule nobody can explain is a rule
-someone will one day widen or copy.
+If an in-app limiter is ever added, this rule stays anyway: the point of an edge
+rule is that the flood never reaches the Worker.
 
 ## Tests
 
-52 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
+49 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
 
 - `mcp-security.spec.ts` — MCP auth, API keys, user isolation
 - `campaign-stats.spec.ts` — chronicles aggregation
@@ -371,7 +403,9 @@ someone will one day widen or copy.
 - `quest-reminder.spec.ts` — quest reminder/notification logic
 - `folio-protected-history.spec.ts` — **regression guard**: the protection-domain invariant (no plaintext left in `folio_revisions` after encrypting; pinned revisions are not exempt)
 - `folio-*.spec.ts` — links, backlinks, tidy, pinning, permissions, history, activity, blob links
-- `sigil-*.spec.ts` / `vitals-ingest.spec.ts` / `blight-controller.spec.ts` — ingest, origin gating, rate limiting, purge jobs, migration safety
+- `sigil-controller.spec.ts` / `sigil-ingest.spec.ts` / `sigil-entities.spec.ts` — sigil CRUD + rotation, token verification, capability gating, aggregate upserts
+- `insights-controller.spec.ts` — beacon/vitals windows and the p75 walk (clock pinned with `DateTimeProvider.pause()`)
+- `blight-tools.spec.ts` — the MCP triage surface
 - `archive-module.spec.ts` — directory tree + blobs
 - Shared fixtures live in `test/fixtures/`
 
@@ -379,6 +413,8 @@ someone will one day widen or copy.
 
 `e2e/` is split by feature, not by user journey. One `<feature>.spec.ts` per major surface, each covering happy path + key edge cases:
 
+- `sigil.spec.ts` — enrol an environment → ingest as it → triage in the inbox → rotate → delete
+- `blights.spec.ts` — regression guard for the inbox render loop (the ingest path lives in `sigil.spec.ts`)
 - `quest.spec.ts` — quest lifecycle (open → accept → complete) + reminder UI
 - `petition.spec.ts` — petition submit → accept → link quests → status progression
 - `register.spec.ts` — registration form + email verification

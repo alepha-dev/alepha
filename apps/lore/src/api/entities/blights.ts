@@ -1,25 +1,19 @@
 import { type Static, z } from "alepha";
 import { $entity, db } from "alepha/orm";
-import { campaignSources } from "./campaignSources.ts";
 import { campaigns } from "./campaigns.ts";
+import { sigils } from "./sigils.ts";
 
 /**
- * A deduplicated failure reported by a source — the inbox Lore triages.
+ * A deduplicated failure — the inbox Lore triages.
  *
- * A new table rather than a change to `sigil_blights`, and deliberately so:
- * that one's `sigilId` is `NOT NULL` with a cascade, and making it nullable
- * means a table rebuild. On D1 a rebuild is a `DROP TABLE`, and a `DROP TABLE`
- * on a cascade parent silently takes its children with it — `PRAGMA
- * foreign_keys=OFF` is ignored there. The old table stays, untouched and
- * vestigial, and the inbox reads both until retention has emptied it.
+ * One row per `(campaignId, fingerprint)`, incremented on ingest rather than
+ * stored per-occurrence: a crash loop is one fact with a count, not a log.
  *
  * ⚠️ SECURITY: `name`, `message`, `stack` and `sourceUrl` are entirely
  * attacker-controlled — they originate in an app's runtime, which handles input
  * from the public. Render them as escaped plain text only, never through
  * markdown or `dangerouslySetInnerHTML`, and treat them as data when they reach
  * an agent through MCP.
- *
- * Purely additive `CREATE TABLE` — D1-safe.
  */
 export const blights = $entity({
   name: "blights",
@@ -29,35 +23,35 @@ export const blights = $entity({
       onDelete: "cascade",
     }),
     /**
-     * Which source filed it. Nulled rather than cascaded on source deletion:
-     * revoking a key must not erase the bugs it reported.
-     */
-    sourceId: db
-      .ref(z.uuid(), () => campaignSources.cols.id, { onDelete: "set null" })
-      .optional(),
-    /**
-     * `sha256(errorName + ":" + normalizedFirstFrame)`, computed by the sender
-     * with the shared helper from `@alepha/pulse-client/fingerprint`.
+     * Which sigil reported it **most recently**.
      *
-     * No app identifier inside, unlike the sigil-era fingerprint: scoping is
-     * carried by the campaign here and by the app on Pulse's side. That also
-     * makes the value portable — the same bug keeps its identity if the app
-     * moves between observers.
+     * Not "which sigil filed it": a row is keyed `(campaignId, fingerprint)`,
+     * so one bug present in both staging and production is one row, and this
+     * column is overwritten by whichever environment reported last. That is
+     * deliberate — "still happening, most recently over there" is the useful
+     * fact for triage, and it is what the inbox's filter-by-sigil means. The
+     * lossless per-environment split lives in `sigil_error_groups`, keyed
+     * `(sigilId, fingerprint)`.
+     *
+     * Nulled rather than cascaded on sigil deletion: deleting a sigil is how a
+     * token is revoked, and that must not erase the bugs it reported.
+     */
+    sigilId: db.ref(z.uuid().optional(), () => sigils.cols.id, {
+      onDelete: "set null",
+    }),
+    /**
+     * `sha256(errorName + ":" + normalizedFirstFrame)`, computed by the
+     * client with the shared helper from `@alepha/sigil/fingerprint`.
+     *
+     * Survives a deploy: bundle hashes and line numbers are normalised away,
+     * so a bug that is not fixed keeps its identity instead of reappearing as
+     * new after every release.
      */
     fingerprint: z.string().min(1).max(128),
     name: z.string().max(200),
     message: z.string().max(2_000),
     stack: db.default(z.string().max(4_096), ""),
     sourceUrl: db.default(z.string().max(2_000), ""),
-    /** Release the failure was seen in, when the reporter knows one. */
-    release: z.string().max(200).optional(),
-    /**
-     * Deep link back into the observer that reported it.
-     *
-     * The cheapest integration there is: a blight here, one click to the group
-     * it was aggregated from, with its samples and its curve.
-     */
-    pulseUrl: z.string().max(2_000).optional(),
     origin: db.default(
       z.enum(["client", "server"]).meta({ mode: "text" }),
       "client",
@@ -77,3 +71,11 @@ export const blights = $entity({
 
 export type Blight = Static<typeof blights.schema>;
 export type BlightInsert = Static<typeof blights.insertSchema>;
+
+/**
+ * Prefix used in a blight's `status` column when it has been forwarded to a
+ * quest: the status becomes `quest:<questId>`. Shared between the controller
+ * (which writes / detects it) and the inbox UI (which strips it for display)
+ * so the literal string and its length never drift apart.
+ */
+export const QUEST_STATUS_PREFIX = "quest:";

@@ -11,7 +11,6 @@ import { folios } from "./entities/folios.ts";
 import { members } from "./entities/members.ts";
 import { petitions } from "./entities/petitions.ts";
 import { quests } from "./entities/quests.ts";
-import { sigilBlights } from "./entities/sigilBlights.ts";
 import { sigils } from "./entities/sigils.ts";
 
 /**
@@ -42,7 +41,6 @@ export const schema = {
   archiveDirectories,
   archiveBlobs,
   sigils,
-  sigilBlights,
   blightIgnoreRules,
 };
 
@@ -231,14 +229,6 @@ export const relations = $relations(schema, (r) => ({
       to: r.campaigns.id,
     }),
     author: r.one.users({ from: r.sigils.createdBy, to: r.users.id }),
-    blights: r.many.sigilBlights({
-      from: r.sigils.id,
-      to: r.sigilBlights.sigilId,
-    }),
-  },
-
-  sigilBlights: {
-    sigil: r.one.sigils({ from: r.sigilBlights.sigilId, to: r.sigils.id }),
   },
 
   blightIgnoreRules: {

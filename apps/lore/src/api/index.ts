@@ -4,18 +4,19 @@ import { BlightController } from "./controllers/BlightController.ts";
 import { BlobController } from "./controllers/BlobController.ts";
 import { CampaignController } from "./controllers/CampaignController.ts";
 import { CampaignQuestPortabilityController } from "./controllers/CampaignQuestPortabilityController.ts";
-import { CampaignSourceController } from "./controllers/CampaignSourceController.ts";
 import { CampaignStatsController } from "./controllers/CampaignStatsController.ts";
 import { ChapterController } from "./controllers/ChapterController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
 import { IdentityController } from "./controllers/IdentityController.ts";
+import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
 import { PetitionController } from "./controllers/PetitionController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
-import { SourceIngestController } from "./controllers/SourceIngestController.ts";
+import { SigilController } from "./controllers/SigilController.ts";
+import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { UserController } from "./controllers/UserController.ts";
 import { VersionController } from "./controllers/VersionController.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
@@ -42,7 +43,8 @@ import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
-import { VestigialEntities } from "./services/VestigialEntities.ts";
+import { SigilIngestService } from "./services/SigilIngestService.ts";
+import { SigilTokenService } from "./services/SigilTokenService.ts";
 
 export const LoreApi = $module({
   name: "lore.api",
@@ -64,7 +66,6 @@ export const LoreApi = $module({
     ChapterJobs,
     QuestJobs,
     BlightJobs,
-    VestigialEntities,
     QuestNotifications,
     InvitationNotifications,
     PetitionRateLimiter,
@@ -76,6 +77,12 @@ export const LoreApi = $module({
     QuestService,
     CampaignLimits,
     BlightRuleService,
+    // The sink half: the token an app presents, and what happens to what it
+    // sends. `SigilIngestService` is also the only place the four aggregate
+    // tables are declared — an entity exists, for the migration generator,
+    // exactly as long as some `$repository` names it.
+    SigilTokenService,
+    SigilIngestService,
     // Controllers
     QuestController,
     CampaignController,
@@ -92,8 +99,9 @@ export const LoreApi = $module({
     DirectoryController,
     BlobController,
     PetitionController,
-    SourceIngestController,
-    CampaignSourceController,
+    SigilController,
+    SigilIngestController,
+    InsightsController,
     BlightController,
     VersionController,
   ],

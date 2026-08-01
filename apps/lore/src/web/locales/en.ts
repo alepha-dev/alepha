@@ -379,7 +379,7 @@ export default {
   "campaign.settings.zones.never": "—",
   "campaign.settings.nav.kanban": "Kanban",
   "campaign.settings.nav.folios": "Folios",
-  "campaign.settings.nav.sources": "Sources",
+  "campaign.settings.nav.sigils": "Sigils",
   "campaign.settings.nav.chapters": "Chapters",
   "campaign.settings.nav.quests": "Quests",
   "campaign.chronicles.nav.overview": "Overview",
@@ -451,7 +451,7 @@ export default {
   "campaign.settings.feature.chapters.description":
     "Group quests into chapters with start / end dates and changelogs.",
   "campaign.settings.feature.sigils.description":
-    "Issue scoped, revocable script identifiers that let your sites embed Lore capabilities.",
+    "Enrol your applications so they can report crashes, page views and web vitals here — one token per environment.",
   "campaign.settings.delete.modal.title": "Delete Campaign",
   "campaign.settings.delete.modal.description":
     "This action cannot be undone. This will permanently destroy the campaign and all its quests.",
@@ -593,6 +593,21 @@ export default {
   "insights.range.1d": "Today",
   "insights.range.7d": "7 days",
   "insights.range.30d": "30 days",
+  "insights.tab.analytics": "Analytics",
+  "insights.tab.performance": "Performance",
+  "insights.tab.errors": "Errors",
+  "insights.uniqueVisitors": "Unique visitors",
+  "insights.uniqueVisitors.note":
+    "Cookieless distinct visitors — the trustworthy headline.",
+  "insights.totalViews": "Total views",
+  "insights.totalViews.note": "Best-effort — directional, not exact.",
+  "insights.totalViews.tooltip":
+    "Raw page-view count. Nothing throttles what an enrolled app reports, so this number is inflatable by whoever holds its token. Trust the unique-visitor count instead.",
+  "insights.overTime": "Views over time",
+  "insights.topCountries": "Top countries",
+  "insights.topPaths": "Top pages",
+  "insights.empty": "No page views recorded in this range yet.",
+  "insights.error": "Failed to load insights. Please try again.",
   "insights.vitals.title": "Web Vitals",
   "insights.vitals.subtitle": "75th percentile",
   "insights.vitals.lcp": "LCP",
@@ -604,6 +619,16 @@ export default {
   "insights.vitals.good": "Good",
   "insights.vitals.needsImprovement": "Needs work",
   "insights.vitals.poor": "Poor",
+  "insights.errors.title": "Error budget",
+  "insights.errors.subtitle": "per environment",
+  "insights.errors.heading": "Still happening",
+  "insights.errors.col.error": "Error",
+  "insights.errors.col.environment": "Environment",
+  "insights.errors.col.count": "Occurrences",
+  "insights.errors.col.firstSeen": "First seen",
+  "insights.errors.col.lastSeen": "Last seen",
+  "insights.errors.empty":
+    "No errors reported in this range. Unlike the Blights inbox, this list keeps each environment separate — so a bug fixed in production still shows here if staging is still hitting it.",
 
   "blights.empty":
     "No blights. Crashes captured from your sigils will appear here.",
@@ -614,7 +639,6 @@ export default {
   "blights.col.page": "Page",
   "blights.col.count": "Count",
   "blights.col.lastSeen": "Last seen",
-  "blights.col.release": "Release",
   "blights.origin.client": "Browser",
   "blights.origin.server": "Server",
   "blights.filter.allSigils": "All sigils",
@@ -647,7 +671,49 @@ export default {
 
   "petitions.feature.title": "Petitions",
   "petitions.feature.description":
-    "Allow sigils with the Petition capability to receive feedback submissions from partner sites.",
+    "Hand enrolled apps a link back to this campaign's feedback form.",
+
+  "beacon.feature.title": "Beacon",
+  "beacon.feature.description":
+    "Collect cookieless page views and unique visitors from enrolled environments.",
+
+  "vitals.feature.title": "Vitals",
+  "vitals.feature.description":
+    "Collect Core Web Vitals (LCP, CLS, INP, FCP, TTFB) from enrolled environments.",
+
+  "sigils.title": "Enrolled environments",
+  "sigils.subtitle":
+    "One sigil per application per environment. Each holds its own token and reports on its own.",
+  "sigils.empty":
+    "No environment enrolled yet. Until one is, nothing can report here.",
+  "sigils.features.title": "Capabilities",
+  "sigils.features.subtitle":
+    "Turn Sigils on, then choose what the ingest endpoint accepts.",
+  "sigils.create.app": "Application",
+  "sigils.create.appPlaceholder": "lore",
+  "sigils.create.environment": "Environment",
+  "sigils.create.environmentPlaceholder": "production",
+  "sigils.create.submit": "Enrol",
+  "sigils.token.title":
+    "Copy this token now — it is stored hashed and will never be shown again.",
+  "sigils.token.copy": "Copy token",
+  "sigils.token.done": "Done",
+  "sigils.lastSeen": "last reported $1",
+  "sigils.neverSeen": "never reported",
+  "sigils.action.rotate": "Rotate",
+  "sigils.action.delete": "Delete",
+  "sigils.rotate.confirmTitle": "Rotate the token for $1?",
+  "sigils.rotate.confirmDescription":
+    "The current token stops working immediately and a new one is shown once. Everything this environment has reported is kept — this is how you revoke a leaked token without losing its history.",
+  "sigils.rotate.confirm": "Rotate",
+  "sigils.delete.confirmTitle": "Delete $1?",
+  "sigils.delete.confirmDescription":
+    "This erases everything this environment ever reported — page views, web vitals, unique visitors and its error budget — along with its token. Blights already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
+  "sigils.delete.confirm": "Delete",
+  "sigils.toast.created": "Sigil created",
+  "sigils.toast.rotated": "Token rotated",
+  "sigils.toast.copied": "Token copied",
+  "sigils.toast.deleted": "Sigil deleted",
 
   "petitions.empty.pending": "No pending petitions.",
   "petitions.empty.status": "No $1 petitions.",

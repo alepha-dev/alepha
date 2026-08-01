@@ -159,6 +159,11 @@ export class DbCommand {
         .text({
           description:
             "JSON array of drizzle-kit hints resolving ambiguous diffs (e.g. rename-vs-create). drizzle-kit exits with code 2 and prints the exact JSON to pass when a hint is required.",
+          // `z.text()` caps at 255 characters by default, which is roughly two
+          // hints — and drizzle-kit demands every ambiguity be resolved in a
+          // single invocation, so a rewrite of one entity family already blows
+          // past it. The flag carries a JSON document, not a label.
+          size: "rich",
         })
         .optional(),
     }),
