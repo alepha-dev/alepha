@@ -20,7 +20,7 @@ import type {
   BlightController,
   BlightResource,
 } from "@/api/controllers/BlightController.ts";
-import { QUEST_STATUS_PREFIX } from "@/api/entities/sigilBlights.ts";
+import { QUEST_STATUS_PREFIX } from "@/api/entities/blights.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";
 import { currentCampaignAtom } from "../../../atoms/currentCampaignAtom.ts";
