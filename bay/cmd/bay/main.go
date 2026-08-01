@@ -596,8 +596,8 @@ The returned list is handed back to the deploy caller as well as logged. A
 retention policy nobody can observe is indistinguishable from releases
 vanishing on their own.
 */
-func (s *server) pruneReleases(app state.App) []string {
-	removed, err := deploy.Prune(s.instanceDir(app), s.keepReleases)
+func (s *server) pruneReleases(app state.App, protect ...string) []string {
+	removed, err := deploy.Prune(s.instanceDir(app), s.keepReleases, protect...)
 	if err != nil {
 		// Logged alongside whatever was already deleted: a half-completed prune
 		// that reports nothing is how disk usage stops adding up.
@@ -830,9 +830,15 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	//
 	// Pruning before the health check would destroy rollback targets on behalf
 	// of a release that turns out not to start — taking away the escape route at
-	// exactly the moment it is needed. The floor of two on --keep-releases is
-	// what keeps `res.Previous` out of reach of this call.
-	pruned := s.pruneReleases(res.App)
+	// exactly the moment it is needed.
+	//
+	// `res.Previous` is named explicitly rather than left to the keep window,
+	// which does not cover it. It is whatever `state.Release` held before this
+	// deploy, and a manual `bay rollback` sets that to any release the operator
+	// chose — so after rollback-then-deploy the target of the watch started just
+	// above can sit well outside the newest five, with `current` already
+	// repointed here and no longer protecting it.
+	pruned := s.pruneReleases(res.App, res.Previous)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"app":           res.App,
