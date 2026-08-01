@@ -9,14 +9,10 @@ import {
   okSchema,
 } from "alepha/server";
 import type { BlightIgnoreRule } from "../entities/blightIgnoreRules.ts";
-import { blights } from "../entities/blights.ts";
-import {
-  QUEST_STATUS_PREFIX,
-  type SigilBlight,
-  sigilBlights,
-} from "../entities/sigilBlights.ts";
+import { type Blight, blights } from "../entities/blights.ts";
+import { campaignSources } from "../entities/campaignSources.ts";
+import { QUEST_STATUS_PREFIX, sigilBlights } from "../entities/sigilBlights.ts";
 import { sigils } from "../entities/sigils.ts";
-import { relations } from "../relations.ts";
 import { BlightRuleService } from "../services/BlightRuleService.ts";
 import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { QuestService } from "../services/QuestService.ts";
@@ -32,16 +28,27 @@ const BLIGHT_ZONE = "Blights";
  */
 const blightResourceSchema = z.object({
   id: z.integer(),
-  sigilId: z.uuid(),
+  /**
+   * Which enrolled system filed this — a Pulse instance, in practice.
+   *
+   * Was `sigilId`, naming a concept that no longer exists. The schema is what
+   * gets serialized, so it was not merely stale: `sourceId` and `pulseUrl`
+   * were being dropped on the way out, and the link back to the error group in
+   * Pulse never reached anything that could render it.
+   */
+  sourceId: z.uuid().optional(),
   fingerprint: z.string(),
   name: z.string(),
   message: z.string(),
   stack: z.string(),
   sourceUrl: z.string(),
+  /** The release the observer last saw it in. */
+  release: z.string().optional(),
+  /** Absolute link to the error group in Pulse, when it knows its own origin. */
+  pulseUrl: z.string().optional(),
   firstSeenAt: z.string(),
   lastSeenAt: z.string(),
   count: z.integer(),
-  recentIps: z.array(z.string()),
   status: z.string(),
   origin: z.enum(["client", "server"]),
 });
@@ -101,7 +108,7 @@ export class BlightController {
    * which is a two-hop read -- campaign to sigil to blight -- and used to be
    * two statements plus an id list.
    */
-  protected sigilsWith = $repository(relations, "sigils");
+  protected sources = $repository(campaignSources);
   protected security = $inject(CampaignSecurityService);
   protected questService = $inject(QuestService);
   protected ruleService = $inject(BlightRuleService);
@@ -129,42 +136,33 @@ export class BlightController {
     handler: async ({ params, query, user }) => {
       await this.security.assertMember(params.campaignId, user);
 
-      // All campaign sigils — both the join key for the blight query and the
-      // source of the inbox's "filter by sigil" dropdown options.
-      // Revoked sigils are included on purpose -- their historical blights
-      // stay visible -- so both levels carry `force`.
-      const campaignSigils = await this.sigilsWith.findMany({
+      /*
+        The live table only.
+
+        This used to read the vestigial `sigilBlights` as well and merge the
+        two, adapting each NEW row into the OLD shape — which is what buried
+        `sourceId` and `pulseUrl` behind a `sigilId` that no longer means
+        anything. `sigilBlights` stays declared (dropping it on D1 would
+        cascade-wipe its children) but nothing reads it.
+      */
+      const all = (
+        await this.currentBlights.findMany({
+          where: { campaignId: { eq: params.campaignId } },
+          orderBy: [{ column: "count", direction: "desc" }],
+        })
+      ).sort((a, b) => b.count - a.count);
+
+      // The inbox's filter options: which systems file here. Revoked ones are
+      // included on purpose — what they filed stays visible, so the filter has
+      // to be able to name them.
+      const sources = await this.sources.findMany({
         where: { campaignId: { eq: params.campaignId } },
         orderBy: [{ column: "createdAt", direction: "desc" }],
-        force: true,
-        include: {
-          blights: {
-            force: true,
-            orderBy: { column: "count", direction: "desc" },
-          },
-        },
       });
-
-      const pulseOptions = campaignSigils.map((s) => ({
-        id: s.id,
-        label: s.label,
+      const pulseOptions = sources.map((source) => ({
+        id: source.id,
+        label: source.name,
       }));
-
-      const all = [
-        ...campaignSigils.flatMap((s) => s.blights),
-        // Adapted to the legacy row shape so the inbox renders one list. The
-        // two fields it lacks are exactly the two the sigil model added: which
-        // credential reported it, and the hashed IPs it was seen from.
-        ...(
-          await this.currentBlights.findMany({
-            where: { campaignId: { eq: params.campaignId } },
-          })
-        ).map((b) => ({
-          ...b,
-          sigilId: b.sourceId ?? "",
-          recentIps: [] as string[],
-        })),
-      ].sort((a, b) => b.count - a.count);
 
       const openCount = all.filter((b) => b.status === "open").length;
       const items = query.includeResolved
@@ -194,22 +192,19 @@ export class BlightController {
     handler: async ({ params, user }) => {
       await this.security.assertMember(params.campaignId, user);
 
-      // Same two-hop read as the inbox, counted instead of listed. Revoked
-      // sigils are included, so both levels carry `force`.
-      const sigilsWithOpen = await this.sigilsWith.findMany({
-        where: { campaignId: { eq: params.campaignId } },
-        force: true,
-        select: ["id"],
-        include: {
-          blights: { force: true, where: { status: { eq: "open" } } },
+      // One read of the live table, matching the inbox. The two-hop count
+      // through sigils would now return zero for every campaign, because
+      // nothing has written to that table since Lore stopped ingesting — the
+      // badge would sit at 0 over a full inbox.
+      const open = await this.currentBlights.findMany({
+        where: {
+          campaignId: { eq: params.campaignId },
+          status: { eq: "open" },
         },
+        columns: ["id"],
       });
 
-      const count = sigilsWithOpen.reduce(
-        (total, sigil) => total + sigil.blights.length,
-        0,
-      );
-      return { count };
+      return { count: open.length };
     },
   });
 
@@ -231,7 +226,7 @@ export class BlightController {
     handler: async ({ params, user }) => {
       await this.security.assertOwner(params.campaignId, user);
       const blight = await this.loadBlight(params.campaignId, params.blightId);
-      await this.blights.updateById(blight.id, { status: "resolved" });
+      await this.currentBlights.updateById(blight.id, { status: "resolved" });
       return { ok: true };
     },
   });
@@ -277,11 +272,10 @@ export class BlightController {
       // stack goes inside a fenced code block — fences make the content
       // verbatim/escaped and a stray ``` inside the stack is harmless
       // (it just ends the block early; no markup is interpreted).
-      const ipCount = blight.recentIps.length;
       const description = [
         `Forwarded from blight #${blight.id} (${blight.fingerprint.slice(0, 12)}…).`,
         "",
-        `Affected ${blight.count} sessions across ${ipCount} IPs.`,
+        `Seen ${blight.count} time(s), last on ${blight.lastSeenAt}.`,
         "",
         blight.sourceUrl ? `Source: ${blight.sourceUrl}` : "",
         "",
@@ -290,9 +284,8 @@ export class BlightController {
         blight.stack || "(no stack captured)",
         "```",
         "",
-        ipCount > 0
-          ? `Recent IPs (hashed): ${blight.recentIps.join(", ")}`
-          : "",
+        blight.release ? `Release: ${blight.release}` : "",
+        blight.pulseUrl ? `In Pulse: ${blight.pulseUrl}` : "",
       ]
         .join("\n")
         .slice(0, 10_000);
@@ -314,7 +307,7 @@ export class BlightController {
         source: { sigilBlightId: blight.id },
       });
 
-      await this.blights.updateById(blight.id, {
+      await this.currentBlights.updateById(blight.id, {
         status: `${QUEST_STATUS_PREFIX}${quest.id}`,
       });
 
@@ -339,7 +332,7 @@ export class BlightController {
     handler: async ({ params, user }) => {
       await this.security.assertOwner(params.campaignId, user);
       const blight = await this.loadBlight(params.campaignId, params.blightId);
-      await this.blights.deleteById(blight.id);
+      await this.currentBlights.deleteById(blight.id);
       return { ok: true };
     },
   });
@@ -367,14 +360,14 @@ export class BlightController {
       if (sigilIds.length === 0) {
         return { deleted: 0 };
       }
-      const rows = await this.blights.findMany({
+      const rows = await this.currentBlights.findMany({
         where: {
           id: { inArray: body.ids },
           sigilId: { inArray: sigilIds },
         },
       });
       for (const row of rows) {
-        await this.blights.deleteById(row.id);
+        await this.currentBlights.deleteById(row.id);
       }
       return { deleted: rows.length };
     },
@@ -476,36 +469,44 @@ export class BlightController {
    * Load a blight by id, asserting it belongs to a sigil of the expected
    * campaign. Returns 404 otherwise — never leaks cross-campaign rows.
    */
-  protected async loadBlight(
-    campaignId: number,
-    blightId: number,
-  ): Promise<SigilBlight> {
-    const blight = await this.blights.findOne({
-      where: { id: { eq: blightId } },
+  protected async loadBlight(campaignId: number, blightId: number) {
+    /*
+      Reads the LIVE table, and scopes by `campaignId` directly.
+
+      It used to read `sigilBlights` — the vestigial table kept alive only so a
+      generated migration does not DROP it — and to authorize by walking the
+      campaign's sigils. So `listBlights` returned rows from one table while
+      resolve, forward and delete looked them up in another: every triage
+      action on anything Pulse filed answered "Blight not found", for a row the
+      inbox had just displayed.
+
+      The campaign scope is now a column rather than a join. A blight carries
+      its own `campaignId`, so cross-campaign leakage is a WHERE clause instead
+      of a two-step lookup that could be got wrong.
+    */
+    const blight = await this.currentBlights.findOne({
+      where: { id: { eq: blightId }, campaignId: { eq: campaignId } },
     });
     if (!blight) {
-      throw new NotFoundError("Blight not found");
-    }
-    const sigilIds = await this.campaignSigilIds(campaignId);
-    if (!sigilIds.includes(blight.sigilId)) {
       throw new NotFoundError("Blight not found");
     }
     return blight;
   }
 
-  protected toResource(b: SigilBlight): BlightResource {
+  protected toResource(b: Blight): BlightResource {
     return {
       id: b.id,
-      sigilId: b.sigilId,
+      sourceId: b.sourceId,
       fingerprint: b.fingerprint,
       name: b.name,
       message: b.message,
       stack: b.stack ?? "",
       sourceUrl: b.sourceUrl ?? "",
+      release: b.release,
+      pulseUrl: b.pulseUrl,
       firstSeenAt: b.firstSeenAt,
       lastSeenAt: b.lastSeenAt,
       count: b.count ?? 1,
-      recentIps: b.recentIps ?? [],
       status: b.status ?? "open",
       origin: b.origin ?? "client",
     };

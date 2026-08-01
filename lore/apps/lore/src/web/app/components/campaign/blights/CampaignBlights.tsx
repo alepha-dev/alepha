@@ -33,13 +33,6 @@ export interface CampaignBlightsProps {
 }
 
 /**
- * Mirrors `RECENT_IPS_CAP` in `BlightIngestService` — the max distinct hashed
- * IPs retained on a blight row. At this count the spread label switches to
- * "N+" because the bounded array may under-count the true reach.
- */
-const RECENT_IPS_CAP = 10;
-
-/**
  * Filter form, owned by AlephaTable: a status select (open / resolved / all)
  * and a sigil select (`"all"` or a sigil id). Both filters are applied
  * client-side over the already-fetched list.
@@ -79,19 +72,6 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
   const [pulseOptions, setSigilOptions] = useState<
     { id: string; label: string }[]
   >([]);
-
-  // `recentIps` is a privacy-preserving array of salted IP HASHES capped at
-  // RECENT_IPS_CAP (10) on ingestion — never raw IPs. The hash prefixes are
-  // meaningless to a human, so we surface only the COUNT of distinct hashes as
-  // a spread signal. At the cap we show "N+" since the true distinct count may
-  // be higher than what the bounded array retains.
-  const renderSpread = (count: number) => {
-    if (count === 0) return tr("blights.spread.none");
-    if (count === 1) return tr("blights.spread.oneIp");
-    const key =
-      count >= RECENT_IPS_CAP ? "blights.spread.capped" : "blights.spread.ips";
-    return tr(key, { args: [String(count)] });
-  };
 
   const renderStatus = (status: string) => {
     if (status === "resolved") {
@@ -148,7 +128,7 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
     const filtered =
       sigilId === "all"
         ? statusFiltered
-        : statusFiltered.filter((b) => b.sigilId === sigilId);
+        : statusFiltered.filter((b) => b.sourceId === sigilId);
     const rows = sortBlights(filtered, sort);
     const offset = page * size;
     const content = rows.slice(offset, offset + size);
@@ -310,11 +290,16 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
             ),
           },
           spread: {
-            label: tr("blights.col.spread"),
+            // Was "spread": a count of distinct salted IP hashes, which died
+            // with the sigil model. Pulse sends deduplicated groups, not
+            // per-request rows, so there are no IPs to count. The release is
+            // what triage actually asks next — is this still happening in what
+            // is deployed?
+            label: tr("blights.col.release"),
             align: "right",
             cell: (b) => (
-              <span className="text-muted-foreground tabular-nums whitespace-nowrap">
-                {renderSpread(b.recentIps.length)}
+              <span className="text-muted-foreground whitespace-nowrap">
+                {b.release ?? "—"}
               </span>
             ),
           },
