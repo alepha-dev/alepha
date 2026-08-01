@@ -20,7 +20,12 @@ describe("sigil entities", () => {
       users = $repository(users);
       sigils = $repository(sigils);
     }
-    const alepha = Alepha.create().with(Repos);
+    // `DATABASE_URL` is a Postgres URL under the repo-root vitest config and
+    // unset under this app's own — pinned here so the spec means the same
+    // thing from both.
+    const alepha = Alepha.create({ env: { DATABASE_URL: ":memory:" } }).with(
+      Repos,
+    );
     const repos = alepha.inject(Repos);
     await alepha.start();
 
@@ -66,7 +71,12 @@ describe("sigil entities", () => {
       sigils = $repository(sigils);
       blights = $repository(blights);
     }
-    const alepha = Alepha.create().with(Repos);
+    // `DATABASE_URL` is a Postgres URL under the repo-root vitest config and
+    // unset under this app's own — pinned here so the spec means the same
+    // thing from both.
+    const alepha = Alepha.create({ env: { DATABASE_URL: ":memory:" } }).with(
+      Repos,
+    );
     alepha.inject(Repos);
     await alepha.start();
 

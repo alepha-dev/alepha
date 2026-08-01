@@ -9,7 +9,7 @@ import { z } from "alepha";
  * headless case — an app that must not phone home to anything.
  *
  * Everything else about how much to collect comes from the sink at runtime
- * (`GET {SIGIL_SINK}/api/ingest/config`), never from env: a kill-switch
+ * (`GET {SIGIL_SINK}/sigils/config`), never from env: a kill-switch
  * that needs a redeploy is a kill-switch nobody reaches in time.
  */
 export const sigilEnv = z.object({

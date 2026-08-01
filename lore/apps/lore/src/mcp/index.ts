@@ -8,7 +8,6 @@ import { ChapterTools } from "./tools/ChapterTools.ts";
 import { FolioTools } from "./tools/FolioTools.ts";
 import { PetitionTools } from "./tools/PetitionTools.ts";
 import { QuestTools } from "./tools/QuestTools.ts";
-import { SourceTools } from "./tools/SourceTools.ts";
 
 export const LoreMcp = $module({
   name: "lore.mcp",
@@ -17,7 +16,6 @@ export const LoreMcp = $module({
     QuestTools,
     BlightTools,
     CampaignTools,
-    SourceTools,
     ChapterTools,
     FolioTools,
     ArchiveTools,

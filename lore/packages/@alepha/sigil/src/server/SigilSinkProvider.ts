@@ -156,7 +156,7 @@ export class SigilSinkProvider {
     this.configInFlight = (async () => {
       try {
         const res = await this.http.fetch(
-          `${this.sinkOrigin()}/api/ingest/config`,
+          `${this.sinkOrigin()}/sigils/config`,
           {
             method: "GET",
             headers: { authorization: `Bearer ${this.env.SIGIL_KEY}` },
@@ -321,7 +321,7 @@ export class SigilSinkProvider {
     }
 
     try {
-      await this.http.fetch(`${this.sinkOrigin()}/api/ingest`, {
+      await this.http.fetch(`${this.sinkOrigin()}/sigils/ingest`, {
         method: "POST",
         headers: {
           "content-type": "application/json",

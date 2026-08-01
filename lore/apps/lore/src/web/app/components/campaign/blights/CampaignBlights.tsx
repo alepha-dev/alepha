@@ -128,7 +128,7 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
     const filtered =
       sigilId === "all"
         ? statusFiltered
-        : statusFiltered.filter((b) => b.sourceId === sigilId);
+        : statusFiltered.filter((b) => b.sigilId === sigilId);
     const rows = sortBlights(filtered, sort);
     const offset = page * size;
     const content = rows.slice(offset, offset + size);

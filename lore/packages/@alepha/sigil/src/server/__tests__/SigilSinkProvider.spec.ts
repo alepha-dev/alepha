@@ -21,7 +21,7 @@ class RecordingHttpClient extends HttpClient {
       this.failNext = false;
       throw new Error("sink unreachable");
     }
-    if (url.endsWith("/api/ingest/config")) {
+    if (url.endsWith("/sigils/config")) {
       return { data: this.configResponse, status: 200 } as any;
     }
     return { data: {}, status: 204 } as any;
@@ -59,7 +59,7 @@ class TestSinkProvider extends SigilSinkProvider {
 }
 
 const ingests = (http: RecordingHttpClient) =>
-  http.calls.filter((c) => c.url.endsWith("/api/ingest"));
+  http.calls.filter((c) => c.url.endsWith("/sigils/ingest"));
 
 const anError = (message: string, frame = "at f (app.js:1:1)") => ({
   name: "TypeError",
@@ -154,7 +154,7 @@ describe("SigilSinkProvider", () => {
     await sink.flush();
 
     expect(ingests(http).at(-1)!.url).toBe(
-      "https://sigil.example.com/api/ingest",
+      "https://sigil.example.com/sigils/ingest",
     );
   });
 
@@ -216,7 +216,7 @@ describe("SigilSinkProvider", () => {
     await sink.refreshConfig();
 
     expect(
-      http.calls.filter((c) => c.url.endsWith("/api/ingest/config")),
+      http.calls.filter((c) => c.url.endsWith("/sigils/config")),
     ).toHaveLength(1);
   });
 

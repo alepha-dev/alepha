@@ -14,8 +14,6 @@ import {
   blights,
   QUEST_STATUS_PREFIX,
 } from "../entities/blights.ts";
-import { campaignSources } from "../entities/campaignSources.ts";
-import { sigilBlights } from "../entities/sigilBlights.ts";
 import { sigils } from "../entities/sigils.ts";
 import { BlightRuleService } from "../services/BlightRuleService.ts";
 import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
@@ -33,14 +31,14 @@ const BLIGHT_ZONE = "Blights";
 const blightResourceSchema = z.object({
   id: z.integer(),
   /**
-   * Which enrolled system filed this — a Sigil instance, in practice.
+   * Which environment reported it last.
    *
-   * Was `sigilId`, naming a concept that no longer exists. The schema is what
-   * gets serialized, so it was not merely stale: `sourceId` and `pulseUrl`
-   * were being dropped on the way out, and the link back to the error group in
-   * Sigil never reached anything that could render it.
+   * A blight is one row per campaign and per fingerprint, so a bug present in
+   * both staging and production is one triage decision; this names the sigil
+   * that most recently saw it, which is what the inbox's filter means. The
+   * per-environment breakdown lives in `sigil_error_groups`.
    */
-  sourceId: z.uuid().optional(),
+  sigilId: z.uuid().optional(),
   fingerprint: z.string(),
   name: z.string(),
   message: z.string(),
@@ -48,8 +46,8 @@ const blightResourceSchema = z.object({
   sourceUrl: z.string(),
   /** The release the observer last saw it in. */
   release: z.string().optional(),
-  /** Absolute link to the error group in Sigil, when it knows its own origin. */
-  pulseUrl: z.string().optional(),
+  /** Deep link to the error group this was aggregated from, when there is one. */
+  sigilUrl: z.string().optional(),
   firstSeenAt: z.string(),
   lastSeenAt: z.string(),
   count: z.integer(),
@@ -86,9 +84,10 @@ export type BlightRuleResource = Static<typeof blightRuleResourceSchema>;
  * Read endpoints (list + count) are member-gated via
  * `CampaignSecurityService.assertMember` so any campaign member can view the
  * inbox; mutations (resolve/forward/delete) stay owner-only via
- * `assertOwner`. Blights are scoped to sigils, sigils are scoped to
- * campaigns — so blight access is resolved by joining through the
- * campaign's sigils.
+ * `assertOwner`. A blight carries its own `campaignId`, so the scope is a
+ * WHERE clause rather than a walk through the campaign's sigils — one less
+ * step to get wrong, and it keeps working for a blight whose sigil has since
+ * been deleted.
  *
  * ⚠️ SECURITY: `name`, `message`, `stack`, `sourceUrl` on a blight row are
  * 100% attacker-controlled. They are persisted verbatim and shown to the
@@ -99,20 +98,8 @@ export type BlightRuleResource = Static<typeof blightRuleResourceSchema>;
  */
 export class BlightController {
   protected log = $logger();
-  protected blights = $repository(sigilBlights);
-  /**
-   * Where reports land now. Read alongside the legacy table for the length of
-   * the retention window, after which `BlightJobs` has emptied that one and
-   * this branch can be the only one.
-   */
   protected currentBlights = $repository(blights);
   protected sigils = $repository(sigils);
-  /**
-   * Sigils with their blights attached. The inbox is a campaign's crash list,
-   * which is a two-hop read -- campaign to sigil to blight -- and used to be
-   * two statements plus an id list.
-   */
-  protected sources = $repository(campaignSources);
   protected security = $inject(CampaignSecurityService);
   protected questService = $inject(QuestService);
   protected ruleService = $inject(BlightRuleService);
@@ -140,15 +127,6 @@ export class BlightController {
     handler: async ({ params, query, user }) => {
       await this.security.assertMember(params.campaignId, user);
 
-      /*
-        The live table only.
-
-        This used to read the vestigial `sigilBlights` as well and merge the
-        two, adapting each NEW row into the OLD shape — which is what buried
-        `sourceId` and `pulseUrl` behind a `sigilId` that no longer means
-        anything. `sigilBlights` stays declared (dropping it on D1 would
-        cascade-wipe its children) but nothing reads it.
-      */
       const all = (
         await this.currentBlights.findMany({
           where: { campaignId: { eq: params.campaignId } },
@@ -156,16 +134,16 @@ export class BlightController {
         })
       ).sort((a, b) => b.count - a.count);
 
-      // The inbox's filter options: which systems file here. Revoked ones are
-      // included on purpose — what they filed stays visible, so the filter has
-      // to be able to name them.
-      const sources = await this.sources.findMany({
+      // The inbox's filter options: which environments report here. Listed even
+      // when they have filed nothing, so an owner can tell an environment that
+      // is quiet from one that was never enrolled.
+      const campaignSigils = await this.sigils.findMany({
         where: { campaignId: { eq: params.campaignId } },
         orderBy: [{ column: "createdAt", direction: "desc" }],
       });
-      const sigilOptions = sources.map((source) => ({
-        id: source.id,
-        label: source.name,
+      const sigilOptions = campaignSigils.map((sigil) => ({
+        id: sigil.id,
+        label: sigil.label,
       }));
 
       const openCount = all.filter((b) => b.status === "open").length;
@@ -289,7 +267,7 @@ export class BlightController {
         "```",
         "",
         blight.release ? `Release: ${blight.release}` : "",
-        blight.pulseUrl ? `In Sigil: ${blight.pulseUrl}` : "",
+        blight.sigilUrl ? `Error group: ${blight.sigilUrl}` : "",
       ]
         .join("\n")
         .slice(0, 10_000);
@@ -342,10 +320,10 @@ export class BlightController {
   });
 
   /**
-   * Mass-delete blights by id. Each id is validated to belong to one of the
-   * campaign's sigils (the `sigilId` filter is the cross-campaign guard), so
-   * stray ids are silently skipped rather than leaking or 404-ing the whole
-   * batch. Owner-only. Returns how many rows were actually removed.
+   * Mass-delete blights by id. Each id is validated to belong to the campaign
+   * (the `campaignId` filter is the cross-campaign guard), so stray ids are
+   * silently skipped rather than leaking or 404-ing the whole batch.
+   * Owner-only. Returns how many rows were actually removed.
    */
   deleteBlights = $action({
     use: [$secure({ permissions: ["campaign:delete"] })],
@@ -360,14 +338,13 @@ export class BlightController {
     },
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.campaignId, user);
-      const sigilIds = await this.campaignSigilIds(params.campaignId);
-      if (sigilIds.length === 0) {
-        return { deleted: 0 };
-      }
+      // Scoped by `campaignId`, not by the campaign's sigil ids: a blight whose
+      // sigil was deleted keeps `campaignId` and loses `sigilId`, and the
+      // sigil-list version silently refused to delete exactly those rows.
       const rows = await this.currentBlights.findMany({
         where: {
           id: { inArray: body.ids },
-          sigilId: { inArray: sigilIds },
+          campaignId: { eq: params.campaignId },
         },
       });
       for (const row of rows) {
@@ -457,37 +434,15 @@ export class BlightController {
   });
 
   /**
-   * Resolve the ids of every sigil belonging to a campaign — the join key
-   * between campaign-scoped requests and sigil-scoped blight rows.
-   * Revoked sigils are included: their historical blights stay visible.
-   */
-  protected async campaignSigilIds(campaignId: number): Promise<string[]> {
-    const rows = await this.sigils.findMany(
-      { where: { campaignId: { eq: campaignId } } },
-      { force: true },
-    );
-    return rows.map((s) => s.id);
-  }
-
-  /**
-   * Load a blight by id, asserting it belongs to a sigil of the expected
-   * campaign. Returns 404 otherwise — never leaks cross-campaign rows.
+   * Load a blight by id, asserting it belongs to the expected campaign.
+   * Returns 404 otherwise — never leaks cross-campaign rows.
+   *
+   * The campaign scope is a column rather than a join: a blight carries its own
+   * `campaignId`, so cross-campaign leakage is one WHERE clause instead of a
+   * two-step lookup that could be got wrong — and it still answers for a blight
+   * whose sigil has since been deleted.
    */
   protected async loadBlight(campaignId: number, blightId: number) {
-    /*
-      Reads the LIVE table, and scopes by `campaignId` directly.
-
-      It used to read `sigilBlights` — the vestigial table kept alive only so a
-      generated migration does not DROP it — and to authorize by walking the
-      campaign's sigils. So `listBlights` returned rows from one table while
-      resolve, forward and delete looked them up in another: every triage
-      action on anything Sigil filed answered "Blight not found", for a row the
-      inbox had just displayed.
-
-      The campaign scope is now a column rather than a join. A blight carries
-      its own `campaignId`, so cross-campaign leakage is a WHERE clause instead
-      of a two-step lookup that could be got wrong.
-    */
     const blight = await this.currentBlights.findOne({
       where: { id: { eq: blightId }, campaignId: { eq: campaignId } },
     });
@@ -500,14 +455,14 @@ export class BlightController {
   protected toResource(b: Blight): BlightResource {
     return {
       id: b.id,
-      sourceId: b.sourceId,
+      sigilId: b.sigilId,
       fingerprint: b.fingerprint,
       name: b.name,
       message: b.message,
       stack: b.stack ?? "",
       sourceUrl: b.sourceUrl ?? "",
       release: b.release,
-      pulseUrl: b.pulseUrl,
+      sigilUrl: b.sigilUrl,
       firstSeenAt: b.firstSeenAt,
       lastSeenAt: b.lastSeenAt,
       count: b.count ?? 1,
