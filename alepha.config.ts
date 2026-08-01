@@ -112,6 +112,11 @@ export default (alepha: Alepha) => {
             `yarn check:docs`,
             `yarn check:i18n`,
             `yarn check:migrations`,
+            // The native Go pass, ~4s. Partial by construction: on macOS,
+            // `internal/runner/systemd_test.go` is `//go:build linux`, so 7 of
+            // that package's 12 tests are not compiled and `ok` is printed
+            // anyway. The full pass runs in a container below, out of --fast.
+            `yarn w bay test`,
           ]);
           await assertServicesUp();
           await run([`yarn test`, `yarn test:bun`]);
@@ -126,6 +131,19 @@ export default (alepha: Alepha) => {
         await run(`yarn check:deps`);
         await run(`yarn typecheck`);
         await assertServicesUp();
+
+        // Bay's suite, on the platform it ships for. ~18s in a container.
+        //
+        // A superset of `yarn w bay test`, not a repeat of it: gofmt, vet,
+        // build, the whole test suite and a cross-compile for both Linux
+        // architectures — the same steps as the `bay` CI job. It is here rather
+        // than in --fast because it costs a container start, and it is here at
+        // all because a native `go test` is GREEN while skipping every test of
+        // `Systemd.render()`: the sandbox directives, the memory and CPU
+        // ceilings, the stop timeout. Those files are `//go:build linux` and do
+        // not exist on the machine this is usually run from.
+        await run(`yarn w bay test:linux`);
+
         await run(`yarn test`);
         await run(`yarn test:bun`);
         await run(`yarn check:i18n`);

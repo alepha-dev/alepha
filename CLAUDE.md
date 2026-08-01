@@ -24,7 +24,8 @@ LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
 ## Development Commands
 
 ### Core Commands
-- `yarn v` or `yarn alepha verify` - Full verification pipeline: clean, lint, typecheck, test, check:deps, check:i18n, check:migrations, build, e2e, clean. **Must complete within 5 minutes** — always run it with a 5-minute timeout. If it exceeds 5 minutes, treat that as a failure (a hung step, usually e2e) and investigate, do not just wait longer.
+- `yarn v` or `yarn alepha verify` - Full verification pipeline: clean, lint, typecheck, test, check:deps, check:i18n, check:migrations, Bay's Go suite on Linux, build, e2e, clean. **Must complete within 10 minutes** — always run it with a 10-minute timeout. If it exceeds 10 minutes, treat that as a failure (a hung step, usually e2e) and investigate, do not just wait longer. Raised from 5 when Bay joined the pipeline: `test:linux` starts a container, and the repo now verifies a Go binary as well as the JS workspace.
+  - **Needs Docker running.** Already true for the service checks (postgres, redis, s3mock, emqx), and now also for `yarn w bay test:linux`.
 - `yarn v --fast` - Inner-loop sanity check: lint + (typecheck, test, test:bun, check:deps, check:i18n, check:migrations) in parallel. Skips clean/copy/build/e2e. Use for tight iteration.
 - `yarn clean` or `yarn alepha clean` - Remove all generated files and node_modules
 - `yarn build` - Build all workspace packages using `tsdown`

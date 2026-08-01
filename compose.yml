@@ -29,3 +29,31 @@ services:
       - "11883:1883"
     environment:
       EMQX_ALLOW_ANONYMOUS: "true"
+
+  # Bay's checks, on the platform Bay ships for.
+  #
+  # The odd one out in this file: everything above is a daemon that stays up
+  # while you develop, this is a task that runs once and exits. Hence the
+  # profile — without it, `docker compose up` would start a test run alongside
+  # the databases and sit there having "failed" to stay alive.
+  #
+  # Reached through `yarn w bay test:linux`, never directly, because Docker
+  # being down has to be a loud, explained failure rather than a stack trace.
+  bay-test:
+    profiles: ["tools"]
+    # No build args, and that is deliberate. Compose interpolates the WHOLE file
+    # before it looks at profiles, so a `${VAR:?}` here would make a plain
+    # `docker compose up` — the everyday command that starts postgres and redis
+    # — fail on a variable belonging to a service it was never going to start.
+    #
+    # The Go version is therefore pinned in the Dockerfile, and ci.sh asserts at
+    # run time that it matches go.mod. A checked duplicate beats a required
+    # variable that breaks everything else.
+    build:
+      context: ./apps/bay
+    volumes:
+      # Read-only on purpose. The container runs as root, and this is the only
+      # host path it can see — so there is no way for a test run to leave
+      # root-owned files in the working tree. Everything Go writes (build cache,
+      # module cache) lives inside the container.
+      - ./apps/bay:/src:ro
