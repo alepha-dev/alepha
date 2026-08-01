@@ -23,8 +23,18 @@ export const blights = $entity({
       onDelete: "cascade",
     }),
     /**
-     * Which sigil filed it. Nulled rather than cascaded on sigil deletion:
-     * revoking a token must not erase the bugs it reported.
+     * Which sigil reported it **most recently**.
+     *
+     * Not "which sigil filed it": a row is keyed `(campaignId, fingerprint)`,
+     * so one bug present in both staging and production is one row, and this
+     * column is overwritten by whichever environment reported last. That is
+     * deliberate — "still happening, most recently over there" is the useful
+     * fact for triage, and it is what the inbox's filter-by-sigil means. The
+     * lossless per-environment split lives in `sigil_error_groups`, keyed
+     * `(sigilId, fingerprint)`.
+     *
+     * Nulled rather than cascaded on sigil deletion: deleting a sigil is how a
+     * token is revoked, and that must not erase the bugs it reported.
      */
     sigilId: db.ref(z.uuid().optional(), () => sigils.cols.id, {
       onDelete: "set null",

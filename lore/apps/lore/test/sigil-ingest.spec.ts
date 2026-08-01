@@ -1,3 +1,4 @@
+import { SIGIL_CONFIG_PATH, SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -83,8 +84,12 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
     kinds: over.kinds ?? ["beacon", "vitals", "blights", "petition"],
   });
 
+  // Built from the package's own constants, not from literals. That is what
+  // makes these tests a contract rather than a restatement: they prove the
+  // sink serves the exact paths the cable calls, and they break if either side
+  // moves. The cable fails open, so nothing else would notice.
   const post = (body: unknown, token: string | undefined = minted.token) =>
-    fetch(`${server.hostname}/sigils/ingest`, {
+    fetch(`${server.hostname}${SIGIL_INGEST_PATH}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -94,7 +99,7 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
     });
 
   const getConfig = (token: string | undefined = minted.token) =>
-    fetch(`${server.hostname}/sigils/config`, {
+    fetch(`${server.hostname}${SIGIL_CONFIG_PATH}`, {
       headers: token ? { authorization: `Bearer ${token}` } : {},
     });
 
@@ -152,6 +157,65 @@ describe("sigil ingest", () => {
       where: { sigilId: { eq: sigil.id } },
     });
     expect(rows).toHaveLength(0);
+  });
+
+  /*
+    One negative case per gate. A mistyped kind — `"blight"` for `"blights"` —
+    does not throw, it silently disables that capability for every sigil
+    forever, and the only symptom is a table that stays empty. `carries()` takes
+    a `SigilKind` so the compiler catches the typo; these prove the three arms
+    are wired to the three kinds they claim.
+  */
+  it("refuses vitals from a sigil without the vitals kind", async () => {
+    const { probe, sigil, post } = await setup({
+      kinds: ["beacon", "blights"],
+    });
+
+    const res = await post({
+      vitals: [{ path: "/home", metric: "lcp", value: 900 }],
+    });
+    expect(res.status).toBe(204);
+
+    expect(
+      await probe.vitals.findMany({ where: { sigilId: { eq: sigil.id } } }),
+    ).toHaveLength(0);
+  });
+
+  it("refuses errors from a sigil without the blights kind", async () => {
+    const { probe, campaign, sigil, post } = await setup({
+      kinds: ["beacon", "vitals"],
+    });
+
+    const res = await post({ errors: [anError()] });
+    expect(res.status).toBe(204);
+
+    // Neither table, not just the inbox.
+    expect(
+      await probe.errorGroups.findMany({
+        where: { sigilId: { eq: sigil.id } },
+      }),
+    ).toHaveLength(0);
+    expect(
+      await probe.blights.findMany({
+        where: { campaignId: { eq: campaign.id } },
+      }),
+    ).toHaveLength(0);
+  });
+
+  it("survives a proxy that stamps an empty country", async () => {
+    const { probe, sigil, post } = await setup();
+
+    // `country` is `z.string().max(8).optional()`, so `""` is valid on the
+    // wire, and `sigil_views_hourly.country` is `min(1)`. `?? "ZZ"` does not
+    // catch an empty string and the whole batch 500s.
+    const res = await post({ views: [{ path: "/home" }], country: "" });
+    expect(res.status).toBe(204);
+
+    const rows = await probe.views.findMany({
+      where: { sigilId: { eq: sigil.id } },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].country).toBe("ZZ");
   });
 
   it("counts a visitor once a day however many pages they load", async () => {
@@ -251,6 +315,30 @@ describe("sigil ingest", () => {
     expect(inbox[0].count).toBe(7);
     // Last reporter wins, which is what the inbox filter means by "sigil".
     expect(inbox[0].sigilId).toBe(other.id);
+  });
+
+  it("keeps a triage decision when the same bug is reported again", async () => {
+    const { probe, campaign, post } = await setup();
+
+    await post({ errors: [anError({ count: 2 })] });
+    const [filed] = await probe.blights.findMany({
+      where: { campaignId: { eq: campaign.id } },
+    });
+    await probe.blights.updateById(filed.id, { status: "resolved" });
+
+    // The load-bearing half of the "one row per campaign" ruling: the whole
+    // reason `blights` is keyed by campaign rather than by sigil is that a
+    // triage decision must not fork. If `status` ever joins the upsert's `set`
+    // clause, resolving a bug becomes a decision the next batch undoes.
+    await post({ errors: [anError({ count: 3 })] });
+
+    const rows = await probe.blights.findMany({
+      where: { campaignId: { eq: campaign.id } },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe("resolved");
+    // Still counted, though — the bug is still happening, it is just triaged.
+    expect(rows[0].count).toBe(5);
   });
 
   it("drops a muted message before it reaches either table", async () => {

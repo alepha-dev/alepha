@@ -342,20 +342,32 @@ Mitigations, in order of preference:
 
 **CI auto-deploys to prod on every push to `main`** (alepha monorepo's `.github/workflows/ci.yml` → `deploy-lore-production` job → `yarn alepha platform up --env production` from `apps/lore`). There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
 
-## ⚠️ The Cloudflare WAF rule on `/sigils/` is now dead weight — remove it
+## ⚠️ The Cloudflare WAF rule on `/sigils/` has a job again — keep it
 
-Lore no longer exposes any public, unauthenticated ingestion endpoint. The
-`/sigils/*` routes are gone: what files blights now is an enrolled source
-presenting a key (`POST /api/blights/ingest`), so there is nothing left for a
-per-IP rate limit to protect.
+**This section previously said the rule was dead weight and told you to delete
+it. That was true while nothing served `/sigils/`. It is false now — do not
+delete it.**
 
-**Manual step, in the Cloudflare dashboard** — it was never in code, so it will
-not disappear with a deploy: `lore.alepha.dev` zone → Security → WAF → Rate
-limiting rules → delete the rule matching
+Lore is a telemetry sink again, and `/sigils/ingest` + `/sigils/config`
+(`SigilIngestController`, `$route` so they sit at the root rather than under
+`/api`) are publicly reachable by construction: apps report to them from every
+machine they run on. They authenticate with a bearer sigil token and answer 401
+to anything else — but an unauthenticated caller still costs a request, a token
+lookup and a SHA-256, and the token itself sits in cleartext on every host that
+runs the reporting app, so a leaked one is a plausible flood.
+
+There is **no in-app rate limiter on this path**. The old `sigil_blight_rate`
+table was dropped in the sigil-family rebuild and nothing replaced it. The
+Cloudflare rate-limiting rule is currently the only thing in front of these two
+endpoints.
+
+**Where it lives** — the dashboard, not code, so it will not reappear from a
+deploy if someone removes it: `lore.alepha.dev` zone → Security → WAF → Rate
+limiting rules → the rule matching
 `http.request.uri.path contains "/sigils/"`.
 
-Harmless if left (it matches nothing), but a rule nobody can explain is a rule
-someone will one day widen or copy.
+If an in-app limiter is ever added, this rule stays anyway: the point of an edge
+rule is that the flood never reaches the Worker.
 
 ## Tests
 

@@ -28,7 +28,8 @@
     "./vitals": "./src/shared/schemas/sigilVitalsBuckets.ts",
     "./fingerprint": "./src/shared/sigilFingerprint.ts",
     "./envelope": "./src/shared/schemas/sigilEnvelope.ts",
-    "./config": "./src/shared/schemas/sigilConfig.ts"
+    "./config": "./src/shared/schemas/sigilConfig.ts",
+    "./paths": "./src/shared/sigilPaths.ts"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
