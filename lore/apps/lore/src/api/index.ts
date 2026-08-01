@@ -9,11 +9,13 @@ import { ChapterController } from "./controllers/ChapterController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
 import { IdentityController } from "./controllers/IdentityController.ts";
+import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
 import { PetitionController } from "./controllers/PetitionController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
+import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { UserController } from "./controllers/UserController.ts";
 import { VersionController } from "./controllers/VersionController.ts";
@@ -97,7 +99,9 @@ export const LoreApi = $module({
     DirectoryController,
     BlobController,
     PetitionController,
+    SigilController,
     SigilIngestController,
+    InsightsController,
     BlightController,
     VersionController,
   ],

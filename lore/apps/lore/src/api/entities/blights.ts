@@ -55,11 +55,18 @@ export const blights = $entity({
     /** Release the failure was seen in, when the reporter knows one. */
     release: z.string().max(200).optional(),
     /**
-     * Deep link back to the observer's error page for this group. With Lore
-     * as its own observer, this points at Lore's own blight detail view.
+     * Deep link back to an external observer's page for this error group.
      *
-     * The cheapest integration there is: a blight here, one click to the group
-     * it was aggregated from, with its samples and its curve.
+     * **Nothing writes it today, and that is the correct state.** It exists for
+     * the case where the aggregation happened somewhere else and there is a
+     * richer view of the group to send a triager to. With Lore as its own
+     * observer there is no such elsewhere: the inbox row *is* the group view, so
+     * a link would point at the page the reader is already on.
+     *
+     * It stays because it costs nothing (optional, never read when absent) and
+     * because dropping a column from a D1-deployed table is a cascade risk out
+     * of all proportion to the tidiness. Read it, render it when set, never
+     * assume it is there.
      */
     sigilUrl: z.string().max(2_000).optional(),
     origin: db.default(

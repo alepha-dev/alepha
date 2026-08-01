@@ -248,16 +248,18 @@ This is a **confidentiality requirement**, not a tidiness one. Before it existed
 
 ## Sigils, Blights, Beacon, Vitals
 
-A **source** is a credential issued to an *observer* — in practice a Pulse instance — which has already deduplicated what it sends. Sigils were the previous model: credentials handed to *websites* so they could push raw telemetry straight here. That whole surface is gone; `sigils` and its tables remain in the schema, vestigial, because dropping a table on D1 cascade-wipes its children.
+A **sigil** is one environment of one application — `lore` in `production` is a different sigil from `lore` in `staging`, and they report separately, because an error budget shared between environments is nobody's budget. It authenticates with a `sg_`-prefixed bearer token, stored hashed and shown once at creation; `tokenPrefix` exists so the UI can name a credential it cannot reconstruct.
 
-Sources are managed at `/c/:id/settings/sources` (owner-only, key shown once), and `features.blights` is still the master switch for the inbox.
+Managed at `/c/:id/settings/sigils` (`SigilController`, reads member-gated, mutations owner-gated — no role, no allowlist: owning the campaign is the whole gate). `features.sigils` is the master switch, with `petitions` / `blights` / `beacon` / `vitals` as the per-capability toggles `GET /sigils/config` reports back to the app.
 
-- **Blights** — one row per distinct failure, keyed by `fingerprint`, with a count. The owner triages them in the inbox (`/c/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` zone, provenance recorded in `quests.source`). Purged on a retention window (`campaign.retentionDays ?? 30`) by `BlightJobs`, which sweeps both the current `blights` table and the legacy `sigil_blights`; resolved and `quest:`-forwarded rows are kept as audit trail.
-- **Analytics moved out.** Pageviews, unique visitors and web-vitals live in Pulse now (`apps/pulse`), which is where the apps report. Lore keeps the editorial half — deciding which failures become work.
+**Rotate, don't delete.** All four aggregate tables cascade on `sigilId`, so deleting a sigil to revoke a leaked token also erases that environment's views, vitals, uniques and error groups. `rotateSigil` re-mints `tokenHash`/`tokenPrefix` in place — the old token stops resolving immediately (`verify` looks a sigil up *by* its hash) and every row survives. The UI says which is which; so do the MCP tool descriptions.
+
+- **Blights** — one row per distinct failure, keyed by `fingerprint`, with a count. The owner triages them in the inbox (`/c/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` zone, provenance recorded in `quests.source`). Purged on a retention window (`campaign.retentionDays ?? 30`) by `BlightJobs`; resolved and `quest:`-forwarded rows are kept as audit trail. A blight survives its sigil — `blights.sigilId` is `ON DELETE SET NULL`.
+- **Insights** (`/c/:id/insights`, gated on `features.beacon`) — page views, unique visitors and web-vitals p75, read out of `sigil_views_hourly` / `sigil_uniques_daily` / `sigil_vitals_hourly`. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is a `substr(hour, 1, 10)` group over the same rows. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token.
 
 > ⚠️ **`name`, `message`, `stack`, `sourceUrl` on a blight are 100% attacker-controlled** and are shown to the campaign owner — the highest-value target. Render as escaped plain text only. Never markdown, never `dangerouslySetInnerHTML`.
 
-Read endpoints are member-gated; mutations are owner-only. **Ingest is no longer public**: `POST /api/blights/ingest` requires a campaign source key, and there is no unauthenticated write path left.
+Read endpoints are member-gated; mutations are owner-only. **Ingest has its own credential**: `POST /sigils/ingest` and `GET /sigils/config` (`SigilIngestController`, `$route` so they sit at the root) accept a sigil bearer token and nothing else — a logged-in member cannot post telemetry, and a sigil token opens nothing but those two routes.
 
 ## Archive (directories + blobs)
 

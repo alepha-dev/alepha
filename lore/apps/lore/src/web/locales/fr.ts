@@ -372,7 +372,7 @@ export default {
   "campaign.settings.zones.never": "—",
   "campaign.settings.nav.kanban": "Kanban",
   "campaign.settings.nav.folios": "Folios",
-  "campaign.settings.nav.sources": "Sources",
+  "campaign.settings.nav.sigils": "Sigils",
   "campaign.settings.nav.chapters": "Chapitres",
   "campaign.settings.nav.quests": "Quêtes",
   "campaign.chronicles.nav.overview": "Vue d'ensemble",
@@ -440,7 +440,7 @@ export default {
   "campaign.settings.feature.chapters.description":
     "Regroupez les quêtes en chapitres avec dates de début / fin et historique.",
   "campaign.settings.feature.sigils.description":
-    "Émettez des identifiants de script révocables qui permettent à vos sites d’intégrer les capacités de Lore.",
+    "Enrôlez vos applications pour qu’elles remontent ici plantages, pages vues et Web Vitals — un jeton par environnement.",
   "campaign.settings.delete.modal.title": "Détruire la campagne",
   "campaign.settings.delete.modal.description":
     "Cette action est irréversible. La campagne et toutes ses quêtes seront définitivement perdues.",
@@ -586,6 +586,20 @@ export default {
   "insights.range.1d": "Aujourd'hui",
   "insights.range.7d": "7 jours",
   "insights.range.30d": "30 jours",
+  "insights.tab.analytics": "Audience",
+  "insights.tab.performance": "Performance",
+  "insights.uniqueVisitors": "Visiteurs uniques",
+  "insights.uniqueVisitors.note":
+    "Visiteurs distincts sans cookie — la mesure de référence.",
+  "insights.totalViews": "Pages vues",
+  "insights.totalViews.note": "Approximatif — une tendance, pas un compte.",
+  "insights.totalViews.tooltip":
+    "Nombre brut de pages vues. Rien ne limite ce qu’une application enrôlée déclare, donc ce chiffre est gonflable par qui détient son jeton. Fiez-vous plutôt aux visiteurs uniques.",
+  "insights.overTime": "Pages vues dans le temps",
+  "insights.topCountries": "Principaux pays",
+  "insights.topPaths": "Pages les plus vues",
+  "insights.empty": "Aucune page vue enregistrée sur cette période.",
+  "insights.error": "Échec du chargement des statistiques. Réessayez.",
   "insights.vitals.title": "Web Vitals",
   "insights.vitals.subtitle": "75e centile",
   "insights.vitals.lcp": "LCP",
@@ -641,7 +655,49 @@ export default {
 
   "petitions.feature.title": "Pétitions",
   "petitions.feature.description":
-    "Permet aux sigils dotés de la capacité Pétition de recevoir des soumissions depuis les sites partenaires.",
+    "Donne aux applications enrôlées un lien vers le formulaire de retour de cette campagne.",
+
+  "beacon.feature.title": "Balise",
+  "beacon.feature.description":
+    "Collecte les pages vues et les visiteurs uniques, sans cookie, depuis les environnements enrôlés.",
+
+  "vitals.feature.title": "Vitals",
+  "vitals.feature.description":
+    "Collecte les Core Web Vitals (LCP, CLS, INP, FCP, TTFB) depuis les environnements enrôlés.",
+
+  "sigils.title": "Environnements enrôlés",
+  "sigils.subtitle":
+    "Un sigil par application et par environnement. Chacun détient son propre jeton et remonte ses données séparément.",
+  "sigils.empty":
+    "Aucun environnement enrôlé. Tant qu’il n’y en a pas, rien ne peut remonter ici.",
+  "sigils.features.title": "Capacités",
+  "sigils.features.subtitle":
+    "Activez les Sigils, puis choisissez ce que le point d’ingestion accepte.",
+  "sigils.create.app": "Application",
+  "sigils.create.appPlaceholder": "lore",
+  "sigils.create.environment": "Environnement",
+  "sigils.create.environmentPlaceholder": "production",
+  "sigils.create.submit": "Enrôler",
+  "sigils.token.title":
+    "Copiez ce jeton maintenant — il est stocké haché et ne sera plus jamais affiché.",
+  "sigils.token.copy": "Copier le jeton",
+  "sigils.token.done": "Terminé",
+  "sigils.lastSeen": "dernière remontée $1",
+  "sigils.neverSeen": "aucune remontée",
+  "sigils.action.rotate": "Renouveler",
+  "sigils.action.delete": "Supprimer",
+  "sigils.rotate.confirmTitle": "Renouveler le jeton de $1 ?",
+  "sigils.rotate.confirmDescription":
+    "Le jeton actuel cesse de fonctionner immédiatement et un nouveau est affiché une seule fois. Tout ce que cet environnement a remonté est conservé — c’est ainsi qu’on révoque un jeton fuité sans perdre son historique.",
+  "sigils.rotate.confirm": "Renouveler",
+  "sigils.delete.confirmTitle": "Supprimer $1 ?",
+  "sigils.delete.confirmDescription":
+    "Cela efface tout ce que cet environnement a remonté — pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs — ainsi que son jeton. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
+  "sigils.delete.confirm": "Supprimer",
+  "sigils.toast.created": "Sigil créé",
+  "sigils.toast.rotated": "Jeton renouvelé",
+  "sigils.toast.copied": "Jeton copié",
+  "sigils.toast.deleted": "Sigil supprimé",
 
   "petitions.empty.pending": "Aucune pétition en attente.",
   "petitions.empty.status": "Aucune pétition $1.",

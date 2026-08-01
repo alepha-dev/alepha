@@ -14,6 +14,7 @@ import type { CampaignStatsController } from "../../api/controllers/CampaignStat
 import type { ChapterController } from "../../api/controllers/ChapterController.ts";
 import type { DirectoryController } from "../../api/controllers/DirectoryController.ts";
 import type { FolioController } from "../../api/controllers/FolioController.ts";
+import type { InsightsController } from "../../api/controllers/InsightsController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { KanbanController } from "../../api/controllers/KanbanController.ts";
 import type { PetitionController } from "../../api/controllers/PetitionController.ts";
@@ -45,6 +46,7 @@ export class AppRouter {
   kanbanApi = $client<KanbanController>();
   petitionApi = $client<PetitionController>();
   blightApi = $client<BlightController>();
+  insightsApi = $client<InsightsController>();
   chapterApi = $client<ChapterController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
@@ -243,6 +245,7 @@ export class AppRouter {
       this.campaignKanban,
       this.campaignPetitions,
       this.campaignBlights,
+      this.campaignInsights,
     ],
     path: "/c/:campaignId",
     schema: {
@@ -348,6 +351,31 @@ export class AppRouter {
         count: res.openCount,
       });
       return { items: res.items, openCount: res.openCount };
+    },
+  });
+
+  campaignInsights = $page({
+    name: "campaignInsights",
+    path: "/insights",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Insights`,
+    }),
+    lazy: () => import("./components/campaign/insights/CampaignInsights.tsx"),
+    loader: async () => {
+      const campaign = this.alepha.store.get(currentCampaignAtom);
+      if (!campaign) {
+        throw new NotFoundError("Campaign not found");
+      }
+      // The module toggle is the whole gate — the nav entry is hidden on the
+      // same flag, so reaching this by URL with it off is a 404, not a 403.
+      if (!campaign.features?.beacon) {
+        throw new NotFoundError("Beacon not enabled for this campaign");
+      }
+      const insights = await this.insightsApi.getInsights({
+        params: { campaignId: campaign.id },
+        query: { range: "7d" },
+      });
+      return { insights };
     },
   });
 
@@ -467,7 +495,7 @@ export class AppRouter {
       this.campaignSettingsZones,
       this.campaignSettingsKanban,
       this.campaignSettingsFolios,
-      this.campaignSettingsSources,
+      this.campaignSettingsSigils,
       this.campaignSettingsChapters,
       this.campaignSettingsQuests,
     ],
@@ -553,21 +581,21 @@ export class AppRouter {
   });
 
   /**
-   * Sources — which systems may file blights here.
+   * Sigils — which applications and environments report here.
    *
-   * Lives alongside the sigils page while both credentials exist. Sigils go
-   * once every reporter has moved over; the two are never merged, because a
-   * sigil authenticated a website pushing raw telemetry and a source
-   * authenticates an observer pushing aggregates.
+   * ⚠️ Named in `CampaignSettings.tsx`'s nav array, which is a list of route
+   * names with nothing in the type system tying it to the routes it names.
+   * Renaming or removing this page without editing that array crashes every
+   * settings page, which is exactly what happened once.
    */
-  campaignSettingsSources = $page({
-    name: "campaignSettingsSources",
-    path: "/sources",
+  campaignSettingsSigils = $page({
+    name: "campaignSettingsSigils",
+    path: "/sigils",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Sources`,
+      title: `${previous?.title ?? ""} › Sigils`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsSourcesPage.tsx"),
+      import("./components/campaign/settings/CampaignSettingsSigilsPage.tsx"),
   });
 
   campaignSettingsChapters = $page({
