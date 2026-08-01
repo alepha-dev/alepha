@@ -1,21 +1,25 @@
 /**
  * Contract for the page-context metadata the sigil feedback button collects on
- * the host page and carries — via the `/sigil/request` popup query string —
- * through to the first-party Lore petition form, which persists it as the
- * petition `source`.
+ * the host page and carries — via the popup's query string, appended directly
+ * onto the sink-provided petition URL — through to the first-party Lore
+ * petition form, which persists it as the petition `source`.
  *
- * Three parties share these short query keys and MUST agree on them:
+ * Two parties share these short query keys and MUST agree on them:
  *
  * 1. The browser feedback button reads `window.location` / `navigator` /
  *    `document` and sets these keys on the popup URL.
- * 2. The `/sigil/request` proxy forwards ONLY these keys (a strict whitelist)
- *    onto its 302 redirect, so the embedding page cannot smuggle arbitrary
- *    params into the Lore URL.
- * 3. The Lore petition page reads these keys back and maps them into the
+ * 2. The Lore petition page reads these keys back and maps them into the
  *    `petitionSourceSchema` fields.
  *
- * Kept React-free and browser-API-free (pure constants) so the server proxy
- * can import it without pulling browser globals. Importable via
+ * There used to be a same-origin proxy in between that forwarded only this
+ * whitelist onto its redirect; it is gone — the sink now hands out a
+ * ready-to-use URL directly, and the button opens it with no server round
+ * trip. The whitelist itself stays: it is still what keeps an embedding page
+ * from smuggling arbitrary params into the Lore URL, since the server schema
+ * (`petitionSourceSchema`) only ever reads these named fields back.
+ *
+ * Kept React-free and browser-API-free (pure constants) so either side can
+ * import it without pulling the other's globals. Importable via
  * `@alepha/sigil/context`.
  */
 export const SIGIL_PETITION_CONTEXT_PARAMS = [

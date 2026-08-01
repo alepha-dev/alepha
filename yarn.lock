@@ -75,6 +75,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/sigil@workspace:packages/@alepha/sigil"
   dependencies:
+    "@testing-library/dom": "npm:^10.4.1"
+    "@testing-library/react": "npm:^16.3.2"
     "@types/react": "npm:^19.2.17"
     "@types/react-dom": "npm:^19.2.3"
     alepha: "npm:0.24.0"
