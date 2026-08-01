@@ -291,7 +291,7 @@ Two languages: English (`en`) and French (`fr`). All translations in `src/web/ap
 
 ## De-gamification (2026-07)
 
-Lore has **no gamification currency**: no XP, no gold, no levels, no achievements, no titles, no per-campaign alias/avatar. All of it was removed in two passes (spec: `docs/superpowers/specs/2026-07-30-lore-degamification-design.md`):
+Lore has **no gamification currency**: no XP, no gold, no levels, no achievements, no titles, no per-campaign alias/avatar. All of it was removed in two passes:
 
 - First pass killed the wall: `FeaturePaywallService` / Shop / `requiredLevel` quest gating. Ex-walled features (Chronicles, Quest Reminder, …) are plain `campaign.features.*` owner toggles.
 - Second pass removed the remaining cosmetic progression and collapsed `characters` into `members` (migration `20260730154120_heavy_nova`: `ALTER TABLE characters RENAME TO members` + column drops — no rebuild, D1-safe). `CharacterInfo`, `AchievementEngine`, `CharacterController`, the character sheet, roster, XP bar and level-up animation are gone.
