@@ -74,3 +74,82 @@ describe("PulseServerErrors", () => {
     ).toHaveLength(1);
   });
 });
+
+describe("PulseServerErrors — what counts as a crash", () => {
+  /*
+    Every 4xx is the app working: bad input, a path that does not exist, a
+    logged-out visitor, a conflict the caller has to resolve. On anything
+    reachable from the internet they arrive constantly — a scanner alone
+    produces hundreds of 404s a day — and a crash inbox listing them is an
+    inbox nobody opens, which costs the 5xx sitting underneath it.
+  */
+  const statuses = [400, 401, 403, 404, 409, 422, 429, 499];
+
+  for (const status of statuses) {
+    it(`should not report a ${status}`, async () => {
+      const alepha = make();
+      alepha.inject(PulseServerErrors);
+      await alepha.start();
+
+      await emitError(alepha, Object.assign(new Error("refused"), { status }));
+
+      expect(alepha.inject(PulseSinkProvider) as FakeSink).toMatchObject({
+        ingested: [],
+      });
+    });
+  }
+
+  it("should report a 500", async () => {
+    const alepha = make();
+    alepha.inject(PulseServerErrors);
+    await alepha.start();
+
+    await emitError(alepha, Object.assign(new Error("boom"), { status: 500 }));
+
+    const sink = alepha.inject(PulseSinkProvider) as FakeSink;
+    expect(sink.ingested).toHaveLength(1);
+  });
+
+  it("should report an error with no status at all", async () => {
+    // No status means it never reached the point of becoming a response,
+    // which is the definition of a crash.
+    const alepha = make();
+    alepha.inject(PulseServerErrors);
+    await alepha.start();
+
+    await emitError(alepha, new Error("uncaught"));
+
+    const sink = alepha.inject(PulseSinkProvider) as FakeSink;
+    expect(sink.ingested).toHaveLength(1);
+  });
+});
+
+describe("PulseServerErrors — background jobs", () => {
+  it("should report a job that threw", async () => {
+    /*
+      Worth reporting for a reason requests are not: nobody is watching. A
+      failed request produces a bad response somebody notices; a cron failing
+      every night for a week produces silence, and the first sign is the work
+      not having been done.
+    */
+    const alepha = make();
+    alepha.inject(PulseServerErrors);
+    await alepha.start();
+
+    await alepha.events.emit("job:error", {
+      name: "lore:blights:purge",
+      error: new Error("D1 unreachable"),
+      executionId: "exec-1",
+    } as any);
+
+    const sink = alepha.inject(PulseSinkProvider) as FakeSink;
+    expect(sink.ingested).toHaveLength(1);
+    // The job name is the source: a stack from a cron says nothing about which
+    // cron, and that is the first thing anyone needs.
+    expect(sink.ingested[0].errors[0]).toMatchObject({
+      sourceUrl: "job:lore:blights:purge",
+      origin: "server",
+      message: "D1 unreachable",
+    });
+  });
+});
