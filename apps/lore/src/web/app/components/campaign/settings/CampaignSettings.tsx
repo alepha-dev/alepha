@@ -28,7 +28,7 @@ type RouteName =
   | "campaignSettingsZones"
   | "campaignSettingsKanban"
   | "campaignSettingsFolios"
-  | "campaignSettingsSources"
+  | "campaignSettingsSigils"
   | "campaignSettingsChapters"
   | "campaignSettingsQuests";
 
@@ -38,7 +38,7 @@ type NavLabelKey =
   | "campaign.settings.nav.zones"
   | "campaign.settings.nav.kanban"
   | "campaign.settings.nav.folios"
-  | "campaign.settings.nav.sources"
+  | "campaign.settings.nav.sigils"
   | "campaign.settings.nav.chapters"
   | "campaign.settings.nav.quests";
 
@@ -94,8 +94,8 @@ const NAV_GROUPS: NavGroup[] = [
         icon: BookOpen,
       },
       {
-        route: "campaignSettingsSources",
-        labelKey: "campaign.settings.nav.sources",
+        route: "campaignSettingsSigils",
+        labelKey: "campaign.settings.nav.sigils",
         icon: Stamp,
       },
       {

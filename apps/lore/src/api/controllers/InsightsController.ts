@@ -1,0 +1,365 @@
+import { VITALS_BUCKETS, type VitalMetric } from "@alepha/sigil/vitals";
+import { $inject, type Static, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { $repository, DatabaseProvider, sql } from "alepha/orm";
+import { $secure } from "alepha/security";
+import { $action } from "alepha/server";
+import { sigils } from "../entities/sigils.ts";
+import { sigilUniquesDaily } from "../entities/sigilUniquesDaily.ts";
+import { sigilViewsHourly } from "../entities/sigilViewsHourly.ts";
+import { sigilVitalsHourly } from "../entities/sigilVitalsHourly.ts";
+import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
+
+/** Lookback windows the Insights page offers, in whole UTC days. */
+const RANGE_DAYS: Record<string, number> = {
+  "1d": 1,
+  "7d": 7,
+  "30d": 30,
+};
+
+/** How many rows the top-countries / top-paths leaderboards return. */
+const TOP_N = 10;
+
+/**
+ * One campaign's analytics over a 1d / 7d / 30d window.
+ *
+ * ⚠️ `totalViews` is best-effort by construction. Nothing throttles what an
+ * enrolled app reports, so the raw count is inflatable by whoever holds a sigil
+ * token. `uniqueVisitors` is the trustworthy headline, and the UI labels the
+ * two accordingly.
+ */
+const insightsSchema = z.object({
+  range: z.enum(["1d", "7d", "30d"]),
+  /** First UTC day included in the window, `YYYY-MM-DD`. */
+  since: z.string(),
+  /** Best-effort raw pageview count. Inflatable — see above. */
+  totalViews: z.integer(),
+  /** Abuse-resistant headline: distinct cookieless daily visitor hashes. */
+  uniqueVisitors: z.integer(),
+  topCountries: z.array(
+    z.object({
+      /** ISO-3166 alpha-2, or `ZZ` when the edge did not say. */
+      country: z.string(),
+      count: z.integer(),
+    }),
+  ),
+  topPaths: z.array(
+    z.object({
+      path: z.string(),
+      count: z.integer(),
+      /** Share of `totalViews`, rounded to a whole percent. */
+      percentage: z.number(),
+    }),
+  ),
+  /**
+   * Web-vitals p75 approximations across every sigil on the campaign.
+   *
+   * Derived from the stored histograms, so the cost does not grow with traffic.
+   * `null` means no sample landed in the window. CLS is reported as the real
+   * score — the collector scales it ×1000 before bucketing, and that scaling is
+   * undone here rather than left for the UI to remember.
+   */
+  vitals: z.object({
+    /** Largest Contentful Paint p75, ms. */
+    lcp: z.number().nullable(),
+    /** Cumulative Layout Shift p75, unitless. */
+    cls: z.number().nullable(),
+    /** Interaction to Next Paint p75, ms. */
+    inp: z.number().nullable(),
+    /** First Contentful Paint p75, ms. */
+    fcp: z.number().nullable(),
+    /** Time to First Byte p75, ms. */
+    ttfb: z.number().nullable(),
+  }),
+  timeline: z.array(
+    z.object({
+      /** UTC day, `YYYY-MM-DD`. */
+      date: z.string(),
+      views: z.integer(),
+    }),
+  ),
+});
+
+export type InsightsResource = Static<typeof insightsSchema>;
+
+/**
+ * The reading surface for what `SigilIngestService` writes.
+ *
+ * Every row it aggregates is scoped to a sigil, and every sigil to a campaign,
+ * so each query is `WHERE sigil_id IN (the campaign's sigils)`.
+ *
+ * **Hour buckets, day answers.** `sigil_views_hourly.hour` is `YYYY-MM-DDTHH`,
+ * which shares its first ten characters with a `YYYY-MM-DD` day. That makes the
+ * window filter a plain lexicographic `hour >= since` with no epoch math, and
+ * the daily timeline a `substr(hour, 1, 10)` group — the day view stays
+ * available without giving up the resolution that makes a 14:00 deploy visible
+ * against 13:00.
+ *
+ * Reads are member-gated: analytics are not an owner secret, and the page is
+ * linked from the campaign nav every member sees.
+ */
+export class InsightsController {
+  protected database = $inject(DatabaseProvider);
+  protected security = $inject(CampaignSecurityService);
+  protected dateTime = $inject(DateTimeProvider);
+  protected sigils = $repository(sigils);
+  protected views = $repository(sigilViewsHourly);
+  protected uniques = $repository(sigilUniquesDaily);
+  protected vitals = $repository(sigilVitalsHourly);
+
+  getInsights = $action({
+    use: [$secure({ permissions: ["campaign:read"] })],
+    method: "GET",
+    path: "/campaigns/:campaignId/insights",
+    schema: {
+      params: z.object({ campaignId: z.integer() }),
+      query: z.object({
+        range: z.enum(["1d", "7d", "30d"]).optional(),
+      }),
+      response: insightsSchema,
+    },
+    handler: async ({ params, query, user }): Promise<InsightsResource> => {
+      await this.security.assertMember(params.campaignId, user);
+
+      const range = query.range ?? "7d";
+      const days = RANGE_DAYS[range] ?? 7;
+
+      // A `days`-wide UTC window covering [today-(days-1) .. today].
+      const today = new Date(this.dateTime.nowMillis());
+      const sinceDate = new Date(today);
+      sinceDate.setUTCDate(sinceDate.getUTCDate() - (days - 1));
+      const since = sinceDate.toISOString().slice(0, 10);
+
+      const sigilIds = await this.campaignSigilIds(params.campaignId);
+
+      if (sigilIds.length === 0) {
+        return {
+          range,
+          since,
+          totalViews: 0,
+          uniqueVisitors: 0,
+          topCountries: [],
+          topPaths: [],
+          vitals: { lcp: null, cls: null, inp: null, fcp: null, ttfb: null },
+          timeline: this.zeroTimeline(today, days),
+        };
+      }
+
+      const sigilList = sql.join(
+        sigilIds.map((id) => sql`${id}`),
+        sql`, `,
+      );
+
+      // --- Total views (raw, best-effort).
+      const [totals] = await this.database.run(
+        sql`
+          SELECT COALESCE(SUM(${this.views.table.count}), 0) AS total
+          FROM ${this.views.table}
+          WHERE ${this.views.table.sigilId} IN (${sigilList})
+            AND ${this.views.table.hour} >= ${since}
+        `,
+        z.object({ total: z.coerce.number() }),
+      );
+      const totalViews = Number(totals?.total) || 0;
+
+      // --- Unique visitors — the headline.
+      // Counted as distinct `(day, visitorHash)` pairs rather than rows: the
+      // same person visiting two environments of the same campaign on one day
+      // is one visitor, and one row per sigil would say two.
+      const [uniqueAgg] = await this.database.run(
+        sql`
+          SELECT COUNT(DISTINCT ${this.uniques.table.day} || '|' || ${this.uniques.table.visitorHash}) AS uniques
+          FROM ${this.uniques.table}
+          WHERE ${this.uniques.table.sigilId} IN (${sigilList})
+            AND ${this.uniques.table.day} >= ${since}
+        `,
+        z.object({ uniques: z.coerce.number() }),
+      );
+      const uniqueVisitors = Number(uniqueAgg?.uniques) || 0;
+
+      // --- Top countries, by views desc.
+      const countryRows = await this.database.run(
+        sql`
+          SELECT ${this.views.table.country} AS country,
+                 SUM(${this.views.table.count}) AS count
+          FROM ${this.views.table}
+          WHERE ${this.views.table.sigilId} IN (${sigilList})
+            AND ${this.views.table.hour} >= ${since}
+          GROUP BY ${this.views.table.country}
+          ORDER BY count DESC
+          LIMIT ${TOP_N}
+        `,
+        z.object({ country: z.string(), count: z.coerce.number() }),
+      );
+      const topCountries = countryRows.map((row) => ({
+        country: row.country,
+        count: Number(row.count) || 0,
+      }));
+
+      // --- Top paths, by views desc, with their share of the total.
+      const pathRows = await this.database.run(
+        sql`
+          SELECT ${this.views.table.path} AS path,
+                 SUM(${this.views.table.count}) AS count
+          FROM ${this.views.table}
+          WHERE ${this.views.table.sigilId} IN (${sigilList})
+            AND ${this.views.table.hour} >= ${since}
+          GROUP BY ${this.views.table.path}
+          ORDER BY count DESC
+          LIMIT ${TOP_N}
+        `,
+        z.object({ path: z.string(), count: z.coerce.number() }),
+      );
+      const topPaths = pathRows.map((row) => {
+        const count = Number(row.count) || 0;
+        return {
+          path: row.path,
+          count,
+          percentage:
+            totalViews > 0 ? Math.round((count / totalViews) * 100) : 0,
+        };
+      });
+
+      // --- Views over time, one point per UTC day, zero-filled.
+      // `substr(hour, 1, 10)` is the day inside the hour bucket — the storage
+      // stays hourly, the chart asks for days.
+      const timelineRows = await this.database.run(
+        sql`
+          SELECT substr(${this.views.table.hour}, 1, 10) AS date,
+                 SUM(${this.views.table.count}) AS count
+          FROM ${this.views.table}
+          WHERE ${this.views.table.sigilId} IN (${sigilList})
+            AND ${this.views.table.hour} >= ${since}
+          GROUP BY substr(${this.views.table.hour}, 1, 10)
+        `,
+        z.object({ date: z.string(), count: z.coerce.number() }),
+      );
+      const byDate = new Map(
+        timelineRows.map((row) => [row.date, Number(row.count) || 0]),
+      );
+      const timeline = this.zeroTimeline(today, days).map((point) => ({
+        date: point.date,
+        views: byDate.get(point.date) ?? 0,
+      }));
+
+      const vitals = await this.computeVitals(sigilIds, since);
+
+      return {
+        range,
+        since,
+        totalViews,
+        uniqueVisitors,
+        topCountries,
+        topPaths,
+        vitals,
+        timeline,
+      };
+    },
+  });
+
+  /**
+   * Every sigil id on the campaign — the join key between a campaign-scoped
+   * request and sigil-scoped rows.
+   */
+  protected async campaignSigilIds(campaignId: number): Promise<string[]> {
+    const rows = await this.sigils.findMany({
+      where: { campaignId: { eq: campaignId } },
+      columns: ["id"],
+    });
+    return rows.map((sigil) => sigil.id);
+  }
+
+  /** A `days`-long zero-filled `[{ date, views: 0 }]` window ending today. */
+  protected zeroTimeline(
+    today: Date,
+    days: number,
+  ): Array<{ date: string; views: number }> {
+    return Array.from({ length: days }, (_, index) => {
+      const day = new Date(today);
+      day.setUTCDate(day.getUTCDate() - (days - 1 - index));
+      return { date: day.toISOString().slice(0, 10), views: 0 };
+    });
+  }
+
+  /**
+   * p75 for all five metrics, merged across every sigil on the campaign.
+   *
+   * Merged at the histogram level rather than by averaging per-sigil
+   * percentiles, which would be arithmetic on numbers that cannot be averaged:
+   * the p75 of two distributions is not the mean of their p75s.
+   */
+  protected async computeVitals(
+    sigilIds: string[],
+    since: string,
+  ): Promise<InsightsResource["vitals"]> {
+    // One read for the window, folded in memory. The histogram lives in a JSON
+    // column, so there is nothing for SQL to SUM — and the row count is bounded
+    // by (hour × metric × path), not by traffic.
+    const rows = await this.vitals.findMany({
+      where: {
+        sigilId: { inArray: sigilIds },
+        hour: { gte: since },
+      },
+      columns: ["metric", "bucketCounts"],
+    });
+
+    const histograms = new Map<string, Map<number, number>>();
+    for (const row of rows) {
+      const histogram = histograms.get(row.metric) ?? new Map<number, number>();
+      for (const [bucket, count] of Object.entries(row.bucketCounts ?? {})) {
+        const index = Number(bucket);
+        histogram.set(index, (histogram.get(index) ?? 0) + Number(count));
+      }
+      histograms.set(row.metric, histogram);
+    }
+
+    const p75 = (metric: VitalMetric): number | null =>
+      this.walkP75(histograms.get(metric), metric);
+
+    const cls = p75("cls");
+    return {
+      lcp: p75("lcp"),
+      // Stored ×1000 as an integer to keep the buckets free of float drift.
+      cls: cls === null ? null : cls / 1000,
+      inp: p75("inp"),
+      fcp: p75("fcp"),
+      ttfb: p75("ttfb"),
+    };
+  }
+
+  /**
+   * Walk a bucket histogram to the 75th percentile.
+   *
+   * Returns the **upper boundary** of the bucket the percentile falls in. A
+   * sample that overflowed every boundary has no upper bound to report, so the
+   * last boundary is returned as a conservative floor: the honest reading is
+   * "at least this bad", never "exactly this".
+   */
+  protected walkP75(
+    histogram: Map<number, number> | undefined,
+    metric: VitalMetric,
+  ): number | null {
+    if (!histogram || histogram.size === 0) {
+      return null;
+    }
+
+    let total = 0;
+    for (const count of histogram.values()) {
+      total += count;
+    }
+    if (total === 0) {
+      return null;
+    }
+
+    const boundaries = VITALS_BUCKETS[metric];
+    const target = Math.ceil(0.75 * total);
+    let cumulative = 0;
+    for (let index = 0; index <= boundaries.length; index++) {
+      cumulative += histogram.get(index) ?? 0;
+      if (cumulative >= target) {
+        return boundaries[Math.min(index, boundaries.length - 1)];
+      }
+    }
+    return boundaries[boundaries.length - 1];
+  }
+}
