@@ -1,8 +1,11 @@
 # Anchored with a leading slash on purpose. A bare `bay` matches ANY path
 # component of that name, so it swallowed the whole `cmd/bay/` directory — the
 # CLI, the server and the control API — and `git add apps/bay` would have
-# committed a module with no `main` package. Nothing catches that: Go is not in
-# the CI pipeline.
+# committed a module with no `main` package.
+#
+# Nothing caught that at the time, because Go was not in CI. It is now — the
+# `bay` job in .github/workflows/ci.yml builds and tests on ubuntu-latest, and
+# `yarn v` runs the same steps locally through `yarn w bay test:linux`.
 /bay
 /bay-data/
 

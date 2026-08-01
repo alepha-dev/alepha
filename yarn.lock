@@ -6386,6 +6386,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"bay@workspace:apps/bay":
+  version: 0.0.0-use.local
+  resolution: "bay@workspace:apps/bay"
+  languageName: unknown
+  linkType: soft
+
 "benchmark@workspace:apps/benchmark":
   version: 0.0.0-use.local
   resolution: "benchmark@workspace:apps/benchmark"
