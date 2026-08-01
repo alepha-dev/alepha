@@ -80,7 +80,7 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/c/:campaignId/chronicles/party` | `chroniclesParty` | `campaign/chronicles/ChroniclesParty.tsx` | Per-member contribution |
 | `/c/:campaignId/petitions` | `campaignPetitions` | `campaign/petitions/CampaignPetitions.tsx` | Owner inbox: triage bug/feature requests |
 | `/c/:campaignId/blights` | `campaignBlights` | blights page | Crash-telemetry inbox (sigil-fed) |
-| `/c/:campaignId/insights` | `campaignInsights` | insights page | Beacon / vitals analytics |
+| `/c/:campaignId/insights` | `campaignInsights` | insights page | Beacon / vitals analytics + per-environment error budget |
 | `/c/:campaignId/q/:shortId` | `campaignQuest` | `campaign/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
 | `/c/:campaignId/q/:shortId/graph` | `campaignQuestGraph` | `campaign/quest/QuestGraph.tsx` | Quest dependency graph |
 | `/c/:campaignId/archive` | `campaignFolios` | `folios/FoliosLayout.tsx` | Folio + archive index (note: path is `/archive`, route name is still `campaignFolios`) |
@@ -178,7 +178,7 @@ User-submitted bug reports / feature requests that the campaign owner triages.
 **Submission flow (login required)** — there are **two** live entry points; both land on `POST /campaigns/:id/petitions`:
 - `/c/:campaignId/request` — first-party form on lore (`CampaignPetitionRequest.tsx`, route `campaignPetitionRequest`). Anonymous visitors see a sign-in CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).
 - External "report a bug" buttons on third-party sites are plain `<a target="_blank" rel="noopener noreferrer">` anchors pointing to `/c/:id/request?path=<encoded>&url=<encoded>&type=bug` — no embedded JS, no screenshot capture, no widget. The page reads query params, persists them to `sessionStorage` (key `lor.petition.draft.<campaignId>`), cleans the URL via `history.replaceState`, and re-reads after the OAuth round-trip. Cleared on successful submit.
-> There is now **one** path plus external links. The sigil in-app dialog is gone with the package rename: `@alepha/sigil` mounts nothing in a host app's React tree, and hands out the petition URL through `usePetitionUrl()` for the app to render where it likes.
+> There is now **one** path plus external links. The screenshot-capturing in-app dialog is gone with the package rename. `@alepha/sigil` mounts nothing *automatically*; it ships an opt-in React surface at `@alepha/sigil/react` — `<SigilRoot />` (a floating feedback button that links out to the petition form) and `usePetitionUrl()` for an app that renders its own link. The subpath is condition-free so an SSR host resolves it on the server pass too.
 
 **Reporter-facing views** — `/me/petitions` (own submissions across campaigns) and `/c/:id/p/:petitionId` (single status page, readable by the reporter or the campaign owner).
 
@@ -253,10 +253,13 @@ A **sigil** is one environment of one application — `lore` in `production` is 
 
 Managed at `/c/:id/settings/sigils` (`SigilController`, reads member-gated, mutations owner-gated — no role, no allowlist: owning the campaign is the whole gate). `features.sigils` is the master switch, with `petitions` / `blights` / `beacon` / `vitals` as the per-capability toggles `GET /sigils/config` reports back to the app.
 
+**The toggles are enforced, not advertised.** `SigilIngestService.gatesFor` intersects the campaign's features with the sigil's `kinds`, and both `absorb` (the write gate) and `/sigils/config` (the advertisement) call it — one definition, so the sink cannot invite a payload it then discards. Enforcing on write is not redundant with the config poll: `sigils.kinds` is written once at creation and has **no update path anywhere**, and the reporting client fails open on any config error, so gating on the token alone left an owner's "off" switch as a suggestion.
+
 **Rotate, don't delete.** All four aggregate tables cascade on `sigilId`, so deleting a sigil to revoke a leaked token also erases that environment's views, vitals, uniques and error groups. `rotateSigil` re-mints `tokenHash`/`tokenPrefix` in place — the old token stops resolving immediately (`verify` looks a sigil up *by* its hash) and every row survives. The UI says which is which; so do the MCP tool descriptions.
 
 - **Blights** — one row per distinct failure, keyed by `fingerprint`, with a count. The owner triages them in the inbox (`/c/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` zone, provenance recorded in `quests.source`). Purged on a retention window (`campaign.retentionDays ?? 30`) by `BlightJobs`; resolved and `quest:`-forwarded rows are kept as audit trail. A blight survives its sigil — `blights.sigilId` is `ON DELETE SET NULL`.
-- **Insights** (`/c/:id/insights`, gated on `features.beacon`) — page views, unique visitors and web-vitals p75, read out of `sigil_views_hourly` / `sigil_uniques_daily` / `sigil_vitals_hourly`. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is a `substr(hour, 1, 10)` group over the same rows. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token.
+- **Insights** (`/c/:id/insights`, gated on `features.beacon`) — three segments over one payload: **Analytics** (page views, unique visitors), **Performance** (web-vitals p75) and **Errors** (the per-environment error budget), read out of `sigil_views_hourly` / `sigil_uniques_daily` / `sigil_vitals_hourly` / `sigil_error_groups`. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is a `substr(hour, 1, 10)` group over the same rows. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token.
+  - The **Errors** segment is the only place `sigil_error_groups` is read. It answers "is this still happening *in production*", which the Blights inbox cannot: the inbox keys on `(campaignId, fingerprint)` so a triage decision does not fork, which necessarily merges staging into production. Filtered on `lastSeenAt` (still failing), ordered by `count`, capped at 20.
 
 > ⚠️ **`name`, `message`, `stack`, `sourceUrl` on a blight are 100% attacker-controlled** and are shown to the campaign owner — the highest-value target. Render as escaped plain text only. Never markdown, never `dangerouslySetInnerHTML`.
 
@@ -272,7 +275,7 @@ Read endpoints are member-gated; mutations are owner-only. **Ingest has its own 
 - Credential: `src/api/services/SigilTokenService.ts` (mint / verify / bearer)
 - Triage: `src/api/controllers/BlightController.ts`, `src/api/services/BlightRuleService.ts`, `src/api/jobs/BlightJobs.ts`
 - Analytics: `src/api/controllers/InsightsController.ts`
-- UI: `src/web/app/components/campaign/settings/CampaignSettingsSigilsPage.tsx` (+ `…SigilRow`, `…SigilToken`), `campaign/blights/CampaignBlights.tsx`, `campaign/insights/CampaignInsights.tsx`
+- UI: `src/web/app/components/campaign/settings/CampaignSettingsSigilsPage.tsx` (+ `…SigilRow`, `…SigilToken`), `campaign/blights/CampaignBlights.tsx`, `campaign/insights/CampaignInsights.tsx` (+ `…Analytics`, `…Performance`, `…Errors`)
 - MCP: `src/mcp/tools/SigilTools.ts`, `src/mcp/tools/BlightTools.ts`
 - E2E: `e2e/sigil.spec.ts` — enrol → ingest → triage → rotate → delete, with ingest driven through Playwright's isolated `request` fixture (the page's `fetch` is patched to attach the session bearer, which would replace the sigil token)
 

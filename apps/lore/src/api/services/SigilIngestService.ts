@@ -6,12 +6,28 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, sql } from "alepha/orm";
 import { blights } from "../entities/blights.ts";
+import { campaigns } from "../entities/campaigns.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
 import { sigilUniquesDaily } from "../entities/sigilUniquesDaily.ts";
 import { sigilViewsHourly } from "../entities/sigilViewsHourly.ts";
 import { sigilVitalsHourly } from "../entities/sigilVitalsHourly.ts";
 import { BlightRuleService } from "./BlightRuleService.ts";
+
+/**
+ * What one sigil is allowed to write, right now.
+ *
+ * The campaign's toggles intersected with the sigil's own kinds — one answer
+ * for both the gate `absorb` applies and the answer `GET /sigils/config`
+ * serves, so those two can never drift into disagreeing about what the sink
+ * accepts.
+ */
+export interface SigilGates {
+  views: boolean;
+  errors: boolean;
+  vitals: boolean;
+  petition: boolean;
+}
 
 /**
  * Turns one sigil envelope into rows.
@@ -41,15 +57,13 @@ import { BlightRuleService } from "./BlightRuleService.ts";
  * key for triage by blast radius. `blights.sigilId` records the **most recent**
  * reporter, which is what the inbox's "filter by sigil" dropdown means; the
  * per-environment breakdown lives in the groups, where it is not lossy.
- *
- * `sigil_error_groups.forwardedAt` is stamped on every sync, so a group always
- * carries the last time it contributed to the inbox.
  */
 export class SigilIngestService {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly rules = $inject(BlightRuleService);
 
+  protected readonly campaigns = $repository(campaigns);
   protected readonly sigils = $repository(sigils);
   protected readonly views = $repository(sigilViewsHourly);
   protected readonly uniques = $repository(sigilUniquesDaily);
@@ -60,11 +74,17 @@ export class SigilIngestService {
   /**
    * Absorbs one batch.
    *
-   * Each section is gated on the capability the sigil was issued with, not on
-   * the campaign's current toggles: the token's own scope is the authorization
-   * boundary, and it is the one thing a request carries with it. The campaign
-   * toggles are what `GET /sigils/config` reports, so an app stops sending at
-   * the source rather than having its payload silently discarded here.
+   * Every section is gated on {@link gatesFor} — the campaign's toggles AND the
+   * sigil's kinds, both. The kinds alone are not enough: `sigils.kinds` is
+   * written once at creation and has no update path, so a sigil minted before
+   * an owner switched Beacon off still carries `beacon` forever. Gating on the
+   * token alone made the settings switch a suggestion the client was trusted to
+   * honour — and the client fails open, so page views and visitor hashes kept
+   * accruing on a campaign whose owner had no page left to see them on.
+   *
+   * The campaign toggles are still what `GET /sigils/config` reports, so a
+   * well-behaved app stops sending at the source. This is the enforcement
+   * behind that advice, not a replacement for it.
    *
    * `lastSeenAt` is stamped whatever happens, including for a batch every gate
    * rejected. It answers "did this environment report", which is Lore's own
@@ -73,11 +93,12 @@ export class SigilIngestService {
    */
   async absorb(sigil: Sigil, envelope: SigilForwarded): Promise<void> {
     const now = new Date(this.dateTime.nowMillis()).toISOString();
+    const gates = await this.gatesFor(sigil);
 
-    if (envelope.errors?.length && this.carries(sigil, "blights")) {
+    if (envelope.errors?.length && gates.errors) {
       await this.absorbErrors(sigil, envelope.errors, now);
     }
-    if (envelope.views?.length && this.carries(sigil, "beacon")) {
+    if (envelope.views?.length && gates.views) {
       await this.absorbViews(
         sigil,
         envelope.views,
@@ -86,11 +107,44 @@ export class SigilIngestService {
         now,
       );
     }
-    if (envelope.vitals?.length && this.carries(sigil, "vitals")) {
+    if (envelope.vitals?.length && gates.vitals) {
       await this.absorbVitals(sigil, envelope.vitals, now);
     }
 
     await this.sigils.updateById(sigil.id, { lastSeenAt: now });
+  }
+
+  /**
+   * The campaign's feature toggles intersected with the sigil's kinds.
+   *
+   * Both gates, in one place, because they are one decision asked in two
+   * places: here on write, and by `GET /sigils/config` on read. Stating it
+   * twice is how a sink ends up advertising a capability it then discards.
+   *
+   * A sigil whose campaign is gone reports nothing. It cannot normally happen —
+   * `sigils.campaignId` cascades — but answering "everything on" to a token
+   * with no campaign behind it is the wrong default.
+   */
+  async gatesFor(sigil: Sigil): Promise<SigilGates> {
+    const campaign = await this.campaigns.findOne({
+      where: { id: { eq: sigil.campaignId } },
+    });
+
+    const features = campaign?.features;
+    const master = features?.sigils === true;
+
+    return {
+      views:
+        master && features?.beacon === true && this.carries(sigil, "beacon"),
+      errors:
+        master && features?.blights === true && this.carries(sigil, "blights"),
+      vitals:
+        master && features?.vitals === true && this.carries(sigil, "vitals"),
+      petition:
+        master &&
+        features?.petitions === true &&
+        this.carries(sigil, "petition"),
+    };
   }
 
   /**
@@ -137,7 +191,6 @@ export class SigilIngestService {
           firstSeenAt: now,
           lastSeenAt: now,
           count: seen,
-          forwardedAt: now,
         },
         {
           target: ["sigilId", "fingerprint"],
@@ -148,7 +201,6 @@ export class SigilIngestService {
           set: {
             count: sql`${this.errorGroups.table.count} + ${seen}`,
             lastSeenAt: now,
-            forwardedAt: now,
           },
         },
       );
