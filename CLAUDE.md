@@ -90,6 +90,29 @@ The Lore MCP (`mcp__claude_ai_Lore__*`) is the long-term planning memory for fra
 - Read `folio_get` on relevant folios. Folios are how past sessions hand context to future sessions (current examples: #4 Drizzle v1 plan, #5 Stripe-deferred, #6 ui-registry removal).
 - **Prefer folios over quests for framework work.** Folios capture decisions, plans, and gotchas — write one (`folio_create` with a good `summary` + reusable `tags`) whenever a session produces a non-obvious decision or design note. Only create quests when the user explicitly asks.
 
+#### The archive is organised — file folios, don't dump them at the root
+
+Campaign `1` has a directory tree (browse it with `directory_list`). Put a new folio where it belongs by passing `directory_shortId` to `folio_create`:
+
+| Directory | What goes in it |
+|---|---|
+| `apps/bay` | the Go orchestrator and its deployment |
+| `apps/bay-admin` | the control panel |
+| `apps/pulse` | observability history (Pulse is retired — see folio #21) |
+| `apps/rocket` | the deployer image |
+| `framework` | `packages/alepha` decisions, ORM, router, UI |
+| `reviews` | audits and code reviews |
+| `plans` | **superpowers plans** — see below |
+| `specs` | **superpowers specs** — see below |
+
+#### ⚠️ superpowers writes its plans and specs HERE, not to disk
+
+`docs/superpowers/` is in `.gitignore`. A plan written there lives only in the worktree that produced it and **dies when that worktree is removed** — which is exactly what the finishing step does. That has already cost one 1100-line plan, recovered by hand into `assets/`.
+
+So when the `superpowers:writing-plans` or `superpowers:brainstorming` skills produce a plan or a spec, **also persist it as a folio** in campaign `1`, under `plans` or `specs`. The file on disk stays the working copy the executing agent reads; the folio is the copy that survives. Update the folio when the plan changes materially, and mark it done or superseded when the work ships.
+
+A plan folio needs: what is being built, the constraints that bind it, and the decisions already taken with their reasons. A future session that reads only the folio should not need the disk copy to understand why.
+
 ### Testing
 
 #### Test Configuration
