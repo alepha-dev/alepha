@@ -2,10 +2,8 @@ import { sigilConfig } from "@alepha/sigil/config";
 import { sigilForwarded } from "@alepha/sigil/envelope";
 import { SIGIL_CONFIG_PATH, SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
 import { $inject, Alepha, z } from "alepha";
-import { $repository } from "alepha/orm";
 import { $route, UnauthorizedError } from "alepha/server";
-import { campaigns } from "../entities/campaigns.ts";
-import type { Sigil, SigilKind } from "../entities/sigils.ts";
+import type { Sigil } from "../entities/sigils.ts";
 import { SigilIngestService } from "../services/SigilIngestService.ts";
 import { SigilTokenService } from "../services/SigilTokenService.ts";
 
@@ -34,7 +32,6 @@ export class SigilIngestController {
   protected readonly alepha = $inject(Alepha);
   protected readonly tokens = $inject(SigilTokenService);
   protected readonly ingest = $inject(SigilIngestService);
-  protected readonly campaigns = $repository(campaigns);
 
   /**
    * `POST /sigils/ingest` — one batch from an enrolled environment.
@@ -61,10 +58,11 @@ export class SigilIngestController {
   /**
    * `GET /sigils/config` — how much this environment should send.
    *
-   * Built from the campaign's toggles intersected with the sigil's own kinds,
-   * so the answer is exactly what `SigilIngestService.absorb` would accept.
-   * Anything else would have an app spending bandwidth on payloads the sink
-   * discards on arrival.
+   * The answer is exactly what `SigilIngestService.absorb` would accept,
+   * because it is the same call: `gatesFor` is the one place the campaign's
+   * toggles are intersected with the sigil's kinds, and both the gate and this
+   * advertisement read it. Restating the rule here is how a sink ends up
+   * inviting payloads it then discards on arrival.
    *
    * `sampling` is deliberately absent: Lore has no per-campaign rate to tune,
    * and the package already defaults to keeping everything.
@@ -78,34 +76,15 @@ export class SigilIngestController {
     },
     handler: async ({ headers }) => {
       const sigil = await this.resolve(headers.authorization);
-      const campaign = await this.campaigns.findOne({
-        where: { id: { eq: sigil.campaignId } },
-      });
-
-      // A sigil whose campaign is gone reports nothing. It cannot normally
-      // happen — `sigils.campaignId` cascades — but answering "everything on"
-      // to a token with no campaign behind it is the wrong default.
-      const features = campaign?.features;
-      const master = features?.sigils === true;
+      const gates = await this.ingest.gatesFor(sigil);
 
       return {
         enabled: {
-          views:
-            master &&
-            features?.beacon === true &&
-            this.carries(sigil, "beacon"),
-          errors:
-            master &&
-            features?.blights === true &&
-            this.carries(sigil, "blights"),
-          vitals:
-            master &&
-            features?.vitals === true &&
-            this.carries(sigil, "vitals"),
+          views: gates.views,
+          errors: gates.errors,
+          vitals: gates.vitals,
         },
-        ...(master &&
-        features?.petitions === true &&
-        this.carries(sigil, "petition")
+        ...(gates.petition
           ? {
               petitionUrl: `${this.publicUrl()}/c/${sigil.campaignId}/request`,
             }
@@ -126,10 +105,6 @@ export class SigilIngestController {
       throw new UnauthorizedError("Unknown sigil token");
     }
     return sigil;
-  }
-
-  protected carries(sigil: Sigil, kind: SigilKind): boolean {
-    return (sigil.kinds ?? []).includes(kind);
   }
 
   /**

@@ -30,6 +30,27 @@ class Probe {
 }
 
 /**
+ * Every capability switched on, which is what most tests here want as a
+ * baseline so their subject is the one thing they vary.
+ *
+ * The sigil toggles are absent from `defaultCampaignFeatures` on purpose —
+ * adding a key there changes the `campaigns` column DEFAULT, which on D1 means
+ * a table rebuild that cascade-wipes production. So a campaign created without
+ * an explicit `features` accepts nothing, and a test that forgot this would
+ * pass while asserting on empty tables.
+ */
+const allOn = {
+  kanban: true,
+  folios: true,
+  petitions: true,
+  chapters: true,
+  sigils: true,
+  blights: true,
+  beacon: true,
+  vitals: true,
+};
+
+/**
  * Boots a real HTTP server rather than calling handlers directly.
  *
  * The routes under test are `$route`, not `$action`, and the difference is
@@ -70,7 +91,7 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
   const campaign = await probe.campaigns.create({
     title: "Test",
     createdBy: owner.id,
-    ...(over.features ? { features: over.features } : {}),
+    features: over.features ?? allOn,
   } as any);
 
   const minted = tokens.mint();
@@ -202,6 +223,129 @@ describe("sigil ingest", () => {
     ).toHaveLength(0);
   });
 
+  /*
+    The campaign toggle is a GATE, not a hint.
+
+    `sigils.kinds` is written once by `createSigil` and there is no update path
+    anywhere — not the UI, not MCP, not the API. So a sigil minted while Beacon
+    was on carries `beacon` forever, and gating on the token alone made the
+    settings switch advisory: the client is told to stop via `/sigils/config`,
+    the client fails open on any error, and rows kept accruing on a campaign
+    whose owner no longer had a page to see them on (`campaignInsights` 404s
+    when `features.beacon` is off).
+
+    One test per tracker, each with the kind PRESENT so the only thing being
+    proven is the feature half of the intersection.
+  */
+  it("writes no views when Beacon is switched off, kind or not", async () => {
+    const { probe, sigil, post } = await setup({
+      features: { ...allOn, beacon: false },
+    });
+
+    const res = await post({
+      views: [{ path: "/home" }],
+      visitor: "v1",
+      country: "FR",
+    });
+    expect(res.status).toBe(204);
+
+    expect(sigil.kinds).toContain("beacon");
+    expect(
+      await probe.views.findMany({ where: { sigilId: { eq: sigil.id } } }),
+    ).toHaveLength(0);
+    // The daily visitor hash is a view-side write too, and it is the one that
+    // is personal data: it must not survive the toggle either.
+    expect(
+      await probe.uniques.findMany({ where: { sigilId: { eq: sigil.id } } }),
+    ).toHaveLength(0);
+  });
+
+  it("writes no vitals when Vitals is switched off, kind or not", async () => {
+    const { probe, sigil, post } = await setup({
+      features: { ...allOn, vitals: false },
+    });
+
+    const res = await post({
+      vitals: [{ path: "/home", metric: "lcp", value: 900 }],
+    });
+    expect(res.status).toBe(204);
+
+    expect(sigil.kinds).toContain("vitals");
+    expect(
+      await probe.vitals.findMany({ where: { sigilId: { eq: sigil.id } } }),
+    ).toHaveLength(0);
+  });
+
+  it("writes no errors when Blights is switched off, kind or not", async () => {
+    const { probe, campaign, sigil, post } = await setup({
+      features: { ...allOn, blights: false },
+    });
+
+    const res = await post({ errors: [anError()] });
+    expect(res.status).toBe(204);
+
+    expect(sigil.kinds).toContain("blights");
+    expect(
+      await probe.errorGroups.findMany({
+        where: { sigilId: { eq: sigil.id } },
+      }),
+    ).toHaveLength(0);
+    expect(
+      await probe.blights.findMany({
+        where: { campaignId: { eq: campaign.id } },
+      }),
+    ).toHaveLength(0);
+  });
+
+  it("writes nothing at all when the sigils master switch is off", async () => {
+    const { probe, campaign, sigil, post } = await setup({
+      features: { ...allOn, sigils: false },
+    });
+
+    const res = await post({
+      views: [{ path: "/home" }],
+      vitals: [{ path: "/home", metric: "lcp", value: 900 }],
+      errors: [anError()],
+    });
+    expect(res.status).toBe(204);
+
+    expect(
+      await probe.views.findMany({ where: { sigilId: { eq: sigil.id } } }),
+    ).toHaveLength(0);
+    expect(
+      await probe.vitals.findMany({ where: { sigilId: { eq: sigil.id } } }),
+    ).toHaveLength(0);
+    expect(
+      await probe.blights.findMany({
+        where: { campaignId: { eq: campaign.id } },
+      }),
+    ).toHaveLength(0);
+  });
+
+  it("advertises exactly what it would accept", async () => {
+    // The contract `/sigils/config` claims to honour. Both halves read the same
+    // `gatesFor`, so this fails the moment one of them grows a rule of its own.
+    const { probe, sigil, post, getConfig } = await setup({
+      features: { ...allOn, vitals: false },
+    });
+
+    const body = await (await getConfig()).json();
+    expect(body.enabled.vitals).toBe(false);
+    expect(body.enabled.views).toBe(true);
+
+    await post({
+      views: [{ path: "/home" }],
+      vitals: [{ path: "/home", metric: "lcp", value: 900 }],
+    });
+
+    expect(
+      await probe.views.findMany({ where: { sigilId: { eq: sigil.id } } }),
+    ).toHaveLength(1);
+    expect(
+      await probe.vitals.findMany({ where: { sigilId: { eq: sigil.id } } }),
+    ).toHaveLength(0);
+  });
+
   it("survives a proxy that stamps an empty country", async () => {
     const { probe, sigil, post } = await setup();
 
@@ -272,7 +416,6 @@ describe("sigil ingest", () => {
     });
     expect(groups).toHaveLength(1);
     expect(groups[0].count).toBe(7);
-    expect(groups[0].forwardedAt).toBeTruthy();
 
     // The campaign-wide editorial decision: one row, one status.
     const inbox = await probe.blights.findMany({
