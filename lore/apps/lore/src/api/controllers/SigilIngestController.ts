@@ -74,23 +74,8 @@ export class SigilIngestController {
       headers: z.object({ authorization: z.string().optional() }),
       response: sigilConfig,
     },
-    handler: async ({ headers }) => {
-      const sigil = await this.resolve(headers.authorization);
-      const gates = await this.ingest.gatesFor(sigil);
-
-      return {
-        enabled: {
-          views: gates.views,
-          errors: gates.errors,
-          vitals: gates.vitals,
-        },
-        ...(gates.petition
-          ? {
-              petitionUrl: `${this.publicUrl()}/c/${sigil.campaignId}/request`,
-            }
-          : {}),
-      };
-    },
+    handler: async ({ headers }) =>
+      await this.ingest.configFor(await this.resolve(headers.authorization)),
   });
 
   /**
@@ -105,14 +90,5 @@ export class SigilIngestController {
       throw new UnauthorizedError("Unknown sigil token");
     }
     return sigil;
-  }
-
-  /**
-   * Absolute base for the petition link, or empty when `PUBLIC_URL` is unset —
-   * in which case the link degrades to a relative path rather than pointing at
-   * a host this instance cannot name.
-   */
-  protected publicUrl(): string {
-    return String(this.alepha.env.PUBLIC_URL ?? "").replace(/\/$/, "");
   }
 }

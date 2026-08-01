@@ -1,7 +1,8 @@
+import type { SigilConfig } from "@alepha/sigil/config";
 import type { SigilForwarded } from "@alepha/sigil/envelope";
 import { sigilFingerprintSource } from "@alepha/sigil/fingerprint";
 import { bucketIndex, type VitalMetric } from "@alepha/sigil/vitals";
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, sql } from "alepha/orm";
@@ -59,6 +60,7 @@ export interface SigilGates {
  * per-environment breakdown lives in the groups, where it is not lossy.
  */
 export class SigilIngestService {
+  protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly rules = $inject(BlightRuleService);
@@ -144,6 +146,39 @@ export class SigilIngestService {
         master &&
         features?.petitions === true &&
         this.carries(sigil, "petition"),
+    };
+  }
+
+  /**
+   * The standing answer to "how much should I send" — what `GET /sigils/config`
+   * returns, built here rather than in the route.
+   *
+   * Because there are two callers now: that route, and the in-process provider
+   * Lore substitutes to report to itself (a Worker cannot fetch its own
+   * hostname). Two constructions of the same answer is how they drift, which is
+   * the failure the shared `@alepha/sigil/paths` already had to fix once.
+   *
+   * `sampling` is deliberately absent: Lore has no per-campaign rate to tune,
+   * and the client already defaults to keeping everything.
+   */
+  async configFor(sigil: Sigil): Promise<SigilConfig> {
+    const gates = await this.gatesFor(sigil);
+    const publicUrl = String(this.alepha.env.PUBLIC_URL ?? "").replace(
+      /\/$/,
+      "",
+    );
+
+    return {
+      enabled: {
+        views: gates.views,
+        errors: gates.errors,
+        vitals: gates.vitals,
+      },
+      // Omitted rather than empty when the module is off: the client treats an
+      // absent url as "no feedback surface", which is the honest reading.
+      ...(gates.petition
+        ? { petitionUrl: `${publicUrl}/c/${sigil.campaignId}/request` }
+        : {}),
     };
   }
 
