@@ -31,8 +31,13 @@ export class CampaignTools {
 
   /**
    * Resolve campaign ID from params (by ID or name).
+   *
+   * `public` so sibling tool classes can accept the same `campaign` /
+   * `campaign_name` pair without each re-implementing the lookup — an agent
+   * that can name a campaign for one tool should be able to name it for all
+   * of them.
    */
-  protected async resolveCampaignId(
+  public async resolveCampaignId(
     campaign?: number,
     campaignName?: string,
   ): Promise<number> {
