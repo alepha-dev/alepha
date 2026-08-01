@@ -12,6 +12,7 @@ import { CampaignController } from "../src/api/controllers/CampaignController.ts
 import { InsightsController } from "../src/api/controllers/InsightsController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { members } from "../src/api/entities/members.ts";
+import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
 import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
 import { sigilVitalsHourly } from "../src/api/entities/sigilVitalsHourly.ts";
@@ -35,6 +36,7 @@ class Probe {
   views = $repository(sigilViewsHourly);
   uniques = $repository(sigilUniquesDaily);
   vitals = $repository(sigilVitalsHourly);
+  errorGroups = $repository(sigilErrorGroups);
 }
 
 interface TestContext {
@@ -147,6 +149,19 @@ const dayUtc = (ctx: TestContext, daysAgo: number): string => {
  */
 const hourUtc = (ctx: TestContext, daysAgo: number, hour: number): string =>
   `${dayUtc(ctx, daysAgo)}T${String(hour).padStart(2, "0")}`;
+
+/**
+ * A full ISO instant `daysAgo` days before the pinned one.
+ *
+ * Error groups store real timestamps, not bucket keys — the window filter
+ * compares them lexicographically against a `YYYY-MM-DD` `since`, which is what
+ * these fixtures exercise.
+ */
+const instantUtc = (ctx: TestContext, daysAgo: number): string => {
+  const at = new Date(ctx.nowMs);
+  at.setUTCDate(at.getUTCDate() - daysAgo);
+  return at.toISOString();
+};
 
 describe("InsightsController", () => {
   let ctx: TestContext;
@@ -405,6 +420,156 @@ describe("InsightsController", () => {
     expect(res.data.topPaths).toEqual([]);
     expect(res.data.timeline).toHaveLength(7);
     expect(res.data.vitals.lcp).toBeNull();
+    expect(res.data.errorGroups).toEqual([]);
+  });
+
+  describe("error budget", () => {
+    /*
+      `sigil_error_groups` was written on every accepted error and read by
+      nothing outside `test/` — the per-environment error budget the delete
+      confirmation warns you about losing had no surface that could show it.
+      These pin the surface that now does.
+    */
+    it("reports each environment's groups separately, worst first", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const campaignId = await createCampaign(ctx, owner);
+      const prod = await createSigil(ctx, campaignId, "prod", owner);
+      const staging = await createSigil(ctx, campaignId, "staging", owner);
+
+      // One fingerprint, both environments. The Blights inbox folds these into
+      // a single row on purpose; the budget must not, or "is it still happening
+      // in production" has no answer.
+      await ctx.probe.errorGroups.create({
+        sigilId: prod,
+        fingerprint: "fp-shared",
+        name: "TypeError",
+        message: "boom",
+        stackSample: "TypeError: boom",
+        sourceUrl: "https://demo.example.com/cart",
+        firstSeenAt: instantUtc(ctx, 3),
+        lastSeenAt: instantUtc(ctx, 0),
+        count: 4,
+      });
+      await ctx.probe.errorGroups.create({
+        sigilId: staging,
+        fingerprint: "fp-shared",
+        name: "TypeError",
+        message: "boom",
+        stackSample: "TypeError: boom",
+        sourceUrl: "https://demo.example.com/cart",
+        firstSeenAt: instantUtc(ctx, 2),
+        lastSeenAt: instantUtc(ctx, 0),
+        count: 11,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { campaignId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(res.data.errorGroups).toHaveLength(2);
+      expect(res.data.errorGroups[0]).toMatchObject({
+        sigilId: staging,
+        sigilLabel: "lore / staging",
+        fingerprint: "fp-shared",
+        name: "TypeError",
+        message: "boom",
+        count: 11,
+      });
+      expect(res.data.errorGroups[1]).toMatchObject({
+        sigilId: prod,
+        sigilLabel: "lore / prod",
+        count: 4,
+      });
+    });
+
+    it("drops a group that stopped happening before the window", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const campaignId = await createCampaign(ctx, owner);
+      const sigilId = await createSigil(ctx, campaignId, "prod", owner);
+
+      // Filtered on `lastSeenAt`, not `firstSeenAt`: an old bug that fired an
+      // hour ago is in the budget, and one that stopped last month is not —
+      // even though it started inside the window's reach.
+      await ctx.probe.errorGroups.create({
+        sigilId,
+        fingerprint: "fp-old",
+        name: "RangeError",
+        message: "stale",
+        stackSample: "RangeError: stale",
+        sourceUrl: "",
+        firstSeenAt: instantUtc(ctx, 40),
+        lastSeenAt: instantUtc(ctx, 20),
+        count: 99,
+      });
+      await ctx.probe.errorGroups.create({
+        sigilId,
+        fingerprint: "fp-live",
+        name: "TypeError",
+        message: "fresh",
+        stackSample: "TypeError: fresh",
+        sourceUrl: "",
+        firstSeenAt: instantUtc(ctx, 40),
+        lastSeenAt: instantUtc(ctx, 1),
+        count: 2,
+      });
+
+      const week = await ctx.insightsController.getInsights.fetch(
+        { params: { campaignId }, query: { range: "7d" } },
+        { user: owner },
+      );
+      expect(week.data.errorGroups.map((g) => g.fingerprint)).toEqual([
+        "fp-live",
+      ]);
+
+      const month = await ctx.insightsController.getInsights.fetch(
+        { params: { campaignId }, query: { range: "30d" } },
+        { user: owner },
+      );
+      expect(month.data.errorGroups.map((g) => g.fingerprint).sort()).toEqual([
+        "fp-live",
+        "fp-old",
+      ]);
+    });
+
+    it("never shows another campaign's groups", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const stranger = await createTestUser(ctx);
+      const mine = await createCampaign(ctx, owner);
+      const theirs = await createCampaign(ctx, stranger);
+      const myScope = await createSigil(ctx, mine, "prod", owner);
+      const theirScope = await createSigil(ctx, theirs, "prod", stranger);
+
+      for (const [sigilId, fingerprint] of [
+        [myScope, "fp-mine"],
+        [theirScope, "fp-theirs"],
+      ] as const) {
+        await ctx.probe.errorGroups.create({
+          sigilId,
+          fingerprint,
+          name: "TypeError",
+          message: "boom",
+          stackSample: "TypeError: boom",
+          sourceUrl: "",
+          firstSeenAt: instantUtc(ctx, 1),
+          lastSeenAt: instantUtc(ctx, 0),
+          count: 1,
+        });
+      }
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { campaignId: mine }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(res.data.errorGroups.map((g) => g.fingerprint)).toEqual([
+        "fp-mine",
+      ]);
+    });
   });
 
   describe("vitals p75", () => {

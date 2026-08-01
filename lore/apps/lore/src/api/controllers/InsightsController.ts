@@ -4,6 +4,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
+import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { sigils } from "../entities/sigils.ts";
 import { sigilUniquesDaily } from "../entities/sigilUniquesDaily.ts";
 import { sigilViewsHourly } from "../entities/sigilViewsHourly.ts";
@@ -19,6 +20,15 @@ const RANGE_DAYS: Record<string, number> = {
 
 /** How many rows the top-countries / top-paths leaderboards return. */
 const TOP_N = 10;
+
+/**
+ * How many error groups the budget section returns.
+ *
+ * Wider than the leaderboards on purpose: an error budget you have to paginate
+ * is one nobody reads to the bottom, and the tail is where a new regression
+ * shows up before it is anyone's top ten.
+ */
+const TOP_ERROR_GROUPS = 20;
 
 /**
  * One campaign's analytics over a 1d / 7d / 30d window.
@@ -78,6 +88,32 @@ const insightsSchema = z.object({
       views: z.integer(),
     }),
   ),
+  /**
+   * The per-environment error budget: one row per `(sigil, fingerprint)` still
+   * seen inside the window, worst first.
+   *
+   * This is the question `sigil_error_groups` exists to answer and the Blights
+   * inbox structurally cannot — the inbox folds every environment into one row
+   * per campaign, because a triage decision must not fork, which is exactly
+   * what makes it useless for "is this still happening *in production*".
+   *
+   * ⚠️ `name` and `message` come out of an application's runtime and are
+   * attacker-controlled. Escaped plain text only, never markdown.
+   */
+  errorGroups: z.array(
+    z.object({
+      sigilId: z.uuid(),
+      /** The environment's display label, so the UI needs no second lookup. */
+      sigilLabel: z.string(),
+      fingerprint: z.string(),
+      name: z.string(),
+      message: z.string(),
+      /** Occurrences in this environment, summed across every batch. */
+      count: z.integer(),
+      firstSeenAt: z.string(),
+      lastSeenAt: z.string(),
+    }),
+  ),
 });
 
 export type InsightsResource = Static<typeof insightsSchema>;
@@ -95,6 +131,12 @@ export type InsightsResource = Static<typeof insightsSchema>;
  * available without giving up the resolution that makes a 14:00 deploy visible
  * against 13:00.
  *
+ * **The error budget lives here too.** `sigil_error_groups` is the only table
+ * that keeps failures split by environment, and "is this still happening in
+ * production" is a per-environment question the campaign-wide Blights inbox
+ * cannot answer by construction. This is the surface that asks it — the same
+ * range selector, the same member gate, no second route for one list.
+ *
  * Reads are member-gated: analytics are not an owner secret, and the page is
  * linked from the campaign nav every member sees.
  */
@@ -106,6 +148,7 @@ export class InsightsController {
   protected views = $repository(sigilViewsHourly);
   protected uniques = $repository(sigilUniquesDaily);
   protected vitals = $repository(sigilVitalsHourly);
+  protected errorGroups = $repository(sigilErrorGroups);
 
   getInsights = $action({
     use: [$secure({ permissions: ["campaign:read"] })],
@@ -130,7 +173,8 @@ export class InsightsController {
       sinceDate.setUTCDate(sinceDate.getUTCDate() - (days - 1));
       const since = sinceDate.toISOString().slice(0, 10);
 
-      const sigilIds = await this.campaignSigilIds(params.campaignId);
+      const labels = await this.campaignSigilLabels(params.campaignId);
+      const sigilIds = [...labels.keys()];
 
       if (sigilIds.length === 0) {
         return {
@@ -142,6 +186,7 @@ export class InsightsController {
           topPaths: [],
           vitals: { lcp: null, cls: null, inp: null, fcp: null, ttfb: null },
           timeline: this.zeroTimeline(today, days),
+          errorGroups: [],
         };
       }
 
@@ -243,6 +288,7 @@ export class InsightsController {
       }));
 
       const vitals = await this.computeVitals(sigilIds, since);
+      const errorGroups = await this.readErrorGroups(sigilIds, labels, since);
 
       return {
         range,
@@ -253,20 +299,64 @@ export class InsightsController {
         topPaths,
         vitals,
         timeline,
+        errorGroups,
       };
     },
   });
 
   /**
-   * Every sigil id on the campaign — the join key between a campaign-scoped
-   * request and sigil-scoped rows.
+   * Every sigil on the campaign, id → label.
+   *
+   * The ids are the join key between a campaign-scoped request and sigil-scoped
+   * rows; the labels are what makes an error budget legible, since "which
+   * environment" is the entire reason these rows are kept separately from the
+   * inbox. Both come out of the one read the request already needed.
    */
-  protected async campaignSigilIds(campaignId: number): Promise<string[]> {
+  protected async campaignSigilLabels(
+    campaignId: number,
+  ): Promise<Map<string, string>> {
     const rows = await this.sigils.findMany({
       where: { campaignId: { eq: campaignId } },
-      columns: ["id"],
+      columns: ["id", "label"],
     });
-    return rows.map((sigil) => sigil.id);
+    return new Map(rows.map((sigil) => [sigil.id, sigil.label]));
+  }
+
+  /**
+   * The window's error groups, worst first.
+   *
+   * Filtered on `lastSeenAt`, not `firstSeenAt`: the question is "is this still
+   * happening", so a two-year-old bug that fired an hour ago belongs in the
+   * budget and one that stopped last month does not. Both columns hold full ISO
+   * timestamps and `since` is a `YYYY-MM-DD` prefix of the same format, so the
+   * comparison is lexicographic with no date math.
+   */
+  protected async readErrorGroups(
+    sigilIds: string[],
+    labels: Map<string, string>,
+    since: string,
+  ): Promise<InsightsResource["errorGroups"]> {
+    const rows = await this.errorGroups.findMany({
+      where: {
+        sigilId: { inArray: sigilIds },
+        lastSeenAt: { gte: since },
+      },
+      orderBy: [{ column: "count", direction: "desc" }],
+      limit: TOP_ERROR_GROUPS,
+    });
+
+    return rows.map((row) => ({
+      sigilId: row.sigilId,
+      // The sigil is guaranteed present — the ids came from the same read, and
+      // `sigil_error_groups.sigilId` cascades on delete.
+      sigilLabel: labels.get(row.sigilId) ?? row.sigilId,
+      fingerprint: row.fingerprint,
+      name: row.name,
+      message: row.message,
+      count: row.count ?? 1,
+      firstSeenAt: row.firstSeenAt,
+      lastSeenAt: row.lastSeenAt,
+    }));
   }
 
   /** A `days`-long zero-filled `[{ date, views: 0 }]` window ending today. */

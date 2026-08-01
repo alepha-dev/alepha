@@ -261,6 +261,52 @@ test.describe("Sigils", () => {
       });
     });
 
+    await test.step("the insights page renders what was just reported", async () => {
+      // 491 restored lines across three components plus a nav entry, and
+      // nothing in the repo rendered any of them. A nav entry pointing at a
+      // page that throws is exactly what took six specs down in `5366c6e4d`.
+      await page.goto(`/c/${campaignId}/insights`);
+      await page.waitForLoadState("networkidle");
+
+      // Analytics: two views of /checkout from one visitor. The numbers are
+      // asserted, not just the headings — a page that renders zeros proves
+      // only that it does not throw.
+      await expect(page.getByText("Unique visitors")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.getByText("Top pages")).toBeVisible();
+      await expect(page.getByText("/checkout").first()).toBeVisible();
+      // The only page reported, so its two views are 100% of the total.
+      await expect(page.getByText(/2\s*·\s*100%/)).toBeVisible();
+
+      // Performance: the 2100 ms LCP sample lands in the ≤2500 bucket, and p75
+      // reports that bucket's upper boundary. The thousands separator is
+      // whatever the browser's locale uses.
+      await page.getByRole("radio", { name: "Performance" }).click();
+      await expect(page.getByText("Web Vitals")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.getByText(/2[,.\s]?500\s*ms/)).toBeVisible();
+    });
+
+    await test.step("the error budget names the environment that is still failing", async () => {
+      // `sigil_error_groups` was written on every accepted error and read by
+      // nothing outside `test/`. This is the surface that reads it — split per
+      // environment, unlike the inbox, which folds every sigil into one row per
+      // campaign on purpose.
+      await page.getByRole("radio", { name: "Errors" }).click();
+
+      await expect(page.getByText("Still happening")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.getByText(blightMessage)).toBeVisible();
+      // The whole point of the table: which environment, by name.
+      await expect(page.getByText("lore / production").first()).toBeVisible();
+      // 3 + 4, counted per environment. Same total as the inbox here because
+      // there is one sigil; the split is what the table exists to keep.
+      await expect(page.getByText("7", { exact: true }).first()).toBeVisible();
+    });
+
     let rotated = "";
     await test.step("rotating revokes the old token and keeps the history", async () => {
       await page.goto(`/c/${campaignId}/settings/sigils`);

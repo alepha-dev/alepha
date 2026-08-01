@@ -11,6 +11,7 @@ import type {
 import { currentCampaignAtom } from "../../../atoms/currentCampaignAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import CampaignInsightsAnalytics from "./CampaignInsightsAnalytics.tsx";
+import CampaignInsightsErrors from "./CampaignInsightsErrors.tsx";
 import CampaignInsightsPerformance from "./CampaignInsightsPerformance.tsx";
 
 export interface CampaignInsightsProps {
@@ -20,7 +21,7 @@ export interface CampaignInsightsProps {
 type Range = "1d" | "7d" | "30d";
 const RANGES: Range[] = ["1d", "7d", "30d"];
 
-type View = "analytics" | "performance";
+type View = "analytics" | "performance" | "errors";
 
 const CampaignInsights = (props: CampaignInsightsProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -67,6 +68,7 @@ const CampaignInsights = (props: CampaignInsightsProps) => {
           options={[
             { value: "analytics", label: tr("insights.tab.analytics") },
             { value: "performance", label: tr("insights.tab.performance") },
+            { value: "errors", label: tr("insights.tab.errors") },
           ]}
         />
         <div className="flex items-center gap-2">
@@ -92,11 +94,9 @@ const CampaignInsights = (props: CampaignInsightsProps) => {
         </div>
       </div>
 
-      {view === "analytics" ? (
-        <CampaignInsightsAnalytics data={data} />
-      ) : (
-        <CampaignInsightsPerformance data={data} />
-      )}
+      {view === "analytics" && <CampaignInsightsAnalytics data={data} />}
+      {view === "performance" && <CampaignInsightsPerformance data={data} />}
+      {view === "errors" && <CampaignInsightsErrors data={data} />}
     </div>
   );
 };
