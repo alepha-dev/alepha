@@ -32,3 +32,4 @@ Configurable logging with multiple outputs.
 ### Providers
 
 - [`CliFormatterProvider`](/docs/reference-providers-cliformatterprovider) — Compact formatter for CLI output.
+- [`LogBufferProvider`](/docs/reference-providers-logbufferprovider) — Access to the log buffer of the current execution context.
