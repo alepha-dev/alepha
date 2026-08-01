@@ -43,11 +43,11 @@ cet état.
 
 Ce qui n'y appartient pas :
 
-- **L'analytics, les erreurs, les web-vitals** → `apps/pulse`. Pulse est
-  agnostique de l'hébergement : il reçoit d'apps sur Cloudflare, sur Vercel ou
-  sur Bay indifféremment. Rien dans Pulse ne doit savoir ce qu'est un
-  déploiement.
-- **Le suivi des incidents** → `apps/lore`.
+- **L'analytics, les erreurs, les web-vitals, le suivi des incidents** →
+  `apps/lore`, via les **sigils**. Un sigil est agnostique de l'hébergement : il
+  reçoit d'apps sur Cloudflare, sur Vercel ou sur Bay indifféremment, et rien
+  côté sink ne doit savoir ce qu'est un déploiement. Une app qui rapporte
+  importe `@alepha/sigil` et pointe `SIGIL_SINK` vers Lore.
 
 ## Pourquoi c'est une app séparée de Bay
 
