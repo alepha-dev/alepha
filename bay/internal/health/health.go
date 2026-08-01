@@ -119,7 +119,26 @@ func (p *Probe) WaitReady(port int, timeout time.Duration) error {
 		status, hasHealth, err := p.Check(ctx, port)
 		switch {
 		case err != nil:
-			lastErr = err
+			/*
+				Kept only when it adds something.
+
+				`lastErr` is what the caller is told the wait failed for, and the
+				last probe of any wait is the one this function's own deadline
+				cuts off mid-request. Overwriting unconditionally therefore meant
+				the answer was ALWAYS the deadline: an app that had reported
+				`ready=false` three times came back as `context deadline
+				exceeded`, sending an operator to look at the network for an app
+				that was answering fine and merely was not ready yet.
+
+				`ctx.Err()` is the test rather than unwrapping the error, because
+				the same expiry surfaces differently depending on where it lands
+				— in the dial, in the round trip, in reading the body. If our own
+				context is already done, whatever came back is an artefact of
+				giving up, and it must not displace a real finding.
+			*/
+			if ctx.Err() == nil || lastErr == nil {
+				lastErr = err
+			}
 		case hasHealth && status.Ready:
 			return nil
 		case hasHealth:
