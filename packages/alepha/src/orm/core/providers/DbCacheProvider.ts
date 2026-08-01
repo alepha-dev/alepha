@@ -9,8 +9,24 @@ import { DateTimeProvider } from "alepha/datetime";
  *
  * This is intentionally self-contained (no external cache dependencies)
  * so the ORM module does not force `AlephaCache` on all consumers.
+ *
+ * ### Bounded on purpose
+ *
+ * The key space is not: it is derived from the caller's query, so a query built
+ * from user-controlled pagination or filter values mints a fresh entry per
+ * distinct input. `expiresAt` was only ever consulted inside `get()`, so an
+ * entry written once and never read again was reclaimed by nothing short of a
+ * write to its table — never, for a read-mostly table. Two bounds close that:
+ * expired entries are swept on write, and the map is capped at
+ * {@link MAX_ENTRIES} with oldest-first eviction (insertion order).
  */
 export class DbCacheProvider {
+  /**
+   * Hard cap on retained entries. Sized so an ordinary app never reaches it —
+   * this is a leak backstop, not a tuning knob.
+   */
+  public static readonly MAX_ENTRIES = 5_000;
+
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly store = new Map<
     string,
@@ -54,6 +70,30 @@ export class DbCacheProvider {
       value,
       expiresAt: ttl ? this.dateTime.nowMillis() + ttl : undefined,
     });
+    this.evict();
+  }
+
+  /**
+   * Reclaim space: drop everything already expired, then, if still over
+   * budget, the oldest entries until the cap is met. `Map` preserves insertion
+   * order, so `keys()` yields oldest-first.
+   */
+  protected evict(): void {
+    const now = this.dateTime.nowMillis();
+
+    for (const [key, entry] of this.store) {
+      if (entry.expiresAt && now > entry.expiresAt) {
+        this.store.delete(key);
+      }
+    }
+
+    while (this.store.size > DbCacheProvider.MAX_ENTRIES) {
+      const oldest = this.store.keys().next().value;
+      if (oldest === undefined) {
+        break;
+      }
+      this.store.delete(oldest);
+    }
   }
 
   /**

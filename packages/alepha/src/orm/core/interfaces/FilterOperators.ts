@@ -151,11 +151,14 @@ export interface FilterOperators<TValue> {
    * ```ts
    * // Select cars that have been discontinued.
    * repository.findMany({ where: { discontinuedAt: { isNotNull: true } } })
+   *
+   * // `false` inverts the test, so a computed flag reads naturally.
+   * repository.findMany({ where: { discontinuedAt: { isNotNull: onlyDiscontinued } } })
    * ```
    *
    * @see isNull for the inverse of this test
    */
-  isNotNull?: true;
+  isNotNull?: boolean;
 
   /**
    * Test whether an expression is NULL. By the SQL standard,
@@ -168,11 +171,14 @@ export interface FilterOperators<TValue> {
    * ```ts
    * // Select cars that have no discontinuedAt date.
    * repository.findMany({ where: { discontinuedAt: { isNull: true } } })
+   *
+   * // `false` inverts the test, so a computed flag reads naturally.
+   * repository.findMany({ where: { discontinuedAt: { isNull: !includeArchived } } })
    * ```
    *
    * @see isNotNull for the inverse of this test
    */
-  isNull?: true;
+  isNull?: boolean;
 
   /**
    * Test whether an expression is between two values. This

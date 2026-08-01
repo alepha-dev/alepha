@@ -108,6 +108,14 @@ export interface SecureGuardContext {
  *
  * Permissions declared in `$secure()` are auto-created in the permission registry at definition time.
  *
+ * Because `permissions` is an AND list, the resulting `ownership` is the most
+ * restrictive of the matched grants — one owner-scoped permission narrows the
+ * whole call, whatever order the list was written in.
+ *
+ * The resolved user is published to `currentUserAtom` and to the request
+ * **before** the guard runs, so anything the guard calls (a repository read in
+ * `$owns`, for instance) resolves the same tenant the handler would.
+ *
  * ## Browser Behavior
  *
  * On the server, `$secure` throws `UnauthorizedError` or `ForbiddenError`.
@@ -197,7 +205,16 @@ export function $secure(options?: SecureOptions): Middleware {
 
         // 6. Explicit permission checks (all must pass) — role names are
         // resolved within the user's own realm, never across realms.
+        //
+        // `permissions` is an AND list, so the resulting `ownership` must be
+        // the MOST RESTRICTIVE of the answers, not the last one. Overwriting
+        // per iteration made the outcome depend on the order the caller listed
+        // them in: with one owner-scoped grant and one unrestricted grant,
+        // putting the unrestricted one last yielded `ownership: false`, which
+        // `$owns` reads as a full bypass of its row check.
         if (options?.permissions?.length) {
+          let ownership: string | boolean | undefined;
+
           for (const perm of options.permissions) {
             const result = securityProvider.checkPermissionInRealm(
               user.realm,
@@ -209,38 +226,33 @@ export function $secure(options?: SecureOptions): Middleware {
                 `Permission '${typeof perm === "string" ? perm : perm.name}' required`,
               );
             }
-            user = { ...user, ownership: result.ownership };
+
+            // A truthy ownership narrows the grant to rows the caller owns and
+            // always wins. `false` (unrestricted) only fills in a slot nothing
+            // has narrowed yet, and `undefined` never overwrites a decision.
+            if (result.ownership) {
+              ownership = result.ownership;
+            } else if (ownership === undefined) {
+              ownership = result.ownership;
+            }
           }
+
+          user = { ...user, ownership };
         }
 
-        // 7. Custom guard — the only check with request visibility.
+        // 7. Publish the resolved user BEFORE the guard runs.
         //
-        // Awaited: before this was async, returning a promise from a guard
-        // made the truthiness check always pass, so an async guard silently
-        // allowed everyone through.
-        if (options?.guard) {
-          const httpRequest = alepha.store.get("alepha.http.request");
-          const actionRequest = alepha.store.get(
-            "alepha.action.request",
-            "current",
-          );
-          const source: any = actionRequest ?? httpRequest;
-
-          const allowed = await options.guard({
-            user,
-            params: source?.params ?? {},
-            query: source?.query ?? {},
-            body: source?.body,
-            request: httpRequest,
-            alepha,
-          });
-
-          if (!allowed) {
-            throw new ForbiddenError("Access denied");
-          }
-        }
-
-        // 8. Store user in atom and requests
+        // A guard runs real code — `$owns` loads a row through a repository —
+        // and `Repository.resolveOrganizationValue()` reads `currentUserAtom`.
+        // Publishing afterwards meant every guard on the HTTP path (where
+        // `$secure` itself resolved the user from headers) queried with no
+        // tenant in context: a non-strict entity was read unscoped, and a
+        // strict one refused outright with a 500. Over `action.run()` / MCP the
+        // atom was already populated by the caller, so the two transports
+        // disagreed on the same route.
+        //
+        // Denial still aborts before `next()`, so a published-then-rejected
+        // user is never observable by the handler.
         securityProvider.storeUserInContext(user);
 
         const httpRequest = alepha.store.get("alepha.http.request", "current");
@@ -254,6 +266,32 @@ export function $secure(options?: SecureOptions): Middleware {
         );
         if (actionRequest) {
           actionRequest.user = user;
+        }
+
+        // 8. Custom guard — the only check with request visibility.
+        //
+        // Awaited: before this was async, returning a promise from a guard
+        // made the truthiness check always pass, so an async guard silently
+        // allowed everyone through.
+        if (options?.guard) {
+          // Resolved without the `"current"` scope: `$secure` may run inside a
+          // nested fork, and the HTTP request lives on an ancestor layer.
+          const request = alepha.store.get("alepha.http.request");
+          const source: any =
+            alepha.store.get("alepha.action.request", "current") ?? request;
+
+          const allowed = await options.guard({
+            user,
+            params: source?.params ?? {},
+            query: source?.query ?? {},
+            body: source?.body,
+            request,
+            alepha,
+          });
+
+          if (!allowed) {
+            throw new ForbiddenError("Access denied");
+          }
         }
 
         return next(...args);

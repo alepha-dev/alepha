@@ -468,7 +468,8 @@ export abstract class Repository<T extends TObject> {
   ): Promise<PgStatic<T, R>[]> {
     // Check cache
     if (opts.cache) {
-      const cacheKey = opts.cache.key ?? this.buildCacheKey("findMany", query);
+      const cacheKey =
+        opts.cache.key ?? this.buildCacheKey("findMany", query, opts);
       const cached = await this.dbCache.get<PgStatic<T, R>[]>(
         this.tableName,
         cacheKey,
@@ -605,7 +606,7 @@ export abstract class Repository<T extends TObject> {
       // Store in cache
       if (opts.cache) {
         const cacheKey =
-          opts.cache.key ?? this.buildCacheKey("findMany", query);
+          opts.cache.key ?? this.buildCacheKey("findMany", query, opts);
         await this.dbCache.set(
           this.tableName,
           cacheKey,
@@ -961,7 +962,10 @@ export abstract class Repository<T extends TObject> {
 
     let setData: any;
     if (opts.set) {
-      setData = opts.set;
+      // Copy, never stamp in place: `updatedAt` is injected below, and writing
+      // it into the caller's `set` object leaves them holding a clause that
+      // gained a column they never wrote. The `else` branch already copies.
+      setData = { ...(opts.set as Record<string, unknown>) };
     } else {
       // Default: update all fields from the insert data except the conflict target and primary key columns
       setData = { ...data };
@@ -1071,12 +1075,16 @@ export abstract class Repository<T extends TObject> {
       data,
     });
 
-    let row = data as any;
-
     const updatedAtField = getAttrFields(
       this.entity.schema,
       PG_UPDATED_AT,
     )?.[0];
+
+    // Shallow-copy before stamping, same as `updateMany`: writing `updatedAt`
+    // into the caller's object hands back a patch carrying a column it never
+    // declared — which bites when the patch is a shared constant, is reused
+    // across calls, or is validated/audited by the caller afterwards.
+    let row: any = { ...(data as Record<string, unknown>) };
 
     if (updatedAtField) {
       row[updatedAtField.key] =
@@ -1350,13 +1358,18 @@ export abstract class Repository<T extends TObject> {
 
     const deletedAt = this.deletedAt();
     if (deletedAt && !opts.force) {
-      // Stamping the caller's entity is DELIBERATE, not a stray mutation: it
+      // Stamping the caller's ENTITY is DELIBERATE, not a stray mutation: it
       // keeps the in-memory object consistent with the row, so a later
       // `save(entity, { force: true })` writes the soft-delete back instead of
       // nulling it and resurrecting the row (`save` nulls undefined fields).
       // `testNoUpdateIfAlreadyDeleted` depends on exactly this.
-      opts.now ??= this.dateTimeProvider.nowISOString();
-      (entity as any)[deletedAt.key] = opts.now;
+      //
+      // The caller's OPTIONS object is a different matter — it belongs to them,
+      // and a reused `StatementOptions` that silently acquired a `now` would
+      // pin every later statement to this instant. Resolve into a local copy.
+      const now = opts.now ?? this.dateTimeProvider.nowISOString();
+      (entity as any)[deletedAt.key] = now;
+      return await this.deleteById(id, { ...opts, now });
     }
 
     return await this.deleteById(id, opts);
@@ -2021,10 +2034,29 @@ export abstract class Repository<T extends TObject> {
   }
 
   /**
-   * Build a cache key from method name and query parameters.
+   * Build a cache key from the method name, the caller's query, AND the
+   * predicate this repository adds on top of it.
+   *
+   * The scope suffix is what makes `opts.cache` safe. Keyed on the caller's
+   * query alone, two tenants issuing the identical `findMany` shared one entry
+   * and whichever arrived first filled it for everyone — a cross-tenant read
+   * caused by nothing but switching on a performance flag. The same omission
+   * let a `force: true` read (which deliberately includes soft-deleted rows)
+   * poison the entry a normal read then consumed.
+   *
+   * `readWhere()` is exactly the org + soft-delete envelope applied to the
+   * statement, so folding it in keeps one cache entry per (query, tenant,
+   * visibility) triple. It also throws on strict tenancy with no tenant
+   * resolved, which is the correct answer on a cached read too — the entry
+   * must not be reachable without a tenant when the query itself would not be.
    */
-  protected buildCacheKey(method: string, query: any): string {
-    return `${method}:${JSON.stringify(query)}`;
+  protected buildCacheKey(
+    method: string,
+    query: any,
+    opts: StatementOptions = {},
+  ): string {
+    const scope = JSON.stringify(this.readWhere(query?.where ?? {}, opts));
+    return `${method}:${JSON.stringify(query)}:${scope}`;
   }
 
   /**

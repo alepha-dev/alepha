@@ -27,6 +27,15 @@ export interface RateLimitResult {
    * refund the wrong bucket.
    */
   key: string;
+
+  /**
+   * Counter lifetime (ms) armed for {@link key}.
+   *
+   * Carried on the result for the same reason as `key`: a refund must re-arm
+   * the identical TTL rather than recompute one from options that may resolve
+   * differently, and a counter written with no TTL is never reclaimed.
+   */
+  ttl: number;
 }
 
 /**
@@ -214,10 +223,15 @@ export class ServerRateLimitProvider {
     }
 
     try {
+      // Same TTL the check armed. A refund can land after the counter expired
+      // (the response settles after the window rolled), which re-creates the
+      // key — without a TTL that recreated key would then live forever, which
+      // is the exact leak the check-side TTL closes.
       await this.cacheProvider.incr(
         ServerRateLimitProvider.CACHE_NAME,
         result.key,
         -1,
+        result.ttl,
       );
     } catch (error) {
       this.log.warn("Failed to refund a rate-limit counter", error);
@@ -243,11 +257,25 @@ export class ServerRateLimitProvider {
     // Include window timestamp in key for automatic expiration of old windows
     const key = `${baseKey}:${windowStart}`;
 
+    // A per-window key means the counter is never READ again once the window
+    // rolls — but without a TTL it is never RECLAIMED either, so every
+    // (identity, window) pair left a key behind forever: an unbounded heap in
+    // the memory provider, an unbounded keyspace in Redis/D1. `incr`'s own
+    // contract calls this out.
+    //
+    // Two windows, not one: the counter must comfortably outlive the window it
+    // counts (it is armed on creation and never extended, so a one-window TTL
+    // would expire mid-window for a counter created near the boundary), and a
+    // refund settles after the response. One extra window of garbage-collection
+    // lag costs nothing — the key is unreachable the moment its window ends.
+    const ttl = windowMs * 2;
+
     // Atomic increment - returns the new count after incrementing
     const count = await this.cacheProvider.incr(
       ServerRateLimitProvider.CACHE_NAME,
       key,
       1,
+      ttl,
     );
 
     const allowed = count <= max;
@@ -259,6 +287,7 @@ export class ServerRateLimitProvider {
       remaining,
       resetTime,
       key,
+      ttl,
     };
 
     if (!allowed) {
