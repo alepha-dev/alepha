@@ -67,10 +67,28 @@ not one payload per occurrence.
 This is what keeps storage bound by how many distinct faults exist rather than
 by how much traffic you have.
 
-## No UI
+## Nothing is mounted for you
 
-The module mounts nothing in your React tree. `usePetitionUrl()` returns a link
-for a feedback page; render it wherever it belongs.
+The module puts nothing in your React tree on its own. What it ships is one
+optional component and one hook, both at `@alepha/sigil/react`:
 
-A reporting package that injects DOM is one you have to style, translate and
-test as a UI — for one button.
+```tsx
+import { SigilRoot, usePetitionUrl } from "@alepha/sigil/react";
+
+// Batteries included: a floating feedback button, rendered only when the sink
+// hands out a petition URL and the current path is not excluded.
+<SigilRoot />;
+
+// Or render your own link, wherever it belongs.
+const petition = usePetitionUrl();
+return petition ? <a href={petition}>Report a problem</a> : null;
+```
+
+`@alepha/sigil/react` is a subpath of its own rather than part of the main
+entry: importing the module should not drag React into an app that has none,
+and a server-rendered host has to be able to resolve the component on the
+server pass too.
+
+A reporting package that injects DOM *without being asked* is one you then have
+to style, translate and keep out of your own layout — for one button. Opting in
+costs one line and gives you the placement.
