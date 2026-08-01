@@ -1,24 +1,6 @@
 import { type Static, z } from "alepha";
 
 /**
- * The metrics an app reports about itself, on the sink's interval.
- *
- * A closed set on purpose: these five answer "is it healthy and how hard is it
- * working", every runtime can produce them, and the sink can chart them without
- * knowing anything about the app. Custom series would each need a unit, a
- * meaning and a retention policy — that is a metrics product, not a heartbeat.
- */
-export const TELEMETRY_SERIES = [
-  "rss",
-  "heapUsed",
-  "eventLoopDelayP95",
-  "reqCount",
-  "reqDurationP95",
-] as const;
-
-export type TelemetrySeries = (typeof TELEMETRY_SERIES)[number];
-
-/**
  * Mutualized telemetry envelope the browser POSTs to the same-origin proxy,
  * and that the server forwards to the sink.
  *
@@ -65,35 +47,6 @@ export const sigilEnvelope = z.object({
     )
     .max(50)
     .optional(),
-  metrics: z
-    .array(
-      z.object({
-        series: z.enum(TELEMETRY_SERIES).meta({ mode: "text" }),
-        value: z.number(),
-        /** Epoch millis the sample was taken, not when it was received. */
-        at: z.integer(),
-      }),
-    )
-    .max(60)
-    .optional(),
-  /**
-   * Proof of life, sent alongside the metrics.
-   *
-   * The app never claims to be healthy — it says what it is running and for how
-   * long, and the sink decides. Up/down is derived from the silence, so an app
-   * that dies cannot lie about it.
-   */
-  heartbeat: z
-    .object({
-      release: z.string().max(200).optional(),
-      uptimeSec: z.number(),
-      /**
-       * True when nothing is in flight: no request, no job, no socket. Only
-       * meaningful as a hint for scale-to-zero, never as a health signal.
-       */
-      idle: z.boolean().optional(),
-    })
-    .optional(),
 });
 
 export type SigilEnvelope = Static<typeof sigilEnvelope>;
@@ -102,7 +55,7 @@ export type SigilEnvelope = Static<typeof sigilEnvelope>;
  * What the sink receives: the envelope plus the fields only the app's own
  * server can honestly fill in.
  */
-export const telemetryForwarded = sigilEnvelope.extend({
+export const sigilForwarded = sigilEnvelope.extend({
   country: z.string().max(8).optional(),
   visitor: z.string().max(128).optional(),
 });

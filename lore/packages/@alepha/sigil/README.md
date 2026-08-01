@@ -1,8 +1,7 @@
 # @alepha/sigil
 
 The reporting half of Sigil. Add it to an Alepha app and the app reports page
-views, Web Vitals, client and server errors, and periodic server metrics to a
-Sigil instance you name.
+views, Web Vitals, and client and server errors to a Sigil instance you name.
 
 Named for the server it talks to, not for what it collects. The previous name
 (`@alepha/telemetry`) suggested a generic collector you could point anywhere;

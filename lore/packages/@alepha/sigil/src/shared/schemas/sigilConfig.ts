@@ -1,5 +1,5 @@
 import { type Static, z } from "alepha";
-import { TELEMETRY_TRACKERS } from "../sigilFeatures.ts";
+import { SIGIL_TRACKERS } from "../sigilFeatures.ts";
 
 /**
  * What the sink tells an app about how much it wants.
@@ -18,9 +18,9 @@ export const sigilConfig = z.object({
   enabled: z
     .object(
       Object.fromEntries(
-        TELEMETRY_TRACKERS.map((t) => [t, z.boolean().optional()]),
+        SIGIL_TRACKERS.map((t) => [t, z.boolean().optional()]),
       ) as Record<
-        (typeof TELEMETRY_TRACKERS)[number],
+        (typeof SIGIL_TRACKERS)[number],
         ReturnType<ReturnType<typeof z.boolean>["optional"]>
       >,
     )
@@ -40,13 +40,6 @@ export const sigilConfig = z.object({
     })
     .optional(),
   /**
-   * Seconds between metric batches.
-   *
-   * The storage dictates the verbosity: ~30 on a VPS with SQLite, ~300 on D1
-   * where every row costs. The app has no way to know which it is talking to.
-   */
-  metricsIntervalSec: z.integer().min(5).optional(),
-  /**
    * Where a user goes to file a petition, or absent when the sink offers none.
    *
    * A URL rather than a feature flag: the app renders a link, and nothing in
@@ -61,12 +54,11 @@ export type SigilConfig = Static<typeof sigilConfig>;
  * What an app assumes before the sink has answered — and keeps assuming if it
  * never does.
  *
- * Deliberately quiet on metrics (300 s, the D1-shaped interval) while leaving
- * every tracker on. The failure this guards against is an app that cannot reach
- * its sink and *over-emits* into the void; collecting a little less than the
- * sink could take is recoverable, hammering it on reconnect is not.
+ * Every tracker stays on and nothing is sampled out. The failure this guards
+ * against is an app that cannot reach its sink and *over-emits* into the
+ * void; collecting a little less than the sink could take is recoverable,
+ * hammering it on reconnect is not.
  */
-export const TELEMETRY_CONFIG_DEFAULTS = {
-  metricsIntervalSec: 300,
+export const SIGIL_CONFIG_DEFAULTS = {
   sampling: { views: 1, errors: 1, vitals: 1 },
 } as const;

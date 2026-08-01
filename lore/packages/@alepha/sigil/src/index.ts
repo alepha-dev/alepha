@@ -1,6 +1,5 @@
 import { $module } from "alepha";
 import { SigilBrowserProvider } from "./browser/SigilBrowserProvider.ts";
-import { SigilMetricsProvider } from "./server/SigilMetricsProvider.ts";
 import { SigilProxyController } from "./server/SigilProxyController.ts";
 import { SigilServerErrors } from "./server/SigilServerErrors.ts";
 import { SigilSinkProvider } from "./server/SigilSinkProvider.ts";
@@ -14,8 +13,8 @@ export * from "./shared/sigilOptionsAtom.ts";
 export * from "./sigilEnv.ts";
 
 /**
- * Telemetry for Alepha apps: page views, web vitals, client and server errors,
- * and periodic server metrics — pushed to a sink (Sigil) that the app names.
+ * Telemetry for Alepha apps: page views, web vitals, and client and server
+ * errors — pushed to a sink (Sigil) that the app names.
  *
  * Import this module in your WebModule and set `SIGIL_SINK` +
  * `SIGIL_KEY`. Without them the module still captures, but nothing leaves
@@ -36,7 +35,6 @@ export const AlephaSigil = $module({
   atoms: [sigilOptions, sigilClientAtom],
   services: [
     SigilSinkProvider,
-    SigilMetricsProvider,
     SigilProxyController,
     SigilServerErrors,
     SigilBrowserProvider,

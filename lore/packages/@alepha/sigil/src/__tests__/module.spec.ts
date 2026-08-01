@@ -2,8 +2,8 @@ import { Alepha } from "alepha";
 import { RootComponentsProvider } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 import { AlephaSigil } from "../index.ts";
-import { SigilMetricsProvider } from "../server/SigilMetricsProvider.ts";
 import { SigilSinkProvider } from "../server/SigilSinkProvider.ts";
+import { sigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
 
 const make = (env: Record<string, any> = {}) =>
   Alepha.create({
@@ -42,61 +42,6 @@ describe("AlephaSigil module", () => {
     expect(sink.hasSink()).toBe(false);
   });
 
-  it("samples the five series and a heartbeat", async () => {
-    /**
-     * Exercises the sampler directly rather than through `server:onResponse`.
-     * Driving it from the event bus means faking a request shape that every
-     * other listener also reads, which tests the fake more than the code.
-     *
-     * ⚠️ This does NOT prove the sampler is registered in the module — and it
-     * shipped unregistered, so nothing sampled anything. Three attempts at a
-     * registration guard all passed with the entry removed; that gap is
-     * currently covered only by checking a deployed app really reports.
-     */
-    class Sampler extends SigilMetricsProvider {
-      public async testSample(now: number) {
-        return await this.sample(now);
-      }
-    }
-    class RecordingSink extends SigilSinkProvider {
-      public batches: any[] = [];
-      override async ingest(envelope: any) {
-        this.batches.push(envelope);
-      }
-    }
-
-    const alepha = Alepha.create({
-      env: { NODE_ENV: "production", APP_SECRET: "s", SERVER_PORT: 0 },
-    }).with({ provide: SigilSinkProvider, use: RecordingSink });
-    const sampler = alepha.inject(Sampler);
-    await alepha.start();
-
-    await sampler.testSample(Date.now());
-
-    const sink = alepha.inject(SigilSinkProvider) as RecordingSink;
-    const batch = sink.batches[0];
-    expect(batch.metrics.map((m: any) => m.series)).toEqual(
-      expect.arrayContaining(["rss", "heapUsed", "reqCount", "reqDurationP95"]),
-    );
-    expect(batch.heartbeat).toBeDefined();
-  });
-
-  it("unused placeholder", async () => {
-    const alepha = make();
-    const sink = alepha.inject(SigilSinkProvider);
-    const metrics = alepha.inject(SigilMetricsProvider);
-    await alepha.start();
-
-    // The metrics sampler was written, exported and typechecked — and left out
-    // of this list, so no app ever sampled anything. A service that is not
-    // registered is a service that does not exist, and nothing else notices.
-    // Resolving both before boot is the assertion: a service the module does
-    // not declare would be *added* here, and the container refuses that once
-    // started — so this fails loudly if the registration is dropped again.
-    expect(sink).toBeDefined();
-    expect(metrics).toBeDefined();
-  });
-
   it("is configured by env alone", async () => {
     const alepha = make({
       SIGIL_SINK: "https://sigil.example.com",
@@ -106,5 +51,24 @@ describe("AlephaSigil module", () => {
     await alepha.start();
 
     expect(sink.hasSink()).toBe(true);
+  });
+});
+
+describe("sigil envelope scope", () => {
+  it("rejects metrics and heartbeat keys", () => {
+    const parsed = sigilEnvelope.safeParse({
+      views: [{ path: "/" }],
+      metrics: [{ series: "rss", value: 1, at: 0 }],
+      heartbeat: { uptimeSec: 1 },
+    });
+    // Unknown keys are stripped, not carried
+    expect(parsed.success).toBe(true);
+    expect(parsed.data).not.toHaveProperty("metrics");
+    expect(parsed.data).not.toHaveProperty("heartbeat");
+  });
+
+  it("does not export a metrics provider", async () => {
+    const mod = await import("../server/index.ts");
+    expect(Object.keys(mod)).not.toContain("SigilMetricsProvider");
   });
 });
