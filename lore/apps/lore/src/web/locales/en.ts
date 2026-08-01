@@ -595,6 +595,7 @@ export default {
   "insights.range.30d": "30 days",
   "insights.tab.analytics": "Analytics",
   "insights.tab.performance": "Performance",
+  "insights.tab.errors": "Errors",
   "insights.uniqueVisitors": "Unique visitors",
   "insights.uniqueVisitors.note":
     "Cookieless distinct visitors — the trustworthy headline.",
@@ -618,6 +619,16 @@ export default {
   "insights.vitals.good": "Good",
   "insights.vitals.needsImprovement": "Needs work",
   "insights.vitals.poor": "Poor",
+  "insights.errors.title": "Error budget",
+  "insights.errors.subtitle": "per environment",
+  "insights.errors.heading": "Still happening",
+  "insights.errors.col.error": "Error",
+  "insights.errors.col.environment": "Environment",
+  "insights.errors.col.count": "Occurrences",
+  "insights.errors.col.firstSeen": "First seen",
+  "insights.errors.col.lastSeen": "Last seen",
+  "insights.errors.empty":
+    "No errors reported in this range. Unlike the Blights inbox, this list keeps each environment separate — so a bug fixed in production still shows here if staging is still hitting it.",
 
   "blights.empty":
     "No blights. Crashes captured from your sigils will appear here.",
@@ -628,7 +639,6 @@ export default {
   "blights.col.page": "Page",
   "blights.col.count": "Count",
   "blights.col.lastSeen": "Last seen",
-  "blights.col.release": "Release",
   "blights.origin.client": "Browser",
   "blights.origin.server": "Server",
   "blights.filter.allSigils": "All sigils",

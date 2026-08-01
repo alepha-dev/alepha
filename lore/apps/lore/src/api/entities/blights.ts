@@ -52,23 +52,6 @@ export const blights = $entity({
     message: z.string().max(2_000),
     stack: db.default(z.string().max(4_096), ""),
     sourceUrl: db.default(z.string().max(2_000), ""),
-    /** Release the failure was seen in, when the reporter knows one. */
-    release: z.string().max(200).optional(),
-    /**
-     * Deep link back to an external observer's page for this error group.
-     *
-     * **Nothing writes it today, and that is the correct state.** It exists for
-     * the case where the aggregation happened somewhere else and there is a
-     * richer view of the group to send a triager to. With Lore as its own
-     * observer there is no such elsewhere: the inbox row *is* the group view, so
-     * a link would point at the page the reader is already on.
-     *
-     * It stays because it costs nothing (optional, never read when absent) and
-     * because dropping a column from a D1-deployed table is a cascade risk out
-     * of all proportion to the tidiness. Read it, render it when set, never
-     * assume it is there.
-     */
-    sigilUrl: z.string().max(2_000).optional(),
     origin: db.default(
       z.enum(["client", "server"]).meta({ mode: "text" }),
       "client",

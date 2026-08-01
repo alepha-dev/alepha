@@ -28,8 +28,6 @@ export const sigilErrorGroups = $entity({
     message: z.string().max(2000),
     stackSample: z.string().max(4096),
     sourceUrl: z.string().max(2000),
-    /** Release the error was first seen in, when the app reports one. */
-    release: z.string().max(200).optional(),
     origin: db.default(
       z.enum(["client", "server"]).meta({ mode: "text" }),
       "client",
@@ -37,14 +35,6 @@ export const sigilErrorGroups = $entity({
     firstSeenAt: z.string(),
     lastSeenAt: z.string(),
     count: db.default(z.integer().min(1), 1),
-    /**
-     * Last time this group was synced into the `blights` inbox, or absent if
-     * never.
-     *
-     * Drives the sync window: only groups touched since their last sync are
-     * upserted into `blights`, so a quiet group costs nothing to re-check.
-     */
-    forwardedAt: z.string().optional(),
   }),
   indexes: [
     { columns: ["sigilId", "fingerprint"], unique: true },

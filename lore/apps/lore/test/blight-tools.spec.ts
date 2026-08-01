@@ -98,8 +98,6 @@ describe("Lore MCP — blights", () => {
       message: "Cannot read properties of undefined",
       stack: "TypeError\n    at cart (app.js:1:1)",
       sourceUrl: "https://demo.example.com/cart",
-      release: "2026-08-01-a",
-      sigilUrl: "https://lore.example.com/c/1/insights?group=fp-1",
       origin: "client",
       count: 7,
       firstSeenAt: "2026-08-01T10:00:00.000Z",
@@ -107,9 +105,10 @@ describe("Lore MCP — blights", () => {
       ...over,
     } as any);
 
-  it("should list what a sigil reported, with the link back to its group", async () => {
-    // These were being stripped on the way out: the response schema named
-    // fields the row does not carry, and a schema is what serializes.
+  it("should list everything the row carries, not a subset", async () => {
+    // A schema is what serializes: any field the tool result schema omits is
+    // silently dropped on the way out, however well the row is populated. This
+    // asserts the whole payload an agent triages from survives the round trip.
     const { probe, blightTools, campaign, call } = await setup();
     await fileBlight(probe, campaign.id);
 
@@ -117,10 +116,14 @@ describe("Lore MCP — blights", () => {
 
     expect(res.openCount).toBe(1);
     expect(res.blights[0]).toMatchObject({
+      fingerprint: "fp-1",
       name: "TypeError",
+      message: "Cannot read properties of undefined",
+      stack: "TypeError\n    at cart (app.js:1:1)",
+      sourceUrl: "https://demo.example.com/cart",
+      origin: "client",
       count: 7,
-      release: "2026-08-01-a",
-      sigilUrl: "https://lore.example.com/c/1/insights?group=fp-1",
+      status: "open",
     });
   });
 

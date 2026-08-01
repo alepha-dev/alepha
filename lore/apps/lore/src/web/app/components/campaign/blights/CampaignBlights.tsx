@@ -67,8 +67,10 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
   const [stackView, setStackView] = useState<BlightResource | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   // Sigil options for the "filter by sigil" dropdown, hydrated from the list
-  // response so members (who can't hit the owner-only sigil list) still get
-  // the filter populated.
+  // response rather than from `SigilController.listSigils`: the filter needs
+  // id + label, and that endpoint hands back the whole credential row
+  // (token prefix, kinds, creator) for a dropdown. One request, one shape,
+  // nothing extra on the wire.
   const [sigilOptions, setSigilOptions] = useState<
     { id: string; label: string }[]
   >([]);
@@ -286,20 +288,6 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
                 title={formatDate(b.lastSeenAt)}
               >
                 {dt.of(b.lastSeenAt).fromNow()}
-              </span>
-            ),
-          },
-          spread: {
-            // Was "spread": a count of distinct salted IP hashes, which died
-            // with the sigil model. Sigil sends deduplicated groups, not
-            // per-request rows, so there are no IPs to count. The release is
-            // what triage actually asks next — is this still happening in what
-            // is deployed?
-            label: tr("blights.col.release"),
-            align: "right",
-            cell: (b) => (
-              <span className="text-muted-foreground whitespace-nowrap">
-                {b.release ?? "—"}
               </span>
             ),
           },

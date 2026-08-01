@@ -870,26 +870,6 @@
     },
     {
       "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "release",
-      "entityType": "columns",
-      "table": "blights"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "sigil_url",
-      "entityType": "columns",
-      "table": "blights"
-    },
-    {
-      "type": "text",
       "notNull": true,
       "autoincrement": false,
       "default": "'client'",
@@ -3180,16 +3160,6 @@
     },
     {
       "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "release",
-      "entityType": "columns",
-      "table": "sigil_error_groups"
-    },
-    {
-      "type": "text",
       "notNull": true,
       "autoincrement": false,
       "default": "'client'",
@@ -3225,16 +3195,6 @@
       "default": "1",
       "generated": null,
       "name": "count",
-      "entityType": "columns",
-      "table": "sigil_error_groups"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "forwarded_at",
       "entityType": "columns",
       "table": "sigil_error_groups"
     },

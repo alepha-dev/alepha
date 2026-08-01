@@ -18,9 +18,6 @@ const blightSchema = z.object({
   message: z.string(),
   stack: z.string(),
   sourceUrl: z.string(),
-  release: z.string().optional(),
-  /** Link to the error group this was aggregated from, when there is one. */
-  sigilUrl: z.string().optional(),
   origin: z.enum(["client", "server"]),
   /** How many times it happened, not how many rows exist. */
   count: z.integer(),
