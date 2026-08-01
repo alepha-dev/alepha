@@ -259,6 +259,33 @@ export class PulseSinkProvider {
     });
   }
 
+  /**
+   * Flushes at the end of a request, on runtimes that do not survive one.
+   *
+   * The batching below waits ten seconds or a cap, and decides only inside
+   * `ingest()` — no timers, because a timer in a serverless isolate is a
+   * promise nobody kept. That is right for a long-running server, where the
+   * next request arrives and carries the decision forward.
+   *
+   * On Cloudflare Workers the isolate is torn down between requests. A batch
+   * that has not reached a cap and is younger than the window is simply gone:
+   * not delayed, lost. The app that most needs this — Lore — is exactly there.
+   *
+   * So on a serverless runtime the batch goes at the end of every request.
+   * That costs the aggregation across requests, which is the point of batching,
+   * but a fingerprint is still aggregated WITHIN a request — the crash loop
+   * inside one handler, which is the volume case. Chatty and correct beats
+   * quiet and empty.
+   */
+  protected readonly onResponse = $hook({
+    on: "server:onResponse",
+    handler: async () => {
+      if (!this.alepha.isServerless()) return;
+      if (!this.hasPending()) return;
+      await this.flush();
+    },
+  });
+
   protected hasPending(): boolean {
     return (
       this.pendingErrors.size > 0 ||

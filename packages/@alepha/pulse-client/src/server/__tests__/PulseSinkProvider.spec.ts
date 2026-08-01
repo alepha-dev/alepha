@@ -38,11 +38,25 @@ const make = (env: Record<string, any> = {}) =>
     },
   }).with({ provide: HttpClient, use: RecordingHttpClient });
 
-const withSink = () =>
+const withSink = (env: Record<string, any> = {}) =>
   make({
     PULSE_SINK: "https://pulse.example.com/",
     PULSE_KEY: "tk_secret",
+    ...env,
   });
+
+/**
+ * Exposes the end-of-request decision.
+ *
+ * Calling the handler rather than emitting `server:onResponse`: the real event
+ * wakes every other subscriber — the logger and the helmet provider both read
+ * a full request/response pair — and none of that is what this tests.
+ */
+class TestSinkProvider extends PulseSinkProvider {
+  public testOnResponse() {
+    return (this.onResponse as any).options.handler({} as any);
+  }
+}
 
 const ingests = (http: RecordingHttpClient) =>
   http.calls.filter((c) => c.url.endsWith("/api/ingest"));
@@ -221,5 +235,63 @@ describe("PulseSinkProvider", () => {
     expect(JSON.parse(ingests(http).at(-1)!.body).errors[0].message).toBe(
       "last words",
     );
+  });
+});
+
+describe("PulseSinkProvider — surviving a runtime that does not", () => {
+  /*
+    The batch waits ten seconds or a cap, and the decision is taken inside
+    `ingest()` — no timers, because a timer in a serverless isolate is a
+    promise nobody kept.
+
+    That works on a long-running server: the next request arrives and carries
+    the decision forward. On Cloudflare Workers the isolate is torn down
+    between requests, so a batch under the cap and younger than the window is
+    not delayed, it is gone. Lore — the app this most affects — is exactly
+    there.
+  */
+
+  it("should flush at the end of a request when the runtime is serverless", async () => {
+    // `ALEPHA_SERVERLESS` is what `isServerless()` reads — set through env
+    // rather than by overriding the method, so the test exercises the same
+    // signal production does.
+    const alepha = withSink({ ALEPHA_SERVERLESS: "true" });
+    const sink = alepha.inject(TestSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    await sink.ingest({ views: [{ path: "/" }] });
+    expect(ingests(http)).toHaveLength(0);
+
+    await sink.testOnResponse();
+
+    expect(ingests(http)).toHaveLength(1);
+  });
+
+  it("should keep batching on a long-running server", async () => {
+    // The aggregation is the point: a failing endpoint produces thousands of
+    // identical errors a minute, and one row per occurrence is what this
+    // avoids. Flushing per request there would throw that away for nothing.
+    const alepha = withSink();
+    const sink = alepha.inject(TestSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    await sink.ingest({ views: [{ path: "/" }] });
+    await sink.testOnResponse();
+
+    expect(ingests(http)).toHaveLength(0);
+  });
+
+  it("should not send an empty batch on every response", async () => {
+    // A request that produced nothing must not cost a round trip to the sink.
+    const alepha = withSink({ ALEPHA_SERVERLESS: "true" });
+    const sink = alepha.inject(TestSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    await sink.testOnResponse();
+
+    expect(ingests(http)).toHaveLength(0);
   });
 });
