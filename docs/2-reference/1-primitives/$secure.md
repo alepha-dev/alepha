@@ -32,6 +32,14 @@ All provided options must pass (AND). Each option has its own logic:
 
 Permissions declared in `$secure()` are auto-created in the permission registry at definition time.
 
+Because `permissions` is an AND list, the resulting `ownership` is the most
+restrictive of the matched grants — one owner-scoped permission narrows the
+whole call, whatever order the list was written in.
+
+The resolved user is published to `currentUserAtom` and to the request
+**before** the guard runs, so anything the guard calls (a repository read in
+`$owns`, for instance) resolves the same tenant the handler would.
+
 ## Browser Behavior
 
 On the server, `$secure` throws `UnauthorizedError` or `ForbiddenError`.

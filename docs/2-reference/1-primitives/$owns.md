@@ -62,7 +62,7 @@ class CampaignController {
 | `param` | `string` | Yes | Route param holding the resource id. |
 | `owner` | `string` | Yes | Column on the resource holding the owner's user id. |
 | `via` | `Object` | No | Membership fallback: a join entity linking users to resources |
-| `cast` | `Object` | No | Coerce the raw string route param before querying — e.g |
+| `cast` | `Object` | No | Coerce the raw string route param before querying |
 | `message` | `string` | No | Message used for both the owner and the membership denial |
 | `secure` | `Omit&lt;SecureOptions, "guard"&gt;` | No | Additional `$secure` checks layered on top — roles, permissions, issuers. |
 
