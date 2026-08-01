@@ -15,7 +15,7 @@ import { CampaignTools } from "./CampaignTools.ts";
  * MCP tools for the blights inbox.
  *
  * A **blight** is one deduplicated failure, filed by an enrolled source — a
- * Pulse instance, in practice — with a count rather than one row per
+ * Sigil instance, in practice — with a count rather than one row per
  * occurrence. The inbox is the editorial half of the old Insights: deciding
  * which failures become work.
  *

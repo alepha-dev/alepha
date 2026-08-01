@@ -16,7 +16,7 @@ const MAX_FINGERPRINTS = 50;
  *
  * The only ingestion endpoint Lore keeps. What arrives here is already
  * deduplicated — one line per distinct failure with a count — because the
- * division of labour is that **Pulse deduplicates and Lore judges**. Raw error
+ * division of labour is that **Sigil deduplicates and Lore judges**. Raw error
  * events never reach this app any more, which is what turns the inbox from a
  * firehose into something a person can act on.
  *

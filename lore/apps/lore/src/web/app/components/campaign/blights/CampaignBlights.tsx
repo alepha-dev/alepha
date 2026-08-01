@@ -69,7 +69,7 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
   // Sigil options for the "filter by sigil" dropdown, hydrated from the list
   // response so members (who can't hit the owner-only sigil list) still get
   // the filter populated.
-  const [pulseOptions, setSigilOptions] = useState<
+  const [sigilOptions, setSigilOptions] = useState<
     { id: string; label: string }[]
   >([]);
 
@@ -180,7 +180,7 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
                   triggerClassName="w-full"
                   items={[
                     { label: tr("blights.filter.allSigils"), value: "all" },
-                    ...pulseOptions.map((s) => ({
+                    ...sigilOptions.map((s) => ({
                       label: s.label,
                       value: s.id,
                     })),
@@ -291,7 +291,7 @@ const CampaignBlights = (_props: CampaignBlightsProps) => {
           },
           spread: {
             // Was "spread": a count of distinct salted IP hashes, which died
-            // with the sigil model. Pulse sends deduplicated groups, not
+            // with the sigil model. Sigil sends deduplicated groups, not
             // per-request rows, so there are no IPs to count. The release is
             // what triage actually asks next — is this still happening in what
             // is deployed?

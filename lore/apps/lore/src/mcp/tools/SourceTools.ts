@@ -14,7 +14,7 @@ import { CampaignTools } from "./CampaignTools.ts";
 /**
  * MCP tools for the systems allowed to file blights into a campaign.
  *
- * A **source** is a credential issued to an observer — in practice a Pulse
+ * A **source** is a credential issued to an observer — in practice a Sigil
  * instance — which has already deduplicated what it sends. It replaces the
  * sigil model, where the credential went to the website itself and the raw
  * stream landed here.
@@ -22,7 +22,7 @@ import { CampaignTools } from "./CampaignTools.ts";
  * Exposed over MCP because wiring an observer to a campaign is otherwise a
  * click-through in a browser, and the thing doing the wiring is usually an
  * agent setting up a deployment. Every other part of that flow — enrol the app
- * in Pulse, point it at Lore — is already an API call.
+ * in Sigil, point it at Lore — is already an API call.
  */
 export class SourceTools {
   protected readonly sources = $inject(CampaignSourceController);
@@ -31,7 +31,7 @@ export class SourceTools {
   source_list = $tool({
     title: "List sources",
     description:
-      "Systems allowed to file blights into this campaign — typically a Pulse instance. Returns each key by its ends (prefix + suffix) so one can be matched against a key you hold; the key itself is stored hashed and is never returned.",
+      "Systems allowed to file blights into this campaign — typically a Sigil instance. Returns each key by its ends (prefix + suffix) so one can be matched against a key you hold; the key itself is stored hashed and is never returned.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: sourceListParamsSchema,
@@ -61,7 +61,7 @@ export class SourceTools {
   source_create = $tool({
     title: "Create a source",
     description:
-      "Enrol a system and issue its key. The key is returned ONCE — only its hash is stored, so it cannot be retrieved afterwards. Hand it to the observer immediately (for Pulse: its `configureLore` call); if it is lost, revoke this source and create another. Campaign owner only.",
+      "Enrol a system and issue its key. The key is returned ONCE — only its hash is stored, so it cannot be retrieved afterwards. Hand it to the observer immediately (for Sigil: its `configureLore` call); if it is lost, revoke this source and create another. Campaign owner only.",
     annotations: { readOnlyHint: false, idempotentHint: false },
     schema: {
       params: sourceCreateParamsSchema,
