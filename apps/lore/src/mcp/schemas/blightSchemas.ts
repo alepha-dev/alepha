@@ -11,16 +11,16 @@ import { campaignParamsSchema } from "./commonSchemas.ts";
  */
 const blightSchema = z.object({
   id: z.integer(),
-  /** Which enrolled source filed it — a Sigil instance, in practice. */
-  sourceId: z.string().optional(),
+  /** Which environment reported it last — see `sigils` in the same result. */
+  sigilId: z.string().optional(),
   fingerprint: z.string(),
   name: z.string(),
   message: z.string(),
   stack: z.string(),
   sourceUrl: z.string(),
   release: z.string().optional(),
-  /** Absolute link to the error group in Sigil, when it knows its own origin. */
-  pulseUrl: z.string().optional(),
+  /** Link to the error group this was aggregated from, when there is one. */
+  sigilUrl: z.string().optional(),
   origin: z.enum(["client", "server"]),
   /** How many times it happened, not how many rows exist. */
   count: z.integer(),
@@ -45,8 +45,8 @@ export const blightListParamsSchema = campaignParamsSchema.extend({
 export const blightListResultSchema = z.object({
   blights: z.array(blightSchema),
   openCount: z.integer(),
-  /** The systems that file here, for reading `sourceId` back to a name. */
-  sources: z.array(z.object({ id: z.string(), name: z.string() })),
+  /** The environments that report here, for reading `sigilId` back to a name. */
+  sigils: z.array(z.object({ id: z.string(), label: z.string() })),
 });
 
 // -----------------------------------------------------------------------------

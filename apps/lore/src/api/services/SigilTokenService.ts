@@ -1,0 +1,73 @@
+import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
+import { $repository } from "alepha/orm";
+import { type Sigil, sigils } from "../entities/sigils.ts";
+
+/**
+ * Issues and checks the tokens apps report with.
+ *
+ * **A separate credential from anything a human holds.** Lore's realm also
+ * mints `api_keys`, and those carry the operator's roles — a key created there
+ * can read every campaign the holder belongs to and write quests into them. A
+ * sigil token must be able to do exactly one thing, so it lives on its own row
+ * and is resolved by its own lookup; the two are never interchangeable in
+ * either direction.
+ *
+ * That separation is enforced here rather than by convention, because the
+ * tempting shortcut — reusing `api_keys` because it already exists — turns a
+ * leaked telemetry token, of which there is one per environment on every
+ * machine that runs the app, into a campaign credential.
+ */
+export class SigilTokenService {
+  protected readonly crypto = $inject(CryptoProvider);
+  protected readonly sigils = $repository(sigils);
+
+  /**
+   * Mints a token, returning the only cleartext copy that will ever exist.
+   *
+   * Stored hashed for the same reason a password is: a database that leaks
+   * should not be a fleet that leaks. The prefix is kept so the UI can name a
+   * token without being able to reconstruct it.
+   */
+  mint(): { token: string; hash: string; prefix: string } {
+    const token = `sg_${this.crypto.randomText(32)}`;
+    return {
+      token,
+      hash: this.crypto.hash(token),
+      prefix: token.slice(0, 11),
+    };
+  }
+
+  /**
+   * Resolves a bearer token to the sigil it belongs to.
+   *
+   * Returns `undefined` for a missing token and an unknown one alike: telling a
+   * caller which of the two it is would let anyone probe for tokens that once
+   * existed. There is no revoked state to distinguish either — deleting the
+   * sigil is how a token is revoked, and the blights it filed survive it
+   * because `blights.sigilId` is `ON DELETE SET NULL`.
+   */
+  async verify(token: string | undefined): Promise<Sigil | undefined> {
+    if (!token) {
+      return undefined;
+    }
+    return await this.sigils.findOne({
+      where: { tokenHash: { eq: this.crypto.hash(token) } },
+    });
+  }
+
+  /**
+   * Reads the bearer out of an Authorization header.
+   *
+   * Anything that is not exactly `Bearer <token>` yields `undefined` rather
+   * than a best-effort parse: a header this service cannot read is a caller it
+   * does not know.
+   */
+  bearer(header: string | undefined): string | undefined {
+    if (!header?.startsWith("Bearer ")) {
+      return undefined;
+    }
+    const token = header.slice(7).trim();
+    return token || undefined;
+  }
+}

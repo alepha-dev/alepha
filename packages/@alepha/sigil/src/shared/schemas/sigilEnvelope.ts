@@ -59,3 +59,5 @@ export const sigilForwarded = sigilEnvelope.extend({
   country: z.string().max(8).optional(),
   visitor: z.string().max(128).optional(),
 });
+
+export type SigilForwarded = Static<typeof sigilForwarded>;
