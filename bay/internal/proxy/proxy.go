@@ -32,6 +32,15 @@ type Proxy struct {
 	// connections at the start of a deploy affects nothing else.
 	transportOnce sync.Once
 	tr            *http.Transport
+	// seen accumulates when each app last answered, drained to the store on a
+	// ticker so the request path never writes to disk. See lastseen.go.
+	seen lastSeen
+}
+
+// DrainLastSeen returns the traffic recorded since the previous call, and
+// clears it. Called by the flush loop in cmd/bay, never on the request path.
+func (p *Proxy) DrainLastSeen() map[string]time.Time {
+	return p.seen.drain()
 }
 
 func New(root string, store *state.Store, log *slog.Logger) *Proxy {
@@ -70,6 +79,12 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// scale-to-zero viable, since a page pulls 10-30 asset requests that must
 	// never wake a sleeping process.
 	if path, ok := p.findStatic(app, r.URL.Path); ok {
+		// Counted without inspecting the response: findStatic has already
+		// stat'd the file, so what follows is a 200, a 304 or a range — all of
+		// them somebody reading this app. This is also the only place the
+		// traffic could be seen at all, since a page served entirely from disk
+		// never reaches the app process to be counted there.
+		p.seen.touch(app.Key(), time.Now())
 		p.serveStatic(w, r, path)
 		return
 	}
@@ -204,6 +219,30 @@ func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, app state.App) {
 		base:     p.transport(),
 		holding:  func() bool { return p.holding(app.Key()) },
 		interval: 200 * time.Millisecond,
+	}
+
+	/*
+		Traffic is recorded here rather than by wrapping the ResponseWriter, and
+		that choice is load bearing.
+
+		A wrapper only forwards the methods it declares. `httputil.ReverseProxy`
+		asks the writer for `http.Flusher` to stream a response as it arrives —
+		Alepha's SSR flushes the document head early, so losing it would buffer
+		the very thing that makes first paint fast — and for `http.Hijacker` to
+		complete a websocket upgrade, which it refuses outright against a writer
+		that lacks it. Both failures are silent at compile time and invisible in
+		tests that only assert status codes.
+
+		`ModifyResponse` sees the status without touching the writer at all, and
+		it runs for a 101 too, so a websocket handshake counts as the use it is.
+		It must never return an error: that would route a perfectly good response
+		into ErrorHandler and turn it into a 502.
+	*/
+	rp.ModifyResponse = func(res *http.Response) error {
+		if countsAsTraffic(res.StatusCode) {
+			p.seen.touch(app.Key(), time.Now())
+		}
+		return nil
 	}
 
 	rp.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, err error) {

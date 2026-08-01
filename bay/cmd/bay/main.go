@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -58,6 +59,18 @@ const (
 	// defaultBackupInterval is deliberately ON by default. Backups that must be
 	// switched on are backups that stay off.
 	defaultBackupInterval = 24 * time.Hour
+	// defaultKeepReleases bounds how many releases each app keeps on disk.
+	//
+	// ON by default, for the same reason backups are: nothing removed releases
+	// before this, and on a host with twenty apps that is the disk filling up.
+	// A full disk does not take down the app being deployed, it takes down every
+	// app on the machine plus the backups and Bay's own state writes.
+	//
+	// Five rather than one because the proxy serves static files from every
+	// retained release, so a client holding the previous page's HTML can still
+	// fetch its hashed chunks after a deploy — and because retained releases are
+	// the rollback targets. Both want depth, neither wants forty.
+	defaultKeepReleases = 5
 	// defaultControlGroup is the unix group whose members may reach the control
 	// socket. Membership is the whole authorization: joining it is equivalent to
 	// being handed the token.
@@ -154,6 +167,7 @@ func usage() {
               [--acme-ca-root FILE.pem]   # trust a private CA (Pebble, step-ca)
               [--acme-http-port N] [--acme-tls-port N]   # challenge ports, default 80/443
               [--backup-interval 24h]   # 0 disables; needs "bay config s3"
+            [--keep-releases 5]   # per app; min 2, the serving one is always kept
   bay deploy  <app.tar.gz> [--name NAME] [--env ENV] [--domain HOST]
               # --name defaults to the artifact's project, and drives BOTH the
               # instance key and the subdomain: one app, one identity
@@ -240,6 +254,9 @@ type server struct {
 	// router is told when an app is being restarted, so requests wait for the
 	// new process instead of failing. Nil in the CLI paths that never serve.
 	router *proxy.Proxy
+	// keepReleases is how many releases survive a prune. Zero in the CLI paths
+	// that never deploy, where `deploy.Prune` treats it as "delete nothing".
+	keepReleases int
 	// watches holds the cancel of each app's in-flight rollback watch, so a new
 	// deploy can supersede the previous one's. See beginWatch.
 	watchMu sync.Mutex
@@ -256,6 +273,8 @@ func cmdServe(args []string) error {
 	useTLS := false
 	backupInterval := defaultBackupInterval
 	badBackupInterval := ""
+	keepReleases := defaultKeepReleases
+	badKeepReleases := ""
 	controlSocket := ""
 	controlGroup := defaultControlGroup
 	if err := checkFlags(args,
@@ -266,7 +285,7 @@ func cmdServe(args []string) error {
 			"--acme-ca": true, "--acme-email": true, "--acme-ca-root": true,
 			"--acme-http-port": true, "--acme-tls-port": true,
 			"--control-socket": true, "--control-group": true,
-			"--backup-interval": true,
+			"--backup-interval": true, "--keep-releases": true,
 		}); err != nil {
 		return err
 	}
@@ -311,10 +330,20 @@ func cmdServe(args []string) error {
 				// a typo would leave someone believing backups are configured.
 				badBackupInterval = args[i+1]
 			}
+		case "--keep-releases":
+			n, parseErr := parseKeepReleases(args[i+1])
+			if parseErr == nil {
+				keepReleases = n
+			} else {
+				badKeepReleases = args[i+1]
+			}
 		}
 	}
 	if badBackupInterval != "" {
 		return fmt.Errorf("--backup-interval %q is not a duration (try 24h, 12h, 0 to disable)", badBackupInterval)
+	}
+	if badKeepReleases != "" {
+		return fmt.Errorf("--keep-releases %q must be a whole number of at least 2 (try 5): automatic rollback needs a previous release to return to, and the serving release is always kept on top", badKeepReleases)
 	}
 	root, err := filepath.Abs(root)
 	if err != nil {
@@ -355,7 +384,7 @@ func cmdServe(args []string) error {
 	}
 	srv := &server{root: root, runtimes: runtimesDir, store: store, runner: sup,
 		isolated: isolated, log: log, controlSocket: controlSocket,
-		probe: &health.Probe{}}
+		keepReleases: keepReleases, probe: &health.Probe{}}
 
 	router := proxy.New(root, store, log)
 	srv.router = router
@@ -466,6 +495,19 @@ func cmdServe(args []string) error {
 		}
 	}()
 
+	// Trim release history BEFORE starting anything, and this order is the whole
+	// reason there is a prune at startup at all.
+	//
+	// An installation that predates the retention policy has every release it
+	// has ever deployed still on disk. If the disk is already full, the next
+	// deploy fails during the unpack — before it could ever reach the prune that
+	// runs after a successful one — so the only code that can free space would
+	// never run. Doing it on the way up is what lets a full machine recover
+	// without someone SSHing in with `rm -rf`.
+	for _, app := range store.Apps() {
+		srv.pruneReleases(app)
+	}
+
 	// Bring previously deployed apps back up after a bay restart.
 	for _, app := range store.Apps() {
 		if err := srv.start(app); err != nil {
@@ -480,6 +522,9 @@ func cmdServe(args []string) error {
 	defer stopBackups()
 	go srv.backupLoop(backupCtx, backupInterval)
 
+	// Traffic bookkeeping, drained from the proxy on its own schedule.
+	go srv.flushLastSeenLoop(backupCtx)
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
@@ -492,6 +537,17 @@ func cmdServe(args []string) error {
 	defer cancel()
 	_ = proxySrv.Shutdown(ctx)
 	_ = socketSrv.Shutdown(ctx)
+
+	// Synchronously, and only once the proxy has drained: anything served during
+	// the shutdown window is still traffic, and this is the last moment it can
+	// be recorded.
+	//
+	// Not left to the flush loop's own ctx.Done branch. Cancelling a context
+	// only makes a goroutine runnable, so that flush would race `main` returning
+	// — and an operator restarting Bay a few times in a row would keep discarding
+	// the freshness they are about to go and read.
+	srv.flushLastSeen()
+
 	srv.runner.StopAll(stopGrace)
 	return nil
 }
@@ -523,6 +579,37 @@ func (s *server) holdDuring(key string) func() {
 // Starting and being ready are different things: routing traffic at a process
 // that is still running migrations is exactly the mistake this separation
 // prevents.
+// instanceDir is where an app instance's durable state lives — its .env, its
+// database, its storage and its releases.
+func (s *server) instanceDir(app state.App) string {
+	return filepath.Join(s.root, "apps", app.Name, app.Env)
+}
+
+/*
+pruneReleases trims an app's release history and reports what it removed.
+
+Never fatal, at either call site. A prune that fails is a disk that fills up
+later — something an operator needs to read in the log, not a reason to fail a
+deploy that has already succeeded, nor to stop Bay from booting the other apps.
+
+The returned list is handed back to the deploy caller as well as logged. A
+retention policy nobody can observe is indistinguishable from releases
+vanishing on their own.
+*/
+func (s *server) pruneReleases(app state.App) []string {
+	removed, err := deploy.Prune(s.instanceDir(app), s.keepReleases)
+	if err != nil {
+		// Logged alongside whatever was already deleted: a half-completed prune
+		// that reports nothing is how disk usage stops adding up.
+		s.log.Error("prune releases failed", "app", app.Key(), "removed", removed, "err", err)
+	}
+	if len(removed) > 0 {
+		s.log.Info("pruned old releases",
+			"app", app.Key(), "keep", s.keepReleases, "removed", removed)
+	}
+	return removed
+}
+
 func (s *server) start(app state.App) error {
 	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
 	env, err := runner.LoadEnvFile(filepath.Join(instance, ".env"))
@@ -561,6 +648,7 @@ func (s *server) start(app state.App) error {
 			WritablePaths: writable,
 			MemoryMax:     "512M",
 			TasksMax:      256,
+			CPUQuota:      cpuQuotaFor(runtime.NumCPU()),
 			StopGrace:     stopGrace,
 			ControlGroup:  controlGroupFor(app),
 			// Widened only for a granted app; empty otherwise.
@@ -738,12 +826,21 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 		go s.watchAndRollback(res.App, res.Previous)
 	}
 
+	// Trimmed only now, after the app has been proven to boot.
+	//
+	// Pruning before the health check would destroy rollback targets on behalf
+	// of a release that turns out not to start — taking away the escape route at
+	// exactly the moment it is needed. The floor of two on --keep-releases is
+	// what keeps `res.Previous` out of reach of this call.
+	pruned := s.pruneReleases(res.App)
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"app":           res.App,
 		"release":       res.Release,
 		"url":           "https://" + res.App.Domain + "/",
 		"sleepEligible": res.Manifest.SleepEligible(),
 		"restore":       restore,
+		"pruned":        pruned,
 	})
 }
 

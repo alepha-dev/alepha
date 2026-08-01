@@ -29,6 +29,20 @@ export const bayAppSchema = z.object({
    * Optional throughout, because bay-go reports nothing rather than zero when
    * it does not know. A zero would read as a measurement.
    */
+  /**
+   * When this app last answered a request, RFC3339. Absent means never.
+   *
+   * Declared here for the same reason `usage` is: the response schema is what
+   * serializes, so a field it does not name is dropped on the way out with no
+   * error anywhere — the browser simply receives nothing.
+   */
+  lastRequestAt: z.text().optional(),
+  /**
+   * How many crons the deployed artifact declared. Absent on an older bay-go,
+   * which must read as "unknown" rather than "none": telling someone an app has
+   * no scheduled work when it has three is how a working app gets deleted.
+   */
+  crons: z.integer().optional(),
   usage: z
     .object({
       memoryBytes: z.integer().optional(),

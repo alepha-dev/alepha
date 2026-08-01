@@ -113,9 +113,18 @@ func TestUpsertPreservesRuntimeOwnedFields(t *testing.T) {
 	if err := s.mutate("lore/production", func(a *App) { a.ControlAPI = true }); err != nil {
 		t.Fatal(err)
 	}
+	// Traffic history is the third. Resetting it on redeploy would mean the
+	// staleness badge reads "no traffic ever" for the apps someone is actively
+	// working on — the exact opposite of what it is for.
+	if err := s.RecordLastRequest("lore/production", time.Unix(1700000000, 0)); err != nil {
+		t.Fatal(err)
+	}
 
 	// A redeploy: same key, fresh record, new release.
-	if err := s.Upsert(App{Name: "lore", Env: "production", Port: 5000, Release: "2026-07-30-120000"}); err != nil {
+	if err := s.Upsert(App{
+		Name: "lore", Env: "production", Port: 5000,
+		Release: "2026-07-30-120000", Crons: 3,
+	}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -126,6 +135,14 @@ func TestUpsertPreservesRuntimeOwnedFields(t *testing.T) {
 	if got.Release != "2026-07-30-120000" {
 		t.Fatalf("deploy-owned field should be taken from the argument, got %q", got.Release)
 	}
+	// The other half of the same rule, and the one that would rot quietly:
+	// `Crons` is derived from the artifact's manifest, so it must follow the
+	// release. Carrying it forward would leave an app that dropped its last
+	// cron looking, forever, like it still had one — and therefore never
+	// deletable on the strength of the badge.
+	if got.Crons != 3 {
+		t.Fatalf("Crons is derived from the manifest and must follow the release, got %d", got.Crons)
+	}
 	if got.LastBackupAt == "" {
 		t.Fatal("LastBackupAt must survive a redeploy")
 	}
@@ -134,6 +151,38 @@ func TestUpsertPreservesRuntimeOwnedFields(t *testing.T) {
 	}
 	if !got.ControlAPI {
 		t.Fatal("ControlAPI must survive a redeploy")
+	}
+	if got.LastRequestAt == "" {
+		t.Fatal("LastRequestAt must survive a redeploy")
+	}
+}
+
+func TestRecordLastRequestOnlyEverMovesForward(t *testing.T) {
+	// The proxy drains a batch of timestamps on a ticker, and a batch can be
+	// applied out of order after a restart or a slow flush. An older stamp
+	// overwriting a newer one would make an app that IS being used read as
+	// abandoned — a badge that says "no traffic for 40 days" about something
+	// someone loaded a minute ago is worse than no badge.
+	s, err := Open(filepath.Join(t.TempDir(), "state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Upsert(App{Name: "lore", Env: "production", Port: 5000}); err != nil {
+		t.Fatal(err)
+	}
+
+	recent := time.Unix(1700000000, 0)
+	older := recent.Add(-2 * time.Hour)
+	if err := s.RecordLastRequest("lore/production", recent); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordLastRequest("lore/production", older); err != nil {
+		t.Fatal(err)
+	}
+
+	got, _ := s.Get("lore/production")
+	if got.LastRequestAt != recent.UTC().Format(time.RFC3339) {
+		t.Fatalf("a late stamp must not rewind the record, got %q", got.LastRequestAt)
 	}
 }
 

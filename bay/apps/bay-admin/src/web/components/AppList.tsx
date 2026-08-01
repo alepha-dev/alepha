@@ -26,6 +26,7 @@ import type {
   BayApp,
   BayAppUsage,
 } from "../../api/services/BayControlService.ts";
+import { quietLabel } from "./quietLabel.ts";
 
 export interface AppListProps {
   apps: BayApp[];
@@ -183,6 +184,19 @@ const AppList = (props: AppListProps) => {
                     <Badge variant="destructive">
                       {app.usage?.restarts}× restarted
                     </Badge>
+                  )}
+                  {/*
+                    The deletion-triage badge, and the only one here that is not
+                    about health. With twenty prototypes on one host the question
+                    stops being "is this broken" and becomes "is anyone still
+                    using this".
+
+                    Not destructive: quiet is not a fault. An app can be quiet
+                    for a year and be exactly what someone wants next month —
+                    this is an invitation to ask, not a defect to fix.
+                  */}
+                  {quietLabel(app, dt) && (
+                    <Badge variant="outline">{quietLabel(app, dt)}</Badge>
                   )}
                 </div>
                 <a

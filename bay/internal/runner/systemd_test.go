@@ -8,8 +8,19 @@ import (
 	"time"
 )
 
-func renderUnitWith(t *testing.T, stopGrace time.Duration) string {
+// renderSandbox renders the demo unit with `adjust` applied to the sandbox, so
+// a test can vary one directive without restating the whole spec.
+func renderSandbox(t *testing.T, adjust func(*Sandbox)) string {
 	t.Helper()
+	sandbox := Sandbox{
+		Instance:      "/opt/bay/data/apps/demo/production",
+		WritablePaths: []string{"/opt/bay/data/apps/demo/production/scratch"},
+		MemoryMax:     "512M",
+		StopGrace:     30 * time.Second,
+	}
+	if adjust != nil {
+		adjust(&sandbox)
+	}
 	s := &Systemd{UnitDir: t.TempDir()}
 	return s.render(
 		Spec{
@@ -19,14 +30,14 @@ func renderUnitWith(t *testing.T, stopGrace time.Duration) string {
 			Entry:   "index.js",
 			LogFile: "/opt/bay/data/apps/demo/production/logs/app.log",
 		},
-		Sandbox{
-			Instance:      "/opt/bay/data/apps/demo/production",
-			WritablePaths: []string{"/opt/bay/data/apps/demo/production/scratch"},
-			MemoryMax:     "512M",
-			StopGrace:     stopGrace,
-		},
+		sandbox,
 		"bay-demo-production",
 	)
+}
+
+func renderUnitWith(t *testing.T, stopGrace time.Duration) string {
+	t.Helper()
+	return renderSandbox(t, func(s *Sandbox) { s.StopGrace = stopGrace })
 }
 
 func renderUnit(t *testing.T) string {
@@ -101,6 +112,41 @@ func TestUnitSandboxesTheApp(t *testing.T) {
 		if !strings.Contains(unit, directive) {
 			t.Errorf("missing sandbox directive %q", directive)
 		}
+	}
+}
+
+func TestUnitCapsCPUSoOneAppCannotTakeTheMachine(t *testing.T) {
+	/*
+		MemoryMax already stops one app from eating the host's RAM. Nothing
+		stopped it from eating the host's CPU — and on a two-core VPS a single
+		prototype in a tight loop degrades every other app AND Bay's own proxy,
+		which is the part that turns one broken app into a site-wide outage.
+
+		A ceiling rather than a share: `CPUWeight` is the default 100 for every
+		unit, so setting it uniformly changes nothing. Only a quota does work
+		when every app is configured identically.
+	*/
+	unit := renderSandbox(t, func(s *Sandbox) { s.CPUQuota = "100%" })
+
+	if !strings.Contains(unit, "CPUQuota=100%") {
+		t.Fatalf("the CPU ceiling the caller asked for must reach the unit:\n%s", unit)
+	}
+}
+
+func TestUnitOmitsCPUQuotaWhenUnset(t *testing.T) {
+	/*
+		The failure this forbids is not a missing limit, it is a rendered one:
+		`CPUQuota=0%` grants the app NO cpu time at all, so it would never
+		finish booting and Bay would report "never became ready" for a reason
+		nothing in the logs connects to a quota.
+
+		An unset field must therefore produce no line, leaving systemd's own
+		default — unlimited. Same shape as MemoryMax and TasksMax above.
+	*/
+	unit := renderSandbox(t, nil)
+
+	if strings.Contains(unit, "CPUQuota=") {
+		t.Fatalf("an unset quota must emit no directive at all:\n%s", unit)
 	}
 }
 

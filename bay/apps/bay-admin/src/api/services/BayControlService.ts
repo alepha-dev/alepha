@@ -32,6 +32,28 @@ export interface BayApp {
   backups?: boolean;
   lastBackupAt?: string;
   lastBackupError?: string;
+  /**
+   * When this app last ANSWERED a request, RFC3339. Absent means never.
+   *
+   * Recorded by Bay's proxy, not reported by the app: the proxy serves static
+   * files and prerendered HTML itself, so a page someone reads every morning
+   * can reach the app process zero times. Asking the app would call it idle.
+   *
+   * Requests the app refused do not count. Every Bay domain is public the
+   * moment its certificate is issued — Let's Encrypt publishes them all to the
+   * Certificate Transparency logs — so a prototype nobody has ever shared
+   * still collects scanner traffic forever. Counting that would show every
+   * abandoned app as freshly used.
+   */
+  lastRequestAt?: string;
+  /**
+   * How many cron expressions the deployed artifact declared.
+   *
+   * The correction to reading `lastRequestAt` alone: an app whose whole job is
+   * a weekly email serves nobody and looks abandoned. This is what stops it
+   * being deleted.
+   */
+  crons?: number;
 }
 
 /**
