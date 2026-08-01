@@ -7,7 +7,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository, sql } from "alepha/orm";
 import { blights } from "../entities/blights.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
-import { type Sigil, sigils } from "../entities/sigils.ts";
+import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
 import { sigilUniquesDaily } from "../entities/sigilUniquesDaily.ts";
 import { sigilViewsHourly } from "../entities/sigilViewsHourly.ts";
 import { sigilVitalsHourly } from "../entities/sigilVitalsHourly.ts";
@@ -201,7 +201,10 @@ export class SigilIngestService {
           sigilId: sigil.id,
           hour,
           path: this.normalizePath(view.path),
-          country: country ?? "ZZ",
+          // `||`, not `??`: the wire schema allows an empty string and the
+          // column is `min(1)`, so a proxy that stamps `country: ""` rather
+          // than omitting the field would 500 the whole batch.
+          country: country || "ZZ",
           count: 1,
         },
         {
@@ -274,8 +277,12 @@ export class SigilIngestService {
 
   /**
    * Whether this sigil was issued the capability a section needs.
+   *
+   * `SigilKind`, not `string`: a typo here does not throw, it silently
+   * disables that capability for every sigil forever, and the only symptom is
+   * a table that stays empty. The compiler is the only thing that catches it.
    */
-  protected carries(sigil: Sigil, kind: string): boolean {
+  protected carries(sigil: Sigil, kind: SigilKind): boolean {
     return (sigil.kinds ?? []).includes(kind);
   }
 

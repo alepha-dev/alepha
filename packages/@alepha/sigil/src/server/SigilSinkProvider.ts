@@ -14,6 +14,7 @@ import {
 } from "../shared/sigilFeatures.ts";
 import { sigilFingerprintSource } from "../shared/sigilFingerprint.ts";
 import { sigilOptions } from "../shared/sigilOptionsAtom.ts";
+import { SIGIL_CONFIG_PATH, SIGIL_INGEST_PATH } from "../shared/sigilPaths.ts";
 import { sigilEnv } from "../sigilEnv.ts";
 
 /** How long a batch may sit before it is worth a round trip. */
@@ -156,7 +157,7 @@ export class SigilSinkProvider {
     this.configInFlight = (async () => {
       try {
         const res = await this.http.fetch(
-          `${this.sinkOrigin()}/sigils/config`,
+          `${this.sinkOrigin()}${SIGIL_CONFIG_PATH}`,
           {
             method: "GET",
             headers: { authorization: `Bearer ${this.env.SIGIL_KEY}` },
@@ -321,7 +322,7 @@ export class SigilSinkProvider {
     }
 
     try {
-      await this.http.fetch(`${this.sinkOrigin()}/sigils/ingest`, {
+      await this.http.fetch(`${this.sinkOrigin()}${SIGIL_INGEST_PATH}`, {
         method: "POST",
         headers: {
           "content-type": "application/json",

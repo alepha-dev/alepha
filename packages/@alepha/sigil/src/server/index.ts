@@ -17,4 +17,5 @@ export * from "../shared/sigilClientAtom.ts";
 export * from "../shared/sigilFeatures.ts";
 export * from "../shared/sigilFingerprint.ts";
 export * from "../shared/sigilOptionsAtom.ts";
+export * from "../shared/sigilPaths.ts";
 export * from "./SigilSinkProvider.ts";

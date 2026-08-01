@@ -1,10 +1,11 @@
 import { sigilConfig } from "@alepha/sigil/config";
 import { sigilForwarded } from "@alepha/sigil/envelope";
+import { SIGIL_CONFIG_PATH, SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
 import { $inject, Alepha, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { $route, UnauthorizedError } from "alepha/server";
 import { campaigns } from "../entities/campaigns.ts";
-import type { Sigil } from "../entities/sigils.ts";
+import type { Sigil, SigilKind } from "../entities/sigils.ts";
 import { SigilIngestService } from "../services/SigilIngestService.ts";
 import { SigilTokenService } from "../services/SigilTokenService.ts";
 
@@ -45,7 +46,7 @@ export class SigilIngestController {
    */
   push = $route({
     method: "POST",
-    path: "/sigils/ingest",
+    path: SIGIL_INGEST_PATH,
     schema: {
       body: sigilForwarded,
       headers: z.object({ authorization: z.string().optional() }),
@@ -70,7 +71,7 @@ export class SigilIngestController {
    */
   config = $route({
     method: "GET",
-    path: "/sigils/config",
+    path: SIGIL_CONFIG_PATH,
     schema: {
       headers: z.object({ authorization: z.string().optional() }),
       response: sigilConfig,
@@ -127,7 +128,7 @@ export class SigilIngestController {
     return sigil;
   }
 
-  protected carries(sigil: Sigil, kind: string): boolean {
+  protected carries(sigil: Sigil, kind: SigilKind): boolean {
     return (sigil.kinds ?? []).includes(kind);
   }
 
