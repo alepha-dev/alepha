@@ -23,6 +23,7 @@
       "default": "./src/index.ts"
     },
     "./server": "./src/server/index.ts",
+    "./react": "./src/browser/react.ts",
     "./messages": "./src/shared/sigilMessages.ts",
     "./context": "./src/shared/sigilPetitionContext.ts",
     "./vitals": "./src/shared/schemas/sigilVitalsBuckets.ts",

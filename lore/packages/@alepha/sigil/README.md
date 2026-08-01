@@ -43,13 +43,23 @@ Visitor identity is a daily-rotating hash salted with the request's own host —
 no cookie, no local storage, nothing that follows a person between sites or
 across days.
 
-## No UI
+## Nothing is mounted for you
 
-The petition button used to be mounted here as a root component. It is now a
-plain link the app renders wherever it likes, from `usePetitionUrl()`.
+The petition button used to be injected into every host app's React tree as a
+root component. It still ships — but the app decides where it goes:
 
-A reporting package that injects DOM is a reporting package that has to be
-styled, translated and tested as a UI — for one button.
+```tsx
+import { SigilRoot, usePetitionUrl } from "@alepha/sigil/react";
+
+<SigilRoot />; // the batteries-included floating button
+```
+
+or, for an app that would rather render its own link, `usePetitionUrl()`
+returns the URL and nothing else.
+
+`@alepha/sigil/react` is a subpath of its own so that importing the module
+never pulls React into an app that has none, and so a server-rendered host
+resolves the component on the server pass as well as in the browser bundle.
 
 ## Error grouping
 

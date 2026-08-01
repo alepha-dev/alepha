@@ -22,11 +22,12 @@ export * from "./sigilEnv.ts";
  * the machine: errors go to the logger instead, aggregated. Active in
  * production only.
  *
- * **No UI.** The petition button used to be mounted here as a root component;
- * it is now a plain link the app renders wherever it wants, from
- * `usePetitionUrl()`. A reporting package that injects DOM is a reporting
- * package that has to be styled, translated and tested as a UI — for one
- * button.
+ * **Nothing is mounted for you.** The petition button used to be injected into
+ * every host app's React tree as a root component. It still ships — as
+ * `<SigilRoot />` from `@alepha/sigil/react` — but the app decides where it
+ * goes, or skips it entirely and renders its own link from `usePetitionUrl()`.
+ * A reporting package that injects DOM on its own is one you then have to
+ * style, translate and keep out of your layout, for one button.
  *
  * Server services self-guard to the server; the browser bootstrap guards the
  * browser.
