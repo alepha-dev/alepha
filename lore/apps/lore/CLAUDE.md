@@ -173,7 +173,7 @@ Uses `@dnd-kit/core`. Cards are `useDraggable`, columns are `useDroppable`. Stat
 
 User-submitted bug reports / feature requests that the campaign owner triages.
 
-**Lifecycle**: `pending → accepted` (promoted to a quest, linked via `promotedQuestId`) `| rejected`.
+**Lifecycle**: `pending → accepted` (promoted to one or more quests, each linked back via `quests.petitionId` — there is no `promotedQuestId` column) `| rejected`.
 
 **Submission flow (login required)** — there are **two** live entry points; both land on `POST /campaigns/:id/petitions`:
 - `/c/:campaignId/request` — first-party form on lore (`CampaignPetitionRequest.tsx`, route `campaignPetitionRequest`). Anonymous visitors see a sign-in CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).

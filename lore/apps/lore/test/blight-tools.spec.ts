@@ -12,6 +12,7 @@ import { blights } from "../src/api/entities/blights.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 import { BlightTools } from "../src/mcp/tools/BlightTools.ts";
+import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
 
 /**
  * The blights inbox over MCP: triage happens in a conversation, and the
@@ -38,6 +39,7 @@ const setup = async () => {
 
   const probe = alepha.inject(Probe);
   const blightTools = alepha.inject(BlightTools);
+  const questTools = alepha.inject(QuestTools);
   const campaignApi = alepha.inject(CampaignController);
   const users = alepha.inject(UserService);
   await alepha.start();
@@ -75,7 +77,15 @@ const setup = async () => {
     campaignApi.createCampaign({ body: { title: "Elsewhere" } } as any),
   );
 
-  return { alepha, probe, blightTools, campaign, otherCampaign, call };
+  return {
+    alepha,
+    probe,
+    blightTools,
+    questTools,
+    campaign,
+    otherCampaign,
+    call,
+  };
 };
 
 describe("Lore MCP — blights", () => {
@@ -190,5 +200,69 @@ describe("Lore MCP — blights", () => {
         blight_id: filed.id,
       }),
     ).rejects.toThrow();
+  });
+
+  it("should hand a blight back to the inbox when its quest is deleted", async () => {
+    /*
+      Forwarding is one-way: `blight_forward` refuses a row that already
+      carries a `quest:` status. So deleting the quest used to strand the
+      blight — out of the inbox because its status is not `open`, and
+      un-forwardable because it looks handled. The failure kept happening with
+      nothing left to surface it, and no triage action could reach it.
+
+      Reopening here is not the same as letting a batch undo a decision (see
+      `sigil-ingest.spec.ts`, "keeps a triage decision"). That rule protects a
+      decision from NOISE; deleting the quest is the owner withdrawing it.
+    */
+    const { probe, blightTools, questTools, campaign, call } = await setup();
+    const filed = await fileBlight(probe, campaign.id);
+
+    const { questShortId } = await call(blightTools.blight_forward, {
+      campaign: campaign.id,
+      blight_id: filed.id,
+    });
+    expect((await probe.blights.findById(filed.id))?.status).toMatch(/^quest:/);
+
+    await call(questTools.quest_delete, {
+      campaign: campaign.id,
+      shortId: questShortId,
+    });
+
+    expect((await probe.blights.findById(filed.id))?.status).toBe("open");
+    const inbox = await call(blightTools.blight_list, {
+      campaign: campaign.id,
+    });
+    expect(inbox.openCount).toBe(1);
+  });
+
+  it("should leave a blight alone when the deleted quest is not the one holding it", async () => {
+    /*
+      The guard on the reopen. Two quests, one blight: deleting the quest the
+      blight is NOT pointing at must change nothing, or a tidy-up elsewhere in
+      the campaign silently reopens triaged rows.
+    */
+    const { probe, blightTools, questTools, campaign, call } = await setup();
+    const filed = await fileBlight(probe, campaign.id);
+
+    await call(blightTools.blight_forward, {
+      campaign: campaign.id,
+      blight_id: filed.id,
+    });
+    const held = (await probe.blights.findById(filed.id))?.status;
+
+    const unrelated = await call(questTools.quest_create, {
+      campaign: campaign.id,
+      title: "Unrelated",
+      description: "Nothing to do with the blight",
+      zone: "misc",
+      priority: "low",
+      difficulty: 1,
+    });
+    await call(questTools.quest_delete, {
+      campaign: campaign.id,
+      shortId: unrelated.shortId,
+    });
+
+    expect((await probe.blights.findById(filed.id))?.status).toBe(held);
   });
 });

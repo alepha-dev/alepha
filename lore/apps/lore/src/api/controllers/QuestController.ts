@@ -10,6 +10,7 @@ import {
   ForbiddenError,
   okSchema,
 } from "alepha/server";
+import { blights, QUEST_STATUS_PREFIX } from "../entities/blights.ts";
 import { type Campaign, campaigns } from "../entities/campaigns.ts";
 import { petitions } from "../entities/petitions.ts";
 import {
@@ -35,6 +36,7 @@ export class QuestController {
   quests = $repository(quests);
   campaigns = $repository(campaigns);
   petitions = $repository(petitions);
+  blights = $repository(blights);
   dt = $inject(DateTimeProvider);
   security = $inject(CampaignSecurityService);
   fileService = $inject(FileService);
@@ -1166,7 +1168,13 @@ export class QuestController {
   });
 
   deleteQuest = $action({
-    use: [$secure({ permissions: ["quest:delete"] })],
+    // The only quest mutation that lacked this, and it writes three times
+    // before the row goes: it clears dependents' `dependsOn`, hands any
+    // forwarded blight back to the inbox, then deletes. A failure partway
+    // through used to leave those first two committed against a quest that
+    // still exists — dependencies silently severed, a blight reopened next to
+    // the quest still tracking it.
+    use: [$secure({ permissions: ["quest:delete"] }), $transactional()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1202,6 +1210,27 @@ export class QuestController {
       });
       for (const dep of dependents) {
         await this.quests.updateById(dep.id, { dependsOn: undefined });
+      }
+
+      // Hand the blight back to the inbox before its quest disappears.
+      //
+      // `blight_forward` is one-way — it refuses a blight already carrying a
+      // `quest:` status — so without this the row is stranded: invisible in the
+      // inbox because its status is not `open`, un-forwardable because it looks
+      // handled, and pointing at a quest that 404s. The failure it reported
+      // goes on happening with nothing left to surface it.
+      //
+      // Reopening here does not contradict the rule that a triage decision
+      // survives the next batch (see `absorbErrors`). That rule protects a
+      // decision from being undone by NOISE; deleting the quest is the owner
+      // deliberately withdrawing the decision, which is the opposite.
+      if (quest.source?.sigilBlightId) {
+        const blight = await this.blights.findById(quest.source.sigilBlightId);
+        // Only if it still points HERE. A blight re-forwarded to another quest
+        // belongs to that one now, and must not be reopened by this delete.
+        if (blight?.status === `${QUEST_STATUS_PREFIX}${params.id}`) {
+          await this.blights.updateById(blight.id, { status: "open" });
+        }
       }
 
       await this.quests.deleteById(params.id);
