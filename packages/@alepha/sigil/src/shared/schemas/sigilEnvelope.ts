@@ -1,7 +1,7 @@
 import { type Static, z } from "alepha";
 
 /**
- * Mutualized telemetry envelope the browser POSTs to the same-origin proxy,
+ * Mutualized sigil envelope the browser POSTs to the same-origin proxy,
  * and that the server forwards to the sink.
  *
  * The proxy stamps `country` + `visitor` server-side — the browser never sets

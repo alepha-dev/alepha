@@ -3,7 +3,7 @@
  *
  * Exported rather than written out at each end, because the failure mode of a
  * disagreement is silent in both directions. The client fails open on purpose —
- * a sink that is down must not silence an app's telemetry — so a flush to a
+ * a sink that is down must not silence an app's reporting — so a flush to a
  * path nothing serves is a 404 swallowed by a `log.warn`, and a config fetch to
  * one falls back to "collect everything" without ever saying why. Nothing turns
  * red; the sink just stays empty. That is exactly how these two drifted apart

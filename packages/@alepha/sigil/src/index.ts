@@ -14,8 +14,8 @@ export * from "./shared/sigilPaths.ts";
 export * from "./sigilEnv.ts";
 
 /**
- * Telemetry for Alepha apps: page views, web vitals, and client and server
- * errors — pushed to a sink (Sigil) that the app names.
+ * The sigil an Alepha app reports under: page views, web vitals, and client
+ * and server errors — pushed to a sink that the app names.
  *
  * Import this module in your WebModule and set `SIGIL_SINK` +
  * `SIGIL_KEY`. Without them the module still captures, but nothing leaves
@@ -24,7 +24,7 @@ export * from "./sigilEnv.ts";
  *
  * **No UI.** The petition button used to be mounted here as a root component;
  * it is now a plain link the app renders wherever it wants, from
- * `usePetitionUrl()`. A telemetry package that injects DOM is a telemetry
+ * `usePetitionUrl()`. A reporting package that injects DOM is a reporting
  * package that has to be styled, translated and tested as a UI — for one
  * button.
  *

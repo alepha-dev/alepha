@@ -32,7 +32,7 @@ export class SigilTools {
   sigil_list = $tool({
     title: "List sigils",
     description:
-      "List a campaign's sigils — which applications and environments are enrolled to report telemetry here, and when each last reported. `lastSeenAt` absent means that environment has never sent anything, which distinguishes a quiet app from one that was never wired up. The token is not returned and cannot be: only its prefix is stored in readable form.",
+      "List a campaign's sigils — which applications and environments are enrolled to report here, and when each last reported. `lastSeenAt` absent means that environment has never sent anything, which distinguishes a quiet app from one that was never wired up. The token is not returned and cannot be: only its prefix is stored in readable form.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: sigilListParamsSchema,

@@ -29,7 +29,7 @@ export class SigilProxyController {
   ingest = $action({
     method: "POST",
     path: "/sigil/ingest",
-    description: "Same-origin telemetry intake for this app's own browser code",
+    description: "Same-origin sigil intake for this app's own browser code",
     schema: {
       body: sigilEnvelope,
       headers: z.object({
@@ -77,7 +77,7 @@ export class SigilProxyController {
         .toISOString()
         .slice(0, 10);
       const host = request.headers.host ?? "";
-      const dailySalt = this.crypto.hash(`alepha-telemetry:${utcDate}`);
+      const dailySalt = this.crypto.hash(`alepha-sigil:${utcDate}`);
       const visitor = this.crypto.hash(`${host}:${ip}:${ua}:${dailySalt}`);
 
       // The kill-switches are applied by the sink provider. Filtering here too

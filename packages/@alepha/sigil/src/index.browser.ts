@@ -10,7 +10,7 @@ export * from "./shared/sigilFeatures.ts";
 export * from "./sigilEnv.ts";
 
 /**
- * Browser-safe build of the telemetry module.
+ * Browser-safe build of the sigil module.
  *
  * Server-only services (`SigilProxyController`, `SigilSinkProvider`,
  * `SigilServerErrors`) import `$action` from `alepha/server`, which is not

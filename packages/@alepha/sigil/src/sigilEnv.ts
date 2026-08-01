@@ -1,7 +1,7 @@
 import { z } from "alepha";
 
 /**
- * Telemetry configuration, read from the app's server env.
+ * Sigil configuration, read from the app's server env.
  *
  * Both fields are optional so `parseEnv` never throws, and their absence is a
  * supported mode rather than a misconfiguration: without a sink the module
@@ -16,7 +16,7 @@ export const sigilEnv = z.object({
   SIGIL_SINK: z
     .text({
       description:
-        "Origin of the telemetry sink (a Sigil instance), e.g. https://sigil.example.com. Absent = capture locally, send nothing.",
+        "Origin of the sigil sink, e.g. https://lore.example.com. Absent = capture locally, send nothing.",
     })
     .optional(),
   SIGIL_KEY: z

@@ -6,7 +6,7 @@ import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
  * none.
  *
  * Headless on purpose. This package used to mount a floating button and a
- * screenshot dialog into every host app's React tree — which meant a telemetry
+ * screenshot dialog into every host app's React tree — which meant a reporting
  * package owned a piece of UI it then had to style, translate, make accessible
  * and keep out of the way of the app's own layout, all for one link.
  *

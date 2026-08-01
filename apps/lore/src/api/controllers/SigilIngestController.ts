@@ -14,14 +14,14 @@ import { SigilTokenService } from "../services/SigilTokenService.ts";
  *
  * **A separate realm from everything else in Lore, in both directions.** These
  * two endpoints accept a sigil token and nothing else — an authenticated
- * campaign member is not enough to post telemetry, and a sigil token opens
- * nothing but these two routes.
+ * campaign member is not enough to report into a campaign, and a sigil token
+ * opens nothing but these two routes.
  *
  * The asymmetry matters more than it looks. A sigil token exists in cleartext
  * on every machine that runs the environment it belongs to; treating it as an
  * authentication of any kind would hand out Lore's campaign surface with it.
  * Conversely, accepting the session cookie here would mean a logged-in owner
- * browsing a malicious page could be made to write into someone's telemetry.
+ * browsing a malicious page could be made to write into someone's insights.
  *
  * Hence `$secure` is deliberately absent: these are not "public" endpoints,
  * they are endpoints with their own credential, resolved by hand below.
@@ -37,7 +37,7 @@ export class SigilIngestController {
   protected readonly campaigns = $repository(campaigns);
 
   /**
-   * `POST /sigils/ingest` — one telemetry batch.
+   * `POST /sigils/ingest` — one batch from an enrolled environment.
    *
    * Answers 204 and nothing else. What the sink is willing to take is a
    * standing answer, not a per-batch one, and it is served by `/sigils/config`

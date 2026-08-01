@@ -2,8 +2,8 @@ import { $atom, type Static, z } from "alepha";
 import { SIGIL_TRACKERS } from "./sigilFeatures.ts";
 
 /**
- * The public telemetry config handed to the browser through SSR hydration:
- * which trackers are on, how much to sample, which paths to skip, and where a
+ * The public sigil config handed to the browser through SSR hydration: which
+ * trackers are on, how much to sample, which paths to skip, and where a
  * petition goes.
  *
  * **It never contains the key.** The browser talks only to its own origin; the
@@ -19,7 +19,7 @@ import { SIGIL_TRACKERS } from "./sigilFeatures.ts";
 export const sigilClientAtom = $atom({
   name: "alepha.sigil.client",
   description:
-    "Public telemetry config sent to the browser: enabled trackers, sampling, excluded paths, petition URL. Never contains the key.",
+    "Public sigil config sent to the browser: enabled trackers, sampling, excluded paths, petition URL. Never contains the key.",
   schema: z.object({
     enabled: z.record(z.string(), z.boolean()),
     sampling: z.record(z.string(), z.number()),
@@ -33,4 +33,4 @@ export const sigilClientAtom = $atom({
   },
 });
 
-export type TelemetryClientConfig = Static<typeof sigilClientAtom.schema>;
+export type SigilClientConfig = Static<typeof sigilClientAtom.schema>;

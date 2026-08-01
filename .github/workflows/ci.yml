@@ -301,11 +301,8 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
-          # Lore reports its own analytics, vitals and errors to Pulse, the
-          # same way any other app does. It used to collect them itself, into
-          # its own Insights page; that whole surface moved out, and Lore is
-          # now a client of it like everyone else.
-          PULSE_SINK: ${{ secrets.PULSE_SINK }}
-          PULSE_KEY: ${{ secrets.PULSE_KEY }}
           TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
-          SIGIL_ID: ${{ secrets.SIGIL_ID }}
+          # No SIGIL_SINK / SIGIL_KEY here on purpose. Lore is the sink, and a
+          # Cloudflare Worker cannot fetch its own hostname — pointing Lore at
+          # itself would make every flush a failed subrequest. It reports
+          # nothing; other apps report to it.

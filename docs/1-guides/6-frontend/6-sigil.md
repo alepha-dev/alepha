@@ -1,8 +1,8 @@
 # Sigil (analytics, vitals & errors)
 
 `@alepha/sigil` makes an Alepha app report what it is doing: page views,
-Web Vitals, and client and server errors — to a **Sigil** instance the app
-names.
+Web Vitals, and client and server errors — to the **sink** the app names. A
+sink is anything serving the two sigil endpoints; Lore is one.
 
 ```typescript
 import { Alepha } from "alepha";
@@ -18,8 +18,8 @@ Then two server-side variables:
 
 | Variable | |
 |---|---|
-| `SIGIL_SINK` | origin of the Sigil instance, e.g. `https://sigil.example.com` |
-| `SIGIL_KEY` | per-app enrolment key issued by that instance — **secret, server-only** |
+| `SIGIL_SINK` | origin of the sink, e.g. `https://lore.example.com` |
+| `SIGIL_KEY` | the sigil token the sink minted for this app + environment — **secret, server-only** |
 
 Both are optional. Without them the module still captures, and aggregated
 errors go to the logger instead of over the network — the headless case, for an
@@ -33,7 +33,7 @@ The browser posts to `/api/sigil/ingest` on the app's **own origin**; the app
 then forwards to the sink server-to-server.
 
 ```
-browser ──(same-origin)──▶ /api/sigil/ingest ──(server→server, SIGIL_KEY)──▶ sigil.example.com
+browser ──(same-origin)──▶ /api/sigil/ingest ──(server→server, SIGIL_KEY)──▶ lore.example.com
 ```
 
 So the key never reaches the page, there is no CORS to configure, and no

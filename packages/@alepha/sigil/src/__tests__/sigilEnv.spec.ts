@@ -19,7 +19,7 @@ describe("sigilEnv", () => {
 
   it("treats an absent sink as a mode, not a misconfiguration", () => {
     // The headless case: an app that must not phone home still boots, and
-    // still captures. Throwing here would make "no telemetry" impossible to
+    // still captures. Throwing here would make "report nothing" impossible to
     // express without deleting the module.
     const alepha = Alepha.create({ env: {} });
 

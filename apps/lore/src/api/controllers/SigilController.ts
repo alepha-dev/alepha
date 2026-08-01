@@ -1,5 +1,5 @@
 import { $inject, type Static, z } from "alepha";
-import { $repository } from "alepha/orm";
+import { $repository, DbConflictError } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
 import { SIGIL_KINDS, type Sigil, sigils } from "../entities/sigils.ts";
@@ -64,6 +64,12 @@ export class SigilController {
    * environment's history in two and make every aggregate wrong. A repeat is a
    * 409 rather than a silent second row, and the way to replace a credential is
    * {@link rotateSigil}.
+   *
+   * The duplicate is refused twice, on purpose. The `findOne` names the clash
+   * in the message an operator reads; the `DbConflictError` catch covers the
+   * window between that read and the insert, where a second concurrent create
+   * would otherwise reach the unique index and surface as a 500. The index is
+   * what actually guarantees integrity — the check is only there to explain it.
    */
   createSigil = $action({
     use: [$secure({ permissions: ["campaign:update"] })],
@@ -108,18 +114,27 @@ export class SigilController {
       }
 
       const minted = this.tokens.mint();
-      const created = await this.sigils.create({
-        campaignId: params.campaignId,
-        app,
-        environment,
-        label: body.label?.trim() || `${app} / ${environment}`,
-        tokenHash: minted.hash,
-        tokenPrefix: minted.prefix,
-        kinds: body.kinds ?? [...SIGIL_KINDS],
-        createdBy: user.id,
-      });
+      try {
+        const created = await this.sigils.create({
+          campaignId: params.campaignId,
+          app,
+          environment,
+          label: body.label?.trim() || `${app} / ${environment}`,
+          tokenHash: minted.hash,
+          tokenPrefix: minted.prefix,
+          kinds: body.kinds ?? [...SIGIL_KINDS],
+          createdBy: user.id,
+        });
 
-      return { ...this.toResource(created), token: minted.token };
+        return { ...this.toResource(created), token: minted.token };
+      } catch (error) {
+        if (error instanceof DbConflictError) {
+          throw new ConflictError(
+            await this.explainConflict(params.campaignId, app, environment),
+          );
+        }
+        throw error;
+      }
     },
   });
 
@@ -207,6 +222,35 @@ export class SigilController {
       return { ok: true };
     },
   });
+
+  /**
+   * Works out which unique index refused the insert, and says so.
+   *
+   * `sigils` carries two: `(campaignId, app, environment)` and `tokenHash`.
+   * `DbConflictError` does not name the one that fired, and the two mean
+   * opposite things to a caller — the first says "you already have this
+   * environment", the second says "try again and you will get a different
+   * token". Answering the first message to the second case would send an
+   * operator looking for a sigil that does not exist.
+   *
+   * One extra read, only on the error path.
+   */
+  protected async explainConflict(
+    campaignId: number,
+    app: string,
+    environment: string,
+  ): Promise<string> {
+    const clash = await this.sigils.findOne({
+      where: {
+        campaignId: { eq: campaignId },
+        app: { eq: app },
+        environment: { eq: environment },
+      },
+    });
+    return clash
+      ? `A sigil already exists for ${app} / ${environment}`
+      : "Could not mint a unique token for this sigil — retry.";
+  }
 
   /**
    * Load a sigil, asserting it belongs to the campaign in the path.
