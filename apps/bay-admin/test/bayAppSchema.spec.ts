@@ -50,4 +50,46 @@ describe("bayAppSchema", () => {
     expect(parsed.usage).toBeUndefined();
     expect(parsed.running).toBeUndefined();
   });
+
+  it("should carry the traffic record through to the browser", () => {
+    /*
+      Same trap as `usage`, and the one this file exists for: the response
+      schema is what serializes, so a field it does not name never reaches the
+      browser — no error, no log line, just a badge that is always absent.
+
+      Worse here than for `usage`, because the failure looks like good news. A
+      missing `lastRequestAt` renders as "no badge", which reads as "this app is
+      in use" — so the whole point of the feature inverts silently.
+    */
+    const parsed = bayAppSchema.parse({
+      name: "demo",
+      env: "production",
+      domain: "demo.example.com",
+      release: "2026-07-31-120000",
+      port: 4000,
+      runtime: "node",
+      lastRequestAt: "2026-07-31T09:14:22Z",
+      crons: 3,
+    });
+
+    expect(parsed.lastRequestAt).toBe("2026-07-31T09:14:22Z");
+    expect(parsed.crons).toBe(3);
+  });
+
+  it("should leave the traffic record unknown rather than empty on an older bay-go", () => {
+    // A binary that predates the proxy's bookkeeping reports neither field.
+    // Both must stay undefined: a `crons: 0` nobody measured would claim an app
+    // has no scheduled work, which is how a working mailer gets deleted.
+    const parsed = bayAppSchema.parse({
+      name: "demo",
+      env: "production",
+      domain: "demo.example.com",
+      release: "2026-07-31-120000",
+      port: 4000,
+      runtime: "node",
+    });
+
+    expect(parsed.lastRequestAt).toBeUndefined();
+    expect(parsed.crons).toBeUndefined();
+  });
 });

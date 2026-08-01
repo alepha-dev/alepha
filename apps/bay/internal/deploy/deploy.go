@@ -195,6 +195,10 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		// Only a Bay-provisioned database can be snapshotted; a BYO DATABASE_URL
 		// leaves dbPath empty.
 		Backups: dbPath != "",
+		// Carried so an app that serves nobody on purpose — a weekly mailer, a
+		// nightly import — can be told apart from one that has been abandoned.
+		// Both read as zero traffic; only one of them should be deleted.
+		Crons: len(m.Cron),
 	}
 	// Preserved across redeploys unless the caller asks again: revoking should be
 	// deliberate, not a side effect of forgetting a flag. `Upsert` carries the

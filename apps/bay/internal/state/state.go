@@ -54,6 +54,28 @@ type App struct {
 	// LastBackupError is when and why the most recent attempt failed. Cleared on
 	// the next success.
 	LastBackupError string `json:"lastBackupError,omitempty"`
+
+	// Crons is how many cron expressions the artifact declared. Derived from the
+	// manifest at deploy time, so it is replaced on every deploy rather than
+	// carried forward — it describes the release, not the instance.
+	//
+	// Stored only so that "no traffic in 92 days" can be read correctly. An app
+	// whose whole job is a weekly email serves nobody and would look abandoned;
+	// saying it has crons is what stops someone deleting it. Bay does not act on
+	// this, and deliberately does not store the expressions: it would then be
+	// tempted to schedule them, which Alepha already does better in-process.
+	Crons int `json:"crons,omitempty"`
+
+	// LastRequestAt is when this app last ANSWERED a request, RFC3339 UTC.
+	// Empty means it never has.
+	//
+	// The question it exists for is "which of these prototypes is dead?" — the
+	// one an operator actually asks when twenty of them share a host. Recorded
+	// by the proxy rather than reported by the app, because the proxy serves
+	// static files and prerendered HTML itself (see `proxy.findStatic`): an app
+	// that answers no requests at all can still be the one somebody reads every
+	// morning, and asking the app would call it idle.
+	LastRequestAt string `json:"lastRequestAt,omitempty"`
 }
 
 // Key is the stable identifier for an app instance.
@@ -167,6 +189,11 @@ func (s *Store) Upsert(app App) error {
 			app.LastBackupAt = a.LastBackupAt
 			app.LastBackupKey = a.LastBackupKey
 			app.LastBackupError = a.LastBackupError
+			// Traffic history belongs to the instance, not the release. Resetting
+			// it here would make every app read "no traffic ever" right after a
+			// deploy — so the staleness badge would be blank for exactly the apps
+			// someone is actively working on.
+			app.LastRequestAt = a.LastRequestAt
 			s.state.Apps[i] = app
 			return s.flush()
 		}
@@ -176,6 +203,32 @@ func (s *Store) Upsert(app App) error {
 }
 
 // RecordBackupSuccess stamps a completed backup.
+/*
+RecordLastRequest stamps when an app last answered a request.
+
+Monotonic on purpose. The proxy accumulates timestamps in memory and a ticker
+drains them, so a batch can arrive late — after a restart, or behind a slow
+flush — carrying a stamp older than one already recorded. Letting it win would
+make an app somebody just loaded read as abandoned, and a badge that says "no
+traffic for 40 days" about a page opened a minute ago is worse than no badge at
+all: it is the one reading that gets an app deleted.
+
+An unparseable stored value is overwritten rather than defended. It means the
+state was hand-edited or written by another version, and the current answer is
+worth more than an unreadable one.
+*/
+func (s *Store) RecordLastRequest(key string, at time.Time) error {
+	stamp := at.UTC().Format(time.RFC3339)
+	return s.mutate(key, func(a *App) {
+		if a.LastRequestAt != "" {
+			if prev, err := time.Parse(time.RFC3339, a.LastRequestAt); err == nil && prev.After(at) {
+				return
+			}
+		}
+		a.LastRequestAt = stamp
+	})
+}
+
 func (s *Store) RecordBackupSuccess(key, s3Key string, at time.Time) error {
 	return s.mutate(key, func(a *App) {
 		a.LastBackupAt = at.UTC().Format(time.RFC3339)
