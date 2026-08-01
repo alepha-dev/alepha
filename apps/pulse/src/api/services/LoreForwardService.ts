@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { CryptoProvider, SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -27,6 +27,7 @@ const MAX_PER_BATCH = 50;
 export class LoreForwardService {
   protected readonly log = $logger();
   protected readonly http = $inject(HttpClient);
+  protected readonly alepha = $inject(Alepha);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly secrets = $inject(SecretProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -83,9 +84,20 @@ export class LoreForwardService {
           windowCount: g.count,
           firstSeenAt: g.firstSeenAt,
           lastSeenAt: g.lastSeenAt,
-          // The link back. Cheapest possible integration: Lore shows a blight
-          // and one click lands on the group it came from.
-          pulseUrl: `/apps/${app.slug}/errors/${g.fingerprint}`,
+          // The link back, ABSOLUTE and pointing at a route that exists.
+          //
+          // It was a bare path. Rendered inside Lore, a relative link resolves
+          // against LORE's origin — so the one click meant to take someone
+          // from a blight to the error behind it landed on a Lore page that
+          // does not exist. And the path itself was wrong: Pulse has no
+          // `/errors/:fingerprint` route, the view is a query on the app page.
+          //
+          // Empty when `PUBLIC_URL` is unset rather than half-built: a link to
+          // nowhere is worse than no link, because it is only discovered by
+          // clicking it.
+          pulseUrl: this.publicUrl()
+            ? `${this.publicUrl()}/apps/${app.slug}?view=errors`
+            : undefined,
         })),
       },
     });
@@ -131,10 +143,11 @@ export class LoreForwardService {
               "content-type": "application/json",
               authorization: `Bearer ${await this.keyOf(lore)}`,
             },
-            body: JSON.stringify({
-              campaignId: lore.campaignId,
-              ...(row.payload as Record<string, unknown>),
-            }),
+            // No `campaignId` in the body. Lore derives it from the source
+            // key, and sending one suggests the caller picks the campaign —
+            // which would be a way to file into someone else's if Lore ever
+            // trusted it.
+            body: JSON.stringify(row.payload as Record<string, unknown>),
           },
         );
         await this.outbox.deleteById(row.id);
@@ -149,6 +162,17 @@ export class LoreForwardService {
     }
 
     return { sent, failed };
+  }
+
+  /**
+   * This Pulse's own public origin, or empty when it does not know.
+   *
+   * A sink behind a domain it cannot name cannot build a link to itself, and
+   * guessing from a request would produce a link that depends on which request
+   * happened to trigger the forward.
+   */
+  protected publicUrl(): string {
+    return String(this.alepha.env.PUBLIC_URL ?? "").replace(/\/$/, "");
   }
 
   /**
