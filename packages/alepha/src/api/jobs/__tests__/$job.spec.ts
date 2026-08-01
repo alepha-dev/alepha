@@ -1,5 +1,6 @@
 import { Alepha, AlephaError, z } from "alepha";
 import { LockProvider, MemoryLockProvider } from "alepha/lock";
+import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
@@ -158,6 +159,87 @@ describe("$job — cron mode", () => {
     });
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("ok");
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("$job — captured logs", () => {
+  it("attaches the run's log entries to the error row", async ({ expect }) => {
+    const alepha = makeApp();
+    class App {
+      log = $logger();
+      executions = $repository(jobExecutionEntity);
+      tick = $job({
+        cron: "0 0 * * *",
+        handler: async () => {
+          this.log.info("before the failure");
+          throw new Error("boom");
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await alepha.start();
+    await app.tick.trigger();
+
+    const rows = await app.executions.findMany({
+      where: { jobName: { eq: "App.tick" } },
+    });
+    expect(rows[0].logs?.map((entry) => entry.message)).toContain(
+      "before the failure",
+    );
+  });
+
+  it("keeps no logs on a successful row", async ({ expect }) => {
+    const alepha = makeApp();
+    class App {
+      log = $logger();
+      executions = $repository(jobExecutionEntity);
+      tick = $job({
+        cron: "0 0 * * *",
+        record: "all",
+        handler: async () => {
+          this.log.info("all good");
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await alepha.start();
+    await app.tick.trigger();
+
+    const rows = await app.executions.findMany({
+      where: { jobName: { eq: "App.tick" } },
+    });
+    expect(rows[0].status).toBe("ok");
+    expect(rows[0].logs).toBeUndefined();
+  });
+
+  it("does not leak one run's logs into the next", async ({ expect }) => {
+    const alepha = makeApp();
+    class App {
+      log = $logger();
+      executions = $repository(jobExecutionEntity);
+      tick = $job({
+        cron: "0 0 * * *",
+        handler: async () => {
+          this.log.info(`run ${++runs}`);
+          throw new Error("boom");
+        },
+      });
+    }
+    let runs = 0;
+    const app = alepha.inject(App);
+    await alepha.start();
+    await app.tick.trigger();
+    await app.tick.trigger();
+
+    const rows = await app.executions.findMany({
+      where: { jobName: { eq: "App.tick" } },
+      orderBy: { column: "createdAt", direction: "desc" },
+    });
+    const messages = rows[0].logs?.map((entry) => entry.message) ?? [];
+    expect(messages).toContain("run 2");
+    expect(messages).not.toContain("run 1");
   });
 });
 

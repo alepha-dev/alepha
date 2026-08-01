@@ -9,6 +9,7 @@ import { LogFormatterProvider } from "./providers/LogFormatterProvider.ts";
 import { MemoryDestinationProvider } from "./providers/MemoryDestinationProvider.ts";
 import { PrettyFormatterProvider } from "./providers/PrettyFormatterProvider.ts";
 import { RawFormatterProvider } from "./providers/RawFormatterProvider.ts";
+import type { LogBufferConfig } from "./schemas/logBufferConfig.ts";
 import type { LogEntry } from "./schemas/logEntrySchema.ts";
 import { Logger } from "./services/Logger.ts";
 
@@ -19,12 +20,15 @@ export * from "./providers/CliFormatterProvider.ts";
 export * from "./providers/ConsoleColorProvider.ts";
 export * from "./providers/ConsoleDestinationProvider.ts";
 export * from "./providers/JsonFormatterProvider.ts";
+export * from "./providers/LogBufferProvider.ts";
 export * from "./providers/LogDestinationProvider.ts";
 export * from "./providers/LogFormatterProvider.ts";
 export * from "./providers/MemoryDestinationProvider.ts";
 export * from "./providers/PrettyFormatterProvider.ts";
 export * from "./providers/RawFormatterProvider.ts";
+export * from "./schemas/logBufferConfig.ts";
 export * from "./schemas/logEntrySchema.ts";
+export * from "./services/LogBuffer.ts";
 export * from "./services/Logger.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -238,6 +242,15 @@ declare module "alepha" {
      * `pretty`.
      */
     "alepha.logger.format"?: string;
+
+    /**
+     * Per-context log buffer, read by {@link LogBufferProvider} when an entry
+     * point opens a context. `size` caps how many entries a single request or
+     * job run retains; `0` disables the capture entirely.
+     *
+     * @see LogBufferProvider
+     */
+    "alepha.logger.buffer"?: LogBufferConfig;
   }
 
   export interface Hooks {

@@ -14,8 +14,7 @@ import {
   type DurationLike,
 } from "alepha/datetime";
 import { LockProvider } from "alepha/lock";
-import type { LogEntry } from "alepha/logger";
-import { $logger } from "alepha/logger";
+import { $logger, LogBufferProvider, type LogEntry } from "alepha/logger";
 import {
   $repository,
   DbConflictError,
@@ -164,7 +163,7 @@ export class JobProvider {
   protected readonly jobs = new Map<string, JobRuntimeRegistration>();
   protected readonly inFlight = new Set<Promise<void>>();
   protected readonly abortControllers = new Map<string, AbortController>();
-  protected readonly perExecutionLogs = new Map<string, LogEntry[]>();
+  protected readonly logBuffer = $inject(LogBufferProvider);
   protected stopping = false;
 
   constructor() {
@@ -468,7 +467,6 @@ export class JobProvider {
     const name = registration.name;
     const record = opts.record ?? "error";
     const contextId = this.alepha.context.createContextId();
-    this.perExecutionLogs.set(contextId, []);
 
     const abortController = new AbortController();
     this.abortControllers.set(executionId, abortController);
@@ -480,75 +478,68 @@ export class JobProvider {
 
     const startedAt = this.dt.now();
 
-    try {
-      await this.alepha.context.run(
-        async () => {
-          await this.alepha.events.emit("job:begin", {
-            name,
+    await this.alepha.context.run(
+      async () => {
+        await this.alepha.events.emit("job:begin", {
+          name,
+          now: startedAt,
+          executionId,
+        });
+
+        try {
+          await opts.handler({
+            payload: ctx.payload,
+            attempt: ctx.attempt,
             now: startedAt,
+            signal: abortController.signal,
             executionId,
           });
 
-          try {
-            await opts.handler({
+          if (record === "all") {
+            await this.writeTerminalRow(executionId, name, "ok", {
               payload: ctx.payload,
               attempt: ctx.attempt,
-              now: startedAt,
-              signal: abortController.signal,
-              executionId,
+              startedAt,
+              error: undefined,
+              triggeredBy: ctx.triggeredBy,
+              triggeredByName: ctx.triggeredByName,
             });
-
-            if (record === "all") {
-              await this.writeTerminalRow(executionId, name, "ok", {
-                payload: ctx.payload,
-                attempt: ctx.attempt,
-                startedAt,
-                error: undefined,
-                context: contextId,
-                triggeredBy: ctx.triggeredBy,
-                triggeredByName: ctx.triggeredByName,
-              });
-            }
-
-            await this.alepha.events.emit(
-              "job:success",
-              { name, executionId },
-              { catch: true },
-            );
-          } catch (error) {
-            const err =
-              error instanceof Error ? error : new Error(String(error));
-            if (record !== "none") {
-              await this.writeTerminalRow(executionId, name, "error", {
-                payload: ctx.payload,
-                attempt: ctx.attempt,
-                startedAt,
-                error: err,
-                context: contextId,
-                triggeredBy: ctx.triggeredBy,
-                triggeredByName: ctx.triggeredByName,
-              });
-            }
-            await this.alepha.events.emit(
-              "job:error",
-              { name, error: err, executionId },
-              { catch: true },
-            );
-          } finally {
-            if (timeoutId) clearTimeout(timeoutId);
-            this.abortControllers.delete(executionId);
-            await this.alepha.events.emit(
-              "job:end",
-              { name, executionId },
-              { catch: true },
-            );
           }
-        },
-        { context: contextId },
-      );
-    } finally {
-      this.perExecutionLogs.delete(contextId);
-    }
+
+          await this.alepha.events.emit(
+            "job:success",
+            { name, executionId },
+            { catch: true },
+          );
+        } catch (error) {
+          const err = error instanceof Error ? error : new Error(String(error));
+          if (record !== "none") {
+            await this.writeTerminalRow(executionId, name, "error", {
+              payload: ctx.payload,
+              attempt: ctx.attempt,
+              startedAt,
+              error: err,
+              triggeredBy: ctx.triggeredBy,
+              triggeredByName: ctx.triggeredByName,
+            });
+          }
+          await this.alepha.events.emit(
+            "job:error",
+            { name, error: err, executionId },
+            { catch: true },
+          );
+        } finally {
+          if (timeoutId) clearTimeout(timeoutId);
+          this.abortControllers.delete(executionId);
+          await this.alepha.events.emit(
+            "job:end",
+            { name, executionId },
+            { catch: true },
+          );
+        }
+      },
+      { context: contextId, ...this.logBuffer.seed(this.config.logMaxEntries) },
+    );
   }
 
   protected async writeTerminalRow(
@@ -560,14 +551,14 @@ export class JobProvider {
       attempt: number;
       startedAt: ReturnType<DateTimeProvider["now"]>;
       error?: Error;
-      context: string;
       triggeredBy?: string;
       triggeredByName?: string;
     },
   ): Promise<void> {
     try {
-      const logs =
-        status === "error" ? this.snapshotLogs(fields.context) : undefined;
+      // Called from inside the execution's context, so the buffer of the run
+      // that just finished is the ambient one.
+      const logs = status === "error" ? this.logBuffer.snapshot() : undefined;
       await this.executions.create({
         id: executionId,
         jobName,
@@ -1051,7 +1042,6 @@ export class JobProvider {
     }
 
     const contextId = this.alepha.context.createContextId();
-    this.perExecutionLogs.set(contextId, []);
 
     const abortController = new AbortController();
     this.abortControllers.set(executionId, abortController);
@@ -1146,7 +1136,7 @@ export class JobProvider {
               registration,
               execution.attempt,
               err,
-              contextId,
+              this.logBuffer.snapshot(),
             );
           } finally {
             if (timeoutId) clearTimeout(timeoutId);
@@ -1158,11 +1148,13 @@ export class JobProvider {
             );
           }
         },
-        { context: contextId },
+        {
+          context: contextId,
+          ...this.logBuffer.seed(this.config.logMaxEntries),
+        },
       );
     } finally {
       clearInterval(leaseTimer);
-      this.perExecutionLogs.delete(contextId);
     }
   }
 
@@ -1196,7 +1188,13 @@ export class JobProvider {
     registration: JobRuntimeRegistration,
     currentAttempt: number,
     error: Error,
-    contextId: string,
+    /**
+     * Breadcrumbs of the run that failed. Passed in rather than read from the
+     * ambient context: the sweep recovers crashed executions from *outside*
+     * any run, and must not staple whatever context it happens to sit in
+     * (a request, another job) onto the row it is repairing.
+     */
+    logs?: LogEntry[],
   ): Promise<void> {
     const jobName = registration.name;
     const opts = registration.options;
@@ -1243,7 +1241,7 @@ export class JobProvider {
           status: "scheduled",
           error: error.message,
           scheduledAt: nextScheduledAt,
-          logs: this.snapshotLogs(contextId),
+          logs,
         },
         "retry-after-failure",
       );
@@ -1260,7 +1258,7 @@ export class JobProvider {
           error: error.message,
           completedAt: this.dt.nowISOString(),
           key: null,
-          logs: this.snapshotLogs(contextId),
+          logs,
         },
         "terminal-failure",
       );
@@ -1271,23 +1269,6 @@ export class JobProvider {
       { name: jobName, error, executionId },
       { catch: true },
     );
-  }
-
-  protected snapshotLogs(contextId: string): LogEntry[] | undefined {
-    const entries = this.perExecutionLogs.get(contextId);
-    if (!entries || entries.length === 0) return undefined;
-    const max = this.config.logMaxEntries;
-    if (max === 0) return undefined;
-    if (entries.length <= max) return [...entries];
-    const truncated = entries.slice(0, max);
-    truncated.push({
-      level: "WARN",
-      message: `Log entries truncated at ${max}`,
-      timestamp: this.dt.nowMillis(),
-      service: "alepha.jobs",
-      module: "JobProvider",
-    } as LogEntry);
-    return truncated;
   }
 
   // --- Sweep ----------------------------------------------------------------------------------------------------
@@ -1379,7 +1360,7 @@ export class JobProvider {
         // Per-row containment: one unrecoverable row must not strand the
         // remaining crashed executions until the next tick.
         try {
-          await this.handleFailure(exec.id, reg, exec.attempt, err, "");
+          await this.handleFailure(exec.id, reg, exec.attempt, err);
         } catch (error) {
           this.log.error(
             `Sweep failed to recover crashed execution ${exec.id}`,
@@ -1519,15 +1500,6 @@ export class JobProvider {
         modes,
         jobs: this.jobs.size,
         perJob,
-      });
-
-      // Capture logs per execution context.
-      this.alepha.events.on("log", ({ entry }) => {
-        const ctx = entry.context;
-        if (!ctx) return;
-        const entries = this.perExecutionLogs.get(ctx);
-        if (!entries) return;
-        entries.push(entry);
       });
 
       if (!this.alepha.isServerless()) {

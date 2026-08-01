@@ -11,7 +11,7 @@ import {
   z,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
-import { $logger } from "alepha/logger";
+import { $logger, LogBufferProvider } from "alepha/logger";
 import { RouterProvider } from "alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
@@ -44,6 +44,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   protected readonly routes: ServerRoute[] = [];
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
   protected readonly serverRequestParser = $inject(ServerRequestParser);
+  protected readonly logBuffer = $inject(LogBufferProvider);
   protected readonly queryKeysCache = new WeakMap<object, string[]>();
   protected readonly globalMiddlewareRegistry: GlobalMiddlewareEntry[] = [];
 
@@ -167,7 +168,13 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
         return this.alepha.context.run(
           () => this.processRequest(request, route, responseKind),
-          { context: this.getContextId(rawRequest.headers) },
+          {
+            context: this.getContextId(rawRequest.headers),
+            // Retains this request's log entries so that a `server:onError`
+            // consumer can ship them as breadcrumbs. Contributes nothing to
+            // the context when buffering is disabled.
+            ...this.logBuffer.seed(),
+          },
         );
       },
     });

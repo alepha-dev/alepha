@@ -93,8 +93,26 @@ export class ServerRequestParser {
     } as ServerRequest;
   }
 
+  /**
+   * The active ALS context id, which is what every {@link LogEntry} emitted
+   * during this request is tagged with.
+   *
+   * Resolving it here rather than minting a second id matters: `requestId` is
+   * handed to the client in the error JSON, and it is the only handle a user
+   * can quote back. Before this, absent a proxy-set `x-request-id`, the router
+   * and the parser each called `randomUUID()` independently — so the id in the
+   * response indexed nothing in the logs.
+   *
+   * The fallbacks cover callers that build a request outside any context
+   * (direct `$action` invocation, tests).
+   */
   public getRequestId(request: ServerRequestData): string {
-    return request.headers["x-request-id"] || this.cryptoProvider.randomUUID();
+    return (
+      this.alepha.context.get<string>("context") ||
+      request.headers["x-request-id"] ||
+      request.headers["x-correlation-id"] ||
+      this.cryptoProvider.randomUUID()
+    );
   }
 
   public getRequestUserAgent(request: ServerRequestData) {

@@ -142,6 +142,56 @@ alepha.events.on("log", (event) => {
 });
 ```
 
+## Per-request breadcrumbs
+
+Every HTTP request and every job run keeps its own bounded ring of log entries, so that when something throws you can ship the lines that led to it — not just the stack.
+
+```typescript
+import { $hook, $inject } from "alepha";
+import { LogBufferProvider } from "alepha/logger";
+
+class ErrorReporter {
+  logBuffer = $inject(LogBufferProvider);
+
+  onError = $hook({
+    on: "server:onError",
+    handler: ({ request, error }) => {
+      sendToYourTool(error, {
+        requestId: request.requestId,
+        breadcrumbs: this.logBuffer.snapshot(),
+      });
+    },
+  });
+}
+```
+
+`snapshot()` returns the entries logged so far in the current context, oldest first, or `undefined` when no buffer is active. Two properties make it useful in production:
+
+- **Entries below the active `LOG_LEVEL` are captured.** Running at `info`, the `debug` and `trace` calls that explain the failure are still in the buffer even though they were never printed.
+- **Values are already redacted.** Credential-bearing keys are masked before the entry reaches the buffer, so a snapshot is safe to send off-box.
+
+The ring keeps the **last** `size` entries. When it discards older ones, the snapshot opens with a `WARN` saying how many — a truncated buffer never passes itself off as complete.
+
+Size is controlled by the `alepha.logger.buffer` atom:
+
+```typescript
+alepha.store.set("alepha.logger.buffer", { size: 200 }); // default: 50
+```
+
+Set `size` to `0` to disable capture entirely: no buffer is created and the write path becomes a no-op. Job runs use `alepha.jobs.logMaxEntries` instead, and persist their breadcrumbs onto the execution row when they fail.
+
+To read the buffer somewhere other than an error hook — inside a handler, a middleware, another hook — inject `LogBufferProvider` and call `snapshot()` the same way. Outside any request or job, it returns `undefined`.
+
+### Correlating with the client
+
+`request.requestId` is the same value as the `context` field on every entry the request logged, and it is what the server returns in error responses. An id quoted by a user therefore finds their logs directly:
+
+```bash
+grep '"context":"<the id they gave you>"' app.log
+```
+
+Put `x-request-id` (or `x-correlation-id`) on the request at your proxy and that id is used instead of a generated one, extending the correlation across services.
+
 ## Testing
 
 In test mode, Alepha routes logs to `MemoryDestinationProvider` by default (unless `LOG_LEVEL` or `DEBUG` is set, which switches back to console output). Logs are buffered in memory and only printed to the console if a test fails.

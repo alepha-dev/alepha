@@ -13,6 +13,7 @@ import { LogFormatterProvider } from "../providers/LogFormatterProvider.ts";
 import { PrettyFormatterProvider } from "../providers/PrettyFormatterProvider.ts";
 import { RawFormatterProvider } from "../providers/RawFormatterProvider.ts";
 import type { LogEntry } from "../schemas/logEntrySchema.ts";
+import { LogBuffer } from "./LogBuffer.ts";
 
 export class Logger implements LoggerInterface {
   protected readonly alepha = $inject(Alepha);
@@ -210,6 +211,11 @@ export class Logger implements LoggerInterface {
       app: this.app,
       timestamp: this.dateTimeProvider.nowMillis(),
     };
+
+    // Captured before the level check, for the same reason the `log` event is
+    // emitted below it: an entry too verbose to print is exactly the kind of
+    // breadcrumb worth having attached to an error report.
+    this.alepha.context.get<LogBuffer>(LogBuffer.key)?.push(logEntry);
 
     if (this.levels[level] > this.levels[this.level]) {
       // Suppressed for the console, but still EMITTED. Review #3 proposed
