@@ -52,6 +52,19 @@ type Sandbox struct {
 	MemoryMax string
 	// TasksMax caps thread/process count. Zero means the systemd default.
 	TasksMax int
+	// CPUQuota is a cgroup CPU ceiling, in systemd's spelling: a percentage of
+	// ONE core, so "200%" is two full cores. Empty means unlimited.
+	//
+	// MemoryMax already stops one app from eating the host's RAM; without this
+	// nothing stopped it eating the host's CPU. On a small VPS a single app in a
+	// tight loop degrades every other app AND Bay's own proxy — which is what
+	// turns one broken prototype into a site-wide outage.
+	//
+	// A ceiling and not a share, deliberately. `CPUWeight` defaults to 100 on
+	// every unit, so setting it identically everywhere changes nothing; weights
+	// only do work when they differ. A quota is the one knob that still protects
+	// the host when every app is configured the same way.
+	CPUQuota string
 	// StopGrace is how long the app gets to shut down cleanly after SIGTERM,
 	// before systemd kills it.
 	//
@@ -270,6 +283,13 @@ func (s *Systemd) render(spec Spec, sandbox Sandbox, user string) string {
 	}
 	if sandbox.TasksMax > 0 {
 		w("TasksMax=%d", sandbox.TasksMax)
+	}
+	// Guarded on empty, and that guard is the load-bearing part: rendering an
+	// unset quota would emit `CPUQuota=0%`, which grants the app no CPU time at
+	// all. It would never finish booting, and the only symptom Bay could report
+	// is "never became ready" — a message nothing connects back to a quota.
+	if sandbox.CPUQuota != "" {
+		w("CPUQuota=%s", sandbox.CPUQuota)
 	}
 	w("")
 	w("StandardOutput=journal")
