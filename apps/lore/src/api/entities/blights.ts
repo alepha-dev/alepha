@@ -37,10 +37,10 @@ export const blights = $entity({
       .optional(),
     /**
      * `sha256(errorName + ":" + normalizedFirstFrame)`, computed by the sender
-     * with the shared helper from `@alepha/pulse-client/fingerprint`.
+     * with the shared helper from `@alepha/sigil/fingerprint`.
      *
      * No app identifier inside, unlike the sigil-era fingerprint: scoping is
-     * carried by the campaign here and by the app on Pulse's side. That also
+     * carried by the campaign here and by the app on Sigil's side. That also
      * makes the value portable — the same bug keeps its identity if the app
      * moves between observers.
      */

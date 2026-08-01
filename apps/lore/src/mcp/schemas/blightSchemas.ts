@@ -11,7 +11,7 @@ import { campaignParamsSchema } from "./commonSchemas.ts";
  */
 const blightSchema = z.object({
   id: z.integer(),
-  /** Which enrolled source filed it — a Pulse instance, in practice. */
+  /** Which enrolled source filed it — a Sigil instance, in practice. */
   sourceId: z.string().optional(),
   fingerprint: z.string(),
   name: z.string(),
@@ -19,7 +19,7 @@ const blightSchema = z.object({
   stack: z.string(),
   sourceUrl: z.string(),
   release: z.string().optional(),
-  /** Absolute link to the error group in Pulse, when it knows its own origin. */
+  /** Absolute link to the error group in Sigil, when it knows its own origin. */
   pulseUrl: z.string().optional(),
   origin: z.enum(["client", "server"]),
   /** How many times it happened, not how many rows exist. */

@@ -29,12 +29,12 @@ const BLIGHT_ZONE = "Blights";
 const blightResourceSchema = z.object({
   id: z.integer(),
   /**
-   * Which enrolled system filed this — a Pulse instance, in practice.
+   * Which enrolled system filed this — a Sigil instance, in practice.
    *
    * Was `sigilId`, naming a concept that no longer exists. The schema is what
    * gets serialized, so it was not merely stale: `sourceId` and `pulseUrl`
    * were being dropped on the way out, and the link back to the error group in
-   * Pulse never reached anything that could render it.
+   * Sigil never reached anything that could render it.
    */
   sourceId: z.uuid().optional(),
   fingerprint: z.string(),
@@ -44,7 +44,7 @@ const blightResourceSchema = z.object({
   sourceUrl: z.string(),
   /** The release the observer last saw it in. */
   release: z.string().optional(),
-  /** Absolute link to the error group in Pulse, when it knows its own origin. */
+  /** Absolute link to the error group in Sigil, when it knows its own origin. */
   pulseUrl: z.string().optional(),
   firstSeenAt: z.string(),
   lastSeenAt: z.string(),
@@ -159,7 +159,7 @@ export class BlightController {
         where: { campaignId: { eq: params.campaignId } },
         orderBy: [{ column: "createdAt", direction: "desc" }],
       });
-      const pulseOptions = sources.map((source) => ({
+      const sigilOptions = sources.map((source) => ({
         id: source.id,
         label: source.name,
       }));
@@ -172,7 +172,7 @@ export class BlightController {
       return {
         items: items.map((b) => this.toResource(b)),
         openCount,
-        sigils: pulseOptions,
+        sigils: sigilOptions,
       };
     },
   });
@@ -285,7 +285,7 @@ export class BlightController {
         "```",
         "",
         blight.release ? `Release: ${blight.release}` : "",
-        blight.pulseUrl ? `In Pulse: ${blight.pulseUrl}` : "",
+        blight.pulseUrl ? `In Sigil: ${blight.pulseUrl}` : "",
       ]
         .join("\n")
         .slice(0, 10_000);
@@ -477,7 +477,7 @@ export class BlightController {
       generated migration does not DROP it — and to authorize by walking the
       campaign's sigils. So `listBlights` returned rows from one table while
       resolve, forward and delete looked them up in another: every triage
-      action on anything Pulse filed answered "Blight not found", for a row the
+      action on anything Sigil filed answered "Blight not found", for a row the
       inbox had just displayed.
 
       The campaign scope is now a column rather than a join. A blight carries

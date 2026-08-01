@@ -38,7 +38,7 @@ export const sourceCreateParamsSchema = campaignParamsSchema.extend({
     .min(1)
     .max(200)
     .describe(
-      "What is reporting — a Pulse instance, a CI pipeline. Shown next to every blight it files.",
+      "What is reporting — a Sigil instance, a CI pipeline. Shown next to every blight it files.",
     ),
 });
 

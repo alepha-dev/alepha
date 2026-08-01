@@ -15,7 +15,7 @@
     "typecheck": "alepha typecheck"
   },
   "dependencies": {
-    "@alepha/pulse-client": "workspace:*",
+    "@alepha/sigil": "workspace:*",
     "@alepha/ui": "workspace:*",
     "alepha": "workspace:*",
     "lucide-react": "^1.27.0",

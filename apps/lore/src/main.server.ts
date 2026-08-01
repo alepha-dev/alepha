@@ -56,7 +56,7 @@ alepha.with(LoreMcp);
 //
 // It used to be both the partner app and the receiver, which required an
 // in-process forward provider to work around a Worker being unable to fetch its
-// own hostname. Lore is re-enrolled as an ordinary app once Pulse exists — the
+// own hostname. Lore is re-enrolled as an ordinary app once Sigil exists — the
 // sink is then a different host and none of that machinery is needed.
 
 alepha.with(LoreWebApp);

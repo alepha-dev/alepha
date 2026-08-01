@@ -5,7 +5,7 @@ import { campaigns } from "./campaigns.ts";
 /**
  * A system allowed to file blights into a campaign.
  *
- * One row per Pulse — or per anything else that reports. Where a sigil was a
+ * One row per Sigil — or per anything else that reports. Where a sigil was a
  * credential handed to a *website* so it could push raw telemetry, a source is
  * a credential handed to an *observer* that has already done the deduplication.
  * Lore stopped being an ingestion endpoint for the public web; it is now the

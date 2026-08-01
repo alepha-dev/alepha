@@ -177,7 +177,7 @@ User-submitted bug reports / feature requests that the campaign owner triages.
 **Submission flow (login required)** — there are **two** live entry points; both land on `POST /campaigns/:id/petitions`:
 - `/c/:campaignId/request` — first-party form on lore (`CampaignPetitionRequest.tsx`, route `campaignPetitionRequest`). Anonymous visitors see a sign-in CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).
 - External "report a bug" buttons on third-party sites are plain `<a target="_blank" rel="noopener noreferrer">` anchors pointing to `/c/:id/request?path=<encoded>&url=<encoded>&type=bug` — no embedded JS, no screenshot capture, no widget. The page reads query params, persists them to `sessionStorage` (key `lor.petition.draft.<campaignId>`), cleans the URL via `history.replaceState`, and re-reads after the OAuth round-trip. Cleared on successful submit.
-> There is now **one** path plus external links. The sigil in-app dialog is gone with the package rename: `@alepha/pulse-client` mounts nothing in a host app's React tree, and hands out the petition URL through `usePetitionUrl()` for the app to render where it likes.
+> There is now **one** path plus external links. The sigil in-app dialog is gone with the package rename: `@alepha/sigil` mounts nothing in a host app's React tree, and hands out the petition URL through `usePetitionUrl()` for the app to render where it likes.
 
 **Reporter-facing views** — `/me/petitions` (own submissions across campaigns) and `/c/:id/p/:petitionId` (single status page, readable by the reporter or the campaign owner).
 

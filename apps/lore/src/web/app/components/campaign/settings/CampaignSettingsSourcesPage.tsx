@@ -29,7 +29,7 @@ interface SourceRow {
 /**
  * Which systems may file blights into this campaign.
  *
- * A source is a credential for an *observer* — a Pulse — that has already
+ * A source is a credential for an *observer* — a Sigil — that has already
  * deduplicated what it sends. It replaces sigils, which were credentials handed
  * to websites so they could push raw telemetry straight here.
  *
@@ -111,7 +111,7 @@ const CampaignSettingsSourcesPage = () => {
       <div className="flex flex-col gap-1">
         <span className="text-sm font-medium">Sources</span>
         <span className="text-muted-foreground text-xs">
-          Systems allowed to file blights into this campaign — typically a Pulse
+          Systems allowed to file blights into this campaign — typically a Sigil
           instance. Each holds its own key and can be revoked on its own.
         </span>
       </div>
@@ -186,7 +186,7 @@ const CampaignSettingsSourcesPage = () => {
       <div className="flex items-center gap-2">
         <Input
           value={name}
-          placeholder="Pulse (production)"
+          placeholder="Sigil (production)"
           onChange={(event) => setName(event.target.value)}
         />
         <Button onClick={create} disabled={!name.trim() || creating}>
