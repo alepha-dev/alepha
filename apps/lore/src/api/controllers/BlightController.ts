@@ -44,10 +44,6 @@ const blightResourceSchema = z.object({
   message: z.string(),
   stack: z.string(),
   sourceUrl: z.string(),
-  /** The release the observer last saw it in. */
-  release: z.string().optional(),
-  /** Deep link to the error group this was aggregated from, when there is one. */
-  sigilUrl: z.string().optional(),
   firstSeenAt: z.string(),
   lastSeenAt: z.string(),
   count: z.integer(),
@@ -59,9 +55,12 @@ export type BlightResource = Static<typeof blightResourceSchema>;
 
 /**
  * A sigil reduced to what the inbox's "filter by sigil" dropdown needs —
- * id + label. Returned alongside the blight list (rather than via the
- * owner-only `SigilController.listSigils`) so any campaign member viewing the
- * inbox can populate the filter.
+ * id + label.
+ *
+ * Returned alongside the blight list rather than fetched from
+ * `SigilController.listSigils`, which is member-readable but answers with the
+ * whole credential row: token prefix, kinds, creator, last-seen. A dropdown
+ * needs two fields, and one request beats two.
  */
 const blightSigilSchema = z.object({
   id: z.uuid(),
@@ -265,9 +264,6 @@ export class BlightController {
         "```",
         blight.stack || "(no stack captured)",
         "```",
-        "",
-        blight.release ? `Release: ${blight.release}` : "",
-        blight.sigilUrl ? `Error group: ${blight.sigilUrl}` : "",
       ]
         .join("\n")
         .slice(0, 10_000);
@@ -461,8 +457,6 @@ export class BlightController {
       message: b.message,
       stack: b.stack ?? "",
       sourceUrl: b.sourceUrl ?? "",
-      release: b.release,
-      sigilUrl: b.sigilUrl,
       firstSeenAt: b.firstSeenAt,
       lastSeenAt: b.lastSeenAt,
       count: b.count ?? 1,

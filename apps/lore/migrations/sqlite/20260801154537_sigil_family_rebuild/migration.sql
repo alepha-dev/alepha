@@ -74,8 +74,6 @@ CREATE TABLE `blights` (
 	`message` text NOT NULL,
 	`stack` text DEFAULT '' NOT NULL,
 	`source_url` text DEFAULT '' NOT NULL,
-	`release` text,
-	`sigil_url` text,
 	`origin` text DEFAULT 'client' NOT NULL,
 	`first_seen_at` text NOT NULL,
 	`last_seen_at` text NOT NULL,
@@ -121,12 +119,10 @@ CREATE TABLE `sigil_error_groups` (
 	`message` text NOT NULL,
 	`stack_sample` text NOT NULL,
 	`source_url` text NOT NULL,
-	`release` text,
 	`origin` text DEFAULT 'client' NOT NULL,
 	`first_seen_at` text NOT NULL,
 	`last_seen_at` text NOT NULL,
 	`count` integer DEFAULT 1 NOT NULL,
-	`forwarded_at` text,
 	CONSTRAINT `fk_sigil_error_groups_sigil_id_sigils_id_fk` FOREIGN KEY (`sigil_id`) REFERENCES `sigils`(`id`) ON DELETE CASCADE
 );
 --> statement-breakpoint

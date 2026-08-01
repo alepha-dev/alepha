@@ -52,10 +52,6 @@ export class BlightTools {
           message: blight.message,
           stack: blight.stack,
           sourceUrl: blight.sourceUrl,
-          release: blight.release,
-          // Where to go and look at the group this came from. Absolute, so it
-          // is a link an agent can hand back to a human.
-          sigilUrl: blight.sigilUrl,
           origin: blight.origin,
           count: blight.count,
           firstSeenAt: blight.firstSeenAt,

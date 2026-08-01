@@ -588,6 +588,7 @@ export default {
   "insights.range.30d": "30 jours",
   "insights.tab.analytics": "Audience",
   "insights.tab.performance": "Performance",
+  "insights.tab.errors": "Erreurs",
   "insights.uniqueVisitors": "Visiteurs uniques",
   "insights.uniqueVisitors.note":
     "Visiteurs distincts sans cookie — la mesure de référence.",
@@ -611,6 +612,16 @@ export default {
   "insights.vitals.good": "Bon",
   "insights.vitals.needsImprovement": "À améliorer",
   "insights.vitals.poor": "Médiocre",
+  "insights.errors.title": "Budget d'erreurs",
+  "insights.errors.subtitle": "par environnement",
+  "insights.errors.heading": "Toujours d'actualité",
+  "insights.errors.col.error": "Erreur",
+  "insights.errors.col.environment": "Environnement",
+  "insights.errors.col.count": "Occurrences",
+  "insights.errors.col.firstSeen": "Première fois",
+  "insights.errors.col.lastSeen": "Dernière fois",
+  "insights.errors.empty":
+    "Aucune erreur signalée sur cette période. Contrairement à la boîte des fléaux, cette liste garde chaque environnement séparé — un bug corrigé en production reste visible ici si la préproduction le déclenche encore.",
 
   "blights.empty":
     "Aucun fléau. Les plantages capturés par vos sigils apparaîtront ici.",
@@ -621,7 +632,6 @@ export default {
   "blights.col.page": "Page",
   "blights.col.count": "Occurrences",
   "blights.col.lastSeen": "Vu récemment",
-  "blights.col.release": "Version",
   "blights.origin.client": "Navigateur",
   "blights.origin.server": "Serveur",
   "blights.filter.allSigils": "Tous les sigils",
