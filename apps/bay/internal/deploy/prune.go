@@ -24,11 +24,21 @@ a deploy instead of getting a white screen. That needs a release or two of
 depth, not forty. Retained releases are also the rollback targets, which is the
 other reason the number is more than one.
 
+`protect` names releases that must survive whatever the window says, on top of
+the one `current` points at. It exists for `Result.Previous`, the target an
+in-flight `watchAndRollback` is holding: a manual `bay rollback` sets
+`state.Release` to any release the operator named, so after rollback-then-deploy
+that target sits outside the keep window AND outside the symlink, which has just
+been repointed at the release that landed. Removing it does not lose a
+directory, it loses the escape route — the rollback then fails on a path that is
+gone, at the one moment it is load bearing. Empty names are ignored, so a first
+deploy can pass its (empty) previous through without testing it.
+
 Returns what it removed, and callers log it. A retention policy nobody can
 observe is indistinguishable from releases disappearing on their own — the same
 reason `backup.Prune` reports its deletions.
 */
-func Prune(instance string, keep int) ([]string, error) {
+func Prune(instance string, keep int, protect ...string) ([]string, error) {
 	// A keep of zero reaching this point is a misparsed flag or a zero-valued
 	// struct field, never an operator asking to delete every release. Between
 	// the destructive reading of an obviously wrong input and the inert one,
@@ -56,9 +66,22 @@ func Prune(instance string, keep int) ([]string, error) {
 		return nil, err
 	}
 
+	// The serving release and the caller's additions in one set, so the loop
+	// below has a single rule rather than a growing list of exceptions.
+	//
+	// Built by ranging rather than appending `serving` onto `protect`: a caller
+	// spreading its own slice would have that slice written to underneath it.
+	keeping := map[string]bool{serving: true}
+	for _, name := range protect {
+		keeping[name] = true
+	}
+	// A missing `current` and a first deploy's empty previous both arrive as "",
+	// and neither names a release.
+	delete(keeping, "")
+
 	var removed []string
 	for _, name := range releases[keep:] {
-		if name == serving {
+		if keeping[name] {
 			continue
 		}
 		if err := os.RemoveAll(filepath.Join(instance, "releases", name)); err != nil {
