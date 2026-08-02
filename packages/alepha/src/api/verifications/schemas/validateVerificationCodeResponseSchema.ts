@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const validateVerificationCodeResponseSchema = z.object({
@@ -11,6 +11,6 @@ export const validateVerificationCodeResponseSchema = z.object({
     .optional(),
 });
 
-export type ValidateVerificationCodeResponse = Static<
+export type ValidateVerificationCodeResponse = Infer<
   typeof validateVerificationCodeResponseSchema
 >;

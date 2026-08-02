@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const loginSchema = z.object({
@@ -13,4 +13,4 @@ export const loginSchema = z.object({
   }),
 });
 
-export type LoginInput = Static<typeof loginSchema>;
+export type LoginInput = Infer<typeof loginSchema>;

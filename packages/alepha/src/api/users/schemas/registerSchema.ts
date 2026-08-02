@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const registerSchema = z.object({
@@ -15,4 +15,4 @@ export const registerSchema = z.object({
   lastName: z.string().max(100).describe("User's last name").optional(),
 });
 
-export type RegisterInput = Static<typeof registerSchema>;
+export type RegisterInput = Infer<typeof registerSchema>;

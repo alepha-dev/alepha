@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 import { pageQuerySchema } from "alepha/orm";
 import { auditSeveritySchema } from "../entities/audits.ts";
@@ -20,4 +20,4 @@ export const auditQuerySchema = pageQuerySchema.extend({
   search: z.text({ description: "Search in description" }).optional(),
 });
 
-export type AuditQuery = Static<typeof auditQuerySchema>;
+export type AuditQuery = Infer<typeof auditQuerySchema>;

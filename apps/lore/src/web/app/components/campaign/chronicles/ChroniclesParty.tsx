@@ -4,7 +4,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/components/ui/chart";
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -14,7 +14,7 @@ import type { I18n } from "../../../services/I18n.ts";
 import { UserAvatar } from "../../shared/UserAvatar.tsx";
 import ChroniclesSection from "./ChroniclesSection.tsx";
 
-type ChroniclesParty = Static<typeof chroniclesPartySchema>;
+type ChroniclesParty = Infer<typeof chroniclesPartySchema>;
 
 export interface ChroniclesPartyProps {
   party: ChroniclesParty;

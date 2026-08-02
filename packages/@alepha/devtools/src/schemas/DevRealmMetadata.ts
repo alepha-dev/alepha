@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const devRealmMetadataSchema = z.object({
   name: z.text(),
@@ -16,4 +16,4 @@ export const devRealmMetadataSchema = z.object({
     .optional(),
 });
 
-export type DevRealmMetadata = Static<typeof devRealmMetadataSchema>;
+export type DevRealmMetadata = Infer<typeof devRealmMetadataSchema>;

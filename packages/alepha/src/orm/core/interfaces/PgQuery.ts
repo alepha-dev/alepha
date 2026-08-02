@@ -1,4 +1,4 @@
-import type { Static, TObject } from "alepha";
+import type { Infer, ZObject } from "alepha";
 import type { SQLWrapper } from "drizzle-orm";
 import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
 
@@ -26,45 +26,45 @@ export type OrderBy<T> = keyof T | OrderByClause<T> | Array<OrderByClause<T>>;
 /**
  * Generic query interface for PostgreSQL entities
  */
-export interface PgQuery<T extends TObject = TObject> {
-  distinct?: (keyof Static<T>)[];
-  columns?: (keyof Static<T>)[];
+export interface PgQuery<T extends ZObject = ZObject> {
+  distinct?: (keyof Infer<T>)[];
+  columns?: (keyof Infer<T>)[];
   where?: PgQueryWhereOrSQL<T>;
   limit?: number;
   offset?: number;
-  orderBy?: OrderBy<Static<T>>;
-  groupBy?: (keyof Static<T>)[];
+  orderBy?: OrderBy<Infer<T>>;
+  groupBy?: (keyof Infer<T>)[];
 }
 
 export type PgStatic<
-  T extends TObject,
+  T extends ZObject,
   Relations extends PgRelationMap<T>,
-> = Static<T> & {
-  [K in keyof Relations]: Static<Relations[K]["join"]["schema"]> &
-    (Relations[K]["with"] extends PgRelationMap<TObject>
+> = Infer<T> & {
+  [K in keyof Relations]: Infer<Relations[K]["join"]["schema"]> &
+    (Relations[K]["with"] extends PgRelationMap<ZObject>
       ? PgStatic<Relations[K]["join"]["schema"], Relations[K]["with"]>
       : {});
 };
 
 export interface PgQueryRelations<
-  T extends TObject = TObject,
+  T extends ZObject = ZObject,
   Relations extends PgRelationMap<T> | undefined = undefined,
 > extends PgQuery<T> {
   with?: Relations;
   where?: PgQueryWhereOrSQL<T, Relations>;
 }
 
-export type PgRelationMap<Base extends TObject> = Record<
+export type PgRelationMap<Base extends ZObject> = Record<
   string,
   PgRelation<Base>
 >;
 
-type TObjectAny = TObject<any>;
+type TObjectAny = ZObject<any>;
 
-export type PgRelation<Base extends TObject> = {
+export type PgRelation<Base extends ZObject> = {
   type?: "left" | "inner" | "right";
   join: {
-    schema: TObject;
+    schema: ZObject;
     name: string;
   };
   // `readonly` so a literal tuple written with `as const` (the natural
@@ -73,10 +73,10 @@ export type PgRelation<Base extends TObject> = {
   on:
     | SQLWrapper
     | readonly [
-        keyof Static<Base>,
+        keyof Infer<Base>,
         {
           name: string;
         },
       ];
-  with?: PgRelationMap<TObject>;
+  with?: PgRelationMap<ZObject>;
 };

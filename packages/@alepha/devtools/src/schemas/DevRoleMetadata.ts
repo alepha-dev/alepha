@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const devRoleMetadataSchema = z.object({
   /**
@@ -43,4 +43,4 @@ export const devRoleMetadataSchema = z.object({
   viaWildcard: z.array(z.text()),
 });
 
-export type DevRoleMetadata = Static<typeof devRoleMetadataSchema>;
+export type DevRoleMetadata = Infer<typeof devRoleMetadataSchema>;

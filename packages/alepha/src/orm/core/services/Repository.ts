@@ -3,12 +3,11 @@ import {
   Alepha,
   AlephaError,
   createPagination,
+  type Infer,
   type Page,
   type PageQuery,
-  type Static,
-  type StaticEncode,
-  type TObject,
-  type TSchema,
+  type ZObject,
+  type ZType,
   z,
 } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
@@ -93,7 +92,7 @@ import type { TObjectUpdate } from "../schemas/updateSchema.ts";
 import { PgRelationManager } from "./PgRelationManager.ts";
 import { type PgJoin, QueryManager } from "./QueryManager.ts";
 
-export abstract class Repository<T extends TObject> {
+export abstract class Repository<T extends ZObject> {
   public readonly entity: EntityPrimitive<T>;
   public readonly provider: DatabaseProvider;
 
@@ -106,7 +105,7 @@ export abstract class Repository<T extends TObject> {
   protected readonly dbCache = $inject(DbCacheProvider);
   protected readonly alepha = $inject(Alepha);
 
-  static of<T extends TObject>(
+  static of<T extends ZObject>(
     entity: EntityPrimitive<T>,
     provider = DatabaseProvider,
   ): new () => Repository<T> {
@@ -131,7 +130,7 @@ export abstract class Repository<T extends TObject> {
    * ID is mandatory. If the table does not have a primary key, it will throw an error.
    */
   public get id(): {
-    type: TSchema;
+    type: ZType;
     key: keyof T["properties"];
     col: PgColumn;
   } {
@@ -185,7 +184,7 @@ export abstract class Repository<T extends TObject> {
    * }
    * ```
    */
-  public async query<R extends TObject = T>(
+  public async query<R extends ZObject = T>(
     query:
       | SQLLike
       | ((
@@ -193,7 +192,7 @@ export abstract class Repository<T extends TObject> {
           db: PgAsyncDatabase<any>,
         ) => SQLLike),
     schema?: R,
-  ): Promise<Static<R>[]> {
+  ): Promise<Infer<R>[]> {
     const raw =
       typeof query === "function" ? query(this.table, this.db) : query;
 
@@ -226,7 +225,7 @@ export abstract class Repository<T extends TObject> {
       return this.clean(
         this.mapRawFieldsToEntity(it),
         schema ?? this.entity.schema,
-      ) as Static<R>;
+      ) as Infer<R>;
     });
   }
 
@@ -259,7 +258,7 @@ export abstract class Repository<T extends TObject> {
   /**
    * Get a Drizzle column from the table by his name.
    */
-  protected col(name: keyof StaticEncode<T>): PgColumn {
+  protected col(name: keyof Infer<T>): PgColumn {
     const column = (this.table as any)[name];
     if (!column) {
       throw new AlephaError(
@@ -332,7 +331,7 @@ export abstract class Repository<T extends TObject> {
    */
   protected async insertDefaultValues(
     opts: StatementOptions,
-  ): Promise<Static<T>> {
+  ): Promise<Infer<T>> {
     if (this.provider.dialect !== "postgresql") {
       throw new AlephaError(
         `create() against '${this.tableName}' has nothing to insert (every column is generated), and this fallback is only implemented for the 'postgresql' dialect. Add at least one non-generated column, or ask for '${this.provider.dialect}' support to be added.`,
@@ -400,7 +399,7 @@ export abstract class Repository<T extends TObject> {
    */
   protected rawSelectColumns(
     opts: StatementOptions = {},
-    columns: (keyof Static<T>)[] = [],
+    columns: (keyof Infer<T>)[] = [],
   ) {
     const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
     const table = this.table as PgTable;
@@ -417,7 +416,7 @@ export abstract class Repository<T extends TObject> {
 
   protected rawSelectDistinct(
     opts: StatementOptions = {},
-    columns: (keyof Static<T>)[] = [],
+    columns: (keyof Infer<T>)[] = [],
   ) {
     const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
     const table = this.table as PgTable;
@@ -565,11 +564,11 @@ export abstract class Repository<T extends TObject> {
     try {
       let rows = await builder.execute();
 
-      let schema: TObject = this.entity.schema;
+      let schema: ZObject = this.entity.schema;
       if (columns) {
         schema = schema.pick(
           Object.fromEntries(columns.map((c) => [c, true])) as never,
-        ) as TObject;
+        ) as ZObject;
       }
 
       // Build joinedSchema once per query (not per row) to avoid SchemaValidator
@@ -808,9 +807,9 @@ export abstract class Repository<T extends TObject> {
    * @returns The created entity.
    */
   public async create(
-    data: Static<TObjectInsert<T>>,
+    data: Infer<TObjectInsert<T>>,
     opts: StatementOptions = {},
-  ): Promise<Static<T>> {
+  ): Promise<Infer<T>> {
     this.stampOrganization(data);
     await this.alepha.events.emit("repository:create:before", {
       tableName: this.tableName,
@@ -861,9 +860,9 @@ export abstract class Repository<T extends TObject> {
    * @returns The created entities, in the same order as `values`.
    */
   public async createMany(
-    values: Array<Static<TObjectInsert<T>>>,
+    values: Array<Infer<TObjectInsert<T>>>,
     opts: StatementOptions & { batchSize?: number } = {},
-  ): Promise<Static<T>[]> {
+  ): Promise<Infer<T>[]> {
     if (values.length === 0) {
       return [];
     }
@@ -883,7 +882,7 @@ export abstract class Repository<T extends TObject> {
     // transaction around an arbitrarily large insert is its own hazard (lock
     // duration, WAL growth) and the caller is better placed to decide.
     const batchSize = opts.batchSize ?? 1000;
-    const allEntities: Static<T>[] = [];
+    const allEntities: Infer<T>[] = [];
 
     try {
       for (let i = 0; i < values.length; i += batchSize) {
@@ -941,12 +940,12 @@ export abstract class Repository<T extends TObject> {
    * ```
    */
   public async upsert(
-    data: Static<TObjectInsert<T>>,
+    data: Infer<TObjectInsert<T>>,
     opts: StatementOptions & {
-      target?: Array<keyof Static<T>>;
-      set?: WithSQL<Static<TObjectUpdate<T>>>;
+      target?: Array<keyof Infer<T>>;
+      set?: WithSQL<Infer<TObjectUpdate<T>>>;
     } = {},
-  ): Promise<Static<T>> {
+  ): Promise<Infer<T>> {
     this.stampOrganization(data);
     await this.alepha.events.emit("repository:create:before", {
       tableName: this.tableName,
@@ -1062,9 +1061,9 @@ export abstract class Repository<T extends TObject> {
    */
   public async updateOne(
     where: PgQueryWhereOrSQL<T>,
-    data: WithSQL<Static<TObjectUpdate<T>>>,
+    data: WithSQL<Infer<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
-  ): Promise<Static<T>> {
+  ): Promise<Infer<T>> {
     await this.alepha.events.emit("repository:update:before", {
       tableName: this.tableName,
       where,
@@ -1146,7 +1145,7 @@ export abstract class Repository<T extends TObject> {
    * @see {@link DbVersionMismatchError}
    */
   public async save(
-    entity: Static<T>,
+    entity: Infer<T>,
     opts: StatementOptions = {},
   ): Promise<void> {
     const row = entity as any;
@@ -1220,9 +1219,9 @@ export abstract class Repository<T extends TObject> {
    */
   public async updateById(
     id: string | number,
-    data: WithSQL<Static<TObjectUpdate<T>>>,
+    data: WithSQL<Infer<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
-  ): Promise<Static<T>> {
+  ): Promise<Infer<T>> {
     return await this.updateOne(this.getWhereId(id), data, opts);
   }
 
@@ -1231,7 +1230,7 @@ export abstract class Repository<T extends TObject> {
    */
   public async updateMany(
     where: PgQueryWhereOrSQL<T>,
-    data: WithSQL<Static<TObjectUpdate<T>>>,
+    data: WithSQL<Infer<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
   ): Promise<Array<number | string>> {
     await this.alepha.events.emit("repository:update:before", {
@@ -1344,7 +1343,7 @@ export abstract class Repository<T extends TObject> {
    * @returns Array containing the deleted entity ID
    */
   public async destroy(
-    entity: Static<T>,
+    entity: Infer<T>,
     opts: StatementOptions = {},
   ): Promise<Array<number | string>> {
     const id = (entity as any)[this.id.key];
@@ -1730,11 +1729,11 @@ export abstract class Repository<T extends TObject> {
       }
     }
 
-    let schema: TObject = this.entity.schema;
+    let schema: ZObject = this.entity.schema;
     if (options.columns) {
       schema = schema.pick(
         Object.fromEntries(options.columns.map((c) => [c, true])) as never,
-      ) as TObject;
+      ) as ZObject;
     }
 
     return {
@@ -1881,7 +1880,7 @@ export abstract class Repository<T extends TObject> {
   ): PgInsertValue<PgTableWithColumns<SchemaToTableConfig<T>>> {
     const schema = insert
       ? this.entity.insertSchema // insert
-      : (this.entity.updateSchema.partial() as TObject); // update
+      : (this.entity.updateSchema.partial() as ZObject); // update
 
     // Extract raw SQL expressions before codec validation — the schema
     // would reject them since they aren't plain values of the declared type
@@ -1924,10 +1923,10 @@ export abstract class Repository<T extends TObject> {
   /**
    * Transform a row from the database into a clean entity.
    */
-  protected clean<T extends TObject>(
+  protected clean<T extends ZObject>(
     row: Record<string, unknown>,
     schema: T,
-  ): Static<T> {
+  ): Infer<T> {
     for (const key of Object.keys(schema.properties)) {
       const prop = schema.properties[key];
       // Unwrap optional/nullable so format detection works on the base type.
@@ -1966,7 +1965,7 @@ export abstract class Repository<T extends TObject> {
       }
     }
 
-    return this.alepha.codec.decode(schema, row) as Static<T>;
+    return this.alepha.codec.decode(schema, row) as Infer<T>;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1975,12 +1974,12 @@ export abstract class Repository<T extends TObject> {
   /**
    * Clean a row with joins recursively
    */
-  protected cleanWithJoins<T extends TObject>(
+  protected cleanWithJoins<T extends ZObject>(
     row: Record<string, unknown>,
     schema: T,
     joins: PgJoin[],
     parentPath?: string,
-  ): Static<T> {
+  ): Infer<T> {
     // Get joins at this level
     const joinsAtThisLevel = joins.filter((j) => j.parent === parentPath);
 
@@ -2026,7 +2025,7 @@ export abstract class Repository<T extends TObject> {
       }
     }
 
-    return entity as Static<T>;
+    return entity as Infer<T>;
   }
 
   /**
@@ -2089,7 +2088,7 @@ export abstract class Repository<T extends TObject> {
   /**
    * Find a primary key in the schema.
    */
-  protected getPrimaryKey(schema: TObject) {
+  protected getPrimaryKey(schema: ZObject) {
     const primaryKeys = getAttrFields(schema, PG_PRIMARY_KEY);
     if (primaryKeys.length === 0) {
       // Surface the table name and tell the dev exactly what to add.

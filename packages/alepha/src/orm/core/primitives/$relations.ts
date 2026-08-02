@@ -1,4 +1,4 @@
-import type { Static, TObject } from "alepha";
+import type { Infer, ZObject } from "alepha";
 import type { EntityPrimitive } from "./$entity.ts";
 
 /**
@@ -45,12 +45,12 @@ import type { EntityPrimitive } from "./$entity.ts";
  * ```
  */
 export const $relations = <
-  const TSchema extends EntitySchema,
-  const TMap extends RelationMapFor<TSchema>,
+  const ZType extends EntitySchema,
+  const TMap extends RelationMapFor<ZType>,
 >(
-  schema: TSchema,
-  define: (builders: RelationBuilders<TSchema>) => TMap,
-): RelationsPrimitive<TSchema, TMap> => {
+  schema: ZType,
+  define: (builders: RelationBuilders<ZType>) => TMap,
+): RelationsPrimitive<ZType, TMap> => {
   const builders: any = { one: {}, many: {} };
 
   for (const key of Object.keys(schema)) {
@@ -148,10 +148,10 @@ const makeColumnRef = (entity: string, column: string) => ({
 export type EntitySchema = Record<string, EntityPrimitive<any>>;
 
 export interface RelationsPrimitive<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
 > {
-  schema: TSchema;
+  schema: ZType;
   map: TMap;
 }
 
@@ -197,22 +197,20 @@ export interface Relation<
 export type AnyRelation = Relation<"one" | "many", string, string, string>;
 export type RelationsOf = Record<string, AnyRelation>;
 
-export type RelationMapFor<TSchema extends EntitySchema> = {
-  [K in keyof TSchema]?: Record<
+export type RelationMapFor<ZType extends EntitySchema> = {
+  [K in keyof ZType]?: Record<
     string,
-    Relation<"one" | "many", keyof TSchema & string, string, string>
+    Relation<"one" | "many", keyof ZType & string, string, string>
   >;
 };
 
 /** The row type of an entity in the schema. */
-export type RowOf<TSchema extends EntitySchema, K extends keyof TSchema> =
-  TSchema[K] extends EntityPrimitive<infer T extends TObject>
-    ? Static<T>
-    : never;
+export type RowOf<ZType extends EntitySchema, K extends keyof ZType> =
+  ZType[K] extends EntityPrimitive<infer T extends ZObject> ? Infer<T> : never;
 
 /** The schema (not the row type) of an entity in the schema map. */
-export type SchemaOf<TSchema extends EntitySchema, K extends keyof TSchema> =
-  TSchema[K] extends EntityPrimitive<infer T extends TObject> ? T : never;
+export type SchemaOf<ZType extends EntitySchema, K extends keyof ZType> =
+  ZType[K] extends EntityPrimitive<infer T extends ZObject> ? T : never;
 
 export interface ColumnRefValue {
   entity: string;
@@ -304,32 +302,31 @@ export interface RelationFactory<
 }
 
 /** `r.<entity>.<column>` refs for every entity in the schema. */
-export type ColumnRefs<TSchema extends EntitySchema> = {
-  [K in keyof TSchema & string]: {
-    [C in keyof RowOf<TSchema, K> & string]-?: HoppableColumnRef<
+export type ColumnRefs<ZType extends EntitySchema> = {
+  [K in keyof ZType & string]: {
+    [C in keyof RowOf<ZType, K> & string]-?: HoppableColumnRef<
       K,
       C,
-      NonNullable<RowOf<TSchema, K>[C]>
+      NonNullable<RowOf<ZType, K>[C]>
     >;
   };
 };
 
-export type RelationBuilders<TSchema extends EntitySchema> =
-  ColumnRefs<TSchema> & {
-    /**
-     * A to-one relation. Resolves to `Target | undefined` — undefined when
-     * the foreign key is null or no row matches.
-     */
-    one: {
-      [K in keyof TSchema & string]: RelationFactory<"one", K>;
-    };
-
-    /**
-     * A to-many relation. Resolves to `Target[]`, empty when nothing matches.
-     *
-     * Pass `.through(...)` on both sides for many-to-many.
-     */
-    many: {
-      [K in keyof TSchema & string]: RelationFactory<"many", K>;
-    };
+export type RelationBuilders<ZType extends EntitySchema> = ColumnRefs<ZType> & {
+  /**
+   * A to-one relation. Resolves to `Target | undefined` — undefined when
+   * the foreign key is null or no row matches.
+   */
+  one: {
+    [K in keyof ZType & string]: RelationFactory<"one", K>;
   };
+
+  /**
+   * A to-many relation. Resolves to `Target[]`, empty when nothing matches.
+   *
+   * Pass `.through(...)` on both sides for many-to-many.
+   */
+  many: {
+    [K in keyof ZType & string]: RelationFactory<"many", K>;
+  };
+};

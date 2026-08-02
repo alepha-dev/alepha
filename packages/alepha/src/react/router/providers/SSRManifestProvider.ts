@@ -1,4 +1,4 @@
-import { $inject, Alepha, type Static } from "alepha";
+import { $inject, Alepha, type Infer } from "alepha";
 import {
   type SsrManifestAtomSchema,
   ssrManifestAtom,
@@ -24,18 +24,18 @@ export class SSRManifestProvider {
    * Get the manifest from the store at runtime.
    * This ensures the manifest is available even when set after module load.
    */
-  protected get manifest(): Static<SsrManifestAtomSchema> {
+  protected get manifest(): Infer<SsrManifestAtomSchema> {
     return (
       (this.alepha.store.get(
         ssrManifestAtom,
-      ) as Static<SsrManifestAtomSchema>) ?? {}
+      ) as Infer<SsrManifestAtomSchema>) ?? {}
     );
   }
 
   /**
    * Get the full manifest object.
    */
-  public getManifest(): Static<SsrManifestAtomSchema> {
+  public getManifest(): Infer<SsrManifestAtomSchema> {
     return this.manifest;
   }
 

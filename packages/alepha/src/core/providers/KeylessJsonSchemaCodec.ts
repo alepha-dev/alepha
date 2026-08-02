@@ -1,8 +1,8 @@
 import { AlephaError } from "../errors/AlephaError.ts";
 import { $hook } from "../primitives/$hook.ts";
 import { SchemaCodec } from "./SchemaCodec.ts";
-import type { TArray, TObject, TSchema, TUnion } from "./TypeProvider.ts";
-import { type Static, z } from "./TypeProvider.ts";
+import type { ZObject, ZodArray, ZodUnion, ZType } from "./ZodProvider.ts";
+import { type Infer, z } from "./ZodProvider.ts";
 
 // =============================================================================
 // Keyless JSON Codec
@@ -41,7 +41,7 @@ export interface KeylessCodecOptions {
  * to be a simple JSON array instead of an object with keys.
  */
 export class KeylessJsonSchemaCodec extends SchemaCodec {
-  protected readonly cache = new Map<TSchema, KeylessCodec>();
+  protected readonly cache = new Map<ZType, KeylessCodec>();
   protected readonly textEncoder = new TextEncoder();
   protected readonly textDecoder = new TextDecoder();
   protected varCounter = 0;
@@ -74,19 +74,16 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   /**
    * Encode value to a keyless JSON string.
    */
-  public encodeToString<T extends TSchema>(
-    schema: T,
-    value: Static<T>,
-  ): string {
+  public encodeToString<T extends ZType>(schema: T, value: Infer<T>): string {
     return this.getCodec(schema).encode(value);
   }
 
   /**
    * Encode value to binary (UTF-8 encoded keyless JSON).
    */
-  public encodeToBinary<T extends TSchema>(
+  public encodeToBinary<T extends ZType>(
     schema: T,
-    value: Static<T>,
+    value: Infer<T>,
   ): Uint8Array {
     return this.textEncoder.encode(this.encodeToString(schema, value));
   }
@@ -94,7 +91,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   /**
    * Decode keyless JSON string or binary to value.
    */
-  public decode<T>(schema: TSchema, value: unknown): T {
+  public decode<T>(schema: ZType, value: unknown): T {
     if (value instanceof Uint8Array) {
       const text = this.textDecoder.decode(value);
       return this.getCodec(schema).decode(text) as T;
@@ -132,7 +129,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
    * Get a compiled codec for the given schema.
    * Codecs are cached for reuse.
    */
-  protected getCodec<T>(schema: TSchema): KeylessCodec<T> {
+  protected getCodec<T>(schema: ZType): KeylessCodec<T> {
     let c = this.cache.get(schema);
     if (!c) {
       this.assertSupported(schema);
@@ -161,7 +158,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
    *
    * Field-level `optional`/`nullable` are fine — they have a reserved slot.
    */
-  protected assertSupported(schema: TSchema): void {
+  protected assertSupported(schema: ZType): void {
     if (this.isRootWrapper(schema)) {
       throw new AlephaError(
         "The keyless encoder does not support a top-level optional/nullable object schema: " +
@@ -177,7 +174,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
    * unwraps a union into its first variant, which is exactly the resolution
    * that loses data, so checking its output would never see one.
    */
-  protected assertNoUnion(schema: TSchema, path: string): void {
+  protected assertNoUnion(schema: ZType, path: string): void {
     if (!schema || typeof schema !== "object") {
       return;
     }
@@ -193,13 +190,13 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     const inner = this.unwrap(schema);
 
     if (z.schema.isArray(inner)) {
-      this.assertNoUnion((inner as TArray).items, `${path}[]`);
+      this.assertNoUnion((inner as ZodArray<ZType>).items, `${path}[]`);
       return;
     }
 
     if (z.schema.isObject(inner)) {
-      const props = (inner as TObject).properties as
-        | Record<string, TSchema>
+      const props = (inner as ZObject).properties as
+        | Record<string, ZType>
         | undefined;
 
       for (const key of Object.keys(props ?? {})) {
@@ -212,13 +209,13 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
    * A union with more than one non-null variant. `[X, null]` is how the
    * typebox era spelled nullable and stays supported.
    */
-  protected isRealUnion(schema: TSchema): boolean {
+  protected isRealUnion(schema: ZType): boolean {
     if (!z.schema.isUnion(schema)) {
       return false;
     }
 
     // `anyOf` is the JSON-Schema spelling, `options` zod's own.
-    const asAny = schema as TUnion & { options?: unknown };
+    const asAny = schema as ZodUnion & { options?: unknown };
     const variants = Array.isArray(asAny.anyOf)
       ? asAny.anyOf
       : Array.isArray(asAny.options)
@@ -232,7 +229,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     return variants.filter((s: any) => !z.schema.isNull(s)).length > 1;
   }
 
-  protected isRootWrapper(schema: TSchema): boolean {
+  protected isRootWrapper(schema: ZType): boolean {
     if (!z.schema.isOptional(schema) && !z.schema.isNullable(schema)) {
       return false;
     }
@@ -250,7 +247,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
    * Compile codec using `new Function()` for maximum performance.
    * Only used when CSP allows and useFunctionCompilation is true.
    */
-  protected compileWithFunction(schema: TSchema): KeylessCodec {
+  protected compileWithFunction(schema: ZType): KeylessCodec {
     this.varCounter = 0;
     const encBody = this.genEnc(schema, "v");
 
@@ -273,7 +270,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
    * Compile codec using interpreter-based approach.
    * Safer (no eval/Function) but slower. Used in browser by default.
    */
-  protected compileInterpreted(schema: TSchema): KeylessCodec {
+  protected compileInterpreted(schema: ZType): KeylessCodec {
     const self = this;
 
     return {
@@ -291,13 +288,13 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   // Interpreter-based Encoding (Safe Mode)
   // ===========================================================================
 
-  protected interpretEncode(schema: TSchema, value: any): any {
+  protected interpretEncode(schema: ZType, value: any): any {
     if (this.isLeaf(schema)) {
       return value;
     }
 
     if (z.schema.isArray(schema)) {
-      const arrSchema = schema as TArray;
+      const arrSchema = schema as ZodArray<ZType>;
       if (!Array.isArray(value)) return value;
 
       if (z.schema.isScalar(arrSchema.items)) {
@@ -309,7 +306,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     if (z.schema.isObject(schema)) {
       const result: any[] = [];
       for (const { key, isOpt, isNullable, inner } of this.getObjectFields(
-        schema as TObject,
+        schema as ZObject,
       )) {
         const v = value[key];
 
@@ -340,7 +337,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   // ===========================================================================
 
   protected interpretDecode(
-    schema: TSchema,
+    schema: ZType,
     ctx: { arr: any[]; i: number },
   ): any {
     if (this.isLeaf(schema)) {
@@ -348,7 +345,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     }
 
     if (z.schema.isArray(schema)) {
-      const arrSchema = schema as TArray;
+      const arrSchema = schema as ZodArray<ZType>;
       const arr = ctx.arr[ctx.i++];
       if (!Array.isArray(arr)) return arr;
 
@@ -364,7 +361,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       const result: Record<string, any> = {};
 
       for (const { key, isOpt, isNullable, inner } of this.getObjectFields(
-        schema as TObject,
+        schema as ZObject,
       )) {
         const val = ctx.arr[ctx.i++];
 
@@ -401,14 +398,14 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     return ctx.arr[ctx.i++];
   }
 
-  protected interpretDecodeFromValue(schema: TSchema, value: any): any {
+  protected interpretDecodeFromValue(schema: ZType, value: any): any {
     if (this.isLeaf(schema)) {
       return value;
     }
 
     if (z.schema.isArray(schema)) {
       if (!Array.isArray(value)) return value;
-      const arrSchema = schema as TArray;
+      const arrSchema = schema as ZodArray<ZType>;
       if (z.schema.isObject(arrSchema.items)) {
         return value.map((e) =>
           this.interpretDecodeFromValue(arrSchema.items, e),
@@ -418,8 +415,8 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     }
 
     if (z.schema.isObject(schema)) {
-      const objSchema = schema as TObject;
-      const props = objSchema.properties as Record<string, TSchema>;
+      const objSchema = schema as ZObject;
+      const props = objSchema.properties as Record<string, ZType>;
       const keys = Object.keys(props);
       const result: Record<string, any> = {};
 
@@ -452,13 +449,13 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   // Encoder - generates code that returns an array representation
   // ===========================================================================
 
-  protected genEnc(schema: TSchema, ve: string): string {
+  protected genEnc(schema: ZType, ve: string): string {
     if (this.isLeaf(schema)) {
       return ve;
     }
 
     if (z.schema.isArray(schema)) {
-      const arrSchema = schema as TArray;
+      const arrSchema = schema as ZodArray<ZType>;
       const itemEnc = this.genEnc(arrSchema.items, "e");
       if (z.schema.isScalar(arrSchema.items)) {
         return ve;
@@ -469,7 +466,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     if (z.schema.isObject(schema)) {
       const parts: string[] = [];
       for (const { key, isOpt, isNullable, inner } of this.getObjectFields(
-        schema as TObject,
+        schema as ZObject,
       )) {
         const sk = JSON.stringify(key);
         const access = `${ve}[${sk}]`;
@@ -503,7 +500,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   // Decoder - generates code to reconstruct object from parsed array
   // ===========================================================================
 
-  protected genDec(schema: TSchema): { code: string; result: string } {
+  protected genDec(schema: ZType): { code: string; result: string } {
     const v = this.nextVar();
 
     if (this.isLeaf(schema)) {
@@ -511,7 +508,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     }
 
     if (z.schema.isArray(schema)) {
-      const arrSchema = schema as TArray;
+      const arrSchema = schema as ZodArray<ZType>;
       // Check if array items need transformation (objects)
       if (z.schema.isObject(arrSchema.items)) {
         const itemTransform = this.genDecFromValue(arrSchema.items, "e");
@@ -521,7 +518,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     }
 
     if (z.schema.isObject(schema)) {
-      const fields = this.getObjectFields(schema as TObject);
+      const fields = this.getObjectFields(schema as ZObject);
 
       // Check if simple (all required primitives)
       const simple = fields.every(
@@ -553,7 +550,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
           code += `${v}[${sk}]=${nested};`;
         } else if (z.schema.isArray(inner)) {
           // Handle arrays - check if items need transformation
-          const arrSchema = inner as TArray;
+          const arrSchema = inner as ZodArray;
           if (z.schema.isObject(arrSchema.items)) {
             const itemTransform = this.genDecFromValue(arrSchema.items, "e");
             code += `${v}[${sk}]=a[i++].map(e=>${itemTransform});`;
@@ -581,12 +578,12 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     return { code: "", result: "a[i++]" };
   }
 
-  protected genDecFromValue(schema: TSchema, expr: string): string {
+  protected genDecFromValue(schema: ZType, expr: string): string {
     if (this.isLeaf(schema)) {
       return expr;
     }
     if (z.schema.isArray(schema)) {
-      const items = schema.items as TSchema;
+      const items = schema.items as ZType;
       if (z.schema.isObject(items)) {
         const v = this.nextVar();
         return `${expr}.map(${v}=>${this.genDecFromValue(items, v)})`;
@@ -594,8 +591,8 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return expr;
     }
     if (z.schema.isObject(schema)) {
-      const objSchema = schema as TObject;
-      const props = objSchema.properties as Record<string, TSchema>;
+      const objSchema = schema as ZObject;
+      const props = objSchema.properties as Record<string, ZType>;
       const keys = Object.keys(props);
       const v = this.nextVar();
       const fields = keys.map((k, idx) => {
@@ -616,17 +613,17 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   // Helpers
   // ===========================================================================
 
-  protected isLeaf(schema: TSchema): boolean {
+  protected isLeaf(schema: ZType): boolean {
     return z.schema.isScalar(schema) || this.isEnum(schema);
   }
 
-  protected getObjectFields(schema: TObject): Array<{
+  protected getObjectFields(schema: ZObject): Array<{
     key: string;
     isOpt: boolean;
     isNullable: boolean;
-    inner: TSchema;
+    inner: ZType;
   }> {
-    const props = schema.properties as Record<string, TSchema>;
+    const props = schema.properties as Record<string, ZType>;
     const req = new Set(z.schema.requiredKeys(schema));
     return Object.keys(props).map((key) => {
       const ps = props[key];
@@ -639,7 +636,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     });
   }
 
-  protected isEnum(schema: TSchema): boolean {
+  protected isEnum(schema: ZType): boolean {
     return (
       "enum" in schema &&
       Array.isArray((schema as { enum?: unknown[] }).enum) &&
@@ -647,7 +644,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     );
   }
 
-  protected isNullable(schema: TSchema): boolean {
+  protected isNullable(schema: ZType): boolean {
     // zod represents `z.nullable(x)` as a `ZodNullable` wrapper (and
     // `z.nullable(x).optional()` nests it inside a `ZodOptional`), so walk the
     // optional/nullable wrapper chain rather than only inspecting a union.
@@ -662,13 +659,13 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     }
     // typebox-era nullable was a union `[schema, null]`.
     if (z.schema.isUnion(schema)) {
-      const unionSchema = schema as TUnion;
+      const unionSchema = schema as ZodUnion;
       return unionSchema.anyOf?.some((s: any) => z.schema.isNull(s)) ?? false;
     }
     return false;
   }
 
-  protected unwrap(schema: TSchema): TSchema {
+  protected unwrap(schema: ZType): ZType {
     // Peel zod optional/nullable/default wrappers (`z.optional`, `z.nullable`).
     // Without this the codec recurses forever on an optional field: the local
     // unwrap only knew the typebox union representation and returned the same
@@ -676,12 +673,11 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     const peeled = z.schema.unwrap(schema);
     // typebox-era nullable union `[schema, null]` — pick the first non-null.
     if (z.schema.isUnion(peeled)) {
-      const unionSchema = peeled as TUnion;
+      const unionSchema = peeled as ZodUnion;
       if (Array.isArray(unionSchema.anyOf)) {
         return (
-          (unionSchema.anyOf.find(
-            (s: any) => !z.schema.isNull(s),
-          ) as TSchema) || peeled
+          (unionSchema.anyOf.find((s: any) => !z.schema.isNull(s)) as ZType) ||
+          peeled
         );
       }
     }
@@ -691,14 +687,14 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   /**
    * Reconstruct an object from a parsed array (for when input is already parsed).
    */
-  protected reconstructObject(schema: TSchema, arr: any[]): any {
+  protected reconstructObject(schema: ZType, arr: any[]): any {
     if (!z.schema.isObject(schema)) return arr;
 
     const result: Record<string, any> = {};
     let i = 0;
 
     for (const { key, isOpt, isNullable, inner } of this.getObjectFields(
-      schema as TObject,
+      schema as ZObject,
     )) {
       const val = arr[i++];
 
@@ -726,13 +722,13 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
    * mapped array items back; only this one did not, so the same schema
    * decoded differently depending on which path ran.
    */
-  protected reconstructField(inner: TSchema, val: any): any {
+  protected reconstructField(inner: ZType, val: any): any {
     if (z.schema.isObject(inner)) {
       return this.reconstructObject(inner, val);
     }
 
     if (z.schema.isArray(inner) && Array.isArray(val)) {
-      const items = (inner as TArray).items as TSchema;
+      const items = (inner as ZodArray<ZType>).items as ZType;
       if (z.schema.isObject(items)) {
         return val.map((entry) => this.reconstructObject(items, entry));
       }

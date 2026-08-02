@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
@@ -10,7 +10,7 @@ export const auditSeveritySchema = z
   .describe("Severity level of the audit event")
   .default("info");
 
-export type AuditSeverity = Static<typeof auditSeveritySchema>;
+export type AuditSeverity = Infer<typeof auditSeveritySchema>;
 
 /**
  * Audit log entity for tracking important system events.
@@ -130,4 +130,4 @@ export const audits = $entity({
 
 export const auditEntitySchema = audits.schema;
 export const auditEntityInsertSchema = audits.insertSchema;
-export type AuditEntity = Static<typeof audits.schema>;
+export type AuditEntity = Infer<typeof audits.schema>;

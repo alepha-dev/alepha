@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * Tunable limits for petitions. Held as an atom so tests and ops can override
@@ -109,4 +109,4 @@ export const petitionOptionsAtom = $atom({
   serverOnly: true,
 });
 
-export type PetitionOptions = Static<typeof petitionOptionsAtom.schema>;
+export type PetitionOptions = Infer<typeof petitionOptionsAtom.schema>;

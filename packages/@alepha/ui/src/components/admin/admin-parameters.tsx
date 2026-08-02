@@ -17,7 +17,7 @@ import { Skeleton } from "@alepha/ui/components/ui/skeleton";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { cn } from "@alepha/ui/lib/utils";
-import { jsonSchemaToZod, type TObject, z } from "alepha";
+import { jsonSchemaToZod, type ZObject, z } from "alepha";
 import type { AdminParameterController } from "alepha/api/parameters";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useForm } from "alepha/react/form";
@@ -549,11 +549,11 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
 
   const data = current;
   const schema = data.schema
-    ? (jsonSchemaToZod(data.schema as any) as TObject)
+    ? (jsonSchemaToZod(data.schema as any) as ZObject)
     : (jsonSchemaToZod({
         type: "object",
         properties: {},
-      }) as TObject);
+      }) as ZObject);
   const initial =
     (data.current?.content as Record<string, unknown> | undefined) ??
     (data.currentValue as Record<string, unknown> | undefined) ??
@@ -628,7 +628,7 @@ interface ParameterEditorFormProps {
   /** `$parameter({ description })` as declared in code. */
   declaredDescription?: string;
   name: string;
-  schema: TObject;
+  schema: ZObject;
   initial: Record<string, unknown>;
   schemaHash?: string;
   currentVersion?: number;

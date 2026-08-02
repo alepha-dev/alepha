@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const userAccountInfoSchema = z.object({
@@ -78,4 +78,4 @@ export const userAccountInfoSchema = z.object({
     .optional(),
 });
 
-export type UserAccount = Static<typeof userAccountInfoSchema>;
+export type UserAccount = Infer<typeof userAccountInfoSchema>;

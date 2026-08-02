@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * PostgreSQL-specific environment schema.
@@ -28,5 +28,5 @@ export const postgresEnvSchema = z.object({
 });
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof postgresEnvSchema>> {}
+  interface Env extends Partial<Infer<typeof postgresEnvSchema>> {}
 }

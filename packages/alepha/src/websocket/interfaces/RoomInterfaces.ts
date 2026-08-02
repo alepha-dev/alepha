@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
 
 /**
@@ -79,10 +79,10 @@ export interface RoomContext<TClient extends TWSObject, TState> {
   /** Number of connected sockets. */
   readonly size: number;
   /** Send one message to one connection. Validated? No — trusted server frame. */
-  send(connectionId: string, message: Static<TClient>): void;
+  send(connectionId: string, message: Infer<TClient>): void;
   /** Fan out one message to every connection, minus any excepted ids. */
   broadcast(
-    message: Static<TClient>,
+    message: Infer<TClient>,
     options?: { exceptConnectionIds?: string[] },
   ): void;
   /** Close one connection. */
@@ -143,7 +143,7 @@ export interface RoomPrimitiveOptions<
   onMessage?: (
     room: RoomContext<TClient, TState>,
     connection: RoomConnection,
-    message: Static<TServer>,
+    message: Infer<TServer>,
   ) => void | Promise<void>;
 
   /**

@@ -1,4 +1,4 @@
-import { $inject, $state } from "alepha";
+import { $inject, $store } from "alepha";
 import { $command } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { i18nOptions } from "../atoms/i18nOptions.ts";
@@ -6,7 +6,7 @@ import { I18nCheckService } from "../services/I18nCheckService.ts";
 
 export class I18nCommand {
   protected readonly log = $logger();
-  protected readonly options = $state(i18nOptions);
+  protected readonly options = $store(i18nOptions);
   protected readonly checkService = $inject(I18nCheckService);
   protected readonly color = $inject(ConsoleColorProvider);
 

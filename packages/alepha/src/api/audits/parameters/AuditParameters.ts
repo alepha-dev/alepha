@@ -1,4 +1,4 @@
-import { $atom, $state, type Static, z } from "alepha";
+import { $atom, $store, type Infer, z } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -30,7 +30,7 @@ export const auditOptions = $atom({
   serverOnly: true,
 });
 
-export type AuditOptions = Static<typeof auditOptions.schema>;
+export type AuditOptions = Infer<typeof auditOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -44,7 +44,7 @@ declare module "alepha" {
  * Typed accessor for audit module configuration ({@link auditOptions}).
  */
 export class AuditParameters {
-  protected readonly options = $state(auditOptions);
+  protected readonly options = $store(auditOptions);
 
   public get<K extends keyof AuditOptions>(key: K): AuditOptions[K] {
     return this.options[key];

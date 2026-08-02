@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $state, type Static, z } from "alepha";
+import { $atom, $hook, $inject, $store, type Infer, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { ServerRouterProvider } from "alepha/server";
 
@@ -44,7 +44,7 @@ export const corsOptions = $atom({
   serverOnly: true,
 });
 
-export type CorsOptions = Static<typeof corsOptions.schema>;
+export type CorsOptions = Infer<typeof corsOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -57,7 +57,7 @@ declare module "alepha" {
 export class ServerCorsProvider {
   protected readonly log = $logger();
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
-  protected readonly globalOptions = $state(corsOptions);
+  protected readonly globalOptions = $store(corsOptions);
 
   protected readonly onStart = $hook({
     on: "start",

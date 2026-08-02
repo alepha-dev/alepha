@@ -7,7 +7,7 @@ import { $atom } from "../primitives/$atom.ts";
 import { $computed } from "../primitives/$computed.ts";
 import { AlsProvider } from "../providers/AlsProvider.ts";
 import { StateManager } from "../providers/StateManager.ts";
-import { z } from "../providers/TypeProvider.ts";
+import { z } from "../providers/ZodProvider.ts";
 
 // Set up AsyncLocalStorage for tests
 AlsProvider.create = () => new AsyncLocalStorage();

@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $state, Alepha, type Static, z } from "alepha";
+import { $atom, $hook, $inject, $store, Alepha, type Infer, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { RedisProvider, RedisSubscriberProvider } from "alepha/redis";
 import {
@@ -28,7 +28,7 @@ export const redisTopicOptions = $atom({
   serverOnly: true,
 });
 
-export type RedisTopicOptions = Static<typeof redisTopicOptions.schema>;
+export type RedisTopicOptions = Infer<typeof redisTopicOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -39,7 +39,7 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class RedisTopicProvider extends TopicProvider {
-  protected readonly options = $state(redisTopicOptions);
+  protected readonly options = $store(redisTopicOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly redisProvider = $inject(RedisProvider);
   protected readonly redisSubscriberProvider = $inject(RedisSubscriberProvider);

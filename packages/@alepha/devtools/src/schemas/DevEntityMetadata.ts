@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const devEntityColumnSchema = z.object({
   name: z.text(),
@@ -53,8 +53,8 @@ export const devEntityMetadataSchema = z.object({
   updateSchema: z.any().optional(),
 });
 
-export type DevEntityColumn = Static<typeof devEntityColumnSchema>;
-export type DevEntityIndex = Static<typeof devEntityIndexSchema>;
-export type DevEntityForeignKey = Static<typeof devEntityForeignKeySchema>;
-export type DevEntityConstraint = Static<typeof devEntityConstraintSchema>;
-export type DevEntityMetadata = Static<typeof devEntityMetadataSchema>;
+export type DevEntityColumn = Infer<typeof devEntityColumnSchema>;
+export type DevEntityIndex = Infer<typeof devEntityIndexSchema>;
+export type DevEntityForeignKey = Infer<typeof devEntityForeignKeySchema>;
+export type DevEntityConstraint = Infer<typeof devEntityConstraintSchema>;
+export type DevEntityMetadata = Infer<typeof devEntityMetadataSchema>;

@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { parameterResponseSchema } from "./parameterResponseSchema.ts";
 
 /**
@@ -8,6 +8,6 @@ export const parameterHistoryResponseSchema = z.object({
   versions: z.array(parameterResponseSchema),
 });
 
-export type ParameterHistoryResponse = Static<
+export type ParameterHistoryResponse = Infer<
   typeof parameterHistoryResponseSchema
 >;

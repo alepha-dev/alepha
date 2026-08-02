@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity } from "../primitives/$entity.ts";
 import { db } from "../providers/DatabaseTypeProvider.ts";
 
@@ -39,4 +39,4 @@ export const alephaSequences = $entity({
   indexes: [{ columns: ["name", "scope"], unique: true }],
 });
 
-export type AlephaSequence = Static<typeof alephaSequences.schema>;
+export type AlephaSequence = Infer<typeof alephaSequences.schema>;

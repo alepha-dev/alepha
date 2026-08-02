@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
-import { $hook, $inject, $state, AlephaError, SchemaValidator } from "alepha";
+import { $hook, $inject, $store, AlephaError, SchemaValidator } from "alepha";
 import { $logger } from "alepha/logger";
 import { WebSocket, WebSocketServer } from "ws";
 import { WebSocketValidationError } from "../errors/WebSocketError.ts";
@@ -31,7 +31,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   protected readonly topicService = $inject(WebSocketTopicService);
   protected readonly schemaValidator = $inject(SchemaValidator);
   protected readonly log = $logger();
-  protected readonly wsOptions = $state(websocketOptions);
+  protected readonly wsOptions = $store(websocketOptions);
 
   protected wss?: WebSocketServer;
   protected endpoints = new Map<string, WebSocketPrimitiveOptions<any, any>>();

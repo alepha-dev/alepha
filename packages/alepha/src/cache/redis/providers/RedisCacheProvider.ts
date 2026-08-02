@@ -1,4 +1,4 @@
-import { $atom, $inject, $state, Alepha, type Static, z } from "alepha";
+import { $atom, $inject, $store, Alepha, type Infer, z } from "alepha";
 import { CacheProvider } from "alepha/cache";
 import { $logger } from "alepha/logger";
 import { RedisProvider } from "alepha/redis";
@@ -22,7 +22,7 @@ export const redisCacheOptions = $atom({
   serverOnly: true,
 });
 
-export type RedisCacheOptions = Static<typeof redisCacheOptions.schema>;
+export type RedisCacheOptions = Infer<typeof redisCacheOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -35,7 +35,7 @@ declare module "alepha" {
 export class RedisCacheProvider extends CacheProvider {
   protected readonly log = $logger();
   protected readonly redisProvider = $inject(RedisProvider);
-  protected readonly options = $state(redisCacheOptions);
+  protected readonly options = $store(redisCacheOptions);
   protected readonly alepha = $inject(Alepha);
 
   public async get(name: string, key: string): Promise<Uint8Array | undefined> {

@@ -26,7 +26,7 @@ import {
   PopoverTrigger,
 } from "@alepha/ui/components/ui/popover";
 import { cn } from "@alepha/ui/lib/utils";
-import type { TObject } from "alepha";
+import type { ZObject } from "alepha";
 import { useAlepha } from "alepha/react";
 import {
   type BaseInputField,
@@ -116,7 +116,7 @@ export interface AutoFormAction {
   disabled?: boolean;
 }
 
-export interface AutoFormProps<T extends TObject> {
+export interface AutoFormProps<T extends ZObject> {
   /**
    * Form model returned by `useForm()`. The schema drives every field.
    */
@@ -281,16 +281,16 @@ export interface AutoFormProps<T extends TObject> {
  * bar. Every input field is resolved through `<Control>`, so schemas
  * carrying `$control` metadata configure themselves.
  */
-export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
+export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
   const { tr } = useI18n();
   const { dirty, loading } = useFormState(props.form, ["dirty", "loading"]);
   const inputs = props.form.input as Record<string, never>;
 
   const schema =
-    (props.form.options.schema as TObject) ??
+    (props.form.options.schema as ZObject) ??
     ({
       properties: {},
-    } as TObject);
+    } as ZObject);
 
   // ── Auto-save ─────────────────────────────────────────────────────
   // Text fields (string) are intentionally excluded: typing should not commit
@@ -653,7 +653,7 @@ function GroupBlock(props: GroupBlockProps) {
 // ──────────────────────────────────────────────────────────────────────
 
 interface BottomBarProps {
-  form: FormModel<TObject>;
+  form: FormModel<ZObject>;
   dirty?: boolean;
   loading?: boolean;
   disabled?: boolean;
@@ -739,7 +739,7 @@ function BottomBar(props: BottomBarProps) {
 // ──────────────────────────────────────────────────────────────────────
 
 interface FormErrorPopoverProps {
-  form: FormModel<TObject>;
+  form: FormModel<ZObject>;
 }
 
 function FormErrorPopover(props: FormErrorPopoverProps) {
@@ -823,7 +823,7 @@ const focusError = (path: string, formId: string) => {
 // ──────────────────────────────────────────────────────────────────────
 
 const autoGroupSchema = (
-  schema: TObject,
+  schema: ZObject,
   opts: {
     defaultTitle?: string;
     defaultIcon?: string;

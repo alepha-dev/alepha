@@ -1,9 +1,9 @@
-import { $state } from "alepha";
+import { $store } from "alepha";
 import { $command } from "alepha/command";
 import { buildOptions } from "../atoms/buildOptions.ts";
 
 export class CleanCommand {
-  protected readonly options = $state(buildOptions);
+  protected readonly options = $store(buildOptions);
 
   /**
    * Clean the project, removing the build output directory.

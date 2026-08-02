@@ -1,8 +1,7 @@
 import type { z as zod } from "zod";
 import { KIND } from "../constants/KIND.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
-import type { Static, TObject } from "../providers/TypeProvider.ts";
-import type { ZType } from "../providers/ZodProvider.ts";
+import type { Infer, ZObject, ZType } from "../providers/ZodProvider.ts";
 
 /**
  * Define an atom for state management.
@@ -17,7 +16,7 @@ import type { ZType } from "../providers/ZodProvider.ts";
  * Features:
  * - Schema validation on every write (invalid writes throw)
  * - Default value for initial state
- * - Automatic getter access in services with {@link $state}
+ * - Automatic getter access in services with {@link $store}
  * - SSR support (server state automatically serialized and hydrated on client)
  * - React integration (useStore / useSelector hooks for automatic re-renders)
  * - Derived values with {@link $computed} (useComputed hook)
@@ -139,13 +138,13 @@ export type AtomOptions<T extends ZType, N extends string> = {
   serverOnly?: boolean;
 } & (T extends zod.ZodOptional<any>
   ? {
-      default?: Static<T>;
+      default?: Infer<T>;
     }
   : {
-      default: Static<T>;
+      default: Infer<T>;
     });
 
-export class Atom<T extends ZType = TObject, N extends string = string> {
+export class Atom<T extends ZType = ZObject, N extends string = string> {
   public readonly options: AtomOptions<T, N>;
 
   public get schema(): T {
@@ -165,4 +164,4 @@ $atom[KIND] = "atom";
 
 export type TAtomObject = ZType;
 export type AtomStatic<T extends ZType> =
-  T extends zod.ZodOptional<any> ? Static<T> | undefined : Static<T>;
+  T extends zod.ZodOptional<any> ? Infer<T> | undefined : Infer<T>;

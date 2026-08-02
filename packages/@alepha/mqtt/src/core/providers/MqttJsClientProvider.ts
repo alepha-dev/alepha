@@ -3,10 +3,10 @@ import {
   $env,
   $hook,
   $inject,
-  $state,
+  $store,
   Alepha,
   AlephaError,
-  type Static,
+  type Infer,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
@@ -29,7 +29,7 @@ const envSchema = z.object({
 });
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface Env extends Partial<Infer<typeof envSchema>> {}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -106,7 +106,7 @@ export const mqttOptions = $atom({
   serverOnly: true,
 });
 
-export type MqttOptions = Static<typeof mqttOptions.schema>;
+export type MqttOptions = Infer<typeof mqttOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -182,7 +182,7 @@ export class MqttJsClientProvider extends MqttClientProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
-  protected readonly options = $state(mqttOptions);
+  protected readonly options = $store(mqttOptions);
 
   protected client: MqttClient | undefined;
 

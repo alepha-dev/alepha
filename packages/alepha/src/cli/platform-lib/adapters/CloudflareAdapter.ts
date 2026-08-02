@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   $inject,
-  $state,
+  $store,
   Alepha,
   AlephaError,
   type Alepha as AlephaInstance,
@@ -49,7 +49,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   protected readonly wrangler = $inject(WranglerApi);
   protected readonly runner = $inject(Runner);
   protected readonly buildTask = $inject(BuildCloudflareTask);
-  protected readonly options = $state(platformOptions);
+  protected readonly options = $store(platformOptions);
 
   protected provisionedD1Id?: string;
   protected provisionedHyperdriveId?: string;

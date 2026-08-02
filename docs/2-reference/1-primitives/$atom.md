@@ -20,7 +20,7 @@ You control how state is structured and validated.
 Features:
 - Schema validation on every write (invalid writes throw)
 - Default value for initial state
-- Automatic getter access in services with {@link $state}
+- Automatic getter access in services with {@link $store}
 - SSR support (server state automatically serialized and hydrated on client)
 - React integration (useStore / useSelector hooks for automatic re-renders)
 - Derived values with {@link $computed} (useComputed hook)

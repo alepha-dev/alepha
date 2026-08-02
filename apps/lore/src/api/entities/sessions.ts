@@ -1,5 +1,5 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { sessions } from "alepha/api/users";
 
 export { sessions };
-export type Session = Static<typeof sessions.schema>;
+export type Session = Infer<typeof sessions.schema>;

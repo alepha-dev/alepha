@@ -1,4 +1,4 @@
-import { Type, z } from "alepha";
+import { z } from "alepha";
 import { describe, test } from "vitest";
 import { FakeProvider } from "../providers/FakeProvider.ts";
 
@@ -616,7 +616,7 @@ describe("FakeProvider", () => {
       defaultArrayLength: 3,
       maxArrayLength: 100,
     });
-    const schema = Type.array(Type.number()); // No minItems/maxItems
+    const schema = z.array(z.number()); // No minItems/maxItems
     const results = Array.from({ length: 20 }, () => fake.generate(schema));
 
     for (const result of results) {

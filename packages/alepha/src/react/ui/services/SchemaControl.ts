@@ -64,7 +64,7 @@ export interface SchemaControl {
 
   // ── Data ──────────────────────────────────────────────────────────
   /**
-   * Static or async option list for select / combobox / multi-select.
+   * Infer or async option list for select / combobox / multi-select.
    * Each item is either a bare string (used as both value & label) or a
    * `{ value, label, description?, tag? }` object.
    */

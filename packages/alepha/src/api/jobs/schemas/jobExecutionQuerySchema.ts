@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const jobExecutionQuerySchema = z.object({
   status: z
@@ -7,4 +7,4 @@ export const jobExecutionQuerySchema = z.object({
   limit: z.integer().min(1).max(200).default(20).optional(),
 });
 
-export type JobExecutionQuery = Static<typeof jobExecutionQuerySchema>;
+export type JobExecutionQuery = Infer<typeof jobExecutionQuerySchema>;

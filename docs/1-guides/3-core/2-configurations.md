@@ -104,12 +104,12 @@ alepha.store.set(appConfig, { theme: "dark", language: "fr" });
 alepha.set(appConfig, { theme: "dark", language: "fr" });
 ```
 
-### Injecting atoms with $state
+### Reading atoms with $store
 
-`$state` creates a reactive getter that always returns the current atom value:
+`$store` creates a reactive getter that always returns the current atom value:
 
 ```typescript
-import { $atom, $state, z } from "alepha";
+import { $atom, $store, z } from "alepha";
 
 const count = $atom({
   name: "count",
@@ -118,7 +118,7 @@ const count = $atom({
 });
 
 class Counter {
-  count = $state(count);
+  count = $store(count);
 
   current() {
     return this.count.value; // always reads current state
@@ -126,7 +126,7 @@ class Counter {
 }
 ```
 
-Under the hood, `$state` registers the atom and replaces the property with a getter that reads from the state store. When the state changes, the next property access returns the updated value:
+Under the hood, `$store` registers the atom and replaces the property with a getter that reads from the state store. When the state changes, the next property access returns the updated value:
 
 ```typescript
 const alepha = Alepha.create();

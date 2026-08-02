@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 import { users } from "../entities/users.ts";
 
@@ -10,4 +10,4 @@ export const registerResponseSchema = z.object({
   user: users.schema,
 });
 
-export type RegisterResponse = Static<typeof registerResponseSchema>;
+export type RegisterResponse = Infer<typeof registerResponseSchema>;

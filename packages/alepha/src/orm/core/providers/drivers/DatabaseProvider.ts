@@ -1,11 +1,5 @@
 import { stat } from "node:fs/promises";
-import {
-  $inject,
-  Alepha,
-  AlephaError,
-  type Static,
-  type TObject,
-} from "alepha";
+import { $inject, Alepha, AlephaError, type Infer, type ZObject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { type SQLWrapper, sql } from "drizzle-orm";
@@ -145,7 +139,7 @@ export abstract class DatabaseProvider {
     return "OTHER";
   }
 
-  public table<T extends TObject>(
+  public table<T extends ZObject>(
     entity: EntityPrimitive<T>,
   ): PgTableWithColumns<SchemaToTableConfig<T>> {
     const table = this.tables.get(entity.name);
@@ -305,10 +299,10 @@ export abstract class DatabaseProvider {
     statement: SQLLike,
   ): Promise<Record<string, unknown>[]>;
 
-  public async run<T extends TObject>(
+  public async run<T extends ZObject>(
     statement: SQLLike,
     schema: T,
-  ): Promise<Array<Static<T>>> {
+  ): Promise<Array<Infer<T>>> {
     const result = await this.execute(statement);
 
     if (result == null) {

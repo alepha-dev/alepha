@@ -1,4 +1,4 @@
-import { $inject, Alepha, type Service, type TObject } from "alepha";
+import { $inject, Alepha, type Service, type ZObject } from "alepha";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import { Repository } from "../services/Repository.ts";
 import type { DatabaseProvider } from "./drivers/DatabaseProvider.ts";
@@ -20,14 +20,14 @@ export class RepositoryProvider {
     return repositories;
   }
 
-  public getRepository<T extends TObject>(
+  public getRepository<T extends ZObject>(
     entity: EntityPrimitive<T>,
   ): Repository<T> {
     const RepositoryClass = this.createClassRepository(entity);
     return this.alepha.inject(RepositoryClass);
   }
 
-  public createClassRepository<T extends TObject>(
+  public createClassRepository<T extends ZObject>(
     entity: EntityPrimitive<T>,
   ): Service<Repository<T>> {
     let name = entity.name.charAt(0).toUpperCase() + entity.name.slice(1);

@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { petitions } from "../entities/petitions.ts";
 
 /**
@@ -19,7 +19,7 @@ export const petitionLinkedQuestSchema = z.object({
   completedAt: z.datetime().optional(),
 });
 
-export type PetitionLinkedQuest = Static<typeof petitionLinkedQuestSchema>;
+export type PetitionLinkedQuest = Infer<typeof petitionLinkedQuestSchema>;
 
 /**
  * Petition entity exposed to the API.
@@ -53,4 +53,4 @@ export const petitionResourceSchema = petitions.schema.extend({
   linkedQuests: z.array(petitionLinkedQuestSchema).optional(),
 });
 
-export type PetitionResource = Static<typeof petitionResourceSchema>;
+export type PetitionResource = Infer<typeof petitionResourceSchema>;

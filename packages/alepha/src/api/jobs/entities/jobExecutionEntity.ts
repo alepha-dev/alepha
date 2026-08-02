@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { logEntrySchema } from "alepha/logger";
 import { $entity, db } from "alepha/orm";
 
@@ -70,7 +70,7 @@ export const jobExecutionEntity = $entity({
   ],
 });
 
-export type JobExecutionEntity = Static<typeof jobExecutionEntity.schema>;
+export type JobExecutionEntity = Infer<typeof jobExecutionEntity.schema>;
 
 export type JobStatus =
   | "pending"

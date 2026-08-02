@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { campaigns } from "./campaigns.ts";
 import { users } from "./users.ts";
@@ -45,7 +45,7 @@ export const blightIgnoreRules = $entity({
   indexes: [{ columns: ["campaignId"] }],
 });
 
-export type BlightIgnoreRule = Static<typeof blightIgnoreRules.schema>;
-export type BlightIgnoreRuleInsert = Static<
+export type BlightIgnoreRule = Infer<typeof blightIgnoreRules.schema>;
+export type BlightIgnoreRuleInsert = Infer<
   typeof blightIgnoreRules.insertSchema
 >;

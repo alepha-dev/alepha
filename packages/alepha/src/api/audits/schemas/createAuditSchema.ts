@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 import { auditSeveritySchema } from "../entities/audits.ts";
 
@@ -24,4 +24,4 @@ export const createAuditSchema = z.object({
   errorMessage: z.text().optional(),
 });
 
-export type CreateAudit = Static<typeof createAuditSchema>;
+export type CreateAudit = Infer<typeof createAuditSchema>;

@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * Available themes the user can pick from. Apps populate this atom on boot
@@ -32,5 +32,5 @@ export const uiThemeListAtom = $atom({
   default: [{ id: "default", label: "Default" }],
 });
 
-export type UiThemeList = Static<typeof uiThemeListAtom.schema>;
+export type UiThemeList = Infer<typeof uiThemeListAtom.schema>;
 export type UiTheme = UiThemeList[number];

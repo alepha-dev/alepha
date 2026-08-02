@@ -4,12 +4,12 @@ import {
   $atom,
   $hook,
   $inject,
-  $state,
+  $store,
   Alepha,
+  type Infer,
   isTypeFile,
-  type Static,
-  type TObject,
-  type TSchema,
+  type ZObject,
+  type ZType,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
@@ -48,7 +48,7 @@ export const swaggerOptions = $atom({
   serverOnly: true,
 });
 
-export type ServerSwaggerProviderOptions = Static<typeof swaggerOptions.schema>;
+export type ServerSwaggerProviderOptions = Infer<typeof swaggerOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -64,7 +64,7 @@ export class ServerSwaggerProvider {
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly options = $state(swaggerOptions);
+  protected readonly options = $store(swaggerOptions);
   protected readonly fs = $inject(FileSystemProvider);
 
   public json?: OpenApiDocument;
@@ -136,7 +136,7 @@ export class ServerSwaggerProvider {
     const excludeTags = doc.excludeTags ?? [];
     const schemas: Record<string, any> = {};
 
-    const toJson = (source: TSchema): any => {
+    const toJson = (source: ZType): any => {
       let json: any;
       try {
         json = z.toJSONSchema(source as any);
@@ -152,7 +152,7 @@ export class ServerSwaggerProvider {
       return json;
     };
 
-    const schema = (source: TSchema): any => {
+    const schema = (source: ZType): any => {
       const json = toJson(source);
       // A titled schema is hoisted into `components/schemas` and referenced.
       const title =
@@ -323,7 +323,7 @@ export class ServerSwaggerProvider {
     return JSON.parse(JSON.stringify(openApi));
   }
 
-  public isBodyMultipart(schema: TObject): boolean {
+  public isBodyMultipart(schema: ZObject): boolean {
     for (const key in schema.properties) {
       if (isTypeFile(schema.properties[key])) {
         return true;

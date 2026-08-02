@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const authenticationProviderSchema = z
   .object({
@@ -11,6 +11,4 @@ export const authenticationProviderSchema = z
   })
   .meta({ title: "AuthenticationProvider" });
 
-export type AuthenticationProvider = Static<
-  typeof authenticationProviderSchema
->;
+export type AuthenticationProvider = Infer<typeof authenticationProviderSchema>;

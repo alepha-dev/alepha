@@ -1,15 +1,15 @@
-import type { Static, TSchema } from "alepha";
+import type { Infer, ZType } from "alepha";
 import { customType } from "drizzle-orm/pg-core";
 
 /**
  * Postgres schema type.
  */
-export const schema = <TDocument extends TSchema>(
+export const schema = <TDocument extends ZType>(
   name: string,
   document: TDocument,
 ) =>
   customType<{
-    data: Static<TDocument>;
+    data: Infer<TDocument>;
     driverData: string;
     config: { document: TDocument };
     configRequired: true;
@@ -18,4 +18,4 @@ export const schema = <TDocument extends TSchema>(
     toDriver: (value) => JSON.stringify(value),
     fromDriver: (value: TDocument | string) =>
       value && typeof value === "string" ? JSON.parse(value) : value,
-  })(name, { document }).$type<Static<TDocument>>();
+  })(name, { document }).$type<Infer<TDocument>>();

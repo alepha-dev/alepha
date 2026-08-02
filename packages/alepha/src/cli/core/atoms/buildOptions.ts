@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * Deployment target for the build output.
@@ -212,7 +212,7 @@ export const buildOptions = $atom({
       .optional(),
 
     /**
-     * Static site deployment configuration.
+     * Infer site deployment configuration.
      *
      * Note: Set `target: "static"` to enable static site generation.
      */
@@ -288,4 +288,4 @@ export const buildOptions = $atom({
 /**
  * Type for build options.
  */
-export type BuildOptions = Static<typeof buildOptions.schema>;
+export type BuildOptions = Infer<typeof buildOptions.schema>;

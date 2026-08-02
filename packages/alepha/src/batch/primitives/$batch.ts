@@ -2,10 +2,10 @@ import {
   $hook,
   $inject,
   createPrimitive,
+  type Infer,
   KIND,
   Primitive,
-  type Static,
-  type TSchema,
+  type ZType,
 } from "alepha";
 import type { DurationLike } from "alepha/datetime";
 import type { RetryPrimitiveOptions } from "alepha/retry";
@@ -19,14 +19,14 @@ import {
 /**
  * Creates a batch processing primitive for efficient grouping and processing of multiple operations.
  */
-export const $batch = <TItem extends TSchema, TResponse>(
+export const $batch = <TItem extends ZType, TResponse>(
   options: BatchPrimitiveOptions<TItem, TResponse>,
 ): BatchPrimitive<TItem, TResponse> =>
   createPrimitive(BatchPrimitive<TItem, TResponse>, options);
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface BatchPrimitiveOptions<TItem extends TSchema, TResponse = any> {
+export interface BatchPrimitiveOptions<TItem extends ZType, TResponse = any> {
   /**
    * Zod schema for validating each item added to the batch.
    */
@@ -35,7 +35,7 @@ export interface BatchPrimitiveOptions<TItem extends TSchema, TResponse = any> {
   /**
    * The batch processing handler function that processes arrays of validated items.
    */
-  handler: (items: Static<TItem>[]) => TResponse;
+  handler: (items: Infer<TItem>[]) => TResponse;
 
   /**
    * Maximum number of items to collect before automatically flushing the batch.
@@ -56,7 +56,7 @@ export interface BatchPrimitiveOptions<TItem extends TSchema, TResponse = any> {
   /**
    * Function to determine partition keys for grouping items into separate batches.
    */
-  partitionBy?: (item: Static<TItem>) => string;
+  partitionBy?: (item: Infer<TItem>) => string;
 
   /**
    * Maximum number of batch handlers that can execute simultaneously.
@@ -66,7 +66,7 @@ export interface BatchPrimitiveOptions<TItem extends TSchema, TResponse = any> {
   /**
    * Retry configuration for failed batch processing operations.
    */
-  retry?: Omit<RetryPrimitiveOptions<() => Array<Static<TItem>>>, "handler">;
+  retry?: Omit<RetryPrimitiveOptions<() => Array<Infer<TItem>>>, "handler">;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -76,11 +76,11 @@ export type { BatchItemState, BatchItemStatus };
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class BatchPrimitive<
-  TItem extends TSchema,
+  TItem extends ZType,
   TResponse = any,
 > extends Primitive<BatchPrimitiveOptions<TItem, TResponse>> {
   protected readonly batchProvider = $inject(BatchProvider);
-  protected readonly context: BatchContext<Static<TItem>, TResponse>;
+  protected readonly context: BatchContext<Infer<TItem>, TResponse>;
 
   constructor(
     ...args: ConstructorParameters<
@@ -104,7 +104,7 @@ export class BatchPrimitive<
    * The item will be processed asynchronously with other items when the batch is flushed.
    * Use wait(id) to get the processing result.
    */
-  public async push(item: Static<TItem>): Promise<string> {
+  public async push(item: Infer<TItem>): Promise<string> {
     // Validate the item against the schema
     const validatedItem = this.alepha.codec.validate(this.options.schema, item);
     return this.batchProvider.push(this.context, validatedItem);

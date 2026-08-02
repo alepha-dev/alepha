@@ -319,7 +319,7 @@ export function ControlSelect(props: ControlSelectProps) {
     );
   }
 
-  // Static / short — native Select
+  // Infer / short — native Select
   const clearLabel =
     props.clearLabel ?? tr("controlSelect.none", { default: "None" });
   const labelFor = (raw: string) => {

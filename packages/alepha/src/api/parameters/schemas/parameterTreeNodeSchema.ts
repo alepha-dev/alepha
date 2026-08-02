@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * Tree node schema for parameter tree navigation.
@@ -10,4 +10,4 @@ export const parameterTreeNodeSchema = z.object({
   children: z.array(z.any()),
 });
 
-export type ParameterTreeNode = Static<typeof parameterTreeNodeSchema>;
+export type ParameterTreeNode = Infer<typeof parameterTreeNodeSchema>;

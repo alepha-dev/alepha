@@ -1,4 +1,4 @@
-import { $atom, $inject, $state, Alepha, type Static, z } from "alepha";
+import { $atom, $inject, $store, Alepha, type Infer, z } from "alepha";
 import { $route, type ServerReply } from "alepha/server";
 import { MemoryPaymentProvider } from "../providers/MemoryPaymentProvider.ts";
 import { PaymentProvider } from "../providers/PaymentProvider.ts";
@@ -23,7 +23,7 @@ export const mockCheckoutOptions = $atom({
   serverOnly: true,
 });
 
-export type MockCheckoutOptions = Static<typeof mockCheckoutOptions.schema>;
+export type MockCheckoutOptions = Infer<typeof mockCheckoutOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -165,7 +165,7 @@ export class MockCheckoutController {
   protected readonly alepha = $inject(Alepha);
   protected readonly payments = $inject(PaymentService);
   protected readonly provider = $inject(PaymentProvider);
-  protected readonly options = $state(mockCheckoutOptions);
+  protected readonly options = $store(mockCheckoutOptions);
 
   protected isMemoryProvider() {
     // The confirm endpoint is an unauthenticated capture ("mark as paid").

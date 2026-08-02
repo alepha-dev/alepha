@@ -1,4 +1,4 @@
-import { $inject, type Static, z } from "alepha";
+import { $inject, type Infer, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -51,7 +51,7 @@ const blightResourceSchema = z.object({
   origin: z.enum(["client", "server"]),
 });
 
-export type BlightResource = Static<typeof blightResourceSchema>;
+export type BlightResource = Infer<typeof blightResourceSchema>;
 
 /**
  * A sigil reduced to what the inbox's "filter by sigil" dropdown needs —
@@ -74,7 +74,7 @@ const blightRuleResourceSchema = z.object({
   createdAt: z.string(),
 });
 
-export type BlightRuleResource = Static<typeof blightRuleResourceSchema>;
+export type BlightRuleResource = Infer<typeof blightRuleResourceSchema>;
 
 /**
  * Owner-facing triage surface for blights — the deduplicated uncaught

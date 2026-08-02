@@ -5,7 +5,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import type { Socket } from "node:net";
-import { $env, $hook, $inject, Alepha, type Static, z } from "alepha";
+import { $env, $hook, $inject, Alepha, type Infer, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { ServerProvider } from "./ServerProvider.ts";
@@ -24,7 +24,7 @@ const envSchema = z.object({
 });
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface Env extends Partial<Infer<typeof envSchema>> {}
 }
 
 export class NodeHttpServerProvider extends ServerProvider {

@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const okSchema = z
@@ -10,4 +10,4 @@ export const okSchema = z
   .meta({ title: "Ok" })
   .describe("Generic response after a successful operation on a resource");
 
-export type Ok = Static<typeof okSchema>;
+export type Ok = Infer<typeof okSchema>;

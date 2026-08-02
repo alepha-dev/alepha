@@ -1,5 +1,5 @@
 import { VITALS_BUCKETS, type VitalMetric } from "@alepha/sigil/vitals";
-import { $inject, type Static, z } from "alepha";
+import { $inject, type Infer, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -116,7 +116,7 @@ const insightsSchema = z.object({
   ),
 });
 
-export type InsightsResource = Static<typeof insightsSchema>;
+export type InsightsResource = Infer<typeof insightsSchema>;
 
 /**
  * The reading surface for what `SigilIngestService` writes.

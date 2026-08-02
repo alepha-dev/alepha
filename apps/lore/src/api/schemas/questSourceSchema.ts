@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * Provenance of a quest that was spawned from an automated source rather
@@ -21,4 +21,4 @@ export const questSourceSchema = z.object({
   sigilBlightId: z.integer().optional(),
 });
 
-export type QuestSource = Static<typeof questSourceSchema>;
+export type QuestSource = Infer<typeof questSourceSchema>;

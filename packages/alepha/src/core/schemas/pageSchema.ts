@@ -1,10 +1,10 @@
 import {
-  type Static,
-  type TArray,
-  type TObject,
-  type TRecord,
+  type Infer,
+  type ZObject,
+  type ZodArray,
+  type ZodRecord,
   z,
-} from "../providers/TypeProvider.ts";
+} from "../providers/ZodProvider.ts";
 
 export const pageMetadataSchema = z.object({
   number: z.integer().describe("Page number, starting from 0"),
@@ -77,7 +77,7 @@ export const pageMetadataSchema = z.object({
  * })
  * ```
  */
-export const pageSchema = <T extends TObject | TRecord>(
+export const pageSchema = <T extends ZObject | ZodRecord>(
   objectSchema: T,
 ): TPage<T> =>
   z.object({
@@ -85,8 +85,8 @@ export const pageSchema = <T extends TObject | TRecord>(
     page: pageMetadataSchema,
   }) as unknown as TPage<T>;
 
-export type TPage<T extends TObject | TRecord> = TObject<{
-  content: TArray<T>;
+export type TPage<T extends ZObject | ZodRecord> = ZObject<{
+  content: ZodArray<T>;
   page: typeof pageMetadataSchema;
 }>;
 
@@ -125,10 +125,10 @@ export type Page<T> = {
    * Array of items on the current page.
    */
   content: T[];
-  page: Static<typeof pageMetadataSchema>;
+  page: Infer<typeof pageMetadataSchema>;
 };
 
-export type PageMetadata = Static<typeof pageMetadataSchema>;
+export type PageMetadata = Infer<typeof pageMetadataSchema>;
 
 // ---------------------------------------------------------------------------------------------------------------------
 

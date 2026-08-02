@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
 
 /**
@@ -160,7 +160,7 @@ export interface WebSocketHandlerContext<
   /**
    * The parsed and validated message from the client
    */
-  message: Static<TServer>;
+  message: Infer<TServer>;
 
   /**
    * Reply function tailored to current context (connectionId, roomId)
@@ -169,7 +169,7 @@ export interface WebSocketHandlerContext<
     /**
      * Message to send
      */
-    message: Static<TClient>;
+    message: Infer<TClient>;
 
     /**
      * Optional: specify room ID to send to (defaults to sender's room ID)
@@ -202,7 +202,7 @@ export interface EmitOptions<TClient extends TWSObject> {
   /**
    * Message to send to clients
    */
-  message: Static<TClient>;
+  message: Infer<TClient>;
 
   /**
    * Room ID to send the message to

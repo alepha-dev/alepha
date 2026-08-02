@@ -1,4 +1,4 @@
-import { $inject, $state, Alepha, AlephaError, type Async, z } from "alepha";
+import { $inject, $store, Alepha, AlephaError, type Async, z } from "alepha";
 import { $logger } from "alepha/logger";
 import type { SecureOptions } from "alepha/security";
 import {
@@ -57,7 +57,7 @@ export class LinkProvider {
   // Browser-only: batch collector for coalescing multiple calls
   protected batchCollector?: BatchCollector;
 
-  protected readonly options = $state(linkOptionsAtom);
+  protected readonly options = $store(linkOptionsAtom);
 
   /**
    * Get applicative links registered on the server.
@@ -380,7 +380,7 @@ export class LinkProvider {
       host: link.host,
       config,
       options,
-      action: action as any, // schema.body TAny is not accepted
+      action: action as any, // schema.body ZodAny is not accepted
     });
   }
 

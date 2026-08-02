@@ -1,5 +1,5 @@
-import { z } from "../providers/TypeProvider.ts";
 import type { ZType } from "../providers/ZodProvider.ts";
+import { z } from "../providers/ZodProvider.ts";
 
 /**
  * Convert a JSON Schema object into a zod schema (the inverse of

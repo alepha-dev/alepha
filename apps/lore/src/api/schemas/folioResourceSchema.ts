@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { folios } from "../entities/folios.ts";
 
 /**
@@ -78,7 +78,7 @@ export const folioResourceSchema = folios.schema.extend({
   metadata: folioMetadataSchema.optional(),
 });
 
-export type FolioLinks = Static<typeof folioLinksSchema>;
-export type FolioPath = Static<typeof folioPathSchema>;
-export type FolioMetadata = Static<typeof folioMetadataSchema>;
-export type FolioResource = Static<typeof folioResourceSchema>;
+export type FolioLinks = Infer<typeof folioLinksSchema>;
+export type FolioPath = Infer<typeof folioPathSchema>;
+export type FolioMetadata = Infer<typeof folioMetadataSchema>;
+export type FolioResource = Infer<typeof folioResourceSchema>;

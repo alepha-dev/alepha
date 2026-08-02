@@ -1,11 +1,11 @@
 import {
   $hook,
   $inject,
-  $state,
+  $store,
   Alepha,
   AlephaError,
-  type Static,
-  type TSchema,
+  type Infer,
+  type ZType,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import {
@@ -65,16 +65,16 @@ export interface PushOptions {
   organizationId?: string;
 }
 
-export interface PushManyItem<T extends TSchema = TSchema> {
-  payload: Static<T>;
+export interface PushManyItem<T extends ZType = ZType> {
+  payload: Infer<T>;
   key?: string;
   delay?: DurationLike;
   priority?: JobPriority;
   scheduledAt?: Date;
 }
 
-export interface JobTriggerContext<T extends TSchema = TSchema> {
-  payload?: Static<T>;
+export interface JobTriggerContext<T extends ZType = ZType> {
+  payload?: Infer<T>;
   triggeredBy?: string;
   triggeredByName?: string;
 }
@@ -139,7 +139,7 @@ export class JobProvider {
   protected readonly cronProvider = $inject(CronProvider);
   protected readonly lockProvider = $inject(LockProvider);
   protected readonly crypto = $inject(CryptoProvider);
-  protected readonly config = $state(jobConfig);
+  protected readonly config = $store(jobConfig);
 
   /**
    * Resolved at first use (after the container is fully wired) — picks
@@ -819,7 +819,7 @@ export class JobProvider {
     for (const item of items) {
       const validated = this.alepha.codec.validate(opts.schema!, item.payload);
       if (item.key) {
-        keyed.push({ ...item, payload: validated as Static<TSchema> });
+        keyed.push({ ...item, payload: validated as Infer<ZType> });
         continue;
       }
       const isDelayed = item.delay || item.scheduledAt;

@@ -2,10 +2,10 @@ import {
   $inject,
   type Async,
   createPrimitive,
+  type Infer,
   KIND,
   Primitive,
-  type Static,
-  type TObject,
+  type ZObject,
   z,
 } from "alepha";
 import type {
@@ -62,7 +62,7 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
  * }
  * ```
  */
-export const $prompt = <T extends TObject>(
+export const $prompt = <T extends ZObject>(
   options: PromptPrimitiveOptions<T>,
 ): PromptPrimitive<T> => {
   return createPrimitive(PromptPrimitive<T>, options);
@@ -70,7 +70,7 @@ export const $prompt = <T extends TObject>(
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface PromptPrimitiveOptions<T extends TObject> {
+export interface PromptPrimitiveOptions<T extends ZObject> {
   /**
    * The name of the prompt.
    *
@@ -122,7 +122,7 @@ export interface PromptPrimitiveOptions<T extends TObject> {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class PromptPrimitive<T extends TObject> extends Primitive<
+export class PromptPrimitive<T extends ZObject> extends Primitive<
   PromptPrimitiveOptions<T>
 > {
   protected readonly mcpServer = $inject(McpServerProvider);
@@ -156,7 +156,7 @@ export class PromptPrimitive<T extends TObject> extends Primitive<
     rawArgs: unknown,
     context?: McpContext,
   ): Promise<PromptMessage[]> {
-    let args = (rawArgs ?? {}) as Static<T>;
+    let args = (rawArgs ?? {}) as Infer<T>;
 
     if (this.options.args) {
       args = this.alepha.codec.decode(this.options.args, rawArgs ?? {});
@@ -186,7 +186,7 @@ export class PromptPrimitive<T extends TObject> extends Primitive<
   /**
    * Convert a Zod schema to an array of prompt arguments.
    */
-  protected schemaToArguments(schema: TObject): McpPromptArgument[] {
+  protected schemaToArguments(schema: ZObject): McpPromptArgument[] {
     const args: McpPromptArgument[] = [];
 
     for (const [name, propSchema] of Object.entries(schema.properties)) {

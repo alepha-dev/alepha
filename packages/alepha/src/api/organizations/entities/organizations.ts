@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
@@ -17,4 +17,4 @@ export const organizations = $entity({
   indexes: [{ columns: ["slug"], unique: true }],
 });
 
-export type OrganizationEntity = Static<typeof organizations.schema>;
+export type OrganizationEntity = Infer<typeof organizations.schema>;

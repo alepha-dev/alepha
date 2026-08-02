@@ -2,12 +2,12 @@ import {
   $inject,
   type Async,
   createPrimitive,
+  type Infer,
   KIND,
   type Middleware,
   OPTIONS,
   Primitive,
-  type Static,
-  type TSchema,
+  type ZType,
 } from "alepha";
 import { $cache } from "alepha/cache";
 import type { Head } from "alepha/react/head";
@@ -40,7 +40,7 @@ import { ReactPageService } from "../services/ReactPageService.ts";
  * - Automatic fallback handling during hydration
  *
  * **Performance Optimization**
- * - Static generation for pre-rendered pages at build time
+ * - Infer generation for pre-rendered pages at build time
  * - Server-side caching via the `$cache` middleware in `use: [...]`
  * - Code splitting through lazy component loading
  *
@@ -82,7 +82,7 @@ import { ReactPageService } from "../services/ReactPageService.ts";
  * });
  * ```
  *
- * @example Static generation with caching
+ * @example Infer generation with caching
  * ```typescript
  * const blogPost = $page({
  *   path: "/blog/:slug",
@@ -430,7 +430,7 @@ export interface PagePrimitiveOptions<
    *
    * Can be a static object or a function that receives resolved props.
    *
-   * @example Static head
+   * @example Infer head
    * ```ts
    * head: {
    *   title: "My Page",
@@ -595,8 +595,8 @@ export type ErrorHandler = (
 ) => ReactNode | Redirection | undefined;
 
 export interface PageConfigSchema {
-  query?: TSchema;
-  params?: TSchema;
+  query?: ZType;
+  params?: ZType;
 }
 
 export type TPropsDefault = any;
@@ -626,12 +626,12 @@ export interface PagePrimitiveRenderResult {
 export interface PageRequestConfig<
   TConfig extends PageConfigSchema = PageConfigSchema,
 > {
-  params: TConfig["params"] extends TSchema
-    ? Static<TConfig["params"]>
+  params: TConfig["params"] extends ZType
+    ? Infer<TConfig["params"]>
     : Record<string, string>;
 
-  query: TConfig["query"] extends TSchema
-    ? Static<TConfig["query"]>
+  query: TConfig["query"] extends ZType
+    ? Infer<TConfig["query"]>
     : Record<string, string>;
 }
 

@@ -1,4 +1,4 @@
-import { $inject, SchemaValidator, type TObject } from "alepha";
+import { $inject, SchemaValidator, type ZObject } from "alepha";
 import { getTableName, type SQL, sql } from "drizzle-orm";
 import type { PgSelectBase, PgTableWithColumns } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
@@ -20,7 +20,7 @@ export class PgRelationManager {
     // `defineRelations` (see follow-up spec) — minimal arity fix only.
     builder: PgSelectBase<any, any, any, any>,
     joins: Array<PgJoin>,
-    withRelations: PgRelationMap<TObject>,
+    withRelations: PgRelationMap<ZObject>,
     table: PgTableWithColumns<any>,
     parentKey?: string,
   ) {
@@ -65,7 +65,7 @@ export class PgRelationManager {
   public mapRowWithJoins(
     record: Record<string, unknown>,
     row: Record<string, unknown>,
-    schema: TObject,
+    schema: ZObject,
     joins: PgJoin[],
     parentKey?: string,
   ) {
@@ -104,11 +104,11 @@ export class PgRelationManager {
    * Build a schema that includes all join properties recursively
    */
   public buildSchemaWithJoins(
-    baseSchema: TObject,
+    baseSchema: ZObject,
     joins: PgJoin[],
     parentPath?: string,
-  ): TObject {
-    const schema = this.schemaValidator.clone(baseSchema) as TObject;
+  ): ZObject {
+    const schema = this.schemaValidator.clone(baseSchema) as ZObject;
 
     // Group joins by parent
     const joinsAtThisLevel = joins.filter((j) => j.parent === parentPath);

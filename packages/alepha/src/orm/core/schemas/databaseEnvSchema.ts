@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * Base database environment schema.
@@ -27,5 +27,5 @@ export const databaseEnvSchema = z.object({
 });
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof databaseEnvSchema>> {}
+  interface Env extends Partial<Infer<typeof databaseEnvSchema>> {}
 }

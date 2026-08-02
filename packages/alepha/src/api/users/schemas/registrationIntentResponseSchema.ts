@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const registrationIntentResponseSchema = z.object({
   intentId: z.uuid().describe("Unique identifier for the registration intent"),
@@ -20,6 +20,6 @@ export const registrationIntentResponseSchema = z.object({
   expiresAt: z.datetime().describe("When the registration intent expires"),
 });
 
-export type RegistrationIntentResponse = Static<
+export type RegistrationIntentResponse = Infer<
   typeof registrationIntentResponseSchema
 >;

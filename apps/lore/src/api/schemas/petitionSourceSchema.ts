@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * Provenance of an embedded petition submission.
@@ -45,4 +45,4 @@ export const petitionSourceSchema = z.object({
   consoleTail: z.array(z.string().max(2000)).max(50).optional(),
 });
 
-export type PetitionSource = Static<typeof petitionSourceSchema>;
+export type PetitionSource = Infer<typeof petitionSourceSchema>;

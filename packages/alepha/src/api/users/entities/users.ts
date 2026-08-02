@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db, sql } from "alepha/orm";
 
 export const DEFAULT_USER_REALM_NAME = "default";
@@ -48,4 +48,4 @@ export const users = $entity({
   ],
 });
 
-export type UserEntity = Static<typeof users.schema>;
+export type UserEntity = Infer<typeof users.schema>;

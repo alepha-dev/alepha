@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const adminApiKeyResourceSchema = z.object({
   id: z.uuid(),
@@ -16,4 +16,4 @@ export const adminApiKeyResourceSchema = z.object({
   usageCount: z.integer(),
 });
 
-export type AdminApiKeyResource = Static<typeof adminApiKeyResourceSchema>;
+export type AdminApiKeyResource = Infer<typeof adminApiKeyResourceSchema>;

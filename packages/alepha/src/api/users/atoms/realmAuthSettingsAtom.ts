@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * Tri-state field requirement for realm auth settings.
@@ -215,4 +215,4 @@ export const realmAuthSettingsAtom = $atom({
   serverOnly: true,
 });
 
-export type RealmAuthSettings = Static<typeof realmAuthSettingsAtom.schema>;
+export type RealmAuthSettings = Infer<typeof realmAuthSettingsAtom.schema>;

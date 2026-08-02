@@ -21,5 +21,5 @@ Creates a batch processing primitive for efficient grouping and processing of mu
 | `maxDuration` | `DurationLike` | No | Maximum time to wait before flushing a batch, even if it hasn't reached maxSize. |
 | `partitionBy` | `Object` | No | Function to determine partition keys for grouping items into separate batches. |
 | `concurrency` | `number` | No | Maximum number of batch handlers that can execute simultaneously. |
-| `retry` | `Omit&lt;RetryPrimitiveOptions&lt;() =&gt; Array&lt;Static&lt;TItem&gt;&gt;&gt;, "...` | No | Retry configuration for failed batch processing operations. |
+| `retry` | `Omit&lt;RetryPrimitiveOptions&lt;() =&gt; Array&lt;Infer&lt;TItem&gt;&gt;&gt;, "h...` | No | Retry configuration for failed batch processing operations. |
 

@@ -32,7 +32,7 @@ and providing a unified interface for the application.
 - [`$module`](/docs/reference-primitives-$module) — Wrap Services and Primitives into a Module.
 - [`$pipeline`](/docs/reference-primitives-$pipeline) — Creates a pipeline primitive that composes middleware with a handler.
 - [`$scope`](/docs/reference-primitives-$scope) — Middleware that wraps the handler in an ALS (AsyncLocalStorage) context.
-- [`$state`](/docs/reference-primitives-$state) — Subscribes to an atom's state and returns its current value for use in components.
+- [`$store`](/docs/reference-primitives-$store) — Reads a value out of the application store from a class property.
 
 ### Providers
 
@@ -40,3 +40,4 @@ and providing a unified interface for the application.
 - [`Json`](/docs/reference-providers-json) — Mimics the JSON global object with stringify and parse methods.
 - [`KeylessJsonSchemaCodec`](/docs/reference-providers-keylessjsonschemacodec) — KeylessJsonSchemaCodec provides schema-driven JSON encoding without keys.
 - [`SchemaValidator`](/docs/reference-providers-schemavalidator) — Validates + coerces a value against a zod schema.
+- [`TypeProvider`](/docs/reference-providers-typeprovider) — Static config knobs, still read by `I18nProvider` for validation-error

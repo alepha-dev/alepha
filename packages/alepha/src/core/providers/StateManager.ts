@@ -12,7 +12,7 @@ import { AlsProvider, type StateScope } from "./AlsProvider.ts";
 import { EventManager } from "./EventManager.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
 import { SchemaValidator } from "./SchemaValidator.ts";
-import type { Static, TObject } from "./TypeProvider.ts";
+import type { Infer, ZObject } from "./ZodProvider.ts";
 
 export interface AtomWithValue {
   atom: Atom;
@@ -389,7 +389,7 @@ export class StateManager<State extends object = AlephaState> {
   public get<T extends TAtomObject>(
     target: Atom<T>,
     scope?: StateScope,
-  ): Static<T>;
+  ): Infer<T>;
   public get<Key extends keyof State>(
     target: Key,
     scope?: StateScope,
@@ -512,7 +512,7 @@ export class StateManager<State extends object = AlephaState> {
    */
   public watch<T extends TAtomObject>(
     target: Atom<T>,
-    callback: (value: Static<T>, prevValue: Static<T> | undefined) => void,
+    callback: (value: Infer<T>, prevValue: Infer<T> | undefined) => void,
   ): () => void;
   public watch<R>(
     target: Computed<R>,
@@ -557,9 +557,9 @@ export class StateManager<State extends object = AlephaState> {
   /**
    * Mutate a value in the state.
    */
-  public mut<T extends TObject>(
+  public mut<T extends ZObject>(
     target: Atom<T>,
-    mutator: (current: Static<T>) => Static<T>,
+    mutator: (current: Infer<T>) => Infer<T>,
   ): this;
   public mut<Key extends keyof State>(
     target: Key,

@@ -1,4 +1,4 @@
-import type { Atom, Static, TAtomObject } from "alepha";
+import type { Atom, Infer, TAtomObject } from "alepha";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 import { useAlepha } from "./useAlepha.ts";
 
@@ -16,7 +16,7 @@ import { useAlepha } from "./useAlepha.ts";
  */
 function useSelector<T extends TAtomObject, R>(
   target: Atom<T>,
-  select: (state: Static<T>) => R,
+  select: (state: Infer<T>) => R,
   equality: (a: R, b: R) => boolean = Object.is,
 ): R {
   const alepha = useAlepha();

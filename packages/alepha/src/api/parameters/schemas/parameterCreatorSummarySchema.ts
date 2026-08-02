@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * Slim view of a parameter version's creator, embedded by the admin history
@@ -20,6 +20,6 @@ export const parameterCreatorSummarySchema = z.object({
   lastName: z.string().optional(),
 });
 
-export type ParameterCreatorSummary = Static<
+export type ParameterCreatorSummary = Infer<
   typeof parameterCreatorSummarySchema
 >;

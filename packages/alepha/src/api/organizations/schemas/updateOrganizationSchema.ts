@@ -1,6 +1,6 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { createOrganizationSchema } from "./createOrganizationSchema.ts";
 
 export const updateOrganizationSchema = createOrganizationSchema.partial();
 
-export type UpdateOrganization = Static<typeof updateOrganizationSchema>;
+export type UpdateOrganization = Infer<typeof updateOrganizationSchema>;

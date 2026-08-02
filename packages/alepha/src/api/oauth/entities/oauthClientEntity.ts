@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 /**
@@ -45,4 +45,4 @@ export const oauthClientEntity = $entity({
   indexes: [{ columns: ["clientId"], unique: true }],
 });
 
-export type OAuthClientEntity = Static<typeof oauthClientEntity.schema>;
+export type OAuthClientEntity = Infer<typeof oauthClientEntity.schema>;

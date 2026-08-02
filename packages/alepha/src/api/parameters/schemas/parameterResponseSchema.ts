@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { parameters } from "../entities/parameters.ts";
 import { parameterCreatorSummarySchema } from "./parameterCreatorSummarySchema.ts";
 import { parameterStatusSchema } from "./parameterStatusSchema.ts";
@@ -16,4 +16,4 @@ export const parameterResponseSchema = parameters.schema.extend({
   creator: parameterCreatorSummarySchema.optional(),
 });
 
-export type ParameterResponse = Static<typeof parameterResponseSchema>;
+export type ParameterResponse = Infer<typeof parameterResponseSchema>;

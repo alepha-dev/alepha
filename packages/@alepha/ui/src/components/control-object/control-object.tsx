@@ -8,7 +8,7 @@ import {
 } from "@alepha/ui/components/control/control";
 import { spanClass, widthFor } from "@alepha/ui/components/control-base/grid";
 import { Button } from "@alepha/ui/components/ui/button";
-import { type TObject, z } from "alepha";
+import { type ZObject, z } from "alepha";
 import {
   type BaseInputField,
   type ObjectInputField,
@@ -81,14 +81,14 @@ export function ControlObject(props: ControlObjectProps) {
 
   // The field schema may be wrapped (optional/nullable/default); peel to the
   // ZodObject so `.properties` (→ `.shape`) resolves.
-  const schema = z.schema.unwrap(props.input.schema) as TObject;
+  const schema = z.schema.unwrap(props.input.schema) as ZObject;
   if (!schema?.properties) return null;
 
   // ── Init / clear ────────────────────────────────────────────────
   const isInitialized = value != null && typeof value === "object";
 
   const fieldNames = Object.keys(schema.properties);
-  const nestedItems = (props.input as ObjectInputField<TObject>).items as
+  const nestedItems = (props.input as ObjectInputField<ZObject>).items as
     | Record<string, BaseInputField>
     | undefined;
 

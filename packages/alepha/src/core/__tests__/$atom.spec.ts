@@ -2,8 +2,8 @@ import { Alepha, type State } from "alepha";
 import { describe, expect, it } from "vitest";
 import { AlephaError } from "../errors/AlephaError.ts";
 import { $atom } from "../primitives/$atom.ts";
-import { $state } from "../primitives/$state.ts";
-import { z } from "../providers/TypeProvider.ts";
+import { $store } from "../primitives/$store.ts";
+import { z } from "../providers/ZodProvider.ts";
 
 describe("$atom", () => {
   const count = $atom({
@@ -17,7 +17,7 @@ describe("$atom", () => {
   });
 
   class App {
-    count = $state(count);
+    count = $store(count);
   }
 
   it("should be get/set with state manager", () => {

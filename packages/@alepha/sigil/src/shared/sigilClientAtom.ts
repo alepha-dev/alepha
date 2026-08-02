@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 import { SIGIL_TRACKERS } from "./sigilFeatures.ts";
 
 /**
@@ -33,4 +33,4 @@ export const sigilClientAtom = $atom({
   },
 });
 
-export type SigilClientConfig = Static<typeof sigilClientAtom.schema>;
+export type SigilClientConfig = Infer<typeof sigilClientAtom.schema>;

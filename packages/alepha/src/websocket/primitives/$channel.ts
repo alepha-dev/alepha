@@ -2,12 +2,12 @@ import {
   createPrimitive,
   KIND,
   Primitive,
-  type TObject,
-  type TString,
-  type TUnion,
+  type ZObject,
+  type ZodString,
+  type ZodUnion,
 } from "alepha";
 
-export type TWSObject = TObject | TUnion;
+export type TWSObject = ZObject | ZodUnion;
 
 /**
  * Channel primitive options
@@ -35,7 +35,7 @@ export interface ChannelPrimitiveOptions<
      * Default: z.text() (any string)
      * Can be enforced at application level: z.uuid(), z.text({ pattern: /^[a-f0-9\-]{36}$/ })
      */
-    roomId?: TString;
+    roomId?: ZodString;
 
     /**
      * Messages from server to client

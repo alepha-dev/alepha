@@ -1,4 +1,4 @@
-import { $context, $inject, AlephaError, type TObject } from "alepha";
+import { $context, $inject, AlephaError, type ZObject } from "alepha";
 import { RepositoryProvider } from "../providers/RepositoryProvider.ts";
 import { RelationalRepository } from "../services/RelationalRepository.ts";
 import type { Repository } from "../services/Repository.ts";
@@ -12,7 +12,7 @@ import type {
 /**
  * Get the repository for the given entity.
  */
-export function $repository<T extends TObject>(
+export function $repository<T extends ZObject>(
   entity: EntityPrimitive<T>,
 ): Repository<T>;
 
@@ -39,13 +39,13 @@ export function $repository<T extends TObject>(
  * ```
  */
 export function $repository<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  TKey extends keyof TSchema & string,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  TKey extends keyof ZType & string,
 >(
-  relations: RelationsPrimitive<TSchema, TMap>,
+  relations: RelationsPrimitive<ZType, TMap>,
   key: TKey,
-): RelationalRepository<TSchema, TMap, TKey>;
+): RelationalRepository<ZType, TMap, TKey>;
 
 export function $repository(
   entityOrRelations: any,

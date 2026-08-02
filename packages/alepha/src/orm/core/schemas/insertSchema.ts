@@ -1,4 +1,4 @@
-import type { TObject, TOptional, TSchema } from "alepha";
+import type { ZObject, ZodOptional, ZType } from "alepha";
 import { z } from "alepha";
 import {
   PG_DEFAULT,
@@ -7,7 +7,7 @@ import {
 } from "../constants/PG_SYMBOLS.ts";
 
 /**
- * Transforms a TObject schema for insert operations.
+ * Transforms a ZObject schema for insert operations.
  * All default properties at the root level are made optional.
  * Generated columns are excluded entirely.
  *
@@ -15,17 +15,17 @@ import {
  * Before: { name: string; age: number(default=0); fullName: generated }
  * After:  { name: string; age?: number; }
  */
-export type TObjectInsert<T extends TObject> = TObject<{
+export type TObjectInsert<T extends ZObject> = ZObject<{
   [K in keyof T["shape"] as T["shape"][K] extends { [PG_GENERATED]: any }
     ? never
     : K]: T["shape"][K] extends
     | { [PG_DEFAULT]: any }
     | { [PG_ORGANIZATION]: any }
-    ? TOptional<Extract<T["shape"][K], TSchema>>
+    ? ZodOptional<Extract<T["shape"][K], ZType>>
     : T["shape"][K];
 }>;
 
-export const insertSchema = <T extends TObject>(obj: T): TObjectInsert<T> => {
+export const insertSchema = <T extends ZObject>(obj: T): TObjectInsert<T> => {
   const newProperties: Record<string, any> = {};
 
   for (const key in obj.shape) {

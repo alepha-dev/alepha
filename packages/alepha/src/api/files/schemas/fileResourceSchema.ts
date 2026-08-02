@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { files } from "../entities/files.ts";
 import { fileCreatorSummarySchema } from "./fileCreatorSummarySchema.ts";
 
@@ -17,4 +17,4 @@ export const fileResourceSchema = files.schema
     description: "A file resource representing a file stored in the system.",
   });
 
-export type FileResource = Static<typeof fileResourceSchema>;
+export type FileResource = Infer<typeof fileResourceSchema>;

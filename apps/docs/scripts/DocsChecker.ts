@@ -83,7 +83,7 @@ export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
   // --- stale in the docs during the 2026-07 pre-v1 audit                 ---
   {
     pattern: "\\$use",
-    reason: "`$use` was renamed — the atom-injection primitive is `$state`",
+    reason: "`$use` was renamed — the atom-injection primitive is `$store`",
   },
   {
     pattern: "\\$transaction",

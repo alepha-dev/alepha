@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha, type Static, type TSchema, z } from "alepha";
+import { $hook, $inject, Alepha, type Infer, type ZType, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { describe, expect, test, vi } from "vitest";
 import {
@@ -30,10 +30,10 @@ class TestWorkerProvider extends WorkerProvider {
  * Replaces the `$queue` / `$consumer` primitives these tests used to declare —
  * queues are now registered imperatively against `WorkerProvider`.
  */
-const consumerService = <T extends TSchema>(
+const consumerService = <T extends ZType>(
   name: string,
   schema: T,
-  handler: (message: { payload: Static<T> }) => Promise<void>,
+  handler: (message: { payload: Infer<T> }) => Promise<void>,
 ) =>
   class TestConsumerService {
     protected readonly queueProvider = $inject(QueueProvider);
@@ -94,10 +94,10 @@ describe("WorkerProvider", () => {
     const provider = app.inject(QueueProvider);
     const codec = app.inject(QueueCodec);
     const worker = app.inject(WorkerProvider);
-    return async <T extends TSchema>(
+    return async <T extends ZType>(
       queue: string,
       schema: T,
-      payload: Static<T>,
+      payload: Infer<T>,
     ) => {
       await provider.push(queue, codec.encode(schema, payload));
       worker.wakeUp();

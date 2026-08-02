@@ -1,16 +1,14 @@
 import {
   AlephaError,
+  type Infer,
+  type NumberOptions,
   pageSchema,
-  type Static,
-  type TBigInt,
-  type TInteger,
-  type TNumber,
-  type TNumberOptions,
-  type TObject,
+  type StringOptions,
   type TPage,
-  type TSchema,
-  type TString,
-  type TStringOptions,
+  type ZObject,
+  type ZodNumber,
+  type ZodString,
+  type ZType,
   z,
 } from "alepha";
 import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
@@ -65,31 +63,31 @@ export class DatabaseTypeProvider {
    * - `z.bigint()` -> PG BIGINT
    * - `z.uuid()` -> PG UUID
    */
-  public primaryKey(): PgAttr<PgAttr<TInteger, PgPrimaryKey>, PgDefault>;
+  public primaryKey(): PgAttr<PgAttr<ZodNumber, PgPrimaryKey>, PgDefault>;
   public primaryKey(
-    type: TString,
-    options?: TStringOptions,
-  ): PgAttr<PgAttr<TString, PgPrimaryKey>, PgDefault>;
+    type: ZodString,
+    options?: StringOptions,
+  ): PgAttr<PgAttr<ZodString, PgPrimaryKey>, PgDefault>;
   public primaryKey(
-    type: TInteger,
-    options?: TNumberOptions,
+    type: ZodNumber,
+    options?: NumberOptions,
     identity?: PgIdentityOptions,
-  ): PgAttr<PgAttr<TInteger, PgPrimaryKey>, PgDefault>;
+  ): PgAttr<PgAttr<ZodNumber, PgPrimaryKey>, PgDefault>;
   public primaryKey(
-    type: TNumber,
-    options?: TNumberOptions,
+    type: ZodNumber,
+    options?: NumberOptions,
     identity?: PgIdentityOptions,
-  ): PgAttr<PgAttr<TNumber, PgPrimaryKey>, PgDefault>;
+  ): PgAttr<PgAttr<ZodNumber, PgPrimaryKey>, PgDefault>;
   public primaryKey(
-    type: TBigInt,
-    options?: TNumberOptions,
+    type: ZodString,
+    options?: NumberOptions,
     identity?: PgIdentityOptions,
-  ): PgAttr<PgAttr<TBigInt, PgPrimaryKey>, PgDefault>;
+  ): PgAttr<PgAttr<ZodString, PgPrimaryKey>, PgDefault>;
   public primaryKey(
-    type?: TSchema,
-    _options?: TNumberOptions | TStringOptions,
+    type?: ZType,
+    _options?: NumberOptions | StringOptions,
     identity?: PgIdentityOptions,
-  ): PgAttr<PgAttr<TSchema, PgPrimaryKey>, PgDefault> {
+  ): PgAttr<PgAttr<ZType, PgPrimaryKey>, PgDefault> {
     if (!type || z.schema.isInteger(type)) {
       return pgAttr(
         pgAttr(pgAttr(z.integer(), PG_PRIMARY_KEY), PG_IDENTITY, identity),
@@ -126,7 +124,7 @@ export class DatabaseTypeProvider {
     // validation and hand the driver a NULL primary key.
     //
     // The cast is the honest part of a type-level gap: `z.uuid()` and
-    // `z.text()` are both `ZodString`, so the single `TString` overload above
+    // `z.text()` are both `ZodString`, so the single `ZodString` overload above
     // cannot distinguish them and still promises `PgDefault` (right for the
     // 26 uuid PKs in tree, wrong here). A slug PK that omits its id therefore
     // still compiles; it now fails validation instead of reaching the driver.
@@ -134,7 +132,7 @@ export class DatabaseTypeProvider {
     // (Alepha campaign), under "deliberate non-fixes".
     if (z.schema.isString(type)) {
       return pgAttr(type, PG_PRIMARY_KEY) as PgAttr<
-        PgAttr<TSchema, PgPrimaryKey>,
+        PgAttr<ZType, PgPrimaryKey>,
         PgDefault
       >;
     }
@@ -146,9 +144,9 @@ export class DatabaseTypeProvider {
    * Wrap a schema with "default" attribute.
    * This is used to set a default value for a column in the database.
    */
-  public readonly default = <T extends TSchema>(
+  public readonly default = <T extends ZType>(
     type: T,
-    value?: Static<T>,
+    value?: Infer<T>,
   ): PgAttr<T, PgDefault> => {
     if (value != null) {
       Object.assign(type, { default: value });
@@ -224,7 +222,7 @@ export class DatabaseTypeProvider {
   /**
    * Creates a reference to another table or schema. Basically a foreign key.
    */
-  public readonly ref = <T extends TSchema>(
+  public readonly ref = <T extends ZType>(
     type: T,
     ref: () => any,
     actions?: {
@@ -249,7 +247,7 @@ export class DatabaseTypeProvider {
    * Creates a page schema for a given object schema.
    * It's used by {@link Repository#paginate} method.
    */
-  public readonly page = <T extends TObject>(resource: T): TPage<T> => {
+  public readonly page = <T extends ZObject>(resource: T): TPage<T> => {
     return pageSchema(resource);
   };
 }

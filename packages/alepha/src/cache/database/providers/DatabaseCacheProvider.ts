@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $state, Alepha, type Static, z } from "alepha";
+import { $atom, $hook, $inject, $store, Alepha, type Infer, z } from "alepha";
 import { CacheProvider } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -36,7 +36,7 @@ export const databaseCacheOptions = $atom({
   serverOnly: true,
 });
 
-export type DatabaseCacheOptions = Static<typeof databaseCacheOptions.schema>;
+export type DatabaseCacheOptions = Infer<typeof databaseCacheOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -80,7 +80,7 @@ export class DatabaseCacheProvider extends CacheProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly repository = $repository(cacheEntries);
-  protected readonly options = $state(databaseCacheOptions);
+  protected readonly options = $store(databaseCacheOptions);
 
   /**
    * Total writes performed since startup. Useful for tests and metrics.

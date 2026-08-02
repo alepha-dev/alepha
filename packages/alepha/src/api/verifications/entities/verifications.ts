@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { verificationTypeEnumSchema } from "../schemas/verificationTypeEnumSchema.ts";
@@ -54,4 +54,4 @@ export const verifications = $entity({
 
 export const verificationEntitySchema = verifications.schema;
 export const verificationEntityInsertSchema = verifications.insertSchema;
-export type VerificationEntity = Static<typeof verifications.schema>;
+export type VerificationEntity = Infer<typeof verifications.schema>;

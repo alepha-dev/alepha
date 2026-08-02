@@ -1,28 +1,25 @@
 import { $inject } from "../primitives/$inject.ts";
 import { Json } from "./Json.ts";
 import { SchemaCodec } from "./SchemaCodec.ts";
-import type { Static, TSchema } from "./TypeProvider.ts";
+import type { Infer, ZType } from "./ZodProvider.ts";
 
 export class JsonSchemaCodec extends SchemaCodec {
   protected readonly json = $inject(Json);
   protected readonly encoder = new TextEncoder();
   protected readonly decoder = new TextDecoder();
 
-  public encodeToString<T extends TSchema>(
-    schema: T,
-    value: Static<T>,
-  ): string {
+  public encodeToString<T extends ZType>(schema: T, value: Infer<T>): string {
     return this.json.stringify(value);
   }
 
-  public encodeToBinary<T extends TSchema>(
+  public encodeToBinary<T extends ZType>(
     schema: T,
-    value: Static<T>,
+    value: Infer<T>,
   ): Uint8Array {
     return this.encoder.encode(this.encodeToString(schema, value));
   }
 
-  public decode<T>(schema: TSchema, value: unknown): T {
+  public decode<T>(schema: ZType, value: unknown): T {
     if (value instanceof Uint8Array) {
       const text = this.decoder.decode(value);
       return this.json.parse(text);

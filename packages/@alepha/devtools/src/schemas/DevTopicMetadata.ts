@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const devTopicMetadataSchema = z.object({
   name: z.text(),
@@ -8,4 +8,4 @@ export const devTopicMetadataSchema = z.object({
   subscribers: z.integer(),
 });
 
-export type DevTopicMetadata = Static<typeof devTopicMetadataSchema>;
+export type DevTopicMetadata = Infer<typeof devTopicMetadataSchema>;

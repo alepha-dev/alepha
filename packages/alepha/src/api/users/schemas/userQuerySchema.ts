@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 import { pageQuerySchema } from "alepha/orm";
 
@@ -16,4 +16,4 @@ export const userQuerySchema = pageQuerySchema.extend({
   roles: z.array(z.string()).optional(),
 });
 
-export type UserQuery = Static<typeof userQuerySchema>;
+export type UserQuery = Infer<typeof userQuerySchema>;

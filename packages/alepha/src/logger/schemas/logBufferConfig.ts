@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 export const logBufferConfig = $atom({
   name: "alepha.logger.buffer",
@@ -16,4 +16,4 @@ export const logBufferConfig = $atom({
   },
 });
 
-export type LogBufferConfig = Static<typeof logBufferConfig.schema>;
+export type LogBufferConfig = Infer<typeof logBufferConfig.schema>;

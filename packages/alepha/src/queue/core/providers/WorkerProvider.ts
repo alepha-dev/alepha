@@ -2,10 +2,10 @@ import {
   $atom,
   $hook,
   $inject,
-  $state,
+  $store,
   Alepha,
-  type Static,
-  type TSchema,
+  type Infer,
+  type ZType,
   z,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -48,7 +48,7 @@ export const queueWorkerOptions = $atom({
   serverOnly: true,
 });
 
-export type QueueWorkerOptions = Static<typeof queueWorkerOptions.schema>;
+export type QueueWorkerOptions = Infer<typeof queueWorkerOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -60,7 +60,7 @@ declare module "alepha" {
 
 export class WorkerProvider {
   protected readonly log = $logger();
-  protected readonly options = $state(queueWorkerOptions);
+  protected readonly options = $store(queueWorkerOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly queueProvider = $inject(QueueProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
@@ -288,7 +288,7 @@ export class WorkerProvider {
  * discovered from a primitive — queues are an internal transport under
  * `$job`, not something applications declare.
  */
-export interface QueueConsumer<T extends TSchema = TSchema> {
+export interface QueueConsumer<T extends ZType = ZType> {
   /**
    * Logical queue name, used as the backend key.
    */
@@ -308,7 +308,7 @@ export interface QueueConsumer<T extends TSchema = TSchema> {
    * Invoked once per message. A throw loses the message on polling backends;
    * see {@link WorkerProvider.processMessage}.
    */
-  handler: (message: { payload: Static<T> }) => Promise<void>;
+  handler: (message: { payload: Infer<T> }) => Promise<void>;
 }
 
 export interface NextMessage {

@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 import { pageQuerySchema } from "alepha/orm";
 
@@ -12,4 +12,4 @@ export const fileQuerySchema = pageQuerySchema.extend({
   createdBefore: z.datetime().optional(),
 });
 
-export type FileQuery = Static<typeof fileQuerySchema>;
+export type FileQuery = Infer<typeof fileQuerySchema>;

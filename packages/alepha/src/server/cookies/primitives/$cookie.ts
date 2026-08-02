@@ -1,10 +1,10 @@
 import {
   $inject,
   createPrimitive,
+  type Infer,
   KIND,
   Primitive,
-  type Static,
-  type TSchema,
+  type ZType,
 } from "alepha";
 import type { DurationLike } from "alepha/datetime";
 import { ServerCookiesProvider } from "../providers/ServerCookiesProvider.ts";
@@ -14,7 +14,7 @@ import { ServerCookiesProvider } from "../providers/ServerCookiesProvider.ts";
  * This primitive provides methods to get, set, and delete the cookie
  * within the server request/response cycle.
  */
-export const $cookie = <T extends TSchema>(
+export const $cookie = <T extends ZType>(
   options: CookiePrimitiveOptions<T>,
   extendedOptions?: Omit<CookiePrimitiveOptions<T>, "schema">,
 ): AbstractCookiePrimitive<T> => {
@@ -30,7 +30,7 @@ export const $cookie = <T extends TSchema>(
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface CookiePrimitiveOptions<T extends TSchema> {
+export interface CookiePrimitiveOptions<T extends ZType> {
   /**
    * The schema for the cookie's value, used for validation and type safety.
    */
@@ -110,18 +110,18 @@ export interface CookiePrimitiveOptions<T extends TSchema> {
   prefix?: boolean;
 }
 
-export interface AbstractCookiePrimitive<T extends TSchema> {
+export interface AbstractCookiePrimitive<T extends ZType> {
   readonly name: string;
   readonly options: CookiePrimitiveOptions<T>;
   set(
-    value: Static<T>,
+    value: Infer<T>,
     options?: { cookies?: Cookies; ttl?: DurationLike },
   ): void;
-  get(options?: { cookies?: Cookies }): Static<T> | undefined;
+  get(options?: { cookies?: Cookies }): Infer<T> | undefined;
   del(options?: { cookies?: Cookies }): void;
 }
 
-export class CookiePrimitive<T extends TSchema>
+export class CookiePrimitive<T extends ZType>
   extends Primitive<CookiePrimitiveOptions<T>>
   implements AbstractCookiePrimitive<T>
 {
@@ -159,7 +159,7 @@ export class CookiePrimitive<T extends TSchema>
    * Sets the cookie with the given value in the current request's response.
    */
   public set(
-    value: Static<T>,
+    value: Infer<T>,
     options?: { cookies?: Cookies; ttl?: DurationLike },
   ): void {
     this.serverCookiesProvider.setCookie(
@@ -176,7 +176,7 @@ export class CookiePrimitive<T extends TSchema>
   /**
    * Gets the cookie value from the current request. Returns undefined if not found or invalid.
    */
-  public get(options?: { cookies?: Cookies }): Static<T> | undefined {
+  public get(options?: { cookies?: Cookies }): Infer<T> | undefined {
     return this.serverCookiesProvider.getCookie(
       this.name,
       this.options,

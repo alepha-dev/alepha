@@ -1,4 +1,4 @@
-import { $atom, $inject, $module, $state, Alepha, z } from "alepha";
+import { $atom, $inject, $module, $store, Alepha, z } from "alepha";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { AlephaServerCookies } from "../index.ts";
@@ -17,7 +17,7 @@ class CookieAtomApp {
    * Registers the atom at configure time so the adapter tracks it before
    * the first request.
    */
-  settings = $state(settingsAtom);
+  settings = $store(settingsAtom);
 
   read = $action({
     schema: {
@@ -194,7 +194,7 @@ describe("cookie-name symmetry with APP_NAME set", () => {
   class AppNameCookieAtomApp {
     protected readonly alepha = $inject(Alepha);
 
-    settings = $state(appNameSettingsAtom);
+    settings = $store(appNameSettingsAtom);
 
     read = $action({
       schema: {

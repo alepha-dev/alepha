@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
-import type { TSchema } from "alepha";
-import { $atom, $hook, $inject, $state, Alepha, type Static, z } from "alepha";
+import type { ZType } from "alepha";
+import { $atom, $hook, $inject, $store, Alepha, type Infer, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpError } from "../errors/HttpError.ts";
 
@@ -30,7 +30,7 @@ export const bodyParserOptions = $atom({
   serverOnly: true,
 });
 
-export type BodyParserOptions = Static<typeof bodyParserOptions.schema>;
+export type BodyParserOptions = Infer<typeof bodyParserOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -43,7 +43,7 @@ declare module "alepha" {
 export class ServerBodyParserProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly options = $state(bodyParserOptions);
+  protected readonly options = $store(bodyParserOptions);
 
   public readonly onRequest = $hook({
     on: "server:onRequest",
@@ -150,7 +150,7 @@ export class ServerBodyParserProvider {
   public async parse(
     stream: ReadableStream,
     headers: Record<string, string>,
-    schema: TSchema,
+    schema: ZType,
   ): Promise<object | string | undefined> {
     const contentType = headers["content-type"];
     const contentEncoding = headers["content-encoding"];

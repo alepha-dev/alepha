@@ -1,4 +1,4 @@
-import { $inject, $state, AlephaError } from "alepha";
+import { $inject, $store, AlephaError } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import { appEntryOptions } from "../atoms/appEntryOptions.ts";
 
@@ -9,7 +9,7 @@ import { appEntryOptions } from "../atoms/appEntryOptions.ts";
  */
 export class AppEntryProvider {
   protected readonly fs = $inject(FileSystemProvider);
-  protected readonly options = $state(appEntryOptions);
+  protected readonly options = $store(appEntryOptions);
 
   protected readonly serverEntries = [
     "main.server.ts",

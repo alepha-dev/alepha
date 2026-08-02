@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Alepha } from "../Alepha.ts";
 import { $atom } from "../primitives/$atom.ts";
-import { z } from "../providers/TypeProvider.ts";
+import { z } from "../providers/ZodProvider.ts";
 
 const schema = z.object({ theme: z.string() });
 

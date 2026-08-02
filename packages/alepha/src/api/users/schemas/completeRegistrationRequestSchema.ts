@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const completeRegistrationRequestSchema = z.object({
   intentId: z
@@ -18,6 +18,6 @@ export const completeRegistrationRequestSchema = z.object({
     .optional(),
 });
 
-export type CompleteRegistrationRequest = Static<
+export type CompleteRegistrationRequest = Infer<
   typeof completeRegistrationRequestSchema
 >;

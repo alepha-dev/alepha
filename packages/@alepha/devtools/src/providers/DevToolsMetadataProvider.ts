@@ -1,4 +1,4 @@
-import { $inject, Alepha, type TObject, type TSchema, z } from "alepha";
+import { $inject, Alepha, type ZObject, type ZType, z } from "alepha";
 import { $storage } from "alepha/api/files";
 import { JobProvider } from "alepha/api/jobs";
 import { $cache } from "alepha/cache";
@@ -355,7 +355,7 @@ export class DevToolsMetadataProvider {
 
       return repositories.map((repo) => {
         const entity = repo.entity;
-        const schema = entity.schema as TObject;
+        const schema = entity.schema as ZObject;
         const options = entity.options;
 
         // Resolved once per entity: the JSON Schema is the reliable source for
@@ -368,7 +368,7 @@ export class DevToolsMetadataProvider {
         const columns: DevEntityColumn[] = Object.entries(
           schema.properties,
         ).map(([name, field]) => {
-          const fieldSchema = field as TSchema & Record<symbol, any>;
+          const fieldSchema = field as ZType & Record<symbol, any>;
           const refData = fieldSchema[PG_REF];
           const jsonProp = jsonProperties[name];
 
@@ -516,10 +516,10 @@ export class DevToolsMetadataProvider {
     return Array.isArray(union) && union.some((p: any) => p?.type === "null");
   }
 
-  protected getColumnType(field: TSchema): string {
+  protected getColumnType(field: ZType): string {
     // Handle optional/nullable wrappers (unions with null)
     if (z.schema.isUnion(field) && (field as any).anyOf) {
-      const types = (field as any).anyOf as TSchema[];
+      const types = (field as any).anyOf as ZType[];
       const nonNull = types.find((type) => !z.schema.isNull(type));
       if (nonNull) {
         return this.getColumnType(nonNull);
@@ -556,9 +556,9 @@ export class DevToolsMetadataProvider {
     return "unknown";
   }
 
-  protected isNullable(field: TSchema): boolean {
+  protected isNullable(field: ZType): boolean {
     if (z.schema.isUnion(field) && (field as any).anyOf) {
-      const types = (field as any).anyOf as TSchema[];
+      const types = (field as any).anyOf as ZType[];
       return types.some((type) => z.schema.isNull(type));
     }
     return false;

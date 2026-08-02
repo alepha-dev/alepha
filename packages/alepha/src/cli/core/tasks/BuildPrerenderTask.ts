@@ -64,7 +64,7 @@ export class BuildPrerenderTask extends BuildTask {
   }
 
   /**
-   * Static route primitives to snapshot: `$route({ static: true })` and every
+   * Infer route primitives to snapshot: `$route({ static: true })` and every
    * `$sitemap`. Both expose an async `prerender(): { path, body }`.
    */
   protected getStaticRoutePrimitives(ctx: BuildTaskContext): any[] {

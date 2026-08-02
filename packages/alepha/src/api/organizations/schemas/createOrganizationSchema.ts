@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const createOrganizationSchema = z.object({
@@ -7,4 +7,4 @@ export const createOrganizationSchema = z.object({
   enabled: z.boolean().optional(),
 });
 
-export type CreateOrganization = Static<typeof createOrganizationSchema>;
+export type CreateOrganization = Infer<typeof createOrganizationSchema>;

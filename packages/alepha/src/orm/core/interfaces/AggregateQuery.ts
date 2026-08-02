@@ -1,4 +1,4 @@
-import type { Static, TObject } from "alepha";
+import type { Infer, ZObject } from "alepha";
 import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
 
 export type AggregateOp = "count" | "sum" | "avg" | "min" | "max";
@@ -10,8 +10,8 @@ export type AggregateOp = "count" | "sum" | "avg" | "min" | "max";
  */
 export type AggregateColumnSelect = true | Partial<Record<AggregateOp, true>>;
 
-export type AggregateSelect<T extends TObject> = {
-  [K in keyof Static<T>]?: AggregateColumnSelect;
+export type AggregateSelect<T extends ZObject> = {
+  [K in keyof Infer<T>]?: AggregateColumnSelect;
 };
 
 /**
@@ -30,9 +30,9 @@ export type AggregateColumnResult<TValue, TSelect> = TSelect extends true
 /**
  * Result type for an aggregate query.
  */
-export type AggregateResult<T extends TObject, S extends AggregateSelect<T>> = {
-  [K in keyof S & keyof Static<T>]: AggregateColumnResult<
-    Static<T>[K],
+export type AggregateResult<T extends ZObject, S extends AggregateSelect<T>> = {
+  [K in keyof S & keyof Infer<T>]: AggregateColumnResult<
+    Infer<T>[K],
     NonNullable<S[K]>
   >;
 };
@@ -41,8 +41,8 @@ export type AggregateResult<T extends TObject, S extends AggregateSelect<T>> = {
  * HAVING clause for aggregate queries.
  * Only applies to columns with aggregate operations (not `true`).
  */
-export type AggregateHaving<T extends TObject, S extends AggregateSelect<T>> = {
-  [K in keyof S & keyof Static<T>]?: S[K] extends true
+export type AggregateHaving<T extends ZObject, S extends AggregateSelect<T>> = {
+  [K in keyof S & keyof Infer<T>]?: S[K] extends true
     ? never
     : {
         [Op in AggregateOp as S[K] extends Record<Op, true> ? Op : never]?: {
@@ -60,7 +60,7 @@ export type AggregateHaving<T extends TObject, S extends AggregateSelect<T>> = {
  * Full aggregate query definition.
  */
 export interface AggregateQuery<
-  T extends TObject,
+  T extends ZObject,
   S extends AggregateSelect<T>,
 > {
   /**
@@ -76,7 +76,7 @@ export interface AggregateQuery<
   /**
    * Columns to group by.
    */
-  groupBy?: (keyof Static<T>)[];
+  groupBy?: (keyof Infer<T>)[];
 
   /**
    * HAVING clause to filter groups after aggregation.

@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const errorSchema = z
   .object({
@@ -28,4 +28,4 @@ export const errorSchema = z
   .meta({ title: "HttpError" })
   .describe("Generic response after a failed operation");
 
-export type ErrorSchema = Static<typeof errorSchema>;
+export type ErrorSchema = Infer<typeof errorSchema>;

@@ -1,10 +1,10 @@
 import {
   createPrimitive,
+  type Infer,
   KIND,
   Primitive,
   type Service,
-  type Static,
-  type TSchema,
+  type ZType,
 } from "alepha";
 import type { DurationLike } from "alepha/datetime";
 import { MemoryTopicProvider } from "../providers/MemoryTopicProvider.ts";
@@ -264,8 +264,8 @@ export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
   }
 
   public async publish(
-    message: T extends { params: TSchema }
-      ? { params: Static<T["params"]>; payload: TopicMessage<T>["payload"] }
+    message: T extends { params: ZType }
+      ? { params: Infer<T["params"]>; payload: TopicMessage<T>["payload"] }
       : TopicMessage<T>["payload"],
   ): Promise<void> {
     const hasParams = this.options.schema.params;
@@ -327,18 +327,18 @@ $topic[KIND] = TopicPrimitive;
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface TopicMessage<T extends TopicMessageSchema> {
-  payload: Static<T["payload"]>;
-  params: T extends { params: TSchema } ? Static<T["params"]> : never;
+  payload: Infer<T["payload"]>;
+  params: T extends { params: ZType } ? Infer<T["params"]> : never;
 }
 
 export interface TopicWaitOptions<T extends TopicMessageSchema> {
   timeout?: DurationLike;
-  filter?: (message: { payload: Static<T["payload"]> }) => boolean;
+  filter?: (message: { payload: Infer<T["payload"]> }) => boolean;
 }
 
 export interface TopicMessageSchema {
-  payload: TSchema;
-  params?: TSchema;
+  payload: ZType;
+  params?: ZType;
 }
 
 export type TopicHandler<T extends TopicMessageSchema = TopicMessageSchema> = (

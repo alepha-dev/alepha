@@ -8,7 +8,7 @@ import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -20,7 +20,7 @@ const auditFiltersSchema = z.object({
   status: z.string().optional(),
   action: z.string().optional(),
 });
-type AuditFilters = Static<typeof auditFiltersSchema>;
+type AuditFilters = Infer<typeof auditFiltersSchema>;
 
 export function AdminAudits() {
   const client = useClient<AdminAuditController>();

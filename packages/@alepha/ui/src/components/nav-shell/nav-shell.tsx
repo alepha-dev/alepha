@@ -20,7 +20,7 @@ export interface NavShellProps
    */
   root: string;
   /**
-   * Static nav groups appended after the route-derived ones, for entries that
+   * Infer nav groups appended after the route-derived ones, for entries that
    * don't map to routes (external links, grouped sub-menus). Their `active`
    * state is computed from the current path (matching `href`), so callers only
    * supply structure. Most shells won't need this.

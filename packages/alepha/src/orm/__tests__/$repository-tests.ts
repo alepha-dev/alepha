@@ -1,4 +1,4 @@
-import { $hook, type Alepha, type Static, z } from "alepha";
+import { $hook, type Alepha, type Infer, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { expect } from "vitest";
 import { DbEntityNotFoundError } from "../core/errors/DbEntityNotFoundError.ts";
@@ -46,7 +46,7 @@ export const testAllTypes = async (alepha: Alepha) => {
   const app = alepha.inject(PgAttrApp);
   await alepha.start();
 
-  const data: Static<typeof bigEntity.insertSchema> = {
+  const data: Infer<typeof bigEntity.insertSchema> = {
     type: "big_entity",
     a: "a",
     b: 1.111,

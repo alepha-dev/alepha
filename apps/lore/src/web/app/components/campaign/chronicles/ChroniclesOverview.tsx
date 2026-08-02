@@ -4,7 +4,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/components/ui/chart";
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { useI18n } from "alepha/react/i18n";
 import {
   Area,
@@ -20,7 +20,7 @@ import type { I18n } from "../../../services/I18n.ts";
 import ChroniclesKpiRow, { type ChroniclesKpi } from "./ChroniclesKpiRow.tsx";
 import ChroniclesSection from "./ChroniclesSection.tsx";
 
-type ChroniclesOverview = Static<typeof chroniclesOverviewSchema>;
+type ChroniclesOverview = Infer<typeof chroniclesOverviewSchema>;
 
 export interface ChroniclesOverviewProps {
   overview: ChroniclesOverview;

@@ -1,4 +1,4 @@
-import { $inject, Alepha, AlephaError, type TObject } from "alepha";
+import { $inject, Alepha, AlephaError, type ZObject } from "alepha";
 import {
   and,
   arrayContained,
@@ -43,9 +43,9 @@ export class QueryManager {
    * Convert a query object to a SQL query.
    */
   public toSQL(
-    query: PgQueryWhereOrSQL<TObject>,
+    query: PgQueryWhereOrSQL<ZObject>,
     options: {
-      schema: TObject;
+      schema: ZObject;
       col: (key: string) => PgColumn;
       joins?: PgJoin[];
       dialect: "postgresql" | "sqlite";
@@ -58,7 +58,7 @@ export class QueryManager {
       conditions.push(query as SQL);
     } else {
       const keys = Object.keys(query) as Array<
-        keyof PgQueryWhere<TObject> & string
+        keyof PgQueryWhere<ZObject> & string
       >;
 
       for (const key of keys) {
@@ -139,7 +139,7 @@ export class QueryManager {
               if (isSQLWrapper(it)) {
                 return it as SQL;
               }
-              return this.toSQL(it as PgQueryWhere<TObject>, {
+              return this.toSQL(it as PgQueryWhere<ZObject>, {
                 schema,
                 col,
                 joins, // Pass joins through recursively
@@ -160,7 +160,7 @@ export class QueryManager {
         }
 
         if (key === "not") {
-          const where = this.toSQL(operator as PgQueryWhereOrSQL<TObject>, {
+          const where = this.toSQL(operator as PgQueryWhereOrSQL<ZObject>, {
             schema,
             col,
             joins, // Pass joins through recursively
@@ -291,7 +291,7 @@ export class QueryManager {
   public mapOperatorToSql(
     operator: FilterOperators<any> | any,
     column: PgColumn,
-    columnSchema?: TObject,
+    columnSchema?: ZObject,
     columnName?: string,
     dialect: "postgresql" | "sqlite" = "postgresql",
   ): SQL | undefined {
@@ -665,7 +665,7 @@ export class QueryManager {
 
 export interface PgJoin {
   table: string;
-  schema: TObject;
+  schema: ZObject;
   key: string;
   col: (key: string) => PgColumn;
   parent?: string;

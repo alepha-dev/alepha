@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const devPageMetadataSchema = z.object({
   name: z.text(),
@@ -21,4 +21,4 @@ export const devPageMetadataSchema = z.object({
   animation: z.any().optional(),
 });
 
-export type DevPageMetadata = Static<typeof devPageMetadataSchema>;
+export type DevPageMetadata = Infer<typeof devPageMetadataSchema>;

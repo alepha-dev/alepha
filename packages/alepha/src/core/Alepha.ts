@@ -26,11 +26,11 @@ import { CodecManager } from "./providers/CodecManager.ts";
 import { EventManager } from "./providers/EventManager.ts";
 import { StateManager } from "./providers/StateManager.ts";
 import {
-  type Static,
-  type TObject,
-  type TSchema,
+  type Infer,
+  type ZObject,
+  type ZType,
   z,
-} from "./providers/TypeProvider.ts";
+} from "./providers/ZodProvider.ts";
 
 /**
  * Where an `$env` schema was declared.
@@ -305,14 +305,14 @@ export class Alepha {
    * Cache for environment variables.
    * > It allows us to avoid parsing the same schema multiple times.
    */
-  protected cacheEnv: Map<TSchema, any> = new Map();
+  protected cacheEnv: Map<ZType, any> = new Map();
 
   /**
    * Which service/module declared each $env schema, so tooling can attribute
    * a variable to its source. Kept beside `cacheEnv` rather than inside it so
    * the parsed-value cache keeps its simple shape.
    */
-  protected cacheEnvOwner: Map<TSchema, EnvOwner> = new Map();
+  protected cacheEnvOwner: Map<ZType, EnvOwner> = new Map();
 
   /**
    * List of modules that are registered in the container.
@@ -400,7 +400,7 @@ export class Alepha {
   public get<T extends TAtomObject>(
     target: Atom<T>,
     scope?: StateScope,
-  ): Static<T>;
+  ): Infer<T>;
   public get<Key extends keyof State>(
     target: Key,
     scope?: StateScope,
@@ -1140,7 +1140,7 @@ export class Alepha {
    * @param schema - The schema object to apply environment variables to.
    * @return The schema object with environment variables applied.
    */
-  public parseEnv<T extends TObject>(schema: T, owner?: EnvOwner): Static<T> {
+  public parseEnv<T extends ZObject>(schema: T, owner?: EnvOwner): Infer<T> {
     if (owner && !this.cacheEnvOwner.has(schema)) {
       // Recorded even on a cache hit path below, because the first caller to
       // parse a shared schema is not necessarily the one that declared it.
@@ -1148,7 +1148,7 @@ export class Alepha {
     }
 
     if (this.cacheEnv.has(schema)) {
-      return this.cacheEnv.get(schema) as Static<T>;
+      return this.cacheEnv.get(schema) as Infer<T>;
     }
 
     // Env vars are strings on the wire — coerce declared fields to their
@@ -1192,7 +1192,7 @@ export class Alepha {
 
     this.cacheEnv.set(schema, config);
 
-    return config as Static<T>;
+    return config as Infer<T>;
   }
 
   /**
@@ -1201,12 +1201,12 @@ export class Alepha {
    * This is useful for DevTools to display all expected environment variables.
    */
   public getEnvSchemas(): Array<{
-    schema: TSchema;
+    schema: ZType;
     values: Record<string, any>;
     owner?: EnvOwner;
   }> {
     const result: Array<{
-      schema: TSchema;
+      schema: ZType;
       values: Record<string, any>;
       owner?: EnvOwner;
     }> = [];
@@ -1289,7 +1289,7 @@ export class Alepha {
       // from `z.schema.requiredKeys` (zod has no `.required` array — that name
       // is the `.required()` method). Metadata (description/enum/default) lives
       // on the unwrapped inner schema, under `.meta()`.
-      const shape = (ref.properties ?? {}) as Record<string, TSchema>;
+      const shape = (ref.properties ?? {}) as Record<string, ZType>;
       const required = new Set(z.schema.requiredKeys(ref));
       for (const [key, value] of Object.entries(shape)) {
         const prop = value as any;
@@ -1378,7 +1378,10 @@ export class Alepha {
         typeof value[OPTIONS] === "object" &&
         "getter" in value[OPTIONS]
       ) {
-        const getter = value[OPTIONS].getter as keyof State;
+        // `$store` hands over the Atom/Computed itself, not its key: a computed
+        // has a `key` but no store entry under it. `StateManager.get` is
+        // overloaded on `Computed | Atom | string`, so the object resolves both.
+        const getter = value[OPTIONS].getter;
         Object.defineProperty(obj, key, {
           get: () => this.store.get(getter),
         });

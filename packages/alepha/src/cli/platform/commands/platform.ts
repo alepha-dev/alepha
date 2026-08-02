@@ -1,4 +1,4 @@
-import { $inject, $state, AlephaError, z } from "alepha";
+import { $inject, $store, AlephaError, z } from "alepha";
 import { type AppEntry, AppEntryProvider, ViteBuildProvider } from "alepha/cli";
 import {
   CloudflareAdapter,
@@ -20,7 +20,7 @@ import { SecretsCommand } from "./SecretsCommand.ts";
 
 export class PlatformCommand {
   protected readonly log = $logger();
-  protected readonly options = $state(platformOptions);
+  protected readonly options = $store(platformOptions);
   protected readonly orchestrator = $inject(PlatformOrchestrator);
   protected readonly inspector = $inject(PlatformInspector);
   protected readonly naming = $inject(NamingService);

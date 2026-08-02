@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const apiActionSchema = z.object({
@@ -58,5 +58,5 @@ export const apiRegistryResponseSchema = z.object({
   restricted: z.array(z.text()).optional(),
 });
 
-export type ApiRegistryResponse = Static<typeof apiRegistryResponseSchema>;
-export type ApiAction = Static<typeof apiActionSchema>;
+export type ApiRegistryResponse = Infer<typeof apiRegistryResponseSchema>;
+export type ApiAction = Infer<typeof apiActionSchema>;

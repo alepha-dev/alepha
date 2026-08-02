@@ -106,7 +106,7 @@ export type ProxyPrimitiveOptions = {
    * Target URL to which matching requests should be forwarded.
    *
    * Can be either:
-   * - **Static string**: A fixed URL like `"https://api.example.com"`
+   * - **Infer string**: A fixed URL like `"https://api.example.com"`
    * - **Dynamic function**: A function that returns the URL, enabling runtime target resolution
    *
    * The target URL will be combined with the remaining path from the original request.

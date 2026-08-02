@@ -1,4 +1,4 @@
-import { $atom, $state, type Static } from "alepha";
+import { $atom, $store, type Infer } from "alepha";
 import {
   type VerificationSettings,
   verificationSettingsSchema,
@@ -31,7 +31,7 @@ export const verificationOptions = $atom({
   serverOnly: true,
 });
 
-export type VerificationOptions = Static<typeof verificationOptions.schema>;
+export type VerificationOptions = Infer<typeof verificationOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -42,7 +42,7 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class VerificationParameters {
-  protected readonly options = $state(verificationOptions);
+  protected readonly options = $store(verificationOptions);
 
   public get<K extends keyof VerificationSettings>(
     key: K,

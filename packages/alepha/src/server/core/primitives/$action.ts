@@ -1,16 +1,16 @@
 import {
   $atom,
   $inject,
-  $state,
+  $store,
   AlephaError,
   type Async,
   createPrimitive,
+  type Infer,
   isTypeFile,
   KIND,
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
   type SchemaOutput,
-  type Static,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
@@ -220,7 +220,7 @@ export const serverApiOptions = $atom({
   },
 });
 
-export type ServerApiOptions = Static<typeof serverApiOptions.schema>;
+export type ServerApiOptions = Infer<typeof serverApiOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -234,7 +234,7 @@ export class ActionPrimitive<
   TConfig extends RequestConfigSchema,
 > extends PipelinePrimitive<ActionPrimitiveOptions<TConfig>> {
   protected readonly log = $logger();
-  protected readonly settings = $state(serverApiOptions);
+  protected readonly settings = $store(serverApiOptions);
   protected readonly httpClient = $inject(HttpClient);
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);

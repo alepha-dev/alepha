@@ -7,7 +7,7 @@ import {
   Alepha,
   AlephaError,
   type FileLike,
-  type Static,
+  type Infer,
   z,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
@@ -56,7 +56,7 @@ const envSchema = z.object({
 });
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface Env extends Partial<Infer<typeof envSchema>> {}
 }
 
 /**

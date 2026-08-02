@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 export const paymentMethods = $entity({
@@ -21,4 +21,4 @@ export const paymentMethods = $entity({
   indexes: ["userId", "organizationId"],
 });
 
-export type PaymentMethodEntity = Static<typeof paymentMethods.schema>;
+export type PaymentMethodEntity = Infer<typeof paymentMethods.schema>;

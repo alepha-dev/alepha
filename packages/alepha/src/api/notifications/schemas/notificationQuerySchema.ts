@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { pageQuerySchema } from "alepha/orm";
 
 export const notificationQuerySchema = pageQuerySchema.extend({
@@ -15,4 +15,4 @@ export const notificationQuerySchema = pageQuerySchema.extend({
     .optional(),
 });
 
-export type NotificationQuery = Static<typeof notificationQuerySchema>;
+export type NotificationQuery = Infer<typeof notificationQuerySchema>;

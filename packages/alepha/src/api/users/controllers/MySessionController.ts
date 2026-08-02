@@ -1,4 +1,4 @@
-import { $inject, type Static, z } from "alepha";
+import { $inject, type Infer, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 import { RealmProvider } from "../providers/RealmProvider.ts";
@@ -25,7 +25,7 @@ export const mySessionSchema = z.object({
   current: z.boolean(),
 });
 
-export type MySession = Static<typeof mySessionSchema>;
+export type MySession = Infer<typeof mySessionSchema>;
 
 /**
  * Self-service session management — the "where am I signed in?" page of an

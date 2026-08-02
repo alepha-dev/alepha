@@ -1,6 +1,6 @@
 import { AlephaError } from "../errors/AlephaError.ts";
-import type { Static, TObject } from "../providers/TypeProvider.ts";
-import { z } from "../providers/TypeProvider.ts";
+import type { Infer, ZObject } from "../providers/ZodProvider.ts";
+import { z } from "../providers/ZodProvider.ts";
 import { $context } from "./$context.ts";
 
 /**
@@ -29,12 +29,12 @@ import { $context } from "./$context.ts";
  * run(alepha.with(App));
  * ```
  */
-export const $env = <T extends TObject>(type: T): Static<T> => {
+export const $env = <T extends ZObject>(type: T): Infer<T> => {
   const { alepha, service, module } = $context();
 
   // allow to inject Zod schemas
   if (!z.schema.isObject(type)) {
-    throw new AlephaError("Type must be an TObject");
+    throw new AlephaError("Type must be an ZObject");
   }
 
   // Pass the declaring service/module through so tooling can attribute each
@@ -42,5 +42,5 @@ export const $env = <T extends TObject>(type: T): Static<T> => {
   return alepha.parseEnv(type, {
     service: service?.name,
     module: module?.name,
-  }) as Static<T>;
+  }) as Infer<T>;
 };
