@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { sigils } from "./sigils.ts";
 
@@ -42,7 +42,5 @@ export const sigilErrorGroups = $entity({
   ],
 });
 
-export type SigilErrorGroup = Static<typeof sigilErrorGroups.schema>;
-export type SigilErrorGroupInsert = Static<
-  typeof sigilErrorGroups.insertSchema
->;
+export type SigilErrorGroup = Infer<typeof sigilErrorGroups.schema>;
+export type SigilErrorGroupInsert = Infer<typeof sigilErrorGroups.insertSchema>;

@@ -1,6 +1,6 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { invitations } from "../entities/invitations.ts";
 
 export const invitationResourceSchema = invitations.schema;
 
-export type InvitationResource = Static<typeof invitationResourceSchema>;
+export type InvitationResource = Infer<typeof invitationResourceSchema>;

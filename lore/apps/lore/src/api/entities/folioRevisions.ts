@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
 import { folios } from "./folios.ts";
@@ -66,4 +66,4 @@ export const folioRevisions = $entity({
   ],
 });
 
-export type FolioRevision = Static<typeof folioRevisions.schema>;
+export type FolioRevision = Infer<typeof folioRevisions.schema>;

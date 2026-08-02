@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * The host app's own opinion about what it reports — the only knob the app
@@ -35,4 +35,4 @@ export const sigilOptions = $atom({
   serverOnly: true,
 });
 
-export type SigilOptions = Static<typeof sigilOptions.schema>;
+export type SigilOptions = Infer<typeof sigilOptions.schema>;

@@ -1,5 +1,5 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { users } from "alepha/api/users";
 
 export { users };
-export type User = Static<typeof users.schema>;
+export type User = Infer<typeof users.schema>;

@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 export const campaignFeaturesSchema = z.object({
@@ -39,7 +39,7 @@ export const campaignFeaturesSchema = z.object({
   vitals: z.boolean().optional(),
 });
 
-export type CampaignFeatures = Static<typeof campaignFeaturesSchema>;
+export type CampaignFeatures = Infer<typeof campaignFeaturesSchema>;
 
 /**
  * Default feature flags. NB: the per-quest toggles (`questNote`,
@@ -153,4 +153,4 @@ export const campaigns = $entity({
   ],
 });
 
-export type Campaign = Static<typeof campaigns.schema>;
+export type Campaign = Infer<typeof campaigns.schema>;

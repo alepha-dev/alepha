@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { sigils } from "./sigils.ts";
 
@@ -34,7 +34,7 @@ export const sigilUniquesDaily = $entity({
   ],
 });
 
-export type SigilUniqueDaily = Static<typeof sigilUniquesDaily.schema>;
-export type SigilUniqueDailyInsert = Static<
+export type SigilUniqueDaily = Infer<typeof sigilUniquesDaily.schema>;
+export type SigilUniqueDailyInsert = Infer<
   typeof sigilUniquesDaily.insertSchema
 >;
