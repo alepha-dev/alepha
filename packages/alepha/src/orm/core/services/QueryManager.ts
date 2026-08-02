@@ -1,10 +1,4 @@
-import {
-  $inject,
-  Alepha,
-  AlephaError,
-  createPagination,
-  type TObject,
-} from "alepha";
+import { $inject, Alepha, AlephaError, type TObject } from "alepha";
 import {
   and,
   arrayContained,
@@ -664,26 +658,6 @@ export class QueryManager {
     }
 
     return { column: item.column, direction: item.direction ?? "asc" };
-  }
-
-  /**
-   * Create a pagination object.
-   *
-   * @deprecated Use `createPagination` from alepha instead.
-   * This method now delegates to the framework-level helper.
-   *
-   * @param entities The entities to paginate.
-   * @param limit The limit of the pagination.
-   * @param offset The offset of the pagination.
-   * @param sort Optional sort metadata to include in response.
-   */
-  public createPagination<T>(
-    entities: T[],
-    limit = 10,
-    offset = 0,
-    sort?: Array<{ column: string; direction: "asc" | "desc" }>,
-  ) {
-    return createPagination(entities, limit, offset, sort);
   }
 }
 

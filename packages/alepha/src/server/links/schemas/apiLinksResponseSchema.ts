@@ -60,18 +60,3 @@ export const apiRegistryResponseSchema = z.object({
 
 export type ApiRegistryResponse = Static<typeof apiRegistryResponseSchema>;
 export type ApiAction = Static<typeof apiActionSchema>;
-
-/**
- * @deprecated Use `apiRegistryResponseSchema` and `ApiRegistryResponse` instead.
- */
-export const apiLinksResponseSchema = apiRegistryResponseSchema;
-
-/**
- * @deprecated Use `ApiRegistryResponse` instead.
- */
-export type ApiLinksResponse = ApiRegistryResponse;
-
-/**
- * @deprecated Use `ApiAction` instead.
- */
-export type ApiLink = ApiAction;

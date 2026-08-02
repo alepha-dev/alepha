@@ -24,7 +24,6 @@ import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { tenantDomain } from "../services/NamingService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
 import {
-  type AppContext,
   type ExportDbOptions,
   PlatformAdapter,
   type PlatformContext,
@@ -182,7 +181,9 @@ export class CloudflareAdapter extends PlatformAdapter {
    * resource the app needs but the account does not have is a hard error, not
    * a silently missing binding.
    */
-  protected async resolveExistingResourceIds(ctx: AppContext): Promise<void> {
+  protected async resolveExistingResourceIds(
+    ctx: PlatformContext,
+  ): Promise<void> {
     if (ctx.resources.hasDatabase && !this.provisionedD1Id) {
       if (this.provisionedHyperdriveId) {
         // Hyperdrive already resolved — nothing to look up.
@@ -223,7 +224,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
   }
 
-  async build(ctx: AppContext, run: RunnerMethod): Promise<void> {
+  async build(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
     this.configureApi(ctx);
     await this.resolveExistingResourceIds(ctx);
     const appDir = ctx.root;
@@ -397,7 +398,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   // -------------------------------------------------------------------------
 
   async deploy(
-    ctx: AppContext,
+    ctx: PlatformContext,
     run: RunnerMethod,
   ): Promise<string | undefined> {
     this.configureApi(ctx);

@@ -24,7 +24,6 @@ import {
   PG_IDENTITY,
   PG_PRIMARY_KEY,
   PG_REF,
-  PG_SERIAL,
   PG_UPDATED_AT,
   type PgGeneratedOptions,
   type PgRefOptions,
@@ -186,7 +185,7 @@ export class SqliteModelBuilder extends ModelBuilder {
     value = z.schema.unwrap(value);
 
     if (z.schema.isInteger(value)) {
-      if (PG_SERIAL in value || PG_IDENTITY in value) {
+      if (PG_IDENTITY in value) {
         return pg
           .integer(key, { mode: "number" })
           .primaryKey({ autoIncrement: true });

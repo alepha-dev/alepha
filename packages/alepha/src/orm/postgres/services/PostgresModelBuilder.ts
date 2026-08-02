@@ -8,7 +8,6 @@ import {
   PG_IDENTITY,
   PG_PRIMARY_KEY,
   PG_REF,
-  PG_SERIAL,
   PG_UPDATED_AT,
   type PgGeneratedOptions,
   type PgIdentityOptions,
@@ -247,10 +246,6 @@ export class PostgresModelBuilder extends ModelBuilder {
     }
 
     if (z.schema.isInteger(value)) {
-      if (PG_SERIAL in value) {
-        return pg.serial(key);
-      }
-
       if (PG_IDENTITY in value) {
         const options = value[PG_IDENTITY] as PgIdentityOptions;
         if (options.mode === "byDefault") {

@@ -274,10 +274,3 @@ export class StreamableHttpMcpTransport {
     },
   });
 }
-
-/**
- * @deprecated Use {@link StreamableHttpMcpTransport}. The 2024-11-05
- * two-endpoint HTTP+SSE pattern was replaced by Streamable HTTP in spec
- * 2025-03-26. This alias is preserved for one release to ease migration.
- */
-export const SseMcpTransport = StreamableHttpMcpTransport;

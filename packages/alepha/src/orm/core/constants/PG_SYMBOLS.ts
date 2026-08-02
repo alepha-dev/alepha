@@ -17,11 +17,6 @@ export const PG_REF = Symbol.for("Alepha.Postgres.Ref");
 export const PG_GENERATED = Symbol.for("Alepha.Postgres.Generated");
 export const PG_ORGANIZATION = Symbol.for("Alepha.Postgres.Organization");
 
-/**
- * @deprecated Use `PG_IDENTITY` instead.
- */
-export const PG_SERIAL = Symbol.for("Alepha.Postgres.Serial");
-
 export type PgDefault = typeof PG_DEFAULT;
 export type PgRef = typeof PG_REF;
 export type PgPrimaryKey = typeof PG_PRIMARY_KEY;
@@ -38,11 +33,6 @@ export type PgSymbols = {
   [PG_ENUM]: PgEnumOptions;
   [PG_GENERATED]: PgGeneratedOptions;
   [PG_ORGANIZATION]: PgOrganizationOptions;
-
-  /**
-   * @deprecated Use `PG_IDENTITY` instead.
-   */
-  [PG_SERIAL]: {};
 };
 
 export type PgSymbolKeys = keyof PgSymbols;

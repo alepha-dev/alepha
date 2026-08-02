@@ -11,7 +11,6 @@ import {
   PG_IDENTITY,
   PG_PRIMARY_KEY,
   PG_REF,
-  PG_SERIAL,
   PG_UPDATED_AT,
   PG_VERSION,
   RepositoryProvider,
@@ -382,7 +381,7 @@ export class DevToolsMetadataProvider {
               this.isNullableFromJsonSchema(jsonProp) ||
               this.isNullable(fieldSchema),
             primaryKey: PG_PRIMARY_KEY in fieldSchema,
-            identity: PG_IDENTITY in fieldSchema || PG_SERIAL in fieldSchema,
+            identity: PG_IDENTITY in fieldSchema,
             createdAt: PG_CREATED_AT in fieldSchema,
             updatedAt: PG_UPDATED_AT in fieldSchema,
             deletedAt: PG_DELETED_AT in fieldSchema,

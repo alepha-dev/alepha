@@ -68,6 +68,13 @@ export class UserController {
       }),
       body: z.object({
         email: z.email(),
+        // Required when the realm sets `captchaRequired`. The client learns
+        // whether to render a widget from `captchaSiteKey` on the realm
+        // config endpoint, same as registration.
+        captchaToken: z
+          .string()
+          .describe("Captcha response token (if captcha is required)")
+          .optional(),
       }),
       response: passwordResetIntentResponseSchema,
     },
@@ -75,6 +82,7 @@ export class UserController {
       this.credentialService.createPasswordResetIntent(
         body.email,
         query.userRealmName,
+        body.captchaToken,
       ),
   });
 
@@ -93,111 +101,6 @@ export class UserController {
     handler: async ({ body }) => {
       await this.credentialService.completePasswordReset(body);
       return { ok: true };
-    },
-  });
-
-  // Legacy endpoints for backward compatibility
-
-  /**
-   * @deprecated Use createPasswordResetIntent instead
-   */
-  public requestPasswordReset = $action({
-    path: "/users/password-reset/request",
-    group: this.group,
-    schema: {
-      query: z.object({
-        userRealmName: z.string().optional(),
-      }),
-      body: z.object({
-        email: z.email(),
-      }),
-      response: z.object({
-        success: z.boolean(),
-        message: z.string(),
-      }),
-    },
-    handler: async ({ body, query }) => {
-      await this.credentialService.requestPasswordReset(
-        body.email,
-        query.userRealmName,
-      );
-
-      return {
-        success: true,
-        message:
-          "If an account exists with this email, a password reset code has been sent.",
-      };
-    },
-  });
-
-  /**
-   * @deprecated Use completePasswordReset instead
-   */
-  public validateResetToken = $action({
-    path: "/users/password-reset/validate",
-    group: this.group,
-    schema: {
-      query: z.object({
-        email: z.email(),
-        token: z.string(),
-        userRealmName: z.string().optional(),
-      }),
-      response: z.object({
-        valid: z.boolean(),
-        email: z.email().optional(),
-      }),
-    },
-    handler: async ({ query }) => {
-      try {
-        const email = await this.credentialService.validateResetToken(
-          query.email,
-          query.token,
-          query.userRealmName,
-        );
-        return {
-          valid: true,
-          email,
-        };
-      } catch {
-        return {
-          valid: false,
-        };
-      }
-    },
-  });
-
-  /**
-   * @deprecated Use completePasswordReset instead
-   */
-  public resetPassword = $action({
-    path: "/users/password-reset/reset",
-    group: this.group,
-    schema: {
-      query: z.object({
-        userRealmName: z.string().optional(),
-      }),
-      body: z.object({
-        email: z.email(),
-        token: z.string(),
-        newPassword: z.string().min(8),
-      }),
-      response: z.object({
-        success: z.boolean(),
-        message: z.string(),
-      }),
-    },
-    handler: async ({ body, query }) => {
-      await this.credentialService.resetPassword(
-        body.email,
-        body.token,
-        body.newPassword,
-        query.userRealmName,
-      );
-
-      return {
-        success: true,
-        message: "Password has been reset successfully. Please log in.",
-      };
     },
   });
 

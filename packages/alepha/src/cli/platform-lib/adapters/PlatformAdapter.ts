@@ -92,12 +92,6 @@ export interface PlatformContext {
   prebuilt?: boolean;
 }
 
-/**
- * @deprecated Same as `PlatformContext` since the `apps:` collapse —
- * kept as a type alias so existing adapter signatures still compile.
- */
-export type AppContext = PlatformContext;
-
 // ---------------------------------------------------------------------------
 // State types (returned by inspect)
 // ---------------------------------------------------------------------------
@@ -179,14 +173,14 @@ export abstract class PlatformAdapter {
   /**
    * Build artifacts for a single app.
    */
-  abstract build(ctx: AppContext, run: RunnerMethod): Promise<void>;
+  abstract build(ctx: PlatformContext, run: RunnerMethod): Promise<void>;
 
   /**
    * Deploy a single app (upload + activate atomically, e.g., wrangler deploy).
    * Returns the live URL if the platform provides one.
    */
   abstract deploy(
-    ctx: AppContext,
+    ctx: PlatformContext,
     run: RunnerMethod,
   ): Promise<string | undefined>;
 

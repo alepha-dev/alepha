@@ -467,11 +467,6 @@
       "import": "./src/server/etag/index.ts",
       "default": "./src/server/etag/index.ts"
     },
-    "./server/health": {
-      "types": "./src/server/health/index.ts",
-      "import": "./src/server/health/index.ts",
-      "default": "./src/server/health/index.ts"
-    },
     "./server/links": {
       "types": "./src/server/links/index.ts",
       "react-native": "./src/server/links/index.browser.ts",
@@ -910,11 +905,6 @@
         "types": "./dist/server/etag/index.d.ts",
         "import": "./dist/server/etag/index.js",
         "default": "./dist/server/etag/index.js"
-      },
-      "./server/health": {
-        "types": "./dist/server/health/index.d.ts",
-        "import": "./dist/server/health/index.js",
-        "default": "./dist/server/health/index.js"
       },
       "./server/links": {
         "types": "./dist/server/links/index.d.ts",

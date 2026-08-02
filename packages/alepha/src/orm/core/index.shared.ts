@@ -22,4 +22,3 @@ export * from "./interfaces/RelationWrite.ts";
 export * from "./primitives/$entity.ts";
 export * from "./primitives/$relations.ts";
 export * from "./providers/DatabaseTypeProvider.ts";
-export * from "./schemas/legacyIdSchema.ts";

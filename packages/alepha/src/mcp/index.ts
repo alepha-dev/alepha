@@ -92,7 +92,6 @@ export { McpServerProvider } from "./providers/McpServerProvider.ts";
 export {
   mcpSseOptions,
   mcpStreamableHttpOptions,
-  SseMcpTransport,
   StreamableHttpMcpTransport,
 } from "./transports/StreamableHttpMcpTransport.ts";
 

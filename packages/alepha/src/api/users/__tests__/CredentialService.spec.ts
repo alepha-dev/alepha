@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { AlephaApiVerification } from "alepha/api/verifications";
+import { MemoryCaptchaProvider } from "alepha/captcha";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
@@ -50,6 +51,7 @@ const setup = async () => {
     sessionService: alepha.inject(SessionService),
     cryptoProvider: alepha.inject(CryptoProvider),
     dateTimeProvider: alepha.inject(DateTimeProvider),
+    captcha: alepha.inject(MemoryCaptchaProvider),
     emailProvider,
   };
 };
@@ -676,24 +678,137 @@ describe("alepha/api/users - CredentialService", () => {
     });
   });
 
-  describe("Legacy methods (backward compatibility)", () => {
-    it("requestPasswordReset should work as before", async ({ expect }) => {
-      const { credentialService, userService, cryptoProvider, emailProvider } =
+  describe("Per-target cooldown", () => {
+    it("should not resend before the cooldown expires, and resend after", async ({
+      expect,
+    }) => {
+      const {
+        credentialService,
+        userService,
+        cryptoProvider,
+        dateTimeProvider,
+        emailProvider,
+      } = await setup();
+
+      await createUserWithCredentials(
+        userService,
+        credentialService,
+        cryptoProvider,
+        "cooldown@example.com",
+        "OldPassword123!",
+      );
+
+      await credentialService.createPasswordResetIntent("cooldown@example.com");
+      await expect.poll(() => emailProvider.records.length).toBe(1);
+
+      // Second request inside the window is silently absorbed — the caller
+      // still gets an intent, but no second mail goes out.
+      await credentialService.createPasswordResetIntent("cooldown@example.com");
+      expect(emailProvider.records.length).toBe(1);
+
+      dateTimeProvider.travel(91, "seconds");
+
+      await credentialService.createPasswordResetIntent("cooldown@example.com");
+      await expect.poll(() => emailProvider.records.length).toBe(2);
+    });
+  });
+
+  describe("Captcha on password reset", () => {
+    const setupCaptchaRealm = async () => {
+      const ctx = await setup();
+      const realmProvider = ctx.alepha.inject(RealmProvider);
+      realmProvider.register("captcha-realm", {
+        features: { notifications: true },
+        settings: { resetPasswordAllowed: true, captchaRequired: true },
+      });
+
+      const user = await ctx.credentialService.users("captcha-realm").create({
+        email: "captcha@example.com",
+        username: "captchauser",
+        roles: ["user"],
+      });
+      const hashedPassword =
+        await ctx.cryptoProvider.hashPassword("OldPassword123!");
+      await ctx.credentialService.identities("captcha-realm").create({
+        userId: user.id,
+        provider: "credentials",
+        password: hashedPassword,
+      });
+
+      return { ...ctx, captcha: ctx.alepha.inject(MemoryCaptchaProvider) };
+    };
+
+    it("should reject a request with no token when the realm requires captcha", async ({
+      expect,
+    }) => {
+      const { credentialService, emailProvider } = await setupCaptchaRealm();
+
+      await expect(
+        credentialService.createPasswordResetIntent(
+          "captcha@example.com",
+          "captcha-realm",
+        ),
+      ).rejects.toThrowError(BadRequestError);
+
+      // The point of the gate: no mail leaves in our name.
+      expect(emailProvider.records.length).toBe(0);
+    });
+
+    it("should reject a request whose token fails verification", async ({
+      expect,
+    }) => {
+      const { credentialService, emailProvider, captcha } =
+        await setupCaptchaRealm();
+      captcha.reject();
+
+      await expect(
+        credentialService.createPasswordResetIntent(
+          "captcha@example.com",
+          "captcha-realm",
+          "bad-token",
+        ),
+      ).rejects.toThrowError(BadRequestError);
+
+      expect(captcha.wasVerified("bad-token")).toBe(true);
+      expect(emailProvider.records.length).toBe(0);
+    });
+
+    it("should proceed when the token verifies", async ({ expect }) => {
+      const { credentialService, emailProvider, captcha } =
+        await setupCaptchaRealm();
+
+      const result = await credentialService.createPasswordResetIntent(
+        "captcha@example.com",
+        "captcha-realm",
+        "good-token",
+      );
+
+      expect(result.intentId).toBeDefined();
+      expect(captcha.wasVerified("good-token")).toBe(true);
+      await expect.poll(() => emailProvider.records.length).toBe(1);
+    });
+
+    it("should not require a token when the realm does not ask for one", async ({
+      expect,
+    }) => {
+      const { credentialService, userService, cryptoProvider, captcha } =
         await setup();
 
       await createUserWithCredentials(
         userService,
         credentialService,
         cryptoProvider,
-        "legacy@example.com",
+        "nocaptcha@example.com",
         "OldPassword123!",
       );
 
-      const result =
-        await credentialService.requestPasswordReset("legacy@example.com");
+      const result = await credentialService.createPasswordResetIntent(
+        "nocaptcha@example.com",
+      );
 
-      expect(result).toBe(true);
-      await expect.poll(() => emailProvider.records.length).toBe(1);
+      expect(result.intentId).toBeDefined();
+      // Never called: the realm did not ask, so no verification happened.
+      expect(captcha.records.length).toBe(0);
     });
   });
 });

@@ -106,12 +106,6 @@ export interface AutoFormGroup {
   fields: Array<
     string | (Partial<Omit<ControlProps, "input">> & { name: string })
   >;
-  /**
-   * @deprecated Layout is now a 12-col grid driven by per-field width
-   * heuristics (mirroring the legacy CreateFormGroup rules). Use
-   * `$control.width` (100|66|50|33|25) on the schema for explicit overrides.
-   */
-  columns?: 1 | 2 | 3 | 4;
 }
 
 export interface AutoFormAction {

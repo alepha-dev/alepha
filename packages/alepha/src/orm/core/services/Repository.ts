@@ -2,6 +2,7 @@ import {
   $inject,
   Alepha,
   AlephaError,
+  createPagination,
   type Page,
   type PageQuery,
   type Static,
@@ -726,12 +727,7 @@ export abstract class Repository<T extends TObject> {
       sortMetadata = this.queryManager.normalizeOrderBy(orderBy);
     }
 
-    const response = this.queryManager.createPagination<T>(
-      entities,
-      limit,
-      offset,
-      sortMetadata,
-    );
+    const response = createPagination<T>(entities, limit, offset, sortMetadata);
 
     response.page.totalElements = countResult;
     if (countResult != null) {

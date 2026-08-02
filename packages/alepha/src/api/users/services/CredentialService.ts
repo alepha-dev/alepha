@@ -2,6 +2,7 @@ import { $inject, Alepha } from "alepha";
 import { VerificationService } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
 import { DatabaseCacheProvider } from "alepha/cache/database";
+import { CaptchaProvider } from "alepha/captcha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { CryptoProvider } from "alepha/security";
@@ -45,6 +46,7 @@ export class CredentialService {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly verificationService = $inject(VerificationService);
   protected readonly realmProvider = $inject(RealmProvider);
+  protected readonly captchaProvider = $inject(CaptchaProvider);
 
   protected userAudits(realmName?: string) {
     const realm = this.realmProvider.getRealm(realmName);
@@ -148,11 +150,13 @@ export class CredentialService {
    *
    * @param email - User's email address
    * @param userRealmName - Optional realm name
+   * @param captchaToken - Captcha response, required when the realm sets `captchaRequired`
    * @returns Intent response with intentId and expiration (always returns for security)
    */
   public async createPasswordResetIntent(
     email: string,
     userRealmName?: string,
+    captchaToken?: string,
   ): Promise<PasswordResetIntentResponse> {
     this.log.trace("Creating password reset intent", { email, userRealmName });
 
@@ -179,6 +183,22 @@ export class CredentialService {
     // Check if password reset is allowed for this realm
     const realm = this.realmProvider.getRealm(userRealmName);
     const realmSettings = await realm.getSettings();
+
+    // Validate captcha before the user lookup and the email send. The per-IP
+    // cap above bounds a single origin, but says nothing about a botnet
+    // spreading one request per address — and every accepted request here
+    // sends mail in our name. Rejecting loudly leaks nothing: the answer
+    // depends on the request shape, never on whether the account exists.
+    if (realmSettings.captchaRequired === true) {
+      if (!captchaToken) {
+        throw new BadRequestError("Captcha verification is required");
+      }
+      const valid = await this.captchaProvider.verify(captchaToken);
+      if (!valid) {
+        throw new BadRequestError("Captcha verification failed");
+      }
+    }
+
     if (realmSettings.resetPasswordAllowed === false) {
       this.log.debug("Password reset not allowed for realm", { userRealmName });
       return { intentId, expiresAt };
@@ -358,121 +378,6 @@ export class CredentialService {
         userEmail: intent.email,
         userRealm: realm.name,
         resourceId: intent.userId,
-        severity: "warning",
-        description: "All sessions invalidated after password reset",
-      },
-    );
-  }
-
-  // Legacy methods kept for backward compatibility
-
-  /**
-   * @deprecated Use createPasswordResetIntent instead
-   */
-  public async requestPasswordReset(
-    email: string,
-    userRealmName?: string,
-  ): Promise<boolean> {
-    await this.createPasswordResetIntent(email, userRealmName);
-    return true;
-  }
-
-  /**
-   * @deprecated Use completePasswordReset instead
-   */
-  public async validateResetToken(
-    email: string,
-    token: string,
-    _userRealmName?: string,
-  ): Promise<string> {
-    // Verify using verification service
-    const isValid = await this.verificationService
-      .verifyCode(
-        { type: "code", target: email, purpose: PASSWORD_RESET_PURPOSE },
-        token,
-      )
-      .catch(() => undefined);
-
-    if (!isValid?.ok) {
-      throw new BadRequestError("Invalid or expired reset token");
-    }
-
-    return email;
-  }
-
-  /**
-   * @deprecated Use completePasswordReset instead
-   */
-  public async resetPassword(
-    email: string,
-    token: string,
-    newPassword: string,
-    userRealmName?: string,
-  ): Promise<void> {
-    // Verify token using verification service
-    const result = await this.verificationService
-      .verifyCode(
-        { type: "code", target: email, purpose: PASSWORD_RESET_PURPOSE },
-        token,
-      )
-      .catch(() => {
-        throw new BadRequestError("Invalid or expired reset token");
-      });
-
-    // If already verified, this is a token reuse attempt
-    if (result.alreadyVerified) {
-      throw new BadRequestError("Invalid or expired reset token");
-    }
-
-    // Validate password against realm policy
-    const realm = this.realmProvider.getRealm(userRealmName);
-    const realmSettings = await realm.getSettings();
-    this.validatePasswordPolicy(newPassword, realmSettings.passwordPolicy);
-
-    // Find user and identity
-    const user = await this.users(userRealmName).getOne({
-      where: { email: { eq: email } },
-    });
-
-    const identity = await this.identities(userRealmName).getOne({
-      where: {
-        userId: { eq: user.id },
-        provider: { eq: "credentials" },
-      },
-    });
-
-    // Hash the new password
-    const hashedPassword = await this.cryptoProvider.hashPassword(newPassword);
-
-    // Update the identity with new password
-    await this.identities(userRealmName).updateById(identity.id, {
-      password: hashedPassword,
-    });
-
-    // Invalidate all existing sessions for this user
-    await this.sessions(userRealmName).deleteMany({
-      userId: { eq: user.id },
-    });
-
-    // Audit: password reset (legacy method)
-    await this.userAudits(userRealmName)?.user.log("update", {
-      resourceType: "user",
-      userId: user.id,
-      userEmail: email,
-      userRealm: realm.name,
-      resourceId: user.id,
-      description: "Password reset completed (legacy)",
-      metadata: { email },
-    });
-
-    // Audit: sessions invalidated
-    await this.sessionAudits(userRealmName)?.security.log(
-      "sessions_invalidated",
-      {
-        userId: user.id,
-        userEmail: email,
-        userRealm: realm.name,
-        resourceId: user.id,
         severity: "warning",
         description: "All sessions invalidated after password reset",
       },

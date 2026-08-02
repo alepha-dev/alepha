@@ -7,7 +7,6 @@ import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";
 import { VercelApi } from "../services/VercelApi.ts";
 import { VercelCli } from "../services/VercelCli.ts";
 import {
-  type AppContext,
   PlatformAdapter,
   type PlatformContext,
   type PlatformState,
@@ -89,7 +88,7 @@ export class VercelAdapter extends PlatformAdapter {
   // build
   // -------------------------------------------------------------------------
 
-  async build(ctx: AppContext, run: RunnerMethod): Promise<void> {
+  async build(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
     const appDir = ctx.root;
 
     await run({
@@ -107,7 +106,7 @@ export class VercelAdapter extends PlatformAdapter {
   // -------------------------------------------------------------------------
 
   async deploy(
-    ctx: AppContext,
+    ctx: PlatformContext,
     run: RunnerMethod,
   ): Promise<string | undefined> {
     const distDir = this.fs.join(ctx.root, "dist");
