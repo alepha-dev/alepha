@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { archiveDirectories } from "./archiveDirectories.ts";
 import { campaigns } from "./campaigns.ts";
@@ -48,4 +48,4 @@ export const archiveBlobs = $entity({
   ],
 });
 
-export type ArchiveBlob = Static<typeof archiveBlobs.schema>;
+export type ArchiveBlob = Infer<typeof archiveBlobs.schema>;

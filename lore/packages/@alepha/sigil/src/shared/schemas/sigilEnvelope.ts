@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * Mutualized sigil envelope the browser POSTs to the same-origin proxy,
@@ -49,7 +49,7 @@ export const sigilEnvelope = z.object({
     .optional(),
 });
 
-export type SigilEnvelope = Static<typeof sigilEnvelope>;
+export type SigilEnvelope = Infer<typeof sigilEnvelope>;
 
 /**
  * What the sink receives: the envelope plus the fields only the app's own
@@ -60,4 +60,4 @@ export const sigilForwarded = sigilEnvelope.extend({
   visitor: z.string().max(128).optional(),
 });
 
-export type SigilForwarded = Static<typeof sigilForwarded>;
+export type SigilForwarded = Infer<typeof sigilForwarded>;

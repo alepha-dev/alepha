@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { petitionResourceSchema } from "./petitionResourceSchema.ts";
 
 /**
@@ -16,4 +16,4 @@ export const myPetitionResourceSchema = petitionResourceSchema.extend({
   }),
 });
 
-export type MyPetitionResource = Static<typeof myPetitionResourceSchema>;
+export type MyPetitionResource = Infer<typeof myPetitionResourceSchema>;

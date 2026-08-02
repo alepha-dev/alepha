@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { quests } from "../entities/quests.ts";
 
 /**
@@ -30,10 +30,10 @@ export const questResourceSchema = quests.schema.extend({
   metadata: questMetadataSchema,
 });
 
-export type QuestResource = Static<typeof questResourceSchema>;
+export type QuestResource = Infer<typeof questResourceSchema>;
 
 /**
  * Lifecycle status of a quest, derived from its timestamp columns by
  * {@link QuestResourceMapper.questStatus}.
  */
-export type QuestStatus = Static<typeof questStatusSchema>;
+export type QuestStatus = Infer<typeof questStatusSchema>;

@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
 import { questSourceSchema } from "../schemas/questSourceSchema.ts";
@@ -213,9 +213,9 @@ export const quests = $entity({
   ],
 });
 
-export type Quest = Static<typeof quests.schema>;
-export type QuestUpdate = Static<typeof quests.updateSchema>;
-export type QuestInsert = Static<typeof quests.insertSchema>;
+export type Quest = Infer<typeof quests.schema>;
+export type QuestUpdate = Infer<typeof quests.updateSchema>;
+export type QuestInsert = Infer<typeof quests.insertSchema>;
 
 export type ReminderInterval = NonNullable<Quest["reminderInterval"]>;
 

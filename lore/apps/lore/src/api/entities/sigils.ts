@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { campaigns } from "./campaigns.ts";
 import { users } from "./users.ts";
@@ -53,5 +53,5 @@ export const sigils = $entity({
   ],
 });
 
-export type Sigil = Static<typeof sigils.schema>;
-export type SigilInsert = Static<typeof sigils.insertSchema>;
+export type Sigil = Infer<typeof sigils.schema>;
+export type SigilInsert = Infer<typeof sigils.insertSchema>;

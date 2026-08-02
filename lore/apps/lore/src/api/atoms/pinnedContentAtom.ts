@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * Token budget for pinned folio bodies surfaced in `campaign_context`.
@@ -25,4 +25,4 @@ export const pinnedContentAtom = $atom({
   serverOnly: true,
 });
 
-export type PinnedContentOptions = Static<typeof pinnedContentAtom.schema>;
+export type PinnedContentOptions = Infer<typeof pinnedContentAtom.schema>;

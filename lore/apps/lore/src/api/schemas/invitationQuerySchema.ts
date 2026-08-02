@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 import { pageQuerySchema } from "alepha/orm";
 
@@ -12,4 +12,4 @@ export const invitationQuerySchema = pageQuerySchema.extend({
   invitedBy: z.uuid().optional(),
 });
 
-export type InvitationQuery = Static<typeof invitationQuerySchema>;
+export type InvitationQuery = Infer<typeof invitationQuerySchema>;

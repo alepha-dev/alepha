@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { petitionSourceSchema } from "../schemas/petitionSourceSchema.ts";
 import { campaigns } from "./campaigns.ts";
@@ -76,5 +76,5 @@ export const petitions = $entity({
   ],
 });
 
-export type Petition = Static<typeof petitions.schema>;
-export type PetitionInsert = Static<typeof petitions.insertSchema>;
+export type Petition = Infer<typeof petitions.schema>;
+export type PetitionInsert = Infer<typeof petitions.insertSchema>;

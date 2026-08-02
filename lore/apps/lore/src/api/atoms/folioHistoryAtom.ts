@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * Retention policy for folio revisions. Kept as an atom so ops/tests
@@ -26,4 +26,4 @@ export const folioHistoryAtom = $atom({
   serverOnly: true,
 });
 
-export type FolioHistoryOptions = Static<typeof folioHistoryAtom.schema>;
+export type FolioHistoryOptions = Infer<typeof folioHistoryAtom.schema>;

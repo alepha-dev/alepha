@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { archiveDirectories } from "./archiveDirectories.ts";
 import { campaigns } from "./campaigns.ts";
@@ -70,7 +70,7 @@ export const folios = $entity({
   ],
 });
 
-export type Folio = Static<typeof folios.schema>;
+export type Folio = Infer<typeof folios.schema>;
 
 /**
  * Build the lowercase search blob from a folio's user-editable fields.

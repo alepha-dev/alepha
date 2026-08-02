@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { SIGIL_TRACKERS } from "../sigilFeatures.ts";
 
 /**
@@ -48,7 +48,7 @@ export const sigilConfig = z.object({
   petitionUrl: z.string().max(2000).optional(),
 });
 
-export type SigilConfig = Static<typeof sigilConfig>;
+export type SigilConfig = Infer<typeof sigilConfig>;
 
 /**
  * What an app assumes before the sink has answered — and keeps assuming if it

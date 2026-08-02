@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const createInvitationSchema = z.object({
@@ -9,4 +9,4 @@ export const createInvitationSchema = z.object({
   metadata: z.record(z.text(), z.any()).optional(),
 });
 
-export type CreateInvitation = Static<typeof createInvitationSchema>;
+export type CreateInvitation = Infer<typeof createInvitationSchema>;
