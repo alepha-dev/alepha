@@ -90,7 +90,26 @@ export class SigilSinkProvider {
 
       // Per request: publish the browser-relevant subset so `exportAtoms`
       // serializes it into the page. The key never goes near this.
-      this.alepha.events.on("react:server:render:begin", () => {
+      this.alepha.events.on("react:server:render:begin", async () => {
+        // Fetch the config if this process has never had one.
+        //
+        // `refreshConfig` is otherwise reached only from `ingest()`, which
+        // meant this hook published a config nothing had asked for: a process
+        // rendering before it had sent any telemetry set `petitionUrl:
+        // undefined` and hid the feedback button. On a per-request runtime the
+        // isolate serving that first page may never be the one that later warms
+        // up, so the button could simply never appear.
+        //
+        // Deliberately here and not at `start`: a warm-up on boot stamps
+        // `configFetchedAt` and so eats the TTL window, leaving the app pinned
+        // to whatever it got — including the fail-open default — for the next
+        // minute, before the rest of the app (a database, a sigil row) is
+        // necessarily ready to answer. Guarding on `configFetchedAt` rather
+        // than on the config's contents keeps a failed fetch from turning this
+        // into a retry loop in front of a dead sink; `ingest()` picks it up on
+        // the next TTL window, exactly as before.
+        if (!this.configFetchedAt) await this.refreshConfig();
+
         this.alepha.store.set(sigilClientAtom, {
           enabled: this.enabledTrackers(),
           sampling: this.config.sampling ?? SIGIL_CONFIG_DEFAULTS.sampling,

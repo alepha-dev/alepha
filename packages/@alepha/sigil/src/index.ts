@@ -1,4 +1,7 @@
 import { $module } from "alepha";
+import { RootComponentsProvider } from "alepha/react/router";
+import { createElement } from "react";
+import { SigilRoot } from "./browser/components/SigilRoot.tsx";
 import { SigilBrowserProvider } from "./browser/SigilBrowserProvider.ts";
 import { SigilProxyController } from "./server/SigilProxyController.ts";
 import { SigilServerErrors } from "./server/SigilServerErrors.ts";
@@ -22,12 +25,22 @@ export * from "./sigilEnv.ts";
  * the machine: errors go to the logger instead, aggregated. Active in
  * production only.
  *
- * **Nothing is mounted for you.** The petition button used to be injected into
- * every host app's React tree as a root component. It still ships — as
- * `<SigilRoot />` from `@alepha/sigil/react` — but the app decides where it
- * goes, or skips it entirely and renders its own link from `usePetitionUrl()`.
- * A reporting package that injects DOM on its own is one you then have to
- * style, translate and keep out of your layout, for one button.
+ * **The feedback button mounts itself.** `<SigilRoot />` is pushed into
+ * {@link RootComponentsProvider}, so importing this module is the whole
+ * integration — there is no second module and no JSX to place. The component
+ * renders `null` unless the sink hands out a `petitionUrl` and the current path
+ * is not excluded, so an app with no sink configured sees nothing.
+ *
+ * This entry therefore pulls React. That was once avoided so a headless API app
+ * could import the module without it, but `react` and `react-dom` are already
+ * peer dependencies of this package, so such an app had to install them anyway
+ * — the split bought one unused import at the cost of a second module every
+ * host had to know about. If a genuinely React-free consumer ever appears, move
+ * the `register` below into its own module behind `@alepha/sigil/react`.
+ *
+ * An app that wants the link somewhere else in its own layout can still render
+ * it from `usePetitionUrl()`; `<SigilRoot />` hides itself when there is no URL,
+ * so the two do not fight.
  *
  * Server services self-guard to the server; the browser bootstrap guards the
  * browser.
@@ -41,4 +54,9 @@ export const AlephaSigil = $module({
     SigilServerErrors,
     SigilBrowserProvider,
   ],
+  register(alepha) {
+    alepha
+      .inject(RootComponentsProvider)
+      .rootComponents.push(createElement(SigilRoot));
+  },
 });
