@@ -26,9 +26,11 @@ describe("@alepha/sigil/react", () => {
   });
 
   it("keeps the React surface out of the module entry", async () => {
-    // Not a style rule: `.` registers the module and reaches `alepha/server`,
-    // so a headless API app imports it with no React anywhere. Rendering is
-    // opt-in, and so is paying for React.
+    // The components keep exactly one import path, `@alepha/sigil/react`, so a
+    // host never has to guess which entry a symbol came from. `.` *mounts*
+    // `<SigilRoot />` through `RootComponentsProvider` — mounting and
+    // re-exporting are separate questions, and only the first is the module's
+    // job.
     const root = await import("../index.ts");
 
     expect(Object.keys(root)).not.toContain("SigilRoot");

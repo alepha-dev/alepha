@@ -1,6 +1,8 @@
 import { Alepha } from "alepha";
 import { HttpClient } from "alepha/server";
 import { describe, expect, it } from "vitest";
+import { AlephaSigil } from "../../index.ts";
+import { sigilClientAtom } from "../../shared/sigilClientAtom.ts";
 import { SigilSinkProvider } from "../SigilSinkProvider.ts";
 
 /**
@@ -203,6 +205,38 @@ describe("SigilSinkProvider", () => {
     const before = ingests(http).length;
     await sink.flush();
     expect(ingests(http).length).toBe(before);
+  });
+
+  it("has the petition URL ready for the very first render", async () => {
+    // The full module, so `sigilClientAtom` is registered and the render hook
+    // writes somewhere real.
+    const alepha = Alepha.create({
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+        SIGIL_SINK: "https://sigil.example.com/",
+        SIGIL_KEY: "tk_secret",
+      },
+    })
+      .with({ provide: HttpClient, use: RecordingHttpClient })
+      .with(AlephaSigil);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    http.configResponse = { petitionUrl: "https://lore.example/c/2/request" };
+    await alepha.start();
+
+    // Nothing has been ingested — and `ingest()` used to be the only caller of
+    // `refreshConfig()`. A cold isolate rendering its first page still has to
+    // know where petitions go, or the button is absent until some unrelated
+    // traffic happens to warm the cache, which on a per-request runtime may
+    // never be the same isolate.
+    await alepha.events.emit("react:server:render:begin", {
+      state: {},
+    } as any);
+
+    expect(alepha.store.get(sigilClientAtom).petitionUrl).toBe(
+      "https://lore.example/c/2/request",
+    );
   });
 
   it("stops asking for config more than once a minute", async () => {

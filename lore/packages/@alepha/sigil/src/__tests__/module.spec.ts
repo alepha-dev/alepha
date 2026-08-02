@@ -1,6 +1,8 @@
 import { Alepha } from "alepha";
 import { RootComponentsProvider } from "alepha/react/router";
+import { isValidElement, type ReactElement } from "react";
 import { describe, expect, it } from "vitest";
+import { SigilRoot } from "../browser/components/SigilRoot.tsx";
 import { AlephaSigil } from "../index.ts";
 import { SigilSinkProvider } from "../server/SigilSinkProvider.ts";
 import { sigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
@@ -16,18 +18,21 @@ const make = (env: Record<string, any> = {}) =>
   }).with(AlephaSigil);
 
 describe("AlephaSigil module", () => {
-  it("puts nothing in the host app's React tree", async () => {
+  it("mounts the feedback button in the host app's React tree", async () => {
     const alepha = make();
-    // Resolved before boot: the container locks on `start()`, and this
-    // provider is no longer one the module brings in — asking for it
+    // Resolved before boot: the container locks on `start()`, so asking for it
     // afterwards would be adding a service, not reading one.
     const roots = alepha.inject(RootComponentsProvider);
     await alepha.start();
 
-    // This package used to mount a floating button and a screenshot dialog into
-    // every app that imported it. A reporting package that injects DOM has to be
-    // styled, translated and kept out of the app's own layout — for one link.
-    expect(roots.rootComponents).toHaveLength(0);
+    // Importing the module IS the integration: no second module to know about,
+    // no JSX for the host to place. Note this host has no sink configured and
+    // still gets the element — `<SigilRoot />` decides for itself, returning
+    // `null` until the sink hands out a petition URL.
+    expect(roots.rootComponents).toHaveLength(1);
+    const [mounted] = roots.rootComponents;
+    expect(isValidElement(mounted)).toBe(true);
+    expect((mounted as ReactElement).type).toBe(SigilRoot);
   });
 
   it("starts without a sink rather than failing", async () => {
