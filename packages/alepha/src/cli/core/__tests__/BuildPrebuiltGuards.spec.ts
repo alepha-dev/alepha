@@ -5,7 +5,6 @@ import type { BuildOptions } from "../atoms/buildOptions.ts";
 import type { AppEntry } from "../providers/AppEntryProvider.ts";
 import { BuildStaticTask } from "../tasks/BuildStaticTask.ts";
 import type { BuildTaskContext } from "../tasks/BuildTask.ts";
-import { BuildVercelTask } from "../tasks/BuildVercelTask.ts";
 
 describe("--prebuilt guards", () => {
   // In prebuilt/manifest mode `ctx.alepha` is null: there is no live app to
@@ -34,7 +33,6 @@ describe("--prebuilt guards", () => {
     });
     return {
       static: alepha.inject(BuildStaticTask),
-      vercel: alepha.inject(BuildVercelTask),
     };
   };
 
@@ -42,14 +40,6 @@ describe("--prebuilt guards", () => {
     const tasks = create();
 
     await expect(tasks.static.run(createCtx("static"))).rejects.toThrow(
-      /--prebuilt/,
-    );
-  });
-
-  it("should refuse --prebuilt for the vercel target", async () => {
-    const tasks = create();
-
-    await expect(tasks.vercel.run(createCtx("vercel"))).rejects.toThrow(
       /--prebuilt/,
     );
   });

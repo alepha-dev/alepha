@@ -37,7 +37,6 @@ import { BuildPrerenderTask } from "./tasks/BuildPrerenderTask.ts";
 import { BuildPwaTask } from "./tasks/BuildPwaTask.ts";
 import { BuildServerTask } from "./tasks/BuildServerTask.ts";
 import { BuildStaticTask } from "./tasks/BuildStaticTask.ts";
-import { BuildVercelTask } from "./tasks/BuildVercelTask.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -80,7 +79,6 @@ export * from "./tasks/BuildPwaTask.ts";
 export * from "./tasks/BuildServerTask.ts";
 export * from "./tasks/BuildStaticTask.ts";
 export * from "./tasks/BuildTask.ts";
-export * from "./tasks/BuildVercelTask.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -138,6 +136,5 @@ export const AlephaCli = $module({
     BuildServerTask,
     BuildPwaTask,
     BuildStaticTask,
-    BuildVercelTask,
   ],
 });

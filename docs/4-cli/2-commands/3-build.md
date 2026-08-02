@@ -1,6 +1,6 @@
 # Build Command
 
-Build your project for production. The `build` command compiles, optimizes, and prepares your app for deployment — whether that's a Node.js server, Docker, Vercel, Cloudflare Workers, or a static site.
+Build your project for production. The `build` command compiles, optimizes, and prepares your app for deployment — whether that's a Node.js server, Docker, Cloudflare Workers, or a static site.
 
 ## Quick Start
 
@@ -20,7 +20,7 @@ The build runs a fixed pipeline of tasks:
 4. **Copies assets** — Moves static files to the right places
 5. **Generates the PWA manifest** — If `pwa` is configured
 6. **Prerenders pages** — Sitemap and static pages, when applicable
-7. **Generates deployment configs** — Vercel, Cloudflare, Docker, static (if requested)
+7. **Generates deployment configs** — Cloudflare, Docker, static (if requested)
 8. **Pre-compresses assets** — Writes `.br` (Brotli) copies of client assets
 
 ## Output Structure
@@ -48,14 +48,14 @@ node dist/index.js
 
 | Flag | Description |
 |------|-------------|
-| `--target`, `-t` | Deployment target: `bare`, `docker`, `vercel`, `cloudflare` (alias: `cf`), or `static` |
+| `--target`, `-t` | Deployment target: `bare`, `docker`, `cloudflare` (alias: `cf`), or `static` |
 | `--runtime`, `-r` | JavaScript runtime: `node`, `bun`, or `workerd` |
 | `--stats` | Generate build statistics report (use `--stats=json` for JSON output) |
 | `--image`, `-i` | Build Docker image (`-i` for latest, `-i=<version>` for specific version). Requires `--target=docker` |
 | `--compile`, `-c` | Compile the server to a single static binary. Requires `--target=docker --runtime=bun` |
 | `--prebuilt` | Skip the bundle steps; only regenerate the target-specific deploy config (e.g. `wrangler.jsonc`) when `dist/` is already built |
 
-Some targets force a runtime: `cloudflare` always uses `workerd`, `vercel` always uses `node`.
+Some targets force a runtime: `cloudflare` always uses `workerd`.
 
 ## Deployment Targets
 
@@ -89,34 +89,6 @@ alepha build --target=docker --image=1.3.4     # tag:1.3.4
 ```
 
 With `--runtime=bun --compile`, the server is compiled to a single static binary via `bun build --compile` and packaged in a minimal distroless base image.
-
-### Vercel
-
-```bash
-alepha build --target=vercel
-```
-
-Creates a minimal Vercel serverless configuration:
-
-```
-dist/
-├── api/
-│   └── index.js      # Serverless function entry
-├── vercel.json       # Route rewrites
-├── .vercel/
-│   └── project.json  # Project link (if env vars set)
-└── public/
-```
-
-> **Environment Variables Required**
->
-> Set `VERCEL_PROJECT_ID` and `VERCEL_ORG_ID` in your `.env.production` to automatically link to your Vercel project.
-
-Then deploy:
-
-```bash
-cd dist && vercel --prod
-```
 
 ### Cloudflare Workers
 
@@ -256,7 +228,6 @@ Available options mirror the flags (`stats`, `target`, `runtime`) plus per-targe
 | Section | Description |
 |---------|-------------|
 | `output` | Override `dist` and `public` directory names |
-| `vercel` | Project name/IDs and cron configuration |
 | `cloudflare` | Extra `wrangler.jsonc` config merged into the generated file |
 | `docker` | Base image, run command, global installs, image tag/args/OCI labels, `compile` mode |
 | `static` | Surge domain for the generated `CNAME` file |
@@ -309,10 +280,10 @@ A typical deployment workflow:
 alepha verify
 
 # 2. Build for production
-alepha build --target=vercel
+alepha build --target=cloudflare
 
 # 3. Deploy
-cd dist && vercel --prod
+alepha platform up --env production
 ```
 
 ## Tips

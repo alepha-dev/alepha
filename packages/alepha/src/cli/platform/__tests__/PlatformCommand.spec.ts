@@ -268,7 +268,7 @@ describe("PlatformCommand", () => {
       expect,
     }) => {
       const { cli, cmd } = await create({
-        environments: { production: { adapter: "vercel" } },
+        environments: { production: { adapter: "bay" } },
       });
 
       await expect(

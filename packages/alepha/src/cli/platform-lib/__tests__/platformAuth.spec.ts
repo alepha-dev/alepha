@@ -3,8 +3,10 @@ import type { RunnerMethod } from "alepha/command";
 import { describe, expect, it } from "vitest";
 import { BayAdapter } from "../adapters/BayAdapter.ts";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
-import type { PlatformContext } from "../adapters/PlatformAdapter.ts";
-import { VercelAdapter } from "../adapters/VercelAdapter.ts";
+import {
+  PlatformAdapter,
+  type PlatformContext,
+} from "../adapters/PlatformAdapter.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
 
 /**
@@ -25,6 +27,26 @@ class RecordingWranglerApi extends WranglerApi {
   public override async login(): Promise<void> {
     this.actions.push("wrangler login");
   }
+}
+
+/**
+ * An adapter that overrides nothing beyond the abstract surface.
+ *
+ * The point of the test below is the BASE CLASS default, not any particular
+ * target — so it is pinned here rather than borrowed from whichever concrete
+ * adapter happens to lack a login this month. (It used to borrow Vercel's,
+ * which is why removing Vercel broke it.)
+ */
+class LoginlessAdapter extends PlatformAdapter {
+  async authenticate(): Promise<void> {}
+  async build(): Promise<void> {}
+  async deploy(): Promise<any> {
+    return {};
+  }
+  async inspect(): Promise<any> {
+    return {};
+  }
+  async teardown(): Promise<void> {}
 }
 
 /**
@@ -55,7 +77,7 @@ describe("platform auth", () => {
 
   it("refuses on an adapter with no interactive login, and says what to do instead", async () => {
     const alepha = Alepha.create();
-    const adapter = alepha.inject(VercelAdapter);
+    const adapter = alepha.inject(LoginlessAdapter);
 
     // The base-class default. Doing nothing quietly would be worse: the user
     // would believe they are logged in.

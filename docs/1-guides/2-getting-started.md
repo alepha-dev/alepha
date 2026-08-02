@@ -183,7 +183,6 @@ App starts up just like in development mode, but without HMR and with better per
 Alepha adapts the build output based on where you deploy:
 
 ```bash
-npm run build -- --target=vercel       # Adapts output for Vercel serverless
 npm run build -- --target=cloudflare   # Adapts output for Cloudflare Workers
 npm run build -- --runtime=bun         # Optimizes for Bun runtime
 # or with alepha

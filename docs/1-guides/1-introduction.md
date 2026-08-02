@@ -162,8 +162,8 @@ Common infrastructure needs are built-in primitives:
 | Distributed locks | `$lock` | Coordinate across processes |
 | Email | `$email` | Send transactional email |
 
-Production builds compile to an optimized bundle deployable to Vercel, Cloudflare, or any VPS.
-Declarations like `$job({ cron })` automatically map to native platform formats (Cloudflare Triggers, Vercel Cron).
+Production builds compile to an optimized bundle deployable to Cloudflare, Bay, or any VPS.
+Declarations like `$job({ cron })` automatically map to native platform formats (Cloudflare Triggers).
 
 ## Deployment Targets
 
@@ -171,7 +171,6 @@ Declarations like `$job({ cron })` automatically map to native platform formats 
 
 ```bash
 alepha build                         # Default: Node.js
-alepha build --target=vercel         # Adapts to Vercel serverless
 alepha build --target=cloudflare     # Adapts to Cloudflare Workers
 alepha build --target=static         # Static site generation
 alepha build --runtime=bun           # Bun runtime

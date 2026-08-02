@@ -37,7 +37,7 @@ The deployment lifecycle runs in a fixed order:
 authenticate → provision → build → migrate → deploy → secrets
 ```
 
-Each step is handled by an **adapter**. Currently supported adapters are Cloudflare (recommended) and Vercel (experimental).
+Each step is handled by an **adapter**. Currently supported adapters are Cloudflare (recommended) and Bay (self-hosted).
 
 Alias: `alepha p` (or `alepha platform`).
 
@@ -68,7 +68,7 @@ Common flags accepted by most subcommands:
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `adapter` | `string` | Cloud provider: `"cloudflare"` or `"vercel"` |
+| `adapter` | `string` | Cloud provider: `"cloudflare"` or `"bay"` |
 | `domain` | `string` | Custom domain for the worker. Wildcards (`"*.club.myapp.com"`) are supported for multi-tenant apps and require `zone`. Omit to use the default `*.workers.dev` URL. |
 | `zone` | `string` | Cloudflare zone that owns `domain`. Required for wildcard domains; for a plain host it switches the binding from a Custom Domain to a zone route. |
 | `services` | `Array<{ binding, service }>` | Worker-to-worker service bindings, exposed on the runtime `env`. |
@@ -375,18 +375,6 @@ alepha p up --env tmp-pr-42
 # ... test ...
 alepha p down --env tmp-pr-42   # no confirmation
 ```
-
-## Vercel Adapter (experimental)
-
-Deploys to Vercel serverless. Handles project creation, deployment, and environment variable management.
-
-```typescript
-environments: {
-  production: { adapter: "vercel" },
-}
-```
-
-Limitations: no resource provisioning (database, storage), no native queue support. Prefer Cloudflare for new projects.
 
 ## Tips
 

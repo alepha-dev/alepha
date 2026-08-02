@@ -254,7 +254,7 @@ export class SecretsCommand {
     name: "secrets",
     aliases: ["sec"],
     description:
-      "Sync secrets from .env.<env> to an external CI store (currently GitHub Actions environments via the `gh` CLI). Resolves the target environment name from `secrets.environmentPattern` (default `{project}-{env}`) and filters keys via SecretFilterService. Runtime secrets for Cloudflare Workers / Vercel are pushed separately during `alepha platform up`.",
+      "Sync secrets from .env.<env> to an external CI store (currently GitHub Actions environments via the `gh` CLI). Resolves the target environment name from `secrets.environmentPattern` (default `{project}-{env}`) and filters keys via SecretFilterService. Runtime secrets for Cloudflare Workers are pushed separately during `alepha platform up`.",
     children: [this.list, this.diff, this.apply],
     handler: async ({ help }) => {
       help();

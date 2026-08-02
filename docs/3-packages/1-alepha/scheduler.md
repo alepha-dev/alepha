@@ -17,13 +17,13 @@ There is no scheduler primitive. Declare scheduled work with
 things a bare tick lacks: run history, retries, timeouts and an admin view.
 
 `CronProvider` remains the single registry of cron expressions — the
-Cloudflare and Vercel builds read it to emit native platform triggers.
+the Cloudflare build reads it to emit native platform triggers.
 Register a cron directly with `CronProvider.createCronJob()` if you need a
 tick without a database.
 
 **Features:**
 - Cron expression scheduling (e.g., `0 0 * * *`)
-- Serverless cron dispatch via the `serverless:cron` hook (Vercel, Cloudflare)
+- Serverless cron dispatch via the `serverless:cron` hook (Cloudflare, generic)
 
 For distributed locking and retries around scheduled work, use `$job({ cron })`
 from `alepha/api/jobs` — it layers durability on top of this scheduler.

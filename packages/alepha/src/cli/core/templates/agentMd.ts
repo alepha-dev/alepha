@@ -82,7 +82,7 @@ export default defineConfig({
 
 Then: \`alepha platform up --env production\` (auth via \`wrangler login\` on first run).
 
-Supported adapters: \`cloudflare\`, \`vercel\`. The Cloudflare adapter provisions
+Supported adapters: \`cloudflare\`, \`bay\`. The Cloudflare adapter provisions
 D1 (or Hyperdrive when \`DATABASE_URL\` is postgres), KV, R2, Queues, and pushes
 secrets via \`wrangler secret bulk\`. Set \`build.target: "cloudflare"\` in
 \`alepha.config.ts\` if you only want the build artifact without the orchestrator.

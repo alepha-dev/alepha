@@ -77,10 +77,10 @@ declare module "alepha" {
  * - **Cloudflare Workers** — the build emits cron expressions into
  *   `wrangler.jsonc`; Cloudflare invokes the worker on schedule and the
  *   `cloudflare:scheduled` hook routes the event to the matching jobs.
- * - **Vercel** — the build emits cron entries into
- *   `.vercel/output/config.json` mapped to `/_alepha/cron/:name`; the
- *   serverless handler emits `serverless:cron` and `CronProvider` runs
- *   the matching job. Set `CRON_SECRET` to require authenticated calls.
+ * - **Generic serverless** — a platform entry point can POST
+ *   `/_alepha/cron/:name`; the handler emits `serverless:cron` and
+ *   `CronProvider` runs the matching job. Set `CRON_SECRET` to require
+ *   authenticated calls.
  *
  * @module alepha.api.jobs
  */

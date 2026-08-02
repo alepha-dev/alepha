@@ -4,15 +4,9 @@ import { $atom, type Static, z } from "alepha";
  * Deployment target for the build output.
  *
  * - `docker` - Generate Dockerfile for containerized deployment
- * - `vercel` - Generate Vercel deployment configuration (forces node runtime)
  * - `cloudflare` - Generate Cloudflare Workers configuration (forces workerd runtime)
  */
-export type BuildTarget =
-  | "bare"
-  | "docker"
-  | "vercel"
-  | "cloudflare"
-  | "static";
+export type BuildTarget = "bare" | "docker" | "cloudflare" | "static";
 
 /**
  * JavaScript runtime for the build output.
@@ -45,12 +39,9 @@ export const buildOptions = $atom({
      * Deployment target for the build output.
      *
      * - `docker` - Generate Dockerfile for containerized deployment
-     * - `vercel` - Generate Vercel deployment configuration (forces node runtime)
      * - `cloudflare` - Generate Cloudflare Workers configuration (forces workerd runtime)
      */
-    target: z
-      .enum(["bare", "docker", "vercel", "cloudflare", "static"])
-      .optional(),
+    target: z.enum(["bare", "docker", "cloudflare", "static"]).optional(),
 
     /**
      * JavaScript runtime for the build output.
@@ -61,7 +52,6 @@ export const buildOptions = $atom({
      *
      * Note: Some targets force a specific runtime:
      * - `cloudflare` always uses `workerd`
-     * - `vercel` always uses `node`
      */
     runtime: z.enum(["node", "bun", "workerd"]).optional(),
 
@@ -83,32 +73,6 @@ export const buildOptions = $atom({
          * @default "public"
          */
         public: z.string().default("public").optional(),
-      })
-      .optional(),
-
-    /**
-     * Vercel-specific deployment configuration.
-     *
-     * Note: Set `target: "vercel"` to enable Vercel deployment.
-     * This object is only for additional configuration.
-     */
-    vercel: z
-      .object({
-        projectName: z.string().optional(),
-        orgId: z.string().optional(),
-        projectId: z.string().optional(),
-        config: z
-          .object({
-            crons: z
-              .array(
-                z.object({
-                  path: z.string(),
-                  schedule: z.string(),
-                }),
-              )
-              .optional(),
-          })
-          .optional(),
       })
       .optional(),
 

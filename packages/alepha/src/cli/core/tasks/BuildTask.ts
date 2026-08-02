@@ -68,7 +68,7 @@ export interface BuildTaskContext {
     environments?: Record<
       string,
       {
-        adapter: "cloudflare" | "vercel" | "bay";
+        adapter: "cloudflare" | "bay";
         domain?: string;
         zone?: string;
         jurisdiction?: "eu" | "fedramp";

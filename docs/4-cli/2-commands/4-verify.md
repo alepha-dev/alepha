@@ -133,7 +133,7 @@ Don't commit broken code. Your teammates will thank you.
 ### Before Deploying
 
 ```bash
-alepha verify && alepha build --target=vercel && cd dist && vercel --prod
+alepha verify && alepha platform up --env production
 ```
 
 Don't deploy broken code. Your users will thank you.

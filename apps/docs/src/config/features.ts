@@ -203,7 +203,7 @@ export const coreFeatures = [
     icon: IconCloud,
     title: "Deploy",
     module: null,
-    description: "Bare, Cloudflare, Vercel, and more.",
+    description: "Bare, Cloudflare, Bay, and more.",
     slug: "guides-deployment-bare",
   },
 ];

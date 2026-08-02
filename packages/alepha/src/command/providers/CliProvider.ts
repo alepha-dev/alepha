@@ -204,6 +204,14 @@ export class CliProvider {
         if (commandName !== "" && !rootCommand?.options.args) {
           this.log.error(`Unknown command: '${commandName}'`);
           this.printHelp();
+          // A typo must not report success. Exit code rather than a throw:
+          // throwing surfaces as "Alepha failed to start" plus a stack, which
+          // reads as a crash when the right answer is a usage message. The
+          // `process` guard mirrors core/index.ts — there is no process in
+          // workerd or the browser.
+          if (typeof process === "object") {
+            process.exitCode = 1;
+          }
           return;
         }
 
@@ -1323,7 +1331,15 @@ export class CliProvider {
   }
 
   /**
-   * Get top-level commands (commands that are not children of other commands)
+   * Get top-level commands (commands that are not children of other commands).
+   *
+   * Deduplicated by name, keeping the LAST registration. A project that
+   * redefines a builtin in its `alepha.config.ts` — `clean` and `verify` in
+   * this repo — otherwise appeared twice in `--help`, with two contradictory
+   * descriptions, while only one of them could ever run. Last-wins is not a
+   * choice made here: it is what {@link findCommand} already does with
+   * `findLast`, so this makes the help agree with the resolution instead of
+   * inventing a second rule.
    */
   protected getTopLevelCommands(): CommandPrimitive<any>[] {
     const allChildren = new Set<CommandPrimitive<any>>();
@@ -1335,8 +1351,15 @@ export class CliProvider {
       }
     }
 
-    // Return commands that are not children
-    return this.commands.filter((cmd) => !allChildren.has(cmd));
+    const topLevel = this.commands.filter((cmd) => !allChildren.has(cmd));
+
+    // Keep insertion order, but let a later same-named command take the
+    // earlier one's slot rather than adding a row.
+    const byName = new Map<string, CommandPrimitive<any>>();
+    for (const cmd of topLevel) {
+      byName.set(cmd.name, cmd);
+    }
+    return [...byName.values()];
   }
 
   /**

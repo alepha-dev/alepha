@@ -86,7 +86,7 @@ export const platformOptions = $atom({
             "Environment name (e.g. 'production', 'staging', 'preview'). Used in resource naming and selected via --env.",
         }),
         z.object({
-          adapter: z.enum(["cloudflare", "vercel", "bay"]),
+          adapter: z.enum(["cloudflare", "bay"]),
           /**
            * Base URL of the Bay control panel this environment deploys to,
            * e.g. `"https://admin.bay.alepha.dev"`. Only read by the `bay`
@@ -170,7 +170,7 @@ export type PlatformOptions = Static<typeof platformOptions.schema>;
  * Configuration for a single named environment.
  */
 export interface EnvironmentConfig {
-  adapter: "cloudflare" | "vercel" | "bay";
+  adapter: "cloudflare" | "bay";
   /** Base URL of the Bay control panel (`bay` adapter only). */
   endpoint?: string;
   domain?: string;

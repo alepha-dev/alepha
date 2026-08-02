@@ -12,7 +12,6 @@ import {
   platformOptions,
   type ResolvedPlatformConfig,
   resolveTenant,
-  VercelAdapter,
   WranglerApi,
 } from "alepha/cli/platform-lib";
 import { $command, EnvUtils, type RunnerMethod } from "alepha/command";
@@ -70,7 +69,7 @@ export class PlatformCommand {
       const envConfig = config.environments[env];
       const adapterName = envConfig?.adapter ?? "cloudflare";
 
-      const apps = await this.resolveApps(
+      const app = await this.resolveApp(
         root,
         config,
         this.isServerless(adapterName),
@@ -80,14 +79,13 @@ export class PlatformCommand {
 
       // --- Data collection ---
 
-      const hasDB = apps.some((a) => a.resources.hasDatabase);
-      const hasBucket = apps.some((a) => a.resources.hasBucket);
+      const hasDB = app.resources.hasDatabase;
+      const hasBucket = app.resources.hasBucket;
       const envVars = await this.envUtils.parseEnv(root, [`.env.${env}`]);
 
       const resources: Array<{ label: string; value: string }> = [];
 
-      const deployLabel = adapterName === "vercel" ? "Project" : "Worker";
-      resources.push({ label: deployLabel, value: namingCtx.worker() });
+      resources.push({ label: "Worker", value: namingCtx.worker() });
 
       if (adapterName === "cloudflare") {
         if (hasDB) {
@@ -106,20 +104,15 @@ export class PlatformCommand {
           resources.push({ label: "R2", value: namingCtx.r2() });
         }
 
-        for (const app of apps) {
-          if (app.resources.hasKV) {
-            resources.push({ label: "KV", value: namingCtx.kv() });
-          }
-          if (app.resources.hasQueue) {
-            resources.push({ label: "Queue", value: namingCtx.queue() });
-          }
+        if (app.resources.hasKV) {
+          resources.push({ label: "KV", value: namingCtx.kv() });
+        }
+        if (app.resources.hasQueue) {
+          resources.push({ label: "Queue", value: namingCtx.queue() });
         }
       }
 
-      const excludedKeys =
-        adapterName === "vercel"
-          ? VercelAdapter.EXCLUDED_SECRET_KEYS
-          : CloudflareAdapter.EXCLUDED_SECRET_KEYS;
+      const excludedKeys = CloudflareAdapter.EXCLUDED_SECRET_KEYS;
       const secretCount = Object.entries(envVars).filter(
         ([key, value]) =>
           value && !excludedKeys.has(key) && !key.startsWith("VITE_"),
@@ -143,11 +136,16 @@ export class PlatformCommand {
           project: config.project,
           env,
           mode: "standalone",
-          apps: apps.map((a) => ({
-            name: a.name,
-            path: a.path,
-            resources: a.resources,
-          })),
+          // Still an array: `apps` is part of the JSON contract
+          // (`platformPlanSchema`), and a project has exactly one app since
+          // the `apps:` collapse — so the array is always exactly one entry.
+          apps: [
+            {
+              name: config.project,
+              path: "",
+              resources: app.resources,
+            },
+          ],
           environments,
           resources,
           secretCount,
@@ -228,7 +226,7 @@ export class PlatformCommand {
       const config = await this.inspector.resolveConfig(root);
       const env = flags.env ?? config.defaultEnv;
       const adapter = config.environments[env]?.adapter ?? "cloudflare";
-      const apps = await this.resolveApps(
+      const app = await this.resolveApp(
         root,
         config,
         this.isServerless(adapter),
@@ -238,8 +236,8 @@ export class PlatformCommand {
       const result = await this.orchestrator.up({
         root,
         env,
-        entry: apps[0].entry,
-        resources: apps[0].resources,
+        entry: app.entry,
+        resources: app.resources,
 
         run,
         prebuilt: flags.prebuilt,
@@ -292,7 +290,7 @@ export class PlatformCommand {
 
       const config = await this.inspector.resolveConfig(root);
       const adapter = config.environments[flags.env]?.adapter ?? "cloudflare";
-      const apps = await this.resolveApps(
+      const app = await this.resolveApp(
         root,
         config,
         this.isServerless(adapter),
@@ -301,8 +299,8 @@ export class PlatformCommand {
       const completed = await this.orchestrator.down({
         root,
         env: flags.env,
-        entry: apps[0].entry,
-        resources: apps[0].resources,
+        entry: app.entry,
+        resources: app.resources,
 
         run,
         tenant: flags.tenant,
@@ -356,7 +354,7 @@ export class PlatformCommand {
       );
     }
     const config = await this.inspector.resolveConfig(ctx.root);
-    const apps = await this.resolveApps(
+    const app = await this.resolveApp(
       ctx.root,
       config,
       this.isServerless(
@@ -366,8 +364,8 @@ export class PlatformCommand {
     await this.orchestrator.auth({
       root: ctx.root,
       env: ctx.flags.env,
-      entry: apps[0].entry,
-      resources: apps[0].resources,
+      entry: app.entry,
+      resources: app.resources,
       run: ctx.run,
       action,
     });
@@ -425,7 +423,7 @@ export class PlatformCommand {
       const config = await this.inspector.resolveConfig(root);
       const env = flags.env ?? config.defaultEnv;
       const adapter = config.environments[env]?.adapter ?? "cloudflare";
-      const apps = await this.resolveApps(
+      const app = await this.resolveApp(
         root,
         config,
         this.isServerless(adapter),
@@ -434,8 +432,8 @@ export class PlatformCommand {
       const { state } = await this.orchestrator.status({
         root,
         env,
-        entry: apps[0].entry,
-        resources: apps[0].resources,
+        entry: app.entry,
+        resources: app.resources,
 
         run,
         tenant: flags.tenant,
@@ -606,7 +604,7 @@ export class PlatformCommand {
       const env = flags.env ?? config.defaultEnv;
       const envConfig = config.environments[env];
       const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const apps = await this.resolveApps(
+      const app = await this.resolveApp(
         root,
         config,
         this.isServerless(envConfig.adapter),
@@ -618,8 +616,8 @@ export class PlatformCommand {
         project: config.project,
         env,
         envConfig,
-        entry: apps[0].entry,
-        resources: apps[0].resources,
+        entry: app.entry,
+        resources: app.resources,
 
         root,
         naming: namingCtx,
@@ -639,7 +637,7 @@ export class PlatformCommand {
       const env = flags.env ?? config.defaultEnv;
       const envConfig = config.environments[env];
       const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const apps = await this.resolveApps(
+      const app = await this.resolveApp(
         root,
         config,
         this.isServerless(envConfig.adapter),
@@ -651,8 +649,8 @@ export class PlatformCommand {
         project: config.project,
         env,
         envConfig,
-        entry: apps[0].entry,
-        resources: apps[0].resources,
+        entry: app.entry,
+        resources: app.resources,
 
         root,
         naming: namingCtx,
@@ -673,7 +671,7 @@ export class PlatformCommand {
       const env = flags.env ?? config.defaultEnv;
       const envConfig = config.environments[env];
       const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const apps = await this.resolveApps(
+      const app = await this.resolveApp(
         root,
         config,
         this.isServerless(envConfig.adapter),
@@ -685,8 +683,8 @@ export class PlatformCommand {
         project: config.project,
         env,
         envConfig,
-        entry: apps[0].entry,
-        resources: apps[0].resources,
+        entry: app.entry,
+        resources: app.resources,
 
         root,
         naming: namingCtx,
@@ -963,34 +961,8 @@ export class PlatformCommand {
     return { entry, resources };
   }
 
-  /**
-   * @deprecated single-app projects; use `resolveApp` directly.
-   * Kept temporarily so existing commands can be migrated one at a time.
-   */
-  protected async resolveApps(
-    root: string,
-    config: ResolvedPlatformConfig,
-    isServerless: boolean,
-    options: { prebuilt?: boolean } = {},
-  ): Promise<
-    Array<{
-      name: string;
-      path: string;
-      entry: AppEntry;
-      resources: DetectedResources;
-    }>
-  > {
-    const { entry, resources } = await this.resolveApp(
-      root,
-      config,
-      isServerless,
-      options,
-    );
-    return [{ name: config.project, path: "", entry, resources }];
-  }
-
   protected isServerless(adapter: string): boolean {
-    return adapter === "vercel" || adapter === "cloudflare";
+    return adapter === "cloudflare";
   }
 
   /**

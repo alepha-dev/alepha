@@ -10,7 +10,6 @@ import type {
   PlatformContext,
   PlatformState,
 } from "../adapters/PlatformAdapter.ts";
-import { VercelAdapter } from "../adapters/VercelAdapter.ts";
 import {
   type NamingContext,
   NamingService,
@@ -35,7 +34,6 @@ export class PlatformOrchestrator {
   protected readonly naming = $inject(NamingService);
   protected readonly bayAdapter = $inject(BayAdapter);
   protected readonly cloudflareAdapter = $inject(CloudflareAdapter);
-  protected readonly vercelAdapter = $inject(VercelAdapter);
   protected readonly alepha = $inject(Alepha);
 
   // -------------------------------------------------------------------------
@@ -46,8 +44,6 @@ export class PlatformOrchestrator {
     switch (adapterName) {
       case "cloudflare":
         return this.cloudflareAdapter;
-      case "vercel":
-        return this.vercelAdapter;
       case "bay":
         return this.bayAdapter;
       default:

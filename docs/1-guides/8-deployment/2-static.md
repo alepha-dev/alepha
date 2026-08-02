@@ -65,7 +65,6 @@ The `dist/public/` directory is a standard static site. Deploy it to any static 
 - **GitHub Pages** -- copy `dist/public/` to the `gh-pages` branch
 - **Netlify** -- set build output to `dist/public`
 - **Cloudflare Pages** -- set build output to `dist/public`
-- **Vercel (static)** -- set output to `dist/public`
 
 The `200.html` file serves as the SPA fallback for hosting providers that support it (Surge, Netlify). Configure your hosting provider's rewrite rules to serve `200.html` for all unmatched routes.
 
