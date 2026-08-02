@@ -94,6 +94,9 @@ func (r *Child) Start(s Spec) error {
 	if err := os.MkdirAll(filepath.Dir(s.LogFile), 0o755); err != nil {
 		return err
 	}
+	if err := rotateIfLarge(s.LogFile, maxLogBytes); err != nil {
+		return fmt.Errorf("rotate log: %w", err)
+	}
 	log, err := os.OpenFile(s.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return fmt.Errorf("open log: %w", err)
