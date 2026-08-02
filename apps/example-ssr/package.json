@@ -28,10 +28,10 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.0",
-    "better-sqlite3": "^13.0.1",
-    "vite": "^8.1.5",
-    "wrangler": "^4.114.0"
+    "@playwright/test": "^1.62.1",
+    "better-sqlite3": "^13.0.2",
+    "vite": "^8.2.0",
+    "wrangler": "^4.118.0"
   },
   "dependenciesMeta": {
     "better-sqlite3": {

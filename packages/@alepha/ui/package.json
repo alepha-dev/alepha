@@ -47,7 +47,7 @@
     "embla-carousel-react": "^8.6.0",
     "highlight.js": "^11.11.1",
     "input-otp": "^1.4.2",
-    "lucide-react": "^1.27.0",
+    "lucide-react": "^1.28.0",
     "react-day-picker": "^10.0.1",
     "react-is": "^19.2.8",
     "react-markdown": "^10.1.0",
@@ -67,14 +67,14 @@
     "recharts": "^3"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.5",
+    "@biomejs/biome": "^2.5.6",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
-    "@types/react": "^19.2.17",
+    "@types/react": "^19.2.18",
     "alepha": "0.24.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "shadcn": "^4.15.0",
+    "shadcn": "^4.16.1",
     "typescript": "^7.0.2"
   }
 }

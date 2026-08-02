@@ -7,7 +7,7 @@
     "alepha": "0.24.0",
     "autocannon": "^8.0.0",
     "express": "^5.2.1",
-    "fastify": "^5.10.0",
+    "fastify": "^5.11.0",
     "npm-run-all": "^4.1.5"
   },
   "scripts": {

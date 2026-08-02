@@ -8,10 +8,10 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@types/react": "^19.2.17",
-    "@vitejs/plugin-react": "^6.0.4",
+    "@types/react": "^19.2.18",
+    "@vitejs/plugin-react": "^6.0.5",
     "drizzle-kit": "1.0.0-rc.4",
-    "vite": "^8.1.5"
+    "vite": "^8.2.0"
   },
   "scripts": {
     "dev": "alepha dev",
