@@ -1019,7 +1019,15 @@ export class PlatformCommand {
     } catch {}
 
     try {
-      hasQueue = alepha.primitives("queue").length > 0;
+      // There is no queue primitive to count — `$queue` has not existed for a
+      // while, so the old `primitives("queue")` lookup was structurally always
+      // zero and this command silently under-reported the resource. A Queue
+      // binding is needed only when `$job` dispatch is routed through a broker,
+      // which is exactly what registering `JobQueueProvider` (via
+      // `AlephaApiJobsQueue`) means. Same rule as `BuildManifestTask`, which is
+      // what actually drives provisioning — the two must agree or `plan` lies
+      // about what `up` will create.
+      hasQueue = !!alepha.inject("JobQueueProvider");
     } catch {}
 
     try {

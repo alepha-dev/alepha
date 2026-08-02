@@ -12,8 +12,16 @@ export class JtiReplayGuard {
     protected readonly maxEntries = 10_000,
   ) {}
 
-  /** Records `jti` and returns true if fresh; false if already used (replay). */
-  check(jti: string, now: number = Date.now()): boolean {
+  /**
+   * Records `jti` and returns true if fresh; false if already used (replay).
+   *
+   * `now` is required rather than defaulted to the wall clock: the replay
+   * window is the whole point of this guard, so the caller — which has a
+   * container and therefore a `DateTimeProvider` — owns the clock. A default
+   * here would make the window untestable from the outside and silently
+   * ignore `travel()` / `pause()`.
+   */
+  check(jti: string, now: number): boolean {
     this.prune(now);
     if (this.seen.has(jti)) {
       return false;

@@ -109,6 +109,7 @@ export default (alepha: Alepha) => {
           await run([
             `yarn typecheck`,
             `yarn check:deps`,
+            `yarn check:conventions`,
             `yarn check:docs`,
             `yarn check:i18n`,
             `yarn check:migrations`,
@@ -129,6 +130,7 @@ export default (alepha: Alepha) => {
         // copy and miss a doc-breaking comment change.
         await run(`yarn check:docs`);
         await run(`yarn check:deps`);
+        await run(`yarn check:conventions`);
         await run(`yarn typecheck`);
         await assertServicesUp();
 

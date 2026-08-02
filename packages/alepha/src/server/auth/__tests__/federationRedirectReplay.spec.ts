@@ -21,9 +21,10 @@ describe("safeRedirectPath", () => {
 describe("JtiReplayGuard", () => {
   it("accepts a jti once, rejects the replay", () => {
     const g = new JtiReplayGuard();
-    expect(g.check("a")).toBe(true);
-    expect(g.check("a")).toBe(false);
-    expect(g.check("b")).toBe(true);
+    const now = 1_000;
+    expect(g.check("a", now)).toBe(true);
+    expect(g.check("a", now)).toBe(false);
+    expect(g.check("b", now)).toBe(true);
   });
 
   it("accepts the same jti again once its TTL has elapsed", () => {

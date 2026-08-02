@@ -29,7 +29,7 @@ Your app is live. Database created, secrets pushed, worker deployed.
 
 ## What It Does
 
-Alepha introspects your application at build time. It scans for primitives -- `$entity`, `$storage`, `$cache`, `$queue` -- plus registered cron jobs, and maps them to cloud resources on the target platform.
+Alepha introspects your application at build time. It scans for primitives -- `$entity`, `$storage`, `$cache` -- plus `$job` dispatch and registered cron jobs, and maps them to cloud resources on the target platform.
 
 The deployment lifecycle runs in a fixed order:
 
@@ -273,7 +273,7 @@ Alepha detects primitives in your code and maps them to Cloudflare resources:
 | `$entity` / `$repository` | Hyperdrive | `DATABASE_URL` starts with `postgres:` |
 | `$storage` | R2 | Any `$storage` primitive detected |
 | `$cache` | KV | Any `$cache` *without* an explicit `provider` (an explicit choice opts out of the platform default) |
-| `$queue` | Queue | Any `$queue` primitive detected |
+| `$job` | Queue | `JobQueueProvider` registered (via `AlephaApiJobsQueue`) -- i.e. `$job` dispatch routed through a broker. There is no `$queue` primitive; `alepha/queue` is the transport `$job` sits on, never called directly |
 | Cron jobs | Cron Triggers | Any cron expression registered (configured at build time, not provisioned) |
 
 D1, Hyperdrive, R2, KV, and Queue are provisioned via the Cloudflare REST API during the `provision` step. Cron triggers are written into `wrangler.jsonc` during the `build` step.

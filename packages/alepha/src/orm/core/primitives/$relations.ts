@@ -1,4 +1,4 @@
-import type { Infer, ZObject } from "alepha";
+import { AlephaError, type Infer, type ZObject } from "alepha";
 import type { EntityPrimitive } from "./$entity.ts";
 
 /**
@@ -99,13 +99,13 @@ const junctionOf = (
   if (!fromHop && !toHop) return undefined;
 
   if (!fromHop || !toHop) {
-    throw new Error(
+    throw new AlephaError(
       "A many-to-many relation must call .through() on both sides — one side alone leaves no column to match on the other.",
     );
   }
 
   if (fromHop.entity !== toHop.entity) {
-    throw new Error(
+    throw new AlephaError(
       `Both sides of a many-to-many must go through the same junction, got '${fromHop.entity}' and '${toHop.entity}'.`,
     );
   }
