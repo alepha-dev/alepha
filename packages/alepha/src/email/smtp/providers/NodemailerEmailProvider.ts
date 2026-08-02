@@ -1,4 +1,4 @@
-import { $atom, $env, $hook, $state, type Static, z } from "alepha";
+import { $atom, $env, $hook, $store, type Infer, z } from "alepha";
 import {
   EmailError,
   type EmailProvider,
@@ -71,7 +71,7 @@ export const nodemailerEmailOptions = $atom({
   serverOnly: true,
 });
 
-export type NodemailerEmailProviderOptions = Static<
+export type NodemailerEmailProviderOptions = Infer<
   typeof nodemailerEmailOptions.schema
 >;
 
@@ -117,7 +117,7 @@ declare module "alepha" {
 export class NodemailerEmailProvider implements EmailProvider {
   protected readonly env = $env(envSchema);
   protected readonly log = $logger();
-  protected readonly options = $state(nodemailerEmailOptions);
+  protected readonly options = $store(nodemailerEmailOptions);
   protected transporter: Transporter | null = null;
 
   protected get host(): string {

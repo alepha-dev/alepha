@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { devActionMetadataSchema } from "./DevActionMetadata.ts";
 import { devAtomMetadataSchema } from "./DevAtomMetadata.ts";
 import { devCacheMetadataSchema } from "./DevCacheMetadata.ts";
@@ -24,7 +24,7 @@ export const devSystemSchema = z.object({
   memoryUsage: z.number(),
 });
 
-export type DevSystem = Static<typeof devSystemSchema>;
+export type DevSystem = Infer<typeof devSystemSchema>;
 
 export const devMetadataSchema = z.object({
   system: devSystemSchema,
@@ -44,4 +44,4 @@ export const devMetadataSchema = z.object({
   atoms: z.array(devAtomMetadataSchema),
 });
 
-export type DevMetadata = Static<typeof devMetadataSchema>;
+export type DevMetadata = Infer<typeof devMetadataSchema>;

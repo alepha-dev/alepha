@@ -4,12 +4,12 @@ import {
   $env,
   $hook,
   $inject,
-  $state,
+  $store,
   Alepha,
+  type Infer,
   type Middleware,
   OPTIONS,
   PipelineHandler,
-  type Static,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
@@ -74,8 +74,8 @@ export class ReactServerProvider {
    */
   protected hasServerLinksProvider = false;
 
-  protected readonly options = $state(reactServerOptions);
-  protected readonly pageOptions = $state(reactPageOptions);
+  protected readonly options = $store(reactServerOptions);
+  protected readonly pageOptions = $store(reactPageOptions);
 
   /**
    * Configure the React server provider.
@@ -701,7 +701,7 @@ const envSchema = z.object({
 });
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface Env extends Partial<Infer<typeof envSchema>> {}
   interface State {
     "alepha.react.server.ssr"?: boolean;
   }
@@ -735,7 +735,7 @@ export const reactServerOptions = $atom({
   serverOnly: true,
 });
 
-export type ReactServerProviderOptions = Static<
+export type ReactServerProviderOptions = Infer<
   typeof reactServerOptions.schema
 >;
 

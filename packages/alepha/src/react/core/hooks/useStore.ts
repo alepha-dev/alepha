@@ -1,4 +1,4 @@
-import type { State, Static, TAtomObject } from "alepha";
+import type { Infer, State, TAtomObject } from "alepha";
 import { Atom } from "alepha";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useAlepha } from "./useAlepha.ts";
@@ -13,8 +13,8 @@ import { useAlepha } from "./useAlepha.ts";
  */
 function useStore<T extends TAtomObject>(
   target: Atom<T>,
-  defaultValue?: Static<T>,
-): UseStoreReturn<Static<T>>;
+  defaultValue?: Infer<T>,
+): UseStoreReturn<Infer<T>>;
 function useStore<Key extends keyof State>(
   target: Key,
   defaultValue?: State[Key],

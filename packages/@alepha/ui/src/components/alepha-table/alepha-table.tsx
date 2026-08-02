@@ -39,7 +39,7 @@ import {
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
 import { cn } from "@alepha/ui/lib/utils";
-import { type Page, type TObject, z } from "alepha";
+import { type Page, type ZObject, z } from "alepha";
 import { ClientOnly, useAlepha } from "alepha/react";
 import { type FormModel, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -140,9 +140,9 @@ export interface TableAction {
  * with `form.input.<field>` exactly like a hand-rolled `useForm`.
  */
 export interface AlephaTableFilters {
-  schema: TObject;
+  schema: ZObject;
   initialValues?: Record<string, any>;
-  render: (form: FormModel<TObject>) => ReactNode;
+  render: (form: FormModel<ZObject>) => ReactNode;
 }
 
 interface SortState {
@@ -270,7 +270,7 @@ export interface AlephaTableProps<T> {
    * AlephaTable own the form). When `filters` is set, this prop is
    * ignored.
    */
-  form?: FormModel<TObject>;
+  form?: FormModel<ZObject>;
   /**
    * When true (default when `filters` is set), the table refetches on
    * every `form:change` event, debounced by 250ms. Set to `false` to
@@ -282,7 +282,7 @@ export interface AlephaTableProps<T> {
 const defaultRowKey = (item: unknown): string =>
   String((item as { id?: unknown })?.id ?? Math.random());
 
-const EMPTY_FILTERS_SCHEMA = z.object({}) as TObject;
+const EMPTY_FILTERS_SCHEMA = z.object({}) as ZObject;
 
 /** Synchronous localStorage read. Returns undefined on miss or error. */
 const readPersisted = <V,>(key: string, suffix: string): V | undefined => {

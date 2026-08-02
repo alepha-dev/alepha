@@ -1,4 +1,4 @@
-import type { TObject, TSchema } from "alepha";
+import type { ZObject, ZType } from "alepha";
 import type { PgSymbolKeys, PgSymbols } from "../constants/PG_SYMBOLS.ts";
 
 /**
@@ -16,7 +16,7 @@ import type { PgSymbolKeys, PgSymbols } from "../constants/PG_SYMBOLS.ts";
  * );
  * ```
  */
-export const pgAttr = <T extends TSchema, Attr extends PgSymbolKeys>(
+export const pgAttr = <T extends ZType, Attr extends PgSymbolKeys>(
   type: T,
   attr: Attr,
   value?: PgSymbols[Attr],
@@ -29,7 +29,7 @@ export const pgAttr = <T extends TSchema, Attr extends PgSymbolKeys>(
  * Retrieves the fields of a schema that have a specific attribute.
  */
 export const getAttrFields = (
-  schema: TObject,
+  schema: ZObject,
   name: PgSymbolKeys,
 ): PgAttrField[] => {
   const fields: Array<PgAttrField> = [];
@@ -38,7 +38,7 @@ export const getAttrFields = (
     const value = schema.shape[key];
     if (name in value) {
       fields.push({
-        type: value as TSchema,
+        type: value as ZType,
         key: key,
         data: (value as any)[name],
       });
@@ -51,13 +51,13 @@ export const getAttrFields = (
 /**
  * Type representation.
  */
-export type PgAttr<T extends TSchema, TAttr extends PgSymbolKeys> = T & {
+export type PgAttr<T extends ZType, TAttr extends PgSymbolKeys> = T & {
   [K in TAttr]: PgSymbols[K];
 };
 
 export interface PgAttrField {
   key: string;
-  type: TSchema;
+  type: ZType;
   data: any;
   nested?: any[];
   one?: boolean;

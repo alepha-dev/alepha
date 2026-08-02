@@ -2,7 +2,7 @@ import { pipeline, Readable, type Transform } from "node:stream";
 import { ReadableStream } from "node:stream/web";
 import { promisify } from "node:util";
 import * as zlib from "node:zlib";
-import { $atom, $hook, $inject, $state, Alepha, type Static, z } from "alepha";
+import { $atom, $hook, $inject, $store, Alepha, type Infer, z } from "alepha";
 import { $logger } from "alepha/logger";
 import type { ServerResponse } from "alepha/server";
 
@@ -41,7 +41,7 @@ export const compressOptions = $atom({
   serverOnly: true,
 });
 
-export type CompressOptions = Static<typeof compressOptions.schema>;
+export type CompressOptions = Infer<typeof compressOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -78,7 +78,7 @@ export class ServerCompressProvider {
   };
 
   protected readonly alepha = $inject(Alepha);
-  protected readonly options = $state(compressOptions);
+  protected readonly options = $store(compressOptions);
   protected readonly log = $logger();
 
   public readonly onResponse = $hook({

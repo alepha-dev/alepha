@@ -29,7 +29,7 @@ It provides a declarative way to define pages with powerful features:
 - Automatic fallback handling during hydration
 
 **Performance Optimization**
-- Static generation for pre-rendered pages at build time
+- Infer generation for pre-rendered pages at build time
 - Server-side caching via the `$cache` middleware in `use: [...]`
 - Code splitting through lazy component loading
 
@@ -99,7 +99,7 @@ const projectSection = $page({
 });
 ```
 
-Static generation with caching
+Infer generation with caching
 ```typescript
 const blogPost = $page({
   path: "/blog/:slug",

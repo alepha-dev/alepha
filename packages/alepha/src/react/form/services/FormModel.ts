@@ -1,11 +1,11 @@
-import type { TArray } from "alepha";
+import type { ZodArray } from "alepha";
 import {
   $inject,
   Alepha,
   coerceObject,
-  type Static,
-  type TObject,
-  type TSchema,
+  type Infer,
+  type ZObject,
+  type ZType,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
@@ -19,7 +19,7 @@ import type { ChangeEvent, InputHTMLAttributes } from "react";
  *
  * @see {@link useForm}
  */
-export class FormModel<T extends TObject> {
+export class FormModel<T extends ZObject> {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly values: Record<string, any> = {};
@@ -81,7 +81,7 @@ export class FormModel<T extends TObject> {
    * and leaf values are left untouched.
    */
   protected flattenObjectValues(
-    schema: TObject,
+    schema: ZObject,
     values: Record<string, any>,
     prefix = "",
   ): Record<string, any> {
@@ -103,7 +103,7 @@ export class FormModel<T extends TObject> {
       Object.assign(
         flat,
         this.flattenObjectValues(
-          inner as TObject,
+          inner as ZObject,
           value as Record<string, any>,
           fullKey,
         ),
@@ -118,7 +118,7 @@ export class FormModel<T extends TObject> {
    * Recursively handles nested objects, unwrapping optional/nullable/default.
    */
   protected extractSchemaDefaults(
-    schema: TObject,
+    schema: ZObject,
     prefix: string = "",
   ): Record<string, any> {
     const defaults: Record<string, any> = {};
@@ -154,7 +154,7 @@ export class FormModel<T extends TObject> {
         // Recursively extract defaults from nested objects
         Object.assign(
           defaults,
-          this.extractSchemaDefaults(inner as TObject, fullKey),
+          this.extractSchemaDefaults(inner as ZObject, fullKey),
         );
       }
     }
@@ -396,9 +396,9 @@ export class FormModel<T extends TObject> {
     currentObjectLevel[finalPropertyKey] = value;
   }
 
-  protected createProxyFromSchema<T extends TObject>(
+  protected createProxyFromSchema<T extends ZObject>(
     options: FormCtrlOptions<T>,
-    schema: TSchema,
+    schema: ZType,
     context: {
       parent: string;
       store: Record<string, any>;
@@ -425,7 +425,7 @@ export class FormModel<T extends TObject> {
           // }
 
           return this.createInputFromSchema<T>(
-            prop as keyof Static<T> & string,
+            prop as keyof Infer<T> & string,
             options,
             schema,
             z.schema.requiredKeys(schema).includes(prop as string) || false,
@@ -436,10 +436,10 @@ export class FormModel<T extends TObject> {
     });
   }
 
-  protected createInputFromSchema<T extends TObject>(
-    name: keyof Static<T> & string,
+  protected createInputFromSchema<T extends ZObject>(
+    name: keyof Infer<T> & string,
     options: FormCtrlOptions<T>,
-    schema: TObject,
+    schema: ZObject,
     required: boolean,
     context: {
       parent: string;
@@ -614,7 +614,7 @@ export class FormModel<T extends TObject> {
    * Convert an input value to the correct type based on the schema.
    * Handles raw DOM values (strings, booleans from checkboxes, Files, etc.)
    */
-  protected getValueFromInput(input: any, schema: TSchema): any {
+  protected getValueFromInput(input: any, schema: ZType): any {
     // Treat null/undefined as "unset" for every schema. Without this the
     // string branch below stringifies them to "null"/"undefined" (and
     // the date branches throw on `new Date(undefined)`), which then
@@ -668,7 +668,7 @@ export class FormModel<T extends TObject> {
   }
 }
 
-export type SchemaToInput<T extends TObject> = {
+export type SchemaToInput<T extends ZObject> = {
   [K in keyof T["properties"]]: InputField<T["properties"][K]>;
 };
 
@@ -677,9 +677,9 @@ export interface FormEventLike {
   stopPropagation?: () => void;
 }
 
-export type InputField<T extends TSchema> = T extends TObject
+export type InputField<T extends ZType> = T extends ZObject
   ? ObjectInputField<T>
-  : T extends TArray<infer U>
+  : T extends ZodArray<infer U extends ZType>
     ? ArrayInputField<U>
     : BaseInputField;
 
@@ -688,13 +688,13 @@ export interface BaseInputField {
   required: boolean;
   initialValue: any;
   props: InputHTMLAttributesLike;
-  schema: TSchema;
+  schema: ZType;
   set: (value: any) => void;
   form: FormModel<any>;
   items?: any;
 }
 
-export interface ObjectInputField<T extends TObject> extends BaseInputField {
+export interface ObjectInputField<T extends ZObject> extends BaseInputField {
   items: SchemaToInput<T>;
 }
 
@@ -708,7 +708,7 @@ export interface ObjectInputField<T extends TObject> extends BaseInputField {
  * pins exactly that. Review #3 read it as a "permanently empty typed surface"
  * and proposed removing it; the test is what says otherwise.
  */
-export interface ArrayInputField<T extends TSchema> extends BaseInputField {
+export interface ArrayInputField<T extends ZType> extends BaseInputField {
   items: Array<InputField<T>>;
 }
 
@@ -735,7 +735,7 @@ export type InputHTMLAttributesLike = Pick<
   onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
 };
 
-export type FormCtrlOptions<T extends TObject> = {
+export type FormCtrlOptions<T extends ZObject> = {
   /**
    * The schema defining the structure and validation rules for the form.
    * This should be a Zod schema object.
@@ -746,21 +746,21 @@ export type FormCtrlOptions<T extends TObject> = {
    * Callback function to handle form submission.
    * This function will receive the parsed and validated form values.
    */
-  handler: (values: Static<T>) => unknown;
+  handler: (values: Infer<T>) => unknown;
 
   /**
    * Optional initial values for the form fields.
    * This can be used to pre-populate the form with existing data.
    */
-  initialValues?: Partial<Static<T>>;
+  initialValues?: Partial<Infer<T>>;
 
   /**
    * Optional function to create custom field attributes.
    * This can be used to add custom validation, styles, or other attributes.
    */
   onCreateField?: (
-    name: keyof Static<T> & string,
-    schema: TSchema,
+    name: keyof Infer<T> & string,
+    schema: ZType,
   ) => InputHTMLAttributes<unknown>;
 
   /**

@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * Default scopes to ignore in changelog generation.
@@ -43,4 +43,4 @@ export const changelogOptions = $atom({
   serverOnly: true,
 });
 
-export type ChangelogOptions = Static<typeof changelogOptions.schema>;
+export type ChangelogOptions = Infer<typeof changelogOptions.schema>;

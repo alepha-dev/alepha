@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const tokensSchema = z.object({
@@ -18,4 +18,4 @@ export const tokensSchema = z.object({
   scope: z.text().optional(),
 });
 
-export type Tokens = Static<typeof tokensSchema>;
+export type Tokens = Infer<typeof tokensSchema>;

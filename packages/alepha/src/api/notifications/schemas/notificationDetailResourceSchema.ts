@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { logEntrySchema } from "alepha/logger";
 import { notificationResourceSchema } from "./notificationResourceSchema.ts";
 
@@ -13,6 +13,6 @@ export const notificationDetailResourceSchema = notificationResourceSchema
     description: "A notification resource with rendered content and logs.",
   });
 
-export type NotificationDetailResource = Static<
+export type NotificationDetailResource = Infer<
   typeof notificationDetailResourceSchema
 >;

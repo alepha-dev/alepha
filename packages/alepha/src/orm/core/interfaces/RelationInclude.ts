@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import type {
   AnyRelation,
   EntitySchema,
@@ -17,9 +17,9 @@ import type { PgQueryWhere } from "./PgQueryWhere.ts";
  * a normal case (no relations to include) rather than a type error.
  */
 export type RelationsFor<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
 > = K extends keyof TMap
   ? TMap[K] extends Record<string, AnyRelation>
     ? TMap[K]
@@ -37,12 +37,12 @@ export type TargetOf<R> = R extends Relation<any, infer T> ? T : never;
  * a query, and there is no reason to learn two vocabularies.
  */
 export interface RelationArgs<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
 > {
-  where?: WhereArg<TSchema, TMap, K>;
-  orderBy?: OrderBy<RowOf<TSchema, K>>;
+  where?: WhereArg<ZType, TMap, K>;
+  orderBy?: OrderBy<RowOf<ZType, K>>;
   /**
    * Read rows the repository would normally hide.
    *
@@ -63,8 +63,8 @@ export interface RelationArgs<
    */
   limit?: number;
   /** Project the relation's rows. Narrows the result type too. */
-  select?: ReadonlyArray<keyof RowOf<TSchema, K>>;
-  include?: IncludeArg<TSchema, TMap, K>;
+  select?: ReadonlyArray<keyof RowOf<ZType, K>>;
+  include?: IncludeArg<ZType, TMap, K>;
 }
 
 /**
@@ -80,14 +80,14 @@ export interface RelationArgs<
  * expression and an `EXISTS` cannot be folded into it.
  */
 export type WhereArg<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
-> = PgQueryWhere<SchemaOf<TSchema, K>> & {
-  [R in keyof RelationsFor<TSchema, TMap, K>]?: WhereArg<
-    TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
+> = PgQueryWhere<SchemaOf<ZType, K>> & {
+  [R in keyof RelationsFor<ZType, TMap, K>]?: WhereArg<
+    ZType,
     TMap,
-    TargetOf<RelationsFor<TSchema, TMap, K>[R]> & keyof TSchema
+    TargetOf<RelationsFor<ZType, TMap, K>[R]> & keyof ZType
   >;
 };
 
@@ -100,16 +100,16 @@ export type WhereArg<
  * silent undefined at runtime.
  */
 export type IncludeArg<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
 > = {
-  [R in keyof RelationsFor<TSchema, TMap, K>]?:
+  [R in keyof RelationsFor<ZType, TMap, K>]?:
     | true
     | RelationArgs<
-        TSchema,
+        ZType,
         TMap,
-        TargetOf<RelationsFor<TSchema, TMap, K>[R]> & keyof TSchema
+        TargetOf<RelationsFor<ZType, TMap, K>[R]> & keyof ZType
       >;
 };
 
@@ -142,23 +142,23 @@ export type Projected<TRow, TArgs> = TArgs extends {
  * have been deleted).
  */
 export type Resolve<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
   TArgs,
-> = Projected<RowOf<TSchema, K>, TArgs> & {
+> = Projected<RowOf<ZType, K>, TArgs> & {
   [R in keyof IncludeOf<TArgs> &
-    keyof RelationsFor<TSchema, TMap, K>]: RelationsFor<
-    TSchema,
+    keyof RelationsFor<ZType, TMap, K>]: RelationsFor<
+    ZType,
     TMap,
     K
-  >[R] extends Relation<"many", infer T extends keyof TSchema & string>
-    ? Array<Resolve<TSchema, TMap, T, ArgsOf<IncludeOf<TArgs>[R]>>>
-    : RelationsFor<TSchema, TMap, K>[R] extends Relation<
+  >[R] extends Relation<"many", infer T extends keyof ZType & string>
+    ? Array<Resolve<ZType, TMap, T, ArgsOf<IncludeOf<TArgs>[R]>>>
+    : RelationsFor<ZType, TMap, K>[R] extends Relation<
           "one",
-          infer T extends keyof TSchema & string
+          infer T extends keyof ZType & string
         >
-      ? Resolve<TSchema, TMap, T, ArgsOf<IncludeOf<TArgs>[R]>> | undefined
+      ? Resolve<ZType, TMap, T, ArgsOf<IncludeOf<TArgs>[R]>> | undefined
       : never;
 };
 
@@ -166,20 +166,20 @@ export type Resolve<
  * Kept as the previous name so existing call sites and docs still resolve.
  */
 export type WithIncludes<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
   TInclude,
-> = Resolve<TSchema, TMap, K, { include: TInclude }>;
+> = Resolve<ZType, TMap, K, { include: TInclude }>;
 
 /** A root query: the relation vocabulary plus paging. */
 export interface RelationalQueryArgs<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
 > {
-  where?: WhereArg<TSchema, TMap, K>;
-  orderBy?: OrderBy<Static<SchemaOf<TSchema, K>>>;
+  where?: WhereArg<ZType, TMap, K>;
+  orderBy?: OrderBy<Infer<SchemaOf<ZType, K>>>;
   limit?: number;
   offset?: number;
   /**
@@ -193,6 +193,6 @@ export interface RelationalQueryArgs<
    */
   force?: boolean;
 
-  select?: ReadonlyArray<keyof RowOf<TSchema, K>>;
-  include?: IncludeArg<TSchema, TMap, K>;
+  select?: ReadonlyArray<keyof RowOf<ZType, K>>;
+  include?: IncludeArg<ZType, TMap, K>;
 }

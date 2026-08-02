@@ -1,4 +1,4 @@
-import type { Async, Static, TObject, TSchema } from "alepha";
+import type { Async, Infer, ZObject, ZType } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 // JSON-RPC 2.0 Types
@@ -245,16 +245,16 @@ export interface McpPromptContent {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface ToolPrimitiveSchema {
-  params?: TObject;
-  result?: TSchema;
+  params?: ZObject;
+  result?: ZType;
 }
 
 export interface ResourcePrimitiveSchema {
-  contents?: TSchema;
+  contents?: ZType;
 }
 
 export interface PromptPrimitiveSchema {
-  args?: TObject;
+  args?: ZObject;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -292,14 +292,14 @@ export interface ToolHandlerArgs<
   T extends ToolPrimitiveSchema,
   TContext = unknown,
 > {
-  params: T["params"] extends TObject
-    ? Static<T["params"]>
+  params: T["params"] extends ZObject
+    ? Infer<T["params"]>
     : Record<string, never>;
   context?: McpContext<TContext>;
 }
 
 export type ToolHandlerResult<T extends ToolPrimitiveSchema> =
-  T["result"] extends TSchema ? Static<T["result"]> : unknown;
+  T["result"] extends ZType ? Infer<T["result"]> : unknown;
 
 export type ResourceHandler<TContext = unknown> = (
   args: ResourceHandlerArgs<TContext>,
@@ -314,12 +314,12 @@ export interface ResourceContent {
   blob?: Uint8Array;
 }
 
-export type PromptHandler<T extends TObject, TContext = unknown> = (
+export type PromptHandler<T extends ZObject, TContext = unknown> = (
   args: PromptHandlerArgs<T, TContext>,
 ) => Async<PromptMessage[]>;
 
-export interface PromptHandlerArgs<T extends TObject, TContext = unknown> {
-  args: Static<T>;
+export interface PromptHandlerArgs<T extends ZObject, TContext = unknown> {
+  args: Infer<T>;
   context?: McpContext<TContext>;
 }
 

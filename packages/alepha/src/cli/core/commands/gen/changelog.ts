@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { $inject, $state, z } from "alepha";
+import { $inject, $store, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { changelogOptions } from "../../atoms/changelogOptions.ts";
@@ -67,7 +67,7 @@ export class ChangelogCommand {
   protected readonly log = $logger();
   protected readonly git = $inject(GitProvider);
   protected readonly parser = $inject(GitMessageParser);
-  protected readonly config = $state(changelogOptions);
+  protected readonly config = $store(changelogOptions);
 
   // ---------------------------------------------------------------------------
   // FORMATTING

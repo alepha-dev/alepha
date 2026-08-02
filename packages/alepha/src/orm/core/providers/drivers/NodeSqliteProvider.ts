@@ -6,9 +6,9 @@ import {
   $env,
   $hook,
   $inject,
-  $state,
+  $store,
   AlephaError,
-  type Static,
+  type Infer,
   z,
 } from "alepha";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
@@ -64,7 +64,7 @@ export const nodeSqliteOptions = $atom({
   serverOnly: true,
 });
 
-export type NodeSqliteProviderOptions = Static<typeof nodeSqliteOptions.schema>;
+export type NodeSqliteProviderOptions = Infer<typeof nodeSqliteOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -87,7 +87,7 @@ declare module "alepha" {
 export class NodeSqliteProvider extends DatabaseProvider {
   protected readonly env = $env(envSchema);
   protected readonly builder = $inject(SqliteModelBuilder);
-  protected readonly options = $state(nodeSqliteOptions);
+  protected readonly options = $store(nodeSqliteOptions);
 
   protected sqlite?: DatabaseSync;
   protected drizzleDb?: any;

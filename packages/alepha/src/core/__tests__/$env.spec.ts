@@ -63,7 +63,7 @@ describe("$env", () => {
     expect(() => Alepha.create().inject(App)).toThrow(SchemaValidationError);
   });
 
-  it("should throw AlephaError for non-TObject schema", () => {
+  it("should throw AlephaError for non-ZObject schema", () => {
     class App {
       env = $env(z.text() as any);
     }

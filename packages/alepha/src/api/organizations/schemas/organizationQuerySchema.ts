@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 import { pageQuerySchema } from "alepha/orm";
 
@@ -7,4 +7,4 @@ export const organizationQuerySchema = pageQuerySchema.extend({
   enabled: z.boolean().describe("Filter by enabled status").optional(),
 });
 
-export type OrganizationQuery = Static<typeof organizationQuerySchema>;
+export type OrganizationQuery = Infer<typeof organizationQuerySchema>;

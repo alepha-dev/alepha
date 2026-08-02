@@ -2,11 +2,11 @@ import {
   $inject,
   type Async,
   createPrimitive,
+  type Infer,
   KIND,
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
-  type Static,
-  type TSchema,
+  type ZType,
 } from "alepha";
 import type { DateTime, DurationLike } from "alepha/datetime";
 import {
@@ -24,7 +24,7 @@ import {
  * payloads, compose two jobs: a cron that pushes payloads, and a
  * queue job that handles them.
  */
-export const $job = <T extends TSchema = TSchema>(
+export const $job = <T extends ZType = ZType>(
   options: JobPrimitiveOptions<T>,
 ): JobPrimitive<T> => {
   return createPrimitive(JobPrimitive<T>, options);
@@ -32,8 +32,8 @@ export const $job = <T extends TSchema = TSchema>(
 
 // -----------------------------------------------------------------------------------------------------------------
 
-export interface JobHandlerArgs<T extends TSchema = TSchema> {
-  payload: Static<T>;
+export interface JobHandlerArgs<T extends ZType = ZType> {
+  payload: Infer<T>;
   attempt: number;
   now: DateTime;
   signal: AbortSignal;
@@ -47,7 +47,7 @@ export interface JobRetryOptions {
 
 export type JobPriority = "critical" | "high" | "normal" | "low";
 
-export interface JobPrimitiveOptions<T extends TSchema = TSchema>
+export interface JobPrimitiveOptions<T extends ZType = ZType>
   extends PipelinePrimitiveOptions {
   /**
    * Optional explicit job name. Defaults to `ClassName.propertyKey`.
@@ -151,9 +151,9 @@ export interface JobPrimitiveOptions<T extends TSchema = TSchema>
 
 // -----------------------------------------------------------------------------------------------------------------
 
-export class JobPrimitive<
-  T extends TSchema = TSchema,
-> extends PipelinePrimitive<JobPrimitiveOptions<T>> {
+export class JobPrimitive<T extends ZType = ZType> extends PipelinePrimitive<
+  JobPrimitiveOptions<T>
+> {
   protected readonly jobProvider = $inject(JobProvider);
 
   public get name(): string {
@@ -171,10 +171,7 @@ export class JobPrimitive<
   /**
    * Push a single payload to the queue (queue-mode only).
    */
-  public async push(
-    payload: Static<T>,
-    options?: PushOptions,
-  ): Promise<string> {
+  public async push(payload: Infer<T>, options?: PushOptions): Promise<string> {
     return this.jobProvider.push(this.name, payload, options);
   }
 

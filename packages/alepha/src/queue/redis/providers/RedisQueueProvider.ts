@@ -1,4 +1,4 @@
-import { $atom, $inject, $state, type Static, z } from "alepha";
+import { $atom, $inject, $store, type Infer, z } from "alepha";
 import { QueueProvider } from "alepha/queue";
 import { RedisProvider } from "alepha/redis";
 
@@ -21,7 +21,7 @@ export const redisQueueOptions = $atom({
   serverOnly: true,
 });
 
-export type RedisQueueOptions = Static<typeof redisQueueOptions.schema>;
+export type RedisQueueOptions = Infer<typeof redisQueueOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -32,7 +32,7 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class RedisQueueProvider extends QueueProvider {
-  protected readonly options = $state(redisQueueOptions);
+  protected readonly options = $store(redisQueueOptions);
   protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
 
   public prefix(queue: string): string {

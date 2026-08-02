@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 /**
@@ -16,6 +16,6 @@ export const completePasswordResetRequestSchema = z.object({
     .describe("New password (minimum 8 characters)"),
 });
 
-export type CompletePasswordResetRequest = Static<
+export type CompletePasswordResetRequest = Infer<
   typeof completePasswordResetRequestSchema
 >;

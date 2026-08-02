@@ -12,7 +12,7 @@ import { ParameterProvider } from "../services/ParameterProvider.ts";
  * registered one — a deliberate escape hatch for migration seeds. The admin
  * create-version body accepted `schemaHash` from the client, so anyone with
  * `admin:parameter:write` could send a junk hash and store arbitrary JSON that
- * every typed `$parameter.get()` consumer then reads as `Static<T>`.
+ * every typed `$parameter.get()` consumer then reads as `Infer<T>`.
  */
 class FeatureFlags {
   public readonly flags = $parameter({

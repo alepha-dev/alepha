@@ -1,4 +1,4 @@
-import { SchemaValidationError, type TSchema, z } from "alepha";
+import { SchemaValidationError, type ZType, z } from "alepha";
 import type { BaseInputField } from "./FormModel.ts";
 import { prettyName } from "./prettyName.ts";
 
@@ -44,7 +44,7 @@ export interface FieldMeta {
   iconHint?: IconHint;
   constraints: FieldConstraints;
   testId?: string;
-  schema: TSchema;
+  schema: ZType;
   /**
    * Raw `$control` value from the schema, untyped here. The UI layer
    * (`alepha/react/ui`) provides the strict {@link SchemaControl} type and
@@ -73,7 +73,7 @@ export const parseField = (
   // Peel optional/nullable/default wrappers: structure, `.meta()`, format and
   // constraints all live on the inner schema, not the wrapper. `required` is
   // tracked separately via `input.required`.
-  const schema = z.schema.unwrap(input.schema) as TSchema & {
+  const schema = z.schema.unwrap(input.schema) as ZType & {
     minLength?: number;
     maxLength?: number;
     minValue?: number;
@@ -192,8 +192,8 @@ const readPattern = (schema: unknown): string | undefined => {
  * `anyOf` is the JSON-Schema spelling (a round-tripped schema), `options`
  * zod's own — both appear in practice.
  */
-export const unionVariants = (schema: unknown): TSchema[] | undefined => {
-  if (!schema || !z.schema.isUnion(schema as TSchema)) {
+export const unionVariants = (schema: unknown): ZType[] | undefined => {
+  if (!schema || !z.schema.isUnion(schema as ZType)) {
     return undefined;
   }
   const asAny = schema as { anyOf?: unknown; options?: unknown };
@@ -202,7 +202,7 @@ export const unionVariants = (schema: unknown): TSchema[] | undefined => {
     : Array.isArray(asAny.options)
       ? asAny.options
       : undefined;
-  return variants as TSchema[] | undefined;
+  return variants as ZType[] | undefined;
 };
 
 /**
@@ -211,7 +211,7 @@ export const unionVariants = (schema: unknown): TSchema[] | undefined => {
  */
 export const isObjectOrUnionOfObjects = (schema: unknown): boolean => {
   if (!schema) return false;
-  if (z.schema.isObject(schema as TSchema)) return true;
+  if (z.schema.isObject(schema as ZType)) return true;
   const variants = unionVariants(schema);
   return (
     !!variants &&

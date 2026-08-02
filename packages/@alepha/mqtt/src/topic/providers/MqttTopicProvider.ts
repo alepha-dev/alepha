@@ -1,5 +1,5 @@
 import { MqttClientProvider, type MqttQoS } from "@alepha/mqtt";
-import { $atom, $hook, $inject, $state, type Static, z } from "alepha";
+import { $atom, $hook, $inject, $store, type Infer, z } from "alepha";
 import { $logger } from "alepha/logger";
 import {
   type SubscribeCallback,
@@ -29,7 +29,7 @@ export const mqttTopicOptions = $atom({
   serverOnly: true,
 });
 
-export type MqttTopicOptions = Static<typeof mqttTopicOptions.schema>;
+export type MqttTopicOptions = Infer<typeof mqttTopicOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -87,7 +87,7 @@ declare module "alepha/topic" {
 
 export class MqttTopicProvider extends TopicProvider {
   protected readonly mqttClient = $inject(MqttClientProvider);
-  protected readonly options = $state(mqttTopicOptions);
+  protected readonly options = $store(mqttTopicOptions);
   protected readonly log = $logger();
 
   /**

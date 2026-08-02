@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $action, NotFoundError } from "alepha/server";
 
 export const userSchema = z.object({
@@ -6,7 +6,7 @@ export const userSchema = z.object({
   name: z.text(),
 });
 
-export type User = Static<typeof userSchema>;
+export type User = Infer<typeof userSchema>;
 
 export class CrudApp {
   seq = 1;

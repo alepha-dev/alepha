@@ -16,7 +16,7 @@ import { $cookie, AlephaServerCookies } from "../index.ts";
  * one user's cookied request permanently defined what every cookie-less user
  * saw.
  *
- * The atom is deliberately NOT declared with `$state(...)` here: it must
+ * The atom is deliberately NOT declared with `$store(...)` here: it must
  * register lazily, from inside the request, which is exactly what the
  * framework's own `uiAtom` does during SSR.
  */

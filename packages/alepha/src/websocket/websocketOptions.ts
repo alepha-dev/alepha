@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -43,7 +43,7 @@ export const websocketOptions = $atom({
   serverOnly: true,
 });
 
-export type WebSocketOptions = Static<typeof websocketOptions.schema>;
+export type WebSocketOptions = Infer<typeof websocketOptions.schema>;
 
 declare module "alepha" {
   interface State {

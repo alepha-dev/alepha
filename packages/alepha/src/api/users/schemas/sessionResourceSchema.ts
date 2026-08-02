@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 /**
@@ -41,4 +41,4 @@ export const sessionResourceSchema = z.object({
   user: sessionUserSummarySchema.optional(),
 });
 
-export type SessionResource = Static<typeof sessionResourceSchema>;
+export type SessionResource = Infer<typeof sessionResourceSchema>;

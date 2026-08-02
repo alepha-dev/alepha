@@ -1,7 +1,7 @@
 import type { Readable } from "node:stream";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
-import type { TSchema, TUnsafe } from "../providers/TypeProvider.ts";
-import { z } from "../providers/TypeProvider.ts";
+import type { ZType } from "../providers/ZodProvider.ts";
+import { z } from "../providers/ZodProvider.ts";
 
 export interface FileLike {
   /**
@@ -69,9 +69,9 @@ export interface FileLike {
 /**
  * Schema view of FileLike.
  */
-export type TFile = TUnsafe<FileLike>;
+export type TFile = ZType;
 
-export const isTypeFile = (value: TSchema): value is TFile => {
+export const isTypeFile = (value: ZType): value is TFile => {
   // The format tag lives in zod's `.meta()`, read via `z.schema.format` — there
   // is no own `format` property to test for.
   return (
@@ -100,4 +100,4 @@ export type StreamLike =
   | Readable
   | NodeJS.ReadableStream;
 
-export type TStream = TUnsafe<StreamLike>;
+export type TStream = ZType;

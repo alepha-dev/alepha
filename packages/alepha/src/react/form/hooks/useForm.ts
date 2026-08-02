@@ -1,4 +1,4 @@
-import type { TObject } from "alepha";
+import type { ZObject } from "alepha";
 import { useAlepha } from "alepha/react";
 import { useEffect, useId, useMemo, useRef } from "react";
 import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
@@ -47,7 +47,7 @@ const stableEqual = (a: unknown, b: unknown): boolean => {
   }
 };
 
-export const useForm = <T extends TObject>(
+export const useForm = <T extends ZObject>(
   options: FormCtrlOptions<T>,
   deps: any[] = [],
 ): FormModel<T> => {

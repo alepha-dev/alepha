@@ -3,9 +3,9 @@ import {
   $inject,
   Alepha,
   AlephaError,
+  type Infer,
   SchemaValidator,
-  type Static,
-  type TObject,
+  type ZObject,
   z,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
@@ -460,9 +460,9 @@ export class ParameterProvider {
    * @param schemaHash - Hash of the schema for migration detection
    * @param options - Additional options (activation date, creator info, etc.)
    */
-  public async save<T extends TObject>(
+  public async save<T extends ZObject>(
     name: string,
-    content: Static<T>,
+    content: Infer<T>,
     schemaHash: string,
     options: SaveParameterOptions = {},
   ): Promise<ParameterWithStatus> {
@@ -477,7 +477,7 @@ export class ParameterProvider {
     // against the current schema.
     const param = this.primitives.get(name);
     if (param && schemaHash === this.schemaHashes.get(name)) {
-      content = this.alepha.codec.validate(param.schema, content) as Static<T>;
+      content = this.alepha.codec.validate(param.schema, content) as Infer<T>;
     }
 
     const now = this.dateTimeProvider.now().toDate();
@@ -696,7 +696,7 @@ export class ParameterProvider {
 
     return this.save(
       name,
-      target.content as Static<TObject>,
+      target.content as Infer<ZObject>,
       target.schemaHash,
       {
         ...options,
@@ -752,7 +752,7 @@ export class ParameterProvider {
       try {
         current = await this.save(
           name,
-          param.options.default as Static<TObject>,
+          param.options.default as Infer<ZObject>,
           this.schemaHashes.get(name) ?? "",
           { changeDescription: "Auto-seeded from compiled defaults" },
         );
@@ -1085,7 +1085,7 @@ export class ParameterProvider {
   /**
    * Probe whether a value matches the schema, without throwing or mutating.
    */
-  protected isValid(schema: TObject, value: unknown): boolean {
+  protected isValid(schema: ZObject, value: unknown): boolean {
     try {
       this.schemaValidator.validate(schema, value);
       return true;
@@ -1114,7 +1114,7 @@ export class ParameterProvider {
    * Calculate a hash of the schema for migration detection.
    * Uses CryptoProvider for proper SHA-256 hashing.
    */
-  protected calculateSchemaHash(schema: TObject): string {
+  protected calculateSchemaHash(schema: ZObject): string {
     return this.crypto.hash(JSON.stringify(schema));
   }
 

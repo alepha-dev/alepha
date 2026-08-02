@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * A job declared with `$job`.
@@ -37,4 +37,4 @@ export const devJobMetadataSchema = z.object({
   schema: z.any().optional(),
 });
 
-export type DevJobMetadata = Static<typeof devJobMetadataSchema>;
+export type DevJobMetadata = Infer<typeof devJobMetadataSchema>;

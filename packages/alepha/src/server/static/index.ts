@@ -11,7 +11,7 @@ export * from "./providers/ServerStaticProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Static file serving.
+ * Infer file serving.
  *
  * **Features:**
  * - Serve static files from directory

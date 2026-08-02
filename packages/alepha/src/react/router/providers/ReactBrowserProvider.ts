@@ -2,11 +2,11 @@ import {
   $atom,
   $hook,
   $inject,
-  $state,
+  $store,
   Alepha,
+  type Infer,
   SchemaValidator,
   type State,
-  type Static,
   z,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -46,7 +46,7 @@ export const reactBrowserOptions = $atom({
   },
 });
 
-export type ReactBrowserRendererOptions = Static<
+export type ReactBrowserRendererOptions = Infer<
   typeof reactBrowserOptions.schema
 >;
 
@@ -67,7 +67,7 @@ export class ReactBrowserProvider {
   protected readonly browserHeadProvider = $inject(BrowserHeadProvider);
   protected readonly validator = $inject(SchemaValidator);
 
-  protected readonly options = $state(reactBrowserOptions);
+  protected readonly options = $store(reactBrowserOptions);
 
   public get rootId() {
     return "root";

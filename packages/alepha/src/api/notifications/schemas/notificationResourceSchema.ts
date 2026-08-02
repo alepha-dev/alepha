@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const notificationResourceSchema = z.object({
   id: z.uuid(),
@@ -15,4 +15,4 @@ export const notificationResourceSchema = z.object({
   error: z.text().optional(),
 });
 
-export type NotificationResource = Static<typeof notificationResourceSchema>;
+export type NotificationResource = Infer<typeof notificationResourceSchema>;

@@ -1,5 +1,5 @@
 import { SchemaValidationError } from "../errors/SchemaValidationError.ts";
-import type { Static, TSchema } from "./TypeProvider.ts";
+import type { Infer, ZType } from "./ZodProvider.ts";
 
 /**
  * Validates + coerces a value against a zod schema.
@@ -9,7 +9,7 @@ import type { Static, TSchema } from "./TypeProvider.ts";
  * No compile step, no `eval` — safe inside Cloudflare Workers.
  */
 export class SchemaValidator {
-  public validate<T extends TSchema>(schema: T, value: unknown): Static<T> {
+  public validate<T extends ZType>(schema: T, value: unknown): Infer<T> {
     const result = schema.safeParse(value);
     if (!result.success) {
       // Map the first zod issue onto the framework's validation-error contract
@@ -32,15 +32,15 @@ export class SchemaValidator {
         params: issue,
       });
     }
-    return result.data as Static<T>;
+    return result.data as Infer<T>;
   }
 
-  public safeValidate<T extends TSchema>(schema: T, value: unknown) {
+  public safeValidate<T extends ZType>(schema: T, value: unknown) {
     return schema.safeParse(value);
   }
 
   /** Zod schemas are immutable — clone is a pass-through. */
-  public clone<T extends TSchema>(schema: T): T {
+  public clone<T extends ZType>(schema: T): T {
     return schema;
   }
 

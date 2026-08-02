@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 /**
@@ -37,4 +37,4 @@ export const registerRequestSchema = z.object({
     .optional(),
 });
 
-export type RegisterRequest = Static<typeof registerRequestSchema>;
+export type RegisterRequest = Infer<typeof registerRequestSchema>;

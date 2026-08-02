@@ -1,4 +1,4 @@
-import { $module, type Static, z } from "alepha";
+import { $module, type Infer, z } from "alepha";
 import { $logger } from "./primitives/$logger.ts";
 import { CliFormatterProvider } from "./providers/CliFormatterProvider.ts";
 import { ConsoleColorProvider } from "./providers/ConsoleColorProvider.ts";
@@ -223,7 +223,7 @@ Level can be set for a specific module:
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "alepha" {
-  export interface Env extends Partial<Static<typeof envSchema>> {}
+  export interface Env extends Partial<Infer<typeof envSchema>> {}
 
   export interface State {
     /**

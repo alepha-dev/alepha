@@ -1,4 +1,4 @@
-import { $inject, $state, Alepha } from "alepha";
+import { $inject, $store, Alepha } from "alepha";
 import { logBufferConfig } from "../schemas/logBufferConfig.ts";
 import type { LogEntry } from "../schemas/logEntrySchema.ts";
 import { LogBuffer } from "../services/LogBuffer.ts";
@@ -28,7 +28,7 @@ import { LogBuffer } from "../services/LogBuffer.ts";
  */
 export class LogBufferProvider {
   protected readonly alepha = $inject(Alepha);
-  protected readonly config = $state(logBufferConfig);
+  protected readonly config = $store(logBufferConfig);
 
   /**
    * Build the context data that enables capture, meant to be spread into an

@@ -1,4 +1,4 @@
-import { $inject, $state, AlephaError, z } from "alepha";
+import { $inject, $store, AlephaError, z } from "alepha";
 import {
   GitHubSecretStore,
   NamingService,
@@ -12,7 +12,7 @@ import { $logger, ConsoleColorProvider } from "alepha/logger";
 
 export class SecretsCommand {
   protected readonly log = $logger();
-  protected readonly options = $state(platformOptions);
+  protected readonly options = $store(platformOptions);
   protected readonly inspector = $inject(PlatformInspector);
   protected readonly naming = $inject(NamingService);
   protected readonly envUtils = $inject(EnvUtils);

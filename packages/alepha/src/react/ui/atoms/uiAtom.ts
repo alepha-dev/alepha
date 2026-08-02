@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * Persisted UI state — color mode, theme palette, sidebar collapsed state, etc.
@@ -25,4 +25,4 @@ export const uiAtom = $atom({
   },
 });
 
-export type UiState = Static<typeof uiAtom.schema>;
+export type UiState = Infer<typeof uiAtom.schema>;

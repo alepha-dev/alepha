@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * i18n CLI configuration atom.
@@ -49,4 +49,4 @@ export const i18nOptions = $atom({
 /**
  * Type for i18n options.
  */
-export type I18nOptions = Static<typeof i18nOptions.schema>;
+export type I18nOptions = Infer<typeof i18nOptions.schema>;

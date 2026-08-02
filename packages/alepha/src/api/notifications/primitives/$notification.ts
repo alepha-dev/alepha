@@ -1,11 +1,10 @@
 import {
   $inject,
   createPrimitive,
+  type Infer,
   KIND,
   Primitive,
-  type Static,
-  type StaticEncode,
-  type TObject,
+  type ZObject,
 } from "alepha";
 import { currentTenantAtom } from "alepha/security";
 import { NotificationJobs } from "../jobs/NotificationJobs.ts";
@@ -38,13 +37,13 @@ import { NotificationJobs } from "../jobs/NotificationJobs.ts";
  * }
  * ```
  */
-export const $notification = <T extends TObject>(
+export const $notification = <T extends ZObject>(
   options: NotificationPrimitiveOptions<T>,
 ) => createPrimitive(NotificationPrimitive<T>, options);
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface NotificationPrimitiveOptions<T extends TObject>
+export interface NotificationPrimitiveOptions<T extends ZObject>
   extends NotificationMessage<T> {
   name?: string;
   description?: string;
@@ -66,7 +65,7 @@ export interface NotificationPrimitiveOptions<T extends TObject>
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class NotificationPrimitive<T extends TObject> extends Primitive<
+export class NotificationPrimitive<T extends ZObject> extends Primitive<
   NotificationPrimitiveOptions<T>
 > {
   protected readonly notificationJobs = $inject(NotificationJobs);
@@ -149,8 +148,8 @@ $notification[KIND] = NotificationPrimitive;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface NotificationPushOptions<T extends TObject> {
-  variables: StaticEncode<T>;
+export interface NotificationPushOptions<T extends ZObject> {
+  variables: Infer<T>;
   contact: string;
   /** Recipient language (e.g. "fr"); defaults to the current request's. */
   lang?: string;
@@ -163,12 +162,12 @@ export interface NotificationPushOptions<T extends TObject> {
   organizationId?: string;
 }
 
-export interface NotificationMessage<T extends TObject> {
+export interface NotificationMessage<T extends ZObject> {
   email?: {
     subject: string;
-    body: string | ((variables: Static<T>) => string);
+    body: string | ((variables: Infer<T>) => string);
   };
   sms?: {
-    message: string | ((variables: Static<T>) => string);
+    message: string | ((variables: Infer<T>) => string);
   };
 }

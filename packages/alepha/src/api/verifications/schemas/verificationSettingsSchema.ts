@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const verificationSettingsSchema = z.object({
@@ -72,4 +72,4 @@ export const verificationSettingsSchema = z.object({
     ),
 });
 
-export type VerificationSettings = Static<typeof verificationSettingsSchema>;
+export type VerificationSettings = Infer<typeof verificationSettingsSchema>;

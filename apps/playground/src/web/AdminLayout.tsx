@@ -21,7 +21,7 @@ import {
 import { useState } from "react";
 
 /**
- * Static demo group appended after the route-derived nav. The `/admin/demo/*`
+ * Infer demo group appended after the route-derived nav. The `/admin/demo/*`
  * routes don't exist — this group exists to showcase `AppShell`'s nested
  * `NavItem.children`, and demonstrates `NavShell`'s `extraNav` escape hatch
  * for nav entries that aren't backed by routes.

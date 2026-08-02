@@ -1,4 +1,4 @@
-import { $hook, $inject, $state, Alepha, z } from "alepha";
+import { $hook, $inject, $store, Alepha, z } from "alepha";
 import { JobService } from "alepha/api/jobs";
 import { localEmailOptions } from "alepha/email";
 import { $logger, MemoryDestinationProvider } from "alepha/logger";
@@ -18,7 +18,7 @@ export class DevToolsProvider {
   protected readonly devCollectorProvider = $inject(DevToolsMetadataProvider);
   protected readonly memoryDestination = $inject(MemoryDestinationProvider);
   protected readonly fs = $inject(FileSystemProvider);
-  protected readonly emailOptions = $state(localEmailOptions);
+  protected readonly emailOptions = $store(localEmailOptions);
   protected readonly atomLog = $inject(DevAtomLogProvider);
 
   protected readonly onStart = $hook({

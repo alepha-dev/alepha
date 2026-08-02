@@ -3,10 +3,10 @@ import {
   Alepha,
   AlephaError,
   type FileLike,
+  type Infer,
   isFileLike,
-  type Static,
-  type TObject,
-  type TSchema,
+  type ZObject,
+  type ZType,
 } from "alepha";
 import { $cache } from "alepha/cache";
 import type { DurationLike } from "alepha/datetime";
@@ -71,10 +71,10 @@ export class HttpClient {
     });
   }
 
-  public async fetch<T extends TSchema>(
+  public async fetch<T extends ZType>(
     url: string,
     request: RequestInitWithOptions<T> = {}, // standard options
-  ): Promise<FetchResponse<Static<T>>> {
+  ): Promise<FetchResponse<Infer<T>>> {
     const options = {
       cache: request.localCache,
       schema: request.schema?.response,
@@ -110,7 +110,7 @@ export class HttpClient {
         }
       } else {
         return {
-          data: cached.data as Static<T>,
+          data: cached.data as Infer<T>,
           status: 200,
           statusText: "OK",
           headers: new Headers(),
@@ -429,7 +429,7 @@ export class HttpClient {
 
   public pathVariables(
     url: string,
-    action: { schema?: { params?: TObject } },
+    action: { schema?: { params?: ZObject } },
     args: ServerRequestConfigEntry = {},
   ): string {
     if (typeof args.params === "object") {
@@ -467,7 +467,7 @@ export class HttpClient {
 
   public queryParams(
     url: string,
-    action: { schema?: { query?: TObject } },
+    action: { schema?: { query?: ZObject } },
     args: ServerRequestConfigEntry = {},
   ): string {
     if (typeof args.query === "object") {
@@ -495,7 +495,7 @@ export class HttpClient {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface FetchOptions<T extends TSchema = TSchema> {
+export interface FetchOptions<T extends ZType = ZType> {
   /**
    * Key to identify the request in the pending requests.
    */
@@ -514,7 +514,7 @@ export interface FetchOptions<T extends TSchema = TSchema> {
   localCache?: boolean | number | DurationLike;
 }
 
-export type RequestInitWithOptions<T extends TSchema = TSchema> = RequestInit &
+export type RequestInitWithOptions<T extends ZType = ZType> = RequestInit &
   FetchOptions<T>;
 
 /**
@@ -525,7 +525,7 @@ export type RequestInitWithOptions<T extends TSchema = TSchema> = RequestInit &
  */
 export interface ResolvedFetchOptions {
   key?: string;
-  schema?: TSchema;
+  schema?: ZType;
   cache?: boolean | number | DurationLike;
 }
 
@@ -561,8 +561,8 @@ export interface HttpAction {
   contentType?: string;
   requestBodyType?: string;
   schema?: {
-    params?: TObject;
-    query?: TObject;
+    params?: ZObject;
+    query?: ZObject;
     body?: TRequestBody;
     response?: TResponseBody;
   };

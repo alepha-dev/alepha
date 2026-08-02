@@ -9,34 +9,34 @@ import type {
   PipelineHandler,
   SchemaOutput,
   StreamLike,
-  TArray,
   TFile,
-  TObject,
-  TRecord,
   TStream,
-  TString,
-  TVoid,
+  ZObject,
+  ZodArray,
+  ZodRecord,
+  ZodString,
+  ZodVoid,
 } from "alepha";
 import type { Route } from "alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type { ServerReply } from "../helpers/ServerReply.ts";
 import type { UserAgentInfo } from "../services/UserAgentParser.ts";
 
-export type TRequestBody = TObject | TString | TArray | TRecord | TStream;
+export type TRequestBody = ZObject | ZodString | ZodArray | ZodRecord | TStream;
 export type TResponseBody =
-  | TObject
-  | TString
-  | TRecord
+  | ZObject
+  | ZodString
+  | ZodRecord
   | TFile
-  | TArray
+  | ZodArray
   | TStream
-  | TVoid;
+  | ZodVoid;
 
 export interface RequestConfigSchema {
   body?: TRequestBody;
-  params?: TObject;
-  query?: TObject;
-  headers?: TObject;
+  params?: ZObject;
+  query?: ZObject;
+  headers?: ZObject;
   response?: TResponseBody;
 }
 

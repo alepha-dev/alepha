@@ -10,7 +10,7 @@ import {
   $inject,
   Alepha,
   AlephaError,
-  type Static,
+  type Infer,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
@@ -24,7 +24,7 @@ const envSchema = z.object({
 });
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface Env extends Partial<Infer<typeof envSchema>> {}
 }
 
 export type NodeRedisClient = RedisClientType<

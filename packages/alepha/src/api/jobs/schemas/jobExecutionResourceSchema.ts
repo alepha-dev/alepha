@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { jobExecutionEntity } from "../entities/jobExecutionEntity.ts";
 
 /**
@@ -25,4 +25,4 @@ export const jobExecutionResourceSchema = jobExecutionEntity.schema
     description: "A job execution row with derived actions.",
   });
 
-export type JobExecutionResource = Static<typeof jobExecutionResourceSchema>;
+export type JobExecutionResource = Infer<typeof jobExecutionResourceSchema>;

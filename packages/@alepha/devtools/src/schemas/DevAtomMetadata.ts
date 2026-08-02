@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const devAtomMetadataSchema = z.object({
   /**
@@ -42,4 +42,4 @@ export const devAtomMetadataSchema = z.object({
   persist: z.text().optional(),
 });
 
-export type DevAtomMetadata = Static<typeof devAtomMetadataSchema>;
+export type DevAtomMetadata = Infer<typeof devAtomMetadataSchema>;

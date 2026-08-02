@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { users } from "./users.ts";
 
@@ -44,4 +44,4 @@ export const sessions = $entity({
   indexes: ["userId", "expiresAt", { column: "refreshToken", unique: true }],
 });
 
-export type SessionEntity = Static<typeof sessions.schema>;
+export type SessionEntity = Infer<typeof sessions.schema>;

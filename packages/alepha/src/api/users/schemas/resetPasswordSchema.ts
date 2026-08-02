@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const resetPasswordRequestSchema = z.object({
@@ -14,5 +14,5 @@ export const resetPasswordSchema = z.object({
     .describe("Confirmation of the new password"),
 });
 
-export type ResetPasswordRequest = Static<typeof resetPasswordRequestSchema>;
-export type ResetPasswordInput = Static<typeof resetPasswordSchema>;
+export type ResetPasswordRequest = Infer<typeof resetPasswordRequestSchema>;
+export type ResetPasswordInput = Infer<typeof resetPasswordSchema>;

@@ -6,9 +6,9 @@ import {
   $env,
   $hook,
   $inject,
-  $state,
+  $store,
   AlephaError,
-  type Static,
+  type Infer,
   z,
 } from "alepha";
 import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite";
@@ -39,7 +39,7 @@ export const bunSqliteOptions = $atom({
   serverOnly: true,
 });
 
-export type BunSqliteProviderOptions = Static<typeof bunSqliteOptions.schema>;
+export type BunSqliteProviderOptions = Infer<typeof bunSqliteOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -76,7 +76,7 @@ declare module "alepha" {
 export class BunSqliteProvider extends DatabaseProvider {
   protected readonly env = $env(envSchema);
   protected readonly builder = $inject(SqliteModelBuilder);
-  protected readonly options = $state(bunSqliteOptions);
+  protected readonly options = $store(bunSqliteOptions);
 
   protected sqlite?: Database;
   protected bunDb?: SQLiteBunDatabase;

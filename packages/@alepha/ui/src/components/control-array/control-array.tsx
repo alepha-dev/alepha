@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
-import { type TObject, type TSchema, z } from "alepha";
+import { type ZObject, type ZType, z } from "alepha";
 import { useAlepha } from "alepha/react";
 import {
   type BaseInputField,
@@ -180,17 +180,17 @@ const useArrayItems = (input: BaseInputField | undefined) => {
  * the choice offered when adding one. Everything below degrades quietly: no
  * union, or no discriminant, and the array behaves exactly as before.
  */
-const objectVariants = (itemSchema: TSchema): TObject[] | null => {
+const objectVariants = (itemSchema: ZType): ZObject[] | null => {
   const variants = unionVariants(itemSchema);
   if (!variants?.length) return null;
   const objects = variants
     .map((variant) => z.schema.unwrap(variant))
-    .filter((variant) => z.schema.isObject(variant)) as TObject[];
+    .filter((variant) => z.schema.isObject(variant)) as ZObject[];
   return objects.length === variants.length ? objects : null;
 };
 
 /** The property whose value identifies the variant (a literal in every variant). */
-const discriminantOf = (variants: TObject[]): string | null => {
+const discriminantOf = (variants: ZObject[]): string | null => {
   const [first] = variants;
   if (!first) return null;
   for (const name of Object.keys(first.properties)) {
@@ -208,7 +208,7 @@ const discriminantOf = (variants: TObject[]): string | null => {
 /** The single allowed value of a literal/const schema, if it is one. */
 const literalValueOf = (schema: unknown): unknown => {
   if (!schema) return undefined;
-  const inner = z.schema.unwrap(schema as TSchema) as {
+  const inner = z.schema.unwrap(schema as ZType) as {
     const?: unknown;
     values?: unknown[] | Set<unknown>;
     _zod?: { def?: { values?: unknown[] } };
@@ -224,7 +224,7 @@ const literalValueOf = (schema: unknown): unknown => {
 
 /** Label for a variant: its discriminant value, else its index. */
 const variantLabel = (
-  variant: TObject,
+  variant: ZObject,
   discriminant: string | null,
   index: number,
 ): string => {
@@ -236,7 +236,7 @@ const variantLabel = (
 
 const buildItemInput = (
   parent: BaseInputField,
-  schema: TSchema,
+  schema: ZType,
   index: number,
   value: unknown,
   onChange: (v: unknown) => void,
@@ -255,7 +255,7 @@ const buildItemInput = (
 
 const buildFieldInput = (
   parent: BaseInputField,
-  itemSchema: TObject,
+  itemSchema: ZObject,
   fieldName: string,
   index: number,
   itemValue: Record<string, unknown> | undefined,
@@ -292,7 +292,7 @@ export function ControlArray(props: ControlArrayProps) {
   const schema = props.input.schema;
   if (!schema || !("items" in schema)) return null;
 
-  const itemSchema = (schema as { items: TSchema }).items;
+  const itemSchema = (schema as { items: ZType }).items;
   const variants = objectVariants(itemSchema);
   const discriminant = variants ? discriminantOf(variants) : null;
 
@@ -301,10 +301,10 @@ export function ControlArray(props: ControlArrayProps) {
    * item's discriminant points at (first variant as a fallback, e.g. a freshly
    * added item), so each row renders exactly its own fields.
    */
-  const schemaForValue = (value: unknown): TObject | null => {
+  const schemaForValue = (value: unknown): ZObject | null => {
     if (!variants) {
       return itemSchema && "properties" in itemSchema
-        ? (itemSchema as TObject)
+        ? (itemSchema as ZObject)
         : null;
     }
     if (discriminant && value && typeof value === "object") {
@@ -347,7 +347,7 @@ export function ControlArray(props: ControlArrayProps) {
     if (shape) {
       value = {};
       for (const [k, p] of Object.entries(
-        shape.properties as Record<string, TSchema>,
+        shape.properties as Record<string, ZType>,
       )) {
         const def = z.schema.getDefault(p);
         if (def !== undefined) (value as Record<string, unknown>)[k] = def;

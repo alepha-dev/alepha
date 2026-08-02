@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { authenticationProviderSchema } from "alepha/server/auth";
 import { realmAuthSettingsAtom } from "../atoms/realmAuthSettingsAtom.ts";
 
@@ -24,4 +24,4 @@ export const realmConfigSchema = z.object({
     .optional(),
 });
 
-export type RealmConfig = Static<typeof realmConfigSchema>;
+export type RealmConfig = Infer<typeof realmConfigSchema>;

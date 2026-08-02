@@ -4,7 +4,7 @@ import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
 import { KeylessJsonSchemaCodec } from "./KeylessJsonSchemaCodec.ts";
 import type { SchemaCodec } from "./SchemaCodec.ts";
 import { SchemaValidator } from "./SchemaValidator.ts";
-import type { Static, StaticEncode, TSchema } from "./TypeProvider.ts";
+import type { Infer, ZType } from "./ZodProvider.ts";
 
 export type Encoding = "object" | "string" | "binary";
 
@@ -33,13 +33,9 @@ export interface EncodeOptions<T extends Encoding = Encoding> {
 }
 
 export type EncodeResult<
-  T extends TSchema,
+  T extends ZType,
   E extends Encoding,
-> = E extends "string"
-  ? string
-  : E extends "binary"
-    ? Uint8Array
-    : StaticEncode<T>;
+> = E extends "string" ? string : E extends "binary" ? Uint8Array : Infer<T>;
 
 export interface DecodeOptions {
   /**
@@ -112,7 +108,7 @@ export class CodecManager {
   /**
    * Encode data using the specified codec and output format.
    */
-  public encode<T extends TSchema, E extends Encoding = "object">(
+  public encode<T extends ZType, E extends Encoding = "object">(
     schema: T,
     value: unknown,
     options?: EncodeOptions<E>,
@@ -131,14 +127,14 @@ export class CodecManager {
 
     if (as === "binary") {
       // not used by JSON, but for other codecs like Protobuf, MsgPack, etc.
-      return codec.encodeToBinary(schema, value as Static<T>) as EncodeResult<
+      return codec.encodeToBinary(schema, value as Infer<T>) as EncodeResult<
         T,
         E
       >;
     }
 
     // encode directly to string
-    return codec.encodeToString(schema, value as Static<T>) as EncodeResult<
+    return codec.encodeToString(schema, value as Infer<T>) as EncodeResult<
       T,
       E
     >;
@@ -147,11 +143,11 @@ export class CodecManager {
   /**
    * Decode data using the specified codec.
    */
-  public decode<T extends TSchema>(
+  public decode<T extends ZType>(
     schema: T,
     data: any,
     options?: DecodeOptions,
-  ): Static<T> {
+  ): Infer<T> {
     const encoderName = options?.encoder ?? this.default;
     const codec = this.getCodec(encoderName);
     let value = codec.decode(schema, data);
@@ -160,7 +156,7 @@ export class CodecManager {
       value = this.schemaValidator.validate(schema, value);
     }
 
-    return value as Static<T>;
+    return value as Infer<T>;
   }
 
   /**
@@ -168,7 +164,7 @@ export class CodecManager {
    *
    * This is automatically called before encoding or after decoding.
    */
-  public validate<T extends TSchema>(schema: T, value: unknown): Static<T> {
+  public validate<T extends ZType>(schema: T, value: unknown): Infer<T> {
     return this.schemaValidator.validate(schema, value);
   }
 }

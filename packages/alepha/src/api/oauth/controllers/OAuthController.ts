@@ -1,4 +1,4 @@
-import { $atom, $inject, $state, z } from "alepha";
+import { $atom, $inject, $store, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { JwtProvider } from "alepha/security";
 import { $route } from "alepha/server";
@@ -60,7 +60,7 @@ export const oauthOptions = $atom({
  */
 export class OAuthController {
   protected readonly log = $logger();
-  protected readonly options = $state(oauthOptions);
+  protected readonly options = $store(oauthOptions);
   protected readonly clients = $inject(OAuthClientService);
   protected readonly deviceCodes = $inject(DeviceCodeService);
   protected readonly jwt = $inject(JwtProvider);

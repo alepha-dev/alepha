@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * Parameter status enum schema.
@@ -10,4 +10,4 @@ export const parameterStatusSchema = z.enum([
   "future",
 ]);
 
-export type ParameterStatus = Static<typeof parameterStatusSchema>;
+export type ParameterStatus = Infer<typeof parameterStatusSchema>;

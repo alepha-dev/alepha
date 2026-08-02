@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $state, type Static, z } from "alepha";
+import { $atom, $hook, $inject, $store, type Infer, z } from "alepha";
 import { CacheProvider } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -68,7 +68,7 @@ export const rateLimitOptions = $atom({
   serverOnly: true,
 });
 
-export type RateLimitAtomOptions = Static<typeof rateLimitOptions.schema>;
+export type RateLimitAtomOptions = Infer<typeof rateLimitOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -81,7 +81,7 @@ export class ServerRateLimitProvider {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly cacheProvider = $inject(CacheProvider);
-  protected readonly globalOptions = $state(rateLimitOptions);
+  protected readonly globalOptions = $store(rateLimitOptions);
 
   protected static readonly CACHE_NAME = "rate-limit";
 

@@ -1,4 +1,4 @@
-import { $inject, Alepha, AlephaError, type TSchema, z } from "alepha";
+import { $inject, Alepha, AlephaError, type ZType, z } from "alepha";
 import { $logger } from "alepha/logger";
 import type {
   CloudflareAccount,
@@ -533,8 +533,8 @@ export class CloudflareApi {
     options: {
       method?: string;
       body?: unknown;
-      bodySchema?: TSchema;
-      schema?: TSchema;
+      bodySchema?: ZType;
+      schema?: ZType;
       query?: Record<string, string>;
     } = {},
   ): Promise<T> {
@@ -616,7 +616,7 @@ export class CloudflareApi {
    */
   protected async paginate<T>(
     path: string,
-    itemSchema: TSchema,
+    itemSchema: ZType,
     perPage = 1000,
   ): Promise<T[]> {
     const results: T[] = [];
@@ -672,7 +672,7 @@ export class CloudflareApi {
   protected async paginateCursor<T>(
     path: string,
     itemsKey: string,
-    itemSchema: TSchema,
+    itemSchema: ZType,
     perPage = 1000,
   ): Promise<T[]> {
     const results: T[] = [];

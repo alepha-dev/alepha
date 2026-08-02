@@ -1,15 +1,15 @@
 import {
   $atom,
   $inject,
-  $state,
+  $store,
   AlephaError,
   createPrimitive,
+  type Infer,
   KIND,
   type MiddlewareMetadata,
   OPTIONS,
   Primitive,
   type Service,
-  type Static,
   z,
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
@@ -241,7 +241,7 @@ export const cacheOptions = $atom({
   serverOnly: true,
 });
 
-export type CacheAtomOptions = Static<typeof cacheOptions.schema>;
+export type CacheAtomOptions = Infer<typeof cacheOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -284,7 +284,7 @@ export class CachePrimitive<
   TReturn = any,
   TParameter extends any[] = any[],
 > extends Primitive<CachePrimitiveOptions<TReturn, TParameter>> {
-  protected readonly settings = $state(cacheOptions);
+  protected readonly settings = $store(cacheOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly log = $logger();
   public readonly provider = this.$provider();

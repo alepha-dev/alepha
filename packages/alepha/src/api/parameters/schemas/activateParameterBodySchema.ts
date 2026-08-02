@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { parameters } from "../entities/parameters.ts";
 
 /**
@@ -11,4 +11,4 @@ export const activateParameterBodySchema = parameters.schema.pick({
   version: true,
 });
 
-export type ActivateParameterBody = Static<typeof activateParameterBodySchema>;
+export type ActivateParameterBody = Infer<typeof activateParameterBodySchema>;

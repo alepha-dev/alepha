@@ -3,11 +3,11 @@ import type { glob } from "node:fs/promises";
 import {
   type Async,
   createPrimitive,
+  type Infer,
   KIND,
   Primitive,
-  type Static,
-  type TObject,
-  type TSchema,
+  type ZObject,
+  type ZType,
   z,
 } from "alepha";
 import type { AskMethod } from "../helpers/Asker.ts";
@@ -19,20 +19,16 @@ import type { RunnerMethod } from "../helpers/Runner.ts";
  * This primitive allows you to define a command, its flags, and its handler
  * within your Alepha application structure.
  */
-export const $command = <
-  T extends TObject,
-  A extends TSchema,
-  E extends TObject,
->(
+export const $command = <T extends ZObject, A extends ZType, E extends ZObject>(
   options: CommandPrimitiveOptions<T, A, E>,
 ) => createPrimitive(CommandPrimitive<T, A, E>, options);
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface CommandPrimitiveOptions<
-  T extends TObject,
-  A extends TSchema,
-  E extends TObject = TObject,
+  T extends ZObject,
+  A extends ZType,
+  E extends ZObject = ZObject,
 > {
   /**
    * The handler function to execute when the command is matched.
@@ -250,9 +246,9 @@ export interface CommandPrimitiveOptions<
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class CommandPrimitive<
-  T extends TObject = TObject,
-  A extends TSchema = TSchema,
-  E extends TObject = TObject,
+  T extends ZObject = ZObject,
+  A extends ZType = ZType,
+  E extends ZObject = ZObject,
 > extends Primitive<CommandPrimitiveOptions<T, A, E>> {
   public readonly flags = this.options.flags ?? z.object({});
   public readonly env = this.options.env ?? z.object({});
@@ -306,13 +302,13 @@ $command[KIND] = CommandPrimitive;
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface CommandHandlerArgs<
-  T extends TObject,
-  A extends TSchema = TSchema,
-  E extends TObject = TObject,
+  T extends ZObject,
+  A extends ZType = ZType,
+  E extends ZObject = ZObject,
 > {
-  flags: Static<T>;
-  args: A extends TSchema ? Static<A> : Array<string>;
-  env: Static<E>;
+  flags: Infer<T>;
+  args: A extends ZType ? Infer<A> : Array<string>;
+  env: Infer<E>;
   run: RunnerMethod;
   ask: AskMethod;
   glob: typeof glob;

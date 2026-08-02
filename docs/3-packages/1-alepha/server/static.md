@@ -10,7 +10,7 @@ npm install alepha
 
 ## Overview
 
-Static file serving.
+Infer file serving.
 
 **Features:**
 - Serve static files from directory

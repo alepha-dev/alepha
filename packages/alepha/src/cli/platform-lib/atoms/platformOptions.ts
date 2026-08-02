@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * Platform deployment configuration atom.
@@ -164,7 +164,7 @@ export const platformOptions = $atom({
 /**
  * Type for platform options.
  */
-export type PlatformOptions = Static<typeof platformOptions.schema>;
+export type PlatformOptions = Infer<typeof platformOptions.schema>;
 
 /**
  * Configuration for a single named environment.

@@ -47,7 +47,7 @@ describe("match", () => {
     match = setup.match;
   });
 
-  describe("Static Routing", () => {
+  describe("Infer Routing", () => {
     test("should match basic static routes", () => {
       add("/", "home");
       add("/about", "about");

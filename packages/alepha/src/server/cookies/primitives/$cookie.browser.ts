@@ -3,10 +3,10 @@ import {
   Alepha,
   AlephaError,
   createPrimitive,
+  type Infer,
   KIND,
   Primitive,
-  type Static,
-  type TSchema,
+  type ZType,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { CookieParser } from "../services/CookieParser.ts";
@@ -45,7 +45,7 @@ import type {
  * }
  * ```
  */
-export const $cookie = <T extends TSchema>(
+export const $cookie = <T extends ZType>(
   options: CookiePrimitiveOptions<T>,
   extendedOptions?: Omit<CookiePrimitiveOptions<T>, "schema">,
 ): AbstractCookiePrimitive<T> => {
@@ -61,7 +61,7 @@ export const $cookie = <T extends TSchema>(
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class BrowserCookiePrimitive<T extends TSchema>
+export class BrowserCookiePrimitive<T extends ZType>
   extends Primitive<CookiePrimitiveOptions<T>>
   implements AbstractCookiePrimitive<T>
 {
@@ -96,7 +96,7 @@ export class BrowserCookiePrimitive<T extends TSchema>
     return this.options.name ?? `${this.config.propertyKey}`;
   }
 
-  public set(data: Static<T>): void {
+  public set(data: Infer<T>): void {
     const value = JSON.stringify(this.alepha.codec.decode(this.schema, data));
     const options = this.options;
 
@@ -129,7 +129,7 @@ export class BrowserCookiePrimitive<T extends TSchema>
     document.cookie = this.cookieParser.cookieToString(this.name, cookie);
   }
 
-  public get(options?: { cookies?: Cookies }): Static<T> | undefined {
+  public get(options?: { cookies?: Cookies }): Infer<T> | undefined {
     const cookie = this.cookieParser.parseRequestCookies(document.cookie)[
       this.name
     ];

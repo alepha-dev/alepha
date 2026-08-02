@@ -1,4 +1,4 @@
-import { AlephaError, type TObject, z } from "alepha";
+import { AlephaError, type ZObject, z } from "alepha";
 import {
   type EntityPrimitive,
   type FromSchema,
@@ -157,7 +157,7 @@ export class PostgresModelBuilder extends ModelBuilder {
     >(entity, pgBuilders as any, tableResolver);
   }
 
-  schemaToPgColumns = <T extends TObject>(
+  schemaToPgColumns = <T extends ZObject>(
     tableName: string,
     schema: T,
     nsp: PgSchema,
@@ -365,7 +365,10 @@ export class PostgresModelBuilder extends ModelBuilder {
         name?: string;
       };
 
-      // SQL Enum (default for z.enum unless mode: "text")
+      // SQL Enum (default for z.enum unless mode: "text", which asks for a
+      // plain TEXT column instead). `name` overrides the generated type name
+      // so several tables can share one PG ENUM type — the conflict check
+      // below is what makes that sharing safe.
       if (enumMeta.mode !== "text") {
         const enumName = enumMeta.name ?? `${tableName}_${key}_enum`;
 

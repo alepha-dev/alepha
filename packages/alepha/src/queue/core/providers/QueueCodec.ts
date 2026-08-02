@@ -1,4 +1,4 @@
-import { $inject, Alepha, type Static, type TSchema } from "alepha";
+import { $inject, Alepha, type Infer, type ZType } from "alepha";
 
 /**
  * Owns the on-the-wire shape of a queue message.
@@ -17,7 +17,7 @@ export class QueueCodec {
   /**
    * Serialize a payload for the backend.
    */
-  public encode<T extends TSchema>(schema: T, payload: Static<T>): string {
+  public encode<T extends ZType>(schema: T, payload: Infer<T>): string {
     return JSON.stringify({
       headers: {},
       // Encode on the way out, decode on the way in — the pairing
@@ -33,7 +33,7 @@ export class QueueCodec {
    *
    * Throws on malformed JSON or a payload that does not match `schema`.
    */
-  public decode<T extends TSchema>(schema: T, message: string): Static<T> {
+  public decode<T extends ZType>(schema: T, message: string): Infer<T> {
     const json = JSON.parse(message);
     return this.alepha.codec.decode(schema, json.payload);
   }

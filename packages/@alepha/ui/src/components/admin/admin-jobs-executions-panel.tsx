@@ -2,7 +2,7 @@ import { JobStatusBadge } from "@alepha/ui/components/admin/admin-jobs-status-ba
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
-import { type Page, type Static, z } from "alepha";
+import { type Infer, type Page, z } from "alepha";
 import type { AdminJobController, JobExecutionResource } from "alepha/api/jobs";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -14,7 +14,7 @@ const EXEC_POLL_MS = 10_000;
 const execFiltersSchema = z.object({
   status: z.string().optional(),
 });
-type ExecFilters = Static<typeof execFiltersSchema>;
+type ExecFilters = Infer<typeof execFiltersSchema>;
 
 /**
  * Wrap an in-memory array as a `Page<T>` so it can feed `AlephaTable`'s fetcher

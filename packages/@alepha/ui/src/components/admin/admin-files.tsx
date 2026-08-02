@@ -13,7 +13,7 @@ import {
   HoverCardTrigger,
 } from "@alepha/ui/components/ui/hover-card";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import type {
   AdminFileStatsController,
   FileController,
@@ -46,7 +46,7 @@ const filtersSchema = z.object({
   name: z.string().optional(),
   bucket: z.string().optional(),
 });
-type AdminFileFilters = Static<typeof filtersSchema>;
+type AdminFileFilters = Infer<typeof filtersSchema>;
 
 const isImage = (mimeType?: string) => Boolean(mimeType?.startsWith("image/"));
 

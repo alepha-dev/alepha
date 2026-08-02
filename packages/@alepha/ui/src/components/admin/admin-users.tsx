@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from "@alepha/ui/components/ui/avatar";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
@@ -54,7 +54,7 @@ const filtersSchema = z.object({
   // to "All status" instead of throwing on schema validation.
   status: z.string().optional(),
 });
-type AdminUserFilters = Static<typeof filtersSchema>;
+type AdminUserFilters = Infer<typeof filtersSchema>;
 
 type StatusPreset = {
   enabled?: boolean;

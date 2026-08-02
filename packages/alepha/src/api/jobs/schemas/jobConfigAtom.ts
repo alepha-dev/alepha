@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 export const jobConfig = $atom({
   name: "alepha.jobs",
@@ -46,7 +46,7 @@ export const jobConfig = $atom({
   serverOnly: true,
 });
 
-export type JobConfig = Static<typeof jobConfig.schema>;
+export type JobConfig = Infer<typeof jobConfig.schema>;
 
 declare module "alepha" {
   interface State {

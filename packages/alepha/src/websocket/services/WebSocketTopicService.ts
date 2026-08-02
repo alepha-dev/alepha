@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $topic } from "alepha/topic";
 
@@ -68,7 +68,7 @@ export class WebSocketTopicService {
    * This is set by the WebSocket provider during initialization
    */
   public messageHandler?: (
-    event: Static<(typeof webSocketMessageSchema)["payload"]>,
+    event: Infer<(typeof webSocketMessageSchema)["payload"]>,
   ) => Promise<void>;
 
   /**
@@ -90,7 +90,7 @@ export class WebSocketTopicService {
    * Publish a message to be distributed across all server instances
    */
   public async publish(
-    event: Static<(typeof webSocketMessageSchema)["payload"]>,
+    event: Infer<(typeof webSocketMessageSchema)["payload"]>,
   ): Promise<void> {
     await this.topic.publish(event);
   }
@@ -100,7 +100,7 @@ export class WebSocketTopicService {
    */
   public setMessageHandler(
     handler: (
-      event: Static<(typeof webSocketMessageSchema)["payload"]>,
+      event: Infer<(typeof webSocketMessageSchema)["payload"]>,
     ) => Promise<void>,
   ): void {
     this.messageHandler = handler;

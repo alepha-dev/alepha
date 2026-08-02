@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const devStorageMetadataSchema = z.object({
   name: z.text(),
@@ -16,4 +16,4 @@ export const devStorageMetadataSchema = z.object({
   provider: z.text(),
 });
 
-export type DevStorageMetadata = Static<typeof devStorageMetadataSchema>;
+export type DevStorageMetadata = Infer<typeof devStorageMetadataSchema>;

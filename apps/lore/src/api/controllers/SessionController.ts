@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { oauthClientEntity } from "alepha/api/oauth";
 import { sessions } from "alepha/api/users";
 import { $repository } from "alepha/orm";
@@ -9,7 +9,7 @@ export const userSession = sessions.schema.extend({
   current: z.boolean(),
 });
 
-export type UserSession = Static<typeof userSession>;
+export type UserSession = Infer<typeof userSession>;
 
 /**
  * An OAuth "connection": a session that was minted for an OAuth client
@@ -34,7 +34,7 @@ export const oauthConnection = z.object({
   current: z.boolean(),
 });
 
-export type OAuthConnection = Static<typeof oauthConnection>;
+export type OAuthConnection = Infer<typeof oauthConnection>;
 
 export class SessionController {
   sessions = $repository(sessions);

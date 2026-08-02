@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { useAlepha, useInject } from "alepha/react";
 import type { ChannelPrimitive, TWSObject } from "alepha/websocket";
 import { WebSocketClient } from "alepha/websocket";
@@ -24,7 +24,7 @@ export interface UseRoomOptions<
   /**
    * Handler for incoming messages from the server
    */
-  handler: (message: Static<TClient>) => void;
+  handler: (message: Infer<TClient>) => void;
 
   /**
    * Optional WebSocket URL override
@@ -73,7 +73,7 @@ export interface UseRoomReturn<TServer extends TWSObject> {
   /**
    * Send a message to the server
    */
-  send: (message: Static<TServer>) => Promise<void>;
+  send: (message: Infer<TServer>) => Promise<void>;
 
   /**
    * Whether the connection is established
@@ -216,7 +216,7 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
 
   if (!alepha.isBrowser()) {
     return {
-      send: async (_message: Static<TServer>) => {
+      send: async (_message: Infer<TServer>) => {
         // No-op on server
       },
       isConnected: false,
@@ -233,7 +233,7 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
   }
 
   return {
-    send: async (message: Static<TServer>) => {
+    send: async (message: Infer<TServer>) => {
       await webSocketClient.send(roomId, channel, message);
     },
     isConnected,

@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const notificationPayloadSchema = z.object({
   type: z.enum(["email", "sms"]),
@@ -12,4 +12,4 @@ export const notificationPayloadSchema = z.object({
   lang: z.text().optional(),
 });
 
-export type NotificationPayload = Static<typeof notificationPayloadSchema>;
+export type NotificationPayload = Infer<typeof notificationPayloadSchema>;

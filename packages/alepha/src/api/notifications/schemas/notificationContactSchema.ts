@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const notificationContactSchema = z.object({
   email: z.email().optional(),
@@ -8,4 +8,4 @@ export const notificationContactSchema = z.object({
   language: z.bcp47().optional(),
 });
 
-export type NotificationContact = Static<typeof notificationContactSchema>;
+export type NotificationContact = Infer<typeof notificationContactSchema>;

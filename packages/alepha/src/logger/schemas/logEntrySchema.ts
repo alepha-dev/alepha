@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const logEntrySchema = z.object({
   level: z.enum(["SILENT", "TRACE", "DEBUG", "INFO", "WARN", "ERROR"]),
@@ -13,4 +13,4 @@ export const logEntrySchema = z.object({
   timestamp: z.number(),
 });
 
-export type LogEntry = Static<typeof logEntrySchema>;
+export type LogEntry = Infer<typeof logEntrySchema>;

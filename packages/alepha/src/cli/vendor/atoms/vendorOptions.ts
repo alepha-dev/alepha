@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * Vendor configuration atom.
@@ -49,4 +49,4 @@ export const vendorOptions = $atom({
 /**
  * Type for vendor options.
  */
-export type VendorOptions = Static<typeof vendorOptions.schema>;
+export type VendorOptions = Infer<typeof vendorOptions.schema>;

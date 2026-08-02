@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 // ---------------------------------------------------------------------------
@@ -10,7 +10,7 @@ export const cloudflareAccountSchema = z.object({
   name: z.string(),
 });
 
-export type CloudflareAccount = Static<typeof cloudflareAccountSchema>;
+export type CloudflareAccount = Infer<typeof cloudflareAccountSchema>;
 
 // ---------------------------------------------------------------------------
 // D1
@@ -21,7 +21,7 @@ export const cloudflareD1Schema = z.object({
   name: z.string(),
 });
 
-export type CloudflareD1 = Static<typeof cloudflareD1Schema>;
+export type CloudflareD1 = Infer<typeof cloudflareD1Schema>;
 
 // ---------------------------------------------------------------------------
 // KV
@@ -32,7 +32,7 @@ export const cloudflareKVSchema = z.object({
   title: z.string(),
 });
 
-export type CloudflareKV = Static<typeof cloudflareKVSchema>;
+export type CloudflareKV = Infer<typeof cloudflareKVSchema>;
 
 // ---------------------------------------------------------------------------
 // R2
@@ -43,7 +43,7 @@ export const cloudflareR2Schema = z.object({
   creation_date: z.string().optional(),
 });
 
-export type CloudflareR2 = Static<typeof cloudflareR2Schema>;
+export type CloudflareR2 = Infer<typeof cloudflareR2Schema>;
 
 export const cloudflareR2ListSchema = z.object({
   buckets: z.array(cloudflareR2Schema),
@@ -58,7 +58,7 @@ export const cloudflareQueueSchema = z.object({
   queue_name: z.string(),
 });
 
-export type CloudflareQueue = Static<typeof cloudflareQueueSchema>;
+export type CloudflareQueue = Infer<typeof cloudflareQueueSchema>;
 
 export const cloudflareQueueConsumerSchema = z.object({
   consumer_id: z.string(),
@@ -66,7 +66,7 @@ export const cloudflareQueueConsumerSchema = z.object({
   environment: z.string().optional(),
 });
 
-export type CloudflareQueueConsumer = Static<
+export type CloudflareQueueConsumer = Infer<
   typeof cloudflareQueueConsumerSchema
 >;
 
@@ -84,7 +84,7 @@ export const cloudflareHyperdriveSchema = z.object({
   origin: cloudflareHyperdriveOriginSchema,
 });
 
-export type CloudflareHyperdrive = Static<typeof cloudflareHyperdriveSchema>;
+export type CloudflareHyperdrive = Infer<typeof cloudflareHyperdriveSchema>;
 
 // ---------------------------------------------------------------------------
 // Worker
@@ -96,7 +96,7 @@ export const cloudflareWorkerSchema = z.object({
   modified_on: z.string(),
 });
 
-export type CloudflareWorker = Static<typeof cloudflareWorkerSchema>;
+export type CloudflareWorker = Infer<typeof cloudflareWorkerSchema>;
 
 // ---------------------------------------------------------------------------
 // Deployment
@@ -113,7 +113,7 @@ export const cloudflareDeploymentSchema = z.object({
   created_on: z.string(),
 });
 
-export type CloudflareDeployment = Static<typeof cloudflareDeploymentSchema>;
+export type CloudflareDeployment = Infer<typeof cloudflareDeploymentSchema>;
 
 export const cloudflareDeploymentListSchema = z.object({
   deployments: z.array(cloudflareDeploymentSchema),
@@ -131,7 +131,7 @@ export const cloudflareVersionSchema = z.object({
   annotations: z.record(z.string(), z.string()).optional(),
 });
 
-export type CloudflareVersion = Static<typeof cloudflareVersionSchema>;
+export type CloudflareVersion = Infer<typeof cloudflareVersionSchema>;
 
 export const cloudflareVersionListSchema = z.object({
   items: z.array(cloudflareVersionSchema),
@@ -146,7 +146,7 @@ export const cloudflareSecretSchema = z.object({
   type: z.string(),
 });
 
-export type CloudflareSecret = Static<typeof cloudflareSecretSchema>;
+export type CloudflareSecret = Infer<typeof cloudflareSecretSchema>;
 
 // ---------------------------------------------------------------------------
 // Request bodies
@@ -177,7 +177,7 @@ export const cloudflareR2TokenSchema = z.object({
   secretAccessKey: z.string(),
 });
 
-export type CloudflareR2Token = Static<typeof cloudflareR2TokenSchema>;
+export type CloudflareR2Token = Infer<typeof cloudflareR2TokenSchema>;
 
 export const createR2TokenBodySchema = z.object({
   name: z.string(),
@@ -223,4 +223,4 @@ export const cloudflareApiErrorSchema = z.object({
   message: z.string(),
 });
 
-export type CloudflareApiError = Static<typeof cloudflareApiErrorSchema>;
+export type CloudflareApiError = Infer<typeof cloudflareApiErrorSchema>;

@@ -1,4 +1,4 @@
-import { type Static, z } from "../providers/TypeProvider.ts";
+import { type Infer, z } from "../providers/ZodProvider.ts";
 
 export const pageQuerySchema = z.object({
   page: z
@@ -22,4 +22,4 @@ export const pageQuerySchema = z.object({
     .optional(),
 });
 
-export type PageQuery = Static<typeof pageQuerySchema>;
+export type PageQuery = Infer<typeof pageQuerySchema>;

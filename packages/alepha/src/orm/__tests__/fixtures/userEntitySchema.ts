@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 import { $entity, db } from "../../core/index.ts";
 
@@ -23,5 +23,5 @@ export const userEntity = $entity({
 });
 
 export const insertUserEntitySchema = userEntity.insertSchema;
-export type UserEntity = Static<typeof userEntity.schema>;
-export type InsertUserEntity = Static<typeof insertUserEntitySchema>;
+export type UserEntity = Infer<typeof userEntity.schema>;
+export type InsertUserEntity = Infer<typeof insertUserEntitySchema>;

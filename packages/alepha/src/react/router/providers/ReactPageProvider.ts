@@ -2,13 +2,13 @@ import {
   $atom,
   $hook,
   $inject,
-  $state,
+  $store,
   Alepha,
   AlephaError,
   coerceObject,
   OPTIONS,
   PipelineHandler,
-  type TSchema,
+  type ZType,
   z,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -66,7 +66,7 @@ export const reactPageOptions = $atom({
 export class ReactPageProvider {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly log = $logger();
-  protected readonly options = $state(reactPageOptions);
+  protected readonly options = $store(reactPageOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly rootComponentsProvider = $inject(RootComponentsProvider);
   protected readonly localeProvider = $inject(RouterLocaleProvider);
@@ -270,7 +270,7 @@ export class ReactPageProvider {
   }
 
   protected convertStringObjectToObject = (
-    schema?: TSchema,
+    schema?: ZType,
     value?: any,
   ): any => {
     if (z.schema.isObject(schema) && typeof value === "object") {

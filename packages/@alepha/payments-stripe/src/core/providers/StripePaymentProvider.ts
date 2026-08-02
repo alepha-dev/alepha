@@ -1,4 +1,4 @@
-import { $env, $inject, Alepha, AlephaError, type Static, z } from "alepha";
+import { $env, $inject, Alepha, AlephaError, type Infer, z } from "alepha";
 import type {
   CreatePaymentMethodResult,
   CreateSessionResult,
@@ -33,7 +33,7 @@ const envSchema = z.object({
 });
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface Env extends Partial<Infer<typeof envSchema>> {}
 }
 
 export class StripePaymentProvider implements PaymentProvider {

@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { users } from "./users.ts";
 
@@ -11,4 +11,4 @@ export const campaigns = $entity({
   }),
 });
 
-export type Campaign = Static<typeof campaigns.schema>;
+export type Campaign = Infer<typeof campaigns.schema>;

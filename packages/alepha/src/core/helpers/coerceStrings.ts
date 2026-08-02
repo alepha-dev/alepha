@@ -1,4 +1,4 @@
-import { z } from "../providers/TypeProvider.ts";
+import { z } from "../providers/ZodProvider.ts";
 
 /**
  * Coerce a single string value coming from a string-only boundary (HTTP query,

@@ -1,15 +1,15 @@
 import {
-  type TNull,
-  type TObject,
-  type TOptional,
-  type TSchema,
-  type TUnion,
+  type ZObject,
+  type ZodNull,
+  type ZodOptional,
+  type ZodUnion,
+  type ZType,
   z,
 } from "alepha";
 import { PG_GENERATED } from "../constants/PG_SYMBOLS.ts";
 
 /**
- * Transforms a TObject schema for update operations.
+ * Transforms a ZObject schema for update operations.
  * All optional properties at the root level are made nullable (i.e., `T | null`).
  * Generated columns are excluded entirely.
  *
@@ -17,15 +17,15 @@ import { PG_GENERATED } from "../constants/PG_SYMBOLS.ts";
  * Before: { name?: string; age: number; fullName: generated }
  * After:  { name?: string | null; age: number; }
  */
-export type TObjectUpdate<T extends TObject> = TObject<{
+export type TObjectUpdate<T extends ZObject> = ZObject<{
   [K in keyof T["shape"] as T["shape"][K] extends { [PG_GENERATED]: any }
     ? never
-    : K]: T["shape"][K] extends TOptional<infer U extends TSchema>
-    ? TOptional<TUnion<[U, TNull]>>
+    : K]: T["shape"][K] extends ZodOptional<infer U extends ZType>
+    ? ZodOptional<ZodUnion<[U, ZodNull]>>
     : T["shape"][K];
 }>;
 
-export const updateSchema = <T extends TObject>(
+export const updateSchema = <T extends ZObject>(
   schema: T,
 ): TObjectUpdate<T> => {
   const newProperties: Record<string, any> = {};

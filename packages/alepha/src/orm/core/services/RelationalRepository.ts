@@ -4,7 +4,7 @@ import {
   createPagination,
   type Page,
   type PageQuery,
-  type TObject,
+  type ZObject,
 } from "alepha";
 import type {
   IncludeArg,
@@ -47,23 +47,23 @@ import { RqbExecutor } from "./RqbExecutor.ts";
  * not change.
  */
 export class RelationalRepository<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  TKey extends keyof TSchema & string,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  TKey extends keyof ZType & string,
 > {
   protected readonly repositories = $inject(RepositoryProvider);
   protected readonly rqb = $inject(RqbExecutor);
   protected readonly queryManager = $inject(QueryManager);
 
   constructor(
-    public readonly relations: RelationsPrimitive<TSchema, TMap>,
+    public readonly relations: RelationsPrimitive<ZType, TMap>,
     public readonly key: TKey,
   ) {}
 
   /** The entity this repository is bound to. */
-  public get entity(): EntityPrimitive<EntityOf<TSchema, TKey>> {
+  public get entity(): EntityPrimitive<EntityOf<ZType, TKey>> {
     return this.relations.schema[this.key] as EntityPrimitive<
-      EntityOf<TSchema, TKey>
+      EntityOf<ZType, TKey>
     >;
   }
 
@@ -71,18 +71,16 @@ export class RelationalRepository<
    * The underlying relation-unaware repository, fully typed. Every existing
    * escape hatch — `create`, `upsert`, `aggregate`, raw `query` — still works.
    */
-  public get base(): Repository<EntityOf<TSchema, TKey>> {
+  public get base(): Repository<EntityOf<ZType, TKey>> {
     return this.repositories.getRepository(this.entity);
   }
 
   public async findMany<
-    const TArgs extends RelationalQueryArgs<TSchema, TMap, TKey> = {},
+    const TArgs extends RelationalQueryArgs<ZType, TMap, TKey> = {},
   >(
     query: TArgs = {} as TArgs,
-  ): Promise<Array<Resolve<TSchema, TMap, TKey, TArgs>>> {
-    return (await this.rows(query)) as Array<
-      Resolve<TSchema, TMap, TKey, TArgs>
-    >;
+  ): Promise<Array<Resolve<ZType, TMap, TKey, TArgs>>> {
+    return (await this.rows(query)) as Array<Resolve<ZType, TMap, TKey, TArgs>>;
   }
 
   /**
@@ -93,18 +91,18 @@ export class RelationalRepository<
    * de-duplicating parents afterwards.
    */
   public async findOne<
-    const TArgs extends RelationalQueryArgs<TSchema, TMap, TKey> = {},
+    const TArgs extends RelationalQueryArgs<ZType, TMap, TKey> = {},
   >(
     query: TArgs = {} as TArgs,
-  ): Promise<Resolve<TSchema, TMap, TKey, TArgs> | undefined> {
+  ): Promise<Resolve<ZType, TMap, TKey, TArgs> | undefined> {
     const [row] = await this.findMany({ ...query, limit: 1 } as TArgs);
     return row;
   }
 
   /** First match, or throw. */
   public async getOne<
-    const TArgs extends RelationalQueryArgs<TSchema, TMap, TKey> = {},
-  >(query: TArgs = {} as TArgs): Promise<Resolve<TSchema, TMap, TKey, TArgs>> {
+    const TArgs extends RelationalQueryArgs<ZType, TMap, TKey> = {},
+  >(query: TArgs = {} as TArgs): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
     const row = await this.findOne(query);
     if (!row) {
       throw new AlephaError(`No '${this.key}' matched the given query.`);
@@ -114,29 +112,29 @@ export class RelationalRepository<
 
   public async findById<
     const TArgs extends Omit<
-      RelationalQueryArgs<TSchema, TMap, TKey>,
+      RelationalQueryArgs<ZType, TMap, TKey>,
       "where" | "limit" | "offset"
     > = {},
   >(
     id: string | number,
     query: TArgs = {} as TArgs,
-  ): Promise<Resolve<TSchema, TMap, TKey, TArgs> | undefined> {
+  ): Promise<Resolve<ZType, TMap, TKey, TArgs> | undefined> {
     const primaryKey = this.base.id.key as string;
     return (await this.findOne({
       ...(query as object),
       where: { [primaryKey]: { eq: id } },
-    } as never)) as Resolve<TSchema, TMap, TKey, TArgs> | undefined;
+    } as never)) as Resolve<ZType, TMap, TKey, TArgs> | undefined;
   }
 
   public async getById<
     const TArgs extends Omit<
-      RelationalQueryArgs<TSchema, TMap, TKey>,
+      RelationalQueryArgs<ZType, TMap, TKey>,
       "where" | "limit" | "offset"
     > = {},
   >(
     id: string | number,
     query: TArgs = {} as TArgs,
-  ): Promise<Resolve<TSchema, TMap, TKey, TArgs>> {
+  ): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
     const row = await this.findById(id, query);
     if (!row) {
       throw new AlephaError(`No '${this.key}' with id '${id}'.`);
@@ -152,12 +150,12 @@ export class RelationalRepository<
    * size.
    */
   public async paginate<
-    const TArgs extends RelationalQueryArgs<TSchema, TMap, TKey> = {},
+    const TArgs extends RelationalQueryArgs<ZType, TMap, TKey> = {},
   >(
     pagination: PageQuery = {},
     query: TArgs = {} as TArgs,
     options: { count?: boolean } = {},
-  ): Promise<Page<Resolve<TSchema, TMap, TKey, TArgs>>> {
+  ): Promise<Page<Resolve<ZType, TMap, TKey, TArgs>>> {
     if (!this.delegates(query)) {
       const page = await this.base.paginate(
         pagination,
@@ -165,7 +163,7 @@ export class RelationalRepository<
         { ...options, ...this.toBaseOptions(query) },
       );
 
-      return page as Page<Resolve<TSchema, TMap, TKey, TArgs>>;
+      return page as Page<Resolve<ZType, TMap, TKey, TArgs>>;
     }
 
     const args = query as Record<string, any>;
@@ -203,7 +201,7 @@ export class RelationalRepository<
       page.page.totalPages = Math.ceil(total / limit);
     }
 
-    return page as Page<Resolve<TSchema, TMap, TKey, TArgs>>;
+    return page as Page<Resolve<ZType, TMap, TKey, TArgs>>;
   }
 
   /**
@@ -215,7 +213,7 @@ export class RelationalRepository<
    * a `COUNT(*)` without rebuilding the `EXISTS` by hand.
    */
   public async count(
-    query: Pick<RelationalQueryArgs<TSchema, TMap, TKey>, "where"> = {},
+    query: Pick<RelationalQueryArgs<ZType, TMap, TKey>, "where"> = {},
   ): Promise<number> {
     this.assertCountable(query.where);
     return await this.base.count(query.where as never);
@@ -238,8 +236,8 @@ export class RelationalRepository<
 
   /** Insert many rows. Relations are not nested here; use `create` per row. */
   public async createMany<
-    const TArgs extends CreateManyArgs<TSchema, TMap, TKey>,
-  >(args: TArgs): Promise<Array<RowOf<TSchema, TKey>>> {
+    const TArgs extends CreateManyArgs<ZType, TMap, TKey>,
+  >(args: TArgs): Promise<Array<RowOf<ZType, TKey>>> {
     return (await this.base.createMany(args.data as never)) as never;
   }
 
@@ -249,9 +247,9 @@ export class RelationalRepository<
    * `where` is mandatory — an optional filter here would let a forgotten
    * clause rewrite the whole table.
    */
-  public async update<const TArgs extends UpdateArgs<TSchema, TMap, TKey>>(
+  public async update<const TArgs extends UpdateArgs<ZType, TMap, TKey>>(
     args: TArgs,
-  ): Promise<Resolve<TSchema, TMap, TKey, TArgs>> {
+  ): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
     const row = (await this.base.updateOne(
       args.where as never,
       args.data as never,
@@ -263,14 +261,14 @@ export class RelationalRepository<
   /** Update by primary key. Sugar for the common case. */
   public async updateById(
     id: string | number,
-    data: UpdateOf<TSchema, TKey>,
-  ): Promise<RowOf<TSchema, TKey>> {
+    data: UpdateOf<ZType, TKey>,
+  ): Promise<RowOf<ZType, TKey>> {
     return (await this.base.updateById(id, data as never)) as never;
   }
 
   /** Update every row matching `where`. Returns the affected ids. */
   public async updateMany(
-    args: UpdateManyArgs<TSchema, TKey>,
+    args: UpdateManyArgs<ZType, TKey>,
   ): Promise<Array<number | string>> {
     return await this.base.updateMany(args.where as never, args.data as never);
   }
@@ -286,9 +284,9 @@ export class RelationalRepository<
    * `target` needs a matching unique constraint. Without one there is nothing
    * for ON CONFLICT to match and the statement fails at the database.
    */
-  public async upsert<const TArgs extends UpsertArgs<TSchema, TMap, TKey>>(
+  public async upsert<const TArgs extends UpsertArgs<ZType, TMap, TKey>>(
     args: TArgs,
-  ): Promise<Resolve<TSchema, TMap, TKey, TArgs>> {
+  ): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
     const row = (await this.base.upsert(args.create as never, {
       target: args.target as never,
       set: args.update as never,
@@ -304,13 +302,13 @@ export class RelationalRepository<
    * Kept positional deliberately: it is a read-modify-write over an entity you
    * already hold, not a query, so an options object would be dressing.
    */
-  public async save(entity: RowOf<TSchema, TKey>): Promise<void> {
+  public async save(entity: RowOf<ZType, TKey>): Promise<void> {
     await this.base.save(entity as never);
   }
 
   /** Delete the first row matching `where`. Returns the affected ids. */
   public async delete(
-    args: DeleteArgs<TSchema, TKey>,
+    args: DeleteArgs<ZType, TKey>,
   ): Promise<Array<number | string>> {
     return await this.base.deleteOne(args.where as never, {
       force: args.force,
@@ -327,7 +325,7 @@ export class RelationalRepository<
 
   /** Delete every row matching `where`. */
   public async deleteMany(
-    args: DeleteArgs<TSchema, TKey>,
+    args: DeleteArgs<ZType, TKey>,
   ): Promise<Array<number | string>> {
     return await this.base.deleteMany(args.where as never, {
       force: args.force,
@@ -352,7 +350,7 @@ export class RelationalRepository<
 
   /** Raw SQL, typed by an optional result schema. */
   public query(
-    ...args: Parameters<Repository<EntityOf<TSchema, TKey>>["query"]>
+    ...args: Parameters<Repository<EntityOf<ZType, TKey>>["query"]>
   ) {
     return this.base.query(...args);
   }
@@ -365,7 +363,7 @@ export class RelationalRepository<
    * it in front of `EXPLAIN`. Relation-free queries have no such gap, so they
    * are refused here rather than answered from a different code path.
    */
-  public toSQL(query: RelationalQueryArgs<TSchema, TMap, TKey>): {
+  public toSQL(query: RelationalQueryArgs<ZType, TMap, TKey>): {
     sql: string;
     params: Array<unknown>;
   } {
@@ -385,7 +383,7 @@ export class RelationalRepository<
 
   /** Grouped aggregates. */
   public aggregate(
-    ...args: Parameters<Repository<EntityOf<TSchema, TKey>>["aggregate"]>
+    ...args: Parameters<Repository<EntityOf<ZType, TKey>>["aggregate"]>
   ) {
     return this.base.aggregate(...args);
   }
@@ -434,9 +432,9 @@ export class RelationalRepository<
    * repository, so that distinction is the whole difference between atomic
    * and not.
    */
-  public async create<const TArgs extends CreateArgs<TSchema, TMap, TKey>>(
+  public async create<const TArgs extends CreateArgs<ZType, TMap, TKey>>(
     args: TArgs,
-  ): Promise<Resolve<TSchema, TMap, TKey, TArgs>> {
+  ): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
     return (await this.base.provider.transactional(async () => {
       const row = await this.createDeep(this.key, args.data as CreateInput);
       return await this.reread(row, args);
@@ -522,7 +520,7 @@ export class RelationalRepository<
    * the read it was before relations existed.
    */
   protected async rows(
-    query: RelationalQueryArgs<TSchema, TMap, TKey>,
+    query: RelationalQueryArgs<ZType, TMap, TKey>,
   ): Promise<Array<Record<string, any>>> {
     if (this.delegates(query)) {
       return await this.rqb.findMany({
@@ -547,9 +545,7 @@ export class RelationalRepository<
    * the plain repository, which knows nothing about relations and would
    * report the relation name as an unknown column.
    */
-  protected delegates(
-    query: RelationalQueryArgs<TSchema, TMap, TKey>,
-  ): boolean {
+  protected delegates(query: RelationalQueryArgs<ZType, TMap, TKey>): boolean {
     const include = query.include as Record<string, unknown> | undefined;
     if (include && Object.keys(include).length > 0) return true;
 
@@ -589,7 +585,7 @@ export class RelationalRepository<
    * Translate the relational query into the plain repository's vocabulary.
    * `select` becomes `columns`; `include` is handled separately.
    */
-  protected toBaseQuery(query: RelationalQueryArgs<TSchema, TMap, TKey>) {
+  protected toBaseQuery(query: RelationalQueryArgs<ZType, TMap, TKey>) {
     const {
       include: _include,
       force: _force,
@@ -604,23 +600,23 @@ export class RelationalRepository<
    * `force` is a statement option on the plain repository rather than part of
    * the query, so it is peeled back off on the way down.
    */
-  protected toBaseOptions(query: RelationalQueryArgs<TSchema, TMap, TKey>) {
+  protected toBaseOptions(query: RelationalQueryArgs<ZType, TMap, TKey>) {
     return { force: (query as { force?: boolean }).force };
   }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export type EntityOf<TSchema extends EntitySchema, TKey extends keyof TSchema> =
-  TSchema[TKey] extends EntityPrimitive<infer T extends TObject> ? T : never;
+export type EntityOf<ZType extends EntitySchema, TKey extends keyof ZType> =
+  ZType[TKey] extends EntityPrimitive<infer T extends ZObject> ? T : never;
 
 /** Kept for callers that referenced the previous name. */
 export type RelationalQuery<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  TKey extends keyof TSchema & string,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  TKey extends keyof ZType & string,
   TInclude,
-> = RelationalQueryArgs<TSchema, TMap, TKey> & { include?: TInclude };
+> = RelationalQueryArgs<ZType, TMap, TKey> & { include?: TInclude };
 
 export type { IncludeArg };
 

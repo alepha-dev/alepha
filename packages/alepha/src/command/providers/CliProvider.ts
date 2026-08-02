@@ -5,13 +5,13 @@ import {
   $env,
   $hook,
   $inject,
-  $state,
+  $store,
   Alepha,
+  type Infer,
   SchemaValidationError,
-  type Static,
-  type TObject,
-  type TSchema,
-  type TUnion,
+  type ZObject,
+  type ZodUnion,
+  type ZType,
   z,
 } from "alepha";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
@@ -39,7 +39,7 @@ const envSchema = z.object({
 });
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface Env extends Partial<Infer<typeof envSchema>> {}
 }
 
 /**
@@ -62,7 +62,7 @@ export const cliOptions = $atom({
   serverOnly: true,
 });
 
-export type CliProviderOptions = Static<typeof cliOptions.schema>;
+export type CliProviderOptions = Infer<typeof cliOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -110,7 +110,7 @@ export class CliProvider {
   protected readonly runner = $inject(Runner);
   protected readonly asker = $inject(Asker);
   protected readonly envUtils = $inject(EnvUtils);
-  protected readonly options = $state(cliOptions);
+  protected readonly options = $store(cliOptions);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Configuration
@@ -245,7 +245,7 @@ export class CliProvider {
    * @see run() for a lightweight test-only alternative
    */
   protected async executeCommand(
-    command: CommandPrimitive<TObject>,
+    command: CommandPrimitive<ZObject>,
     argv: string[],
     isRootCommand: boolean,
   ): Promise<void> {
@@ -302,17 +302,17 @@ export class CliProvider {
       const preHooks = this.findPreHooks(command.name);
       for (const hook of preHooks) {
         this.log.debug(`Executing pre-hook for '${command.name}'...`);
-        await hook.options.handler(args as CommandHandlerArgs<TObject>);
+        await hook.options.handler(args as CommandHandlerArgs<ZObject>);
       }
 
       // Execute main command
-      await command.options.handler(args as CommandHandlerArgs<TObject>);
+      await command.options.handler(args as CommandHandlerArgs<ZObject>);
 
       // Execute post-hooks
       const postHooks = this.findPostHooks(command.name);
       for (const hook of postHooks) {
         this.log.debug(`Executing post-hook for '${command.name}'...`);
-        await hook.options.handler(args as CommandHandlerArgs<TObject>);
+        await hook.options.handler(args as CommandHandlerArgs<ZObject>);
       }
 
       runner.end();
@@ -382,7 +382,7 @@ export class CliProvider {
    * argument here — which is the behaviour a user expects from a CLI.
    */
   protected resolveCommandFromArgv(argv: string[]): {
-    command: CommandPrimitive<TObject> | undefined;
+    command: CommandPrimitive<ZObject> | undefined;
     consumedArgs: string[];
     positionalArgs: string[];
   } {
@@ -393,7 +393,7 @@ export class CliProvider {
         schema: value.schema,
       })),
       ...this.commands.flatMap((command) => {
-        const flags = (command.options as { flags?: TObject }).flags;
+        const flags = (command.options as { flags?: ZObject }).flags;
         return flags ? this.extractFlagDefs(flags) : [];
       }),
     ];
@@ -408,7 +408,7 @@ export class CliProvider {
   }
 
   protected resolveCommand(positionalArgs: string[]): {
-    command: CommandPrimitive<TObject> | undefined;
+    command: CommandPrimitive<ZObject> | undefined;
     consumedArgs: string[];
   } {
     if (positionalArgs.length === 0) {
@@ -493,7 +493,7 @@ export class CliProvider {
    * await cli.run(cmd.init, { argv: "--agent", root: "/project" });
    * ```
    */
-  public async run<T extends TObject, A extends TSchema>(
+  public async run<T extends ZObject, A extends ZType>(
     command: CommandPrimitive<T, A>,
     options:
       | string
@@ -550,7 +550,7 @@ export class CliProvider {
   /**
    * Find a command by name or alias
    */
-  protected findCommand(name: string): CommandPrimitive<TObject> | undefined {
+  protected findCommand(name: string): CommandPrimitive<ZObject> | undefined {
     return this.commands.findLast(
       (command) => command.name === name || command.aliases.includes(name),
     );
@@ -561,7 +561,7 @@ export class CliProvider {
    */
   protected findTopLevelCommand(
     name: string,
-  ): CommandPrimitive<TObject> | undefined {
+  ): CommandPrimitive<ZObject> | undefined {
     return this.getTopLevelCommands().findLast(
       (command) => command.name === name || command.aliases.includes(name),
     );
@@ -570,14 +570,14 @@ export class CliProvider {
   /**
    * Find all pre-hooks for a command (commands named `pre{commandName}`)
    */
-  protected findPreHooks(commandName: string): CommandPrimitive<TObject>[] {
+  protected findPreHooks(commandName: string): CommandPrimitive<ZObject>[] {
     return this.commands.filter((cmd) => cmd.name === `pre${commandName}`);
   }
 
   /**
    * Find all post-hooks for a command (commands named `post{commandName}`)
    */
-  protected findPostHooks(commandName: string): CommandPrimitive<TObject>[] {
+  protected findPostHooks(commandName: string): CommandPrimitive<ZObject>[] {
     return this.commands.filter((cmd) => cmd.name === `post${commandName}`);
   }
 
@@ -586,7 +586,7 @@ export class CliProvider {
    */
   protected getAllGlobalFlags(): Record<
     string,
-    { aliases: string[]; description?: string; schema: TSchema }
+    { aliases: string[]; description?: string; schema: ZType }
   > {
     return { ...this.globalFlags };
   }
@@ -598,7 +598,7 @@ export class CliProvider {
    * as direct properties (typebox), and they sit on the INNER schema — so any
    * optional / nullable / default wrappers are peeled first.
    */
-  protected schemaMeta(schema: TSchema | undefined): Record<string, any> {
+  protected schemaMeta(schema: ZType | undefined): Record<string, any> {
     if (!schema) return {};
     const base = z.schema.unwrap(schema) as any;
     return (typeof base?.meta === "function" ? base.meta() : undefined) ?? {};
@@ -609,20 +609,20 @@ export class CliProvider {
    * object schema. Centralises the metadata reading so every call-site (parsing,
    * arg-splitting, help) extracts aliases/descriptions the same way.
    */
-  protected extractFlagDefs(schema: TObject): Array<{
+  protected extractFlagDefs(schema: ZObject): Array<{
     key: string;
     aliases: string[];
     description?: string;
-    schema: TSchema;
+    schema: ZType;
   }> {
     return Object.entries(schema.properties).map(([key, value]) => {
-      const meta = this.schemaMeta(value as TSchema);
+      const meta = this.schemaMeta(value as ZType);
       const extra: string[] = meta.aliases ?? (meta.alias ? [meta.alias] : []);
       return {
         key,
         aliases: [key, ...extra],
         description: meta.description,
-        schema: value as TSchema,
+        schema: value as ZType,
       };
     });
   }
@@ -636,7 +636,7 @@ export class CliProvider {
    */
   protected parseCommandFlags(
     argv: string[],
-    schema: TObject,
+    schema: ZObject,
     options: { modeEnabled?: boolean } = {},
   ): Record<string, any> {
     const { modeEnabled = false } = options;
@@ -677,7 +677,7 @@ export class CliProvider {
 
     // apply manually defaults for optional properties that have defaults
     for (const [key, value] of Object.entries(
-      schema.properties as Record<string, TSchema>,
+      schema.properties as Record<string, ZType>,
     )) {
       if (!(key in parsed)) {
         const def = z.schema.getDefault(value);
@@ -703,14 +703,14 @@ export class CliProvider {
    * Parse and validate environment variables using the command's env schema
    */
   protected parseCommandEnv(
-    schema: TObject,
+    schema: ZObject,
     commandName: string,
   ): Record<string, any> {
     const result: Record<string, any> = {};
     const missing: string[] = [];
 
     for (const [key, propSchema] of Object.entries(
-      schema.properties as Record<string, TSchema>,
+      schema.properties as Record<string, ZType>,
     )) {
       const value = process.env[key];
 
@@ -792,7 +792,7 @@ export class CliProvider {
    */
   protected parseFlags(
     argv: string[],
-    flagDefs: { key: string; aliases: string[]; schema: TSchema }[],
+    flagDefs: { key: string; aliases: string[]; schema: ZType }[],
     options: { strict?: boolean } = {},
   ): Record<string, any> {
     const { strict = true } = options;
@@ -820,7 +820,7 @@ export class CliProvider {
       // Check if schema is a union containing boolean (allows flag without value)
       const isUnionWithBoolean =
         z.schema.isUnion(base) &&
-        (base as TUnion).anyOf.some((s) => z.schema.isBoolean(s));
+        (base as ZodUnion).anyOf.some((s) => z.schema.isBoolean(s));
 
       if (z.schema.isBoolean(base)) {
         result[def.key] = true;
@@ -860,7 +860,7 @@ export class CliProvider {
    * args); object / array / record values are JSON-parsed. `schema` is expected
    * to already be unwrapped of optional/nullable/default.
    */
-  protected castFlagValue(value: string, schema: TSchema, rawKey: string): any {
+  protected castFlagValue(value: string, schema: ZType, rawKey: string): any {
     if (
       z.schema.isObject(schema) ||
       z.schema.isArray(schema) ||
@@ -880,7 +880,7 @@ export class CliProvider {
    */
   protected getFlagConsumedIndices(
     argv: string[],
-    flagDefs: { key: string; aliases: string[]; schema: TSchema }[],
+    flagDefs: { key: string; aliases: string[]; schema: ZType }[],
   ): Set<number> {
     const consumed = new Set<number>();
 
@@ -902,7 +902,7 @@ export class CliProvider {
       // Check if schema is a union containing boolean
       const isUnionWithBoolean =
         z.schema.isUnion(base) &&
-        (base as TUnion).anyOf.some((s) => z.schema.isBoolean(s));
+        (base as ZodUnion).anyOf.some((s) => z.schema.isBoolean(s));
 
       // If not a boolean flag and no = value, the next arg is consumed as the value
       // Exception: union with boolean can work without a value
@@ -925,9 +925,9 @@ export class CliProvider {
 
   protected parseCommandArgs(
     argv: string[],
-    schema?: TSchema,
+    schema?: ZType,
     isRootCommand = false,
-    flagSchema?: TObject,
+    flagSchema?: ZObject,
   ): any {
     if (!schema) {
       return undefined;
@@ -986,7 +986,7 @@ export class CliProvider {
   /**
    * Convert a string argument value to the appropriate type based on schema
    */
-  protected parseArgumentValue(value: string, schema: TSchema): any {
+  protected parseArgumentValue(value: string, schema: ZType): any {
     if (z.schema.isString(schema)) {
       return value;
     }
@@ -1020,7 +1020,7 @@ export class CliProvider {
   /**
    * Generate usage string for command arguments (e.g., "<path>" or "[path]")
    */
-  protected generateArgsUsage(schema?: TSchema): string {
+  protected generateArgsUsage(schema?: ZType): string {
     if (!schema) {
       return "";
     }
@@ -1052,7 +1052,7 @@ export class CliProvider {
   /**
    * Get display type name for a schema (e.g., ": number", ": boolean")
    */
-  protected getTypeName(schema: TSchema): string {
+  protected getTypeName(schema: ZType): string {
     if (!schema) return "";
 
     // Peel optional/nullable/default before inspecting the scalar type.
@@ -1147,7 +1147,7 @@ export class CliProvider {
                     typeof command.options.mode === "string"
                       ? `Environment mode - loads .env.{mode} (default: ${command.options.mode})`
                       : "Environment mode (e.g., production, staging) - loads .env.{mode}",
-                  schema: z.string() as TSchema,
+                  schema: z.string() as ZType,
                 },
               ]
             : []),
@@ -1160,8 +1160,7 @@ export class CliProvider {
         const maxFlagLength = this.getMaxFlagLength(flags);
         for (const flag of flags) {
           const { aliases, description } = flag;
-          const schema =
-            "schema" in flag ? (flag.schema as TSchema) : undefined;
+          const schema = "schema" in flag ? (flag.schema as ZType) : undefined;
           // Sort aliases by length (shorter first: -t before --target)
           const sortedAliases = (Array.isArray(aliases) ? aliases : [aliases])
             .slice()
@@ -1184,12 +1183,12 @@ export class CliProvider {
           this.log.info(c.set("WHITE_BOLD", "Env:"));
           const maxEnvLength = Math.max(...envVars.map(([key]) => key.length));
           for (const [key, schema] of envVars) {
-            const isOptional = z.schema.isOptional(schema as TSchema);
+            const isOptional = z.schema.isOptional(schema as ZType);
             // Wrapped schemas (`.optional()`) keep the description in the
             // INNER schema's `.meta()` registry, so reading `.description`
             // off the wrapper rendered an empty Env: section.
             const description =
-              this.schemaMeta(schema as TSchema).description ?? "";
+              this.schemaMeta(schema as ZType).description ?? "";
             const optionalStr = isOptional
               ? c.set("GREY_DARK", " (optional)")
               : c.set("RED", " (required)");
@@ -1267,7 +1266,7 @@ export class CliProvider {
   /**
    * Generate colored usage string for command arguments (for help display)
    */
-  protected generateColoredArgsUsage(schema?: TSchema): string {
+  protected generateColoredArgsUsage(schema?: ZType): string {
     if (!schema) {
       return "";
     }
@@ -1413,7 +1412,7 @@ export class CliProvider {
    * Extract enum values from a schema if it represents an enum.
    * Returns undefined if the schema is not an enum.
    */
-  protected getEnumValues(schema: TSchema): string[] | undefined {
+  protected getEnumValues(schema: ZType): string[] | undefined {
     if (!schema) return undefined;
 
     const base = z.schema.unwrap(schema);
@@ -1452,7 +1451,7 @@ export class CliProvider {
    */
   protected formatFlagDescription(
     description: string | undefined,
-    schema: TSchema | undefined,
+    schema: ZType | undefined,
   ): string {
     const baseDesc = description ?? "";
 

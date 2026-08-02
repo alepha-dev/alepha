@@ -3,8 +3,8 @@ import {
   $inject,
   Alepha,
   AlephaError,
+  type Infer,
   SchemaValidator,
-  type Static,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
@@ -27,7 +27,7 @@ const envSchema = z.object({
 });
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface Env extends Partial<Infer<typeof envSchema>> {}
 }
 
 /**
@@ -35,7 +35,7 @@ declare module "alepha" {
  */
 interface RoomSubscription<TClient extends TWSObject> {
   roomId: string;
-  handler: (message: Static<TClient>) => void;
+  handler: (message: Infer<TClient>) => void;
 }
 
 /**
@@ -66,7 +66,7 @@ export class WebSocketChannelConnection<
    * transport metadata, not part of the channel's `in` schema.
    */
   public static readonly ROOM_MARKER = "__alephaRoom";
-  protected messageQueue: Array<{ roomId: string; message: Static<TServer> }> =
+  protected messageQueue: Array<{ roomId: string; message: Infer<TServer> }> =
     [];
 
   /**
@@ -78,7 +78,7 @@ export class WebSocketChannelConnection<
    */
   protected subscriptions = new Map<
     string,
-    Set<(message: Static<TClient>) => void>
+    Set<(message: Infer<TClient>) => void>
   >();
 
   // Connection state
@@ -101,7 +101,7 @@ export class WebSocketChannelConnection<
       reconnectInterval?: number;
       maxReconnectAttempts?: number;
     },
-    protected readonly env: Static<typeof envSchema>,
+    protected readonly env: Infer<typeof envSchema>,
   ) {}
 
   /**
@@ -143,7 +143,7 @@ export class WebSocketChannelConnection<
    */
   public subscribe(
     roomId: string,
-    handler: (message: Static<TClient>) => void,
+    handler: (message: Infer<TClient>) => void,
     callbacks?: {
       onConnect?: () => void;
       onDisconnect?: () => void;
@@ -381,7 +381,7 @@ export class WebSocketChannelConnection<
         const handlers = this.subscriptions.get(roomId);
         if (handlers?.size) {
           for (const handler of handlers) {
-            handler(parsed as Static<TClient>);
+            handler(parsed as Infer<TClient>);
           }
         } else {
           this.log.trace("No handler for room", { roomId });
@@ -393,7 +393,7 @@ export class WebSocketChannelConnection<
       // marker) — every subscriber is a legitimate recipient.
       for (const handlers of this.subscriptions.values()) {
         for (const handler of handlers) {
-          handler(parsed as Static<TClient>);
+          handler(parsed as Infer<TClient>);
         }
       }
     } catch (err) {
@@ -404,7 +404,7 @@ export class WebSocketChannelConnection<
   /**
    * Send message to a specific room
    */
-  public async send(roomId: string, message: Static<TServer>): Promise<void> {
+  public async send(roomId: string, message: Infer<TServer>): Promise<void> {
     this.log.trace("Sending message", { roomId, message });
 
     // Validate outgoing message against schema
@@ -568,7 +568,7 @@ export class WebSocketClient {
   public subscribe<TClient extends TWSObject, TServer extends TWSObject>(
     roomId: string,
     channel: ChannelPrimitive<TClient, TServer>,
-    handler: (message: Static<TClient>) => void,
+    handler: (message: Infer<TClient>) => void,
     options: {
       url?: string;
       autoReconnect?: boolean;
@@ -643,7 +643,7 @@ export class WebSocketClient {
   public async send<TClient extends TWSObject, TServer extends TWSObject>(
     roomId: string,
     channel: ChannelPrimitive<TClient, TServer>,
-    message: Static<TServer>,
+    message: Infer<TServer>,
   ): Promise<void> {
     const channelPath = channel.options.path;
 

@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 export const apiKeyEntity = $entity({
@@ -39,4 +39,4 @@ export const apiKeyEntity = $entity({
   ],
 });
 
-export type ApiKeyEntity = Static<typeof apiKeyEntity.schema>;
+export type ApiKeyEntity = Infer<typeof apiKeyEntity.schema>;

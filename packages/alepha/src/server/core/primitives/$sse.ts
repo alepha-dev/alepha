@@ -1,15 +1,15 @@
 import {
   $inject,
-  $state,
+  $store,
   AlephaError,
   type Async,
   createPrimitive,
+  type Infer,
   KIND,
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
-  type Static,
-  type TObject,
-  type TSchema,
+  type ZObject,
+  type ZType,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import type { RouteMethod } from "../constants/routeMethods.ts";
@@ -31,27 +31,27 @@ export interface SseConfigSchema {
   /**
    * Request body schema.
    */
-  body?: TObject;
+  body?: ZObject;
 
   /**
    * Path parameters schema.
    */
-  params?: TObject;
+  params?: ZObject;
 
   /**
    * Query parameters schema.
    */
-  query?: TObject;
+  query?: ZObject;
 
   /**
    * Request headers schema.
    */
-  headers?: TObject;
+  headers?: ZObject;
 
   /**
    * Schema for the data payload of each SSE event.
    */
-  data?: TSchema;
+  data?: ZType;
 }
 
 // ----------------------------------------------------------------------------------------------------------
@@ -63,27 +63,27 @@ export interface SseHandlerContext<TConfig extends SseConfigSchema> {
   /**
    * Parsed request body.
    */
-  body: TConfig["body"] extends TObject ? Static<TConfig["body"]> : any;
+  body: TConfig["body"] extends ZObject ? Infer<TConfig["body"]> : any;
 
   /**
    * Parsed path parameters.
    */
-  params: TConfig["params"] extends TObject
-    ? Static<TConfig["params"]>
+  params: TConfig["params"] extends ZObject
+    ? Infer<TConfig["params"]>
     : Record<string, string>;
 
   /**
    * Parsed query parameters.
    */
-  query: TConfig["query"] extends TObject
-    ? Partial<Static<TConfig["query"]>>
+  query: TConfig["query"] extends ZObject
+    ? Partial<Infer<TConfig["query"]>>
     : Record<string, any>;
 
   /**
    * Parsed request headers.
    */
-  headers: TConfig["headers"] extends TObject
-    ? Static<TConfig["headers"]>
+  headers: TConfig["headers"] extends ZObject
+    ? Infer<TConfig["headers"]>
     : Record<string, string>;
 
   /**
@@ -99,7 +99,7 @@ export interface SseHandlerContext<TConfig extends SseConfigSchema> {
    * handlers should stop when it does.
    */
   emit: (
-    data: TConfig["data"] extends TSchema ? Static<TConfig["data"]> : any,
+    data: TConfig["data"] extends ZType ? Infer<TConfig["data"]> : any,
   ) => boolean;
 
   /**
@@ -414,7 +414,7 @@ export class SsePrimitive<
   TConfig extends SseConfigSchema,
 > extends PipelinePrimitive<SsePrimitiveOptions<TConfig>> {
   protected readonly log = $logger();
-  protected readonly settings = $state(serverApiOptions);
+  protected readonly settings = $store(serverApiOptions);
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 
@@ -746,7 +746,7 @@ $sse[KIND] = SsePrimitive;
  * Infer the event data type from an SSE config schema.
  */
 export type SseEventData<TConfig extends SseConfigSchema> =
-  TConfig["data"] extends TSchema ? Static<TConfig["data"]> : any;
+  TConfig["data"] extends ZType ? Infer<TConfig["data"]> : any;
 
 /**
  * Request entry type for SSE endpoints (body, params, query, headers).
@@ -762,17 +762,17 @@ export type SseRequestEntry<
  * Full container type for SSE request entries.
  */
 export type SseRequestEntryContainer<TConfig extends SseConfigSchema> = {
-  body: TConfig["body"] extends TObject ? Static<TConfig["body"]> : undefined;
+  body: TConfig["body"] extends ZObject ? Infer<TConfig["body"]> : undefined;
 
-  params: TConfig["params"] extends TObject
-    ? Static<TConfig["params"]>
+  params: TConfig["params"] extends ZObject
+    ? Infer<TConfig["params"]>
     : undefined;
 
-  headers?: TConfig["headers"] extends TObject
-    ? Static<TConfig["headers"]>
+  headers?: TConfig["headers"] extends ZObject
+    ? Infer<TConfig["headers"]>
     : Record<string, string>;
 
-  query?: TConfig["query"] extends TObject
-    ? Partial<Static<TConfig["query"]>>
+  query?: TConfig["query"] extends ZObject
+    ? Partial<Infer<TConfig["query"]>>
     : Record<string, string>;
 };

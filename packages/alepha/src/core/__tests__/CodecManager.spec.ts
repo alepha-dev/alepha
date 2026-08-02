@@ -8,7 +8,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { JsonSchemaCodec } from "../providers/JsonSchemaCodec.ts";
 import { SchemaCodec } from "../providers/SchemaCodec.ts";
-import type { TSchema } from "../providers/TypeProvider.ts";
+import type { ZType } from "../providers/ZodProvider.ts";
 
 describe("CodecManager", () => {
   describe("initialization", () => {
@@ -32,16 +32,16 @@ describe("CodecManager", () => {
   describe("codec registration", () => {
     it("should register custom codec", () => {
       class CustomCodec extends SchemaCodec {
-        public encodeToString(schema: TSchema, value: any): string {
+        public encodeToString(schema: ZType, value: any): string {
           return `custom:${JSON.stringify(value)}`;
         }
 
-        public encodeToBinary(schema: TSchema, value: any): Uint8Array {
+        public encodeToBinary(schema: ZType, value: any): Uint8Array {
           const str = this.encodeToString(schema, value);
           return new TextEncoder().encode(str);
         }
 
-        public decode<T>(schema: TSchema, value: unknown): T {
+        public decode<T>(schema: ZType, value: unknown): T {
           return value as T;
         }
       }
@@ -76,7 +76,7 @@ describe("CodecManager", () => {
         public encodeToBinary(): Uint8Array {
           return new Uint8Array();
         }
-        public decode<T>(schema: TSchema, value: unknown): T {
+        public decode<T>(schema: ZType, value: unknown): T {
           return value as T;
         }
       }
@@ -295,7 +295,7 @@ describe("CodecManager", () => {
   describe("custom encoder option", () => {
     it("should use custom encoder when specified", () => {
       class CustomCodec extends SchemaCodec {
-        public encodeToString(_schema: TSchema, value: any): string {
+        public encodeToString(_schema: ZType, value: any): string {
           return `CUSTOM:${JSON.stringify(value)}`;
         }
 
@@ -303,7 +303,7 @@ describe("CodecManager", () => {
           return new Uint8Array();
         }
 
-        public decode<T>(_schema: TSchema, value: unknown): T {
+        public decode<T>(_schema: ZType, value: unknown): T {
           return value as T;
         }
       }
@@ -513,7 +513,7 @@ describe("CodecManager", () => {
           return new Uint8Array();
         }
 
-        public decode<T>(_schema: TSchema, value: unknown): T {
+        public decode<T>(_schema: ZType, value: unknown): T {
           // Custom decoding logic: prefix all strings with "DECODED:"
           if (typeof value === "object" && value !== null) {
             const result: any = {};
@@ -642,7 +642,7 @@ describe("CodecManager", () => {
         public encodeToBinary(): Uint8Array {
           return new Uint8Array();
         }
-        public decode<T>(_schema: TSchema, value: unknown): T {
+        public decode<T>(_schema: ZType, value: unknown): T {
           return value as T;
         }
       }

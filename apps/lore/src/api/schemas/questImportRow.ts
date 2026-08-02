@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * Normalized shape every parser produces. The controller writes from this
@@ -36,13 +36,13 @@ export const importRowSchema = z.object({
   /** Array of `{ title, completed }`. Empty array on omission. */
   objectives: z.array(z.object({ title: z.string(), completed: z.boolean() })),
 });
-export type ImportRow = Static<typeof importRowSchema>;
+export type ImportRow = Infer<typeof importRowSchema>;
 
 export const importIssueSchema = z.object({
   row: z.integer().min(1),
   message: z.string(),
 });
-export type ImportIssue = Static<typeof importIssueSchema>;
+export type ImportIssue = Infer<typeof importIssueSchema>;
 
 export const importResultSchema = z.object({
   format: z.enum(["alepha-lore", "trello"]).meta({ mode: "text" }),
@@ -53,4 +53,4 @@ export const importResultSchema = z.object({
   errors: z.array(importIssueSchema),
   warnings: z.array(importIssueSchema),
 });
-export type ImportResult = Static<typeof importResultSchema>;
+export type ImportResult = Infer<typeof importResultSchema>;

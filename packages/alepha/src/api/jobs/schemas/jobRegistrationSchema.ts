@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const jobRegistrationSchema = z.object({
   name: z.text(),
@@ -23,4 +23,4 @@ export const jobRegistrationSchema = z.object({
   }),
 });
 
-export type JobRegistration = Static<typeof jobRegistrationSchema>;
+export type JobRegistration = Infer<typeof jobRegistrationSchema>;

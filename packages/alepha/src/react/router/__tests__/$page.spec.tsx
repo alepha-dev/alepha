@@ -337,7 +337,7 @@ describe("$page primitive tests", () => {
       staticPage = $page({
         path: "/static",
         static: true,
-        component: () => "Static content",
+        component: () => "Infer content",
       });
 
       staticWithEntries = $page({
@@ -351,7 +351,7 @@ describe("$page primitive tests", () => {
           entries: [{ params: { id: "1" } }, { params: { id: "2" } }],
         },
         loader: ({ params }) => ({ id: params.id }),
-        component: ({ id }) => `Static page ${id}`,
+        component: ({ id }) => `Infer page ${id}`,
       });
     }
 
@@ -364,12 +364,12 @@ describe("$page primitive tests", () => {
     });
 
     const staticRendered = await app.staticPage.render();
-    expect(staticRendered.html).toBe("Static content");
+    expect(staticRendered.html).toBe("Infer content");
 
     const staticWithEntriesRendered = await app.staticWithEntries.render({
       params: { id: "1" },
     });
-    expect(staticWithEntriesRendered.html).toBe("Static page 1");
+    expect(staticWithEntriesRendered.html).toBe("Infer page 1");
   });
 
   test("$page - static page sets default cache configuration", async ({
@@ -379,7 +379,7 @@ describe("$page primitive tests", () => {
       staticPage = $page({
         path: "/static",
         static: true,
-        component: () => "Static content",
+        component: () => "Infer content",
       });
     }
 
@@ -397,7 +397,7 @@ describe("$page primitive tests", () => {
     });
 
     const rendered = await app.staticPage.render();
-    expect(rendered.html).toBe("Static content");
+    expect(rendered.html).toBe("Infer content");
   });
 
   test("$page - static page respects custom cache configuration", async ({
@@ -407,7 +407,7 @@ describe("$page primitive tests", () => {
       staticPage = $page({
         path: "/static",
         static: true,
-        component: () => `Static ${Date.now()}`,
+        component: () => `Infer ${Date.now()}`,
       });
     }
 
@@ -415,7 +415,7 @@ describe("$page primitive tests", () => {
     await alepha.start();
 
     const { html } = await app.staticPage.fetch();
-    expect(html).toMatch(/^Static \d+$/);
+    expect(html).toMatch(/^Infer \d+$/);
 
     expect(await app.staticPage.fetch().then((it) => it.html)).toBe(html);
   });

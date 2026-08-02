@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const devEnvMetadataSchema = z.object({
   /**
@@ -24,4 +24,4 @@ export const devEnvMetadataSchema = z.object({
   moduleName: z.text().optional(),
 });
 
-export type DevEnvMetadata = Static<typeof devEnvMetadataSchema>;
+export type DevEnvMetadata = Infer<typeof devEnvMetadataSchema>;

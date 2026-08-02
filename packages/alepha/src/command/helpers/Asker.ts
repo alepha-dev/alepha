@@ -5,14 +5,14 @@ import {
   Alepha,
   AlephaError,
   coerceScalar,
-  type Static,
-  type TSchema,
-  type TString,
+  type Infer,
+  type ZodString,
+  type ZType,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
 
-export interface AskOptions<T extends TSchema = TString> {
+export interface AskOptions<T extends ZType = ZodString> {
   /**
    * Response schema expected.
    *
@@ -29,7 +29,7 @@ export interface AskOptions<T extends TSchema = TString> {
    * ask("What is your name?", { schema: z.text({ default: "John Doe" }) })
    * ```
    *
-   * @default TString
+   * @default ZodString
    */
   schema?: T;
 
@@ -37,14 +37,14 @@ export interface AskOptions<T extends TSchema = TString> {
    * Custom validation function.
    * Throws an AlephaError in case of validation failure.
    */
-  validate?: (value: Static<T>) => void;
+  validate?: (value: Infer<T>) => void;
 }
 
 export interface AskMethod {
-  <T extends TSchema = TString>(
+  <T extends ZType = ZodString>(
     question: string,
     options?: AskOptions<T>,
-  ): Promise<Static<T>>;
+  ): Promise<Infer<T>>;
 
   permission: (question: string) => Promise<boolean>;
   intro: (title: string) => void;
@@ -69,7 +69,7 @@ export class Asker {
   }
 
   protected createAskMethod(): AskMethod {
-    const askFn: AskMethod = async <T extends TSchema = TString>(
+    const askFn: AskMethod = async <T extends ZType = ZodString>(
       question: string,
       options: AskOptions<T> = {},
     ) => {
@@ -96,10 +96,10 @@ export class Asker {
     return askFn;
   }
 
-  protected async prompt<T extends TSchema = TString>(
+  protected async prompt<T extends ZType = ZodString>(
     question: string,
     options: AskOptions<T>,
-  ): Promise<Static<T>> {
+  ): Promise<Infer<T>> {
     const rl = this.createPromptInterface();
     let value: any;
     try {

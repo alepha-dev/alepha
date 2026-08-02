@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { campaigns } from "./campaigns.ts";
 import { sigils } from "./sigils.ts";
@@ -69,8 +69,8 @@ export const blights = $entity({
   ],
 });
 
-export type Blight = Static<typeof blights.schema>;
-export type BlightInsert = Static<typeof blights.insertSchema>;
+export type Blight = Infer<typeof blights.schema>;
+export type BlightInsert = Infer<typeof blights.insertSchema>;
 
 /**
  * Prefix used in a blight's `status` column when it has been forwarded to a

@@ -2,13 +2,13 @@ import {
   $atom,
   $context,
   $inject,
-  $state,
+  $store,
   AlephaError,
   type AsyncFn,
   createMiddleware,
+  type Infer,
   type Middleware,
   Primitive,
-  type Static,
   z,
 } from "alepha";
 import {
@@ -257,7 +257,7 @@ export interface LockPrimitiveOptions<TFunc extends AsyncFn> {
    * The unique identifier for the lock.
    *
    * Can be either:
-   * - **Static string**: A fixed identifier for the lock
+   * - **Infer string**: A fixed identifier for the lock
    * - **Dynamic function**: A function that generates the lock key based on arguments
    *
    * **Dynamic Lock Keys**:
@@ -280,7 +280,7 @@ export interface LockPrimitiveOptions<TFunc extends AsyncFn> {
    *
    * @example
    * ```ts
-   * // Static lock key - all instances compete for the same lock
+   * // Infer lock key - all instances compete for the same lock
    * globalCleanup = createPrimitive(LockPrimitive, {
    *   name: "system-cleanup",
    *   handler: async () => { } // perform cleanup
@@ -347,7 +347,7 @@ export interface LockPrimitiveOptions<TFunc extends AsyncFn> {
    * - Providing a buffer for cleanup operations
    *
    * Can be either:
-   * - **Static duration**: Fixed grace period for all executions
+   * - **Infer duration**: Fixed grace period for all executions
    * - **Dynamic function**: Grace period determined by execution arguments
    * - **undefined**: No grace period, lock released immediately after completion
    *
@@ -407,7 +407,7 @@ export const lockOptions = $atom({
   serverOnly: true,
 });
 
-export type LockAtomOptions = Static<typeof lockOptions.schema>;
+export type LockAtomOptions = Infer<typeof lockOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -422,7 +422,7 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
 > {
   protected readonly log = $logger();
   protected readonly provider = $inject(LockProvider);
-  protected readonly settings = $state(lockOptions);
+  protected readonly settings = $store(lockOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
   public readonly maxDuration = this.dateTimeProvider.duration(

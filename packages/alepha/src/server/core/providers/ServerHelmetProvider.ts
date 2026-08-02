@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $state, Alepha, type Static, z } from "alepha";
+import { $atom, $hook, $inject, $store, Alepha, type Infer, z } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -50,7 +50,7 @@ export const helmetOptions = $atom({
   serverOnly: true,
 });
 
-export type HelmetOptions = Static<typeof helmetOptions.schema>;
+export type HelmetOptions = Infer<typeof helmetOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -102,7 +102,7 @@ export class ServerHelmetProvider {
   /**
    * The configuration options loaded from the atom.
    */
-  protected readonly options = $state(helmetOptions);
+  protected readonly options = $store(helmetOptions);
 
   protected defaultCspDirectives(): CspDirectives {
     return {

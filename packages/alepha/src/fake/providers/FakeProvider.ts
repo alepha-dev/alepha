@@ -1,14 +1,13 @@
 import { allLocales, Faker, faker } from "@faker-js/faker";
 import type {
-  StaticDecode,
-  TArray,
-  TBoolean,
-  TInteger,
-  TNumber,
-  TObject,
-  TRecord,
-  TSchema,
-  TString,
+  Infer,
+  ZObject,
+  ZodArray,
+  ZodBoolean,
+  ZodNumber,
+  ZodRecord,
+  ZodString,
+  ZType,
 } from "alepha";
 import { AlephaError, z } from "alepha";
 
@@ -176,21 +175,18 @@ export class FakeProvider {
    * const result = fake.generate(schema);
    * ```
    */
-  public generate<T extends TSchema>(schema: T): StaticDecode<T> {
-    return this.generateValue(schema) as StaticDecode<T>;
+  public generate<T extends ZType>(schema: T): Infer<T> {
+    return this.generateValue(schema) as Infer<T>;
   }
 
   /**
    * Generate multiple fake data items.
    */
-  public generateMany<T extends TSchema>(
-    schema: T,
-    count: number,
-  ): StaticDecode<T>[] {
+  public generateMany<T extends ZType>(schema: T, count: number): Infer<T>[] {
     return Array.from({ length: count }, () => this.generate(schema));
   }
 
-  protected generateValue(schema: TSchema): unknown {
+  protected generateValue(schema: ZType): unknown {
     const s = schema as any;
 
     // Handle optional — peel one layer and recurse
@@ -219,7 +215,7 @@ export class FakeProvider {
 
     // Handle default — generate a value for the wrapped type
     if (z.schema.isDefault(s)) {
-      return this.generateValue(s.unwrap() as TSchema);
+      return this.generateValue(s.unwrap() as ZType);
     }
 
     // Handle enum
@@ -230,7 +226,7 @@ export class FakeProvider {
 
     // Handle union (a union containing null behaves like nullable)
     if (this.guard.isUnion(schema)) {
-      const members = (s.anyOf ?? s.options ?? []) as TSchema[];
+      const members = (s.anyOf ?? s.options ?? []) as ZType[];
       const hasNull = members.some((m) => this.guard.isNull(m));
       if (hasNull) {
         if (
@@ -244,13 +240,13 @@ export class FakeProvider {
         return this.generateValue(
           nonNull[
             this.faker.number.int({ min: 0, max: nonNull.length - 1 })
-          ] as TSchema,
+          ] as ZType,
         );
       }
       return this.generateValue(
         members[
           this.faker.number.int({ min: 0, max: members.length - 1 })
-        ] as TSchema,
+        ] as ZType,
       );
     }
 
@@ -271,47 +267,47 @@ export class FakeProvider {
 
     // Handle bigint (a validated string) — must precede the plain-string check
     if (this.guard.isBigInt(schema)) {
-      return this.generateBigInt(schema as TString);
+      return this.generateBigInt(schema as ZodString);
     }
 
     // Handle string
     if (this.guard.isString(schema)) {
-      return this.generateString(schema as TString);
+      return this.generateString(schema as ZodString);
     }
 
     // Handle integer — must precede the plain-number check
     if (this.guard.isInteger(schema)) {
-      return this.generateInteger(schema as TInteger);
+      return this.generateInteger(schema as ZodNumber);
     }
 
     // Handle number
     if (this.guard.isNumber(schema)) {
-      return this.generateNumber(schema as TNumber);
+      return this.generateNumber(schema as ZodNumber);
     }
 
     // Handle boolean
     if (this.guard.isBoolean(schema)) {
-      return this.generateBoolean(schema as TBoolean);
+      return this.generateBoolean(schema as ZodBoolean);
     }
 
     // Handle array
     if (this.guard.isArray(schema)) {
-      return this.generateArray(schema as TArray);
+      return this.generateArray(schema as ZodArray);
     }
 
     // Handle object
     if (this.guard.isObject(schema)) {
-      return this.generateObject(schema as TObject);
+      return this.generateObject(schema as ZObject);
     }
 
     // Handle record
     if (this.guard.isRecord(schema)) {
-      return this.generateRecord(schema as TRecord);
+      return this.generateRecord(schema as ZodRecord);
     }
 
     // Handle tuple
     if (this.guard.isTuple(schema)) {
-      const items = (s.items ?? []) as TSchema[];
+      const items = (s.items ?? []) as ZType[];
       return items.map((item) => this.generateValue(item));
     }
 
@@ -329,7 +325,7 @@ export class FakeProvider {
     return this.faker.lorem.word();
   }
 
-  protected generateString(schema: TString): string {
+  protected generateString(schema: ZodString): string {
     const schemaAny = schema as any;
     const format = z.schema.format(schema);
     const metaObj = (schemaAny.meta?.() ?? {}) as Record<string, any>;
@@ -420,7 +416,7 @@ export class FakeProvider {
     return text;
   }
 
-  protected generateNumber(schema: TNumber): number {
+  protected generateNumber(schema: ZodNumber): number {
     const schemaAny = schema as any;
     // zod exposes numeric bounds as `.minValue` / `.maxValue` (number | null).
     const min = schemaAny.minValue ?? -1000000;
@@ -441,7 +437,7 @@ export class FakeProvider {
     return value;
   }
 
-  protected generateInteger(schema: TInteger): number {
+  protected generateInteger(schema: ZodNumber): number {
     const schemaAny = schema as any;
     const min = schemaAny.minValue ?? -2147483647;
     const max = schemaAny.maxValue ?? 2147483647;
@@ -449,17 +445,17 @@ export class FakeProvider {
     return this.faker.number.int({ min, max });
   }
 
-  protected generateBigInt(schema: TString): string {
+  protected generateBigInt(schema: ZodString): string {
     return this.faker.number
       .bigInt({ min: -9007199254740991n, max: 9007199254740991n })
       .toString();
   }
 
-  protected generateBoolean(_schema: TBoolean): boolean {
+  protected generateBoolean(_schema: ZodBoolean): boolean {
     return this.faker.datatype.boolean();
   }
 
-  protected generateArray(schema: TArray): unknown[] {
+  protected generateArray(schema: ZodArray): unknown[] {
     // Native zod stores `.min()`/`.max()` length bounds in `_zod.def.checks`,
     // not in `.meta()`. Read those (falling back to legacy meta minItems/maxItems).
     const def = (schema as any)._zod?.def;
@@ -489,11 +485,11 @@ export class FakeProvider {
     return Array.from({ length }, () => this.generateValue(element));
   }
 
-  protected generateObject(schema: TObject): Record<string, unknown> {
+  protected generateObject(schema: ZObject): Record<string, unknown> {
     const result: Record<string, unknown> = {};
 
     for (const [key, propSchema] of Object.entries(schema.properties)) {
-      result[key] = this.generateValueWithContext(propSchema as TSchema, key);
+      result[key] = this.generateValueWithContext(propSchema as ZType, key);
     }
 
     return result;
@@ -503,10 +499,7 @@ export class FakeProvider {
    * Generate a value with context from the property key name.
    * This helps generate more realistic fake data based on field names.
    */
-  protected generateValueWithContext(
-    schema: TSchema,
-    keyName?: string,
-  ): unknown {
+  protected generateValueWithContext(schema: ZType, keyName?: string): unknown {
     // If no key name context, use regular generation
     if (!keyName) {
       return this.generateValue(schema);
@@ -518,7 +511,7 @@ export class FakeProvider {
 
     // Check if this is a string type that could benefit from context
     if (this.guard.isString(schema)) {
-      const stringSchema = schema as TString;
+      const stringSchema = schema as ZodString;
 
       // Skip if it has a specific format already
       if (
@@ -632,7 +625,7 @@ export class FakeProvider {
     return this.generateValue(schema);
   }
 
-  protected generateRecord(schema: TRecord): Record<string, unknown> {
+  protected generateRecord(schema: ZodRecord): Record<string, unknown> {
     const record = schema as any;
     // zod stores the value schema on `.valueType` (def.valueType internally).
     const valueSchema =

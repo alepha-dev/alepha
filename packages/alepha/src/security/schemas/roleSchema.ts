@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const roleSchema = z.object({
@@ -34,4 +34,4 @@ export const roleSchema = z.object({
   ),
 });
 
-export type Role = Static<typeof roleSchema>;
+export type Role = Infer<typeof roleSchema>;

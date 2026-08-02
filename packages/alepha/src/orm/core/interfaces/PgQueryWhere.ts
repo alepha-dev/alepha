@@ -1,11 +1,11 @@
-import type { Static, TObject } from "alepha";
+import type { Infer, ZObject } from "alepha";
 import type { SQLWrapper } from "drizzle-orm";
 import type { FilterOperators } from "./FilterOperators.ts";
 import type { PgRelationMap } from "./PgQuery.ts";
 
 export type PgQueryWhere<
-  T extends TObject,
-  Relations extends PgRelationMap<TObject> | undefined = undefined,
+  T extends ZObject,
+  Relations extends PgRelationMap<ZObject> | undefined = undefined,
 > =
   | (PgQueryWhereOperators<T> & PgQueryWhereConditions<T>)
   | (PgQueryWhereRelations<Relations> &
@@ -13,19 +13,19 @@ export type PgQueryWhere<
       PgQueryWhereConditions<T, Relations>);
 
 export type PgQueryWhereOrSQL<
-  T extends TObject,
-  Relations extends PgRelationMap<TObject> | undefined = undefined,
+  T extends ZObject,
+  Relations extends PgRelationMap<ZObject> | undefined = undefined,
 > = SQLWrapper | PgQueryWhere<T, Relations>;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-type PgQueryWhereOperators<T extends TObject> = {
-  [Key in keyof Static<T>]?: FilterOperators<Static<T>[Key]> | Static<T>[Key];
+type PgQueryWhereOperators<T extends ZObject> = {
+  [Key in keyof Infer<T>]?: FilterOperators<Infer<T>[Key]> | Infer<T>[Key];
 };
 
 type PgQueryWhereConditions<
-  T extends TObject,
-  Relations extends PgRelationMap<TObject> | undefined = undefined,
+  T extends ZObject,
+  Relations extends PgRelationMap<ZObject> | undefined = undefined,
 > = {
   /**
    * Combine a list of conditions with the `and` operator. Conditions
@@ -107,9 +107,9 @@ type PgQueryWhereConditions<
 };
 
 type PgQueryWhereRelations<
-  Relations extends PgRelationMap<TObject> | undefined = undefined,
+  Relations extends PgRelationMap<ZObject> | undefined = undefined,
 > =
-  Relations extends PgRelationMap<TObject>
+  Relations extends PgRelationMap<ZObject>
     ? {
         [K in keyof Relations]?: PgQueryWhere<
           Relations[K]["join"]["schema"],

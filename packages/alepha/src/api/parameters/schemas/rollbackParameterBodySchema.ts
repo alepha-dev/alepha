@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { parameters } from "../entities/parameters.ts";
 
 /**
@@ -13,4 +13,4 @@ export const rollbackParameterBodySchema = parameters.schema
     targetVersion: z.integer().describe("Version number to rollback to"),
   });
 
-export type RollbackParameterBody = Static<typeof rollbackParameterBodySchema>;
+export type RollbackParameterBody = Infer<typeof rollbackParameterBodySchema>;

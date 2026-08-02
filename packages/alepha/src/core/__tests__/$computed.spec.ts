@@ -5,7 +5,7 @@ import { AlephaError } from "../errors/AlephaError.ts";
 import { $atom } from "../primitives/$atom.ts";
 import { $computed } from "../primitives/$computed.ts";
 import { AlsProvider } from "../providers/AlsProvider.ts";
-import { z } from "../providers/TypeProvider.ts";
+import { z } from "../providers/ZodProvider.ts";
 
 describe("$computed", () => {
   const cart = $atom({

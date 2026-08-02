@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 // ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ export const platformStatusSchema = z.object({
   secrets: z.array(platformStatusSecretSchema),
 });
 
-export type PlatformStatusOutput = Static<typeof platformStatusSchema>;
+export type PlatformStatusOutput = Infer<typeof platformStatusSchema>;
 
 // ---------------------------------------------------------------------------
 // Plan output
@@ -80,4 +80,4 @@ export const platformPlanSchema = z.object({
   secretCount: z.number(),
 });
 
-export type PlatformPlanOutput = Static<typeof platformPlanSchema>;
+export type PlatformPlanOutput = Infer<typeof platformPlanSchema>;

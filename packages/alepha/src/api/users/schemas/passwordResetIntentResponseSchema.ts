@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 /**
@@ -14,6 +14,6 @@ export const passwordResetIntentResponseSchema = z.object({
   expiresAt: z.datetime().describe("ISO timestamp when this intent expires"),
 });
 
-export type PasswordResetIntentResponse = Static<
+export type PasswordResetIntentResponse = Infer<
   typeof passwordResetIntentResponseSchema
 >;

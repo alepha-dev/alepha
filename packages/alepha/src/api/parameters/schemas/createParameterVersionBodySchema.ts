@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { parameters } from "../entities/parameters.ts";
 
 /**
@@ -13,7 +13,7 @@ import { parameters } from "../entities/parameters.ts";
  * one — the escape hatch that lets a migration seed restore content written
  * under an older schema. Accepting that hash from the client turned the escape
  * hatch into a bypass: any junk hash stored arbitrary JSON that typed
- * `$parameter.get()` consumers then read as `Static<T>`. The server always
+ * `$parameter.get()` consumers then read as `Infer<T>`. The server always
  * supplies the registered hash instead.
  */
 export const createParameterVersionBodySchema = parameters.schema
@@ -29,6 +29,6 @@ export const createParameterVersionBodySchema = parameters.schema
       .optional(),
   });
 
-export type CreateParameterVersionBody = Static<
+export type CreateParameterVersionBody = Infer<
   typeof createParameterVersionBodySchema
 >;

@@ -1,4 +1,4 @@
-import { $inject, type Static, z } from "alepha";
+import { $inject, type Infer, z } from "alepha";
 import { $repository, DbConflictError } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
@@ -27,7 +27,7 @@ const sigilResourceSchema = z.object({
   lastSeenAt: z.string().optional(),
 });
 
-export type SigilResource = Static<typeof sigilResourceSchema>;
+export type SigilResource = Infer<typeof sigilResourceSchema>;
 
 /**
  * A sigil plus the one cleartext copy of its token that will ever exist.
@@ -40,7 +40,7 @@ const mintedSigilSchema = sigilResourceSchema.extend({
   token: z.string(),
 });
 
-export type MintedSigil = Static<typeof mintedSigilSchema>;
+export type MintedSigil = Infer<typeof mintedSigilSchema>;
 
 /**
  * Owner-facing CRUD for sigils — one credential per application per

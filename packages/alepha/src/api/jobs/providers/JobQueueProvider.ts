@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha, type Static, z } from "alepha";
+import { $hook, $inject, Alepha, type Infer, z } from "alepha";
 import { QueueCodec, QueueProvider, WorkerProvider } from "alepha/queue";
 import { JobDispatcher } from "./JobDispatcher.ts";
 import { JobProvider } from "./JobProvider.ts";
@@ -19,7 +19,7 @@ export const jobDispatchSchema = z.object({
   executionId: z.text(),
 });
 
-export type JobDispatchMessage = Static<typeof jobDispatchSchema>;
+export type JobDispatchMessage = Infer<typeof jobDispatchSchema>;
 
 /**
  * Queue-backed `JobDispatcher` registered by `AlephaApiJobsQueue`.

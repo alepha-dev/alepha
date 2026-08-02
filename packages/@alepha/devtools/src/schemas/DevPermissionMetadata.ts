@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 export const devPermissionMetadataSchema = z.object({
   /**
@@ -18,4 +18,4 @@ export const devPermissionMetadataSchema = z.object({
   id: z.text(),
 });
 
-export type DevPermissionMetadata = Static<typeof devPermissionMetadataSchema>;
+export type DevPermissionMetadata = Infer<typeof devPermissionMetadataSchema>;

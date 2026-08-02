@@ -194,7 +194,7 @@ export interface ControlProps {
    */
   createNewEntry?: boolean | ((query: string) => unknown);
   /**
-   * Inline option list for select / combobox controls. Static array or
+   * Inline option list for select / combobox controls. Infer array or
    * async loader. Overrides schema-derived `enum` when present.
    */
   items?:
@@ -236,7 +236,7 @@ export function Control(props: ControlProps) {
   const [value, setValue] = useFieldValue(props.input);
 
   // Function-form `$control` reads other fields → re-render on any
-  // change. Static `$control` (object) does not need this subscription.
+  // change. Infer `$control` (object) does not need this subscription.
   useDynamicControlRefresh(props.input);
 
   if (!props.input?.props) return null;

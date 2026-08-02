@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * Dev options atom for CLI dev command.
@@ -22,4 +22,4 @@ export const devOptions = $atom({
 /**
  * Type for dev options.
  */
-export type DevOptions = Static<typeof devOptions.schema>;
+export type DevOptions = Infer<typeof devOptions.schema>;

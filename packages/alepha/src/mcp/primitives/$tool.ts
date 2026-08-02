@@ -4,8 +4,8 @@ import {
   createPrimitive,
   KIND,
   Primitive,
-  type TObject,
-  type TSchema,
+  type ZObject,
+  type ZType,
   z,
 } from "alepha";
 import type {
@@ -121,8 +121,8 @@ export interface ToolPrimitiveOptions<T extends ToolPrimitiveSchema> {
   /**
    * Zod schema defining the tool's parameters and result type.
    *
-   * - **params**: TObject schema for input parameters (optional)
-   * - **result**: TSchema for the return value (optional)
+   * - **params**: ZObject schema for input parameters (optional)
+   * - **result**: ZType for the return value (optional)
    *
    * Schemas provide:
    * - Type inference for handler function
@@ -264,7 +264,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
    * this is just the dialect declaration.
    */
   protected schemaToJsonSchema(
-    schema: TObject,
+    schema: ZObject,
     options?: { root?: boolean },
   ): McpJsonSchema {
     let json: any;
@@ -288,7 +288,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
   /**
    * Convert a single property schema to JSON Schema format (zod-native).
    */
-  protected propertyToJsonSchema(schema: TSchema): Record<string, unknown> {
+  protected propertyToJsonSchema(schema: ZType): Record<string, unknown> {
     try {
       const json: any = z.toJSONSchema(schema as any);
       json.$schema = undefined;

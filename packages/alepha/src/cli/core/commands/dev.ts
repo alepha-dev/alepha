@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { $inject, $state, Alepha, z } from "alepha";
+import { $inject, $store, Alepha, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -21,7 +21,7 @@ export class DevCommand {
   protected readonly alepha = $inject(Alepha);
   protected readonly viteDevServer = $inject(ViteDevServerProvider);
   protected readonly boot = $inject(AppEntryProvider);
-  protected readonly options = $state(devOptions);
+  protected readonly options = $store(devOptions);
 
   /**
    * Will run the project in watch mode.

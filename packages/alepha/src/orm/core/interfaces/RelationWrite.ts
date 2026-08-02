@@ -1,4 +1,4 @@
-import type { Static, TObject } from "alepha";
+import type { Infer, ZObject } from "alepha";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type {
   EntitySchema,
@@ -13,10 +13,9 @@ import type { PgQueryWhere } from "./PgQueryWhere.ts";
 import type { IncludeArg, RelationsFor } from "./RelationInclude.ts";
 
 /** The plain insert shape for an entity. */
-export type InsertOf<
-  TSchema extends EntitySchema,
-  K extends keyof TSchema,
-> = Static<TObjectInsert<SchemaOf<TSchema, K>>>;
+export type InsertOf<ZType extends EntitySchema, K extends keyof ZType> = Infer<
+  TObjectInsert<SchemaOf<ZType, K>>
+>;
 
 /** Make selected keys optional, leaving the rest untouched. */
 type Optionalize<T, K extends PropertyKey> = Omit<T, K & keyof T> &
@@ -30,18 +29,18 @@ type Optionalize<T, K extends PropertyKey> = Omit<T, K & keyof T> &
  * on the way through.
  */
 type FilledByNestedOne<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
 > = {
-  [R in keyof RelationsFor<TSchema, TMap, K>]: RelationsFor<
-    TSchema,
+  [R in keyof RelationsFor<ZType, TMap, K>]: RelationsFor<
+    ZType,
     TMap,
     K
   >[R] extends Relation<"one", any, infer TFrom, any>
     ? TFrom
     : never;
-}[keyof RelationsFor<TSchema, TMap, K>];
+}[keyof RelationsFor<ZType, TMap, K>];
 
 /**
  * Data for a nested create.
@@ -56,25 +55,25 @@ type FilledByNestedOne<
  * database rather than at the compiler.
  */
 export type CreateData<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
-> = Optionalize<InsertOf<TSchema, K>, FilledByNestedOne<TSchema, TMap, K>> & {
-  [R in keyof RelationsFor<TSchema, TMap, K>]?: {
-    create: RelationsFor<TSchema, TMap, K>[R] extends Relation<
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
+> = Optionalize<InsertOf<ZType, K>, FilledByNestedOne<ZType, TMap, K>> & {
+  [R in keyof RelationsFor<ZType, TMap, K>]?: {
+    create: RelationsFor<ZType, TMap, K>[R] extends Relation<
       "many",
-      infer T extends keyof TSchema & string,
+      infer T extends keyof ZType & string,
       any,
       infer TTo
     >
-      ? Array<ChildCreateData<TSchema, TMap, T, TTo>>
-      : RelationsFor<TSchema, TMap, K>[R] extends Relation<
+      ? Array<ChildCreateData<ZType, TMap, T, TTo>>
+      : RelationsFor<ZType, TMap, K>[R] extends Relation<
             "one",
-            infer T extends keyof TSchema & string,
+            infer T extends keyof ZType & string,
             any,
             any
           >
-        ? CreateData<TSchema, TMap, T>
+        ? CreateData<ZType, TMap, T>
         : never;
   };
 };
@@ -84,32 +83,32 @@ export type CreateData<
  * — that is filled from the parent row, so passing it would be ignored.
  */
 type ChildCreateData<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
   TTo extends string,
-> = Omit<CreateData<TSchema, TMap, K>, TTo>;
+> = Omit<CreateData<ZType, TMap, K>, TTo>;
 
 /** Arguments to a nested create. */
 export interface CreateArgs<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
 > {
-  data: CreateData<TSchema, TMap, K>;
+  data: CreateData<ZType, TMap, K>;
   /** Re-read the created row with these relations resolved. */
-  include?: IncludeArg<TSchema, TMap, K>;
+  include?: IncludeArg<ZType, TMap, K>;
   /** Project the returned row. */
-  select?: ReadonlyArray<keyof RowOf<TSchema, K>>;
+  select?: ReadonlyArray<keyof RowOf<ZType, K>>;
 }
 
 /** Arguments to `createMany`. */
 export interface CreateManyArgs<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
 > {
-  data: Array<CreateData<TSchema, TMap, K>>;
+  data: Array<CreateData<ZType, TMap, K>>;
 }
 
 /**
@@ -121,11 +120,11 @@ export interface CreateManyArgs<
  * method that will receive it also means the two cannot drift apart.
  */
 export type UpdateOf<
-  TSchema extends EntitySchema,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  K extends keyof ZType,
 > = Parameters<
   Repository<
-    TSchema[K] extends EntityPrimitive<infer T extends TObject> ? T : never
+    ZType[K] extends EntityPrimitive<infer T extends ZObject> ? T : never
   >["updateById"]
 >[1];
 
@@ -136,23 +135,23 @@ export type UpdateOf<
  * the whole table, which is not a mistake worth leaving reachable.
  */
 export interface UpdateArgs<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
 > {
-  where: PgQueryWhere<SchemaOf<TSchema, K>>;
-  data: UpdateOf<TSchema, K>;
-  include?: IncludeArg<TSchema, TMap, K>;
-  select?: ReadonlyArray<keyof RowOf<TSchema, K>>;
+  where: PgQueryWhere<SchemaOf<ZType, K>>;
+  data: UpdateOf<ZType, K>;
+  include?: IncludeArg<ZType, TMap, K>;
+  select?: ReadonlyArray<keyof RowOf<ZType, K>>;
 }
 
 /** Arguments to `updateMany`. */
 export interface UpdateManyArgs<
-  TSchema extends EntitySchema,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  K extends keyof ZType,
 > {
-  where: PgQueryWhere<SchemaOf<TSchema, K>>;
-  data: UpdateOf<TSchema, K>;
+  where: PgQueryWhere<SchemaOf<ZType, K>>;
+  data: UpdateOf<ZType, K>;
 }
 
 /**
@@ -162,23 +161,20 @@ export interface UpdateManyArgs<
  * already exists. Omitting `update` means "insert or leave alone".
  */
 export interface UpsertArgs<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
-  K extends keyof TSchema,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
+  K extends keyof ZType,
 > {
-  create: InsertOf<TSchema, K>;
-  update?: UpdateOf<TSchema, K>;
+  create: InsertOf<ZType, K>;
+  update?: UpdateOf<ZType, K>;
   /** Conflict target. Defaults to the primary key. */
-  target?: Array<keyof RowOf<TSchema, K>>;
-  include?: IncludeArg<TSchema, TMap, K>;
+  target?: Array<keyof RowOf<ZType, K>>;
+  include?: IncludeArg<ZType, TMap, K>;
 }
 
 /** Arguments to `delete` / `deleteMany`. */
-export interface DeleteArgs<
-  TSchema extends EntitySchema,
-  K extends keyof TSchema,
-> {
-  where: PgQueryWhere<SchemaOf<TSchema, K>>;
+export interface DeleteArgs<ZType extends EntitySchema, K extends keyof ZType> {
+  where: PgQueryWhere<SchemaOf<ZType, K>>;
   /** Hard-delete a soft-deletable entity. */
   force?: boolean;
 }

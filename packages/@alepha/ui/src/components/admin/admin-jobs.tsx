@@ -15,7 +15,7 @@ import {
   SheetTitle,
 } from "@alepha/ui/components/ui/sheet";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { type Page, type Static, z } from "alepha";
+import { type Infer, type Page, z } from "alepha";
 import type { AdminJobController, JobRegistration } from "alepha/api/jobs";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -29,7 +29,7 @@ const jobFiltersSchema = z.object({
   type: z.string().optional(),
   priority: z.string().optional(),
 });
-type JobFilters = Static<typeof jobFiltersSchema>;
+type JobFilters = Infer<typeof jobFiltersSchema>;
 
 /**
  * Wrap an in-memory array as a `Page<T>` so it can feed `AlephaTable`'s

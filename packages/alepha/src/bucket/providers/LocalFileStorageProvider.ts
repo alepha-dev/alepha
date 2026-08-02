@@ -7,11 +7,11 @@ import {
   $atom,
   $hook,
   $inject,
-  $state,
+  $store,
   Alepha,
   AlephaError,
   type FileLike,
-  type Static,
+  type Infer,
   z,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
@@ -39,7 +39,7 @@ export const localFileStorageOptions = $atom({
   serverOnly: true,
 });
 
-export type LocalFileStorageProviderOptions = Static<
+export type LocalFileStorageProviderOptions = Infer<
   typeof localFileStorageOptions.schema
 >;
 
@@ -57,7 +57,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   protected readonly fileDetector = $inject(FileDetector);
   protected readonly fileSystemProvider = $inject(FileSystemProvider);
   protected readonly crypto = $inject(CryptoProvider);
-  protected readonly options = $state(localFileStorageOptions);
+  protected readonly options = $store(localFileStorageOptions);
 
   protected get storagePath(): string {
     return this.options.storagePath;

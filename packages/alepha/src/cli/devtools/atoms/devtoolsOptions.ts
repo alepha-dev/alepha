@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 /**
  * Devtools configuration atom.
@@ -24,4 +24,4 @@ export const devtoolsOptions = $atom({
 /**
  * Type for devtools options.
  */
-export type DevtoolsOptions = Static<typeof devtoolsOptions.schema>;
+export type DevtoolsOptions = Infer<typeof devtoolsOptions.schema>;

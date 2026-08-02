@@ -1,10 +1,10 @@
 import {
   $inject,
   createPrimitive,
+  type Infer,
   KIND,
   Primitive,
-  type Static,
-  type TObject,
+  type ZObject,
 } from "alepha";
 import type { UserAccount } from "alepha/security";
 import { ParameterProvider } from "../services/ParameterProvider.ts";
@@ -44,7 +44,7 @@ import { ParameterProvider } from "../services/ParameterProvider.ts";
  * }
  * ```
  */
-export interface ParameterPrimitiveOptions<T extends TObject> {
+export interface ParameterPrimitiveOptions<T extends ZObject> {
   /**
    * Parameter name using dot notation for tree hierarchy.
    * Examples: "app.features", "app.pricing.tiers", "system.limits"
@@ -64,7 +64,7 @@ export interface ParameterPrimitiveOptions<T extends TObject> {
   /**
    * Default value used when no parameter exists in database.
    */
-  default: Static<T>;
+  default: Infer<T>;
 
   /**
    * Optional migration function for schema changes.
@@ -72,10 +72,10 @@ export interface ParameterPrimitiveOptions<T extends TObject> {
    * Runs before validation — if the result is valid, it's used directly.
    * If not provided or returns an invalid value, falls through to merge/default cascade.
    */
-  migrate?: (old: unknown) => Static<T>;
+  migrate?: (old: unknown) => Infer<T>;
 }
 
-export class ParameterPrimitive<T extends TObject> extends Primitive<
+export class ParameterPrimitive<T extends ZObject> extends Primitive<
   ParameterPrimitiveOptions<T>
 > {
   protected readonly provider = $inject(ParameterProvider);
@@ -101,8 +101,8 @@ export class ParameterPrimitive<T extends TObject> extends Primitive<
    * Get the cached current content, falling back to default.
    * Synchronous access for admin API.
    */
-  public get cachedCurrentContent(): Static<T> {
-    return this.provider.getCachedCurrentContent(this.name) as Static<T>;
+  public get cachedCurrentContent(): Infer<T> {
+    return this.provider.getCachedCurrentContent(this.name) as Infer<T>;
   }
 
   /**
@@ -117,8 +117,8 @@ export class ParameterPrimitive<T extends TObject> extends Primitive<
    * Lazy-loads from database on first call.
    * Checks if a cached next version has become current.
    */
-  public get(): Promise<Static<T>> {
-    return this.provider.get(this.name) as Promise<Static<T>>;
+  public get(): Promise<Infer<T>> {
+    return this.provider.get(this.name) as Promise<Infer<T>>;
   }
 
   /**
@@ -135,7 +135,7 @@ export class ParameterPrimitive<T extends TObject> extends Primitive<
    * @param options - Optional settings (activation date, creator info, etc.)
    */
   public async set(
-    value: Static<T>,
+    value: Infer<T>,
     options: SetParameterOptions = {},
   ): Promise<void> {
     await this.provider.set(this.name, value, {
@@ -151,7 +151,7 @@ export class ParameterPrimitive<T extends TObject> extends Primitive<
    * Subscribe to parameter changes.
    * Returns an unsubscribe function.
    */
-  public sub(fn: (curr: Static<T>) => void): () => void {
+  public sub(fn: (curr: Infer<T>) => void): () => void {
     return this.provider.sub(this.name, fn as (v: unknown) => void);
   }
 
@@ -219,7 +219,7 @@ export class ParameterPrimitive<T extends TObject> extends Primitive<
   }
 }
 
-export const $parameter = <T extends TObject>(
+export const $parameter = <T extends ZObject>(
   options: ParameterPrimitiveOptions<T>,
 ) => {
   return createPrimitive(ParameterPrimitive<T>, options);

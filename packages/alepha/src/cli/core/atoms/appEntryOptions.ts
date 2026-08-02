@@ -1,4 +1,4 @@
-import { $atom, type Static, z } from "alepha";
+import { $atom, type Infer, z } from "alepha";
 
 export const appEntryOptions = $atom({
   name: "alepha.cli.appEntry.options",
@@ -11,4 +11,4 @@ export const appEntryOptions = $atom({
   serverOnly: true,
 });
 
-export type AppEntryOptions = Static<typeof appEntryOptions.schema>;
+export type AppEntryOptions = Infer<typeof appEntryOptions.schema>;

@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * Editable profile fields on the admin user detail page.
@@ -16,4 +16,4 @@ export const profileSchema = z.object({
   roles: z.array(z.string()).optional(),
 });
 
-export type ProfileForm = Static<typeof profileSchema>;
+export type ProfileForm = Infer<typeof profileSchema>;

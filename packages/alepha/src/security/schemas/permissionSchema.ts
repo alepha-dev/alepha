@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const permissionSchema = z.object({
@@ -33,4 +33,4 @@ export const permissionSchema = z.object({
     .optional(),
 });
 
-export type Permission = Static<typeof permissionSchema>;
+export type Permission = Infer<typeof permissionSchema>;

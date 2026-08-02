@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { audits } from "../entities/audits.ts";
 
 /**
@@ -6,4 +6,4 @@ import { audits } from "../entities/audits.ts";
  */
 export const auditResourceSchema = audits.schema;
 
-export type AuditResource = Static<typeof auditResourceSchema>;
+export type AuditResource = Infer<typeof auditResourceSchema>;

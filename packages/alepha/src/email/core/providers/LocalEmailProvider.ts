@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $state, type Static, z } from "alepha";
+import { $atom, $hook, $inject, $store, type Infer, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import { EmailError } from "../errors/EmailError.ts";
@@ -22,7 +22,7 @@ export const localEmailOptions = $atom({
   serverOnly: true,
 });
 
-export type LocalEmailProviderOptions = Static<typeof localEmailOptions.schema>;
+export type LocalEmailProviderOptions = Infer<typeof localEmailOptions.schema>;
 
 declare module "alepha" {
   interface State {
@@ -35,7 +35,7 @@ declare module "alepha" {
 export class LocalEmailProvider implements EmailProvider {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
-  protected readonly options = $state(localEmailOptions);
+  protected readonly options = $store(localEmailOptions);
 
   protected get directory(): string {
     return this.options.directory;

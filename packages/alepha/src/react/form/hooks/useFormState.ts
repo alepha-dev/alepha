@@ -1,4 +1,4 @@
-import { SchemaValidationError, type TObject } from "alepha";
+import { SchemaValidationError, type ZObject } from "alepha";
 import { useAlepha } from "alepha/react";
 import { useEffect, useState } from "react";
 import type { FormModel } from "../services/FormModel.ts";
@@ -11,7 +11,7 @@ export interface UseFormStateReturn {
 }
 
 export const useFormState = <
-  T extends TObject,
+  T extends ZObject,
   Keys extends keyof UseFormStateReturn,
 >(
   target: FormModel<T> | { form: FormModel<T>; path: string },

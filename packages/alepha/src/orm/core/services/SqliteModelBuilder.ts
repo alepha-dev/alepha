@@ -1,11 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  AlephaError,
-  type Static,
-  type TObject,
-  type TSchema,
-  z,
-} from "alepha";
+import { AlephaError, type Infer, type ZObject, type ZType, z } from "alepha";
 import { type BuildColumns, sql } from "drizzle-orm";
 import * as pg from "drizzle-orm/sqlite-core";
 import {
@@ -112,7 +106,7 @@ export class SqliteModelBuilder extends ModelBuilder {
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  schemaToSqliteColumns = <T extends TObject>(
+  schemaToSqliteColumns = <T extends ZObject>(
     tableName: string,
     schema: T,
     enums: Map<string, unknown>,
@@ -315,10 +309,10 @@ export class SqliteModelBuilder extends ModelBuilder {
     return pg.text(key);
   };
 
-  sqliteJson = <TDocument extends TSchema>(name: string, document: TDocument) =>
+  sqliteJson = <TDocument extends ZType>(name: string, document: TDocument) =>
     pg
       .customType<{
-        data: Static<TDocument>;
+        data: Infer<TDocument>;
         driverData: string;
         config: { document: TDocument };
         configRequired: true;
@@ -329,7 +323,7 @@ export class SqliteModelBuilder extends ModelBuilder {
           return value && typeof value === "string" ? JSON.parse(value) : value;
         },
       })(name, { document })
-      .$type<Static<TDocument>>();
+      .$type<Infer<TDocument>>();
 
   sqliteDateTime = pg.customType<{
     data: string;
@@ -366,6 +360,6 @@ export class SqliteModelBuilder extends ModelBuilder {
   });
 }
 
-export type SchemaToSqliteBuilder<T extends TObject> = {
+export type SchemaToSqliteBuilder<T extends ZObject> = {
   [key in keyof T["properties"]]: SQLiteColumnBuilder;
 };

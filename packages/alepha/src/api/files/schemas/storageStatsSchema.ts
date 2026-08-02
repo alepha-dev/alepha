@@ -1,4 +1,4 @@
-import type { Static } from "alepha";
+import type { Infer } from "alepha";
 import { z } from "alepha";
 
 export const bucketStatsSchema = z.object({
@@ -19,6 +19,6 @@ export const storageStatsSchema = z.object({
   byMimeType: z.array(mimeTypeStatsSchema),
 });
 
-export type BucketStats = Static<typeof bucketStatsSchema>;
-export type MimeTypeStats = Static<typeof mimeTypeStatsSchema>;
-export type StorageStats = Static<typeof storageStatsSchema>;
+export type BucketStats = Infer<typeof bucketStatsSchema>;
+export type MimeTypeStats = Infer<typeof mimeTypeStatsSchema>;
+export type StorageStats = Infer<typeof storageStatsSchema>;

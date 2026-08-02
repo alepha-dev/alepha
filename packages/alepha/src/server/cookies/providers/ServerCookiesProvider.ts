@@ -12,8 +12,8 @@ import {
   $inject,
   Alepha,
   AlephaError,
-  type Static,
-  type TSchema,
+  type Infer,
+  type ZType,
 } from "alepha";
 import { SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
@@ -114,11 +114,11 @@ export class ServerCookiesProvider {
     return `${String(app).toLowerCase()}.${name}`;
   }
 
-  public getCookie<T extends TSchema>(
+  public getCookie<T extends ZType>(
     name: string,
     options: CookiePrimitiveOptions<T>,
     contextCookies?: Cookies,
-  ): Static<T> | undefined {
+  ): Infer<T> | undefined {
     const cookies = this.getCookiesFromContext(contextCookies);
     const prefixed = options.prefix !== false;
     let rawValue = cookies.req[this.prefixName(name, prefixed)];
@@ -164,10 +164,10 @@ export class ServerCookiesProvider {
     }
   }
 
-  public setCookie<T extends TSchema>(
+  public setCookie<T extends ZType>(
     name: string,
     options: CookiePrimitiveOptions<T>,
-    data: Static<T>,
+    data: Infer<T>,
     contextCookies?: Cookies,
   ): void {
     const cookies = this.getCookiesFromContext(contextCookies);

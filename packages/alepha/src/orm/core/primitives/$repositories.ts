@@ -33,18 +33,18 @@ import { $repository } from "./$repository.ts";
  * ```
  */
 export const $repositories = <
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
 >(
-  relations: RelationsPrimitive<TSchema, TMap>,
-): Repositories<TSchema, TMap> => {
-  const repositories = {} as Repositories<TSchema, TMap>;
+  relations: RelationsPrimitive<ZType, TMap>,
+): Repositories<ZType, TMap> => {
+  const repositories = {} as Repositories<ZType, TMap>;
 
   // Eager, not lazy. `$repository` reads the injection context, which only
   // exists while the surrounding class field is initialising — a Proxy that
   // deferred the binding to first access would resolve outside it.
   for (const key of Object.keys(relations.schema) as Array<
-    keyof TSchema & string
+    keyof ZType & string
   >) {
     (repositories as any)[key] = $repository(relations, key);
   }
@@ -53,8 +53,8 @@ export const $repositories = <
 };
 
 export type Repositories<
-  TSchema extends EntitySchema,
-  TMap extends RelationMapFor<TSchema>,
+  ZType extends EntitySchema,
+  TMap extends RelationMapFor<ZType>,
 > = {
-  [K in keyof TSchema & string]: RelationalRepository<TSchema, TMap, K>;
+  [K in keyof ZType & string]: RelationalRepository<ZType, TMap, K>;
 };

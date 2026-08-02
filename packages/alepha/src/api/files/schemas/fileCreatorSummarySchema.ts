@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * Slim view of a file's uploader, embedded by the admin listing via a
@@ -19,4 +19,4 @@ export const fileCreatorSummarySchema = z.object({
   lastName: z.string().optional(),
 });
 
-export type FileCreatorSummary = Static<typeof fileCreatorSummarySchema>;
+export type FileCreatorSummary = Infer<typeof fileCreatorSummarySchema>;
