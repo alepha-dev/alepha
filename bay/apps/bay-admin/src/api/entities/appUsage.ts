@@ -1,4 +1,4 @@
-import { type Static, z } from "alepha";
+import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 /**
@@ -55,5 +55,5 @@ export const appUsage = $entity({
   indexes: [{ columns: ["appKey", "at"] }],
 });
 
-export type AppUsage = Static<typeof appUsage.schema>;
-export type AppUsageInsert = Static<typeof appUsage.insertSchema>;
+export type AppUsage = Infer<typeof appUsage.schema>;
+export type AppUsageInsert = Infer<typeof appUsage.insertSchema>;
