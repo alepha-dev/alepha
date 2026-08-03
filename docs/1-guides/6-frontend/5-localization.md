@@ -65,6 +65,30 @@ class App {
 
 All dictionaries for the same language are merged. Key lookups search all dictionaries for the current language.
 
+### Translating `@alepha/ui`
+
+The components in `@alepha/ui` call `tr()` with English defaults — dialogs say "Cancel / Confirm", tables announce "Open row actions". A default is *not* a translation: until you define the key, a French application shows English there, and setting the browser locale changes nothing because the browser language was never the problem.
+
+`@alepha/ui` ships a French record you spread into your own catalogue:
+
+```typescript
+import { uiFr } from "@alepha/ui/lib/i18n-fr";
+
+class AppI18n {
+  fr = $dictionary({
+    lazy: async () => ({
+      default: {
+        ...uiFr,
+        // your own keys after, so they win on any collision
+        "nav.home": "Accueil",
+      },
+    }),
+  });
+}
+```
+
+It is a plain object rather than a `$dictionary` because `@alepha/ui` is a component library with no module of its own — nothing to register into. For any other language, copy it as a starting point.
+
 ## Lazy Loading
 
 Only the current language and the fallback language (default: `"en"`) are loaded on startup. When the user switches languages, the new language's dictionaries are loaded on demand.

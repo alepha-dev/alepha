@@ -95,7 +95,9 @@ test.describe("catalogue management", () => {
     await page.goto("/admin/pieces");
     await page
       .getByRole("row", { name: /Bracelet Méridien/ })
-      .getByRole("button", { name: "Open row actions" })
+      .getByRole("button", {
+        name: /Open row actions|Ouvrir les actions de la ligne/,
+      })
       .click();
     await page.getByRole("menuitem", { name: "Réapprovisionner" }).click();
     await page.getByRole("button", { name: /Confirmer|Confirm|OK/ }).click();
@@ -138,7 +140,9 @@ test.describe("order management", () => {
     // Ship it, with a tracking number the customer will receive.
     await page
       .getByRole("row", { name: /95,90/ })
-      .getByRole("button", { name: "Open row actions" })
+      .getByRole("button", {
+        name: /Open row actions|Ouvrir les actions de la ligne/,
+      })
       .click();
     await page.getByRole("menuitem", { name: "Expédier" }).click();
     await page.getByRole("textbox").last().fill("6A12345678901");
@@ -148,7 +152,9 @@ test.describe("order management", () => {
     // Refund it. The dialog must name the amount — that is what is consented to.
     await page
       .getByRole("row", { name: /95,90/ })
-      .getByRole("button", { name: "Open row actions" })
+      .getByRole("button", {
+        name: /Open row actions|Ouvrir les actions de la ligne/,
+      })
       .click();
     await page.getByRole("menuitem", { name: "Rembourser" }).click();
     // Scoped to the dialog: the amount is also in the table row behind it, and an
@@ -168,7 +174,9 @@ test.describe("order management", () => {
     await page.getByRole("option", { name: "pending" }).click();
     // No pending orders survive a completed funnel, so the table is empty and
     // says so rather than showing a spinner forever.
-    await expect(page.getByText(/Aucune commande|No results/)).toBeVisible();
+    await expect(
+      page.getByText(/Aucune commande|Aucun résultat|No results/),
+    ).toBeVisible();
   });
 });
 
@@ -219,7 +227,9 @@ const togglePublication = async (
   await page.goto("/admin/pieces");
   await page
     .getByRole("row", { name: /Carte cadeau/ })
-    .getByRole("button", { name: "Open row actions" })
+    .getByRole("button", {
+      name: /Open row actions|Ouvrir les actions de la ligne/,
+    })
     .click();
   await page.getByRole("menuitem", { name: item }).click();
   await page.getByRole("button", { name: /Confirmer|Confirm/ }).click();

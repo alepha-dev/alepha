@@ -101,6 +101,8 @@ export class ReactPageProvider {
           hasNotFoundHandler = true;
         }
 
+        this.warnIfGuardedBySecure(page);
+
         // skip children, we only want root pages
         if (hasParent(page)) {
           continue;
@@ -122,6 +124,40 @@ export class ReactPageProvider {
       }
     },
   });
+
+  /**
+   * Warn when a page is guarded with `$secure`, which does less than it looks.
+   *
+   * `$secure` is a *handler* middleware: on a page it wraps the `loader`, and its
+   * browser implementation short-circuits by returning `undefined` rather than
+   * throwing. So an unauthorised visitor does not get bounced — the loader is
+   * skipped and **the page renders anyway**, with whatever an empty props object
+   * produces. On a back office that means the entire shell, navigation and all,
+   * over empty tables whose requests each answer 401.
+   *
+   * That is defensible behaviour for an API middleware reused on a page, and it is
+   * indefensible as a silent one: `use: [$secure(...)]` reads exactly like a
+   * guard. So say so once, at boot, and name the alternative.
+   *
+   * A warning rather than an error, because the combination is not wrong — a page
+   * may legitimately want its loader skipped for anonymous visitors while still
+   * rendering. It is only wrong when mistaken for access control.
+   */
+  protected warnIfGuardedBySecure(page: PagePrimitive): void {
+    const guard = page.options.use?.find(
+      (middleware) => (middleware as any)[OPTIONS]?.name === "$secure",
+    );
+
+    if (!guard) {
+      return;
+    }
+
+    this.log.warn(
+      `Page '${page.options.path}' uses $secure, which does not prevent it from rendering. ` +
+        "$secure wraps the loader and skips it for an unauthorised visitor, so the page still renders without its data. " +
+        "To turn a visitor away, throw Redirection from the loader instead; keep $secure on the endpoints underneath, which is what enforces the permission.",
+    );
+  }
 
   // -------------------------------------------------------------------------------------------------------------------
 

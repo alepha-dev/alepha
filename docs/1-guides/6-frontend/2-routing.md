@@ -136,14 +136,53 @@ Disable server-side rendering for the page component (`@default true`). With `ss
 ssr: false
 ```
 
+### stream
+
+Buffer the HTML instead of streaming it, so the page can choose its status code (`@default true`).
+
+A page is streamed with an early `<head>` flush by default: the head leaves before the loader runs, which is what makes the first paint fast. The cost is that the HTTP status is committed by then, so a page whose existence depends on data cannot answer `404` — a missing product renders the error boundary with a `200`, which a crawler indexes as a real page.
+
+With `stream: false` the page renders to a string first and only then replies, so `onServerResponse` sees the finished render and can set `reply.status`.
+
+```typescript
+product = $page({
+  path: "/product/:slug",
+  stream: false,
+  loader: async ({ params }) => {
+    const product = await this.api.find(params.slug);
+    if (!product) throw new NotFoundError("No such product");
+    return { product };
+  },
+  onServerResponse: ({ reply }) => {
+    if (/* the loader found nothing */) reply.status = 404;
+  },
+});
+```
+
+Use it for the handful of routes that can legitimately not exist — a product, an article, a profile. Leave it alone everywhere else: buffering delays the first byte by the whole render.
+
 ### use
 
-Attach middlewares to the page — this is how you add server-side caching or access control:
+Attach middlewares to the page — this is how you add server-side caching:
 
 ```typescript
 use: [$cache({ ttl: [1, "hour"] })]
-use: [$secure({ permissions: ["admin"] })]
 ```
+
+> [!WARNING]
+> **`$secure` on a page is not access control.** It is a handler middleware, so on a page it wraps the *loader*, and its browser implementation short-circuits by returning `undefined` rather than throwing. The loader is skipped and **the page renders anyway** — on a back office that means the whole shell, navigation and all, over empty tables whose requests each answer 401. The framework warns about this at boot.
+>
+> To turn a visitor away, redirect from the loader:
+>
+> ```typescript
+> loader: async ({ user }) => {
+>   if (!user?.roles?.includes("admin")) {
+>     throw new Redirection("/login?redirect=/admin");
+>   }
+> }
+> ```
+>
+> Keep `$secure` on the endpoints underneath. That is what actually enforces the permission, and it answers 401 whatever the interface does.
 
 When `static: true` is set, the framework automatically applies `$cache({ provider: "memory", ttl: [1, "week"] })` to the page.
 

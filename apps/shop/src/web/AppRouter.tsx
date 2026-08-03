@@ -1,6 +1,6 @@
 import type { ProductController } from "@alepha/commerce";
 import type { CheckoutController } from "@alepha/commerce/checkout";
-import { z } from "alepha";
+import { $atom, $inject, Alepha, z } from "alepha";
 import type { RealmController } from "alepha/api/users";
 import { $page, Redirection } from "alepha/react/router";
 import { $client } from "alepha/server/links";
@@ -28,7 +28,22 @@ import { Layout } from "./Layout.tsx";
  * hostname, which a Cloudflare Worker cannot do anyway. In the browser it becomes
  * a typed `fetch`. Same call, same types, both sides.
  */
+/**
+ * Set by the piece loader when the slug matches nothing, read by that page's
+ * `onServerResponse` to answer 404.
+ *
+ * An atom rather than a field on the router, because the store is per-request on
+ * the server: a field would leak one visitor's missing piece into the next
+ * visitor's response.
+ */
+const pieceIntrouvable = $atom({
+  name: "shop.pieceIntrouvable",
+  schema: z.boolean(),
+  default: false,
+});
+
 export class AppRouter {
+  protected readonly alepha = $inject(Alepha);
   protected readonly produits = $client<ProductController>();
   protected readonly checkoutApi = $client<CheckoutController>();
   protected readonly realmApi = $client<RealmController>();
@@ -82,11 +97,36 @@ export class AppRouter {
     // and the loader calls the API with `slug: undefined`, which fails deep in
     // the response encoder with a message that names the field but not the cause.
     schema: { params: z.object({ slug: z.text({ minLength: 1 }) }) },
+    /*
+     * Buffered rather than streamed, so this page can answer 404.
+     *
+     * A streamed page flushes its `<head>` before the loader runs, so the status
+     * is committed before anyone knows whether the piece exists — an unknown slug
+     * rendered the error boundary with a 200, which a crawler indexes as a real
+     * page. `stream: false` renders to a string first, which lets
+     * `onServerResponse` react to what the loader found.
+     *
+     * Worth the delayed first byte here and nowhere else: this is the only public
+     * page whose existence depends on a row.
+     */
+    stream: false,
     loader: async ({ params }) => {
-      const piece = await this.produits.commerceProductGetBySlug({
-        params: { slug: params.slug },
-      });
-      return { piece, disponible: piece.available };
+      try {
+        const piece = await this.produits.commerceProductGetBySlug({
+          params: { slug: params.slug },
+        });
+        return { piece, disponible: piece.available };
+      } catch (error) {
+        // Recorded for `onServerResponse`, which runs after this render and is
+        // the only place that can still set the status.
+        this.alepha.store.set(pieceIntrouvable, true);
+        throw error;
+      }
+    },
+    onServerResponse: ({ reply }) => {
+      if (this.alepha.store.get(pieceIntrouvable)) {
+        reply.status = 404;
+      }
     },
     // `head` receives the loader's props directly — destructuring `{ props }`
     // silently yields undefined and the page falls back to the default title.

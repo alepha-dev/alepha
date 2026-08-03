@@ -356,7 +356,48 @@ export interface PagePrimitiveOptions<
   ssr?: boolean;
 
   /**
+   * Buffer the HTML instead of streaming it, so the page can choose its status
+   * code. (server only)
+   *
+   * By default a page is streamed with an early `<head>` flush: the head leaves
+   * before the loader has run, which is what makes the first paint fast. The cost
+   * is that the HTTP status is already committed by then — `onServerResponse` runs
+   * before the loader, so it cannot know what the loader found, and a page whose
+   * existence depends on data has no way to answer 404. A missing product
+   * rendered the error boundary with a 200, which a crawler indexes as a real
+   * page.
+   *
+   * With `stream: false` the page renders to a string first and only then
+   * replies, so `onServerResponse` sees the finished render and can set
+   * `reply.status`. This is the same path a cached page already takes.
+   *
+   * Use it for the handful of routes that can legitimately not exist — a product,
+   * an article, a profile. Leave it alone everywhere else: buffering delays the
+   * first byte by the whole render.
+   *
+   * ```ts
+   * product = $page({
+   *   path: "/product/:slug",
+   *   stream: false,
+   *   loader: async ({ params }) => {
+   *     const product = await api.find(params.slug);
+   *     if (!product) throw new NotFoundError("No such product");
+   *     return { product };
+   *   },
+   *   onServerResponse: ({ reply }) => { ... },
+   * });
+   * ```
+   *
+   * @default true
+   */
+  stream?: boolean;
+
+  /**
    * Called before the server response is sent to the client. (server only)
+   *
+   * Runs *before* the loader on a streamed page, and *after* the render on one
+   * with `stream: false` — which is the only way it can react to what the loader
+   * found. See {@link stream}.
    */
   onServerResponse?: (request: ServerRequest) => unknown;
 

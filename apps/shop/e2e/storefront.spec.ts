@@ -82,23 +82,17 @@ test.describe("catalogue", () => {
   });
 
   /*
-   * KNOWN GAP, recorded rather than deleted — and it is the framework's, not the
-   * shop's.
+   * This was a recorded gap for most of this suite's life: a streamed page
+   * flushes its `<head>` before the loader runs, so the status was committed
+   * before anyone knew the slug matched nothing, and an unknown piece answered
+   * 200 with the error boundary — a soft 404 a crawler indexes as a real page.
    *
-   * A missing piece renders the error boundary with a **200**, which a crawler
-   * indexes as a real page. The loader cannot fix it: `ReactServerProvider` sets
-   * the reply status before it starts streaming, so an error thrown in a loader
-   * arrives after the headers are committed. It only ever sets 404 for the
-   * static-file probe pattern and 302 for redirects — a thrown error's `status`
-   * is never consulted, the way `ServerRouterProvider` does for API routes.
-   *
-   * Measured in both modes (200 in development and in production), so it is not
-   * a dev-only nicety. `apps/lore` throws `NotFoundError` in the same situation
-   * and has the same soft 404.
-   *
-   * `test.fail()` keeps it visible and turns the suite red the day it is fixed.
+   * Fixed by `stream: false` on the piece route, which buffers the HTML so
+   * `onServerResponse` can still set the status. The option is new; the trade-off
+   * it makes explicit (first byte versus status code) was previously not
+   * expressible at all.
    */
-  test.fail("an unknown piece answers 404", async ({ request }) => {
+  test("an unknown piece answers 404", async ({ request }) => {
     const res = await request.get("/piece/nexiste-pas");
     expect(res.status()).toBe(404);
   });

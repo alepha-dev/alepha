@@ -322,7 +322,14 @@ export class ReactServerProvider {
     route: PageRoute,
     cacheMiddleware: Middleware[] = [],
   ): ServerHandler {
-    const hasCache = cacheMiddleware.length > 0;
+    /*
+     * Buffer when caching demands it, or when the page asked for it.
+     *
+     * `stream: false` exists so a page can choose its status code: the buffered
+     * path calls `onServerResponse` *after* the render, whereas the streaming path
+     * has already flushed the head by then. See `$page`'s `stream` option.
+     */
+    const buffered = cacheMiddleware.length > 0 || route.stream === false;
     const isCatchAll = route.match === "/*";
     const staticFilePattern = isCatchAll
       ? this.resolveStaticFilePattern()
@@ -393,7 +400,7 @@ export class ReactServerProvider {
       // Apply SSR headers early
       Object.assign(reply.headers, this.SSR_HEADERS);
 
-      if (hasCache) {
+      if (buffered) {
         // When $cache middleware is present, render to string so the result
         // is serializable. Streaming is not compatible with $cache since
         // ReadableStream cannot be serialized/deserialized.

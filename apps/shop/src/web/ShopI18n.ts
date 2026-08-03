@@ -1,3 +1,4 @@
+import { uiFr } from "@alepha/ui/lib/i18n-fr";
 import { $dictionary } from "alepha/react/i18n";
 
 /**
@@ -22,6 +23,17 @@ export class ShopI18n {
   fr = $dictionary({
     lazy: async () => ({
       default: {
+        /*
+         * `@alepha/ui`'s own French strings — dialogs, tables, the auth screens.
+         *
+         * Spread first so anything the shop redefines below wins. Without it the
+         * confirmation dialogs said "Cancel / Confirm" and the back-office table
+         * announced "Open row actions" on an otherwise French site: those
+         * components call `tr()` but default to English, so an undefined key is
+         * indistinguishable from a deliberate one.
+         */
+        ...uiFr,
+
         "language.fr": "Français",
         "language.en": "English",
 
@@ -167,46 +179,6 @@ export class ShopI18n {
         "admin.orders": "Commandes",
         "admin.shipping": "Livraison",
         "admin.viewShop": "Voir la boutique",
-
-        /*
-         * Sign-in and registration, which `@alepha/ui` renders.
-         *
-         * Those components already call `tr("auth.…")` — they simply fall back to
-         * an English default when nobody defines the key. So the pages were in
-         * English on a French shop, and no amount of `locale: fr-FR` changed it,
-         * because the browser language was never the problem: the catalogue was.
-         * The e2e suite is what showed it, in a snapshot full of "First name" and
-         * "Create account".
-         *
-         * Only the keys the shop's two auth screens actually use are listed. The
-         * rest of the block (phone, username, OAuth) is switched off in
-         * `ShopRealm`, so translating it would be dead copy.
-         */
-        "auth.login.email": "Adresse e-mail",
-        "auth.login.identifier": "Adresse e-mail",
-        "auth.login.password": "Mot de passe",
-        "auth.login.submit": "Se connecter",
-        "auth.login.forgot": "Mot de passe oublié ?",
-        "auth.login.noAccount": "Pas encore de compte ?",
-        "auth.login.signUp": "Créer un compte",
-        "auth.login.cancel": "Annuler",
-        "auth.login.invalid": "Adresse e-mail ou mot de passe incorrect",
-        "auth.login.error": "Une erreur est survenue. Merci de réessayer.",
-        "auth.register.email": "Adresse e-mail",
-        "auth.register.password": "Mot de passe",
-        "auth.register.firstName": "Prénom",
-        "auth.register.lastName": "Nom",
-        "auth.register.submit": "Créer mon compte",
-        "auth.register.haveAccount": "Vous avez déjà un compte ?",
-        "auth.register.signIn": "Se connecter",
-        "auth.register.cancel": "Annuler",
-        "auth.register.disabled":
-          "Les inscriptions sont fermées pour le moment.",
-        "auth.register.password.rule.minLength": "8 caractères au minimum",
-        "auth.register.password.rule.uppercase": "Une majuscule",
-        "auth.register.password.rule.lowercase": "Une minuscule",
-        "auth.register.password.rule.number": "Un chiffre",
-        "auth.register.password.rule.special": "Un caractère spécial",
       },
     }),
   });
@@ -346,35 +318,6 @@ export class ShopI18n {
         "admin.orders": "Orders",
         "admin.shipping": "Delivery",
         "admin.viewShop": "View the shop",
-
-        // Same keys as the French catalogue. `@alepha/ui` already defaults to
-        // English, so these are redundant at runtime — they are here so the two
-        // catalogues stay the same shape and `alepha i18n check` can tell a
-        // missing translation from a key that was never meant to be translated.
-        "auth.login.email": "Email address",
-        "auth.login.identifier": "Email address",
-        "auth.login.password": "Password",
-        "auth.login.submit": "Sign in",
-        "auth.login.forgot": "Forgot your password?",
-        "auth.login.noAccount": "No account yet?",
-        "auth.login.signUp": "Create an account",
-        "auth.login.cancel": "Cancel",
-        "auth.login.invalid": "Wrong email address or password",
-        "auth.login.error": "Something went wrong. Please try again.",
-        "auth.register.email": "Email address",
-        "auth.register.password": "Password",
-        "auth.register.firstName": "First name",
-        "auth.register.lastName": "Last name",
-        "auth.register.submit": "Create my account",
-        "auth.register.haveAccount": "Already have an account?",
-        "auth.register.signIn": "Sign in",
-        "auth.register.cancel": "Cancel",
-        "auth.register.disabled": "Registration is closed at the moment.",
-        "auth.register.password.rule.minLength": "At least 8 characters",
-        "auth.register.password.rule.uppercase": "One uppercase letter",
-        "auth.register.password.rule.lowercase": "One lowercase letter",
-        "auth.register.password.rule.number": "One number",
-        "auth.register.password.rule.special": "One special character",
       },
     }),
   });

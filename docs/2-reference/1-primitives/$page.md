@@ -56,6 +56,7 @@ It provides a declarative way to define pages with powerful features:
 | `nav` | `PageNav` | No | Navigation metadata — declares this page's presence in navigation surfaces: the sidebar, the breadcrumb trail, and a command palette (Spotlight) |
 | `errorHandler` | `ErrorHandler` | No | Catch any error from the `loader` function or during `rendering` |
 | `ssr` | `boolean` | No | Enable or disable server-side rendering for this page |
+| `stream` | `boolean` | No | Buffer the HTML instead of streaming it, so the page can choose its status code |
 | `onServerResponse` | `Object` | No | Called before the server response is sent to the client |
 | `onEnter` | `Object` | No | Called when user enters the page |
 | `onLeave` | `Object` | No | Called when user leaves the page |
