@@ -19,8 +19,10 @@ import { mainCss } from "../templates/mainCss.ts";
 import { mainServerTs } from "../templates/mainServerTs.ts";
 import { tsconfigJson } from "../templates/tsconfigJson.ts";
 import { viteConfigTs } from "../templates/viteConfigTs.ts";
-import { vitestConfigTs } from "../templates/vitestConfigTs.ts";
-import { vscodeSettingsJson } from "../templates/vscodeSettingsJson.ts";
+import {
+  vscodeExtensionsJson,
+  vscodeSettingsJson,
+} from "../templates/vscodeSettingsJson.ts";
 import { webAppRouterTs } from "../templates/webAppRouterTs.ts";
 import { webHomeComponentTsx } from "../templates/webHomeComponentTsx.ts";
 import { webIndexTs } from "../templates/webIndexTs.ts";
@@ -183,9 +185,9 @@ export class ProjectScaffolder {
   }
 
   /**
-   * Ensure `.vscode/settings.json` exists, pointing the editor's TypeScript
-   * language server at the `typescript` copy embedded in `alepha`. Keeps the
-   * IDE on the same compiler version as `alepha typecheck` — see
+   * Ensure `.vscode/` exists: `settings.json` puts the editor on the same
+   * TypeScript and the same formatter as the CLI, and `extensions.json`
+   * recommends the Biome extension the settings depend on — see
    * `vscodeSettingsJson`.
    */
   public async ensureVscodeSettings(
@@ -199,12 +201,20 @@ export class ProjectScaffolder {
     ) {
       return;
     }
-    const target = this.fs.join(root, ".vscode", "settings.json");
-    if (!opts.force && (await this.fs.exists(target))) {
-      return;
-    }
     await this.fs.mkdir(this.fs.join(root, ".vscode"), { recursive: true });
-    await this.fs.writeFile(target, vscodeSettingsJson());
+
+    // Written separately rather than in one guarded block: a project that
+    // already has settings.json (hand-tuned, say) still needs the extension
+    // recommendation, or its formatter setting points at nothing.
+    const settings = this.fs.join(root, ".vscode", "settings.json");
+    if (opts.force || !(await this.fs.exists(settings))) {
+      await this.fs.writeFile(settings, vscodeSettingsJson());
+    }
+
+    const extensions = this.fs.join(root, ".vscode", "extensions.json");
+    if (opts.force || !(await this.fs.exists(extensions))) {
+      await this.fs.writeFile(extensions, vscodeExtensionsJson());
+    }
   }
 
   /**
@@ -403,18 +413,17 @@ export class ProjectScaffolder {
   // ===========================================
 
   /**
-   * Ensure test directory exists with a dummy test file + a self-contained
-   * `vitest.config.ts`. Pinning `test.root` prevents Vitest from walking up
-   * to a parent monorepo config (e.g. one that boots a Postgres container).
+   * Ensure the test directory exists with a dummy spec.
+   *
+   * No `vitest.config.ts` any more: Vitest falls back to `vite.config.ts`, and
+   * `viteConfigTs` carries the `test` block — including the `test.root` that
+   * stops Vitest walking up into a parent monorepo config (e.g. one that boots
+   * a Postgres container). One file, so plugins and aliases cannot drift
+   * between the build and the tests.
    */
   public async ensureTestDir(root: string): Promise<void> {
     const testDir = this.fs.join(root, "test");
     const dummyPath = this.fs.join(testDir, "dummy.spec.ts");
-    const vitestConfigPath = this.fs.join(root, "vitest.config.ts");
-
-    if (!(await this.fs.exists(vitestConfigPath))) {
-      await this.fs.writeFile(vitestConfigPath, vitestConfigTs());
-    }
 
     if (!(await this.fs.exists(testDir))) {
       await this.fs.mkdir(testDir, { recursive: true });
