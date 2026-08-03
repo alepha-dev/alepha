@@ -23,7 +23,13 @@ export const isMultipart = (options: {
   if (options.schema?.body && z.schema.isObject(options.schema.body)) {
     const properties = z.schema.shape(options.schema.body);
     for (const key in properties) {
-      if (z.schema.format(properties[key]) === "binary") {
+      // `stream` as well as `binary`: a route that takes its bytes in flight is
+      // just as multipart as one that takes them buffered. This predicate is
+      // read at BOTH ends — the client builds the FormData from it, the server
+      // decides to parse one — so missing a format means the two agree to do
+      // nothing, and the upload silently arrives as an ordinary body.
+      const format = z.schema.format(properties[key]);
+      if (format === "binary" || format === "stream") {
         return true;
       }
     }
