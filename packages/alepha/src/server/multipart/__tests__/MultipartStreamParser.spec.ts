@@ -60,8 +60,8 @@ const collect = async (
 ): Promise<Array<{ name?: string; filename?: string; content: string }>> => {
   const parser = new MultipartStreamParser({
     maxParts: 100,
-    maxFileSize: 10 * 1024 * 1024,
-    maxTotalSize: 20 * 1024 * 1024,
+    maxFileBytes: 10 * 1024 * 1024,
+    maxTotalBytes: 20 * 1024 * 1024,
     ...options,
   });
   const out: Array<{ name?: string; filename?: string; content: string }> = [];
@@ -248,17 +248,17 @@ describe("MultipartStreamParser", () => {
   });
 
   describe("limits", () => {
-    it("refuses a part larger than maxFileSize, counting bytes rather than trusting a header", async ({
+    it("refuses a part larger than maxFileBytes, counting bytes rather than trusting a header", async ({
       expect,
     }) => {
       const body = bodyOf([filePart("file", "a.bin", "x".repeat(5000))]);
 
-      await expect(collect(body, 64, { maxFileSize: 1000 })).rejects.toThrow(
+      await expect(collect(body, 64, { maxFileBytes: 1000 })).rejects.toThrow(
         MultipartLimitError,
       );
     });
 
-    it("refuses a message larger than maxTotalSize even when each part fits", async ({
+    it("refuses a message larger than maxTotalBytes even when each part fits", async ({
       expect,
     }) => {
       const body = bodyOf([
@@ -267,7 +267,7 @@ describe("MultipartStreamParser", () => {
       ]);
 
       await expect(
-        collect(body, 64, { maxFileSize: 1000, maxTotalSize: 1000 }),
+        collect(body, 64, { maxFileBytes: 1000, maxTotalBytes: 1000 }),
       ).rejects.toThrow(MultipartLimitError);
     });
 
@@ -283,7 +283,7 @@ describe("MultipartStreamParser", () => {
       );
     });
 
-    it("refuses headers larger than maxHeaderSize", async ({ expect }) => {
+    it("refuses headers larger than maxHeaderBytes", async ({ expect }) => {
       const body = bodyOf([
         {
           headers: `Content-Disposition: form-data; name="f"\r\nX-Padding: ${"p".repeat(5000)}`,
@@ -291,7 +291,7 @@ describe("MultipartStreamParser", () => {
         },
       ]);
 
-      await expect(collect(body, 128, { maxHeaderSize: 512 })).rejects.toThrow(
+      await expect(collect(body, 128, { maxHeaderBytes: 512 })).rejects.toThrow(
         MultipartLimitError,
       );
     });
@@ -430,8 +430,8 @@ describe("MultipartStreamParser", () => {
 
     const measure = async (megabytes: number): Promise<number> => {
       const parser = new MultipartStreamParser({
-        maxFileSize: 512 * 1024 * 1024,
-        maxTotalSize: 512 * 1024 * 1024,
+        maxFileBytes: 512 * 1024 * 1024,
+        maxTotalBytes: 512 * 1024 * 1024,
       });
       let emitted = 0;
       const body = new ReadableStream<Uint8Array>({

@@ -80,7 +80,7 @@ declare module "alepha" {
  * The budget is resolved at three levels, most specific last:
  *
  * 1. {@link multipartOptions} — the application-wide default.
- * 2. `z.file({ maxSize })` on the route's own body schema.
+ * 2. `z.file({ maxBytes })` on the route's own body schema.
  * 3. {@link MultipartCapProvider} — the only level that knows where the bytes
  *    are actually going, which is why it wins.
  *
@@ -152,13 +152,13 @@ export class ServerMultipartProvider {
       const contentLength = request.headers["content-length"];
       if (contentLength) {
         const size = Number.parseInt(contentLength, 10);
-        if (!Number.isNaN(size) && size > caps.maxTotalSize) {
+        if (!Number.isNaN(size) && size > caps.maxTotalBytes) {
           this.log.error(
-            `Multipart request size limit exceeded: ${size} > ${caps.maxTotalSize}`,
+            `Multipart request size limit exceeded: ${size} > ${caps.maxTotalBytes}`,
           );
           throw new HttpError({
             status: 413,
-            message: `Request body size limit exceeded. Maximum allowed: ${caps.maxTotalSize} bytes`,
+            message: `Request body size limit exceeded. Maximum allowed: ${caps.maxTotalBytes} bytes`,
           });
         }
       }
@@ -182,7 +182,7 @@ export class ServerMultipartProvider {
    * Decides this request's size budget, most specific level last.
    *
    * A level may raise the ceiling, not only lower it — which is the point.
-   * Raising `maxFileSize` also lifts `maxTotalSize` to match, because a
+   * Raising `maxFileBytes` also lifts `maxTotalBytes` to match, because a
    * 100 MB file inside a 10 MB message is a limit that reads as granted and
    * refuses anyway.
    */
@@ -191,13 +191,13 @@ export class ServerMultipartProvider {
     route: ServerRoute,
   ): Required<MultipartCap> {
     const caps: Required<MultipartCap> = {
-      maxFileSize: this.options.fileLimit,
-      maxTotalSize: this.options.limit,
+      maxFileBytes: this.options.fileLimit,
+      maxTotalBytes: this.options.limit,
       maxParts: this.options.fileCount,
-      maxHeaderSize: ServerMultipartProvider.DEFAULT_MAX_HEADER_SIZE,
+      maxHeaderBytes: ServerMultipartProvider.DEFAULT_MAX_HEADER_SIZE,
     };
 
-    this.apply(caps, { maxFileSize: this.declaredFileSize(route) });
+    this.apply(caps, { maxFileBytes: this.declaredFileSize(route) });
     this.apply(caps, this.caps.resolve(request, route));
 
     return caps;
@@ -214,10 +214,10 @@ export class ServerMultipartProvider {
       return;
     }
     for (const key of [
-      "maxFileSize",
-      "maxTotalSize",
+      "maxFileBytes",
+      "maxTotalBytes",
       "maxParts",
-      "maxHeaderSize",
+      "maxHeaderBytes",
     ] as const) {
       const value = override[key];
       if (typeof value === "number") {
@@ -226,15 +226,15 @@ export class ServerMultipartProvider {
     }
     // A message has to be able to hold the file it is allowed to carry.
     if (
-      override.maxFileSize !== undefined &&
-      override.maxTotalSize === undefined
+      override.maxFileBytes !== undefined &&
+      override.maxTotalBytes === undefined
     ) {
-      caps.maxTotalSize = Math.max(caps.maxTotalSize, override.maxFileSize);
+      caps.maxTotalBytes = Math.max(caps.maxTotalBytes, override.maxFileBytes);
     }
   }
 
   /**
-   * The largest `z.file({ maxSize })` the route declares, in bytes.
+   * The largest `z.file({ maxBytes })` the route declares.
    *
    * The largest rather than each field's own: the parser applies one ceiling to
    * every part, and enforcing the smallest would refuse the field that was
@@ -250,7 +250,7 @@ export class ServerMultipartProvider {
       if (!isTypeFile(value)) {
         continue;
       }
-      const declared = z.schema.meta(value).maxSize;
+      const declared = z.schema.meta(value).maxBytes;
       if (
         typeof declared === "number" &&
         (largest === undefined || declared > largest)

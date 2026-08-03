@@ -79,7 +79,7 @@ export class StorageMultipartCapProvider {
       // `$storage` speaks megabytes — it is a declaration a human writes — and
       // everything below this line speaks bytes. One conversion, in the one
       // place that bridges the two vocabularies.
-      return { maxFileSize: maxSize * 1024 * 1024 };
+      return { maxFileBytes: maxSize * 1024 * 1024 };
     } catch {
       // An unknown bucket is not this provider's refusal to make: the upload
       // handler answers 404 for it with a message that says so. Deciding a

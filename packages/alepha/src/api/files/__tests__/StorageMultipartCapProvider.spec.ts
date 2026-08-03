@@ -45,7 +45,7 @@ describe("StorageMultipartCapProvider", () => {
 
     // 100 MB, declared in megabytes and answered in bytes — the one place the
     // two vocabularies meet.
-    expect(cap?.maxFileSize).toBe(100 * 1024 * 1024);
+    expect(cap?.maxFileBytes).toBe(100 * 1024 * 1024);
   });
 
   it("leaves a stricter bucket strict", async ({ expect }) => {
@@ -53,7 +53,7 @@ describe("StorageMultipartCapProvider", () => {
 
     const cap = caps.resolve(requestFor("avatars"), uploadRoute);
 
-    expect(cap?.maxFileSize).toBe(5 * 1024 * 1024);
+    expect(cap?.maxFileBytes).toBe(5 * 1024 * 1024);
   });
 
   it("has no opinion when no bucket was named", async ({ expect }) => {

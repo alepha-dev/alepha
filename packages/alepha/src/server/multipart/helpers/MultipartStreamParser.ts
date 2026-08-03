@@ -66,7 +66,7 @@ export interface MultipartParserOptions {
    * megabyte of them is not a use case, it is someone looking for a buffer to
    * grow.
    */
-  maxHeaderSize?: number;
+  maxHeaderBytes?: number;
   /**
    * Maximum bytes of content for a single part.
    *
@@ -74,11 +74,11 @@ export interface MultipartParserOptions {
    * is a tally of bytes that actually arrived, so the refusal happens at the
    * first byte past the limit rather than after the whole body is in.
    */
-  maxFileSize?: number;
+  maxFileBytes?: number;
   /** Maximum number of parts in one message. */
   maxParts?: number;
   /** Maximum bytes of content across every part. */
-  maxTotalSize?: number;
+  maxTotalBytes?: number;
 }
 
 /**
@@ -101,16 +101,16 @@ export class MultipartStreamParser {
   protected static readonly MAX_BOUNDARY_LENGTH = 70;
 
   protected static readonly DEFAULTS = {
-    maxHeaderSize: 16 * 1024,
-    maxFileSize: 5 * 1024 * 1024,
+    maxHeaderBytes: 16 * 1024,
+    maxFileBytes: 5 * 1024 * 1024,
     maxParts: 10,
-    maxTotalSize: 10 * 1024 * 1024,
+    maxTotalBytes: 10 * 1024 * 1024,
   };
 
-  protected readonly maxHeaderSize: number;
-  protected readonly maxFileSize: number;
+  protected readonly maxHeaderBytes: number;
+  protected readonly maxFileBytes: number;
   protected readonly maxParts: number;
-  protected readonly maxTotalSize: number;
+  protected readonly maxTotalBytes: number;
 
   /** Unconsumed bytes. Never larger than one chunk plus a delimiter. */
   protected buffer: Uint8Array = new Uint8Array(0);
@@ -120,13 +120,13 @@ export class MultipartStreamParser {
   protected totalSize = 0;
 
   constructor(options: MultipartParserOptions = {}) {
-    this.maxHeaderSize =
-      options.maxHeaderSize ?? MultipartStreamParser.DEFAULTS.maxHeaderSize;
-    this.maxFileSize =
-      options.maxFileSize ?? MultipartStreamParser.DEFAULTS.maxFileSize;
+    this.maxHeaderBytes =
+      options.maxHeaderBytes ?? MultipartStreamParser.DEFAULTS.maxHeaderBytes;
+    this.maxFileBytes =
+      options.maxFileBytes ?? MultipartStreamParser.DEFAULTS.maxFileBytes;
     this.maxParts = options.maxParts ?? MultipartStreamParser.DEFAULTS.maxParts;
-    this.maxTotalSize =
-      options.maxTotalSize ?? MultipartStreamParser.DEFAULTS.maxTotalSize;
+    this.maxTotalBytes =
+      options.maxTotalBytes ?? MultipartStreamParser.DEFAULTS.maxTotalBytes;
   }
 
   /**
@@ -305,18 +305,18 @@ export class MultipartStreamParser {
    * volume over many small parts to slip under the first.
    */
   protected count(length: number, sizeSoFar: number): void {
-    if (sizeSoFar + length > this.maxFileSize) {
+    if (sizeSoFar + length > this.maxFileBytes) {
       throw new MultipartLimitError(
-        `A part exceeds ${this.maxFileSize} bytes`,
-        this.maxFileSize,
+        `A part exceeds ${this.maxFileBytes} bytes`,
+        this.maxFileBytes,
         "file",
       );
     }
     this.totalSize += length;
-    if (this.totalSize > this.maxTotalSize) {
+    if (this.totalSize > this.maxTotalBytes) {
       throw new MultipartLimitError(
-        `The message exceeds ${this.maxTotalSize} bytes`,
-        this.maxTotalSize,
+        `The message exceeds ${this.maxTotalBytes} bytes`,
+        this.maxTotalBytes,
         "total",
       );
     }
@@ -363,10 +363,10 @@ export class MultipartStreamParser {
         this.buffer = this.buffer.subarray(at + separator.length);
         return this.parseHeaders(raw);
       }
-      if (this.buffer.length > this.maxHeaderSize) {
+      if (this.buffer.length > this.maxHeaderBytes) {
         throw new MultipartLimitError(
-          `Part headers exceed ${this.maxHeaderSize} bytes`,
-          this.maxHeaderSize,
+          `Part headers exceed ${this.maxHeaderBytes} bytes`,
+          this.maxHeaderBytes,
           "header",
         );
       }

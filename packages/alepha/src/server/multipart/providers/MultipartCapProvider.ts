@@ -8,13 +8,13 @@ import type { ServerRequest, ServerRoute } from "alepha/server";
  */
 export interface MultipartCap {
   /** Largest a single part's content may be, in bytes. */
-  maxFileSize?: number;
+  maxFileBytes?: number;
   /** Largest the whole message may be, in bytes. */
-  maxTotalSize?: number;
+  maxTotalBytes?: number;
   /** Most parts one message may carry. */
   maxParts?: number;
   /** Largest a single part's headers may be, in bytes. */
-  maxHeaderSize?: number;
+  maxHeaderBytes?: number;
 }
 
 /**

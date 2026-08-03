@@ -60,8 +60,8 @@ describe("multipart cap resolution", () => {
 
     const caps = provider.testResolve(routeWith(z.object({ file: z.file() })));
 
-    expect(caps.maxFileSize).toBe(5_000_000);
-    expect(caps.maxTotalSize).toBe(10_000_000);
+    expect(caps.maxFileBytes).toBe(5_000_000);
+    expect(caps.maxTotalBytes).toBe(10_000_000);
     expect(caps.maxParts).toBe(10);
   });
 
@@ -74,10 +74,10 @@ describe("multipart cap resolution", () => {
     // could only ever lower the effective limit, so asking for more than the
     // global was a promise the framework silently broke.
     const caps = provider.testResolve(
-      routeWith(z.object({ file: z.file({ maxSize: 50_000_000 }) })),
+      routeWith(z.object({ file: z.file({ maxBytes: 50_000_000 }) })),
     );
 
-    expect(caps.maxFileSize).toBe(50_000_000);
+    expect(caps.maxFileBytes).toBe(50_000_000);
   });
 
   it("lifts the message budget to fit the file it just allowed", async ({
@@ -86,12 +86,12 @@ describe("multipart cap resolution", () => {
     const provider = await setup();
 
     const caps = provider.testResolve(
-      routeWith(z.object({ file: z.file({ maxSize: 50_000_000 }) })),
+      routeWith(z.object({ file: z.file({ maxBytes: 50_000_000 }) })),
     );
 
     // A 50 MB file inside a 10 MB message is a limit that reads as granted and
     // refuses anyway.
-    expect(caps.maxTotalSize).toBeGreaterThanOrEqual(50_000_000);
+    expect(caps.maxTotalBytes).toBeGreaterThanOrEqual(50_000_000);
   });
 
   it("takes the largest declaration when a route has several file fields", async ({
@@ -104,38 +104,38 @@ describe("multipart cap resolution", () => {
     const caps = provider.testResolve(
       routeWith(
         z.object({
-          avatar: z.file({ maxSize: 2_000_000 }),
-          archive: z.file({ maxSize: 40_000_000 }),
+          avatar: z.file({ maxBytes: 2_000_000 }),
+          archive: z.file({ maxBytes: 40_000_000 }),
         }),
       ),
     );
 
-    expect(caps.maxFileSize).toBe(40_000_000);
+    expect(caps.maxFileBytes).toBe(40_000_000);
   });
 
   it("lets a resolver overrule the route's own declaration", async ({
     expect,
   }) => {
-    const provider = await setup({ maxFileSize: 1_000 });
+    const provider = await setup({ maxFileBytes: 1_000 });
 
     // The resolver is the only level that knows where the bytes actually land,
     // which is why it speaks last — even to lower a ceiling the route asked for.
     const caps = provider.testResolve(
-      routeWith(z.object({ file: z.file({ maxSize: 50_000_000 }) })),
+      routeWith(z.object({ file: z.file({ maxBytes: 50_000_000 }) })),
     );
 
-    expect(caps.maxFileSize).toBe(1_000);
+    expect(caps.maxFileBytes).toBe(1_000);
   });
 
   it("keeps the levels a resolver said nothing about", async ({ expect }) => {
     const provider = await setup({ maxParts: 3 });
 
     const caps = provider.testResolve(
-      routeWith(z.object({ file: z.file({ maxSize: 20_000_000 }) })),
+      routeWith(z.object({ file: z.file({ maxBytes: 20_000_000 }) })),
     );
 
     expect(caps.maxParts).toBe(3);
-    expect(caps.maxFileSize).toBe(20_000_000);
+    expect(caps.maxFileBytes).toBe(20_000_000);
   });
 
   it("has no opinion by default, so nothing is raised behind the app's back", async ({
@@ -171,7 +171,7 @@ describe("multipart cap resolution", () => {
       });
 
       const body = await provider.parseMultipart(
-        routeWith(z.object({ file: z.file({ maxSize: 100_000 }) })),
+        routeWith(z.object({ file: z.file({ maxBytes: 100_000 }) })),
         request,
       );
 
@@ -195,7 +195,7 @@ describe("multipart cap resolution", () => {
 
       await expect(
         provider.parseMultipart(
-          routeWith(z.object({ file: z.file({ maxSize: 1_000 }) })),
+          routeWith(z.object({ file: z.file({ maxBytes: 1_000 }) })),
           request,
         ),
       ).rejects.toThrow(/exceeds size limit/i);
@@ -217,7 +217,7 @@ describe("multipart cap resolution", () => {
       // the input that did it — the parser cannot know, so the HTTP layer says.
       await expect(
         provider.parseMultipart(
-          routeWith(z.object({ avatar: z.file({ maxSize: 1_000 }) })),
+          routeWith(z.object({ avatar: z.file({ maxBytes: 1_000 }) })),
           request,
         ),
       ).rejects.toThrow(/"avatar"/);

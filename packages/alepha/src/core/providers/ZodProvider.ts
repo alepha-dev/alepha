@@ -295,7 +295,17 @@ export const z = {
       .meta({ format: "int64" }),
 
   // -- file-like / composite -----------------------------------------------
-  file: (options?: { maxSize?: number }) =>
+  /**
+   * A file field. `maxBytes` caps what the transport will accept for it.
+   *
+   * The unit is in the name on purpose. `$storage({ maxSize })` next door is
+   * declared in **megabytes**, and two fields sharing a name while meaning
+   * different units is not a documentation problem — nobody re-reads a docblock
+   * for a name they believe they know. The mistake is silent in both
+   * directions: bytes read as megabytes accepts a million times too much, and
+   * the reverse refuses everything.
+   */
+  file: (options?: { maxBytes?: number }) =>
     zod.any().meta({ format: "binary", ...options }),
   stream: () => zod.any().meta({ format: "stream" }),
   valueLabel: () =>

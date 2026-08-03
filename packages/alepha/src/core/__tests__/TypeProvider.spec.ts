@@ -1351,13 +1351,16 @@ describe("TypeProvider", () => {
         expect(z.schema.format(schema)).toBe("binary");
       });
 
-      it("should support maxSize option", async () => {
+      it("carries maxBytes through to the schema's metadata", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = z.file({ maxSize: 1024 * 1024 }); // 1MB
+        const schema = z.file({ maxBytes: 1024 * 1024 });
 
-        expect(schema).toBeDefined();
         expect(z.schema.format(schema)).toBe("binary");
+        // Asserted, not merely defined: the multipart layer reads this to
+        // decide the request's budget, and the option spent years being
+        // accepted and never read by anyone.
+        expect(z.schema.meta(schema).maxBytes).toBe(1024 * 1024);
       });
     });
 
