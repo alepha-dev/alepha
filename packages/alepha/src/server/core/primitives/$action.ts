@@ -297,7 +297,7 @@ export class ActionPrimitive<
 
     if (this.options.schema?.params) {
       for (const [key] of Object.entries(
-        this.options.schema.params.properties,
+        z.schema.shape(this.options.schema.params),
       )) {
         path += `/:${key}`;
       }
@@ -404,11 +404,11 @@ export class ActionPrimitive<
         // lowercased to match Node's incoming header convention.
         const schemaHeaders = this.options.schema.headers;
         const headers = serverActionRequest.headers as Record<string, unknown>;
-        for (const key of Object.keys(schemaHeaders.properties)) {
+        for (const key of Object.keys(z.schema.shape(schemaHeaders))) {
           const lcKey = key.toLowerCase();
           if (headers[lcKey] !== undefined) {
             headers[lcKey] = this.alepha.codec.encode(
-              schemaHeaders.properties[key],
+              z.schema.shape(schemaHeaders)[key],
               headers[lcKey],
             );
           }

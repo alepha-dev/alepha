@@ -1,4 +1,4 @@
-import { type Infer, KIND, type ZObject } from "alepha";
+import { type Infer, KIND, type ZObject, z } from "alepha";
 import type { BuildExtraConfigColumns, SQL } from "drizzle-orm";
 import type {
   PgColumn,
@@ -223,8 +223,8 @@ export class EntityPrimitive<T extends ZObject = ZObject> {
 
   get cols(): EntityColumns<T> {
     const cols: Partial<EntityColumns<T>> = {};
-    for (const key of Object.keys(this.schema.properties) as Array<
-      keyof T["properties"]
+    for (const key of Object.keys(z.schema.shape(this.schema)) as Array<
+      keyof T["shape"]
     >) {
       cols[key] = {
         name: key as string,
@@ -264,7 +264,7 @@ $entity[KIND] = EntityPrimitive;
  * Convert a schema to columns.
  */
 export type FromSchema<T extends ZObject> = {
-  [key in keyof T["properties"]]: PgColumnBuilder;
+  [key in keyof T["shape"]]: PgColumnBuilder;
 };
 
 /**
@@ -352,5 +352,5 @@ export type EntityColumn<T extends ZObject> = {
 };
 
 export type EntityColumns<T extends ZObject> = {
-  [key in keyof T["properties"]]: EntityColumn<T>;
+  [key in keyof T["shape"]]: EntityColumn<T>;
 };

@@ -190,17 +190,14 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     const inner = this.unwrap(schema);
 
     if (z.schema.isArray(inner)) {
-      this.assertNoUnion((inner as ZodArray<ZType>).items, `${path}[]`);
+      this.assertNoUnion(z.schema.element(inner)!, `${path}[]`);
       return;
     }
 
     if (z.schema.isObject(inner)) {
-      const props = (inner as ZObject).properties as
-        | Record<string, ZType>
-        | undefined;
-
-      for (const key of Object.keys(props ?? {})) {
-        this.assertNoUnion(props![key], path ? `${path}.${key}` : key);
+      const props = z.schema.shape(inner);
+      for (const key of Object.keys(props)) {
+        this.assertNoUnion(props[key], path ? `${path}.${key}` : key);
       }
     }
   }
@@ -214,19 +211,9 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return false;
     }
 
-    // `anyOf` is the JSON-Schema spelling, `options` zod's own.
-    const asAny = schema as ZodUnion & { options?: unknown };
-    const variants = Array.isArray(asAny.anyOf)
-      ? asAny.anyOf
-      : Array.isArray(asAny.options)
-        ? asAny.options
-        : undefined;
-
-    if (!variants) {
-      return false;
-    }
-
-    return variants.filter((s: any) => !z.schema.isNull(s)).length > 1;
+    return (
+      z.schema.options(schema).filter((s) => !z.schema.isNull(s)).length > 1
+    );
   }
 
   protected isRootWrapper(schema: ZType): boolean {
@@ -297,10 +284,12 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       const arrSchema = schema as ZodArray<ZType>;
       if (!Array.isArray(value)) return value;
 
-      if (z.schema.isScalar(arrSchema.items)) {
+      if (z.schema.isScalar(z.schema.element(arrSchema)!)) {
         return value;
       }
-      return value.map((e) => this.interpretEncode(arrSchema.items, e));
+      return value.map((e) =>
+        this.interpretEncode(z.schema.element(arrSchema)!, e),
+      );
     }
 
     if (z.schema.isObject(schema)) {
@@ -349,9 +338,9 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       const arr = ctx.arr[ctx.i++];
       if (!Array.isArray(arr)) return arr;
 
-      if (z.schema.isObject(arrSchema.items)) {
+      if (z.schema.isObject(z.schema.element(arrSchema)!)) {
         return arr.map((e) =>
-          this.interpretDecodeFromValue(arrSchema.items, e),
+          this.interpretDecodeFromValue(z.schema.element(arrSchema)!, e),
         );
       }
       return arr;
@@ -406,9 +395,9 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     if (z.schema.isArray(schema)) {
       if (!Array.isArray(value)) return value;
       const arrSchema = schema as ZodArray<ZType>;
-      if (z.schema.isObject(arrSchema.items)) {
+      if (z.schema.isObject(z.schema.element(arrSchema)!)) {
         return value.map((e) =>
-          this.interpretDecodeFromValue(arrSchema.items, e),
+          this.interpretDecodeFromValue(z.schema.element(arrSchema)!, e),
         );
       }
       return value;
@@ -416,7 +405,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
 
     if (z.schema.isObject(schema)) {
       const objSchema = schema as ZObject;
-      const props = objSchema.properties as Record<string, ZType>;
+      const props = z.schema.shape(objSchema);
       const keys = Object.keys(props);
       const result: Record<string, any> = {};
 
@@ -456,8 +445,8 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
 
     if (z.schema.isArray(schema)) {
       const arrSchema = schema as ZodArray<ZType>;
-      const itemEnc = this.genEnc(arrSchema.items, "e");
-      if (z.schema.isScalar(arrSchema.items)) {
+      const itemEnc = this.genEnc(z.schema.element(arrSchema)!, "e");
+      if (z.schema.isScalar(z.schema.element(arrSchema)!)) {
         return ve;
       }
       return `${ve}.map(e=>${itemEnc})`;
@@ -510,8 +499,11 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     if (z.schema.isArray(schema)) {
       const arrSchema = schema as ZodArray<ZType>;
       // Check if array items need transformation (objects)
-      if (z.schema.isObject(arrSchema.items)) {
-        const itemTransform = this.genDecFromValue(arrSchema.items, "e");
+      if (z.schema.isObject(z.schema.element(arrSchema)!)) {
+        const itemTransform = this.genDecFromValue(
+          z.schema.element(arrSchema)!,
+          "e",
+        );
         return { code: "", result: `a[i++].map(e=>${itemTransform})` };
       }
       return { code: "", result: "a[i++]" };
@@ -551,8 +543,11 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
         } else if (z.schema.isArray(inner)) {
           // Handle arrays - check if items need transformation
           const arrSchema = inner as ZodArray;
-          if (z.schema.isObject(arrSchema.items)) {
-            const itemTransform = this.genDecFromValue(arrSchema.items, "e");
+          if (z.schema.isObject(z.schema.element(arrSchema)!)) {
+            const itemTransform = this.genDecFromValue(
+              z.schema.element(arrSchema)!,
+              "e",
+            );
             code += `${v}[${sk}]=a[i++].map(e=>${itemTransform});`;
           } else {
             code += `${v}[${sk}]=a[i++];`;
@@ -583,7 +578,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return expr;
     }
     if (z.schema.isArray(schema)) {
-      const items = schema.items as ZType;
+      const items = z.schema.element(schema) as ZType;
       if (z.schema.isObject(items)) {
         const v = this.nextVar();
         return `${expr}.map(${v}=>${this.genDecFromValue(items, v)})`;
@@ -592,7 +587,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     }
     if (z.schema.isObject(schema)) {
       const objSchema = schema as ZObject;
-      const props = objSchema.properties as Record<string, ZType>;
+      const props = z.schema.shape(objSchema);
       const keys = Object.keys(props);
       const v = this.nextVar();
       const fields = keys.map((k, idx) => {
@@ -623,7 +618,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     isNullable: boolean;
     inner: ZType;
   }> {
-    const props = schema.properties as Record<string, ZType>;
+    const props = z.schema.shape(schema);
     const req = new Set(z.schema.requiredKeys(schema));
     return Object.keys(props).map((key) => {
       const ps = props[key];
@@ -660,7 +655,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     // typebox-era nullable was a union `[schema, null]`.
     if (z.schema.isUnion(schema)) {
       const unionSchema = schema as ZodUnion;
-      return unionSchema.anyOf?.some((s: any) => z.schema.isNull(s)) ?? false;
+      return z.schema.options(unionSchema).some((s) => z.schema.isNull(s));
     }
     return false;
   }
@@ -674,11 +669,9 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     // typebox-era nullable union `[schema, null]` — pick the first non-null.
     if (z.schema.isUnion(peeled)) {
       const unionSchema = peeled as ZodUnion;
-      if (Array.isArray(unionSchema.anyOf)) {
-        return (
-          (unionSchema.anyOf.find((s: any) => !z.schema.isNull(s)) as ZType) ||
-          peeled
-        );
+      const variants = z.schema.options(unionSchema);
+      if (variants.length > 0) {
+        return variants.find((s) => !z.schema.isNull(s)) ?? peeled;
       }
     }
     return peeled;
@@ -728,7 +721,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     }
 
     if (z.schema.isArray(inner) && Array.isArray(val)) {
-      const items = (inner as ZodArray<ZType>).items as ZType;
+      const items = z.schema.element(inner)! as ZType;
       if (z.schema.isObject(items)) {
         return val.map((entry) => this.reconstructObject(items, entry));
       }

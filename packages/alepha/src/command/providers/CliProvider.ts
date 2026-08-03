@@ -10,7 +10,6 @@ import {
   type Infer,
   SchemaValidationError,
   type ZObject,
-  type ZodUnion,
   type ZType,
   z,
 } from "alepha";
@@ -615,7 +614,7 @@ export class CliProvider {
     description?: string;
     schema: ZType;
   }> {
-    return Object.entries(schema.properties).map(([key, value]) => {
+    return Object.entries(z.schema.shape(schema)).map(([key, value]) => {
       const meta = this.schemaMeta(value as ZType);
       const extra: string[] = meta.aliases ?? (meta.alias ? [meta.alias] : []);
       return {
@@ -676,9 +675,7 @@ export class CliProvider {
     }
 
     // apply manually defaults for optional properties that have defaults
-    for (const [key, value] of Object.entries(
-      schema.properties as Record<string, ZType>,
-    )) {
+    for (const [key, value] of Object.entries(z.schema.shape(schema))) {
       if (!(key in parsed)) {
         const def = z.schema.getDefault(value);
         if (def !== undefined) {
@@ -709,9 +706,7 @@ export class CliProvider {
     const result: Record<string, any> = {};
     const missing: string[] = [];
 
-    for (const [key, propSchema] of Object.entries(
-      schema.properties as Record<string, ZType>,
-    )) {
+    for (const [key, propSchema] of Object.entries(z.schema.shape(schema))) {
       const value = process.env[key];
 
       if (value !== undefined) {
@@ -820,7 +815,7 @@ export class CliProvider {
       // Check if schema is a union containing boolean (allows flag without value)
       const isUnionWithBoolean =
         z.schema.isUnion(base) &&
-        (base as ZodUnion).anyOf.some((s) => z.schema.isBoolean(s));
+        z.schema.options(base).some((s) => z.schema.isBoolean(s));
 
       if (z.schema.isBoolean(base)) {
         result[def.key] = true;
@@ -902,7 +897,7 @@ export class CliProvider {
       // Check if schema is a union containing boolean
       const isUnionWithBoolean =
         z.schema.isUnion(base) &&
-        (base as ZodUnion).anyOf.some((s) => z.schema.isBoolean(s));
+        z.schema.options(base).some((s) => z.schema.isBoolean(s));
 
       // If not a boolean flag and no = value, the next arg is consumed as the value
       // Exception: union with boolean can work without a value
@@ -951,10 +946,10 @@ export class CliProvider {
           return undefined;
         }
         return this.parseArgumentValue(argsOnly[0], schema);
-      } else if (z.schema.isTuple(schema) && schema.items) {
+      } else if (z.schema.items(schema).length > 0) {
         // Handle tuple args: z.tuple([z.text(), z.number()])
         const result: any[] = [];
-        const items = schema.items;
+        const items = z.schema.items(schema);
         for (let i = 0; i < items.length; i++) {
           const itemSchema = items[i];
           if (i < argsOnly.length) {
@@ -1031,8 +1026,8 @@ export class CliProvider {
       return ` [${key}${typeName}]`;
     }
 
-    if (z.schema.isTuple(schema) && schema.items) {
-      const items = schema.items;
+    if (z.schema.items(schema).length > 0) {
+      const items = z.schema.items(schema);
       const args = items.map((item, index) => {
         const argName = `arg${index + 1}`;
         const typeName = this.getTypeName(item);
@@ -1177,7 +1172,7 @@ export class CliProvider {
         }
 
         // Show environment variables if defined
-        const envVars = Object.entries(command.env.properties);
+        const envVars = Object.entries(z.schema.shape(command.env));
         if (envVars.length > 0) {
           this.log.info("");
           this.log.info(c.set("WHITE_BOLD", "Env:"));
@@ -1279,8 +1274,8 @@ export class CliProvider {
       return ` ${c.set("GREY_DARK", `[${key}${typeName}]`)}`;
     }
 
-    if (z.schema.isTuple(schema) && schema.items) {
-      const items = schema.items;
+    if (z.schema.items(schema).length > 0) {
+      const items = z.schema.items(schema);
       const args = items.map((item, index) => {
         const argName = `arg${index + 1}`;
         const typeName = this.getTypeName(item);
@@ -1427,7 +1422,7 @@ export class CliProvider {
 
     // A union of string literals (alternative enum representation).
     if (z.schema.isUnion(base)) {
-      const variants = (base as any).anyOf ?? [];
+      const variants = z.schema.options(base);
       const values: string[] = [];
 
       for (const variant of variants) {

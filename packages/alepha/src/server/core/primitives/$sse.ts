@@ -10,6 +10,7 @@ import {
   type PipelinePrimitiveOptions,
   type ZObject,
   type ZType,
+  z,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import type { RouteMethod } from "../constants/routeMethods.ts";
@@ -473,7 +474,7 @@ export class SsePrimitive<
 
     if (this.options.schema?.params) {
       for (const [key] of Object.entries(
-        this.options.schema.params.properties,
+        z.schema.shape(this.options.schema.params),
       )) {
         path += `/:${key}`;
       }

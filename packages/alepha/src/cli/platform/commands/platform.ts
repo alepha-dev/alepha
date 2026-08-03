@@ -212,7 +212,7 @@ export class PlatformCommand {
     mode: "production",
     description: "Build, migrate, and deploy",
     flags: z.object({
-      ...this.envFlags.properties,
+      ...this.envFlags.shape,
       prebuilt: z
         .boolean()
         .describe(
@@ -272,7 +272,7 @@ export class PlatformCommand {
     name: "down",
     description: "Tear down an environment",
     flags: z.object({
-      ...this.envFlags.properties,
+      ...this.envFlags.shape,
       yes: z
         .boolean()
         .meta({ aliases: ["y"] })
@@ -711,7 +711,7 @@ export class PlatformCommand {
     description:
       "Export the deployed database to a local snapshot (remote → local dev DB).",
     flags: z.object({
-      ...this.envFlags.properties,
+      ...this.envFlags.shape,
       output: z
         .text({
           description:
@@ -773,7 +773,7 @@ export class PlatformCommand {
     description:
       "Record the baseline migration as already applied on the deployed D1 database, without executing it.",
     flags: z.object({
-      ...this.envFlags.properties,
+      ...this.envFlags.shape,
       reset: z
         .boolean()
         .describe(

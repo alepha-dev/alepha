@@ -459,7 +459,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     // doesn't emit `form:change` for deleted keys, so inputs stay
     // visually populated and subscribers don't refetch. Explicit set
     // keeps everyone in sync.
-    const keys = Object.keys(props.filters.schema.properties ?? {});
+    const keys = Object.keys(z.schema.shape(props.filters.schema));
     for (const key of keys) {
       const input = (form.input as Record<string, { set?: (v: any) => void }>)[
         key

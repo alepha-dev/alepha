@@ -80,14 +80,14 @@ export function ControlObject(props: ControlObjectProps) {
   });
 
   // The field schema may be wrapped (optional/nullable/default); peel to the
-  // ZodObject so `.properties` (→ `.shape`) resolves.
+  // ZodObject before reading its shape.
   const schema = z.schema.unwrap(props.input.schema) as ZObject;
-  if (!schema?.properties) return null;
+  if (!z.schema.isObject(schema)) return null;
 
   // ── Init / clear ────────────────────────────────────────────────
   const isInitialized = value != null && typeof value === "object";
 
-  const fieldNames = Object.keys(schema.properties);
+  const fieldNames = Object.keys(z.schema.shape(schema));
   const nestedItems = (props.input as ObjectInputField<ZObject>).items as
     | Record<string, BaseInputField>
     | undefined;

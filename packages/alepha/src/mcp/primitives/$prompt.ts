@@ -189,7 +189,7 @@ export class PromptPrimitive<T extends ZObject> extends Primitive<
   protected schemaToArguments(schema: ZObject): McpPromptArgument[] {
     const args: McpPromptArgument[] = [];
 
-    for (const [name, propSchema] of Object.entries(schema.properties)) {
+    for (const [name, propSchema] of Object.entries(z.schema.shape(schema))) {
       // The description lives on the inner schema; peel optional/nullable/default
       // wrappers so `z.number({ description }).optional()` still surfaces it.
       const prop = z.schema.unwrap(propSchema) as Record<string, unknown>;

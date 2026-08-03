@@ -248,7 +248,7 @@ export class ServerSwaggerProvider {
           route.options.schema.query,
         );
         for (const [key, value] of Object.entries(
-          route.options.schema.query.properties,
+          z.schema.shape(route.options.schema.query),
         )) {
           const param: any = {
             name: key,
@@ -265,7 +265,7 @@ export class ServerSwaggerProvider {
       if (z.schema.isObject(route.options.schema.params)) {
         operation.parameters ??= [];
         for (const [key, value] of Object.entries(
-          route.options.schema.params.properties,
+          z.schema.shape(route.options.schema.params),
         )) {
           const valueMeta =
             typeof (value as any)?.meta === "function"
@@ -324,8 +324,9 @@ export class ServerSwaggerProvider {
   }
 
   public isBodyMultipart(schema: ZObject): boolean {
-    for (const key in schema.properties) {
-      if (isTypeFile(schema.properties[key])) {
+    const shape = z.schema.shape(schema);
+    for (const key in shape) {
+      if (isTypeFile(shape[key])) {
         return true;
       }
     }

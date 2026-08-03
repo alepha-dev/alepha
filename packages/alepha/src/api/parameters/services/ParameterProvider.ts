@@ -1002,7 +1002,7 @@ export class ParameterProvider {
     }
 
     // Step 2: Strip unknown keys and check if DB value is valid for new schema
-    const schemaKeys = new Set(Object.keys(schema.properties));
+    const schemaKeys = new Set(Object.keys(z.schema.shape(schema)));
     const stripped = this.pickSchemaKeys(
       dbValue as Record<string, unknown>,
       schemaKeys,

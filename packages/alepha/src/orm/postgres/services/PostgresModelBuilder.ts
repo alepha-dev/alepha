@@ -164,7 +164,7 @@ export class PostgresModelBuilder extends ModelBuilder {
     enums: Map<string, unknown>,
     tables: Map<string, unknown>,
   ): FromSchema<T> => {
-    return Object.entries(schema.properties as Record<string, any>).reduce<
+    return Object.entries(z.schema.shape(schema)).reduce<
       Partial<FromSchema<T>>
     >((columns, [key, value]) => {
       let col = this.mapFieldToColumn(tableName, key, value, nsp, enums);
@@ -319,7 +319,7 @@ export class PostgresModelBuilder extends ModelBuilder {
     }
 
     if (z.schema.isArray(value)) {
-      const items = value.items;
+      const items = z.schema.element(value);
       if (z.schema.isObject(items)) {
         return schema(key, value);
       }

@@ -1,4 +1,4 @@
-import type { Alepha, Infer, ZObject } from "alepha";
+import { type Alepha, type Infer, type ZObject, z } from "alepha";
 import { useAlepha } from "alepha/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "./useRouter.ts";
@@ -49,7 +49,7 @@ export const useQueryParams = <T extends ZObject>(
   // relevant part of the URL actually changes.
   const signature =
     format === "querystring"
-      ? Object.keys(schema.properties)
+      ? Object.keys(z.schema.shape(schema))
           .map((name) => `${name}=${router.query[name] ?? ""}`)
           .join("&")
       : router.query[key];
@@ -131,10 +131,10 @@ const decodeQueryString = <T extends ZObject>(
 ): Partial<Infer<T>> | undefined => {
   try {
     const out: Record<string, any> = {};
-    for (const name of Object.keys(schema.properties)) {
+    for (const name of Object.keys(z.schema.shape(schema))) {
       const raw = query[name];
       if (raw != null && raw !== "") {
-        out[name] = alepha.codec.decode(schema.properties[name], raw);
+        out[name] = alepha.codec.decode(z.schema.shape(schema)[name], raw);
       }
     }
     return out as Partial<Infer<T>>;
@@ -156,7 +156,7 @@ const writeQueryString = (
 ): Record<string, any> => {
   const decoded = alepha.codec.decode(schema, next) as Record<string, any>;
   const merged = { ...current };
-  for (const name of Object.keys(schema.properties)) {
+  for (const name of Object.keys(z.schema.shape(schema))) {
     const value = decoded?.[name];
     if (value == null || value === "") {
       delete merged[name];

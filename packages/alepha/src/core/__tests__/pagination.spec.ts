@@ -71,7 +71,7 @@ describe("Pagination (Core)", () => {
     const schema = pageSchema(itemSchema);
 
     expect(schema).toBeDefined();
-    expect(schema.properties.content).toBeDefined();
-    expect(schema.properties.page).toBeDefined();
+    expect(z.schema.shape(schema).content).toBeDefined();
+    expect(z.schema.shape(schema).page).toBeDefined();
   });
 });

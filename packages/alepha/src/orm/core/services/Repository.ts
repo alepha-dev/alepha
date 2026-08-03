@@ -135,7 +135,7 @@ export abstract class Repository<T extends ZObject> {
    */
   public get id(): {
     type: ZType;
-    key: keyof T["properties"];
+    key: keyof T["shape"];
     col: PgColumn;
   } {
     return this.getPrimaryKey(this.entity.schema);
@@ -1162,7 +1162,7 @@ export abstract class Repository<T extends ZObject> {
     }
 
     // in save mode, we do not ignore undefined values, but set them to null
-    for (const key of Object.keys(this.entity.schema.properties)) {
+    for (const key of Object.keys(z.schema.shape(this.entity.schema))) {
       if (row[key] === undefined) {
         row[key] = null;
       }
@@ -1190,7 +1190,7 @@ export abstract class Repository<T extends ZObject> {
 
     try {
       const newValue = await this.updateOne(where, row, opts);
-      for (const key of Object.keys(this.entity.schema.properties)) {
+      for (const key of Object.keys(z.schema.shape(this.entity.schema))) {
         row[key] = undefined;
       }
       Object.assign(row, newValue);
@@ -1948,8 +1948,8 @@ export abstract class Repository<T extends ZObject> {
     row: Record<string, unknown>,
     schema: T,
   ): Infer<T> {
-    for (const key of Object.keys(schema.properties)) {
-      const prop = schema.properties[key];
+    for (const key of Object.keys(z.schema.shape(schema))) {
+      const prop = z.schema.shape(schema)[key];
       // Unwrap optional/nullable so format detection works on the base type.
       const value = z.schema.unwrap(prop);
 

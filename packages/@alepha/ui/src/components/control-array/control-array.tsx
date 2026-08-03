@@ -193,9 +193,9 @@ const objectVariants = (itemSchema: ZType): ZObject[] | null => {
 const discriminantOf = (variants: ZObject[]): string | null => {
   const [first] = variants;
   if (!first) return null;
-  for (const name of Object.keys(first.properties)) {
+  for (const name of Object.keys(z.schema.shape(first))) {
     const values = variants.map((variant) =>
-      literalValueOf(variant.properties?.[name]),
+      literalValueOf(z.schema.shape(variant)[name]),
     );
     if (values.every((value) => typeof value === "string")) {
       const unique = new Set(values as string[]);
@@ -229,7 +229,7 @@ const variantLabel = (
   index: number,
 ): string => {
   const value = discriminant
-    ? literalValueOf(variant.properties?.[discriminant])
+    ? literalValueOf(z.schema.shape(variant)[discriminant])
     : undefined;
   return typeof value === "string" ? value : `#${index + 1}`;
 };
@@ -261,7 +261,7 @@ const buildFieldInput = (
   itemValue: Record<string, unknown> | undefined,
   onFieldChange: (field: string, value: unknown) => void,
 ): BaseInputField => ({
-  schema: itemSchema.properties[fieldName],
+  schema: z.schema.shape(itemSchema)[fieldName],
   path: `${parent.path}/${index}/${fieldName}`,
   required: z.schema.requiredKeys(itemSchema).includes(fieldName),
   form: parent.form,
@@ -290,9 +290,15 @@ export function ControlArray(props: ControlArrayProps) {
   });
 
   const schema = props.input.schema;
-  if (!schema || !("items" in schema)) return null;
+  // `isArray`, not `"items" in schema`: that spelling tested for a prototype
+  // alias rather than for an array schema, so it answered false once the alias
+  // went away — and the whole control rendered nothing, Add button included.
+  if (!z.schema.isArray(schema)) return null;
 
-  const itemSchema = (schema as { items: ZType }).items;
+  // `z.schema.element`, not `.items`: the latter only ever resolved through a
+  // prototype alias on ZodArray, so it silently became `undefined` — and with
+  // no item schema the control renders neither fields nor tabs.
+  const itemSchema = z.schema.element(schema) as ZType;
   const variants = objectVariants(itemSchema);
   const discriminant = variants ? discriminantOf(variants) : null;
 
@@ -303,14 +309,15 @@ export function ControlArray(props: ControlArrayProps) {
    */
   const schemaForValue = (value: unknown): ZObject | null => {
     if (!variants) {
-      return itemSchema && "properties" in itemSchema
-        ? (itemSchema as ZObject)
-        : null;
+      // `isObject`, not `"properties" in itemSchema`: the latter tested for a
+      // prototype alias, so it answered false as soon as the alias went away.
+      return z.schema.isObject(itemSchema) ? (itemSchema as ZObject) : null;
     }
     if (discriminant && value && typeof value === "object") {
       const tag = (value as Record<string, unknown>)[discriminant];
       const match = variants.find(
-        (variant) => literalValueOf(variant.properties?.[discriminant]) === tag,
+        (variant) =>
+          literalValueOf(z.schema.shape(variant)[discriminant]) === tag,
       );
       if (match) return match;
     }
@@ -319,7 +326,7 @@ export function ControlArray(props: ControlArrayProps) {
 
   const objectItemSchema = schemaForValue(items[0]?.value);
   const fieldNames = objectItemSchema
-    ? Object.keys(objectItemSchema.properties)
+    ? Object.keys(z.schema.shape(objectItemSchema))
     : [];
 
   // Schema-driven max/min if present
@@ -332,7 +339,7 @@ export function ControlArray(props: ControlArrayProps) {
   // Tabs heuristic: forced or nested complex item or many items
   const hasComplexFields = objectItemSchema
     ? fieldNames.some((n) => {
-        const p = objectItemSchema.properties[n] as { type?: string };
+        const p = z.schema.shape(objectItemSchema)[n] as { type?: string };
         return p?.type === "object" || p?.type === "array";
       })
     : false;
@@ -346,9 +353,7 @@ export function ControlArray(props: ControlArrayProps) {
     let value: unknown;
     if (shape) {
       value = {};
-      for (const [k, p] of Object.entries(
-        shape.properties as Record<string, ZType>,
-      )) {
+      for (const [k, p] of Object.entries(z.schema.shape(shape))) {
         const def = z.schema.getDefault(p);
         if (def !== undefined) (value as Record<string, unknown>)[k] = def;
         // Stamp the discriminant so the new item resolves to its variant.
@@ -418,7 +423,7 @@ export function ControlArray(props: ControlArrayProps) {
     // Resolved per item: in a union each row may be a different variant.
     const itemObjectSchema = schemaForValue(item.value);
     const itemFieldNames = itemObjectSchema
-      ? Object.keys(itemObjectSchema.properties)
+      ? Object.keys(z.schema.shape(itemObjectSchema))
       : [];
     return itemObjectSchema ? (
       <div className={`grid gap-3 ${colsClass[columns]}`}>

@@ -1,4 +1,4 @@
-import { $inject, SchemaValidator, type ZObject } from "alepha";
+import { $inject, SchemaValidator, type ZObject, z } from "alepha";
 import { getTableName, type SQL, sql } from "drizzle-orm";
 import type { PgSelectBase, PgTableWithColumns } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
@@ -126,8 +126,11 @@ export class PgRelationManager {
         joinSchema = this.buildSchemaWithJoins(join.schema, joins, joinPath);
       }
 
-      // Make the join optional (left joins may return null)
-      schema.properties[join.key] = joinSchema.optional();
+      // Make the join optional (left joins may return null).
+      // Writes into the shape in place — `z.schema.shape` hands back the very
+      // object zod holds, so this is the same mutation it always was, just
+      // without going through the patched alias.
+      z.schema.shape(schema)[join.key] = joinSchema.optional();
     }
 
     return schema;

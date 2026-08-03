@@ -112,7 +112,7 @@ export class SqliteModelBuilder extends ModelBuilder {
     enums: Map<string, unknown>,
     tables: Map<string, unknown>,
   ): SchemaToSqliteBuilder<T> => {
-    return Object.entries(schema.properties as Record<string, any>).reduce<
+    return Object.entries(z.schema.shape(schema)).reduce<
       Partial<SchemaToSqliteBuilder<T>>
     >((columns, [key, value]) => {
       let col = this.mapFieldToSqliteColumn(tableName, key, value, enums);
@@ -237,28 +237,28 @@ export class SqliteModelBuilder extends ModelBuilder {
     }
 
     if (z.schema.isArray(value)) {
-      if (z.schema.isObject(value.items)) {
+      if (z.schema.isObject(z.schema.element(value))) {
         return this.sqliteJson(key, value);
       }
-      if (z.schema.isRecord(value.items)) {
+      if (z.schema.isRecord(z.schema.element(value))) {
         return this.sqliteJson(key, value);
       }
-      if (z.schema.isAny(value.items)) {
+      if (z.schema.isAny(z.schema.element(value))) {
         return this.sqliteJson(key, value);
       }
-      if (z.schema.isString(value.items)) {
+      if (z.schema.isString(z.schema.element(value))) {
         return this.sqliteJson(key, value);
       }
-      if (z.schema.isInteger(value.items)) {
+      if (z.schema.isInteger(z.schema.element(value))) {
         return this.sqliteJson(key, value);
       }
-      if (z.schema.isNumber(value.items)) {
+      if (z.schema.isNumber(z.schema.element(value))) {
         return this.sqliteJson(key, value);
       }
-      if (z.schema.isBoolean(value.items)) {
+      if (z.schema.isBoolean(z.schema.element(value))) {
         return this.sqliteJson(key, value);
       }
-      if (z.schema.isEnum(value.items)) {
+      if (z.schema.isEnum(z.schema.element(value))) {
         return this.sqliteJson(key, value);
       }
     }
@@ -361,5 +361,5 @@ export class SqliteModelBuilder extends ModelBuilder {
 }
 
 export type SchemaToSqliteBuilder<T extends ZObject> = {
-  [key in keyof T["properties"]]: SQLiteColumnBuilder;
+  [key in keyof T["shape"]]: SQLiteColumnBuilder;
 };

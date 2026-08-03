@@ -675,7 +675,7 @@ export class FormModel<T extends ZObject> {
 }
 
 export type SchemaToInput<T extends ZObject> = {
-  [K in keyof T["properties"]]: InputField<T["properties"][K]>;
+  [K in keyof T["shape"]]: InputField<T["shape"][K]>;
 };
 
 export interface FormEventLike {

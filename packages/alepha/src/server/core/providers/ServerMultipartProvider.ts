@@ -216,7 +216,9 @@ export class ServerMultipartProvider {
     let totalSize = 0;
 
     if (route.schema?.body && z.schema.isObject(route.schema.body)) {
-      for (const [key, value] of Object.entries(route.schema.body.properties)) {
+      for (const [key, value] of Object.entries(
+        z.schema.shape(route.schema.body),
+      )) {
         if (!z.schema.isSchema(value)) {
           continue;
         }

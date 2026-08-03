@@ -128,7 +128,7 @@ export const parseField = (
     typeof z.schema.format(schema) === "string"
       ? z.schema.format(schema)
       : undefined;
-  const element = (schema as any).element ?? (schema as any).items;
+  const element = z.schema.element(schema) ?? z.schema.items(schema)[0];
   // An array of a UNION of objects is still an array of objects for editing
   // purposes — `z.array(z.union([...]))` is how a heterogeneous list (a
   // discriminated one, most often) is spelled, and classifying it as scalars
@@ -196,13 +196,8 @@ export const unionVariants = (schema: unknown): ZType[] | undefined => {
   if (!schema || !z.schema.isUnion(schema as ZType)) {
     return undefined;
   }
-  const asAny = schema as { anyOf?: unknown; options?: unknown };
-  const variants = Array.isArray(asAny.anyOf)
-    ? asAny.anyOf
-    : Array.isArray(asAny.options)
-      ? asAny.options
-      : undefined;
-  return variants as ZType[] | undefined;
+  const variants = z.schema.options(schema as ZType);
+  return variants.length > 0 ? variants : undefined;
 };
 
 /**

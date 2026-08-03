@@ -350,13 +350,13 @@ export const testGeneratedColumnExcludedFromInsertSchema = async (
   });
 
   // Verify insertSchema does not contain generated column
-  const insertProps = Object.keys(entity.insertSchema.properties);
+  const insertProps = Object.keys(z.schema.shape(entity.insertSchema));
   expect(insertProps).toContain("a");
   expect(insertProps).toContain("b");
   expect(insertProps).not.toContain("computed");
 
   // Verify updateSchema does not contain generated column
-  const updateProps = Object.keys(entity.updateSchema.properties);
+  const updateProps = Object.keys(z.schema.shape(entity.updateSchema));
   expect(updateProps).toContain("a");
   expect(updateProps).toContain("b");
   expect(updateProps).not.toContain("computed");

@@ -8,6 +8,7 @@ import {
   isTypeFile,
   type Middleware,
   PipelineHandler,
+  type ZObject,
   z,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
@@ -51,11 +52,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   /**
    * Get cached keys for a query schema, computing them lazily on first access.
    */
-  protected getQuerySchemaKeys(schema: { properties: object }): string[] {
-    let keys = this.queryKeysCache.get(schema.properties);
+  protected getQuerySchemaKeys(schema: ZObject): string[] {
+    let keys = this.queryKeysCache.get(z.schema.shape(schema));
     if (!keys) {
-      keys = Object.keys(schema.properties);
-      this.queryKeysCache.set(schema.properties, keys);
+      keys = Object.keys(z.schema.shape(schema));
+      this.queryKeysCache.set(z.schema.shape(schema), keys);
     }
     return keys;
   }
@@ -505,10 +506,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         // zod validation with "expected number, received string".
         const schemaParams = route.schema.params;
         const coerced: Record<string, unknown> = { ...request.params };
-        for (const key of Object.keys(schemaParams.properties)) {
+        for (const key of Object.keys(z.schema.shape(schemaParams))) {
           if (coerced[key] != null) {
             coerced[key] = this.coerceParam(
-              schemaParams.properties[key],
+              z.schema.shape(schemaParams)[key],
               coerced[key],
             );
           }
@@ -530,7 +531,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
         for (const key of keys) {
           if (request.query[key] != null) {
-            const propSchema = schemaQuery.properties[key];
+            const propSchema = z.schema.shape(schemaQuery)[key];
             query[key] = this.alepha.codec.decode(
               propSchema,
               this.coerceParam(propSchema, request.query[key]),
@@ -558,13 +559,13 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         // `request.headers` so undeclared headers (auth, cookie, user-agent,
         // ...) survive the validation step intact.
         const decoded: Record<string, unknown> = {};
-        for (const key of Object.keys(schemaHeaders.properties)) {
+        for (const key of Object.keys(z.schema.shape(schemaHeaders))) {
           const lcKey = key.toLowerCase();
           const value = request.headers[lcKey];
           if (value == null) continue;
           decoded[key] = this.alepha.codec.decode(
-            schemaHeaders.properties[key],
-            this.coerceParam(schemaHeaders.properties[key], value),
+            z.schema.shape(schemaHeaders)[key],
+            this.coerceParam(z.schema.shape(schemaHeaders)[key], value),
           );
         }
 

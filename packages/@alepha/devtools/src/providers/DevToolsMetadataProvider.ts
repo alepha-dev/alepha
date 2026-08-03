@@ -366,7 +366,7 @@ export class DevToolsMetadataProvider {
 
         // Extract columns from schema
         const columns: DevEntityColumn[] = Object.entries(
-          schema.properties,
+          z.schema.shape(schema),
         ).map(([name, field]) => {
           const fieldSchema = field as ZType & Record<symbol, any>;
           const refData = fieldSchema[PG_REF];
@@ -518,8 +518,8 @@ export class DevToolsMetadataProvider {
 
   protected getColumnType(field: ZType): string {
     // Handle optional/nullable wrappers (unions with null)
-    if (z.schema.isUnion(field) && (field as any).anyOf) {
-      const types = (field as any).anyOf as ZType[];
+    if (z.schema.isUnion(field)) {
+      const types = z.schema.options(field);
       const nonNull = types.find((type) => !z.schema.isNull(type));
       if (nonNull) {
         return this.getColumnType(nonNull);
@@ -557,8 +557,8 @@ export class DevToolsMetadataProvider {
   }
 
   protected isNullable(field: ZType): boolean {
-    if (z.schema.isUnion(field) && (field as any).anyOf) {
-      const types = (field as any).anyOf as ZType[];
+    if (z.schema.isUnion(field)) {
+      const types = z.schema.options(field);
       return types.some((type) => z.schema.isNull(type));
     }
     return false;

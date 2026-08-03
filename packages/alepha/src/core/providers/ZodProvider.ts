@@ -1,6 +1,5 @@
 import { z as zod } from "zod";
 import enLocale from "zod/v4/locales/en.js";
-import "./zodAugment.ts";
 
 // Re-activate zod's English error map. zod's classic entry does this as a module
 // side effect (`config(en())`) so messages read "Too small: expected string to

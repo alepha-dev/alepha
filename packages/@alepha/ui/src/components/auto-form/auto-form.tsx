@@ -26,7 +26,7 @@ import {
   PopoverTrigger,
 } from "@alepha/ui/components/ui/popover";
 import { cn } from "@alepha/ui/lib/utils";
-import type { ZObject } from "alepha";
+import { type ZObject, z } from "alepha";
 import { useAlepha } from "alepha/react";
 import {
   type BaseInputField,
@@ -158,7 +158,7 @@ export interface AutoFormProps<T extends ZObject> {
    * Per-field control overrides keyed by field name (also works without groups).
    */
   fields?: Partial<
-    Record<keyof T["properties"] & string, Partial<Omit<ControlProps, "input">>>
+    Record<keyof T["shape"] & string, Partial<Omit<ControlProps, "input">>>
   >;
 
   /**
@@ -286,11 +286,10 @@ export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
   const { dirty, loading } = useFormState(props.form, ["dirty", "loading"]);
   const inputs = props.form.input as Record<string, never>;
 
-  const schema =
-    (props.form.options.schema as ZObject) ??
-    ({
-      properties: {},
-    } as ZObject);
+  // `z.object({})` rather than a hand-made `{ properties: {} }`: the latter
+  // only ever worked because a prototype alias made `.properties` readable on
+  // a schema, so a fake object with that key passed for one.
+  const schema = (props.form.options.schema as ZObject) ?? z.object({});
 
   // ── Auto-save ─────────────────────────────────────────────────────
   // Text fields (string) are intentionally excluded: typing should not commit
@@ -310,7 +309,7 @@ export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
       // FormModel paths look like "/title" or "/contacts/0/email". The
       // top-level key is the first segment after the leading slash.
       const top = ev.path.replace(/^\//, "").split("/")[0];
-      const fieldSchema = (schema.properties as Record<string, unknown>)?.[top];
+      const fieldSchema = z.schema.shape(schema)[top];
       const fieldConfig = resolveControlConfig(
         top,
         props.fields as Record<string, unknown> | undefined,
@@ -359,7 +358,7 @@ export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
     }
     return [
       {
-        fields: Object.keys(schema.properties ?? {}),
+        fields: Object.keys(z.schema.shape(schema)),
       },
     ];
   }, [props.groups, props.autoGroup, schema]);
@@ -841,7 +840,7 @@ const autoGroupSchema = (
   };
   const groups: AutoFormGroup[] = [];
 
-  for (const [key, prop] of Object.entries(schema.properties ?? {})) {
+  for (const [key, prop] of Object.entries(z.schema.shape(schema))) {
     const p = prop as {
       type?: string;
       items?: unknown;
@@ -852,7 +851,7 @@ const autoGroupSchema = (
     // lands in the "General" grid and gets a third of a row to render a list
     // of object editors in.
     const isArrayOfObjects =
-      p.type === "array" && isObjectOrUnionOfObjects(p.element ?? p.items);
+      p.type === "array" && isObjectOrUnionOfObjects(p.element);
     if (isObject || isArrayOfObjects) {
       // Solo complex fields render their own header (label + description +
       // chevron + add/init), so we skip the group bar to avoid a

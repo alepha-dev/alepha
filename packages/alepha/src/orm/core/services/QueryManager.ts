@@ -1,4 +1,4 @@
-import { $inject, Alepha, AlephaError, type ZObject } from "alepha";
+import { $inject, Alepha, AlephaError, type ZObject, z } from "alepha";
 import {
   and,
   arrayContained,
@@ -304,7 +304,7 @@ export class QueryManager {
       // If we have schema information, encode the value properly
       if (columnSchema && columnName) {
         try {
-          const fieldSchema = columnSchema.properties[columnName];
+          const fieldSchema = z.schema.shape(columnSchema)[columnName];
           if (fieldSchema) {
             // Encode the value using the drizzle codec
             // This converts application values (like Dayjs) to database values (like ISO strings)

@@ -1,4 +1,4 @@
-import { AlephaError } from "alepha";
+import { AlephaError, z } from "alepha";
 import type { SQL } from "drizzle-orm";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { SequencePrimitive } from "../primitives/$sequence.ts";
@@ -97,9 +97,7 @@ export abstract class ModelBuilder {
     column: string,
     kind: string,
   ): string {
-    const known = Object.keys(entity.schema.properties ?? {})
-      .sort()
-      .join(", ");
+    const known = Object.keys(z.schema.shape(entity.schema)).sort().join(", ");
 
     return `Entity '${entity.name}' declares a ${kind} on unknown column '${column}'. Known columns: ${known}`;
   }
@@ -115,7 +113,7 @@ export abstract class ModelBuilder {
    * runs eagerly here against the declared schema.
    */
   protected assertConfigColumnsExist(entity: EntityPrimitive): void {
-    const declared = new Set(Object.keys(entity.schema.properties ?? {}));
+    const declared = new Set(Object.keys(z.schema.shape(entity.schema)));
 
     const assert = (column: string, kind: string) => {
       if (!declared.has(column)) {
