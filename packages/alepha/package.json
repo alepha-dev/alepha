@@ -474,6 +474,11 @@
       "import": "./src/server/metrics/index.ts",
       "default": "./src/server/metrics/index.ts"
     },
+    "./server/multipart": {
+      "types": "./src/server/multipart/index.ts",
+      "import": "./src/server/multipart/index.ts",
+      "default": "./src/server/multipart/index.ts"
+    },
     "./server/proxy": {
       "types": "./src/server/proxy/index.ts",
       "import": "./src/server/proxy/index.ts",
@@ -907,6 +912,11 @@
         "types": "./dist/server/metrics/index.d.ts",
         "import": "./dist/server/metrics/index.js",
         "default": "./dist/server/metrics/index.js"
+      },
+      "./server/multipart": {
+        "types": "./dist/server/multipart/index.d.ts",
+        "import": "./dist/server/multipart/index.js",
+        "default": "./dist/server/multipart/index.js"
       },
       "./server/proxy": {
         "types": "./dist/server/proxy/index.d.ts",
