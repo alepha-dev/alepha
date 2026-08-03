@@ -36,6 +36,28 @@ services:
       # test fails with the broker simply absent.
       EMQX_NODE__NAME: "emqx@127.0.0.1"
 
+  # A local npm registry, for rehearsing a release before it is irreversible.
+  #
+  # `yarn v` proves the monorepo is green, but it proves it against the
+  # workspace: in here `node_modules/.bin/alepha` points at
+  # `packages/alepha/src/bin/index.ts` — raw TypeScript, type-stripped by node.
+  # What npm ships is `dist/bin/index.js`, because `publishConfig` rewrites
+  # `main`, `types`, `bin` and the whole `exports` map at publish time. Nothing
+  # in the pipeline runs that second artifact, so a broken `exports` subpath or
+  # a `files` entry left behind is only discovered by whoever installs it.
+  #
+  # Publish here, install from here into a directory outside the workspace, and
+  # the artifact is the one npm would have served. Config in
+  # `scripts/verdaccio.yaml` — read the comment there before changing it, the
+  # missing `proxy` on our own packages is deliberate.
+  verdaccio:
+    restart: always
+    image: verdaccio/verdaccio:latest
+    ports:
+      - "14873:4873"
+    volumes:
+      - ./scripts/verdaccio.yaml:/verdaccio/conf/config.yaml:ro
+
   # Bay's checks, on the platform Bay ships for.
   #
   # The odd one out in this file: everything above is a daemon that stays up

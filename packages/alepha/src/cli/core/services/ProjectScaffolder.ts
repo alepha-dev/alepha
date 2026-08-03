@@ -11,6 +11,7 @@ import { apiIndexTs } from "../templates/apiIndexTs.ts";
 import { biomeJson } from "../templates/biomeJson.ts";
 import { dummySpecTs } from "../templates/dummySpecTs.ts";
 import { editorconfig } from "../templates/editorconfig.ts";
+import { envExample } from "../templates/envExample.ts";
 import { gitignore } from "../templates/gitignore.ts";
 import { logoSvg } from "../templates/logoSvg.ts";
 import { mainBrowserTs } from "../templates/mainBrowserTs.ts";
@@ -74,6 +75,10 @@ export class ProjectScaffolder {
       tsconfigJson?: boolean;
       biomeJson?: boolean;
       editorconfig?: boolean;
+      /**
+       * Write `.env.example`, the committed template for `.env`.
+       */
+      envExample?: boolean;
       agentMd?: boolean;
       /**
        * Write `.vscode/settings.json` pointing the editor's TypeScript
@@ -104,6 +109,9 @@ export class ProjectScaffolder {
     }
     if (opts.editorconfig) {
       tasks.push(this.ensureEditorConfig(root, { force, checkWorkspace }));
+    }
+    if (opts.envExample) {
+      tasks.push(this.ensureEnvExample(root, { force }));
     }
     if (opts.agentMd) {
       tasks.push(this.ensureAgentMd(root, { force }));
@@ -159,6 +167,19 @@ export class ProjectScaffolder {
       return;
     }
     await this.ensureFile(root, ".editorconfig", editorconfig(), opts.force);
+  }
+
+  /**
+   * Write `.env.example`.
+   *
+   * Not tied to `ensureGitRepo` like `.gitignore` is: a project that already
+   * has a `.git` still needs to be told that `APP_SECRET` exists.
+   */
+  public async ensureEnvExample(
+    root: string,
+    opts: { force?: boolean } = {},
+  ): Promise<void> {
+    await this.ensureFile(root, ".env.example", envExample(), opts.force);
   }
 
   /**
@@ -499,6 +520,9 @@ export class ProjectScaffolder {
           tsconfigJson: !workspace.config.tsconfigJson,
           biomeJson: true,
           editorconfig: !workspace.config.editorconfig,
+          // Same rule as the agent files: a project root owns its env, a
+          // monorepo sub-package reads the workspace root's.
+          envExample: writeAgentMd,
           agentMd: writeAgentMd,
           // Editor TS-server pointer at a project root only; monorepo
           // sub-packages inherit the workspace-root `.vscode/`.

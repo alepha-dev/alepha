@@ -293,7 +293,17 @@ export class ViteDevServerProvider {
                 );
                 return;
               }
-              next();
+              // Everything that is not a browser page — an API call, a health
+              // probe, curl — used to fall through to Vite and come back 404.
+              // "Route not found" sends the caller looking for a routing bug
+              // when the app simply does not compile; 500 says the server is
+              // broken, which is the truth, and carries the reason with it.
+              res.writeHead(500, { "content-type": "text/plain" });
+              res.end(
+                `Dev server has no app loaded — the last build failed.\n\n${
+                  this.currentError?.stack ?? this.currentError?.message ?? ""
+                }`,
+              );
               return;
             }
 

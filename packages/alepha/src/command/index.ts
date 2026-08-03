@@ -8,6 +8,8 @@ import { CliProvider } from "./providers/CliProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./errors/CommandError.ts";
+export * from "./errors/NoInputError.ts";
+export * from "./errors/UsageError.ts";
 export * from "./helpers/Asker.ts";
 export * from "./helpers/EnvUtils.ts";
 export * from "./helpers/Runner.ts";

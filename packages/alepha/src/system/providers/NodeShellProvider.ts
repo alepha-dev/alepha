@@ -1,4 +1,5 @@
 import { exec, execFile, spawn } from "node:child_process";
+import { join } from "node:path";
 import { $inject, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "./FileSystemProvider.ts";
@@ -86,12 +87,20 @@ export class NodeShellProvider implements ShellProvider {
           stdio: "inherit",
           cwd: options.cwd,
           shell: true,
-          env: { ...process.env, ...options.env },
+          env: {
+            ...process.env,
+            PATH: this.localBinPath(options.cwd),
+            ...options.env,
+          },
         })
       : spawn(executable, args, {
           stdio: "inherit",
           cwd: options.cwd,
-          env: { ...process.env, ...options.env },
+          env: {
+            ...process.env,
+            PATH: this.localBinPath(options.cwd),
+            ...options.env,
+          },
         });
 
     return new Promise<string>((resolve, reject) => {
@@ -153,6 +162,7 @@ export class NodeShellProvider implements ShellProvider {
           maxBuffer: 50 * 1024 * 1024,
           env: {
             ...process.env,
+            PATH: this.localBinPath(options.cwd),
             LOG_FORMAT: "pretty",
             ...options.env,
           },
@@ -189,6 +199,7 @@ export class NodeShellProvider implements ShellProvider {
           maxBuffer: 50 * 1024 * 1024,
           env: {
             ...process.env,
+            PATH: this.localBinPath(options.cwd),
             LOG_FORMAT: "pretty",
             ...options.env,
           },
@@ -252,6 +263,47 @@ export class NodeShellProvider implements ShellProvider {
     throw new AlephaError(
       `Could not find executable for '${name}'. Make sure the package is installed.`,
     );
+  }
+
+  /**
+   * The same directories {@link resolveExecutable} searches, as a PATH prefix
+   * for child processes.
+   *
+   * npm and yarn both do this for the scripts they run, and a command shelled
+   * out from a task expects the same thing: `alepha`, `vite` or `tsc` should
+   * mean the project's copy. Without it the child inherits a bare PATH and any
+   * globally installed binary of the same name wins.
+   *
+   * That is not hypothetical. `alepha verify` shells `alepha clean`, and on a
+   * machine with a global `alepha` the child was a different install
+   * altogether — which surfaced as `MissingContextError: Did you forget to call
+   * Alepha.create()?`, naming neither the PATH nor the binary that actually
+   * ran.
+   *
+   * Prefixing rather than resolving the executable keeps compound commands
+   * (`cd app && yarn build`) working: only lookup changes, not parsing.
+   */
+  protected localBinPath(root: string): string {
+    const separator = process.platform === "win32" ? ";" : ":";
+    // `node:path`, not the injected `FileSystemProvider`: this runs on every
+    // single shell call, and it is pure string math that touches no disk.
+    // Going through the provider made `fs` a hard requirement of the plain
+    // `run()` path, where it had only ever been needed under `resolve: true`.
+    const dirs = [
+      join(root, "node_modules/.bin"),
+      join(root, "node_modules/alepha/node_modules/.bin"),
+    ];
+
+    let parentDir = join(root, "..");
+    for (let i = 0; i < 3; i++) {
+      dirs.push(join(parentDir, "node_modules/.bin"));
+      parentDir = join(parentDir, "..");
+    }
+
+    // Existence is not checked: this runs on every shell call, a missing entry
+    // in PATH is harmless, and the directory may be created between this call
+    // and the child's lookup.
+    return [...dirs, process.env.PATH ?? ""].join(separator);
   }
 
   /**

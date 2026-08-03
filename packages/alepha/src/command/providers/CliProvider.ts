@@ -14,7 +14,7 @@ import {
   z,
 } from "alepha";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
-import { CommandError } from "../errors/CommandError.ts";
+import { UsageError } from "../errors/UsageError.ts";
 import { Asker } from "../helpers/Asker.ts";
 import { EnvUtils } from "../helpers/EnvUtils.ts";
 import { Runner } from "../helpers/Runner.ts";
@@ -166,71 +166,108 @@ export class CliProvider {
       const { command, consumedArgs, positionalArgs } =
         this.resolveCommandFromArgv(argv);
 
-      const globalFlags = this.parseFlags(
-        argv,
-        Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
-          key,
-          ...value,
-        })),
-        { strict: false }, // Don't throw for command-specific flags
-      );
-
-      // `--verbose` → raise the logger to trace + pretty format via state
-      // (read live by Logger). At DEBUG level Runner also switches shelled
-      // task output from captured to streamed, so tool output shows live.
-      //
-      // An agent session (Claude Code sets CLAUDECODE) implies verbose: the
-      // compact `cli` format is tuned for a human watching a terminal, but an
-      // agent benefits from the full module/context and internal logs — same
-      // as if `--verbose` were passed.
-      const verbose = globalFlags.verbose || !!this.alepha.env.CLAUDECODE;
-      if (verbose) {
-        this.alepha.store.set("alepha.logger.level", "trace");
-        this.alepha.store.set("alepha.logger.format", "pretty");
-      }
-
-      if (globalFlags.help) {
-        this.printHelp(command);
-        return;
-      }
-
-      if (!command) {
-        // Check if there's a root command (name === "")
-        const rootCommand = this.findCommand("");
-
-        // If we have positional args but no matching command, show error
-        const commandName = positionalArgs[0] ?? "";
-        if (commandName !== "" && !rootCommand?.options.args) {
-          this.log.error(`Unknown command: '${commandName}'`);
-          this.printHelp();
-          // A typo must not report success. Exit code rather than a throw:
-          // throwing surfaces as "Alepha failed to start" plus a stack, which
-          // reads as a crash when the right answer is a usage message. The
-          // `process` guard mirrors core/index.ts — there is no process in
-          // workerd or the browser.
-          if (typeof process === "object") {
-            process.exitCode = 1;
-          }
-          return;
+      try {
+        return await this.dispatch(argv, command, consumedArgs, positionalArgs);
+      } catch (error) {
+        // Nothing has run yet — the argv itself was rejected. Render it the way
+        // an unknown command is rendered, not as a crash.
+        if (error instanceof UsageError) {
+          return this.reportUsage(error.message, command);
         }
-
-        // Execute root command if it exists
-        if (rootCommand) {
-          await this.executeCommand(rootCommand, argv, true);
-          return;
-        }
-
-        // No command found and no root command
-        return;
+        throw error;
       }
-
-      // Remove consumed command path args from argv for argument parsing
-      const remainingArgv = this.removeConsumedArgs(argv, consumedArgs);
-
-      // Since we've removed the command path, treat it like a root command for parsing
-      await this.executeCommand(command, remainingArgv, true);
     },
   });
+
+  /**
+   * Resolve what the argv asks for and run it.
+   *
+   * Split out of the `ready` hook so the hook has one job: turn a
+   * {@link UsageError} into a usage message. Every throw below is either a
+   * `UsageError` (the user's argv is wrong) or a genuine failure that should
+   * keep its stack.
+   */
+  protected async dispatch(
+    argv: string[],
+    command: CommandPrimitive<ZObject> | undefined,
+    consumedArgs: string[],
+    positionalArgs: string[],
+  ): Promise<void> {
+    const globalFlags = this.parseFlags(
+      argv,
+      Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
+        key,
+        ...value,
+      })),
+      { strict: false }, // Don't throw for command-specific flags
+    );
+
+    // `--verbose` → raise the logger to trace + pretty format via state
+    // (read live by Logger). At DEBUG level Runner also switches shelled
+    // task output from captured to streamed, so tool output shows live.
+    //
+    // An agent session (Claude Code sets CLAUDECODE) implies verbose: the
+    // compact `cli` format is tuned for a human watching a terminal, but an
+    // agent benefits from the full module/context and internal logs — same
+    // as if `--verbose` were passed.
+    const verbose = globalFlags.verbose || !!this.alepha.env.CLAUDECODE;
+    if (verbose) {
+      this.alepha.store.set("alepha.logger.level", "trace");
+      this.alepha.store.set("alepha.logger.format", "pretty");
+    }
+
+    if (globalFlags.help) {
+      this.printHelp(command);
+      return;
+    }
+
+    if (!command) {
+      // Check if there's a root command (name === "")
+      const rootCommand = this.findCommand("");
+
+      // If we have positional args but no matching command, show error
+      const commandName = positionalArgs[0] ?? "";
+      if (commandName !== "" && !rootCommand?.options.args) {
+        return this.reportUsage(`Unknown command: '${commandName}'`);
+      }
+
+      // Execute root command if it exists
+      if (rootCommand) {
+        await this.executeCommand(rootCommand, argv, true);
+        return;
+      }
+
+      // No command found and no root command
+      return;
+    }
+
+    // Remove consumed command path args from argv for argument parsing
+    const remainingArgv = this.removeConsumedArgs(argv, consumedArgs);
+
+    // Since we've removed the command path, treat it like a root command for parsing
+    await this.executeCommand(command, remainingArgv, true);
+  }
+
+  /**
+   * Print a usage failure the way a CLI should: the reason, then the help for
+   * whatever context we managed to resolve, then a non-zero exit code.
+   *
+   * A typo must not report success. Exit code rather than a throw: throwing
+   * surfaces as "Alepha failed to start" plus a stack through `CliProvider`
+   * internals, which reads as a crash when the right answer is a usage
+   * message. The `process` guard mirrors core/index.ts — there is no process
+   * in workerd or the browser.
+   */
+  protected reportUsage(
+    message: string,
+    command?: CommandPrimitive<ZObject>,
+  ): void {
+    this.log.error(message);
+    this.printHelp(command);
+    if (typeof process === "object") {
+      process.exitCode = 1;
+    }
+  }
 
   /**
    * Execute a command with full lifecycle support.
@@ -688,7 +725,7 @@ export class CliProvider {
       return this.alepha.codec.decode(schema, parsed);
     } catch (error) {
       if (error instanceof SchemaValidationError) {
-        throw new CommandError(
+        throw new UsageError(
           `Invalid flag: ${error.cause.instancePath || "command"} ${error.cause.message}`,
         );
       }
@@ -725,7 +762,7 @@ export class CliProvider {
 
     if (missing.length > 0) {
       const vars = missing.join(", ");
-      throw new CommandError(
+      throw new UsageError(
         `Missing required environment variable${missing.length > 1 ? "s" : ""}: ${vars}`,
       );
     }
@@ -734,7 +771,7 @@ export class CliProvider {
       return this.alepha.codec.decode(schema, result);
     } catch (error) {
       if (error instanceof SchemaValidationError) {
-        throw new CommandError(
+        throw new UsageError(
           `Invalid environment variable: ${error.cause.instancePath || "env"} ${error.cause.message}`,
         );
       }
@@ -760,7 +797,7 @@ export class CliProvider {
         if (nextArg && !nextArg.startsWith("-")) {
           return nextArg;
         }
-        throw new CommandError("Flag --mode requires a value.");
+        throw new UsageError("Flag --mode requires a value.");
       }
     }
 
@@ -803,7 +840,7 @@ export class CliProvider {
       const def = flagDefs.find((d) => d.aliases.includes(rawKey));
       if (!def) {
         if (strict) {
-          throw new CommandError(`Unknown flag: --${rawKey}`);
+          throw new UsageError(`Unknown flag: --${rawKey}`);
         }
         continue;
       }
@@ -839,7 +876,7 @@ export class CliProvider {
         if (nextArg && !nextArg.startsWith("-")) {
           result[def.key] = this.castFlagValue(nextArg, base, rawKey);
         } else {
-          throw new CommandError(`Flag --${rawKey} requires a value.`);
+          throw new UsageError(`Flag --${rawKey} requires a value.`);
         }
       }
     }
@@ -864,7 +901,7 @@ export class CliProvider {
       try {
         return JSON.parse(value);
       } catch {
-        throw new CommandError(`Invalid JSON value for flag --${rawKey}`);
+        throw new UsageError(`Invalid JSON value for flag --${rawKey}`);
       }
     }
     return this.parseArgumentValue(value, schema);
@@ -957,7 +994,7 @@ export class CliProvider {
           } else if (z.schema.isOptional(itemSchema)) {
             result.push(undefined);
           } else {
-            throw new CommandError(
+            throw new UsageError(
               `Missing required argument at position ${i + 1}`,
             );
           }
@@ -966,13 +1003,13 @@ export class CliProvider {
       } else {
         // Handle single arg: z.text(), z.number(), etc.
         if (argsOnly.length === 0) {
-          throw new CommandError("Missing required argument");
+          throw new UsageError("Missing required argument");
         }
         return this.parseArgumentValue(argsOnly[0], schema);
       }
     } catch (error) {
       if (error instanceof SchemaValidationError) {
-        throw new CommandError(`Invalid argument: ${error.value.message}`);
+        throw new UsageError(`Invalid argument: ${error.value.message}`);
       }
       throw error;
     }
@@ -989,10 +1026,10 @@ export class CliProvider {
     if (z.schema.isNumber(schema) || z.schema.isInteger(schema)) {
       const num = Number(value);
       if (Number.isNaN(num)) {
-        throw new CommandError(`Expected number, got "${value}"`);
+        throw new UsageError(`Expected number, got "${value}"`);
       }
       if (z.schema.isInteger(schema) && !Number.isInteger(num)) {
-        throw new CommandError(`Expected integer, got "${value}"`);
+        throw new UsageError(`Expected integer, got "${value}"`);
       }
       return num;
     }
@@ -1001,7 +1038,7 @@ export class CliProvider {
       const lower = value.toLowerCase();
       if (lower === "true" || lower === "1") return true;
       if (lower === "false" || lower === "0") return false;
-      throw new CommandError(`Expected boolean, got "${value}"`);
+      throw new UsageError(`Expected boolean, got "${value}"`);
     }
 
     // For other types, return the string value and let Zod validate it

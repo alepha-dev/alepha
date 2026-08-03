@@ -3,19 +3,25 @@ import { ProjectScaffolder } from "alepha/cli";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
 
-const presets = {
-  minimal: [] as string[],
-  api: ["--api"],
-  "full-stack": ["--api", "--react", "--tailwind"],
-  "full-stack + saas": ["--api", "--react", "--tailwind", "--saas"],
-};
-
 export class CreateAlephaCoreCommands {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly scaffolder = $inject(ProjectScaffolder);
 
   /**
    * Interactive project creation.
+   *
+   * There used to be a "which template?" question offering minimal / api /
+   * full-stack / full-stack + saas, mapped to `--api`, `--react`, `--tailwind`
+   * and `--saas`. `alepha init` dropped those flags when it settled on a single
+   * project shape ("Every project gets the same full-stack shape […] There is
+   * nothing to opt into"), and the extra keys reached it through an `as any`,
+   * so they were silently ignored and all four answers built the same project.
+   * The question is gone rather than reinstated: the flags it fed no longer
+   * exist, and asking something whose answer is discarded is worse than not
+   * asking.
+   *
+   * What remains takes both its inputs from argv — `create-alepha my-app --pm
+   * npm` runs start to finish without a prompt, which is what a CI needs.
    */
   public readonly root = $command({
     root: true,
@@ -48,33 +54,23 @@ export class CreateAlephaCoreCommands {
           },
         }));
 
-      // 2. Preset
-      const preset = (await ask("Which template would you like?", {
-        schema: z.enum(["minimal", "api", "full-stack", "full-stack + saas"]),
-      })) as keyof typeof presets;
-
-      // 3. Package manager
+      // 2. Package manager
       const pm =
         flags.pm ??
         (await ask("Which package manager?", {
           schema: z.enum(["npm", "yarn", "pnpm", "bun"]),
         }));
 
-      // Build flags from preset
-      const presetFlags = presets[preset];
-      const initFlags: Record<string, boolean | string> = { pm };
-      for (const flag of presetFlags) {
-        initFlags[flag.replace(/^--/, "")] = true;
-      }
-
       // Create directory
       await this.fs.mkdir(name);
 
-      // Run init directly
+      // Run init directly. No cast: these are exactly the flags `init` accepts,
+      // and keeping it that way is what makes a future removal a type error
+      // here instead of a silently ignored key.
       await this.scaffolder.init({
         run,
         root,
-        flags: initFlags as any,
+        flags: { pm },
         args: name,
       });
 

@@ -181,11 +181,6 @@
       "import": "./src/batch/index.ts",
       "default": "./src/batch/index.ts"
     },
-    "./bin": {
-      "types": "./src/bin/index.ts",
-      "import": "./src/bin/index.ts",
-      "default": "./src/bin/index.ts"
-    },
     "./bucket": {
       "types": "./src/bucket/index.ts",
       "workerd": "./src/bucket/index.workerd.ts",
@@ -619,11 +614,6 @@
         "types": "./dist/batch/index.d.ts",
         "import": "./dist/batch/index.js",
         "default": "./dist/batch/index.js"
-      },
-      "./bin": {
-        "types": "./dist/bin/index.d.ts",
-        "import": "./dist/bin/index.js",
-        "default": "./dist/bin/index.js"
       },
       "./bucket": {
         "types": "./dist/bucket/index.d.ts",
