@@ -378,6 +378,21 @@ export const z = {
       s instanceof zod.ZodAny || s instanceof zod.ZodUnknown,
     isVoid: (s: any) => s instanceof zod.ZodVoid,
     format: (s: any) => fmt(s),
+    /**
+     * Everything a schema was tagged with via `.meta()`.
+     *
+     * `format` above reads one key out of this; a walker that needs another —
+     * the `maxSize` a `z.file()` carries, say — would otherwise have to reach
+     * into zod's internals at the call site, which is exactly the coupling this
+     * namespace exists to prevent.
+     */
+    meta: (s: any): Record<string, any> => {
+      try {
+        return s?.meta?.() ?? {};
+      } catch {
+        return {};
+      }
+    },
 
     // -- structural accessors ------------------------------------------------
     // Zod names these `.shape` / `.element` / `.options`, and a schema-walker

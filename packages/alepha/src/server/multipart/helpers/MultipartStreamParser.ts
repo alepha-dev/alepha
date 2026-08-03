@@ -39,6 +39,15 @@ export class MultipartLimitError extends AlephaError {
   constructor(
     message: string,
     public readonly limit: number,
+    /**
+     * Which budget was spent.
+     *
+     * Carried as data rather than left to be read out of the message, so a
+     * caller can phrase the refusal in its own vocabulary — an HTTP layer
+     * naming the field that overflowed, say — without matching on prose that
+     * was never meant to be an interface.
+     */
+    public readonly kind: "header" | "file" | "parts" | "total",
   ) {
     super(message);
   }
@@ -195,6 +204,7 @@ export class MultipartStreamParser {
           throw new MultipartLimitError(
             `More than ${this.maxParts} parts`,
             this.maxParts,
+            "parts",
           );
         }
 
@@ -299,6 +309,7 @@ export class MultipartStreamParser {
       throw new MultipartLimitError(
         `A part exceeds ${this.maxFileSize} bytes`,
         this.maxFileSize,
+        "file",
       );
     }
     this.totalSize += length;
@@ -306,6 +317,7 @@ export class MultipartStreamParser {
       throw new MultipartLimitError(
         `The message exceeds ${this.maxTotalSize} bytes`,
         this.maxTotalSize,
+        "total",
       );
     }
   }
@@ -355,6 +367,7 @@ export class MultipartStreamParser {
         throw new MultipartLimitError(
           `Part headers exceed ${this.maxHeaderSize} bytes`,
           this.maxHeaderSize,
+          "header",
         );
       }
       if (!(await this.pull())) {
