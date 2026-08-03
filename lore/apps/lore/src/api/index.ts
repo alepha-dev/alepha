@@ -47,6 +47,7 @@ import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
+import { ReleaseService } from "./services/ReleaseService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 
@@ -89,6 +90,7 @@ export const LoreApi = $module({
     SigilIngestService,
     OutpostTokenService,
     OutpostIngestService,
+    ReleaseService,
     // Controllers
     QuestController,
     CampaignController,
