@@ -888,10 +888,16 @@ type deployOutcome struct {
 // deployFailure carries how a deploy failed, not just that it did.
 //
 // The two cases want opposite handling and always have: a refused artifact is a
-// bad build and nothing changed on the host, while "deployed but would not
-// boot" leaves files on disk and a rollback target that the caller has to be
-// told about. Collapsing them into one error would lose the release name at
-// exactly the moment someone needs it.
+// bad build and nothing on the host has moved except the process the deploy
+// stopped, while "deployed but would not boot" leaves files on disk, a `current`
+// that has already been swapped and a rollback target. Collapsing them into one
+// error would lose the release name at exactly the moment someone needs it.
+//
+// Whichever it is, the status says whether the app is serving. A 400 means the
+// artifact was refused and the previous release is up; a 502 means it is not,
+// and the message names both what failed and what could not be put back.
+// Neither is ever returned before the recovery has been attempted — see
+// restoreRefused and restoreUnstartable.
 type deployFailure struct {
 	Status int
 	Err    error
@@ -904,10 +910,11 @@ func (e *deployFailure) Unwrap() error { return e.Err }
 // deployArtifact unpacks, provisions, starts and prunes.
 //
 // Shared by the control API and the command loop on purpose. This sequence has
-// four ordering constraints that were each learned the hard way — stop before
+// five ordering constraints that were each learned the hard way — stop before
 // swapping `current`, restore before starting, watch before pruning, prune only
-// after the app is proven to boot — and a second copy of it would drift on the
-// first fix applied to only one caller.
+// after the app is proven to boot, and never answer a failure before putting the
+// app back — and a second copy of it would drift on the first fix applied to only
+// one caller.
 func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions) (*deployOutcome, *deployFailure) {
 	key := opts.Name + "/" + opts.Env
 
@@ -916,6 +923,10 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	defer s.holdDuring(key)()
 
 	// Stop the previous process before swapping `current` under it.
+	//
+	// Whether it was serving is read BEFORE the stop, because it decides what a
+	// failed deploy has to put back — and after the stop the answer is always no.
+	wasRunning := s.runner.Running(key)
 	_ = s.runner.Stop(key, stopGrace)
 
 	if opts.AllowControlAPI {
@@ -927,7 +938,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		AllowControlAPI: opts.AllowControlAPI,
 	}, s.store)
 	if err != nil {
-		return nil, &deployFailure{Status: http.StatusBadRequest, Err: err}
+		return nil, s.restoreRefused(key, wasRunning, err)
 	}
 
 	// Restore BEFORE starting: the app must open the recovered database, not an
@@ -939,11 +950,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	}
 
 	if err := s.start(res.App); err != nil {
-		return nil, &deployFailure{
-			Status: http.StatusBadGateway,
-			Err:    fmt.Errorf("app deployed but did not become ready, see logs/app.log: %w", err),
-			Detail: map[string]any{"release": res.Release, "restore": restore},
-		}
+		return nil, s.restoreUnstartable(res, restore, err)
 	}
 	if s.tls != nil {
 		if err := s.tls.Manage(ctx, res.App.Domains); err != nil {
@@ -974,6 +981,156 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	pruned := s.pruneReleases(res.App, res.Previous)
 
 	return &deployOutcome{Result: *res, Restore: restore, Pruned: pruned}, nil
+}
+
+/*
+restoreRefused puts back the app that the stop before the unpack took down.
+
+An artifact the unpacker refuses changes nothing in the instance directory — it
+is unpacked into a staging directory first, so the previous release is still
+there and `current` still points at it. Starting the app on its stored state is
+therefore the whole of the repair; there is nothing to swap back.
+
+Observed on ovh-bay: `example-api/production` was serving, a gzip that was not a
+tar was deployed, the release went `failed` with the correct message, and the app
+stayed stopped and 502 until a good artifact was pushed again. The report was
+accurate and reassuring — "the deploy failed" reads as "nothing changed" — which
+is what made it expensive. Through the command loop, nobody is even watching.
+
+The failure stays a 400 when the restart works: the artifact is what was wrong,
+the host is where it was, and a 5xx would send someone to inspect a machine that
+is fine. It becomes a 502 naming both failures when the app could not be brought
+back, because "the deploy failed" and "the deploy failed AND the site is down"
+are different sentences, and only the second one should wake anybody up.
+*/
+func (s *server) restoreRefused(key string, wasRunning bool, cause error) *deployFailure {
+	app, registered := s.store.Get(key)
+
+	// Nothing to put back, for one of two reasons: the app was not serving —
+	// starting it here would resurrect something somebody deliberately stopped,
+	// on the strength of a deploy that failed — or this was a first deploy, and
+	// there is no earlier release to put back at all.
+	if !wasRunning || !registered {
+		return &deployFailure{
+			Status: http.StatusBadRequest,
+			Err:    cause,
+			Detail: map[string]any{"running": false},
+		}
+	}
+
+	if err := s.start(app); err != nil {
+		s.log.Error("REFUSED ARTIFACT LEFT THE APP DOWN", "app", key,
+			"release", app.Release, "artifact", cause, "restart", err)
+		return &deployFailure{
+			Status: http.StatusBadGateway,
+			Err: fmt.Errorf(
+				"the artifact was refused AND %s is DOWN — release %s could not be restarted: %w (restart: %w)",
+				key, app.Release, cause, err),
+			Detail: map[string]any{"release": app.Release, "running": false},
+		}
+	}
+	s.log.Warn("artifact refused, previous release restarted",
+		"app", key, "release", app.Release, "artifact", cause)
+	return &deployFailure{
+		Status: http.StatusBadRequest,
+		// The artifact's own error, unchanged: the build is what was wrong, and
+		// this is the sentence that says how. What the host is doing about it
+		// belongs in the detail, not appended to a compiler-style message.
+		Err:    cause,
+		Detail: map[string]any{"release": app.Release, "running": true},
+	}
+}
+
+/*
+restoreUnstartable rolls a release that will not boot back to its predecessor.
+
+`watchAndRollback` does not cover this, and cannot: it is armed only once `start`
+has returned successfully, so a release that never becomes ready has nothing
+watching it. By the time this is reached `current` and the store both name the new
+release, the process is not running, and no timer will ever put it back — the app
+stays down until somebody runs `bay rollback` by hand, which on a CI-driven deploy
+means until somebody notices.
+
+Rolled back to what was demonstrably serving a moment ago: the same target and the
+same steps the health watch uses, for the same reason. Migrations are forward-only
+and stay applied — the known cost of both paths, and the smaller of the two when
+the alternative is a site that is down.
+
+The release name is still reported either way. It is what `bay releases` and a
+manual rollback need, and it is the one thing an operator cannot recover from the
+logs once `current` has moved back.
+*/
+func (s *server) restoreUnstartable(
+	res *deploy.Result, restore map[string]any, cause error,
+) *deployFailure {
+	detail := map[string]any{"release": res.Release, "restore": restore}
+	key := res.App.Key()
+
+	// A first deploy, or a redeploy of the same release. Nothing to go back to,
+	// and saying so is what stops an operator waiting for a rollback that is not
+	// coming.
+	if res.Previous == "" || res.Previous == res.Release {
+		return &deployFailure{
+			Status: http.StatusBadGateway,
+			Err: fmt.Errorf(
+				"%s is DOWN: release %s did not become ready and there is no earlier release to fall back to, see logs/app.log: %w",
+				key, res.Release, cause),
+			Detail: detail,
+		}
+	}
+
+	if err := s.rollbackTo(res.App, res.Previous); err != nil {
+		s.log.Error("ROLLBACK FAILED — the app is down", "app", key,
+			"bad", res.Release, "to", res.Previous, "err", err)
+		return &deployFailure{
+			Status: http.StatusBadGateway,
+			Err: fmt.Errorf(
+				"%s is DOWN: release %s did not become ready AND the rollback to %s failed, see logs/app.log: %w (rollback: %w)",
+				key, res.Release, res.Previous, cause, err),
+			Detail: detail,
+		}
+	}
+
+	s.log.Warn("release did not become ready, rolled back",
+		"app", key, "bad", res.Release, "now", res.Previous, "err", cause)
+	detail["rolledBackTo"] = res.Previous
+	return &deployFailure{
+		Status: http.StatusBadGateway,
+		Err: fmt.Errorf(
+			"release %s did not become ready and was rolled back to %s, which is serving again, see logs/app.log: %w",
+			res.Release, res.Previous, cause),
+		Detail: detail,
+	}
+}
+
+/*
+rollbackTo puts an app back on a release: on disk, in the store, and running.
+
+The order is load-bearing. `current` is what a start reads, so the swap comes
+first; the store is what every status call and the next deploy report, so it
+follows immediately; starting comes last, because a failure there leaves the app
+pointing wholly at the release the caller asked for rather than half at each.
+
+Shared by the deploy path and the health watch on purpose — the same three steps
+were written twice, and the second copy would have missed the first fix. The
+errors name the consequence rather than the step, because they are read in a log
+by somebody who has just been woken up.
+*/
+func (s *server) rollbackTo(app state.App, release string) error {
+	if err := deploy.SwapRelease(s.instanceDir(app), release); err != nil {
+		return fmt.Errorf("could not point current at %s, the app is still on %s: %w",
+			release, app.Release, err)
+	}
+	if err := s.store.SetRelease(app.Key(), release); err != nil {
+		// Not fatal: the app boots from `current`, which has already moved. Said
+		// loudly because from here on every report disagrees with the disk.
+		s.log.Error("rolled back on disk but not in state", "app", app.Key(), "err", err)
+	}
+	app.Release = release
+	if err := s.start(app); err != nil {
+		return fmt.Errorf("%s is current again but did not start: %w", release, err)
+	}
+	return nil
 }
 
 /*
@@ -1034,23 +1191,13 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 		"app", app.Key(), "bad", app.Release, "to", previous,
 		"reason", verdict.Reason, "checks", verdict.Checks)
 
-	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
-	if err := deploy.SwapRelease(instance, previous); err != nil {
+	if err := s.rollbackTo(app, previous); err != nil {
 		// Nothing left to try automatically. Said loudly rather than retried:
 		// an app stuck between two releases needs a human, and a loop here
-		// would bury the one line that says so.
-		s.log.Error("ROLLBACK FAILED — app is on a bad release",
-			"app", app.Key(), "err", err)
-		return
-	}
-	if err := s.store.SetRelease(app.Key(), previous); err != nil {
-		s.log.Error("rolled back on disk but not in state", "app", app.Key(), "err", err)
-	}
-
-	app.Release = previous
-	if err := s.start(app); err != nil {
-		s.log.Error("ROLLBACK FAILED — previous release did not start",
-			"app", app.Key(), "err", err)
+		// would bury the one line that says so. What went wrong is in the
+		// error — it names whether the app is still on the bad release or on
+		// the old one that would not start.
+		s.log.Error("ROLLBACK FAILED — the app is down", "app", app.Key(), "err", err)
 		return
 	}
 	s.log.Warn("rolled back", "app", app.Key(), "now", previous)
