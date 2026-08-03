@@ -203,3 +203,128 @@ func (s *server) buildReport() connector.Report {
 	}
 	return report
 }
+
+// commandInterval is how often a machine asks whether there is work.
+//
+// Five seconds, not the report's minute: this is the only thing standing
+// between `platform up` finishing and a human waiting on it. The request has an
+// empty body and the answer is 204 in the overwhelming majority of cases, so
+// the cost is a request rather than a payload.
+//
+// It is a poll rather than a held connection for one reason, and it is not a
+// preference: on Workers the deploying client's request and the connection this
+// would hold land in different isolates, and nothing addresses one from the
+// other without Durable Objects. When Lore moves onto Bay this becomes a held
+// connection and the interval goes away — the contract above it does not
+// change.
+const commandInterval = 5 * time.Second
+
+// commandLoop asks every configured sink for work, and does it.
+//
+// Started alongside reportLoop and reading the same file on every tick, so
+// `bay connector add` takes effect within seconds without restarting the proxy
+// — and restarting the proxy restarts every hosted app.
+func (s *server) commandLoop(ctx context.Context) {
+	store := connector.NewStore(s.root)
+	client := &http.Client{}
+	ticker := time.NewTicker(commandInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			entries, err := store.List()
+			if err != nil {
+				s.log.Warn("could not read connectors", "err", err)
+				continue
+			}
+			for _, entry := range entries {
+				cmd, err := connector.Poll(ctx, client, entry)
+				if err != nil {
+					// Debug, not warn: unlike a report, a failed poll loses
+					// nothing — the next one is five seconds away with the same
+					// question. At this cadence a warn would put twelve lines a
+					// minute in the journal for an outage somewhere else.
+					s.log.Debug("command poll failed", "sink", entry.Sink, "err", err)
+					continue
+				}
+				if cmd == nil {
+					continue
+				}
+				s.runDeployCommand(ctx, client, entry, *cmd)
+			}
+		}
+	}
+}
+
+// runDeployCommand executes one release and narrates it back.
+//
+// Serialised across the whole machine by `deployMu`: two concurrent deploys
+// would race for `state.json` and for each other's systemd units. A mutex
+// rather than a queue, because the sink already holds the queue — a release
+// this machine does not pick up now is still claimable on the next poll.
+func (s *server) runDeployCommand(ctx context.Context, client *http.Client, entry connector.Connector, cmd connector.DeployCommand) {
+	s.deployMu.Lock()
+	defer s.deployMu.Unlock()
+
+	log := s.log.With("app", cmd.App+"/"+cmd.Environment, "release", cmd.Version)
+	log.Info("deploy claimed from sink", "sink", entry.Sink)
+
+	// Every failure below reports `failed` before returning. Swallowing one
+	// would leave whoever is waiting on this release stuck until their own
+	// timeout, with no reason — which is the most expensive way this system can
+	// break, and the least visible.
+	fail := func(stage string, err error) {
+		log.Error("deploy failed", "stage", stage, "err", err)
+		if rerr := connector.ReportStatus(ctx, client, entry, cmd.ReleaseID, "failed",
+			stage+": "+err.Error()); rerr != nil {
+			s.log.Error("could not report the failure either", "err", rerr)
+		}
+	}
+
+	report := func(status string) bool {
+		if err := connector.ReportStatus(ctx, client, entry, cmd.ReleaseID, status, ""); err != nil {
+			// Abandoned rather than pressed on with: if the sink will not take
+			// a transition, it is not going to take the outcome either, and
+			// deploying anyway would change the host while the registry still
+			// believes nothing happened.
+			log.Error("could not report a transition, abandoning", "status", status, "err", err)
+			return false
+		}
+		return true
+	}
+
+	if !report("pulling") {
+		return
+	}
+
+	artifact := filepath.Join(os.TempDir(), "bay-release-"+cmd.ReleaseID+".tar.gz")
+	if err := connector.Fetch(ctx, client, cmd.DownloadURL, entry.Token, cmd.SHA256, artifact); err != nil {
+		fail("pull", err)
+		return
+	}
+	defer os.Remove(artifact)
+
+	if !report("migrating") {
+		return
+	}
+
+	out, derr := s.deployArtifact(ctx, deployArtifactOptions{
+		Artifact: artifact, Name: cmd.App, Env: cmd.Environment,
+		// No domains and no control API from this path. Both are operator
+		// decisions that live in `state.json`: an existing app keeps what it
+		// was deployed with, and granting root-equivalent access on the say-so
+		// of a remote payload is exactly the door this design closed.
+	})
+	if derr != nil {
+		fail("deploy", derr)
+		return
+	}
+
+	if !report("serving") {
+		return
+	}
+	log.Info("deploy served", "release", out.Result.Release)
+}
