@@ -46,6 +46,14 @@ type Runner interface {
 	// false when it knows nothing — an unsupervised child process, an app that
 	// is not running, a host without cgroups.
 	Usage(key string) (Usage, bool)
+	// Logs returns the last n entries this supervisor has for the app, and
+	// whether it supervises it at all.
+	//
+	// The bool carries the distinction that matters when nothing comes back:
+	// "this Bay has never started that app" and "it started and said nothing"
+	// send an operator to two different places, and an empty slice alone cannot
+	// tell them apart.
+	Logs(key string, n int) ([]LogLine, bool, error)
 }
 
 /*
@@ -58,6 +66,23 @@ how an operator ends up trusting a number that means something else.
 */
 func (c *Child) Usage(string) (Usage, bool) { return Usage{}, false }
 
+// Logs reads back what the child wrote to its log file.
+//
+// Both stdout and stderr land in the same file, in the order the process wrote
+// them, which is the order that makes a crash readable: the stack trace belongs
+// directly after the request that caused it, and splitting the streams would
+// put them in two places with no way to interleave them again.
+func (c *Child) Logs(key string, n int) ([]LogLine, bool, error) {
+	c.mu.Lock()
+	path, ok := c.logFiles[key]
+	c.mu.Unlock()
+	if !ok {
+		return nil, false, nil
+	}
+	lines, err := TailFile(path, n)
+	return lines, true, err
+}
+
 // Child supervises plain child processes.
 //
 // ⚠ No isolation whatsoever: children inherit Bay's privileges, so on a host
@@ -66,10 +91,20 @@ func (c *Child) Usage(string) (Usage, bool) { return Usage{}, false }
 type Child struct {
 	mu    sync.Mutex
 	procs map[string]*exec.Cmd
+	// logFiles remembers where each app's output went.
+	//
+	// Deliberately NOT deleted when the process exits, unlike procs: the log of
+	// an app that just died is the single most useful thing on the machine, and
+	// forgetting the path at exit would make it unreachable exactly when it is
+	// wanted.
+	logFiles map[string]string
 }
 
 func NewChild() *Child {
-	return &Child{procs: make(map[string]*exec.Cmd)}
+	return &Child{
+		procs:    make(map[string]*exec.Cmd),
+		logFiles: make(map[string]string),
+	}
 }
 
 // Start launches the app and returns once the process is spawned.
@@ -109,6 +144,7 @@ func (r *Child) Start(s Spec) error {
 		return fmt.Errorf("start %s: %w", s.Key, err)
 	}
 	r.procs[s.Key] = cmd
+	r.logFiles[s.Key] = s.LogFile
 
 	go func() {
 		_ = cmd.Wait()

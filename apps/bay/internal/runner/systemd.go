@@ -389,6 +389,41 @@ func (s *Systemd) Usage(key string) (Usage, bool) {
 //
 // Bay is the reverse proxy. If it crashes or is upgraded, the apps must keep
 // serving — that is exactly what moving supervision to systemd buys.
+// Logs reads the unit's journal.
+//
+// journald rather than a file: the unit is rendered with StandardOutput=journal,
+// so there is no app.log on a real host. That also means retention and rotation
+// are already handled, which is why the file-based runner needed rotating and
+// this one does not.
+//
+// `--no-pager` is not optional. journalctl pipes to a pager when it thinks it
+// has a terminal, and a pager waiting for a keypress inside an HTTP handler
+// hangs the control API rather than returning anything.
+func (s *Systemd) Logs(key string, n int) ([]LogLine, bool, error) {
+	unit := unitName(key) + ".service"
+	// Asked of systemd rather than of our own state: if the unit is unknown to
+	// the machine, "this Bay never started it" is the honest answer even when a
+	// stale record says otherwise.
+	if out, err := exec.Command("systemctl", "show", unit, "--property=LoadState").Output(); err != nil ||
+		strings.Contains(string(out), "LoadState=not-found") {
+		return nil, false, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "journalctl",
+		"--unit", unit,
+		"--output", "json",
+		"--lines", fmt.Sprint(n),
+		"--no-pager",
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, true, fmt.Errorf("journalctl for %s: %w", unit, err)
+	}
+	return ParseJournal(out), true, nil
+}
+
 func (s *Systemd) StopAll(time.Duration) {}
 
 func writeFileAtomic(path, content string, mode os.FileMode) error {

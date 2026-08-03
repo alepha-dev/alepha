@@ -17,6 +17,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -126,6 +127,10 @@ func main() {
 		err = cmdList(os.Args[2:])
 	case "status":
 		err = cmdStatus(os.Args[2:])
+	case "logs":
+		err = cmdLogs(os.Args[2:])
+	case "connector":
+		err = cmdConnector(os.Args[2:])
 	case "releases":
 		err = cmdReleases(os.Args[2:])
 	case "rollback":
@@ -168,12 +173,19 @@ func usage() {
               [--acme-http-port N] [--acme-tls-port N]   # challenge ports, default 80/443
               [--backup-interval 24h]   # 0 disables; needs "bay config s3"
             [--keep-releases 5]   # per app; min 2, the serving one is always kept
-  bay deploy  <app.tar.gz> [--name NAME] [--env ENV] [--domain HOST]
+  bay deploy  <app.tar.gz> [--name NAME] [--env ENV] [--domain HOST]...
               # --name defaults to the artifact's project, and drives BOTH the
               # instance key and the subdomain: one app, one identity
+              # --domain is repeatable and accepts a comma-separated list —
+              # apex + www are one site. The first is the canonical one.
               [--allow-control-api]   # ⚠ root-equivalent; apps get NO access by default
   bay list
-  bay status                      # releases + backup freshness
+  bay status  [--json]            # releases, traffic + backup freshness
+  bay logs    <name/env> [-n 200] [--since 15m] [--grep RE] [--json]
+              # journald on a real host, logs/app.log under the child runner
+  bay connector add <op_token> [--sink URL] [--label NAME] | list | remove <prefix>
+              # report this machine's world to a Lore campaign, once a minute.
+              # Outbound only: the token grants nothing on this host.
   bay stop    <name/env>
   bay remove  <name/env> [--purge]  # unregister; data is KEPT unless --purge
   bay releases <name/env>          # what you could roll back to
@@ -395,9 +407,7 @@ func cmdServe(args []string) error {
 	if useTLS {
 		domains := make([]string, 0, len(store.Apps()))
 		for _, a := range store.Apps() {
-			if a.Domain != "" {
-				domains = append(domains, a.Domain)
-			}
+			domains = append(domains, a.Domains...)
 		}
 		// Trusting a private CA (Pebble, step-ca) is what makes the whole TLS
 		// path exercisable without a public domain.
@@ -521,6 +531,9 @@ func cmdServe(args []string) error {
 	backupCtx, stopBackups := context.WithCancel(context.Background())
 	defer stopBackups()
 	go srv.backupLoop(backupCtx, backupInterval)
+	// Shares the backup context: both are background reporters that must stop
+	// when the server does, and neither should keep the process alive.
+	go srv.reportLoop(backupCtx)
 
 	// Traffic bookkeeping, drained from the proxy on its own schedule.
 	go srv.flushLastSeenLoop(backupCtx)
@@ -672,7 +685,7 @@ func (s *server) start(app state.App) error {
 			"why", "granted with --allow-control-api",
 			"means", "may deploy code, read other apps' secrets, delete backups")
 	}
-	s.log.Info("app ready", "app", app.Key(), "port", app.Port, "domain", app.Domain)
+	s.log.Info("app ready", "app", app.Key(), "port", app.Port, "domain", app.Domain())
 	return nil
 }
 
@@ -717,8 +730,48 @@ func (s *server) controlMux() *http.ServeMux {
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"stopped": key})
 	})
+	mux.HandleFunc("GET /apps/{name}/{env}/logs", s.handleLogs)
 	s.registerBackupRoutes(mux)
 	return mux
+}
+
+// maxLogRequest caps how much one call may ask for.
+//
+// The control API answers in memory and holds a lock nothing else can take
+// while it does. Two thousand lines is more than anyone reads at once and small
+// enough that a caller asking for a million cannot stall the supervisor.
+const maxLogRequest = 2000
+
+// logsResponse distinguishes "not supervised here" from "supervised and quiet".
+//
+// Two empty results that mean different things: one sends the operator to check
+// whether they are on the right machine, the other to check whether the app is
+// actually doing anything. An empty array alone cannot say which.
+type logsResponse struct {
+	Supervised bool             `json:"supervised"`
+	Lines      []runner.LogLine `json:"lines"`
+}
+
+func (s *server) handleLogs(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("name") + "/" + r.PathValue("env")
+	lines := 200
+	if raw := r.URL.Query().Get("lines"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed <= 0 {
+			writeError(w, http.StatusBadRequest, "lines must be a positive integer")
+			return
+		}
+		lines = min(parsed, maxLogRequest)
+	}
+	entries, supervised, err := s.runner.Logs(key, lines)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if entries == nil {
+		entries = []runner.LogLine{}
+	}
+	writeJSON(w, http.StatusOK, logsResponse{Supervised: supervised, Lines: entries})
 }
 
 // listedApp is a registered app plus whether it is actually answering.
@@ -759,7 +812,11 @@ func (s *server) listApps() []listedApp {
 
 func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	name, env, domain := q.Get("name"), q.Get("env"), q.Get("domain")
+	name, env := q.Get("name"), q.Get("env")
+	// Repeated rather than joined: a hostname cannot contain a comma, but a
+	// query parameter can be sent more than once, and letting the URL carry the
+	// list keeps the CLI from having to invent an escaping rule.
+	domains := q["domain"]
 	if env == "" {
 		env = "production"
 	}
@@ -790,7 +847,7 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := deploy.Run(deploy.Options{
 		Root: s.root, Artifact: tmp.Name(), Name: name, Env: env,
-		Domain: domain, BaseDomain: s.store.BaseDomain(),
+		Domains: domains, BaseDomain: s.store.BaseDomain(),
 		AllowControlAPI: allowControl,
 	}, s.store)
 	if err != nil {
@@ -813,8 +870,8 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.tls != nil {
-		if err := s.tls.Manage(r.Context(), []string{res.App.Domain}); err != nil {
-			s.log.Error("certificate for new domain failed", "domain", res.App.Domain, "err", err)
+		if err := s.tls.Manage(r.Context(), res.App.Domains); err != nil {
+			s.log.Error("certificate for new domain failed", "domains", res.App.Domains, "err", err)
 		}
 	}
 	// Watched in the background: the deploy has succeeded as far as the caller
@@ -843,7 +900,7 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"app":           res.App,
 		"release":       res.Release,
-		"url":           "https://" + res.App.Domain + "/",
+		"url":           "https://" + res.App.Domain() + "/",
 		"sleepEligible": res.Manifest.SleepEligible(),
 		"restore":       restore,
 		"pruned":        pruned,
@@ -987,10 +1044,10 @@ func (s *server) handleRemove(w http.ResponseWriter, r *http.Request) {
 		}
 		purged = true
 	}
-	s.log.Info("removed app", "app", key, "domain", app.Domain, "purged", purged)
+	s.log.Info("removed app", "app", key, "domain", app.Domain(), "purged", purged)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"removed": key,
-		"domain":  app.Domain,
+		"domain":  app.Domain(),
 		"purged":  purged,
 		// Said even when nothing was deleted, so "where did my data go" never
 		// needs asking.
@@ -1044,7 +1101,8 @@ func cmdDeploy(args []string) error {
 			"--control-socket": true}); err != nil {
 		return err
 	}
-	name, env, domain := "", "production", ""
+	name, env := "", "production"
+	var domains []string
 	allowControl := false
 	for i := 1; i < len(args); i++ {
 		// Checked before the value-taking flags so a trailing --allow-control-api
@@ -1062,7 +1120,15 @@ func cmdDeploy(args []string) error {
 		case "--env":
 			env = args[i+1]
 		case "--domain":
-			domain = args[i+1]
+			// Repeatable AND comma-separated, because both shapes turn up: a
+			// hand-typed apex plus www, and a value pasted out of a config file.
+			// Accepting one and silently ignoring the other is the kind of thing
+			// nobody notices until a certificate is missing.
+			for _, host := range strings.Split(args[i+1], ",") {
+				if host = strings.TrimSpace(host); host != "" {
+					domains = append(domains, host)
+				}
+			}
 		}
 	}
 	body, err := os.Open(artifact)
@@ -1071,7 +1137,11 @@ func cmdDeploy(args []string) error {
 	}
 	defer body.Close()
 
-	url := fmt.Sprintf(controlHost+"/apps?name=%s&env=%s&domain=%s", name, env, domain)
+	query := neturl.Values{"name": {name}, "env": {env}}
+	for _, host := range domains {
+		query.Add("domain", host)
+	}
+	url := controlHost + "/apps?" + query.Encode()
 	if allowControl {
 		// Said out loud on the way out, not just recorded. This grant is
 		// root-equivalent and the operator should read it as they type it.
@@ -1105,7 +1175,11 @@ func cmdList([]string) error {
 // than left for the reader to compute.
 func cmdStatus(args []string) error {
 	interval := defaultBackupInterval
+	asJSON := false
 	for i, arg := range args {
+		if arg == "--json" {
+			asJSON = true
+		}
 		if arg == "--backup-interval" && i < len(args)-1 {
 			if d, err := time.ParseDuration(args[i+1]); err == nil {
 				interval = d
@@ -1117,30 +1191,31 @@ func cmdStatus(args []string) error {
 	if err != nil {
 		return err
 	}
-	var apps []struct {
-		Name            string        `json:"name"`
-		Env             string        `json:"env"`
-		Domain          string        `json:"domain"`
-		Release         string        `json:"release"`
-		Running         bool          `json:"running"`
-		Usage           *runner.Usage `json:"usage"`
-		Backups         bool          `json:"backups"`
-		LastBackupAt    string        `json:"lastBackupAt"`
-		LastBackupError string        `json:"lastBackupError"`
-	}
+	// listedApp rather than a struct literal of the fields this command happens
+	// to print: the control API is the one contract, and re-declaring a subset
+	// here is how a field added on the server silently fails to reach the CLI.
+	var apps []listedApp
 	if err := json.Unmarshal([]byte(raw), &apps); err != nil {
 		return fmt.Errorf("parse control api response: %w", err)
 	}
 	if len(apps) == 0 {
+		if asJSON {
+			fmt.Println("[]")
+			return nil
+		}
 		fmt.Println("no apps deployed")
 		return nil
 	}
 
 	now := time.Now()
+	if asJSON {
+		return printStatusJSON(apps, now, interval)
+	}
+
 	problems := 0
 	for _, a := range apps {
 		fmt.Printf("%s/%s\n", a.Name, a.Env)
-		fmt.Printf("  domain   %s\n", a.Domain)
+		fmt.Printf("  domain   %s\n", strings.Join(a.Domains, ", "))
 		fmt.Printf("  release  %s\n", a.Release)
 
 		// A registered app that is not running is the loudest thing this
@@ -1161,6 +1236,12 @@ func cmdStatus(args []string) error {
 		} else {
 			fmt.Printf("  process  running\n")
 		}
+
+		// Traffic answers the question an operator actually asks once twenty
+		// prototypes share a host: which of these is dead? Crons are named on
+		// the same line because an app whose whole job is a weekly email serves
+		// no requests and would otherwise read as abandoned.
+		fmt.Printf("  traffic  %s\n", trafficLine(a, now))
 
 		switch {
 		case !a.Backups:
@@ -1187,11 +1268,11 @@ func cmdStatus(args []string) error {
 			problems++
 			fmt.Printf("           ⚠ last attempt failed: %s\n", a.LastBackupError)
 		}
-		// Deliberately not printed: what is NOT covered even on success. A restore
-		// gives back the database and not storage/, and someone reading a healthy
-		// line should know that before they need it.
+		// What is NOT covered even on success, stated on every healthy line.
+		// `storage/` joined the backup set; `.env` did not, and someone reading
+		// a green status should know that before they need it.
 		if a.Backups {
-			fmt.Printf("           storage/ is not backed up\n")
+			fmt.Printf("           .env is not backed up — secrets come from the deploy\n")
 		}
 		fmt.Println()
 	}

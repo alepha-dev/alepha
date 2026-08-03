@@ -143,9 +143,19 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("retention failed after a successful backup", "app", app.Key(), "err", pruneErr)
 	}
 
+	// Uploaded files are archived separately and are allowed to fail on their
+	// own. They are snapshotted by a different mechanism from the database — a
+	// tar walk rather than SQLite's backup API — and an app can have one without
+	// the other, so one failing must never cancel the other. The failure is
+	// REPORTED rather than swallowed: a partial backup that reads as a complete
+	// one is the worst thing this system can produce.
+	storageDir := filepath.Join(s.root, "apps", app.Name, app.Env, "storage")
+	storageRes, storageErr := mgr.BackupStorage(r.Context(), app.Name, app.Env, storageDir)
+
 	s.log.Info("backup stored", "app", app.Key(), "key", res.Key,
 		"raw", res.RawBytes, "stored", res.StoredBytes, "tables", res.Tables, "pruned", len(pruned))
-	writeJSON(w, http.StatusOK, map[string]any{
+
+	response := map[string]any{
 		"key":         res.Key,
 		"rawBytes":    res.RawBytes,
 		"storedBytes": res.StoredBytes,
@@ -154,8 +164,25 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		"pruned":      keys(pruned),
 		// What is NOT covered has to be stated, every time. The worst failure of
 		// a backup system is someone believing they are covered.
-		"notBackedUp": []string{"storage/ (uploaded files)", ".env (secrets)"},
-	})
+		"notBackedUp": []string{".env (secrets)"},
+	}
+	switch {
+	case storageErr != nil:
+		s.log.Error("storage backup failed", "app", app.Key(), "err", storageErr)
+		response["storageError"] = storageErr.Error()
+		response["notBackedUp"] = []string{".env (secrets)", "storage/ (uploaded files) — SEE storageError"}
+	case storageRes == nil:
+		// No storage directory, or nothing in it. Not a failure, and said in
+		// words so an empty field is never read as a silent success.
+		response["storage"] = "no uploaded files to archive"
+	default:
+		s.log.Info("storage archived", "app", app.Key(), "key", storageRes.Key,
+			"files", storageRes.Tables, "stored", storageRes.StoredBytes)
+		response["storageKey"] = storageRes.Key
+		response["storageFiles"] = storageRes.Tables
+		response["storageBytes"] = storageRes.StoredBytes
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (s *server) handleListBackups(w http.ResponseWriter, r *http.Request) {
@@ -486,6 +513,18 @@ func (s *server) backupOne(ctx context.Context, mgr *backup.Manager, cfg *state.
 	}
 	s.log.Info("scheduled backup", "app", key, "key", res.Key,
 		"raw", res.RawBytes, "stored", res.StoredBytes)
+
+	// Uploaded files, on the same schedule but on their own footing: a tar walk
+	// that fails must not undo a database backup that succeeded, and must not
+	// pass silently either.
+	storageDir := filepath.Join(s.root, "apps", app.Name, app.Env, "storage")
+	switch storageRes, storageErr := mgr.BackupStorage(ctx, app.Name, app.Env, storageDir); {
+	case storageErr != nil:
+		s.log.Error("scheduled storage backup failed", "app", key, "err", storageErr)
+	case storageRes != nil:
+		s.log.Info("scheduled storage backup", "app", key, "key", storageRes.Key,
+			"files", storageRes.Tables, "stored", storageRes.StoredBytes)
+	}
 
 	// Retention runs here and not on a schedule of its own: pruning is only
 	// meaningful right after a new backup exists, and `Prune` returning what it
