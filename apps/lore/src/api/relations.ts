@@ -14,6 +14,7 @@ import { outpostEvents } from "./entities/outpostEvents.ts";
 import { outposts } from "./entities/outposts.ts";
 import { petitions } from "./entities/petitions.ts";
 import { quests } from "./entities/quests.ts";
+import { releases } from "./entities/releases.ts";
 import { sigils } from "./entities/sigils.ts";
 
 /**
@@ -46,6 +47,7 @@ export const schema = {
   outposts,
   outpostApps,
   outpostEvents,
+  releases,
   sigils,
   blightIgnoreRules,
 };
