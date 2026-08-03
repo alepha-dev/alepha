@@ -20,7 +20,9 @@ class Buckets {
 const uploadRoute = { path: "/api/files" } as unknown as ServerRoute;
 
 const requestFor = (bucket?: string): ServerRequest =>
-  ({ query: bucket ? { bucket } : {} }) as unknown as ServerRequest;
+  ({
+    query: bucket ? { bucket } : {},
+  }) as unknown as ServerRequest;
 
 const setup = async () => {
   const alepha = Alepha.create({

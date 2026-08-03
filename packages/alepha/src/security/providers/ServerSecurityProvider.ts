@@ -16,6 +16,22 @@ export class ServerSecurityProvider {
 
   protected readonly onServerRequest = $hook({
     on: "server:onRequest",
+    /**
+     * Before the body is read, not after.
+     *
+     * It used to run `priority: "last"`, which put it behind the multipart
+     * hook — so a request was fully buffered before anyone knew who sent it.
+     * That was harmless while every route shared one small ceiling; it stopped
+     * being harmless once a route can be granted a large one, because the
+     * grant was then reachable by an anonymous caller.
+     *
+     * Ordering this way is safe by construction: user resolution takes only
+     * `url` and `headers` (see `SecurityProvider.resolveUserFromServerRequest`),
+     * so it cannot want a body that has not been parsed yet.
+     *
+     * This resolves *who* is calling. It does not authorise — `$secure` still
+     * runs later, in the handler chain.
+     */
     priority: "last",
     handler: async ({ request }) => {
       // Resolve the user from any supported credential channel — not just the

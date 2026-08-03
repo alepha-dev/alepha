@@ -1,6 +1,8 @@
-import { Alepha, z } from "alepha";
+import { $hook, $inject, Alepha, z } from "alepha";
 import {
+  $route,
   AlephaServer,
+  ServerProvider,
   type ServerRequest,
   type ServerRoute,
 } from "alepha/server";
@@ -220,5 +222,86 @@ describe("multipart cap resolution", () => {
         ),
       ).rejects.toThrow(/"avatar"/);
     });
+  });
+});
+
+/**
+ * `before:` on a hook has to actually order something.
+ *
+ * It used to accept a class and silently order nothing — `dep.constructor` on a
+ * class is `Function`, which matches no service — so the constraint compiled,
+ * ran, and guaranteed nothing. A constraint that quietly does nothing is worse
+ * than one that refuses: the order it promises is then merely believed.
+ *
+ * Driven through a real request, because the property is about hook order and
+ * calling `parseMultipart` directly would skip the very chain under test.
+ *
+ * ⚠️ What this does NOT license is moving authentication ahead of the body. On
+ * the Node path the body is captured by the multipart hook itself
+ * (`Readable.toWeb(node.req)`); any hook that awaits before that capture lets
+ * the request stream drain into nothing. Ordering security first was tried and
+ * emptied every upload — see the note on `ServerSecurityProvider`.
+ */
+describe("hook ordering constraints", () => {
+  it("lets an earlier hook decide what the body hook sees", async ({
+    expect,
+  }) => {
+    const seen: Array<unknown> = [];
+
+    class EarlyProbe {
+      public readonly onRequest = $hook({
+        on: "server:onRequest",
+        before: [ServerMultipartProvider],
+        handler: ({ request }) => {
+          (request as { marker?: unknown }).marker = "ran-first";
+        },
+      });
+    }
+
+    class Watcher {
+      protected readonly caps = $inject(MultipartCapProvider);
+      public readonly register = $hook({
+        on: "configure",
+        handler: () => {
+          this.caps.use((request) => {
+            seen.push((request as { marker?: unknown }).marker);
+            return undefined;
+          });
+        },
+      });
+    }
+
+    class UploadApi {
+      upload = $route({
+        method: "POST",
+        path: "/upload",
+        schema: { body: z.object({ file: z.file() }) },
+        handler: () => ({ ok: true }) as never,
+      });
+    }
+
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "error", SERVER_PORT: 0, SERVER_HOST: "127.0.0.1" },
+    });
+    alepha.with(AlephaServer);
+    alepha.inject(EarlyProbe);
+    alepha.inject(Watcher);
+    alepha.inject(UploadApi);
+    const server = alepha.inject(ServerProvider);
+    await alepha.start();
+
+    const raw = `--${BOUNDARY}\r\nContent-Disposition: form-data; name="file"; filename="a.bin"\r\n\r\nhello\r\n--${BOUNDARY}--\r\n`;
+    const res = await fetch(`${server.hostname}/upload`, {
+      method: "POST",
+      headers: { "content-type": `multipart/form-data; boundary=${BOUNDARY}` },
+      body: new TextEncoder().encode(raw),
+    });
+
+    expect(res.status).toBe(200);
+    // The resolver runs inside the body hook. Seeing the marker there is only
+    // possible if the hook that set it ran first — which is the whole claim.
+    expect(seen).toEqual(["ran-first"]);
+
+    await alepha.stop();
   });
 });
