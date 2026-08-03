@@ -83,6 +83,20 @@ export const isTypeFile = (value: ZType): value is FileSchema => {
   );
 };
 
+/**
+ * Whether a schema asks for the bytes rather than a file.
+ *
+ * The difference is what the handler receives, and it is the whole point:
+ * `z.file()` yields a `FileLike`, which promises to be readable more than once
+ * and therefore has to be kept in memory. `z.stream()` yields the bytes as they
+ * arrive, once — so the ceiling stops being "what fits in RAM".
+ */
+export const isTypeStream = (value: ZType): value is StreamSchema => {
+  return (
+    !!value && typeof value === "object" && z.schema.format(value) === "stream"
+  );
+};
+
 export const isFileLike = (value: any): value is FileLike => {
   return (
     !!value &&

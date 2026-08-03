@@ -8,6 +8,7 @@ import {
   type FileLike,
   type Infer,
   isTypeFile,
+  isTypeStream,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
@@ -286,7 +287,20 @@ export class ServerMultipartProvider {
         throw new MultipartParseError("multipart request carries no body");
       }
 
-      for await (const part of parser.parse(request.body, boundary)) {
+      // Driven by hand rather than with `for await`, because leaving that loop
+      // calls `return()` on the generator — which runs its `finally`, cancels
+      // the reader, and closes the very stream a `z.stream()` field is about to
+      // hand to the handler. Suspending the iterator instead keeps it alive.
+      const parts = parser
+        .parse(request.body, boundary)
+        [Symbol.asyncIterator]();
+
+      while (true) {
+        const next = await parts.next();
+        if (next.done) {
+          break;
+        }
+        const part = next.value;
         const key = part.name;
         // Remembered so a limit blown mid-part can name the field. The parser
         // has no idea what a form field is, and "a part exceeds 100 bytes" is
@@ -301,6 +315,19 @@ export class ServerMultipartProvider {
         const schema = fields[key];
         if (!z.schema.isSchema(schema)) {
           continue;
+        }
+
+        if (isTypeStream(schema)) {
+          // Handed over untouched, and the walk stops here. The handler pulls
+          // these bytes — after `$secure`, after validation — which is what
+          // makes a large ceiling cost bandwidth instead of memory, and what
+          // keeps an unauthenticated caller from spending it at all.
+          //
+          // Whatever follows this part in the message is not read. A client
+          // that wants other fields honoured sends them first; that ordering
+          // is inherent to streaming, not a shortcut taken here.
+          body[key] = this.guarded(part, key);
+          return body;
         }
 
         if (isTypeFile(schema)) {
@@ -358,6 +385,31 @@ export class ServerMultipartProvider {
       case "header":
         return `Part headers exceed size limit. Maximum allowed: ${error.limit} bytes`;
     }
+  }
+
+  /**
+   * Re-dresses a streamed part so a blown limit still reads as a 413.
+   *
+   * With a materialised field the parser throws inside {@link parseMultipart},
+   * where the refusal is translated. A streamed one is drained by the handler,
+   * long after that `catch` has returned — so the same overflow surfaced as a
+   * 500 and told the caller nothing. The translation has to travel with the
+   * bytes.
+   */
+  protected guarded(part: MultipartPart, field: string): MultipartPart {
+    const self = this;
+    return {
+      ...part,
+      data: {
+        async *[Symbol.asyncIterator]() {
+          try {
+            yield* part.data;
+          } catch (error) {
+            throw self.asHttpError(error, field);
+          }
+        },
+      },
+    };
   }
 
   /**
