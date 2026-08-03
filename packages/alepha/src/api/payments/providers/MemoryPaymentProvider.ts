@@ -4,6 +4,7 @@ import type { PaymentIntentEntity } from "../entities/paymentIntents.ts";
 import type {
   CreatePaymentMethodResult,
   CreateSessionResult,
+  ElementSessionResult,
   PaymentProvider,
   RefundResult,
   WebhookEvent,
@@ -48,6 +49,30 @@ export class MemoryPaymentProvider implements PaymentProvider {
     return {
       url: `/payments/mock-checkout/${intent.id}?returnUrl=${encodeURIComponent(options.returnUrl)}`,
       providerRef,
+    };
+  }
+
+  /**
+   * A fake element session, so the embedded flow is exercisable in tests and in
+   * local development without a PSP account.
+   *
+   * The `provider: "memory"` name is what a front-end dispatches on, and the
+   * point of returning it here is that the agnostic slot can be tested end to
+   * end: a renderer registered for `"memory"` stands in for Stripe's.
+   */
+  public async createElementSession(
+    intent: PaymentIntentEntity,
+  ): Promise<ElementSessionResult> {
+    const providerRef = `mem_pi_${this.crypto.randomUUID()}`;
+    this.charges.set(providerRef, {
+      providerRef,
+      amount: intent.amount,
+      status: "captured",
+    });
+    return {
+      clientSecret: `${providerRef}_secret_${this.crypto.randomText(16)}`,
+      publishableKey: "pk_memory",
+      provider: "memory",
     };
   }
 

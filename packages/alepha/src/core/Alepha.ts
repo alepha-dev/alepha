@@ -192,21 +192,30 @@ export class Alepha {
       };
     }
 
-    // force production mode when building with vite
-    // vite's define replaces `process.env.NODE_ENV` with `"production"` at build time,
-    // but the spread above doesn't carry it (especially in workerd/cloudflare).
-    if (typeof process === "object" && process.env?.NODE_ENV === "production") {
-      state.env ??= {};
-      Object.assign(state.env, {
-        NODE_ENV: "production",
-      });
-    }
-
-    // Browser/Vite builds have no `process`, so both blocks above are
-    // stripped as dead code — leaving `NODE_ENV` unset and `isProduction()`
-    // always false in the browser bundle. Fall back to Vite's build-time
-    // `import.meta.env.PROD` flag, baked at build time. It is `undefined`
-    // outside Vite (server bundles, workerd) so this is a no-op there.
+    /*
+     * There used to be a second block here that read
+     * `process.env?.NODE_ENV === "production"` and, when true, forced
+     * `NODE_ENV: "production"` onto the state. Its intent was to carry Vite's
+     * build-time value through to workerd, where the spread above finds no
+     * `process.env`. It could not work, and it did real damage.
+     *
+     * `process.env.NODE_ENV` is the exact expression Vite's `define` rewrites. In
+     * a built bundle the condition became `"production" === "production"`, the
+     * minifier folded it to `true` and dropped it, and what shipped was an
+     * unconditional `Object.assign(env, { NODE_ENV: "production" })`. So a built
+     * server forced production at boot no matter what the environment said:
+     * `NODE_ENV=development node dist` was silently ignored, and every
+     * `isProduction()` gate — including the ones that refuse test-only endpoints
+     * — was on in staging as much as in production.
+     *
+     * The block below already does the job correctly, and only when nothing has
+     * been said at runtime: it reads the baked `import.meta.env.PROD` flag rather
+     * than an expression the bundler substitutes, and it never overrides an
+     * explicit value. Browser and Vite builds have no `process`, so the spread
+     * above is dead code there and `NODE_ENV` arrives unset — which is exactly
+     * the case this covers. `import.meta.env` is `undefined` outside Vite (plain
+     * server bundles, workerd), making it a no-op there.
+     */
     if (state.env?.NODE_ENV == null) {
       const viteEnv = (import.meta as { env?: { PROD?: boolean } }).env;
       if (viteEnv?.PROD) {

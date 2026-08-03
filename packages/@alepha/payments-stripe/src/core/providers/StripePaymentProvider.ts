@@ -2,6 +2,7 @@ import { $env, $inject, Alepha, AlephaError, type Infer, z } from "alepha";
 import type {
   CreatePaymentMethodResult,
   CreateSessionResult,
+  ElementSessionResult,
   PaymentIntentEntity,
   PaymentProvider,
   RefundResult,
@@ -175,6 +176,56 @@ export class StripePaymentProvider implements PaymentProvider {
     return {
       url: session.url,
       providerRef,
+    };
+  }
+
+  /**
+   * Create a PaymentIntent for the browser to confirm with Payment Element.
+   *
+   * Unlike {@link createSession} this creates the PaymentIntent directly, with
+   * no Checkout Session — the card field lives on the merchant's page and Stripe
+   * hosts nothing. `automatic_payment_methods` lets the account's enabled methods
+   * decide what the Element offers, which is what makes the Element worth using
+   * over a hand-rolled card input.
+   *
+   * The publishable key is required here and only here: a redirect flow never
+   * needs it, so it stays optional in the env schema and is checked at the point
+   * of use rather than at boot.
+   */
+  public async createElementSession(
+    intent: PaymentIntentEntity,
+    options: { stripeAccount?: string } = {},
+  ): Promise<ElementSessionResult> {
+    const publishableKey = this.env.STRIPE_PUBLISHABLE_KEY;
+    if (!publishableKey) {
+      throw new AlephaError(
+        "STRIPE_PUBLISHABLE_KEY is required to mount Payment Element. " +
+          "Set it, or use the redirect flow (createSession), which does not need it.",
+      );
+    }
+
+    const paymentIntent = await this.stripe.paymentIntents.create(
+      {
+        amount: intent.amount,
+        currency: intent.currency,
+        automatic_payment_methods: { enabled: true },
+        metadata: { intentId: intent.id },
+      },
+      options.stripeAccount
+        ? { stripeAccount: options.stripeAccount }
+        : undefined,
+    );
+
+    if (!paymentIntent.client_secret) {
+      throw new AlephaError(
+        "Stripe PaymentIntent came back without a client_secret",
+      );
+    }
+
+    return {
+      clientSecret: paymentIntent.client_secret,
+      publishableKey,
+      provider: "stripe",
     };
   }
 

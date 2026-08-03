@@ -1,0 +1,69 @@
+{
+  "name": "@alepha/commerce",
+  "private": true,
+  "description": "Headless commerce for Alepha apps: catalog, cart, checkout. Extended by product-kind handlers.",
+  "author": "Feunard",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./cart": "./src/cart/index.ts",
+    "./checkout": "./src/checkout/index.ts",
+    "./shipping": "./src/shipping/index.ts",
+    "./invoicing": "./src/invoicing/index.ts",
+    "./notifications": "./src/notifications/index.ts",
+    "./admin": "./src/admin/index.ts",
+    "./admin/components/*": "./src/admin/components/*.tsx",
+    "./checkout/components/*": "./src/checkout/components/*",
+    "./shipping/components/*": "./src/shipping/components/*.tsx"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "alepha": "0.24.0",
+    "react": "^19.2.8",
+    "tsdown": "^0.22.14",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "peerDependencies": {
+    "alepha": "0.24.0",
+    "react": "*"
+  },
+  "scripts": {
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "tsdown"
+  },
+  "homepage": "https://github.com/feunard/alepha",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
+  "keywords": [
+    "alepha",
+    "commerce",
+    "ecommerce",
+    "catalog",
+    "cart",
+    "checkout"
+  ],
+  "dependencies": {
+    "@alepha/ui": "workspace:*",
+    "lucide-react": "^1.28.0"
+  }
+}

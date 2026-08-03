@@ -403,6 +403,10 @@ export function Control(props: ControlProps) {
         <div className="flex h-9 items-center">
           <Switch
             id={meta.id}
+            // Same omission as the numeric control had: without a name the
+            // toggle is invisible to `[name="…"]` lookups, including
+            // `AutoForm`'s scroll-to-first-error.
+            name={props.input.props.name}
             disabled={merged.disabled}
             checked={Boolean(value)}
             onCheckedChange={(v) => setValue(v)}

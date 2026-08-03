@@ -1,0 +1,260 @@
+@import "@alepha/ui/styles.css";
+@import "@fontsource-variable/archivo/index.css";
+@import "@fontsource-variable/archivo/wght.css";
+
+/*
+ * ATELIER AURORE — visual identity
+ * ================================
+ *
+ * The subject is a small Paris goldsmith selling made-to-order and small-series
+ * pieces. The design is built from that workshop's own artefacts rather than from
+ * boutique conventions:
+ *
+ *  - No serif type anywhere. A jeweller's own lettering is *stamped into metal*
+ *    — hallmarks, gauge marks, titre punches — which reads as tight geometric
+ *    capitals, not as a magazine didone. Archivo, tracked wide and set in caps,
+ *    is that voice. A Playfair or Cormorant would be borrowed from a fashion
+ *    editorial; the punch is the atelier's own.
+ *
+ *  - No photography. Pieces are shown as the atelier draws them: precise line
+ *    drawings, stroked in the piece's own metal. That is honest (they are drawn
+ *    before they are cast) and it makes the catalogue look like a workbook.
+ *
+ *  - Metal is semantic colour. `--or-jaune`, `--or-gris` and `--argent` are not
+ *    accents to sprinkle: a piece in 18k yellow is drawn and labelled in yellow
+ *    gold, a silver one in silver. The colour states a fact about the object.
+ *
+ * The ground is a cool graphite, not the cream that every jewellery site and
+ * every generated design lands on. Cream reads as stationery; graphite reads as
+ * oxidised silver, which is what an unpolished piece actually looks like.
+ */
+
+:root {
+  /* ---- The palette, and nothing outside it -------------------------- */
+
+  /** Oxidised silver. The dark ground. */
+  --encre: oklch(0.19 0.012 250);
+  /** One step up, for raised surfaces. */
+  --encre-clair: oklch(0.24 0.014 250);
+  /** Plaster / stone. Cooler and greyer than cream, deliberately. */
+  --pierre: oklch(0.94 0.006 120);
+  /** 18-carat yellow gold, 750‰. */
+  --or-jaune: oklch(0.74 0.115 88);
+  /** White gold / palladium, 750‰. */
+  --or-gris: oklch(0.79 0.014 250);
+  /** Sterling silver, 925‰. */
+  --argent: oklch(0.72 0.012 210);
+  /** Garnet. The single alert note — a real stone, not a UI red. */
+  --grenat: oklch(0.45 0.13 25);
+
+  /* ---- Type ---------------------------------------------------------- */
+
+  /** Stamped capitals. Display only, always tracked, usually uppercase. */
+  --police-titre: "Archivo Variable", "Archivo", system-ui, sans-serif;
+  /** Reading text. Invisible on purpose. */
+  --police-texte: "Inter Variable", "Inter", system-ui, sans-serif;
+  /** Measurements: titre, poids, dimensions, référence. Tabular by nature. */
+  --police-mesure: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  /* ---- shadcn tokens, mapped onto the palette ------------------------ */
+  /* Light is the reading mode: stone paper, ink text, gold for action. */
+
+  --background: var(--pierre);
+  --foreground: oklch(0.22 0.012 250);
+  --card: oklch(0.98 0.003 120);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.98 0.003 120);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.24 0.014 250);
+  --primary-foreground: var(--pierre);
+  --secondary: oklch(0.89 0.006 120);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.9 0.005 120);
+  --muted-foreground: oklch(0.48 0.01 250);
+  --accent: oklch(0.88 0.03 88);
+  --accent-foreground: oklch(0.28 0.03 88);
+  --destructive: var(--grenat);
+
+  /* Hairlines, because a stamped mark is a thin engraved line. */
+  --border: oklch(0.84 0.006 120);
+  --input: oklch(0.84 0.006 120);
+  --ring: var(--or-jaune);
+
+  /*
+   * Square. A punch leaves a hard edge; rounded corners would be a software
+   * convention imported into a metalworking one.
+   */
+  --radius: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+
+  --sidebar: oklch(0.97 0.003 120);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: oklch(0.24 0.014 250);
+  --sidebar-primary-foreground: var(--pierre);
+  --sidebar-accent: oklch(0.9 0.005 120);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: oklch(0.86 0.006 120);
+  --sidebar-ring: var(--or-jaune);
+}
+
+.dark {
+  --background: var(--encre);
+  --foreground: oklch(0.93 0.006 120);
+  --card: var(--encre-clair);
+  --card-foreground: oklch(0.93 0.006 120);
+  --popover: var(--encre-clair);
+  --popover-foreground: oklch(0.93 0.006 120);
+
+  --primary: var(--or-jaune);
+  --primary-foreground: oklch(0.18 0.02 88);
+  --secondary: oklch(0.28 0.014 250);
+  --secondary-foreground: oklch(0.93 0.006 120);
+  --muted: oklch(0.27 0.012 250);
+  --muted-foreground: oklch(0.66 0.01 250);
+  --accent: oklch(0.3 0.03 88);
+  --accent-foreground: var(--or-jaune);
+  --destructive: oklch(0.58 0.15 25);
+
+  --border: oklch(0.31 0.012 250);
+  --input: oklch(0.33 0.012 250);
+  --ring: var(--or-jaune);
+
+  --sidebar: var(--encre);
+  --sidebar-foreground: oklch(0.93 0.006 120);
+  --sidebar-primary: var(--or-jaune);
+  --sidebar-primary-foreground: oklch(0.18 0.02 88);
+  --sidebar-accent: oklch(0.28 0.014 250);
+  --sidebar-accent-foreground: oklch(0.93 0.006 120);
+  --sidebar-border: oklch(0.31 0.012 250);
+  --sidebar-ring: var(--or-jaune);
+}
+
+@theme inline {
+  --font-titre: var(--police-titre);
+  --font-texte: var(--police-texte);
+  --font-mesure: var(--police-mesure);
+  --color-or-jaune: var(--or-jaune);
+  --color-or-gris: var(--or-gris);
+  --color-argent: var(--argent);
+  --color-grenat: var(--grenat);
+}
+
+@layer base {
+  body {
+    font-family: var(--police-texte);
+    /* Reading size, not app size — this is a catalogue. */
+    font-size: 0.9375rem;
+    line-height: 1.7;
+  }
+
+  /*
+   * The stamped voice. Tracking is the whole effect: a punch spaces its letters
+   * because each one is struck separately.
+   */
+  .estampe {
+    font-family: var(--police-titre);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    line-height: 1.05;
+  }
+
+  /* Display sizes loosen the tracking as they grow, so it stays optical. */
+  .estampe-xl {
+    font-family: var(--police-titre);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 0.95;
+    font-size: clamp(2.25rem, 7vw, 5.5rem);
+  }
+
+  .estampe-lg {
+    font-family: var(--police-titre);
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    font-size: clamp(1.5rem, 3.5vw, 2.5rem);
+  }
+
+  /* Measurements. Small, wide, tabular — read as engraved data. */
+  .mesure {
+    font-family: var(--police-mesure);
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Prices are read, compared and added up — tabular, never mono. */
+  .prix {
+    font-family: var(--police-titre);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  /*
+   * THE SIGNATURE — the poinçon — is drawn in `Poincon.tsx` as an SVG outline.
+   * It lived here first as a bordered box clipped to a lozenge, which rendered
+   * as nothing at all: `clip-path` removes the border along with everything else
+   * outside the shape. A CSS lozenge with a visible edge is not worth the fight.
+   */
+
+  /* A hairline rule that reads as a scribed line rather than a border. */
+  .trait {
+    border-top: 1px solid var(--border);
+  }
+
+  /*
+   * Line drawings sit on the page, not in a card. No shadow, no frame — a
+   * drawing on paper has neither.
+   */
+  .dessin {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Focus has to be visible on both grounds; gold works on each. */
+  :focus-visible {
+    outline: 2px solid var(--or-jaune);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/*
+ * The one orchestrated moment: pieces settle in as the catalogue loads, in
+ * sequence, the way a tray of finished work is laid out one piece at a time.
+ * Deliberately the only animation on the site.
+ */
+@layer utilities {
+  .pose {
+    animation: pose 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  }
+
+  @keyframes pose {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}

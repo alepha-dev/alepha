@@ -76,6 +76,14 @@ export function ButtonLanguage(props: ButtonLanguageProps) {
             <DropdownMenuCheckboxItem
               key={code}
               checked={i18n.lang === code}
+              /*
+               * Checkbox items keep the menu open by default, which is right when
+               * you are ticking several things and wrong here: a language is a
+               * single choice, and the menu stayed hanging over the page after
+               * you made it. Closing on click also means the ticked state is
+               * something you see on reopening rather than a leftover panel.
+               */
+              closeOnClick
               onCheckedChange={() => {
                 void i18n.setLang(code);
               }}

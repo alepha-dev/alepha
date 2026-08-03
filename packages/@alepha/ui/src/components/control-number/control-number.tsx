@@ -108,6 +108,16 @@ export function ControlNumber(props: ControlNumberProps) {
         )}
         <Input
           id={meta.id}
+          /*
+           * Text controls carry the field name; numeric ones did not, so a number
+           * rendered as `<input type="number">` with no `name` at all. Two things
+           * depended on it: `AutoForm`'s scroll-to-first-error looks the field up
+           * with `document.querySelector('[name="…"]')`, so it silently gave up on
+           * numeric fields, and the browser cannot label an unnamed field for
+           * autofill. Found while writing e2e tests against a price field that no
+           * selector could reach.
+           */
+          name={props.input.props.name}
           type="number"
           min={min}
           max={max}

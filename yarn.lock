@@ -5,6 +5,24 @@ __metadata:
   version: 10
   cacheKey: 10c0
 
+"@alepha/commerce@workspace:*, @alepha/commerce@workspace:packages/@alepha/commerce":
+  version: 0.0.0-use.local
+  resolution: "@alepha/commerce@workspace:packages/@alepha/commerce"
+  dependencies:
+    "@alepha/ui": "workspace:*"
+    "@types/react": "npm:^19.2.18"
+    alepha: "npm:0.24.0"
+    lucide-react: "npm:^1.28.0"
+    react: "npm:^19.2.8"
+    tsdown: "npm:^0.22.14"
+    typescript: "npm:^7.0.2"
+    vitest: "npm:^4.1.10"
+  peerDependencies:
+    alepha: 0.24.0
+    react: "*"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/devtools@workspace:*, @alepha/devtools@workspace:packages/@alepha/devtools":
   version: 0.0.0-use.local
   resolution: "@alepha/devtools@workspace:packages/@alepha/devtools"
@@ -13661,6 +13679,28 @@ __metadata:
   checksum: 10c0/bee87c34e1e986cfb4c30846b8e6327d18874f10b535699866f368ade11ea4ee45433d97bf5eada22c4320c27df79c3a6a7eb1bf3ecfc47f2c997d9e5e2672fd
   languageName: node
   linkType: hard
+
+"shop@workspace:apps/shop":
+  version: 0.0.0-use.local
+  resolution: "shop@workspace:apps/shop"
+  dependencies:
+    "@alepha/commerce": "workspace:*"
+    "@alepha/ui": "workspace:*"
+    "@fontsource-variable/archivo": "npm:^5.3.0"
+    "@playwright/test": "npm:^1.62.1"
+    "@tailwindcss/vite": "npm:^4.3.3"
+    alepha: "workspace:^"
+    better-sqlite3: "npm:^13.0.2"
+    lucide-react: "npm:^1.28.0"
+    react: "npm:^19.2.8"
+    react-dom: "npm:^19.2.8"
+    tailwindcss: "npm:^4.3.3"
+    vite: "npm:^8.2.0"
+  dependenciesMeta:
+    better-sqlite3:
+      built: true
+  languageName: unknown
+  linkType: soft
 
 "side-channel-list@npm:^1.0.0":
   version: 1.0.0

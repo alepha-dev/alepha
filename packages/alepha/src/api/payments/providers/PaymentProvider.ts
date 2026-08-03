@@ -30,6 +30,22 @@ export interface WebhookEvent {
   raw: unknown;
 }
 
+/**
+ * What a browser needs to mount the PSP's own card field, rather than being
+ * redirected to its hosted page.
+ */
+export interface ElementSessionResult {
+  /** Per-payment secret the PSP's browser SDK confirms against. */
+  clientSecret: string;
+  /** Browser-safe key for the SDK. Never a secret key. */
+  publishableKey: string;
+  /**
+   * Which SDK the browser should load — `"stripe"`, `"mollie"`, … The front end
+   * dispatches on it, so swapping PSP changes no component code.
+   */
+  provider: string;
+}
+
 export interface CreatePaymentMethodResult {
   providerRef: string;
   type: string;
@@ -55,6 +71,25 @@ export abstract class PaymentProvider {
       customerEmail?: string;
     },
   ): Promise<CreateSessionResult>;
+
+  /**
+   * Create a session the browser can mount a card field against, keeping the
+   * payer on the merchant's own domain.
+   *
+   * **Optional on purpose.** Not every PSP has an embeddable field, and those
+   * that do expose incompatible SDKs — Stripe's Payment Element and Mollie's
+   * Components share no API. Declaring this as an optional method rather than a
+   * required one is what keeps the abstraction honest: a consumer asks whether
+   * the installed provider has it, instead of calling something that silently
+   * does nothing.
+   *
+   * A provider that does not implement it is used through
+   * {@link createSession} — a redirect, which every PSP supports.
+   */
+  createElementSession?(
+    intent: PaymentIntentEntity,
+    options?: { stripeAccount?: string },
+  ): Promise<ElementSessionResult>;
 
   /**
    * Capture a previously authorized payment.

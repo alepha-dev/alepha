@@ -10,6 +10,7 @@ import {
 import { type RefundEntity, refunds } from "../entities/refunds.ts";
 import { PaymentError } from "../errors/PaymentError.ts";
 import {
+  type ElementSessionResult,
   PaymentProvider,
   type WebhookEvent,
 } from "../providers/PaymentProvider.ts";
@@ -303,6 +304,58 @@ export class PaymentService {
       currency: intent.currency,
       metadata: intent.metadata,
     });
+  }
+
+  /**
+   * Create a session for an embedded card field, and claim the intent.
+   *
+   * Mirrors {@link createSession}'s state handling — the intent moves to
+   * `processing` before the PSP call, so two concurrent attempts cannot both
+   * create a payment against the same intent.
+   *
+   * @throws PaymentError when the installed provider has no embedded flow. The
+   * caller is expected to have asked first; this is the guard for when it did
+   * not.
+   */
+  public async createElementSession(
+    intentId: string,
+    options: { stripeAccount?: string } = {},
+  ): Promise<ElementSessionResult & { intentId: string }> {
+    const intent = await this.getIntent(intentId);
+    this.assertStatus(intent, "created", "createElementSession");
+
+    if (!this.provider.createElementSession) {
+      throw new PaymentError(
+        `The installed payment provider has no embedded card field. Use createSession() for a redirect instead.`,
+      );
+    }
+
+    // Claim before the PSP call, for the same reason as createSession: the loser
+    // of a race would otherwise overwrite the winner's reference.
+    try {
+      await this.intentRepo.updateOne(
+        { id: { eq: intent.id }, status: { eq: "created" } },
+        { status: "processing" },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        throw new PaymentError(
+          `Cannot createElementSession: intent ${intent.id} is already being processed`,
+        );
+      }
+      throw error;
+    }
+
+    const session = await this.provider.createElementSession(intent, options);
+    return { ...session, intentId: intent.id };
+  }
+
+  /**
+   * Whether the installed provider can host a card field on our own page.
+   * A storefront asks this to decide what to render.
+   */
+  public supportsEmbeddedPayment(): boolean {
+    return typeof this.provider.createElementSession === "function";
   }
 
   /**
