@@ -34,6 +34,22 @@ export const ShopWeb = $module({
     // visitor whose browser asks for English gets English, and the choice is
     // then remembered in the `lang` cookie — which is what lets the server
     // render the same language the client will hydrate with.
-    alepha.inject(I18nProvider).options.fallbackLang = "fr";
+    const i18n = alepha.inject(I18nProvider).options;
+    i18n.fallbackLang = "fr";
+
+    /*
+     * Locale prefixes, for search engines.
+     *
+     * Each language becomes a distinct crawlable URL, and the URL is the source
+     * of truth — it wins over the cookie and over `Accept-Language`, with no
+     * redirect. French is `fallbackLang`, so it stays unprefixed (`/piece/…`) and
+     * English takes the prefix (`/en/piece/…`). There is deliberately no `/fr/`:
+     * putting the atelier's own language behind a prefix would mean making
+     * English the default, and every existing URL would move.
+     *
+     * This also removes the last way the server and client can disagree about
+     * language, on top of the resolved language now being hydrated.
+     */
+    i18n.routing = "prefix";
   },
 });

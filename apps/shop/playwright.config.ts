@@ -78,6 +78,17 @@ export default defineConfig({
        * real build.
        */
       NODE_ENV: "development",
+      /*
+       * Stripe off, whatever the developer's shell says.
+       *
+       * `main.server.ts` switches to Stripe as soon as `STRIPE_SECRET_KEY` is
+       * set, and Playwright's `env` is merged over `process.env` rather than
+       * replacing it — so a key exported in a terminal would silently redirect
+       * the whole funnel to Stripe Checkout and fail every payment spec for a
+       * reason that has nothing to do with the shop. The suite tests the mock
+       * deliberately; it says so here rather than hoping.
+       */
+      STRIPE_SECRET_KEY: "",
     },
     /*
      * `yarn start` logs every request at info level, so piping stdout buried the

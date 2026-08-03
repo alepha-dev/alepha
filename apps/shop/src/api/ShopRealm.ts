@@ -1,3 +1,4 @@
+import { $env, z } from "alepha";
 import { $realm } from "alepha/api/users";
 import { $permission } from "alepha/security";
 
@@ -14,6 +15,26 @@ import { $permission } from "alepha/security";
  * back office declares.
  */
 export class ShopRealm {
+  /*
+   * Extra administrators, comma-separated — kept out of the repository.
+   *
+   * The seeded `…@atelier-aurore.test` address below is invented and safe to
+   * commit; a real one is not, and this is a public repository. So it comes from
+   * the environment, which also means it travels the right way: only `$env`-
+   * declared keys reach the build manifest, and the manifest is what the deploy
+   * turns into Worker secrets.
+   */
+  protected readonly env = $env(
+    z.object({
+      ADMIN_EMAIL: z
+        .text({
+          description:
+            "Comma-separated addresses promoted to administrator on sign-in.",
+        })
+        .optional(),
+    }),
+  );
+
   /** Opens the `/admin` shell. Distinct from the commerce permissions below. */
   adminUi = $permission({
     group: "admin",
@@ -44,11 +65,27 @@ export class ShopRealm {
     description: "Rembourser une commande",
   });
 
+  /**
+   * The seeded demo administrator, plus whatever `ADMIN_EMAIL` adds.
+   *
+   * Promotion happens at **session creation**, not at registration — so an
+   * address added here gets the role on its owner's next sign-in, and an account
+   * that already exists is not rewritten retroactively.
+   */
+  protected adminEmails(): string[] {
+    const extra = String(this.env.ADMIN_EMAIL ?? "")
+      .split(",")
+      .map((address) => address.trim())
+      .filter(Boolean);
+
+    return ["contact@atelier-aurore.test", ...extra];
+  }
+
   realm = $realm({
     settings: {
       displayName: "Atelier Aurore",
       description: "Bijoux façonnés à Paris.",
-      adminEmails: ["contact@atelier-aurore.test"],
+      adminEmails: this.adminEmails(),
       registrationAllowed: true,
       email: "required",
       username: "none",

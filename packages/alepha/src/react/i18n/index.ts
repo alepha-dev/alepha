@@ -1,9 +1,11 @@
 import { $module } from "alepha";
+import { langAtom } from "./atoms/langAtom.ts";
 import { $dictionary } from "./primitives/$dictionary.ts";
 import { I18nProvider } from "./providers/I18nProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./atoms/langAtom.ts";
 export type { LocalizeProps } from "./components/Localize.tsx";
 export { default as Localize } from "./components/Localize.tsx";
 export type { TranslateProps } from "./components/Translate.tsx";
@@ -36,4 +38,7 @@ export const AlephaReactI18n = $module({
   name: "alepha.react.i18n",
   primitives: [$dictionary],
   services: [I18nProvider],
+  // Registering the atom is what makes the resolved language reach the browser —
+  // see `langAtom` for why the server's choice was previously lost.
+  atoms: [langAtom],
 });
