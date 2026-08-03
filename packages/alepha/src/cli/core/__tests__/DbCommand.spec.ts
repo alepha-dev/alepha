@@ -15,6 +15,7 @@ class TestDbCommand extends DbCommand {
     this.assertNoDestructiveMigrations.bind(this);
   public testArchiveMigrations = this.archiveMigrations.bind(this);
   public testResolveLastSnapshot = this.resolveLastSnapshot.bind(this);
+  public testMigrationsLayout = this.migrationsLayout.bind(this);
   public testResolveMigrationSqlPath = this.resolveMigrationSqlPath.bind(this);
   public testStripPublicSchemaFromMigrations =
     this.stripPublicSchemaFromMigrations.bind(this);
@@ -674,6 +675,78 @@ describe("DbCommand", () => {
         safeParse: (value: unknown) => { success: boolean };
       };
       expect(flags.safeParse({ hints }).success).toBe(true);
+    });
+  });
+
+  /**
+   * Drizzle v1 reads a pre-v1 snapshot happily but emits constraints
+   * differently from the version that wrote it, so `check` derives a diff for
+   * tables nobody touched. Knowing which layout the folder uses is what lets
+   * the command say that out loud instead of reporting it as schema drift —
+   * on D1 the difference is a table rebuild that cascades to child rows.
+   */
+  describe("migrationsLayout", () => {
+    it("detects the v1 layout from a per-migration snapshot", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260101120000_init/snapshot.json",
+        JSON.stringify({ id: "a" }),
+      );
+
+      expect(await db.testMigrationsLayout("/app/migrations/sqlite")).toBe(
+        "v1",
+      );
+    });
+
+    it("detects the pre-v1 layout from meta/_journal.json", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0000_init.sql",
+        "CREATE TABLE a();",
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/meta/_journal.json",
+        JSON.stringify({ entries: [{ idx: 0 }] }),
+      );
+
+      expect(await db.testMigrationsLayout("/app/migrations/sqlite")).toBe(
+        "legacy",
+      );
+    });
+
+    it("prefers v1 when both shapes are present mid-upgrade", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/meta/_journal.json",
+        JSON.stringify({ entries: [{ idx: 0 }] }),
+      );
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260101120000_init/snapshot.json",
+        JSON.stringify({ id: "a" }),
+      );
+
+      expect(await db.testMigrationsLayout("/app/migrations/sqlite")).toBe(
+        "v1",
+      );
+    });
+
+    it("reports none for an empty or missing folder", async () => {
+      const { db } = create();
+      expect(await db.testMigrationsLayout("/app/migrations/sqlite")).toBe(
+        "none",
+      );
+    });
+
+    it("ignores archived migrations when deciding", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/.archive/20250101120000_old/snapshot.json",
+        JSON.stringify({ id: "old" }),
+      );
+
+      expect(await db.testMigrationsLayout("/app/migrations/sqlite")).toBe(
+        "none",
+      );
     });
   });
 });

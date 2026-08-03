@@ -58,7 +58,11 @@ export class DbCommand {
       const drizzleKitProvider =
         alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
       const accepted = new Set<string>([]);
-      const drifted: Array<{ provider: string; statements: string[] }> = [];
+      const drifted: Array<{
+        provider: string;
+        statements: string[];
+        layout: "v1" | "legacy" | "none";
+      }> = [];
 
       for (const primitive of repositoryProvider.getRepositories()) {
         const provider = primitive.provider;
@@ -100,12 +104,13 @@ export class DbCommand {
         drifted.push({
           provider: providerName,
           statements: migrationStatements,
+          layout: await this.migrationsLayout(migrationDir),
         });
       }
 
       // Report drift across ALL providers before failing.
       if (drifted.length > 0) {
-        for (const { provider: providerName, statements } of drifted) {
+        for (const { provider: providerName, statements, layout } of drifted) {
           this.log.info("");
           this.log.info(`Detected migration statements for '${providerName}':`);
           this.log.info("");
@@ -114,6 +119,9 @@ export class DbCommand {
           }
           this.log.info("");
           this.log.info(`At least ${statements.length} change(s) detected.`);
+          if (layout === "legacy") {
+            this.explainLegacyLayout(providerName);
+          }
         }
         this.log.info("");
         this.log.info(
@@ -878,6 +886,71 @@ export class DbCommand {
    * Returns `null` when nothing is recorded yet, so callers can tell that
    * apart from "found a snapshot" without inspecting shape.
    */
+  /**
+   * Which on-disk layout a migrations folder uses.
+   *
+   * - `"v1"` — one directory per migration, each with its own `snapshot.json`.
+   * - `"legacy"` — the pre-v1 shape: flat `NNNN_name.sql` plus a `meta/`
+   *   directory holding `_journal.json` and numbered snapshots.
+   * - `"none"` — nothing recorded yet.
+   *
+   * Worth distinguishing because drizzle v1 reads a legacy snapshot fine but
+   * *emits* constraints differently from the version that wrote it — named
+   * foreign keys, inline `UNIQUE`, no `NOT NULL` on an integer primary key. So
+   * it derives a diff for tables nobody touched, and `check` reports drift that
+   * looks exactly like a schema change. See {@link explainLegacyLayout}.
+   */
+  protected async migrationsLayout(
+    migrationDir: string,
+  ): Promise<"v1" | "legacy" | "none"> {
+    const entries = await this.fs.ls(migrationDir).catch(() => []);
+    for (const entry of entries) {
+      const name = entry.split("/").pop() as string;
+      if (name === "meta" || name === ".archive") continue;
+      if (
+        await this.fs.exists(this.fs.join(migrationDir, name, "snapshot.json"))
+      ) {
+        return "v1";
+      }
+    }
+    const hasJournal = await this.fs.exists(
+      this.fs.join(migrationDir, "meta", "_journal.json"),
+    );
+    return hasJournal ? "legacy" : "none";
+  }
+
+  /**
+   * Say why a legacy folder is probably not the drift it looks like.
+   *
+   * Without this the operator sees a full table rebuild — `DROP TABLE` and
+   * all — for entities they never edited, which on Cloudflare D1 is exactly
+   * the shape that has already cost one production database.
+   */
+  protected explainLegacyLayout(providerName: string): void {
+    this.log.info("");
+    this.log.info(
+      `The '${providerName}' migrations folder is in the pre-v1 layout (meta/_journal.json).`,
+    );
+    this.log.info(
+      "Drizzle v1 emits constraints differently from the version that wrote those",
+    );
+    this.log.info(
+      "snapshots, so some — possibly all — of the statements above are a change of",
+    );
+    this.log.info(
+      "representation, not of schema. Compare them column by column before applying:",
+    );
+    this.log.info(
+      "a rebuild goes through DROP TABLE, which on D1 cascades to child rows.",
+    );
+    this.log.info("");
+    this.log.info("To resolve, upgrade the folder and collapse the history:");
+    this.log.info("  npx drizzle-kit up --config=<generated config>");
+    this.log.info("  alepha db baseline create");
+    this.log.info("  alepha platform db baseline mark --env <env> --reset");
+    this.log.info("");
+  }
+
   protected async resolveLastSnapshot(
     migrationDir: string,
   ): Promise<any | null> {

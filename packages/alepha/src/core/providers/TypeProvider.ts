@@ -6,10 +6,10 @@
  * {@link Infer} / {@link ZType} / {@link ZObject} plus zod's own `Zod*` names
  * for the type level — all re-exported from `ZodProvider`.
  */
-import type { TFile, TStream } from "../helpers/FileLike.ts";
+import type { FileSchema, StreamSchema } from "../helpers/FileLike.ts";
 import { z } from "./ZodProvider.ts";
 
-export type { TFile, TStream };
+export type { FileSchema, StreamSchema };
 
 /** Re-export the `z` provider (the canonical alepha zod) for relative imports. */
 export { z };

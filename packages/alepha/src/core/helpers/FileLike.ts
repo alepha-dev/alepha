@@ -67,11 +67,15 @@ export interface FileLike {
 }
 
 /**
- * Schema view of FileLike.
+ * A schema describing a file field — i.e. one tagged `format: "binary"`.
+ *
+ * Documentation, not a constraint: zod has no distinct file schema, so this is
+ * `ZType` and any schema satisfies it. {@link isTypeFile} is what actually
+ * tells one apart, at runtime.
  */
-export type TFile = ZType;
+export type FileSchema = ZType;
 
-export const isTypeFile = (value: ZType): value is TFile => {
+export const isTypeFile = (value: ZType): value is FileSchema => {
   // The format tag lives in zod's `.meta()`, read via `z.schema.format` — there
   // is no own `format` property to test for.
   return (
@@ -100,4 +104,8 @@ export type StreamLike =
   | Readable
   | NodeJS.ReadableStream;
 
-export type TStream = ZType;
+/**
+ * A schema describing a streamed body. Same caveat as {@link FileSchema}: it
+ * is `ZType`, so it documents intent rather than restricting anything.
+ */
+export type StreamSchema = ZType;
