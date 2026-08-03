@@ -18,16 +18,33 @@ export interface MultipartCap {
 }
 
 /**
+ * Answers for the requests it recognises, or defers.
+ *
+ * Called before a single byte of the body is read — the URL, the route and the
+ * headers are all known by then — which is what makes a per-destination budget
+ * possible at all.
+ */
+export type MultipartCapResolver = (
+  request: ServerRequest,
+  route: ServerRoute,
+) => MultipartCap | undefined;
+
+/**
  * Decides how many bytes a given request is allowed to carry.
  *
- * **The default has no opinion**, and that is deliberate: a framework-wide
- * ceiling that anything could raise would be a ceiling in name only. Apps
- * substitute this provider to answer for the routes they own — `alepha/api/files`
- * does exactly that, mapping the targeted `$storage` bucket to its `maxSize`.
+ * **It has no opinion of its own**, and that is deliberate: a framework-wide
+ * ceiling that anything could raise would be a ceiling in name only. Modules
+ * add a resolver for the routes they own — `alepha/api/files` does exactly
+ * that, mapping the targeted `$storage` bucket to its `maxSize`.
  *
  * ```ts
- * alepha.with({ provide: MultipartCapProvider, use: MyCapProvider });
+ * alepha.inject(MultipartCapProvider).use((request, route) => …);
  * ```
+ *
+ * A registry rather than a substitutable provider, because substitution has an
+ * ordering constraint this cannot satisfy: whoever wants to answer usually
+ * loads *after* the server that reads the answer, and by then the provider is
+ * already resolved. Adding to a list works whenever it happens.
  *
  * ⚠️ **This is a security surface, not a convenience.** A resolver can raise a
  * limit, so whatever it keys on is chosen by the caller: a query parameter is
@@ -41,18 +58,32 @@ export interface MultipartCap {
  * feature.
  */
 export class MultipartCapProvider {
+  protected readonly resolvers: MultipartCapResolver[] = [];
+
   /**
-   * Answers for this request, or `undefined` to defer.
+   * Adds a resolver. The last one added answers first.
    *
-   * Called before a single byte of the body is read, which is what makes it
-   * useful: the URL, the route and the headers are all known by then, so the
-   * budget can be decided by where the bytes are going rather than discovered
-   * after they arrive.
+   * Last-wins rather than first-wins so an application can overrule a module it
+   * imports without having to load before it — the ordering trap this registry
+   * exists to avoid.
+   */
+  public use(resolver: MultipartCapResolver): void {
+    this.resolvers.push(resolver);
+  }
+
+  /**
+   * The first answer anyone offers, or `undefined` when nobody claims it.
    */
   public resolve(
-    _request: ServerRequest,
-    _route: ServerRoute,
+    request: ServerRequest,
+    route: ServerRoute,
   ): MultipartCap | undefined {
+    for (let i = this.resolvers.length - 1; i >= 0; i--) {
+      const cap = this.resolvers[i](request, route);
+      if (cap) {
+        return cap;
+      }
+    }
     return undefined;
   }
 }

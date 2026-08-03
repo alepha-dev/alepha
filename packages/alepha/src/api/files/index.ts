@@ -8,6 +8,7 @@ import { FileJobs } from "./jobs/FileJobs.ts";
 import { $storage } from "./primitives/$storage.ts";
 import { DefaultStorage } from "./providers/DefaultStorage.ts";
 import { FileAccessProvider } from "./providers/FileAccessProvider.ts";
+import { StorageMultipartCapProvider } from "./providers/StorageMultipartCapProvider.ts";
 import { FileService } from "./services/FileService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -19,6 +20,7 @@ export * from "./jobs/FileJobs.ts";
 export * from "./primitives/$storage.ts";
 export * from "./providers/DefaultStorage.ts";
 export * from "./providers/FileAccessProvider.ts";
+export * from "./providers/StorageMultipartCapProvider.ts";
 export * from "./schemas/fileCreatorSummarySchema.ts";
 export * from "./schemas/fileQuerySchema.ts";
 export * from "./schemas/fileResourceSchema.ts";
@@ -66,6 +68,12 @@ export const AlephaApiFiles = $module({
     FileService,
     FileAccessProvider,
     DefaultStorage,
+    // Lets the targeted bucket decide the request's size budget. Without it,
+    // `$storage({ maxSize })` could only ever tighten an application-wide
+    // ceiling, never reach past it — a bucket asking for 100 MB was silently
+    // held at 5, and nothing said so.
+    StorageMultipartCapProvider,
   ],
+
   imports: [AlephaApiJobs, AlephaBucket, AlephaServerEtag],
 });
