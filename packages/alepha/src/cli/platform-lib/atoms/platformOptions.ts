@@ -86,7 +86,7 @@ export const platformOptions = $atom({
             "Environment name (e.g. 'production', 'staging', 'preview'). Used in resource naming and selected via --env.",
         }),
         z.object({
-          adapter: z.enum(["cloudflare", "bay"]),
+          adapter: z.enum(["cloudflare", "bay", "lore"]),
           /**
            * Base URL of the Bay control panel this environment deploys to,
            * e.g. `"https://admin.bay.alepha.dev"`. Only read by the `bay`
@@ -99,6 +99,15 @@ export const platformOptions = $atom({
            * `$BAY_ENDPOINT` overrides, so a fork or a second Bay needs no edit.
            */
           endpoint: z.text().optional(),
+          /**
+           * Lore campaign a release is written into (`adapter: "lore"`).
+           *
+           * Required by that adapter and deliberately not derived from the
+           * project name: campaign ids and project names are separate
+           * namespaces, and guessing a mapping between them would silently
+           * deploy into whichever campaign happened to match.
+           */
+          campaignId: z.integer().optional(),
           /**
            * Custom domain for the deployed worker (e.g. "api.example.com").
            *
@@ -170,9 +179,21 @@ export type PlatformOptions = Infer<typeof platformOptions.schema>;
  * Configuration for a single named environment.
  */
 export interface EnvironmentConfig {
-  adapter: "cloudflare" | "bay";
-  /** Base URL of the Bay control panel (`bay` adapter only). */
+  adapter: "cloudflare" | "bay" | "lore";
+  /**
+   * Base URL of the deploy gateway — the Bay control panel for `bay`, the Lore
+   * instance for `lore`.
+   */
   endpoint?: string;
+  /**
+   * Lore campaign a release is written into (`lore` adapter only).
+   *
+   * Required by that adapter, and deliberately not derived from the project
+   * name: campaign ids and project names are separate namespaces, so guessing
+   * a mapping between them would silently deploy into whichever campaign
+   * happened to match.
+   */
+  campaignId?: number;
   domain?: string;
   zone?: string;
   vars?: Record<string, string>;
