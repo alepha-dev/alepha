@@ -30,7 +30,11 @@ func cmdConnector(args []string) error {
 	if len(args) == 0 {
 		return errors.New("usage: bay connector add <op_token> [--sink URL] [--label NAME] | list | remove <prefix>")
 	}
-	store := connector.NewStore(connectorRoot(args))
+	root, err := connectorRoot(args)
+	if err != nil {
+		return err
+	}
+	store := connector.NewStore(root)
 	switch args[0] {
 	case "add":
 		return connectorAdd(store, args[1:])
@@ -106,17 +110,44 @@ func connectorList(store *connector.Store) error {
 
 // connectorRoot resolves --root the same way `serve` does, because the file
 // lives beside the state it describes.
-func connectorRoot(args []string) string {
+//
+// It REFUSES a directory that no Bay serves from, instead of writing there. The
+// default root is relative (`./bay-data`), so before this check a `connector
+// add` run from a home directory — which is where an operator ssh-es into —
+// created a fresh tree, wrote the token into it and printed success. Nothing
+// read that file: the running Bay was rooted elsewhere, and on a host installed
+// under /opt the two are never the same. `connector list` then resolved the
+// same wrong path and confirmed the token was there, so the check an operator
+// would naturally run agreed with the mistake instead of catching it.
+//
+// `state.json` is the marker because it is the file `serve` opens; asking the
+// same question the server asks is what keeps the two from drifting apart.
+func connectorRoot(args []string) (string, error) {
 	root := defaultRoot
+	source := "the default root"
 	if env := os.Getenv("BAY_ROOT"); env != "" {
-		root = env
+		root, source = env, "$BAY_ROOT"
 	}
 	for i, arg := range args {
 		if arg == "--root" && i < len(args)-1 {
-			root = args[i+1]
+			root, source = args[i+1], "--root"
 		}
 	}
-	return root
+	// Reported as an absolute path: "./bay-data" tells an operator nothing about
+	// which directory it landed in, and the whole failure was about being
+	// somewhere unexpected.
+	shown := root
+	if abs, err := filepath.Abs(root); err == nil {
+		shown = abs
+	}
+	if _, err := os.Stat(filepath.Join(root, "state.json")); err != nil {
+		return "", fmt.Errorf(
+			"%s is not a Bay root: no state.json in %s (from %s). "+
+				"Pass --root or set $BAY_ROOT to the directory `bay serve` runs from "+
+				"(commonly /opt/bay/data), or run `bay serve` first if this machine is new",
+			shown, shown, source)
+	}
+	return root, nil
 }
 
 // reportLoop pushes this machine's world to every configured sink.
