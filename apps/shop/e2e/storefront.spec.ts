@@ -213,3 +213,25 @@ test.describe("interface", () => {
     expect(focused.outline).not.toBe("none");
   });
 });
+
+test.describe("header account button", () => {
+  /*
+   * `ButtonUser` disables its sign-in icon when `onSignIn` is absent, and the
+   * shop rendered a bare `<ButtonUser />` — so the button sat there greyed out on
+   * every page, with `pointer-events: none`. Thirty-five specs passed over it
+   * because not one of them looked at the header's account control: they went to
+   * `/compte/connexion` by URL, which works whether or not anything links to it.
+   *
+   * Asserting `toBeEnabled` rather than the click alone is deliberate: a disabled
+   * button is what a visitor actually sees, and it is what regressed.
+   */
+  test("the header offers a way to sign in", async ({ page }) => {
+    await page.goto("/");
+
+    const signIn = page.getByRole("button", { name: /Se connecter|Sign in/ });
+    await expect(signIn).toBeEnabled();
+
+    await signIn.click();
+    await expect(page).toHaveURL(/\/compte\/connexion/);
+  });
+});

@@ -2,8 +2,9 @@ import { AppShell } from "@alepha/ui/components/app-shell/app-shell";
 import { ButtonTheme } from "@alepha/ui/components/button-theme/button-theme";
 import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
 import { useI18n } from "alepha/react/i18n";
-import { NestedView } from "alepha/react/router";
+import { NestedView, useRouter } from "alepha/react/router";
 import { Gem, Package, Store, Truck } from "lucide-react";
+import type { AppRouter } from "./AppRouter.tsx";
 import { Poincon } from "./components/Poincon.tsx";
 
 /**
@@ -16,6 +17,7 @@ import { Poincon } from "./components/Poincon.tsx";
  */
 export const AdminLayout = () => {
   const { tr } = useI18n();
+  const router = useRouter<AppRouter>();
 
   return (
     <AppShell
@@ -51,7 +53,11 @@ export const AdminLayout = () => {
       topbarActions={
         <>
           <ButtonTheme />
-          <ButtonUser />
+          <ButtonUser
+            onSignIn={() => router.push("login")}
+            signInLabel={String(tr("nav.signIn"))}
+            menuLabel={String(tr("nav.account"))}
+          />
         </>
       }
     >

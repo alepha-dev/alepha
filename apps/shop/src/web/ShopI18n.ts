@@ -43,6 +43,9 @@ export class ShopI18n {
         "nav.panier": "Panier",
         "nav.home": "Atelier Aurore, accueil",
         "nav.cartCount": "$1 article(s)",
+        // Passed to `ButtonUser`, whose own defaults are English.
+        "nav.signIn": "Se connecter",
+        "nav.account": "Mon compte",
         "footer.legal":
           "Atelier Aurore · 12 rue des Orfèvres, Paris · SIRET 912 345 678 00012",
         "footer.demo":
@@ -194,6 +197,8 @@ export class ShopI18n {
         "nav.panier": "Basket",
         "nav.home": "Atelier Aurore, home",
         "nav.cartCount": "$1 item(s)",
+        "nav.signIn": "Sign in",
+        "nav.account": "My account",
         "footer.legal":
           "Atelier Aurore · 12 rue des Orfèvres, Paris · SIRET 912 345 678 00012",
         "footer.demo": "Demonstration shop. No order is actually made.",

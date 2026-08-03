@@ -5,8 +5,9 @@ import { Toaster } from "@alepha/ui/components/ui/sonner";
 import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useI18n } from "alepha/react/i18n";
-import { Link, NestedView } from "alepha/react/router";
+import { Link, NestedView, useRouter } from "alepha/react/router";
 import { useEffect } from "react";
+import type { AppRouter } from "./AppRouter.tsx";
 import { Poincon } from "./components/Poincon.tsx";
 import { usePanier } from "./hooks/usePanier.ts";
 
@@ -21,6 +22,7 @@ import { usePanier } from "./hooks/usePanier.ts";
 export const Layout = () => {
   const { compte, refresh } = usePanier();
   const { tr } = useI18n();
+  const router = useRouter<AppRouter>();
 
   // The cart lives in a signed cookie, so the browser only learns what is in it
   // by asking. Once, on mount.
@@ -86,7 +88,20 @@ export const Layout = () => {
               <div className="flex items-center gap-1">
                 <ButtonLanguage />
                 <ButtonTheme />
-                <ButtonUser />
+                {/*
+                  `ButtonUser` needs its callbacks: it disables the sign-in icon
+                  when `onSignIn` is absent and hides the admin entry when
+                  `onAdminClick` is, so a bare `<ButtonUser />` renders a greyed
+                  button that looks broken and gives an administrator no way in.
+                  The labels default to English, which is why they must be passed
+                  too — a prop default is invisible to the i18n catalogue.
+                */}
+                <ButtonUser
+                  onSignIn={() => router.push("login")}
+                  onAdminClick={() => router.push("adminPieces")}
+                  signInLabel={String(tr("nav.signIn"))}
+                  menuLabel={String(tr("nav.account"))}
+                />
               </div>
             </div>
           </header>
