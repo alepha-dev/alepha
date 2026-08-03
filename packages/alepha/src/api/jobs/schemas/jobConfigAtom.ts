@@ -32,6 +32,12 @@ export const jobConfig = $atom({
     drainTimeout: z
       .integer()
       .describe("Max time (ms) to wait for in-flight jobs during shutdown."),
+    directMaxConcurrency: z
+      .integer()
+      .min(1)
+      .describe(
+        "Max executions the direct (no-broker) dispatcher runs at once. A pushMany of thousands would otherwise start every handler in parallel and exhaust the database pool. Excess dispatches wait in memory; the outbox row stays the durability guarantee, so anything still queued when the process dies is re-dispatched by the next sweep.",
+      ),
   }),
   default: {
     sweepCron: "*/15 * * * *",
@@ -42,6 +48,7 @@ export const jobConfig = $atom({
     keepLastError: 10,
     logMaxEntries: 100,
     drainTimeout: 30_000,
+    directMaxConcurrency: 10,
   },
   serverOnly: true,
 });

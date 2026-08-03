@@ -7,11 +7,17 @@ import {
   testAutoStampNullForMasterUser,
   testAutoStampOnCreate,
   testAutoStampOnCreateMany,
+  testEntityStrictFalseOverridesMultiMode,
   testMasterUserSeesEverything,
+  testModeDoesNotAffectColumnNullability,
+  testMultiModeFailsClosedOnInsert,
+  testMultiModeFailsClosedOnRead,
+  testMultiModeHidesGlobalRows,
   testNoUserSeesEverything,
   testOrgFilterOnDelete,
   testOrgFilterOnUpdateOne,
   testOrgUserSeesOwnAndGlobalRows,
+  testSingleModeKeepsFailOpen,
   testStrictFailsClosedForOrglessUser,
   testStrictFailsClosedWithoutTenant,
   testStrictHidesGlobalRows,
@@ -165,6 +171,68 @@ describe("organization", () => {
   });
   it("strict: refuses insert without a tenant (postgres)", async () => {
     await testStrictRefusesInsertWithoutTenant(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+
+  it("single mode keeps fail-open (default) (sqlite)", async () => {
+    await testSingleModeKeepsFailOpen(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("single mode keeps fail-open (default) (postgres)", async () => {
+    await testSingleModeKeepsFailOpen(Alepha.create().with(AlephaOrmPostgres));
+  });
+
+  it("multi mode fails closed on read (sqlite)", async () => {
+    await testMultiModeFailsClosedOnRead(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("multi mode fails closed on read (postgres)", async () => {
+    await testMultiModeFailsClosedOnRead(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+
+  it("multi mode fails closed on insert (sqlite)", async () => {
+    await testMultiModeFailsClosedOnInsert(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("multi mode fails closed on insert (postgres)", async () => {
+    await testMultiModeFailsClosedOnInsert(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+
+  it("multi mode hides global rows (sqlite)", async () => {
+    await testMultiModeHidesGlobalRows(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("multi mode hides global rows (postgres)", async () => {
+    await testMultiModeHidesGlobalRows(Alepha.create().with(AlephaOrmPostgres));
+  });
+
+  it("entity strict:false overrides multi mode (sqlite)", async () => {
+    await testEntityStrictFalseOverridesMultiMode(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("entity strict:false overrides multi mode (postgres)", async () => {
+    await testEntityStrictFalseOverridesMultiMode(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+
+  it("mode does not affect column nullability (sqlite)", async () => {
+    await testModeDoesNotAffectColumnNullability(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("mode does not affect column nullability (postgres)", async () => {
+    await testModeDoesNotAffectColumnNullability(
       Alepha.create().with(AlephaOrmPostgres),
     );
   });

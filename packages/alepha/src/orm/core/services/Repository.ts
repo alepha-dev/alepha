@@ -12,7 +12,11 @@ import {
 } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { currentTenantAtom, currentUserAtom } from "alepha/security";
+import {
+  currentTenantAtom,
+  currentUserAtom,
+  tenancyAtom,
+} from "alepha/security";
 import {
   asc,
   avg,
@@ -1777,6 +1781,23 @@ export abstract class Repository<T extends ZObject> {
     return undefined;
   }
 
+  /**
+   * Whether this entity fails closed when no tenant resolves.
+   *
+   * The entity's own `strict` wins in both directions when it was set at all;
+   * otherwise the application's {@link tenancyAtom} decides. That third state
+   * is the whole design: framework entities say nothing, so the app — which
+   * is the only place that knows whether it serves one tenant or many —
+   * answers for them.
+   */
+  protected isStrictTenancy(orgField: PgAttrField): boolean {
+    const declared = orgField.data?.strict;
+    if (typeof declared === "boolean") {
+      return declared;
+    }
+    return this.alepha.store.get(tenancyAtom).mode === "multi";
+  }
+
   protected withOrganization(
     where: PgQueryWhereOrSQL<T>,
   ): PgQueryWhereOrSQL<T> {
@@ -1785,7 +1806,7 @@ export abstract class Repository<T extends ZObject> {
       return where;
     }
 
-    const strict = orgField.data?.strict === true;
+    const strict = this.isStrictTenancy(orgField);
     const value = this.resolveOrganizationValue();
     if (!value) {
       if (strict) {
@@ -1834,7 +1855,7 @@ export abstract class Repository<T extends ZObject> {
       return;
     }
 
-    if (orgField.data?.strict === true) {
+    if (this.isStrictTenancy(orgField)) {
       // Fail closed: an unscoped insert would create a NULL/global row on a
       // sensitive table. Require an explicit organization or a resolved tenant.
       throw new AlephaError(
