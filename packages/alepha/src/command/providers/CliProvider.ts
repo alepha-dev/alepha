@@ -23,6 +23,7 @@ import {
   type CommandHandlerArgs,
   type CommandPrimitive,
 } from "../primitives/$command.ts";
+import { ConsoleOutputProvider } from "./ConsoleOutputProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -108,6 +109,7 @@ export class CliProvider {
   protected readonly color = $inject(ConsoleColorProvider);
   protected readonly runner = $inject(Runner);
   protected readonly asker = $inject(Asker);
+  protected readonly output = $inject(ConsoleOutputProvider);
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly options = $store(cliOptions);
 
@@ -331,6 +333,7 @@ export class CliProvider {
         glob,
         root,
         help: () => this.printHelp(command),
+        print: (message?: string) => this.output.print(message),
         mode: modeValue,
       };
 
@@ -575,6 +578,7 @@ export class CliProvider {
       glob,
       root,
       help: () => this.printHelp(command),
+      print: (message?: string) => this.output.print(message),
       mode: modeValue,
     } as CommandHandlerArgs<T, A>);
   }
@@ -1107,192 +1111,178 @@ export class CliProvider {
    *                  If omitted, shows general CLI help with all commands.
    */
   public printHelp(command?: CommandPrimitive<any>): void {
-    // Help is a document, not a log stream: render bare lines (no timestamp
-    // or level prefix). Embedded colors live in the message itself, so they
-    // survive the `raw` formatter.
-    // Restore afterwards: `help()` is handed to command handlers (a parent
-    // command prints help and then continues), so flipping the format
-    // permanently made every later log lose its timestamp and level.
-    const previousFormat = this.alepha.store.get("alepha.logger.format");
-    this.alepha.store.set("alepha.logger.format", "raw");
-    const restoreFormat = () =>
-      this.alepha.store.set("alepha.logger.format", previousFormat);
+    // Help is a document, not a log stream, so it goes to stdout rather than
+    // through the logger.
+    //
+    // It used to flip `alepha.logger.format` to `raw` and restore it
+    // afterwards, which worked but mutated global state that `help()` — handed
+    // to command handlers, who keep running after printing — could leak. It
+    // also could not make help pipeable: the format decides how a line looks,
+    // not which stream it lands on.
+    const out = (line = "") => this.output.print(line);
+    const cliName = this.name || "cli";
+    const c = this.color;
+    out(""); // Newline
 
-    try {
-      const cliName = this.name || "cli";
-      const c = this.color;
-      this.log.info(""); // Newline
+    if (command?.name) {
+      // Command-specific help
+      const hasChildren = command.hasChildren;
+      const argsUsage = hasChildren
+        ? ` ${c.set("CYAN", "<command>")}`
+        : this.generateColoredArgsUsage(command.options.args);
+      const commandPath = this.getCommandPath(command);
+      const usage =
+        `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", commandPath)}${argsUsage}`.trim();
+      out(`${c.set("WHITE_BOLD", "Usage:")} ${usage}`);
 
-      if (command?.name) {
-        // Command-specific help
-        const hasChildren = command.hasChildren;
-        const argsUsage = hasChildren
-          ? ` ${c.set("CYAN", "<command>")}`
-          : this.generateColoredArgsUsage(command.options.args);
-        const commandPath = this.getCommandPath(command);
-        const usage =
-          `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", commandPath)}${argsUsage}`.trim();
-        this.log.info(`${c.set("WHITE_BOLD", "Usage:")} ${usage}`);
+      if (command.options.description) {
+        out(``);
+        out(`\t${command.options.description}`);
+      }
 
-        if (command.options.description) {
-          this.log.info(``);
-          this.log.info(`\t${command.options.description}`);
-        }
+      // Show subcommands if this is a parent command
+      if (hasChildren) {
+        out("");
+        out(c.set("WHITE_BOLD", "Commands:"));
+        const maxSubCmdLength = this.getMaxChildCmdLength(command.children);
 
-        // Show subcommands if this is a parent command
-        if (hasChildren) {
-          this.log.info("");
-          this.log.info(c.set("WHITE_BOLD", "Commands:"));
-          const maxSubCmdLength = this.getMaxChildCmdLength(command.children);
-
-          for (const child of command.children) {
-            if (child.options.hide) {
-              continue;
-            }
-            const childArgsUsage = this.generateArgsUsage(child.options.args);
-            const cmdStr = [child.name, ...child.aliases].join(", ");
-            const fullCmdStr = `${cmdStr}${childArgsUsage}`;
-            const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", commandPath)} ${c.set("CYAN", fullCmdStr)}`;
-            const padding = " ".repeat(
-              Math.max(0, maxSubCmdLength - fullCmdStr.length),
-            );
-            this.log.info(
-              `    ${coloredCmd}${padding}  ${child.options.description ?? ""}`,
-            );
-          }
-        }
-
-        this.log.info("");
-        this.log.info(c.set("WHITE_BOLD", "Flags:"));
-
-        const flags = [
-          // Read aliases/description from the schema's `.meta()` registry (zod),
-          // not as direct schema properties (typebox) — see extractFlagDefs.
-          ...this.extractFlagDefs(command.flags),
-          // Add --mode flag if command has mode option enabled
-          ...(command.options.mode
-            ? [
-                {
-                  key: "mode",
-                  aliases: ["m", "mode"],
-                  description:
-                    typeof command.options.mode === "string"
-                      ? `Environment mode - loads .env.{mode} (default: ${command.options.mode})`
-                      : "Environment mode (e.g., production, staging) - loads .env.{mode}",
-                  schema: z.string() as ZType,
-                },
-              ]
-            : []),
-          ...Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
-            key,
-            ...value,
-          })),
-        ];
-
-        const maxFlagLength = this.getMaxFlagLength(flags);
-        for (const flag of flags) {
-          const { aliases, description } = flag;
-          const schema = "schema" in flag ? (flag.schema as ZType) : undefined;
-          // Sort aliases by length (shorter first: -t before --target)
-          const sortedAliases = (Array.isArray(aliases) ? aliases : [aliases])
-            .slice()
-            .sort((a, b) => a.length - b.length);
-          const flagStr = sortedAliases
-            .map((a: string) => (a.length === 1 ? `-${a}` : `--${a}`))
-            .join(", ");
-          const coloredFlag = c.set("GREY_LIGHT", flagStr);
-          const padding = " ".repeat(
-            Math.max(0, maxFlagLength - flagStr.length),
-          );
-          const formattedDesc = this.formatFlagDescription(description, schema);
-          this.log.info(`    ${coloredFlag}${padding}  ${formattedDesc}`);
-        }
-
-        // Show environment variables if defined
-        const envVars = Object.entries(z.schema.shape(command.env));
-        if (envVars.length > 0) {
-          this.log.info("");
-          this.log.info(c.set("WHITE_BOLD", "Env:"));
-          const maxEnvLength = Math.max(...envVars.map(([key]) => key.length));
-          for (const [key, schema] of envVars) {
-            const isOptional = z.schema.isOptional(schema as ZType);
-            // Wrapped schemas (`.optional()`) keep the description in the
-            // INNER schema's `.meta()` registry, so reading `.description`
-            // off the wrapper rendered an empty Env: section.
-            const description =
-              this.schemaMeta(schema as ZType).description ?? "";
-            const optionalStr = isOptional
-              ? c.set("GREY_DARK", " (optional)")
-              : c.set("RED", " (required)");
-            const coloredKey = c.set("CYAN", key);
-            const padding = " ".repeat(Math.max(0, maxEnvLength - key.length));
-            this.log.info(
-              `    ${coloredKey}${padding}  ${description}${optionalStr}`,
-            );
-          }
-        }
-      } else {
-        // general help
-        this.log.info(this.description || "Available commands:");
-        this.log.info("");
-        this.log.info(c.set("WHITE_BOLD", "Commands:"));
-
-        // Get top-level commands (commands that are not children of other commands)
-        const topLevelCommands = this.getTopLevelCommands();
-        const maxCmdLength = this.getMaxCmdLength(topLevelCommands);
-
-        for (const cmd of topLevelCommands) {
-          // skip root command and hooks in list
-          if (cmd.name === "" || cmd.options.hide) {
+        for (const child of command.children) {
+          if (child.options.hide) {
             continue;
           }
-
-          const cmdStr = [cmd.name, ...cmd.aliases].join(", ");
-          const argsUsage = cmd.hasChildren
-            ? " <command>"
-            : this.generateArgsUsage(cmd.options.args);
-          const fullCmdStr = `${cmdStr}${argsUsage}`;
-          const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", fullCmdStr)}`;
+          const childArgsUsage = this.generateArgsUsage(child.options.args);
+          const cmdStr = [child.name, ...child.aliases].join(", ");
+          const fullCmdStr = `${cmdStr}${childArgsUsage}`;
+          const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", commandPath)} ${c.set("CYAN", fullCmdStr)}`;
           const padding = " ".repeat(
-            Math.max(0, maxCmdLength - fullCmdStr.length),
+            Math.max(0, maxSubCmdLength - fullCmdStr.length),
           );
-          this.log.info(
-            `    ${coloredCmd}${padding}  ${cmd.options.description ?? ""}`,
+          out(
+            `    ${coloredCmd}${padding}  ${child.options.description ?? ""}`,
           );
-        }
-
-        this.log.info("");
-        this.log.info(c.set("WHITE_BOLD", "Flags:"));
-
-        // In general help, also show root command flags
-        const rootCommand = this.commands.find((cmd) => cmd.name === "");
-        // Read aliases/description from the schema's `.meta()` registry (zod),
-        // not as direct schema properties (typebox) — see extractFlagDefs.
-        const rootFlags = rootCommand
-          ? this.extractFlagDefs(rootCommand.flags)
-          : [];
-
-        const globalFlags = [
-          ...rootFlags,
-          ...Object.values(this.getAllGlobalFlags()),
-        ];
-        const maxFlagLength = this.getMaxFlagLength(globalFlags);
-        for (const { aliases, description, schema } of globalFlags) {
-          const flagStr = aliases
-            .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
-            .join(", ");
-          const coloredFlag = c.set("GREY_LIGHT", flagStr);
-          const padding = " ".repeat(
-            Math.max(0, maxFlagLength - flagStr.length),
-          );
-          const formattedDesc = this.formatFlagDescription(description, schema);
-          this.log.info(`    ${coloredFlag}${padding}  ${formattedDesc}`);
         }
       }
-      this.log.info(""); // Newline
-    } finally {
-      restoreFormat();
+
+      out("");
+      out(c.set("WHITE_BOLD", "Flags:"));
+
+      const flags = [
+        // Read aliases/description from the schema's `.meta()` registry (zod),
+        // not as direct schema properties (typebox) — see extractFlagDefs.
+        ...this.extractFlagDefs(command.flags),
+        // Add --mode flag if command has mode option enabled
+        ...(command.options.mode
+          ? [
+              {
+                key: "mode",
+                aliases: ["m", "mode"],
+                description:
+                  typeof command.options.mode === "string"
+                    ? `Environment mode - loads .env.{mode} (default: ${command.options.mode})`
+                    : "Environment mode (e.g., production, staging) - loads .env.{mode}",
+                schema: z.string() as ZType,
+              },
+            ]
+          : []),
+        ...Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
+          key,
+          ...value,
+        })),
+      ];
+
+      const maxFlagLength = this.getMaxFlagLength(flags);
+      for (const flag of flags) {
+        const { aliases, description } = flag;
+        const schema = "schema" in flag ? (flag.schema as ZType) : undefined;
+        // Sort aliases by length (shorter first: -t before --target)
+        const sortedAliases = (Array.isArray(aliases) ? aliases : [aliases])
+          .slice()
+          .sort((a, b) => a.length - b.length);
+        const flagStr = sortedAliases
+          .map((a: string) => (a.length === 1 ? `-${a}` : `--${a}`))
+          .join(", ");
+        const coloredFlag = c.set("GREY_LIGHT", flagStr);
+        const padding = " ".repeat(Math.max(0, maxFlagLength - flagStr.length));
+        const formattedDesc = this.formatFlagDescription(description, schema);
+        out(`    ${coloredFlag}${padding}  ${formattedDesc}`);
+      }
+
+      // Show environment variables if defined
+      const envVars = Object.entries(z.schema.shape(command.env));
+      if (envVars.length > 0) {
+        out("");
+        out(c.set("WHITE_BOLD", "Env:"));
+        const maxEnvLength = Math.max(...envVars.map(([key]) => key.length));
+        for (const [key, schema] of envVars) {
+          const isOptional = z.schema.isOptional(schema as ZType);
+          // Wrapped schemas (`.optional()`) keep the description in the
+          // INNER schema's `.meta()` registry, so reading `.description`
+          // off the wrapper rendered an empty Env: section.
+          const description =
+            this.schemaMeta(schema as ZType).description ?? "";
+          const optionalStr = isOptional
+            ? c.set("GREY_DARK", " (optional)")
+            : c.set("RED", " (required)");
+          const coloredKey = c.set("CYAN", key);
+          const padding = " ".repeat(Math.max(0, maxEnvLength - key.length));
+          out(`    ${coloredKey}${padding}  ${description}${optionalStr}`);
+        }
+      }
+    } else {
+      // general help
+      out(this.description || "Available commands:");
+      out("");
+      out(c.set("WHITE_BOLD", "Commands:"));
+
+      // Get top-level commands (commands that are not children of other commands)
+      const topLevelCommands = this.getTopLevelCommands();
+      const maxCmdLength = this.getMaxCmdLength(topLevelCommands);
+
+      for (const cmd of topLevelCommands) {
+        // skip root command and hooks in list
+        if (cmd.name === "" || cmd.options.hide) {
+          continue;
+        }
+
+        const cmdStr = [cmd.name, ...cmd.aliases].join(", ");
+        const argsUsage = cmd.hasChildren
+          ? " <command>"
+          : this.generateArgsUsage(cmd.options.args);
+        const fullCmdStr = `${cmdStr}${argsUsage}`;
+        const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", fullCmdStr)}`;
+        const padding = " ".repeat(
+          Math.max(0, maxCmdLength - fullCmdStr.length),
+        );
+        out(`    ${coloredCmd}${padding}  ${cmd.options.description ?? ""}`);
+      }
+
+      out("");
+      out(c.set("WHITE_BOLD", "Flags:"));
+
+      // In general help, also show root command flags
+      const rootCommand = this.commands.find((cmd) => cmd.name === "");
+      // Read aliases/description from the schema's `.meta()` registry (zod),
+      // not as direct schema properties (typebox) — see extractFlagDefs.
+      const rootFlags = rootCommand
+        ? this.extractFlagDefs(rootCommand.flags)
+        : [];
+
+      const globalFlags = [
+        ...rootFlags,
+        ...Object.values(this.getAllGlobalFlags()),
+      ];
+      const maxFlagLength = this.getMaxFlagLength(globalFlags);
+      for (const { aliases, description, schema } of globalFlags) {
+        const flagStr = aliases
+          .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
+          .join(", ");
+        const coloredFlag = c.set("GREY_LIGHT", flagStr);
+        const padding = " ".repeat(Math.max(0, maxFlagLength - flagStr.length));
+        const formattedDesc = this.formatFlagDescription(description, schema);
+        out(`    ${coloredFlag}${padding}  ${formattedDesc}`);
+      }
     }
+    out(""); // Newline
   }
 
   /**

@@ -302,7 +302,14 @@ describe("Alepha CLI E2E", () => {
 
       const result = await run(`"${CLI}" --version`, PROJECT_DIR);
       expect(result.exitCode).toBe(0);
-      expect(result.stdout + result.stderr).toContain("Alepha v");
+
+      // Exactly the version and nothing else. `VERSION=$(alepha --version)` is
+      // the whole point: this used to be a timestamped, coloured, two-line log
+      // entry whose shape followed `LOG_FORMAT`, so no script could parse it.
+      // Not piped through a terminal here, so the runtime line is suppressed
+      // and no escape sequence survives.
+      expect(result.stdout).toMatch(/^\d+\.\d+\.\d+\n$/);
+      expect(result.stderr).toBe("");
     });
 
     it("resolves every subpath its exports map declares", async () => {
