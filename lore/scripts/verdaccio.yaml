@@ -1,0 +1,60 @@
+# Verdaccio config for the local pre-release registry (see `compose.yml`).
+#
+# Two things here are load-bearing:
+#
+# 1. `alepha`, `create-alepha` and `@alepha/*` have NO `proxy`. Every other
+#    package falls through to the npmjs uplink so a plain `npm install` works,
+#    but ours are local-only. Without that, verdaccio would see the real
+#    `alepha@0.24.0` upstream and refuse to publish our build over it — which
+#    is exactly the version we need to shadow, since the working tree sits on
+#    top of an already-published 0.24.0.
+#
+# 2. `publish: $all`. Verdaccio's default is `$authenticated`, and npm's
+#    non-interactive login story is bad enough that requiring it would make
+#    the pre-release check something nobody runs. This registry is bound to
+#    localhost and holds nothing secret.
+
+storage: /verdaccio/storage
+listen: 0.0.0.0:4873
+
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+    cache: true
+
+packages:
+  "alepha":
+    access: $all
+    publish: $all
+    unpublish: $all
+
+  "create-alepha":
+    access: $all
+    publish: $all
+    unpublish: $all
+
+  "@alepha/*":
+    access: $all
+    publish: $all
+    unpublish: $all
+
+  "@*/*":
+    access: $all
+    publish: $all
+    unpublish: $all
+    proxy: npmjs
+
+  "**":
+    access: $all
+    publish: $all
+    unpublish: $all
+    proxy: npmjs
+
+# The `alepha` tarball carries `dist/` + `src/` + `assets/` (swagger-ui among
+# them), which is comfortably past verdaccio's 10mb default.
+max_body_size: 200mb
+
+log:
+  type: stdout
+  format: pretty
+  level: warn
