@@ -3,19 +3,33 @@ import { ProjectScaffolder } from "alepha/cli";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
 
-const presets = {
-  minimal: [] as string[],
-  api: ["--api"],
-  "full-stack": ["--api", "--react", "--tailwind"],
-  "full-stack + saas": ["--api", "--react", "--tailwind", "--saas"],
-};
-
 export class CreateAlephaCoreCommands {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly scaffolder = $inject(ProjectScaffolder);
 
   /**
    * Interactive project creation.
+   *
+   * There used to be a "which template?" question offering minimal / api /
+   * full-stack / full-stack + saas, mapped to `--api`, `--react`, `--tailwind`
+   * and `--saas`. `alepha init` dropped those flags when it settled on a single
+   * project shape ("Every project gets the same full-stack shape […] There is
+   * nothing to opt into"), and the extra keys reached it through an `as any`,
+   * so they were silently ignored and all four answers built the same project.
+   * The question is gone rather than reinstated: the flags it fed no longer
+   * exist, and asking something whose answer is discarded is worse than not
+   * asking.
+   *
+   * The package-manager question went the same way, for a different reason: it
+   * was asking something the CLI already knows. `PackageManagerUtils` reads
+   * `npm_config_user_agent`, which every manager sets when it runs a binary, so
+   * `yarn create alepha` resolves to yarn and `pnpm create alepha` to pnpm
+   * without anyone being asked. Prompting on top of that could only produce a
+   * worse answer — a project installed with a manager the user did not invoke.
+   * `--pm` still overrides, for the case where the two genuinely differ.
+   *
+   * What is left is the name, and it is positional: `create-alepha my-app` runs
+   * start to finish without a prompt, which is what a CI needs.
    */
   public readonly root = $command({
     root: true,
@@ -48,33 +62,20 @@ export class CreateAlephaCoreCommands {
           },
         }));
 
-      // 2. Preset
-      const preset = (await ask("Which template would you like?", {
-        schema: z.enum(["minimal", "api", "full-stack", "full-stack + saas"]),
-      })) as keyof typeof presets;
-
-      // 3. Package manager
-      const pm =
-        flags.pm ??
-        (await ask("Which package manager?", {
-          schema: z.enum(["npm", "yarn", "pnpm", "bun"]),
-        }));
-
-      // Build flags from preset
-      const presetFlags = presets[preset];
-      const initFlags: Record<string, boolean | string> = { pm };
-      for (const flag of presetFlags) {
-        initFlags[flag.replace(/^--/, "")] = true;
-      }
-
       // Create directory
       await this.fs.mkdir(name);
 
-      // Run init directly
+      // `pm` is passed through undefined unless the user forced one, so that
+      // `init` runs its own resolution — lockfiles, then workspace, then the
+      // invoking manager via `npm_config_user_agent`.
+      //
+      // No cast: these are exactly the flags `init` accepts, and keeping it
+      // that way is what makes a future removal a type error here instead of a
+      // silently ignored key.
       await this.scaffolder.init({
         run,
         root,
-        flags: initFlags as any,
+        flags: { pm: flags.pm },
         args: name,
       });
 

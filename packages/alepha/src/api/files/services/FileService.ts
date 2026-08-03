@@ -213,22 +213,62 @@ export class FileService {
   ): Promise<FileEntity> {
     const storage = options.storage ?? this.storage(options.bucket);
 
-    // Read the source exactly once. The checksum, the size/MIME checks and
-    // the stored bytes all derive from this single buffer, so a one-shot
-    // stream is never read twice — reading it twice either yields the wrong
-    // hash or stores an empty blob. Uploads are size-capped, so buffering
-    // here is intentional and bounded.
-    const data = await file.arrayBuffer();
-    const checksum = this.hashBuffer(data);
-    file = this.fileSystem.createFile({
-      arrayBuffer: data,
-      name: file.name,
-      type: file.type,
-    });
+    // Three consumers want these bytes — the checksum, the size and MIME
+    // checks, and the provider — and a one-shot stream serves exactly one.
+    //
+    // A file whose length is already known is read once into a buffer and all
+    // three read from it: reading twice would either hash the wrong thing or
+    // store an empty blob. A file whose length is not known cannot afford that
+    // buffer, so it makes a single pass and the size is learned on the way
+    // through.
+    let checksum: string | undefined;
+    let streamedSize: number | undefined;
+    let blobId: string;
 
-    this.assertAllowed(file, storage);
+    // A declared size is trusted only as a hint about which path to take; the
+    // decision is made by reading. Everything short enough is buffered, which
+    // keeps the checksum and the exact size that small uploads have always
+    // had. Only what overflows the threshold gives them up, and only because
+    // the alternative is holding it all in memory to find out.
+    const peek =
+      file.size > 0 && file.size <= FileService.BUFFER_THRESHOLD
+        ? { buffered: new Uint8Array(await file.arrayBuffer()) }
+        : await this.readUpTo(file, FileService.BUFFER_THRESHOLD);
 
-    const blobId = await storage.provider.upload(storage.name, file);
+    if ("buffered" in peek) {
+      const data = peek.buffered;
+      checksum = this.hashBuffer(data.buffer as ArrayBuffer);
+      file = this.fileSystem.createFile({
+        arrayBuffer: data.buffer as ArrayBuffer,
+        name: file.name,
+        type: file.type,
+      });
+
+      this.assertAllowed(file, storage);
+      blobId = await storage.provider.upload(storage.name, file);
+    } else {
+      // MIME is known from the headers, so it is still checked up front. Size
+      // cannot be: it is counted as the bytes go by, which is stricter than the
+      // old check — that one trusted whatever `size` the caller reported.
+      this.assertMimeAllowed(file, storage);
+
+      const counter = { size: 0 };
+      blobId = await storage.provider.upload(
+        storage.name,
+        this.counting(
+          this.rejoined(file, peek.head, peek.rest),
+          storage,
+          counter,
+        ),
+      );
+      streamedSize = counter.size;
+
+      // ⚠️ No checksum for a streamed upload, deliberately. There is no
+      // streaming digest on workerd — `crypto.subtle.digest` wants the whole
+      // buffer — so producing one would mean buffering the payload, which is
+      // the single thing this path exists to avoid. The column is optional; a
+      // wrong hash would be worse than none.
+    }
 
     let expirationDate: string | undefined;
     if (options.expirationDate) {
@@ -247,7 +287,7 @@ export class FileService {
         mimeType: file.type,
         name: file.name,
         originalName: file.name,
-        size: file.size,
+        size: streamedSize ?? file.size,
         creator: options.user?.id,
         creatorRealm: options.user?.realm,
         creatorName: options.user?.name,
@@ -266,6 +306,161 @@ export class FileService {
    * byte count. A streamed body reports `size === 0` until read, which is how
    * the size cap used to be bypassed.
    */
+  /**
+   * How much of an unknown-length upload is read before giving up on buffering.
+   *
+   * Below it, an upload keeps everything it used to have — an exact size and a
+   * checksum — because it fits. Above it, those are traded for not holding the
+   * payload. Ten megabytes is the application-wide multipart default: the size
+   * the framework already considered safe to hold.
+   */
+  protected static readonly BUFFER_THRESHOLD = 10 * 1024 * 1024;
+
+  /**
+   * Reads a file until it ends or outgrows `limit`.
+   *
+   * Returns the whole thing when it fits, and otherwise what was read plus the
+   * rest of the stream — so nothing is consumed twice and nothing is lost. The
+   * bug this shape avoids is the one its regression test names: draining a
+   * one-shot stream for a checksum, then handing the drained stream to the
+   * bucket and storing an empty blob.
+   */
+  protected async readUpTo(
+    file: FileLike,
+    limit: number,
+  ): Promise<
+    | { buffered: Uint8Array }
+    | { head: Uint8Array[]; rest: AsyncIterator<Uint8Array> }
+  > {
+    const iterator = (file.stream() as AsyncIterable<Uint8Array | Buffer>)[
+      Symbol.asyncIterator
+    ]();
+    const head: Uint8Array[] = [];
+    let size = 0;
+
+    while (true) {
+      const next = await iterator.next();
+      if (next.done) {
+        const buffered = new Uint8Array(size);
+        let at = 0;
+        for (const chunk of head) {
+          buffered.set(chunk, at);
+          at += chunk.length;
+        }
+        return { buffered };
+      }
+      const chunk =
+        next.value instanceof Uint8Array
+          ? next.value
+          : new Uint8Array(next.value);
+      head.push(chunk);
+      size += chunk.length;
+      if (size > limit) {
+        return { head, rest: iterator };
+      }
+    }
+  }
+
+  /**
+   * Puts a partly-read file back together, without re-reading what was taken.
+   */
+  protected rejoined(
+    file: FileLike,
+    head: Uint8Array[],
+    rest: AsyncIterator<Uint8Array>,
+  ): FileLike {
+    return {
+      ...file,
+      size: 0,
+      stream: () =>
+        new ReadableStream<Uint8Array>({
+          async start(controller) {
+            for (const chunk of head) {
+              controller.enqueue(chunk);
+            }
+            while (true) {
+              const next = await rest.next();
+              if (next.done) {
+                break;
+              }
+              controller.enqueue(next.value);
+            }
+            controller.close();
+          },
+        }) as never,
+    };
+  }
+
+  /**
+   * Wraps a file so its bytes are counted, and refused, as they pass.
+   *
+   * The cap used to be a comparison against `file.size` — a number the caller
+   * supplied. A stream reports 0 there, which is precisely how the limit was
+   * bypassed (see the note this replaces). Counting cannot be lied to.
+   *
+   * ⚠️ The refusal lands mid-transfer, so the backend may hold a partial
+   * object. That is the price of not buffering, and it is the lesser harm: the
+   * alternative is holding the whole payload in memory to find out it was too
+   * big. The transport layer has already applied its own ceiling before this
+   * one is reached, so getting here at all means two limits disagreed.
+   */
+  protected counting(
+    file: FileLike,
+    storage: StoragePrimitive,
+    counter: { size: number },
+  ): FileLike {
+    const { maxSize = 10 } = storage.options;
+    const ceiling = maxSize * 1024 * 1024;
+    const source = file;
+
+    return {
+      ...file,
+      size: 0,
+      stream: () => {
+        const upstream = source.stream() as AsyncIterable<Uint8Array>;
+        return new ReadableStream<Uint8Array>({
+          async start(controller) {
+            try {
+              for await (const chunk of upstream) {
+                counter.size += chunk.length;
+                if (counter.size > ceiling) {
+                  throw new InvalidFileError(
+                    `File exceeds the maximum size of ${maxSize} MB in storage ${storage.name}`,
+                  );
+                }
+                controller.enqueue(chunk);
+              }
+              controller.close();
+            } catch (error) {
+              controller.error(error);
+            }
+          },
+        }) as never;
+      },
+      arrayBuffer: async () => {
+        throw new InvalidFileError(
+          `Storage ${storage.name} received a streamed upload and cannot buffer it`,
+        );
+      },
+    };
+  }
+
+  /**
+   * Checks the MIME type alone, for a file whose size is not yet known.
+   */
+  protected assertMimeAllowed(file: FileLike, storage: StoragePrimitive): void {
+    const { mimeTypes } = storage.options;
+    if (!mimeTypes) {
+      return;
+    }
+    const mimeType = file.type || "application/octet-stream";
+    if (!mimeTypes.includes(mimeType)) {
+      throw new InvalidFileError(
+        `MIME type ${mimeType} is not allowed in storage ${storage.name}`,
+      );
+    }
+  }
+
   protected assertAllowed(file: FileLike, storage: StoragePrimitive): void {
     const { mimeTypes, maxSize = 10 } = storage.options;
 

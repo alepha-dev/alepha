@@ -26,6 +26,10 @@ export default (alepha: Alepha) => {
       description: "Will remove all generated files.",
       handler: async ({ run }) => {
         await run.rm([
+          // The e2e-cli scratch project: a packed tarball plus its own
+          // node_modules. `afterAll` removes it, but an interrupted run leaves
+          // it behind and it is not small.
+          `.e2e-tmp`,
           `coverage`,
           `apps/*/playwright-report`,
           `apps/*/test-results`,

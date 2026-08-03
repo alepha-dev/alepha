@@ -200,6 +200,28 @@ export const z = {
   /** Free-form JSON object (`Record<string, any>`). */
   json: () => zod.record(zod.string(), zod.any()),
 
+  /**
+   * A typed passthrough — carries a TypeScript type and validates nothing.
+   *
+   * The legitimate use is a value whose shape is already owned and checked at
+   * its own boundary, held somewhere that requires a schema anyway: an `$atom`
+   * over a type an API client produces, an editor's own draft model. Writing a
+   * zod mirror of those would be a second, driftable copy of a contract that
+   * already exists.
+   *
+   * ⚠️ Never for anything crossing a trust boundary. A request body, a query
+   * parameter, an env var or a database row declared this way is unvalidated
+   * input wearing a type — which is worse than `z.any()`, because it reads as
+   * if something checked it.
+   *
+   * Exposed here rather than left to `import { z } from "zod"` in the app: a
+   * workspace importing zod directly resolves its own copy, and zod's branded
+   * types treat two instances as structurally distinct — so the schema is
+   * rejected by every alepha primitive with a type error that names neither
+   * cause nor cure.
+   */
+  custom: zod.custom,
+
   // -- text family (alepha size-capped strings — the options ARE the API) --
   text: (options: TextOptions = {}) => {
     const {
@@ -273,9 +295,28 @@ export const z = {
       .meta({ format: "int64" }),
 
   // -- file-like / composite -----------------------------------------------
-  file: (options?: { maxSize?: number }) =>
+  /**
+   * A file field. `maxBytes` caps what the transport will accept for it.
+   *
+   * The unit is in the name on purpose. `$storage({ maxSize })` next door is
+   * declared in **megabytes**, and two fields sharing a name while meaning
+   * different units is not a documentation problem — nobody re-reads a docblock
+   * for a name they believe they know. The mistake is silent in both
+   * directions: bytes read as megabytes accepts a million times too much, and
+   * the reverse refuses everything.
+   */
+  file: (options?: { maxBytes?: number }) =>
     zod.any().meta({ format: "binary", ...options }),
-  stream: () => zod.any().meta({ format: "stream" }),
+  /**
+   * The bytes as they arrive, consumed once.
+   *
+   * Takes the same `maxBytes` as {@link file} and for the same reason: a route
+   * has to be able to say how much it expects. Without it a streamed field is
+   * pinned to the application-wide default, which is the one number chosen
+   * without knowing what any particular route is for.
+   */
+  stream: (options?: { maxBytes?: number }) =>
+    zod.any().meta({ format: "stream", ...options }),
   valueLabel: () =>
     zod.object({
       value: z.constantCase(),
@@ -356,6 +397,21 @@ export const z = {
       s instanceof zod.ZodAny || s instanceof zod.ZodUnknown,
     isVoid: (s: any) => s instanceof zod.ZodVoid,
     format: (s: any) => fmt(s),
+    /**
+     * Everything a schema was tagged with via `.meta()`.
+     *
+     * `format` above reads one key out of this; a walker that needs another —
+     * the `maxSize` a `z.file()` carries, say — would otherwise have to reach
+     * into zod's internals at the call site, which is exactly the coupling this
+     * namespace exists to prevent.
+     */
+    meta: (s: any): Record<string, any> => {
+      try {
+        return s?.meta?.() ?? {};
+      } catch {
+        return {};
+      }
+    },
 
     // -- structural accessors ------------------------------------------------
     // Zod names these `.shape` / `.element` / `.options`, and a schema-walker

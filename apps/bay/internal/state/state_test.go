@@ -13,7 +13,7 @@ func TestPersistsAcrossReopen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Upsert(App{Name: "lore", Env: "production", Domain: "lore.test", Port: 4001}); err != nil {
+	if err := s.Upsert(App{Name: "lore", Env: "production", Domains: []string{"lore.test"}, Port: 4001}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -38,7 +38,7 @@ func TestUpsertReplacesRatherThanDuplicates(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, domain := range []string{"a.test", "b.test"} {
-		if err := s.Upsert(App{Name: "lore", Env: "production", Domain: domain}); err != nil {
+		if err := s.Upsert(App{Name: "lore", Env: "production", Domains: []string{domain}}); err != nil {
 			t.Fatal(err)
 		}
 	}

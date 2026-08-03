@@ -19,6 +19,44 @@ Ce PoC prouve la tranche verticale : **un `app.zip` entre, une URL HTTPS sort.**
 | CLI | client fin de cette même API — **un seul contrat** |
 
 | TLS / ACME | CertMagic, testable **sans domaine public ni root** via Pebble |
+| Observabilité | `bay status`, `bay logs` — rien n'est stocké |
+
+## Observer une app, sans rien stocker
+
+Deux commandes, aucune série temporelle, aucun job, aucune table. C'est
+délibéré : une base de séries qu'il faut administrer, purger et sauvegarder pour
+répondre à deux questions fixes coûte plus cher que les réponses.
+
+```bash
+bay status --json            # up, redémarrages, trafic, fraîcheur des backups
+bay logs lore/production --since 15m --grep 'ECONN' --json
+```
+
+**`bay logs` sort du JSON Lines.** Son lecteur principal est un agent en SSH, pas
+un œil : `--json`, `--since`, `--grep` (une expression régulière). Sur un vrai
+hôte les entrées viennent de journald, qui apporte sa propre rétention ; sous le
+runner enfant elles viennent de `logs/app.log`, qui est tourné à 32 Mio.
+
+⚠️ `--since` **conserve** les lignes sans horodatage et l'annonce en fin de
+sortie. Une app qui écrit du texte brut sur stdout n'en produit aucun, et les
+masquer supprimerait exactement le `console.log` qu'on vient d'ajouter.
+
+## Ce que les sauvegardes couvrent, et ce qu'elles ne couvrent pas
+
+| | |
+|---|---|
+| Base SQLite | ✅ snapshot par l'API de backup de SQLite, vérifié, puis compressé |
+| `storage/` | ✅ archive `tar.gz` séparée, plafonnée à 1 Gio |
+| `.env` | ❌ **jamais** — les secrets viennent du déploiement |
+
+Les deux pistes échouent indépendamment : un `tar` qui casse ne doit pas annuler
+une base sauvegardée, et l'inverse non plus. L'échec est **rapporté**, jamais
+avalé — une sauvegarde partielle qui se lit comme une sauvegarde complète est la
+pire chose que ce système puisse produire.
+
+Les liens symboliques sont archivés **comme liens**, jamais suivis : un lien
+posé dans `storage/` pourrait sinon aspirer `/etc/shadow` ou le `.env` d'une
+autre app dans une archive qui quitte ensuite la machine.
 
 ## Tester ACME sans domaine
 
@@ -52,6 +90,28 @@ est en `sslip.io`, le quota est **mutualisé entre tous ses utilisateurs**.
 - **Gestion des runtimes** — le PoC emprunte le `node` du `PATH`. Le vrai Bay
   embarque le sien et gère `bay runtime update`.
 - Rollback, backups, scale-to-zero, bay-ui : phases suivantes.
+
+### TODO — les metrics applicatives (req/s, latence, event loop)
+
+Une commande `bay top` a existé, lisant le `/metrics` Prometheus que
+`alepha/server/metrics` expose. **Retirée**, pour une raison qu'on n'a vue qu'en
+la lançant sur une vraie machine : ce module est **opt-in**, et aucune des apps
+déployées ne l'importe. La feature marchait sur zéro app sur deux, et il a fallu
+déployer un exemple exprès pour la voir fonctionner.
+
+Deux constats qui décideront de la reprise :
+
+1. **Bay est déjà au bon endroit pour compter.** Le proxy voit chaque requête
+   avec son code de statut (`proxy.go`, là où `lastSeen.touch` est appelé) et le
+   cgroup donne mémoire, CPU et redémarrages. Req/s, err/s et la latence *vue du
+   client* ne demandent donc rien à l'app — et marcheraient pour toutes, y
+   compris non-Alepha.
+2. **Ce que seule l'app peut dire** : le lag de l'event loop (le meilleur signal
+   précoce d'une app Node qui va tomber, invisible du dehors), la distinction
+   heap / RSS, et les métriques métier.
+
+Quand on y reviendra, ce ne sera pas en reparsant du texte Prometheus : ce sera
+un `@alepha/telemetry` basé sur OpenTelemetry.
 
 ## Essayer
 

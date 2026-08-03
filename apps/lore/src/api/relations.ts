@@ -9,8 +9,12 @@ import { folioLinks } from "./entities/folioLinks.ts";
 import { folioRevisions } from "./entities/folioRevisions.ts";
 import { folios } from "./entities/folios.ts";
 import { members } from "./entities/members.ts";
+import { outpostApps } from "./entities/outpostApps.ts";
+import { outpostEvents } from "./entities/outpostEvents.ts";
+import { outposts } from "./entities/outposts.ts";
 import { petitions } from "./entities/petitions.ts";
 import { quests } from "./entities/quests.ts";
+import { releases } from "./entities/releases.ts";
 import { sigils } from "./entities/sigils.ts";
 
 /**
@@ -40,6 +44,10 @@ export const schema = {
   folioRevisions,
   archiveDirectories,
   archiveBlobs,
+  outposts,
+  outpostApps,
+  outpostEvents,
+  releases,
   sigils,
   blightIgnoreRules,
 };

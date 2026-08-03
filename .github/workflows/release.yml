@@ -90,6 +90,16 @@ jobs:
           cat CHANGELOG.md >> CHANGELOG.tmp
           mv CHANGELOG.tmp CHANGELOG.md
 
+      # Local only — nothing leaves the runner until the artifacts exist.
+      #
+      # The push and the GitHub Release used to sit right here, ahead of the
+      # build. A red `yarn build` then left a tag on `main` and a public release
+      # for a version that never reached npm, and clearing that up meant
+      # deleting a published release by hand. Everything irreversible now waits
+      # until there is something to release.
+      #
+      # It stays ahead of `yarn copy` / `yarn build` so `git add -A` sees the
+      # same tree it always has: the bump and the changelog, no build output.
       - name: Commit and Tag Release
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -97,19 +107,6 @@ jobs:
           git add -A
           git commit -m "release: ${VERSION}"
           git tag -a "${VERSION}" -m "release: ${VERSION}"
-
-      - name: Push Changes and Tags
-        run: |
-          git push --follow-tags
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
-        with:
-          tag_name: ${{ steps.version.outputs.version }}
-          name: ${{ steps.version.outputs.version }}
-          body: ${{ steps.release_notes.outputs.notes }}
-          draft: false
-          prerelease: false
 
       - name: Clean
         run: yarn clean
@@ -124,10 +121,6 @@ jobs:
         run: |
           cp packages/alepha/assets/agents-template.md packages/alepha/CLAUDE.md
           cp packages/alepha/assets/agents-template.md packages/alepha/AGENTS.md
-
-      - name: Publish to NPM
-        run: |
-          yarn workspaces foreach --no-private -Apt npm publish --tolerate-republish --access public
 
       # ──────────────────────────────────────────────────────────────────
       # Bay artifacts.
@@ -190,13 +183,43 @@ jobs:
           sha256sum bay-linux-amd64 bay-linux-arm64 bay-ui.tar.gz > SHA256SUMS
           cat SHA256SUMS
 
-      - name: Attach Bay artifacts to the release
+      # ──────────────────────────────────────────────────────────────────
+      # Everything above is reversible: a failure leaves a dirty runner and
+      # nothing else. From here on it is public.
+      #
+      # Last, so that every artifact — the JS packages, both Go binaries, the
+      # bay-ui tarball — is known to build before any of it ships. A Go
+      # compile error after `npm publish` would otherwise strand a published
+      # version.
+      # ──────────────────────────────────────────────────────────────────
+      - name: Publish to NPM
+        run: |
+          yarn workspaces foreach --no-private -Apt npm publish --tolerate-republish --access public
+
+      # ──────────────────────────────────────────────────────────────────
+      #
+      # The push comes after `npm publish` on purpose. Of the two ways this can
+      # tear, a published version whose tag has not been pushed is the mild one
+      # — push the tag and it is whole. The other way round leaves a public
+      # release pointing at a version nobody can install, and only deleting it
+      # by hand fixes that.
+      # ──────────────────────────────────────────────────────────────────
+      - name: Push Changes and Tags
+        run: |
+          git push --follow-tags
+
+      # One step, not two: the release used to be created before the build and
+      # have its assets bolted on afterwards, because that avoided reordering a
+      # working pipeline. The reorder happened, so the split has no reason left
+      # — and a release that is born complete never exists in a half state.
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
-          # Same tag as above: the action updates the existing release rather
-          # than creating a second one. Adding assets here instead of reordering
-          # the release creation keeps a working pipeline untouched.
           tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          body: ${{ steps.release_notes.outputs.notes }}
+          draft: false
+          prerelease: false
           files: |
             ${{ runner.temp }}/artifacts/bay-linux-amd64
             ${{ runner.temp }}/artifacts/bay-linux-arm64

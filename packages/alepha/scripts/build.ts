@@ -18,6 +18,14 @@ interface Module {
   node?: boolean;
 }
 
+/**
+ * Modules that are built but kept out of the `exports` map.
+ *
+ * They still need a `dist/` output — they are just not something a consumer
+ * should be able to `import`.
+ */
+const NOT_EXPORTED = new Set(["bin"]);
+
 class AlephaPackageBuilderCli {
   src = "src";
   dist = "dist";
@@ -57,6 +65,16 @@ class AlephaPackageBuilderCli {
       const publishExports: Record<string, any> = {};
 
       for (const item of modules) {
+        // Built, but not part of the public surface. `bin` is the CLI entry
+        // point: it boots Alepha and runs a command as a side effect of being
+        // loaded, so `import("alepha/bin")` launched the whole CLI — which any
+        // tool that walks the `exports` map does by accident. It is reached
+        // through the `bin` field, which resolves as a file path and does not
+        // consult `exports`, so dropping it here costs nothing.
+        if (NOT_EXPORTED.has(item.name)) {
+          continue;
+        }
+
         let m = `./${item.name.replace("core", "")}`;
         if (m.endsWith("/")) m = m.slice(0, -1);
         const path = m;

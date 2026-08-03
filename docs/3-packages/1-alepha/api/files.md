@@ -46,3 +46,4 @@ Blobs *without* a database are a `FileStorageProvider` concern — see
 
 - [`DefaultStorage`](/docs/reference-providers-defaultstorage) — The `default` storage.
 - [`FileAccessProvider`](/docs/reference-providers-fileaccessprovider) — Authorization policy for file reads served through `FileController.streamFile`.
+- [`StorageMultipartCapProvider`](/docs/reference-providers-storagemultipartcapprovider) — Lets the targeted `$storage` decide how many bytes a request may carry.

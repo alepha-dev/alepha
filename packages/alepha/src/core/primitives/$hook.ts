@@ -90,7 +90,17 @@ export class HookPrimitive<T extends keyof Hooks> extends Primitive<
     ): Service[] | undefined => {
       if (!deps) return undefined;
       const arr = Array.isArray(deps) ? deps : [deps];
-      return arr.map((dep) => dep.constructor as Service);
+      // Both spellings, because both read as correct at the call site and only
+      // one used to work. `dep.constructor` on a class yields `Function`, which
+      // matches no service — so `before: [SomeProvider]` compiled, ran, and
+      // ordered nothing at all. A constraint that silently does nothing is
+      // worse than one that refuses: the ordering it was meant to guarantee is
+      // then only believed.
+      return arr.map((dep) =>
+        typeof dep === "function"
+          ? (dep as Service)
+          : (dep.constructor as Service),
+      );
     };
 
     this.alepha.events.on(this.options.on, {

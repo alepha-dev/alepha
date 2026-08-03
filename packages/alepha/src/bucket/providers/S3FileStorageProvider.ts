@@ -16,6 +16,7 @@ import { currentTenantAtom } from "alepha/security";
 import { FileDetector, FileSystemProvider } from "alepha/system";
 import { S3mini } from "s3mini";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
+import { MultipartChunker } from "../helpers/MultipartChunker.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
 const envSchema = z.object({
@@ -81,6 +82,8 @@ declare module "alepha" {
  * provider only writes keys into it.
  */
 export class S3FileStorageProvider implements FileStorageProvider {
+  protected readonly chunker = new MultipartChunker();
+
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
@@ -138,6 +141,15 @@ export class S3FileStorageProvider implements FileStorageProvider {
     return `${this.crypto.randomUUID()}.${ext}`;
   }
 
+  /**
+   * Uploads a file, streaming it when its size is not known up front.
+   *
+   * A `FileLike` built from a request body reports `size === 0` until it is
+   * read, so asking it for an `arrayBuffer()` is asking for the whole payload
+   * in RAM — which is exactly what a streamed upload exists to avoid. Known
+   * sizes keep the single `PutObject`: it is one request instead of three, and
+   * a small file has nothing to gain from multipart.
+   */
   public async upload(
     bucketName: string,
     file: FileLike,
@@ -150,17 +162,22 @@ export class S3FileStorageProvider implements FileStorageProvider {
     );
 
     const client = this.getClient();
+    const key = this.key(bucketName, fileId);
 
     try {
-      const buffer = new Uint8Array(await file.arrayBuffer());
-      await client.putObject(
-        this.key(bucketName, fileId),
-        buffer,
-        file.type || "application/octet-stream",
-        undefined,
-        { "x-amz-meta-name": encodeURIComponent(file.name) },
-        file.size,
-      );
+      if (file.size > 0) {
+        const buffer = new Uint8Array(await file.arrayBuffer());
+        await client.putObject(
+          key,
+          buffer,
+          file.type || "application/octet-stream",
+          undefined,
+          { "x-amz-meta-name": encodeURIComponent(file.name) },
+          file.size,
+        );
+      } else {
+        await this.uploadStreamed(client, key, file);
+      }
 
       this.log.trace(`File uploaded successfully: ${fileId}`);
       return fileId;
@@ -171,6 +188,75 @@ export class S3FileStorageProvider implements FileStorageProvider {
           cause: error,
         });
       }
+      throw error;
+    }
+  }
+
+  /**
+   * Uploads a stream of unknown length as a multipart upload.
+   *
+   * The only shape S3 offers for "I do not know how big this is": a single
+   * `PutObject` demands a `Content-Length` the sender does not have.
+   *
+   * A failure aborts the upload. Without that, every interrupted transfer would
+   * leave its parts billed and invisible — S3 keeps them until someone says
+   * otherwise, and nobody ever does.
+   */
+  protected async uploadStreamed(
+    client: S3mini,
+    key: string,
+    file: FileLike,
+  ): Promise<void> {
+    // Decided by reading, not by asking: `size` is 0 for a stream and 0 for an
+    // empty file alike, so the first part is taken and multipart begins only if
+    // a second one follows. One `PutObject` beats three requests, and S3
+    // refuses to complete an upload of a single short part anyway.
+    const parts = this.chunker.parts(file)[Symbol.asyncIterator]();
+    const first = await parts.next();
+    const head = first.done ? new Uint8Array(0) : first.value;
+    const second = await parts.next();
+
+    if (second.done) {
+      await client.putObject(
+        key,
+        head,
+        file.type || "application/octet-stream",
+        undefined,
+        { "x-amz-meta-name": encodeURIComponent(file.name) },
+        head.length,
+      );
+      return;
+    }
+
+    const uploadId = await client.getMultipartUploadId(
+      key,
+      file.type || "application/octet-stream",
+    );
+
+    const uploaded: Array<Awaited<ReturnType<S3mini["uploadPart"]>>> = [];
+
+    try {
+      uploaded.push(await client.uploadPart(key, uploadId, head, 1));
+      uploaded.push(await client.uploadPart(key, uploadId, second.value, 2));
+      let partNumber = 3;
+      while (true) {
+        const next = await parts.next();
+        if (next.done) {
+          break;
+        }
+        uploaded.push(
+          await client.uploadPart(key, uploadId, next.value, partNumber),
+        );
+        partNumber++;
+      }
+      await client.completeMultipartUpload(key, uploadId, uploaded);
+    } catch (error) {
+      await client.abortMultipartUpload(key, uploadId).catch((abortError) => {
+        this.log.error(
+          `Failed to abort multipart upload ${uploadId}`,
+          abortError,
+        );
+      });
       throw error;
     }
   }

@@ -29,6 +29,19 @@ Every directory has an \`index.ts\` exporting a \`$module\` that groups its
 services. Tailwind is already wired up through \`vite.config.ts\` — use
 utility classes, don't add another CSS framework.
 
+\`vite.config.ts\` also holds the Vitest config, under \`test\`. Don't add a
+\`vitest.config.ts\`: one file keeps plugins and path aliases identical between
+the build and the tests.
+
+## Environment
+
+\`.env.example\` is the committed list of variables; \`.env\` is gitignored. Copy
+one to the other and fill it in.
+
+\`APP_SECRET\` is not optional in production — the app refuses to start without
+it, because the built-in default is public and would let anyone forge
+authentication tokens. Generate one with \`openssl rand -hex 32\`.
+
 ## Rules
 
 - Always check \`node_modules/alepha/src/\` before suggesting npm packages

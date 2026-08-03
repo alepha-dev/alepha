@@ -181,11 +181,6 @@
       "import": "./src/batch/index.ts",
       "default": "./src/batch/index.ts"
     },
-    "./bin": {
-      "types": "./src/bin/index.ts",
-      "import": "./src/bin/index.ts",
-      "default": "./src/bin/index.ts"
-    },
     "./bucket": {
       "types": "./src/bucket/index.ts",
       "workerd": "./src/bucket/index.workerd.ts",
@@ -479,6 +474,11 @@
       "import": "./src/server/metrics/index.ts",
       "default": "./src/server/metrics/index.ts"
     },
+    "./server/multipart": {
+      "types": "./src/server/multipart/index.ts",
+      "import": "./src/server/multipart/index.ts",
+      "default": "./src/server/multipart/index.ts"
+    },
     "./server/proxy": {
       "types": "./src/server/proxy/index.ts",
       "import": "./src/server/proxy/index.ts",
@@ -619,11 +619,6 @@
         "types": "./dist/batch/index.d.ts",
         "import": "./dist/batch/index.js",
         "default": "./dist/batch/index.js"
-      },
-      "./bin": {
-        "types": "./dist/bin/index.d.ts",
-        "import": "./dist/bin/index.js",
-        "default": "./dist/bin/index.js"
       },
       "./bucket": {
         "types": "./dist/bucket/index.d.ts",
@@ -917,6 +912,11 @@
         "types": "./dist/server/metrics/index.d.ts",
         "import": "./dist/server/metrics/index.js",
         "default": "./dist/server/metrics/index.js"
+      },
+      "./server/multipart": {
+        "types": "./dist/server/multipart/index.d.ts",
+        "import": "./dist/server/multipart/index.js",
+        "default": "./dist/server/multipart/index.js"
       },
       "./server/proxy": {
         "types": "./dist/server/proxy/index.d.ts",

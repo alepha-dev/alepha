@@ -106,6 +106,54 @@ describe("alepha init", () => {
         ),
       ).toBe(true);
     });
+
+    it("should point the editor's formatter at Biome, and recommend it", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      // The project ships a biome.json and `alepha lint` formats with Biome.
+      // Without this the editor formats with something else on save and the two
+      // undo each other.
+      expect(
+        fs.wasWrittenMatching(
+          "/project/.vscode/settings.json",
+          /"\[typescript\]": \{ "editor\.defaultFormatter": "biomejs\.biome" \}/,
+        ),
+      ).toBe(true);
+
+      // Pointing `defaultFormatter` at an extension the user does not have
+      // makes VS Code complain on every save, so the recommendation ships too.
+      expect(
+        fs.wasWrittenMatching(
+          "/project/.vscode/extensions.json",
+          /biomejs\.biome/,
+        ),
+      ).toBe(true);
+    });
+
+    it("should carry the test config inside vite.config.ts", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      // Vitest falls back to vite.config.ts, so one file drives both the build
+      // and the tests — plugins and aliases cannot drift apart.
+      expect(fs.wasWritten("/project/vitest.config.ts")).toBe(false);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/vite.config.ts",
+          /from "vitest\/config"/,
+        ),
+      ).toBe(true);
+      // `test.root` is what stops Vitest walking up into a parent monorepo
+      // config that boots containers this project knows nothing about.
+      expect(
+        fs.wasWrittenMatching("/project/vite.config.ts", /root: "\."/),
+      ).toBe(true);
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────────

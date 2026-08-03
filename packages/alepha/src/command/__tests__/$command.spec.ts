@@ -4,7 +4,50 @@ import {
   MemoryDestinationProvider,
 } from "alepha/logger";
 import { describe, expect, test, vi } from "vitest";
-import { $command, CommandError, cliOptions } from "../index.ts";
+import {
+  $command,
+  CommandError,
+  ConsoleOutputProvider,
+  cliOptions,
+  MemoryOutputProvider,
+} from "../index.ts";
+
+/**
+ * A malformed argv is reported, not thrown.
+ *
+ * These assertions used to be `.rejects.toThrow(...)`. Throwing out of the
+ * `ready` hook surfaced as "Alepha failed to start" followed by a stack trace
+ * through `CliProvider` internals — a crash report for a typo. The unknown-
+ * command path had always rendered a message instead, and the two now agree:
+ * log the reason, print the help for whatever context was resolved, exit 1.
+ *
+ * `CliProvider.run()`, the programmatic entry point, still throws — a caller
+ * driving the CLI from code wants the error, not a printed page.
+ */
+const expectUsageError = async (
+  running: Promise<{
+    mockLogger: MemoryDestinationProvider;
+    mockOutput: MemoryOutputProvider;
+  }>,
+  message: string,
+) => {
+  const { mockLogger, mockOutput } = await running;
+
+  const errors = mockLogger.logs.filter((l) => l.level === "ERROR");
+  expect(errors.map((l) => l.message).join("\n")).toContain(message);
+  expect(process.exitCode).toBe(1);
+
+  // Either heading counts as "help was printed": a resolved command prints its
+  // own `Usage:` block, while a root command with no subcommand path falls back
+  // to the global listing under `Commands:`.
+  const printedHelp =
+    mockOutput.text.includes("Usage:") || mockOutput.text.includes("Commands:");
+  expect(printedHelp).toBe(true);
+
+  // Shared across tests in a single vitest worker, so it has to be cleared or
+  // the next assertion inherits this one's failure.
+  process.exitCode = 0;
+};
 
 describe("$command", () => {
   const setupTestCommands = async (
@@ -51,6 +94,12 @@ describe("$command", () => {
         provide: LogDestinationProvider,
         use: MemoryDestinationProvider,
       })
+      // Help and command output go to stdout now, not through the logger, so
+      // the logger alone can no longer see them.
+      .with({
+        provide: ConsoleOutputProvider,
+        use: MemoryOutputProvider,
+      })
       .with(TestCommands);
 
     if (argv) {
@@ -74,6 +123,7 @@ describe("$command", () => {
       alepha,
       mockHandlers,
       mockLogger: alepha.inject(MemoryDestinationProvider),
+      mockOutput: alepha.inject(MemoryOutputProvider),
     };
   };
 
@@ -306,50 +356,57 @@ describe("$command", () => {
     });
 
     test("should throw error when space-separated value is missing (next arg is a flag)", async () => {
-      await expect(() =>
+      await expectUsageError(
         setupTestCommands(["greet", "--name", "--times=5"]),
-      ).rejects.toThrow("Flag --name requires a value");
+        "Flag --name requires a value",
+      );
     });
 
     test("should throw error when space-separated value is missing (end of args)", async () => {
-      await expect(() =>
+      await expectUsageError(
         setupTestCommands(["greet", "--name"]),
-      ).rejects.toThrow("Flag --name requires a value");
+        "Flag --name requires a value",
+      );
     });
   });
 
   describe("Error Handling", () => {
     test("should log an error for an unknown command", async () => {
-      const { mockLogger } = await setupTestCommands(["non-existent-command"]);
+      const { mockLogger, mockOutput } = await setupTestCommands([
+        "non-existent-command",
+      ]);
 
+      // The reason is a log — it is the CLI reporting a problem.
       const errorLog = mockLogger.logs.find((l) => l.level === "ERROR");
       expect(errorLog).toBeDefined();
       expect(errorLog?.message).toBe("Unknown command: 'non-existent-command'");
-      // It should also print help
-      expect(mockLogger.logs.some((l) => l.message.includes("Commands:"))).toBe(
-        true,
-      );
+
+      // The help that follows is output — it is a document, and it goes to
+      // stdout so a caller can pipe it.
+      expect(mockOutput.text).toContain("Commands:");
     });
 
     test("should throw a CommandError for missing flag values", async () => {
-      await expect(() =>
+      await expectUsageError(
         setupTestCommands(["greet", "--name"]),
-      ).rejects.toThrow("Flag --name requires a value");
+        "Flag --name requires a value",
+      );
     });
 
     test("should throw a CommandError for invalid flag types", async () => {
       // Strict-zod: flag values are cast + validated via parseArgumentValue
       // (same path as positional args), which rejects non-numeric integer flags
       // up front rather than deferring to the (typebox-style) decode message.
-      await expect(() =>
+      await expectUsageError(
         setupTestCommands(["greet", "--name=Test", "--times=not-a-number"]),
-      ).rejects.toThrow('Expected number, got "not-a-number"');
+        'Expected number, got "not-a-number"',
+      );
     });
   });
 
   describe("Help Message", () => {
     test("should print general help with --help flag", async () => {
-      const { mockLogger } = await setupTestCommands(["--help"], (alepha) => {
+      const { mockOutput } = await setupTestCommands(["--help"], (alepha) => {
         alepha.store.mut(cliOptions, (old) => ({
           ...old,
           name: "my-cli",
@@ -357,7 +414,7 @@ describe("$command", () => {
         }));
       });
 
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).toContain("My awesome CLI tool.");
       expect(output).toContain("Commands:");
       expect(output).toContain("my-cli greet, g");
@@ -367,7 +424,7 @@ describe("$command", () => {
     });
 
     test("should print command-specific help", async () => {
-      const { mockLogger } = await setupTestCommands(
+      const { mockOutput } = await setupTestCommands(
         ["greet", "-h"],
         (alepha) =>
           alepha.store.mut(cliOptions, (old) => ({
@@ -376,7 +433,7 @@ describe("$command", () => {
           })),
       );
 
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).toContain("Usage: my-cli greet");
       expect(output).toContain("A simple greeting command.");
       expect(output).toContain("Flags:");
@@ -637,9 +694,10 @@ describe("$command", () => {
         });
       }
 
-      await expect(() =>
+      await expectUsageError(
         setupTestCommands(["cmd"], (a) => a.with(TestCommand)),
-      ).rejects.toThrow("Missing required argument");
+        "Missing required argument",
+      );
     });
 
     test("should throw error for invalid number argument", async () => {
@@ -651,9 +709,10 @@ describe("$command", () => {
         });
       }
 
-      await expect(() =>
+      await expectUsageError(
         setupTestCommands(["cmd", "not-a-number"], (a) => a.with(TestCommand)),
-      ).rejects.toThrow('Expected number, got "not-a-number"');
+        'Expected number, got "not-a-number"',
+      );
     });
 
     test("should throw error for invalid integer argument", async () => {
@@ -665,9 +724,10 @@ describe("$command", () => {
         });
       }
 
-      await expect(() =>
+      await expectUsageError(
         setupTestCommands(["cmd", "42.5"], (a) => a.with(TestCommand)),
-      ).rejects.toThrow('Expected integer, got "42.5"');
+        'Expected integer, got "42.5"',
+      );
     });
 
     test("should throw error for invalid boolean argument", async () => {
@@ -679,9 +739,10 @@ describe("$command", () => {
         });
       }
 
-      await expect(() =>
+      await expectUsageError(
         setupTestCommands(["cmd", "not-a-boolean"], (a) => a.with(TestCommand)),
-      ).rejects.toThrow('Expected boolean, got "not-a-boolean"');
+        'Expected boolean, got "not-a-boolean"',
+      );
     });
 
     test("should throw error for missing required tuple argument", async () => {
@@ -693,9 +754,10 @@ describe("$command", () => {
         });
       }
 
-      await expect(() =>
+      await expectUsageError(
         setupTestCommands(["cmd", "hello"], (a) => a.with(TestCommand)),
-      ).rejects.toThrow("Missing required argument at position 2");
+        "Missing required argument at position 2",
+      );
     });
   });
 
@@ -833,9 +895,10 @@ describe("$command", () => {
         });
       }
 
-      await expect(() =>
+      await expectUsageError(
         setupTestCommands([], (a) => a.with(RootCommand)),
-      ).rejects.toThrow("Missing required argument");
+        "Missing required argument",
+      );
     });
   });
 
@@ -860,7 +923,7 @@ describe("$command", () => {
         });
       }
 
-      const { mockLogger } = await setupTestCommands(["--help"], (alepha) => {
+      const { mockOutput } = await setupTestCommands(["--help"], (alepha) => {
         alepha.store.mut(cliOptions, (old) => ({
           ...old,
           name: "my-cli",
@@ -869,7 +932,7 @@ describe("$command", () => {
         alepha.with(RootCommand);
       });
 
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).toContain("Flags:");
       expect(output).toContain("--verbose");
       expect(output).toContain("Enable verbose output.");
@@ -916,7 +979,7 @@ describe("$command", () => {
         });
       }
 
-      const { mockLogger } = await setupTestCommands(
+      const { mockOutput } = await setupTestCommands(
         ["cmd", "--help"],
         (alepha) => {
           alepha.store.mut(cliOptions, (old) => ({
@@ -927,7 +990,7 @@ describe("$command", () => {
         },
       );
 
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).toContain("Usage: test-cli cmd <arg1>");
     });
 
@@ -940,7 +1003,7 @@ describe("$command", () => {
         });
       }
 
-      const { mockLogger } = await setupTestCommands(
+      const { mockOutput } = await setupTestCommands(
         ["cmd", "--help"],
         (alepha) => {
           alepha.store.mut(cliOptions, (old) => ({
@@ -951,7 +1014,7 @@ describe("$command", () => {
         },
       );
 
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).toContain("Usage: test-cli cmd [arg1]");
     });
 
@@ -964,7 +1027,7 @@ describe("$command", () => {
         });
       }
 
-      const { mockLogger } = await setupTestCommands(
+      const { mockOutput } = await setupTestCommands(
         ["cmd", "--help"],
         (alepha) => {
           alepha.store.mut(cliOptions, (old) => ({
@@ -975,7 +1038,7 @@ describe("$command", () => {
         },
       );
 
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).toContain("Usage: test-cli cmd <arg1> [arg2: number]");
     });
   });
@@ -1058,7 +1121,7 @@ describe("$command", () => {
         });
       }
 
-      const { mockLogger } = await setupTestCommands(["deploy"], (alepha) => {
+      const { mockOutput } = await setupTestCommands(["deploy"], (alepha) => {
         alepha.store.mut(cliOptions, (old) => ({
           ...old,
           name: "my-cli",
@@ -1067,7 +1130,7 @@ describe("$command", () => {
       });
 
       expect(helpFn).toBeDefined();
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).toContain("Usage: my-cli deploy <command>");
       expect(output).toContain("Commands:");
       expect(output).toContain("vercel");
@@ -1151,7 +1214,7 @@ describe("$command", () => {
         });
       }
 
-      const { mockLogger } = await setupTestCommands(
+      const { mockOutput } = await setupTestCommands(
         ["deploy", "--help"],
         (alepha) => {
           alepha.store.mut(cliOptions, (old) => ({
@@ -1162,7 +1225,7 @@ describe("$command", () => {
         },
       );
 
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).toContain("Usage: my-cli deploy <command>");
       expect(output).toContain("Commands:");
       expect(output).toContain("my-cli deploy vercel");
@@ -1203,7 +1266,7 @@ describe("$command", () => {
         });
       }
 
-      const { mockLogger } = await setupTestCommands(["--help"], (alepha) => {
+      const { mockOutput } = await setupTestCommands(["--help"], (alepha) => {
         alepha.store.mut(cliOptions, (old) => ({
           ...old,
           name: "my-cli",
@@ -1211,7 +1274,7 @@ describe("$command", () => {
         alepha.with(TestCommands);
       });
 
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).toContain("my-cli deploy <command>");
       // vercel should not be listed as a top-level command
       expect(output).not.toMatch(/^\s*my-cli vercel/m);
@@ -1283,9 +1346,10 @@ describe("$command", () => {
       // Ensure env var is not set
       delete process.env.REQUIRED_VAR;
 
-      await expect(
+      await expectUsageError(
         setupTestCommands(["test"], (a) => a.with(TestCommands)),
-      ).rejects.toThrow("Missing required environment variable: REQUIRED_VAR");
+        "Missing required environment variable: REQUIRED_VAR",
+      );
     });
 
     test("should handle optional env vars", async () => {
@@ -1344,7 +1408,7 @@ describe("$command", () => {
         });
       }
 
-      const { mockLogger } = await setupTestCommands(
+      const { mockOutput } = await setupTestCommands(
         ["test", "--help"],
         (alepha) => {
           alepha.store.mut(cliOptions, (old) => ({
@@ -1355,7 +1419,7 @@ describe("$command", () => {
         },
       );
 
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).toContain("Env:");
       expect(output).toContain("API_TOKEN");
       expect(output).toContain("API token for authentication");
@@ -1378,9 +1442,8 @@ describe("$command", () => {
       delete process.env.VAR_ONE;
       delete process.env.VAR_TWO;
 
-      await expect(
+      await expectUsageError(
         setupTestCommands(["test"], (a) => a.with(TestCommands)),
-      ).rejects.toThrow(
         "Missing required environment variables: VAR_ONE, VAR_TWO",
       );
     });
@@ -1482,9 +1545,10 @@ describe("$command", () => {
         });
       }
 
-      await expect(
+      await expectUsageError(
         setupTestCommands(["build", "--mode"], (a) => a.with(TestCommands)),
-      ).rejects.toThrow("Flag --mode requires a value.");
+        "Flag --mode requires a value.",
+      );
     });
 
     test("should show --mode flag in help when mode option is enabled", async () => {
@@ -1497,11 +1561,11 @@ describe("$command", () => {
         });
       }
 
-      const { mockLogger } = await setupTestCommands(["build", "-h"], (a) =>
+      const { mockOutput } = await setupTestCommands(["build", "-h"], (a) =>
         a.with(TestCommands),
       );
 
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).toContain("-m, --mode");
       expect(output).toContain("Environment mode");
     });
@@ -1515,11 +1579,11 @@ describe("$command", () => {
         });
       }
 
-      const { mockLogger } = await setupTestCommands(["build", "-h"], (a) =>
+      const { mockOutput } = await setupTestCommands(["build", "-h"], (a) =>
         a.with(TestCommands),
       );
 
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).not.toContain("-m, --mode");
     });
 
@@ -1575,11 +1639,11 @@ describe("$command", () => {
         });
       }
 
-      const { mockLogger } = await setupTestCommands(["deploy", "-h"], (a) =>
+      const { mockOutput } = await setupTestCommands(["deploy", "-h"], (a) =>
         a.with(TestCommands),
       );
 
-      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      const output = mockOutput.text;
       expect(output).toContain("-m, --mode");
       expect(output).toContain("default: production");
     });

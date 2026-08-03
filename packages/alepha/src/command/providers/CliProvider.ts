@@ -14,7 +14,7 @@ import {
   z,
 } from "alepha";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
-import { CommandError } from "../errors/CommandError.ts";
+import { UsageError } from "../errors/UsageError.ts";
 import { Asker } from "../helpers/Asker.ts";
 import { EnvUtils } from "../helpers/EnvUtils.ts";
 import { Runner } from "../helpers/Runner.ts";
@@ -23,6 +23,7 @@ import {
   type CommandHandlerArgs,
   type CommandPrimitive,
 } from "../primitives/$command.ts";
+import { ConsoleOutputProvider } from "./ConsoleOutputProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -108,6 +109,7 @@ export class CliProvider {
   protected readonly color = $inject(ConsoleColorProvider);
   protected readonly runner = $inject(Runner);
   protected readonly asker = $inject(Asker);
+  protected readonly output = $inject(ConsoleOutputProvider);
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly options = $store(cliOptions);
 
@@ -166,71 +168,108 @@ export class CliProvider {
       const { command, consumedArgs, positionalArgs } =
         this.resolveCommandFromArgv(argv);
 
-      const globalFlags = this.parseFlags(
-        argv,
-        Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
-          key,
-          ...value,
-        })),
-        { strict: false }, // Don't throw for command-specific flags
-      );
-
-      // `--verbose` → raise the logger to trace + pretty format via state
-      // (read live by Logger). At DEBUG level Runner also switches shelled
-      // task output from captured to streamed, so tool output shows live.
-      //
-      // An agent session (Claude Code sets CLAUDECODE) implies verbose: the
-      // compact `cli` format is tuned for a human watching a terminal, but an
-      // agent benefits from the full module/context and internal logs — same
-      // as if `--verbose` were passed.
-      const verbose = globalFlags.verbose || !!this.alepha.env.CLAUDECODE;
-      if (verbose) {
-        this.alepha.store.set("alepha.logger.level", "trace");
-        this.alepha.store.set("alepha.logger.format", "pretty");
-      }
-
-      if (globalFlags.help) {
-        this.printHelp(command);
-        return;
-      }
-
-      if (!command) {
-        // Check if there's a root command (name === "")
-        const rootCommand = this.findCommand("");
-
-        // If we have positional args but no matching command, show error
-        const commandName = positionalArgs[0] ?? "";
-        if (commandName !== "" && !rootCommand?.options.args) {
-          this.log.error(`Unknown command: '${commandName}'`);
-          this.printHelp();
-          // A typo must not report success. Exit code rather than a throw:
-          // throwing surfaces as "Alepha failed to start" plus a stack, which
-          // reads as a crash when the right answer is a usage message. The
-          // `process` guard mirrors core/index.ts — there is no process in
-          // workerd or the browser.
-          if (typeof process === "object") {
-            process.exitCode = 1;
-          }
-          return;
+      try {
+        return await this.dispatch(argv, command, consumedArgs, positionalArgs);
+      } catch (error) {
+        // Nothing has run yet — the argv itself was rejected. Render it the way
+        // an unknown command is rendered, not as a crash.
+        if (error instanceof UsageError) {
+          return this.reportUsage(error.message, command);
         }
-
-        // Execute root command if it exists
-        if (rootCommand) {
-          await this.executeCommand(rootCommand, argv, true);
-          return;
-        }
-
-        // No command found and no root command
-        return;
+        throw error;
       }
-
-      // Remove consumed command path args from argv for argument parsing
-      const remainingArgv = this.removeConsumedArgs(argv, consumedArgs);
-
-      // Since we've removed the command path, treat it like a root command for parsing
-      await this.executeCommand(command, remainingArgv, true);
     },
   });
+
+  /**
+   * Resolve what the argv asks for and run it.
+   *
+   * Split out of the `ready` hook so the hook has one job: turn a
+   * {@link UsageError} into a usage message. Every throw below is either a
+   * `UsageError` (the user's argv is wrong) or a genuine failure that should
+   * keep its stack.
+   */
+  protected async dispatch(
+    argv: string[],
+    command: CommandPrimitive<ZObject> | undefined,
+    consumedArgs: string[],
+    positionalArgs: string[],
+  ): Promise<void> {
+    const globalFlags = this.parseFlags(
+      argv,
+      Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
+        key,
+        ...value,
+      })),
+      { strict: false }, // Don't throw for command-specific flags
+    );
+
+    // `--verbose` → raise the logger to trace + pretty format via state
+    // (read live by Logger). At DEBUG level Runner also switches shelled
+    // task output from captured to streamed, so tool output shows live.
+    //
+    // An agent session (Claude Code sets CLAUDECODE) implies verbose: the
+    // compact `cli` format is tuned for a human watching a terminal, but an
+    // agent benefits from the full module/context and internal logs — same
+    // as if `--verbose` were passed.
+    const verbose = globalFlags.verbose || !!this.alepha.env.CLAUDECODE;
+    if (verbose) {
+      this.alepha.store.set("alepha.logger.level", "trace");
+      this.alepha.store.set("alepha.logger.format", "pretty");
+    }
+
+    if (globalFlags.help) {
+      this.printHelp(command);
+      return;
+    }
+
+    if (!command) {
+      // Check if there's a root command (name === "")
+      const rootCommand = this.findCommand("");
+
+      // If we have positional args but no matching command, show error
+      const commandName = positionalArgs[0] ?? "";
+      if (commandName !== "" && !rootCommand?.options.args) {
+        return this.reportUsage(`Unknown command: '${commandName}'`);
+      }
+
+      // Execute root command if it exists
+      if (rootCommand) {
+        await this.executeCommand(rootCommand, argv, true);
+        return;
+      }
+
+      // No command found and no root command
+      return;
+    }
+
+    // Remove consumed command path args from argv for argument parsing
+    const remainingArgv = this.removeConsumedArgs(argv, consumedArgs);
+
+    // Since we've removed the command path, treat it like a root command for parsing
+    await this.executeCommand(command, remainingArgv, true);
+  }
+
+  /**
+   * Print a usage failure the way a CLI should: the reason, then the help for
+   * whatever context we managed to resolve, then a non-zero exit code.
+   *
+   * A typo must not report success. Exit code rather than a throw: throwing
+   * surfaces as "Alepha failed to start" plus a stack through `CliProvider`
+   * internals, which reads as a crash when the right answer is a usage
+   * message. The `process` guard mirrors core/index.ts — there is no process
+   * in workerd or the browser.
+   */
+  protected reportUsage(
+    message: string,
+    command?: CommandPrimitive<ZObject>,
+  ): void {
+    this.log.error(message);
+    this.printHelp(command);
+    if (typeof process === "object") {
+      process.exitCode = 1;
+    }
+  }
 
   /**
    * Execute a command with full lifecycle support.
@@ -294,6 +333,7 @@ export class CliProvider {
         glob,
         root,
         help: () => this.printHelp(command),
+        print: (message?: string) => this.output.print(message),
         mode: modeValue,
       };
 
@@ -538,6 +578,7 @@ export class CliProvider {
       glob,
       root,
       help: () => this.printHelp(command),
+      print: (message?: string) => this.output.print(message),
       mode: modeValue,
     } as CommandHandlerArgs<T, A>);
   }
@@ -688,7 +729,7 @@ export class CliProvider {
       return this.alepha.codec.decode(schema, parsed);
     } catch (error) {
       if (error instanceof SchemaValidationError) {
-        throw new CommandError(
+        throw new UsageError(
           `Invalid flag: ${error.cause.instancePath || "command"} ${error.cause.message}`,
         );
       }
@@ -725,7 +766,7 @@ export class CliProvider {
 
     if (missing.length > 0) {
       const vars = missing.join(", ");
-      throw new CommandError(
+      throw new UsageError(
         `Missing required environment variable${missing.length > 1 ? "s" : ""}: ${vars}`,
       );
     }
@@ -734,7 +775,7 @@ export class CliProvider {
       return this.alepha.codec.decode(schema, result);
     } catch (error) {
       if (error instanceof SchemaValidationError) {
-        throw new CommandError(
+        throw new UsageError(
           `Invalid environment variable: ${error.cause.instancePath || "env"} ${error.cause.message}`,
         );
       }
@@ -760,7 +801,7 @@ export class CliProvider {
         if (nextArg && !nextArg.startsWith("-")) {
           return nextArg;
         }
-        throw new CommandError("Flag --mode requires a value.");
+        throw new UsageError("Flag --mode requires a value.");
       }
     }
 
@@ -803,7 +844,7 @@ export class CliProvider {
       const def = flagDefs.find((d) => d.aliases.includes(rawKey));
       if (!def) {
         if (strict) {
-          throw new CommandError(`Unknown flag: --${rawKey}`);
+          throw new UsageError(`Unknown flag: --${rawKey}`);
         }
         continue;
       }
@@ -839,7 +880,7 @@ export class CliProvider {
         if (nextArg && !nextArg.startsWith("-")) {
           result[def.key] = this.castFlagValue(nextArg, base, rawKey);
         } else {
-          throw new CommandError(`Flag --${rawKey} requires a value.`);
+          throw new UsageError(`Flag --${rawKey} requires a value.`);
         }
       }
     }
@@ -864,7 +905,7 @@ export class CliProvider {
       try {
         return JSON.parse(value);
       } catch {
-        throw new CommandError(`Invalid JSON value for flag --${rawKey}`);
+        throw new UsageError(`Invalid JSON value for flag --${rawKey}`);
       }
     }
     return this.parseArgumentValue(value, schema);
@@ -957,7 +998,7 @@ export class CliProvider {
           } else if (z.schema.isOptional(itemSchema)) {
             result.push(undefined);
           } else {
-            throw new CommandError(
+            throw new UsageError(
               `Missing required argument at position ${i + 1}`,
             );
           }
@@ -966,13 +1007,13 @@ export class CliProvider {
       } else {
         // Handle single arg: z.text(), z.number(), etc.
         if (argsOnly.length === 0) {
-          throw new CommandError("Missing required argument");
+          throw new UsageError("Missing required argument");
         }
         return this.parseArgumentValue(argsOnly[0], schema);
       }
     } catch (error) {
       if (error instanceof SchemaValidationError) {
-        throw new CommandError(`Invalid argument: ${error.value.message}`);
+        throw new UsageError(`Invalid argument: ${error.value.message}`);
       }
       throw error;
     }
@@ -989,10 +1030,10 @@ export class CliProvider {
     if (z.schema.isNumber(schema) || z.schema.isInteger(schema)) {
       const num = Number(value);
       if (Number.isNaN(num)) {
-        throw new CommandError(`Expected number, got "${value}"`);
+        throw new UsageError(`Expected number, got "${value}"`);
       }
       if (z.schema.isInteger(schema) && !Number.isInteger(num)) {
-        throw new CommandError(`Expected integer, got "${value}"`);
+        throw new UsageError(`Expected integer, got "${value}"`);
       }
       return num;
     }
@@ -1001,7 +1042,7 @@ export class CliProvider {
       const lower = value.toLowerCase();
       if (lower === "true" || lower === "1") return true;
       if (lower === "false" || lower === "0") return false;
-      throw new CommandError(`Expected boolean, got "${value}"`);
+      throw new UsageError(`Expected boolean, got "${value}"`);
     }
 
     // For other types, return the string value and let Zod validate it
@@ -1070,192 +1111,178 @@ export class CliProvider {
    *                  If omitted, shows general CLI help with all commands.
    */
   public printHelp(command?: CommandPrimitive<any>): void {
-    // Help is a document, not a log stream: render bare lines (no timestamp
-    // or level prefix). Embedded colors live in the message itself, so they
-    // survive the `raw` formatter.
-    // Restore afterwards: `help()` is handed to command handlers (a parent
-    // command prints help and then continues), so flipping the format
-    // permanently made every later log lose its timestamp and level.
-    const previousFormat = this.alepha.store.get("alepha.logger.format");
-    this.alepha.store.set("alepha.logger.format", "raw");
-    const restoreFormat = () =>
-      this.alepha.store.set("alepha.logger.format", previousFormat);
+    // Help is a document, not a log stream, so it goes to stdout rather than
+    // through the logger.
+    //
+    // It used to flip `alepha.logger.format` to `raw` and restore it
+    // afterwards, which worked but mutated global state that `help()` — handed
+    // to command handlers, who keep running after printing — could leak. It
+    // also could not make help pipeable: the format decides how a line looks,
+    // not which stream it lands on.
+    const out = (line = "") => this.output.print(line);
+    const cliName = this.name || "cli";
+    const c = this.color;
+    out(""); // Newline
 
-    try {
-      const cliName = this.name || "cli";
-      const c = this.color;
-      this.log.info(""); // Newline
+    if (command?.name) {
+      // Command-specific help
+      const hasChildren = command.hasChildren;
+      const argsUsage = hasChildren
+        ? ` ${c.set("CYAN", "<command>")}`
+        : this.generateColoredArgsUsage(command.options.args);
+      const commandPath = this.getCommandPath(command);
+      const usage =
+        `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", commandPath)}${argsUsage}`.trim();
+      out(`${c.set("WHITE_BOLD", "Usage:")} ${usage}`);
 
-      if (command?.name) {
-        // Command-specific help
-        const hasChildren = command.hasChildren;
-        const argsUsage = hasChildren
-          ? ` ${c.set("CYAN", "<command>")}`
-          : this.generateColoredArgsUsage(command.options.args);
-        const commandPath = this.getCommandPath(command);
-        const usage =
-          `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", commandPath)}${argsUsage}`.trim();
-        this.log.info(`${c.set("WHITE_BOLD", "Usage:")} ${usage}`);
+      if (command.options.description) {
+        out(``);
+        out(`\t${command.options.description}`);
+      }
 
-        if (command.options.description) {
-          this.log.info(``);
-          this.log.info(`\t${command.options.description}`);
-        }
+      // Show subcommands if this is a parent command
+      if (hasChildren) {
+        out("");
+        out(c.set("WHITE_BOLD", "Commands:"));
+        const maxSubCmdLength = this.getMaxChildCmdLength(command.children);
 
-        // Show subcommands if this is a parent command
-        if (hasChildren) {
-          this.log.info("");
-          this.log.info(c.set("WHITE_BOLD", "Commands:"));
-          const maxSubCmdLength = this.getMaxChildCmdLength(command.children);
-
-          for (const child of command.children) {
-            if (child.options.hide) {
-              continue;
-            }
-            const childArgsUsage = this.generateArgsUsage(child.options.args);
-            const cmdStr = [child.name, ...child.aliases].join(", ");
-            const fullCmdStr = `${cmdStr}${childArgsUsage}`;
-            const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", commandPath)} ${c.set("CYAN", fullCmdStr)}`;
-            const padding = " ".repeat(
-              Math.max(0, maxSubCmdLength - fullCmdStr.length),
-            );
-            this.log.info(
-              `    ${coloredCmd}${padding}  ${child.options.description ?? ""}`,
-            );
-          }
-        }
-
-        this.log.info("");
-        this.log.info(c.set("WHITE_BOLD", "Flags:"));
-
-        const flags = [
-          // Read aliases/description from the schema's `.meta()` registry (zod),
-          // not as direct schema properties (typebox) — see extractFlagDefs.
-          ...this.extractFlagDefs(command.flags),
-          // Add --mode flag if command has mode option enabled
-          ...(command.options.mode
-            ? [
-                {
-                  key: "mode",
-                  aliases: ["m", "mode"],
-                  description:
-                    typeof command.options.mode === "string"
-                      ? `Environment mode - loads .env.{mode} (default: ${command.options.mode})`
-                      : "Environment mode (e.g., production, staging) - loads .env.{mode}",
-                  schema: z.string() as ZType,
-                },
-              ]
-            : []),
-          ...Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
-            key,
-            ...value,
-          })),
-        ];
-
-        const maxFlagLength = this.getMaxFlagLength(flags);
-        for (const flag of flags) {
-          const { aliases, description } = flag;
-          const schema = "schema" in flag ? (flag.schema as ZType) : undefined;
-          // Sort aliases by length (shorter first: -t before --target)
-          const sortedAliases = (Array.isArray(aliases) ? aliases : [aliases])
-            .slice()
-            .sort((a, b) => a.length - b.length);
-          const flagStr = sortedAliases
-            .map((a: string) => (a.length === 1 ? `-${a}` : `--${a}`))
-            .join(", ");
-          const coloredFlag = c.set("GREY_LIGHT", flagStr);
-          const padding = " ".repeat(
-            Math.max(0, maxFlagLength - flagStr.length),
-          );
-          const formattedDesc = this.formatFlagDescription(description, schema);
-          this.log.info(`    ${coloredFlag}${padding}  ${formattedDesc}`);
-        }
-
-        // Show environment variables if defined
-        const envVars = Object.entries(z.schema.shape(command.env));
-        if (envVars.length > 0) {
-          this.log.info("");
-          this.log.info(c.set("WHITE_BOLD", "Env:"));
-          const maxEnvLength = Math.max(...envVars.map(([key]) => key.length));
-          for (const [key, schema] of envVars) {
-            const isOptional = z.schema.isOptional(schema as ZType);
-            // Wrapped schemas (`.optional()`) keep the description in the
-            // INNER schema's `.meta()` registry, so reading `.description`
-            // off the wrapper rendered an empty Env: section.
-            const description =
-              this.schemaMeta(schema as ZType).description ?? "";
-            const optionalStr = isOptional
-              ? c.set("GREY_DARK", " (optional)")
-              : c.set("RED", " (required)");
-            const coloredKey = c.set("CYAN", key);
-            const padding = " ".repeat(Math.max(0, maxEnvLength - key.length));
-            this.log.info(
-              `    ${coloredKey}${padding}  ${description}${optionalStr}`,
-            );
-          }
-        }
-      } else {
-        // general help
-        this.log.info(this.description || "Available commands:");
-        this.log.info("");
-        this.log.info(c.set("WHITE_BOLD", "Commands:"));
-
-        // Get top-level commands (commands that are not children of other commands)
-        const topLevelCommands = this.getTopLevelCommands();
-        const maxCmdLength = this.getMaxCmdLength(topLevelCommands);
-
-        for (const cmd of topLevelCommands) {
-          // skip root command and hooks in list
-          if (cmd.name === "" || cmd.options.hide) {
+        for (const child of command.children) {
+          if (child.options.hide) {
             continue;
           }
-
-          const cmdStr = [cmd.name, ...cmd.aliases].join(", ");
-          const argsUsage = cmd.hasChildren
-            ? " <command>"
-            : this.generateArgsUsage(cmd.options.args);
-          const fullCmdStr = `${cmdStr}${argsUsage}`;
-          const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", fullCmdStr)}`;
+          const childArgsUsage = this.generateArgsUsage(child.options.args);
+          const cmdStr = [child.name, ...child.aliases].join(", ");
+          const fullCmdStr = `${cmdStr}${childArgsUsage}`;
+          const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", commandPath)} ${c.set("CYAN", fullCmdStr)}`;
           const padding = " ".repeat(
-            Math.max(0, maxCmdLength - fullCmdStr.length),
+            Math.max(0, maxSubCmdLength - fullCmdStr.length),
           );
-          this.log.info(
-            `    ${coloredCmd}${padding}  ${cmd.options.description ?? ""}`,
+          out(
+            `    ${coloredCmd}${padding}  ${child.options.description ?? ""}`,
           );
-        }
-
-        this.log.info("");
-        this.log.info(c.set("WHITE_BOLD", "Flags:"));
-
-        // In general help, also show root command flags
-        const rootCommand = this.commands.find((cmd) => cmd.name === "");
-        // Read aliases/description from the schema's `.meta()` registry (zod),
-        // not as direct schema properties (typebox) — see extractFlagDefs.
-        const rootFlags = rootCommand
-          ? this.extractFlagDefs(rootCommand.flags)
-          : [];
-
-        const globalFlags = [
-          ...rootFlags,
-          ...Object.values(this.getAllGlobalFlags()),
-        ];
-        const maxFlagLength = this.getMaxFlagLength(globalFlags);
-        for (const { aliases, description, schema } of globalFlags) {
-          const flagStr = aliases
-            .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
-            .join(", ");
-          const coloredFlag = c.set("GREY_LIGHT", flagStr);
-          const padding = " ".repeat(
-            Math.max(0, maxFlagLength - flagStr.length),
-          );
-          const formattedDesc = this.formatFlagDescription(description, schema);
-          this.log.info(`    ${coloredFlag}${padding}  ${formattedDesc}`);
         }
       }
-      this.log.info(""); // Newline
-    } finally {
-      restoreFormat();
+
+      out("");
+      out(c.set("WHITE_BOLD", "Flags:"));
+
+      const flags = [
+        // Read aliases/description from the schema's `.meta()` registry (zod),
+        // not as direct schema properties (typebox) — see extractFlagDefs.
+        ...this.extractFlagDefs(command.flags),
+        // Add --mode flag if command has mode option enabled
+        ...(command.options.mode
+          ? [
+              {
+                key: "mode",
+                aliases: ["m", "mode"],
+                description:
+                  typeof command.options.mode === "string"
+                    ? `Environment mode - loads .env.{mode} (default: ${command.options.mode})`
+                    : "Environment mode (e.g., production, staging) - loads .env.{mode}",
+                schema: z.string() as ZType,
+              },
+            ]
+          : []),
+        ...Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
+          key,
+          ...value,
+        })),
+      ];
+
+      const maxFlagLength = this.getMaxFlagLength(flags);
+      for (const flag of flags) {
+        const { aliases, description } = flag;
+        const schema = "schema" in flag ? (flag.schema as ZType) : undefined;
+        // Sort aliases by length (shorter first: -t before --target)
+        const sortedAliases = (Array.isArray(aliases) ? aliases : [aliases])
+          .slice()
+          .sort((a, b) => a.length - b.length);
+        const flagStr = sortedAliases
+          .map((a: string) => (a.length === 1 ? `-${a}` : `--${a}`))
+          .join(", ");
+        const coloredFlag = c.set("GREY_LIGHT", flagStr);
+        const padding = " ".repeat(Math.max(0, maxFlagLength - flagStr.length));
+        const formattedDesc = this.formatFlagDescription(description, schema);
+        out(`    ${coloredFlag}${padding}  ${formattedDesc}`);
+      }
+
+      // Show environment variables if defined
+      const envVars = Object.entries(z.schema.shape(command.env));
+      if (envVars.length > 0) {
+        out("");
+        out(c.set("WHITE_BOLD", "Env:"));
+        const maxEnvLength = Math.max(...envVars.map(([key]) => key.length));
+        for (const [key, schema] of envVars) {
+          const isOptional = z.schema.isOptional(schema as ZType);
+          // Wrapped schemas (`.optional()`) keep the description in the
+          // INNER schema's `.meta()` registry, so reading `.description`
+          // off the wrapper rendered an empty Env: section.
+          const description =
+            this.schemaMeta(schema as ZType).description ?? "";
+          const optionalStr = isOptional
+            ? c.set("GREY_DARK", " (optional)")
+            : c.set("RED", " (required)");
+          const coloredKey = c.set("CYAN", key);
+          const padding = " ".repeat(Math.max(0, maxEnvLength - key.length));
+          out(`    ${coloredKey}${padding}  ${description}${optionalStr}`);
+        }
+      }
+    } else {
+      // general help
+      out(this.description || "Available commands:");
+      out("");
+      out(c.set("WHITE_BOLD", "Commands:"));
+
+      // Get top-level commands (commands that are not children of other commands)
+      const topLevelCommands = this.getTopLevelCommands();
+      const maxCmdLength = this.getMaxCmdLength(topLevelCommands);
+
+      for (const cmd of topLevelCommands) {
+        // skip root command and hooks in list
+        if (cmd.name === "" || cmd.options.hide) {
+          continue;
+        }
+
+        const cmdStr = [cmd.name, ...cmd.aliases].join(", ");
+        const argsUsage = cmd.hasChildren
+          ? " <command>"
+          : this.generateArgsUsage(cmd.options.args);
+        const fullCmdStr = `${cmdStr}${argsUsage}`;
+        const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", fullCmdStr)}`;
+        const padding = " ".repeat(
+          Math.max(0, maxCmdLength - fullCmdStr.length),
+        );
+        out(`    ${coloredCmd}${padding}  ${cmd.options.description ?? ""}`);
+      }
+
+      out("");
+      out(c.set("WHITE_BOLD", "Flags:"));
+
+      // In general help, also show root command flags
+      const rootCommand = this.commands.find((cmd) => cmd.name === "");
+      // Read aliases/description from the schema's `.meta()` registry (zod),
+      // not as direct schema properties (typebox) — see extractFlagDefs.
+      const rootFlags = rootCommand
+        ? this.extractFlagDefs(rootCommand.flags)
+        : [];
+
+      const globalFlags = [
+        ...rootFlags,
+        ...Object.values(this.getAllGlobalFlags()),
+      ];
+      const maxFlagLength = this.getMaxFlagLength(globalFlags);
+      for (const { aliases, description, schema } of globalFlags) {
+        const flagStr = aliases
+          .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
+          .join(", ");
+        const coloredFlag = c.set("GREY_LIGHT", flagStr);
+        const padding = " ".repeat(Math.max(0, maxFlagLength - flagStr.length));
+        const formattedDesc = this.formatFlagDescription(description, schema);
+        out(`    ${coloredFlag}${padding}  ${formattedDesc}`);
+      }
     }
+    out(""); // Newline
   }
 
   /**

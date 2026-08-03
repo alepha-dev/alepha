@@ -12,8 +12,12 @@ import { IdentityController } from "./controllers/IdentityController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
+import { OutpostCommandController } from "./controllers/OutpostCommandController.ts";
+import { OutpostController } from "./controllers/OutpostController.ts";
+import { OutpostIngestController } from "./controllers/OutpostIngestController.ts";
 import { PetitionController } from "./controllers/PetitionController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
+import { ReleaseController } from "./controllers/ReleaseController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
@@ -36,6 +40,8 @@ import { CampaignSecurityService } from "./services/CampaignSecurityService.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { InvitationService } from "./services/InvitationService.ts";
+import { OutpostIngestService } from "./services/OutpostIngestService.ts";
+import { OutpostTokenService } from "./services/OutpostTokenService.ts";
 import { PetitionRateLimiter } from "./services/PetitionRateLimiter.ts";
 import { AlephaLoreParser } from "./services/parsers/AlephaLoreParser.ts";
 import { TrelloParser } from "./services/parsers/TrelloParser.ts";
@@ -43,6 +49,7 @@ import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
+import { ReleaseService } from "./services/ReleaseService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 
@@ -83,6 +90,9 @@ export const LoreApi = $module({
     // exactly as long as some `$repository` names it.
     SigilTokenService,
     SigilIngestService,
+    OutpostTokenService,
+    OutpostIngestService,
+    ReleaseService,
     // Controllers
     QuestController,
     CampaignController,
@@ -99,6 +109,10 @@ export const LoreApi = $module({
     DirectoryController,
     BlobController,
     PetitionController,
+    OutpostController,
+    OutpostIngestController,
+    OutpostCommandController,
+    ReleaseController,
     SigilController,
     SigilIngestController,
     InsightsController,

@@ -338,6 +338,33 @@ export interface CommandHandlerArgs<
   help: () => void;
 
   /**
+   * Write a line of output to stdout.
+   *
+   * Output is what the command *produces*; the logger is for what it
+   * *reports*. Anything a caller might pipe, parse or redirect belongs here —
+   * a version string, a rendered table, a generated config — while progress
+   * and diagnostics stay with `$logger`.
+   *
+   * Going through the logger instead is what made `alepha --version` return
+   * `18:21:36 I Alepha v0.24.0` with colour codes: a timestamped log line
+   * whose very shape changed with `LOG_FORMAT`, an environment variable the
+   * calling script does not control.
+   *
+   * Colour is stripped automatically when stdout is not a TTY, so a coloured
+   * string here is still safe to pipe.
+   *
+   * @example
+   * ```ts
+   * version = $command({
+   *   handler: async ({ print }) => {
+   *     print("0.24.0"); // `cli --version | cat` yields exactly "0.24.0"
+   *   }
+   * });
+   * ```
+   */
+  print: (message?: string) => void;
+
+  /**
    * The current execution mode (e.g., "development", "production", "staging").
    *
    * Use --mode flag to set this value when running the command.

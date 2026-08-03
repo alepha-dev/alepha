@@ -11,7 +11,7 @@ Convention-driven TypeScript framework for type-safe full-stack applications.
 
 ## Rules
 
-- Use `t` from Alepha for schemas (not Zod)
+- Use `z` from `alepha` for schemas — never import from `zod` directly
 - Use `protected` instead of `private` for class members
 - Import with file extensions: `import { User } from "./User.ts"`
 - Primitives are class properties (except `$entity`, `$atom`)
@@ -54,7 +54,9 @@ src/
 |-----------|---------|
 | `$action` | REST API endpoints (auto GET/POST) |
 | `$route` | Low-level HTTP routes |
-| `$client` | Type-safe HTTP client for cross-module |
+
+`$client` — the type-safe cross-module HTTP client — is imported from
+`alepha/server/links`, not `alepha/server`.
 
 ### Database (`alepha/orm`)
 | Primitive | Purpose |
@@ -267,8 +269,8 @@ Alepha's `z` is a Zod 4 wrapper. Import it from `alepha`, never from `zod`.
 ```typescript
 import { z } from "alepha";
 
-z.string()              // Basic string
-z.text()                // String with maxLength, trim, lowercase options
+z.text()                // Preferred for strings: adds maxLength, trim, lowercase
+z.string()              // Bare string, when none of those options are wanted
 z.email()               // Email validation
 z.uuid()                // UUID validation
 z.number()              // Number
@@ -297,6 +299,13 @@ z.string().nullable()   // Nullable: likewise
 6. Manual instantiation → Let DI container manage
 7. Fetching ids, then fetching rows with `inArray` → declare a `$relations` and use `include`
 
-## Source Code
+## Going deeper
 
-Read implementation at `src/` directory. Check `.spec.ts` files for usage examples.
+`src/` here is *this project's* code, not the framework's. To read how a
+primitive is actually implemented, open it in `node_modules/alepha/src/` — the
+published package ships its sources alongside `dist/`, so the implementation is
+always on disk next to the app using it.
+
+Usage examples live in the `.spec.ts` files beside each primitive.
+
+Full documentation: https://alepha.dev/llms.txt

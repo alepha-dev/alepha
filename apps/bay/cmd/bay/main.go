@@ -17,6 +17,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -126,6 +127,10 @@ func main() {
 		err = cmdList(os.Args[2:])
 	case "status":
 		err = cmdStatus(os.Args[2:])
+	case "logs":
+		err = cmdLogs(os.Args[2:])
+	case "connector":
+		err = cmdConnector(os.Args[2:])
 	case "releases":
 		err = cmdReleases(os.Args[2:])
 	case "rollback":
@@ -168,12 +173,19 @@ func usage() {
               [--acme-http-port N] [--acme-tls-port N]   # challenge ports, default 80/443
               [--backup-interval 24h]   # 0 disables; needs "bay config s3"
             [--keep-releases 5]   # per app; min 2, the serving one is always kept
-  bay deploy  <app.tar.gz> [--name NAME] [--env ENV] [--domain HOST]
+  bay deploy  <app.tar.gz> [--name NAME] [--env ENV] [--domain HOST]...
               # --name defaults to the artifact's project, and drives BOTH the
               # instance key and the subdomain: one app, one identity
+              # --domain is repeatable and accepts a comma-separated list —
+              # apex + www are one site. The first is the canonical one.
               [--allow-control-api]   # ⚠ root-equivalent; apps get NO access by default
   bay list
-  bay status                      # releases + backup freshness
+  bay status  [--json]            # releases, traffic + backup freshness
+  bay logs    <name/env> [-n 200] [--since 15m] [--grep RE] [--json]
+              # journald on a real host, logs/app.log under the child runner
+  bay connector add <op_token> [--sink URL] [--label NAME] | list | remove <prefix>
+              # report this machine's world to a Lore campaign, once a minute.
+              # Outbound only: the token grants nothing on this host.
   bay stop    <name/env>
   bay remove  <name/env> [--purge]  # unregister; data is KEPT unless --purge
   bay releases <name/env>          # what you could roll back to
@@ -257,6 +269,14 @@ type server struct {
 	// keepReleases is how many releases survive a prune. Zero in the CLI paths
 	// that never deploy, where `deploy.Prune` treats it as "delete nothing".
 	keepReleases int
+	// deployMu serialises deploys driven by the command loop.
+	//
+	// Machine-wide rather than per-app: two deploys racing would contend for
+	// `state.json` whichever apps they target. The control API needs no such
+	// lock because its callers are serialised by the socket being one
+	// operator's shell — the loop is the first path that can start a deploy
+	// while another is still running.
+	deployMu sync.Mutex
 	// watches holds the cancel of each app's in-flight rollback watch, so a new
 	// deploy can supersede the previous one's. See beginWatch.
 	watchMu sync.Mutex
@@ -395,9 +415,7 @@ func cmdServe(args []string) error {
 	if useTLS {
 		domains := make([]string, 0, len(store.Apps()))
 		for _, a := range store.Apps() {
-			if a.Domain != "" {
-				domains = append(domains, a.Domain)
-			}
+			domains = append(domains, a.Domains...)
 		}
 		// Trusting a private CA (Pebble, step-ca) is what makes the whole TLS
 		// path exercisable without a public domain.
@@ -521,6 +539,14 @@ func cmdServe(args []string) error {
 	backupCtx, stopBackups := context.WithCancel(context.Background())
 	defer stopBackups()
 	go srv.backupLoop(backupCtx, backupInterval)
+	// Shares the backup context: both are background reporters that must stop
+	// when the server does, and neither should keep the process alive.
+	go srv.reportLoop(backupCtx)
+
+	// The other half of the same conversation: the report says what is here,
+	// this asks what should be. Same context — both are background talkers that
+	// must stop with the server and neither should keep the process alive.
+	go srv.commandLoop(backupCtx)
 
 	// Traffic bookkeeping, drained from the proxy on its own schedule.
 	go srv.flushLastSeenLoop(backupCtx)
@@ -672,7 +698,7 @@ func (s *server) start(app state.App) error {
 			"why", "granted with --allow-control-api",
 			"means", "may deploy code, read other apps' secrets, delete backups")
 	}
-	s.log.Info("app ready", "app", app.Key(), "port", app.Port, "domain", app.Domain)
+	s.log.Info("app ready", "app", app.Key(), "port", app.Port, "domain", app.Domain())
 	return nil
 }
 
@@ -717,8 +743,48 @@ func (s *server) controlMux() *http.ServeMux {
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"stopped": key})
 	})
+	mux.HandleFunc("GET /apps/{name}/{env}/logs", s.handleLogs)
 	s.registerBackupRoutes(mux)
 	return mux
+}
+
+// maxLogRequest caps how much one call may ask for.
+//
+// The control API answers in memory and holds a lock nothing else can take
+// while it does. Two thousand lines is more than anyone reads at once and small
+// enough that a caller asking for a million cannot stall the supervisor.
+const maxLogRequest = 2000
+
+// logsResponse distinguishes "not supervised here" from "supervised and quiet".
+//
+// Two empty results that mean different things: one sends the operator to check
+// whether they are on the right machine, the other to check whether the app is
+// actually doing anything. An empty array alone cannot say which.
+type logsResponse struct {
+	Supervised bool             `json:"supervised"`
+	Lines      []runner.LogLine `json:"lines"`
+}
+
+func (s *server) handleLogs(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("name") + "/" + r.PathValue("env")
+	lines := 200
+	if raw := r.URL.Query().Get("lines"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed <= 0 {
+			writeError(w, http.StatusBadRequest, "lines must be a positive integer")
+			return
+		}
+		lines = min(parsed, maxLogRequest)
+	}
+	entries, supervised, err := s.runner.Logs(key, lines)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if entries == nil {
+		entries = []runner.LogLine{}
+	}
+	writeJSON(w, http.StatusOK, logsResponse{Supervised: supervised, Lines: entries})
 }
 
 // listedApp is a registered app plus whether it is actually answering.
@@ -759,7 +825,11 @@ func (s *server) listApps() []listedApp {
 
 func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	name, env, domain := q.Get("name"), q.Get("env"), q.Get("domain")
+	name, env := q.Get("name"), q.Get("env")
+	// Repeated rather than joined: a hostname cannot contain a comma, but a
+	// query parameter can be sent more than once, and letting the URL carry the
+	// list keeps the CLI from having to invent an escaping rule.
+	domains := q["domain"]
 	if env == "" {
 		env = "production"
 	}
@@ -777,44 +847,114 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 	tmp.Close()
 
-	// Requests wait from here rather than 502, and keep waiting through the
-	// unpack, the swap and the new process's boot.
-	defer s.holdDuring(name + "/" + env)()
-
-	// Stop the previous process before swapping `current` under it.
-	_ = s.runner.Stop(name+"/"+env, stopGrace)
-
-	allowControl := q.Get("allowControlApi") == "yes"
-	if allowControl {
-		s.log.Warn("granting ROOT-EQUIVALENT control API access", "app", name+"/"+env)
-	}
-	res, err := deploy.Run(deploy.Options{
-		Root: s.root, Artifact: tmp.Name(), Name: name, Env: env,
-		Domain: domain, BaseDomain: s.store.BaseDomain(),
-		AllowControlAPI: allowControl,
-	}, s.store)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+	out, derr := s.deployArtifact(r.Context(), deployArtifactOptions{
+		Artifact: tmp.Name(), Name: name, Env: env, Domains: domains,
+		AllowControlAPI: q.Get("allowControlApi") == "yes",
+	})
+	if derr != nil {
+		writeError(w, derr.Status, derr.Error(), derr.Detail)
 		return
 	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"app":           out.Result.App,
+		"release":       out.Result.Release,
+		"url":           "https://" + out.Result.App.Domain() + "/",
+		"sleepEligible": out.Result.Manifest.SleepEligible(),
+		"restore":       out.Restore,
+		"pruned":        out.Pruned,
+	})
+}
+
+// deployArtifactOptions is one deploy, whatever asked for it.
+type deployArtifactOptions struct {
+	// Artifact is a tar.gz already on local disk. Getting it there is the
+	// caller's problem: an upload for the control API, a download from the
+	// registry for the command loop.
+	Artifact        string
+	Name            string
+	Env             string
+	Domains         []string
+	AllowControlAPI bool
+}
+
+// deployOutcome is what a completed deploy has to say for itself.
+type deployOutcome struct {
+	Result  deploy.Result
+	Restore map[string]any
+	Pruned  []string
+}
+
+// deployFailure carries how a deploy failed, not just that it did.
+//
+// The two cases want opposite handling and always have: a refused artifact is a
+// bad build and nothing on the host has moved except the process the deploy
+// stopped, while "deployed but would not boot" leaves files on disk, a `current`
+// that has already been swapped and a rollback target. Collapsing them into one
+// error would lose the release name at exactly the moment someone needs it.
+//
+// Whichever it is, the status says whether the app is serving. A 400 means the
+// artifact was refused and the previous release is up; a 502 means it is not,
+// and the message names both what failed and what could not be put back.
+// Neither is ever returned before the recovery has been attempted — see
+// restoreRefused and restoreUnstartable.
+type deployFailure struct {
+	Status int
+	Err    error
+	Detail map[string]any
+}
+
+func (e *deployFailure) Error() string { return e.Err.Error() }
+func (e *deployFailure) Unwrap() error { return e.Err }
+
+// deployArtifact unpacks, provisions, starts and prunes.
+//
+// Shared by the control API and the command loop on purpose. This sequence has
+// five ordering constraints that were each learned the hard way — stop before
+// swapping `current`, restore before starting, watch before pruning, prune only
+// after the app is proven to boot, and never answer a failure before putting the
+// app back — and a second copy of it would drift on the first fix applied to only
+// one caller.
+func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions) (*deployOutcome, *deployFailure) {
+	key := opts.Name + "/" + opts.Env
+
+	// Requests wait from here rather than 502, and keep waiting through the
+	// unpack, the swap and the new process's boot.
+	defer s.holdDuring(key)()
+
+	// Stop the previous process before swapping `current` under it.
+	//
+	// Whether it was serving is read BEFORE the stop, because it decides what a
+	// failed deploy has to put back — and after the stop the answer is always no.
+	wasRunning := s.runner.Running(key)
+	_ = s.runner.Stop(key, stopGrace)
+
+	if opts.AllowControlAPI {
+		s.log.Warn("granting ROOT-EQUIVALENT control API access", "app", key)
+	}
+	res, err := deploy.Run(deploy.Options{
+		Root: s.root, Artifact: opts.Artifact, Name: opts.Name, Env: opts.Env,
+		Domains: opts.Domains, BaseDomain: s.store.BaseDomain(),
+		AllowControlAPI: opts.AllowControlAPI,
+	}, s.store)
+	if err != nil {
+		return nil, s.restoreRefused(key, wasRunning, err)
+	}
+
 	// Restore BEFORE starting: the app must open the recovered database, not an
 	// empty one that gets swapped under it. And only when Bay just created that
 	// empty file — never over an existing database.
 	restore := map[string]any{"database": "existing"}
 	if res.DatabaseCreated && res.DatabasePath != "" {
-		restore = s.maybeAutoRestore(r.Context(), res.App, res.DatabasePath)
+		restore = s.maybeAutoRestore(ctx, res.App, res.DatabasePath)
 	}
 
 	if err := s.start(res.App); err != nil {
-		writeError(w, http.StatusBadGateway,
-			"app deployed but did not become ready, see logs/app.log: "+err.Error(),
-			map[string]any{"release": res.Release, "restore": restore},
-		)
-		return
+		return nil, s.restoreUnstartable(res, restore, err)
 	}
 	if s.tls != nil {
-		if err := s.tls.Manage(r.Context(), []string{res.App.Domain}); err != nil {
-			s.log.Error("certificate for new domain failed", "domain", res.App.Domain, "err", err)
+		if err := s.tls.Manage(ctx, res.App.Domains); err != nil {
+			s.log.Error("certificate for new domain failed", "domains", res.App.Domains, "err", err)
 		}
 	}
 	// Watched in the background: the deploy has succeeded as far as the caller
@@ -840,14 +980,157 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// repointed here and no longer protecting it.
 	pruned := s.pruneReleases(res.App, res.Previous)
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"app":           res.App,
-		"release":       res.Release,
-		"url":           "https://" + res.App.Domain + "/",
-		"sleepEligible": res.Manifest.SleepEligible(),
-		"restore":       restore,
-		"pruned":        pruned,
-	})
+	return &deployOutcome{Result: *res, Restore: restore, Pruned: pruned}, nil
+}
+
+/*
+restoreRefused puts back the app that the stop before the unpack took down.
+
+An artifact the unpacker refuses changes nothing in the instance directory — it
+is unpacked into a staging directory first, so the previous release is still
+there and `current` still points at it. Starting the app on its stored state is
+therefore the whole of the repair; there is nothing to swap back.
+
+Observed on ovh-bay: `example-api/production` was serving, a gzip that was not a
+tar was deployed, the release went `failed` with the correct message, and the app
+stayed stopped and 502 until a good artifact was pushed again. The report was
+accurate and reassuring — "the deploy failed" reads as "nothing changed" — which
+is what made it expensive. Through the command loop, nobody is even watching.
+
+The failure stays a 400 when the restart works: the artifact is what was wrong,
+the host is where it was, and a 5xx would send someone to inspect a machine that
+is fine. It becomes a 502 naming both failures when the app could not be brought
+back, because "the deploy failed" and "the deploy failed AND the site is down"
+are different sentences, and only the second one should wake anybody up.
+*/
+func (s *server) restoreRefused(key string, wasRunning bool, cause error) *deployFailure {
+	app, registered := s.store.Get(key)
+
+	// Nothing to put back, for one of two reasons: the app was not serving —
+	// starting it here would resurrect something somebody deliberately stopped,
+	// on the strength of a deploy that failed — or this was a first deploy, and
+	// there is no earlier release to put back at all.
+	if !wasRunning || !registered {
+		return &deployFailure{
+			Status: http.StatusBadRequest,
+			Err:    cause,
+			Detail: map[string]any{"running": false},
+		}
+	}
+
+	if err := s.start(app); err != nil {
+		s.log.Error("REFUSED ARTIFACT LEFT THE APP DOWN", "app", key,
+			"release", app.Release, "artifact", cause, "restart", err)
+		return &deployFailure{
+			Status: http.StatusBadGateway,
+			Err: fmt.Errorf(
+				"the artifact was refused AND %s is DOWN — release %s could not be restarted: %w (restart: %w)",
+				key, app.Release, cause, err),
+			Detail: map[string]any{"release": app.Release, "running": false},
+		}
+	}
+	s.log.Warn("artifact refused, previous release restarted",
+		"app", key, "release", app.Release, "artifact", cause)
+	return &deployFailure{
+		Status: http.StatusBadRequest,
+		// The artifact's own error, unchanged: the build is what was wrong, and
+		// this is the sentence that says how. What the host is doing about it
+		// belongs in the detail, not appended to a compiler-style message.
+		Err:    cause,
+		Detail: map[string]any{"release": app.Release, "running": true},
+	}
+}
+
+/*
+restoreUnstartable rolls a release that will not boot back to its predecessor.
+
+`watchAndRollback` does not cover this, and cannot: it is armed only once `start`
+has returned successfully, so a release that never becomes ready has nothing
+watching it. By the time this is reached `current` and the store both name the new
+release, the process is not running, and no timer will ever put it back — the app
+stays down until somebody runs `bay rollback` by hand, which on a CI-driven deploy
+means until somebody notices.
+
+Rolled back to what was demonstrably serving a moment ago: the same target and the
+same steps the health watch uses, for the same reason. Migrations are forward-only
+and stay applied — the known cost of both paths, and the smaller of the two when
+the alternative is a site that is down.
+
+The release name is still reported either way. It is what `bay releases` and a
+manual rollback need, and it is the one thing an operator cannot recover from the
+logs once `current` has moved back.
+*/
+func (s *server) restoreUnstartable(
+	res *deploy.Result, restore map[string]any, cause error,
+) *deployFailure {
+	detail := map[string]any{"release": res.Release, "restore": restore}
+	key := res.App.Key()
+
+	// A first deploy, or a redeploy of the same release. Nothing to go back to,
+	// and saying so is what stops an operator waiting for a rollback that is not
+	// coming.
+	if res.Previous == "" || res.Previous == res.Release {
+		return &deployFailure{
+			Status: http.StatusBadGateway,
+			Err: fmt.Errorf(
+				"%s is DOWN: release %s did not become ready and there is no earlier release to fall back to, see logs/app.log: %w",
+				key, res.Release, cause),
+			Detail: detail,
+		}
+	}
+
+	if err := s.rollbackTo(res.App, res.Previous); err != nil {
+		s.log.Error("ROLLBACK FAILED — the app is down", "app", key,
+			"bad", res.Release, "to", res.Previous, "err", err)
+		return &deployFailure{
+			Status: http.StatusBadGateway,
+			Err: fmt.Errorf(
+				"%s is DOWN: release %s did not become ready AND the rollback to %s failed, see logs/app.log: %w (rollback: %w)",
+				key, res.Release, res.Previous, cause, err),
+			Detail: detail,
+		}
+	}
+
+	s.log.Warn("release did not become ready, rolled back",
+		"app", key, "bad", res.Release, "now", res.Previous, "err", cause)
+	detail["rolledBackTo"] = res.Previous
+	return &deployFailure{
+		Status: http.StatusBadGateway,
+		Err: fmt.Errorf(
+			"release %s did not become ready and was rolled back to %s, which is serving again, see logs/app.log: %w",
+			res.Release, res.Previous, cause),
+		Detail: detail,
+	}
+}
+
+/*
+rollbackTo puts an app back on a release: on disk, in the store, and running.
+
+The order is load-bearing. `current` is what a start reads, so the swap comes
+first; the store is what every status call and the next deploy report, so it
+follows immediately; starting comes last, because a failure there leaves the app
+pointing wholly at the release the caller asked for rather than half at each.
+
+Shared by the deploy path and the health watch on purpose — the same three steps
+were written twice, and the second copy would have missed the first fix. The
+errors name the consequence rather than the step, because they are read in a log
+by somebody who has just been woken up.
+*/
+func (s *server) rollbackTo(app state.App, release string) error {
+	if err := deploy.SwapRelease(s.instanceDir(app), release); err != nil {
+		return fmt.Errorf("could not point current at %s, the app is still on %s: %w",
+			release, app.Release, err)
+	}
+	if err := s.store.SetRelease(app.Key(), release); err != nil {
+		// Not fatal: the app boots from `current`, which has already moved. Said
+		// loudly because from here on every report disagrees with the disk.
+		s.log.Error("rolled back on disk but not in state", "app", app.Key(), "err", err)
+	}
+	app.Release = release
+	if err := s.start(app); err != nil {
+		return fmt.Errorf("%s is current again but did not start: %w", release, err)
+	}
+	return nil
 }
 
 /*
@@ -908,23 +1191,13 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 		"app", app.Key(), "bad", app.Release, "to", previous,
 		"reason", verdict.Reason, "checks", verdict.Checks)
 
-	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
-	if err := deploy.SwapRelease(instance, previous); err != nil {
+	if err := s.rollbackTo(app, previous); err != nil {
 		// Nothing left to try automatically. Said loudly rather than retried:
 		// an app stuck between two releases needs a human, and a loop here
-		// would bury the one line that says so.
-		s.log.Error("ROLLBACK FAILED — app is on a bad release",
-			"app", app.Key(), "err", err)
-		return
-	}
-	if err := s.store.SetRelease(app.Key(), previous); err != nil {
-		s.log.Error("rolled back on disk but not in state", "app", app.Key(), "err", err)
-	}
-
-	app.Release = previous
-	if err := s.start(app); err != nil {
-		s.log.Error("ROLLBACK FAILED — previous release did not start",
-			"app", app.Key(), "err", err)
+		// would bury the one line that says so. What went wrong is in the
+		// error — it names whether the app is still on the bad release or on
+		// the old one that would not start.
+		s.log.Error("ROLLBACK FAILED — the app is down", "app", app.Key(), "err", err)
 		return
 	}
 	s.log.Warn("rolled back", "app", app.Key(), "now", previous)
@@ -987,10 +1260,10 @@ func (s *server) handleRemove(w http.ResponseWriter, r *http.Request) {
 		}
 		purged = true
 	}
-	s.log.Info("removed app", "app", key, "domain", app.Domain, "purged", purged)
+	s.log.Info("removed app", "app", key, "domain", app.Domain(), "purged", purged)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"removed": key,
-		"domain":  app.Domain,
+		"domain":  app.Domain(),
 		"purged":  purged,
 		// Said even when nothing was deleted, so "where did my data go" never
 		// needs asking.
@@ -1044,7 +1317,8 @@ func cmdDeploy(args []string) error {
 			"--control-socket": true}); err != nil {
 		return err
 	}
-	name, env, domain := "", "production", ""
+	name, env := "", "production"
+	var domains []string
 	allowControl := false
 	for i := 1; i < len(args); i++ {
 		// Checked before the value-taking flags so a trailing --allow-control-api
@@ -1062,7 +1336,15 @@ func cmdDeploy(args []string) error {
 		case "--env":
 			env = args[i+1]
 		case "--domain":
-			domain = args[i+1]
+			// Repeatable AND comma-separated, because both shapes turn up: a
+			// hand-typed apex plus www, and a value pasted out of a config file.
+			// Accepting one and silently ignoring the other is the kind of thing
+			// nobody notices until a certificate is missing.
+			for _, host := range strings.Split(args[i+1], ",") {
+				if host = strings.TrimSpace(host); host != "" {
+					domains = append(domains, host)
+				}
+			}
 		}
 	}
 	body, err := os.Open(artifact)
@@ -1071,7 +1353,11 @@ func cmdDeploy(args []string) error {
 	}
 	defer body.Close()
 
-	url := fmt.Sprintf(controlHost+"/apps?name=%s&env=%s&domain=%s", name, env, domain)
+	query := neturl.Values{"name": {name}, "env": {env}}
+	for _, host := range domains {
+		query.Add("domain", host)
+	}
+	url := controlHost + "/apps?" + query.Encode()
 	if allowControl {
 		// Said out loud on the way out, not just recorded. This grant is
 		// root-equivalent and the operator should read it as they type it.
@@ -1105,7 +1391,11 @@ func cmdList([]string) error {
 // than left for the reader to compute.
 func cmdStatus(args []string) error {
 	interval := defaultBackupInterval
+	asJSON := false
 	for i, arg := range args {
+		if arg == "--json" {
+			asJSON = true
+		}
 		if arg == "--backup-interval" && i < len(args)-1 {
 			if d, err := time.ParseDuration(args[i+1]); err == nil {
 				interval = d
@@ -1117,30 +1407,31 @@ func cmdStatus(args []string) error {
 	if err != nil {
 		return err
 	}
-	var apps []struct {
-		Name            string        `json:"name"`
-		Env             string        `json:"env"`
-		Domain          string        `json:"domain"`
-		Release         string        `json:"release"`
-		Running         bool          `json:"running"`
-		Usage           *runner.Usage `json:"usage"`
-		Backups         bool          `json:"backups"`
-		LastBackupAt    string        `json:"lastBackupAt"`
-		LastBackupError string        `json:"lastBackupError"`
-	}
+	// listedApp rather than a struct literal of the fields this command happens
+	// to print: the control API is the one contract, and re-declaring a subset
+	// here is how a field added on the server silently fails to reach the CLI.
+	var apps []listedApp
 	if err := json.Unmarshal([]byte(raw), &apps); err != nil {
 		return fmt.Errorf("parse control api response: %w", err)
 	}
 	if len(apps) == 0 {
+		if asJSON {
+			fmt.Println("[]")
+			return nil
+		}
 		fmt.Println("no apps deployed")
 		return nil
 	}
 
 	now := time.Now()
+	if asJSON {
+		return printStatusJSON(apps, now, interval)
+	}
+
 	problems := 0
 	for _, a := range apps {
 		fmt.Printf("%s/%s\n", a.Name, a.Env)
-		fmt.Printf("  domain   %s\n", a.Domain)
+		fmt.Printf("  domain   %s\n", strings.Join(a.Domains, ", "))
 		fmt.Printf("  release  %s\n", a.Release)
 
 		// A registered app that is not running is the loudest thing this
@@ -1161,6 +1452,12 @@ func cmdStatus(args []string) error {
 		} else {
 			fmt.Printf("  process  running\n")
 		}
+
+		// Traffic answers the question an operator actually asks once twenty
+		// prototypes share a host: which of these is dead? Crons are named on
+		// the same line because an app whose whole job is a weekly email serves
+		// no requests and would otherwise read as abandoned.
+		fmt.Printf("  traffic  %s\n", trafficLine(a, now))
 
 		switch {
 		case !a.Backups:
@@ -1187,11 +1484,11 @@ func cmdStatus(args []string) error {
 			problems++
 			fmt.Printf("           ⚠ last attempt failed: %s\n", a.LastBackupError)
 		}
-		// Deliberately not printed: what is NOT covered even on success. A restore
-		// gives back the database and not storage/, and someone reading a healthy
-		// line should know that before they need it.
+		// What is NOT covered even on success, stated on every healthy line.
+		// `storage/` joined the backup set; `.env` did not, and someone reading
+		// a green status should know that before they need it.
 		if a.Backups {
-			fmt.Printf("           storage/ is not backed up\n")
+			fmt.Printf("           .env is not backed up — secrets come from the deploy\n")
 		}
 		fmt.Println()
 	}
