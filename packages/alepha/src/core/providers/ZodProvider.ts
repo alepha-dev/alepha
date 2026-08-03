@@ -200,6 +200,28 @@ export const z = {
   /** Free-form JSON object (`Record<string, any>`). */
   json: () => zod.record(zod.string(), zod.any()),
 
+  /**
+   * A typed passthrough — carries a TypeScript type and validates nothing.
+   *
+   * The legitimate use is a value whose shape is already owned and checked at
+   * its own boundary, held somewhere that requires a schema anyway: an `$atom`
+   * over a type an API client produces, an editor's own draft model. Writing a
+   * zod mirror of those would be a second, driftable copy of a contract that
+   * already exists.
+   *
+   * ⚠️ Never for anything crossing a trust boundary. A request body, a query
+   * parameter, an env var or a database row declared this way is unvalidated
+   * input wearing a type — which is worse than `z.any()`, because it reads as
+   * if something checked it.
+   *
+   * Exposed here rather than left to `import { z } from "zod"` in the app: a
+   * workspace importing zod directly resolves its own copy, and zod's branded
+   * types treat two instances as structurally distinct — so the schema is
+   * rejected by every alepha primitive with a type error that names neither
+   * cause nor cure.
+   */
+  custom: zod.custom,
+
   // -- text family (alepha size-capped strings — the options ARE the API) --
   text: (options: TextOptions = {}) => {
     const {
