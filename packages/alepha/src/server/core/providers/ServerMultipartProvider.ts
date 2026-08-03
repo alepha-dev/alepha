@@ -235,7 +235,7 @@ export class ServerMultipartProvider {
   }
 
   /**
-   * The largest `z.file({ maxBytes })` the route declares.
+   * The largest budget the route declares, across `z.file()` and `z.stream()`.
    *
    * The largest rather than each field's own: the parser applies one ceiling to
    * every part, and enforcing the smallest would refuse the field that was
@@ -248,7 +248,7 @@ export class ServerMultipartProvider {
     }
     let largest: number | undefined;
     for (const value of Object.values(z.schema.shape(route.schema.body))) {
-      if (!isTypeFile(value)) {
+      if (!isTypeFile(value) && !isTypeStream(value)) {
         continue;
       }
       const declared = z.schema.meta(value).maxBytes;

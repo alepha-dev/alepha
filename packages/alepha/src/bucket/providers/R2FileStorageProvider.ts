@@ -1,4 +1,4 @@
-import type { R2Bucket } from "@cloudflare/workers-types";
+import type { R2Bucket, R2UploadedPart } from "@cloudflare/workers-types";
 import {
   $env,
   $hook,
@@ -13,6 +13,7 @@ import { $logger } from "alepha/logger";
 import { currentTenantAtom } from "alepha/security";
 import { FileDetector } from "alepha/system";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
+import { MultipartChunker } from "../helpers/MultipartChunker.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -56,6 +57,8 @@ import type { FileStorageProvider } from "./FileStorageProvider.ts";
  * ```
  */
 export class R2FileStorageProvider implements FileStorageProvider {
+  protected readonly chunker = new MultipartChunker();
+
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly crypto = $inject(CryptoProvider);
@@ -125,17 +128,66 @@ export class R2FileStorageProvider implements FileStorageProvider {
 
     this.log.trace(`Uploading '${key}'`);
 
-    const arrayBuffer = await file.arrayBuffer();
+    const metadata = {
+      httpMetadata: { contentType: file.type },
+      customMetadata: { originalName: file.name, bucket: bucketName },
+    };
 
-    await r2.put(key, arrayBuffer, {
-      httpMetadata: {
-        contentType: file.type,
-      },
-      customMetadata: {
-        originalName: file.name,
-        bucket: bucketName,
-      },
-    });
+    if (file.size > 0) {
+      await r2.put(key, await file.arrayBuffer(), metadata);
+      return fileId;
+    }
+
+    // Length unknown — or zero, which is indistinguishable from unknown once a
+    // `FileLike` comes off a stream. So the shape is decided by reading rather
+    // than by asking: take the first part, and escalate to multipart only if a
+    // second one exists.
+    //
+    // Multipart is not the default because `put()` is one request against
+    // three, and because R2 refuses to complete an upload of a single short
+    // part. It is the fallback because `put()` refuses a stream it cannot
+    // measure — its type signature accepts one, which is how this compiled and
+    // failed only on workerd: "Provided readable stream must have a known
+    // length". Buffering to learn that length is not an option either, on a
+    // runtime capped near 128 MB.
+    const parts = this.chunker.parts(file)[Symbol.asyncIterator]();
+    const first = await parts.next();
+    const head = first.done ? new Uint8Array(0) : first.value;
+    const second = await parts.next();
+
+    if (second.done) {
+      await r2.put(key, head as never, metadata);
+      return fileId;
+    }
+
+    const upload = await r2.createMultipartUpload(key, metadata);
+    const uploaded: R2UploadedPart[] = [];
+
+    try {
+      uploaded.push(await upload.uploadPart(1, head));
+      uploaded.push(await upload.uploadPart(2, second.value));
+      let partNumber = 3;
+      while (true) {
+        const next = await parts.next();
+        if (next.done) {
+          break;
+        }
+        uploaded.push(await upload.uploadPart(partNumber, next.value));
+        partNumber++;
+      }
+      await upload.complete(uploaded);
+    } catch (error) {
+      await upload.abort().catch((abortError) => {
+        // Reported, never swallowed: the upload has already failed, and losing
+        // why the cleanup failed too is how orphaned parts become storage
+        // nobody can account for.
+        this.log.error(
+          `Failed to abort multipart upload for '${key}'`,
+          abortError,
+        );
+      });
+      throw error;
+    }
 
     return fileId;
   }

@@ -307,7 +307,16 @@ export const z = {
    */
   file: (options?: { maxBytes?: number }) =>
     zod.any().meta({ format: "binary", ...options }),
-  stream: () => zod.any().meta({ format: "stream" }),
+  /**
+   * The bytes as they arrive, consumed once.
+   *
+   * Takes the same `maxBytes` as {@link file} and for the same reason: a route
+   * has to be able to say how much it expects. Without it a streamed field is
+   * pinned to the application-wide default, which is the one number chosen
+   * without knowing what any particular route is for.
+   */
+  stream: (options?: { maxBytes?: number }) =>
+    zod.any().meta({ format: "stream", ...options }),
   valueLabel: () =>
     zod.object({
       value: z.constantCase(),
