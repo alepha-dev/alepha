@@ -1,5 +1,5 @@
 import { type Alepha, AlephaError, z } from "alepha";
-import { currentUserAtom } from "alepha/security";
+import { currentUserAtom, tenancyAtom } from "alepha/security";
 import { expect } from "vitest";
 import { $entity, $repository, db } from "../core/index.ts";
 
@@ -380,4 +380,166 @@ export const testOrgFilterOnDelete = async (alepha: Alepha) => {
   // Verify row still exists
   app.store.set(currentUserAtom, { id: "master" });
   expect(await repository.count()).toEqual(1);
+};
+
+// ---------------------------------------------------------------------------
+// Tenancy mode: the application decides, entities may override
+// ---------------------------------------------------------------------------
+
+/**
+ * Explicitly non-strict: the escape hatch for a genuinely shared table inside
+ * an otherwise strict application. It must stay fail-open even in `multi`.
+ */
+const lenientEntity = $entity({
+  name: "test_org_lenient_entity",
+  schema: z.object({
+    id: db.primaryKey(),
+    organization: db.organization({ strict: false }),
+    name: z.text().optional(),
+  }),
+});
+
+class LenientApp {
+  repository = $repository(lenientEntity);
+}
+
+/**
+ * Declared strict with no `nullable` override — the shape that proves the
+ * schema/runtime split: this column is NOT NULL because it was declared so,
+ * and nothing the tenancy mode does can produce that.
+ */
+const notNullStrictEntity = $entity({
+  name: "test_org_notnull_strict_entity",
+  schema: z.object({
+    id: db.primaryKey(),
+    organization: db.organization({ strict: true }),
+    name: z.text().optional(),
+  }),
+});
+
+const setupLenient = async (alepha: Alepha) => {
+  const app = alepha.inject(LenientApp);
+  await alepha.start();
+  return { repository: app.repository, alepha };
+};
+
+/**
+ * The default mode must not change a single thing — an app that relied on
+ * fail-open scoping keeps working exactly as before. Guarding this is the
+ * point: making `multi` the default would silently break every single-tenant
+ * app on the first query.
+ */
+export const testSingleModeKeepsFailOpen = async (alepha: Alepha) => {
+  const { repository } = await setup(alepha);
+
+  await repository.create({
+    name: "org-a-row",
+    organization: "a0000000-0000-0000-0000-000000000001",
+  });
+
+  // No tenant, no user: fail-open, so the row is visible.
+  expect(await repository.count()).toEqual(1);
+};
+
+/**
+ * The whole point of the atom: an entity that never declared `strict` — which
+ * is every framework-owned entity — fails closed once the app says it is
+ * multi-tenant.
+ */
+export const testMultiModeFailsClosedOnRead = async (alepha: Alepha) => {
+  const { repository, alepha: app } = await setup(alepha);
+
+  await repository.create({
+    name: "org-a-row",
+    organization: "a0000000-0000-0000-0000-000000000001",
+  });
+
+  app.store.set(tenancyAtom, { mode: "multi" });
+
+  await expect(repository.findMany()).rejects.toThrowError(AlephaError);
+  await expect(repository.count()).rejects.toThrowError(AlephaError);
+};
+
+/**
+ * The write side of the same rule — an unscoped insert would create a global
+ * row readable by every tenant, which is how the fail-open default leaked.
+ */
+export const testMultiModeFailsClosedOnInsert = async (alepha: Alepha) => {
+  const { repository, alepha: app } = await setup(alepha);
+
+  app.store.set(tenancyAtom, { mode: "multi" });
+
+  await expect(repository.create({ name: "orphan" })).rejects.toThrowError(
+    AlephaError,
+  );
+};
+
+/**
+ * In `multi`, a pre-existing NULL/global row must be invisible to a scoped
+ * tenant — the `OR org IS NULL` escape is dropped, exactly as it is for an
+ * entity that declared `strict: true`.
+ */
+export const testMultiModeHidesGlobalRows = async (alepha: Alepha) => {
+  const { repository, alepha: app } = await setup(alepha);
+
+  await repository.create({
+    name: "org-a-row",
+    organization: "a0000000-0000-0000-0000-000000000001",
+  });
+  await repository.create({ name: "global-row" });
+
+  app.store.set(tenancyAtom, { mode: "multi" });
+  app.store.set(currentUserAtom, {
+    id: "user-1",
+    organization: "a0000000-0000-0000-0000-000000000001",
+  });
+
+  const results = await repository.findMany();
+  expect(results.map((r: any) => r.name).sort()).toEqual(["org-a-row"]);
+};
+
+/**
+ * An explicit `strict: false` overrides the mode downward. Without the
+ * three-state `strict`, this table would be dragged into fail-closed along
+ * with the rest and there would be no way to opt it out.
+ */
+export const testEntityStrictFalseOverridesMultiMode = async (
+  alepha: Alepha,
+) => {
+  const { repository, alepha: app } = await setupLenient(alepha);
+
+  await repository.create({
+    name: "shared-row",
+    organization: "a0000000-0000-0000-0000-000000000001",
+  });
+
+  app.store.set(tenancyAtom, { mode: "multi" });
+
+  // Still fail-open: no throw, and the row is visible with no tenant resolved.
+  expect(await repository.count()).toEqual(1);
+};
+
+/**
+ * Nullability is a schema fact and must not follow the runtime mode — it is
+ * written into migrations. An entity that fails closed *because of the mode*
+ * still has a nullable column, unlike one that declared `strict: true`.
+ */
+export const testModeDoesNotAffectColumnNullability = async (
+  alepha: Alepha,
+) => {
+  alepha.store.set(tenancyAtom, { mode: "multi" });
+  alepha.inject(App);
+  await alepha.start();
+
+  // Undeclared `strict` → the mode makes it fail closed at runtime, but the
+  // column stays nullable. If the mode reached the schema, `multi` would
+  // silently change what `db:generate` emits and produce a NOT NULL migration
+  // against a table full of legacy NULLs.
+  expect(z.schema.isOptional(entity.schema.shape.organization)).toBe(true);
+
+  // Declared `strict: true` with no `nullable` → NOT NULL, because there is no
+  // "global row" concept on such a table. This is a declaration, not a mode.
+  expect(
+    z.schema.isOptional(notNullStrictEntity.schema.shape.organization),
+  ).toBe(false);
 };

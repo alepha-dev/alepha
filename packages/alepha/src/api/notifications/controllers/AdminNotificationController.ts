@@ -1,7 +1,7 @@
-import { $inject, Alepha, z } from "alepha";
+import { $inject, Alepha, AlephaError, z } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import { $repository } from "alepha/orm";
-import { $secure, currentTenantAtom } from "alepha/security";
+import { $secure, currentTenantAtom, tenancyAtom } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 import { NotificationJobs } from "../jobs/NotificationJobs.ts";
 import { notificationDetailResourceSchema } from "../schemas/notificationDetailResourceSchema.ts";
@@ -32,9 +32,39 @@ export class AdminNotificationController {
     return this.alepha.store.get(currentTenantAtom)?.id;
   }
 
-  /** True when `exec` belongs to the acting tenant (or the app is single-tenant). */
-  protected sameTenant(exec: { organizationId?: string | null }): boolean {
+  /**
+   * The tenant every read and write here must be confined to, or `undefined`
+   * in a single-tenant app where there is nothing to confine.
+   *
+   * `job_executions` is deliberately NOT an org-scoped entity — the outbox is
+   * shared, and `organizationId` rides in the push context. So the repository's
+   * own fail-closed guard never fires on this table and these three call sites
+   * are the entire gate. All three used to be written as `if (org) { filter }`,
+   * which means an unresolved tenant removed the filter instead of refusing:
+   * on a pooled worker, one admin listing — or deleting — every tenant's
+   * notifications.
+   *
+   * @throws when the app declares itself multi-tenant and no tenant resolved.
+   *   There is no row such a caller is entitled to, so refusing beats returning
+   *   everything.
+   */
+  protected requireTenantScope(): string | undefined {
     const org = this.organizationId;
+    if (org) {
+      return org;
+    }
+    if (this.alepha.store.get(tenancyAtom).mode === "multi") {
+      throw new AlephaError(
+        "Refusing to serve the notification outbox with no resolved tenant (multi-tenant mode). " +
+          "Resolve the tenant into `currentTenantAtom` before reaching this endpoint.",
+      );
+    }
+    return undefined;
+  }
+
+  /** True when `exec` belongs to the acting tenant. */
+  protected sameTenant(exec: { organizationId?: string | null }): boolean {
+    const org = this.requireTenantScope();
     return !org || exec.organizationId === org;
   }
 
@@ -56,7 +86,7 @@ export class AdminNotificationController {
     query.sort ??= "-createdAt";
     const where = this.executions.createQueryWhere();
     where.jobName = { eq: this.jobName };
-    const org = this.organizationId;
+    const org = this.requireTenantScope();
     if (org) {
       where.organizationId = { eq: org };
     }
@@ -133,7 +163,7 @@ export class AdminNotificationController {
       // Constrain to this job's executions so an admin can't delete arbitrary
       // job rows through this endpoint — and, when multi-tenant, to this org so
       // one club can't delete another club's notification records.
-      const org = this.organizationId;
+      const org = this.requireTenantScope();
       const deleted = await this.executions.deleteMany({
         id: { inArray: body.ids },
         jobName: { eq: this.jobName },

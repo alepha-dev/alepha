@@ -149,6 +149,59 @@ teamId: db.ref(z.uuid().optional(), () => team.cols.id, {
 
 Available actions: `"cascade"`, `"restrict"`, `"no action"`, `"set null"`, `"set default"`.
 
+## Organization (Multi-Tenancy)
+
+`db.organization()` marks the column that scopes a row to a tenant. The repository then filters every read by the resolved tenant and stamps it on every write — you never write the predicate yourself.
+
+```typescript
+const invoice = $entity({
+  name: "invoices",
+  schema: z.object({
+    id: db.primaryKey(),
+    organizationId: db.organization(),
+    total: z.integer(),
+  }),
+});
+```
+
+The tenant is resolved from `currentTenantAtom` first, then from the authenticated user's `organization`. An app-level middleware typically writes the atom from the request `Host`.
+
+### Declare whether the app is multi-tenant
+
+Scoping only protects you if an *unresolved* tenant is an error rather than a wildcard. That is an application-wide decision, so it lives in an atom rather than on each entity:
+
+```typescript
+import { tenancyAtom } from "alepha/security";
+
+// main.server.ts
+alepha.set(tenancyAtom, { mode: "multi" });
+```
+
+| Mode | Behaviour with no resolved tenant |
+|------|-----------------------------------|
+| `"single"` (default) | No predicate — every row is visible. Correct when the app has one tenant, or none. |
+| `"multi"` | **Throws.** Reads and writes are refused rather than run unscoped, and rows with a `NULL` organization are hidden from a scoped tenant. |
+
+Set it once, at the composition root. Without it, a `$job` or an admin script that forgets to resolve a tenant reads and writes across all of them — including on the framework's own tables (`users`, `files`, `audits`, `parameters`, API keys, payments).
+
+### Overriding per entity
+
+`strict` overrides the mode in both directions, for the rare entity that is genuinely special:
+
+```typescript
+// Always fail closed, even in a single-tenant app.
+organizationId: db.organization({ strict: true }),
+
+// Never fail closed, even in "multi" — a shared reference table.
+organizationId: db.organization({ strict: false }),
+```
+
+Leave it out unless you mean it: an entity that says nothing follows the application, which is where the decision belongs.
+
+::: warning `strict` and `nullable` are different questions
+`nullable` is a schema fact — it is written into your migration. `mode` is a runtime policy and never changes generated SQL. An entity that fails closed *because the app is in `multi` mode* still has a nullable column; only an explicit `strict: true` implies `NOT NULL`, because such a table has no "global row" concept.
+:::
+
 ## Full Example
 
 ```typescript check
