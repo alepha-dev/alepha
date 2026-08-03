@@ -41,10 +41,10 @@ type Options struct {
 	Artifact string // path to the tar.gz produced by `alepha pack`
 	Name     string
 	Env      string
-	// Domain overrides the composed one. Left empty, Bay derives
-	// <manifest.name>[-<env>].<baseDomain> — so deploying needs no domain
+	// Domains override the composed one, canonical first. Left empty, Bay
+	// derives <manifest.name>[-<env>].<baseDomain> — so deploying needs no domain
 	// argument and no config file anywhere.
-	Domain     string
+	Domains    []string
 	BaseDomain string
 	// AllowControlAPI grants the app access to Bay's control API. Operator-only:
 	// see state.App.ControlAPI for why the manifest may not decide this.
@@ -122,19 +122,19 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		previous = existing.Release
 	}
 
-	domain := opts.Domain
-	if domain == "" && isRedeploy {
+	domains := opts.Domains
+	if len(domains) == 0 && isRedeploy {
 		// A redeploy keeps the domain it is already served on. Recomposing it
 		// would silently MOVE a running app whenever someone omitted the flag —
 		// the old host would start 404-ing while the registry looked healthy. A
 		// domain is changed on purpose or not at all.
-		domain = existing.Domain
+		domains = existing.Domains
 	}
-	if domain == "" {
+	if len(domains) == 0 {
 		if opts.BaseDomain == "" {
 			return nil, fmt.Errorf("no base domain configured; pass --domain or start bay with --base-domain")
 		}
-		domain = subdomain(opts.Name, opts.Env) + "." + opts.BaseDomain
+		domains = []string{subdomain(opts.Name, opts.Env) + "." + opts.BaseDomain}
 	}
 
 	instance := filepath.Join(opts.Root, "apps", opts.Name, opts.Env)
@@ -155,10 +155,26 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	// Two apps on one domain is not a conflict Bay may resolve by picking: the
 	// proxy would route to whichever matched first, so one deploy would silently
 	// shadow another and the loser would look deployed while serving nothing.
-	if owner, taken := store.ClaimedBy(domain); taken && owner != key {
-		return nil, fmt.Errorf(
-			"domain %s is already served by %s; pass a different --domain, or remove that app first",
-			domain, owner)
+	//
+	// Every hostname is checked, not just the canonical one: a second domain
+	// added to an app routes exactly as hard as its first, so an unchecked one
+	// would shadow another app just as completely.
+	for _, host := range domains {
+		if owner, taken := store.ClaimedBy(host); taken && owner != key {
+			return nil, fmt.Errorf(
+				"domain %s is already served by %s; pass a different --domain, or remove that app first",
+				host, owner)
+		}
+	}
+	// A list that repeats itself is a mistake worth naming rather than
+	// de-duplicating in silence: it usually means a shell expanded something
+	// twice, and the operator should see which value they doubled.
+	seen := map[string]bool{}
+	for _, host := range domains {
+		if seen[host] {
+			return nil, fmt.Errorf("domain %s was given twice", host)
+		}
+		seen[host] = true
 	}
 
 	port, err := allocatePort(store.UsedPorts())
@@ -188,7 +204,7 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	app := state.App{
 		Name:    opts.Name,
 		Env:     opts.Env,
-		Domain:  domain,
+		Domains: domains,
 		Release: release,
 		Port:    port,
 		Runtime: m.Runtime,

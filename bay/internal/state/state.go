@@ -16,12 +16,30 @@ import (
 
 // App is one deployed application instance (app + env).
 type App struct {
-	Name    string `json:"name"`
-	Env     string `json:"env"`
-	Domain  string `json:"domain"`
-	Release string `json:"release"` // directory name under releases/
-	Port    int    `json:"port"`    // loopback port the app listens on
-	Runtime string `json:"runtime"`
+	Name string `json:"name"`
+	Env  string `json:"env"`
+	// Domains is every hostname this instance answers on, canonical first.
+	//
+	// A list because an apex and its `www` are one site, and because a custom
+	// domain does not replace the `<name>.<base-domain>` an app was first
+	// reachable at — both keep serving until someone says otherwise.
+	//
+	Domains []string `json:"domains,omitempty"`
+	// LegacyDomain is the single `domain` string that preceded Domains.
+	//
+	// A plain field rather than a custom UnmarshalJSON, and that is the whole
+	// point. A method on App is PROMOTED to every type that embeds App — the
+	// control API's listedApp does — and a promoted unmarshaller decodes only
+	// the fields it knows, silently dropping everything the outer type adds.
+	// That cost an hour: `bay top` reported a running app as stopped because
+	// `running` never reached it.
+	//
+	// Folded into Domains and cleared by Open, so it is read once and never
+	// written back — `omitempty` keeps it out of the file after that.
+	LegacyDomain string `json:"domain,omitempty"`
+	Release      string `json:"release"` // directory name under releases/
+	Port         int    `json:"port"`    // loopback port the app listens on
+	Runtime      string `json:"runtime"`
 	// ControlAPI is true when the operator granted this app access to Bay's
 	// control API, by putting its unix user in the control group.
 	//
@@ -81,6 +99,50 @@ type App struct {
 // Key is the stable identifier for an app instance.
 func (a App) Key() string { return a.Name + "/" + a.Env }
 
+// Domain is the canonical hostname — the one to print, log and link to.
+//
+// Empty when the app has none, which is a real state: an instance registered
+// before a base domain was configured has nowhere to be reached yet.
+func (a App) Domain() string {
+	if len(a.Domains) == 0 {
+		return ""
+	}
+	return a.Domains[0]
+}
+
+// Serves reports whether this instance answers on a hostname.
+func (a App) Serves(host string) bool {
+	for _, d := range a.Domains {
+		if d == host {
+			return true
+		}
+	}
+	return false
+}
+
+// migrateDomains folds the legacy `domain` string into the list.
+//
+// Called once, by Open. This is the compatibility that matters: Bay reads the
+// state file at boot on a host that is already serving traffic. Without it, the
+// first start after an upgrade would find no domain on any app, route nothing,
+// and — worse — ask the CA for nothing, so certificates would lapse while the
+// registry looked healthy.
+//
+// One-way, deliberately. Once rewritten, the file carries `domains` only, so
+// DOWNGRADING Bay loses the routing: rolling back means restoring the `.bak`
+// alongside the binary, not just swapping the binary.
+func (s *State) migrateDomains() {
+	for i := range s.Apps {
+		app := &s.Apps[i]
+		if len(app.Domains) == 0 && app.LegacyDomain != "" {
+			app.Domains = []string{app.LegacyDomain}
+		}
+		// Cleared whether or not it was used, so the next write drops it and a
+		// later reader is never asked to reconcile two sources of truth.
+		app.LegacyDomain = ""
+	}
+}
+
 // State is the whole persisted document.
 type State struct {
 	Version int   `json:"version"`
@@ -133,6 +195,7 @@ func Open(path string) (*Store, error) {
 	if err := json.Unmarshal(raw, &s.state); err != nil {
 		return nil, fmt.Errorf("parse state (a .bak sits next to it): %w", err)
 	}
+	s.state.migrateDomains()
 	return s, nil
 }
 
@@ -150,7 +213,7 @@ func (s *Store) ByDomain(domain string) (App, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, a := range s.state.Apps {
-		if a.Domain == domain {
+		if a.Serves(domain) {
 			return a, true
 		}
 	}
@@ -274,7 +337,7 @@ func (s *Store) ClaimedBy(domain string) (string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, a := range s.state.Apps {
-		if a.Domain == domain {
+		if a.Serves(domain) {
 			return a.Key(), true
 		}
 	}
@@ -337,7 +400,7 @@ func (s *Store) HasDomain(host string) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, a := range s.state.Apps {
-		if a.Domain == host {
+		if a.Serves(host) {
 			return true
 		}
 	}
