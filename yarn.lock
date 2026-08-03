@@ -75,7 +75,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/payments-stripe@workspace:packages/@alepha/payments-stripe":
+"@alepha/payments-stripe@workspace:*, @alepha/payments-stripe@workspace:packages/@alepha/payments-stripe":
   version: 0.0.0-use.local
   resolution: "@alepha/payments-stripe@workspace:packages/@alepha/payments-stripe"
   dependencies:
@@ -13685,6 +13685,7 @@ __metadata:
   resolution: "shop@workspace:apps/shop"
   dependencies:
     "@alepha/commerce": "workspace:*"
+    "@alepha/payments-stripe": "workspace:*"
     "@alepha/ui": "workspace:*"
     "@fontsource-variable/archivo": "npm:^5.3.0"
     "@playwright/test": "npm:^1.62.1"
@@ -13696,6 +13697,7 @@ __metadata:
     react-dom: "npm:^19.2.8"
     tailwindcss: "npm:^4.3.3"
     vite: "npm:^8.2.0"
+    wrangler: "npm:^4.118.0"
   dependenciesMeta:
     better-sqlite3:
       built: true
