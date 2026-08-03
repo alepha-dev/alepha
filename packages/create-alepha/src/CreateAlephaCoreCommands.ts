@@ -20,8 +20,16 @@ export class CreateAlephaCoreCommands {
    * exist, and asking something whose answer is discarded is worse than not
    * asking.
    *
-   * What remains takes both its inputs from argv — `create-alepha my-app --pm
-   * npm` runs start to finish without a prompt, which is what a CI needs.
+   * The package-manager question went the same way, for a different reason: it
+   * was asking something the CLI already knows. `PackageManagerUtils` reads
+   * `npm_config_user_agent`, which every manager sets when it runs a binary, so
+   * `yarn create alepha` resolves to yarn and `pnpm create alepha` to pnpm
+   * without anyone being asked. Prompting on top of that could only produce a
+   * worse answer — a project installed with a manager the user did not invoke.
+   * `--pm` still overrides, for the case where the two genuinely differ.
+   *
+   * What is left is the name, and it is positional: `create-alepha my-app` runs
+   * start to finish without a prompt, which is what a CI needs.
    */
   public readonly root = $command({
     root: true,
@@ -54,23 +62,20 @@ export class CreateAlephaCoreCommands {
           },
         }));
 
-      // 2. Package manager
-      const pm =
-        flags.pm ??
-        (await ask("Which package manager?", {
-          schema: z.enum(["npm", "yarn", "pnpm", "bun"]),
-        }));
-
       // Create directory
       await this.fs.mkdir(name);
 
-      // Run init directly. No cast: these are exactly the flags `init` accepts,
-      // and keeping it that way is what makes a future removal a type error
-      // here instead of a silently ignored key.
+      // `pm` is passed through undefined unless the user forced one, so that
+      // `init` runs its own resolution — lockfiles, then workspace, then the
+      // invoking manager via `npm_config_user_agent`.
+      //
+      // No cast: these are exactly the flags `init` accepts, and keeping it
+      // that way is what makes a future removal a type error here instead of a
+      // silently ignored key.
       await this.scaffolder.init({
         run,
         root,
-        flags: { pm },
+        flags: { pm: flags.pm },
         args: name,
       });
 
