@@ -226,7 +226,7 @@ export class FakeProvider {
 
     // Handle union (a union containing null behaves like nullable)
     if (this.guard.isUnion(schema)) {
-      const members = (s.anyOf ?? s.options ?? []) as ZType[];
+      const members = this.guard.options(schema);
       const hasNull = members.some((m) => this.guard.isNull(m));
       if (hasNull) {
         if (
@@ -307,7 +307,7 @@ export class FakeProvider {
 
     // Handle tuple
     if (this.guard.isTuple(schema)) {
-      const items = (s.items ?? []) as ZType[];
+      const items = this.guard.items(schema);
       return items.map((item) => this.generateValue(item));
     }
 
@@ -481,15 +481,15 @@ export class FakeProvider {
       max: Math.max(minItems, maxItems),
     });
 
-    const element = (schema as any).element ?? def?.element;
+    const element = this.guard.element(schema) ?? def?.element;
     return Array.from({ length }, () => this.generateValue(element));
   }
 
   protected generateObject(schema: ZObject): Record<string, unknown> {
     const result: Record<string, unknown> = {};
 
-    for (const [key, propSchema] of Object.entries(schema.properties)) {
-      result[key] = this.generateValueWithContext(propSchema as ZType, key);
+    for (const [key, propSchema] of Object.entries(this.guard.shape(schema))) {
+      result[key] = this.generateValueWithContext(propSchema, key);
     }
 
     return result;

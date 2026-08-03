@@ -222,7 +222,17 @@ export class Alepha {
     if (alepha.isTest()) {
       // inject global hooks for testing purposes
       // > for vitest, { globals: true } is required in the config
-      const g = globalThis as any;
+      // Vitest/Jest publish these on the global object only when the runner
+      // is configured with `globals: true`, so each one is optional. Naming
+      // the shape beats `any`: a typo in one of the four would otherwise be
+      // silently undefined at runtime.
+      type TestHook = ((run: () => unknown) => unknown) | undefined;
+      const g = globalThis as Partial<
+        Record<
+          "beforeAll" | "afterAll" | "afterEach" | "onTestFinished",
+          TestHook
+        >
+      >;
       const beforeAll = state["alepha.test.beforeAll"] ?? g.beforeAll;
       const afterAll = state["alepha.test.afterAll"] ?? g.afterAll;
       const afterEach = state["alepha.test.afterEach"] ?? g.afterEach;
@@ -521,7 +531,7 @@ export class Alepha {
     // Cloudflare Workers support
     if (
       typeof global === "object" &&
-      typeof (global as any).Cloudflare === "object"
+      typeof (global as { Cloudflare?: unknown }).Cloudflare === "object"
     ) {
       return true;
     }
@@ -627,7 +637,7 @@ export class Alepha {
         this.primitiveRegistry = new Map();
         this.pendingInstantiations = [];
         this.events.clear();
-        delete (target as any)[MODULE];
+        delete (target as WithModule)[MODULE];
         this.with(target);
         for (const [key] of this.substitutions.entries()) {
           this.inject(key);
@@ -996,8 +1006,11 @@ export class Alepha {
     }
 
     // If the requested type is the container, the current instance is returned.
-    if ((service as any) === Alepha) {
-      return this as any;
+    if ((service as unknown) === Alepha) {
+      // The container is not a `T`, but asking for it is how a service reaches
+      // the container it lives in — the one injection that is definitionally
+      // untyped. `unknown` first because `this` and `T` do not overlap.
+      return this as unknown as T;
     }
 
     if (typeof service === "string") {
@@ -1284,22 +1297,23 @@ export class Alepha {
 
     const env: Record<string, AlephaDumpEnvVariable> = {};
     for (const [schema] of this.cacheEnv.entries()) {
-      const ref = schema as any;
-      // zod object: `.properties` aliases `.shape`; `required` field names come
-      // from `z.schema.requiredKeys` (zod has no `.required` array — that name
-      // is the `.required()` method). Metadata (description/enum/default) lives
-      // on the unwrapped inner schema, under `.meta()`.
-      const shape = (ref.properties ?? {}) as Record<string, ZType>;
-      const required = new Set(z.schema.requiredKeys(ref));
+      // `required` field names come from `z.schema.requiredKeys` (zod has no
+      // `.required` array — that name is the `.required()` method). Metadata
+      // (description/enum/default) lives on the unwrapped inner schema, under
+      // `.meta()`.
+      const shape = z.schema.shape(schema);
+      const required = new Set(z.schema.requiredKeys(schema));
       for (const [key, value] of Object.entries(shape)) {
-        const prop = value as any;
-        const inner = z.schema.unwrap(prop) as any;
+        const inner = z.schema.unwrap(value);
         const enumValues = z.schema.isEnum(inner)
           ? z.schema.enumValues(inner)
           : undefined;
         env[key] = {
-          description: inner?.description ?? prop?.description,
-          default: z.schema.getDefault(prop) as string | undefined,
+          // The inner (unwrapped) schema first: a `.describe()` sits on the
+          // schema it was called on, which for an optional field is the inner
+          // one. Falling back to the wrapper catches the reverse order.
+          description: inner?.description ?? value.description,
+          default: z.schema.getDefault(value) as string | undefined,
           required: required.has(key) ? true : undefined,
           enum: enumValues?.length
             ? ([...enumValues] as Array<string>)
@@ -1403,6 +1417,10 @@ export class Alepha {
 
   protected processPrimitive(value: Primitive, propertyKey = "") {
     value.config.propertyKey = propertyKey;
+    // `onInit` is protected: a primitive must not invoke it on itself, and the
+    // container is the only legitimate caller. Naming the shape would need a
+    // double cast (protected vs public are not assignable), which says less
+    // than this comment does.
     (value as any).onInit();
 
     const kind = value.constructor as Service;

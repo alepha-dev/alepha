@@ -1,4 +1,4 @@
-import type { ZodArray } from "alepha";
+import type { ZodArray, ZodString } from "alepha";
 import {
   $inject,
   Alepha,
@@ -86,7 +86,7 @@ export class FormModel<T extends ZObject> {
     prefix = "",
   ): Record<string, any> {
     const flat: Record<string, any> = {};
-    const shape = (schema as any).shape as Record<string, any> | undefined;
+    const shape = z.schema.shape(schema);
 
     for (const [key, value] of Object.entries(values)) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
@@ -122,9 +122,9 @@ export class FormModel<T extends ZObject> {
     prefix: string = "",
   ): Record<string, any> {
     const defaults: Record<string, any> = {};
-    const shape = (schema as any).shape as Record<string, any> | undefined;
+    const shape = z.schema.shape(schema);
 
-    if (!shape) {
+    if (Object.keys(shape).length === 0) {
       return defaults;
     }
 
@@ -411,7 +411,7 @@ export class FormModel<T extends ZObject> {
           return {};
         }
 
-        if (prop in schema.properties) {
+        if (prop in z.schema.shape(schema)) {
           // // it's a nested object, create another proxy
           // if (z.schema.isObject(schema.properties[prop])) {
           //   return this.createProxyFromSchema(
@@ -447,7 +447,7 @@ export class FormModel<T extends ZObject> {
     },
   ): BaseInputField {
     const parent = context.parent || "";
-    const rawField = schema.properties?.[name];
+    const rawField = z.schema.shape(schema)[name];
     if (!rawField) {
       return {
         path: "",
@@ -489,15 +489,21 @@ export class FormModel<T extends ZObject> {
     // no explicit `options.id` was provided). This guarantees stable
     // per-field DOM ids without forcing callers to pass `id`.
     attr.id = `${this.id}-${key}`;
-    (attr as any)["data-testid"] = attr.id;
+    // `data-*` is not in the typed attribute record, but it is the hook every
+    // e2e suite reaches for — carried deliberately, not by accident.
+    (attr as Record<string, unknown>)["data-testid"] = attr.id;
 
     if (z.schema.isString(field)) {
-      if (field.maxLength != null) {
-        attr.maxLength = Number(field.maxLength);
+      // `isString` returns a plain boolean, not a type predicate: the inferred
+      // predicate leaked zod's non-exported internals into consumers' .d.ts
+      // (TS2883). So the narrowing is done here, guarded by the line above.
+      const str = field as ZodString;
+      if (str.maxLength != null) {
+        attr.maxLength = Number(str.maxLength);
       }
 
-      if (field.minLength != null) {
-        attr.minLength = Number(field.minLength);
+      if (str.minLength != null) {
+        attr.minLength = Number(str.minLength);
       }
     }
 
