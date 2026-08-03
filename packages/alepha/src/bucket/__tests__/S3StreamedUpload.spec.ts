@@ -1,5 +1,5 @@
 import { Alepha, type FileLike } from "alepha";
-import { describe, it } from "vitest";
+import { beforeAll, describe, it } from "vitest";
 import { S3FileStorageProvider } from "../providers/S3FileStorageProvider.ts";
 
 /**
@@ -58,6 +58,16 @@ const setup = async () => {
  */
 describe("S3 streamed upload", () => {
   const bucket = "alepha-test";
+
+  // Provisioned here rather than assumed. The suite passed locally on a mock
+  // another spec had already seeded, and failed on CI where the container is
+  // new — a test that depends on what someone else left behind is a test that
+  // reports the order specs happened to run in.
+  beforeAll(async () => {
+    await fetch(`${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET_NAME}`, {
+      method: "PUT",
+    });
+  });
 
   it("uploads a file whose size is unknown, without ever materialising it", async ({
     expect,
