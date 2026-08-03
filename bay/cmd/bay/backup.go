@@ -125,17 +125,31 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusPreconditionFailed, "backups are not configured: run `bay config s3 --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set")
 		return
 	}
+	// Recorded on the same terms as the scheduled path, success and failure
+	// alike. Before this, a backup taken by hand touched the store not at all:
+	// it uploaded, answered 200, and left `LastBackupAt` wherever the scheduler
+	// had put it — so `bay status`, which derives staleness from that field,
+	// still called the backup stale seconds after one was taken. The command an
+	// operator runs deliberately before a risky change was exactly the one whose
+	// result `status` could not see.
 	runtime, dbPath, err := s.appPaths(app)
 	if err != nil {
+		s.recordBackupFailure(app.Key(), "resolve paths", err)
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	res, err := mgr.Backup(r.Context(), app.Name, app.Env, runtime, dbPath)
 	if err != nil {
-		s.log.Error("backup failed", "app", app.Key(), "err", err)
+		s.recordBackupFailure(app.Key(), "backup", err)
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+	if err := s.store.RecordBackupSuccess(app.Key(), res.Key, time.Now()); err != nil {
+		// The bytes are in the bucket; only the bookkeeping failed. Reported as a
+		// successful backup, because refusing here would tell an operator their
+		// data is not safe when it is.
+		s.log.Error("backup succeeded but recording it failed", "app", app.Key(), "err", err)
 	}
 	pruned, pruneErr := mgr.Prune(r.Context(), app.Name, app.Env, cfg.Keep)
 	if pruneErr != nil {
@@ -544,9 +558,14 @@ func (s *server) backupOne(ctx context.Context, mgr *backup.Manager, cfg *state.
 //
 // Persisted as well as logged because a log line scrolls away, and the whole
 // point of the record is that someone can ask later.
+//
+// Shared by the scheduled and the manual path, so the message names neither:
+// what failed and at which stage is the same question either way, and a line
+// saying "scheduled" about a backup someone just typed would send whoever reads
+// it looking for a timer that had nothing to do with it.
 func (s *server) recordBackupFailure(key, stage string, cause error) {
 	reason := stage + ": " + cause.Error()
-	s.log.Error("scheduled backup failed", "app", key, "stage", stage, "err", cause)
+	s.log.Error("backup failed", "app", key, "stage", stage, "err", cause)
 	if err := s.store.RecordBackupFailure(key, reason, time.Now()); err != nil {
 		s.log.Error("could not record the backup failure", "app", key, "err", err)
 	}
