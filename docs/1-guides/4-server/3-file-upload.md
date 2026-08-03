@@ -1,12 +1,25 @@
 # File Upload
 
-Alepha handles multipart/form-data uploads through the `z.file()` schema type. Multipart parsing is built into `AlephaServer` and active by default.
+Alepha handles `multipart/form-data` uploads through two body schema types.
+Multipart parsing is built into `AlephaServer` and active by default.
+
+Which one you declare decides how the bytes reach your handler, and it is the
+only decision that really matters here:
+
+| Schema | Handler receives | Bytes are | Use when |
+|---|---|---|---|
+| `z.file()` | a `FileLike` | held until the handler returns | you need to read the content more than once, or need its size up front |
+| `z.stream()` | the part, consumed once | passed through as they arrive | the payload is large, or you are forwarding it somewhere else |
+
+`z.file()` is the convenient one; `z.stream()` is the one that does not put the
+payload in memory.
 
 ## Defining Upload Endpoints
 
-Use `z.file()` in a body schema. When the body contains a file field, the action automatically expects `multipart/form-data`:
+Use `z.file()` in a body schema. When the body contains a file field, the action
+automatically expects `multipart/form-data`:
 
-```typescript
+```typescript check
 import { z } from "alepha";
 import { $action } from "alepha/server";
 import { $storage } from "alepha/api/files";
@@ -34,7 +47,7 @@ class UploadController {
 
 ## File Object
 
-The uploaded file implements the `FileLike` interface:
+A `z.file()` field arrives as a `FileLike`:
 
 ```typescript
 interface FileLike {
@@ -43,20 +56,103 @@ interface FileLike {
   size: number;           // Size in bytes
   lastModified: number;   // Timestamp in milliseconds
 
-  stream(): StreamLike;           // Read as stream
+  stream(): StreamLike;                 // Read as stream
   arrayBuffer(): Promise<ArrayBuffer>;  // Read into memory
-  text(): Promise<string>;        // Read as text
+  text(): Promise<string>;              // Read as text
 }
 ```
 
-Uploads are buffered: the request body is read into memory before your handler runs, and each file field arrives as an in-memory, Blob-backed `FileLike`. This is why the size limits above exist — buffering very large uploads would exhaust memory. For large files, prefer presigned upload URLs from [`$storage`](/docs/guides-persistence-storage) so the bytes never transit your server.
+**A `z.file()` field is materialised before your handler runs.** `FileLike`
+promises to be readable more than once — you can call `text()` and then
+`arrayBuffer()` — and honouring that means keeping the bytes. They are held in
+memory, not written to a temporary file, and they are released when the request
+ends. Nothing persists unless you store it; see [Permanent Storage](#permanent-storage).
+
+That is what the per-file ceiling is protecting, and why a route expecting large
+payloads should declare `z.stream()` instead.
 
 > FileLike is a minimal interface inspired by the Web File API.
 > It allows to use browser input file directly without mapping!
 
+## Streaming Large Uploads
+
+`z.stream()` hands the bytes over as they arrive, so memory stays flat no matter
+how large the payload is:
+
+```typescript check
+import { z } from "alepha";
+import { $action } from "alepha/server";
+
+class ArchiveController {
+  receive = $action({
+    method: "POST",
+    path: "/archive",
+    schema: {
+      body: z.object({
+        file: z.stream({ maxBytes: 500_000_000 }),
+      }),
+      response: z.object({ bytes: z.integer() }),
+    },
+    handler: async ({ body }) => {
+      let bytes = 0;
+      for await (const chunk of body.file.data) {
+        bytes += chunk.length;
+      }
+      return { bytes };
+    },
+  });
+}
+```
+
+Three consequences worth knowing before you reach for it:
+
+- **The bytes can be read once.** There is no going back for a second pass.
+- **`size` is `0`.** The length is not known until the stream has been read, and
+  it is not guessed.
+- **Parsing stops at the streamed part.** Whatever follows it in the message is
+  never read, because the handler — not the parser — is driving. A client that
+  wants other fields honoured must send them *before* the file. This is inherent
+  to streaming, not a limitation of the parser.
+
+Because the handler pulls the bytes, nothing is consumed before
+[`$secure`](/docs/guides-server-authentication) has run. On the `z.file()` path
+the body is read first, so an unauthenticated caller can spend the budget — see
+[Multipart](/docs/guides-server-multipart) for what that means when raising a
+limit.
+
+## Size Limits
+
+Defaults, applied to every route:
+
+| Limit | Default |
+|---|---|
+| One file | 5 MB |
+| Whole request | 10 MB |
+| Parts per request | 10 |
+
+A route raises its own ceiling by declaring it, in **bytes**:
+
+```typescript
+body: z.object({
+  video: z.file({ maxBytes: 50_000_000 }),
+})
+```
+
+And the framework's own upload route takes its ceiling from the `$storage`
+bucket the bytes are headed for — which is declared in **megabytes**:
+
+```typescript
+uploads = $storage({ maxSize: 100 });
+```
+
+The two units differ on purpose, and the unit is in each name rather than only
+in the docs. [Multipart](/docs/guides-server-multipart) explains how the three
+levels resolve and how to add your own.
+
 ## Mixed Fields
 
-Combine file fields with regular form fields in the same schema. Non-file fields are extracted from the form data and decoded according to their schema type:
+Combine file fields with regular form fields in the same schema. Non-file fields
+are extracted from the form data and decoded according to their schema type:
 
 ```typescript
 schema: {
@@ -68,11 +164,17 @@ schema: {
 }
 ```
 
+Fields the schema does not declare are skipped rather than refused: the body is
+shaped by the route, and a client sending extra parts is not an error the route
+has an opinion about.
+
 ## Permanent Storage
 
-Temporary files are deleted after the request completes. To keep files permanently, store them with `$storage`:
+An uploaded file lives only for the request. To keep it, store it with
+`$storage`:
 
-```typescript
+```typescript check
+import type { FileLike } from "alepha";
 import { $storage } from "alepha/api/files";
 
 class FileService {
