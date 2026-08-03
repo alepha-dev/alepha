@@ -10,17 +10,28 @@ import { ServerMultipartProvider } from "alepha/server";
 
 Parses `multipart/form-data` request bodies into route handler input.
 
-**This provider buffers.** It reads the entire request body into memory via
-`request.formData()` before the handler runs, and each file field is handed
-to the handler as an in-memory, `Blob`-backed `FileLike`. It does **not**
-stream uploads to the storage layer — by the time `bucket.upload` runs, the
-bytes are already fully in RAM.
+**Each `z.file()` field is still materialised** — a `FileLike` promises to be
+readable more than once, and honouring that means keeping the bytes. What
+changed is that the ceiling is now decided per request instead of once for
+the whole application, and that it is enforced by counting bytes as they
+arrive rather than by trusting `Content-Length` and then buffering anyway.
 
-This is a deliberate trade-off, kept safe by the `multipartOptions` limits
-(default 5 MB/file, 10 MB total, 10 files): the framework targets small
-uploads (avatars, attachments, documents), so buffering keeps validation
-simple and exact (`blob.size` is known up front) without a streaming
-multipart parser. If you need large-file uploads, raise those limits only
-alongside a streaming parser — buffering 100 MB per request will exhaust
-memory (and blow the Workers memory ceiling).
+The budget is resolved at three levels, most specific last:
+
+1. {@link multipartOptions} — the application-wide default.
+2. `z.file({ maxSize })` on the route's own body schema.
+3. {@link MultipartCapProvider} — the only level that knows where the bytes
+   are actually going, which is why it wins.
+
+A level can *raise* the ceiling, not merely lower it. That inversion was the
+whole problem before: a bucket declaring `maxSize: 100` was silently capped
+by a 5 MB global it knew nothing about, so the declaration read like a
+promise the framework could not keep.
+
+⚠️ Raising a ceiling on this path is not free. `$secure` runs *after* this
+hook, so whatever budget is granted here is reachable before authentication —
+a bigger number is a cheaper denial of service until the bytes stop being
+buffered.
+
+plus a delimiter regardless of payload size.
 
