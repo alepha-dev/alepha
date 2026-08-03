@@ -269,6 +269,14 @@ type server struct {
 	// keepReleases is how many releases survive a prune. Zero in the CLI paths
 	// that never deploy, where `deploy.Prune` treats it as "delete nothing".
 	keepReleases int
+	// deployMu serialises deploys driven by the command loop.
+	//
+	// Machine-wide rather than per-app: two deploys racing would contend for
+	// `state.json` whichever apps they target. The control API needs no such
+	// lock because its callers are serialised by the socket being one
+	// operator's shell — the loop is the first path that can start a deploy
+	// while another is still running.
+	deployMu sync.Mutex
 	// watches holds the cancel of each app's in-flight rollback watch, so a new
 	// deploy can supersede the previous one's. See beginWatch.
 	watchMu sync.Mutex
@@ -534,6 +542,11 @@ func cmdServe(args []string) error {
 	// Shares the backup context: both are background reporters that must stop
 	// when the server does, and neither should keep the process alive.
 	go srv.reportLoop(backupCtx)
+
+	// The other half of the same conversation: the report says what is here,
+	// this asks what should be. Same context — both are background talkers that
+	// must stop with the server and neither should keep the process alive.
+	go srv.commandLoop(backupCtx)
 
 	// Traffic bookkeeping, drained from the proxy on its own schedule.
 	go srv.flushLastSeenLoop(backupCtx)
@@ -834,43 +847,106 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 	tmp.Close()
 
-	// Requests wait from here rather than 502, and keep waiting through the
-	// unpack, the swap and the new process's boot.
-	defer s.holdDuring(name + "/" + env)()
-
-	// Stop the previous process before swapping `current` under it.
-	_ = s.runner.Stop(name+"/"+env, stopGrace)
-
-	allowControl := q.Get("allowControlApi") == "yes"
-	if allowControl {
-		s.log.Warn("granting ROOT-EQUIVALENT control API access", "app", name+"/"+env)
-	}
-	res, err := deploy.Run(deploy.Options{
-		Root: s.root, Artifact: tmp.Name(), Name: name, Env: env,
-		Domains: domains, BaseDomain: s.store.BaseDomain(),
-		AllowControlAPI: allowControl,
-	}, s.store)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+	out, derr := s.deployArtifact(r.Context(), deployArtifactOptions{
+		Artifact: tmp.Name(), Name: name, Env: env, Domains: domains,
+		AllowControlAPI: q.Get("allowControlApi") == "yes",
+	})
+	if derr != nil {
+		writeError(w, derr.Status, derr.Error(), derr.Detail)
 		return
 	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"app":           out.Result.App,
+		"release":       out.Result.Release,
+		"url":           "https://" + out.Result.App.Domain() + "/",
+		"sleepEligible": out.Result.Manifest.SleepEligible(),
+		"restore":       out.Restore,
+		"pruned":        out.Pruned,
+	})
+}
+
+// deployArtifactOptions is one deploy, whatever asked for it.
+type deployArtifactOptions struct {
+	// Artifact is a tar.gz already on local disk. Getting it there is the
+	// caller's problem: an upload for the control API, a download from the
+	// registry for the command loop.
+	Artifact        string
+	Name            string
+	Env             string
+	Domains         []string
+	AllowControlAPI bool
+}
+
+// deployOutcome is what a completed deploy has to say for itself.
+type deployOutcome struct {
+	Result  deploy.Result
+	Restore map[string]any
+	Pruned  []string
+}
+
+// deployFailure carries how a deploy failed, not just that it did.
+//
+// The two cases want opposite handling and always have: a refused artifact is a
+// bad build and nothing changed on the host, while "deployed but would not
+// boot" leaves files on disk and a rollback target that the caller has to be
+// told about. Collapsing them into one error would lose the release name at
+// exactly the moment someone needs it.
+type deployFailure struct {
+	Status int
+	Err    error
+	Detail map[string]any
+}
+
+func (e *deployFailure) Error() string { return e.Err.Error() }
+func (e *deployFailure) Unwrap() error { return e.Err }
+
+// deployArtifact unpacks, provisions, starts and prunes.
+//
+// Shared by the control API and the command loop on purpose. This sequence has
+// four ordering constraints that were each learned the hard way — stop before
+// swapping `current`, restore before starting, watch before pruning, prune only
+// after the app is proven to boot — and a second copy of it would drift on the
+// first fix applied to only one caller.
+func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions) (*deployOutcome, *deployFailure) {
+	key := opts.Name + "/" + opts.Env
+
+	// Requests wait from here rather than 502, and keep waiting through the
+	// unpack, the swap and the new process's boot.
+	defer s.holdDuring(key)()
+
+	// Stop the previous process before swapping `current` under it.
+	_ = s.runner.Stop(key, stopGrace)
+
+	if opts.AllowControlAPI {
+		s.log.Warn("granting ROOT-EQUIVALENT control API access", "app", key)
+	}
+	res, err := deploy.Run(deploy.Options{
+		Root: s.root, Artifact: opts.Artifact, Name: opts.Name, Env: opts.Env,
+		Domains: opts.Domains, BaseDomain: s.store.BaseDomain(),
+		AllowControlAPI: opts.AllowControlAPI,
+	}, s.store)
+	if err != nil {
+		return nil, &deployFailure{Status: http.StatusBadRequest, Err: err}
+	}
+
 	// Restore BEFORE starting: the app must open the recovered database, not an
 	// empty one that gets swapped under it. And only when Bay just created that
 	// empty file — never over an existing database.
 	restore := map[string]any{"database": "existing"}
 	if res.DatabaseCreated && res.DatabasePath != "" {
-		restore = s.maybeAutoRestore(r.Context(), res.App, res.DatabasePath)
+		restore = s.maybeAutoRestore(ctx, res.App, res.DatabasePath)
 	}
 
 	if err := s.start(res.App); err != nil {
-		writeError(w, http.StatusBadGateway,
-			"app deployed but did not become ready, see logs/app.log: "+err.Error(),
-			map[string]any{"release": res.Release, "restore": restore},
-		)
-		return
+		return nil, &deployFailure{
+			Status: http.StatusBadGateway,
+			Err:    fmt.Errorf("app deployed but did not become ready, see logs/app.log: %w", err),
+			Detail: map[string]any{"release": res.Release, "restore": restore},
+		}
 	}
 	if s.tls != nil {
-		if err := s.tls.Manage(r.Context(), res.App.Domains); err != nil {
+		if err := s.tls.Manage(ctx, res.App.Domains); err != nil {
 			s.log.Error("certificate for new domain failed", "domains", res.App.Domains, "err", err)
 		}
 	}
@@ -897,14 +973,7 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// repointed here and no longer protecting it.
 	pruned := s.pruneReleases(res.App, res.Previous)
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"app":           res.App,
-		"release":       res.Release,
-		"url":           "https://" + res.App.Domain() + "/",
-		"sleepEligible": res.Manifest.SleepEligible(),
-		"restore":       restore,
-		"pruned":        pruned,
-	})
+	return &deployOutcome{Result: *res, Restore: restore, Pruned: pruned}, nil
 }
 
 /*
