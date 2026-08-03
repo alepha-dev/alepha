@@ -16,6 +16,7 @@ import { OutpostController } from "./controllers/OutpostController.ts";
 import { OutpostIngestController } from "./controllers/OutpostIngestController.ts";
 import { PetitionController } from "./controllers/PetitionController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
+import { ReleaseController } from "./controllers/ReleaseController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
@@ -109,6 +110,7 @@ export const LoreApi = $module({
     PetitionController,
     OutpostController,
     OutpostIngestController,
+    ReleaseController,
     SigilController,
     SigilIngestController,
     InsightsController,
