@@ -11,7 +11,17 @@ export interface ConnexionProps {
  * verification mandatory changes this screen without touching it.
  */
 const Connexion = (props: ConnexionProps) => (
-  <AuthLogin realmConfig={props.realmConfig} />
+  /*
+   * The paths must be passed. `AuthLogin` falls back to the framework's own
+   * `/auth/register` and `/auth/reset-password`, and this shop mounts its auth
+   * pages under `/compte/*` — so without these props every cross-link led to a
+   * 404, and the 404 had no way back.
+   */
+  <AuthLogin
+    realmConfig={props.realmConfig}
+    registerPath="/compte/inscription"
+    resetPasswordPath="/compte/mot-de-passe"
+  />
 );
 
 export default Connexion;
