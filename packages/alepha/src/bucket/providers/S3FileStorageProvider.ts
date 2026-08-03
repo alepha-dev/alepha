@@ -138,6 +138,25 @@ export class S3FileStorageProvider implements FileStorageProvider {
     return `${this.crypto.randomUUID()}.${ext}`;
   }
 
+  /**
+   * S3's minimum size for every part but the last.
+   *
+   * It is the floor the protocol imposes, and it is what bounds this provider's
+   * memory: one part at a time, never the payload. Larger parts would mean
+   * fewer requests and more RAM — 5 MiB is the point where the protocol stops
+   * arguing.
+   */
+  protected static readonly PART_SIZE = 5 * 1024 * 1024;
+
+  /**
+   * Uploads a file, streaming it when its size is not known up front.
+   *
+   * A `FileLike` built from a request body reports `size === 0` until it is
+   * read, so asking it for an `arrayBuffer()` is asking for the whole payload
+   * in RAM — which is exactly what a streamed upload exists to avoid. Known
+   * sizes keep the single `PutObject`: it is one request instead of three, and
+   * a small file has nothing to gain from multipart.
+   */
   public async upload(
     bucketName: string,
     file: FileLike,
@@ -150,17 +169,22 @@ export class S3FileStorageProvider implements FileStorageProvider {
     );
 
     const client = this.getClient();
+    const key = this.key(bucketName, fileId);
 
     try {
-      const buffer = new Uint8Array(await file.arrayBuffer());
-      await client.putObject(
-        this.key(bucketName, fileId),
-        buffer,
-        file.type || "application/octet-stream",
-        undefined,
-        { "x-amz-meta-name": encodeURIComponent(file.name) },
-        file.size,
-      );
+      if (file.size > 0) {
+        const buffer = new Uint8Array(await file.arrayBuffer());
+        await client.putObject(
+          key,
+          buffer,
+          file.type || "application/octet-stream",
+          undefined,
+          { "x-amz-meta-name": encodeURIComponent(file.name) },
+          file.size,
+        );
+      } else {
+        await this.uploadStreamed(client, key, file);
+      }
 
       this.log.trace(`File uploaded successfully: ${fileId}`);
       return fileId;
@@ -173,6 +197,96 @@ export class S3FileStorageProvider implements FileStorageProvider {
       }
       throw error;
     }
+  }
+
+  /**
+   * Uploads a stream of unknown length as a multipart upload.
+   *
+   * The only shape S3 offers for "I do not know how big this is": a single
+   * `PutObject` demands a `Content-Length` the sender does not have. Chunks are
+   * gathered to {@link PART_SIZE} and sent as they fill, so the memory held is
+   * one part rather than one payload.
+   *
+   * A failure aborts the upload. Without that, every interrupted transfer would
+   * leave its parts billed and invisible — S3 keeps them until someone says
+   * otherwise, and nobody ever does.
+   */
+  protected async uploadStreamed(
+    client: S3mini,
+    key: string,
+    file: FileLike,
+  ): Promise<void> {
+    const uploadId = await client.getMultipartUploadId(
+      key,
+      file.type || "application/octet-stream",
+    );
+
+    const parts: Array<Awaited<ReturnType<S3mini["uploadPart"]>>> = [];
+    let pending: Uint8Array[] = [];
+    let pendingSize = 0;
+    let partNumber = 1;
+
+    const flush = async (chunk: Uint8Array) => {
+      parts.push(await client.uploadPart(key, uploadId, chunk, partNumber));
+      partNumber++;
+    };
+
+    try {
+      for await (const chunk of this.chunksOf(file)) {
+        pending.push(chunk);
+        pendingSize += chunk.length;
+
+        while (pendingSize >= S3FileStorageProvider.PART_SIZE) {
+          const joined = this.join(pending, pendingSize);
+          await flush(joined.subarray(0, S3FileStorageProvider.PART_SIZE));
+          const rest = joined.subarray(S3FileStorageProvider.PART_SIZE);
+          pending = rest.length > 0 ? [rest] : [];
+          pendingSize = rest.length;
+        }
+      }
+
+      // The last part may be short, and an empty file still needs one: S3
+      // refuses to complete an upload with no parts at all.
+      if (pendingSize > 0 || parts.length === 0) {
+        await flush(this.join(pending, pendingSize));
+      }
+
+      await client.completeMultipartUpload(key, uploadId, parts);
+    } catch (error) {
+      await client.abortMultipartUpload(key, uploadId).catch((abortError) => {
+        // Reported, never swallowed: the upload has already failed, and losing
+        // the reason the cleanup also failed is how orphaned parts become a
+        // bill nobody can explain.
+        this.log.error(
+          `Failed to abort multipart upload ${uploadId}`,
+          abortError,
+        );
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Reads a `FileLike` as chunks, whichever stream flavour it carries.
+   */
+  protected async *chunksOf(file: FileLike): AsyncGenerator<Uint8Array> {
+    const stream = file.stream() as AsyncIterable<Uint8Array | Buffer>;
+    for await (const chunk of stream) {
+      yield chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
+    }
+  }
+
+  protected join(chunks: Uint8Array[], size: number): Uint8Array {
+    if (chunks.length === 1) {
+      return chunks[0];
+    }
+    const joined = new Uint8Array(size);
+    let at = 0;
+    for (const chunk of chunks) {
+      joined.set(chunk, at);
+      at += chunk.length;
+    }
+    return joined;
   }
 
   public async download(bucketName: string, fileId: string): Promise<FileLike> {
