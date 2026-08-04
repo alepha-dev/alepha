@@ -42,9 +42,41 @@ export default (alepha: Alepha) => {
         ]);
       },
     }),
+    "verify:go": $command({
+      aliases: ["v:go"],
+      description: "Run the Go suite (apps/bay) on the platform it ships for.",
+      handler: async ({ run }) => {
+        // A lane of its own rather than a step inside `verify`, because the two
+        // toolchains have nothing to say to each other: every Go file in this
+        // repo is `apps/bay`, one module, with no edge into the TypeScript
+        // graph. Running it on every `yarn v` meant a container start — ~20s —
+        // for a change that could not possibly have touched it, which is most
+        // changes.
+        //
+        // Gating it on `git diff` was the other option and was rejected: a
+        // heuristic that misfires skips silently, and a silent skip is exactly
+        // the failure this repo keeps paying for. A separate command cannot be
+        // silently wrong — Go is either what you asked for or it is not.
+        //
+        // ⚠️ The trade is real: `yarn v` no longer covers Go. The `bay` CI job
+        // runs unconditionally on every PR and push, so nothing reaches main
+        // unchecked, but a local green now means less than it did. Touch
+        // `apps/bay`, run this.
+        //
+        // Not the native `go test`: that is GREEN while skipping every test of
+        // `Systemd.render()` — the sandbox directives, the memory and CPU
+        // ceilings, the stop timeout — because those files are `//go:build
+        // linux` and do not compile on the machine this is usually run from.
+        // `test:linux` reproduces the `bay` CI job in a container: gofmt, vet,
+        // build, the whole suite, and a cross-compile for both Linux
+        // architectures.
+        await run(`yarn w bay test:linux`);
+      },
+    }),
     verify: $command({
       aliases: ["v"],
-      description: "Run linter, checker and tests.",
+      description:
+        "Run linter, checker and tests (JavaScript/TypeScript only — Go lives in `v:go`).",
       flags: z.object({
         fast: z
           .boolean()
@@ -117,11 +149,6 @@ export default (alepha: Alepha) => {
             `yarn check:docs`,
             `yarn check:i18n`,
             `yarn check:migrations`,
-            // The native Go pass, ~4s. Partial by construction: on macOS,
-            // `internal/runner/systemd_test.go` is `//go:build linux`, so 7 of
-            // that package's 12 tests are not compiled and `ok` is printed
-            // anyway. The full pass runs in a container below, out of --fast.
-            `yarn w bay test`,
           ]);
           await assertServicesUp();
           await run([`yarn test`, `yarn test:bun`]);
@@ -147,18 +174,6 @@ export default (alepha: Alepha) => {
         await run(`yarn check:conventions`);
         await run(`yarn typecheck`);
         await assertServicesUp();
-
-        // Bay's suite, on the platform it ships for. ~18s in a container.
-        //
-        // A superset of `yarn w bay test`, not a repeat of it: gofmt, vet,
-        // build, the whole test suite and a cross-compile for both Linux
-        // architectures — the same steps as the `bay` CI job. It is here rather
-        // than in --fast because it costs a container start, and it is here at
-        // all because a native `go test` is GREEN while skipping every test of
-        // `Systemd.render()`: the sandbox directives, the memory and CPU
-        // ceilings, the stop timeout. Those files are `//go:build linux` and do
-        // not exist on the machine this is usually run from.
-        await run(`yarn w bay test:linux`);
 
         await run(`yarn check:i18n`);
         await run(`yarn check:migrations`);

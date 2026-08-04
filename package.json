@@ -37,6 +37,8 @@
     "a": "yarn alepha",
     "v": "yarn alepha verify",
     "verify": "yarn alepha verify",
+    "verify:go": "yarn alepha verify:go",
+    "v:go": "yarn alepha verify:go",
     "clean": "yarn alepha clean",
     "copy": "yarn workspaces foreach -Apt run copy",
     "lint": "yarn alepha lint",
