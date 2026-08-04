@@ -198,8 +198,8 @@ func usage() {
   bay backups <name/env>          # list what is stored
   bay restore <name/env> [--key K] # destructive; keeps the old db aside
 
-Every command except "serve" is a thin client of the control API — the same API
-bay-admin calls. There is no second code path.
+Every command except "serve" is a thin client of the control API. There is no
+second code path.
 
 That API listens on a unix socket and nothing else. It can create users, read
 every app's secrets and delete every backup, so it is root-equivalent, and a
@@ -209,9 +209,9 @@ environment variable, and a bind-address typo publishes it to the internet. The
 socket's authorization is the file mode, enforced by the kernel — reaching it
 already requires being root or in the control group.
 
-Remote access is bay-admin's job: it authenticates people, over HTTPS, and
-speaks to this socket on their behalf. Client commands accept --control-socket
-PATH (or $BAY_SOCKET) and must run on the Bay host.
+Remote access is the connector's job, and it opens no door: this machine asks
+Lore for work ("bay connector add") and runs it here. Client commands accept
+--control-socket PATH (or $BAY_SOCKET) and must run on the Bay host.
 `)
 }
 
@@ -483,10 +483,10 @@ func cmdServe(args []string) error {
 	// is the file mode, enforced by the kernel, and reaching it already
 	// requires being root or in the control group.
 	//
-	// Remote access has not gone away — it moved to bay-admin, which
-	// authenticates people over HTTPS and speaks to this socket for them. That
-	// is a system that can have accounts, revocation and an audit trail;
-	// a bearer token in an environment variable can have none of the three.
+	// Remote access has not gone away — it moved to the connector, which asks
+	// Lore for work and speaks to this socket for it. Nothing reaches in, so
+	// accounts, revocation and an audit trail live on the far side, where they
+	// can exist; a bearer token in an environment variable has none of the three.
 	socketSrv := &http.Server{Handler: srv.controlMux()}
 
 	go func() {
@@ -738,7 +738,7 @@ func controlGroupFor(app state.App) string {
 }
 
 // ---------------------------------------------------------------------------
-// control API — the single contract, consumed by the CLI and later by bay-ui
+// control API — the single contract, consumed by every command but "serve"
 // ---------------------------------------------------------------------------
 
 // controlMux builds the routes. Authorization is applied per listener by the
@@ -1321,7 +1321,7 @@ func writeJSON(w http.ResponseWriter, code int, body any) {
 // `{error, status, message}` — where `error` is the error NAME and `message` is
 // the human text. Bay used to put the message in `error`, which is exactly
 // where Alepha's `HttpClient` looks for the *name*: any Alepha app calling the
-// control API (bay-ui included) got an `HttpError` with an empty message, and
+// control API got an `HttpError` with an empty message, and
 // the operator lost the one sentence that said what to do — "rebuild with
 // `alepha build --target=bare`", "redeploy the app to migrate it".
 //
@@ -1737,7 +1737,7 @@ func call(method, url string, body io.Reader) (string, error) {
 			"no control socket found — these commands run on the Bay host, " +
 				"as root or as a member of the control group " +
 				"(see --control-socket / $BAY_SOCKET). " +
-				"For remote deploys, use bay-admin")
+				"For remote deploys, enrol this machine with \"bay connector add\"")
 	}
 	// Dial the socket instead of the network. The URL's host is ignored by the
 	// transport but still has to parse, so callers keep composing
