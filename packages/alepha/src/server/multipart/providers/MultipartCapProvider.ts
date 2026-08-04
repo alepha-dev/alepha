@@ -73,6 +73,11 @@ export class MultipartCapProvider {
 
   /**
    * The first answer anyone offers, or `undefined` when nobody claims it.
+   *
+   * An answer means at least one number. `{}` is not one: testing truthiness
+   * let an empty object end the search, so a resolver that recognised a route
+   * but had nothing to say about it vetoed every resolver behind it — and
+   * `undefined` and `{}` are the same intent written two ways.
    */
   public resolve(
     request: ServerRequest,
@@ -80,7 +85,7 @@ export class MultipartCapProvider {
   ): MultipartCap | undefined {
     for (let i = this.resolvers.length - 1; i >= 0; i--) {
       const cap = this.resolvers[i](request, route);
-      if (cap) {
+      if (cap && Object.values(cap).some((v) => typeof v === "number")) {
         return cap;
       }
     }

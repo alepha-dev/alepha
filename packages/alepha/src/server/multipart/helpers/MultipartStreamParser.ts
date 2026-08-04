@@ -77,7 +77,13 @@ export interface MultipartParserOptions {
   maxFileBytes?: number;
   /** Maximum number of parts in one message. */
   maxParts?: number;
-  /** Maximum bytes of content across every part. */
+  /**
+   * Maximum bytes of the message, all of it.
+   *
+   * Content **and** everything walked to reach it: the preamble, and every
+   * part's headers. It bounds reading rather than delivering, because a sender
+   * that never emits a boundary costs just as much as one that emits content.
+   */
   maxTotalBytes?: number;
 }
 
@@ -312,6 +318,22 @@ export class MultipartStreamParser {
         "file",
       );
     }
+    this.spend(length);
+  }
+
+  /**
+   * Charges bytes against the message budget alone.
+   *
+   * Separate from {@link count} because the message budget bounds *reading*,
+   * not delivering: a preamble is discarded and a part's headers are never
+   * handed to anyone, yet both are bytes this process was made to walk. Billing
+   * only what reaches a consumer left two ways to spend an unbounded amount
+   * under any budget — a preamble that never reaches a boundary, and headers
+   * spread over many small parts. Neither grows memory, both spin forever, and
+   * `Transfer-Encoding: chunked` carries no `Content-Length` for the cheap
+   * pre-check to catch first.
+   */
+  protected spend(length: number): void {
     this.totalSize += length;
     if (this.totalSize > this.maxTotalBytes) {
       throw new MultipartLimitError(
@@ -341,6 +363,17 @@ export class MultipartStreamParser {
         break;
       }
     }
+    // `want` again, and past `i` this time: the one above ran before the
+    // whitespace was walked, so it guaranteed two bytes at position 0, not at
+    // the CRLF. Reading `buffer[i + 1]` on its word turned a body whose CR and
+    // LF landed in different chunks into a parse error — the same upload
+    // succeeding or failing on where TCP happened to cut it.
+    if (this.buffer.length < i + 2) {
+      await this.want(i + 2).catch(() => {
+        // End of stream: the message is genuinely truncated, and the refusal
+        // below says so in the vocabulary this method already uses.
+      });
+    }
     if (this.buffer[i] === 0x0d && this.buffer[i + 1] === 0x0a) {
       this.buffer = this.buffer.subarray(i + 2);
       return "open";
@@ -359,6 +392,7 @@ export class MultipartStreamParser {
     while (true) {
       const at = this.indexOf(this.buffer, separator);
       if (at >= 0) {
+        this.spend(at + separator.length);
         const raw = this.decode(this.buffer.subarray(0, at));
         this.buffer = this.buffer.subarray(at + separator.length);
         return this.parseHeaders(raw);
@@ -396,6 +430,12 @@ export class MultipartStreamParser {
    * `filename*` (RFC 5987) wins over `filename` when both are present, which is
    * what senders intend: the plain one is the ASCII fallback they expect to be
    * ignored by anything that understands the encoded form.
+   *
+   * Every pattern is anchored to the start of a parameter — `(?:^|;)\s*` —
+   * rather than searched loose. Unanchored, `name=` matches **inside**
+   * `filename=`, so `filename="x"; name="avatar"` reported the field as `x`:
+   * legal input, no mandated parameter order, and the sender got to choose
+   * which field of the route its part landed in.
    */
   protected parseDisposition(value: string | undefined): {
     name?: string;
@@ -404,11 +444,15 @@ export class MultipartStreamParser {
     if (!value) {
       return {};
     }
+    const at = (key: string) => `(?:^|;)\\s*${key}`;
     const quoted = (key: string) =>
-      new RegExp(`${key}="([^"]*)"`, "i").exec(value)?.[1] ??
-      new RegExp(`${key}=([^;]+)`, "i").exec(value)?.[1]?.trim();
+      new RegExp(`${at(key)}="([^"]*)"`, "i").exec(value)?.[1] ??
+      new RegExp(`${at(key)}=([^;]+)`, "i").exec(value)?.[1]?.trim();
 
-    const extended = /filename\*=([^']*)'([^']*)'([^;]+)/i.exec(value);
+    const extended = new RegExp(
+      `${at("filename")}\\*=([^']*)'([^']*)'([^;]+)`,
+      "i",
+    ).exec(value);
     let filename = quoted("filename");
     if (extended) {
       try {
@@ -429,11 +473,13 @@ export class MultipartStreamParser {
     while (true) {
       const at = this.indexOf(this.buffer, needle);
       if (at >= 0) {
+        this.spend(at);
         this.buffer = this.buffer.subarray(at + needle.length);
         return true;
       }
       const keep = needle.length - 1;
       if (this.buffer.length > keep) {
+        this.spend(this.buffer.length - keep);
         this.buffer = this.buffer.subarray(this.buffer.length - keep);
       }
       if (!(await this.pull())) {

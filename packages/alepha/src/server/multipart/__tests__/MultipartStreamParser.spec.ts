@@ -245,6 +245,42 @@ describe("MultipartStreamParser", () => {
 
       expect(parts[0].filename).toBe("fallback.txt");
     });
+
+    it("reads the field name when filename comes first", async ({ expect }) => {
+      // `name=` is a substring of `filename=`, so an unanchored search finds the
+      // filename's value and calls it the field name. Nothing mandates the
+      // order, so the only thing keeping this from firing is client habit —
+      // and the field a part lands in is not something the sender should pick.
+      const body = bodyOf([
+        {
+          headers:
+            'Content-Disposition: form-data; filename="evil.txt"; name="avatar"',
+          content: "x",
+        },
+      ]);
+
+      const parts = await collect(body);
+
+      expect(parts[0].name).toBe("avatar");
+      expect(parts[0].filename).toBe("evil.txt");
+    });
+
+    it("reads an unquoted field name when filename comes first", async ({
+      expect,
+    }) => {
+      const body = bodyOf([
+        {
+          headers:
+            "Content-Disposition: form-data; filename=evil.txt; name=avatar",
+          content: "x",
+        },
+      ]);
+
+      const parts = await collect(body);
+
+      expect(parts[0].name).toBe("avatar");
+      expect(parts[0].filename).toBe("evil.txt");
+    });
   });
 
   describe("limits", () => {
@@ -295,6 +331,36 @@ describe("MultipartStreamParser", () => {
         MultipartLimitError,
       );
     });
+
+    it("charges the preamble to maxTotalBytes", async ({ expect }) => {
+      // A preamble is discarded, not delivered — but it is still bytes the
+      // sender made this process read. Left unbilled, a body that never
+      // reaches a boundary spins forever under any budget, and `chunked`
+      // carries no Content-Length for the cheap pre-check to catch.
+      const body = bodyOf([filePart("f", "a.bin", "x")], {
+        preamble: `${"P".repeat(5000)}\r\n`,
+      });
+
+      await expect(collect(body, 512, { maxTotalBytes: 1000 })).rejects.toThrow(
+        MultipartLimitError,
+      );
+    });
+
+    it("charges part headers to maxTotalBytes", async ({ expect }) => {
+      // Each part's headers fit under maxHeaderBytes; together they are far
+      // past the whole message's budget. Billing only content let a sender
+      // spend an arbitrary amount in headers spread over many small parts.
+      const body = bodyOf(
+        Array.from({ length: 20 }, (_, i) => ({
+          headers: `Content-Disposition: form-data; name="f${i}"\r\nX-Padding: ${"p".repeat(400)}`,
+          content: "x",
+        })),
+      );
+
+      await expect(
+        collect(body, 512, { maxTotalBytes: 1000, maxHeaderBytes: 4096 }),
+      ).rejects.toThrow(MultipartLimitError);
+    });
   });
 
   describe("malformed bodies", () => {
@@ -318,6 +384,28 @@ describe("MultipartStreamParser", () => {
       await expect(collect(new TextEncoder().encode(raw))).rejects.toThrow(
         MultipartParseError,
       );
+    });
+
+    it("accepts linear whitespace after a boundary, however the stream is cut", async ({
+      expect,
+    }) => {
+      // RFC 2046 tolerates spaces and tabs between a delimiter and its CRLF.
+      // `want(2)` runs *before* those are consumed, so once they are, the CRLF
+      // test can read past the buffer and call a well-formed body malformed —
+      // an upload that fails or not depending on where TCP split it.
+      const raw =
+        `--${BOUNDARY} \t\r\n` +
+        `Content-Disposition: form-data; name="f"\r\n\r\n` +
+        `x\r\n` +
+        `--${BOUNDARY}--\r\n`;
+      const bytes = new TextEncoder().encode(raw);
+
+      for (let chunkSize = 1; chunkSize <= 8; chunkSize++) {
+        const parts = await collect(bytes, chunkSize);
+        expect(parts, `chunk size ${chunkSize}`).toEqual([
+          { name: "f", filename: undefined, content: "x" },
+        ]);
+      }
     });
 
     it("refuses to read a part's data twice", async ({ expect }) => {

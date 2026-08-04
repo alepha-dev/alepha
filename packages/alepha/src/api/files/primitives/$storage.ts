@@ -140,12 +140,30 @@ export interface StorageUploadOptions {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class StoragePrimitive extends Primitive<StoragePrimitiveOptions> {
+  /**
+   * Megabytes a storage takes when it declares no {@link
+   * StoragePrimitiveOptions.maxSize}.
+   *
+   * Here rather than repeated as a default parameter, because three places
+   * needed it and one of them did not have it: the transport deferred to the
+   * application-wide 5 MB, so a bucket that declared nothing was held at half
+   * what this primitive documents.
+   */
+  public static readonly DEFAULT_MAX_SIZE_MB = 10;
+
   public readonly provider = this.$provider();
 
   protected readonly fileService = $inject(FileService);
 
   public get name(): string {
     return this.options.name ?? this.config.propertyKey;
+  }
+
+  /**
+   * The size ceiling for this storage, in megabytes, declared or default.
+   */
+  public get maxSize(): number {
+    return this.options.maxSize ?? StoragePrimitive.DEFAULT_MAX_SIZE_MB;
   }
 
   /**

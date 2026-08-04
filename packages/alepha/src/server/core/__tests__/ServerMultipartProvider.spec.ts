@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $action, AlephaServer, ServerProvider } from "alepha/server";
 import { describe, test } from "vitest";
 import {
@@ -492,5 +493,148 @@ describe("ServerMultipartProvider - Size Limits", () => {
     });
 
     expect(result).toBe("normal.txt (1000b, text/plain)");
+  });
+});
+
+/**
+ * The parser's own `finally` cancels the source — but only if its generator is
+ * driven to completion or explicitly returned, and the two paths that matter
+ * do neither: a streamed field leaves the iterator suspended on purpose, and a
+ * blown limit throws from the part's own iterator, not from `parse`.
+ */
+describe("ServerMultipartProvider - source cleanup", () => {
+  const BOUNDARY = "----AlephaCleanup";
+
+  /**
+   * A multipart request whose body reports whether it was cancelled.
+   *
+   * Delivered in small chunks and followed by an epilogue nobody reads, so the
+   * source is still open at the moment cleanup should happen. A stream that has
+   * already closed itself cannot report a cancellation — `cancel()` is not
+   * called on a source that is done — which makes an exhausted body useless as
+   * evidence either way.
+   */
+  const trackedRequest = (raw: string) => {
+    const state = { cancelled: false };
+    const bytes = new TextEncoder().encode(`${raw}${"e".repeat(4096)}`);
+    let at = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (at >= bytes.length) {
+          controller.close();
+          return;
+        }
+        controller.enqueue(bytes.subarray(at, at + 64));
+        at += 64;
+      },
+      cancel() {
+        state.cancelled = true;
+      },
+    });
+    const request = new Request("http://localhost/api/upload", {
+      method: "POST",
+      headers: { "content-type": `multipart/form-data; boundary=${BOUNDARY}` },
+      body,
+      duplex: "half",
+    } as RequestInit & { duplex: "half" });
+    return { request, state };
+  };
+
+  const bodyOf = (content: string) =>
+    `--${BOUNDARY}\r\n` +
+    `Content-Disposition: form-data; name="file"; filename="a.bin"\r\n` +
+    `Content-Type: application/octet-stream\r\n\r\n` +
+    `${content}\r\n` +
+    `--${BOUNDARY}--\r\n`;
+
+  const caps = (maxFileBytes: number) => ({
+    maxFileBytes,
+    maxTotalBytes: 10_000_000,
+    maxParts: 10,
+    maxHeaderBytes: 16 * 1024,
+  });
+
+  test("cancels the body when a limit refuses a buffered field", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaServer);
+    await alepha.start();
+    const provider = alepha.inject(ServerMultipartProvider);
+    const route = { schema: { body: z.object({ file: z.file() }) } } as never;
+
+    const { request, state } = trackedRequest(bodyOf("x".repeat(5000)));
+
+    await expect(
+      provider.parseMultipart(route, request, caps(100)),
+    ).rejects.toThrow();
+
+    expect(state.cancelled).toBe(true);
+  });
+
+  test("cancels the body once a streamed field has been drained", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaServer);
+    await alepha.start();
+    const provider = alepha.inject(ServerMultipartProvider);
+    const route = { schema: { body: z.object({ file: z.stream() }) } } as never;
+
+    const { request, state } = trackedRequest(bodyOf("hello"));
+
+    const body = await provider.parseMultipart(route, request, caps(1_000_000));
+    const part = body.file as { data: AsyncIterable<Uint8Array> };
+
+    // Still open while the handler owns the bytes — cancelling here is exactly
+    // the bug the hand-driven iterator exists to avoid.
+    expect(state.cancelled).toBe(false);
+
+    for await (const _ of part.data) {
+      // drain
+    }
+
+    expect(state.cancelled).toBe(true);
+  });
+});
+
+describe("ServerMultipartProvider - the clock", () => {
+  test("names an unnamed part from the injected clock", async ({ expect }) => {
+    // `materialise` falls back to `${field}_${now}` when a part carries no
+    // filename. Reading the wall clock directly there made that name — and the
+    // `lastModified` beside it — untestable, and `DateTimeProvider` exists
+    // precisely so time is a dependency like any other.
+    const alepha = Alepha.create().with(AlephaServer);
+    await alepha.start();
+
+    const clock = alepha.inject(DateTimeProvider);
+    clock.pause();
+    // Away from wall time, or the assertion passes on a wall clock too and
+    // proves nothing — a paused clock still reads "now" on the millisecond it
+    // was paused.
+    await clock.travel(365, "days");
+    const now = clock.nowMillis();
+
+    const provider = alepha.inject(ServerMultipartProvider);
+    const boundary = "----AlephaClock";
+    const raw =
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="file"\r\n` +
+      `Content-Type: text/plain\r\n\r\n` +
+      `hi\r\n` +
+      `--${boundary}--\r\n`;
+
+    const request = new Request("http://localhost/api/upload", {
+      method: "POST",
+      headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+      body: raw,
+    });
+
+    const body = await provider.parseMultipart(
+      { schema: { body: z.object({ file: z.file() }) } } as never,
+      request,
+    );
+
+    const file = body.file as { name: string; lastModified: number };
+    expect(file.name).toBe(`file_${now}`);
+    expect(file.lastModified).toBe(now);
   });
 });
