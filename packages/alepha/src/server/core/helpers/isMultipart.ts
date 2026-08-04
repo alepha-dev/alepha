@@ -28,7 +28,13 @@ export const isMultipart = (options: {
       // read at BOTH ends — the client builds the FormData from it, the server
       // decides to parse one — so missing a format means the two agree to do
       // nothing, and the upload silently arrives as an ordinary body.
-      const format = z.schema.format(properties[key]);
+      //
+      // `unwrap` first: `.optional()` returns a NEW ZodOptional whose own
+      // `.meta()` is empty, so the `format: "binary"` tag sits on the schema
+      // *inside* the wrapper. Reading the wrapper answered undefined, which
+      // made `z.file().optional()` — an upload that is merely not mandatory —
+      // silently not multipart at either end.
+      const format = z.schema.format(z.schema.unwrap(properties[key]));
       if (format === "binary" || format === "stream") {
         return true;
       }
