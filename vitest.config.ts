@@ -51,21 +51,30 @@ export default defineConfig({
       MQTT_BROKER_URL: "mqtt://localhost:11883",
       REDIS_URL: "redis://localhost:16379",
     },
-    // Threads, not the default `forks`.
+    // `forks`, the default, and it has to stay that way while `TZ` below is
+    // set here.
     //
-    // Half this suite's cumulative work was module loading, not assertions:
-    // ~277s importing against ~286s executing, across 513 files with no single
-    // slow outlier. `forks` pays that import cost in a fresh child process per
-    // file; threads amortise it. Measured on the full suite: 53s -> 43s, with
-    // all 5355 tests still passing.
+    // `pool: "threads"` is tempting — half this suite's cumulative work is
+    // module loading rather than assertions (~277s importing against ~286s
+    // executing over 513 files), and threads amortise that: measured 53s -> 43s
+    // standalone, 63s -> 39s in the pipeline, with every test still passing.
     //
-    // ⚠️ `isolate: false` looks like the bigger prize — 20s — and is not
-    // available to us. It shares one environment across every file in a worker
-    // and 17 tests fail: `QueryManager`, `FileAccessProvider` and
-    // `ErrorBoundary` leak DI/ORM and React state into whatever runs next.
-    // That is genuine cross-file pollution, not flakiness. Do not re-try it
-    // without fixing the tests first.
-    pool: "threads",
+    // It was shipped and reverted the same evening. `env.TZ` is applied before
+    // a *process* starts, so forks pick it up; worker threads inherit the
+    // parent's already-initialised timezone and setting `process.env.TZ` inside
+    // one does not re-run tzset. `Localize.spec.tsx` then reads UTC instead of
+    // Paris and six date assertions fail — but ONLY where the machine is not
+    // already in Europe/Paris. It passed locally and failed on CI, which is the
+    // worst possible shape for a regression.
+    //
+    // To try again: move `TZ` out of `env` and onto the process that spawns
+    // vitest (the `test` script), then verify with `TZ=UTC yarn test` locally
+    // before believing it.
+    //
+    // ⚠️ `isolate: false` is a separate dead end — twice as fast again, and 17
+    // tests fail on genuine cross-file state pollution (`QueryManager`,
+    // `FileAccessProvider`, `ErrorBoundary`). Not flakiness. Do not re-try it
+    // without fixing those tests first.
     projects: [
       {
         // node.js tests
