@@ -128,7 +128,17 @@ export default (alepha: Alepha) => {
           return;
         }
 
+        // Deliberately serial, and measured rather than assumed.
+        //
+        // Grouping these was tried and reverted. On a saturated machine
+        // parallelism does not compose: run as one group they finished in
+        // 16.8s against 18.4s serial — 1.6s — while `check:deps` alone went
+        // from 5.9s to 16.8s and `typecheck` from 10.1s to 16.6s. All that
+        // buys is timings that no longer mean anything when a step regresses,
+        // and memory pressure on the one tool in this repo with a history of
+        // exhausting it. The only pairing below that pays is e2e.
         await run(`yarn copy`);
+
         // After `copy`: docs/2-reference and docs/3-packages are generated
         // from source JSDoc, so checking before it would validate a stale
         // copy and miss a doc-breaking comment change.
@@ -150,16 +160,26 @@ export default (alepha: Alepha) => {
         // not exist on the machine this is usually run from.
         await run(`yarn w bay test:linux`);
 
-        await run(`yarn test`);
-        await run(`yarn test:bun`);
         await run(`yarn check:i18n`);
         await run(`yarn check:migrations`);
+
+        // `test` genuinely does not need `build`, and pairing them still lost:
+        // together they took 129.4s against 142.3s serial, because `test` alone
+        // stretched from 47.4s to 115.6s under the contention. Thirteen seconds
+        // is not worth a test run that takes two and a half times as long to
+        // tell you it failed.
+        await run(`yarn test`);
+        await run(`yarn test:bun`);
         await run(`yarn build`);
 
         // HACK: remove vite cache to prevent stale cache issues in e2e tests
         await run.rm([`apps/*/node_modules/.vite`]);
-        await run(`yarn e2e`);
-        await run(`yarn e2e-cli`);
+
+        // Both need `build` and neither needs the other. They do not collide:
+        // `e2e` serves the playground on its own port (see its
+        // playwright.config.ts) and `e2e-cli` exercises a packed tarball with
+        // no server at all.
+        await run([`yarn e2e`, `yarn e2e-cli`]);
 
         await run(`cd apps/docs && yarn alepha gen:llms`);
         await run(`yarn clean`);
