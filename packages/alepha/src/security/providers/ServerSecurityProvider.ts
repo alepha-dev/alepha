@@ -19,20 +19,23 @@ export class ServerSecurityProvider {
     /**
      * Before the body is read, not after.
      *
-     * It used to run `priority: "last"`, which put it behind the multipart
-     * hook — so a request was fully buffered before anyone knew who sent it.
-     * That was harmless while every route shared one small ceiling; it stopped
-     * being harmless once a route can be granted a large one, because the
-     * grant was then reachable by an anonymous caller.
+     * Safe by construction: resolution takes only `url` and `headers` (see
+     * `SecurityProvider.resolveUserFromServerRequest`), so it cannot want a
+     * body that has not been parsed yet.
      *
-     * Ordering this way is safe by construction: user resolution takes only
-     * `url` and `headers` (see `SecurityProvider.resolveUserFromServerRequest`),
-     * so it cannot want a body that has not been parsed yet.
+     * What it buys is that everything reading a request downstream can see who
+     * sent it — in particular a `MultipartCapProvider` resolver, which decides
+     * how many bytes this request may carry. Running afterwards, as this hook
+     * did, left `request.user` undefined at exactly that moment, so the only
+     * handle a budget could key on was the URL or a query parameter — both
+     * chosen by the caller.
      *
-     * This resolves *who* is calling. It does not authorise — `$secure` still
-     * runs later, in the handler chain.
+     * ⚠️ This resolves *who* is calling. It does **not** authorise: `$secure`
+     * runs later, in the handler chain, so a `z.file()` field is still
+     * buffered before anyone can be refused. Ordering identity earlier does not
+     * change that, and a comment here once claimed it did.
      */
-    priority: "last",
+    priority: "first",
     handler: async ({ request }) => {
       // Resolve the user from any supported credential channel — not just the
       // `Authorization` header, but also resolver-specific ones such as an
