@@ -123,10 +123,7 @@ jobs:
           cp packages/alepha/assets/agents-template.md packages/alepha/AGENTS.md
 
       # ──────────────────────────────────────────────────────────────────
-      # Bay artifacts.
-      #
-      # These have to come after `yarn build`: bay-ui resolves `alepha` through
-      # the workspace's generated `exports`, which point at `packages/*/dist`.
+      # Bay binaries.
       #
       # Filenames carry NO version. GitHub serves every asset at two URLs, and
       # the mutable one only works when the name is constant:
@@ -160,37 +157,22 @@ jobs:
               ./cmd/bay
           done
 
-      - name: Pack bay-ui
-        working-directory: apps/bay-ui
-        run: |
-          # `--target=bare` is the default and is what matters: a Cloudflare
-          # (workerd) bundle has no node-runnable entry point, and Bay refuses
-          # it at deploy time.
-          yarn alepha build
-          yarn alepha pack --output "$RUNNER_TEMP/artifacts"
-          # `pack` names it `<project>-<tag>.tar.gz` with tag "latest". Rename to
-          # a constant, version-free name: "latest" is actively misleading on an
-          # asset downloaded from an immutable per-version URL.
-          mv "$RUNNER_TEMP/artifacts/bay-ui-latest.tar.gz" \
-             "$RUNNER_TEMP/artifacts/bay-ui.tar.gz"
-
-      - name: Checksum Bay artifacts
+      - name: Checksum Bay binaries
         working-directory: ${{ runner.temp }}/artifacts
         run: |
           # The installer downloads a binary and runs it as root — the highest
           # privilege operation in the whole system. Without this, a truncated
           # download and a tampered one are indistinguishable from a good one.
-          sha256sum bay-linux-amd64 bay-linux-arm64 bay-ui.tar.gz > SHA256SUMS
+          sha256sum bay-linux-amd64 bay-linux-arm64 > SHA256SUMS
           cat SHA256SUMS
 
       # ──────────────────────────────────────────────────────────────────
       # Everything above is reversible: a failure leaves a dirty runner and
       # nothing else. From here on it is public.
       #
-      # Last, so that every artifact — the JS packages, both Go binaries, the
-      # bay-ui tarball — is known to build before any of it ships. A Go
-      # compile error after `npm publish` would otherwise strand a published
-      # version.
+      # Last, so that every artifact — the JS packages and both Go binaries —
+      # is known to build before any of it ships. A Go compile error after
+      # `npm publish` would otherwise strand a published version.
       # ──────────────────────────────────────────────────────────────────
       - name: Publish to NPM
         run: |
@@ -223,5 +205,4 @@ jobs:
           files: |
             ${{ runner.temp }}/artifacts/bay-linux-amd64
             ${{ runner.temp }}/artifacts/bay-linux-arm64
-            ${{ runner.temp }}/artifacts/bay-ui.tar.gz
             ${{ runner.temp }}/artifacts/SHA256SUMS

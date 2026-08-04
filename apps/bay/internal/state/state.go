@@ -57,8 +57,8 @@ type App struct {
 	// Granted by the operator, never by the artifact. A manifest travels inside
 	// the archive, so letting it decide would let an app declare itself
 	// administrator of its own host — harmless while one person deploys
-	// everything, and a privilege escalation the moment bay-ui accepts an upload
-	// from someone else.
+	// everything, and a privilege escalation the moment an app on the host
+	// accepts an upload from someone else.
 	//
 	// This is root-equivalent: an app that can reach the control API can deploy
 	// code, read every other app's secrets, and delete every backup.

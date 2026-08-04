@@ -6,9 +6,9 @@
 // same file deploys to Bay, to Alepha Rocket, or through `alepha platform up
 // --prebuilt`.
 //
-// This is the primitive that must exist in bay-go itself and never move up into
-// bay-ui: it is how bay-ui gets installed in the first place, and how it gets
-// repaired when a bad deploy breaks it.
+// This is the primitive that must exist in the Go binary itself and never move
+// up into anything Bay deploys: it is how those get installed in the first
+// place, and how they get repaired when a bad deploy breaks them.
 package deploy
 
 import (

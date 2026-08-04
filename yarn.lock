@@ -6249,28 +6249,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bay-admin@workspace:apps/bay-admin":
-  version: 0.0.0-use.local
-  resolution: "bay-admin@workspace:apps/bay-admin"
-  dependencies:
-    "@alepha/ui": "workspace:*"
-    "@tailwindcss/vite": "npm:^4.3.3"
-    "@types/react": "npm:^19.2.18"
-    "@types/react-dom": "npm:^19.2.4"
-    alepha: "workspace:*"
-    better-sqlite3: "npm:^13.0.2"
-    drizzle-kit: "npm:1.0.0-rc.4"
-    lucide-react: "npm:^1.28.0"
-    react: "npm:^19.2.8"
-    react-dom: "npm:^19.2.8"
-    tailwindcss: "npm:^4.3.3"
-    vite: "npm:^8.2.0"
-  dependenciesMeta:
-    better-sqlite3:
-      built: true
-  languageName: unknown
-  linkType: soft
-
 "bay@workspace:apps/bay":
   version: 0.0.0-use.local
   resolution: "bay@workspace:apps/bay"

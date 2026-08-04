@@ -89,7 +89,7 @@ est en `sslip.io`, le quota est **mutualisé entre tous ses utilisateurs**.
   (cgroups, `MemoryMax`, journald, `Restart=always` deviennent gratuits).
 - **Gestion des runtimes** — le PoC emprunte le `node` du `PATH`. Le vrai Bay
   embarque le sien et gère `bay runtime update`.
-- Rollback, backups, scale-to-zero, bay-ui : phases suivantes.
+- Rollback, backups, scale-to-zero : phases suivantes.
 
 ### TODO — les metrics applicatives (req/s, latence, event loop)
 
