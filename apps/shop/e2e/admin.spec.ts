@@ -22,7 +22,7 @@ test.describe("access", () => {
   }) => {
     await page.goto("/admin/pieces");
     // Redirected to sign-in rather than shown an empty table.
-    await expect(page).toHaveURL(/\/compte\/connexion|\/$/);
+    await expect(page).toHaveURL(/\/auth\/login|\/$/);
   });
 });
 

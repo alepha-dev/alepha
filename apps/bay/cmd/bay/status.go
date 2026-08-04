@@ -20,7 +20,11 @@ type statusLine struct {
 	Domains []string `json:"domains,omitempty"`
 	Release string   `json:"release,omitempty"`
 
-	Running     bool   `json:"running"`
+	Running bool `json:"running"`
+	// Static reports a site served from disk. Carried so a reader seeing no
+	// uptime, no memory and no restarts knows it is looking at a site with no
+	// process rather than at a supervisor that has lost track of one.
+	Static      bool   `json:"static,omitempty"`
 	Restarts    int    `json:"restarts"`
 	Uptime      string `json:"uptime,omitempty"`
 	MemoryBytes int64  `json:"memoryBytes,omitempty"`
@@ -57,6 +61,7 @@ func printStatusJSON(apps []listedApp, now time.Time, interval time.Duration) er
 			Domains:       a.Domains,
 			Release:       a.Release,
 			Running:       a.Running,
+			Static:        a.Static,
 			LastRequestAt: a.LastRequestAt,
 			IdleFor:       idleFor(a.LastRequestAt, now),
 			Crons:         a.Crons,
@@ -69,7 +74,11 @@ func printStatusJSON(apps []listedApp, now time.Time, interval time.Duration) er
 			line.MemoryBytes = u.MemoryBytes
 			line.Uptime = uptimeOf(u.StartedAt)
 		}
-		if !a.Running {
+		// A static site has no process, so `Running` is false for it forever.
+		// Calling that a problem would make this command exit non-zero on a
+		// healthy host every time it ran — and a status command that always
+		// fails is one nobody reads on the day something is actually wrong.
+		if !a.Running && !a.Static {
 			line.Problems = append(line.Problems, "not running")
 		}
 		if line.Restarts > 0 {

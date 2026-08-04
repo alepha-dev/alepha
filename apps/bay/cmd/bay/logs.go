@@ -67,10 +67,8 @@ func cmdLogs(args []string) error {
 	if err := json.Unmarshal([]byte(raw), &response); err != nil {
 		return fmt.Errorf("parse control api response: %w", err)
 	}
-	if !response.Supervised {
-		// Not an empty result: a different fact entirely, and one that usually
-		// means the operator is on the wrong host or typed the wrong env.
-		return fmt.Errorf("%s/%s is not supervised by this Bay — nothing to read", name, env)
+	if err := logsUnavailable(name, env, response); err != nil {
+		return err
 	}
 
 	kept, undated := filterLogs(response.Lines, since, grep)
@@ -84,6 +82,30 @@ func cmdLogs(args []string) error {
 	}
 	fmt.Print(renderLogs(kept, undated, since))
 	return nil
+}
+
+// logsUnavailable reports why there is nothing to read, or nil when there is.
+//
+// Three outcomes look identical in the payload — an empty `lines` array — and
+// each sends the operator somewhere different:
+//
+//   - supervised: readable, however quiet.
+//   - static: there is no process and never will be. Naming it stops the search
+//     before it starts.
+//   - neither: this Bay has never started that app, so the question is whether
+//     the host or the env is wrong.
+func logsUnavailable(name, env string, response logsResponse) error {
+	if response.Supervised {
+		return nil
+	}
+	if response.Static {
+		return fmt.Errorf(
+			"%s/%s is a static site — it is served from disk with no process, so there are no logs; requests to it appear in Bay's own log",
+			name, env)
+	}
+	// Not an empty result: a different fact entirely, and one that usually
+	// means the operator is on the wrong host or typed the wrong env.
+	return fmt.Errorf("%s/%s is not supervised by this Bay — nothing to read", name, env)
 }
 
 // filterLogs applies --since and --grep, and counts what --since could not

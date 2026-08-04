@@ -7,7 +7,8 @@ import { $permission } from "alepha/security";
  *
  * Customers register to keep an address book and see their past orders; buying
  * needs no account at all, which is why every checkout route is open and only
- * `/compte` and `/admin` are not.
+ * `/admin` is not. The sign-in screens themselves (`/auth/*`, mounted by
+ * `AuthRouter`) are public by definition.
  *
  * `contact@atelier-aurore.test` is seeded as the administrator through
  * `adminEmails`: the first registration with that address is promoted, and the

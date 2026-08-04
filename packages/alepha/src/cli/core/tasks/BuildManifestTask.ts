@@ -223,7 +223,20 @@ export class BuildManifestTask extends BuildTask {
       email = { binding: SEND_EMAIL_DEFAULT_BINDING };
     } catch {}
 
-    const runtime = ctx.options.runtime ?? "node";
+    /*
+      A static build has no entry point to spawn, and this field is what every
+      deploy consumer switches on to decide what to do with the artifact —
+      "nothing, serve the files" is a legitimate answer to that question.
+
+      Recorded in `runtime` rather than as a new field precisely because a
+      deployer that predates static hosting switches on THIS one: meeting an
+      unknown value it refuses the deploy and names it. A separate field would
+      be ignored — unknown fields are dropped on purpose so a newer build never
+      breaks an older deployer — leaving it to read `runtime: node` and spawn a
+      process against a directory with no entry point.
+    */
+    const isStatic = ctx.options.target === "static";
+    const processRuntime = ctx.options.runtime ?? "node";
 
     const manifest: BuildManifest = {
       version: 1,
@@ -231,8 +244,12 @@ export class BuildManifestTask extends BuildTask {
       defaultEnv,
       tenancy: ctx.platformOptions?.tenancy,
       environments,
-      runtime,
-      runtimeVersion: await this.resolveRuntimeVersion(root, runtime),
+      runtime: isStatic ? "static" : processRuntime,
+      // No interpreter is resolved for a static site, so a version here would
+      // be a claim about a process that does not exist.
+      runtimeVersion: isStatic
+        ? undefined
+        : await this.resolveRuntimeVersion(root, processRuntime),
       entry: distDir,
       resources: {
         hasDatabase,

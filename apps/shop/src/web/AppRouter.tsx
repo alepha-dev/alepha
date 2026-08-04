@@ -1,11 +1,9 @@
 import type { ProductController } from "@alepha/commerce";
 import type { CheckoutController } from "@alepha/commerce/checkout";
 import { $atom, $inject, Alepha, z } from "alepha";
-import type { RealmController } from "alepha/api/users";
 import { $page, Redirection } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 import { AdminLayout } from "./AdminLayout.tsx";
-import { AuthLayout } from "./AuthLayout.tsx";
 import { Layout } from "./Layout.tsx";
 
 /**
@@ -46,7 +44,6 @@ export class AppRouter {
   protected readonly alepha = $inject(Alepha);
   protected readonly produits = $client<ProductController>();
   protected readonly checkoutApi = $client<CheckoutController>();
-  protected readonly realmApi = $client<RealmController>();
 
   // ── Storefront ───────────────────────────────────────────────────────
 
@@ -162,45 +159,17 @@ export class AppRouter {
 
   // ── Sign in ──────────────────────────────────────────────────────────
   //
-  // Buying needs no account — every checkout route is open. These exist so a
-  // customer can keep an address book and see past orders, and so the back
-  // office has a door.
-
-  authLayout = $page({
-    path: "/compte",
-    component: AuthLayout,
-    children: (): any[] => [this.connexion, this.inscription, this.motDePasse],
-  });
-
-  connexion = $page({
-    path: "/connexion",
-    // Named so `ButtonUser` and the `$secure` redirect can find it.
-    name: "login",
-    head: { title: "Connexion · Atelier Aurore" },
-    loader: async () => ({
-      realmConfig: await this.realmApi.getRealmConfig(),
-    }),
-    lazy: () => import("./pages/auth/Connexion.tsx"),
-  });
-
-  inscription = $page({
-    path: "/inscription",
-    name: "register",
-    head: { title: "Créer un compte · Atelier Aurore" },
-    loader: async () => ({
-      realmConfig: await this.realmApi.getRealmConfig(),
-    }),
-    lazy: () => import("./pages/auth/Inscription.tsx"),
-  });
-
-  motDePasse = $page({
-    path: "/mot-de-passe",
-    head: { title: "Mot de passe oublié · Atelier Aurore" },
-    loader: async () => ({
-      realmConfig: await this.realmApi.getRealmConfig(),
-    }),
-    lazy: () => import("./pages/auth/MotDePasse.tsx"),
-  });
+  // Buying needs no account — every checkout route is open. The account screens
+  // exist so a customer can keep an address book and see past orders, and so the
+  // back office has a door.
+  //
+  // They are not declared here: `AuthRouter` from `@alepha/ui` mounts all four
+  // of them (`/auth/login`, `/auth/register`, `/auth/reset-password`,
+  // `/auth/verify-email`), and `ShopWeb` registers it as a service. The shop
+  // used to rebuild three of them by hand under `/compte/*`; that bought French
+  // URLs and the atelier's own auth shell at the price of keeping four
+  // cross-links correct by hand, and left `/auth/verify-email` missing
+  // altogether.
 
   // ── Back office ──────────────────────────────────────────────────────
 
@@ -230,7 +199,7 @@ export class AppRouter {
     loader: async ({ user }) => {
       if (!user?.roles?.includes("admin")) {
         throw new Redirection(
-          `/compte/connexion?redirect=${encodeURIComponent("/admin/pieces")}`,
+          `/auth/login?redirect=${encodeURIComponent("/admin/pieces")}`,
         );
       }
     },

@@ -112,3 +112,38 @@ func TestRenderLogs(t *testing.T) {
 		}
 	})
 }
+
+func TestLogsUnavailable(t *testing.T) {
+	t.Run("a supervised app is readable", func(t *testing.T) {
+		if err := logsUnavailable("lore", "production", logsResponse{Supervised: true}); err != nil {
+			t.Fatalf("want readable, got: %v", err)
+		}
+	})
+
+	t.Run("an unsupervised app sends the operator to check the host", func(t *testing.T) {
+		err := logsUnavailable("lore", "production", logsResponse{})
+		if err == nil {
+			t.Fatal("want an error")
+		}
+		if !strings.Contains(err.Error(), "not supervised") {
+			t.Fatalf("want the host question raised, got %q", err)
+		}
+	})
+
+	t.Run("a static site says so instead", func(t *testing.T) {
+		// The third case. Both of the above are empty results, and so is this —
+		// but "not supervised by this Bay" sends someone to check whether they
+		// are on the right machine, when the truth is that this site has no
+		// process and never will. They would go looking for hours.
+		err := logsUnavailable("docs", "production", logsResponse{Static: true})
+		if err == nil {
+			t.Fatal("want an error")
+		}
+		if strings.Contains(err.Error(), "not supervised") {
+			t.Fatalf("a static site is not a missing app, got %q", err)
+		}
+		if !strings.Contains(err.Error(), "static") {
+			t.Fatalf("want the reason named, got %q", err)
+		}
+	})
+}
