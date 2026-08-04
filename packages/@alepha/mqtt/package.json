@@ -1,5 +1,6 @@
 {
   "name": "@alepha/mqtt",
+  "private": true,
   "description": "MQTT client and topic provider for Alepha framework.",
   "keywords": [
     "alepha",
