@@ -872,19 +872,77 @@ describe("removePrivateFields", () => {
 // Tests: isBodyMultipart
 // -------------------------------------------------------------------------------------------------------------------------
 
-describe("isBodyMultipart", () => {
-  it("should return true when body contains file type", () => {
-    const swagger = alepha.inject(ServerSwaggerProvider);
-    const schema = z.object({ file: z.file(), name: z.text() });
+describe("multipart request bodies", () => {
+  class UploadApp {
+    buffered = $action({
+      method: "POST",
+      path: "/buffered",
+      schema: {
+        body: z.object({ file: z.file(), name: z.text() }),
+        response: z.text(),
+      },
+      handler: async () => "ok",
+    });
 
-    expect(swagger.isBodyMultipart(schema)).toBe(true);
+    // The framework's own upload endpoint takes its bytes in flight. Documented
+    // as JSON, every client generated from this spec sends the wrong
+    // content-type — and the endpoint that broke this way was `POST /api/files`.
+    streamed = $action({
+      method: "POST",
+      path: "/streamed",
+      schema: {
+        body: z.object({ file: z.stream() }),
+        response: z.text(),
+      },
+      handler: async () => "ok",
+    });
+
+    plain = $action({
+      method: "POST",
+      path: "/plain",
+      schema: {
+        body: z.object({ name: z.text() }),
+        response: z.text(),
+      },
+      handler: async () => "ok",
+    });
+  }
+
+  const uploads = () => doc(Alepha.create().with(UploadApp)) as any;
+
+  it("documents a z.file() body as multipart/form-data", () => {
+    const content = uploads().paths["/api/buffered"].post.requestBody.content;
+
+    expect(Object.keys(content)).toEqual(["multipart/form-data"]);
   });
 
-  it("should return false when body has no file type", () => {
-    const swagger = alepha.inject(ServerSwaggerProvider);
-    const schema = z.object({ name: z.text(), age: z.number() });
+  it("documents a z.stream() body as multipart/form-data", () => {
+    const content = uploads().paths["/api/streamed"].post.requestBody.content;
 
-    expect(swagger.isBodyMultipart(schema)).toBe(false);
+    expect(Object.keys(content)).toEqual(["multipart/form-data"]);
+  });
+
+  it("documents a body with no bytes as JSON", () => {
+    const content = uploads().paths["/api/plain"].post.requestBody.content;
+
+    expect(Object.keys(content)).toEqual(["application/json"]);
+  });
+
+  it("describes both kinds of byte field as a binary string", () => {
+    // `format: "stream"` is Alepha's word for how the bytes reach the handler.
+    // OpenAPI has no such format, and a reader — Swagger UI, a generator — that
+    // does not recognise it renders no file picker at all.
+    const streamed =
+      uploads().paths["/api/streamed"].post.requestBody.content[
+        "multipart/form-data"
+      ].schema.properties.file;
+    const buffered =
+      uploads().paths["/api/buffered"].post.requestBody.content[
+        "multipart/form-data"
+      ].schema.properties.file;
+
+    expect(buffered).toMatchObject({ type: "string", format: "binary" });
+    expect(streamed).toMatchObject({ type: "string", format: "binary" });
   });
 });
 

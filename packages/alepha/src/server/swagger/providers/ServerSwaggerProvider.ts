@@ -8,6 +8,7 @@ import {
   Alepha,
   type Infer,
   isTypeFile,
+  isTypeStream,
   type ZObject,
   type ZType,
   z,
@@ -16,6 +17,7 @@ import { $logger } from "alepha/logger";
 import {
   $action,
   type ActionPrimitive,
+  isMultipart,
   type RequestConfigSchema,
   ServerProvider,
   ServerRouterProvider,
@@ -152,6 +154,36 @@ export class ServerSwaggerProvider {
       return json;
     };
 
+    /**
+     * A form body, with its byte fields spelled the way OpenAPI spells them.
+     *
+     * `z.file()` and `z.stream()` are tagged `format: "binary"` / `"stream"` —
+     * Alepha's words for *how the bytes reach the handler*, which is a question
+     * OpenAPI does not ask and has no vocabulary for. Emitted raw, a reader
+     * that does not recognise the format renders no file picker at all.
+     *
+     * Not routed through {@link schema} on purpose: a titled body would be
+     * hoisted into `components/schemas` and shared, and these fields are
+     * rewritten per use.
+     */
+    const multipartSchema = (body: ZObject): any => {
+      const json = toJson(body);
+      const shape = z.schema.shape(body);
+      for (const key in shape) {
+        const field = z.schema.unwrap(shape[key]);
+        if (!isTypeFile(field) && !isTypeStream(field)) {
+          continue;
+        }
+        json.properties ??= {};
+        json.properties[key] = {
+          ...json.properties[key],
+          type: "string",
+          format: "binary",
+        };
+      }
+      return json;
+    };
+
     const schema = (source: ZType): any => {
       const json = toJson(source);
       // A titled schema is hoisted into `components/schemas` and referenced.
@@ -218,15 +250,20 @@ export class ServerSwaggerProvider {
         z.schema.isObject(route.options.schema.body) ||
         z.schema.isArray(route.options.schema.body)
       ) {
+        // `isMultipart`, not a second predicate of this module's own. The one
+        // that used to live here answered for `z.file()` alone, so a route
+        // taking its bytes in flight was documented as JSON — and it had
+        // already missed `.optional()` the same way. One reading of "is this
+        // multipart" for the client, the server and the spec.
         if (
           z.schema.isObject(route.options.schema.body) &&
-          this.isBodyMultipart(route.options.schema.body)
+          isMultipart({ schema: route.options.schema })
         ) {
           operation.requestBody = {
             required: true,
             content: {
               "multipart/form-data": {
-                schema: schema(route.options.schema.body),
+                schema: multipartSchema(route.options.schema.body),
               },
             },
           };
@@ -321,16 +358,6 @@ export class ServerSwaggerProvider {
     if (openApi.components) openApi.components.schemas = schemas;
 
     return JSON.parse(JSON.stringify(openApi));
-  }
-
-  public isBodyMultipart(schema: ZObject): boolean {
-    const shape = z.schema.shape(schema);
-    for (const key in shape) {
-      if (isTypeFile(shape[key])) {
-        return true;
-      }
-    }
-    return false;
   }
 
   public replacePathParams(url: string): string {
