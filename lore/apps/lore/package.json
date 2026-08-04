@@ -28,7 +28,7 @@
     "@alepha/ui": "workspace:*",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/utilities": "^3.2.2",
-    "@mdxeditor/editor": "^4.1.1",
+    "@mdxeditor/editor": "^4.2.0",
     "alepha": "workspace:*",
     "lucide-react": "^1.28.0",
     "react": "^19.2.8",
