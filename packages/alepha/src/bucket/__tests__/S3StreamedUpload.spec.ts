@@ -1,6 +1,7 @@
 import { Alepha, type FileLike } from "alepha";
 import { beforeAll, describe, it } from "vitest";
 import { S3FileStorageProvider } from "../providers/S3FileStorageProvider.ts";
+import { testKeepsTheStatusOfAStreamRefusal } from "./shared.ts";
 
 /**
  * A file whose size is not known until it has been read.
@@ -128,5 +129,11 @@ describe("S3 streamed upload", () => {
     // Six times the payload. A buffering implementation would show ~40 MB of
     // difference; a multipart one stays near the 5 MiB part it is filling.
     expect(large).toBeLessThan(small + 24 * 1024 * 1024);
+  });
+
+  it("keeps the status of a refusal raised mid-stream", async ({ expect }) => {
+    const provider = await setup();
+
+    await testKeepsTheStatusOfAStreamRefusal(provider, bucket);
   });
 });

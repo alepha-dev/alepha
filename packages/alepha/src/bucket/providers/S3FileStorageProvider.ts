@@ -183,6 +183,15 @@ export class S3FileStorageProvider implements FileStorageProvider {
       return fileId;
     } catch (error) {
       this.log.error(`Failed to upload file: ${error}`);
+      // An `AlephaError` came from this framework and already says what it
+      // means — `InvalidFileError` carries a status, and re-dressing it as a
+      // generic "Upload failed" dropped that status on the floor, so a refusal
+      // the caller could have acted on arrived as an anonymous 500. It reaches
+      // here at all because a streamed upload's size cap can only fire
+      // mid-transfer, inside the transport call. R2 relayed it; S3 did not.
+      if (error instanceof AlephaError) {
+        throw error;
+      }
       if (error instanceof Error) {
         throw new AlephaError(`Upload failed: ${error.message}`, {
           cause: error,

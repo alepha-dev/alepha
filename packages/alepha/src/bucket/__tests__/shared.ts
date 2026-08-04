@@ -1,7 +1,11 @@
-import { Alepha } from "alepha";
+import { Alepha, type FileLike } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import { expect } from "vitest";
-import { FileNotFoundError, type FileStorageProvider } from "../index.ts";
+import {
+  FileNotFoundError,
+  type FileStorageProvider,
+  InvalidFileError,
+} from "../index.ts";
 
 // Container names are just key prefixes now — no primitive declares them and
 // no provider pre-creates them, so these are plain strings.
@@ -222,4 +226,41 @@ export const testCustomFileId = async (provider: FileStorageProvider) => {
 
   const fileExists = await provider.exists(BUCKET_NAME, customFileId);
   expect(fileExists).toBe(true);
+};
+
+/**
+ * A refusal raised while the bytes are in flight keeps its HTTP status.
+ *
+ * The size cap on a streamed upload can only fire mid-transfer — nobody knows
+ * the length up front — so it surfaces out of `upload()` rather than before it.
+ * A provider that wraps whatever its transport threw turns that refusal into an
+ * anonymous 500, and the caller learns nothing. Shared because the two
+ * providers answered differently: R2 relayed the error, S3 swallowed it.
+ */
+export const testKeepsTheStatusOfAStreamRefusal = async (
+  provider: FileStorageProvider,
+  bucket: string = BUCKET_NAME,
+) => {
+  const refusal = new InvalidFileError("File exceeds the maximum size of 1 MB");
+  const file: FileLike = {
+    name: "big.bin",
+    type: "application/octet-stream",
+    // 0 is what a body reports until it has been read — the streamed path.
+    size: 0,
+    lastModified: 0,
+    stream: () =>
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.error(refusal);
+        },
+      }) as never,
+    arrayBuffer: async () => {
+      throw new Error("a streamed upload is not buffered");
+    },
+    text: async () => {
+      throw new Error("not readable as text");
+    },
+  };
+
+  await expect(provider.upload(bucket, file)).rejects.toThrow(InvalidFileError);
 };

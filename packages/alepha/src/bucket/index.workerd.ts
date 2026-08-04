@@ -7,6 +7,7 @@ import { S3FileStorageProvider } from "./providers/S3FileStorageProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./errors/FileNotFoundError.ts";
+export * from "./errors/FileTooLargeError.ts";
 export * from "./errors/InvalidFileError.ts";
 export * from "./providers/FileStorageProvider.ts";
 export * from "./providers/MemoryFileStorageProvider.ts";

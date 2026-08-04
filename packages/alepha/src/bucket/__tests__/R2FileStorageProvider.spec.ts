@@ -11,6 +11,7 @@ import {
   testEmptyFiles,
   testFileExistence,
   testFileStream,
+  testKeepsTheStatusOfAStreamRefusal,
   testListFiles,
   testNonExistentFile,
   testNonExistentFileError,
@@ -205,6 +206,10 @@ describe("R2FileStorageProvider", () => {
 
     test("handles empty files", async () => {
       await testEmptyFiles(provider);
+    });
+
+    test("keeps the status of a refusal raised mid-stream", async () => {
+      await testKeepsTheStatusOfAStreamRefusal(provider);
     });
 
     test("lists files", async () => {
