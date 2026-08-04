@@ -29,7 +29,8 @@ import { AuthVerifyEmail } from "./auth-verify-email.tsx";
  * Mantine without being ported. What survived were the components — the bricks
  * without the thing that assembled them — so every application rebuilt the same
  * four pages by hand: `apps/lore` in 414 lines across two files, `apps/shop` in
- * three more.
+ * three more. `apps/shop` has since been moved onto this router and deleted its
+ * three; `apps/lore` still has its own.
  *
  * Worse, the components kept the old router's paths as their fallbacks
  * (`props.loginPath ?? "/auth/login"`). Those defaults described a topology
@@ -40,10 +41,14 @@ import { AuthVerifyEmail } from "./auth-verify-email.tsx";
  *
  * ### Optional, and replaceable
  *
- * Nothing imports it implicitly. An application that wants different URLs — a
- * French shop with `/compte/connexion`, say — writes its own router and passes the
- * components' path props itself; that stays entirely supported, and this class is
- * a readable reference for what wiring it by hand involves.
+ * Nothing imports it implicitly. An application that wants different URLs — say
+ * `/compte/connexion` for a French storefront — writes its own router and passes
+ * the components' path props itself; that stays entirely supported, and this
+ * class is a readable reference for what wiring it by hand involves. It is a real
+ * trade rather than a free one: `apps/shop` made exactly that choice, then gave
+ * it up for this router, because the French URLs also cost it a bespoke auth
+ * layout, four hand-kept cross-links and the `verify-email` page it never got
+ * round to writing.
  *
  * The paths here are fixed on purpose. Making them configurable would mean
  * threading a configuration object through four pages to save an application that

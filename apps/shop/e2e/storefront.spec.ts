@@ -220,7 +220,7 @@ test.describe("header account button", () => {
    * shop rendered a bare `<ButtonUser />` — so the button sat there greyed out on
    * every page, with `pointer-events: none`. Thirty-five specs passed over it
    * because not one of them looked at the header's account control: they went to
-   * `/compte/connexion` by URL, which works whether or not anything links to it.
+   * the sign-in page by URL, which works whether or not anything links to it.
    *
    * Asserting `toBeEnabled` rather than the click alone is deliberate: a disabled
    * button is what a visitor actually sees, and it is what regressed.
@@ -232,6 +232,6 @@ test.describe("header account button", () => {
     await expect(signIn).toBeEnabled();
 
     await signIn.click();
-    await expect(page).toHaveURL(/\/compte\/connexion/);
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 });

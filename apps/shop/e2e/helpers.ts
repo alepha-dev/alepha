@@ -118,7 +118,7 @@ export const signInAsAdmin = async (page: Page) => {
    * that is not there — which is exactly how this helper failed the first time.
    */
   await submitCredentials(page, {
-    path: "/compte/connexion",
+    path: "/auth/login",
     account: "identifier",
     submit: /Sign in|Se connecter/,
   });
@@ -126,7 +126,7 @@ export const signInAsAdmin = async (page: Page) => {
     return;
   }
   await submitCredentials(page, {
-    path: "/compte/inscription",
+    path: "/auth/register",
     account: "email",
     submit: /Create account|Créer mon compte/,
   });
@@ -159,7 +159,7 @@ const submitCredentials = async (
   // settled by `reachesAdmin`, which asks the application instead of guessing
   // which page auth chose to land on.
   await page
-    .waitForURL((url) => !url.pathname.startsWith("/compte/"), {
+    .waitForURL((url) => !url.pathname.startsWith("/auth/"), {
       timeout: 10_000,
     })
     .catch(() => undefined);

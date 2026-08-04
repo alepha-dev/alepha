@@ -147,12 +147,27 @@ describe("stock reservation", () => {
       "minutes",
     );
 
-    expect(await ctx.stock.releaseExpiredReservations()).toBe(1);
+    /*
+     * Sweep, but do not assert how many *this* call released.
+     *
+     * `AlephaCommerceCheckout` registers `StockReservationSweeper`, whose `$job`
+     * runs the very same method every five minutes. `CronProvider` schedules
+     * with `dateTime.wait()`, so the travel above — 31 minutes, six cron
+     * boundaries — fires that job rather than waiting out real time. Whether its
+     * handler lands before or after the line below is a race decided by machine
+     * load: the count was 1 when the spec ran alone and 0 under a loaded
+     * `yarn v` or CI, a flake that says nothing about the sweep.
+     *
+     * What matters is the end state, and that is the same whichever caller got
+     * there first.
+     */
+    await ctx.stock.releaseExpiredReservations();
 
     const holds = await ctx.stock.reservationsOf(session.orderId!);
     expect(holds.map((h) => h.status)).toEqual(["released"]);
 
-    // Running it again finds nothing — the sweep is idempotent.
+    // Running it again finds nothing — the sweep is idempotent. Deterministic
+    // whoever swept first, because by now there is nothing left to release.
     expect(await ctx.stock.releaseExpiredReservations()).toBe(0);
   });
 

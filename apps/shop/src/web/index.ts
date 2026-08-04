@@ -1,3 +1,4 @@
+import { AuthRouter } from "@alepha/ui/components/auth/auth-router";
 import { $module } from "alepha";
 import { AlephaReactAuth } from "alepha/react/auth";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
@@ -27,7 +28,19 @@ export const ShopWeb = $module({
   name: "shop.web",
   imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi],
   atoms: [panierAtom],
-  services: [AppRouter, ShopI18n],
+  /*
+   * `AuthRouter` is the whole sign-in surface: it mounts `/auth/login`,
+   * `/auth/register`, `/auth/reset-password` and `/auth/verify-email`, loads the
+   * realm configuration for each, and points their cross-links at each other.
+   *
+   * Registering it replaced three hand-written pages under `/compte/*`. Those
+   * gave the shop French URLs and its own auth shell, but the price was keeping
+   * every internal link right by hand — the components fall back to the
+   * framework's `/auth/*` paths, so a missed prop is a 404 that typecheck, unit
+   * tests and a URL-driven e2e suite all render invisible. The shop had already
+   * been bitten by it once.
+   */
+  services: [AppRouter, AuthRouter, ShopI18n],
   register: (alepha) => {
     // French is the atelier's own language, so it is the fallback rather than
     // the framework's default of English. `autoDetect` stays on: a first-time

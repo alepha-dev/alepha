@@ -1,7 +1,5 @@
-import type { RealmController } from "alepha/api/users";
 import { $page, Redirection } from "alepha/react/router";
 import { $secure } from "alepha/security";
-import { $client } from "alepha/server/links";
 import {
   Bell,
   Files,
@@ -13,17 +11,14 @@ import {
   Users,
 } from "lucide-react";
 import { AdminLayout } from "./AdminLayout.tsx";
-import { AuthLayout } from "./AuthLayout.tsx";
 import { Layout } from "./Layout.tsx";
 
 /**
  * AppRouter — every leaf page is loaded via `lazy: () => import(…)` so each
- * route is its own code-split chunk. The 3 layouts (Layout, AdminLayout,
- * AuthLayout) stay eager because they're the long-lived shells.
+ * route is its own code-split chunk. Both layouts (Layout, AdminLayout) stay
+ * eager because they're the long-lived shells.
  */
 export class AppRouter {
-  realmApi = $client<RealmController>();
-
   // ── Public shell: /, demo/*, playgrounds/* ───────────────────────────
   layout = $page({
     component: Layout,
@@ -54,51 +49,14 @@ export class AppRouter {
   });
 
   // ── /auth/* ──────────────────────────────────────────────────────────
-  authLayout = $page({
-    path: "/auth",
-    component: AuthLayout,
-    children: (): any[] => [
-      this.authLogin,
-      this.authRegister,
-      this.authReset,
-      this.authVerify,
-    ],
-  });
-
-  authLogin = $page({
-    path: "/login",
-    name: "login",
-    head: { title: "Sign in" },
-    lazy: () => import("./pages/auth/Login.tsx"),
-    loader: async () => ({
-      realmConfig: await this.realmApi.getRealmConfig(),
-    }),
-  });
-
-  authRegister = $page({
-    path: "/register",
-    name: "register",
-    head: { title: "Sign up" },
-    lazy: () => import("./pages/auth/Register.tsx"),
-    loader: async () => ({
-      realmConfig: await this.realmApi.getRealmConfig(),
-    }),
-  });
-
-  authReset = $page({
-    path: "/reset-password",
-    head: { title: "Reset password" },
-    lazy: () => import("./pages/auth/ResetPassword.tsx"),
-    loader: async () => ({
-      realmConfig: await this.realmApi.getRealmConfig(),
-    }),
-  });
-
-  authVerify = $page({
-    path: "/verify-email",
-    head: { title: "Verify email" },
-    lazy: () => import("./pages/auth/VerifyEmail.tsx"),
-  });
+  //
+  // Not declared here: `AuthRouter` from `@alepha/ui` mounts all four screens
+  // at exactly these paths, and `PlaygroundWeb` registers it as a service.
+  //
+  // The four pages this replaced were pass-through wrappers — each rendered one
+  // `@alepha/ui` component with the realm config and nothing else, and passed no
+  // path props at all, so every cross-link relied on the components' `/auth/*`
+  // fallbacks. Those fallbacks are precisely what this router makes explicit.
 
   // ── /admin/* — gated by `admin:ui` ───────────────────────────────────
   adminLayout = $page({
