@@ -1,5 +1,6 @@
 #! /usr/bin/env node
 import { access, readdir, readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import * as os from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { $inject, AlephaError, run, z } from "alepha";
@@ -184,6 +185,13 @@ class AlephaPackageBuilderCli {
         return;
       }
 
+      // Resolved from TypeScript's own `bin` field rather than a guessed path:
+      // the binary is hoisted to the workspace root, so `<pkg>/node_modules/.bin`
+      // does not exist here.
+      const tscRequire = createRequire(import.meta.url);
+      const tscPkg = tscRequire.resolve("typescript/package.json");
+      const tscBin = this.fs.join(dirname(tscPkg), "bin/tsc");
+
       const tmpDir = this.fs.join(root, "node_modules/.alepha");
       await this.fs.mkdir(tmpDir, { recursive: true }).catch(() => {});
 
@@ -235,19 +243,18 @@ class AlephaPackageBuilderCli {
           platform: "node", // TODO: node must be enabled only if index.node.ts exists
           deps: {
             neverBundle: external,
-            // tsdown externalizes the .d.ts bundle separately — without this,
-            // bundling pulls in zod's CommonJS `v4/locales/*.d.cts` which
-            // rolldown-plugin-dts cannot bundle.
-            dts: { neverBundle: external },
           },
-          dts: {
-            sourcemap: true,
-          },
+          // Declarations are emitted once by `tsc` after this loop, not per
+          // module by rolldown-plugin-dts. Measured on this package: the dts
+          // pass was ~105s of a ~115s build, because 76 isolated builds each
+          // re-resolve the same shared type graph — `alepha/server`,
+          // `alepha/orm` and the rest all pull `alepha/core`. One program that
+          // sees it once does the same work in ~3s.
+          dts: false,
         });
 
         const deps = {
           neverBundle: external,
-          dts: { neverBundle: external },
         };
 
         if (item.workerd) {
@@ -343,6 +350,29 @@ class AlephaPackageBuilderCli {
         workers.push(worker);
       }
       await Promise.all(workers);
+
+      // Declarations, once, for every module at the same time.
+      //
+      // `--rootDir src` is what lands them at `dist/<module>/index.d.ts`, which
+      // is exactly where `publishConfig.exports` already points — so this
+      // changes how types are produced, not where consumers find them. What it
+      // does change is their shape: one `.d.ts` per source file rather than 76
+      // bundled ones. TypeScript resolves the `.ts` specifiers they carry to
+      // the adjacent `.d.ts`, which is why the extensions can stay as written.
+      //
+      // `--noEmit false` is not optional: the root tsconfig sets `noEmit`, and
+      // without this the command exits 0 having written nothing at all.
+      await run("declarations", async () => {
+        await run(
+          [
+            `node --max-old-space-size=4096 ${tscBin}`,
+            `-p tsconfig.json`,
+            `--noEmit false`,
+            `--emitDeclarationOnly --declaration --declarationMap`,
+            `--rootDir ${this.src} --outDir ${this.dist}`,
+          ].join(" "),
+        );
+      });
     },
   });
 }
