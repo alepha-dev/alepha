@@ -32,7 +32,6 @@ const DATE_NOW_EXEMPT = [
   "system/providers/WorkerdFileSystemProvider.ts",
   "system/providers/MemoryFileSystemProvider.ts",
   "server/core/services/HttpClient.ts",
-  "server/core/providers/ServerMultipartProvider.ts",
   // The provider itself has to read the wall clock somewhere.
   "datetime/providers/DateTimeProvider.ts",
   // `now: () => Date.now()` is already an injectable seam: the default is

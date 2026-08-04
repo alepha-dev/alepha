@@ -124,11 +124,16 @@ limit.
 
 Defaults, applied to every route:
 
-| Limit | Default |
-|---|---|
-| One file | 5 MB |
-| Whole request | 10 MB |
-| Parts per request | 10 |
+| Limit | Default | Counts |
+|---|---|---|
+| One file | 5 MB | that part's content |
+| Whole request | 10 MB | every part's content, **plus** the preamble and every part's headers |
+| Parts per request | 10 | every part — text fields as well as files |
+
+The last two columns are the ones that surprise. The request budget bounds
+*reading*, not delivering: a sender that never emits a boundary costs exactly as
+much as one that sends content, so the bytes walked past are billed too. And a
+form with three text fields and eight files is eleven parts, not eight.
 
 A route raises its own ceiling by declaring it, in **bytes**:
 
@@ -148,6 +153,15 @@ uploads = $storage({ maxSize: 100 });
 The two units differ on purpose, and the unit is in each name rather than only
 in the docs. [Multipart](/docs/guides-server-multipart) explains how the three
 levels resolve and how to add your own.
+
+A bucket that declares no `maxSize` gets **10 MB**, the documented `$storage`
+default — the transport honours it rather than falling back to the 5 MB
+application-wide figure.
+
+A file refused for its size answers **413**, whichever layer notices: the
+transport before the bytes land, or the bucket while they stream past. A file
+refused for its MIME type answers **400** — it would not be accepted at any
+size.
 
 ## Mixed Fields
 

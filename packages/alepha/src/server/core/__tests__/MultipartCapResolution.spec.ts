@@ -305,3 +305,32 @@ describe("hook ordering constraints", () => {
     await alepha.stop();
   });
 });
+
+describe("MultipartCapProvider", () => {
+  it("keeps asking when a resolver answers nothing in particular", async ({
+    expect,
+  }) => {
+    // `{}` is an answer with no content, and it used to end the search because
+    // an empty object is truthy. A resolver that recognises the route but has
+    // no number to offer for it would silently veto every resolver behind it.
+    const caps = new MultipartCapProvider();
+    const request = {} as ServerRequest;
+    const route = {} as ServerRoute;
+
+    caps.use(() => ({ maxFileBytes: 42 }));
+    caps.use(() => ({}));
+
+    expect(caps.resolve(request, route)).toEqual({ maxFileBytes: 42 });
+  });
+
+  it("stops at the last resolver with something to say", async ({ expect }) => {
+    const caps = new MultipartCapProvider();
+
+    caps.use(() => ({ maxFileBytes: 42 }));
+    caps.use(() => ({ maxFileBytes: 99 }));
+
+    expect(caps.resolve({} as ServerRequest, {} as ServerRoute)).toEqual({
+      maxFileBytes: 99,
+    });
+  });
+});
