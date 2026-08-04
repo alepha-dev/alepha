@@ -51,12 +51,24 @@ export interface BuildManifest {
     }
   >;
   /**
-   * JavaScript runtime the artifact was built for (`node` | `bun` |
-   * `workerd`).
+   * What a deployer must do to run this artifact (`node` | `bun` | `workerd` |
+   * `static`).
    *
-   * A self-hosted deployer has to pick an interpreter before it can start the
-   * process, and the artifact carries no `package.json` to consult — so the
-   * choice has to be recorded here at build time.
+   * Three of the four name a JavaScript runtime: a self-hosted deployer has to
+   * pick an interpreter before it can start the process, and the artifact
+   * carries no `package.json` to consult, so the choice is recorded here at
+   * build time.
+   *
+   * `static` is the fourth answer — "nothing, serve the files". A
+   * `--target=static` build has no entry point to spawn at all.
+   *
+   * It lives in this field rather than in a `kind` of its own **because of what
+   * an older deployer does with it**. Every deployer already switches on
+   * `runtime`, so an unknown value is refused by name at deploy time. A new
+   * field would instead be *ignored* — consumers drop fields they do not know
+   * so that a newer build never breaks an older deployer — leaving one to read
+   * `runtime: node`, spawn a process against a directory with no entry point,
+   * and report only "never became ready".
    *
    * Optional: artifacts built before this field existed don't carry it, and a
    * consumer should treat an absent value as `node`.
@@ -65,7 +77,7 @@ export interface BuildManifest {
    * workspace can declare its runtime rather than inheriting whatever
    * `--runtime` the build happened to use.
    */
-  runtime?: "node" | "bun" | "workerd";
+  runtime?: "node" | "bun" | "workerd" | "static";
   /**
    * Major version of the runtime, as a bare major (`"26"`), or absent when
    * unknown.

@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import { $inject, AlephaError } from "alepha";
-import { PackageManagerUtils } from "alepha/cli";
+import { $inject, $store, AlephaError } from "alepha";
+import { buildOptions, PackageManagerUtils } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -59,6 +59,9 @@ export class BayAdapter extends PlatformAdapter {
   protected readonly credentials = $inject(BayCredentialProvider);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly dateTime = $inject(DateTimeProvider);
+  // The workspace's resolved build configuration, read for one question only:
+  // whether this app is a static site. See `build`.
+  protected readonly buildOptions = $store(buildOptions);
 
   /**
    * The Bay whose control panel this deploys through.
@@ -386,10 +389,24 @@ export class BayAdapter extends PlatformAdapter {
       // equivalent, because everything Bay needs is already in the manifest.
       return;
     }
+    /*
+      `bare` is forced rather than inherited, and that is deliberate: a
+      `cloudflare` target resolves the bundle against workerd's export
+      conditions and leaves no entry point node can run, so a workspace
+      configured for Cloudflare would otherwise deploy to Bay, fail to boot, and
+      report only "never became ready".
+
+      `static` is the one target that must survive, because it is not a
+      different way of building a server — it is the absence of one. Forcing
+      `bare` over it built a server bundle for a site that has no process,
+      shipped it, and left Bay to spawn it.
+    */
+    const target = this.buildOptions.target === "static" ? "static" : "bare";
+
     await run({
       name: "build (bay)",
       handler: async () => {
-        await this.shell.run(await this.cli(ctx, "build --target=bare"), {
+        await this.shell.run(await this.cli(ctx, `build --target=${target}`), {
           root: ctx.root,
         });
       },

@@ -100,10 +100,21 @@ export class BuildStaticTask extends BuildTask {
     );
   }
 
+  /**
+   * Strip the server side of the build, leaving what a static host serves.
+   *
+   * `manifest.json` is kept alongside the client directory, and that is not a
+   * detail: this task runs AFTER `BuildManifestTask`, so removing everything
+   * but `public/` deleted the artifact contract itself. A static build then
+   * packed into an archive that every deploy consumer rejects with "read
+   * manifest: no such file" — a failure that names the missing file but not the
+   * task that removed it.
+   */
   protected async cleanDist(distDir: string, clientDir: string): Promise<void> {
+    const keep = new Set([clientDir, "manifest.json"]);
     const entries = await this.fs.ls(distDir);
     for (const entry of entries) {
-      if (entry !== clientDir) {
+      if (!keep.has(entry)) {
         await this.fs.rm(this.fs.join(distDir, entry), { recursive: true });
       }
     }
