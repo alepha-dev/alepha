@@ -88,7 +88,62 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p.serveStatic(w, r, path)
 		return
 	}
+	// A static site has no process to forward to: the fallback files the build
+	// wrote ARE the rest of its routing table.
+	if app.Static {
+		p.seen.touch(app.Key(), time.Now())
+		p.serveFallback(w, r, app)
+		return
+	}
 	p.forward(w, r, app)
+}
+
+// serveFallback answers a request for a static site that matched no file.
+//
+// Two files, both emitted by `alepha build --target=static`, in this order:
+//
+//   - 200.html — the SPA shell, served with status 200. A client-routed app
+//     resolves the path itself, and answering 404 would have search engines drop
+//     the page and `fetch` treat it as an error.
+//   - 404.html — a genuinely missing page, served with status 404. The status
+//     matters as much as the body: a soft 404 is indexed.
+func (p *Proxy) serveFallback(w http.ResponseWriter, r *http.Request, app state.App) {
+	// Only an extensionless path can be a client route. A missing `.js` chunk
+	// handed the SPA shell becomes a syntax error in the console, which is a
+	// much longer walk back to "that file was not deployed".
+	if filepath.Ext(cleanPath(r.URL.Path)) == "" {
+		if shell, ok := p.findStatic(app, "/200.html"); ok {
+			p.serveStatic(w, r, shell)
+			return
+		}
+	}
+	if notFound, ok := p.findStatic(app, "/404.html"); ok {
+		p.serveStatusPage(w, notFound, http.StatusNotFound)
+		return
+	}
+	http.NotFound(w, r)
+}
+
+// serveStatusPage writes a file under a status other than 200.
+//
+// Not http.ServeFile, which always answers 200 — the whole point of the 404
+// page is the status code. Range requests and precompressed sidecars are given
+// up deliberately: this path serves one small document on a request that has
+// already missed everything else.
+func (p *Proxy) serveStatusPage(w http.ResponseWriter, path string, status int) {
+	body, err := os.ReadFile(path)
+	if err != nil {
+		// It was stat'd a moment ago, so this is a race with a prune or a disk
+		// error. Either way the request is over.
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.WriteHeader(status)
+	if _, err := w.Write(body); err != nil {
+		p.log.Debug("writing status page failed", "path", path, "err", err)
+	}
 }
 
 // findStatic looks for a file across ALL retained releases, not just current.
@@ -98,9 +153,24 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // gets a white screen. Hashed names make collisions impossible, so searching
 // every retained release is safe and removes the whole failure class.
 func (p *Proxy) findStatic(app state.App, urlPath string) (string, bool) {
-	clean := filepath.Clean("/" + strings.TrimPrefix(urlPath, "/"))
+	clean := cleanPath(urlPath)
 	if clean == "/" {
 		clean = "/index.html"
+	}
+
+	names := []string{clean}
+	// A static site has no process to render the routes its build wrote to disk.
+	// Alepha's prerender emits them FLAT — `${dist}${pathname}.html`, so
+	// `/changelog` is `changelog.html` — and an exact-path stat finds nothing at
+	// all. Without this probe every page but the root would 404 on a site whose
+	// pages are all sitting right there. The directory-index probe after it
+	// costs one more stat on a path that has already missed twice, and covers
+	// generators that nest instead of flattening.
+	//
+	// Gated on Static: a process app answers these routes itself, so for it the
+	// extra stats would be pure cost on the hot path.
+	if app.Static && filepath.Ext(clean) == "" {
+		names = append(names, clean+".html", filepath.Join(clean, "index.html"))
 	}
 
 	instance := filepath.Join(p.root, "apps", app.Name, app.Env)
@@ -109,17 +179,27 @@ func (p *Proxy) findStatic(app state.App, urlPath string) (string, bool) {
 		// there directly rather than hoisted into the archive root, which would
 		// mean moving hundreds of files at packaging time for no gain.
 		base := filepath.Join(instance, "releases", release, "dist", "public")
-		candidate := filepath.Join(base, clean)
-		// Defence in depth: Clean above already strips ../, but a symlinked
-		// public/ could still point outside.
-		if !strings.HasPrefix(candidate, base+string(os.PathSeparator)) && candidate != base {
-			continue
-		}
-		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
-			return candidate, true
+		for _, name := range names {
+			candidate := filepath.Join(base, name)
+			// Defence in depth: Clean above already strips ../, but a symlinked
+			// public/ could still point outside.
+			if !strings.HasPrefix(candidate, base+string(os.PathSeparator)) && candidate != base {
+				continue
+			}
+			if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+				return candidate, true
+			}
 		}
 	}
 	return "", false
+}
+
+// cleanPath normalises a request path for use under the served root.
+//
+// Shared by the lookup and the fallback so the extension test and the file
+// lookup can never disagree about what the path is.
+func cleanPath(urlPath string) string {
+	return filepath.Clean("/" + strings.TrimPrefix(urlPath, "/"))
 }
 
 // releases lists retained releases, current first.

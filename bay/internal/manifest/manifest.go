@@ -19,6 +19,16 @@ import (
 	"strings"
 )
 
+// RuntimeStatic marks an artifact with no entry point to spawn.
+//
+// It sits in the same `runtime` field as node and bun because that field is
+// what an older Bay switches on: meeting an unknown value it refuses the deploy
+// by name. A separate `kind` field would be IGNORED by an older Bay — unknown
+// fields are dropped on purpose so a newer build never breaks it — which would
+// leave it reading `runtime: node`, spawning node against a directory with no
+// index.js, and reporting only "never became ready".
+const RuntimeStatic = "static"
+
 // Path is where the manifest lives inside an unpacked artifact.
 //
 // Hardcoded rather than derived from the manifest's own `entry` field, which
@@ -67,7 +77,7 @@ type Manifest struct {
 	// — never a deployment choice, which is why the domain is composed from it
 	// rather than written by hand.
 	Name           string
-	Runtime        string // "node" | "bun"
+	Runtime        string // "node" | "bun" | "static"
 	RuntimeVersion string // MAJOR only, e.g. "26"
 	Entry          string // defaults to "dist"
 	Resources      Resources
@@ -140,6 +150,17 @@ func (m *Manifest) validate() error {
 	}
 	switch m.Runtime {
 	case "node", "bun":
+	case RuntimeStatic:
+		// Nothing is spawned, so nothing can open any of these. Refusing names
+		// the contradiction while the operator is still watching a deploy;
+		// accepting it would provision a database no process ever connects to,
+		// and then back it up nightly forever.
+		if m.Resources.Database || m.Resources.Bucket || m.Resources.KV || m.Resources.Queue {
+			return fmt.Errorf(
+				"artifact declares runtime %q but also declares resources; a static site runs no process and cannot use a database, bucket, KV or queue — rebuild with `alepha build --target=bare` if the app needs them",
+				m.Runtime,
+			)
+		}
 	case "workerd":
 		// Caught here rather than as a crash loop three steps later. A
 		// workerd-targeted bundle is resolved against Cloudflare's export
@@ -162,6 +183,15 @@ func (m *Manifest) validate() error {
 		)
 	}
 	return nil
+}
+
+// IsStatic reports whether the artifact is a site Bay serves from disk.
+//
+// A method rather than a `== "static"` at each call site: the runtime string is
+// read in the deployer, the supervisor and the proxy, and a comparison spread
+// across three packages is one someone eventually writes as `!= "node"`.
+func (m *Manifest) IsStatic() bool {
+	return m.Runtime == RuntimeStatic
 }
 
 // SleepEligible reports whether the app may be scaled to zero.

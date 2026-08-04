@@ -637,6 +637,21 @@ func (s *server) pruneReleases(app state.App, protect ...string) []string {
 }
 
 func (s *server) start(app state.App) error {
+	// A static site has no process. It is serving the moment `current` points at
+	// the new release, because the proxy reads the files straight off disk —
+	// there is no interpreter to resolve, nothing to supervise, and no port to
+	// probe. Readiness is the release switch itself, so a rollback is instant
+	// and cannot fail a health check.
+	//
+	// Checked before the .env is loaded, which is the ordering that matters: a
+	// static app has no .env, and letting `LoadEnvFile` see a missing file first
+	// would decide the outcome by whatever that function happens to do rather
+	// than by anything anyone designed.
+	if app.Static {
+		s.log.Info("static app ready", "app", app.Key(), "domain", app.Domain())
+		return nil
+	}
+
 	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
 	env, err := runner.LoadEnvFile(filepath.Join(instance, ".env"))
 	if err != nil {
@@ -761,8 +776,13 @@ const maxLogRequest = 2000
 // whether they are on the right machine, the other to check whether the app is
 // actually doing anything. An empty array alone cannot say which.
 type logsResponse struct {
-	Supervised bool             `json:"supervised"`
-	Lines      []runner.LogLine `json:"lines"`
+	Supervised bool `json:"supervised"`
+	// Static marks a site served from disk, which is a THIRD empty result. It
+	// has no process and never will, so "not supervised by this Bay" — which
+	// reads as "you are on the wrong machine" — would send an operator looking
+	// for something that does not exist.
+	Static bool             `json:"static,omitempty"`
+	Lines  []runner.LogLine `json:"lines"`
 }
 
 func (s *server) handleLogs(w http.ResponseWriter, r *http.Request) {
@@ -784,7 +804,15 @@ func (s *server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	if entries == nil {
 		entries = []runner.LogLine{}
 	}
-	writeJSON(w, http.StatusOK, logsResponse{Supervised: supervised, Lines: entries})
+	// Read from the store rather than inferred from the empty result: a static
+	// site and an app this Bay has never heard of both come back unsupervised,
+	// and only the store can tell them apart.
+	app, known := s.store.Get(key)
+	writeJSON(w, http.StatusOK, logsResponse{
+		Supervised: supervised,
+		Static:     known && app.Static,
+		Lines:      entries,
+	})
 }
 
 // listedApp is a registered app plus whether it is actually answering.
@@ -1154,6 +1182,17 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 	// running; both saw the same wedged process, and they rolled back in
 	// sequence. The second undid the first's correct work and put the app on a
 	// release older than the one the deploy had replaced.
+	// A static site has no port, so every probe in the window fails and the
+	// verdict is always "unhealthy" — the watch would roll back a release that
+	// is answering every request off disk perfectly well.
+	//
+	// This only arms on a REDEPLOY, so it would not have shown up until the
+	// second time someone shipped a static site: the deploy that succeeds, then
+	// silently reverts a minute later with nothing wrong.
+	if app.Static {
+		return
+	}
+
 	ctx := s.beginWatch(app.Key())
 	defer s.endWatch(app.Key())
 
@@ -1436,7 +1475,12 @@ func cmdStatus(args []string) error {
 
 		// A registered app that is not running is the loudest thing this
 		// command can say, and it used to say nothing at all.
-		if !a.Running {
+		//
+		// Except for a static site, which has no process by design. Saying NOT
+		// RUNNING there would be a permanent false alarm on a healthy host.
+		if a.Static {
+			fmt.Printf("  process  static — served from disk\n")
+		} else if !a.Running {
 			problems++
 			fmt.Printf("  process  ⚠ NOT RUNNING\n")
 		} else if u := a.Usage; u != nil {

@@ -177,17 +177,32 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		seen[host] = true
 	}
 
-	port, err := allocatePort(store.UsedPorts())
-	if err != nil {
-		return nil, err
-	}
-	if isRedeploy {
-		port = existing.Port // keep the port stable across redeploys
-	}
+	// A static site has no process behind it, so there is nothing to provision:
+	// no port to bind, no .env to read, no database to open, no writable
+	// directories to grant. Reserving a port would take one out of the pool that
+	// nothing will ever listen on, and writing a .env would mint an APP_SECRET
+	// whose only effect is to sit at 0600 looking worth stealing.
+	//
+	// The release placement above already created `releases/`, which is the only
+	// directory a static app needs.
+	var (
+		port      int
+		dbPath    string
+		dbCreated bool
+	)
+	if !m.IsStatic() {
+		port, err = allocatePort(store.UsedPorts())
+		if err != nil {
+			return nil, err
+		}
+		if isRedeploy {
+			port = existing.Port // keep the port stable across redeploys
+		}
 
-	dbPath, dbCreated, err := provision(instance, m, port)
-	if err != nil {
-		return nil, fmt.Errorf("provision: %w", err)
+		dbPath, dbCreated, err = provision(instance, m, port)
+		if err != nil {
+			return nil, fmt.Errorf("provision: %w", err)
+		}
 	}
 
 	// current -> releases/<release>, swapped atomically via rename.
@@ -208,6 +223,7 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		Release: release,
 		Port:    port,
 		Runtime: m.Runtime,
+		Static:  m.IsStatic(),
 		// Only a Bay-provisioned database can be snapshotted; a BYO DATABASE_URL
 		// leaves dbPath empty.
 		Backups: dbPath != "",

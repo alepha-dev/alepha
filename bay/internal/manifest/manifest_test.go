@@ -141,6 +141,55 @@ func TestRejectsUnknownRuntime(t *testing.T) {
 	}
 }
 
+func TestAcceptsStaticArtifact(t *testing.T) {
+	// A site built with `--target=static` has no entry point to spawn. Bay
+	// serves it from disk and starts nothing, so `static` is a legitimate answer
+	// to "what must a deployer do to run this artifact".
+	m, err := read(t, `{"project":"docs","runtime":"static","entry":"dist"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !m.IsStatic() {
+		t.Fatal("a static artifact should report IsStatic")
+	}
+}
+
+func TestServerRuntimesAreNotStatic(t *testing.T) {
+	for _, runtime := range []string{"node", "bun"} {
+		m, err := read(t, `{"project":"a","runtime":"`+runtime+`"}`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if m.IsStatic() {
+			t.Fatalf("%s is a process runtime, not a static site", runtime)
+		}
+	}
+}
+
+func TestStaticArtifactNeedsNoRuntimeVersion(t *testing.T) {
+	// Nothing is spawned, so there is no interpreter to resolve a major against.
+	// A static artifact omitting the field must not trip the pin validator.
+	if _, err := read(t, `{"project":"docs","runtime":"static"}`); err != nil {
+		t.Fatalf("a static artifact without runtimeVersion should load, got: %v", err)
+	}
+}
+
+func TestRejectsStaticArtifactDeclaringResources(t *testing.T) {
+	// Nothing runs, so nothing can open a database or a bucket. Refusing here
+	// names the contradiction at deploy time; accepting it would provision a
+	// database no process will ever connect to.
+	for _, resource := range []string{"hasDatabase", "hasBucket", "hasKV", "hasQueue"} {
+		body := `{"project":"docs","runtime":"static","resources":{"` + resource + `":true}}`
+		_, err := read(t, body)
+		if err == nil {
+			t.Fatalf("expected a static artifact declaring %s to be rejected", resource)
+		}
+		if !strings.Contains(err.Error(), "static") {
+			t.Fatalf("error should name the static runtime, got: %v", err)
+		}
+	}
+}
+
 func TestRejectsMissingProject(t *testing.T) {
 	// The domain is composed from the name, so an artifact without one cannot be
 	// placed on a host at all.

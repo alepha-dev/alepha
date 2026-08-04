@@ -40,6 +40,17 @@ type App struct {
 	Release      string `json:"release"` // directory name under releases/
 	Port         int    `json:"port"`    // loopback port the app listens on
 	Runtime      string `json:"runtime"`
+	// Static is true when the artifact is a site Bay serves from disk, with no
+	// process behind it. Derived from the manifest at deploy time.
+	//
+	// Persisted rather than recomputed because the proxy branches on it for
+	// every request, and re-reading the manifest per request to answer a
+	// question fixed at deploy time is not a trade worth making.
+	//
+	// Absent in every state file written before static hosting, which decodes to
+	// false — the answer that keeps an existing host supervising its apps after
+	// an upgrade.
+	Static bool `json:"static,omitempty"`
 	// ControlAPI is true when the operator granted this app access to Bay's
 	// control API, by putting its unix user in the control group.
 	//
@@ -413,6 +424,12 @@ func (s *Store) UsedPorts() map[int]bool {
 	defer s.mu.RUnlock()
 	used := make(map[int]bool, len(s.state.Apps))
 	for _, a := range s.state.Apps {
+		// A static app has no port. Recording its zero would claim a port
+		// number that means "none", and hand every reader of this map a phantom
+		// entry to explain away.
+		if a.Port == 0 {
+			continue
+		}
 		used[a.Port] = true
 	}
 	return used
