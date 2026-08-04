@@ -189,6 +189,7 @@ export default {
   "campaign.menu.settings": "Paramètres",
   "campaign.menu.group.inn": "Activité",
   "campaign.menu.group.audience": "Audience",
+  "campaign.menu.group.domain": "Domaine",
   "campaign.menu.group.library": "Connaissances",
 
   "quest.create.submit": "Ajouter la quête à la campagne",
@@ -373,6 +374,7 @@ export default {
   "campaign.settings.nav.kanban": "Kanban",
   "campaign.settings.nav.folios": "Folios",
   "campaign.settings.nav.sigils": "Sigils",
+  "campaign.settings.nav.outposts": "Avant-postes",
   "campaign.settings.nav.chapters": "Chapitres",
   "campaign.settings.nav.quests": "Quêtes",
   "campaign.chronicles.nav.overview": "Vue d'ensemble",
@@ -441,6 +443,8 @@ export default {
     "Regroupez les quêtes en chapitres avec dates de début / fin et historique.",
   "campaign.settings.feature.sigils.description":
     "Enrôlez vos applications pour qu’elles remontent ici plantages, pages vues et Web Vitals — un jeton par environnement.",
+  "campaign.settings.feature.outposts.description":
+    "Enrôlez les machines qui hébergent vos applications, pour que chacune puisse rapporter ce qu’elle exécute — un jeton par machine.",
   "campaign.settings.delete.modal.title": "Détruire la campagne",
   "campaign.settings.delete.modal.description":
     "Cette action est irréversible. La campagne et toutes ses quêtes seront définitivement perdues.",
@@ -582,6 +586,7 @@ export default {
   "campaign.menu.petitions": "Pétitions",
   "campaign.menu.blights": "Fléaux",
   "campaign.menu.insights": "Analyses",
+  "campaign.menu.outposts": "Avant-postes",
 
   "insights.range.1d": "Aujourd'hui",
   "insights.range.7d": "7 jours",
@@ -708,6 +713,44 @@ export default {
   "sigils.toast.rotated": "Jeton renouvelé",
   "sigils.toast.copied": "Jeton copié",
   "sigils.toast.deleted": "Sigil supprimé",
+
+  "outposts.title": "Machines enrôlées",
+  "outposts.subtitle":
+    "Un avant-poste par machine. Chacune détient son propre jeton et rapporte ce qu’elle héberge.",
+  "outposts.empty":
+    "Aucune machine enrôlée. Tant qu’il n’y en a pas, rien ne peut rapporter ici.",
+  "outposts.create.label": "Machine",
+  "outposts.create.labelPlaceholder": "OVH Bay",
+  "outposts.create.submit": "Enrôler",
+  "outposts.token.title":
+    "Copiez ce jeton maintenant — il est stocké haché et ne sera plus jamais affiché.",
+  "outposts.token.copy": "Copier le jeton",
+  "outposts.token.done": "Terminé",
+  "outposts.lastSeen": "dernier rapport $1",
+  "outposts.neverSeen": "aucun rapport",
+  "outposts.action.rotate": "Renouveler",
+  "outposts.action.delete": "Supprimer l’avant-poste",
+  "outposts.rotate.confirmTitle": "Renouveler le jeton de $1 ?",
+  "outposts.rotate.confirmDescription":
+    "Le jeton actuel cesse de fonctionner immédiatement et un nouveau s’affiche une seule fois. Tout ce que cette machine a rapporté est conservé — c’est ainsi qu’on révoque un jeton fuité sans perdre son historique.",
+  "outposts.rotate.confirm": "Renouveler",
+  "outposts.delete.confirmTitle": "Supprimer $1 ?",
+  "outposts.delete.confirmDescription":
+    "Ceci efface tout ce que cette machine a rapporté — les applications qu’elle héberge et son historique de déploiement — ainsi que son jeton. Les releases qu’elle a déployées sont conservées. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
+  "outposts.delete.confirm": "Supprimer",
+  "outposts.toast.created": "Avant-poste créé",
+  "outposts.toast.rotated": "Jeton renouvelé",
+  "outposts.toast.copied": "Jeton copié",
+  "outposts.toast.deleted": "Avant-poste supprimé",
+  "outposts.page.empty":
+    "Aucune machine enrôlée. Enrôlez-en une depuis les paramètres de la campagne et elle apparaîtra ici dès qu’elle rapportera.",
+  "outposts.page.neverConnected": "Jamais connectée",
+  "outposts.page.agentUnknown": "inconnu",
+  "outposts.page.agent": "Agent",
+  "outposts.page.baseDomain": "Domaine de base",
+  "outposts.page.apps": "Applications hébergées",
+  "outposts.page.lastSeen": "Vue pour la dernière fois",
+  "outposts.page.silent": "Silencieuse",
 
   "petitions.empty.pending": "Aucune pétition en attente.",
   "petitions.empty.status": "Aucune pétition $1.",

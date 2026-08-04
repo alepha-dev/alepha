@@ -81,6 +81,7 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/c/:campaignId/petitions` | `campaignPetitions` | `campaign/petitions/CampaignPetitions.tsx` | Owner inbox: triage bug/feature requests |
 | `/c/:campaignId/blights` | `campaignBlights` | blights page | Crash-telemetry inbox (sigil-fed) |
 | `/c/:campaignId/insights` | `campaignInsights` | insights page | Beacon / vitals analytics + per-environment error budget |
+| `/c/:campaignId/outposts` | `campaignOutposts` | `campaign/outposts/CampaignOutposts.tsx` | Machines reporting into the campaign (read-only), gated on `features.outposts` |
 | `/c/:campaignId/q/:shortId` | `campaignQuest` | `campaign/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
 | `/c/:campaignId/q/:shortId/graph` | `campaignQuestGraph` | `campaign/quest/QuestGraph.tsx` | Quest dependency graph |
 | `/c/:campaignId/archive` | `campaignFolios` | `folios/FoliosLayout.tsx` | Folio + archive index (note: path is `/archive`, route name is still `campaignFolios`) |
@@ -95,6 +96,7 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/c/:campaignId/settings/folios` | `campaignSettingsFolios` | `…/CampaignSettingsFoliosPage.tsx` | Folios config |
 | `/c/:campaignId/settings/quests` | `campaignSettingsQuests` | `…/CampaignSettingsQuestsPage.tsx` | Per-quest module toggles (note / chrono / reminder) |
 | `/c/:campaignId/settings/sigils` | `campaignSettingsSigils` | `…/CampaignSettingsSigilsPage.tsx` | Sigil inventory + module toggles |
+| `/c/:campaignId/settings/outposts` | `campaignSettingsOutposts` | `…/CampaignSettingsOutpostsPage.tsx` | Outpost inventory: enrol, rotate, delete |
 | `/c/:campaignId/settings/chapters` | `campaignSettingsChapters` | settings page | Chapter config |
 | `/c/:campaignId/request` | `campaignPetitionRequest` | `campaign/petitions/CampaignPetitionRequest.tsx` | First-party petition form (login required). Top-level, **not** nested under the `campaign` layout — no membership check |
 
@@ -414,6 +416,7 @@ rule is that the flood never reaches the Worker.
 `e2e/` is split by feature, not by user journey. One `<feature>.spec.ts` per major surface, each covering happy path + key edge cases:
 
 - `sigil.spec.ts` — enrol an environment → ingest as it → triage in the inbox → rotate → delete
+- `outposts.spec.ts` — enable the module → enrol a machine → token shown once → visible on the Outposts page → rotate → delete
 - `blights.spec.ts` — regression guard for the inbox render loop (the ingest path lives in `sigil.spec.ts`)
 - `quest.spec.ts` — quest lifecycle (open → accept → complete) + reminder UI
 - `petition.spec.ts` — petition submit → accept → link quests → status progression

@@ -1,31 +1,37 @@
 import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { useI18n } from "alepha/react/i18n";
 import { AlertCircle, Copy } from "lucide-react";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-export interface CampaignSettingsSigilTokenProps {
+export interface CampaignSettingsTokenRevealProps {
   token: string;
+  title: string;
+  copyLabel: string;
+  doneLabel: string;
+  copiedMessage: string;
   onDismiss: () => void;
 }
 
 /**
- * The one moment a sigil token is readable.
+ * The one moment a minted credential is readable.
  *
- * It is stored hashed, so this panel is not a convenience — it is the only
- * copy. Dismissing it is irreversible, which is why the button says so rather
- * than being a close cross in a corner.
+ * Tokens are stored hashed, so this panel is not a convenience — it is the
+ * only copy that will ever exist. Dismissing it is irreversible, which is why
+ * the button says so rather than being a close cross in a corner.
+ *
+ * The strings arrive as props because sigils and outposts word this
+ * differently: one names an environment, the other a machine.
  */
-const CampaignSettingsSigilToken = (props: CampaignSettingsSigilTokenProps) => {
-  const { tr } = useI18n<I18n, "en">();
+const CampaignSettingsTokenReveal = (
+  props: CampaignSettingsTokenRevealProps,
+) => {
   const toaster = useToast();
 
   return (
     <Alert>
       <AlertCircle />
       <AlertDescription className="flex flex-col gap-2">
-        <span>{tr("sigils.token.title")}</span>
+        <span>{props.title}</span>
         <div className="flex items-center gap-2">
           <code className="bg-muted grow overflow-x-auto rounded px-2 py-1 font-mono text-xs">
             {props.token}
@@ -33,16 +39,16 @@ const CampaignSettingsSigilToken = (props: CampaignSettingsSigilTokenProps) => {
           <Button
             size="sm"
             variant="outline"
-            aria-label={tr("sigils.token.copy")}
+            aria-label={props.copyLabel}
             onClick={() => {
               void navigator.clipboard.writeText(props.token);
-              toaster.success(tr("sigils.toast.copied"));
+              toaster.success(props.copiedMessage);
             }}
           >
             <Copy />
           </Button>
           <Button size="sm" onClick={props.onDismiss}>
-            {tr("sigils.token.done")}
+            {props.doneLabel}
           </Button>
         </div>
       </AlertDescription>
@@ -50,4 +56,4 @@ const CampaignSettingsSigilToken = (props: CampaignSettingsSigilTokenProps) => {
   );
 };
 
-export default CampaignSettingsSigilToken;
+export default CampaignSettingsTokenReveal;

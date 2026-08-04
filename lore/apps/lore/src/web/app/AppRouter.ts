@@ -17,6 +17,7 @@ import type { FolioController } from "../../api/controllers/FolioController.ts";
 import type { InsightsController } from "../../api/controllers/InsightsController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { KanbanController } from "../../api/controllers/KanbanController.ts";
+import type { OutpostController } from "../../api/controllers/OutpostController.ts";
 import type { PetitionController } from "../../api/controllers/PetitionController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
 import { campaignDirectoriesAtom } from "./atoms/campaignDirectoriesAtom.ts";
@@ -46,6 +47,7 @@ export class AppRouter {
   kanbanApi = $client<KanbanController>();
   petitionApi = $client<PetitionController>();
   blightApi = $client<BlightController>();
+  outpostApi = $client<OutpostController>();
   insightsApi = $client<InsightsController>();
   chapterApi = $client<ChapterController>();
   folioApi = $client<FolioController>();
@@ -245,6 +247,7 @@ export class AppRouter {
       this.campaignKanban,
       this.campaignPetitions,
       this.campaignBlights,
+      this.campaignOutposts,
       this.campaignInsights,
     ],
     path: "/c/:campaignId",
@@ -351,6 +354,30 @@ export class AppRouter {
         count: res.openCount,
       });
       return { items: res.items, openCount: res.openCount };
+    },
+  });
+
+  campaignOutposts = $page({
+    name: "campaignOutposts",
+    path: "/outposts",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Outposts`,
+    }),
+    lazy: () => import("./components/campaign/outposts/CampaignOutposts.tsx"),
+    loader: async () => {
+      const campaign = this.alepha.store.get(currentCampaignAtom);
+      if (!campaign) {
+        throw new NotFoundError("Campaign not found");
+      }
+      // Gate purely on the module toggle, like Blights above.
+      if (!campaign.features?.outposts) {
+        throw new NotFoundError("Outposts not enabled for this campaign");
+      }
+      // Responds with the array itself, not `{ items }`.
+      const items = await this.outpostApi.listOutposts({
+        params: { campaignId: campaign.id },
+      });
+      return { items };
     },
   });
 
@@ -496,6 +523,7 @@ export class AppRouter {
       this.campaignSettingsKanban,
       this.campaignSettingsFolios,
       this.campaignSettingsSigils,
+      this.campaignSettingsOutposts,
       this.campaignSettingsChapters,
       this.campaignSettingsQuests,
     ],
@@ -596,6 +624,22 @@ export class AppRouter {
     }),
     lazy: () =>
       import("./components/campaign/settings/CampaignSettingsSigilsPage.tsx"),
+  });
+
+  /**
+   * ⚠️ Named in `CampaignSettings.tsx`'s nav array, which is a list of route
+   * names with nothing in the type system tying it to the routes it names.
+   * Renaming or removing this page without editing that array crashes every
+   * settings page.
+   */
+  campaignSettingsOutposts = $page({
+    name: "campaignSettingsOutposts",
+    path: "/outposts",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Outposts`,
+    }),
+    lazy: () =>
+      import("./components/campaign/settings/CampaignSettingsOutpostsPage.tsx"),
   });
 
   campaignSettingsChapters = $page({

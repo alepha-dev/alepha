@@ -214,6 +214,7 @@ export default {
   "campaign.menu.settings": "Settings",
   "campaign.menu.group.inn": "Activity",
   "campaign.menu.group.audience": "Audience",
+  "campaign.menu.group.domain": "Domain",
   "campaign.menu.group.library": "Knowledge",
 
   "quest.create.submit": "Add Quest to Campaign",
@@ -380,6 +381,7 @@ export default {
   "campaign.settings.nav.kanban": "Kanban",
   "campaign.settings.nav.folios": "Folios",
   "campaign.settings.nav.sigils": "Sigils",
+  "campaign.settings.nav.outposts": "Outposts",
   "campaign.settings.nav.chapters": "Chapters",
   "campaign.settings.nav.quests": "Quests",
   "campaign.chronicles.nav.overview": "Overview",
@@ -452,6 +454,8 @@ export default {
     "Group quests into chapters with start / end dates and changelogs.",
   "campaign.settings.feature.sigils.description":
     "Enrol your applications so they can report crashes, page views and web vitals here — one token per environment.",
+  "campaign.settings.feature.outposts.description":
+    "Enrol the machines that host your applications, so each can report what it is running — one token per machine.",
   "campaign.settings.delete.modal.title": "Delete Campaign",
   "campaign.settings.delete.modal.description":
     "This action cannot be undone. This will permanently destroy the campaign and all its quests.",
@@ -589,6 +593,7 @@ export default {
   "campaign.menu.petitions": "Petitions",
   "campaign.menu.blights": "Blights",
   "campaign.menu.insights": "Insights",
+  "campaign.menu.outposts": "Outposts",
 
   "insights.range.1d": "Today",
   "insights.range.7d": "7 days",
@@ -714,6 +719,44 @@ export default {
   "sigils.toast.rotated": "Token rotated",
   "sigils.toast.copied": "Token copied",
   "sigils.toast.deleted": "Sigil deleted",
+
+  "outposts.title": "Enrolled machines",
+  "outposts.subtitle":
+    "One outpost per machine. Each holds its own token and reports what it is hosting.",
+  "outposts.empty":
+    "No machine enrolled yet. Until one is, nothing can report here.",
+  "outposts.create.label": "Machine",
+  "outposts.create.labelPlaceholder": "OVH Bay",
+  "outposts.create.submit": "Enrol",
+  "outposts.token.title":
+    "Copy this token now — it is stored hashed and will never be shown again.",
+  "outposts.token.copy": "Copy token",
+  "outposts.token.done": "Done",
+  "outposts.lastSeen": "last reported $1",
+  "outposts.neverSeen": "never reported",
+  "outposts.action.rotate": "Rotate",
+  "outposts.action.delete": "Delete outpost",
+  "outposts.rotate.confirmTitle": "Rotate the token for $1?",
+  "outposts.rotate.confirmDescription":
+    "The current token stops working immediately and a new one is shown once. Everything this machine has reported is kept — this is how you revoke a leaked token without losing its history.",
+  "outposts.rotate.confirm": "Rotate",
+  "outposts.delete.confirmTitle": "Delete $1?",
+  "outposts.delete.confirmDescription":
+    "This erases everything this machine ever reported — the applications it hosts and its deploy history — along with its token. Releases it deployed are kept. To revoke a leaked token without losing the history, rotate it instead.",
+  "outposts.delete.confirm": "Delete",
+  "outposts.toast.created": "Outpost created",
+  "outposts.toast.rotated": "Token rotated",
+  "outposts.toast.copied": "Token copied",
+  "outposts.toast.deleted": "Outpost deleted",
+  "outposts.page.empty":
+    "No machine enrolled yet. Enrol one from campaign settings and it will appear here once it reports.",
+  "outposts.page.neverConnected": "Never connected",
+  "outposts.page.agentUnknown": "unknown",
+  "outposts.page.agent": "Agent",
+  "outposts.page.baseDomain": "Base domain",
+  "outposts.page.apps": "Hosted apps",
+  "outposts.page.lastSeen": "Last seen",
+  "outposts.page.silent": "Silent",
 
   "petitions.empty.pending": "No pending petitions.",
   "petitions.empty.status": "No $1 petitions.",
