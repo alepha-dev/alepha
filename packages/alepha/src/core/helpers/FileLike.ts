@@ -78,8 +78,15 @@ export type FileSchema = ZType;
 export const isTypeFile = (value: ZType): value is FileSchema => {
   // The format tag lives in zod's `.meta()`, read via `z.schema.format` — there
   // is no own `format` property to test for.
+  //
+  // Unwrapped first: `.optional()` wraps the schema in a ZodOptional whose own
+  // `.meta()` is empty, so the tag sits inside it. Reading the wrapper made
+  // `z.file().optional()` answer "not a file" — and a field that is merely not
+  // mandatory got decoded as text instead of materialised as bytes.
   return (
-    !!value && typeof value === "object" && z.schema.format(value) === "binary"
+    !!value &&
+    typeof value === "object" &&
+    z.schema.format(z.schema.unwrap(value)) === "binary"
   );
 };
 
@@ -92,8 +99,12 @@ export const isTypeFile = (value: ZType): value is FileSchema => {
  * arrive, once — so the ceiling stops being "what fits in RAM".
  */
 export const isTypeStream = (value: ZType): value is StreamSchema => {
+  // Unwrapped for the same reason as {@link isTypeFile}: an optional stream is
+  // still a stream, and reading the wrapper's empty `.meta()` said otherwise.
   return (
-    !!value && typeof value === "object" && z.schema.format(value) === "stream"
+    !!value &&
+    typeof value === "object" &&
+    z.schema.format(z.schema.unwrap(value)) === "stream"
   );
 };
 
