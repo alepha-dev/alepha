@@ -11,6 +11,7 @@ import {
   isTypeStream,
   z,
 } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   HttpError,
@@ -38,7 +39,9 @@ export const multipartOptions = $atom({
     limit: z
       .integer()
       .meta({ min: 0 })
-      .describe("Maximum total size of multipart request body in bytes.")
+      .describe(
+        "Maximum total size of a multipart request body in bytes, including the preamble and every part's headers.",
+      )
       .default(10_000_000),
     fileLimit: z
       .integer()
@@ -48,7 +51,9 @@ export const multipartOptions = $atom({
     fileCount: z
       .integer()
       .meta({ min: 1 })
-      .describe("Maximum number of files allowed in a single request.")
+      .describe(
+        "Maximum number of parts in a single request — text fields count too, not only files.",
+      )
       .default(10),
   }),
   default: {
@@ -103,6 +108,7 @@ export class ServerMultipartProvider {
   protected readonly log = $logger();
   protected readonly options = $store(multipartOptions);
   protected readonly caps = $inject(MultipartCapProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
    * Default ceiling on one part's headers.
@@ -121,25 +127,6 @@ export class ServerMultipartProvider {
       }
 
       if (!route.schema?.body) {
-        return;
-      }
-
-      let webRequest: Request | undefined;
-
-      if (request.raw.web?.req) {
-        webRequest = request.raw.web.req;
-      } else if (request.raw.node?.req) {
-        webRequest = new Request(request.url, {
-          method: request.method,
-          headers: request.headers,
-          body: Readable.toWeb(
-            request.raw.node.req as Readable,
-          ) as unknown as ReadableStream,
-          duplex: "half",
-        } as RequestInit & { duplex: "half" });
-      }
-
-      if (!webRequest) {
         return;
       }
 
@@ -173,6 +160,31 @@ export class ServerMultipartProvider {
           status: 415,
           message: `Invalid content-type: ${contentType} - only "multipart/form-data" is accepted`,
         });
+      }
+
+      // Built here, not at the top of the hook. Wrapping the node request in a
+      // web `Request` takes ownership of the underlying `Readable`, and doing
+      // it for *every* route with a body schema meant a JSON request got one
+      // wrapper here — immediately abandoned — and a second in the body parser,
+      // two owners of one stream. Nothing broke, which is exactly what makes it
+      // worth removing: it worked by luck of hook order, not by design.
+      let webRequest: Request | undefined;
+
+      if (request.raw.web?.req) {
+        webRequest = request.raw.web.req;
+      } else if (request.raw.node?.req) {
+        webRequest = new Request(request.url, {
+          method: request.method,
+          headers: request.headers,
+          body: Readable.toWeb(
+            request.raw.node.req as Readable,
+          ) as unknown as ReadableStream,
+          duplex: "half",
+        } as RequestInit & { duplex: "half" });
+      }
+
+      if (!webRequest) {
+        return;
       }
 
       request.body = await this.parseMultipart(route, webRequest, caps);
@@ -280,6 +292,7 @@ export class ServerMultipartProvider {
 
     const body: Record<string, any> = {};
     let field: string | undefined;
+    let parts: AsyncGenerator<MultipartPart, void, unknown> | undefined;
 
     try {
       const boundary = parser.boundaryOf(contentType);
@@ -291,9 +304,7 @@ export class ServerMultipartProvider {
       // calls `return()` on the generator — which runs its `finally`, cancels
       // the reader, and closes the very stream a `z.stream()` field is about to
       // hand to the handler. Suspending the iterator instead keeps it alive.
-      const parts = parser
-        .parse(request.body, boundary)
-        [Symbol.asyncIterator]();
+      parts = parser.parse(request.body, boundary)[Symbol.asyncIterator]();
 
       while (true) {
         const next = await parts.next();
@@ -326,7 +337,7 @@ export class ServerMultipartProvider {
           // Whatever follows this part in the message is not read. A client
           // that wants other fields honoured sends them first; that ordering
           // is inherent to streaming, not a shortcut taken here.
-          body[key] = this.guarded(part, key);
+          body[key] = this.guarded(part, key, parts);
           return body;
         }
 
@@ -337,10 +348,30 @@ export class ServerMultipartProvider {
         }
       }
     } catch (error) {
+      await this.close(parts);
       throw this.asHttpError(error, field);
     }
 
     return body;
+  }
+
+  /**
+   * Ends the walk, which is what cancels the request body.
+   *
+   * `parse` cancels its reader in a `finally`, and a suspended generator does
+   * not run one — it is not garbage collection that resumes it, it is
+   * `return()`. The success path completes the loop and so needs nothing; the
+   * two paths that matter, a refused limit and a streamed handoff, both leave
+   * the generator parked mid-message and have to say so.
+   */
+  protected async close(
+    parts: AsyncGenerator<MultipartPart, void, unknown> | undefined,
+  ): Promise<void> {
+    await parts?.return().catch((error: unknown) => {
+      // The refusal that got us here is the one worth reporting; failing to
+      // hang up on top of it is not worth losing it over.
+      this.log.debug("Failed to close the multipart source", error);
+    });
   }
 
   /**
@@ -396,7 +427,11 @@ export class ServerMultipartProvider {
    * 500 and told the caller nothing. The translation has to travel with the
    * bytes.
    */
-  protected guarded(part: MultipartPart, field: string): MultipartPart {
+  protected guarded(
+    part: MultipartPart,
+    field: string,
+    parts: AsyncGenerator<MultipartPart, void, unknown> | undefined,
+  ): MultipartPart {
     const self = this;
     return {
       ...part,
@@ -406,6 +441,12 @@ export class ServerMultipartProvider {
             yield* part.data;
           } catch (error) {
             throw self.asHttpError(error, field);
+          } finally {
+            // The handler is done with the bytes — drained, or given up on —
+            // so the walk that was deliberately left open can end. This is the
+            // other half of the hand-driven loop in `parseMultipart`: it keeps
+            // the source alive past the handoff, and something has to close it.
+            await self.close(parts);
           }
         },
       },
@@ -439,14 +480,15 @@ export class ServerMultipartProvider {
       at += chunk.length;
     }
 
-    const name = part.filename ?? `${fieldName}_${Date.now()}`;
+    const now = this.dateTime.nowMillis();
+    const name = part.filename ?? `${fieldName}_${now}`;
     const type = part.mediaType || "application/octet-stream";
 
     return {
       name,
       type,
       size,
-      lastModified: Date.now(),
+      lastModified: now,
       stream: () =>
         new ReadableStream({
           start(controller) {
