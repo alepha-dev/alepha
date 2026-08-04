@@ -58,4 +58,31 @@ alepha gen changelog --from=1.0.0 --to=main
 | `--from`, `-f` | Starting ref — tag, commit, or branch (default: latest version tag) |
 | `--to`, `-t` | Ending ref (default: `HEAD`) |
 
-Commits are grouped by conventional-commit type (`feat`, `fix`, ...), ready to paste into release notes.
+Only commits with a **type and a scope** are read — `feat(orm): …`, `fix(server): …`. Anything else is skipped, so work in progress can be committed without landing in release notes.
+
+### What gets published
+
+By default: `feat` and `fix`, in that order, every scope. Both halves are configurable in `alepha.config.ts`:
+
+```ts
+import { changelogOptions } from "alepha/cli";
+
+alepha.set(changelogOptions, {
+  // Sections appear in this order. Listing a type is the only way it is
+  // published — add "perf" and a Performance section appears.
+  types: ["feat", "fix"],
+
+  // An allowlist. Unset publishes every scope.
+  scopes: ["core", "orm", "server", "api"],
+});
+```
+
+**Prefer `scopes` over `ignore` once a repository has more than one thing in it.** A denylist has to be edited every time a new app or package appears, and the edit nobody remembers is the one that leaks internal work into a public note. An allowlist fails the other way — a missing entry gets reported by whoever expected it; a leaked one does not.
+
+Scopes match on the segment before the first `/`, so `api` covers `api/users`. A commit with several scopes is published when any one of them is allowed, and lists only those — `fix(orm,internal)` prints as **orm**.
+
+| Option | Default | Meaning |
+|--------|---------|---------|
+| `types` | `["feat", "fix"]` | Types to publish, in section order |
+| `scopes` | *unset* | Scopes to publish; unset means all |
+| `ignore` | see `DEFAULT_IGNORE` | Scopes to exclude — applied only when `scopes` is unset |
