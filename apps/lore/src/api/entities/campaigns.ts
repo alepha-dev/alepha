@@ -37,6 +37,13 @@ export const campaignFeaturesSchema = z.object({
   blights: z.boolean().optional(),
   beacon: z.boolean().optional(),
   vitals: z.boolean().optional(),
+  /**
+   * Outposts module. Same rules as the sigils family above: optional, and
+   * deliberately absent from `defaultCampaignFeatures` so the `features`
+   * column DEFAULT is untouched and drizzle-kit emits no table rebuild.
+   * Defaults to `false` via the `useCampaignFeatureToggle` hook.
+   */
+  outposts: z.boolean().optional(),
 });
 
 export type CampaignFeatures = Infer<typeof campaignFeaturesSchema>;

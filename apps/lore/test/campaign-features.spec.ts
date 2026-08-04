@@ -7,6 +7,10 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import { CampaignController } from "../src/api/controllers/CampaignController.ts";
+import {
+  campaignFeaturesSchema,
+  defaultCampaignFeatures,
+} from "../src/api/entities/campaigns.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -171,5 +175,33 @@ describe("CampaignController feature flags", () => {
       petitions: false,
       chapters: false,
     });
+  });
+
+  it("accepts the outposts toggle without shipping it as a default", async ({
+    expect,
+  }) => {
+    // The key must round-trip through the schema...
+    const parsed = campaignFeaturesSchema.parse({
+      kanban: true,
+      folios: true,
+      petitions: true,
+      chapters: true,
+      outposts: true,
+    });
+    expect(parsed.outposts).toBe(true);
+
+    // ...and must be absent when omitted, rather than defaulted.
+    const withoutIt = campaignFeaturesSchema.parse({
+      kanban: true,
+      folios: true,
+      petitions: true,
+      chapters: true,
+    });
+    expect(withoutIt.outposts).toBeUndefined();
+
+    // The D1 guard: anything listed here becomes the column DEFAULT, and
+    // changing that DEFAULT triggers a table rebuild that cascade-wipes
+    // production. `outposts` must never appear in this object.
+    expect(defaultCampaignFeatures).not.toHaveProperty("outposts");
   });
 });

@@ -14,6 +14,7 @@ import {
   KanbanSquare,
   type LucideIcon,
   MapPin,
+  Server,
   Stamp,
   Swords,
   Users,
@@ -29,6 +30,7 @@ type RouteName =
   | "campaignSettingsKanban"
   | "campaignSettingsFolios"
   | "campaignSettingsSigils"
+  | "campaignSettingsOutposts"
   | "campaignSettingsChapters"
   | "campaignSettingsQuests";
 
@@ -39,6 +41,7 @@ type NavLabelKey =
   | "campaign.settings.nav.kanban"
   | "campaign.settings.nav.folios"
   | "campaign.settings.nav.sigils"
+  | "campaign.settings.nav.outposts"
   | "campaign.settings.nav.chapters"
   | "campaign.settings.nav.quests";
 
@@ -97,6 +100,11 @@ const NAV_GROUPS: NavGroup[] = [
         route: "campaignSettingsSigils",
         labelKey: "campaign.settings.nav.sigils",
         icon: Stamp,
+      },
+      {
+        route: "campaignSettingsOutposts",
+        labelKey: "campaign.settings.nav.outposts",
+        icon: Server,
       },
       {
         route: "campaignSettingsChapters",

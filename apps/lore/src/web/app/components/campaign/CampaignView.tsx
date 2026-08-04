@@ -15,6 +15,7 @@ import {
   History,
   Inbox,
   KanbanSquare,
+  Server,
 } from "lucide-react";
 import {
   type CampaignFeatures,
@@ -42,6 +43,7 @@ const ROUTES_FULL_WIDTH = new Set([
   "campaignPetitions",
   "campaignBlights",
   "campaignInsights",
+  "campaignOutposts",
   "campaignQuestGraph",
 ]);
 
@@ -57,6 +59,7 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   campaignPetitions: "campaign.menu.petitions",
   campaignBlights: "campaign.menu.blights",
   campaignInsights: "campaign.menu.insights",
+  campaignOutposts: "campaign.menu.outposts",
   campaignSettings: "campaign.menu.settings",
   campaignSettingsBanner: "campaign.menu.settings",
   campaignSettingsZones: "campaign.menu.settings",
@@ -138,6 +141,18 @@ const CampaignView = () => {
     });
   }
 
+  // Domain = the machines the campaign's applications actually run on.
+  // Feature-gated, so the group only appears once Outposts is enabled.
+  const domainItems: NavGroup["items"] = [];
+  if (features.outposts) {
+    domainItems.push({
+      label: tr("campaign.menu.outposts"),
+      icon: Server,
+      href: router.path("campaignOutposts", { params: { campaignId } }),
+      active: name === "campaignOutposts",
+    });
+  }
+
   // Knowledge = artifacts the campaign accumulates over time.
   const knowledgeItems: NavGroup["items"] = [];
   if (features.folios) {
@@ -175,6 +190,7 @@ const CampaignView = () => {
   const nav: NavGroup[] = [
     { label: tr("campaign.menu.group.inn"), items: activityItems },
     { label: tr("campaign.menu.group.audience"), items: audienceItems },
+    { label: tr("campaign.menu.group.domain"), items: domainItems },
     { label: tr("campaign.menu.group.library"), items: knowledgeItems },
     { items: personalItems },
   ].filter((group) => group.items.length > 0);

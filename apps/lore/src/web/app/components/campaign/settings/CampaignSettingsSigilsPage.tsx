@@ -15,8 +15,8 @@ import { currentCampaignAtom } from "@/web/app/atoms/currentCampaignAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import CampaignSettingsFeatureSection from "./CampaignSettingsFeatureSection.tsx";
 import CampaignSettingsSigilRow from "./CampaignSettingsSigilRow.tsx";
-import CampaignSettingsSigilToken from "./CampaignSettingsSigilToken.tsx";
 import CampaignSettingsToggleRow from "./CampaignSettingsToggleRow.tsx";
+import CampaignSettingsTokenReveal from "./CampaignSettingsTokenReveal.tsx";
 import { useCampaignFeatureToggle } from "./useCampaignFeatureToggle.ts";
 
 /**
@@ -193,8 +193,12 @@ const CampaignSettingsSigilsPage = () => {
           </div>
 
           {freshToken && (
-            <CampaignSettingsSigilToken
+            <CampaignSettingsTokenReveal
               token={freshToken}
+              title={tr("sigils.token.title")}
+              copyLabel={tr("sigils.token.copy")}
+              doneLabel={tr("sigils.token.done")}
+              copiedMessage={tr("sigils.toast.copied")}
               onDismiss={() => setFreshToken(undefined)}
             />
           )}
