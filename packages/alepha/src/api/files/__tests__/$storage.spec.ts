@@ -114,11 +114,16 @@ describe("$storage", () => {
     const fs = alepha.inject(FileSystemProvider);
     await alepha.start();
 
-    await expect(
-      app.images.upload(
+    const error = await app.images
+      .upload(
         fs.createFile({ text: "nope", name: "a.txt", type: "text/plain" }),
-      ),
-    ).rejects.toThrow(InvalidFileError);
+      )
+      .catch((e) => e);
+
+    expect(error).toBeInstanceOf(InvalidFileError);
+    // The request itself is malformed — this file may never be accepted here,
+    // no matter its size.
+    expect(error.status).toBe(400);
   });
 
   it("rejects a file larger than maxSize", async ({ expect }) => {
@@ -136,13 +141,19 @@ describe("$storage", () => {
     const fs = alepha.inject(FileSystemProvider);
     await alepha.start();
 
-    await expect(
-      app.tiny.upload(
+    const error = await app.tiny
+      .upload(
         fs.createFile({
           buffer: Buffer.alloc(2 * 1024 * 1024),
           name: "big.bin",
         }),
-      ),
-    ).rejects.toThrow(InvalidFileError);
+      )
+      .catch((e) => e);
+
+    expect(error).toBeInstanceOf(InvalidFileError);
+    // 413, the same refusal the transport layer already answers for the same
+    // condition. It used to be 400 here and 413 one layer up, so which status a
+    // caller saw depended on which guard happened to notice first.
+    expect(error.status).toBe(413);
   });
 });

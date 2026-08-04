@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { $inject, Alepha, type FileLike } from "alepha";
-import { FileNotFoundError, InvalidFileError } from "alepha/bucket";
+import {
+  FileNotFoundError,
+  FileTooLargeError,
+  InvalidFileError,
+} from "alepha/bucket";
 import {
   type DateTime,
   DateTimeProvider,
@@ -409,7 +413,7 @@ export class FileService {
     storage: StoragePrimitive,
     counter: { size: number },
   ): FileLike {
-    const { maxSize = 10 } = storage.options;
+    const { maxSize } = storage;
     const ceiling = maxSize * 1024 * 1024;
     const source = file;
 
@@ -424,7 +428,7 @@ export class FileService {
               for await (const chunk of upstream) {
                 counter.size += chunk.length;
                 if (counter.size > ceiling) {
-                  throw new InvalidFileError(
+                  throw new FileTooLargeError(
                     `File exceeds the maximum size of ${maxSize} MB in storage ${storage.name}`,
                   );
                 }
@@ -462,7 +466,8 @@ export class FileService {
   }
 
   protected assertAllowed(file: FileLike, storage: StoragePrimitive): void {
-    const { mimeTypes, maxSize = 10 } = storage.options;
+    const { mimeTypes } = storage.options;
+    const { maxSize } = storage;
 
     if (mimeTypes) {
       const mimeType = file.type || "application/octet-stream";
@@ -474,7 +479,7 @@ export class FileService {
     }
 
     if (file.size > maxSize * 1024 * 1024) {
-      throw new InvalidFileError(
+      throw new FileTooLargeError(
         `File size ${file.size} exceeds the maximum size of ${maxSize} MB in storage ${storage.name}`,
       );
     }

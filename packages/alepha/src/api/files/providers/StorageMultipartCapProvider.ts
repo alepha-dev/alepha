@@ -5,6 +5,7 @@ import {
   type MultipartCap,
   MultipartCapProvider,
 } from "alepha/server/multipart";
+import { FileController } from "../controllers/FileController.ts";
 import { FileService } from "../services/FileService.ts";
 
 /**
@@ -21,6 +22,7 @@ import { FileService } from "../services/FileService.ts";
  */
 export class StorageMultipartCapProvider {
   protected readonly files = $inject(FileService);
+  protected readonly controller = $inject(FileController);
   protected readonly caps = $inject(MultipartCapProvider);
   protected readonly log = $logger();
 
@@ -72,10 +74,11 @@ export class StorageMultipartCapProvider {
     }
 
     try {
-      const { maxSize } = this.files.storage(name).options;
-      if (typeof maxSize !== "number") {
-        return undefined;
-      }
+      // `storage.maxSize`, not `options.maxSize`: the declared value *or* the
+      // documented default. Reading the raw option meant an undeclared bucket
+      // answered nothing and fell through to the application-wide ceiling —
+      // half of what `$storage` promises, and silently.
+      const { maxSize } = this.files.storage(name);
       // `$storage` speaks megabytes — it is a declaration a human writes — and
       // everything below this line speaks bytes. One conversion, in the one
       // place that bridges the two vocabularies.
@@ -89,10 +92,21 @@ export class StorageMultipartCapProvider {
   }
 
   /**
-   * Whether this route is one whose bytes land in a named bucket.
+   * Whether this route is the upload action, and not merely shaped like it.
+   *
+   * Asked of the action itself — its method and its resolved path, prefix
+   * included — rather than of the path's spelling. `endsWith("/files")` was the
+   * first answer and it claimed routes this provider has no business claiming:
+   * any application's `POST /api/projects/:id/files` matched, and so did the
+   * listing on `GET /api/files`. On a `z.file()` route that mistake is not
+   * cosmetic — the granted budget is memory, spent before `$secure` runs.
+   *
+   * Reading it from the action also means a change of URL cannot leave the two
+   * disagreeing, which a literal here would have allowed.
    */
   protected owns(route: ServerRoute): boolean {
-    return typeof route.path === "string" && route.path.endsWith("/files");
+    const upload = this.controller.uploadFile.route;
+    return route.method === upload.method && route.path === upload.path;
   }
 
   protected bucketOf(request: ServerRequest): string | undefined {

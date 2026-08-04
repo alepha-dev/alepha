@@ -15,9 +15,13 @@ import { $storage } from "../primitives/$storage.ts";
 class Buckets {
   releases = $storage({ name: "releases", maxSize: 100 });
   avatars = $storage({ name: "avatars", maxSize: 5 });
+  scratch = $storage({ name: "scratch" });
 }
 
-const uploadRoute = { path: "/api/files" } as unknown as ServerRoute;
+const uploadRoute = {
+  path: "/api/files",
+  method: "POST",
+} as unknown as ServerRoute;
 
 const requestFor = (bucket?: string): ServerRequest =>
   ({
@@ -56,6 +60,20 @@ describe("StorageMultipartCapProvider", () => {
     expect(cap?.maxFileBytes).toBe(5 * 1024 * 1024);
   });
 
+  it("answers a bucket's documented default when it declares no maxSize", async ({
+    expect,
+  }) => {
+    const caps = await setup();
+
+    // `$storage` documents `maxSize` as defaulting to 10 MB, and `FileService`
+    // enforces exactly that. Deferring here instead meant the transport applied
+    // the 5 MB application default, so an undeclared bucket was held at half
+    // what its own documentation promised — and nothing said so.
+    const cap = caps.resolve(requestFor("scratch"), uploadRoute);
+
+    expect(cap?.maxFileBytes).toBe(10 * 1024 * 1024);
+  });
+
   it("has no opinion when no bucket was named", async ({ expect }) => {
     const caps = await setup();
 
@@ -82,8 +100,40 @@ describe("StorageMultipartCapProvider", () => {
   it("says nothing about a route it does not own", async ({ expect }) => {
     const caps = await setup();
 
-    const elsewhere = { path: "/api/campaigns/:id/comments" } as ServerRoute;
+    const elsewhere = {
+      path: "/api/campaigns/:id/comments",
+      method: "POST",
+    } as ServerRoute;
 
     expect(caps.resolve(requestFor("releases"), elsewhere)).toBeUndefined();
+  });
+
+  it("says nothing about an application route that merely ends in /files", async ({
+    expect,
+  }) => {
+    const caps = await setup();
+
+    // A suffix is not an identity. This route stores nothing by bucket, so
+    // answering for it would hand any caller the largest budget the app
+    // declares anywhere — and on a `z.file()` route that budget is memory,
+    // spent before `$secure` has run.
+    const theirs = {
+      path: "/api/projects/:id/files",
+      method: "POST",
+    } as ServerRoute;
+
+    expect(caps.resolve(requestFor("releases"), theirs)).toBeUndefined();
+  });
+
+  it("says nothing about a different method on the same path", async ({
+    expect,
+  }) => {
+    const caps = await setup();
+
+    // `GET /api/files` is the listing. It carries no body, so a size budget is
+    // meaningless there — and granting one is free surface.
+    const listing = { path: "/api/files", method: "GET" } as ServerRoute;
+
+    expect(caps.resolve(requestFor("releases"), listing)).toBeUndefined();
   });
 });
