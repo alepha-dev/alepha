@@ -13,8 +13,16 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 2 : 0,
+  // Stop once a run is clearly broken rather than retrying every remaining
+  // spec twice. Five tolerates one flaky test burning all its retries; a
+  // systemic breakage (server down, auth broken) trips it almost immediately
+  // and reports in seconds instead of minutes.
+  maxFailures: process.env.CI ? 5 : 0,
   timeout: 60_000,
-  globalTimeout: 600_000,
+  // Under the workflow's step timeout on purpose, so Playwright is the thing
+  // that notices and prints why — a step killed from outside takes the report
+  // with it.
+  globalTimeout: 360_000,
   expect: { timeout: process.env.CI ? 15_000 : 5_000 },
   use: {
     baseURL: `http://localhost:${port}`,

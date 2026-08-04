@@ -220,10 +220,22 @@ jobs:
       - name: Install Playwright
         run: yarn playwright install chromium --with-deps
 
+      # Bounded on the step, not just the job. Playwright's `globalTimeout`
+      # covers the tests; it does not cover teardown, and teardown is where
+      # this hangs — a failing run once printed its results and then sat for
+      # five minutes holding orphaned wrangler and browser processes until the
+      # job cap killed everything. That reads as "CI is slow" rather than
+      # "two tests failed", and it costs the whole remaining budget.
+      #
+      # Slightly under half the job's 15, so a hang is reported as a failed
+      # step with the test output intact, and the CLI suite below still gets
+      # its turn.
       - name: Run E2E Tests
+        timeout-minutes: 7
         run: yarn e2e
 
       - name: Run CLI E2E Tests
+        timeout-minutes: 5
         run: yarn e2e-cli
 
   deploy-docs:
