@@ -76,6 +76,16 @@ export class BayAdapter extends PlatformAdapter {
     /^[A-Za-z0-9_][A-Za-z0-9._-]*(@[A-Za-z0-9][A-Za-z0-9.-]*)?$/;
 
   /**
+   * An absolute filesystem path for `--control-socket`, excluding shell
+   * metacharacters.
+   *
+   * Anchored at both ends like the other patterns here: the value is quoted
+   * before it reaches `ssh` (see {@link quote}) too, but validating it up
+   * front is what still catches a future caller that forgets to.
+   */
+  protected readonly socketPathPattern = /^\/[\w./-]+$/;
+
+  /**
    * The Bay this environment deploys to.
    *
    * A Bay is a machine someone owns, so unlike Cloudflare there is no global
@@ -94,6 +104,35 @@ export class BayAdapter extends PlatformAdapter {
       );
     }
     this.assertSafe("host", configured, this.destinationPattern);
+    return configured;
+  }
+
+  /**
+   * The absolute path to Bay's control socket on the host, when this
+   * environment needs to say so explicitly.
+   *
+   * Bay's default root is the *relative* path `./bay-data`, and an ssh
+   * command runs non-interactively with cwd `$HOME` — so on any host whose
+   * Bay root is not `$HOME/bay-data` (every `--root /var/lib/bay` install,
+   * for one), Bay's own guess at the socket path misses and every command
+   * this adapter sends fails to find it. `$BAY_SOCKET` on the Bay host is
+   * Bay's own escape hatch for this, but it cannot be relied on here: a
+   * non-interactive ssh command reads neither `~/.profile` nor, on
+   * Debian/Ubuntu's default, `~/.bashrc`, so there is nowhere reliable to
+   * export it from. Passing `--control-socket` on every command (see
+   * {@link bayArgv}) sidesteps needing a remote shell profile at all.
+   *
+   * `$BAY_SOCKET` in this process's own environment overrides the config,
+   * the same way `$BAY_HOST` overrides {@link host}. Undefined is the normal
+   * case: with nothing configured, Bay's own default-root guess is left to
+   * work or fail on its own.
+   */
+  protected socket(ctx: PlatformContext): string | undefined {
+    const configured = process.env.BAY_SOCKET ?? ctx.envConfig.socket;
+    if (!configured) {
+      return undefined;
+    }
+    this.assertSafe("control socket path", configured, this.socketPathPattern);
     return configured;
   }
 
@@ -161,6 +200,22 @@ export class BayAdapter extends PlatformAdapter {
   }
 
   /**
+   * Builds the argv for one `bay` subcommand, appending `--control-socket
+   * <path>` when one is configured for this environment.
+   *
+   * Every `bay` subcommand accepts the flag, so every caller that runs one
+   * goes through this. `id -nG`, used by {@link login} to check group
+   * membership before ever asking `bay` anything, is NOT a Bay command and
+   * must never be built with this — the flag would be meaningless to it.
+   */
+  protected bayArgv(ctx: PlatformContext, args: string[]): string[] {
+    const socket = this.socket(ctx);
+    return socket
+      ? ["bay", ...args, "--control-socket", socket]
+      : ["bay", ...args];
+  }
+
+  /**
    * The hostnames this environment asks Bay to serve, canonical first.
    *
    * Repeatable AND comma-separated on Bay's side, because both shapes turn up:
@@ -193,15 +248,28 @@ export class BayAdapter extends PlatformAdapter {
    * and only one of them is about SSH at all. The middle one is the expensive
    * one: the key works, the shell opens, and `bay` then fails on a unix group,
    * which surfaces mid-deploy as a permission error mentioning neither.
+   *
+   * The control-socket branch matches two distinct wordings for the same
+   * cause. Bay says "no control socket found" only when it finds no socket
+   * file at all — but a user who is merely not in the control group DOES
+   * find the file, because its directory is world-readable, and instead gets
+   * a plain "permission denied" dialing it. That wording alone is
+   * indistinguishable from an SSH key refusal, which is why this only
+   * matches it alongside the `.sock` path Bay's dial error always names,
+   * rather than widening to "permission denied" on its own.
    */
   protected explain(host: string, error: unknown): AlephaError {
     const detail = String(
-      (error as { stderr?: string })?.stderr ??
-        (error as Error)?.message ??
+      (error as { stderr?: string })?.stderr ||
+        (error as Error)?.message ||
         error,
     ).trim();
 
-    if (/no control socket found/i.test(detail)) {
+    const controlSocketDenied =
+      /no control socket found/i.test(detail) ||
+      (/permission denied/i.test(detail) && /\.sock/i.test(detail));
+
+    if (controlSocketDenied) {
       return new AlephaError(
         `Signed in to ${host}, but Bay's control socket is unreachable — that user is not in ` +
           `the "${this.controlGroup}" group. On the host: usermod -aG ${this.controlGroup} <user>, ` +
@@ -237,7 +305,7 @@ export class BayAdapter extends PlatformAdapter {
       handler: async () => {
         let version: string;
         try {
-          version = await this.remote(ctx, ["bay", "version"]);
+          version = await this.remote(ctx, this.bayArgv(ctx, ["version"]));
         } catch (error) {
           throw this.explain(host, error);
         }
@@ -276,7 +344,7 @@ export class BayAdapter extends PlatformAdapter {
 
         let version: string;
         try {
-          version = await this.remote(ctx, ["bay", "version"]);
+          version = await this.remote(ctx, this.bayArgv(ctx, ["version"]));
         } catch (error) {
           throw this.explain(host, error);
         }
@@ -385,8 +453,11 @@ export class BayAdapter extends PlatformAdapter {
     this.assertSafe("app name", ctx.project, this.appKeyPattern);
     this.assertSafe("environment", ctx.env, this.appKeyPattern);
     // Validated before `pack` runs: two minutes of work must not precede a
-    // rejection that was knowable from the config alone.
+    // rejection that was knowable from the config alone. `socket`'s result
+    // is discarded here — it exists purely to validate early; `bayArgv`
+    // below re-derives it once there is something to deploy.
     const domains = this.domains(ctx);
+    this.socket(ctx);
 
     let artifact = "";
     await run({
@@ -404,22 +475,14 @@ export class BayAdapter extends PlatformAdapter {
     await run({
       name: `deploy → ${host}`,
       handler: async () => {
-        const argv = [
-          "bay",
-          "deploy",
-          "-",
-          "--name",
-          ctx.project,
-          "--env",
-          ctx.env,
-        ];
+        const args = ["deploy", "-", "--name", ctx.project, "--env", ctx.env];
         for (const domain of domains) {
-          argv.push("--domain", domain);
+          args.push("--domain", domain);
         }
 
         let answer: string;
         try {
-          answer = await this.remote(ctx, argv, {
+          answer = await this.remote(ctx, this.bayArgv(ctx, args), {
             stdin: new Uint8Array(await this.fs.readFile(artifact)),
           });
         } catch (error) {
@@ -461,12 +524,31 @@ export class BayAdapter extends PlatformAdapter {
     ctx: PlatformContext,
     _run: RunnerMethod,
   ): Promise<PlatformState> {
-    const answer = await this.remote(ctx, ["bay", "list"]);
+    const host = this.host(ctx);
+    let answer: string;
+    try {
+      answer = await this.remote(ctx, this.bayArgv(ctx, ["list"]));
+    } catch (error) {
+      throw this.explain(host, error);
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(answer.trim() || "[]");
+    } catch {
+      // Anything but JSON means something other than `bay list` answered —
+      // the same reasoning `deployedUrl` uses for `bay deploy`. Without this,
+      // `platform status` against a login banner or a shell error dies on a
+      // parse error naming neither Bay nor the host.
+      throw new AlephaError(
+        `Bay at ${host} answered \`bay list\` with something other than JSON: ${answer.slice(0, 300)}`,
+      );
+    }
     // `bay list` marshals a nil slice as `null`, not `[]`, on a Bay with
     // nothing deployed. Calling .filter on that throws with a message naming
     // neither Bay nor the empty host.
     const apps =
-      (JSON.parse(answer.trim() || "[]") as Array<{
+      (parsed as Array<{
         name: string;
         env: string;
         domains?: string[];
@@ -517,20 +599,23 @@ export class BayAdapter extends PlatformAdapter {
       name: `remove ${ctx.project}/${ctx.env}`,
       handler: async () => {
         try {
-          await this.remote(ctx, [
-            "bay",
-            "remove",
-            `${ctx.project}/${ctx.env}`,
-          ]);
+          await this.remote(
+            ctx,
+            this.bayArgv(ctx, ["remove", `${ctx.project}/${ctx.env}`]),
+          );
         } catch (error) {
           const detail = String(
-            (error as { stderr?: string })?.stderr ??
-              (error as Error)?.message ??
+            (error as { stderr?: string })?.stderr ||
+              (error as Error)?.message ||
               error,
           );
           // Already gone is the outcome `down` asked for. Failing here would
-          // make a re-run of a partly-finished teardown impossible.
-          if (!/unknown app|404/i.test(detail)) {
+          // make a re-run of a partly-finished teardown impossible. Both
+          // patterns are word-bounded: Bay echoes the app name back in some
+          // errors, and an app legitimately named e.g. "app404" must not have
+          // an unrelated failure read as "already removed" just because its
+          // own name contains "404".
+          if (!/\bunknown app\b|\b404\b/i.test(detail)) {
             throw this.explain(host, error);
           }
           this.log.info(

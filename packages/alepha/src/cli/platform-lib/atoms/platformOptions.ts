@@ -106,6 +106,25 @@ export const platformOptions = $atom({
            */
           host: z.text().optional(),
           /**
+           * Absolute path to Bay's control socket on the host, e.g.
+           * `"/var/lib/bay/control.sock"`. Only read by the `bay` adapter.
+           *
+           * Bay's default root is the *relative* path `./bay-data`, and an ssh
+           * command runs non-interactively with cwd `$HOME` — so on any host
+           * whose Bay root is not `$HOME/bay-data` (every `--root
+           * /var/lib/bay` install, for one), Bay's own guess at the socket
+           * path misses and every command this adapter sends fails to find
+           * it. `$BAY_SOCKET` on the Bay host is Bay's own escape hatch for
+           * this, but it cannot be relied on here: a non-interactive ssh
+           * command reads neither `~/.profile` nor, on Debian/Ubuntu's
+           * default, `~/.bashrc`, so there is nowhere reliable to export it
+           * from.
+           *
+           * `$BAY_SOCKET` in the CLI's own environment overrides this value,
+           * the same way `$BAY_HOST` overrides `host`.
+           */
+          socket: z.text().optional(),
+          /**
            * Base URL of the Lore instance a release is written into
            * (`adapter: "lore"`), e.g. `"https://lore.alepha.dev"`.
            *
@@ -208,6 +227,14 @@ export interface EnvironmentConfig {
    * May be an alias from `~/.ssh/config`. `$BAY_HOST` overrides.
    */
   host?: string;
+  /**
+   * Absolute path to Bay's control socket on the host (`bay` adapter only).
+   * Needed because Bay's default root is relative and an ssh command's cwd is
+   * `$HOME`; `$BAY_SOCKET` on the host is the alternative but is unreliable
+   * for non-interactive shells. `$BAY_SOCKET` in the CLI's own environment
+   * overrides.
+   */
+  socket?: string;
   /**
    * Base URL of the Lore instance a release is written into (`lore` adapter).
    */

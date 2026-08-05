@@ -46,6 +46,20 @@ const setup = async () => {
   };
 };
 
+/**
+ * Exposes the protected `quote` method for a direct test.
+ *
+ * Every real caller pre-validates its arguments via `assertSafe` before they
+ * ever reach `quote`, so its own escaping is unreachable from any behavioral
+ * test in this file — this is the one test that would actually go red if the
+ * escaping itself broke.
+ */
+class QuotingBayAdapter extends BayAdapter {
+  public testQuote(value: string): string {
+    return this.quote(value);
+  }
+}
+
 describe("BayAdapter — the host it deploys to", () => {
   it("refuses to guess when no host is configured", async () => {
     const { adapter } = await setup();
@@ -157,6 +171,24 @@ describe("BayAdapter — what it refuses to put on a command line", () => {
             adapter: "bay",
             host: "deploy@bay.example.com",
             domain: "*.demo.example.com",
+          },
+        }),
+        run,
+      ),
+    ).rejects.toThrowError(AlephaError);
+    expect(shell.calls).toHaveLength(0);
+  });
+
+  it("refuses a control socket path carrying a shell metacharacter", async () => {
+    const { adapter, shell } = await setup();
+
+    await expect(
+      adapter.deploy(
+        context({
+          envConfig: {
+            adapter: "bay",
+            host: "deploy@bay.example.com",
+            socket: "/var/lib/bay/control.sock; rm -rf /",
           },
         }),
         run,
@@ -294,6 +326,84 @@ describe("BayAdapter — the deploy it composes", () => {
   });
 });
 
+describe("BayAdapter — the control socket it can be told about", () => {
+  /*
+    Bay's default root is the RELATIVE path `./bay-data`, and an ssh command
+    runs non-interactively with cwd = $HOME, so on any host whose root is not
+    `$HOME/bay-data` — every `--root /var/lib/bay` install included — Bay's
+    own guess at the socket misses. `$BAY_SOCKET` on the remote host is Bay's
+    escape hatch, but a non-interactive ssh command reads neither
+    `~/.profile` nor, on Debian/Ubuntu's default, `~/.bashrc`, so there is
+    nowhere reliable to export it from. `--control-socket` on every `bay`
+    invocation sidesteps needing a remote shell profile at all.
+  */
+  const socketContext = () =>
+    context({
+      envConfig: {
+        adapter: "bay",
+        host: "deploy@bay.example.com",
+        socket: "/var/lib/bay/control.sock",
+      },
+    });
+
+  it("appends --control-socket to the deploy command when one is configured", async () => {
+    const { adapter, shell } = await setup();
+
+    await adapter.deploy(socketContext(), run);
+
+    expect(
+      shell.wasCalled(
+        "ssh -o BatchMode=yes deploy@bay.example.com " +
+          "bay deploy - --name demo --env production " +
+          "--control-socket /var/lib/bay/control.sock",
+      ),
+    ).toBe(true);
+  });
+
+  it("appends --control-socket to `bay list` and `bay remove` too", async () => {
+    const { adapter, shell } = await setup();
+    shell.configure({
+      outputs: {
+        "ssh -o BatchMode=yes deploy@bay.example.com bay list --control-socket /var/lib/bay/control.sock":
+          "[]",
+      },
+    });
+
+    await adapter.inspect(socketContext(), run);
+    await adapter.teardown(socketContext(), run);
+
+    expect(
+      shell.wasCalled(
+        "ssh -o BatchMode=yes deploy@bay.example.com bay list --control-socket /var/lib/bay/control.sock",
+      ),
+    ).toBe(true);
+    expect(
+      shell.wasCalled(
+        "ssh -o BatchMode=yes deploy@bay.example.com bay remove demo/production --control-socket /var/lib/bay/control.sock",
+      ),
+    ).toBe(true);
+  });
+
+  it("never puts --control-socket on `id -nG`, which is not a bay command", async () => {
+    const { adapter, shell } = await setup();
+    shell.configure({
+      outputs: {
+        "ssh -o BatchMode=yes deploy@bay.example.com id -nG":
+          "deploy docker bay-control",
+        "ssh -o BatchMode=yes deploy@bay.example.com bay version --control-socket /var/lib/bay/control.sock":
+          "0.4.1",
+      },
+    });
+
+    await expect(adapter.login(socketContext(), run)).resolves.toBeUndefined();
+
+    // The bare form, with no flag at all — not merely "some call happened".
+    expect(
+      shell.wasCalled("ssh -o BatchMode=yes deploy@bay.example.com id -nG"),
+    ).toBe(true);
+  });
+});
+
 describe("BayAdapter — what it says when ssh fails", () => {
   const failWith = async (message: string) => {
     const { adapter, shell } = await setup();
@@ -323,6 +433,23 @@ describe("BayAdapter — what it says when ssh fails", () => {
     await expect(failWith("bash: bay: command not found")).rejects.toThrowError(
       /PATH/,
     );
+  });
+
+  it("recognizes a control-socket permission error, not just 'no control socket found'", async () => {
+    // The realistic failure for a user who is NOT in the control group: the
+    // socket's directory is world-readable, so the file IS found and the
+    // dial fails with a plain "permission denied" naming the `.sock` path —
+    // never the "no control socket found" wording the other case produces.
+    // That wording alone is identical to an SSH key refusal, so this fixture
+    // carries BOTH patterns and would go red if the branches were checked in
+    // the other order (the permission/publickey branch would win instead and
+    // report the wrong fix).
+    await expect(
+      failWith(
+        "control api unreachable (is `bay serve` running?): " +
+          "dial unix /var/lib/bay/control.sock: connect: permission denied",
+      ),
+    ).rejects.toThrowError(/usermod -aG bay-control/);
   });
 });
 
@@ -425,6 +552,29 @@ describe("BayAdapter — inspect", () => {
     expect(state.buckets).toEqual([]);
     expect(state.secrets).toEqual([]);
   });
+
+  it("names the fix rather than printing a raw shell error when ssh itself fails", async () => {
+    const { adapter, shell } = await setup();
+    shell.configure({
+      errors: {
+        "ssh -o BatchMode=yes deploy@bay.example.com bay list":
+          "Permission denied (publickey).",
+      },
+    });
+
+    await expect(adapter.inspect(context(), run)).rejects.toThrowError(
+      /authorized_keys/,
+    );
+  });
+
+  it("names the host rather than dying on a non-JSON answer", async () => {
+    // A non-JSON answer means something other than `bay list` responded — a
+    // login banner, a stray shell error. The same reasoning `deployedUrl`
+    // already applies to `bay deploy`.
+    await expect(
+      listing("-bash: bay: command not found")(),
+    ).rejects.toThrowError(/bay list.*something other than JSON/);
+  });
 });
 
 describe("BayAdapter — teardown", () => {
@@ -450,6 +600,23 @@ describe("BayAdapter — teardown", () => {
     });
 
     await expect(adapter.teardown(context(), run)).resolves.toBeUndefined();
+  });
+
+  it("treats a genuine failure as a failure even when the app name contains '404'", async () => {
+    // Bay echoes the app name back in its errors. A project legitimately
+    // named "app404" must not have an unrelated removal failure misread as
+    // "already removed" merely because its own name contains those digits.
+    const { adapter, shell } = await setup();
+    shell.configure({
+      errors: {
+        "ssh -o BatchMode=yes deploy@bay.example.com bay remove app404/production":
+          "failed to remove app404/production: internal server error",
+      },
+    });
+
+    await expect(
+      adapter.teardown(context({ project: "app404" }), run),
+    ).rejects.toThrowError(/ssh to deploy@bay\.example\.com failed/);
   });
 });
 
@@ -597,5 +764,22 @@ describe("BayAdapter — the package manager it shells out to", () => {
     const shell = await withLockfile("bun.lock");
 
     expect(shell.wasCalled("bunx alepha build --target=bare")).toBe(true);
+  });
+});
+
+describe("BayAdapter — quoting", () => {
+  it("round-trips a value containing a single quote", async () => {
+    const alepha = Alepha.create()
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({ provide: ShellProvider, use: MemoryShellProvider });
+    const adapter = alepha.inject(QuotingBayAdapter);
+
+    // `'\''` closes the quote, escapes a literal `'` outside it, and reopens
+    // it — the only way to put a single quote inside single-quoted shell
+    // text. Every real caller pre-validates before reaching this, so nothing
+    // else in this file exercises the escaping itself.
+    expect(adapter.testQuote("it's a test; rm -rf /")).toBe(
+      "'it'\\''s a test; rm -rf /'",
+    );
   });
 });
