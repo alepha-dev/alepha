@@ -8,6 +8,10 @@ import { $etag } from "alepha/server/etag";
 import { type Milestone, milestones } from "../entities/milestones.ts";
 import { projects } from "../entities/projects.ts";
 import { type Quest, quests } from "../entities/quests.ts";
+import {
+  type MilestoneChangelogZone,
+  milestoneChangelogZoneSchema,
+} from "../schemas/milestoneChangelogZoneSchema.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class MilestoneController {
@@ -34,9 +38,14 @@ export class MilestoneController {
   getMilestones = $action({
     use: [
       $secure({ permissions: ["quest:read"] }),
-      $etag({
-        control: { private: true, maxAge: 30, staleWhileRevalidate: 120 },
-      }),
+      // `noCache` rather than a `maxAge` window: this list changes the
+      // instant someone starts, closes or deletes a milestone, and a
+      // freshness window made those mutations invisible to the browser for
+      // its whole duration — start a milestone and the page kept showing
+      // "nothing is recording" until the entry expired. `no-cache` still
+      // lets the ETag answer 304, so revalidation stays cheap; it only
+      // forbids serving the body without asking.
+      $etag({ control: { private: true, noCache: true } }),
     ],
     schema: {
       params: z.object({
@@ -195,9 +204,10 @@ export class MilestoneController {
   getMilestoneChangelog = $action({
     use: [
       $secure({ permissions: ["quest:read"] }),
-      $etag({
-        control: { private: true, maxAge: 60, staleWhileRevalidate: 600 },
-      }),
+      // Same reasoning as `getMilestones`: an open milestone's changelog is
+      // recomputed from completed quests, so a freshness window hides work
+      // that just landed. ETag-only revalidation keeps it cheap.
+      $etag({ control: { private: true, noCache: true } }),
     ],
     schema: {
       params: z.object({
@@ -206,6 +216,12 @@ export class MilestoneController {
       response: z.object({
         markdown: z.string(),
         milestone: milestones.schema,
+        /**
+         * The same entries the markdown lists, in structured form, so the
+         * page can render `#ref · title · priority` rows. See
+         * `milestoneChangelogZoneSchema` for why both projections ship.
+         */
+        zones: z.array(milestoneChangelogZoneSchema),
         stats: z.object({
           questCount: z.integer(),
           zoneCount: z.integer(),
@@ -217,19 +233,85 @@ export class MilestoneController {
       const milestone = await this.milestones.getById(params.id);
       await this.security.assertMember(milestone.projectId, user);
 
-      // Closed milestones return the frozen snapshot when available.
+      const completed = await this.queryCompletedInWindow(milestone);
+      const { zones, stats } = this.summarize(completed);
+
+      // Closed milestones return the frozen markdown snapshot when there is
+      // one; `zones` is recomputed either way, so a post-close quest edit
+      // shows up in the rows but not in the downloadable `.md`.
       if (milestone.closedAt && milestone.changelog) {
-        const stats = await this.computeStats(milestone);
+        return { markdown: milestone.changelog, milestone, zones, stats };
+      }
+
+      const { markdown } = this.renderChangelog(milestone, completed);
+      return { markdown, milestone, zones, stats };
+    },
+  });
+
+  /**
+   * How many quests have been completed since the last milestone closed —
+   * work that is landing in no changelog at all because nothing is
+   * recording. Drives the "nothing is recording" banner, which needs to say
+   * what that costs rather than just that it is true.
+   *
+   * Counts from the whole project when no milestone has ever closed, and
+   * returns 0 while a milestone is open (that work is being recorded).
+   */
+  getMilestoneBacklog = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+      }),
+      response: z.object({
+        count: z.integer(),
+        /** `closedAt` of the last closed milestone, when there is one. */
+        since: z.datetime().optional(),
+        lastNumber: z.integer().optional(),
+        lastTitle: z.string().optional(),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      await this.security.assertMember(params.projectId, user);
+
+      const open = await this.milestones.findMany({
+        where: {
+          projectId: { eq: params.projectId },
+          closedAt: { isNull: true },
+        },
+        limit: 1,
+      });
+
+      const [last] = await this.milestones.findMany({
+        where: {
+          projectId: { eq: params.projectId },
+          closedAt: { isNotNull: true },
+        },
+        orderBy: [{ column: "closedAt", direction: "desc" }],
+        limit: 1,
+      });
+
+      // A milestone is recording — nothing is falling through the cracks.
+      if (open.length > 0) {
         return {
-          markdown: milestone.changelog,
-          milestone,
-          stats,
+          count: 0,
+          ...(last?.closedAt ? { since: last.closedAt } : {}),
+          ...(last ? { lastNumber: last.number, lastTitle: last.title } : {}),
         };
       }
 
-      const completed = await this.queryCompletedInWindow(milestone);
-      const { markdown, stats } = this.renderChangelog(milestone, completed);
-      return { markdown, milestone, stats };
+      const count = await this.quests.count({
+        projectId: { eq: params.projectId },
+        completedAt: last?.closedAt
+          ? { isNotNull: true, gt: last.closedAt }
+          : { isNotNull: true },
+      });
+
+      return {
+        count,
+        ...(last?.closedAt ? { since: last.closedAt } : {}),
+        ...(last ? { lastNumber: last.number, lastTitle: last.title } : {}),
+      };
     },
   });
 
@@ -314,22 +396,55 @@ export class MilestoneController {
     return completed.length;
   }
 
-  protected async computeStats(milestone: Milestone): Promise<{
-    questCount: number;
-    zoneCount: number;
-    contributorCount: number;
-  }> {
-    const completed = await this.queryCompletedInWindow(milestone);
-    const zones = new Set<string>();
-    const contributors = new Set<string>();
-    for (const q of completed) {
-      zones.add(q.zone || "Uncategorized");
-      if (q.completedBy) contributors.add(q.completedBy);
+  /**
+   * Group completed quests by zone, preserving insertion order so the
+   * structured zones and the rendered markdown list them identically.
+   */
+  protected groupByZone(completed: Quest[]): Map<string, Quest[]> {
+    const byZone = new Map<string, Quest[]>();
+    for (const quest of completed) {
+      const zone = quest.zone || "Uncategorized";
+      if (!byZone.has(zone)) byZone.set(zone, []);
+      byZone.get(zone)!.push(quest);
     }
+    return byZone;
+  }
+
+  /**
+   * The structured projection of a changelog: zone groups plus the headline
+   * counters. Shares `groupByZone` with `renderChangelog`, so the rows the
+   * page draws and the markdown it can download never disagree on grouping.
+   */
+  protected summarize(completed: Quest[]): {
+    zones: MilestoneChangelogZone[];
+    stats: { questCount: number; zoneCount: number; contributorCount: number };
+  } {
+    const byZone = this.groupByZone(completed);
+
+    const contributors = new Set<string>();
+    for (const quest of completed) {
+      if (quest.completedBy) contributors.add(quest.completedBy);
+    }
+
+    const zones: MilestoneChangelogZone[] = [...byZone].map(
+      ([name, zoneQuests]) => ({
+        name,
+        questCount: zoneQuests.length,
+        quests: zoneQuests.map((quest) => ({
+          shortId: quest.shortId,
+          title: quest.title,
+          priority: quest.priority,
+        })),
+      }),
+    );
+
     return {
-      questCount: completed.length,
-      zoneCount: zones.size,
-      contributorCount: contributors.size,
+      zones,
+      stats: {
+        questCount: completed.length,
+        zoneCount: byZone.size,
+        contributorCount: contributors.size,
+      },
     };
   }
 
@@ -340,12 +455,7 @@ export class MilestoneController {
     markdown: string;
     stats: { questCount: number; zoneCount: number; contributorCount: number };
   } {
-    const byZone = new Map<string, Quest[]>();
-    for (const quest of completed) {
-      const zone = quest.zone || "Uncategorized";
-      if (!byZone.has(zone)) byZone.set(zone, []);
-      byZone.get(zone)!.push(quest);
-    }
+    const byZone = this.groupByZone(completed);
 
     const contributors = new Set<string>();
     for (const quest of completed) {
