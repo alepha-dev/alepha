@@ -377,6 +377,60 @@ Mitigations, in order of preference:
 
 drizzle-kit's auto-generator wanted to add a `projects` table *rebuild* on top of the renames, because the `features` column's JSON `DEFAULT` embeds the old key names (`petitions`, `chapters`, …) baked in as a literal string, and those keys changed too. A rebuild there means `DROP TABLE projects`, which on D1 cascades through `members`/`quests`/`milestones`/`folios`/`feedback` — the exact class of incident described above. That block was **deleted by hand** from the generated migration, replaced with an explanatory SQL comment. This is safe *only* because nothing reads the stale column default — `createProject` injects `defaultProjectFeatures` server-side in application code, so the column's `DEFAULT` clause is dead weight. The upshot: **the migration snapshot and the live `projects.features` column now deliberately disagree on that one default, forever** (or until a future migration touches that column for an unrelated reason). Do not "fix" this drift by generating a rebuild — that's the bomb, not the fix. `db:generate`/`db:check` will keep flagging it; that's expected, not a regression.
 
+### ⚠️ Renaming a REQUIRED key inside a JSON column takes production down (real incident, 2026-08-05)
+
+The rename above shipped green — `yarn v` passed, e2e passed, the migration was
+rename-only with zero `DROP TABLE`, and prod data survived intact. Production
+still broke on **every project read**, minutes after deploy:
+
+```
+SchemaValidationError: Invalid input: 'features/feedback' is required at /features/feedback
+  → DbError: Query select has failed
+```
+
+`projects.features` is a JSON column validated against `projectFeaturesSchema`.
+Four of its keys are **required** `z.boolean()` — `kanban`, `folios`, `feedback`,
+`milestones` — while the rest (`sigils`, `blights`, `beacon`, `vitals`,
+`outposts`, the `quest*` trio) are `.optional()`. The migration renamed the
+*table and columns*, but the JSON **inside** the column still said `petitions`
+and `chapters` on all 54 existing rows. A missing required key does not read as
+`undefined` and fall back to `false` — **the whole row fails to decode**, so
+every query touching `projects` throws.
+
+The plan had predicted "the flags read as undefined → off, owners re-enable them
+once." That reasoning came from the *optional* flags and was never checked
+against these four. Losing four toggles and losing every project read are not
+the same failure.
+
+**Nothing in the pipeline could have caught it.** Test and CI databases are
+created empty from the entities, so every row they contain is already in the new
+format. Only a database with pre-rename rows can fail this way, and there is
+exactly one of those.
+
+Fixed forward by rewriting the JSON in place, preserving each owner's real
+setting rather than defaulting anything off:
+
+```sql
+UPDATE projects SET features = json_remove(
+  json_set(features,
+    '$.feedback',   CASE WHEN json_extract(features,'$.petitions')=1 THEN json('true') ELSE json('false') END,
+    '$.milestones', CASE WHEN json_extract(features,'$.chapters') =1 THEN json('true') ELSE json('false') END
+  ), '$.petitions', '$.chapters')
+WHERE json_extract(features,'$.feedback') IS NULL
+   OR json_extract(features,'$.milestones') IS NULL;
+```
+
+The `CASE … json('true')` is load-bearing: `json_extract` on a JSON boolean
+returns integer `1`, so a naive round-trip writes `1` and the row *still* fails
+`z.boolean()`.
+
+**The rule:** renaming a key inside a JSON column is a data migration, not a
+schema migration. Before renaming one, check whether it is required — and if it
+is, carry the `UPDATE` in the same deploy. Making the key `.optional()` instead
+would also stop the crash, but silently discards the owner's setting; prefer the
+rewrite. This was run as a one-off against prod rather than as a migration file
+because Lore has exactly one instance and a fresh database starts empty.
+
 ### ⚠️ `$sequence` keys its counter on the property name, not the table
 
 `$sequence()` fields (used for per-project short IDs / numbering, e.g. `MilestoneController.milestoneNumber`, `FeedbackController.feedbackShortId`) persist their running counter in the `alepha_sequences` table, keyed by **the property name**, not by the entity/table it numbers. Renaming the property — `chapterNumber` → `milestoneNumber`, `petitionShortId` → `feedbackShortId` — does not rename the existing counter row. It orphans it: the renamed property starts a brand-new counter at 1, colliding with whatever numbers already exist in production for that project.
