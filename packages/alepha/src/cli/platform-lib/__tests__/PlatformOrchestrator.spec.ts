@@ -7,6 +7,10 @@ import {
 } from "alepha/system";
 import { describe, test } from "vitest";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
+import {
+  PlatformAdapter,
+  type PlatformState,
+} from "../adapters/PlatformAdapter.ts";
 import { platformOptions } from "../atoms/platformOptions.ts";
 import { PlatformOrchestrator } from "../services/PlatformOrchestrator.ts";
 
@@ -44,6 +48,57 @@ describe("PlatformOrchestrator", () => {
     return { alepha, fs, shell, orchestrator };
   };
 
+  describe("what `up` reports as the address", () => {
+    /*
+      An adapter that does not choose the host still had its own config echoed
+      back as the deploy's address. On the `lore` path the machine composes the
+      host from the app name, so a `domain` that did not match produced a green
+      run printing a link to an address answering 404 with no certificate —
+      while the site was serving under the composed name the whole time.
+    */
+    const upWith = async (controlsDomain: boolean) => {
+      const alepha = Alepha.create()
+        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+        .with({ provide: ShellProvider, use: MemoryShellProvider });
+      alepha.set(platformOptions, {
+        environments: { production: { adapter: "lore", domain: "named.test" } },
+      });
+      const fs = alepha.inject(MemoryFileSystemProvider);
+      await fs.writeFile(
+        "/project/package.json",
+        JSON.stringify({ name: "a" }),
+      );
+
+      const orchestrator = alepha.inject(
+        controlsDomain ? ControllingOrchestrator : ComposingOrchestrator,
+      );
+      const run = Object.assign(
+        (task: { handler: () => Promise<void> }) => task.handler(),
+        { end: () => {} },
+      ) as any;
+
+      return orchestrator.up({
+        root: "/project",
+        env: "production",
+        entry: {} as any,
+        resources: {} as any,
+        run,
+      });
+    };
+
+    test("reports it when the adapter is what attaches it", async ({
+      expect,
+    }) => {
+      expect((await upWith(true)).domain).toBe("named.test");
+    });
+
+    test("stays quiet when the host is composed elsewhere", async ({
+      expect,
+    }) => {
+      expect((await upWith(false)).domain).toBeUndefined();
+    });
+  });
+
   describe("resolveAdapter", () => {
     test("returns CloudflareAdapter for cloudflare env", async ({ expect }) => {
       const { orchestrator } = createTestEnv();
@@ -73,3 +128,44 @@ describe("PlatformOrchestrator", () => {
     });
   });
 });
+
+/**
+ * A deploy that does nothing, so what `up` REPORTS can be driven without a
+ * cloud provider on the other end. Every step is stubbed; the orchestrator's
+ * own decision about the address is what stays under test.
+ */
+class SilentAdapter extends PlatformAdapter {
+  async authenticate(): Promise<void> {}
+  async build(): Promise<void> {}
+  async deploy(): Promise<string | undefined> {
+    return undefined;
+  }
+  async inspect(): Promise<PlatformState> {
+    return {
+      workers: [],
+      databases: [],
+      buckets: [],
+      kvNamespaces: [],
+      queues: [],
+      secrets: [],
+    };
+  }
+  async teardown(): Promise<void> {}
+}
+
+/** Composes its own host, the way the `lore` path leaves it to the machine. */
+class ComposingAdapter extends SilentAdapter {
+  override readonly controlsDomain = false;
+}
+
+class ControllingOrchestrator extends PlatformOrchestrator {
+  override resolveAdapter(): PlatformAdapter {
+    return this.alepha.inject(SilentAdapter);
+  }
+}
+
+class ComposingOrchestrator extends PlatformOrchestrator {
+  override resolveAdapter(): PlatformAdapter {
+    return this.alepha.inject(ComposingAdapter);
+  }
+}
