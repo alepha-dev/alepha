@@ -39,7 +39,7 @@ export class ReleaseController {
    * not a bigger number here.
    */
   releaseBucket = $storage({
-    name: "deployments",
+    name: "releases",
     description: "Deployable artifacts",
     maxSize: 100,
     mimeTypes: ["application/gzip"],
@@ -57,7 +57,7 @@ export class ReleaseController {
   createRelease = $action({
     use: [$secure({ permissions: ["project:update"] })],
     method: "POST",
-    path: "/projects/:projectId/deployments",
+    path: "/projects/:projectId/releases",
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
@@ -99,7 +99,7 @@ export class ReleaseController {
   getRelease = $action({
     use: [$secure({ permissions: ["project:read"] })],
     method: "GET",
-    path: "/projects/:projectId/deployments/:releaseId",
+    path: "/projects/:projectId/releases/:releaseId",
     schema: {
       params: z.object({ projectId: z.integer(), releaseId: z.uuid() }),
       response: releaseResourceSchema,
@@ -129,7 +129,7 @@ export class ReleaseController {
   listReleases = $action({
     use: [$secure({ permissions: ["project:read"] })],
     method: "GET",
-    path: "/projects/:projectId/deployments",
+    path: "/projects/:projectId/releases",
     schema: {
       params: z.object({ projectId: z.integer() }),
       response: z.object({ items: z.array(releaseResourceSchema) }),

@@ -83,7 +83,7 @@ export class OutpostCommandController {
    */
   reportStatus = $route({
     method: "POST",
-    path: "/outposts/deployments/:releaseId/status",
+    path: "/outposts/releases/:releaseId/status",
     schema: {
       params: z.object({ releaseId: z.uuid() }),
       headers: z.object({ authorization: z.string().optional() }),
