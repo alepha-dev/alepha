@@ -87,7 +87,22 @@ describe("BayAdapter — the host it deploys to", () => {
     }
 
     expect(
-      shell.wasCalled("ssh -o BatchMode=yes ci@other.example.com bay version"),
+      shell.wasCalled("ssh -o BatchMode=yes ci@other.example.com bay list"),
+    ).toBe(true);
+  });
+
+  it("probes with `bay list`, which reaches the control socket — `bay version` does not", async () => {
+    // On the Go side, "version" is `fmt.Println(version)`: a local constant,
+    // printed without ever dialing the control socket. Probing with it would
+    // prove only that ssh works and `bay` is on PATH — every wrong `socket`
+    // path, missing group membership, or `bay serve` being down would all
+    // survive it and only surface after a full build and pack.
+    const { adapter, shell } = await setup();
+
+    await adapter.authenticate(context(), run);
+
+    expect(
+      shell.wasCalled("ssh -o BatchMode=yes deploy@bay.example.com bay list"),
     ).toBe(true);
   });
 });
@@ -390,8 +405,8 @@ describe("BayAdapter — the control socket it can be told about", () => {
       outputs: {
         "ssh -o BatchMode=yes deploy@bay.example.com id -nG":
           "deploy docker bay-control",
-        "ssh -o BatchMode=yes deploy@bay.example.com bay version --control-socket /var/lib/bay/control.sock":
-          "0.4.1",
+        "ssh -o BatchMode=yes deploy@bay.example.com bay list --control-socket /var/lib/bay/control.sock":
+          "[]",
       },
     });
 
@@ -409,7 +424,7 @@ describe("BayAdapter — what it says when ssh fails", () => {
     const { adapter, shell } = await setup();
     shell.configure({
       errors: {
-        "ssh -o BatchMode=yes deploy@bay.example.com bay version": message,
+        "ssh -o BatchMode=yes deploy@bay.example.com bay list": message,
       },
     });
     return adapter.authenticate(context(), run);
@@ -421,12 +436,15 @@ describe("BayAdapter — what it says when ssh fails", () => {
     ).rejects.toThrowError(/authorized_keys/);
   });
 
-  it("names the control group when the socket is unreachable", async () => {
-    // The failure that wastes an afternoon: the key works, the shell opens,
-    // and bay then fails on a permission that has nothing to do with SSH.
+  it("says to set `socket`, not to fix group membership, when Bay never found any socket at all", async () => {
+    // "no control socket found" means Bay never even tried to dial anything —
+    // nothing was passed via --control-socket and its own relative-path guess
+    // found no file. That is a config problem, not a group problem: the
+    // genuine group failure looks completely different (below) and gets its
+    // own, different advice.
     await expect(
       failWith("no control socket found — these commands run on the Bay host"),
-    ).rejects.toThrowError(/usermod -aG bay-control/);
+    ).rejects.toThrowError(/never found its own control socket/);
   });
 
   it("names the PATH when bay is not installed for that user", async () => {
@@ -435,21 +453,48 @@ describe("BayAdapter — what it says when ssh fails", () => {
     );
   });
 
-  it("recognizes a control-socket permission error, not just 'no control socket found'", async () => {
-    // The realistic failure for a user who is NOT in the control group: the
-    // socket's directory is world-readable, so the file IS found and the
-    // dial fails with a plain "permission denied" naming the `.sock` path —
-    // never the "no control socket found" wording the other case produces.
-    // That wording alone is identical to an SSH key refusal, so this fixture
-    // carries BOTH patterns and would go red if the branches were checked in
-    // the other order (the permission/publickey branch would win instead and
-    // report the wrong fix).
+  it("also recognizes dash's 'not found' phrasing for a missing PATH entry", async () => {
+    // dash's login shell says "bay: not found", never "command not found".
+    await expect(failWith("bay: not found")).rejects.toThrowError(/PATH/);
+  });
+
+  it("names the control group when the socket denies that specific user", async () => {
+    // The failure that wastes an afternoon: the key works, the shell opens,
+    // and Bay found the socket file (its directory is world-readable) but
+    // refused to dial it for this user specifically. This wording is
+    // identical to an SSH key refusal, so this fixture carries BOTH patterns
+    // and would go red if the branches were checked in the other order (the
+    // permission/publickey branch would win instead and report the wrong fix).
     await expect(
       failWith(
         "control api unreachable (is `bay serve` running?): " +
           "dial unix /var/lib/bay/control.sock: connect: permission denied",
       ),
     ).rejects.toThrowError(/usermod -aG bay-control/);
+  });
+
+  it("names an old bay's stdin limitation, not a PATH problem", async () => {
+    // `open -: no such file or directory` is what a `bay` from before "-"
+    // meant stdin produces: `os.Open("-")` fails just like any other missing
+    // file. It contains "no such file or directory", so this fails if the
+    // upgrade-bay branch were checked after the generic PATH one.
+    await expect(
+      failWith("error: open -: no such file or directory"),
+    ).rejects.toThrowError(/too old to read the deploy artifact from stdin/);
+  });
+
+  it("names a bad `socket` value, not a PATH problem", async () => {
+    // A `socket` pointing at nothing produces this exact wording, which also
+    // contains "no such file or directory" — so this fails if the
+    // socket-config branch were checked after the generic PATH one.
+    await expect(
+      failWith(
+        "control api unreachable (is `bay serve` running?): " +
+          "dial unix /var/lib/bay/wrong.sock: connect: no such file or directory",
+      ),
+    ).rejects.toThrowError(
+      /nothing is listening at the configured control socket path/,
+    );
   });
 });
 
@@ -627,11 +672,36 @@ describe("BayAdapter — login and logout", () => {
       outputs: {
         "ssh -o BatchMode=yes deploy@bay.example.com id -nG":
           "deploy docker bay-control",
-        "ssh -o BatchMode=yes deploy@bay.example.com bay version": "0.4.1",
+        "ssh -o BatchMode=yes deploy@bay.example.com bay list": "[]",
       },
     });
 
     await expect(adapter.login(context(), run)).resolves.toBeUndefined();
+  });
+
+  it("earns its 'deploys will be accepted' claim with a real socket round trip", async () => {
+    // `id -nG` alone cannot prove the socket is reachable — only a genuine
+    // `bay list` call can. If `login` stopped calling it, this is the test
+    // that would notice.
+    const { adapter, shell } = await setup();
+    shell.configure({
+      errors: {
+        "ssh -o BatchMode=yes deploy@bay.example.com bay list":
+          "control api unreachable (is `bay serve` running?): " +
+          "dial unix /var/lib/bay/control.sock: connect: permission denied",
+      },
+      outputs: {
+        "ssh -o BatchMode=yes deploy@bay.example.com id -nG":
+          "deploy docker bay-control",
+      },
+    });
+
+    await expect(adapter.login(context(), run)).rejects.toThrowError(
+      /usermod -aG bay-control/,
+    );
+    expect(
+      shell.wasCalled("ssh -o BatchMode=yes deploy@bay.example.com bay list"),
+    ).toBe(true);
   });
 
   it("says what to run when the key works but the group does not", async () => {
@@ -648,8 +718,9 @@ describe("BayAdapter — login and logout", () => {
   });
 
   it("checks the group before asking bay anything", async () => {
-    // Ordering is the point: `bay version` fails with a socket error that says
-    // nothing about groups, so asking it first buries the real answer.
+    // Ordering is the point: checking membership directly with `id -nG` is
+    // faster and more portable than a round trip to the control socket that
+    // would only fail predictably, so it runs first.
     const { adapter, shell } = await setup();
     shell.configure({
       outputs: {

@@ -58,10 +58,15 @@ Host bay-prod
 
 That is deliberate. There is no port, identity-file, jump-host or ssh-flags field here, because
 `~/.ssh/config` already has all of them and having two places to configure one connection is worse
-than having one.
+than having one. It also means `host` rejects a bare IPv6 literal (`2001:db8::1`) and an `ssh://` URI
+outright — the pattern that keeps this value off a command line safely accepts a hostname, an IPv4
+address, or `user@host`, but not a colon. Reach an IPv6-only host through a `~/.ssh/config` alias
+instead, the same as any other connection detail this field does not carry directly.
 
 If the Bay was started with a `--root` other than its default (`./bay-data`, resolved under the
-deploy user's home), also set `socket`:
+deploy user's home), also set `socket` — an **absolute** path; the validation pattern requires a
+leading `/`, since the value is passed straight through as `--control-socket <path>` with no
+resolution against a working directory:
 
 ```typescript
 { adapter: "bay", host: "deploy@bay.example.com", socket: "/var/lib/bay/control.sock" }
@@ -98,14 +103,18 @@ Check both in one command:
 alepha platform auth login --env production
 ```
 
-It reports the Bay's version and whether the user is in the group. Those two failures look nothing
-alike and only one of them is about SSH, so it is worth running once before the first deploy — the
-group problem otherwise surfaces halfway through as a permission error mentioning neither Bay nor the
-group.
+It confirms the key, the group, and Bay's control socket itself: after checking that the user is in
+`bay-control`, it makes a real `bay list` call over the socket, rather than the version check alone
+that would prove no more than "ssh works and `bay` is on PATH". Those failures look nothing alike and
+only one of them is about SSH, so it is worth running once before the first deploy — the group problem
+otherwise surfaces halfway through as a permission error mentioning neither Bay nor the group.
 
 If that command (or `bay list`, behind `alepha platform status`) fails with a raw detail saying "no
-control socket found" rather than a plain permission error, the group is not the problem — it means
-Bay's own guess at the socket path missed entirely. Set `socket`, above, to the actual path.
+control socket found" rather than a plain permission error naming a `.sock` path, the group is not the
+problem — it means Bay never even tried to dial anything, because its own guess at the socket path
+missed entirely. Set `socket`, above, to the actual path. A permission error that *does* name a `.sock`
+path is the genuine group problem instead: Bay found the socket file (its containing directory is
+world-readable) but refused to dial it for that user.
 
 `alepha platform auth logout` exists but always refuses: nothing was stored, so there is nothing to
 forget, and refusing loudly is safer than doing nothing quietly, which would look like access had been
@@ -213,7 +222,7 @@ export default defineConfig({
 ```
 
 ```bash
-alepha platform auth login --env production  # checks the key and the group, changes nothing
+alepha platform auth login --env production   # checks the key and the group, changes nothing
 alepha platform plan --env production         # shows what will happen, touches nothing
 alepha platform up --env production
 ```

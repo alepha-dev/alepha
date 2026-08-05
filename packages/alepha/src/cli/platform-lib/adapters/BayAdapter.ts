@@ -244,19 +244,25 @@ export class BayAdapter extends PlatformAdapter {
   /**
    * Turns whatever `ssh` failed with into a sentence naming the fix.
    *
-   * The three cases below fail at different layers and want opposite actions,
-   * and only one of them is about SSH at all. The middle one is the expensive
-   * one: the key works, the shell opens, and `bay` then fails on a unix group,
-   * which surfaces mid-deploy as a permission error mentioning neither.
+   * Each branch fails at a different layer and wants a different fix, and
+   * several share vocabulary that would misfire if the branches were
+   * reordered — each one's comment says which lower branch it would
+   * otherwise fall into, and each is a bad diagnosis for that other cause:
    *
-   * The control-socket branch matches two distinct wordings for the same
-   * cause. Bay says "no control socket found" only when it finds no socket
-   * file at all — but a user who is merely not in the control group DOES
-   * find the file, because its directory is world-readable, and instead gets
-   * a plain "permission denied" dialing it. That wording alone is
-   * indistinguishable from an SSH key refusal, which is why this only
-   * matches it alongside the `.sock` path Bay's dial error always names,
-   * rather than widening to "permission denied" on its own.
+   * - "no control socket found" means Bay never even tried to dial anything
+   *   — nothing was passed via `--control-socket` and its own relative-path
+   *   guess found no file. That is NOT a group problem, so it must not
+   *   produce the `usermod` advice below it.
+   * - A permission-denied dial naming a `.sock` path IS the group problem:
+   *   the socket file was found (its directory is world-readable) but this
+   *   user was refused. The expensive one, because the key works and the
+   *   shell opens before it surfaces.
+   * - `bay` treating `-` as a literal filename means it predates stdin
+   *   support and needs upgrading — not that it is missing from PATH.
+   * - A dial that fails with "no such file or directory" (rather than
+   *   "permission denied") means the configured `socket` path itself is
+   *   wrong — the file it names does not exist — which is a config fix, not
+   *   a PATH problem or a group problem.
    */
   protected explain(host: string, error: unknown): AlephaError {
     const detail = String(
@@ -265,15 +271,42 @@ export class BayAdapter extends PlatformAdapter {
         error,
     ).trim();
 
-    const controlSocketDenied =
-      /no control socket found/i.test(detail) ||
-      (/permission denied/i.test(detail) && /\.sock/i.test(detail));
-
-    if (controlSocketDenied) {
+    if (/no control socket found/i.test(detail)) {
       return new AlephaError(
-        `Signed in to ${host}, but Bay's control socket is unreachable — that user is not in ` +
-          `the "${this.controlGroup}" group. On the host: usermod -aG ${this.controlGroup} <user>, ` +
+        `Signed in to ${host}, but Bay never found its own control socket — nothing was passed via ` +
+          "--control-socket, and its own default guess (a relative path resolved under $HOME) " +
+          `missed. Set \`socket\` for this environment in alepha.config.ts to the socket's actual ` +
+          `path on the host. (${detail})`,
+      );
+    }
+    if (/permission denied/i.test(detail) && /\.sock/i.test(detail)) {
+      // Must stay ahead of the bare "permission denied" branch below, which
+      // this text also matches and would misdiagnose as a refused SSH key.
+      return new AlephaError(
+        `Signed in to ${host}, but Bay's control socket refused that user — it is not in the ` +
+          `"${this.controlGroup}" group. On the host: usermod -aG ${this.controlGroup} <user>, ` +
           `then open a new session. (${detail})`,
+      );
+    }
+    if (/open -:/i.test(detail)) {
+      // `os.Open("-")` failing is what a `bay` from before "-" meant stdin
+      // looks like. Contains "no such file or directory", so it must stay
+      // ahead of the generic PATH branch below, which would otherwise claim
+      // `bay` isn't installed when it plainly is.
+      return new AlephaError(
+        `Signed in to ${host}, but its \`bay\` is too old to read the deploy artifact from stdin — ` +
+          `it tried to open a file literally named "-". Upgrade \`bay\` on the host. (${detail})`,
+      );
+    }
+    if (
+      /dial unix/i.test(detail) &&
+      /no such file or directory/i.test(detail)
+    ) {
+      // Also contains "no such file or directory", so it too must stay ahead
+      // of the generic PATH branch below.
+      return new AlephaError(
+        `Signed in to ${host}, but nothing is listening at the configured control socket path. ` +
+          `Check the \`socket\` value for this environment in alepha.config.ts. (${detail})`,
       );
     }
     if (/permission denied|publickey/i.test(detail)) {
@@ -282,7 +315,11 @@ export class BayAdapter extends PlatformAdapter {
           `or point \`host\` at a ~/.ssh/config entry that uses the right one. (${detail})`,
       );
     }
-    if (/command not found|no such file or directory/i.test(detail)) {
+    if (
+      /command not found|no such file or directory|\bnot found\b/i.test(detail)
+    ) {
+      // The third alternative is for `dash`, whose login shell says
+      // "bay: not found" rather than "command not found".
       return new AlephaError(
         `Signed in to ${host}, but \`bay\` is not on that user's PATH. Install it, or add its ` +
           `directory to the login shell's PATH — an ssh command runs a non-interactive shell, ` +
@@ -295,6 +332,15 @@ export class BayAdapter extends PlatformAdapter {
   /**
    * Checks the Bay answers before anything expensive happens.
    *
+   * Probes with `bay list`, not `bay version`: on the Go side `version` is
+   * `fmt.Println(version)` — a local constant, printed without ever dialing
+   * the control socket. It proves only that ssh works and `bay` is on PATH,
+   * so every wrong `socket` path, every missing group membership, and `bay
+   * serve` being down would all survive it and only surface after a full
+   * build and pack — exactly the two minutes this method's own reason for
+   * existing is to save. `list` is the cheapest command that actually reaches
+   * the socket, and {@link inspect} already parses its answer.
+   *
    * Runs first in `up` precisely so a bad host costs a second rather than a
    * two-minute build.
    */
@@ -303,13 +349,12 @@ export class BayAdapter extends PlatformAdapter {
     await run({
       name: `check ${host}`,
       handler: async () => {
-        let version: string;
         try {
-          version = await this.remote(ctx, this.bayArgv(ctx, ["version"]));
+          await this.remote(ctx, this.bayArgv(ctx, ["list"]));
         } catch (error) {
           throw this.explain(host, error);
         }
-        this.log.info(`Reached ${host} — bay ${version.trim()}`);
+        this.log.info(`Reached ${host} — Bay's control socket answered.`);
       },
     });
   }
@@ -317,11 +362,14 @@ export class BayAdapter extends PlatformAdapter {
   /**
    * Reports whether the SSH key and the group membership are both in place.
    *
-   * There is nothing to log into — this adapter stores no credential — but the
-   * two ways a Bay refuses a deploy fail in different places, and only one of
-   * them looks like SSH. The group is checked FIRST: `bay version` on a
-   * non-member fails with a socket error that says nothing about groups, so
-   * asking it first buries the answer.
+   * There is nothing to log into — this adapter stores no credential. The
+   * group is checked FIRST, via `id -nG`: a direct, portable answer that does
+   * not depend on the exact wording a denied dial happens to produce on this
+   * OS, and it skips an ssh round trip to the control socket that would only
+   * fail predictably anyway. Only once that passes does this touch the
+   * socket at all — with `bay list`, the same probe {@link authenticate}
+   * uses — so the closing message is actually earned rather than inferred
+   * from `id -nG` alone.
    */
   async login(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
     const host = this.host(ctx);
@@ -342,15 +390,14 @@ export class BayAdapter extends PlatformAdapter {
           );
         }
 
-        let version: string;
         try {
-          version = await this.remote(ctx, this.bayArgv(ctx, ["version"]));
+          await this.remote(ctx, this.bayArgv(ctx, ["list"]));
         } catch (error) {
           throw this.explain(host, error);
         }
         this.log.info(
-          `Reached ${host} — bay ${version.trim()}. That user is in "${this.controlGroup}", ` +
-            "so deploys will be accepted.",
+          `Reached ${host}, and that user's membership in "${this.controlGroup}" reaches Bay's ` +
+            "control socket — deploys will be accepted.",
         );
       },
     });
@@ -482,6 +529,11 @@ export class BayAdapter extends PlatformAdapter {
 
         let answer: string;
         try {
+          // `new Uint8Array(...)` copies the buffer `readFile` already holds,
+          // so peak memory here is roughly twice the artifact's size. Fine at
+          // the ~10 MB an Alepha bundle plus migrations typically is; this
+          // does not stream, so a much larger artifact would want a
+          // different path.
           answer = await this.remote(ctx, this.bayArgv(ctx, args), {
             stdin: new Uint8Array(await this.fs.readFile(artifact)),
           });
