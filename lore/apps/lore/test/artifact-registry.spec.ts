@@ -8,6 +8,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ConflictError } from "alepha/server";
 import { AlephaServerCors } from "alepha/server/cors";
 import { describe, expect, it } from "vitest";
+import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { artifacts, isMutableTag } from "../src/api/entities/artifacts.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
@@ -75,6 +76,7 @@ const setup = async () => {
     alepha,
     service,
     probe,
+    owner,
     projectId: project.id,
     fileA: await makeFile("a"),
     fileB: await makeFile("b"),
@@ -360,5 +362,123 @@ describe("DeploymentService.deployArtifact", () => {
         environment: "production",
       }),
     ).rejects.toThrow();
+  });
+});
+
+/**
+ * The HTTP layer, which the service tests above cannot reach.
+ *
+ * Driven through `$action.fetch()` rather than a live socket so the whole
+ * pipeline runs — params, body schema, the membership gate and, the reason
+ * this exists at all, `schema.response`. A field the response schema does not
+ * declare is dropped silently, so "the service returned it" is not evidence
+ * the caller received it.
+ */
+describe("ReleaseController — artifacts over HTTP", () => {
+  it("registers an artifact and echoes the tag back", async () => {
+    const { alepha, projectId, fileA, owner } = await setup();
+    const controller = alepha.inject(ReleaseController);
+
+    const res = await controller.createArtifact.fetch(
+      {
+        params: { projectId },
+        body: { app: "hello", tag: "1.2.3", sha256: SHA_A, fileId: fileA },
+      },
+      { user: owner },
+    );
+
+    expect(res.data.tag).toBe("1.2.3");
+    expect(res.data.sha256).toBe(SHA_A);
+    expect(res.data.app).toBe("hello");
+    // Never on the wire: it names where the bytes live, which is the sink's
+    // business and nobody else's.
+    expect((res.data as Record<string, unknown>).fileId).toBeUndefined();
+  });
+
+  it("refuses a pinned tag twice, and accepts it forced", async () => {
+    const { alepha, projectId, fileA, fileB, owner } = await setup();
+    const controller = alepha.inject(ReleaseController);
+
+    const body = { app: "hello", tag: "1.2.3", sha256: SHA_A, fileId: fileA };
+    await controller.createArtifact.fetch(
+      { params: { projectId }, body },
+      { user: owner },
+    );
+
+    await expect(
+      controller.createArtifact.fetch(
+        {
+          params: { projectId },
+          body: { ...body, sha256: SHA_B, fileId: fileB },
+        },
+        { user: owner },
+      ),
+    ).rejects.toThrow(/immutable/i);
+
+    const forced = await controller.createArtifact.fetch(
+      {
+        params: { projectId },
+        body: { ...body, sha256: SHA_B, fileId: fileB, force: true },
+      },
+      { user: owner },
+    );
+    expect(forced.data.sha256).toBe(SHA_B);
+  });
+
+  it("promotes one artifact to two environments over the wire", async () => {
+    const { alepha, projectId, fileA, owner } = await setup();
+    const controller = alepha.inject(ReleaseController);
+
+    const artifact = await controller.createArtifact.fetch(
+      {
+        params: { projectId },
+        body: { app: "hello", tag: "1.2.3", sha256: SHA_A, fileId: fileA },
+      },
+      { user: owner },
+    );
+
+    const staging = await controller.createDeployment.fetch(
+      {
+        params: { projectId },
+        body: { artifactId: artifact.data.id, environment: "staging" },
+      },
+      { user: owner },
+    );
+    const production = await controller.createDeployment.fetch(
+      {
+        params: { projectId },
+        body: { artifactId: artifact.data.id, environment: "production" },
+      },
+      { user: owner },
+    );
+
+    expect(production.data.sha256).toBe(staging.data.sha256);
+    expect(production.data.id).not.toBe(staging.data.id);
+    expect(production.data.environment).toBe("production");
+    expect(production.data.status).toBe("pending");
+  });
+
+  it("still serves the 0.25.0 release endpoint", async () => {
+    const { alepha, projectId, fileA, owner } = await setup();
+    const controller = alepha.inject(ReleaseController);
+
+    // The deployed LoreAdapter posts exactly this shape. It has to keep
+    // working the moment this ships, not after everyone upgrades.
+    const res = await controller.createRelease.fetch(
+      {
+        params: { projectId },
+        body: {
+          app: "hello",
+          environment: "production",
+          version: "2026-08-05-120000",
+          sha256: SHA_A,
+          fileId: fileA,
+        },
+      },
+      { user: owner },
+    );
+
+    expect(res.data.status).toBe("pending");
+    expect(res.data.version).toBe("2026-08-05-120000");
   });
 });
