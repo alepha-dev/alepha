@@ -31,6 +31,14 @@ import { ServerRequestParser } from "../services/ServerRequestParser.ts";
 import { ServerTimingProvider } from "./ServerTimingProvider.ts";
 
 /**
+ * Statuses the Fetch spec forbids a body on.
+ *
+ * `new Response(body, { status })` throws a TypeError for any of these on
+ * workerd and undici, and Node's http server emits a malformed message.
+ */
+const NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
+
+/**
  * Main router for all routes server side.
  *
  * Reminder:
@@ -217,10 +225,16 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     await this.alepha.events.emit("server:onSend", payload, { catch: true });
 
     const reply = request.reply;
+    const status = reply.status ?? (reply.body ? 200 : 204); // default status: 200 if body is set, otherwise 204
     const response = {
-      status: reply.status ?? (reply.body ? 200 : 204), // default status: 200 if body is set, otherwise 204
+      status,
       headers: reply.headers,
-      body: reply.body as any,
+      // A null-body status must not carry one. A handler that sets 204 and
+      // still returns a value (`reply.status = 204; return {}`) is easy to
+      // write and reads as harmless, but `new Response(body, { status: 204 })`
+      // is a TypeError on workerd and malformed on Node. Drop the body here,
+      // once, rather than asking every handler and every adapter to remember.
+      body: NULL_BODY_STATUSES.has(status) ? undefined : (reply.body as any),
     };
 
     payload.response = response;
