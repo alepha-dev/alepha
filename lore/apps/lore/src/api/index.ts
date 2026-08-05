@@ -31,6 +31,7 @@ import { InvitationNotifications } from "./notifications/InvitationNotifications
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
+import { ArtifactService } from "./services/ArtifactService.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
@@ -92,6 +93,7 @@ export const LoreApi = $module({
     SigilIngestService,
     OutpostTokenService,
     OutpostIngestService,
+    ArtifactService,
     ReleaseService,
     // Controllers
     QuestController,
