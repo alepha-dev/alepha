@@ -491,6 +491,66 @@ describe("relations on postgres", () => {
       expect(right.titles).toContain("Right");
       expect(left.id).not.toBe(right.id);
     });
+
+    /**
+     * The same failure as above, but forced rather than raced for.
+     *
+     * The test above depends on how the two blocks interleave, and the
+     * interleaving that breaks is not the common one — it passed for weeks and
+     * then failed once on a loaded CI runner. What it needs is for both blocks
+     * to open a transaction of their own, which happens whenever they are
+     * issued back-to-back: `transactional()` reads the marker synchronously and
+     * only writes it once `db.transaction()` holds a connection, so neither
+     * sees the other. From there a single shared marker means the first block
+     * to finish clears it while the second is still inside its transaction —
+     * and every query the second one makes after that runs on a pooled
+     * connection, outside any transaction, seeing committed rows and not its
+     * own.
+     *
+     * The gates below pin that order down, so this fails every time rather than
+     * once a month.
+     */
+    it("keeps its transaction when a concurrent one finishes first", async () => {
+      const ana = await app.db.users.create({
+        data: { email: "ana@example.com", name: "Ana" },
+      });
+
+      const deferred = () => {
+        let resolve!: () => void;
+        const promise = new Promise<void>((r) => {
+          resolve = r;
+        });
+        return { promise, resolve };
+      };
+
+      const rightInserted = deferred();
+      const leftDone = deferred();
+
+      const left = provider
+        .transactional(async () => {
+          await rightInserted.promise;
+          await app.db.campaigns.create({
+            data: { title: "Left", ownerId: ana.id },
+          });
+        })
+        .then(() => leftDone.resolve());
+
+      const right = provider.transactional(async () => {
+        await app.db.campaigns.create({
+          data: { title: "Right", ownerId: ana.id },
+        });
+        rightInserted.resolve();
+        await leftDone.promise;
+        const mine = await app.db.campaigns.findMany({
+          where: { ownerId: { eq: ana.id } },
+        });
+        return mine.map((c) => c.title);
+      });
+
+      const [, titles] = await Promise.all([left, right]);
+
+      expect(titles).toContain("Right");
+    });
   });
 
   describe("pagination", () => {

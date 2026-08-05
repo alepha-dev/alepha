@@ -2,6 +2,7 @@ import { $logger } from "alepha/logger";
 import {
   type ChangelogOptions,
   DEFAULT_IGNORE,
+  DEFAULT_TYPES,
 } from "../atoms/changelogOptions.ts";
 import type { Commit } from "../commands/gen/changelog.ts";
 
@@ -27,7 +28,10 @@ export class GitMessageParser {
    *
    * **Format:** `type(scope): description` or `type(scope)!: description`
    *
-   * **Supported types:** feat, fix, docs, refactor, perf, revert
+   * **Supported types:** whatever `config.types` lists — `feat` and `fix` by
+   * default. The type vocabulary lives in the configuration and nowhere else:
+   * this used to accept `docs|refactor|perf|revert` too, which the command
+   * then dropped on the floor, so a `perf` commit was parsed and silently lost.
    *
    * **Breaking changes:** Use `!` before `:` (e.g., `feat(api)!: remove endpoint`)
    *
@@ -39,12 +43,12 @@ export class GitMessageParser {
     if (!match) return null;
 
     const [, hash, message] = match;
-    const ignore = config.ignore ?? DEFAULT_IGNORE;
+    const types = config.types ?? DEFAULT_TYPES;
 
     // Conventional commit with REQUIRED scope: type(scope): description
     // The `!` before `:` marks a breaking change
     const conventionalMatch = message.match(
-      /^(feat|fix|docs|refactor|perf|revert)\(([^)]+)\)(!)?:\s*(.+)$/i,
+      /^([a-zA-Z]+)\(([^)]+)\)(!)?:\s*(.+)$/,
     );
 
     if (!conventionalMatch) {
@@ -52,11 +56,15 @@ export class GitMessageParser {
       return null;
     }
 
-    const [, type, scope, breakingMark, description] = conventionalMatch;
+    const [, rawType, rawScope, breakingMark, description] = conventionalMatch;
+    const type = rawType.toLowerCase();
 
-    // Check if scope should be ignored
-    const baseScope = scope.split("/")[0];
-    if (ignore.includes(baseScope) || ignore.includes(scope)) {
+    if (!types.includes(type)) {
+      return null;
+    }
+
+    const scope = this.resolveScope(rawScope, config);
+    if (!scope) {
       return null;
     }
 
@@ -68,10 +76,51 @@ export class GitMessageParser {
 
     return {
       hash: hash.substring(0, 8),
-      type: type.toLowerCase(),
+      type,
       scope,
       description: description.trim(),
       breaking,
     };
+  }
+
+  /**
+   * Reduce a raw scope to the part worth publishing, or `null` for none.
+   *
+   * A commit may carry several scopes — `fix(orm,lore)` — and they are judged
+   * one at a time, so a change that touched a published module and an internal
+   * app is published, naming only the module. Judging the raw string instead
+   * let every multi-scope commit through: `"orm,lore"` matches no entry in any
+   * list, whichever way the list is meant.
+   *
+   * Matching is on the scope or on the segment before its first `/`, so `api`
+   * covers `api/users` and the full path is what gets printed.
+   */
+  protected resolveScope(
+    rawScope: string,
+    config: ChangelogOptions,
+  ): string | null {
+    const scopes = rawScope
+      .split(",")
+      .map((scope) => scope.trim())
+      .filter(Boolean);
+
+    // An allowlist answers "is this ours to publish", which is a question that
+    // stays answerable as the repository grows. It wins when both are set.
+    if (config.scopes) {
+      const allowed = config.scopes;
+      const kept = scopes.filter(
+        (scope) =>
+          allowed.includes(scope) || allowed.includes(scope.split("/")[0]),
+      );
+      return kept.length > 0 ? kept.join(",") : null;
+    }
+
+    const ignore = config.ignore ?? DEFAULT_IGNORE;
+    const kept = scopes.filter(
+      (scope) =>
+        !ignore.includes(scope) && !ignore.includes(scope.split("/")[0]),
+    );
+
+    return kept.length > 0 ? kept.join(",") : null;
   }
 }

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "alepha": "^0.24.0",
+    "alepha": "^0.25.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

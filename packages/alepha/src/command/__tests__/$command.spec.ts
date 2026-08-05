@@ -370,6 +370,72 @@ describe("$command", () => {
     });
   });
 
+  /**
+   * A typo in a *sub*command used to exit 0.
+   *
+   * `resolveCommand` stops walking at the first word matching no child and
+   * returns the group it reached, so `db bogus` resolved to `db` — whose
+   * handler prints help and returns normally. `alepha db migreate` was a green
+   * no-op in CI. The guard has to stay off groups that take positional args of
+   * their own, where a leftover word is data rather than a typo.
+   */
+  describe("Unknown subcommands", () => {
+    const pushHandler = vi.fn();
+
+    class NestedCommands {
+      push = $command({
+        name: "push",
+        description: "Push the schema.",
+        args: z.text().optional(),
+        handler: pushHandler,
+      });
+
+      seed = $command({
+        name: "seed",
+        description: "Seed the database.",
+        children: [this.push],
+        handler: ({ help }) => help(),
+      });
+
+      db = $command({
+        name: "db",
+        description: "Database management commands",
+        children: [this.push, this.seed],
+        handler: ({ help }) => help(),
+      });
+    }
+
+    const setupNested = (argv: string[]) =>
+      setupTestCommands(argv, (a) => a.with(NestedCommands));
+
+    test("should report an unknown subcommand instead of exiting 0", async () => {
+      await expectUsageError(setupNested(["db", "bogus"]), "db bogus");
+    });
+
+    test("should report an unknown subcommand at any depth", async () => {
+      await expectUsageError(
+        setupNested(["db", "seed", "bogus"]),
+        "db seed bogus",
+      );
+    });
+
+    test("should still run a group with no subcommand at all", async () => {
+      const { mockOutput } = await setupNested(["db"]);
+
+      expect(process.exitCode).not.toBe(1);
+      expect(mockOutput.text).toContain("Usage:");
+    });
+
+    test("should treat a leftover word as an argument when the command takes one", async () => {
+      pushHandler.mockClear();
+      await setupNested(["db", "push", "./some/path"]);
+
+      expect(pushHandler).toHaveBeenCalledOnce();
+      expect(pushHandler.mock.calls[0][0].args).toBe("./some/path");
+      expect(process.exitCode).not.toBe(1);
+    });
+  });
+
   describe("Error Handling", () => {
     test("should log an error for an unknown command", async () => {
       const { mockLogger, mockOutput } = await setupTestCommands([

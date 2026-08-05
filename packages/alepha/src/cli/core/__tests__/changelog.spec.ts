@@ -153,17 +153,39 @@ describe("changelog", () => {
       expect(result?.hash).toBe("abcdef12");
     });
 
-    test("should parse all supported types", () => {
+    test("should parse the default types", () => {
       const parser = getParser();
-      const types = ["feat", "fix", "docs", "refactor", "perf", "revert"];
 
-      for (const type of types) {
+      for (const type of ["feat", "fix"]) {
         const result = parser.parseCommit(
           `abc12345 ${type}(core): test`,
           defaultConfig,
         );
         expect(result?.type).toBe(type);
       }
+    });
+
+    test("should refuse types that are not configured", () => {
+      // These used to parse and were then dropped by the command, so a `perf`
+      // commit vanished between the two with nothing to show for it.
+      const parser = getParser();
+
+      for (const type of ["docs", "refactor", "perf", "revert", "chore"]) {
+        const result = parser.parseCommit(
+          `abc12345 ${type}(core): test`,
+          defaultConfig,
+        );
+        expect(result).toBeNull();
+      }
+    });
+
+    test("should parse a type once it is configured", () => {
+      const parser = getParser();
+      const result = parser.parseCommit("abc12345 perf(orm): faster reads", {
+        types: ["feat", "fix", "perf"],
+      });
+
+      expect(result?.type).toBe("perf");
     });
 
     test("should handle nested scopes", () => {
@@ -180,6 +202,75 @@ describe("changelog", () => {
         description: "add endpoint",
         breaking: false,
       });
+    });
+
+    describe("scope allowlist", () => {
+      const allowed = { scopes: ["orm", "api"] };
+
+      test("should keep an allowed scope", () => {
+        const parser = getParser();
+        const result = parser.parseCommit(
+          "abc12345 fix(orm): a real fix",
+          allowed,
+        );
+        expect(result?.scope).toBe("orm");
+      });
+
+      test("should drop a scope that is not listed", () => {
+        const parser = getParser();
+        const result = parser.parseCommit(
+          "abc12345 fix(lore): internal app work",
+          allowed,
+        );
+        expect(result).toBeNull();
+      });
+
+      test("should match a nested scope on its base", () => {
+        const parser = getParser();
+        const result = parser.parseCommit(
+          "abc12345 feat(api/users): add endpoint",
+          allowed,
+        );
+        expect(result?.scope).toBe("api/users");
+      });
+
+      test("should keep only the allowed half of a multi-scope commit", () => {
+        // Judging the raw string let every one of these through: "orm,lore"
+        // matches no entry in any list, whichever way the list is meant.
+        const parser = getParser();
+        const result = parser.parseCommit(
+          "abc12345 fix(orm,lore): touched both",
+          allowed,
+        );
+        expect(result?.scope).toBe("orm");
+      });
+
+      test("should drop a multi-scope commit with nothing allowed", () => {
+        const parser = getParser();
+        const result = parser.parseCommit(
+          "abc12345 fix(lore,bay): two internal apps",
+          allowed,
+        );
+        expect(result).toBeNull();
+      });
+
+      test("should win over the ignore list when both are set", () => {
+        const parser = getParser();
+        const result = parser.parseCommit("abc12345 fix(orm): a real fix", {
+          scopes: ["orm"],
+          ignore: ["orm"],
+        });
+        expect(result?.scope).toBe("orm");
+      });
+    });
+
+    test("should drop only the ignored half of a multi-scope commit", () => {
+      const parser = getParser();
+      const result = parser.parseCommit(
+        "abc12345 fix(core,internal): touched both",
+        { ignore: ["internal"] },
+      );
+      expect(result?.scope).toBe("core");
     });
   });
 
@@ -204,6 +295,89 @@ describe("changelog", () => {
 
       const config = alepha.store.get(changelogOptions);
       expect(config.ignore).toEqual(["custom", "internal"]);
+    });
+
+    test("should default to feat and fix", async () => {
+      const alepha = Alepha.create();
+      await alepha.start();
+
+      const config = alepha.store.get(changelogOptions);
+      expect(config.types).toEqual(["feat", "fix"]);
+    });
+
+    test("should have no scope allowlist by default", async () => {
+      // Unset means "publish every scope": this command ships to every Alepha
+      // app, and their scopes are not ours to guess.
+      const alepha = Alepha.create();
+      await alepha.start();
+
+      const config = alepha.store.get(changelogOptions);
+      expect(config.scopes).toBeUndefined();
+    });
+  });
+
+  describe("sections", () => {
+    class TestChangelogCommand extends ChangelogCommand {
+      public testParse = this.parseCommits.bind(this);
+      public testFormat = this.formatEntry.bind(this);
+    }
+
+    const render = async (log: string[], options?: object) => {
+      const alepha = Alepha.create();
+      if (options) {
+        alepha.set(changelogOptions, options as any);
+      }
+      const command = alepha.inject(TestChangelogCommand);
+      await alepha.start();
+
+      return command.testFormat(command.testParse(log.join("\n")));
+    };
+
+    test("should render features before fixes", async () => {
+      const output = await render([
+        "abc12345 fix(orm): a fix",
+        "def45678 feat(core): a feature",
+      ]);
+
+      expect(output).toBe(
+        [
+          "### Features\n",
+          "- **core**: a feature (`def45678`)",
+          "",
+          "### Bug Fixes\n",
+          "- **orm**: a fix (`abc12345`)",
+          "",
+        ].join("\n"),
+      );
+    });
+
+    test("should follow the configured type order", async () => {
+      const output = await render(
+        ["abc12345 fix(orm): a fix", "def45678 feat(core): a feature"],
+        { types: ["fix", "feat"] },
+      );
+
+      expect(output.indexOf("### Bug Fixes")).toBeLessThan(
+        output.indexOf("### Features"),
+      );
+    });
+
+    test("should title a configured type that has no known heading", async () => {
+      const output = await render(["abc12345 spike(orm): try something"], {
+        types: ["spike"],
+      });
+
+      expect(output).toContain("### Spike");
+    });
+
+    test("should publish nothing outside the scope allowlist", async () => {
+      const output = await render(
+        ["abc12345 feat(lore): internal", "def45678 feat(orm): published"],
+        { types: ["feat"], scopes: ["orm"] },
+      );
+
+      expect(output).toContain("published");
+      expect(output).not.toContain("internal");
     });
   });
 

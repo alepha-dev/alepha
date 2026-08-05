@@ -101,7 +101,6 @@ Project `1` has a directory tree (browse it with `directory_list`). Put a new fo
 | Directory | What goes in it |
 |---|---|
 | `apps/bay` | the Go orchestrator and its deployment |
-| `apps/bay-admin` | the control panel |
 | `apps/pulse` | observability history (Pulse is retired — see folio #21) |
 | `apps/rocket` | the deployer image |
 | `framework` | `packages/alepha` decisions, ORM, router, UI |

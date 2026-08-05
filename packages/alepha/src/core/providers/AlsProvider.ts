@@ -35,6 +35,43 @@ export class AlsProvider {
     return this.als.run({ ...data, [ALS_PARENT]: parent }, callback);
   }
 
+  /**
+   * Run `callback` in a child layer that keeps the caller's identity.
+   *
+   * The difference from {@link run} is what this layer does *not* mint: no new
+   * correlation id, no new scoped registry. A nested scope is the same unit of
+   * work as its caller, and inventing either would break something — a fresh
+   * `context` detaches the callback's logs from the request that caused them,
+   * and a fresh `registry` hands it different `scoped` instances than the
+   * caller itself is holding.
+   *
+   * What it does give is a private layer to write into. `set` always targets
+   * the innermost layer, so a value stored here is invisible to siblings and
+   * dies with the callback, while reads still walk up to the caller. That is
+   * what lets two concurrent callers each keep a marker of their own under the
+   * same key — a database transaction, say.
+   *
+   * With no ALS at all (browser builds) this is `callback()`, like {@link run}.
+   * With no active parent it mints a correlation id and nothing else, because a
+   * layer that does not register as a context is one that `StateManager` writes
+   * straight past into the app-wide store — which is the very thing the caller
+   * asked to avoid.
+   */
+  public nest<R>(callback: () => R): R {
+    if (!this.als) {
+      return callback();
+    }
+
+    const parent = this.als.getStore() ?? undefined;
+    const layer: AsyncLocalStorageData = { [ALS_PARENT]: parent };
+
+    if (!parent) {
+      layer.context = this.createContextId();
+    }
+
+    return this.als.run(layer, callback);
+  }
+
   public exists(): boolean {
     return !!this.get("context");
   }

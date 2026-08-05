@@ -454,6 +454,8 @@ class OrderService {
 
 Every repository operation inside the handler automatically participates in the transaction. Nesting is safe — a nested `$transactional` reuses the outer transaction.
 
+Concurrency is safe too: each `transactional()` call runs in its own context, so two blocks started at the same time — `Promise.all`, two requests, a job racing a handler — never read or write through each other's transaction.
+
 ## Repository.of
 
 For inline repository creation without a separate entity variable:

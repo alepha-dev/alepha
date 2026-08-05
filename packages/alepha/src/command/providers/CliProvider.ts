@@ -243,6 +243,28 @@ export class CliProvider {
       return;
     }
 
+    // A mistyped *sub*command must not report success either.
+    //
+    // `resolveCommand` stops walking at the first word that matches no child
+    // and returns the group it reached, so `alepha db bogus` resolves to `db`.
+    // The group's own handler is `({ help }) => help()`, which prints usage and
+    // returns normally — exit 0. That makes `alepha db migreate` a green no-op
+    // in CI, which is exactly what the `Unknown command` guard above exists to
+    // prevent; it just never fires here, because a nested typo always leaves
+    // `command` truthy.
+    //
+    // Only groups, and only groups that declare no positional args of their
+    // own: `alepha db push [path]` legitimately keeps `path` as an argument,
+    // and a leftover word there is data, not a typo.
+    if (command.hasChildren && !command.options.args) {
+      const unknown = positionalArgs[consumedArgs.length];
+      if (unknown !== undefined) {
+        throw new UsageError(
+          `Unknown command: '${[...consumedArgs, unknown].join(" ")}'`,
+        );
+      }
+    }
+
     // Remove consumed command path args from argv for argument parsing
     const remainingArgv = this.removeConsumedArgs(argv, consumedArgs);
 

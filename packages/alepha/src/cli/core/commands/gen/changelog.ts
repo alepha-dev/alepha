@@ -3,13 +3,17 @@ import { promisify } from "node:util";
 import { $inject, $store, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { changelogOptions } from "../../atoms/changelogOptions.ts";
+import {
+  changelogOptions,
+  DEFAULT_TYPES,
+} from "../../atoms/changelogOptions.ts";
 import { GitMessageParser } from "../../services/GitMessageParser.ts";
 
 export {
   type ChangelogOptions,
   changelogOptions,
   DEFAULT_IGNORE,
+  DEFAULT_TYPES,
 } from "../../atoms/changelogOptions.ts";
 export { GitMessageParser } from "../../services/GitMessageParser.ts";
 
@@ -45,10 +49,25 @@ export interface Commit {
   breaking: boolean;
 }
 
-interface ChangelogEntry {
-  features: Commit[];
-  fixes: Commit[];
+interface ChangelogSection {
+  type: string;
+  title: string;
+  commits: Commit[];
 }
+
+/**
+ * Heading for a commit type. A type with no entry here is titled from its own
+ * name, so configuring one that nobody anticipated still produces a section
+ * rather than an empty string.
+ */
+const SECTION_TITLES: Record<string, string> = {
+  feat: "Features",
+  fix: "Bug Fixes",
+  perf: "Performance",
+  refactor: "Refactors",
+  docs: "Documentation",
+  revert: "Reverts",
+};
 
 // =============================================================================
 // CHANGELOG COMMAND
@@ -84,28 +103,22 @@ export class ChangelogCommand {
   }
 
   /**
-   * Format the changelog entry with sections.
+   * Format the changelog entry with sections, in configured type order.
    */
-  protected formatEntry(entry: ChangelogEntry): string {
-    const sections: string[] = [];
+  protected formatEntry(entry: ChangelogSection[]): string {
+    const lines: string[] = [];
 
-    if (entry.features.length > 0) {
-      sections.push("### Features\n");
-      for (const commit of entry.features) {
-        sections.push(this.formatCommit(commit));
+    for (const section of entry) {
+      if (section.commits.length === 0) continue;
+
+      lines.push(`### ${section.title}\n`);
+      for (const commit of section.commits) {
+        lines.push(this.formatCommit(commit));
       }
-      sections.push("");
+      lines.push("");
     }
 
-    if (entry.fixes.length > 0) {
-      sections.push("### Bug Fixes\n");
-      for (const commit of entry.fixes) {
-        sections.push(this.formatCommit(commit));
-      }
-      sections.push("");
-    }
-
-    return sections.join("\n");
+    return lines.join("\n");
   }
 
   // ---------------------------------------------------------------------------
@@ -114,12 +127,18 @@ export class ChangelogCommand {
 
   /**
    * Parse git log output into a changelog entry.
+   *
+   * One section per configured type, in the order they were configured — the
+   * parser has already refused everything else, so a commit that arrives here
+   * always has a section to land in.
    */
-  protected parseCommits(commitsOutput: string): ChangelogEntry {
-    const entry: ChangelogEntry = {
-      features: [],
-      fixes: [],
-    };
+  protected parseCommits(commitsOutput: string): ChangelogSection[] {
+    const types = this.config.types ?? DEFAULT_TYPES;
+    const sections: ChangelogSection[] = types.map((type) => ({
+      type,
+      title: SECTION_TITLES[type] ?? type[0].toUpperCase() + type.slice(1),
+      commits: [],
+    }));
 
     for (const line of commitsOutput.trim().split("\n")) {
       if (!line.trim()) continue;
@@ -132,22 +151,19 @@ export class ChangelogCommand {
 
       this.log.trace("Parsed commit", { commit });
 
-      // Categorize commit (breaking flag is preserved on the commit itself)
-      if (commit.type === "feat") {
-        entry.features.push(commit);
-      } else if (commit.type === "fix") {
-        entry.fixes.push(commit);
-      }
+      // Breaking flag is preserved on the commit itself.
+      const section = sections.find((it) => it.type === commit.type);
+      section?.commits.push(commit);
     }
 
-    return entry;
+    return sections;
   }
 
   /**
    * Check if entry has any public commits.
    */
-  protected hasChanges(entry: ChangelogEntry): boolean {
-    return entry.features.length > 0 || entry.fixes.length > 0;
+  protected hasChanges(entry: ChangelogSection[]): boolean {
+    return entry.some((section) => section.commits.length > 0);
   }
 
   /**

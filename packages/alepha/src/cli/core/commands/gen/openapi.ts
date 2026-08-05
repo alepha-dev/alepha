@@ -1,4 +1,4 @@
-import { $inject, AlephaError, z } from "alepha";
+import { $inject, type Alepha, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import type { ServerSwaggerProvider } from "alepha/server/swagger";
@@ -32,11 +32,17 @@ export class OpenApiCommand {
         // Vite's SSR module graph, while a class imported here comes from the
         // CLI's own graph — two distinct objects for the same source. On a
         // miss `inject(class)` happily instantiates a fresh CLI-graph
-        // provider, so the app got a duplicate and the "Service not found"
-        // branch below was unreachable.
-        const openapiProvider = alepha.inject(
-          "ServerSwaggerProvider",
-        ) as ServerSwaggerProvider;
+        // provider, so the app got a duplicate.
+        //
+        // When it is genuinely absent, register it rather than refusing to
+        // work. Generating a spec is a build-time concern derived purely from
+        // the `$action` primitives already in the container; making it
+        // conditional on the app also mounting a runtime `/docs` UI is a
+        // requirement with no technical basis. `$swagger()` stays meaningful —
+        // when present, its configured document is what gets emitted below.
+        const openapiProvider = (await this.injectSwaggerProvider(
+          alepha,
+        )) as ServerSwaggerProvider;
 
         await alepha.events.emit("configure", alepha);
 
@@ -69,12 +75,6 @@ export class OpenApiCommand {
         // Rethrow: the CLI only exits non-zero when the handler throws, so
         // logging and returning reported success to CI while writing nothing.
         const message = err instanceof Error ? err.message : String(err);
-        if (message.includes("Service not found")) {
-          throw new AlephaError(
-            "Missing $swagger() primitive in your server configuration.",
-            { cause: err },
-          );
-        }
 
         throw new AlephaError(`OpenAPI generation failed - ${message}`, {
           cause: err,
@@ -82,4 +82,31 @@ export class OpenApiCommand {
       }
     },
   });
+
+  /**
+   * Resolve the app's swagger provider, registering the module first if the
+   * app doesn't mount one.
+   *
+   * The module has to be imported through the app's own Vite SSR graph. A
+   * static import at the top of this file is a *different object* for the same
+   * source — the CLI's copy — and registering that would give the container a
+   * parallel set of services whose `$action` primitives are not the app's, so
+   * the generated spec would come back empty.
+   */
+  protected async injectSwaggerProvider(alepha: Alepha): Promise<unknown> {
+    try {
+      return alepha.inject("ServerSwaggerProvider");
+    } catch (err) {
+      if (!(err instanceof Error) || !err.message.includes("Service not found"))
+        throw err;
+
+      const { AlephaServerSwagger } = await this.utils.importFromAppGraph(
+        "alepha/server/swagger",
+      );
+
+      alepha.with(AlephaServerSwagger);
+
+      return alepha.inject("ServerSwaggerProvider");
+    }
+  }
 }

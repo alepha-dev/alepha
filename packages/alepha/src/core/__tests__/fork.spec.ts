@@ -147,6 +147,135 @@ describe("fork", () => {
   });
 });
 
+describe("nest", () => {
+  it("should inherit the caller's state", () => {
+    const alepha = new Alepha();
+    alepha.set("test", "A");
+
+    alepha.context.nest(() => {
+      expect(alepha.get("test")).toBe("A");
+    });
+  });
+
+  it("should isolate its writes from the caller", () => {
+    const alepha = new Alepha();
+    alepha.set("test", "A");
+
+    alepha.context.nest(() => {
+      alepha.set("test", "B");
+      expect(alepha.get("test")).toBe("B");
+    });
+
+    expect(alepha.get("test")).toBe("A");
+  });
+
+  it("should capture writes even with no active context", () => {
+    // The property the ORM relies on: outside a request there is no context,
+    // and a write would otherwise land in the app-wide store where every
+    // concurrent caller shares it.
+    const alepha = new Alepha();
+    alepha.set("test", "app-value" as any);
+
+    alepha.context.nest(() => {
+      alepha.set("test", "mine" as any);
+      expect(alepha.get("test")).toBe("mine");
+    });
+
+    expect(alepha.get("test")).toBe("app-value");
+  });
+
+  it("should keep two concurrent nests apart", async () => {
+    const alepha = new Alepha();
+
+    await Promise.all([
+      alepha.context.nest(async () => {
+        alepha.set("test", "B");
+        await new Promise((r) => setTimeout(r, 20));
+        expect(alepha.get("test")).toBe("B");
+      }),
+      alepha.context.nest(async () => {
+        alepha.set("test", "C");
+        await new Promise((r) => setTimeout(r, 10));
+        expect(alepha.get("test")).toBe("C");
+      }),
+    ]);
+
+    expect(alepha.get("test")).toBeUndefined();
+  });
+
+  it("should survive a sibling that finishes first", async () => {
+    // The shape of the transaction bug: the sibling's `finally` used to clear
+    // a shared slot while this block was still using it.
+    const alepha = new Alepha();
+    let releaseSlow!: () => void;
+    const slowMayFinish = new Promise<void>((r) => {
+      releaseSlow = r;
+    });
+
+    const slow = alepha.context.nest(async () => {
+      alepha.set("test", "slow");
+      await slowMayFinish;
+      return alepha.get("test");
+    });
+
+    await alepha.context.nest(async () => {
+      alepha.set("test", "fast");
+      alepha.set("test", undefined as any);
+    });
+
+    releaseSlow();
+    expect(await slow).toBe("slow");
+  });
+
+  it("should keep the caller's correlation id", () => {
+    // A new id here would detach everything the callback logs from the request
+    // that caused it.
+    const alepha = new Alepha();
+
+    alepha.fork(() => {
+      const outer = alepha.context.get("context");
+      expect(outer).toBeDefined();
+
+      alepha.context.nest(() => {
+        expect(alepha.context.get("context")).toBe(outer);
+      });
+    });
+  });
+
+  it("should mint a correlation id when there is no caller to inherit from", () => {
+    // Without one it does not register as a context, and `StateManager` writes
+    // straight past the layer into the app store.
+    const alepha = new Alepha();
+
+    alepha.context.nest(() => {
+      expect(alepha.context.exists()).toBe(true);
+      expect(alepha.context.get("context")).toBeDefined();
+    });
+  });
+
+  it("should reuse the caller's scoped registry", () => {
+    // A registry of its own would hand the callback different `scoped`
+    // instances than the caller is holding.
+    const alepha = new Alepha();
+
+    alepha.fork(() => {
+      const registry = alepha.context.get("registry");
+      expect(registry).toBeDefined();
+
+      alepha.context.nest(() => {
+        expect(alepha.context.get("registry")).toBe(registry);
+        expect(alepha.context.get("registry", "current")).toBeUndefined();
+      });
+    });
+  });
+
+  it("should return the callback result", () => {
+    const alepha = new Alepha();
+
+    expect(alepha.context.nest(() => 42)).toBe(42);
+  });
+});
+
 describe("fork scope", () => {
   it("should resolve across tree by default", () => {
     const alepha = new Alepha();

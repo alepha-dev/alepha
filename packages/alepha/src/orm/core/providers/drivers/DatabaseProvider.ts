@@ -213,6 +213,15 @@ export abstract class DatabaseProvider {
    *
    * Nesting is safe — if already inside a `transactional()` block, the inner
    * call reuses the outer transaction (no nested PG transactions / savepoints).
+   *
+   * The marker lives in a nested context, never the caller's. Two concurrent
+   * calls both pass the check below — it reads the marker synchronously, and
+   * the write only happens once `db.transaction()` holds a connection — so each
+   * one opens a transaction of its own. Sharing a single slot between them
+   * meant the second write won, and then the first block to finish cleared the
+   * slot while the second was still inside its transaction: every query it made
+   * from that point ran on a pooled connection with no transaction at all,
+   * reading committed rows and not its own writes.
    */
   public async transactional<R>(
     fn: () => Promise<R>,
@@ -227,16 +236,20 @@ export abstract class DatabaseProvider {
       return fn();
     }
 
-    return this.db.transaction(async (tx) => {
-      this.alepha.store.set("alepha.orm.tx", tx as PgAsyncTransaction<any>, {
-        skipEvents: true,
-      });
-      try {
-        return await fn();
-      } finally {
-        this.alepha.store.set("alepha.orm.tx", undefined, { skipEvents: true });
-      }
-    }, config);
+    return this.alepha.context.nest(() =>
+      this.db.transaction(async (tx) => {
+        this.alepha.store.set("alepha.orm.tx", tx as PgAsyncTransaction<any>, {
+          skipEvents: true,
+        });
+        try {
+          return await fn();
+        } finally {
+          this.alepha.store.set("alepha.orm.tx", undefined, {
+            skipEvents: true,
+          });
+        }
+      }, config),
+    );
   }
 
   /**

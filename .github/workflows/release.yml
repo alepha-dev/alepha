@@ -3,6 +3,22 @@ name: Release
 permissions:
   contents: write
   id-token: write
+  # Reading this repo's own workflow runs, for the CI gate below. Naming any
+  # permission drops every unnamed scope to `none`, so the gate would 403 on a
+  # token that otherwise looks fully privileged.
+  actions: read
+
+# One release at a time, and never cancel one.
+#
+# `cancel-in-progress: true` — what `ci.yml` uses, and right there — would be
+# actively dangerous here: interrupting the job between `npm publish` and
+# `git push` leaves a published version whose tag exists on no remote, which is
+# the exact tear the step order further down is arranged to avoid. Two
+# dispatches a minute apart would also both bump, racing to publish two
+# versions nobody asked for.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
@@ -29,6 +45,50 @@ jobs:
           fetch-depth: 0
           # Use a token that can push to protected branches
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ──────────────────────────────────────────────────────────────────
+      # A release must come from a commit CI has already proven.
+      #
+      # Everything below builds, and nothing below tests: `yarn test` needs
+      # four service containers and five minutes, so this pipeline has never
+      # run it. Which means a red `main` published to npm exactly as happily as
+      # a green one, and the first sign of it would be a bug report against a
+      # version that cannot be unpublished.
+      #
+      # Gating on the run that already happened, rather than repeating it: a
+      # second copy of the `test` job here is a second thing to keep in step
+      # with `ci.yml`, and it would prove the same commit twice.
+      #
+      # First, so a refusal costs nothing — no bump, no tag, no artifacts.
+      # ──────────────────────────────────────────────────────────────────
+      - name: Require green CI for this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          run=$(gh run list --workflow=ci.yml --commit "$SHA" --limit 1 \
+                  --json conclusion,status,url)
+
+          if [ "$(echo "$run" | jq 'length')" -eq 0 ]; then
+            echo "::error::No Build run for ${SHA} — push the commit and let CI finish first."
+            exit 1
+          fi
+
+          status=$(echo "$run" | jq -r '.[0].status')
+          conclusion=$(echo "$run" | jq -r '.[0].conclusion // "none"')
+          url=$(echo "$run" | jq -r '.[0].url')
+
+          if [ "$status" != "completed" ]; then
+            echo "::error::Build for ${SHA} is still ${status} (${url}) — wait for it."
+            exit 1
+          fi
+
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::Build for ${SHA} concluded '${conclusion}' (${url}) — refusing to release."
+            exit 1
+          fi
+
+          echo "Build for ${SHA} is green (${url})."
 
       - name: Configure Git
         run: |
@@ -61,18 +121,15 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Released version: $VERSION"
 
+      # The file IS the release body — `action-gh-release` reads it through
+      # `body_path` further down. It used to be piped into `$GITHUB_OUTPUT`
+      # under an `EOF` delimiter, which put a commit message in charge of where
+      # the value ended: one line reading exactly `EOF` truncates the notes, and
+      # everything after it is parsed as more `key=value` output lines.
       - name: Generate Release Notes
-        id: release_notes
         run: |
-          # Write changelog content directly to file to preserve backticks
+          # Straight to a file, so backticks survive the shell.
           yarn alepha gen changelog > /tmp/release_notes.txt
-
-          # Output for GitHub Release body (uses file content safely)
-          {
-            echo "notes<<EOF"
-            cat /tmp/release_notes.txt
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
 
       - name: Update CHANGELOG.md
         env:
@@ -123,10 +180,7 @@ jobs:
           cp packages/alepha/assets/agents-template.md packages/alepha/AGENTS.md
 
       # ──────────────────────────────────────────────────────────────────
-      # Bay artifacts.
-      #
-      # These have to come after `yarn build`: bay-ui resolves `alepha` through
-      # the workspace's generated `exports`, which point at `packages/*/dist`.
+      # Bay binaries.
       #
       # Filenames carry NO version. GitHub serves every asset at two URLs, and
       # the mutable one only works when the name is constant:
@@ -160,37 +214,22 @@ jobs:
               ./cmd/bay
           done
 
-      - name: Pack bay-ui
-        working-directory: apps/bay-ui
-        run: |
-          # `--target=bare` is the default and is what matters: a Cloudflare
-          # (workerd) bundle has no node-runnable entry point, and Bay refuses
-          # it at deploy time.
-          yarn alepha build
-          yarn alepha pack --output "$RUNNER_TEMP/artifacts"
-          # `pack` names it `<project>-<tag>.tar.gz` with tag "latest". Rename to
-          # a constant, version-free name: "latest" is actively misleading on an
-          # asset downloaded from an immutable per-version URL.
-          mv "$RUNNER_TEMP/artifacts/bay-ui-latest.tar.gz" \
-             "$RUNNER_TEMP/artifacts/bay-ui.tar.gz"
-
-      - name: Checksum Bay artifacts
+      - name: Checksum Bay binaries
         working-directory: ${{ runner.temp }}/artifacts
         run: |
           # The installer downloads a binary and runs it as root — the highest
           # privilege operation in the whole system. Without this, a truncated
           # download and a tampered one are indistinguishable from a good one.
-          sha256sum bay-linux-amd64 bay-linux-arm64 bay-ui.tar.gz > SHA256SUMS
+          sha256sum bay-linux-amd64 bay-linux-arm64 > SHA256SUMS
           cat SHA256SUMS
 
       # ──────────────────────────────────────────────────────────────────
       # Everything above is reversible: a failure leaves a dirty runner and
       # nothing else. From here on it is public.
       #
-      # Last, so that every artifact — the JS packages, both Go binaries, the
-      # bay-ui tarball — is known to build before any of it ships. A Go
-      # compile error after `npm publish` would otherwise strand a published
-      # version.
+      # Last, so that every artifact — the JS packages and both Go binaries —
+      # is known to build before any of it ships. A Go compile error after
+      # `npm publish` would otherwise strand a published version.
       # ──────────────────────────────────────────────────────────────────
       - name: Publish to NPM
         run: |
@@ -217,11 +256,10 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.version }}
           name: ${{ steps.version.outputs.version }}
-          body: ${{ steps.release_notes.outputs.notes }}
+          body_path: /tmp/release_notes.txt
           draft: false
           prerelease: false
           files: |
             ${{ runner.temp }}/artifacts/bay-linux-amd64
             ${{ runner.temp }}/artifacts/bay-linux-arm64
-            ${{ runner.temp }}/artifacts/bay-ui.tar.gz
             ${{ runner.temp }}/artifacts/SHA256SUMS

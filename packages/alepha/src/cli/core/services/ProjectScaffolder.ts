@@ -464,15 +464,39 @@ export class ProjectScaffolder {
     // `alepha init` (fill in whatever is missing, right here).
     const explicitPath = !!args;
 
+    // Whether this call produced a project rather than topping up an existing
+    // one. Not the same question as `explicitPath`: a bare `alepha init` in an
+    // empty directory creates a project too, and it earns the same "Project
+    // ready!" sign-off. Only the fill-in-the-gaps run on a directory that
+    // already had a `package.json` stays silent.
+    let newProject = explicitPath;
+
     if (!args) {
       // If the current directory doesn't look like an existing project
       // (no package.json), default to creating a `my-app/` subdirectory
       // rather than scaffolding into a random cwd.
+      //
+      // Except when the directory is empty. `mkdir my-app && cd my-app &&
+      // alepha init` is the single most obvious way to start a project, and
+      // answering it with `my-app/my-app/` is a surprise every other tool
+      // avoids — `git init`, `npm init`, `cargo init` and `bun init` all
+      // scaffold in place. The "random cwd" this guard protects is by
+      // definition not empty, so emptiness is the signal to use: there is
+      // nothing to scatter files over and nothing to clobber.
+      //
+      // `ls` hides dotfiles, so a directory holding only `.git` (or a stray
+      // `.DS_Store`) still counts as empty — which is what someone who ran
+      // `git init` first expects.
       const hasPackageJson = await this.fs.exists(
         this.fs.join(root, "package.json"),
       );
       if (!hasPackageJson) {
-        args = "my-app";
+        newProject = true;
+
+        const entries = await this.fs.ls(root);
+        if (entries.length > 0) {
+          args = "my-app";
+        }
       }
     }
 
@@ -609,8 +633,9 @@ export class ProjectScaffolder {
       }
     }
 
-    // Don't show success message if no path arg, e.g. just "alepha init" to re-configure current dir
-    if (!args) {
+    // Nothing was created — this was `alepha init` re-configuring a project
+    // that already existed. Announcing "Project ready!" there would be noise.
+    if (!newProject) {
       return;
     }
 
@@ -618,16 +643,17 @@ export class ProjectScaffolder {
     run.end();
 
     // Success message
-    const projectName = args || ".";
     const pmRun = pmName === "npm" ? "npm run" : pmName;
     const c = this.colors;
 
     this.log.info("");
     this.log.info(`  ${c.set("GREEN", "✓")} Project ready!`);
     this.log.info("");
-    this.log.info(
-      `  ${c.set("GREY_DARK", "$")} cd ${c.set("CYAN", projectName)}`,
-    );
+    // No `cd` line when the project was scaffolded into the current directory
+    // — there is nowhere to go.
+    if (args) {
+      this.log.info(`  ${c.set("GREY_DARK", "$")} cd ${c.set("CYAN", args)}`);
+    }
     this.log.info(
       `  ${c.set("GREY_DARK", "$")} ${c.set("CYAN", `${pmRun} dev`)}`,
     );
