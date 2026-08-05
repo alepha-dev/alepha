@@ -140,8 +140,6 @@ func main() {
 		err = cmdStatus(os.Args[2:])
 	case "logs":
 		err = cmdLogs(os.Args[2:])
-	case "connector":
-		err = cmdConnector(os.Args[2:])
 	case "remove":
 		err = cmdRemove(os.Args[2:])
 	case "stop":
@@ -203,9 +201,6 @@ func usage() {
   bay status  [--json]            # releases, traffic + backup freshness
   bay logs    <name/env> [-n 200] [--since 15m] [--grep RE] [--json]
               # journald on a real host, logs/app.log under the child runner
-  bay connector add <op_token> [--sink URL] [--label NAME] | list | remove <prefix>
-              # report this machine's world to a Lore project, once a minute.
-              # Outbound only: the token grants nothing on this host.
   bay stop    <name/env>
   bay remove  <name/env> [--purge]  # unregister; data is KEPT unless --purge
   bay version
@@ -237,9 +232,10 @@ environment variable, and a bind-address typo publishes it to the internet. The
 socket's authorization is the file mode, enforced by the kernel — reaching it
 already requires being root or in the control group.
 
-Remote access is the connector's job, and it opens no door: this machine asks
-Lore for work ("bay connector add") and runs it here. Client commands accept
---control-socket PATH (or $BAY_SOCKET) and must run on the Bay host.
+Remote access is SSH, and nothing else: reach the host that way and run bay
+commands there directly, e.g. "ssh host ./bay deploy app.tar.gz --name app".
+Client commands accept --control-socket PATH (or $BAY_SOCKET) and must run on
+the Bay host.
 `)
 }
 
@@ -511,10 +507,10 @@ func cmdServe(args []string) error {
 	// is the file mode, enforced by the kernel, and reaching it already
 	// requires being root or in the control group.
 	//
-	// Remote access has not gone away — it moved to the connector, which asks
-	// Lore for work and speaks to this socket for it. Nothing reaches in, so
-	// accounts, revocation and an audit trail live on the far side, where they
-	// can exist; a bearer token in an environment variable has none of the three.
+	// Remote access is SSH, not a second door into this socket: an operator (or
+	// CI) logs into the host and the bay commands run there are ordinary local
+	// clients of this same socket, authorized the same way. Accounts and
+	// revocation live entirely in sshd; nothing here has to duplicate them.
 	socketSrv := &http.Server{Handler: srv.controlMux()}
 
 	go func() {
@@ -567,14 +563,6 @@ func cmdServe(args []string) error {
 	backupCtx, stopBackups := context.WithCancel(context.Background())
 	defer stopBackups()
 	go srv.backupLoop(backupCtx, backupInterval)
-	// Shares the backup context: both are background reporters that must stop
-	// when the server does, and neither should keep the process alive.
-	go srv.reportLoop(backupCtx)
-
-	// The other half of the same conversation: the report says what is here,
-	// this asks what should be. Same context — both are background talkers that
-	// must stop with the server and neither should keep the process alive.
-	go srv.commandLoop(backupCtx)
 
 	// Traffic bookkeeping, drained from the proxy on its own schedule.
 	go srv.flushLastSeenLoop(backupCtx)
@@ -1689,7 +1677,7 @@ func call(method, url string, body io.Reader) (string, error) {
 			"no control socket found — these commands run on the Bay host, " +
 				"as root or as a member of the control group " +
 				"(see --control-socket / $BAY_SOCKET). " +
-				"For remote deploys, enrol this machine with \"bay connector add\"")
+				"For remote deploys, ssh into the Bay host and run bay there.")
 	}
 	// Dial the socket instead of the network. The URL's host is ignored by the
 	// transport but still has to parse, so callers keep composing
