@@ -2,10 +2,10 @@
 //
 // The socket exists so that no secret has to. A bearer token over loopback has
 // to be handed to every legitimate caller, which means writing it into a file
-// that the caller's user can read — and bay-ui, the one caller that most needs
-// it, is also the one most likely to be compromised. On a unix socket the
-// authorization IS the filesystem permission, arbitrated by the kernel: there is
-// no string to steal, copy, leak through a log, or carry off in a backup.
+// that the caller's user can read — and the callers that most need it are the
+// ones most likely to be compromised. On a unix socket the authorization IS the
+// filesystem permission, arbitrated by the kernel: there is no string to steal,
+// copy, leak through a log, or carry off in a backup.
 //
 // What this does NOT change: the privilege. Anything that can reach the control
 // API can deploy code, and anything that can deploy code is root-equivalent.

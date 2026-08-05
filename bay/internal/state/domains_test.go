@@ -29,9 +29,9 @@ const legacyState = `{
       "lastBackupAt": "2026-08-02T04:17:00Z"
     },
     {
-      "name": "bay-admin",
+      "name": "docs",
       "env": "production",
-      "domain": "admin.bay.alepha.dev",
+      "domain": "docs.alepha.dev",
       "release": "20260731T090000Z",
       "port": 4002,
       "runtime": "node"
@@ -67,7 +67,7 @@ func TestLegacyDomainSurvivesUpgrade(t *testing.T) {
 	t.Run("on-demand issuance still recognises the host", func(t *testing.T) {
 		// HasDomain is the guard in front of the CA. If it forgot these names,
 		// renewal would stop without a single error in the log.
-		for _, host := range []string{"lore.alepha.dev", "admin.bay.alepha.dev"} {
+		for _, host := range []string{"lore.alepha.dev", "docs.alepha.dev"} {
 			if !store.HasDomain(host) {
 				t.Fatalf("%s would no longer be issued a certificate", host)
 			}
