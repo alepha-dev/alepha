@@ -68,6 +68,7 @@ export default (alepha: Alepha) => {
       "devtools",
       "mqtt",
       "payments-stripe",
+      "protobuf",
       "ui",
       // surfaces that live inside a module and are named on their own
       "auth",

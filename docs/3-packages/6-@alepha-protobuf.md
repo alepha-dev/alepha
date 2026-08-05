@@ -1,16 +1,12 @@
-# Alepha @alepha/protobuf
-
-Protocol Buffers (Protobuf) codec support for Alepha framework.
+# @alepha/protobuf - @alepha/protobuf
 
 ## Installation
 
-This package is part of the Alepha framework and can be installed via the all-in-one package:
-
 ```bash
-npm install alepha
+npm install @alepha/protobuf
 ```
 
-## Module
+## Overview
 
 Protocol Buffers support.
 
@@ -35,5 +31,5 @@ const back = alepha.codec.decode(schema, bytes, { encoder: "protobuf" });
 
 ### Providers
 
-- [`ProtobufProvider`](https://alepha.dev/docs/reference-providers-protobufprovider) — Converts Alepha schemas to Protobuf definitions, and encodes/decodes against
-- [`ProtobufSchemaCodec`](https://alepha.dev/docs/reference-providers-protobufschemacodec) — ProtobufSchemaCodec handles encoding/decoding for Protobuf format.
+- [`ProtobufProvider`](/docs/reference-providers-protobufprovider) — Converts Alepha schemas to Protobuf definitions, and encodes/decodes against
+- [`ProtobufSchemaCodec`](/docs/reference-providers-protobufschemacodec) — ProtobufSchemaCodec handles encoding/decoding for Protobuf format.

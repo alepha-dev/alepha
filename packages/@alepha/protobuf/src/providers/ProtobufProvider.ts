@@ -6,11 +6,11 @@ import protobufjs from "protobufjs";
  * Converts Alepha schemas to Protobuf definitions, and encodes/decodes against
  * them.
  *
- * Zod schemas are walked as JSON Schema rather than through their internal
+ * Schemas are walked as JSON Schema rather than through zod's internal
  * `_zod.def`. `z.toJSONSchema()` is the same conversion the OpenAPI generator
  * and `$tool` already rely on, so this provider tracks one public, documented
- * shape instead of zod's internals — which is what made the typebox version
- * unportable when the framework moved off typebox.
+ * shape, and does not have to be rewritten whenever the schema layer
+ * reorganises its internals.
  */
 export class ProtobufProvider {
   protected readonly alepha = $inject(Alepha);
