@@ -4,8 +4,8 @@ import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 import type { Deployment } from "../entities/deployments.ts";
 import { releaseResourceSchema } from "../schemas/releaseResource.ts";
+import { DeploymentService } from "../services/DeploymentService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
-import { ReleaseService } from "../services/ReleaseService.ts";
 
 /**
  * The registry, as `alepha platform up` talks to it.
@@ -23,7 +23,7 @@ import { ReleaseService } from "../services/ReleaseService.ts";
  * upload path for folios, feedback and deployments alike.
  */
 export class ReleaseController {
-  protected readonly deployments = $inject(ReleaseService);
+  protected readonly deployments = $inject(DeploymentService);
   protected readonly security = $inject(ProjectSecurityService);
 
   /**

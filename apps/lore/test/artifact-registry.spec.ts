@@ -12,6 +12,7 @@ import { artifacts, isMutableTag } from "../src/api/entities/artifacts.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { ArtifactService } from "../src/api/services/ArtifactService.ts";
+import { DeploymentService } from "../src/api/services/DeploymentService.ts";
 
 class Probe {
   projects = $repository(projects);
@@ -71,6 +72,7 @@ const setup = async () => {
     ).id;
 
   return {
+    alepha,
     service,
     probe,
     projectId: project.id,
@@ -258,5 +260,105 @@ describe("ArtifactService", () => {
         fileId: fileA,
       }),
     ).rejects.toThrow(/sha256/i);
+  });
+});
+
+/**
+ * Promote, which is the reason the split exists.
+ *
+ * Deploying a tag to a second environment must place the *same bytes* the
+ * first one tested — not a rebuild that happens to carry the same label. The
+ * assertion that matters is the shared sha256 across two distinct deployment
+ * rows; everything else here guards the snapshot that keeps history readable
+ * once `latest` has moved on.
+ */
+describe("DeploymentService.deployArtifact", () => {
+  it("should deploy one artifact to two environments as two rows", async () => {
+    const { alepha, service, projectId, fileA } = await setup();
+    const deployments = alepha.inject(DeploymentService);
+
+    const artifact = await service.register({
+      projectId,
+      app: "hello",
+      tag: "1.2.3",
+      sha256: SHA_A,
+      fileId: fileA,
+    });
+
+    const staging = await deployments.deployArtifact({
+      projectId,
+      artifactId: artifact.id,
+      environment: "staging",
+    });
+    const production = await deployments.deployArtifact({
+      projectId,
+      artifactId: artifact.id,
+      environment: "production",
+    });
+
+    expect(staging.id).not.toBe(production.id);
+    expect(staging.artifactId).toBe(artifact.id);
+    expect(production.artifactId).toBe(artifact.id);
+    expect(production.sha256).toBe(staging.sha256);
+    expect(production.status).toBe("pending");
+    expect(production.tag).toBe("1.2.3");
+  });
+
+  it("should keep the snapshot after the artifact is replaced", async () => {
+    const { alepha, service, projectId, fileA, fileB } = await setup();
+    const deployments = alepha.inject(DeploymentService);
+
+    const first = await service.register({
+      projectId,
+      app: "hello",
+      tag: "latest",
+      sha256: SHA_A,
+      fileId: fileA,
+    });
+    const deployment = await deployments.deployArtifact({
+      projectId,
+      artifactId: first.id,
+      environment: "production",
+    });
+
+    await service.register({
+      projectId,
+      app: "hello",
+      tag: "latest",
+      sha256: SHA_B,
+      fileId: fileB,
+    });
+
+    const reloaded = await deployments.get(deployment.id);
+    expect(reloaded?.sha256).toBe(SHA_A);
+    expect(reloaded?.tag).toBe("latest");
+    expect(reloaded?.app).toBe("hello");
+  });
+
+  it("should refuse an artifact from another project", async () => {
+    const { alepha, service, probe, projectId, fileA } = await setup();
+    const deployments = alepha.inject(DeploymentService);
+    const users = alepha.inject(UserService);
+
+    const artifact = await service.register({
+      projectId,
+      app: "hello",
+      tag: "1.2.3",
+      sha256: SHA_A,
+      fileId: fileA,
+    });
+    const stranger = await users.createUser({ username: "stranger" });
+    const other = await probe.projects.create({
+      title: "Other",
+      createdBy: stranger.id,
+    });
+
+    await expect(
+      deployments.deployArtifact({
+        projectId: other.id,
+        artifactId: artifact.id,
+        environment: "production",
+      }),
+    ).rejects.toThrow();
   });
 });

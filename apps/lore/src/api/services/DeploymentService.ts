@@ -3,6 +3,7 @@ import { files } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbConflictError } from "alepha/orm";
 import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
+import { artifacts } from "../entities/artifacts.ts";
 import {
   type Deployment,
   type DeploymentStatus,
@@ -11,16 +12,18 @@ import {
 import type { Outpost } from "../entities/outposts.ts";
 
 /**
- * The registry, on the writing side.
+ * The ledger: which artifact was placed where, and what became of it.
  *
- * Bytes are not this service's business: `alepha/api/files` owns the upload
- * flow and the provider behind it, exactly as folios do for blobs. What
- * lands here is a row describing an artifact that has already been stored —
- * which is what keeps the registry portable the day Lore leaves Workers, since
- * nothing in it names a storage provider.
+ * Bytes are not this service's business — `alepha/api/files` owns the upload
+ * and `ArtifactService` owns what the bytes *are*. What lands here is the act
+ * of putting one on an environment, which is why a row is the synchronisation
+ * point: the client writes it, an outpost claims it, and the client watches it
+ * until it settles. No queue and no callback, because a row both sides can
+ * read survives either of them restarting mid-deploy.
  */
-export class ReleaseService {
+export class DeploymentService {
   protected readonly deployments = $repository(deployments);
+  protected readonly artifacts = $repository(artifacts);
   protected readonly frameworkFiles = $repository(files);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -69,9 +72,9 @@ export class ReleaseService {
     if (!frameworkFile) {
       throw new BadRequestError("Framework file row not found — upload first");
     }
-    if (frameworkFile.bucket !== ReleaseService.BUCKET) {
+    if (frameworkFile.bucket !== DeploymentService.BUCKET) {
       throw new BadRequestError(
-        `Framework file is in bucket '${frameworkFile.bucket}', expected '${ReleaseService.BUCKET}'`,
+        `Framework file is in bucket '${frameworkFile.bucket}', expected '${DeploymentService.BUCKET}'`,
       );
     }
 
@@ -99,6 +102,65 @@ export class ReleaseService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Places an artifact already in the registry on an environment.
+   *
+   * This is what promote is: the same artifact, a second environment, a new
+   * row. Nothing is rebuilt and — because sha256 is the identity and the
+   * outpost already holds those bytes — nothing is even transferred.
+   *
+   * The identity columns are **copied, not joined**. `latest` is replaced in
+   * place, so a row that only pointed at its artifact would start claiming it
+   * deployed bytes it never saw the moment someone pushed again.
+   */
+  public async deployArtifact(input: {
+    projectId: number;
+    artifactId: string;
+    environment: string;
+    userId?: string;
+  }): Promise<Deployment> {
+    const artifact = await this.artifacts.findOne({
+      where: {
+        id: { eq: input.artifactId },
+        projectId: { eq: input.projectId },
+      },
+    });
+    if (!artifact) {
+      throw new NotFoundError("No such artifact in this project");
+    }
+
+    return this.deployments.create({
+      projectId: input.projectId,
+      artifactId: artifact.id,
+      app: artifact.app,
+      tag: artifact.tag,
+      environment: input.environment,
+      version: this.deploymentId(),
+      sha256: artifact.sha256,
+      fileId: artifact.fileId,
+      sizeBytes: artifact.sizeBytes,
+      createdBy: input.userId,
+    });
+  }
+
+  /**
+   * Names one deployment, which is what the timestamp always was.
+   *
+   * UTC rather than local: two deploys from machines in different zones would
+   * otherwise sort against each other wrongly. Shaped like Bay's on-disk
+   * release directories so one string names the same thing on both sides.
+   */
+  protected deploymentId(): string {
+    const at = new Date(this.dateTime.nowMillis());
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return [
+      at.getUTCFullYear(),
+      pad(at.getUTCMonth() + 1),
+      pad(at.getUTCDate()),
+      `${pad(at.getUTCHours())}${pad(at.getUTCMinutes())}${pad(at.getUTCSeconds())}`,
+    ].join("-");
   }
 
   public async get(id: string): Promise<Deployment | undefined> {
@@ -132,7 +194,7 @@ export class ReleaseService {
   public async claim(outpost: Outpost): Promise<Deployment | undefined> {
     const now = this.dateTime.nowMillis();
     const staleBefore = new Date(
-      now - ReleaseService.CLAIM_EXPIRY_MS,
+      now - DeploymentService.CLAIM_EXPIRY_MS,
     ).toISOString();
 
     // Filtered on status in the query, not after it. Ordering by age and

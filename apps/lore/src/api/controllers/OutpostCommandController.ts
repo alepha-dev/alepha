@@ -4,8 +4,8 @@ import { $route, NotFoundError, UnauthorizedError } from "alepha/server";
 import { DEPLOYMENT_STATUSES } from "../entities/deployments.ts";
 import type { Outpost } from "../entities/outposts.ts";
 import { outpostCommands } from "../schemas/outpostCommands.ts";
+import { DeploymentService } from "../services/DeploymentService.ts";
 import { OutpostTokenService } from "../services/OutpostTokenService.ts";
-import { ReleaseService } from "../services/ReleaseService.ts";
 
 /**
  * The channel a machine asks for work on.
@@ -30,7 +30,7 @@ import { ReleaseService } from "../services/ReleaseService.ts";
 export class OutpostCommandController {
   protected readonly alepha = $inject(Alepha);
   protected readonly tokens = $inject(OutpostTokenService);
-  protected readonly deployments = $inject(ReleaseService);
+  protected readonly deployments = $inject(DeploymentService);
   protected readonly fileService = $inject(FileService);
 
   /**

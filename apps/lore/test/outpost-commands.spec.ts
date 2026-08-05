@@ -12,8 +12,8 @@ import { deployments } from "../src/api/entities/deployments.ts";
 import { outposts } from "../src/api/entities/outposts.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { DeploymentService } from "../src/api/services/DeploymentService.ts";
 import { OutpostTokenService } from "../src/api/services/OutpostTokenService.ts";
-import { ReleaseService } from "../src/api/services/ReleaseService.ts";
 
 class Probe {
   projects = $repository(projects);
@@ -52,7 +52,7 @@ const setup = async () => {
 
   const probe = alepha.inject(Probe);
   const tokens = alepha.inject(OutpostTokenService);
-  const service = alepha.inject(ReleaseService);
+  const service = alepha.inject(DeploymentService);
   const server = alepha.inject(ServerProvider);
   const users = alepha.inject(UserService);
   await alepha.start();
@@ -80,7 +80,7 @@ const setup = async () => {
 
   const file = await probe.files.create({
     blobId: "blob-1",
-    bucket: ReleaseService.BUCKET,
+    bucket: DeploymentService.BUCKET,
     name: "lindocara-main-latest.tar.gz",
     size: 1024,
     mimeType: "application/gzip",
