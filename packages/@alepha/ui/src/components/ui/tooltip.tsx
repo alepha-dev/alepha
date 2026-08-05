@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@alepha/ui/lib/utils";
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 

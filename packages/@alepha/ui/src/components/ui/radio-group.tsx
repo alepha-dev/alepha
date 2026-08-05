@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@alepha/ui/lib/utils";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";

@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@alepha/ui/lib/utils";
 import { ScrollArea as ScrollAreaPrimitive } from "@base-ui/react/scroll-area";
 

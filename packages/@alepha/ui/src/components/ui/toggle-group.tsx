@@ -1,3 +1,5 @@
+"use client";
+
 import { toggleVariants } from "@alepha/ui/components/ui/toggle";
 import { cn } from "@alepha/ui/lib/utils";
 import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";

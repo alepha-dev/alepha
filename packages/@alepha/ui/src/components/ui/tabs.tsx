@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@alepha/ui/lib/utils";
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import { cva, type VariantProps } from "class-variance-authority";

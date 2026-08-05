@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@alepha/ui/lib/utils";
 import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
 

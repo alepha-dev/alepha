@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@alepha/ui/components/ui/button";
 import { cn } from "@alepha/ui/lib/utils";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
@@ -117,7 +119,10 @@ function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-base leading-none font-medium", className)}
+      className={cn(
+        "cn-font-heading text-base leading-none font-medium",
+        className,
+      )}
       {...props}
     />
   );
