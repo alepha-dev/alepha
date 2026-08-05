@@ -45,7 +45,7 @@ export class DeploymentService {
    * reader agree by construction — a blob validated against one bucket name and
    * fetched from another is a class of bug that only shows up in production.
    */
-  public static readonly BUCKET = "deployments";
+  public static readonly BUCKET = "releases";
 
   /**
    * Records an artifact that has already been uploaded.

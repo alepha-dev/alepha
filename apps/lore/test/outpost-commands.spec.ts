@@ -162,7 +162,7 @@ describe("outpost command channel", () => {
     await call("/outposts/commands", bay.token);
 
     const res = await call(
-      `/outposts/deployments/${release.id}/status`,
+      `/outposts/releases/${release.id}/status`,
       other.token,
       { status: "failed", failureReason: "not mine to fail" },
     );
@@ -177,7 +177,7 @@ describe("outpost command channel", () => {
 
     for (const status of ["pulling", "migrating", "serving"]) {
       const res = await call(
-        `/outposts/deployments/${release.id}/status`,
+        `/outposts/releases/${release.id}/status`,
         bay.token,
         { status },
       );
@@ -196,7 +196,7 @@ describe("outpost command channel", () => {
     const release = await addRelease("2026-08-03-120000");
     await call("/outposts/commands", bay.token);
 
-    await call(`/outposts/deployments/${release.id}/status`, bay.token, {
+    await call(`/outposts/releases/${release.id}/status`, bay.token, {
       status: "failed",
       failureReason: "rebuild with --target=bare",
     });
@@ -211,14 +211,14 @@ describe("outpost command channel", () => {
     const { bay, call, addRelease } = await setup();
     const release = await addRelease("2026-08-03-120000");
     await call("/outposts/commands", bay.token);
-    await call(`/outposts/deployments/${release.id}/status`, bay.token, {
+    await call(`/outposts/releases/${release.id}/status`, bay.token, {
       status: "serving",
     });
 
     // A machine killed mid-deploy can come back and report something stale.
     // The client has already concluded; the row must not move.
     const res = await call(
-      `/outposts/deployments/${release.id}/status`,
+      `/outposts/releases/${release.id}/status`,
       bay.token,
       { status: "failed", failureReason: "late news" },
     );
