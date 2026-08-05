@@ -10,14 +10,10 @@ import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
 import { MilestoneController } from "./controllers/MilestoneController.ts";
-import { OutpostCommandController } from "./controllers/OutpostCommandController.ts";
-import { OutpostController } from "./controllers/OutpostController.ts";
-import { OutpostIngestController } from "./controllers/OutpostIngestController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
-import { ReleaseController } from "./controllers/ReleaseController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
@@ -31,9 +27,7 @@ import { InvitationNotifications } from "./notifications/InvitationNotifications
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
-import { ArtifactService } from "./services/ArtifactService.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
-import { DeploymentService } from "./services/DeploymentService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
@@ -41,8 +35,6 @@ import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
 import { InvitationService } from "./services/InvitationService.ts";
-import { OutpostIngestService } from "./services/OutpostIngestService.ts";
-import { OutpostTokenService } from "./services/OutpostTokenService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { AlephaLoreParser } from "./services/parsers/AlephaLoreParser.ts";
@@ -91,10 +83,6 @@ export const LoreApi = $module({
     // exactly as long as some `$repository` names it.
     SigilTokenService,
     SigilIngestService,
-    OutpostTokenService,
-    OutpostIngestService,
-    ArtifactService,
-    DeploymentService,
     // Controllers
     QuestController,
     ProjectController,
@@ -111,10 +99,6 @@ export const LoreApi = $module({
     DirectoryController,
     BlobController,
     FeedbackController,
-    OutpostController,
-    OutpostIngestController,
-    OutpostCommandController,
-    ReleaseController,
     SigilController,
     SigilIngestController,
     InsightsController,

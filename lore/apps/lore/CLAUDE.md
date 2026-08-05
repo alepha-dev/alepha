@@ -18,7 +18,7 @@ The production Alepha Lore instance hosts the project we actually use to run thi
 
 **Write back what's worth keeping.** When a session produces a non-obvious decision, gotcha, or architectural fact about Lore/Alepha, persist it as a folio (`folio_create` / `folio_update` with good `tags` + `summary`). When in-flight work changes scope or completes, reflect it on the matching quest. Conversation history is ephemeral; folios and quests are the project's long-term memory.
 
-Lore's vocabulary has been renamed twice. Originally the codebase used the plain technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`; a first rename swapped every one of those for RPG flavor — `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty` — across code identifiers, DB tables, HTTP routes, MCP tools and URL params. The **2026-08 great rename** partially reversed that: the top-level container went back to the plain, technical **`project`** (campaign → project, `/c/:campaignId` → `/p/:projectId`, `campaign_*` MCP tools → `project_*`), because "campaign" read as more RPG-themed than the container itself deserved. The RPG vocabulary that describes the *work inside* a project was kept and in some cases sharpened: **quest**, **zone**, member, folio, blight, sigil, outpost, and the F/C/B/A/S difficulty ranks are all still RPG-flavored on purpose. Three other nouns were renamed in the same pass for clarity rather than theme: Petitions → **Feedback**, Chapters → **Milestones**, and Chronicles → **Reports** (with Reports▸Party → Reports▸Members). The old standalone "Archive" module (directory tree + blobs) was folded entirely into **Folios** — same entities, same MCP tools, one mental model instead of two. A **user** is the account; a **member** is that user's membership row in a project. Identity (name, picture) always comes from the account — the per-project "character" concept was removed in the 2026-07 de-gamification pass.
+Lore's vocabulary has been renamed twice. Originally the codebase used the plain technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`; a first rename swapped every one of those for RPG flavor — `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty` — across code identifiers, DB tables, HTTP routes, MCP tools and URL params. The **2026-08 great rename** partially reversed that: the top-level container went back to the plain, technical **`project`** (campaign → project, `/c/:campaignId` → `/p/:projectId`, `campaign_*` MCP tools → `project_*`), because "campaign" read as more RPG-themed than the container itself deserved. The RPG vocabulary that describes the *work inside* a project was kept and in some cases sharpened: **quest**, **zone**, member, folio, blight, sigil, and the F/C/B/A/S difficulty ranks are all still RPG-flavored on purpose. Three other nouns were renamed in the same pass for clarity rather than theme: Petitions → **Feedback**, Chapters → **Milestones**, and Chronicles → **Reports** (with Reports▸Party → Reports▸Members). The old standalone "Archive" module (directory tree + blobs) was folded entirely into **Folios** — same entities, same MCP tools, one mental model instead of two. A **user** is the account; a **member** is that user's membership row in a project. Identity (name, picture) always comes from the account — the per-project "character" concept was removed in the 2026-07 de-gamification pass.
 
 All user-facing strings still go through `I18n.ts` for EN/FR localization.
 
@@ -32,12 +32,12 @@ Lore lives inside the **Alepha monorepo** at `apps/lore`. The Alepha framework i
 apps/lore/                # This app
 ├── src/                  # App source
 │   ├── api/              # Backend
-│   │   ├── controllers/  # 24 controllers — see list below
-│   │   ├── entities/     # 27 entities — see list below
+│   │   ├── controllers/  # 20 controllers — see list below
+│   │   ├── entities/     # 23 entities — see list below
 │   │   ├── providers/    # AppSecurityProvider (membership/owner gates), LoreFileAccessProvider (per-file IDOR gate), LoreSigilSinkProvider (in-process self-report — a Worker can't fetch its own hostname)
 │   │   ├── jobs/         # BlightJobs (retention purge), InvitationJobs, MilestoneJobs, QuestJobs (reminder sweep)
 │   │   ├── schemas/      # Request/response schemas
-│   │   └── services/     # 21 services — see list below
+│   │   └── services/     # 18 services — see list below
 │   ├── mcp/              # MCP protocol integration (tools, resources)
 │   ├── web/
 │   │   ├── app/          # Main SPA
@@ -54,11 +54,11 @@ apps/lore/                # This app
 └── public/               # Static assets served at /
 ```
 
-**Controllers (24)** — `AdminInvitation`, `Blight`, `Blob`, `Directory`, `Feedback`, `Folio`, `Identity`, `Insights`, `Invitation`, `Kanban`, `Milestone`, `OutpostCommand`, `Outpost`, `OutpostIngest`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `Release`, `Session`, `Sigil`, `SigilIngest`, `User`, `Version`.
+**Controllers (20)** — `AdminInvitation`, `Blight`, `Blob`, `Directory`, `Feedback`, `Folio`, `Identity`, `Insights`, `Invitation`, `Kanban`, `Milestone`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `Session`, `Sigil`, `SigilIngest`, `User`, `Version`.
 
-**Entities (27)** — `blightIgnoreRules`, `blights`, `feedback`, `files`, `folioBlobs`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `invitations`, `members`, `milestones`, `outpostApps`, `outpostEvents`, `outposts`, `projects`, `quests`, `releases`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`.
+**Entities (23)** — `blightIgnoreRules`, `blights`, `feedback`, `files`, `folioBlobs`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `invitations`, `members`, `milestones`, `projects`, `quests`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`.
 
-**Services (21)** — `BlightRuleService`, `FeedbackRateLimiter`, `FolioBlobService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `InvitationService`, `OutpostIngestService`, `OutpostTokenService`, `PinnedFolioFolder`, `ProjectLimits`, `ProjectSecurityService`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `ReleaseService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
+**Services (18)** — `BlightRuleService`, `FeedbackRateLimiter`, `FolioBlobService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `InvitationService`, `PinnedFolioFolder`, `ProjectLimits`, `ProjectSecurityService`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
 
 **MCP tools (8)** — `BlightTools`, `FeedbackTools`, `FolioTools` (absorbed the old `ArchiveTools`: `directory_*` / `blob_*` live here now), `InsightsTools`, `MilestoneTools`, `ProjectTools`, `QuestTools`, `SigilTools`.
 
@@ -80,7 +80,6 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/p/:projectId/feedback` | `projectFeedback` | `project/feedback/ProjectFeedback.tsx` | Owner inbox: triage bug/feature requests |
 | `/p/:projectId/blights` | `projectBlights` | `project/blights/ProjectBlights.tsx` | Crash-telemetry inbox (sigil-fed) |
 | `/p/:projectId/insights` | `projectInsights` | `project/insights/ProjectInsights.tsx` | Beacon / vitals analytics + per-environment error budget |
-| `/p/:projectId/outposts` | `projectOutposts` | `project/outposts/ProjectOutposts.tsx` | Machines reporting into the project (read-only), gated on `features.outposts` |
 | `/p/:projectId/q/:shortId` | `projectQuest` | `project/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
 | `/p/:projectId/q/:shortId/graph` | `projectQuestGraph` | `project/quest/QuestGraph.tsx` | Quest dependency graph |
 | `/p/:projectId/folios` | `projectFolios` | `folios/FoliosLayout.tsx` | Folio + directory-tree index |
@@ -94,7 +93,6 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/p/:projectId/settings/kanban` | `projectSettingsKanban` | `…/ProjectSettingsKanbanPage.tsx` | Kanban columns config |
 | `/p/:projectId/settings/folios` | `projectSettingsFolios` | `…/ProjectSettingsFoliosPage.tsx` | Folios config |
 | `/p/:projectId/settings/sigils` | `projectSettingsSigils` | `…/ProjectSettingsSigilsPage.tsx` | Sigil inventory + module toggles |
-| `/p/:projectId/settings/outposts` | `projectSettingsOutposts` | `…/ProjectSettingsOutpostsPage.tsx` | Outpost inventory: enrol, rotate, delete |
 | `/p/:projectId/settings/milestones` | `projectSettingsMilestones` | `…/ProjectSettingsMilestonesPage.tsx` | Milestone config |
 | `/p/:projectId/settings/quests` | `projectSettingsQuests` | `…/ProjectSettingsQuestsPage.tsx` | Per-quest module toggles (note / chrono / reminder) |
 | `/p/:projectId/request` | `projectFeedbackRequest` | `project/feedback/ProjectFeedbackRequest.tsx` | First-party feedback form (login required). Top-level, **not** nested under the `project` layout — no membership check |
@@ -107,7 +105,7 @@ HTTP API routes follow the same vocabulary: `/projects/:id/quests/export`, `/que
 
 ### ⚠️ Deleting or renaming a `$page` is not typecheck-protected
 
-`router.path("someRouteName", ...)` / `router.push("someRouteName", ...)` are typed against the live route table — but only while the name exists. The moment a route is renamed or removed, any call site still passing the old name silently widens to the plain `string` overload instead of erroring. The build stays green; the call throws at render time, in production, the first time a user hits that code path. This bit the 2026-08 rename directly (`campaignQuest` → `projectQuest` etc., and the whole `Kanban` board route disappearing in favour of `?view=kanban`). There is no automated guard for this — **deleting or renaming a route name requires grepping the whole `src/` tree for the old string**, including nav arrays like `ProjectSettings.tsx`'s sidebar list, which references route names as plain strings with nothing in the type system tying it to the routes it names (see the comments on `projectSettingsSigils` / `projectSettingsOutposts` in `AppRouter.ts`).
+`router.path("someRouteName", ...)` / `router.push("someRouteName", ...)` are typed against the live route table — but only while the name exists. The moment a route is renamed or removed, any call site still passing the old name silently widens to the plain `string` overload instead of erroring. The build stays green; the call throws at render time, in production, the first time a user hits that code path. This bit the 2026-08 rename directly (`campaignQuest` → `projectQuest` etc., and the whole `Kanban` board route disappearing in favour of `?view=kanban`). There is no automated guard for this — **deleting or renaming a route name requires grepping the whole `src/` tree for the old string**, including nav arrays like `ProjectSettings.tsx`'s sidebar list, which references route names as plain strings with nothing in the type system tying it to the routes it names (see the comment on `projectSettingsSigils` in `AppRouter.ts`).
 
 ## Key Patterns
 
@@ -308,7 +306,7 @@ Lore has **no gamification currency**: no XP, no gold, no levels, no achievement
 What survives, deliberately:
 
 - **Quest rank letters F/C/B/A/S** — derived from quest difficulty 1–5 in `src/web/app/components/project/quest/questRank.ts`. A property of the task, never of the person.
-- The RPG **vocabulary** for the work inside a project (quests, zones, folios, blights, sigils, outposts) — flavor, not mechanics. The container itself is deliberately *not* RPG-flavored — see "The Lore of Lore" above for why it's `project`, not `campaign`.
+- The RPG **vocabulary** for the work inside a project (quests, zones, folios, blights, sigils) — flavor, not mechanics. The container itself is deliberately *not* RPG-flavored — see "The Lore of Lore" above for why it's `project`, not `campaign`.
 - `projects.unlockedFeatures` / `unlockHistory` / `public` — **`@deprecated` dead columns**. Nothing reads or writes them; they stay because dropping a `projects` column risks the D1 rebuild path and `projects` is the CASCADE parent that wiped prod in 2026-05.
 
 Do not reintroduce progression mechanics without an explicit decision — the goal is a neutral tool usable with other people; the metaphor describes the work, never the person.
@@ -390,8 +388,8 @@ SchemaValidationError: Invalid input: 'features/feedback' is required at /featur
 
 `projects.features` is a JSON column validated against `projectFeaturesSchema`.
 Four of its keys are **required** `z.boolean()` — `kanban`, `folios`, `feedback`,
-`milestones` — while the rest (`sigils`, `blights`, `beacon`, `vitals`,
-`outposts`, the `quest*` trio) are `.optional()`. The migration renamed the
+`milestones` — while the rest (`sigils`, `blights`, `beacon`, `vitals`, the
+`quest*` trio) are `.optional()`. The migration renamed the
 *table and columns*, but the JSON **inside** the column still said `petitions`
 and `chapters` on all 54 existing rows. A missing required key does not read as
 `undefined` and fall back to `false` — **the whole row fails to decode**, so
@@ -492,8 +490,6 @@ rule is that the flood never reaches the Worker.
 - `sigil-controller.spec.ts` / `sigil-ingest.spec.ts` / `sigil-entities.spec.ts` / `sigil-self-report.spec.ts` — sigil CRUD + rotation, token verification, capability gating, aggregate upserts, and Lore's own in-process self-report path
 - `insights-controller.spec.ts` / `insights-tools.spec.ts` — beacon/vitals windows and the p75 walk (clock pinned with `DateTimeProvider.pause()`), plus the MCP surface
 - `blight-tools.spec.ts` — the MCP triage surface
-- `outpost-commands.spec.ts` / `outpost-ingest.spec.ts` — outpost enrolment, command channel, ingest
-- `release-lifecycle.spec.ts` — release record lifecycle
 - `migration-safety.spec.ts` — asserts the great-rename migration (and the sigil-family rebuild before it) never drops a table the `projects` cascade reaches, and that a fresh D1-shaped database boots with all migrations applied
 - `petition-reporter-migration.spec.ts` / `petition-reporter-restore-migration.spec.ts` — deliberately still "petition"-named: they pin the behavior of two specific *historical* migrations (`reporterUserId`/`reporterEmail` column churn) that predate the 2026-08 rename, not the current Feedback module
 - Shared fixtures live in `test/fixtures/`
@@ -503,7 +499,6 @@ rule is that the flood never reaches the Worker.
 `e2e/` is split by feature, not by user journey. One `<feature>.spec.ts` per major surface, each covering happy path + key edge cases:
 
 - `sigil.spec.ts` — enrol an environment → ingest as it → triage in the inbox → rotate → delete
-- `outposts.spec.ts` — enable the module → enrol a machine → token shown once → visible on the Outposts page → rotate → delete
 - `blights.spec.ts` — regression guard for the inbox render loop (the ingest path lives in `sigil.spec.ts`)
 - `quest.spec.ts` — quest lifecycle (open → accept → complete) + reminder UI
 - `feedback.spec.ts` — feedback submit → accept → link quests → status progression (renamed from `petition.spec.ts`)

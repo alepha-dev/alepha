@@ -19,8 +19,8 @@ export interface ProjectSettingsTokenRevealProps {
  * only copy that will ever exist. Dismissing it is irreversible, which is why
  * the button says so rather than being a close cross in a corner.
  *
- * The strings arrive as props because sigils and outposts word this
- * differently: one names an environment, the other a machine.
+ * The strings arrive as props rather than being hardcoded so the panel stays
+ * usable by any credential-minting page, whatever it calls the thing it names.
  */
 const ProjectSettingsTokenReveal = (props: ProjectSettingsTokenRevealProps) => {
   const toaster = useToast();

@@ -14,7 +14,6 @@ import {
   Flag,
   Grid3x2,
   Inbox,
-  Server,
 } from "lucide-react";
 import {
   defaultProjectFeatures,
@@ -43,7 +42,6 @@ const ROUTES_FULL_WIDTH = new Set([
   "projectFeedback",
   "projectBlights",
   "projectInsights",
-  "projectOutposts",
   "projectQuestGraph",
 ]);
 
@@ -58,7 +56,6 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   projectFeedback: "project.menu.feedback",
   projectBlights: "project.menu.blights",
   projectInsights: "project.menu.insights",
-  projectOutposts: "project.menu.outposts",
   projectSettings: "project.menu.settings",
   projectSettingsBanner: "project.menu.settings",
   projectSettingsZones: "project.menu.settings",
@@ -101,9 +98,9 @@ const ProjectView = () => {
   // Four unlabelled groups (`NavGroup.label` omitted on purpose — see the
   // great rename Task 9). Order is fixed: Work (Quests always on, Blights /
   // Feedback / Milestones feature-gated) → Memory (Folios gated, Reports
-  // always on) → Ops (Insights / Outposts, both gated) → Settings (always
-  // on). Groups with no items are dropped by the `.filter` below so an
-  // all-gates-off project still renders a clean sidebar.
+  // always on) → Ops (Insights, gated) → Settings (always on). Groups with
+  // no items are dropped by the `.filter` below so an all-gates-off project
+  // still renders a clean sidebar.
   const workItems: NavGroup["items"] = [
     {
       label: tr("project.menu.quests"),
@@ -163,14 +160,6 @@ const ProjectView = () => {
       icon: Activity,
       href: router.path("projectInsights", { params: { projectId } }),
       active: name === "projectInsights",
-    });
-  }
-  if (features.outposts) {
-    opsItems.push({
-      label: tr("project.menu.outposts"),
-      icon: Server,
-      href: router.path("projectOutposts", { params: { projectId } }),
-      active: name === "projectOutposts",
     });
   }
 

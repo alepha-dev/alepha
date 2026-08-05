@@ -37,13 +37,6 @@ export const projectFeaturesSchema = z.object({
   blights: z.boolean().optional(),
   beacon: z.boolean().optional(),
   vitals: z.boolean().optional(),
-  /**
-   * Outposts module. Same rules as the sigils family above: optional, and
-   * deliberately absent from `defaultProjectFeatures` so the `features`
-   * column DEFAULT is untouched and drizzle-kit emits no table rebuild.
-   * Defaults to `false` via the `useProjectFeatureToggle` hook.
-   */
-  outposts: z.boolean().optional(),
 });
 
 export type ProjectFeatures = Infer<typeof projectFeaturesSchema>;
