@@ -22,18 +22,19 @@ import type { FileStorageProvider } from "./FileStorageProvider.ts";
  * Cloudflare R2 storage provider.
  *
  * Uses a single R2 bucket binding for every container.
- * Files are organized as: {APP_NAME}/{tenantId}/{container}/{fileId}
+ * Files are organized as: {prefix}/{tenantId}/{container}/{fileId}
  *
  * **Required environment variables:**
  * - `R2_BUCKET_NAME` - The actual R2 bucket name in Cloudflare
  *
- * **Optional (uses core Alepha env):**
- * - `APP_NAME` - Prefix for all files (for multi-app setups sharing one R2 bucket)
+ * **Optional:**
+ * - `S3_KEY_PREFIX` - Prefix for all files (for multi-app setups sharing one R2 bucket)
+ * - `APP_NAME` - Fallback prefix when `S3_KEY_PREFIX` is unset
  *
  * @example
  * ```bash
  * # .env
- * APP_NAME=myapp        # optional, used as prefix
+ * S3_KEY_PREFIX=apps/myapp/production/blobs   # optional, used as prefix
  * R2_BUCKET_NAME=storage
  * ```
  *
@@ -69,6 +70,19 @@ export class R2FileStorageProvider implements FileStorageProvider {
        * The actual R2 bucket name in Cloudflare.
        */
       R2_BUCKET_NAME: z.string().describe("R2 bucket name in Cloudflare"),
+
+      /**
+       * Key prefix for every object this app writes, so several apps can share
+       * one bucket. Takes precedence over `APP_NAME`.
+       *
+       * Named `S3_KEY_PREFIX` rather than `R2_KEY_PREFIX` on purpose: the two
+       * providers are documented as keying objects identically, and one name
+       * means one value to set whichever backend an app is deployed against.
+       *
+       * @example
+       * S3_KEY_PREFIX=apps/lore/production/blobs
+       */
+      S3_KEY_PREFIX: z.string().optional(),
     }),
   );
 
@@ -82,11 +96,13 @@ export class R2FileStorageProvider implements FileStorageProvider {
   }
 
   /**
-   * Get the optional prefix from APP_NAME environment variable.
-   * Used for multi-app setups sharing the same R2 bucket.
+   * Get the optional key prefix, for multi-app setups sharing one R2 bucket.
+   *
+   * `S3_KEY_PREFIX` first, `APP_NAME` as the fallback: the fallback is what
+   * keeps every already-deployed app's objects exactly where they are.
    */
   public get prefix(): string | undefined {
-    return this.alepha.env.APP_NAME;
+    return this.env.S3_KEY_PREFIX || this.alepha.env.APP_NAME;
   }
 
   protected readonly onStart = $hook({

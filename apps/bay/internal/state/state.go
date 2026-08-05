@@ -71,6 +71,17 @@ type App struct {
 	// permanent and wrong, which is how people learn to ignore warnings.
 	Backups bool `json:"backups"`
 
+	// StorageBackend is where this app's blobs live: "local" (a directory under
+	// the instance) or "s3" (Bay's configured bucket). Empty on apps that
+	// declare no bucket, and on records written before this field existed.
+	//
+	// Deploy-owned and recorded rather than re-derived, because two other
+	// decisions read it and both are wrong if they guess: the sandbox stops
+	// granting `storage/` to an S3-backed app, and the backup skips its storage
+	// tar. Re-deriving would mean parsing the app's `.env` from the supervisor,
+	// which is the app's file, not Bay's source of truth.
+	StorageBackend string `json:"storageBackend,omitempty"`
+
 	// LastBackupAt is when this app last had a VERIFIED backup uploaded, RFC3339
 	// UTC. Empty means never.
 	//
@@ -169,19 +180,38 @@ type State struct {
 	// S3 is where backups go. Stored here rather than in a separate file so a
 	// single 0600 root-owned document holds everything an operator configures.
 	//
-	// ⚠ These credentials can delete backups. Until apps run under their own
-	// unix users, any app on this host can read this file and therefore reach
-	// them — see the isolation work.
+	// ⚠ These credentials can delete backups. They are never written into an
+	// app's environment — that is what `Storage` below is for, and why the two
+	// are separate fields rather than one reused config.
 	S3 *S3Config `json:"s3,omitempty"`
+	// Storage is where hosted apps put their blobs, handed to each app that
+	// declares a bucket.
+	//
+	// Deliberately NOT `S3` above. Every app receives these credentials in its
+	// own `.env`, so they must be a second, narrower token: an app holding the
+	// backup key could delete its own backups, which is the one thing backups
+	// exist to prevent. Pointing both at the same bucket is fine and expected —
+	// the key layouts do not collide — but they must be different credentials.
+	Storage *S3Target `json:"storage,omitempty"`
 }
 
-// S3Config addresses an S3-compatible bucket (R2, MinIO, AWS).
-type S3Config struct {
+// S3Target addresses an S3-compatible bucket (R2, MinIO, AWS).
+//
+// Split out of S3Config so backups and app storage can describe the same kind
+// of endpoint without sharing one credential. Embedded rather than nested:
+// `encoding/json` flattens an embedded struct with no tag, so `s3` keeps the
+// exact document shape every deployed Bay already wrote.
+type S3Target struct {
 	Endpoint  string `json:"endpoint"`
 	Bucket    string `json:"bucket"`
 	AccessKey string `json:"accessKey"`
 	SecretKey string `json:"secretKey"`
 	Region    string `json:"region,omitempty"`
+}
+
+// S3Config is a target plus the retention that only backups have.
+type S3Config struct {
+	S3Target
 	// Keep is how many backups to retain per app instance.
 	Keep int `json:"keep,omitempty"`
 }
@@ -325,6 +355,12 @@ func (s *Store) RecordBackupFailure(key, reason string, at time.Time) error {
 	})
 }
 
+// SetStorageBackend records where an app's blobs live, after a migration has
+// actually moved them.
+func (s *Store) SetStorageBackend(key, backend string) error {
+	return s.mutate(key, func(a *App) { a.StorageBackend = backend })
+}
+
 // SetRelease repoints an app at another release (deploy swap, rollback).
 func (s *Store) SetRelease(key, release string) error {
 	return s.mutate(key, func(a *App) { a.Release = release })
@@ -402,6 +438,28 @@ func (s *Store) SetS3(cfg *S3Config) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.state.S3 = cfg
+	return s.flush()
+}
+
+// Storage returns the bucket hosted apps write their blobs to, or nil.
+//
+// A copy, like S3(): a caller that edits what it got back must not be editing
+// the live registry behind the mutex.
+func (s *Store) Storage() *S3Target {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.state.Storage == nil {
+		return nil
+	}
+	copied := *s.state.Storage
+	return &copied
+}
+
+// SetStorage records where hosted apps put their blobs.
+func (s *Store) SetStorage(cfg *S3Target) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.state.Storage = cfg
 	return s.flush()
 }
 

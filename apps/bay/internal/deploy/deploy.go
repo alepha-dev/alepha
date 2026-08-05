@@ -33,7 +33,18 @@ import (
 // bayOwnedKeys are the env vars Bay manages. Everything else in a .env belongs
 // to the user and must survive a redeploy untouched — otherwise the first
 // redeploy silently wipes STRIPE_KEY and the app comes up degraded.
-var bayOwnedKeys = []string{"NODE_ENV", "DATABASE_URL", "APP_SECRET", "STORAGE_PATH", "DATA_DIR", "SERVER_PORT", "SERVER_HOST"}
+var bayOwnedKeys = []string{
+	"NODE_ENV", "DATABASE_URL", "APP_SECRET", "STORAGE_PATH", "DATA_DIR",
+	"SERVER_PORT", "SERVER_HOST", "APP_NAME",
+	"S3_ENDPOINT", "S3_BUCKET_NAME", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY",
+	"S3_REGION", "S3_KEY_PREFIX",
+}
+
+// Backend names recorded on state.App.StorageBackend.
+const (
+	BackendLocal = "local"
+	BackendS3    = "s3"
+)
 
 // Options describes one deployment.
 type Options struct {
@@ -50,6 +61,14 @@ type Options struct {
 	// see state.App.ControlAPI for why the manifest may not decide this.
 	AllowControlAPI bool
 	Runtime         string // absolute path to the node/bun binary
+	// Storage is the bucket hosted apps write blobs to, nil when this Bay has
+	// none configured. Handed to an app only when its manifest declares a
+	// bucket, and never the credentials backups use.
+	Storage *state.S3Target
+	// MigratedStorage records that `bay storage migrate` has already copied
+	// this app's local files into the bucket, so switching backends will not
+	// strand them. Without it a populated `storage/` refuses the switch.
+	MigratedStorage bool
 }
 
 // Result reports what was deployed.
@@ -72,6 +91,9 @@ type Result struct {
 	// a backup over a database that already has data would turn an ordinary
 	// redeploy into data loss.
 	DatabaseCreated bool
+	// StorageBackend is where this app's blobs ended up: "local", "s3", or
+	// empty when it declares no bucket.
+	StorageBackend string
 }
 
 // Run unpacks, provisions and registers an app. It does not start it — the
@@ -186,9 +208,10 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	// The release placement above already created `releases/`, which is the only
 	// directory a static app needs.
 	var (
-		port      int
-		dbPath    string
-		dbCreated bool
+		port           int
+		dbPath         string
+		dbCreated      bool
+		storageBackend string
 	)
 	if !m.IsStatic() {
 		port, err = allocatePort(store.UsedPorts())
@@ -199,7 +222,7 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 			port = existing.Port // keep the port stable across redeploys
 		}
 
-		dbPath, dbCreated, err = provision(instance, m, port)
+		dbPath, dbCreated, storageBackend, err = provision(opts, instance, m, port, existing.StorageBackend)
 		if err != nil {
 			return nil, fmt.Errorf("provision: %w", err)
 		}
@@ -227,6 +250,9 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		// Only a Bay-provisioned database can be snapshotted; a BYO DATABASE_URL
 		// leaves dbPath empty.
 		Backups: dbPath != "",
+		// Read by the sandbox (whether `storage/` is writable) and by the
+		// backup (whether to archive it). Both are wrong if they guess.
+		StorageBackend: storageBackend,
 		// Carried so an app that serves nobody on purpose — a weekly mailer, a
 		// nightly import — can be told apart from one that has been abandoned.
 		// Both read as zero traffic; only one of them should be deleted.
@@ -252,6 +278,7 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	return &Result{
 		App: app, Manifest: m, Release: release, Previous: previous,
 		DatabasePath: dbPath, DatabaseCreated: dbCreated,
+		StorageBackend: storageBackend,
 	}, nil
 }
 
@@ -278,20 +305,20 @@ func uniqueRelease(instance, base string) string {
 //
 // These live OUTSIDE the release directory on purpose: they belong to the app
 // instance, not to a version, so they survive deploys and rollbacks.
-func provision(instance string, m *manifest.Manifest, port int) (dbPath string, dbCreated bool, err error) {
+func provision(opts Options, instance string, m *manifest.Manifest, port int, currentBackend string) (dbPath string, dbCreated bool, backend string, err error) {
 	dataDir := filepath.Join(instance, "data")
 	storageDir := filepath.Join(instance, "storage")
 	scratchDir := filepath.Join(instance, "scratch")
 	for _, d := range []string{dataDir, storageDir, scratchDir} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
-			return "", false, err
+			return "", false, "", err
 		}
 	}
 
 	envPath := filepath.Join(instance, ".env")
 	env, err := runner.LoadEnvFile(envPath)
 	if err != nil {
-		return "", false, err
+		return "", false, "", err
 	}
 
 	// APP_SECRET belongs to the instance, not the release. Regenerating it on
@@ -300,7 +327,7 @@ func provision(instance string, m *manifest.Manifest, port int) (dbPath string, 
 	if env["APP_SECRET"] == "" {
 		secret, err := randomHex(32)
 		if err != nil {
-			return "", false, err
+			return "", false, "", err
 		}
 		env["APP_SECRET"] = secret
 	}
@@ -312,16 +339,69 @@ func provision(instance string, m *manifest.Manifest, port int) (dbPath string, 
 		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
 			f, err := os.OpenFile(dbPath, os.O_CREATE|os.O_WRONLY, 0o600)
 			if err != nil {
-				return "", false, err
+				return "", false, "", err
 			}
 			f.Close()
 			dbCreated = true
 		}
 		env["DATABASE_URL"] = "sqlite://" + dbPath
 	}
-	if m.Resources.Bucket && !userSupplied(env, "STORAGE_PATH") {
-		env["STORAGE_PATH"] = storageDir
+	// Blobs: Bay's bucket, the app's own bucket, or a directory on this disk.
+	//
+	// The framework picks its backend on `S3_ENDPOINT` alone, so exactly one of
+	// the two shapes may be written. Leaving a stale `STORAGE_PATH` next to S3
+	// credentials would point at a directory nothing ever writes to, which reads
+	// like the files are on disk when they are not.
+	if m.Resources.Bucket {
+		switch {
+		case userSuppliedBucket(env, opts.Storage):
+			// BYO bucket wins and Bay steps back entirely, the same way it does
+			// for a user-supplied DATABASE_URL. Recorded as s3 because that is
+			// where the blobs are — Bay just does not own the bucket.
+			backend = BackendS3
+			delete(env, "STORAGE_PATH")
+		case opts.Storage != nil:
+			if err := refuseToStrandFiles(storageDir, opts, currentBackend); err != nil {
+				return "", false, "", err
+			}
+			backend = BackendS3
+			env["S3_ENDPOINT"] = opts.Storage.Endpoint
+			env["S3_BUCKET_NAME"] = opts.Storage.Bucket
+			env["S3_ACCESS_KEY_ID"] = opts.Storage.AccessKey
+			env["S3_SECRET_ACCESS_KEY"] = opts.Storage.SecretKey
+			env["S3_REGION"] = opts.Storage.Region
+			// Bay's own bookkeeping, deliberately NOT `APP_NAME`.
+			//
+			// `APP_NAME` is the framework's fallback prefix, but an app may set
+			// it in code — `Alepha.create` spreads `{...process.env,
+			// ...state.env}`, so the in-code value wins — and a prefix Bay
+			// cannot be sure of is a prefix Bay cannot migrate, prune or scope
+			// a credential to. It also has no room for the environment, and it
+			// names the cookie jar, which has nothing to do with blobs.
+			//
+			// Mirrors the backup key layout so one bucket can hold
+			// `apps/<name>/<env>/{db,storage,blobs}/` coherently.
+			env["S3_KEY_PREFIX"] = blobPrefix(opts.Name, opts.Env)
+			delete(env, "STORAGE_PATH")
+		default:
+			backend = BackendLocal
+			if !userSupplied(env, "STORAGE_PATH") {
+				env["STORAGE_PATH"] = storageDir
+			}
+		}
 	}
+
+	// Bay knows the app's identity, so the app never has to be told twice.
+	//
+	// A DEFAULT, not an override: `Alepha.create` applies in-code env last, so
+	// an app that sets APP_NAME itself keeps its own value — which is right,
+	// because that value already names its cookies and, on an app deployed
+	// elsewhere, its objects.
+	//
+	// `<name>-<env>` rather than the bare name `subdomain()` uses for
+	// production. Hostnames are user-facing and want brevity; this is what
+	// `bay status`, `bay logs` and the state key call the instance.
+	env["APP_NAME"] = opts.Name + "-" + opts.Env
 
 	// Alepha's local providers default their scratch data to
 	// `node_modules/.alepha`, i.e. inside the bundle — which the sandbox keeps
@@ -357,9 +437,105 @@ func provision(instance string, m *manifest.Manifest, port int) (dbPath string, 
 	env["NODE_ENV"] = "production"
 
 	if err := writeEnvFile(envPath, env); err != nil {
-		return "", false, err
+		return "", false, "", err
 	}
-	return dbPath, dbCreated, nil
+	return dbPath, dbCreated, backend, nil
+}
+
+// RepointStorage rewrites a deployed app's .env to read blobs from the bucket.
+//
+// Narrower than re-running `provision`, on purpose: a migration must change
+// exactly the storage keys and touch nothing else. Re-provisioning would also
+// re-derive the port and the database, which are correct already — and any bug
+// in that path would land on an app that is only trying to move its files.
+//
+// The caller stops the app first. Rewriting the environment of a running
+// process changes nothing until it restarts, and an app still writing to the
+// local directory while its files are being copied is how a migration loses
+// the last upload.
+func RepointStorage(instance string, name, env string, storage *state.S3Target) error {
+	envPath := filepath.Join(instance, ".env")
+	values, err := runner.LoadEnvFile(envPath)
+	if err != nil {
+		return err
+	}
+	values["S3_ENDPOINT"] = storage.Endpoint
+	values["S3_BUCKET_NAME"] = storage.Bucket
+	values["S3_ACCESS_KEY_ID"] = storage.AccessKey
+	values["S3_SECRET_ACCESS_KEY"] = storage.SecretKey
+	values["S3_REGION"] = storage.Region
+	values["S3_KEY_PREFIX"] = blobPrefix(name, env)
+	// Both would be a lie about where the blobs are: the framework switches
+	// backend on S3_ENDPOINT alone, so a leftover STORAGE_PATH points at a
+	// directory nothing will write to again.
+	delete(values, "STORAGE_PATH")
+	return writeEnvFile(envPath, values)
+}
+
+// BlobPrefix is where an app instance's blobs live in the storage bucket.
+//
+// Exported because `bay storage migrate` has to write to exactly the keys the
+// app will later read. Two implementations of this string would be one too
+// many: the migration would silently copy files somewhere the app never looks,
+// and the app would come up healthy serving 404s.
+func BlobPrefix(name, env string) string { return blobPrefix(name, env) }
+
+func blobPrefix(name, env string) string {
+	return fmt.Sprintf("apps/%s/%s/blobs", name, env)
+}
+
+// refuseToStrandFiles blocks a local -> S3 switch that would orphan uploads.
+//
+// The failure it prevents leaves no trace: the app boots, passes its health
+// check and serves 404 for every file uploaded before the switch. Nothing logs
+// an error, because nothing went wrong — the app is simply reading an empty
+// bucket.
+//
+// Same discipline as `DatabaseCreated`: a routine redeploy must never be the
+// thing that loses data.
+func refuseToStrandFiles(storageDir string, opts Options, currentBackend string) error {
+	// Only a SWITCH can strand anything. An app already reading from the
+	// bucket has had its files dealt with, and the local directory it left
+	// behind is leftovers — refusing every subsequent deploy over them would
+	// make the migration permanent work rather than a one-off.
+	if opts.MigratedStorage || currentBackend == BackendS3 {
+		return nil
+	}
+	empty, err := isEmptyDir(storageDir)
+	if err != nil {
+		return err
+	}
+	if empty {
+		return nil
+	}
+	return fmt.Errorf(
+		"%s/%s has files in %s that the bucket does not: run `bay storage migrate %s/%s` first, "+
+			"or those uploads become unreachable the moment this deploy lands",
+		opts.Name, opts.Env, storageDir, opts.Name, opts.Env)
+}
+
+// isEmptyDir reports whether a directory tree holds no regular file.
+//
+// Walked rather than read one level deep: `$storage` puts every blob under a
+// container directory, so the top level is never empty once an app has taken a
+// single upload, and a one-level check would call it empty exactly when it is
+// not.
+func isEmptyDir(dir string) (bool, error) {
+	empty := true
+	err := filepath.WalkDir(dir, func(_ string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		empty = false
+		return filepath.SkipAll
+	})
+	if os.IsNotExist(err) {
+		return true, nil
+	}
+	return empty, err
 }
 
 // subdomain composes the host label for an app instance.
@@ -386,6 +562,26 @@ func userSupplied(env map[string]string, key string) bool {
 		return !strings.HasPrefix(v, "sqlite://")
 	}
 	return false
+}
+
+// userSuppliedBucket reports whether the app brought its own object storage.
+//
+// Separate from `userSupplied` because the answer depends on what Bay itself
+// would have written: a value equal to Bay's configured endpoint IS Bay's,
+// left over from an earlier deploy, and treating it as the user's would freeze
+// the app on a bucket the operator has since moved.
+//
+// With no storage configured, any endpoint present can only have come from the
+// user — Bay has never had one to write.
+func userSuppliedBucket(env map[string]string, storage *state.S3Target) bool {
+	v := env["S3_ENDPOINT"]
+	if v == "" {
+		return false
+	}
+	if storage == nil {
+		return true
+	}
+	return v != storage.Endpoint
 }
 
 // writeEnvFile writes atomically with 0600 — a torn .env means the app boots

@@ -34,6 +34,10 @@ type fakeRunner struct {
 	// refuseStart decides whether the nth Start (1-based) fails, so a test can
 	// have a release that will not boot without needing a process at all.
 	refuseStart func(n int) error
+	// lastSpec is what the supervisor was last asked to run. The sandbox is
+	// decided here and nowhere else, so this is the only place a test can see
+	// which paths an app was actually granted.
+	lastSpec runner.Spec
 }
 
 func newFakeRunner() *fakeRunner { return &fakeRunner{running: map[string]bool{}} }
@@ -42,6 +46,7 @@ func (f *fakeRunner) Start(spec runner.Spec) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.starts++
+	f.lastSpec = spec
 	if f.refuseStart != nil {
 		if err := f.refuseStart(f.starts); err != nil {
 			return err

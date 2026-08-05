@@ -34,7 +34,8 @@ export * from "./providers/S3FileStorageProvider.ts";
  * nothing else.
  *
  * All backends treat the container name as a **key prefix inside one bucket**
- * (`{APP_NAME}/{tenantId}/{container}/{fileId}` — the tenant segment appears
+ * (`{prefix}/{tenantId}/{container}/{fileId}` — the leading prefix comes from
+ * `S3_KEY_PREFIX`, or `APP_NAME` as a fallback, and the tenant segment appears
  * when a tenant is active) or one directory on disk — never a separate cloud
  * bucket per container.
  *

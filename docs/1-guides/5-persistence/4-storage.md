@@ -45,13 +45,30 @@ class MediaService {
 
 ## A storage is a prefix, not a bucket
 
-Every backend keys objects as `{APP_NAME}/{tenantId}/{storage}/{fileId}` inside
+Every backend keys objects as `{prefix}/{tenantId}/{storage}/{fileId}` inside
 **one** bucket (or one directory, on disk). Declaring twenty storages costs
 nothing and provisions nothing — there is no per-storage cloud bucket and no
 account bucket limit to worry about.
 
 You create that one bucket yourself and point the provider at it
 (`S3_BUCKET_NAME` / `R2_BUCKET_NAME`).
+
+### Sharing one bucket between apps
+
+`S3_KEY_PREFIX` sets the leading segment, so several apps can write into the
+same bucket without seeing each other's keys:
+
+```bash
+S3_KEY_PREFIX=apps/myapp/production/blobs
+```
+
+`APP_NAME` is the fallback when it is unset, which is how this worked before
+`S3_KEY_PREFIX` existed — already-deployed objects stay exactly where they are.
+
+Prefer `S3_KEY_PREFIX` when a deployment platform sets the value for you.
+`APP_NAME` also namespaces **cookies** and the `Server-Timing` header, so
+changing it to lay out object storage renames every cookie and ends every
+session as a side effect.
 
 ## Methods
 

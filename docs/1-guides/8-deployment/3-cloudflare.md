@@ -76,7 +76,7 @@ The build automatically adds the D1 binding to `wrangler.jsonc` (the binding is 
 
 ## R2 Buckets
 
-The R2 binding is added to `wrangler.jsonc` when `R2_BUCKET_NAME` is set at build time — the platform plugin sets it automatically when your app declares any `$storage`; for a manual build, set it yourself in the environment. R2 keys every object as `{APP_NAME}/{tenantId}/{storage}/{fileId}` inside that one bucket — a storage is a prefix, not a bucket of its own.
+The R2 binding is added to `wrangler.jsonc` when `R2_BUCKET_NAME` is set at build time — the platform plugin sets it automatically when your app declares any `$storage`; for a manual build, set it yourself in the environment. R2 keys every object as `{prefix}/{tenantId}/{storage}/{fileId}` inside that one bucket — a storage is a prefix, not a bucket of its own. The leading prefix comes from `S3_KEY_PREFIX`, falling back to `APP_NAME`.
 
 ## Cron Triggers
 

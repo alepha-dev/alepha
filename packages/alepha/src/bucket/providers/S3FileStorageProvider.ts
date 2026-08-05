@@ -54,6 +54,21 @@ const envSchema = z.object({
    * Secret access key for S3 authentication.
    */
   S3_SECRET_ACCESS_KEY: z.string(),
+
+  /**
+   * Key prefix for every object this app writes, so several apps can share one
+   * bucket without seeing each other's keys.
+   *
+   * Takes precedence over `APP_NAME`, which is the older way to say the same
+   * thing and remains the fallback so already-deployed objects do not move.
+   * Prefer this one from a deployment: `APP_NAME` also namespaces cookies and
+   * the `Server-Timing` header, so a host that repurposed it to lay out object
+   * storage would log every user out as a side effect.
+   *
+   * @example
+   * S3_KEY_PREFIX=apps/lore/production/blobs
+   */
+  S3_KEY_PREFIX: z.string().optional(),
 });
 
 declare module "alepha" {
@@ -67,14 +82,15 @@ declare module "alepha" {
  * MinIO, DigitalOcean Spaces, Backblaze B2, and any other S3-compatible service.
  *
  * Uses path-style addressing (`<endpoint>/<S3_BUCKET_NAME>`), and keys every
- * object as `{APP_NAME}/{tenantId}/{container}/{fileId}` — the same scheme as
+ * object as `{prefix}/{tenantId}/{container}/{fileId}` — the same scheme as
  * {@link R2FileStorageProvider}.
  *
  * **Required environment variables:**
  * - `S3_ENDPOINT`, `S3_BUCKET_NAME`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`
  *
  * **Optional:**
- * - `S3_REGION` (default `auto`), `APP_NAME` (prefix, for multi-app buckets)
+ * - `S3_REGION` (default `auto`)
+ * - `S3_KEY_PREFIX` (prefix, for multi-app buckets), or `APP_NAME` as a fallback
  *
  * Earlier versions created **one S3 bucket per container** and provisioned
  * them at boot. That capped container count at the account's bucket limit and
@@ -93,10 +109,13 @@ export class S3FileStorageProvider implements FileStorageProvider {
   protected client?: S3mini;
 
   /**
-   * Optional key prefix from `APP_NAME`, so several apps can share one bucket.
+   * Optional key prefix, so several apps can share one bucket.
+   *
+   * `S3_KEY_PREFIX` first, `APP_NAME` as the fallback: the fallback is what
+   * keeps every already-deployed app's objects exactly where they are.
    */
   public get prefix(): string | undefined {
-    return this.alepha.env.APP_NAME;
+    return this.env.S3_KEY_PREFIX || this.alepha.env.APP_NAME;
   }
 
   protected getClient(): S3mini {
@@ -113,9 +132,9 @@ export class S3FileStorageProvider implements FileStorageProvider {
   }
 
   /**
-   * Object key: `{APP_NAME}/{tenantId}/{container}/{fileId}`, with the
-   * optional segments omitted when absent. Mirrors R2 exactly so a container
-   * means the same thing on every backend.
+   * Object key: `{prefix}/{tenantId}/{container}/{fileId}`, with the optional
+   * segments omitted when absent. Mirrors R2 exactly so a container means the
+   * same thing on every backend.
    */
   protected key(container: string, fileId: string): string {
     const parts = [container, fileId];

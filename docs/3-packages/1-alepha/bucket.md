@@ -23,7 +23,8 @@ database — you get `upload` / `download` / `delete` / `deleteMany` /
 nothing else.
 
 All backends treat the container name as a **key prefix inside one bucket**
-(`{APP_NAME}/{tenantId}/{container}/{fileId}` — the tenant segment appears
+(`{prefix}/{tenantId}/{container}/{fileId}` — the leading prefix comes from
+`S3_KEY_PREFIX`, or `APP_NAME` as a fallback, and the tenant segment appears
 when a tenant is active) or one directory on disk — never a separate cloud
 bucket per container.
 
@@ -46,5 +47,6 @@ Environment variables used to configure this module. These can be set in your `.
 | `S3_ACCESS_KEY_ID` | string | **Required** |  |
 | `S3_BUCKET_NAME` | string | **Required** |  |
 | `S3_ENDPOINT` | string | **Required** |  |
+| `S3_KEY_PREFIX` | string | - |  |
 | `S3_REGION` | string | - |  |
 | `S3_SECRET_ACCESS_KEY` | string | **Required** |  |

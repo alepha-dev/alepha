@@ -44,6 +44,34 @@ func (s *server) backupManager() (*backup.Manager, *state.S3Config, error) {
 	return backup.New(client), cfg, nil
 }
 
+// blobsLiveInObjectStorage reports whether this app's uploads are already in a
+// bucket, and therefore not something the storage tar should archive again.
+func blobsLiveInObjectStorage(app state.App) bool {
+	return app.StorageBackend == deploy.BackendS3
+}
+
+// notBackedUp lists what a backup of this app deliberately does not cover.
+//
+// Stated on every response rather than documented once, because the thing that
+// makes a backup system fail is somebody believing it covers more than it does
+// — and that belief is cheapest to prevent at the moment they run the command.
+func notBackedUp(store *state.Store, app state.App) []string {
+	out := []string{".env (secrets)"}
+	if !blobsLiveInObjectStorage(app) {
+		return out
+	}
+	// Named rather than merely omitted. "storage/ is not in this backup" reads
+	// as a gap; "the blobs are in bucket X" is a different claim, and only one
+	// of the two is true.
+	where := "the configured bucket"
+	if cfg := store.Storage(); cfg != nil {
+		where = cfg.Bucket
+	}
+	return append(out, fmt.Sprintf(
+		"storage/ (uploads live in %s, not archived here — enable bucket versioning: "+
+			"object storage keeps the current blob, not yesterday's)", where))
+}
+
 // appPaths resolves the runtime binary and managed database path for an app.
 func (s *server) appPaths(app state.App) (runtime, dbPath string, err error) {
 	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
@@ -164,7 +192,13 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 	// REPORTED rather than swallowed: a partial backup that reads as a complete
 	// one is the worst thing this system can produce.
 	storageDir := filepath.Join(s.root, "apps", app.Name, app.Env, "storage")
-	storageRes, storageErr := mgr.BackupStorage(r.Context(), app.Name, app.Env, storageDir)
+	var (
+		storageRes *backup.Result
+		storageErr error
+	)
+	if !blobsLiveInObjectStorage(app) {
+		storageRes, storageErr = mgr.BackupStorage(r.Context(), app.Name, app.Env, storageDir)
+	}
 
 	s.log.Info("backup stored", "app", app.Key(), "key", res.Key,
 		"raw", res.RawBytes, "stored", res.StoredBytes, "tables", res.Tables, "pruned", len(pruned))
@@ -178,7 +212,7 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		"pruned":      keys(pruned),
 		// What is NOT covered has to be stated, every time. The worst failure of
 		// a backup system is someone believing they are covered.
-		"notBackedUp": []string{".env (secrets)"},
+		"notBackedUp": notBackedUp(s.store, app),
 	}
 	switch {
 	case storageErr != nil:
@@ -361,7 +395,7 @@ func keys(entries []backup.Entry) []string {
 // ---------------------------------------------------------------------------
 
 func cmdConfigS3(args []string) error {
-	cfg := state.S3Config{Region: "auto", Keep: defaultKeep}
+	cfg := state.S3Config{S3Target: state.S3Target{Region: "auto"}, Keep: defaultKeep}
 	for i := 0; i < len(args)-1; i++ {
 		switch args[i] {
 		case "--endpoint":
@@ -532,12 +566,19 @@ func (s *server) backupOne(ctx context.Context, mgr *backup.Manager, cfg *state.
 	// that fails must not undo a database backup that succeeded, and must not
 	// pass silently either.
 	storageDir := filepath.Join(s.root, "apps", app.Name, app.Env, "storage")
-	switch storageRes, storageErr := mgr.BackupStorage(ctx, app.Name, app.Env, storageDir); {
-	case storageErr != nil:
-		s.log.Error("scheduled storage backup failed", "app", key, "err", storageErr)
-	case storageRes != nil:
-		s.log.Info("scheduled storage backup", "app", key, "key", storageRes.Key,
-			"files", storageRes.Tables, "stored", storageRes.StoredBytes)
+	if blobsLiveInObjectStorage(app) {
+		// Nothing to archive: the uploads are already objects. Logged rather
+		// than passed over in silence, so "no storage backup for this app"
+		// never has to be diagnosed.
+		s.log.Debug("storage backup skipped: blobs are in object storage", "app", key)
+	} else {
+		switch storageRes, storageErr := mgr.BackupStorage(ctx, app.Name, app.Env, storageDir); {
+		case storageErr != nil:
+			s.log.Error("scheduled storage backup failed", "app", key, "err", storageErr)
+		case storageRes != nil:
+			s.log.Info("scheduled storage backup", "app", key, "key", storageRes.Key,
+				"files", storageRes.Tables, "stored", storageRes.StoredBytes)
+		}
 	}
 
 	// Retention runs here and not on a schedule of its own: pruning is only
