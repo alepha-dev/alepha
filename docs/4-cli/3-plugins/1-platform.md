@@ -68,7 +68,7 @@ Common flags accepted by most subcommands:
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `adapter` | `string` | Cloud provider: `"cloudflare"` or `"bay"` |
+| `adapter` | `string` | Deploy target: `"cloudflare"` (Workers), `"lore"` (artifact registry → a Bay claims it) or `"bay"` |
 | `domain` | `string` | Custom domain for the worker. Wildcards (`"*.club.myapp.com"`) are supported for multi-tenant apps and require `zone`. Omit to use the default `*.workers.dev` URL. |
 | `zone` | `string` | Cloudflare zone that owns `domain`. Required for wildcard domains; for a plain host it switches the binding from a Custom Domain to a zone route. |
 | `services` | `Array<{ binding, service }>` | Worker-to-worker service bindings, exposed on the runtime `env`. |
@@ -155,6 +155,17 @@ alepha p up --env staging
 | Flag | Description |
 |------|-------------|
 | `--prebuilt` | Skip the Vite bundle steps; only regenerate the deploy config (`wrangler.jsonc`). Use when `dist/` was already produced upstream. |
+| `--tag`, `-t` | Artifact tag. See [Tags and promoting](#tags-and-promoting). |
+
+### push
+
+Build an artifact into the registry **without deploying it**. Registry-backed
+adapters only (`lore`) — an adapter that deploys straight to a provider has
+nowhere to put an artifact, and `push` refuses rather than quietly deploying.
+
+```bash
+alepha p push --tag 1.2.3
+```
 
 ### down
 
@@ -193,6 +204,37 @@ Deploy only. Assumes already built.
 ```bash
 alepha p deploy --env production
 ```
+
+### Tags and promoting
+
+Artifacts are tagged Docker-style. `alepha pack --tag` names the file, and the
+registry keys on `(app, tag)`.
+
+**`latest` is the only mutable tag.** Pushing it replaces the artifact in
+place — one row, one stored object. Every other tag is **write-once**: pushing
+it a second time is refused, and that refusal is what makes promoting mean
+something.
+
+```bash
+alepha p up --env staging --tag 1.2.3      # builds, pushes, deploys
+alepha p up --env production --tag 1.2.3   # reuses — same bytes, no rebuild
+```
+
+The second command does not rebuild. It finds `1.2.3` already in the registry
+and deploys exactly the bytes staging tested; because the digest is the
+artifact's identity, a machine already holding it skips the download entirely.
+Rebuilding instead would produce a different artifact under the same label —
+dependency resolution drifts, build timestamps differ — which is the whole
+problem tag immutability exists to prevent.
+
+When a deploy reuses an existing artifact it says so, because silent reuse is
+the one way this surprises you:
+
+```
+Deploying hello:1.2.3 (sha ab12cd34…, pushed 2026-08-04); local changes not included.
+```
+
+Omit `--tag` and you get `latest`, which always rebuilds — the inner loop.
 
 ### db
 
