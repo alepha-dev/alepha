@@ -1,4 +1,40 @@
-export const agentMd = (): string => {
+/**
+ * `devtools` adds the `## Devtools API` section. Gated on the same flag as the
+ * plugin itself: documenting endpoints that were never installed sends the
+ * reader to a 404 and costs them the time to work out why.
+ */
+export const agentMd = (opts: { devtools?: boolean } = {}): string => {
+  const devtools = opts.devtools
+    ? `
+## Devtools API (dev server only)
+
+\`alepha dev\` mounts a JSON API over the running app under
+\`http://localhost:3000/__devtools/api/\` (port follows \`SERVER_PORT\`). Prefer it
+over reading source when the question is about *runtime* state — it answers
+from the live container, so it cannot drift from the code.
+
+| Endpoint | Notes |
+|---|---|
+| \`GET /metadata\` | routes, actions, pages, entities, atoms, modules — the whole app graph |
+| \`GET /logs\` | filters: \`level\`, \`type\`, \`module\`, \`search\`, \`since\`, \`limit\`, \`offset\`, \`slowerThan\` |
+| \`GET /atoms\` | live store state |
+| \`GET /emails\`, \`GET /sms\` | what the app tried to send — captured, never delivered |
+| \`GET\`/\`POST /db/:entity/records\` | \`:entity\` is the \`$entity\` name; list takes \`page\`, \`size\`, \`sort\` |
+| \`PUT\`/\`DELETE /db/:entity/records/:id\` | edit a row without a database client |
+| \`GET /jobs\`, \`GET /jobs/:name/executions\` | \`executions\` takes \`status\` |
+| \`POST /jobs/:name/trigger\` | run a job now; \`POST /jobs/executions/:id/retry\` re-runs one |
+
+\`\`\`bash
+curl -s http://localhost:3000/__devtools/api/metadata
+curl -s "http://localhost:3000/__devtools/api/logs?level=error&limit=50"
+curl -s "http://localhost:3000/__devtools/api/db/user/records?size=10"
+\`\`\`
+
+There is a UI at \`/__devtools/\` for humans. All of it is a Vite dev-server
+plugin — none of it reaches a production build.
+`
+    : "";
+
   return `# AGENTS.md
 
 This is an **Alepha** project.
@@ -60,7 +96,7 @@ alepha platform plan     # Show planned cloud topology (requires platform plugin
 alepha platform up       # Provision + deploy to a configured environment
 alepha platform status   # Inspect deployed resources
 \`\`\`
-
+${devtools}
 ## Testing
 
 - Specs live in \`test/\`, named \`*.spec.ts\`.

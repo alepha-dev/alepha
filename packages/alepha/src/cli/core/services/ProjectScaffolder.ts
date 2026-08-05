@@ -81,7 +81,11 @@ export class ProjectScaffolder {
        * Write `.env.example`, the committed template for `.env`.
        */
       envExample?: boolean;
-      agentMd?: boolean;
+      /**
+       * `true` writes the file with no devtools section — pass
+       * `{ devtools: true }` to document the `/__devtools/api/` endpoints.
+       */
+      agentMd?: boolean | { devtools?: boolean };
       /**
        * Write `.vscode/settings.json` pointing the editor's TypeScript
        * server at the `typescript` copy embedded in `alepha`.
@@ -116,7 +120,13 @@ export class ProjectScaffolder {
       tasks.push(this.ensureEnvExample(root, { force }));
     }
     if (opts.agentMd) {
-      tasks.push(this.ensureAgentMd(root, { force }));
+      tasks.push(
+        this.ensureAgentMd(root, {
+          force,
+          devtools:
+            typeof opts.agentMd === "boolean" ? false : opts.agentMd.devtools,
+        }),
+      );
     }
     if (opts.vscodeSettings) {
       tasks.push(this.ensureVscodeSettings(root, { force, checkWorkspace }));
@@ -255,10 +265,15 @@ export class ProjectScaffolder {
    */
   public async ensureAgentMd(
     root: string,
-    options: { force?: boolean } = {},
+    options: { force?: boolean; devtools?: boolean } = {},
   ): Promise<void> {
     await Promise.all([
-      this.ensureFile(root, "AGENTS.md", agentMd(), options.force),
+      this.ensureFile(
+        root,
+        "AGENTS.md",
+        agentMd({ devtools: options.devtools }),
+        options.force,
+      ),
       this.ensureFile(root, "CLAUDE.md", "@AGENTS.md\n", options.force),
     ]);
   }
@@ -556,7 +571,7 @@ export class ProjectScaffolder {
           // Same rule as the agent files: a project root owns its env, a
           // monorepo sub-package reads the workspace root's.
           envExample: writeAgentMd,
-          agentMd: writeAgentMd,
+          agentMd: writeAgentMd && { devtools },
           // Editor TS-server pointer at a project root only; monorepo
           // sub-packages inherit the workspace-root `.vscode/`.
           vscodeSettings: writeAgentMd,
