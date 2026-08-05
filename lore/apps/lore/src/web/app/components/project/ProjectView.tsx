@@ -35,6 +35,7 @@ import QuestLog from "./QuestLog.tsx";
 const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests", "projectQuest"]);
 
 const ROUTES_FULL_WIDTH = new Set([
+  "projectMilestones",
   "projectFolios",
   "projectFoliosNew",
   "projectFoliosFolio",
