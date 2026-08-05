@@ -283,3 +283,46 @@ describe("migration safety", () => {
     expect(await repos.errorGroups.findMany({ limit: 1 })).toEqual([]);
   });
 });
+
+/**
+ * The registry split, pinned to the shape that makes it safe.
+ *
+ * Splitting `releases` into an artifact registry and a deployment ledger is
+ * exactly the kind of change drizzle-kit answers with its rebuild pattern
+ * (`CREATE __new`, `INSERT FROM SELECT`, `DROP old`) — and on D1 the `DROP`
+ * fires every child `ON DELETE CASCADE`. It was kept additive on purpose:
+ * one rename, two `ADD COLUMN`, and the columns the split made redundant were
+ * left in place rather than dropped, because dropping them is what would force
+ * the rebuild. `fileId` and `sha256` staying put is also what lets a deployment
+ * row keep saying what it shipped after its artifact is replaced.
+ */
+describe("artifact registry migration", () => {
+  const registrySql = () => {
+    const dir = readdirSync(MIGRATIONS)
+      .filter((name) => existsSync(join(MIGRATIONS, name, "migration.sql")))
+      .sort()
+      .at(-1)!;
+    return readFileSync(join(MIGRATIONS, dir, "migration.sql"), "utf8");
+  };
+
+  it("should rename releases rather than recreating it", ({ expect }) => {
+    expect(registrySql()).toMatch(
+      /ALTER TABLE `?releases`? RENAME TO `?deployments`?/i,
+    );
+  });
+
+  it("should not rebuild the renamed table", ({ expect }) => {
+    const sql = registrySql();
+
+    expect(sql).not.toMatch(/DROP TABLE/i);
+    expect(sql).not.toMatch(/__new_deployments/i);
+    expect(sql).not.toMatch(/__old_push_mark/i);
+  });
+
+  it("should add the artifact link additively", ({ expect }) => {
+    const sql = registrySql();
+
+    expect(sql).toMatch(/ALTER TABLE `?deployments`? ADD `?artifact_id`?/i);
+    expect(sql).toMatch(/ALTER TABLE `?deployments`? ADD `?tag`?/i);
+  });
+});

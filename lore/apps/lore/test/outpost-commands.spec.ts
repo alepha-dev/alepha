@@ -8,9 +8,9 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { AlephaServerCors } from "alepha/server/cors";
 import { describe, expect, it } from "vitest";
+import { deployments } from "../src/api/entities/deployments.ts";
 import { outposts } from "../src/api/entities/outposts.ts";
 import { projects } from "../src/api/entities/projects.ts";
-import { releases } from "../src/api/entities/releases.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { OutpostTokenService } from "../src/api/services/OutpostTokenService.ts";
 import { ReleaseService } from "../src/api/services/ReleaseService.ts";
@@ -18,7 +18,7 @@ import { ReleaseService } from "../src/api/services/ReleaseService.ts";
 class Probe {
   projects = $repository(projects);
   outposts = $repository(outposts);
-  releases = $repository(releases);
+  deployments = $repository(deployments);
   files = $repository(files);
 }
 
@@ -162,7 +162,7 @@ describe("outpost command channel", () => {
     await call("/outposts/commands", bay.token);
 
     const res = await call(
-      `/outposts/releases/${release.id}/status`,
+      `/outposts/deployments/${release.id}/status`,
       other.token,
       { status: "failed", failureReason: "not mine to fail" },
     );
@@ -177,14 +177,14 @@ describe("outpost command channel", () => {
 
     for (const status of ["pulling", "migrating", "serving"]) {
       const res = await call(
-        `/outposts/releases/${release.id}/status`,
+        `/outposts/deployments/${release.id}/status`,
         bay.token,
         { status },
       );
       expect(res.status).toBe(204);
     }
 
-    const stored = await probe.releases.findOne({
+    const stored = await probe.deployments.findOne({
       where: { id: { eq: release.id } },
     });
     expect(stored?.status).toBe("serving");
@@ -196,12 +196,12 @@ describe("outpost command channel", () => {
     const release = await addRelease("2026-08-03-120000");
     await call("/outposts/commands", bay.token);
 
-    await call(`/outposts/releases/${release.id}/status`, bay.token, {
+    await call(`/outposts/deployments/${release.id}/status`, bay.token, {
       status: "failed",
       failureReason: "rebuild with --target=bare",
     });
 
-    const stored = await probe.releases.findOne({
+    const stored = await probe.deployments.findOne({
       where: { id: { eq: release.id } },
     });
     expect(stored?.failureReason).toBe("rebuild with --target=bare");
@@ -211,14 +211,14 @@ describe("outpost command channel", () => {
     const { bay, call, addRelease } = await setup();
     const release = await addRelease("2026-08-03-120000");
     await call("/outposts/commands", bay.token);
-    await call(`/outposts/releases/${release.id}/status`, bay.token, {
+    await call(`/outposts/deployments/${release.id}/status`, bay.token, {
       status: "serving",
     });
 
     // A machine killed mid-deploy can come back and report something stale.
     // The client has already concluded; the row must not move.
     const res = await call(
-      `/outposts/releases/${release.id}/status`,
+      `/outposts/deployments/${release.id}/status`,
       bay.token,
       { status: "failed", failureReason: "late news" },
     );
