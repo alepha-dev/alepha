@@ -17,34 +17,65 @@ import { Textarea } from "@alepha/ui/components/ui/textarea";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import {
-  BookMarked,
-  Dices,
-  History,
-  Play,
-  ScrollText,
-  Sparkles,
-} from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "alepha/react/router";
+import { Dices, Hourglass, Play, Square } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { MilestoneController } from "@/api/controllers/MilestoneController.ts";
+import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Milestone } from "@/api/entities/milestones.ts";
+import type { MilestoneChangelogZone } from "@/api/schemas/milestoneChangelogZoneSchema.ts";
+import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentMilestonesAtom } from "@/web/app/atoms/currentMilestonesAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import MilestoneHero from "./MilestoneHero.tsx";
+import MilestoneChangelogPanel from "./MilestoneChangelogPanel.tsx";
+import MilestoneEmptyBanner from "./MilestoneEmptyBanner.tsx";
+import MilestoneLedgerHero from "./MilestoneLedgerHero.tsx";
+import MilestoneOpenQuestsRail from "./MilestoneOpenQuestsRail.tsx";
+import MilestoneReleasedRail from "./MilestoneReleasedRail.tsx";
+import MilestoneSaveToFolioDialog from "./MilestoneSaveToFolioDialog.tsx";
 import MilestoneTagInput from "./MilestoneTagInput.tsx";
 import ProjectMilestonesCloseModal from "./ProjectMilestonesCloseModal.tsx";
 import ProjectMilestonesDetail from "./ProjectMilestonesDetail.tsx";
-import ProjectMilestonesRow from "./ProjectMilestonesRow.tsx";
 
 export type MilestoneWithCount = Milestone & { questCount: number };
 
+interface ChangelogState {
+  markdown: string;
+  zones: MilestoneChangelogZone[];
+  stats: { questCount: number; zoneCount: number; contributorCount: number };
+}
+
+interface BacklogState {
+  count: number;
+  since?: string;
+  lastNumber?: number;
+  lastTitle?: string;
+}
+
+/**
+ * The Milestones page — a ledger. The active milestone gets a hero band, its
+ * changelog fills the page, and a right rail carries what is still open and
+ * what has already shipped.
+ *
+ * The changelog is always shown for *something*: the recording milestone
+ * when there is one, otherwise the most recently closed. A page whose main
+ * column is blank until you press a button teaches nothing about what
+ * milestones are for.
+ */
 const ProjectMilestones = () => {
   const { tr } = useI18n<I18n, "en">();
+  const i18n = useI18n();
   const toaster = useToast();
+  const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
   const [milestones, setMilestones] = useStore(currentMilestonesAtom);
   const milestoneApi = useClient<MilestoneController>();
+  const questApi = useClient<QuestController>();
+  const folioApi = useClient<FolioController>();
+
   const [startOpen, setStartOpen] = useState(false);
   const [startTitle, setStartTitle] = useState("");
   const [startDescription, setStartDescription] = useState("");
@@ -52,23 +83,31 @@ const ProjectMilestones = () => {
   const [closeModal, setCloseModal] = useState<MilestoneWithCount | null>(null);
   const [detailMilestone, setDetailMilestone] =
     useState<MilestoneWithCount | null>(null);
+  const [folioOpen, setFolioOpen] = useState(false);
+  const [folioSaving, setFolioSaving] = useState(false);
 
-  const activeMilestone = milestones?.find((c) => !c.closedAt);
+  const [changelog, setChangelog] = useState<ChangelogState | null>(null);
+  const [changelogLoading, setChangelogLoading] = useState(true);
+  const [changelogError, setChangelogError] = useState(false);
+  const [backlog, setBacklog] = useState<BacklogState | null>(null);
+  const [openQuests, setOpenQuests] = useState<QuestResource[]>([]);
+
+  const activeMilestone = milestones?.find((c) => !c.closedAt) as
+    | MilestoneWithCount
+    | undefined;
+
   const closedMilestones = useMemo(
-    () => (milestones ?? []).filter((c) => c.closedAt),
+    () =>
+      ((milestones ?? []) as MilestoneWithCount[]).filter((c) => c.closedAt),
     [milestones],
   );
 
-  const totals = useMemo(() => {
-    const totalMilestones = milestones?.length ?? 0;
-    const totalQuests = (milestones ?? []).reduce(
-      (sum, c) => sum + (c.questCount ?? 0),
-      0,
-    );
-    const totalTags = new Set((milestones ?? []).flatMap((c) => c.tags ?? []))
-      .size;
-    return { totalMilestones, totalQuests, totalTags };
-  }, [milestones]);
+  /**
+   * Whichever milestone the changelog panel is showing: the recording one,
+   * or the last closed one as a fallback so the panel is never empty for a
+   * project that has shipped before.
+   */
+  const shownMilestone = activeMilestone ?? closedMilestones[0];
 
   const reload = useCallback(async () => {
     if (!project) return;
@@ -78,11 +117,86 @@ const ProjectMilestones = () => {
     setMilestones(updated as MilestoneWithCount[]);
   }, [project?.id]);
 
+  // Changelog for whichever milestone is on screen.
+  useEffect(() => {
+    if (!shownMilestone) {
+      setChangelog(null);
+      setChangelogLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setChangelogLoading(true);
+    setChangelogError(false);
+    milestoneApi
+      .getMilestoneChangelog({ params: { id: shownMilestone.id } })
+      .then((res) => {
+        if (cancelled) return;
+        setChangelog({
+          markdown: res.markdown,
+          zones: res.zones,
+          stats: res.stats,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setChangelogError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setChangelogLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [shownMilestone?.id, shownMilestone?.closedAt]);
+
+  // Backlog only matters while nothing is recording.
+  useEffect(() => {
+    if (!project || activeMilestone) {
+      setBacklog(null);
+      return;
+    }
+    let cancelled = false;
+    milestoneApi
+      .getMilestoneBacklog({ params: { projectId: project.id } })
+      .then((res) => {
+        // A failed backlog fetch hides the sentence rather than breaking
+        // the empty state, so there is no error branch here.
+        if (!cancelled) setBacklog(res);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id, activeMilestone?.id]);
+
+  // "Still open" rail: accepted but not yet completed.
+  useEffect(() => {
+    if (!project) return;
+    let cancelled = false;
+    questApi
+      .getQuests({
+        params: { projectId: project.id },
+        query: { status: "accepted", size: 8, sort: "-updatedAt" },
+      })
+      .then((page) => {
+        if (!cancelled) setOpenQuests(page.content);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id, milestones]);
+
+  /**
+   * Roll the suggested name *before* the dialog opens. Opening first and
+   * awaiting the roll meant the response landed after the field was already
+   * focused, overwriting whatever had been typed in the meantime.
+   */
   const openStart = async () => {
-    setStartOpen(true);
     setStartDescription("");
     setStartTags([]);
+    setStartTitle("");
     await reroll();
+    setStartOpen(true);
   };
 
   const reroll = async () => {
@@ -105,10 +219,7 @@ const ProjectMilestones = () => {
   };
 
   const handleClose = async (id: number, title: string) => {
-    await milestoneApi.closeMilestone({
-      params: { id },
-      body: { title },
-    });
+    await milestoneApi.closeMilestone({ params: { id }, body: { title } });
     setCloseModal(null);
     await reload();
   };
@@ -124,7 +235,7 @@ const ProjectMilestones = () => {
 
   const handleDetailUpdated = (updated: Milestone) => {
     setMilestones(
-      (milestones ?? []).map((c) =>
+      ((milestones ?? []) as MilestoneWithCount[]).map((c) =>
         c.id === updated.id ? ({ ...c, ...updated } as MilestoneWithCount) : c,
       ),
     );
@@ -133,239 +244,306 @@ const ProjectMilestones = () => {
     );
   };
 
+  const handleCopy = async () => {
+    if (!changelog) return;
+    try {
+      await navigator.clipboard.writeText(changelog.markdown);
+      toaster.success(tr("milestone.changelog.copied"));
+    } catch {
+      toaster.error(tr("milestone.changelog.copyError"));
+    }
+  };
+
+  const handleDownload = () => {
+    if (!changelog || !shownMilestone) return;
+    const blob = new Blob([changelog.markdown], {
+      type: "text/markdown;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `milestone-${shownMilestone.number}.md`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSaveToFolio = async (title: string) => {
+    if (!project || !changelog || !shownMilestone) return;
+    setFolioSaving(true);
+    try {
+      await folioApi.create({
+        body: {
+          projectId: project.id,
+          title,
+          content: changelog.markdown,
+          tags: [...(shownMilestone.tags ?? []), "changelog"],
+          summary: tr("milestone.folio.summary", {
+            args: [
+              String(shownMilestone.number),
+              String(changelog.stats.questCount),
+            ],
+          }) as string,
+        },
+      });
+      setFolioOpen(false);
+      toaster.success(tr("milestone.folio.saved"));
+    } catch {
+      // Dialog stays open so the typed title is not lost.
+      toaster.error(tr("milestone.folio.error"));
+    } finally {
+      setFolioSaving(false);
+    }
+  };
+
   if (!project) return null;
 
+  const projectId = String(project.id);
+  const settingsHref = router.path("projectSettingsMilestones", {
+    params: { projectId },
+  });
+  const questsHref = router.path("projectQuests", { params: { projectId } });
+
+  // Same wording the settings page offers, so the banner and the setting
+  // never disagree on what "auto-close" is currently set to.
+  const autoCloseLabel = String(
+    project.milestoneDuration === "P7D"
+      ? tr("project.settings.milestones.duration.1w")
+      : project.milestoneDuration === "P14D"
+        ? tr("project.settings.milestones.duration.2w")
+        : project.milestoneDuration === "P1M"
+          ? tr("project.settings.milestones.duration.1mo")
+          : project.milestoneDuration === "P3M"
+            ? tr("project.settings.milestones.duration.3mo")
+            : tr("project.settings.milestones.duration.manual"),
+  );
+
+  const statusLabel = !shownMilestone
+    ? tr("milestone.changelog.none")
+    : shownMilestone.closedAt
+      ? tr("milestone.changelog.frozen", {
+          args: [
+            String(shownMilestone.number),
+            String(i18n.l(shownMilestone.closedAt, { date: "ll" })),
+          ],
+        })
+      : tr("milestone.changelog.live", {
+          args: [String(changelog?.stats.questCount ?? 0)],
+        });
+
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 md:py-10">
-      <div className="flex flex-col gap-10">
-        <header className="flex flex-col gap-2">
-          <div className="text-muted-foreground flex items-center gap-2 text-xs uppercase tracking-[0.2em]">
-            <BookMarked className="size-3.5" />
-            {tr("milestone.page.eyebrow")}
-          </div>
-          <h1 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex flex-col gap-4 px-5 pb-4 pt-5 lg:flex-row lg:items-end lg:justify-between lg:gap-6 lg:px-7">
+        <div>
+          <h1 className="text-[26px] font-bold tracking-[-0.02em]">
             {tr("milestone.page.title")}
           </h1>
-          <p className="text-muted-foreground max-w-2xl text-sm">
-            {tr("milestone.page.subtitle")}
+          <p className="text-muted-foreground mt-1.5 max-w-2xl text-[13px] text-pretty">
+            {tr("milestone.ledger.subtitle")}
           </p>
-        </header>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {activeMilestone ? (
+            <Button
+              variant="outline"
+              className="border-amber-500/60 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
+              onClick={() => setCloseModal(activeMilestone)}
+            >
+              <Square className="size-4" />
+              {tr("milestone.close")}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() =>
+                router.push("projectSettingsMilestones", {
+                  params: { projectId },
+                })
+              }
+            >
+              <Hourglass className="size-4" />
+              {tr("milestone.ledger.autoCloseSettings")}
+            </Button>
+          )}
+        </div>
+      </div>
 
+      <div className="px-5 lg:px-7">
         {activeMilestone ? (
-          <MilestoneHero
-            milestone={activeMilestone as MilestoneWithCount}
-            onClose={() => setCloseModal(activeMilestone as MilestoneWithCount)}
-            onOpenDetail={() =>
-              setDetailMilestone(activeMilestone as MilestoneWithCount)
+          <MilestoneLedgerHero
+            milestone={activeMilestone}
+            questCount={
+              changelog?.stats.questCount ?? activeMilestone.questCount
             }
+            zoneCount={changelog?.stats.zoneCount ?? 0}
+            contributorCount={changelog?.stats.contributorCount ?? 0}
+            onOpenDetail={() => setDetailMilestone(activeMilestone)}
           />
         ) : (
-          <EmptyHero onStart={openStart} />
+          <MilestoneEmptyBanner
+            backlogCount={backlog?.count ?? 0}
+            lastLabel={
+              backlog?.lastNumber
+                ? `#${backlog.lastNumber} ${backlog.lastTitle ?? ""}`.trim()
+                : undefined
+            }
+            lastClosedOn={
+              backlog?.since
+                ? String(i18n.l(backlog.since, { date: "ll" }))
+                : undefined
+            }
+            autoCloseLabel={autoCloseLabel}
+            settingsHref={settingsHref}
+            onStart={openStart}
+          />
         )}
+      </div>
 
-        {totals.totalMilestones > 0 && (
-          <div className="grid grid-cols-3 gap-3 sm:gap-4">
-            <Stat
-              icon={<BookMarked className="size-4" />}
-              value={totals.totalMilestones}
-              label={tr("milestone.stats.milestones")}
-            />
-            <Stat
-              icon={<ScrollText className="size-4" />}
-              value={totals.totalQuests}
-              label={tr("milestone.stats.quests")}
-            />
-            <Stat
-              icon={<Sparkles className="size-4" />}
-              value={totals.totalTags}
-              label={tr("milestone.stats.tags")}
-            />
-          </div>
-        )}
+      <div className="border-border mt-3.5 flex min-h-0 flex-1 flex-col border-t xl:flex-row">
+        <MilestoneChangelogPanel
+          zones={changelog?.zones ?? []}
+          statusLabel={String(statusLabel)}
+          live={!!activeMilestone}
+          loading={changelogLoading}
+          error={changelogError}
+          onCopy={handleCopy}
+          onDownload={handleDownload}
+          onSaveToFolio={() => setFolioOpen(true)}
+        />
 
-        <section className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <History className="text-muted-foreground size-4" />
-            <h2 className="font-display text-lg font-semibold">
-              {tr("milestone.history.title")}
-            </h2>
-            <span className="text-muted-foreground text-xs">
-              ({closedMilestones.length})
-            </span>
-          </div>
+        <aside className="border-border flex shrink-0 flex-col overflow-hidden border-t xl:w-[346px] xl:border-l xl:border-t-0">
+          <MilestoneOpenQuestsRail
+            quests={openQuests}
+            questsHref={questsHref}
+          />
+          <MilestoneReleasedRail
+            milestones={closedMilestones}
+            onOpenDetail={setDetailMilestone}
+            onDelete={handleDelete}
+          />
+        </aside>
+      </div>
 
-          {closedMilestones.length === 0 ? (
-            <div className="text-muted-foreground rounded-xl border border-dashed py-12 text-center text-sm">
-              {tr("milestone.history.empty")}
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {closedMilestones.map((milestone, idx) => (
-                <ProjectMilestonesRow
-                  key={milestone.id}
-                  milestone={milestone}
-                  onDelete={handleDelete}
-                  onOpenDetail={setDetailMilestone}
-                  isLast={idx === closedMilestones.length - 1}
+      <Dialog open={startOpen} onOpenChange={setStartOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{tr("milestone.start")}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label>{tr("milestone.start.title")}</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={startTitle}
+                  onChange={(e) => setStartTitle(e.currentTarget.value)}
+                  placeholder={tr("milestone.start.placeholder")}
+                  autoFocus
                 />
-              ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void reroll()}
+                  aria-label={tr("milestone.start.reroll")}
+                >
+                  <Dices className="size-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>{tr("milestone.start.description")}</Label>
+              <Textarea
+                rows={3}
+                value={startDescription}
+                onChange={(e) => setStartDescription(e.currentTarget.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>{tr("milestone.tags")}</Label>
+              <MilestoneTagInput value={startTags} onChange={setStartTags} />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setStartOpen(false)}>
+                {tr("milestone.start.cancel")}
+              </Button>
+              <Button
+                onClick={handleStart}
+                className="bg-green-600 text-white hover:bg-green-700"
+              >
+                <Play className="size-4" />
+                {tr("milestone.start")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!closeModal}
+        onOpenChange={(o) => !o && setCloseModal(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{tr("milestone.close.modal.title")}</DialogTitle>
+          </DialogHeader>
+          {closeModal && (
+            <ProjectMilestonesCloseModal
+              milestone={closeModal}
+              onConfirm={(title) => handleClose(closeModal.id, title)}
+              onCancel={() => setCloseModal(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={folioOpen} onOpenChange={(o) => !o && setFolioOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{tr("milestone.folio.dialogTitle")}</DialogTitle>
+          </DialogHeader>
+          {shownMilestone && (
+            <MilestoneSaveToFolioDialog
+              defaultTitle={tr("milestone.folio.defaultTitle", {
+                args: [String(shownMilestone.number), shownMilestone.title],
+              })}
+              saving={folioSaving}
+              onConfirm={handleSaveToFolio}
+              onCancel={() => setFolioOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Sheet
+        open={!!detailMilestone}
+        onOpenChange={(o) => !o && setDetailMilestone(null)}
+      >
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 overflow-auto p-0 data-[side=right]:sm:max-w-[50vw]"
+        >
+          <SheetHeader>
+            <SheetTitle>
+              {detailMilestone
+                ? tr("milestone.detail.title", {
+                    args: [
+                      String(detailMilestone.number),
+                      detailMilestone.title,
+                    ],
+                  })
+                : ""}
+            </SheetTitle>
+          </SheetHeader>
+          {detailMilestone && (
+            <div className="p-4">
+              <ProjectMilestonesDetail
+                milestone={detailMilestone}
+                onUpdated={handleDetailUpdated}
+              />
             </div>
           )}
-        </section>
-
-        <Dialog open={startOpen} onOpenChange={setStartOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{tr("milestone.start")}</DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label>{tr("milestone.start.title")}</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={startTitle}
-                    onChange={(e) => setStartTitle(e.currentTarget.value)}
-                    placeholder={tr("milestone.start.placeholder")}
-                    autoFocus
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => void reroll()}
-                    aria-label={tr("milestone.start.reroll")}
-                  >
-                    <Dices className="size-4" />
-                  </Button>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>{tr("milestone.start.description")}</Label>
-                <Textarea
-                  rows={3}
-                  value={startDescription}
-                  onChange={(e) => setStartDescription(e.currentTarget.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>{tr("milestone.tags")}</Label>
-                <MilestoneTagInput value={startTags} onChange={setStartTags} />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setStartOpen(false)}>
-                  {tr("milestone.start.cancel")}
-                </Button>
-                <Button
-                  onClick={handleStart}
-                  className="bg-green-600 text-white hover:bg-green-700"
-                >
-                  <Play className="size-4" />
-                  {tr("milestone.start")}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
-          open={!!closeModal}
-          onOpenChange={(o) => !o && setCloseModal(null)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{tr("milestone.close.modal.title")}</DialogTitle>
-            </DialogHeader>
-            {closeModal && (
-              <ProjectMilestonesCloseModal
-                milestone={closeModal}
-                onConfirm={(title) => handleClose(closeModal.id, title)}
-                onCancel={() => setCloseModal(null)}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
-
-        <Sheet
-          open={!!detailMilestone}
-          onOpenChange={(o) => !o && setDetailMilestone(null)}
-        >
-          <SheetContent
-            side="right"
-            className="flex w-full flex-col gap-0 overflow-auto p-0 data-[side=right]:sm:max-w-[50vw]"
-          >
-            <SheetHeader>
-              <SheetTitle>
-                {detailMilestone
-                  ? tr("milestone.detail.title", {
-                      args: [
-                        String(detailMilestone.number),
-                        detailMilestone.title,
-                      ],
-                    })
-                  : ""}
-              </SheetTitle>
-            </SheetHeader>
-            {detailMilestone && (
-              <div className="p-4">
-                <ProjectMilestonesDetail
-                  milestone={detailMilestone}
-                  onUpdated={handleDetailUpdated}
-                />
-              </div>
-            )}
-          </SheetContent>
-        </Sheet>
-      </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
-
-interface EmptyHeroProps {
-  onStart: () => void;
-}
-
-const EmptyHero = (props: EmptyHeroProps) => {
-  const { tr } = useI18n<I18n, "en">();
-  return (
-    <div className="from-primary/5 via-background to-background relative overflow-hidden rounded-2xl border-2 border-dashed bg-gradient-to-br p-8 md:p-12">
-      <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:gap-8">
-        <div className="bg-primary/10 text-primary flex size-16 shrink-0 items-center justify-center rounded-2xl">
-          <BookMarked className="size-8" />
-        </div>
-        <div className="flex flex-1 flex-col gap-2">
-          <h2 className="font-display text-2xl font-bold md:text-3xl">
-            {tr("milestone.hero.empty.title")}
-          </h2>
-          <p className="text-muted-foreground max-w-xl text-sm">
-            {tr("milestone.hero.empty.subtitle")}
-          </p>
-        </div>
-        <Button
-          onClick={props.onStart}
-          size="lg"
-          className="bg-green-600 px-8 text-white hover:bg-green-700"
-        >
-          <Play className="size-4" />
-          {tr("milestone.start")}
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-interface StatProps {
-  icon: React.ReactNode;
-  value: number;
-  label: string | number;
-}
-
-const Stat = (props: StatProps) => (
-  <div className="bg-card flex flex-col gap-1 rounded-xl border p-4">
-    <div className="text-muted-foreground flex items-center gap-1.5 text-[10px] uppercase tracking-wider">
-      {props.icon}
-      {props.label}
-    </div>
-    <div className="font-display text-2xl font-bold">{props.value}</div>
-  </div>
-);
 
 export default ProjectMilestones;
