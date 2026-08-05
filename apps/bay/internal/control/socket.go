@@ -125,22 +125,3 @@ func ensureGroup(name string) (int, error) {
 	}
 	return strconv.Atoi(g.Gid)
 }
-
-// EnsureGroupExists creates the control group if it is missing.
-//
-// Exported so the runner can guarantee it before systemd resolves
-// SupplementaryGroups: an unknown group makes the unit refuse to start with a
-// message about groups rather than about the grant it was asked for.
-func EnsureGroupExists(name string) error {
-	_, err := ensureGroup(name)
-	return err
-}
-
-// AddUserToGroup grants a unix user access to the socket.
-func AddUserToGroup(username, group string) error {
-	out, err := exec.Command("usermod", "--append", "--groups", group, username).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("add %s to %s: %w: %s", username, group, err, strings.TrimSpace(string(out)))
-	}
-	return nil
-}

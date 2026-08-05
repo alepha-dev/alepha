@@ -57,7 +57,7 @@ func TestPruneKeepsTheMostRecentReleases(t *testing.T) {
 }
 
 // The rollback case, and the reason Prune resolves `current` itself rather than
-// trusting the sort order: after `bay rollback`, the serving release is an OLD
+// trusting the sort order: after an automatic rollback, the serving release is an OLD
 // one. Pruning by age alone would delete the running app's own directory.
 func TestPruneNeverDeletesWhatCurrentPointsTo(t *testing.T) {
 	instance := t.TempDir()
@@ -100,7 +100,7 @@ The OTHER release a prune must not touch, and the one neither the keep window
 nor the `current` symlink covers.
 
 After a deploy, `Result.Previous` is what `state.Release` held a moment ago —
-and a manual `bay rollback` sets that to any release the operator named, not to
+and an automatic rollback sets that to the previous release, not to
 the second newest. So rollback-then-deploy leaves the automatic rollback target
 sitting far outside the keep window, with `current` already repointed at the
 release that has just landed.
