@@ -185,6 +185,23 @@ export abstract class PlatformAdapter {
   ): Promise<string | undefined>;
 
   /**
+   * Whether this adapter puts the environment's configured `domain` into
+   * effect.
+   *
+   * Cloudflare attaches it as a route and Bay registers it with the app, so for
+   * both the config is the CAUSE of the host, and reporting it back is stating
+   * something the deploy made true. The `lore` path has no channel for it — the
+   * machine composes the host from the app name, and the manifest it reads does
+   * not carry `environments` at all — so the same line there is a claim about a
+   * decision taken somewhere else.
+   *
+   * It was wrong exactly once and that was enough: `up` finished green and
+   * printed a link to an address answering 404 with no certificate, while the
+   * site had been serving under the composed name the whole time.
+   */
+  readonly controlsDomain: boolean = true;
+
+  /**
    * Create/ensure cloud resources exist (DB, buckets, queues).
    * Not all adapters provision -- AKS defers to Helm.
    */

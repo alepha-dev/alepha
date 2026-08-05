@@ -34,6 +34,16 @@ export class LoreAdapter extends PlatformAdapter {
   protected readonly buildOptions = $store(buildOptions);
 
   /**
+   * Nothing here selects the host.
+   *
+   * The artifact goes to Lore and a machine composes the host from the app name
+   * on its own; a `domain` in the config names that host, it does not choose
+   * it. Reporting it as this deploy's URL is how `up` came back green pointing
+   * at an address that 404'd with no certificate.
+   */
+  override readonly controlsDomain = false;
+
+  /**
    * How long `up` waits for a machine to finish.
    *
    * Ten minutes covers a slow pull plus migrations on a large database. It must
@@ -278,9 +288,15 @@ export class LoreAdapter extends PlatformAdapter {
       }
 
       if (release.status === "serving") {
-        return ctx.envConfig.domain
-          ? `https://${ctx.envConfig.domain}/`
-          : undefined;
+        // No URL, deliberately. The host belongs to the machine — it composes
+        // `<app>[-<env>].<base>` itself — and this side knows neither the base
+        // domain nor whether a configured one matches it. Handing back
+        // `envConfig.domain` here is what once made `up` finish green pointing
+        // at an address that 404'd with no certificate.
+        this.log.info(
+          `${ctx.project}/${ctx.env} is serving. Its host is composed by the machine — the outposts page in Lore lists what each one answers on.`,
+        );
+        return undefined;
       }
       if (release.status === "failed") {
         // Bay's own sentence, verbatim. It is written for an operator —

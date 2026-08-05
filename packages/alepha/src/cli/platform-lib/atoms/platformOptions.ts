@@ -119,6 +119,13 @@ export const platformOptions = $atom({
            * `"*.club.alepha.dev"` routes every subdomain to the worker.
            * Wildcard patterns require `zone` to be set, and the wildcard DNS
            * record must already exist (proxied) in the Cloudflare zone.
+           *
+           * **The `lore` adapter does not read it.** There the machine composes
+           * the host from the app name — `<app>[-<env>].<base>`, bare name in
+           * production — and the artifact it reads carries no environments at
+           * all. So a domain here NAMES that host, it does not choose it, and
+           * `up` will not report it as the address it deployed to. Moving a
+           * `lore` app to a different host means renaming the app.
            */
           domain: z.text().optional(),
           /**
