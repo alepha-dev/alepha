@@ -550,13 +550,15 @@ func TestAChunkedUploadDeploys(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(f.server.handleDeploy))
 	defer srv.Close()
 
-	// An *os.File whose length net/http cannot determine up front, wrapped so
-	// it cannot: io.Reader (not io.ReadSeeker). http.NewRequest leaves
-	// ContentLength at its zero value for any type it does not special-case
-	// (*bytes.Buffer, *bytes.Reader, *strings.Reader) — see the field's own doc
-	// comment: "For client requests, a value of 0 with a non-nil Body is also
-	// treated as unknown." That is what forces Transfer-Encoding: chunked on
-	// the wire; it is 0 here, not -1.
+	// An *os.File whose length net/http cannot determine up front — not
+	// because of the io.Reader(artifact) conversion below, which is a no-op:
+	// http.NewRequest's type switch inspects the argument's dynamic type, and
+	// *os.File was never one of the three concrete types it special-cases
+	// (*bytes.Buffer, *bytes.Reader, *strings.Reader), conversion or not.
+	// ContentLength stays at its zero value for any type outside that list —
+	// see the field's own doc comment: "For client requests, a value of 0
+	// with a non-nil Body is also treated as unknown." That is what forces
+	// Transfer-Encoding: chunked on the wire; it is 0 here, not -1.
 	req, err := http.NewRequest(http.MethodPost,
 		srv.URL+"/apps?name=demo&env=production", io.Reader(artifact))
 	if err != nil {
