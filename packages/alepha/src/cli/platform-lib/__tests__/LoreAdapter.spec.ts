@@ -1,5 +1,12 @@
 import { Alepha } from "alepha";
+import { type BuildTarget, buildOptions } from "alepha/cli";
 import { DateTimeProvider } from "alepha/datetime";
+import {
+  FileSystemProvider,
+  MemoryFileSystemProvider,
+  MemoryShellProvider,
+  ShellProvider,
+} from "alepha/system";
 import { describe, it } from "vitest";
 import { LoreAdapter } from "../adapters/LoreAdapter.ts";
 import type { PlatformContext } from "../adapters/PlatformAdapter.ts";
@@ -94,6 +101,67 @@ describe("LoreAdapter", () => {
     await alepha.start();
 
     expect(adapter.testVersion()).toBe("2026-08-03-140506");
+  });
+
+  describe("the build target", () => {
+    /*
+      `build` hardcoded `--target=bare`.
+
+      The hardcode is load-bearing: a workerd bundle is resolved against
+      Cloudflare's export conditions and leaves no entry point node can run, so
+      one reaching a machine produces an app that deploys, never boots, and
+      reports only "never became ready". But an explicit flag also OVERRIDES
+      the workspace's own `alepha.config.ts`, so a site declaring
+      `target: "static"` was built as a server and shipped a bundle the
+      supervisor would try to spawn.
+
+      `BayAdapter` was taught the exception and this was not, which left it
+      unreachable in practice: Lore is the adapter for a machine whose control
+      API is a unix socket, so it is the only one CI can deploy through.
+    */
+    const buildWith = async (target?: BuildTarget) => {
+      const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
+        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+        .with({ provide: ShellProvider, use: MemoryShellProvider });
+      const fs = alepha.inject(MemoryFileSystemProvider);
+      await fs.writeFile("/project/yarn.lock", "");
+      if (target) {
+        alepha.store.mut(buildOptions, (current) => ({ ...current, target }));
+      }
+      const adapter = alepha.inject(TestLoreAdapter);
+      // The runner is a pass-through here: what these tests are about is the
+      // command the adapter composes, not how the step is reported.
+      const run = ((task: { handler: () => Promise<void> }) =>
+        task.handler()) as any;
+      await adapter.build(
+        {
+          ...contextFor({ adapter: "lore" }),
+          root: "/project",
+        } as PlatformContext,
+        run,
+      );
+      return alepha.inject(MemoryShellProvider);
+    };
+
+    it("builds a declared static site as static", async ({ expect }) => {
+      const shell = await buildWith("static");
+
+      expect(shell.wasCalled("yarn alepha build --target=static")).toBe(true);
+    });
+
+    it("still forces bare when nothing is declared", async ({ expect }) => {
+      const shell = await buildWith();
+
+      expect(shell.wasCalled("yarn alepha build --target=bare")).toBe(true);
+    });
+
+    it("refuses to inherit a cloudflare target", async ({ expect }) => {
+      // The reason the hardcode exists. A workerd bundle has no entry point
+      // node can run, so inheriting this would deploy an app that never boots.
+      const shell = await buildWith("cloudflare");
+
+      expect(shell.wasCalled("yarn alepha build --target=bare")).toBe(true);
+    });
   });
 });
 

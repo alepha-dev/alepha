@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { dirname } from "node:path";
+import { dirname, isAbsolute } from "node:path";
 import { $inject, AlephaError } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
@@ -34,6 +34,8 @@ export class BuildStaticTask extends BuildTask {
     await ctx.run({
       name: "generate static site",
       handler: async () => {
+        await this.adoptSource(ctx, distDir, publicDir);
+
         if (!ctx.alepha.isConfigured()) {
           await ctx.alepha.events.emit("configure", ctx.alepha);
         }
@@ -71,6 +73,57 @@ export class BuildStaticTask extends BuildTask {
         await this.cleanDist(this.fs.join(ctx.root, distDir), clientDir);
       },
     });
+  }
+
+  /**
+   * Copy a client the workspace built itself into the client directory.
+   *
+   * Everything else this task can ship, Alepha rendered: its own Vite client
+   * build, or a `$page` at `/`. A site built by anything else — a hand-written
+   * `index.html` through plain Vite, an Astro export, a docs generator — had no
+   * way in, because the build cleans `dist/` before any task runs, so filling
+   * `dist/public` first only got it deleted. Bay can host a site with no
+   * process behind it; without this there was no way to produce one.
+   *
+   * The three refusals below all exist because the failure they replace lands
+   * far from its cause: a bare ENOENT on `dist/public/index.html`, a path the
+   * author never wrote and cannot act on.
+   */
+  protected async adoptSource(
+    ctx: BuildTaskContext,
+    distDir: string,
+    publicDir: string,
+  ): Promise<void> {
+    const source = ctx.options.static?.source;
+    if (!source) {
+      return;
+    }
+
+    // `join` would quietly turn an absolute path into a relative one appended
+    // to the root — `/tmp/site` becoming `<root>/tmp/site`, a directory that
+    // does not exist, reported as a source the author "did not build".
+    const from = isAbsolute(source) ? source : this.fs.join(ctx.root, source);
+    const dist = this.fs.join(ctx.root, distDir);
+    if (from === dist || from.startsWith(`${dist}/`)) {
+      throw new AlephaError(
+        `static.source "${source}" is inside ${distDir}/, which this build deletes before any task runs — the files would be gone by the time they are read. Point it outside dist/ (e.g. "dist-client") so the client build survives the clean.`,
+      );
+    }
+
+    if (!(await this.fs.exists(from))) {
+      throw new AlephaError(
+        `static.source "${source}" does not exist (looked in ${from}). Run the client build that fills it before \`alepha build --target=static\`.`,
+      );
+    }
+
+    if (!(await this.fs.exists(this.fs.join(from, "index.html")))) {
+      throw new AlephaError(
+        `static.source "${source}" has no index.html, so a static host would have nothing to answer / with.`,
+      );
+    }
+
+    await this.fs.mkdir(publicDir);
+    await this.fs.cp(from, publicDir, { recursive: true });
   }
 
   protected async renderRootPage(

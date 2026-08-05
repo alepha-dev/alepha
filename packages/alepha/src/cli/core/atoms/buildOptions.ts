@@ -228,6 +228,29 @@ export const buildOptions = $atom({
          * @example "my-custom-domain.com"
          */
         domain: z.string().optional(),
+
+        /**
+         * Directory holding a client the workspace built itself, copied into
+         * `dist/<public>` before the static site is assembled.
+         *
+         * Without it this target can only ship what Alepha rendered — its own
+         * Vite client build, or a `$page` at `/`. That leaves out every site
+         * built by something else: a hand-written `index.html` through plain
+         * Vite, an Astro export, a docs generator. Bay can host a site with no
+         * process behind it; this is what lets one be produced.
+         *
+         * **Must live outside `dist/`.** The build cleans `dist/` before any
+         * task runs, so a client written there is deleted before it can be
+         * adopted — pointing at `dist/public` is refused by name rather than
+         * failing later as a missing file.
+         *
+         * A server entry is still required (the build boots the workspace to
+         * analyze it), even though nothing of it ships: `cleanDist` keeps only
+         * the client directory and the manifest.
+         *
+         * @example "dist-client"
+         */
+        source: z.string().optional(),
       })
       .optional(),
 

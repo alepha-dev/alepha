@@ -50,7 +50,12 @@ export class BuildCompressTask extends BuildTask {
     if (ctx.flags?.prebuilt) {
       return;
     }
-    if (!ctx.hasClient) {
+    // `hasClient` asks whether ALEPHA bundled a client, which is false for a
+    // site adopted through `static.source` — nothing here was bundled, the
+    // files were built by the workspace itself. They still need the `.br`/`.gz`
+    // sidecars a static host serves in place of recompressing per request, so
+    // an adopted client is the second way to have something worth compressing.
+    if (!ctx.hasClient && !ctx.options.static?.source) {
       return;
     }
 

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { $inject, AlephaError } from "alepha";
-import { PackageManagerUtils } from "alepha/cli";
+import { $inject, $store, AlephaError } from "alepha";
+import { buildOptions, PackageManagerUtils } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -31,6 +31,7 @@ export class LoreAdapter extends PlatformAdapter {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly buildOptions = $store(buildOptions);
 
   /**
    * How long `up` waits for a machine to finish.
@@ -126,18 +127,25 @@ export class LoreAdapter extends PlatformAdapter {
   /**
    * Builds the artifact a Bay can run.
    *
-   * `--target=bare` and nothing else. A workerd bundle is resolved against
-   * Cloudflare's export conditions and has no node-runnable entry point, so Bay
-   * refuses it at deploy time — better to never produce one.
+   * `bare` is forced rather than inherited: a workerd bundle is resolved
+   * against Cloudflare's export conditions and has no node-runnable entry
+   * point, so Bay refuses it at deploy time — better to never produce one.
+   *
+   * `static` is the one target that survives, because it is not a different
+   * way of building a server — it is the absence of one. Forcing `bare` over
+   * it built a server bundle for a site that has no process, shipped it, and
+   * left Bay to spawn it.
    */
   async build(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
     if (ctx.prebuilt) {
       return;
     }
+    const target = this.buildOptions.target === "static" ? "static" : "bare";
+
     await run({
       name: "build (lore)",
       handler: async () => {
-        await this.shell.run(await this.cli(ctx, "build --target=bare"), {
+        await this.shell.run(await this.cli(ctx, `build --target=${target}`), {
           root: ctx.root,
         });
       },
