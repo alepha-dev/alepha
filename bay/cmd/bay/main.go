@@ -184,7 +184,7 @@ func usage() {
   bay logs    <name/env> [-n 200] [--since 15m] [--grep RE] [--json]
               # journald on a real host, logs/app.log under the child runner
   bay connector add <op_token> [--sink URL] [--label NAME] | list | remove <prefix>
-              # report this machine's world to a Lore campaign, once a minute.
+              # report this machine's world to a Lore project, once a minute.
               # Outbound only: the token grants nothing on this host.
   bay stop    <name/env>
   bay remove  <name/env> [--purge]  # unregister; data is KEPT unless --purge
