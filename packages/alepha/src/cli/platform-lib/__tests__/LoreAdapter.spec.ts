@@ -8,6 +8,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, it } from "vitest";
+import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import { LoreAdapter } from "../adapters/LoreAdapter.ts";
 import type { PlatformContext } from "../adapters/PlatformAdapter.ts";
 
@@ -182,3 +183,23 @@ class FixedClock extends DateTimeProvider {
     return Date.parse("2026-08-03T14:05:06.789Z");
   }
 }
+
+/**
+ * `push` is a registry operation, so an adapter without one must refuse.
+ *
+ * Falling back to a deploy would be worse than failing: "put this where I can
+ * deploy it from later" and "deploy it now" are different intentions, and
+ * silently turning the first into the second is how a tag meant for staging
+ * reaches production.
+ */
+describe("PlatformAdapter.push", () => {
+  it("refuses on an adapter with no registry", async ({ expect }) => {
+    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
+    const adapter = alepha.inject(CloudflareAdapter);
+    await alepha.start();
+
+    await expect(
+      adapter.push({} as PlatformContext, (async () => {}) as never),
+    ).rejects.toThrow(/no artifact registry/i);
+  });
+});

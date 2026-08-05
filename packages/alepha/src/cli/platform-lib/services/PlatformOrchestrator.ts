@@ -118,6 +118,11 @@ export class PlatformOrchestrator {
     prebuilt?: boolean;
     /** Tenant slug (apps with tenancy optional|required). */
     tenant?: string;
+    /**
+     * Artifact tag for registry-backed adapters. `latest` when unset, and the
+     * only tag that may be replaced — see {@link PlatformContext.tag}.
+     */
+    tag?: string;
   }): Promise<{ urls: string[]; domain?: string }> {
     const { root, env, entry, resources, run, prebuilt } = options;
     const envConfig = await this.inspector.resolveEnvironment(root, env);
@@ -135,6 +140,7 @@ export class PlatformOrchestrator {
       resources,
       naming: namingCtx,
       tenant,
+      tag: options.tag,
       prebuilt,
     };
 
