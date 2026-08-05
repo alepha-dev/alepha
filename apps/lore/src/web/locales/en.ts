@@ -376,7 +376,6 @@ export default {
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
   "project.settings.nav.sigils": "Sigils",
-  "project.settings.nav.outposts": "Outposts",
   "project.settings.nav.milestones": "Milestones",
   "project.settings.nav.quests": "Quests",
   "project.reports.nav.overview": "Overview",
@@ -449,8 +448,6 @@ export default {
     "Group quests into time-boxed cycles with start / end dates and changelogs.",
   "project.settings.feature.sigils.description":
     "Enrol your applications so they can report crashes, page views and web vitals here — one token per environment.",
-  "project.settings.feature.outposts.description":
-    "Enrol the machines that host your applications, so each can report what it is running — one token per machine.",
   "project.settings.delete.modal.title": "Delete Project",
   "project.settings.delete.modal.description":
     "This action cannot be undone. This will permanently destroy the project and all its quests.",
@@ -617,7 +614,6 @@ export default {
   "project.menu.feedback": "Feedback",
   "project.menu.blights": "Blights",
   "project.menu.insights": "Insights",
-  "project.menu.outposts": "Outposts",
 
   "insights.range.1d": "Today",
   "insights.range.7d": "7 days",
@@ -743,44 +739,6 @@ export default {
   "sigils.toast.rotated": "Token rotated",
   "sigils.toast.copied": "Token copied",
   "sigils.toast.deleted": "Sigil deleted",
-
-  "outposts.title": "Enrolled machines",
-  "outposts.subtitle":
-    "One outpost per machine. Each holds its own token and reports what it is hosting.",
-  "outposts.empty":
-    "No machine enrolled yet. Until one is, nothing can report here.",
-  "outposts.create.label": "Machine",
-  "outposts.create.labelPlaceholder": "OVH Bay",
-  "outposts.create.submit": "Enrol",
-  "outposts.token.title":
-    "Copy this token now — it is stored hashed and will never be shown again.",
-  "outposts.token.copy": "Copy token",
-  "outposts.token.done": "Done",
-  "outposts.lastSeen": "last reported $1",
-  "outposts.neverSeen": "never reported",
-  "outposts.action.rotate": "Rotate",
-  "outposts.action.delete": "Delete outpost",
-  "outposts.rotate.confirmTitle": "Rotate the token for $1?",
-  "outposts.rotate.confirmDescription":
-    "The current token stops working immediately and a new one is shown once. Everything this machine has reported is kept — this is how you revoke a leaked token without losing its history.",
-  "outposts.rotate.confirm": "Rotate",
-  "outposts.delete.confirmTitle": "Delete $1?",
-  "outposts.delete.confirmDescription":
-    "This erases everything this machine ever reported — the applications it hosts and its deploy history — along with its token. Releases it deployed are kept. To revoke a leaked token without losing the history, rotate it instead.",
-  "outposts.delete.confirm": "Delete",
-  "outposts.toast.created": "Outpost created",
-  "outposts.toast.rotated": "Token rotated",
-  "outposts.toast.copied": "Token copied",
-  "outposts.toast.deleted": "Outpost deleted",
-  "outposts.page.empty":
-    "No machine enrolled yet. Enrol one from project settings and it will appear here once it reports.",
-  "outposts.page.neverConnected": "Never connected",
-  "outposts.page.agentUnknown": "unknown",
-  "outposts.page.agent": "Agent",
-  "outposts.page.baseDomain": "Base domain",
-  "outposts.page.apps": "Hosted apps",
-  "outposts.page.lastSeen": "Last seen",
-  "outposts.page.silent": "Silent",
 
   "feedback.empty.pending": "No pending feedback.",
   "feedback.empty.status": "No $1 feedback.",

@@ -14,7 +14,6 @@ import {
   KanbanSquare,
   type LucideIcon,
   MapPin,
-  Server,
   Stamp,
   Swords,
   Users,
@@ -30,7 +29,6 @@ type RouteName =
   | "projectSettingsKanban"
   | "projectSettingsFolios"
   | "projectSettingsSigils"
-  | "projectSettingsOutposts"
   | "projectSettingsMilestones"
   | "projectSettingsQuests";
 
@@ -41,7 +39,6 @@ type NavLabelKey =
   | "project.settings.nav.kanban"
   | "project.settings.nav.folios"
   | "project.settings.nav.sigils"
-  | "project.settings.nav.outposts"
   | "project.settings.nav.milestones"
   | "project.settings.nav.quests";
 
@@ -100,11 +97,6 @@ const NAV_GROUPS: NavGroup[] = [
         route: "projectSettingsSigils",
         labelKey: "project.settings.nav.sigils",
         icon: Stamp,
-      },
-      {
-        route: "projectSettingsOutposts",
-        labelKey: "project.settings.nav.outposts",
-        icon: Server,
       },
       {
         route: "projectSettingsMilestones",

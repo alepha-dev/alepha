@@ -377,7 +377,6 @@ export default {
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
   "project.settings.nav.sigils": "Sigils",
-  "project.settings.nav.outposts": "Avant-postes",
   "project.settings.nav.milestones": "Jalons",
   "project.settings.nav.quests": "Quêtes",
   "project.reports.nav.overview": "Vue d'ensemble",
@@ -451,8 +450,6 @@ export default {
     "Regroupez les quêtes en jalons avec dates de début / fin et historique.",
   "project.settings.feature.sigils.description":
     "Enrôlez vos applications pour qu’elles remontent ici plantages, pages vues et Web Vitals — un jeton par environnement.",
-  "project.settings.feature.outposts.description":
-    "Enrôlez les machines qui hébergent vos applications, pour que chacune puisse rapporter ce qu’elle exécute — un jeton par machine.",
   "project.settings.delete.modal.title": "Détruire le projet",
   "project.settings.delete.modal.description":
     "Cette action est irréversible. Le projet et toutes ses quêtes seront définitivement perdus.",
@@ -622,7 +619,6 @@ export default {
   "project.menu.feedback": "Retours",
   "project.menu.blights": "Fléaux",
   "project.menu.insights": "Analyses",
-  "project.menu.outposts": "Avant-postes",
 
   "insights.range.1d": "Aujourd'hui",
   "insights.range.7d": "7 jours",
@@ -749,44 +745,6 @@ export default {
   "sigils.toast.rotated": "Jeton renouvelé",
   "sigils.toast.copied": "Jeton copié",
   "sigils.toast.deleted": "Sigil supprimé",
-
-  "outposts.title": "Machines enrôlées",
-  "outposts.subtitle":
-    "Un avant-poste par machine. Chacune détient son propre jeton et rapporte ce qu’elle héberge.",
-  "outposts.empty":
-    "Aucune machine enrôlée. Tant qu’il n’y en a pas, rien ne peut rapporter ici.",
-  "outposts.create.label": "Machine",
-  "outposts.create.labelPlaceholder": "OVH Bay",
-  "outposts.create.submit": "Enrôler",
-  "outposts.token.title":
-    "Copiez ce jeton maintenant — il est stocké haché et ne sera plus jamais affiché.",
-  "outposts.token.copy": "Copier le jeton",
-  "outposts.token.done": "Terminé",
-  "outposts.lastSeen": "dernier rapport $1",
-  "outposts.neverSeen": "aucun rapport",
-  "outposts.action.rotate": "Renouveler",
-  "outposts.action.delete": "Supprimer l’avant-poste",
-  "outposts.rotate.confirmTitle": "Renouveler le jeton de $1 ?",
-  "outposts.rotate.confirmDescription":
-    "Le jeton actuel cesse de fonctionner immédiatement et un nouveau s’affiche une seule fois. Tout ce que cette machine a rapporté est conservé — c’est ainsi qu’on révoque un jeton fuité sans perdre son historique.",
-  "outposts.rotate.confirm": "Renouveler",
-  "outposts.delete.confirmTitle": "Supprimer $1 ?",
-  "outposts.delete.confirmDescription":
-    "Ceci efface tout ce que cette machine a rapporté — les applications qu’elle héberge et son historique de déploiement — ainsi que son jeton. Les releases qu’elle a déployées sont conservées. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
-  "outposts.delete.confirm": "Supprimer",
-  "outposts.toast.created": "Avant-poste créé",
-  "outposts.toast.rotated": "Jeton renouvelé",
-  "outposts.toast.copied": "Jeton copié",
-  "outposts.toast.deleted": "Avant-poste supprimé",
-  "outposts.page.empty":
-    "Aucune machine enrôlée. Enrôlez-en une depuis les paramètres du projet et elle apparaîtra ici dès qu’elle rapportera.",
-  "outposts.page.neverConnected": "Jamais connectée",
-  "outposts.page.agentUnknown": "inconnu",
-  "outposts.page.agent": "Agent",
-  "outposts.page.baseDomain": "Domaine de base",
-  "outposts.page.apps": "Applications hébergées",
-  "outposts.page.lastSeen": "Vue pour la dernière fois",
-  "outposts.page.silent": "Silencieuse",
 
   "feedback.empty.pending": "Aucun retour en attente.",
   "feedback.empty.status": "Aucun retour $1.",

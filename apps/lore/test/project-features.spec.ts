@@ -7,10 +7,6 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import {
-  defaultProjectFeatures,
-  projectFeaturesSchema,
-} from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -175,33 +171,5 @@ describe("ProjectController feature flags", () => {
       feedback: false,
       milestones: false,
     });
-  });
-
-  it("accepts the outposts toggle without shipping it as a default", async ({
-    expect,
-  }) => {
-    // The key must round-trip through the schema...
-    const parsed = projectFeaturesSchema.parse({
-      kanban: true,
-      folios: true,
-      feedback: true,
-      milestones: true,
-      outposts: true,
-    });
-    expect(parsed.outposts).toBe(true);
-
-    // ...and must be absent when omitted, rather than defaulted.
-    const withoutIt = projectFeaturesSchema.parse({
-      kanban: true,
-      folios: true,
-      feedback: true,
-      milestones: true,
-    });
-    expect(withoutIt.outposts).toBeUndefined();
-
-    // The D1 guard: anything listed here becomes the column DEFAULT, and
-    // changing that DEFAULT triggers a table rebuild that cascade-wipes
-    // production. `outposts` must never appear in this object.
-    expect(defaultProjectFeatures).not.toHaveProperty("outposts");
   });
 });

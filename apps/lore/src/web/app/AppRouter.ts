@@ -15,7 +15,6 @@ import type { FolioController } from "../../api/controllers/FolioController.ts";
 import type { InsightsController } from "../../api/controllers/InsightsController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { MilestoneController } from "../../api/controllers/MilestoneController.ts";
-import type { OutpostController } from "../../api/controllers/OutpostController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
@@ -46,7 +45,6 @@ export class AppRouter {
   invitationApi = $client<InvitationController>();
   feedbackApi = $client<FeedbackController>();
   blightApi = $client<BlightController>();
-  outpostApi = $client<OutpostController>();
   insightsApi = $client<InsightsController>();
   milestoneApi = $client<MilestoneController>();
   folioApi = $client<FolioController>();
@@ -245,7 +243,6 @@ export class AppRouter {
       this.projectFolios,
       this.projectFeedback,
       this.projectBlights,
-      this.projectOutposts,
       this.projectInsights,
     ],
     path: "/p/:projectId",
@@ -363,30 +360,6 @@ export class AppRouter {
         count: res.openCount,
       });
       return { items: res.items, openCount: res.openCount };
-    },
-  });
-
-  projectOutposts = $page({
-    name: "projectOutposts",
-    path: "/outposts",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Outposts`,
-    }),
-    lazy: () => import("./components/project/outposts/ProjectOutposts.tsx"),
-    loader: async () => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      // Gate purely on the module toggle, like Blights above.
-      if (!project.features?.outposts) {
-        throw new NotFoundError("Outposts not enabled for this project");
-      }
-      // Responds with the array itself, not `{ items }`.
-      const items = await this.outpostApi.listOutposts({
-        params: { projectId: project.id },
-      });
-      return { items };
     },
   });
 
@@ -512,7 +485,6 @@ export class AppRouter {
       this.projectSettingsKanban,
       this.projectSettingsFolios,
       this.projectSettingsSigils,
-      this.projectSettingsOutposts,
       this.projectSettingsMilestones,
       this.projectSettingsQuests,
     ],
@@ -613,22 +585,6 @@ export class AppRouter {
     }),
     lazy: () =>
       import("./components/project/settings/ProjectSettingsSigilsPage.tsx"),
-  });
-
-  /**
-   * ⚠️ Named in `ProjectSettings.tsx`'s nav array, which is a list of route
-   * names with nothing in the type system tying it to the routes it names.
-   * Renaming or removing this page without editing that array crashes every
-   * settings page.
-   */
-  projectSettingsOutposts = $page({
-    name: "projectSettingsOutposts",
-    path: "/outposts",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Outposts`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsOutpostsPage.tsx"),
   });
 
   projectSettingsMilestones = $page({
