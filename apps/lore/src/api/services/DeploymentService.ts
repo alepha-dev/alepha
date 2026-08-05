@@ -3,24 +3,27 @@ import { files } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbConflictError } from "alepha/orm";
 import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
-import type { Outpost } from "../entities/outposts.ts";
+import { artifacts } from "../entities/artifacts.ts";
 import {
-  type Release,
-  type ReleaseStatus,
-  releases,
-} from "../entities/releases.ts";
+  type Deployment,
+  type DeploymentStatus,
+  deployments,
+} from "../entities/deployments.ts";
+import type { Outpost } from "../entities/outposts.ts";
 
 /**
- * The registry, on the writing side.
+ * The ledger: which artifact was placed where, and what became of it.
  *
- * Bytes are not this service's business: `alepha/api/files` owns the upload
- * flow and the provider behind it, exactly as folios do for blobs. What
- * lands here is a row describing an artifact that has already been stored —
- * which is what keeps the registry portable the day Lore leaves Workers, since
- * nothing in it names a storage provider.
+ * Bytes are not this service's business — `alepha/api/files` owns the upload
+ * and `ArtifactService` owns what the bytes *are*. What lands here is the act
+ * of putting one on an environment, which is why a row is the synchronisation
+ * point: the client writes it, an outpost claims it, and the client watches it
+ * until it settles. No queue and no callback, because a row both sides can
+ * read survives either of them restarting mid-deploy.
  */
-export class ReleaseService {
-  protected readonly releases = $repository(releases);
+export class DeploymentService {
+  protected readonly deployments = $repository(deployments);
+  protected readonly artifacts = $repository(artifacts);
   protected readonly frameworkFiles = $repository(files);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -60,7 +63,7 @@ export class ReleaseService {
     fileId: string;
     sizeBytes?: number;
     userId?: string;
-  }): Promise<Release> {
+  }): Promise<Deployment> {
     const sha256 = this.normaliseDigest(input.sha256);
 
     const frameworkFile = await this.frameworkFiles.findOne({
@@ -69,14 +72,14 @@ export class ReleaseService {
     if (!frameworkFile) {
       throw new BadRequestError("Framework file row not found — upload first");
     }
-    if (frameworkFile.bucket !== ReleaseService.BUCKET) {
+    if (frameworkFile.bucket !== DeploymentService.BUCKET) {
       throw new BadRequestError(
-        `Framework file is in bucket '${frameworkFile.bucket}', expected '${ReleaseService.BUCKET}'`,
+        `Framework file is in bucket '${frameworkFile.bucket}', expected '${DeploymentService.BUCKET}'`,
       );
     }
 
     try {
-      return await this.releases.create({
+      return await this.deployments.create({
         projectId: input.projectId,
         app: input.app,
         environment: input.environment,
@@ -94,26 +97,85 @@ export class ReleaseService {
       // the pipeline reported success.
       if (error instanceof DbConflictError) {
         throw new ConflictError(
-          `Release '${input.version}' already exists for ${input.app}/${input.environment}. Build a new version rather than replacing this one.`,
+          `Deployment '${input.version}' already exists for ${input.app}/${input.environment}. Build a new version rather than replacing this one.`,
         );
       }
       throw error;
     }
   }
 
-  public async get(id: string): Promise<Release | undefined> {
-    return this.releases.findOne({ where: { id: { eq: id } } });
+  /**
+   * Places an artifact already in the registry on an environment.
+   *
+   * This is what promote is: the same artifact, a second environment, a new
+   * row. Nothing is rebuilt and — because sha256 is the identity and the
+   * outpost already holds those bytes — nothing is even transferred.
+   *
+   * The identity columns are **copied, not joined**. `latest` is replaced in
+   * place, so a row that only pointed at its artifact would start claiming it
+   * deployed bytes it never saw the moment someone pushed again.
+   */
+  public async deployArtifact(input: {
+    projectId: number;
+    artifactId: string;
+    environment: string;
+    userId?: string;
+  }): Promise<Deployment> {
+    const artifact = await this.artifacts.findOne({
+      where: {
+        id: { eq: input.artifactId },
+        projectId: { eq: input.projectId },
+      },
+    });
+    if (!artifact) {
+      throw new NotFoundError("No such artifact in this project");
+    }
+
+    return this.deployments.create({
+      projectId: input.projectId,
+      artifactId: artifact.id,
+      app: artifact.app,
+      tag: artifact.tag,
+      environment: input.environment,
+      version: this.deploymentId(),
+      sha256: artifact.sha256,
+      fileId: artifact.fileId,
+      sizeBytes: artifact.sizeBytes,
+      createdBy: input.userId,
+    });
   }
 
   /**
-   * The project's recent releases, newest first.
+   * Names one deployment, which is what the timestamp always was.
+   *
+   * UTC rather than local: two deploys from machines in different zones would
+   * otherwise sort against each other wrongly. Shaped like Bay's on-disk
+   * release directories so one string names the same thing on both sides.
+   */
+  protected deploymentId(): string {
+    const at = new Date(this.dateTime.nowMillis());
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return [
+      at.getUTCFullYear(),
+      pad(at.getUTCMonth() + 1),
+      pad(at.getUTCDate()),
+      `${pad(at.getUTCHours())}${pad(at.getUTCMinutes())}${pad(at.getUTCSeconds())}`,
+    ].join("-");
+  }
+
+  public async get(id: string): Promise<Deployment | undefined> {
+    return this.deployments.findOne({ where: { id: { eq: id } } });
+  }
+
+  /**
+   * The project's recent deployments, newest first.
    *
    * Capped rather than paginated: this answers "what happened lately", and the
    * caller that needs more than twenty is asking a different question that
    * deserves its own query.
    */
-  public async listByProject(projectId: number): Promise<Release[]> {
-    return this.releases.findMany({
+  public async listByProject(projectId: number): Promise<Deployment[]> {
+    return this.deployments.findMany({
       where: { projectId: { eq: projectId } },
       orderBy: [{ column: "createdAt", direction: "desc" }],
       limit: 20,
@@ -123,23 +185,23 @@ export class ReleaseService {
   /**
    * Hands the oldest waiting release to a machine, and marks it taken.
    *
-   * Also picks up releases whose claim has gone stale, which is the only way a
+   * Also picks up deployments whose claim has gone stale, which is the only way a
    * deploy survives the machine that took it dying mid-pull. The two cases are
    * one query on purpose: "nobody has it" and "whoever had it stopped talking"
    * want identical handling, and splitting them would mean a second sweep with
    * its own schedule to get wrong.
    */
-  public async claim(outpost: Outpost): Promise<Release | undefined> {
+  public async claim(outpost: Outpost): Promise<Deployment | undefined> {
     const now = this.dateTime.nowMillis();
     const staleBefore = new Date(
-      now - ReleaseService.CLAIM_EXPIRY_MS,
+      now - DeploymentService.CLAIM_EXPIRY_MS,
     ).toISOString();
 
     // Filtered on status in the query, not after it. Ordering by age and
     // taking the first N of *every* release would, after fifty deploys, return
     // fifty finished ones and leave a fresh `pending` outside the window —
     // a machine that stops deploying and never says why.
-    const waiting = await this.releases.findMany({
+    const waiting = await this.deployments.findMany({
       where: {
         projectId: { eq: outpost.projectId },
         status: { inArray: ["pending", "claimed"] },
@@ -149,7 +211,7 @@ export class ReleaseService {
     });
 
     const next = waiting.find(
-      (release) =>
+      (release: Deployment) =>
         release.status === "pending" ||
         (release.status === "claimed" &&
           (release.claimedAt ?? "") < staleBefore),
@@ -158,7 +220,7 @@ export class ReleaseService {
       return undefined;
     }
 
-    return this.releases.updateOne(
+    return this.deployments.updateOne(
       { id: { eq: next.id } },
       {
         status: "claimed",
@@ -183,10 +245,10 @@ export class ReleaseService {
   public async transition(
     releaseId: string,
     outpostId: string,
-    status: ReleaseStatus,
+    status: DeploymentStatus,
     failureReason?: string,
-  ): Promise<Release> {
-    const release = await this.releases.findOne({
+  ): Promise<Deployment> {
+    const release = await this.deployments.findOne({
       where: { id: { eq: releaseId }, outpostId: { eq: outpostId } },
     });
     if (!release) {
@@ -194,11 +256,11 @@ export class ReleaseService {
     }
     if (release.status === "serving" || release.status === "failed") {
       throw new ConflictError(
-        `Release '${release.version}' already finished as '${release.status}'`,
+        `Deployment '${release.version}' already finished as '${release.status}'`,
       );
     }
 
-    return this.releases.updateOne(
+    return this.deployments.updateOne(
       { id: { eq: releaseId } },
       {
         status,

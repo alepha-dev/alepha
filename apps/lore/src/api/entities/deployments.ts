@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
+import { artifacts } from "./artifacts.ts";
 import { outposts } from "./outposts.ts";
 import { projects } from "./projects.ts";
 import { users } from "./users.ts";
@@ -17,7 +18,7 @@ import { users } from "./users.ts";
  * `serving` and `failed` are terminal. A late report must not reopen a deploy
  * that already concluded.
  */
-export const RELEASE_STATUSES = [
+export const DEPLOYMENT_STATUSES = [
   "pending",
   "claimed",
   "pulling",
@@ -26,7 +27,7 @@ export const RELEASE_STATUSES = [
   "failed",
 ] as const;
 
-export type ReleaseStatus = (typeof RELEASE_STATUSES)[number];
+export type DeploymentStatus = (typeof DEPLOYMENT_STATUSES)[number];
 
 /**
  * One artifact, and what became of it.
@@ -42,8 +43,8 @@ export type ReleaseStatus = (typeof RELEASE_STATUSES)[number];
  * skips the download, and "which version is running here" becomes a digest
  * comparison instead of trust in a directory name.
  */
-export const releases = $entity({
-  name: "releases",
+export const deployments = $entity({
+  name: "deployments",
   schema: z.object({
     id: db.primaryKey(z.uuid()),
     projectId: db.ref(z.integer(), () => projects.cols.id, {
@@ -55,15 +56,41 @@ export const releases = $entity({
      */
     app: z.string().min(1).max(100),
     environment: z.string().min(1).max(50),
-    /** Release name, e.g. `2026-08-03-120000`. Unique per app + environment. */
+    /**
+     * The deployment id, e.g. `2026-08-03-120000`. Unique per app + environment.
+     *
+     * Named `version` for history's sake, but it never was one: it is a
+     * timestamp, shaped like Bay's on-disk release directories so one string
+     * names the same thing on both sides. What was built is `tag` + `sha256`
+     * below; this is *when it was placed*.
+     */
     version: z.string().min(1).max(100),
+    /**
+     * The artifact this deploy placed, while it is still in the registry.
+     *
+     * A soft pointer, `set null` rather than cascade: replacing `latest`
+     * removes the artifact row, and losing the record of what production was
+     * running because someone pushed again is exactly backwards. The snapshot
+     * columns below are what survive.
+     */
+    artifactId: db.ref(z.uuid().optional(), () => artifacts.cols.id, {
+      onDelete: "set null",
+    }),
+    /**
+     * The tag as it stood at deploy time.
+     *
+     * A snapshot, not a lookup. `latest` moves; this row must still be able to
+     * say what it actually shipped. Optional because rows written before the
+     * registry existed have no tag to report.
+     */
+    tag: z.string().max(100).optional(),
     /** Digest of the tar.gz. Lowercase hex, always 64 characters. */
     sha256: z.string().length(64),
     /** The `alepha/api/files` row holding the bytes. */
     fileId: z.uuid(),
     sizeBytes: z.integer().min(0).optional(),
     status: db.default(
-      z.enum([...RELEASE_STATUSES]).meta({ mode: "text" }),
+      z.enum([...DEPLOYMENT_STATUSES]).meta({ mode: "text" }),
       "pending",
     ),
     /**
@@ -96,5 +123,5 @@ export const releases = $entity({
   ],
 });
 
-export type Release = Infer<typeof releases.schema>;
-export type ReleaseInsert = Infer<typeof releases.insertSchema>;
+export type Deployment = Infer<typeof deployments.schema>;
+export type DeploymentInsert = Infer<typeof deployments.insertSchema>;

@@ -8,14 +8,14 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { AlephaServerCors } from "alepha/server/cors";
 import { describe, it } from "vitest";
+import { deployments } from "../src/api/entities/deployments.ts";
 import { projects } from "../src/api/entities/projects.ts";
-import { releases } from "../src/api/entities/releases.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { ReleaseService } from "../src/api/services/ReleaseService.ts";
+import { DeploymentService } from "../src/api/services/DeploymentService.ts";
 
 class Probe {
   projects = $repository(projects);
-  releases = $repository(releases);
+  deployments = $repository(deployments);
   files = $repository(files);
 }
 
@@ -48,7 +48,7 @@ const setupService = async () => {
   alepha.with(LoreApi);
 
   const probe = alepha.inject(Probe);
-  const service = alepha.inject(ReleaseService);
+  const service = alepha.inject(DeploymentService);
   const users = alepha.inject(UserService);
   await alepha.start();
 
@@ -59,7 +59,7 @@ const setupService = async () => {
   });
   const file = await probe.files.create({
     blobId: "blob-1",
-    bucket: ReleaseService.BUCKET,
+    bucket: DeploymentService.BUCKET,
     name: "lindocara-main-latest.tar.gz",
     size: 33_352_058,
     mimeType: "application/gzip",
@@ -76,7 +76,7 @@ const setupService = async () => {
  * environment — and an index is not something a handler can be trusted to
  * enforce on its own.
  */
-describe("releases entity", () => {
+describe("deployments entity", () => {
   const setup = async () => {
     const alepha = Alepha.create({
       env: {
@@ -124,7 +124,7 @@ describe("releases entity", () => {
   }) => {
     const { probe, base } = await setup();
 
-    const created = await probe.releases.create(base);
+    const created = await probe.deployments.create(base);
 
     expect(created.status).toBe("pending");
     expect(created.claimedAt).toBeUndefined();
@@ -135,18 +135,18 @@ describe("releases entity", () => {
     expect,
   }) => {
     const { probe, base } = await setup();
-    await probe.releases.create(base);
+    await probe.deployments.create(base);
 
-    await expect(probe.releases.create(base)).rejects.toThrow();
+    await expect(probe.deployments.create(base)).rejects.toThrow();
   });
 
   it("allows the same version in two different environments", async ({
     expect,
   }) => {
     const { probe, base } = await setup();
-    await probe.releases.create(base);
+    await probe.deployments.create(base);
 
-    const staging = await probe.releases.create({
+    const staging = await probe.deployments.create({
       ...base,
       environment: "staging",
     });
@@ -163,7 +163,7 @@ describe("releases entity", () => {
  * it into a download it can only reject, and the failure would surface on the
  * machine rather than in the pipeline that caused it.
  */
-describe("ReleaseService.register", () => {
+describe("DeploymentService.register", () => {
   const digest = "b".repeat(64);
 
   it("refuses a digest that is not 64 hex characters", async ({ expect }) => {

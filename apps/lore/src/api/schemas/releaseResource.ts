@@ -1,5 +1,5 @@
 import { type Infer, z } from "alepha";
-import { RELEASE_STATUSES } from "../entities/releases.ts";
+import { DEPLOYMENT_STATUSES } from "../entities/deployments.ts";
 
 /**
  * A release as a deploying client sees it.
@@ -20,7 +20,7 @@ export const releaseResourceSchema = z.object({
   version: z.string(),
   sha256: z.string(),
   sizeBytes: z.integer().optional(),
-  status: z.enum([...RELEASE_STATUSES]).meta({ mode: "text" }),
+  status: z.enum([...DEPLOYMENT_STATUSES]).meta({ mode: "text" }),
   /** Bay's own words, verbatim. Absent unless `status` is `failed`. */
   failureReason: z.string().optional(),
   /** Which machine took it. Absent until claimed. */

@@ -1,11 +1,11 @@
 import { $inject, Alepha, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { $route, NotFoundError, UnauthorizedError } from "alepha/server";
+import { DEPLOYMENT_STATUSES } from "../entities/deployments.ts";
 import type { Outpost } from "../entities/outposts.ts";
-import { RELEASE_STATUSES } from "../entities/releases.ts";
 import { outpostCommands } from "../schemas/outpostCommands.ts";
+import { DeploymentService } from "../services/DeploymentService.ts";
 import { OutpostTokenService } from "../services/OutpostTokenService.ts";
-import { ReleaseService } from "../services/ReleaseService.ts";
 
 /**
  * The channel a machine asks for work on.
@@ -30,7 +30,7 @@ import { ReleaseService } from "../services/ReleaseService.ts";
 export class OutpostCommandController {
   protected readonly alepha = $inject(Alepha);
   protected readonly tokens = $inject(OutpostTokenService);
-  protected readonly releases = $inject(ReleaseService);
+  protected readonly deployments = $inject(DeploymentService);
   protected readonly fileService = $inject(FileService);
 
   /**
@@ -54,7 +54,7 @@ export class OutpostCommandController {
     handler: async ({ headers, reply }) => {
       const outpost = await this.resolve(headers.authorization);
 
-      const release = await this.releases.claim(outpost);
+      const release = await this.deployments.claim(outpost);
       if (!release) {
         reply.status = 204;
         return {};
@@ -75,7 +75,7 @@ export class OutpostCommandController {
   });
 
   /**
-   * `POST /outposts/releases/:releaseId/status` — what became of it.
+   * `POST /outposts/deployments/:releaseId/status` — what became of it.
    *
    * Every transition, not just the last one: `up` is watching this row, and a
    * deploy that only reports its outcome leaves the caller unable to tell a
@@ -88,7 +88,7 @@ export class OutpostCommandController {
       params: z.object({ releaseId: z.uuid() }),
       headers: z.object({ authorization: z.string().optional() }),
       body: z.object({
-        status: z.enum([...RELEASE_STATUSES]).meta({ mode: "text" }),
+        status: z.enum([...DEPLOYMENT_STATUSES]).meta({ mode: "text" }),
         /** Bay's own sentence. Stored verbatim — it is the part that says what to do. */
         failureReason: z.string().max(2000).optional(),
       }),
@@ -96,7 +96,7 @@ export class OutpostCommandController {
     handler: async ({ params, body, headers, reply }) => {
       const outpost = await this.resolve(headers.authorization);
 
-      await this.releases.transition(
+      await this.deployments.transition(
         params.releaseId,
         outpost.id,
         body.status,
@@ -128,10 +128,10 @@ export class OutpostCommandController {
     handler: async ({ params, headers }) => {
       const outpost = await this.resolve(headers.authorization);
 
-      const release = await this.releases.get(params.releaseId);
+      const release = await this.deployments.get(params.releaseId);
       // Claimed *by this outpost* — not merely visible to it. A machine that
       // has not taken a release has no business pulling its bytes, and 404
-      // rather than 403 keeps the existence of other projects' releases from
+      // rather than 403 keeps the existence of other projects' deployments from
       // being probeable with a valid token.
       if (!release || release.outpostId !== outpost.id) {
         throw new NotFoundError("No such release claimed by this outpost");

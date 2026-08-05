@@ -2413,8 +2413,13 @@ describe("$parameter multi-tenant isolation", () => {
       }
     }
 
+    // A generous TTL driven by `travel()` rather than a short one raced
+    // against the wall clock. At 50ms the "still stale" assertion below
+    // depended on three Postgres round-trips finishing inside 50ms, which a
+    // loaded CI runner does not do — the cache expired early, `get()`
+    // re-read, and the test failed claiming the TTL had not been honoured.
     const alepha = Alepha.create({
-      env: { ...process.env, PARAMETERS_CACHE_TTL_MS: "50" },
+      env: { ...process.env, PARAMETERS_CACHE_TTL_MS: "60000" },
     });
     alepha.with({ provide: ParameterProvider, use: TestableProvider });
     alepha.with(AlephaOrmPostgres);
@@ -2422,6 +2427,7 @@ describe("$parameter multi-tenant isolation", () => {
     alepha.with(AppConfig);
     await alepha.start();
 
+    const time = alepha.inject(DateTimeProvider);
     const config = alepha.inject(AppConfig);
     await config.flags.set({ enableBeta: false, maxUploadSize: 1 });
     expect((await config.flags.get()).enableBeta).toBe(false);
@@ -2436,7 +2442,7 @@ describe("$parameter multi-tenant isolation", () => {
     expect((await config.flags.get()).enableBeta).toBe(false);
 
     // Past the TTL, get() re-reads the DB and converges.
-    await new Promise((r) => setTimeout(r, 80));
+    await time.travel([2, "minutes"]);
     expect((await config.flags.get()).enableBeta).toBe(true);
 
     await alepha.stop();

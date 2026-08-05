@@ -101,6 +101,42 @@ describe("alepha init — devtools", () => {
     ).toBe(false);
   });
 
+  /**
+   * The endpoints are the half of devtools an agent can actually use — the UI
+   * is for humans. Undocumented, they may as well not exist: nothing in the
+   * project tells an assistant to look for them, so it reads source to answer
+   * questions the running app would have answered exactly.
+   */
+  it("documents the devtools API in AGENTS.md by default", async () => {
+    const { fs, cli, cmd, json } = createTestEnv();
+    await setupProject(fs, json);
+
+    await cli.run(cmd.init, { root: "/project" });
+
+    expect(
+      fs.wasWrittenMatching("/project/AGENTS.md", /__devtools\/api\/metadata/),
+    ).toBe(true);
+    expect(
+      fs.wasWrittenMatching("/project/AGENTS.md", /__devtools\/api\/db/),
+    ).toBe(true);
+  });
+
+  /**
+   * Gated on the same flag as the plugin. Documenting an endpoint that was
+   * never installed is worse than staying silent: it sends the reader to a
+   * 404 and costs them the time to work out why.
+   */
+  it("leaves the devtools API out of AGENTS.md with --no-devtools", async () => {
+    const { fs, cli, cmd, json } = createTestEnv();
+    await setupProject(fs, json);
+
+    await cli.run(cmd.init, { argv: "--no-devtools", root: "/project" });
+
+    expect(fs.wasWrittenMatching("/project/AGENTS.md", /__devtools/)).toBe(
+      false,
+    );
+  });
+
   it("skips devtools for a workspace package (no dev shell to attach to)", async () => {
     const { fs, cli, cmd, json } = createTestEnv();
     await setupWorkspacePackage(fs, json);
