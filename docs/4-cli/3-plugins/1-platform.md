@@ -155,19 +155,6 @@ alepha p up --env staging
 | Flag | Description |
 |------|-------------|
 | `--prebuilt` | Skip the Vite bundle steps; only regenerate the deploy config (`wrangler.jsonc`). Use when `dist/` was already produced upstream. |
-| `--tag`, `-t` | Artifact tag. See [Tags and promoting](#tags-and-promoting). |
-
-### push
-
-Build an artifact into the registry **without deploying it**. Only meaningful
-for an adapter with an artifact registry — one that deploys straight to a
-provider has nowhere to put an artifact, and `push` refuses rather than
-quietly deploying. No currently supported adapter (`cloudflare`, `bay`)
-has one, so `push` refuses on both today.
-
-```bash
-alepha p push --tag 1.2.3
-```
 
 ### down
 
@@ -206,37 +193,6 @@ Deploy only. Assumes already built.
 ```bash
 alepha p deploy --env production
 ```
-
-### Tags and promoting
-
-Artifacts are tagged Docker-style. `alepha pack --tag` names the file, and the
-registry keys on `(app, tag)`.
-
-**`latest` is the only mutable tag.** Pushing it replaces the artifact in
-place — one row, one stored object. Every other tag is **write-once**: pushing
-it a second time is refused, and that refusal is what makes promoting mean
-something.
-
-```bash
-alepha p up --env staging --tag 1.2.3      # builds, pushes, deploys
-alepha p up --env production --tag 1.2.3   # reuses — same bytes, no rebuild
-```
-
-The second command does not rebuild. It finds `1.2.3` already in the registry
-and deploys exactly the bytes staging tested; because the digest is the
-artifact's identity, a machine already holding it skips the download entirely.
-Rebuilding instead would produce a different artifact under the same label —
-dependency resolution drifts, build timestamps differ — which is the whole
-problem tag immutability exists to prevent.
-
-When a deploy reuses an existing artifact it says so, because silent reuse is
-the one way this surprises you:
-
-```
-Deploying hello:1.2.3 (sha ab12cd34…, pushed 2026-08-04); local changes not included.
-```
-
-Omit `--tag` and you get `latest`, which always rebuilds — the inner loop.
 
 ### db
 
