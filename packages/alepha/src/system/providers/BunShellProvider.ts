@@ -19,14 +19,23 @@ export class BunShellProvider extends NodeShellProvider {
   protected override async execInherit(
     executable: string,
     args: string[],
-    options: { cwd: string; env?: Record<string, string> },
+    options: {
+      cwd: string;
+      env?: Record<string, string>;
+      stdin?: Uint8Array | string;
+    },
   ): Promise<string> {
     const proc = Bun.spawn([executable, ...args], {
       cwd: options.cwd,
       env: { ...process.env, ...options.env },
       stdout: "inherit",
       stderr: "inherit",
-      stdin: "inherit",
+      // `Bun.spawn` takes a TypedArray directly and closes the stream itself,
+      // so there is no equivalent of the write-then-end dance above.
+      stdin:
+        options.stdin === undefined
+          ? "inherit"
+          : this.toStdinBytes(options.stdin),
     });
 
     const code = await proc.exited;
