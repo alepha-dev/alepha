@@ -90,6 +90,19 @@ export interface PlatformContext {
    * per-tenant overrides.
    */
   prebuilt?: boolean;
+
+  /**
+   * Artifact tag for registry-backed adapters, Docker-style.
+   *
+   * `latest` when unset, and `latest` is the only tag that may be replaced —
+   * pushing any other tag twice is refused, which is what lets a deploy to
+   * production claim it is shipping the bytes staging tested rather than a
+   * rebuild that happens to carry the same label.
+   *
+   * Per-invocation rather than part of `envConfig`: it is a property of *this
+   * deploy*, not of how the environment is configured.
+   */
+  tag?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -223,6 +236,24 @@ export abstract class PlatformAdapter {
   ): Promise<void> {
     throw new AlephaError(
       `Database export is not supported by the '${this.constructor.name}' adapter.`,
+    );
+  }
+
+  /**
+   * Build an artifact into the registry without deploying it.
+   *
+   * Only meaningful for an adapter that *has* a registry — pushing means
+   * putting bytes somewhere they can be deployed from later, and an adapter
+   * that deploys straight to a provider has nowhere to put them. The default
+   * refuses rather than silently deploying, because "push then promote" and
+   * "deploy now" are different intentions and quietly turning one into the
+   * other is how a staging tag reaches production.
+   *
+   * @returns the artifact id, for a caller that wants to deploy it next.
+   */
+  async push(_ctx: PlatformContext, _run: RunnerMethod): Promise<string> {
+    throw new AlephaError(
+      `push is not supported by the '${this.constructor.name}' adapter — it has no artifact registry.`,
     );
   }
 

@@ -162,30 +162,50 @@ export class LoreAdapter extends PlatformAdapter {
     });
   }
 
-  async deploy(
-    ctx: PlatformContext,
-    run: RunnerMethod,
-  ): Promise<string | undefined> {
+  /**
+   * The tag being deployed.
+   *
+   * `latest` unless pinned. The timestamp this used to generate moved to the
+   * server, where it belongs: it names a *deployment*, not an artifact, and
+   * minting one here made every push a distinct version — which quietly turned
+   * every retention rule into "keep everything" and made promote impossible to
+   * express, since no two pushes ever shared a name.
+   */
+  protected tag(ctx: PlatformContext): string {
+    return ctx.tag ?? "latest";
+  }
+
+  /**
+   * Builds an artifact into the registry and answers with its id.
+   *
+   * Split out of {@link deploy} because it is also the whole of
+   * `alepha platform push`, and because deploy needs to be able to *skip* it:
+   * a pinned tag already in the registry must not be rebuilt, or promoting it
+   * would ship different bytes than the environment that tested it.
+   */
+  async push(ctx: PlatformContext, run: RunnerMethod): Promise<string> {
     const endpoint = this.endpoint(ctx);
     const projectId = this.projectId(ctx);
     const key = this.apiKey();
+    const tag = this.tag(ctx);
 
     let artifact = "";
     await run({
-      name: "pack",
+      name: `pack (${tag})`,
       handler: async () => {
-        await this.shell.run(await this.cli(ctx, "pack"), { root: ctx.root });
-        artifact = this.fs.join(ctx.root, `${ctx.project}-latest.tar.gz`);
+        await this.shell.run(await this.cli(ctx, `pack --tag ${tag}`), {
+          root: ctx.root,
+        });
+        artifact = this.fs.join(ctx.root, `${ctx.project}-${tag}.tar.gz`);
         if (!(await this.fs.exists(artifact))) {
           throw new AlephaError(`\`alepha pack\` produced no ${artifact}.`);
         }
       },
     });
 
-    let releaseId = "";
-    const version = this.version();
+    let artifactId = "";
     await run({
-      name: `upload → ${endpoint}`,
+      name: `upload ${ctx.project}:${tag} → ${endpoint}`,
       handler: async () => {
         const bytes = await this.fs.readFile(artifact);
         const sha256 = createHash("sha256").update(bytes).digest("hex");
@@ -211,7 +231,7 @@ export class LoreAdapter extends PlatformAdapter {
         const file = (await uploaded.json()) as { id: string };
 
         const registered = await fetch(
-          `${endpoint}/api/projects/${projectId}/releases`,
+          `${endpoint}/api/projects/${projectId}/artifacts`,
           {
             method: "POST",
             headers: {
@@ -220,8 +240,7 @@ export class LoreAdapter extends PlatformAdapter {
             },
             body: JSON.stringify({
               app: ctx.project,
-              environment: ctx.env,
-              version,
+              tag,
               sha256,
               fileId: file.id,
               sizeBytes: bytes.length,
@@ -230,10 +249,102 @@ export class LoreAdapter extends PlatformAdapter {
         );
         if (!registered.ok) {
           throw new AlephaError(
-            `Lore refused the release (${registered.status}): ${this.reason(await registered.text())}`,
+            `Lore refused the artifact (${registered.status}): ${this.reason(await registered.text())}`,
           );
         }
-        releaseId = ((await registered.json()) as { id: string }).id;
+        artifactId = ((await registered.json()) as { id: string }).id;
+      },
+    });
+
+    return artifactId;
+  }
+
+  /**
+   * The artifact already behind this tag, if the registry has one.
+   *
+   * Answers `undefined` rather than throwing when the listing fails: a
+   * registry that cannot be read is a reason to build, not to refuse — the
+   * push that follows will surface the real error with its own status code.
+   */
+  protected async findArtifact(
+    ctx: PlatformContext,
+  ): Promise<{ id: string; sha256: string; updatedAt?: string } | undefined> {
+    const endpoint = this.endpoint(ctx);
+    const projectId = this.projectId(ctx);
+    const tag = this.tag(ctx);
+
+    const res = await fetch(`${endpoint}/api/projects/${projectId}/artifacts`, {
+      headers: { authorization: `Bearer ${this.apiKey()}` },
+    }).catch(() => undefined);
+    if (!res?.ok) {
+      return undefined;
+    }
+
+    const body = (await res.json()) as {
+      items?: Array<{
+        id: string;
+        app: string;
+        tag: string;
+        sha256: string;
+        updatedAt?: string;
+      }>;
+    };
+    return body.items?.find(
+      (item) => item.app === ctx.project && item.tag === tag,
+    );
+  }
+
+  async deploy(
+    ctx: PlatformContext,
+    run: RunnerMethod,
+  ): Promise<string | undefined> {
+    const endpoint = this.endpoint(ctx);
+    const projectId = this.projectId(ctx);
+    const tag = this.tag(ctx);
+
+    // A pinned tag already in the registry is deployed as-is. This is what
+    // makes `up --env production --tag 1.2.3` a promote rather than a rebuild:
+    // the bytes are the ones the earlier environment tested, byte for byte,
+    // and the outpost already holding that digest skips the download entirely.
+    //
+    // `latest` is exempt because it is defined as moving — the inner loop
+    // expects it to rebuild.
+    const existing =
+      tag === "latest" ? undefined : await this.findArtifact(ctx);
+
+    let artifactId: string;
+    if (existing) {
+      this.log.info(
+        `Deploying ${ctx.project}:${tag} (sha ${existing.sha256.slice(0, 12)}…${
+          existing.updatedAt ? `, pushed ${existing.updatedAt}` : ""
+        }); local changes not included.`,
+      );
+      artifactId = existing.id;
+    } else {
+      artifactId = await this.push(ctx, run);
+    }
+
+    let releaseId = "";
+    await run({
+      name: `release ${ctx.project}:${tag} → ${ctx.env}`,
+      handler: async () => {
+        const created = await fetch(
+          `${endpoint}/api/projects/${projectId}/deployments`,
+          {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${this.apiKey()}`,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({ artifactId, environment: ctx.env }),
+          },
+        );
+        if (!created.ok) {
+          throw new AlephaError(
+            `Lore refused the deployment (${created.status}): ${this.reason(await created.text())}`,
+          );
+        }
+        releaseId = ((await created.json()) as { id: string }).id;
       },
     });
 
@@ -315,26 +426,6 @@ export class LoreAdapter extends PlatformAdapter {
         "Either no machine is enrolled in this Lore project, or the one that took it stopped reporting — " +
         "check the outposts page in Lore, then `bay logs <app>/<env>` on the host.",
     );
-  }
-
-  /**
-   * The release name.
-   *
-   * A timestamp, matching the directory names Bay already writes, so a release
-   * in Lore and a release on disk are the same string rather than two ids that
-   * have to be correlated.
-   */
-  protected version(): string {
-    const at = new Date(this.dateTime.nowMillis());
-    const pad = (n: number) => String(n).padStart(2, "0");
-    // UTC, not local: two deploys from two machines in different zones would
-    // otherwise produce version names that sort against each other wrongly.
-    return [
-      at.getUTCFullYear(),
-      pad(at.getUTCMonth() + 1),
-      pad(at.getUTCDate()),
-      `${pad(at.getUTCHours())}${pad(at.getUTCMinutes())}${pad(at.getUTCSeconds())}`,
-    ].join("-");
   }
 
   async inspect(ctx: PlatformContext): Promise<PlatformState> {
