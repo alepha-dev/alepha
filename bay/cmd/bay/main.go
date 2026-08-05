@@ -194,11 +194,13 @@ func usage() {
               [--acme-http-port N] [--acme-tls-port N]   # challenge ports, default 80/443
               [--backup-interval 24h]   # 0 disables; needs "bay config s3"
             [--keep-releases 5]   # per app; min 2, the serving one is always kept
-  bay deploy  <app.tar.gz> [--name NAME] [--env ENV] [--domain HOST]...
+  bay deploy  (<app.tar.gz>|-) [--name NAME] [--env ENV] [--domain HOST]...
               # --name defaults to the artifact's project, and drives BOTH the
               # instance key and the subdomain: one app, one identity
               # --domain is repeatable and accepts a comma-separated list —
               # apex + www are one site. The first is the canonical one.
+              # -  reads the artifact from stdin, e.g.
+              #    ssh HOST 'bay deploy - --name app' < app.tar.gz
   bay list
   bay status  [--json]            # releases, traffic + backup freshness
   bay logs    <name/env> [-n 200] [--since 15m] [--grep RE] [--json]
@@ -1351,9 +1353,34 @@ func writeError(w http.ResponseWriter, code int, message string, extra ...map[st
 // client commands
 // ---------------------------------------------------------------------------
 
+// artifactBody resolves the artifact argument to something the control API can
+// be handed.
+//
+// `-` means stdin, which is what makes a remote deploy one command:
+//
+//	ssh HOST 'bay deploy - --name app' < app.tar.gz
+//
+// `/dev/stdin` happens to work for a pipe on Linux, so this is not strictly
+// required — but it depends on a /proc coincidence, it is absent on macOS, and
+// the failure mode if it ever stops holding is a deploy that uploads an empty
+// artifact rather than one that errors. Ten lines is cheaper than that.
+//
+// The returned closer is always safe to call, so the caller needs no branch.
+func artifactBody(artifact string, stdin io.Reader) (io.Reader, func(), error) {
+	if artifact == "-" {
+		return stdin, func() {}, nil
+	}
+	f, err := os.Open(artifact)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	return f, func() { f.Close() }, nil
+}
+
 func cmdDeploy(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: bay deploy <app.tar.gz> --name NAME --domain HOST [--env ENV]")
+		return errors.New("usage: bay deploy (<app.tar.gz>|-) --name NAME --domain HOST [--env ENV]\n" +
+			"  -  reads the artifact from stdin, e.g. ssh HOST 'bay deploy - --name app' < app.tar.gz")
 	}
 	artifact := args[0]
 	if err := checkFlags(args[1:],
@@ -1385,11 +1412,11 @@ func cmdDeploy(args []string) error {
 			}
 		}
 	}
-	body, err := os.Open(artifact)
+	body, closeBody, err := artifactBody(artifact, os.Stdin)
 	if err != nil {
 		return err
 	}
-	defer body.Close()
+	defer closeBody()
 
 	query := neturl.Values{"name": {name}, "env": {env}}
 	for _, host := range domains {
