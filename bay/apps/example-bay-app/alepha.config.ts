@@ -7,11 +7,11 @@ export default defineConfig({
       environments: {
         production: {
           adapter: "bay",
-          // A Bay is a machine someone owns, so there is no global endpoint to
-          // assume — unlike Cloudflare. Committed on purpose: it is a public
-          // hostname, and the API key is what protects it. $BAY_ENDPOINT
+          // The machine, reached over SSH with a key that is already shared.
+          // Committed on purpose: it is a hostname, and the key is what
+          // protects it. May be an alias from ~/.ssh/config; $BAY_HOST
           // overrides for a fork or a second Bay.
-          endpoint: "https://admin.bay.alepha.dev",
+          host: "deploy@bay.alepha.dev",
           // No `domain`: Bay composes <project>.<base-domain> from the artifact
           // and its own configuration, which is the property worth keeping —
           // the same artifact deploys to any Bay without being edited.
