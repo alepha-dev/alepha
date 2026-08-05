@@ -14,6 +14,11 @@ import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 class FakeCliUtils extends AlephaCliUtils {
   public userAlepha?: Alepha;
   public loadError?: Error;
+  /**
+   * Stands in for the app-graph import. In production this comes back through
+   * Vite's SSR graph so the module's classes are the app's, not the CLI's.
+   */
+  public appGraphModules: Record<string, any> = {};
 
   public async loadAlephaFromServerEntryFile(): Promise<Alepha> {
     if (this.loadError) {
@@ -23,6 +28,14 @@ class FakeCliUtils extends AlephaCliUtils {
       throw new Error("test did not provide a user container");
     }
     return this.userAlepha;
+  }
+
+  public async importFromAppGraph(specifier: string): Promise<any> {
+    const mod = this.appGraphModules[specifier];
+    if (!mod) {
+      throw new Error(`test did not stub '${specifier}'`);
+    }
+    return mod;
   }
 }
 
@@ -44,18 +57,51 @@ describe("gen commands", () => {
       cli: alepha.inject(CliProvider),
       openapi: alepha.inject(OpenApiCommand),
       env: alepha.inject(GenEnvCommand),
+      fs: alepha.inject(MemoryFileSystemProvider),
       utils,
     };
   };
 
+  /**
+   * Generating a spec used to require the app to also mount a runtime `/docs`
+   * UI — it failed with "Missing $swagger() primitive" otherwise. The document
+   * is derived purely from the `$action` primitives already in the container,
+   * so the module is registered on demand instead.
+   */
+  it("should register the swagger module when the app mounts none", async () => {
+    const { cli, openapi, utils, fs } = create();
+
+    class ServerSwaggerProvider {
+      public json = undefined;
+      public generateSwaggerDoc() {
+        return { openapi: "3.0.0", paths: { "/api/hello": {} } };
+      }
+    }
+
+    // The real module's `register` is what puts the provider in the container;
+    // registering the class directly models that.
+    utils.appGraphModules["alepha/server/swagger"] = {
+      AlephaServerSwagger: ServerSwaggerProvider,
+    };
+
+    await cli.run(openapi.command, {
+      argv: "--out openapi.json",
+      root: "/app",
+    });
+
+    expect(fs.wasWrittenMatching("/app/openapi.json", /\/api\/hello/)).toBe(
+      true,
+    );
+  });
+
   // The CLI only exits non-zero when the handler throws. Logging the failure
   // and returning reported success to CI while writing nothing at all.
-  it("should fail when the app has no swagger provider", async () => {
+  it("should fail when the swagger module cannot be loaded", async () => {
     const { cli, openapi } = create();
 
     await expect(
       cli.run(openapi.command, { argv: "", root: "/app" }),
-    ).rejects.toThrow(/\$swagger/);
+    ).rejects.toThrow(/alepha\/server\/swagger/);
   });
 
   it("should fail when openapi generation throws", async () => {

@@ -37,7 +37,9 @@
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "alepha": "0.25.0"
+    "alepha": "0.25.0",
+    "react": "^19",
+    "react-dom": "^19"
   },
   "scripts": {
     "lint": "alepha lint",

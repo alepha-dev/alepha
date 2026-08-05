@@ -453,4 +453,27 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
 
     return alepha;
   }
+
+  /**
+   * Import a module through the same graph the app was loaded from.
+   *
+   * A plain `import()` here resolves against the CLI's own module graph, which
+   * produces a *different* object for the same source file than the app's
+   * Vite SSR graph. Registering that object into the app's container gives it
+   * a second, parallel copy of every service in the module — the duplicate
+   * that {@link OpenApiCommand} documents. Going back through
+   * `ssrLoadModule` keeps class identity consistent with the container we are
+   * about to mutate.
+   *
+   * Only valid after {@link runAlepha}, which is what creates the server.
+   */
+  public async importFromAppGraph<T = any>(specifier: string): Promise<T> {
+    if (!this.viteDevServer) {
+      throw new AlephaError(
+        `Cannot import '${specifier}': the app has not been loaded yet.`,
+      );
+    }
+
+    return (await this.viteDevServer.ssrLoadModule(specifier)) as T;
+  }
 }

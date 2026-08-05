@@ -15,7 +15,7 @@ alepha gen openapi --out api.json   # write to a file
 |------|-------------|
 | `--out`, `-o` | Output file path |
 
-Requires the `$swagger()` primitive in your server configuration — the command fails with a clear message if it's missing.
+The `$swagger()` primitive is not required. The document is derived from your `$action` definitions, so `gen openapi` works on any app — it registers the swagger module for the duration of the command if you don't mount one. When `$swagger()` *is* present, its configuration (title, version, `excludeTags`, `rewrite`, …) is what gets emitted.
 
 ## env
 

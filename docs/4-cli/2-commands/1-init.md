@@ -44,7 +44,17 @@ The first positional argument is the target path:
 alepha init my-app
 ```
 
-This creates `./my-app/` and scaffolds into it. With no argument, `init` works on the current directory — or creates `./my-app/` if the current directory has no `package.json`.
+This creates `./my-app/` and scaffolds into it.
+
+With no argument, `init` picks its target from what the current directory holds:
+
+| Current directory | Result |
+|---|---|
+| Empty | Scaffolds **in place** — `mkdir my-app && cd my-app && alepha init` does what you expect |
+| Has a `package.json` | Fills in whatever is missing, in place |
+| Non-empty, no `package.json` | Creates `./my-app/`, so a stray `init` can't scatter files over unrelated work |
+
+Dotfiles don't count towards "empty", so running `git init` first is fine.
 
 ## Generated Structure
 

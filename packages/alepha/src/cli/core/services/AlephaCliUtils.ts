@@ -144,6 +144,16 @@ export class AlephaCliUtils {
     });
   }
 
+  /**
+   * Import a module through the app's graph rather than the CLI's.
+   *
+   * See {@link ViteUtils.importFromAppGraph}. Only valid after
+   * {@link loadAlephaFromServerEntryFile}.
+   */
+  public importFromAppGraph<T = any>(specifier: string): Promise<T> {
+    return this.viteUtils.importFromAppGraph<T>(specifier);
+  }
+
   // ===========================================
   // Environment
   // ===========================================

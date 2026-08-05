@@ -6,6 +6,8 @@ node_modules/
 # Build outputs
 dist/
 .vite/
+# alepha pack writes <project>-<tag>.tar.gz here
+*.tar.gz
 
 # Environment files
 .env
