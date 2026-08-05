@@ -164,7 +164,13 @@ export class PlatformOrchestrator {
 
     return {
       urls: url ? [url] : [],
-      domain: tenantDomain(envConfig.domain, tenant),
+      // Only when the adapter is what puts that domain into effect. Reported
+      // unconditionally, an adapter that does not choose the host had its own
+      // config echoed back as the deploy's address — see
+      // `PlatformAdapter.controlsDomain`.
+      domain: adapter.controlsDomain
+        ? tenantDomain(envConfig.domain, tenant)
+        : undefined,
     };
   }
 
