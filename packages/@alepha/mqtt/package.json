@@ -1,13 +1,12 @@
 {
   "name": "@alepha/mqtt",
-  "private": true,
   "description": "MQTT client and topic provider for Alepha framework.",
   "keywords": [
     "alepha",
     "mqtt"
   ],
   "author": "Feunard",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"

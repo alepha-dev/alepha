@@ -66,7 +66,9 @@ export default (alepha: Alepha) => {
       "verifications",
       // published packages
       "devtools",
+      "mqtt",
       "payments-stripe",
+      "ui",
       // surfaces that live inside a module and are named on their own
       "auth",
       "cookies",
