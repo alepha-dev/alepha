@@ -293,14 +293,6 @@ type server struct {
 	// keepReleases is how many releases survive a prune. Zero in the CLI paths
 	// that never deploy, where `deploy.Prune` treats it as "delete nothing".
 	keepReleases int
-	// deployMu serialises deploys driven by the command loop.
-	//
-	// Machine-wide rather than per-app: two deploys racing would contend for
-	// `state.json` whichever apps they target. The control API needs no such
-	// lock because its callers are serialised by the socket being one
-	// operator's shell — the loop is the first path that can start a deploy
-	// while another is still running.
-	deployMu sync.Mutex
 	// watches holds the cancel of each app's in-flight rollback watch, so a new
 	// deploy can supersede the previous one's. See beginWatch.
 	watchMu sync.Mutex
@@ -888,8 +880,8 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 // deployArtifactOptions is one deploy, whatever asked for it.
 type deployArtifactOptions struct {
 	// Artifact is a tar.gz already on local disk. Getting it there is the
-	// caller's problem: an upload for the control API, a download from the
-	// registry for the command loop.
+	// caller's problem — currently always an upload staged by the control
+	// API's deploy handler.
 	Artifact string
 	Name     string
 	Env      string
@@ -931,12 +923,12 @@ func (e *deployFailure) Unwrap() error { return e.Err }
 
 // deployArtifact unpacks, provisions, starts and prunes.
 //
-// Shared by the control API and the command loop on purpose. This sequence has
-// five ordering constraints that were each learned the hard way — stop before
-// swapping `current`, restore before starting, watch before pruning, prune only
-// after the app is proven to boot, and never answer a failure before putting the
-// app back — and a second copy of it would drift on the first fix applied to only
-// one caller.
+// Kept separate from its one production caller — the control API's POST /apps
+// handler — so tests can drive the whole deploy sequence directly, without
+// going through HTTP. That sequence has five ordering constraints that were
+// each learned the hard way: stop before swapping `current`, restore before
+// starting, watch before pruning, prune only after the app is proven to boot,
+// and never answer a failure before putting the app back.
 func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions) (*deployOutcome, *deployFailure) {
 	key := opts.Name + "/" + opts.Env
 
@@ -1018,7 +1010,8 @@ Observed on ovh-bay: `example-api/production` was serving, a gzip that was not a
 tar was deployed, the release went `failed` with the correct message, and the app
 stayed stopped and 502 until a good artifact was pushed again. The report was
 accurate and reassuring — "the deploy failed" reads as "nothing changed" — which
-is what made it expensive. Through the command loop, nobody is even watching.
+is what made it expensive. A CI pipeline deploying over SSH reads the same
+terse response and moves on; nobody is watching in real time there either.
 
 The failure stays a 400 when the restart works: the artifact is what was wrong,
 the host is where it was, and a 5xx would send someone to inspect a machine that

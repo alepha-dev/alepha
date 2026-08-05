@@ -238,9 +238,9 @@ func TestARefusedArtifactLeavesTheAppRunning(t *testing.T) {
 		What made it expensive is that the failure report was accurate and
 		reassuring. The release went `failed` with "deploy: unpack: read archive:
 		unexpected EOF", which reads as "nothing changed on the host" — and the
-		site was 502 until somebody noticed. Through the command loop it is worse
-		still: a broken artifact pushed by CI takes production down with no human
-		in front of it.
+		site was 502 until somebody noticed. A CI pipeline deploying over SSH
+		reads the same terse response and moves on: a broken artifact takes
+		production down with no human watching in real time either.
 	*/
 	f := newDeployFixture(t)
 	first, derr := f.deploy(deployableArtifact(t))
