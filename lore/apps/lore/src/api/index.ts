@@ -33,6 +33,7 @@ import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
+import { DeploymentService } from "./services/DeploymentService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
@@ -50,7 +51,6 @@ import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
-import { ReleaseService } from "./services/ReleaseService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 
@@ -94,7 +94,7 @@ export const LoreApi = $module({
     OutpostTokenService,
     OutpostIngestService,
     ArtifactService,
-    ReleaseService,
+    DeploymentService,
     // Controllers
     QuestController,
     ProjectController,
