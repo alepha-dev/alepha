@@ -8,6 +8,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, it } from "vitest";
+import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import { LoreAdapter } from "../adapters/LoreAdapter.ts";
 import type { PlatformContext } from "../adapters/PlatformAdapter.ts";
 
@@ -23,7 +24,7 @@ class TestLoreAdapter extends LoreAdapter {
   public testProjectId = this.projectId.bind(this);
   public testApiKey = this.apiKey.bind(this);
   public testEndpoint = this.endpoint.bind(this);
-  public testVersion = this.version.bind(this);
+  public testTag = this.tag.bind(this);
 }
 
 const contextFor = (envConfig: Record<string, unknown>): PlatformContext =>
@@ -87,20 +88,25 @@ describe("LoreAdapter", () => {
     ).toBe("https://lore.test");
   });
 
-  it("names a release the way Bay names a release directory", async ({
-    expect,
-  }) => {
-    // The format is a contract with the supervisor: a release in Lore and a
-    // release on disk have to be the same string, or every comparison between
-    // them becomes a correlation problem.
-    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } }).with({
-      provide: DateTimeProvider,
-      use: FixedClock,
-    });
-    const adapter = alepha.inject(TestLoreAdapter);
-    await alepha.start();
+  it("deploys `latest` when no tag is pinned", async ({ expect }) => {
+    const { adapter } = await setup();
 
-    expect(adapter.testVersion()).toBe("2026-08-03-140506");
+    expect(adapter.testTag(contextFor({ projectId: 1 }))).toBe("latest");
+  });
+
+  it("deploys the tag it was given", async ({ expect }) => {
+    const { adapter } = await setup();
+
+    // The timestamp this used to mint lived here and named every push
+    // uniquely, which made promote inexpressible: two deploys of the same
+    // build never shared a name, so "the bytes staging tested" had nothing to
+    // refer to. Naming a *deployment* is the server's job now.
+    expect(
+      adapter.testTag({
+        ...contextFor({ projectId: 1 }),
+        tag: "1.2.3",
+      }),
+    ).toBe("1.2.3");
   });
 
   describe("the build target", () => {
@@ -177,3 +183,23 @@ class FixedClock extends DateTimeProvider {
     return Date.parse("2026-08-03T14:05:06.789Z");
   }
 }
+
+/**
+ * `push` is a registry operation, so an adapter without one must refuse.
+ *
+ * Falling back to a deploy would be worse than failing: "put this where I can
+ * deploy it from later" and "deploy it now" are different intentions, and
+ * silently turning the first into the second is how a tag meant for staging
+ * reaches production.
+ */
+describe("PlatformAdapter.push", () => {
+  it("refuses on an adapter with no registry", async ({ expect }) => {
+    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
+    const adapter = alepha.inject(CloudflareAdapter);
+    await alepha.start();
+
+    await expect(
+      adapter.push({} as PlatformContext, (async () => {}) as never),
+    ).rejects.toThrow(/no artifact registry/i);
+  });
+});

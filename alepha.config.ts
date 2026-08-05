@@ -5,8 +5,8 @@ import { $command } from "alepha/command";
 
 export default (alepha: Alepha) => {
   // The changelog is the note that ships with the npm packages, so it lists
-  // what npm ships: the `alepha` modules, its `api/*` sub-modules, and the two
-  // published `@alepha/*` packages. Everything else — the apps, the private
+  // what npm ships: the `alepha` modules, its `api/*` sub-modules, and every
+  // published `@alepha/*` package. Everything else — the apps, the private
   // packages — is invisible here without anyone having to remember it.
   //
   // This was a denylist until 0.25, and the denylist is why `bay`, `pulse`,
@@ -68,6 +68,7 @@ export default (alepha: Alepha) => {
       "devtools",
       "mqtt",
       "payments-stripe",
+      "protobuf",
       "ui",
       // surfaces that live inside a module and are named on their own
       "auth",

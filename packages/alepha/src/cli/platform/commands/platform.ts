@@ -47,6 +47,13 @@ export class PlatformCommand {
           "Tenant slug (apps with tenancy: optional | required). Names resources <tenant>-<project>-<env> and serves <tenant>.<domain>.",
       })
       .optional(),
+    tag: z
+      .text({
+        aliases: ["t"],
+        description:
+          "Artifact tag, Docker-style. Defaults to `latest`, which is replaced on every push. Any other tag is write-once: deploying it again deploys the same bytes instead of rebuilding, which is what makes promoting a tag from staging to production ship exactly what was tested. Registry-backed adapters only (lore).",
+      })
+      .optional(),
     verbose: z
       .boolean()
       .meta({ aliases: ["v"] })
@@ -242,6 +249,7 @@ export class PlatformCommand {
         run,
         prebuilt: flags.prebuilt,
         tenant: flags.tenant,
+        tag: flags.tag,
       });
 
       if (flags.json) {
@@ -655,10 +663,67 @@ export class PlatformCommand {
         root,
         naming: namingCtx,
         tenant,
+        tag: flags.tag,
       };
 
       await adapter.authenticate(ctx, run);
       await adapter.deploy(ctx, run);
+    },
+  });
+
+  /**
+   * Build an artifact into the registry without deploying it.
+   *
+   * The half of `up` that produces something, without the half that places it.
+   * Useful on its own — tag a build in CI, decide later which environment gets
+   * it — and it is what makes promote a first-class move rather than a rebuild
+   * wearing the same label.
+   */
+  protected readonly push = $command({
+    name: "push",
+    mode: "production",
+    description:
+      "Build and upload an artifact to the registry, without deploying it",
+    flags: this.envFlags,
+    handler: async ({ flags, root, run }) => {
+      const config = await this.inspector.resolveConfig(root);
+      const env = flags.env ?? config.defaultEnv;
+      const envConfig = config.environments[env];
+      const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
+      const app = await this.resolveApp(
+        root,
+        config,
+        this.isServerless(envConfig.adapter),
+      );
+      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const namingCtx = this.naming.forContext(config.project, env, tenant);
+
+      const ctx = {
+        project: config.project,
+        env,
+        envConfig,
+        entry: app.entry,
+        resources: app.resources,
+        root,
+        naming: namingCtx,
+        tenant,
+        tag: flags.tag,
+      };
+
+      await adapter.authenticate(ctx, run);
+      await adapter.build(ctx, run);
+
+      // `push` on an adapter without a registry throws rather than falling
+      // back to a deploy: "put this somewhere I can deploy from later" and
+      // "deploy it now" are different intentions, and quietly turning the
+      // first into the second is how a tag meant for staging reaches
+      // production.
+      const artifactId = await adapter.push(ctx, run);
+
+      this.log.info(
+        `Pushed ${config.project}:${flags.tag ?? "latest"} (${artifactId}). ` +
+          `Deploy it with \`alepha platform deploy --env <env> --tag ${flags.tag ?? "latest"}\`.`,
+      );
     },
   });
 
@@ -903,6 +968,7 @@ export class PlatformCommand {
       this.status,
       this.auth,
       this.build,
+      this.push,
       this.deploy,
       this.db,
       this.secretsCommand.secrets,

@@ -57,10 +57,7 @@ type Options struct {
 	// argument and no config file anywhere.
 	Domains    []string
 	BaseDomain string
-	// AllowControlAPI grants the app access to Bay's control API. Operator-only:
-	// see state.App.ControlAPI for why the manifest may not decide this.
-	AllowControlAPI bool
-	Runtime         string // absolute path to the node/bun binary
+	Runtime    string // absolute path to the node/bun binary
 	// Storage is the bucket hosted apps write blobs to, nil when this Bay has
 	// none configured. Handed to an app only when its manifest declares a
 	// bucket, and never the credentials backups use.
@@ -161,11 +158,23 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 
 	instance := filepath.Join(opts.Root, "apps", opts.Name, opts.Env)
 	// Second resolution, because a release name is something an operator types
-	// into `bay rollback` — but two deploys within the same second would then
+	// into a log or an incident note — but two deploys within the same second would then
 	// collide, and the failure was a bare `rename: file exists` naming two
 	// temporary paths. Suffixed only when it actually collides, so the common
 	// name stays clean.
-	release := uniqueRelease(instance, time.Now().UTC().Format("2006-01-02-150405"))
+	// Millisecond precision, because a release name has to sort chronologically
+	// and a second is not fine enough for CI.
+	//
+	// At second precision two deploys inside one second collided, and
+	// `uniqueRelease` resolved it with a `-2` suffix. That suffix sorts AFTER
+	// the bare name, so the pair was still ordered — until a prune deleted the
+	// bare name and freed it. The next deploy then took it back, and the newest
+	// release sorted as the OLDEST, which is the one thing `Releases` promises
+	// never happens. Prune reads that order to decide what to delete.
+	//
+	// Sub-second precision removes the collision instead of ordering it, and
+	// `uniqueRelease` stays as the backstop.
+	release := uniqueRelease(instance, time.Now().UTC().Format("2006-01-02-150405.000"))
 	releaseDir := filepath.Join(instance, "releases", release)
 	if err := os.MkdirAll(filepath.Dir(releaseDir), 0o755); err != nil {
 		return nil, err
@@ -257,12 +266,6 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		// nightly import — can be told apart from one that has been abandoned.
 		// Both read as zero traffic; only one of them should be deleted.
 		Crons: len(m.Cron),
-	}
-	// Preserved across redeploys unless the caller asks again: revoking should be
-	// deliberate, not a side effect of forgetting a flag. `Upsert` carries the
-	// existing value forward, so only an explicit grant flips it on.
-	if opts.AllowControlAPI {
-		app.ControlAPI = true
 	}
 	if err := store.Upsert(app); err != nil {
 		return nil, err
