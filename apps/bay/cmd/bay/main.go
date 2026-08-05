@@ -1557,11 +1557,17 @@ func cmdStatus(args []string) error {
 			problems++
 			fmt.Printf("           ⚠ last attempt failed: %s\n", a.LastBackupError)
 		}
-		// What is NOT covered even on success, stated on every healthy line.
-		// `storage/` joined the backup set; `.env` did not, and someone reading
-		// a green status should know that before they need it.
+		// What is NOT covered even on success, stated on every healthy line:
+		// someone reading a green status should know the shape of it before
+		// they need it, not after.
 		if a.Backups {
 			fmt.Printf("           .env is not backed up — secrets come from the deploy\n")
+			// Uploads are not in the backup set at all. An app still on local
+			// storage therefore has exactly one copy of them, on this disk, and
+			// a green backup line must not be read as covering that.
+			if a.StorageBackend == deploy.BackendLocal {
+				fmt.Printf("           uploads are on this disk ONLY — `bay config storage` to put them in a bucket\n")
+			}
 		}
 		fmt.Println()
 	}
