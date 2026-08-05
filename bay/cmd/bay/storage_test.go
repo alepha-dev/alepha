@@ -228,6 +228,49 @@ func TestLocalAppKeepsItsStorageDirectory(t *testing.T) {
 	}
 }
 
+// localBackedBackupFixture is a deployed blob-using app whose blobs are on this
+// disk, with somewhere to back its database up to.
+func localBackedBackupFixture(t *testing.T, puts *[]string) *deployFixture {
+	t.Helper()
+	f := newDeployFixture(t)
+
+	backups := recordingS3(t, puts)
+	if _, failure := f.server.deployArtifact(context.Background(), deployArtifactOptions{
+		Artifact: bucketDeployableArtifact(t), Name: "demo", Env: "production",
+	}); failure != nil {
+		t.Fatalf("deploy failed: %v", failure)
+	}
+	snapshotCapableNode(t, filepath.Join(f.root, "runtimes", "node-24", "bin", "node"))
+
+	// Real uploads on disk, so "nothing was archived" cannot pass by accident.
+	uploads := filepath.Join(f.root, "apps", "demo", "production", "storage", "avatars")
+	if err := os.MkdirAll(uploads, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(uploads, "a.png"), []byte("png"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	dataDir := filepath.Join(f.root, "apps", "demo", "production", "data")
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dataDir, "app.db"),
+		[]byte("SQLite format 3\x00"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.server.store.SetS3(&state.S3Config{
+		S3Target: state.S3Target{
+			Endpoint: backups.URL, Bucket: "backups",
+			AccessKey: "key", SecretKey: "secret", Region: "auto",
+		},
+		Keep: 7,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return f
+}
+
 // recordingS3 is fakeS3 that remembers which keys were written to it.
 func recordingS3(t *testing.T, puts *[]string) *httptest.Server {
 	t.Helper()
@@ -305,44 +348,83 @@ func s3BackedBackupFixture(t *testing.T, puts *[]string) *deployFixture {
 	return f
 }
 
-// Blobs already in object storage are not archived a second time — that is the
-// point of putting them there, and it is what removes the 1 GiB in-memory cap
-// on the storage tar.
-//
-// Skipped LOUDLY. A backup that quietly covers less than it did yesterday is
-// the worst thing this system can produce, so the response has to say so.
-func TestS3BackedAppSkipsTheStorageArchive(t *testing.T) {
-	var puts []string
-	f := s3BackedBackupFixture(t, &puts)
-
-	rec := f.backup(t)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("backup failed: %s", rec.Body)
-	}
-
-	for _, key := range puts {
-		if strings.Contains(key, "/storage/") {
-			t.Fatalf("an S3-backed app must not have its storage tarred: %v", puts)
-		}
-	}
-
+// notBackedUpOf reads the disclosure list off a backup response.
+func notBackedUpOf(t *testing.T, rec *httptest.ResponseRecorder) string {
+	t.Helper()
 	var body map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	notBackedUp, _ := body["notBackedUp"].([]any)
+	items, _ := body["notBackedUp"].([]any)
 	var joined string
-	for _, item := range notBackedUp {
+	for _, item := range items {
 		joined += item.(string) + "\n"
 	}
-	if !strings.Contains(joined, "storage/") {
-		t.Fatalf("the response must state that storage/ is not archived, got %v", notBackedUp)
-	}
-	// And it must not read as if the files are unprotected — they are in the
-	// bucket, which is a different claim from "not covered".
-	if !strings.Contains(joined, "bay-blobs") {
-		t.Fatalf("the response should name where the blobs actually live, got %v", notBackedUp)
-	}
+	return joined
+}
+
+// Bay backs up the database and nothing else.
+//
+// `storage/` used to be tarred nightly, which sounded like protection and was
+// not: nothing could ever restore it (`bay restore` says so itself), `Prune`
+// only ever walked the `db/` prefix so the archives grew without bound, and
+// `ListStorage` had no callers. A one-directional, unprunable copy capped at
+// 1 GiB of RAM.
+//
+// So blobs are shared through S3 or they are not shared at all — and either
+// way the response says which, because a backup that quietly covers less than
+// it did yesterday is the worst thing this system can produce.
+func TestBackupNeverArchivesUploads(t *testing.T) {
+	t.Run("S3-backed app", func(t *testing.T) {
+		var puts []string
+		f := s3BackedBackupFixture(t, &puts)
+
+		rec := f.backup(t)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("backup failed: %s", rec.Body)
+		}
+		for _, key := range puts {
+			if strings.Contains(key, "/storage/") {
+				t.Fatalf("no app may have its storage tarred: %v", puts)
+			}
+		}
+
+		joined := notBackedUpOf(t, rec)
+		if !strings.Contains(joined, "storage/") {
+			t.Fatalf("the response must state that storage/ is not archived, got %q", joined)
+		}
+		// Not "unprotected" — the blobs are in a bucket, which is a different
+		// claim from "not covered", and the operator needs to know which.
+		if !strings.Contains(joined, "bay-blobs") {
+			t.Fatalf("the response should name where the blobs actually live, got %q", joined)
+		}
+	})
+
+	t.Run("local app", func(t *testing.T) {
+		var puts []string
+		f := localBackedBackupFixture(t, &puts)
+
+		rec := f.backup(t)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("backup failed: %s", rec.Body)
+		}
+		for _, key := range puts {
+			if strings.Contains(key, "/storage/") {
+				t.Fatalf("a local app's uploads must not be archived either: %v", puts)
+			}
+		}
+
+		joined := notBackedUpOf(t, rec)
+		if !strings.Contains(joined, "storage/") {
+			t.Fatalf("the response must state that storage/ is not archived, got %q", joined)
+		}
+		// This app's files exist in exactly one place, on this disk. Saying so
+		// is the whole point: an operator who wants them elsewhere has to
+		// configure a bucket, and cannot learn that from silence.
+		if !strings.Contains(joined, "bay config storage") {
+			t.Fatalf("a local app must be told how to get its uploads off this disk, got %q", joined)
+		}
+	})
 }
 
 // localAppWithUploads is a deployed blob-using app holding files on disk — the

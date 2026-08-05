@@ -41,22 +41,45 @@ runner enfant elles viennent de `logs/app.log`, qui est tourné à 32 Mio.
 sortie. Une app qui écrit du texte brut sur stdout n'en produit aucun, et les
 masquer supprimerait exactement le `console.log` qu'on vient d'ajouter.
 
-## Ce que les sauvegardes couvrent, et ce qu'elles ne couvrent pas
+## What backups cover, and what they do not
+
+**The database, and nothing else.**
 
 | | |
 |---|---|
-| Base SQLite | ✅ snapshot par l'API de backup de SQLite, vérifié, puis compressé |
-| `storage/` | ✅ archive `tar.gz` séparée, plafonnée à 1 Gio |
-| `.env` | ❌ **jamais** — les secrets viennent du déploiement |
+| SQLite database | ✅ snapshot through SQLite's own backup API, verified, then compressed |
+| `storage/` (uploads) | ❌ **never** — see below |
+| `.env` | ❌ **never** — secrets come from the deployment |
 
-Les deux pistes échouent indépendamment : un `tar` qui casse ne doit pas annuler
-une base sauvegardée, et l'inverse non plus. L'échec est **rapporté**, jamais
-avalé — une sauvegarde partielle qui se lit comme une sauvegarde complète est la
-pire chose que ce système puisse produire.
+Every backup response says what it did not cover, in words. The worst failure of
+a backup system is somebody believing it covers more than it does, and that
+belief is cheapest to prevent at the moment they run the command.
 
-Les liens symboliques sont archivés **comme liens**, jamais suivis : un lien
-posé dans `storage/` pourrait sinon aspirer `/etc/shadow` ou le `.env` d'une
-autre app dans une archive qui quitte ensuite la machine.
+### Why uploads are not archived
+
+Bay used to tar `storage/` nightly. That looked like protection and was not:
+
+- **nothing could restore it** — `bay restore` puts the database back and says
+  `notRestored: ["storage/"]`;
+- **nothing pruned it** — retention only ever walked the `db/` prefix, so the
+  archives grew in the bucket forever;
+- **it was capped by RAM** — the whole tar was held in memory, so it refused
+  anything over 1 GiB and an app that grew past that silently had no coverage.
+
+A one-directional, unprunable, memory-bound copy is not a backup. So uploads are
+shared by putting them **in a bucket**, or they are not shared at all:
+
+```bash
+bay config storage --endpoint URL --bucket NAME   # a SECOND credential, never the backup one
+bay storage migrate <name/env>                    # copies what is on disk, keeps the originals
+```
+
+An app left on local storage keeps its files in exactly one place, on this
+host's disk. `bay backup` says so every time rather than letting silence imply
+otherwise.
+
+⚠️ A bucket is durable, not point-in-time: deleting the wrong key deletes it
+everywhere. **Enable versioning on the storage bucket.**
 
 ## Tester ACME sans domaine
 

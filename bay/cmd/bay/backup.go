@@ -55,21 +55,32 @@ func blobsLiveInObjectStorage(app state.App) bool {
 // Stated on every response rather than documented once, because the thing that
 // makes a backup system fail is somebody believing it covers more than it does
 // — and that belief is cheapest to prevent at the moment they run the command.
+//
+// `storage/` is on this list unconditionally. Bay used to tar it nightly, which
+// looked like protection and was not: nothing could restore it, `Prune` never
+// walked its prefix so the archives grew without bound, and the whole thing was
+// capped by how much fitted in memory. Uploads are shared by putting them in a
+// bucket, or they are not shared — and the two cases read very differently, so
+// the message distinguishes them.
 func notBackedUp(store *state.Store, app state.App) []string {
 	out := []string{".env (secrets)"}
-	if !blobsLiveInObjectStorage(app) {
-		return out
+	if blobsLiveInObjectStorage(app) {
+		where := "the configured bucket"
+		if cfg := store.Storage(); cfg != nil {
+			where = cfg.Bucket
+		}
+		// "The blobs are in bucket X" is a different claim from "not covered",
+		// and only one of the two is true here.
+		return append(out, fmt.Sprintf(
+			"storage/ (uploads live in %s — durable, but NOT point-in-time: "+
+				"enable bucket versioning, object storage keeps the current blob, "+
+				"not yesterday's)", where))
 	}
-	// Named rather than merely omitted. "storage/ is not in this backup" reads
-	// as a gap; "the blobs are in bucket X" is a different claim, and only one
-	// of the two is true.
-	where := "the configured bucket"
-	if cfg := store.Storage(); cfg != nil {
-		where = cfg.Bucket
-	}
-	return append(out, fmt.Sprintf(
-		"storage/ (uploads live in %s, not archived here — enable bucket versioning: "+
-			"object storage keeps the current blob, not yesterday's)", where))
+	// One copy, on this disk, and nothing else holds it. Said plainly, with the
+	// way out named: an operator cannot learn this from silence.
+	return append(out,
+		"storage/ (uploads exist ONLY on this host's disk and are not copied anywhere — "+
+			"run `bay config storage` then `bay storage migrate` to put them in a bucket)")
 }
 
 // appPaths resolves the runtime binary and managed database path for an app.
@@ -185,25 +196,10 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("retention failed after a successful backup", "app", app.Key(), "err", pruneErr)
 	}
 
-	// Uploaded files are archived separately and are allowed to fail on their
-	// own. They are snapshotted by a different mechanism from the database — a
-	// tar walk rather than SQLite's backup API — and an app can have one without
-	// the other, so one failing must never cancel the other. The failure is
-	// REPORTED rather than swallowed: a partial backup that reads as a complete
-	// one is the worst thing this system can produce.
-	storageDir := filepath.Join(s.root, "apps", app.Name, app.Env, "storage")
-	var (
-		storageRes *backup.Result
-		storageErr error
-	)
-	if !blobsLiveInObjectStorage(app) {
-		storageRes, storageErr = mgr.BackupStorage(r.Context(), app.Name, app.Env, storageDir)
-	}
-
 	s.log.Info("backup stored", "app", app.Key(), "key", res.Key,
 		"raw", res.RawBytes, "stored", res.StoredBytes, "tables", res.Tables, "pruned", len(pruned))
 
-	response := map[string]any{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"key":         res.Key,
 		"rawBytes":    res.RawBytes,
 		"storedBytes": res.StoredBytes,
@@ -213,24 +209,7 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		// What is NOT covered has to be stated, every time. The worst failure of
 		// a backup system is someone believing they are covered.
 		"notBackedUp": notBackedUp(s.store, app),
-	}
-	switch {
-	case storageErr != nil:
-		s.log.Error("storage backup failed", "app", app.Key(), "err", storageErr)
-		response["storageError"] = storageErr.Error()
-		response["notBackedUp"] = []string{".env (secrets)", "storage/ (uploaded files) — SEE storageError"}
-	case storageRes == nil:
-		// No storage directory, or nothing in it. Not a failure, and said in
-		// words so an empty field is never read as a silent success.
-		response["storage"] = "no uploaded files to archive"
-	default:
-		s.log.Info("storage archived", "app", app.Key(), "key", storageRes.Key,
-			"files", storageRes.Tables, "stored", storageRes.StoredBytes)
-		response["storageKey"] = storageRes.Key
-		response["storageFiles"] = storageRes.Tables
-		response["storageBytes"] = storageRes.StoredBytes
-	}
-	writeJSON(w, http.StatusOK, response)
+	})
 }
 
 func (s *server) handleListBackups(w http.ResponseWriter, r *http.Request) {
@@ -561,25 +540,6 @@ func (s *server) backupOne(ctx context.Context, mgr *backup.Manager, cfg *state.
 	}
 	s.log.Info("scheduled backup", "app", key, "key", res.Key,
 		"raw", res.RawBytes, "stored", res.StoredBytes)
-
-	// Uploaded files, on the same schedule but on their own footing: a tar walk
-	// that fails must not undo a database backup that succeeded, and must not
-	// pass silently either.
-	storageDir := filepath.Join(s.root, "apps", app.Name, app.Env, "storage")
-	if blobsLiveInObjectStorage(app) {
-		// Nothing to archive: the uploads are already objects. Logged rather
-		// than passed over in silence, so "no storage backup for this app"
-		// never has to be diagnosed.
-		s.log.Debug("storage backup skipped: blobs are in object storage", "app", key)
-	} else {
-		switch storageRes, storageErr := mgr.BackupStorage(ctx, app.Name, app.Env, storageDir); {
-		case storageErr != nil:
-			s.log.Error("scheduled storage backup failed", "app", key, "err", storageErr)
-		case storageRes != nil:
-			s.log.Info("scheduled storage backup", "app", key, "key", storageRes.Key,
-				"files", storageRes.Tables, "stored", storageRes.StoredBytes)
-		}
-	}
 
 	// Retention runs here and not on a schedule of its own: pruning is only
 	// meaningful right after a new backup exists, and `Prune` returning what it
