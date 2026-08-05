@@ -24,7 +24,7 @@ export class NodeShellProvider implements ShellProvider {
     command: string | string[],
     options: ShellRunOptions = {},
   ): Promise<string> {
-    const { resolve = false, capture = false, root, env } = options;
+    const { resolve = false, capture = false, root, env, stdin } = options;
     const cwd = root ?? process.cwd();
     const isArgv = Array.isArray(command);
 
@@ -47,9 +47,17 @@ export class NodeShellProvider implements ShellProvider {
       }
       if (capture) {
         // Argv form never touches a shell — args are passed verbatim.
-        return this.execCaptureArgv(executable, args, { cwd, env });
+        return this.execCaptureArgv(executable, args, { cwd, env, stdin });
       }
-      return this.execInherit(executable, args, { cwd, env });
+      return this.execInherit(executable, args, { cwd, env, stdin });
+    }
+
+    if (stdin !== undefined) {
+      throw new AlephaError(
+        'stdin requires the argv-array form: run(["cmd", "arg"], { stdin }). ' +
+          "The string form is parsed and re-quoted for a shell, so there is no " +
+          "pipe to attach — dropping the data quietly would be worse.",
+      );
     }
 
     if (resolve) {
@@ -71,20 +79,62 @@ export class NodeShellProvider implements ShellProvider {
   }
 
   /**
+   * Normalises the `stdin` option to bytes.
+   *
+   * A string is encoded as UTF-8; a `Uint8Array` is passed through untouched,
+   * which is what lets a gzip artifact survive the trip.
+   */
+  protected toStdinBytes(stdin: Uint8Array | string): Uint8Array {
+    return typeof stdin === "string" ? new TextEncoder().encode(stdin) : stdin;
+  }
+
+  /**
+   * Writes the bytes and closes the stream.
+   *
+   * Closing is the load-bearing half: a child reading to EOF — `ssh` feeding a
+   * request body, `bay deploy -` copying to a temp file — never finishes
+   * without it, and the symptom is a deploy that hangs rather than fails.
+   *
+   * EPIPE is swallowed on purpose: a command that exits before reading all its
+   * input has not failed *here*, and the exit code below is the real verdict.
+   */
+  protected writeStdin(
+    proc: { stdin: NodeJS.WritableStream | null },
+    stdin: Uint8Array | string,
+  ): void {
+    if (!proc.stdin) {
+      return;
+    }
+    proc.stdin.on("error", () => {});
+    proc.stdin.write(this.toStdinBytes(stdin));
+    proc.stdin.end();
+  }
+
+  /**
    * Execute command with inherited stdio (streams to terminal).
    */
   protected async execInherit(
     executable: string,
     args: string[],
-    options: { cwd: string; env?: Record<string, string> },
+    options: {
+      cwd: string;
+      env?: Record<string, string>;
+      stdin?: Uint8Array | string;
+    },
   ): Promise<string> {
     const isWindows = process.platform === "win32";
+    // Only stdin changes: stdout and stderr keep going straight to the
+    // terminal, which is the whole reason a caller chose this path.
+    const stdio: Array<"pipe" | "inherit"> =
+      options.stdin === undefined
+        ? ["inherit", "inherit", "inherit"]
+        : ["pipe", "inherit", "inherit"];
 
     // On Windows, use shell mode with a single command string to avoid
     // Node.js DEP0190 deprecation warning about unescaped args with shell: true
     const proc = isWindows
       ? spawn(this.buildShellCommand(executable, args), [], {
-          stdio: "inherit",
+          stdio,
           cwd: options.cwd,
           shell: true,
           env: {
@@ -94,7 +144,7 @@ export class NodeShellProvider implements ShellProvider {
           },
         })
       : spawn(executable, args, {
-          stdio: "inherit",
+          stdio,
           cwd: options.cwd,
           env: {
             ...process.env,
@@ -102,6 +152,10 @@ export class NodeShellProvider implements ShellProvider {
             ...options.env,
           },
         });
+
+    if (options.stdin !== undefined) {
+      this.writeStdin(proc, options.stdin);
+    }
 
     return new Promise<string>((resolve, reject) => {
       proc.on("exit", (code, signal) => {
@@ -188,10 +242,14 @@ export class NodeShellProvider implements ShellProvider {
   protected execCaptureArgv(
     executable: string,
     args: string[],
-    options: { cwd: string; env?: Record<string, string> },
+    options: {
+      cwd: string;
+      env?: Record<string, string>;
+      stdin?: Uint8Array | string;
+    },
   ): Promise<string> {
     return new Promise<string>((resolve, reject) => {
-      execFile(
+      const proc = execFile(
         executable,
         args,
         {
@@ -214,6 +272,10 @@ export class NodeShellProvider implements ShellProvider {
           }
         },
       );
+
+      if (options.stdin !== undefined) {
+        this.writeStdin(proc, options.stdin);
+      }
     });
   }
 

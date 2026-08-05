@@ -25,6 +25,20 @@ export interface ShellRunOptions {
    * @default false
    */
   capture?: boolean;
+
+  /**
+   * Bytes to write to the command's stdin, after which the stream is closed.
+   *
+   * **Argv-array commands only.** The string form is parsed and re-quoted for
+   * a shell, so there is no child to attach a pipe to — passing this with a
+   * string command throws rather than silently dropping the data.
+   *
+   * Buffered, not streamed: the caller hands over a value it already holds.
+   * That is the right trade for what this exists for — piping a ~10 MB deploy
+   * artifact into `ssh` — and a streaming API can be added the day something
+   * needs one.
+   */
+  stdin?: Uint8Array | string;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

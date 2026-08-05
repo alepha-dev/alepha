@@ -31,37 +31,95 @@ platform({
   environments: {
     production: {
       adapter: "bay",
-      endpoint: "https://admin.example.com",
+      host: "deploy@bay.example.com",
       domain: "myapp.com",
     },
   },
 });
 ```
 
-`endpoint` is the Bay admin panel that owns the machine, and it is **required** — unlike Cloudflare
-there is no global endpoint to fall back on, because a Bay is a machine someone owns. Set it in the
-config or export `BAY_ENDPOINT`.
+`host` is the SSH destination of the machine, and it is **required** — unlike Cloudflare there is no
+global endpoint to fall back on, because a Bay is a machine someone owns. Set it in the config or
+export `BAY_HOST`.
 
-## Log in
+It is handed to your own `ssh` binary verbatim, so it can be an alias from `~/.ssh/config`:
+
+```
+Host bay-prod
+  HostName 203.0.113.10
+  User deploy
+  IdentityFile ~/.ssh/bay
+  ProxyJump bastion.example.com
+```
+
+```typescript
+{ adapter: "bay", host: "bay-prod" }
+```
+
+That is deliberate. There is no port, identity-file, jump-host or ssh-flags field here, because
+`~/.ssh/config` already has all of them and having two places to configure one connection is worse
+than having one. It also means `host` rejects a bare IPv6 literal (`2001:db8::1`) and an `ssh://` URI
+outright — the pattern that keeps this value off a command line safely accepts a hostname, an IPv4
+address, or `user@host`, but not a colon. Reach an IPv6-only host through a `~/.ssh/config` alias
+instead, the same as any other connection detail this field does not carry directly.
+
+If the Bay was started with a `--root` other than its default (`./bay-data`, resolved under the
+deploy user's home), also set `socket` — an **absolute** path; the validation pattern requires a
+leading `/`, since the value is passed straight through as `--control-socket <path>` with no
+resolution against a working directory:
+
+```typescript
+{ adapter: "bay", host: "deploy@bay.example.com", socket: "/var/lib/bay/control.sock" }
+```
+
+Bay's own guess at its control socket is `<root>/control.sock`, but every command this adapter sends
+runs as a non-interactive `ssh` command, whose shell starts in `$HOME` — so that guess only lands when
+the root really is `./bay-data` under the deploy user's home, and misses for any other root, including
+every `--root /var/lib/bay` install. Bay's `$BAY_SOCKET` environment variable is its own escape hatch
+for this, but it cannot be relied on here: a non-interactive shell reads neither `~/.profile` nor, on
+stock Debian/Ubuntu, `~/.bashrc`. Setting `socket` (or exporting `BAY_SOCKET` in the CLI's own
+environment, which overrides the config the same way `BAY_HOST` overrides `host`) sidesteps needing a
+remote shell profile at all — it is appended as `--control-socket <path>` to every `bay` command this
+adapter runs. Leave it unset when the Bay genuinely runs with its default root under the deploy user's
+home.
+
+## Prerequisites on the host
+
+Two, both outside Alepha:
+
+1. **Your public key is in `~/.ssh/authorized_keys`** for the user you connect as. Alepha never
+   handles the key — it runs `ssh`, and `ssh` does what it always does.
+2. **That user is in the `bay-control` group.** Bay publishes its control socket at mode `0660` owned
+   by that group, so membership *is* the deploy permission — there is no token to issue, store or
+   revoke.
+
+```bash
+sudo usermod -aG bay-control deploy   # on the host; the user must then reopen their session
+```
+
+Check both in one command:
 
 ```bash
 alepha platform auth login --env production
 ```
 
-This runs an OAuth device flow (RFC 8628) against the endpoint: the CLI prints a code, you approve it
-in the browser, and the credential is stored with its refresh token so long deploys do not expire
-mid-flight. The endpoint must be a Bay admin panel with its OAuth server enabled, and the approving
-user needs the admin role.
+It confirms the key, the group, and Bay's control socket itself: after checking that the user is in
+`bay-control`, it makes a real `bay list` call over the socket, rather than the version check alone
+that would prove no more than "ssh works and `bay` is on PATH". Those failures look nothing alike and
+only one of them is about SSH, so it is worth running once before the first deploy — the group problem
+otherwise surfaces halfway through as a permission error mentioning neither Bay nor the group.
 
-For CI, skip the flow and export a key instead:
+If that command (or `bay list`, behind `alepha platform status`) fails with a raw detail saying "no
+control socket found" rather than a plain permission error naming a `.sock` path, the group is not the
+problem — it means Bay never even tried to dial anything, because its own guess at the socket path
+missed entirely. Set `socket`, above, to the actual path. A permission error that *does* name a `.sock`
+path is the genuine group problem instead: Bay found the socket file (its containing directory is
+world-readable) but refused to dial it for that user.
 
-```bash
-BAY_API_KEY=... alepha platform up --env production
-```
-
-```bash
-alepha platform auth logout --env production
-```
+`alepha platform auth logout` exists but always refuses: nothing was stored, so there is nothing to
+forget, and refusing loudly is safer than doing nothing quietly, which would look like access had been
+revoked. Revoke access for real by removing the key from `authorized_keys`, or drop the user from
+`bay-control` to stop deploys without closing the account.
 
 ## Deploy
 
@@ -70,8 +128,17 @@ alepha platform up --env production
 ```
 
 Under the hood: `alepha build --target=bare`, then `alepha pack` — which produces
-`<project>-latest.tar.gz` containing the bundle and its `migrations/` directory — then an upload of
-that artifact to the endpoint.
+`<project>-latest.tar.gz` containing the bundle and its `migrations/` directory — then one `ssh`
+invocation that pipes the artifact straight into the Bay's own CLI:
+
+```bash
+ssh -o BatchMode=yes deploy@bay.example.com \
+  'bay deploy - --name myapp --env production --domain myapp.com' < myapp-latest.tar.gz
+```
+
+Nothing is staged on the host first, so a deploy that dies mid-way leaves no half-uploaded artifact
+behind. `BatchMode=yes` is always set: in CI a passphrase prompt would hang forever, and a hung prompt
+is indistinguishable from a hung deploy.
 
 Bay takes it from there: it reads the manifest, creates the database, the storage directory and the
 cron entries the app declares, starts the new release, waits for `/health` to answer, swaps traffic
@@ -103,9 +170,14 @@ alepha platform status --env production
 alepha platform down --env production
 ```
 
-`down` removes the app from the Bay. Note that on Bay the database and the uploads live inside the
-app's own directory, so tearing an environment down takes its data with it — there is no separate
-managed database that outlives the app.
+`down` unregisters the app and stops serving it. The database and the uploads are **kept**, in the
+app's own directory on the host — on Bay they live inside the instance rather than in a managed
+service, so a teardown that deleted them would have no way back. Destroying them is a separate,
+deliberate act on the host itself:
+
+```bash
+bay remove myapp/production --purge   # on the host, and irreversible
+```
 
 ## Bay versus Cloudflare
 
@@ -116,7 +188,7 @@ managed database that outlives the app.
 | Provisioning | by Bay, from the manifest, at deploy | by the CLI, via the Cloudflare API |
 | Database | SQLite file (or your own Postgres) in the app directory | D1, or Postgres via Hyperdrive |
 | Migrations | at app boot | `alepha platform migrate` |
-| Login | device flow against your endpoint | `wrangler login` |
+| Access | SSH key + `bay-control` group membership | `wrangler login` |
 | Rollback | automatic on failed readiness | redeploy the previous version |
 | Scaling | one machine | Cloudflare's edge |
 
@@ -136,12 +208,12 @@ export default defineConfig({
       environments: {
         production: {
           adapter: "bay",
-          endpoint: "https://admin.example.com",
+          host: "deploy@bay.example.com",
           domain: "myapp.com",
         },
         staging: {
           adapter: "bay",
-          endpoint: "https://admin.example.com",
+          host: "deploy@bay.example.com",
         },
       },
     }),
@@ -150,7 +222,7 @@ export default defineConfig({
 ```
 
 ```bash
-alepha platform auth login --env production
-alepha platform plan --env production   # shows what will happen, touches nothing
+alepha platform auth login --env production   # checks the key and the group, changes nothing
+alepha platform plan --env production         # shows what will happen, touches nothing
 alepha platform up --env production
 ```

@@ -97,4 +97,60 @@ describe("NodeShellProvider", () => {
       await expect(shell.isInstalled("node; echo pwned")).resolves.toBe(false);
     });
   });
+
+  describe("run with stdin", () => {
+    it("pipes bytes into an argv command and captures what it echoes back", async () => {
+      const out = await shell.run(
+        ["node", "-e", "process.stdin.pipe(process.stdout)"],
+        { capture: true, stdin: "piped-in" },
+      );
+
+      expect(out).toContain("piped-in");
+    });
+
+    it("pipes binary bytes through unchanged", async () => {
+      // The artifact BayAdapter sends is a gzip stream, so a byte that is not
+      // valid UTF-8 has to survive. A string-only implementation mangles this.
+      const bytes = new Uint8Array([0x1f, 0x8b, 0x00, 0xff, 0xfe]);
+
+      const out = await shell.run(
+        [
+          "node",
+          "-e",
+          "const c=[];process.stdin.on('data',d=>c.push(d));" +
+            "process.stdin.on('end',()=>process.stdout.write(" +
+            "Buffer.concat(c).toString('hex')))",
+        ],
+        { capture: true, stdin: bytes },
+      );
+
+      expect(out.trim()).toBe("1f8b00fffe");
+    });
+
+    it("closes stdin so a command that reads to EOF terminates", async () => {
+      // Without an explicit end() the child waits forever and the test times
+      // out — which is exactly how a deploy would hang.
+      const out = await shell.run(
+        [
+          "node",
+          "-e",
+          "const c=[];process.stdin.on('data',d=>c.push(d));" +
+            "process.stdin.on('end',()=>process.stdout.write('eof:'+" +
+            "Buffer.concat(c).length))",
+        ],
+        { capture: true, stdin: "abc" },
+      );
+
+      expect(out.trim()).toBe("eof:3");
+    });
+
+    it("refuses stdin on the shell-string form rather than dropping it", async () => {
+      // The string form is parsed and re-quoted for a shell; there is no argv
+      // to attach a pipe to. Ignoring the option would lose the caller's data
+      // silently, which is the worst of the three options.
+      await expect(
+        shell.run("node -e 'process.exit(0)'", { stdin: "x" }),
+      ).rejects.toThrowError(/argv/i);
+    });
+  });
 });

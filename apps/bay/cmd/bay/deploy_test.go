@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -479,5 +480,107 @@ func TestOnlyTheServingReleaseAndItsPredecessorAreKept(t *testing.T) {
 		if !found {
 			t.Fatalf("expected %q to be kept, got %v", want, kept)
 		}
+	}
+}
+
+// TestArtifactBodyReadsStdinForDash covers the seam `bay deploy -` needs.
+//
+// A path is opened; `-` is not. Getting this wrong is silent: `os.Open("-")`
+// fails with "no such file", which reads like a typo rather than like a
+// missing feature.
+func TestArtifactBodyReadsStdinForDash(t *testing.T) {
+	body, closer, err := artifactBody("-", strings.NewReader("from-stdin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	got, err := io.ReadAll(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "from-stdin" {
+		t.Fatalf("body = %q, want %q", got, "from-stdin")
+	}
+}
+
+func TestArtifactBodyOpensAPath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app.tar.gz")
+	if err := os.WriteFile(path, []byte("from-disk"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	body, closer, err := artifactBody(path, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	got, err := io.ReadAll(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "from-disk" {
+		t.Fatalf("body = %q, want %q", got, "from-disk")
+	}
+}
+
+func TestArtifactBodyReportsAMissingFile(t *testing.T) {
+	// Not swallowed into an empty body: an unreadable artifact must fail before
+	// anything on the host is stopped.
+	if _, _, err := artifactBody(filepath.Join(t.TempDir(), "nope.tar.gz"), nil); err == nil {
+		t.Fatal("expected an error for a missing artifact")
+	}
+}
+
+// TestAChunkedUploadDeploys is the assumption the SSH adapter rests on.
+//
+// A body whose length is unknown — which is what piping stdin into an HTTP
+// request produces — is sent with `Transfer-Encoding: chunked`. Nothing else in
+// this suite exercises that, and the failure mode if it did not work is a
+// deploy that uploads zero bytes and reports a corrupt artifact.
+func TestAChunkedUploadDeploys(t *testing.T) {
+	f := newDeployFixture(t)
+	artifact, err := os.Open(deployableArtifact(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer artifact.Close()
+
+	srv := httptest.NewServer(http.HandlerFunc(f.server.handleDeploy))
+	defer srv.Close()
+
+	// An *os.File whose length net/http cannot determine up front — not
+	// because of the io.Reader(artifact) conversion below, which is a no-op:
+	// http.NewRequest's type switch inspects the argument's dynamic type, and
+	// *os.File was never one of the three concrete types it special-cases
+	// (*bytes.Buffer, *bytes.Reader, *strings.Reader), conversion or not.
+	// ContentLength stays at its zero value for any type outside that list —
+	// see the field's own doc comment: "For client requests, a value of 0
+	// with a non-nil Body is also treated as unknown." That is what forces
+	// Transfer-Encoding: chunked on the wire; it is 0 here, not -1.
+	req, err := http.NewRequest(http.MethodPost,
+		srv.URL+"/apps?name=demo&env=production", io.Reader(artifact))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if req.ContentLength != 0 {
+		t.Fatalf("ContentLength = %d, want 0 (net/http's unknown-length sentinel for a client request, which forces chunked transfer)", req.ContentLength)
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	raw, _ := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", res.StatusCode, raw)
+	}
+
+	// The app is registered and serving, which is the only proof the bytes
+	// arrived whole — a truncated gzip is refused inside deployArtifact.
+	if _, ok := f.server.store.Get("demo/production"); !ok {
+		t.Fatal("demo/production should be registered after a chunked upload")
 	}
 }

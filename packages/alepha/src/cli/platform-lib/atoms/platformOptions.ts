@@ -88,15 +88,50 @@ export const platformOptions = $atom({
         z.object({
           adapter: z.enum(["cloudflare", "bay"]),
           /**
-           * Base URL of the Bay control panel this environment deploys to,
-           * e.g. `"https://admin.bay.alepha.dev"`. Only read by the `bay`
-           * adapter.
+           * SSH destination of the Bay this environment deploys to, e.g.
+           * `"deploy@bay.example.com"`. Only read by the `bay` adapter, where
+           * it is **required**.
            *
-           * A Bay is a machine someone owns, so unlike Cloudflare there is no
-           * global endpoint to assume. Committing it is fine — it is a public
-           * hostname, and the credential is what protects it.
+           * Passed to the machine's own `ssh` binary verbatim, so it may be an
+           * alias defined in `~/.ssh/config` (`"bay-prod"`). That is the point
+           * of shelling out rather than speaking the protocol: `ProxyJump`,
+           * `IdentityAgent`, `ControlMaster` and a per-host `User` are already
+           * configured there, and stay in one place.
            *
-           * `$BAY_ENDPOINT` overrides, so a fork or a second Bay needs no edit.
+           * There is deliberately no port, identity-file or extra-flags field
+           * for the same reason. Committing this is fine — it is a hostname,
+           * and the SSH key is what protects it.
+           *
+           * `$BAY_HOST` overrides, so CI needs no edit to a committed config.
+           */
+          host: z.text().optional(),
+          /**
+           * Absolute path to Bay's control socket on the host, e.g.
+           * `"/var/lib/bay/control.sock"`. Only read by the `bay` adapter.
+           *
+           * Bay's default root is the *relative* path `./bay-data`, and an ssh
+           * command runs non-interactively with cwd `$HOME` — so on any host
+           * whose Bay root is not `$HOME/bay-data` (every `--root
+           * /var/lib/bay` install, for one), Bay's own guess at the socket
+           * path misses and every command this adapter sends fails to find
+           * it. `$BAY_SOCKET` on the Bay host is Bay's own escape hatch for
+           * this, but it cannot be relied on here: a non-interactive ssh
+           * command reads neither `~/.profile` nor, on Debian/Ubuntu's
+           * default, `~/.bashrc`, so there is nowhere reliable to export it
+           * from.
+           *
+           * `$BAY_SOCKET` in the CLI's own environment overrides this value,
+           * the same way `$BAY_HOST` overrides `host`.
+           */
+          socket: z.text().optional(),
+          /**
+           * Base URL of a deploy gateway, e.g. `"https://example.com"`.
+           *
+           * **No adapter reads this.** The `bay` adapter reaches a Bay over
+           * SSH, at {@link host} — there was once an HTTP path here, aimed at
+           * a Bay admin panel that was never written. The `lore` adapter that
+           * consumed it has since been removed along with its artifact
+           * registry.
            */
           endpoint: z.text().optional(),
           /**
@@ -172,8 +207,23 @@ export type PlatformOptions = Infer<typeof platformOptions.schema>;
 export interface EnvironmentConfig {
   adapter: "cloudflare" | "bay";
   /**
-   * Base URL of the Bay control panel this environment deploys to. Only
-   * read by the `bay` adapter.
+   * SSH destination of the Bay this environment deploys to (`bay` adapter).
+   * May be an alias from `~/.ssh/config`. `$BAY_HOST` overrides.
+   */
+  host?: string;
+  /**
+   * Absolute path to Bay's control socket on the host (`bay` adapter only).
+   * Needed because Bay's default root is relative and an ssh command's cwd is
+   * `$HOME`; `$BAY_SOCKET` on the host is the alternative but is unreliable
+   * for non-interactive shells. `$BAY_SOCKET` in the CLI's own environment
+   * overrides.
+   */
+  socket?: string;
+  /**
+   * Base URL of a deploy gateway.
+   *
+   * **No adapter reads this.** `bay` reaches a Bay over SSH at {@link host},
+   * and the `lore` adapter that once consumed it has been removed.
    */
   endpoint?: string;
   domain?: string;

@@ -89,14 +89,14 @@ describe("platform auth", () => {
     );
   });
 
-  it("makes Bay name the endpoint it cannot find, rather than assuming one", async () => {
+  it("makes Bay name the host it cannot find, rather than assuming one", async () => {
     const alepha = Alepha.create();
     const adapter = alepha.inject(BayAdapter);
 
-    // Unlike Cloudflare there is no global endpoint to fall back on: a Bay is
-    // a machine someone owns.
+    // Unlike Cloudflare there is no global destination to fall back on: a Bay
+    // is a machine someone owns, reached over SSH.
     await expect(adapter.login(context(), run)).rejects.toThrowError(
-      /No Bay endpoint for environment "production"/,
+      /No Bay host for environment "production"/,
     );
   });
 });
