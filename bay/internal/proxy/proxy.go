@@ -3,6 +3,8 @@
 package proxy
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"log/slog"
 	"mime"
 	"net"
@@ -292,6 +294,26 @@ func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, app state.App) {
 		// request arrived over TLS when it did not.
 		req.Header.Set("X-Forwarded-Proto", scheme)
 		req.Header.Set("X-Forwarded-Host", r.Host)
+
+		/*
+			One id per request, minted here.
+
+			Alepha's router already reads this header — `getContextId` takes
+			`x-request-id`, then `x-correlation-id`, then gives up and generates
+			a UUID — and its doc recommends "a proxy that sets a consistent
+			request ID header for better traceability across services". Bay is
+			that proxy. Without this every app invented its own id, so nothing
+			Bay knows about a request could be joined to what the app logged
+			about it.
+
+			Set for the same reason and on the same terms as the two headers
+			above: OVERWRITTEN. `getContextId` says it trusts this header
+			because everything is behind a proxy, which is only true if the
+			proxy actually sets it. Passed through, a client could pin all its
+			traffic to one id, or borrow somebody else's, and the field an
+			operator greps by would be chosen by the person being investigated.
+		*/
+		req.Header.Set("X-Request-Id", newRequestID())
 		inner(req)
 	}
 
@@ -360,4 +382,22 @@ func isOperational(path string) bool {
 		return true
 	}
 	return false
+}
+
+// newRequestID returns an id for one request.
+//
+// 16 random bytes, hex. Not a UUID: nothing parses this, it only has to be
+// unique enough to grep by and short enough to read in a terminal — and
+// `crypto/rand` is already the source Bay uses for values that must not
+// collide.
+//
+// A failure to read randomness is not worth failing a request over: the header
+// is for correlation, so an empty one costs a join, not an outage. Alepha then
+// mints its own id exactly as it did before this existed.
+func newRequestID() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(b[:])
 }
