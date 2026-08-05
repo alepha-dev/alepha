@@ -140,10 +140,19 @@ func main() {
 	case "stop":
 		err = cmdStop(os.Args[2:])
 	case "config":
-		if len(os.Args) > 2 && os.Args[2] == "s3" {
+		switch {
+		case len(os.Args) > 2 && os.Args[2] == "s3":
 			err = cmdConfigS3(os.Args[3:])
+		case len(os.Args) > 2 && os.Args[2] == "storage":
+			err = cmdConfigStorage(os.Args[3:])
+		default:
+			err = errors.New("usage: bay config (s3|storage) --endpoint … --bucket …")
+		}
+	case "storage":
+		if len(os.Args) > 2 && os.Args[2] == "migrate" {
+			err = cmdStorageMigrate(os.Args[3:])
 		} else {
-			err = errors.New("usage: bay config s3 --endpoint … --bucket …")
+			err = errors.New("usage: bay storage migrate <name/env>")
 		}
 	case "backup":
 		err = cmdBackup(os.Args[2:])
@@ -193,7 +202,13 @@ func usage() {
               # code only: migrations are forward-only and stay applied
   bay version
   bay config s3 --endpoint URL --bucket NAME [--keep N]
-                # credentials from BAY_S3_ACCESS_KEY / BAY_S3_SECRET_KEY
+                # where BACKUPS go; credentials from BAY_S3_ACCESS_KEY / BAY_S3_SECRET_KEY
+  bay config storage --endpoint URL --bucket NAME
+                # where hosted apps put their BLOBS; a SECOND credential, from
+                # BAY_STORAGE_ACCESS_KEY / BAY_STORAGE_SECRET_KEY — an app is
+                # given these, and must never be given the backup ones
+  bay storage migrate <name/env>  # copy local uploads into the bucket, then
+                # repoint the app; local files are KEPT for you to delete
   bay backup  <name/env>          # snapshot + verify + upload
   bay backups <name/env>          # list what is stored
   bay restore <name/env> [--key K] # destructive; keeps the old db aside
@@ -673,7 +688,11 @@ func (s *server) start(app state.App) error {
 	if m.Resources.Database {
 		writable = append(writable, filepath.Join(instance, "data"))
 	}
-	if m.Resources.Bucket {
+	// An S3-backed app writes its blobs to the bucket, so the directory is dead
+	// weight — and a writable path granted "just in case" is one an exploit can
+	// use. The manifest says the app needs blob storage; the backend says where,
+	// and only one of the two answers needs a directory on this disk.
+	if m.Resources.Bucket && app.StorageBackend != deploy.BackendS3 {
 		writable = append(writable, filepath.Join(instance, "storage"))
 	}
 
@@ -760,6 +779,7 @@ func (s *server) controlMux() *http.ServeMux {
 	})
 	mux.HandleFunc("GET /apps/{name}/{env}/logs", s.handleLogs)
 	s.registerBackupRoutes(mux)
+	s.registerStorageRoutes(mux)
 	return mux
 }
 
@@ -904,6 +924,10 @@ type deployArtifactOptions struct {
 	Env             string
 	Domains         []string
 	AllowControlAPI bool
+	// MigratedStorage says `bay storage migrate` has already copied this app's
+	// local files into the bucket. Set only by that command; a deploy that
+	// would otherwise strand files is refused without it.
+	MigratedStorage bool
 }
 
 // deployOutcome is what a completed deploy has to say for itself.
@@ -964,6 +988,11 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		Root: s.root, Artifact: opts.Artifact, Name: opts.Name, Env: opts.Env,
 		Domains: opts.Domains, BaseDomain: s.store.BaseDomain(),
 		AllowControlAPI: opts.AllowControlAPI,
+		// Read per deploy rather than captured at boot, so `bay config storage`
+		// takes effect on the next deploy without restarting the proxy — the
+		// same contract `backupManager` has.
+		Storage:         s.store.Storage(),
+		MigratedStorage: opts.MigratedStorage,
 	}, s.store)
 	if err != nil {
 		return nil, s.restoreRefused(key, wasRunning, err)

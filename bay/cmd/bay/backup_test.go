@@ -80,12 +80,14 @@ func newBackupFixture(t *testing.T) *deployFixture {
 
 	srv := fakeS3(t)
 	if err := f.server.store.SetS3(&state.S3Config{
-		Endpoint:  srv.URL,
-		Bucket:    "backups",
-		AccessKey: "key",
-		SecretKey: "secret",
-		Region:    "auto",
-		Keep:      7,
+		S3Target: state.S3Target{
+			Endpoint:  srv.URL,
+			Bucket:    "backups",
+			AccessKey: "key",
+			SecretKey: "secret",
+			Region:    "auto",
+		},
+		Keep: 7,
 	}); err != nil {
 		t.Fatal(err)
 	}
