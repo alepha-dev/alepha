@@ -1,0 +1,52 @@
+{
+  "name": "@alepha/protobuf",
+  "private": true,
+  "description": "Protocol Buffers (Protobuf) codec support for Alepha framework.",
+  "author": "Feunard",
+  "version": "0.25.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "protobufjs": "^8.5.0"
+  },
+  "dependenciesMeta": {
+    "protobufjs": {
+      "built": true
+    }
+  },
+  "devDependencies": {
+    "alepha": "0.25.0",
+    "tsdown": "^0.22.14",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "peerDependencies": {
+    "alepha": "0.25.0"
+  },
+  "scripts": {
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "tsdown"
+  },
+  "homepage": "https://github.com/feunard/alepha",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
+  "keywords": [
+    "alepha",
+    "protobuf",
+    "zod",
+    "codec"
+  ]
+}

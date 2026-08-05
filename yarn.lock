@@ -91,6 +91,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/protobuf@workspace:packages/@alepha/protobuf":
+  version: 0.0.0-use.local
+  resolution: "@alepha/protobuf@workspace:packages/@alepha/protobuf"
+  dependencies:
+    alepha: "npm:0.25.0"
+    protobufjs: "npm:^8.5.0"
+    tsdown: "npm:^0.22.14"
+    typescript: "npm:^7.0.2"
+    vitest: "npm:^4.1.10"
+  peerDependencies:
+    alepha: 0.25.0
+  dependenciesMeta:
+    protobufjs:
+      built: true
+  languageName: unknown
+  linkType: soft
+
 "@alepha/sigil@workspace:*, @alepha/sigil@workspace:packages/@alepha/sigil":
   version: 0.0.0-use.local
   resolution: "@alepha/sigil@workspace:packages/@alepha/sigil"
@@ -10453,6 +10470,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"long@npm:^5.3.2":
+  version: 5.3.2
+  resolution: "long@npm:5.3.2"
+  checksum: 10c0/7130fe1cbce2dca06734b35b70d380ca3f70271c7f8852c922a7c62c86c4e35f0c39290565eca7133c625908d40e126ac57c02b1b1a4636b9457d77e1e60b981
+  languageName: node
+  linkType: hard
+
 "longest-streak@npm:^3.0.0":
   version: 3.1.0
   resolution: "longest-streak@npm:3.1.0"
@@ -12524,6 +12548,15 @@ __metadata:
   version: 7.1.0
   resolution: "property-information@npm:7.1.0"
   checksum: 10c0/e0fe22cff26103260ad0e82959229106563fa115a54c4d6c183f49d88054e489cc9f23452d3ad584179dc13a8b7b37411a5df873746b5e4086c865874bfa968e
+  languageName: node
+  linkType: hard
+
+"protobufjs@npm:^8.5.0":
+  version: 8.7.1
+  resolution: "protobufjs@npm:8.7.1"
+  dependencies:
+    long: "npm:^5.3.2"
+  checksum: 10c0/2d5e0355301657e671c9dd7a84ed80a908e2c6172f38ede8e5df8a4455fa3eb5eb7edfda16c3072b2a9e23c16c657774bca962942125047c21a347534ea07083
   languageName: node
   linkType: hard
 
