@@ -88,15 +88,30 @@ export const platformOptions = $atom({
         z.object({
           adapter: z.enum(["cloudflare", "bay", "lore"]),
           /**
-           * Base URL of the Bay control panel this environment deploys to,
-           * e.g. `"https://admin.bay.alepha.dev"`. Only read by the `bay`
-           * adapter.
+           * SSH destination of the Bay this environment deploys to, e.g.
+           * `"deploy@bay.example.com"`. Only read by the `bay` adapter, where
+           * it is **required**.
            *
-           * A Bay is a machine someone owns, so unlike Cloudflare there is no
-           * global endpoint to assume. Committing it is fine — it is a public
-           * hostname, and the credential is what protects it.
+           * Passed to the machine's own `ssh` binary verbatim, so it may be an
+           * alias defined in `~/.ssh/config` (`"bay-prod"`). That is the point
+           * of shelling out rather than speaking the protocol: `ProxyJump`,
+           * `IdentityAgent`, `ControlMaster` and a per-host `User` are already
+           * configured there, and stay in one place.
            *
-           * `$BAY_ENDPOINT` overrides, so a fork or a second Bay needs no edit.
+           * There is deliberately no port, identity-file or extra-flags field
+           * for the same reason. Committing this is fine — it is a hostname,
+           * and the SSH key is what protects it.
+           *
+           * `$BAY_HOST` overrides, so CI needs no edit to a committed config.
+           */
+          host: z.text().optional(),
+          /**
+           * Base URL of the Lore instance a release is written into
+           * (`adapter: "lore"`), e.g. `"https://lore.alepha.dev"`.
+           *
+           * The `bay` adapter does **not** read this: it reaches a Bay over
+           * SSH, at {@link host}. There was once an HTTP path here, aimed at a
+           * Bay admin panel that was never written.
            */
           endpoint: z.text().optional(),
           /**
@@ -189,8 +204,12 @@ export type PlatformOptions = Infer<typeof platformOptions.schema>;
 export interface EnvironmentConfig {
   adapter: "cloudflare" | "bay" | "lore";
   /**
-   * Base URL of the deploy gateway — the Bay control panel for `bay`, the Lore
-   * instance for `lore`.
+   * SSH destination of the Bay this environment deploys to (`bay` adapter).
+   * May be an alias from `~/.ssh/config`. `$BAY_HOST` overrides.
+   */
+  host?: string;
+  /**
+   * Base URL of the Lore instance a release is written into (`lore` adapter).
    */
   endpoint?: string;
   /**
