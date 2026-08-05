@@ -78,10 +78,10 @@ export class MeRouter {
     },
   });
 
-  myPetitions = $page({
+  myFeedback = $page({
     parent: this.me,
-    path: "/petitions",
-    lazy: () => import("../petitions/MyPetitions.tsx"),
+    path: "/feedback",
+    lazy: () => import("../feedback/MyFeedback.tsx"),
   });
 
   connections = $page({

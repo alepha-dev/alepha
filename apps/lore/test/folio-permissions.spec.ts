@@ -6,8 +6,8 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, HttpError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -20,7 +20,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
-  campaignController: CampaignController;
+  projectController: ProjectController;
   folioController: FolioController;
   fakeProvider: FakeProvider;
 }
@@ -47,7 +47,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
-    campaignController: alepha.inject(CampaignController),
+    projectController: alepha.inject(ProjectController),
     folioController: alepha.inject(FolioController),
     fakeProvider: alepha.inject(FakeProvider),
   };
@@ -68,17 +68,17 @@ const createTestUser = async (
 const addMember = async (
   ctx: TestContext,
   userId: string,
-  campaignId: number,
+  projectId: number,
 ): Promise<void> => {
-  const membersRepo = (ctx.campaignController as any).members;
+  const membersRepo = (ctx.projectController as any).members;
   await membersRepo.create({
     userId,
-    campaignId,
+    projectId,
     owner: false,
   });
 };
 
-describe("FolioController per-campaign visibility (post #65 refactor)", () => {
+describe("FolioController per-project visibility (post #65 refactor)", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -89,12 +89,12 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
     await ctx.alepha.stop();
   });
 
-  it("lets member B read a folio created by member A in the same campaign", async ({
+  it("lets member B read a folio created by member A in the same project", async ({
     expect,
   }) => {
     const owner = await createTestUser(ctx);
     const memberB = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
+    const created = await ctx.projectController.createProject.fetch(
       { body: { title: "Shared memory" } },
       { user: owner },
     );
@@ -103,7 +103,7 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: created.data.id,
+          projectId: created.data.id,
           title: "Owner's note",
           content: "hello world",
         },
@@ -112,7 +112,7 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
     );
 
     const listed = await ctx.folioController.list.fetch(
-      { query: { campaignId: created.data.id } },
+      { query: { projectId: created.data.id } },
       { user: memberB },
     );
     expect(listed.data.some((f) => f.id === folio.data.id)).toBe(true);
@@ -125,7 +125,7 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
 
     const byShortId = await ctx.folioController.getByShortId.fetch(
       {
-        params: { campaignId: created.data.id, shortId: folio.data.shortId },
+        params: { projectId: created.data.id, shortId: folio.data.shortId },
         query: {},
       },
       { user: memberB },
@@ -138,7 +138,7 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
   }) => {
     const owner = await createTestUser(ctx);
     const memberB = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
+    const created = await ctx.projectController.createProject.fetch(
       { body: { title: "Co-curated" } },
       { user: owner },
     );
@@ -147,7 +147,7 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: created.data.id,
+          projectId: created.data.id,
           title: "Draft by owner",
           content: "rough notes",
         },
@@ -189,15 +189,15 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
   }) => {
     const owner = await createTestUser(ctx);
     const stranger = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
-      { body: { title: "Private campaign" } },
+    const created = await ctx.projectController.createProject.fetch(
+      { body: { title: "Private project" } },
       { user: owner },
     );
 
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: created.data.id,
+          projectId: created.data.id,
           title: "Owner only",
           content: "secret",
         },
@@ -207,7 +207,7 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
 
     await expect(
       ctx.folioController.list.fetch(
-        { query: { campaignId: created.data.id } },
+        { query: { projectId: created.data.id } },
         { user: stranger },
       ),
     ).rejects.toThrow(HttpError);
@@ -223,7 +223,7 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
       ctx.folioController.create.fetch(
         {
           body: {
-            campaignId: created.data.id,
+            projectId: created.data.id,
             title: "Stranger trespass",
           },
         },
@@ -244,7 +244,7 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
   }) => {
     const owner = await createTestUser(ctx);
     const memberB = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
+    const created = await ctx.projectController.createProject.fetch(
       { body: { title: "Mixed sharing" } },
       { user: owner },
     );
@@ -254,7 +254,7 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: created.data.id,
+          projectId: created.data.id,
           title: "Sealed notes",
           summary: "Public summary, encrypted body",
           tags: ["secret"],
@@ -284,7 +284,7 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
   }) => {
     const owner = await createTestUser(ctx);
     const memberB = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
+    const created = await ctx.projectController.createProject.fetch(
       { body: { title: "Linked notes" } },
       { user: owner },
     );
@@ -293,7 +293,7 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
     const targetFolio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: created.data.id,
+          projectId: created.data.id,
           title: "Target by B",
           content: "I am the target",
         },
@@ -304,7 +304,7 @@ describe("FolioController per-campaign visibility (post #65 refactor)", () => {
     const sourceFolio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: created.data.id,
+          projectId: created.data.id,
           title: "Source by owner",
           content: `See [[#${targetFolio.data.shortId}]] for context`,
         },

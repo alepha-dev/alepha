@@ -13,8 +13,8 @@ import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
  * delegation on `<a>` elements — `MarkdownView` lives in `@alepha/ui`
  * and we can't fork it, so we identify wiki-links by their URL shape:
  *
- * - `/c/<campaignId>/archive/<shortId>` → folio preview
- * - `/c/<campaignId>/q/<shortId>` → quest preview
+ * - `/p/<projectId>/folios/<shortId>` → folio preview
+ * - `/p/<projectId>/q/<shortId>` → quest preview
  * - `/api/files/<uuid>` → blob preview (the rewriter only emits this
  *   URL for resolved blob refs, so the false-positive risk on a
  *   user-typed link is negligible)
@@ -24,7 +24,7 @@ import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
  * built (no extra fetch).
  */
 export interface WikiLinkHoverProviderProps {
-  campaignId: number;
+  projectId: number;
   blobs: BlobRef[];
   children: React.ReactNode;
 }
@@ -46,13 +46,13 @@ interface HoverState {
   anchorEl: HTMLAnchorElement;
 }
 
-const FOLIO_RE = /^\/c\/(\d+)\/archive\/(\d+)(?:[#?]|$)/;
-const QUEST_RE = /^\/c\/(\d+)\/q\/(\d+)(?:[#?]|$)/;
+const FOLIO_RE = /^\/p\/(\d+)\/folios\/(\d+)(?:[#?]|$)/;
+const QUEST_RE = /^\/p\/(\d+)\/q\/(\d+)(?:[#?]|$)/;
 const BLOB_RE = /^\/api\/files\/([a-f0-9-]{36})(?:[#?]|$)/i;
 
 const parseHref = (
   href: string | null,
-  campaignId: number,
+  projectId: number,
 ): HoverTarget | null => {
   if (!href) return null;
   if (href.startsWith(BROKEN_HREF_PREFIX)) {
@@ -65,11 +65,11 @@ const parseHref = (
     ? new URL(href).pathname + new URL(href).search + new URL(href).hash
     : href;
   const folio = FOLIO_RE.exec(path);
-  if (folio && Number(folio[1]) === campaignId) {
+  if (folio && Number(folio[1]) === projectId) {
     return { kind: "folio", shortId: Number(folio[2]) };
   }
   const quest = QUEST_RE.exec(path);
-  if (quest && Number(quest[1]) === campaignId) {
+  if (quest && Number(quest[1]) === projectId) {
     return { kind: "quest", shortId: Number(quest[2]) };
   }
   const blob = BLOB_RE.exec(path);
@@ -88,7 +88,7 @@ const BROKEN_REASON_TEXT: Record<BrokenReason, string> = {
   "ambiguous-title":
     "Several entries share this title — use the explicit `#N` form to disambiguate.",
   "quest-not-found": "No quest matches this reference.",
-  "blob-not-found": "No archive blob matches this reference.",
+  "blob-not-found": "No folio blob matches this reference.",
 };
 
 const formatBytes = (bytes: number | undefined): string => {
@@ -108,7 +108,7 @@ const stripMarkdown = (raw: string): string =>
     .trim();
 
 const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
-  const { campaignId, blobs } = props;
+  const { projectId, blobs } = props;
   const folioApi = useClient<FolioController>();
   const questApi = useClient<QuestController>();
 
@@ -144,7 +144,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
       const anchor = el?.closest("a[href]") as HTMLAnchorElement | null;
       if (!anchor) return;
       const href = anchor.getAttribute("href");
-      const t = parseHref(href, campaignId);
+      const t = parseHref(href, projectId);
       if (!t) return;
       cancelClose();
       setHover((prev) =>
@@ -153,7 +153,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
           : { target: t, anchorEl: anchor },
       );
     },
-    [campaignId, cancelClose],
+    [projectId, cancelClose],
   );
 
   const handleLeave = useCallback(
@@ -192,7 +192,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
         <HoverCardPopover
           key={targetKey(hover.target)}
           state={hover}
-          campaignId={campaignId}
+          projectId={projectId}
           blobByUuid={blobByUuid}
           cache={cache.current}
           folioApi={folioApi}
@@ -234,7 +234,7 @@ interface BlobPreview {
 
 interface HoverCardPopoverProps {
   state: HoverState;
-  campaignId: number;
+  projectId: number;
   blobByUuid: Map<string, BlobRef>;
   cache: Map<string, FolioPreview | QuestPreview | BlobPreview>;
   folioApi: ReturnType<typeof useClient<FolioController>>;
@@ -244,7 +244,7 @@ interface HoverCardPopoverProps {
 }
 
 const HoverCardPopover = (props: HoverCardPopoverProps) => {
-  const { state, campaignId, blobByUuid, cache, folioApi, questApi } = props;
+  const { state, projectId, blobByUuid, cache, folioApi, questApi } = props;
   const key = targetKey(state.target);
   const [data, setData] = useState<
     FolioPreview | QuestPreview | BlobPreview | null
@@ -263,7 +263,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
       try {
         if (state.target.kind === "folio") {
           const folio = (await folioApi.getByShortId({
-            params: { campaignId, shortId: state.target.shortId },
+            params: { projectId, shortId: state.target.shortId },
           })) as Folio;
           const body = stripMarkdown(folio.content ?? "");
           const preview: FolioPreview = {
@@ -277,7 +277,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
           if (alive) setData(preview);
         } else if (state.target.kind === "quest") {
           const quest = (await questApi.getQuestByShortId({
-            params: { campaignId, shortId: state.target.shortId },
+            params: { projectId, shortId: state.target.shortId },
           })) as QuestResource;
           const preview: QuestPreview = {
             kind: "quest",
@@ -318,7 +318,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
     return () => {
       alive = false;
     };
-  }, [key, state.target, campaignId, blobByUuid, cache, folioApi, questApi]);
+  }, [key, state.target, projectId, blobByUuid, cache, folioApi, questApi]);
 
   // Position: anchor's bounding rect, popover below the link with a
   // small gap. Fixed positioning + viewport math so it stays put on

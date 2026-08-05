@@ -8,7 +8,7 @@ import { type Sigil, sigils } from "../entities/sigils.ts";
  *
  * **A separate credential from anything a human holds.** Lore's realm also
  * mints `api_keys`, and those carry the operator's roles — a key created there
- * can read every campaign the holder belongs to and write quests into them. A
+ * can read every project the holder belongs to and write quests into them. A
  * sigil token must be able to do exactly one thing, so it lives on its own row
  * and is resolved by its own lookup; the two are never interchangeable in
  * either direction.
@@ -16,7 +16,7 @@ import { type Sigil, sigils } from "../entities/sigils.ts";
  * That separation is enforced here rather than by convention, because the
  * tempting shortcut — reusing `api_keys` because it already exists — turns a
  * leaked sigil token, of which there is one per environment on every
- * machine that runs the app, into a campaign credential.
+ * machine that runs the app, into a project credential.
  */
 export class SigilTokenService {
   protected readonly crypto = $inject(CryptoProvider);

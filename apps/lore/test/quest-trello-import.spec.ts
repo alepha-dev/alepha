@@ -8,8 +8,8 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
-import { CampaignQuestPortabilityController } from "../src/api/controllers/CampaignQuestPortabilityController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
+import { ProjectQuestPortabilityController } from "../src/api/controllers/ProjectQuestPortabilityController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
@@ -23,9 +23,9 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
-  campaignController: CampaignController;
+  projectController: ProjectController;
   questController: QuestController;
-  portController: CampaignQuestPortabilityController;
+  portController: ProjectQuestPortabilityController;
   fakeProvider: FakeProvider;
 }
 
@@ -51,9 +51,9 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
-    campaignController: alepha.inject(CampaignController),
+    projectController: alepha.inject(ProjectController),
     questController: alepha.inject(QuestController),
-    portController: alepha.inject(CampaignQuestPortabilityController),
+    portController: alepha.inject(ProjectQuestPortabilityController),
     fakeProvider: alepha.inject(FakeProvider),
   };
 };
@@ -70,12 +70,12 @@ async function createTestUser(
   return { id: response.data.id, roles: response.data.roles };
 }
 
-async function createTestCampaign(
+async function createTestProject(
   ctx: TestContext,
   user: { id: string; roles: string[] },
-  title = "Test Campaign",
+  title = "Test Project",
 ): Promise<{ id: number; title: string }> {
-  const response = await ctx.campaignController.createCampaign.fetch(
+  const response = await ctx.projectController.createProject.fetch(
     { body: { title } },
     { user },
   );
@@ -97,7 +97,7 @@ describe("Trello CSV import", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaign = await createTestCampaign(ctx, owner, "Trello migration");
+    const project = await createTestProject(ctx, owner, "Trello migration");
     const csv = fs.readFileSync(
       path.join(__dirname, "fixtures/trello-board.csv"),
       "utf-8",
@@ -105,7 +105,7 @@ describe("Trello CSV import", () => {
 
     const importResponse = await ctx.portController.importQuests.fetch(
       {
-        params: { id: campaign.id },
+        params: { id: project.id },
         body: { file: new File([csv], "trello.csv", { type: "text/csv" }) },
       },
       { user: owner },
@@ -121,7 +121,7 @@ describe("Trello CSV import", () => {
     ).toHaveLength(2);
 
     const exportResponse = await ctx.portController.exportQuests.fetch(
-      { params: { id: campaign.id } },
+      { params: { id: project.id } },
       { user: owner },
     );
     const exported = await exportResponse.data.text();

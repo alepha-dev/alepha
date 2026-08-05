@@ -28,7 +28,7 @@ describe("AlephaSigil module", () => {
     // Importing the module IS the integration: no second module to know about,
     // no JSX for the host to place. Note this host has no sink configured and
     // still gets the element — `<SigilRoot />` decides for itself, returning
-    // `null` until the sink hands out a petition URL.
+    // `null` until the sink hands out a feedback URL.
     expect(roots.rootComponents).toHaveLength(1);
     const [mounted] = roots.rootComponents;
     expect(isValidElement(mounted)).toBe(true);

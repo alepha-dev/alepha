@@ -24,7 +24,7 @@ export interface WikiLinkRewriteResult {
 
 /**
  * Resolve `[[...]]` wiki-links in markdown into clickable links, scoped to a
- * campaign. Fetches the campaign's folios + quests once — but only when the
+ * project. Fetches the project's folios + quests once — but only when the
  * content actually contains a `[[` token — and feeds them to
  * {@link rewriteFolioWikiLinks}.
  *
@@ -38,7 +38,7 @@ export interface WikiLinkRewriteResult {
  */
 export const useWikiLinkRewrite = (
   content: string,
-  campaignId: number | undefined,
+  projectId: number | undefined,
 ): WikiLinkRewriteResult => {
   const folioApi = useClient<FolioController>();
   const questApi = useClient<QuestController>();
@@ -64,27 +64,27 @@ export const useWikiLinkRewrite = (
   const needsFetch = hasLinks || hasBlobRefs;
 
   useEffect(() => {
-    if (!campaignId || !needsFetch) return;
+    if (!projectId || !needsFetch) return;
     let alive = true;
     Promise.all([
       // Both list endpoints cap their page size at 100 server-side —
       // request the max so wiki-link resolution sees as much as possible.
       hasLinks
-        ? folioApi.list({ query: { campaignId, limit: 100 } as never })
+        ? folioApi.list({ query: { projectId, limit: 100 } as never })
         : Promise.resolve([] as Folio[]),
       hasLinks
         ? questApi.getQuests({
-            params: { campaignId },
+            params: { projectId },
             query: { size: 100, sort: "-updatedAt" } as never,
           })
         : Promise.resolve({ content: [] } as {
             content: Array<{ shortId: number; title: string }>;
           }),
       hasPathLinks
-        ? directoryApi.listAllDirectories({ params: { campaignId } })
+        ? directoryApi.listAllDirectories({ params: { projectId } })
         : Promise.resolve([] as DirectoryRef[]),
       hasBlobRefs
-        ? blobApi.listBlobs({ params: { campaignId }, query: {} as never })
+        ? blobApi.listBlobs({ params: { projectId }, query: {} as never })
         : Promise.resolve(
             [] as Array<{
               id: string;
@@ -129,19 +129,19 @@ export const useWikiLinkRewrite = (
     return () => {
       alive = false;
     };
-  }, [campaignId, needsFetch, hasLinks, hasPathLinks, hasBlobRefs]);
+  }, [projectId, needsFetch, hasLinks, hasPathLinks, hasBlobRefs]);
 
   const rewritten = useMemo(() => {
-    if (!campaignId || !needsFetch) return content ?? "";
+    if (!projectId || !needsFetch) return content ?? "";
     return rewriteFolioWikiLinks(
       content ?? "",
-      campaignId,
+      projectId,
       folios,
       questRefs,
       directories,
       blobs,
     );
-  }, [content, campaignId, needsFetch, folios, questRefs, directories, blobs]);
+  }, [content, projectId, needsFetch, folios, questRefs, directories, blobs]);
 
   return { content: rewritten, folios, questRefs, blobs };
 };

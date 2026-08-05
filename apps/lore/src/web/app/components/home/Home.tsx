@@ -9,14 +9,14 @@ import { Link, useRouter } from "alepha/react/router";
 import { ArrowRight, ScrollText, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
-import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
+import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
-import { CampaignIcon } from "../shared/CampaignIcon.tsx";
 import PageHeader from "../shared/header/PageHeader.tsx";
 import LoreLogo from "../shared/LoreLogo.tsx";
+import { ProjectIcon } from "../shared/ProjectIcon.tsx";
 
-type Campaign = {
+type Project = {
   id: number;
   title: string;
   updatedAt: string;
@@ -27,53 +27,53 @@ type Campaign = {
 
 const Home = () => {
   const { tr } = useI18n<I18n, "en">();
-  const [overview] = useStore(userCampaignsAtom);
+  const [overview] = useStore(userProjectsAtom);
   const router = useRouter<AppRouter>();
   const dt = useInject(DateTimeProvider);
   const auth = useAuth();
 
-  const campaigns = overview?.campaigns ?? [];
+  const projects = overview?.projects ?? [];
   const canCreate = overview?.canCreate ?? true;
-  const maxCampaigns = overview?.maxCampaigns;
-  const sorted = [...campaigns].sort((a, b) =>
+  const maxProjects = overview?.maxProjects;
+  const sorted = [...projects].sort((a, b) =>
     a.updatedAt > b.updatedAt ? -1 : 1,
   );
   const loginPath = router.path("login", {
     query: { r: router.path("home") },
   });
   // No explicit `r=` — `AuthRegisterPage` seeds it from the intent map so the
-  // post-register flow lands on Home with `?action=createCampaign`, which then
-  // pushes through to /new-campaign.
+  // post-register flow lands on Home with `?action=createProject`, which then
+  // pushes through to /new-project.
   const registerPath = router.path("register", {
-    query: { intent: "createCampaign" },
+    query: { intent: "createProject" },
   });
-  const createPath = auth.user ? router.path("campaignCreate") : registerPath;
+  const createPath = auth.user ? router.path("projectCreate") : registerPath;
 
-  const hasCampaigns = !!auth.user && sorted.length > 0;
+  const hasProjects = !!auth.user && sorted.length > 0;
   const userName =
-    auth.user && hasCampaigns
+    auth.user && hasProjects
       ? displayName(auth.user, "") || undefined
       : undefined;
-  const createLabel = hasCampaigns
-    ? tr("home.create-campaign")
-    : tr("home.start-first-campaign");
+  const createLabel = hasProjects
+    ? tr("home.create-project")
+    : tr("home.start-first-project");
   const createDisabled = !!auth.user && !canCreate;
 
   useEffect(() => {
     const action =
       typeof router.query.action === "string" ? router.query.action : undefined;
-    if (action !== "createCampaign") return;
+    if (action !== "createProject") return;
     // Wait for auth to resolve before consuming the param. After register, the
-    // redirect lands here with `?action=createCampaign` but `useAuth()` hasn't
+    // redirect lands here with `?action=createProject` but `useAuth()` hasn't
     // synced yet — bail and let the next render retry with `auth.user` set.
     if (!auth.user || !canCreate) return;
     // Rewrite history from the route, not from `window.location` — during a
     // client-side transition the browser URL still holds the *previous* page,
     // so building on it would strip the param off the wrong address. Clearing
     // it matters because going Back would otherwise land on
-    // `?action=createCampaign` and bounce forward again.
+    // `?action=createProject` and bounce forward again.
     window.history.replaceState(null, "", router.path("home"));
-    router.push("campaignCreate");
+    router.push("projectCreate");
   }, [router, auth.user, canCreate]);
 
   return (
@@ -90,35 +90,35 @@ const Home = () => {
           userName={userName}
           createDisabled={createDisabled}
           createDisabledLabel={
-            createDisabled && maxCampaigns
+            createDisabled && maxProjects
               ? String(
-                  tr("home.create-campaign.max", {
-                    args: [String(maxCampaigns)],
+                  tr("home.create-project.max", {
+                    args: [String(maxProjects)],
                   }),
                 )
               : undefined
           }
         />
 
-        {hasCampaigns && (
+        {hasProjects && (
           <>
             <Separator className="my-10" />
 
-            <div id="campaigns" className="flex items-center gap-2">
+            <div id="projects" className="flex items-center gap-2">
               <ScrollText className="size-5" />
-              <h2 className="text-lg font-semibold">{tr("home.campaigns")}</h2>
+              <h2 className="text-lg font-semibold">{tr("home.projects")}</h2>
             </div>
 
             <Card className="mt-4 p-0">
               <CardContent className="flex flex-col divide-y p-0">
-                {sorted.map((campaign) => (
-                  <CampaignCard
-                    key={campaign.id}
-                    campaign={campaign}
-                    href={router.path("campaign", {
-                      params: { campaignId: campaign.id },
+                {sorted.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    href={router.path("project", {
+                      params: { projectId: project.id },
                     })}
-                    relativeTime={dt.of(campaign.updatedAt).fromNow()}
+                    relativeTime={dt.of(project.updatedAt).fromNow()}
                   />
                 ))}
               </CardContent>
@@ -216,25 +216,25 @@ const Hero = (props: HeroProps) => {
 };
 
 /* ────────────────────────────────────────────────────────────────────────
- * Campaign row — single-line entry
+ * Project row — single-line entry
  * ──────────────────────────────────────────────────────────────────────── */
 
-interface CampaignCardProps {
-  campaign: Campaign;
+interface ProjectCardProps {
+  project: Project;
   href: string;
   relativeTime: string;
 }
 
-const CampaignCard = (props: CampaignCardProps) => {
-  const zones = props.campaign.zones.length;
+const ProjectCard = (props: ProjectCardProps) => {
+  const zones = props.project.zones.length;
   return (
     <Link
       href={props.href}
       className="group hover:bg-muted/50 flex items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors"
     >
-      <CampaignIcon fileId={props.campaign.icon} className="size-8" />
+      <ProjectIcon fileId={props.project.icon} className="size-8" />
       <span className="line-clamp-1 flex-1 truncate font-medium">
-        {props.campaign.title}
+        {props.project.title}
       </span>
       <span className="text-muted-foreground hidden text-xs sm:inline">
         {/* Home is the only SSR'd route. `fromNow()` is relative-to-now, so it

@@ -14,7 +14,7 @@ import { RELEASE_STATUSES } from "../entities/releases.ts";
  */
 export const releaseResourceSchema = z.object({
   id: z.uuid(),
-  campaignId: z.integer(),
+  projectId: z.integer(),
   app: z.string(),
   environment: z.string(),
   version: z.string(),

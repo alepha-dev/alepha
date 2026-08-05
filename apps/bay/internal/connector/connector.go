@@ -2,7 +2,7 @@
 //
 // One direction only: this machine POSTs, and nothing here ever listens. That
 // is the whole security argument for the design — the token below authorises
-// writing into one campaign and grants nothing at all on this host, so a leak
+// writing into one project and grants nothing at all on this host, so a leak
 // lets someone lie about a fleet rather than deploy to it. A pull model would
 // have required the opposite trade.
 //
@@ -29,7 +29,7 @@ const FileName = "connectors.json"
 // Mode is the permission the file is published with.
 const Mode = 0o600
 
-// Connector is one campaign this machine reports to.
+// Connector is one project this machine reports to.
 type Connector struct {
 	// Sink is the origin of the Lore instance, e.g. https://lore.alepha.dev.
 	Sink string `json:"sink"`

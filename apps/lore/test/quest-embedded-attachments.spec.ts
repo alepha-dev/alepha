@@ -4,7 +4,7 @@ import { QuestService } from "../src/api/services/QuestService.ts";
 /**
  * Embedded editor images (`![alt](/api/files/<uuid>)`) must be folded
  * into `quest.attachments` on save: being listed there is what lets
- * `LoreFileAccessProvider` resolve the file to a campaign so every
+ * `LoreFileAccessProvider` resolve the file to a project so every
  * member can read it. See the markdown-editor spec (2026-07-30).
  */
 describe("QuestService.mergeEmbeddedAttachments", () => {

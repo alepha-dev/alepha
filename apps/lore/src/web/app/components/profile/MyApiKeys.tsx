@@ -85,7 +85,7 @@ const MyApiKeys = (props: MyApiKeysProps) => {
       <div className="flex items-center justify-between p-2">
         <span className="text-xs text-muted-foreground">
           MCP API keys allow Claude and other LLM clients to access all your
-          campaigns.
+          projects.
         </span>
         <Button size="sm" onClick={() => setOpened(true)}>
           <Plus className="size-3.5" />
@@ -229,9 +229,9 @@ const MyApiKeys = (props: MyApiKeysProps) => {
               </code>
             </div>
             <span className="text-xs text-muted-foreground">
-              This key gives access to all your campaigns. Use the campaign_list
-              tool to see available campaigns, then specify campaign_name in
-              other tools.
+              This key gives access to all your projects. Use the project_list
+              tool to see available projects, then specify project_name in other
+              tools.
             </span>
             <div className="flex justify-end">
               <Button onClick={() => setNewToken(null)}>Done</Button>

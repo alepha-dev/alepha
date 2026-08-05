@@ -293,7 +293,7 @@ describe("OAuth 2.1 authorization server", () => {
         jsonrpc: "2.0",
         id: 1,
         method: "tools/call",
-        params: { name: "campaign_list", arguments: {} },
+        params: { name: "project_list", arguments: {} },
       }),
     });
     const mcpBody = (await mcp.json()) as {

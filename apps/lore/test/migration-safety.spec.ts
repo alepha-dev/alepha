@@ -5,7 +5,7 @@ import { Alepha } from "alepha";
 import { $repository } from "alepha/orm";
 import { describe, it } from "vitest";
 import { blights } from "../src/api/entities/blights.ts";
-import { campaigns } from "../src/api/entities/campaigns.ts";
+import { projects } from "../src/api/entities/projects.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
@@ -24,21 +24,70 @@ const MIGRATIONS = join(import.meta.dirname, "../migrations/sqlite");
  * See `apps/lore/CLAUDE.md` → "Migration safety on D1".
  */
 const PROTECTED_TABLES = [
+  // Still "campaigns" here on purpose: this scans the physical SQL in
+  // migrations/sqlite/, and every migration on disk creates and references
+  // a table literally named "campaigns" — the entity-level rename to
+  // "projects" (2026-08 great rename, Task 6) does not touch that
+  // directory. Task 11 adds the actual `ALTER TABLE campaigns RENAME TO
+  // projects` migration; that is also the moment this guard matters
+  // most, since a rename migration generated without `--hints` degrades to
+  // a DROP+CREATE. Add "projects" alongside this entry once that
+  // migration lands — do not just swap the name, or older migrations lose
+  // their guard.
   "campaigns",
+  "projects",
   "quests",
   "folios",
   "members",
-  "petitions",
   "users",
+  // Still "petitions" here on purpose: this scans the physical SQL in
+  // migrations/sqlite/, and every migration on disk creates and references
+  // a table literally named "petitions" — the entity-level rename to
+  // "feedback" (2026-08 great rename, Task 4) does not touch that
+  // directory. Task 11 adds the actual `ALTER TABLE petitions RENAME TO
+  // feedback` migration; that is also the moment this guard matters
+  // most, since a rename migration generated without `--hints` degrades to
+  // a DROP+CREATE. Add "feedback" alongside this entry once that
+  // migration lands — do not just swap the name, or older migrations lose
+  // their guard.
+  "petitions",
+  "feedback",
+  // Still "chapters" here on purpose: this scans the physical SQL in
+  // migrations/sqlite/, and every migration on disk creates and references
+  // a table literally named "chapters" — the entity-level rename to
+  // "milestones" (2026-08 great rename, Task 3) does not touch that
+  // directory. Task 11 adds the actual `ALTER TABLE chapters RENAME TO
+  // milestones` migration; that is also the moment this guard matters
+  // most, since a rename migration generated without `--hints` degrades to
+  // a DROP+CREATE. Add "milestones" alongside this entry once that
+  // migration lands — do not just swap the name, or older migrations lose
+  // their guard.
   "chapters",
+  "milestones",
   "invitations",
+  // Still "archive_directories" / "archive_blobs" here on purpose: this
+  // scans the physical SQL in migrations/sqlite/, and every migration on
+  // disk creates and references tables literally named "archive_directories"
+  // / "archive_blobs" — the entity-level rename to "folioDirectories" /
+  // "folioBlobs" (2026-08 great rename, Task 5) does not touch that
+  // directory. Task 11 adds the actual `ALTER TABLE archive_directories
+  // RENAME TO folio_directories` / `ALTER TABLE archive_blobs RENAME TO
+  // folio_blobs` migrations; that is also the moment this guard matters
+  // most, since a rename migration generated without `--hints` degrades to
+  // a DROP+CREATE. Add "folio_directories" / "folio_blobs" alongside these
+  // entries once those migrations land — do not just swap the names, or
+  // older migrations lose their guard.
   "archive_directories",
   "archive_blobs",
+  "folio_directories",
+  "folio_blobs",
 ];
 
 /**
- * Every applied migration, oldest first. `.archive/` and any stray file are
- * skipped: a migration is a directory holding a `migration.sql`.
+ * Every applied migration, oldest first. `.archive/` (superseded
+ * migrations — unrelated to this app's Archive/Folios feature) and any
+ * stray file are skipped: a migration is a directory holding a
+ * `migration.sql`.
  */
 const migrationDirs = (): string[] =>
   readdirSync(MIGRATIONS)
@@ -59,7 +108,7 @@ const statementsOnly = (sql: string): string =>
   sql.replace(/^[ \t]*--.*$/gm, "");
 
 describe("migration safety", () => {
-  it("never drops a table the campaigns cascade reaches", ({ expect }) => {
+  it("never drops a table the projects cascade reaches", ({ expect }) => {
     const dirs = migrationDirs();
 
     // A guard that silently scans nothing is worse than no guard.
@@ -75,7 +124,7 @@ describe("migration safety", () => {
     }
   });
 
-  it("keeps every campaign row and its children when the sigil family is rebuilt", ({
+  it("keeps every project row and its children when the sigil family is rebuilt", ({
     expect,
   }) => {
     // better-sqlite3 is a devDependency of this app but not an ESM import
@@ -109,8 +158,13 @@ describe("migration safety", () => {
       apply(dir);
     }
 
-    // Seed the exact shape of the 2026-05 incident: a campaign with children
+    // Seed the exact shape of the 2026-05 incident: a project with children
     // hanging off it, and a sigil with children hanging off that.
+    //
+    // Still "campaigns" / "campaign_id" here on purpose — same reason as
+    // PROTECTED_TABLES above: this seeds and applies the real migration SQL
+    // on disk, which still creates a table literally named "campaigns" (and
+    // FK columns literally named "campaign_id") until Task 11.
     const userId = "00000000-0000-4000-8000-000000000001";
     db.exec(`INSERT INTO users (id) VALUES ('${userId}')`);
     db.exec(
@@ -125,6 +179,9 @@ describe("migration safety", () => {
     db.exec(
       `INSERT INTO members (user_id, campaign_id) VALUES ('${userId}', 1)`,
     );
+    // Still "petitions" here on purpose — same reason as PROTECTED_TABLES
+    // above: this seeds and applies the real migration SQL on disk, which
+    // still creates a table literally named "petitions" until Task 11.
     db.exec(
       `INSERT INTO petitions (short_id, campaign_id, title, description, status) VALUES (1, 1, 'p', 'd', 'pending')`,
     );
@@ -141,6 +198,8 @@ describe("migration safety", () => {
       db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n;
 
     // The whole point: the rebuild reaches its own family and stops there.
+    // "campaigns" (not "projects") and "petitions" (not "feedback") for the
+    // same reason as the INSERTs above — this is the physical table name.
     for (const table of [
       "campaigns",
       "quests",
@@ -171,6 +230,9 @@ describe("migration safety", () => {
     }
 
     for (const table of [
+      // "campaign_sources", not "project_sources" — this is the physical
+      // (pre-rebuild) table name the sigil_family_rebuild migration drops on
+      // disk, unrelated to the entity-level Campaign → Project rename.
       "campaign_sources",
       "sigil_blight_rate",
       "sigil_blights",
@@ -187,11 +249,11 @@ describe("migration safety", () => {
   it("boots a fresh database with the sigil family present", async ({
     expect,
   }) => {
-    // `sigils` carries FKs to `campaigns` and `users`, and the model builder
+    // `sigils` carries FKs to `projects` and `users`, and the model builder
     // resolves every `db.ref(...)` eagerly at boot — so each referenced table
     // needs a repository too or schema sync throws before any assertion runs.
     class Repos {
-      campaigns = $repository(campaigns);
+      projects = $repository(projects);
       users = $repository(users);
       sigils = $repository(sigils);
       blights = $repository(blights);

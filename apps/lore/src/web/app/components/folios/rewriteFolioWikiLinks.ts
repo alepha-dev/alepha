@@ -1,7 +1,7 @@
 import type { Folio } from "@/api/entities/folios.ts";
 
 /**
- * Flat archive-directory row used for path-style link resolution. Same
+ * Flat folio-directory row used for path-style link resolution. Same
  * shape `DirectoryController.listAllDirectories` returns.
  */
 export interface DirectoryRef {
@@ -15,13 +15,13 @@ export interface DirectoryRef {
  * Minimal blob shape needed to resolve `[[blob:#N]]` /
  * `[[blob:<uuid>]]` wiki-links and `![alt](blob:#N)` image embeds.
  * Pulled from `BlobController.listBlobs`
- * (the campaign-wide list the Archive already fetches for the browser).
+ * (the project-wide list `FolioBrowser` already fetches for the browser).
  */
 export interface BlobRef {
   /** UUID — both PK and file id served at `/api/files/<uuid>`. */
   fileId: string;
   shortId: number;
-  /** Display name in the Archive tree (e.g. `diagram.png`). */
+  /** Display name in the folio tree (e.g. `diagram.png`). */
   name: string;
   /** MIME type from the framework `files` row. Drives image vs file render. */
   mime?: string;
@@ -61,7 +61,7 @@ const formatBytes = (bytes: number): string => {
  *
  * Supported forms:
  *
- *  - `[[#42]]` → folio shortId 42 in the same campaign.
+ *  - `[[#42]]` → folio shortId 42 in the same project.
  *  - `[[dir/sub/name]]` → folio `name` inside the directory chain
  *    `dir/sub`. Tries anchored-at-root first; falls back to unique
  *    suffix match (last directory name + folio name). Falls back to
@@ -69,7 +69,7 @@ const formatBytes = (bytes: number): string => {
  *  - `[[Folio Title]]` → folio by title (case-insensitive, ambiguous
  *    titles fall back to literal text).
  *  - `[[#42#zones]]` / `[[Folio Title#zones]]` → folio + heading slug.
- *  - `[[quest#32]]` → quest shortId 32 in the same campaign.
+ *  - `[[quest#32]]` → quest shortId 32 in the same project.
  *  - `[[quest:Some Title]]` → quest by title (resolved if a quest list
  *    is supplied; otherwise rendered as plain text).
  *
@@ -97,7 +97,7 @@ const broken = (
 
 export const rewriteFolioWikiLinks = (
   content: string,
-  campaignId: number,
+  projectId: number,
   folios: Folio[],
   quests: Array<{ shortId: number; title: string }>,
   directories: DirectoryRef[] = [],
@@ -137,7 +137,7 @@ export const rewriteFolioWikiLinks = (
   const pathCtx = needsPaths ? buildPathContext(folios, directories) : null;
 
   // Blob lookups — by shortId and by UUID. No title map: blob names
-  // aren't unique within a campaign (only within a parent directory).
+  // aren't unique within a project (only within a parent directory).
   const blobByShort = new Map<number, BlobRef>();
   const blobByUuid = new Map<string, BlobRef>();
   for (const b of blobs) {
@@ -228,7 +228,7 @@ export const rewriteFolioWikiLinks = (
           questAmbiguous ? "ambiguous-title" : "quest-not-found",
         );
       }
-      const href = `/c/${campaignId}/q/${quest.shortId}`;
+      const href = `/p/${projectId}/q/${quest.shortId}`;
       const label = escapeMarkdownLabel(quest.title);
       return `[${label}](${href})`;
     }
@@ -261,11 +261,11 @@ export const rewriteFolioWikiLinks = (
         folioAmbiguous ? "ambiguous-title" : "folio-not-found",
       );
     }
-    // Folio detail lives under `/archive/:shortId` since the quest #66
-    // `/folios` → `/archive` rename — keep this in sync with AppRouter.
+    // Folio detail lives under `/folios/:shortId` — keep this in sync
+    // with AppRouter.
     const href = anchor
-      ? `/c/${campaignId}/archive/${folio.shortId}#${slugify(anchor)}`
-      : `/c/${campaignId}/archive/${folio.shortId}`;
+      ? `/p/${projectId}/folios/${folio.shortId}#${slugify(anchor)}`
+      : `/p/${projectId}/folios/${folio.shortId}`;
     const labelText =
       (pathLabel ?? folio.title) + (anchor ? ` § ${anchor}` : "");
     const label = escapeMarkdownLabel(labelText);

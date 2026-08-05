@@ -1,5 +1,5 @@
 import { $repository, $sequence } from "alepha/orm";
-import { type Campaign, campaigns } from "../entities/campaigns.ts";
+import { type Project, projects } from "../entities/projects.ts";
 import { normalizeQuestTags, type Quest, quests } from "../entities/quests.ts";
 
 /**
@@ -51,12 +51,12 @@ export const sanitizeHtml = (html: string): string => {
  * old inline `quests.create({...})` calls used.
  */
 export interface CreateQuestInput {
-  campaignId: number;
+  projectId: number;
   /** Plain or rich-text title. */
   title: string;
   /** Rich-text description — sanitized inside the service before insert. */
   description: string;
-  /** Target zone. Created on the campaign if it does not exist yet. */
+  /** Target zone. Created on the project if it does not exist yet. */
   zone: string;
   priority?: Quest["priority"];
   difficulty?: number;
@@ -66,7 +66,7 @@ export interface CreateQuestInput {
   attachments?: string[];
   tags?: string[];
   dependsOn?: number | null;
-  petitionId?: number;
+  feedbackId?: number;
   /** Provenance marker, e.g. `{ sigilBlightId }` for blight-forwarded quests. */
   source?: Quest["source"];
   /** Id of the user creating the quest. */
@@ -75,7 +75,7 @@ export interface CreateQuestInput {
 
 /**
  * The single owner of quest-creation mechanics — the `quests.shortId`
- * sequence, the campaign zone-ensure step, HTML sanitization of the
+ * sequence, the project zone-ensure step, HTML sanitization of the
  * description, and the `quests.create({...})` payload with defaults.
  *
  * Both `QuestController.createQuest` and
@@ -84,15 +84,15 @@ export interface CreateQuestInput {
  * Controllers keep ownership of auth / permission checks; only the creation
  * mechanics live here.
  *
- * Declaring `$repository(quests)` / `$repository(campaigns)` here also keeps
+ * Declaring `$repository(quests)` / `$repository(projects)` here also keeps
  * those tables in the ORM/migration graph — same pattern as `SigilService`.
  */
 export class QuestService {
   protected readonly quests = $repository(quests);
-  protected readonly campaigns = $repository(campaigns);
+  protected readonly projects = $repository(projects);
 
   /**
-   * Per-campaign sequence for `quests.shortId`. Advances inside the caller's
+   * Per-project sequence for `quests.shortId`. Advances inside the caller's
    * `$transactional` block on create, so failed inserts return the id to the
    * pool instead of burning it.
    */
@@ -132,7 +132,7 @@ export class QuestService {
    * note, completion message) so embedded images become quest
    * attachments regardless of the author — web editor or MCP agent.
    * Being listed in `quest.attachments` is what lets
-   * `LoreFileAccessProvider` resolve the file to a campaign and grant
+   * `LoreFileAccessProvider` resolve the file to a project and grant
    * every member read access; an unmerged embed would 403 for anyone
    * but its uploader.
    */
@@ -154,32 +154,29 @@ export class QuestService {
 
   /**
    * Create a quest. Holds the shared mechanics:
-   * 1. allocate the next per-campaign `shortId`,
+   * 1. allocate the next per-project `shortId`,
    * 2. sanitize the (attacker-controllable) rich-text description,
-   * 3. ensure `zone` exists on `campaign.zones`, persisting it if not,
+   * 3. ensure `zone` exists on `project.zones`, persisting it if not,
    * 4. insert the `quests` row with the standard defaults.
    *
-   * The caller passes the already-loaded `campaign` (it has done the auth
+   * The caller passes the already-loaded `project` (it has done the auth
    * check) so the service does not re-fetch it. Must run inside a
    * `$transactional()` block — the `shortId` sequence relies on it.
    */
-  async createQuest(
-    campaign: Campaign,
-    input: CreateQuestInput,
-  ): Promise<Quest> {
-    const shortId = await this.questShortId.next(String(input.campaignId));
+  async createQuest(project: Project, input: CreateQuestInput): Promise<Quest> {
+    const shortId = await this.questShortId.next(String(input.projectId));
 
     // Only register non-empty zones — an empty `zone` is a valid quest
-    // field but must not pollute the campaign's zone list.
-    if (input.zone && !campaign.zones.includes(input.zone)) {
-      campaign.zones.push(input.zone);
-      await this.campaigns.updateById(campaign.id, {
-        zones: campaign.zones,
+    // field but must not pollute the project's zone list.
+    if (input.zone && !project.zones.includes(input.zone)) {
+      project.zones.push(input.zone);
+      await this.projects.updateById(project.id, {
+        zones: project.zones,
       });
     }
 
     return this.quests.create({
-      campaignId: input.campaignId,
+      projectId: input.projectId,
       shortId,
       title: input.title,
       description: sanitizeHtml(input.description),
@@ -194,7 +191,7 @@ export class QuestService {
       ),
       tags: normalizeQuestTags(input.tags ?? []),
       dependsOn: input.dependsOn ?? undefined,
-      petitionId: input.petitionId,
+      feedbackId: input.feedbackId,
       source: input.source,
       createdBy: input.createdBy,
       history: [],

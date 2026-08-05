@@ -6,7 +6,7 @@
  *
  * - Wiki-links: `[[Folio Title]]`, `[[#12]]`, `[[quest#5]]`, `[[blob#3]]`
  *   come back as `\[\[Folio Title]]` — `FolioLinkService` then stops
- *   matching them, silently dropping the campaign's link graph on the
+ *   matching them, silently dropping the project's link graph on the
  *   next save.
  *
  * Applied on every editor change (cheap, pure string work) so callers

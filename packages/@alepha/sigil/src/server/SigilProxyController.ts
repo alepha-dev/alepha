@@ -16,8 +16,8 @@ import { SigilSinkProvider } from "./SigilSinkProvider.ts";
  *
  * `POST /api/sigil/ingest` — views, errors, vitals.
  *
- * The petition redirect that used to live here is gone: the sink hands out a
- * URL in its config and the app renders it as a link. Resolving a campaign
+ * The feedback redirect that used to live here is gone: the sink hands out a
+ * URL in its config and the app renders it as a link. Resolving a project
  * server-side existed only to keep a secret id out of the browser, and there is
  * no such id any more.
  */

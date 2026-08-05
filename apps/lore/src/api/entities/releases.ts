@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
-import { campaigns } from "./campaigns.ts";
 import { outposts } from "./outposts.ts";
+import { projects } from "./projects.ts";
 import { users } from "./users.ts";
 
 /**
@@ -46,7 +46,7 @@ export const releases = $entity({
   name: "releases",
   schema: z.object({
     id: db.primaryKey(z.uuid()),
-    campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
+    projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
     /**
@@ -90,8 +90,8 @@ export const releases = $entity({
     updatedAt: db.updatedAt(),
   }),
   indexes: [
-    { columns: ["campaignId", "app", "environment", "version"], unique: true },
-    { columns: ["campaignId", "status"] },
+    { columns: ["projectId", "app", "environment", "version"], unique: true },
+    { columns: ["projectId", "status"] },
     { columns: ["outpostId"] },
   ],
 });

@@ -1,7 +1,7 @@
 import { $atom, type Infer, z } from "alepha";
 
 /**
- * Token budget for pinned folio bodies surfaced in `campaign_context`.
+ * Token budget for pinned folio bodies surfaced in `project_context`.
  * Held as an atom so ops/tests can override via
  * `alepha.store.set(pinnedContentAtom, { ... })` without touching code.
  *
@@ -14,9 +14,9 @@ import { $atom, type Infer, z } from "alepha";
 export const pinnedContentAtom = $atom({
   name: "lore.folio.pinnedContent",
   description:
-    "Cap for total characters of pinned folio bodies in campaign_context.",
+    "Cap for total characters of pinned folio bodies in project_context.",
   schema: z.object({
-    /** Max characters across all pinned folios surfaced in campaign_context. */
+    /** Max characters across all pinned folios surfaced in project_context. */
     maxChars: z.integer().min(256).default(8192),
   }),
   default: {

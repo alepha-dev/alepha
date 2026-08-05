@@ -13,10 +13,10 @@ export const folioRefSchema = z.object({
 });
 
 /**
- * Wiki-link ref returned alongside a folio. `shortId` is the per-campaign
+ * Wiki-link ref returned alongside a folio. `shortId` is the per-project
  * `#N` identifier — agents follow up via `folio_get` + `shortId` (or
  * `quest_get` / `blob_get` depending on `kind`). For `blob` refs the
- * `title` is the Archive display name (e.g. `diagram.png`), and the
+ * `title` is the blob's display name (e.g. `diagram.png`), and the
  * blob's bytes live at `/api/files/<uuid>` (no MCP-side fetch tool yet).
  */
 const folioLinkRefSchema = z.object({
@@ -64,8 +64,8 @@ export const folioFullSchema = z.object({
 });
 
 /**
- * Reference param accepting either the global UUID `id` or the per-campaign
- * 1-based `shortId` (with `campaign` / `campaign_name` for disambiguation).
+ * Reference param accepting either the global UUID `id` or the per-project
+ * 1-based `shortId` (with `project` / `project_name` for disambiguation).
  */
 export const folioRefParamsSchema = z.object({
   id: z
@@ -77,17 +77,17 @@ export const folioRefParamsSchema = z.object({
   shortId: z
     .integer()
     .describe(
-      "Per-campaign 1-based shortId ('#12'). Requires `campaign` or `campaign_name`.",
+      "Per-project 1-based shortId ('#12'). Requires `project` or `project_name`.",
     )
     .optional(),
-  campaign: z
+  project: z
     .integer()
-    .describe("Campaign ID — required when using `shortId`.")
+    .describe("Project ID — required when using `shortId`.")
     .optional(),
-  campaign_name: z
+  project_name: z
     .string()
     .describe(
-      "Campaign name (case-insensitive) — required when using `shortId` if `campaign` not provided.",
+      "Project name (case-insensitive) — required when using `shortId` if `project` not provided.",
     )
     .optional(),
 });

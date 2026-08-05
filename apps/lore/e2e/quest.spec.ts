@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
   apiPost,
-  createCampaignViaWizard,
+  createProjectViaWizard,
   registerAndVerify,
-  setCampaignFeature,
+  setProjectFeature,
 } from "./_helpers.ts";
 
 /**
@@ -12,7 +12,7 @@ import {
  * from the Zone combobox has its own test at the bottom of this file.
  *
  * Per the Lore CLAUDE.md convention, each big feature owns its own spec file.
- * Campaign create + auth are covered by the helpers — kept here as setup,
+ * Project create + auth are covered by the helpers — kept here as setup,
  * not as the focus of the test.
  */
 test.describe("Quest", () => {
@@ -22,17 +22,17 @@ test.describe("Quest", () => {
     const t = Date.now();
     const email = `quest${t}@example.com`;
     const password = "QuestTest123!";
-    const campaignTitle = `QC${t}`.slice(0, 20);
+    const projectTitle = `QC${t}`.slice(0, 20);
     const questTitle = `Quest${t}`;
 
     await registerAndVerify(page, email, password);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     const { id: questId, shortId } = await apiPost<{
       id: number;
       shortId: number;
     }>(page, "createQuest", {
-      campaignId,
+      projectId,
       title: questTitle,
       description: "Seeded quest for e2e",
       zone: "Main",
@@ -46,7 +46,7 @@ test.describe("Quest", () => {
     expect(shortId).toBeGreaterThan(0);
 
     await test.step("open quest view", async () => {
-      await page.goto(`/c/${campaignId}/q/${shortId}`);
+      await page.goto(`/p/${projectId}/q/${shortId}`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -82,9 +82,9 @@ test.describe("Quest", () => {
         .getByRole("button", { name: /complete without summary/i })
         .click();
       // Either stays on the quest view with a completed indicator or animates
-      // back to the board — both leave us inside the campaign URL space.
+      // back to the board — both leave us inside the project URL space.
       await page.waitForLoadState("networkidle");
-      expect(page.url()).toContain(`/c/${campaignId}`);
+      expect(page.url()).toContain(`/p/${projectId}`);
     });
   });
 
@@ -103,21 +103,21 @@ test.describe("Quest", () => {
     const t = Date.now();
     const email = `reminder${t}@example.com`;
     const password = "ReminderTest123!";
-    const campaignTitle = `RC${t}`.slice(0, 20);
+    const projectTitle = `RC${t}`.slice(0, 20);
     const questTitle = `Reminder${t}`;
 
     await registerAndVerify(page, email, password);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     // Reminders are an owner toggle, off by default — enable it before
     // exercising the reminder UI.
-    await setCampaignFeature(page, campaignId, "questReminder");
+    await setProjectFeature(page, projectId, "questReminder");
 
     const { shortId } = await apiPost<{
       id: number;
       shortId: number;
     }>(page, "createQuest", {
-      campaignId,
+      projectId,
       title: questTitle,
       description: "Seeded quest for reminder e2e",
       zone: "Main",
@@ -127,7 +127,7 @@ test.describe("Quest", () => {
       attachments: [],
     });
 
-    await page.goto(`/c/${campaignId}/q/${shortId}`);
+    await page.goto(`/p/${projectId}/q/${shortId}`);
     await page.waitForLoadState("networkidle");
 
     await test.step("accept quest (reminder is gated on accepted state)", async () => {
@@ -185,16 +185,16 @@ test.describe("Quest", () => {
     const t = Date.now();
     const email = `questline${t}@example.com`;
     const password = "QuestlineTest123!";
-    const campaignTitle = `QL${t}`.slice(0, 20);
+    const projectTitle = `QL${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     const predecessor = await apiPost<{ id: number; shortId: number }>(
       page,
       "createQuest",
       {
-        campaignId,
+        projectId,
         title: `Setup${t}`,
         description: "Predecessor",
         zone: "Main",
@@ -208,7 +208,7 @@ test.describe("Quest", () => {
       page,
       "createQuest",
       {
-        campaignId,
+        projectId,
         title: `Follower${t}`,
         description: "Depends on the setup",
         zone: "Main",
@@ -268,7 +268,7 @@ test.describe("Quest", () => {
     });
 
     await test.step("follower view surfaces the Unblocked chip", async () => {
-      await page.goto(`/c/${campaignId}/q/${follower.shortId}`);
+      await page.goto(`/p/${projectId}/q/${follower.shortId}`);
       await page.waitForLoadState("networkidle");
       await expect(
         page.getByText(new RegExp(`unblocked.*#${predecessor.shortId}`, "i")),
@@ -288,16 +288,16 @@ test.describe("Quest", () => {
     const t = Date.now();
     const email = `deppick${t}@example.com`;
     const password = "DepPick123!";
-    const campaignTitle = `DP${t}`.slice(0, 20);
+    const projectTitle = `DP${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     const predecessor = await apiPost<{ id: number; shortId: number }>(
       page,
       "createQuest",
       {
-        campaignId,
+        projectId,
         title: `Setup${t}`,
         description: "Predecessor",
         zone: "Main",
@@ -311,7 +311,7 @@ test.describe("Quest", () => {
       page,
       "createQuest",
       {
-        campaignId,
+        projectId,
         title: `Follow${t}`,
         description: "Will depend on the setup",
         zone: "Main",
@@ -322,7 +322,7 @@ test.describe("Quest", () => {
       },
     );
 
-    await page.goto(`/c/${campaignId}/q/${follower.shortId}`);
+    await page.goto(`/p/${projectId}/q/${follower.shortId}`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(`Follow${t}`).first()).toBeVisible({
       timeout: 10_000,
@@ -357,7 +357,7 @@ test.describe("Quest", () => {
     });
 
     await test.step("follower view now shows it is blocked by the predecessor", async () => {
-      await page.goto(`/c/${campaignId}/q/${follower.shortId}`);
+      await page.goto(`/p/${projectId}/q/${follower.shortId}`);
       await page.waitForLoadState("networkidle");
       await expect(
         page.getByText(new RegExp(`blocked by.*#${predecessor.shortId}`, "i")),
@@ -377,17 +377,17 @@ test.describe("Quest", () => {
     const t = Date.now();
     const email = `summary${t}@example.com`;
     const password = "SummaryTest123!";
-    const campaignTitle = `SM${t}`.slice(0, 20);
+    const projectTitle = `SM${t}`.slice(0, 20);
     const summaryText = `Shipped the thing on ${t}. Files touched: a.ts, b.ts.`;
 
     await registerAndVerify(page, email, password);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     const { shortId } = await apiPost<{ id: number; shortId: number }>(
       page,
       "createQuest",
       {
-        campaignId,
+        projectId,
         title: `Summary${t}`,
         description: "Quest under summary test",
         zone: "Main",
@@ -398,7 +398,7 @@ test.describe("Quest", () => {
       },
     );
 
-    await page.goto(`/c/${campaignId}/q/${shortId}`);
+    await page.goto(`/p/${projectId}/q/${shortId}`);
     await page.waitForLoadState("networkidle");
 
     // Accept first — Complete is only enabled on accepted quests.
@@ -433,10 +433,10 @@ test.describe("Quest", () => {
       // view by clicking its row instead of `page.goto` so we exercise
       // the SPA router (goto would force a hard reload + Turnstile
       // polling delays).
-      await page.waitForURL(new RegExp(`/c/${campaignId}/?$`), {
+      await page.waitForURL(new RegExp(`/p/${projectId}/?$`), {
         timeout: 15_000,
       });
-      await page.goto(`/c/${campaignId}/q/${shortId}`);
+      await page.goto(`/p/${projectId}/q/${shortId}`);
       await page.waitForLoadState("domcontentloaded");
       // First make sure the quest view actually loaded — the title is
       // always rendered for a valid shortId.
@@ -464,15 +464,15 @@ test.describe("Quest", () => {
     const t = Date.now();
     const email = `wikilink${t}@example.com`;
     const password = "WikiLink123!";
-    const campaignTitle = `WL${t}`.slice(0, 20);
+    const projectTitle = `WL${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     // A folio to link to via the bare `[[#N]]` form.
     const folio = await apiPost<{ shortId: number }>(page, "create", {
       title: `Lore${t}`,
-      campaignId,
+      projectId,
       content: "",
     });
 
@@ -481,7 +481,7 @@ test.describe("Quest", () => {
       page,
       "createQuest",
       {
-        campaignId,
+        projectId,
         title: `Target${t}`,
         description: "Link target",
         zone: "Main",
@@ -497,7 +497,7 @@ test.describe("Quest", () => {
       page,
       "createQuest",
       {
-        campaignId,
+        projectId,
         title: `Host${t}`,
         description: `See folio [[#${folio.shortId}]] and quest [[quest:#${target.shortId}]].`,
         zone: "Main",
@@ -508,15 +508,15 @@ test.describe("Quest", () => {
       },
     );
 
-    await page.goto(`/c/${campaignId}/q/${host.shortId}`);
+    await page.goto(`/p/${projectId}/q/${host.shortId}`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(`Host${t}`).first()).toBeVisible({
       timeout: 10_000,
     });
 
-    await test.step("folio link resolves to the archive route", async () => {
+    await test.step("folio link resolves to the folio route", async () => {
       const link = page.locator(
-        `a[href="/c/${campaignId}/archive/${folio.shortId}"]`,
+        `a[href="/p/${projectId}/folios/${folio.shortId}"]`,
       );
       await expect(link).toBeVisible({ timeout: 10_000 });
       await expect(link).toHaveText(`Lore${t}`);
@@ -524,7 +524,7 @@ test.describe("Quest", () => {
 
     await test.step("quest link resolves to the quest route", async () => {
       const link = page.locator(
-        `a[href="/c/${campaignId}/q/${target.shortId}"]`,
+        `a[href="/p/${projectId}/q/${target.shortId}"]`,
       );
       await expect(link).toBeVisible();
       await expect(link).toHaveText(`Target${t}`);
@@ -544,17 +544,17 @@ test.describe("Quest", () => {
     const t = Date.now();
     const email = `shelve${t}@example.com`;
     const password = "ShelveTest123!";
-    const campaignTitle = `SC${t}`.slice(0, 20);
+    const projectTitle = `SC${t}`.slice(0, 20);
     const questTitle = `ShelveMe${t}`;
 
     await registerAndVerify(page, email, password);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     const { shortId } = await apiPost<{
       id: number;
       shortId: number;
     }>(page, "createQuest", {
-      campaignId,
+      projectId,
       title: questTitle,
       description: "Seeded quest for shelve e2e",
       zone: "Main",
@@ -565,7 +565,7 @@ test.describe("Quest", () => {
     });
 
     await test.step("shelve from the quest view", async () => {
-      await page.goto(`/c/${campaignId}/q/${shortId}`);
+      await page.goto(`/p/${projectId}/q/${shortId}`);
       await page.waitForLoadState("networkidle");
 
       await page.getByRole("button", { name: /^shelve$/i }).click();
@@ -582,7 +582,7 @@ test.describe("Quest", () => {
     });
 
     await test.step("shelved quest is gone from the default board", async () => {
-      await page.goto(`/c/${campaignId}/`);
+      await page.goto(`/p/${projectId}/`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(questTitle).first()).toBeHidden({
         timeout: 10_000,
@@ -604,16 +604,16 @@ test.describe("Quest", () => {
     });
 
     await test.step("unshelve returns it to the backlog", async () => {
-      await page.goto(`/c/${campaignId}/q/${shortId}`);
+      await page.goto(`/p/${projectId}/q/${shortId}`);
       await page.waitForLoadState("networkidle");
       await page.getByRole("button", { name: /^unshelve$/i }).click();
       await expect(page.getByRole("button", { name: /^shelve$/i })).toBeVisible(
         { timeout: 10_000 },
       );
 
-      await page.goto(`/c/${campaignId}/`);
+      await page.goto(`/p/${projectId}/`);
       await page.waitForLoadState("networkidle");
-      // Board filters persist per campaign (#113), so the "Shelved" choice
+      // Board filters persist per project (#113), so the "Shelved" choice
       // from the previous step is still applied — clear it before asserting
       // the quest is back in the normal listing.
       await page.getByRole("button", { name: "Reset filters" }).click();
@@ -634,14 +634,14 @@ test.describe("Quest", () => {
     const t = Date.now();
     const email = `delete${t}@example.com`;
     const password = "DeleteTest123!";
-    const campaignTitle = `DC${t}`.slice(0, 20);
+    const projectTitle = `DC${t}`.slice(0, 20);
     const questTitle = `DeleteMe${t}`;
 
     await registerAndVerify(page, email, password);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     await apiPost<{ id: number; shortId: number }>(page, "createQuest", {
-      campaignId,
+      projectId,
       title: questTitle,
       description: "Seeded quest for delete-confirm e2e",
       zone: "Main",
@@ -651,7 +651,7 @@ test.describe("Quest", () => {
       attachments: [],
     });
 
-    await page.goto(`/c/${campaignId}/`);
+    await page.goto(`/p/${projectId}/`);
     await expect(page.getByText(questTitle).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -680,7 +680,7 @@ test.describe("Quest", () => {
   });
 
   /**
-   * Petition #17: typing a new zone name and pressing Enter must create it.
+   * Feedback #17: typing a new zone name and pressing Enter must create it.
    * Base UI's `autoHighlight` is off by default, so nothing was highlighted
    * while typing and Enter had no target — the `+ Create "…"` row could only
    * be clicked. Also covers the non-regression side: a query that matches an
@@ -692,10 +692,10 @@ test.describe("Quest", () => {
     const t = Date.now();
     const email = `zone${t}@example.com`;
     const password = "ZoneTest123!";
-    const campaignTitle = `ZC${t}`.slice(0, 20);
+    const projectTitle = `ZC${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     const zoneCombobox = page.getByRole("combobox", { name: "Zone" });
     const zoneSearch = page.getByRole("combobox", { name: "Search…" });
@@ -705,7 +705,7 @@ test.describe("Quest", () => {
       await expect(zoneCombobox).toBeVisible({ timeout: 10_000 });
     };
 
-    await page.goto(`/c/${campaignId}/`);
+    await page.goto(`/p/${projectId}/`);
     await openQuestForm();
 
     await test.step("Enter creates the typed zone", async () => {
@@ -723,15 +723,15 @@ test.describe("Quest", () => {
     await test.step("the created zone reaches the quest", async () => {
       await page.getByRole("textbox", { name: "Name" }).fill(`Q${t}`);
       await page.locator("form button[type=submit]").click();
-      await page.waitForURL(/\/c\/\d+\/q\/\d+/, { timeout: 15_000 });
-      await page.goto(`/c/${campaignId}/settings/zones`);
+      await page.waitForURL(/\/p\/\d+\/q\/\d+/, { timeout: 15_000 });
+      await page.goto(`/p/${projectId}/settings/zones`);
       await expect(page.getByRole("cell", { name: "Donjon" })).toBeVisible({
         timeout: 10_000,
       });
     });
 
     await test.step("Enter on a partial query picks the existing zone", async () => {
-      await page.goto(`/c/${campaignId}/`);
+      await page.goto(`/p/${projectId}/`);
       await openQuestForm();
       await zoneCombobox.click();
       await zoneSearch.fill("Don");
@@ -741,5 +741,37 @@ test.describe("Quest", () => {
       await zoneSearch.press("Enter");
       await expect(zoneCombobox).toContainText("Donjon");
     });
+  });
+
+  /**
+   * Kanban is a `?view=kanban` toggle on the Quests page, not its own route
+   * (the great rename, Task 8). `/p/:id/kanban` used to render the board;
+   * now it must not.
+   */
+  test("kanban is a view of the quests page, not a route", async ({ page }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `kanban${t}@example.com`;
+    const password = "KanbanTest123!";
+    const projectTitle = `KV${t}`.slice(0, 20);
+
+    await registerAndVerify(page, email, password);
+    const projectId = await createProjectViaWizard(page, projectTitle);
+
+    await page.goto(`/p/${projectId}/?view=kanban`);
+    await expect(page.getByTestId("kanban-board")).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await page.goto(`/p/${projectId}/`);
+    await expect(page.getByTestId("quests-table")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId("kanban-board")).toHaveCount(0);
+
+    // The old route is gone.
+    await page.goto(`/p/${projectId}/kanban`);
+    await expect(page.getByTestId("kanban-board")).toHaveCount(0);
   });
 });

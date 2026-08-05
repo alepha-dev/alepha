@@ -22,7 +22,7 @@ describe("@alepha/sigil/react", () => {
 
     expect(typeof entry.SigilRoot).toBe("function");
     expect(typeof entry.SigilFeedbackButton).toBe("function");
-    expect(typeof entry.usePetitionUrl).toBe("function");
+    expect(typeof entry.useFeedbackUrl).toBe("function");
   });
 
   it("keeps the React surface out of the module entry", async () => {

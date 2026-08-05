@@ -1,24 +1,24 @@
 # Alepha Lore
 
-Campaign management app built with [Alepha](https://github.com/feunard/alepha). Users create **campaigns**, forge **quests** with objectives, invite **members**, and progress together across **zones**. The RPG vocabulary describes the work, never the person — there is no XP, gold, level or achievement system (see "De-gamification" below).
+Project management app built with [Alepha](https://github.com/feunard/alepha). Users create **projects**, forge **quests** with objectives, invite **members**, and progress together across **zones**. The RPG vocabulary describes the work, never the person — there is no XP, gold, level or achievement system (see "De-gamification" below).
 
-It has since grown well past a quest tracker. The load-bearing surfaces today are **quests** (roadmap + in-flight work), **folios** (campaign memory, wiki-linked, optionally end-to-end encrypted), **petitions** (inbound bug/feature triage), **blights** (deduplicated crash telemetry from partner sites via **sigils**), and the **archive** (directory tree + binary blobs). All five are exposed over **MCP**, which is the primary consumer.
+It has since grown well past a quest tracker. The load-bearing surfaces today are **quests** (roadmap + in-flight work), **folios** (project memory, wiki-linked, optionally end-to-end encrypted, and — since the 2026-08 rename — including the directory tree + binary blobs that used to be a separate "Archive" module), **feedback** (inbound bug/feature triage), and **blights** (deduplicated crash telemetry from partner sites via **sigils**). All four are exposed over **MCP**, which is the primary consumer.
 
 Alepha Lore is the **only public Alepha app** and exists in large part to **dogfood the framework** — improvements and bug fixes upstream are part of the job, not a side quest.
 
 ## The Lore of Lore (start here)
 
-The production Alepha Lore instance hosts the campaign we actually use to run this project: **`https://lore.alepha.dev/c/2`** — the "Lore of Lore." It is the canonical source of truth for what's planned, in-flight, and remembered on Alepha Lore itself. It also dogfoods the MCP surface — every Claude session working on this repo should treat that campaign as a first-class input, not background trivia.
+The production Alepha Lore instance hosts the project we actually use to run this project: **`https://lore.alepha.dev/p/2`** — the "Lore of Lore." It is the canonical source of truth for what's planned, in-flight, and remembered on Alepha Lore itself. It also dogfoods the MCP surface — every Claude session working on this repo should treat that project as a first-class input, not background trivia.
 
-**Before non-trivial work, orient via MCP** (these tools are already exposed on `mcp__claude_ai_Lore__*` for this account, campaign id `2`):
+**Before non-trivial work, orient via MCP** (these tools are already exposed on `mcp__claude_ai_Lore__*` for this account, project id `2`):
 
-1. `campaign_context` — one-shot orientation (campaign metadata + active quests + folio index, ~2K tokens).
+1. `project_context` — one-shot orientation (project metadata + active quests + folio index, ~2K tokens).
 2. `folio_get` on the folios that look relevant — folios are the shared memory between you and the user across sessions. The user relies on them heavily, so **read first, write often**.
 3. `quest_list` / `quest_get` — quests are the **most load-bearing** piece. They are the roadmap and the in-flight work tracker. If a task corresponds to a quest, drive it from the quest (read objectives, update status, complete on done).
 
 **Write back what's worth keeping.** When a session produces a non-obvious decision, gotcha, or architectural fact about Lore/Alepha, persist it as a folio (`folio_create` / `folio_update` with good `tags` + `summary`). When in-flight work changes scope or completes, reflect it on the matching quest. Conversation history is ephemeral; folios and quests are the project's long-term memory.
 
-The codebase used to use the technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`. As of the great rename, code identifiers, DB tables, HTTP routes, MCP tools, and URL params all match the user-facing vocabulary: `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty`. A **user** is the account; a **member** is that user's membership row in a campaign. Identity (name, picture) always comes from the account — the per-campaign "character" concept was removed in the 2026-07 de-gamification pass.
+Lore's vocabulary has been renamed twice. Originally the codebase used the plain technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`; a first rename swapped every one of those for RPG flavor — `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty` — across code identifiers, DB tables, HTTP routes, MCP tools and URL params. The **2026-08 great rename** partially reversed that: the top-level container went back to the plain, technical **`project`** (campaign → project, `/c/:campaignId` → `/p/:projectId`, `campaign_*` MCP tools → `project_*`), because "campaign" read as more RPG-themed than the container itself deserved. The RPG vocabulary that describes the *work inside* a project was kept and in some cases sharpened: **quest**, **zone**, member, folio, blight, sigil, outpost, and the F/C/B/A/S difficulty ranks are all still RPG-flavored on purpose. Three other nouns were renamed in the same pass for clarity rather than theme: Petitions → **Feedback**, Chapters → **Milestones**, and Chronicles → **Reports** (with Reports▸Party → Reports▸Members). The old standalone "Archive" module (directory tree + blobs) was folded entirely into **Folios** — same entities, same MCP tools, one mental model instead of two. A **user** is the account; a **member** is that user's membership row in a project. Identity (name, picture) always comes from the account — the per-project "character" concept was removed in the 2026-07 de-gamification pass.
 
 All user-facing strings still go through `I18n.ts` for EN/FR localization.
 
@@ -32,17 +32,17 @@ Lore lives inside the **Alepha monorepo** at `apps/lore`. The Alepha framework i
 apps/lore/                # This app
 ├── src/                  # App source
 │   ├── api/              # Backend
-│   │   ├── controllers/  # 20 controllers — see list below
-│   │   ├── entities/     # 23 entities — see list below
-│   │   ├── providers/    # AppSecurityProvider (membership/owner gates), LoreFileAccessProvider (per-file IDOR gate)
-│   │   ├── jobs/         # BlightJobs (retention purge), ChapterJobs, InvitationJobs, QuestJobs (reminder sweep)
+│   │   ├── controllers/  # 24 controllers — see list below
+│   │   ├── entities/     # 27 entities — see list below
+│   │   ├── providers/    # AppSecurityProvider (membership/owner gates), LoreFileAccessProvider (per-file IDOR gate), LoreSigilSinkProvider (in-process self-report — a Worker can't fetch its own hostname)
+│   │   ├── jobs/         # BlightJobs (retention purge), InvitationJobs, MilestoneJobs, QuestJobs (reminder sweep)
 │   │   ├── schemas/      # Request/response schemas
-│   │   └── services/     # 18 services — see list below
+│   │   └── services/     # 21 services — see list below
 │   ├── mcp/              # MCP protocol integration (tools, resources)
 │   ├── web/
 │   │   ├── app/          # Main SPA
-│   │   │   ├── atoms/    # 15 state atoms — see "State Atoms" section
-│   │   │   ├── components/  # ~119 React components
+│   │   │   ├── atoms/    # 16 state atoms — see "State Atoms" section
+│   │   │   ├── components/  # ~121 React components
 │   │   │   ├── services/ # I18n (EN + FR), Toaster
 │   │   │   └── AppRouter.ts  # All routes
 │   │   └── admin/        # Admin UI module
@@ -54,13 +54,13 @@ apps/lore/                # This app
 └── public/               # Static assets served at /
 ```
 
-**Controllers (20)** — `AdminInvitation`, `Blight`, `Blob`, `Campaign`, `CampaignQuestPortability`, `CampaignStats`, `Chapter`, `Directory`, `Folio`, `Identity`, `Insights`, `Invitation`, `Kanban`, `Petition`, `Quest`, `Session`, `Sigil`, `SigilIngest`, `User`, `Version`.
+**Controllers (24)** — `AdminInvitation`, `Blight`, `Blob`, `Directory`, `Feedback`, `Folio`, `Identity`, `Insights`, `Invitation`, `Kanban`, `Milestone`, `OutpostCommand`, `Outpost`, `OutpostIngest`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `Release`, `Session`, `Sigil`, `SigilIngest`, `User`, `Version`.
 
-**Entities (23)** — `archiveBlobs`, `archiveDirectories`, `archiveNames`, `blightIgnoreRules`, `blights`, `campaigns`, `chapters`, `files`, `folioLinks`, `folioRevisions`, `folios`, `identities`, `invitations`, `members`, `petitions`, `quests`, `sessions`, `sigilErrorGroups`, `sigils`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `users`.
+**Entities (27)** — `blightIgnoreRules`, `blights`, `feedback`, `files`, `folioBlobs`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `invitations`, `members`, `milestones`, `outpostApps`, `outpostEvents`, `outposts`, `projects`, `quests`, `releases`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`.
 
-**Services (18)** — `ArchiveBlobService`, `ArchiveDirectoryService`, `ArchiveNameService`, `BlightRuleService`, `CampaignLimits`, `CampaignSecurityService`, `FolioHistoryService`, `FolioLinkService`, `InvitationService`, `PetitionRateLimiter`, `PinnedFolioFolder`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
+**Services (21)** — `BlightRuleService`, `FeedbackRateLimiter`, `FolioBlobService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `InvitationService`, `OutpostIngestService`, `OutpostTokenService`, `PinnedFolioFolder`, `ProjectLimits`, `ProjectSecurityService`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `ReleaseService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
 
-**MCP tools (8)** — `ArchiveTools`, `BlightTools`, `CampaignTools`, `ChapterTools`, `FolioTools`, `PetitionTools`, `QuestTools`, `SigilTools`.
+**MCP tools (8)** — `BlightTools`, `FeedbackTools`, `FolioTools` (absorbed the old `ArchiveTools`: `directory_*` / `blob_*` live here now), `InsightsTools`, `MilestoneTools`, `ProjectTools`, `QuestTools`, `SigilTools`.
 
 ## Routes
 
@@ -68,176 +68,189 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 
 | Path | Route name | Page (lazy) | Notes |
 |------|------------|-------------|-------|
-| `/` | `home` | `home/Home.tsx` | Campaign list |
-| `/new-campaign` | `campaignCreate` | `campaign/CampaignCreate.tsx` | New campaign form |
-| `/c/:campaignId` | `campaign` | `campaign/CampaignView.tsx` | Campaign layout — sets `currentCampaignAtom` + chapters/member/quests on load |
-| `/c/:campaignId/` | `campaignBoard` | `campaign/CampaignBoardTable.tsx` | Quest list grouped by zone |
-| `/c/:campaignId/chapters` | `campaignChapters` | `campaign/chapters/CampaignChapters.tsx` | Chapters list |
-| `/c/:campaignId/kanban` | `campaignKanban` | `kanban/KanbanBoard.tsx` | Drag & drop columns |
-| `/c/:campaignId/chronicles` | `campaignChronicles` | `campaign/CampaignStats.tsx` | Stats / chronicles layout |
-| `/c/:campaignId/chronicles/` | `chroniclesOverview` | chronicles page | Overview |
-| `/c/:campaignId/chronicles/quests` | `chroniclesQuests` | chronicles page | Quest analytics |
-| `/c/:campaignId/chronicles/party` | `chroniclesParty` | `campaign/chronicles/ChroniclesParty.tsx` | Per-member contribution |
-| `/c/:campaignId/petitions` | `campaignPetitions` | `campaign/petitions/CampaignPetitions.tsx` | Owner inbox: triage bug/feature requests |
-| `/c/:campaignId/blights` | `campaignBlights` | blights page | Crash-telemetry inbox (sigil-fed) |
-| `/c/:campaignId/insights` | `campaignInsights` | insights page | Beacon / vitals analytics + per-environment error budget |
-| `/c/:campaignId/outposts` | `campaignOutposts` | `campaign/outposts/CampaignOutposts.tsx` | Machines reporting into the campaign (read-only), gated on `features.outposts` |
-| `/c/:campaignId/q/:shortId` | `campaignQuest` | `campaign/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
-| `/c/:campaignId/q/:shortId/graph` | `campaignQuestGraph` | `campaign/quest/QuestGraph.tsx` | Quest dependency graph |
-| `/c/:campaignId/archive` | `campaignFolios` | `folios/FoliosLayout.tsx` | Folio + archive index (note: path is `/archive`, route name is still `campaignFolios`) |
-| `/c/:campaignId/archive/new` | `campaignFoliosNew` | `folios/FolioCreatePage.tsx` | New folio |
-| `/c/:campaignId/archive/:shortId` | `campaignFoliosFolio` | `folios/FolioView.tsx` | Folio detail |
-| `/c/:campaignId/archive/:shortId/edit` | `campaignFoliosFolioEdit` | `folios/FolioEditPage.tsx` | Folio editor |
-| `/c/:campaignId/settings` | `campaignSettings` | `campaign/settings/CampaignSettings.tsx` | Settings layout (sub-routes below) |
-| `/c/:campaignId/settings/` | `campaignSettingsBanner` | `…/CampaignSettingsGeneralPage.tsx` | General / banner |
-| `/c/:campaignId/settings/members` | `campaignSettingsMembers` | `…/CampaignSettingsMembersPage.tsx` | Members & pending invitations — the future home of per-member access rights |
-| `/c/:campaignId/settings/zones` | `campaignSettingsZones` | `…/CampaignSettingsZonesPage.tsx` | Zones config |
-| `/c/:campaignId/settings/kanban` | `campaignSettingsKanban` | `…/CampaignSettingsKanbanPage.tsx` | Kanban columns config |
-| `/c/:campaignId/settings/folios` | `campaignSettingsFolios` | `…/CampaignSettingsFoliosPage.tsx` | Folios config |
-| `/c/:campaignId/settings/quests` | `campaignSettingsQuests` | `…/CampaignSettingsQuestsPage.tsx` | Per-quest module toggles (note / chrono / reminder) |
-| `/c/:campaignId/settings/sigils` | `campaignSettingsSigils` | `…/CampaignSettingsSigilsPage.tsx` | Sigil inventory + module toggles |
-| `/c/:campaignId/settings/outposts` | `campaignSettingsOutposts` | `…/CampaignSettingsOutpostsPage.tsx` | Outpost inventory: enrol, rotate, delete |
-| `/c/:campaignId/settings/chapters` | `campaignSettingsChapters` | settings page | Chapter config |
-| `/c/:campaignId/request` | `campaignPetitionRequest` | `campaign/petitions/CampaignPetitionRequest.tsx` | First-party petition form (login required). Top-level, **not** nested under the `campaign` layout — no membership check |
+| `/` | `home` | `home/Home.tsx` | Project list |
+| `/new-project` | `projectCreate` | `project/ProjectCreate.tsx` | New project form |
+| `/p/:projectId` | `project` | `project/ProjectView.tsx` | Project layout — sets `currentProjectAtom` + milestones/member/quests/feedback-count/blight-count/quest-count on load |
+| `/p/:projectId/` | `projectQuests` | `project/ProjectQuestsPage.tsx` | Quest list grouped by zone; renders the kanban board instead when the URL has `?view=kanban` (see "Kanban ↔ Header Communication" below — kanban is no longer its own route) |
+| `/p/:projectId/milestones` | `projectMilestones` | `project/milestones/ProjectMilestones.tsx` | Milestones list |
+| `/p/:projectId/reports` | `projectReports` | `project/reports/ReportsLayout.tsx` | Reports layout |
+| `/p/:projectId/reports/` | `reportsOverview` | `project/reports/ReportsOverview.tsx` | Overview |
+| `/p/:projectId/reports/quests` | `reportsQuests` | `project/reports/ReportsQuests.tsx` | Quest analytics |
+| `/p/:projectId/reports/members` | `reportsMembers` | `project/reports/ReportsMembers.tsx` | Per-member contribution (was Reports▸Party) |
+| `/p/:projectId/feedback` | `projectFeedback` | `project/feedback/ProjectFeedback.tsx` | Owner inbox: triage bug/feature requests |
+| `/p/:projectId/blights` | `projectBlights` | `project/blights/ProjectBlights.tsx` | Crash-telemetry inbox (sigil-fed) |
+| `/p/:projectId/insights` | `projectInsights` | `project/insights/ProjectInsights.tsx` | Beacon / vitals analytics + per-environment error budget |
+| `/p/:projectId/outposts` | `projectOutposts` | `project/outposts/ProjectOutposts.tsx` | Machines reporting into the project (read-only), gated on `features.outposts` |
+| `/p/:projectId/q/:shortId` | `projectQuest` | `project/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
+| `/p/:projectId/q/:shortId/graph` | `projectQuestGraph` | `project/quest/QuestGraph.tsx` | Quest dependency graph |
+| `/p/:projectId/folios` | `projectFolios` | `folios/FoliosLayout.tsx` | Folio + directory-tree index |
+| `/p/:projectId/folios/new` | `projectFoliosNew` | `folios/FolioCreatePage.tsx` | New folio |
+| `/p/:projectId/folios/:shortId` | `projectFoliosFolio` | `folios/FolioView.tsx` | Folio detail |
+| `/p/:projectId/folios/:shortId/edit` | `projectFoliosFolioEdit` | `folios/FolioEditPage.tsx` | Folio editor |
+| `/p/:projectId/settings` | `projectSettings` | `project/settings/ProjectSettings.tsx` | Settings layout (sub-routes below) |
+| `/p/:projectId/settings/` | `projectSettingsBanner` | `…/ProjectSettingsGeneralPage.tsx` | General / banner |
+| `/p/:projectId/settings/members` | `projectSettingsMembers` | `…/ProjectSettingsMembersPage.tsx` | Members & pending invitations — the future home of per-member access rights |
+| `/p/:projectId/settings/zones` | `projectSettingsZones` | `…/ProjectSettingsZonesPage.tsx` | Zones config |
+| `/p/:projectId/settings/kanban` | `projectSettingsKanban` | `…/ProjectSettingsKanbanPage.tsx` | Kanban columns config |
+| `/p/:projectId/settings/folios` | `projectSettingsFolios` | `…/ProjectSettingsFoliosPage.tsx` | Folios config |
+| `/p/:projectId/settings/sigils` | `projectSettingsSigils` | `…/ProjectSettingsSigilsPage.tsx` | Sigil inventory + module toggles |
+| `/p/:projectId/settings/outposts` | `projectSettingsOutposts` | `…/ProjectSettingsOutpostsPage.tsx` | Outpost inventory: enrol, rotate, delete |
+| `/p/:projectId/settings/milestones` | `projectSettingsMilestones` | `…/ProjectSettingsMilestonesPage.tsx` | Milestone config |
+| `/p/:projectId/settings/quests` | `projectSettingsQuests` | `…/ProjectSettingsQuestsPage.tsx` | Per-quest module toggles (note / chrono / reminder) |
+| `/p/:projectId/request` | `projectFeedbackRequest` | `project/feedback/ProjectFeedbackRequest.tsx` | First-party feedback form (login required). Top-level, **not** nested under the `project` layout — no membership check |
+| `/auth/profile/feedback` | `myFeedback` | `profile/feedback/MyFeedback.tsx` | A reporter's own submissions across all projects, declared in `src/web/app/components/profile/me/MeRouter.ts` (nested under `me` at `/auth/profile`), not in `AppRouter`. Detail is a drawer/sheet (`MyFeedbackEditSheet.tsx`), not a separate route — there is no per-feedback status page anymore |
+| `/*` | `notFound` | `NotFound` | — |
 
-A reporter follows their own submissions at `/me/petitions` (`myPetitions`, declared in `src/web/app/components/profile/me/MeRouter.ts`, not in `AppRouter`). The old per-petition status page (`/c/:id/p/:petitionId`) was retired in its favour.
+Also top-level under the shared layout: `/auth/login` (`login`), `/oauth/continue` (`oauthContinue`), `/auth/register` (`register`), `/auth/reset-password` (`resetPassword`).
 
-HTTP API routes follow the same vocabulary: `/campaigns/:id/export`, `/quests/attachments`, `/kanban/:campaignId`. MCP tools are `campaign_*`, `quest_*`, `chapter_*`, `folio_*`, `petition_*`.
+HTTP API routes follow the same vocabulary: `/projects/:id/quests/export`, `/quests/attachments`, `/kanban/:projectId`, `/projects/:projectId/feedback`. MCP tools are `project_*`, `quest_*`, `milestone_*`, `folio_*` (also `directory_*` / `blob_*`), `feedback_*`, `blight_*`, `sigil_*`, `insights_*`.
+
+### ⚠️ Deleting or renaming a `$page` is not typecheck-protected
+
+`router.path("someRouteName", ...)` / `router.push("someRouteName", ...)` are typed against the live route table — but only while the name exists. The moment a route is renamed or removed, any call site still passing the old name silently widens to the plain `string` overload instead of erroring. The build stays green; the call throws at render time, in production, the first time a user hits that code path. This bit the 2026-08 rename directly (`campaignQuest` → `projectQuest` etc., and the whole `Kanban` board route disappearing in favour of `?view=kanban`). There is no automated guard for this — **deleting or renaming a route name requires grepping the whole `src/` tree for the old string**, including nav arrays like `ProjectSettings.tsx`'s sidebar list, which references route names as plain strings with nothing in the type system tying it to the routes it names (see the comments on `projectSettingsSigils` / `projectSettingsOutposts` in `AppRouter.ts`).
 
 ## Key Patterns
 
 ### State Atoms
 
-Live in `src/web/app/atoms/`. The campaign route loader fills the `current*` atoms on enter and clears them on leave — components inside the layout can read them without re-fetching.
+Live in `src/web/app/atoms/` (16 files). The project route loader fills the `current*` atoms on enter and clears them on leave — components inside the layout can read them without re-fetching. Three more atoms live in `src/api/atoms/` (`feedbackOptionsAtom`, `folioHistoryAtom`, `pinnedContentAtom`) — server-only tunables read by the backend, not route-driven.
 
-**Per-campaign (set by `campaign` route loader)**
-- `currentCampaignAtom` — campaign metadata
-- `currentCampaignMemberAtom` — the viewer's membership row for this campaign
+**Per-project (set by `project` route loader)**
+- `currentProjectAtom` — project metadata
+- `currentProjectMemberAtom` — the viewer's membership row for this project
 - `currentAssignedQuestsAtom` — quests assigned to the viewer
-- `currentChaptersAtom` — chapter list
+- `currentMilestonesAtom` — milestone list
+- `currentFeedbackCountAtom` — pending-feedback badge for the project header
+- `currentBlightCountAtom` — open-blights badge for the project header
+- `currentQuestCountAtom` — open-quests badge for the project header (new: Quests has no feature gate, unlike Blights/Feedback, so this badge is always on)
 
 **Per-resource (set by their route loaders)**
 - `currentQuestAtom` — active quest detail
 - `currentFolioAtom` — active folio detail
-- `currentPetitionCountAtom` — pending petitions badge for the campaign header
-- `currentBlightCountAtom` — open blights badge for the campaign header
 
-**Archive / folios index (set by the `campaignFolios` loader)**
+**Folios index (set by the `projectFolios` loader)**
 - `userFoliosAtom`, `folioTagsAtom`
-- `campaignDirectoriesAtom` — archive directory tree
-- `currentArchivePathAtom` — breadcrumb chain for the active directory
-- `currentArchiveContentsAtom` — folios + blobs in the active directory
+- `projectDirectoriesAtom` — folio directory tree
+- `currentFolioPathAtom` — breadcrumb chain for the active directory
+- `currentFolioContentsAtom` — folios + blobs in the active directory
 
-**Global (per-user, not per-campaign)**
-- `userCampaignsAtom` — sidebar/home campaign list
-- `campaignOptionsAtom` — per-user campaign UI options
-- `petitionOptionsAtom` — server-side rate-limit tunables (see Petitions section)
+**Global (per-user, not per-project)**
+- `userProjectsAtom` — sidebar/home project list
 
 **Kanban ↔ Header communication (the pattern that needs explaining)**
-- `kanbanCampaignAtom` — set by `KanbanBoard` on mount with `{ campaign }`; read by the Header so the "Create Quest" button can target the right campaign
-- `kanbanReloadAtom` — bumped by the Header's create button (`CampaignActionsCreateButton.tsx`) to trigger a board reload
+- `kanbanProjectAtom` — set by `KanbanBoard` on mount with `{ project }`; read by the Header so the "Create Quest" button can target the right project
+- `kanbanReloadAtom` — bumped by the Header's create button (`ProjectActionsCreateButton.tsx`) to trigger a board reload
+
+Both live in the one file `atoms/kanbanProjectAtom.ts`.
 
 ### Kanban ↔ Header Communication
-The kanban board sets `kanbanCampaignAtom` with `{ campaign }`. The Header reads it to:
-1. Show the campaign name in `HeaderCampaign` (falls back from `currentCampaignAtom`)
-2. Show the Board/Kanban toggle button
+Kanban is not a route anymore — it's a `?view=kanban` query toggle on the `projectQuests` page (`ProjectQuestsPage.tsx` reads `routerState.query.view === "kanban"` and renders `KanbanBoard` instead of `ProjectQuestsTable`; the view lives in the URL rather than component state so a shared link still opens a board and the back button behaves). `KanbanBoard` sets `kanbanProjectAtom` with `{ project }`. The Header reads it to:
+1. Show the project name in the header (falls back from `currentProjectAtom`)
+2. Show the Board/Kanban toggle link (a plain `?view=kanban` query param, not a navigation to a different route)
 3. Show the "Create Quest" button
 
-After creating a quest from the header, it bumps `kanbanReloadAtom` which KanbanBoard watches to trigger a reload.
+After creating a quest from the header, it bumps `kanbanReloadAtom` which `KanbanBoard` watches to trigger a reload.
 
 ### QuestView Reusability
 `QuestView` works in two contexts:
-1. **Campaign page** — rendered as a route (`/c/:id/q/:questId`), reads from `currentCampaignAtom`, navigates via router
+1. **Project page** — rendered as a route (`/p/:id/q/:shortId`), reads from `currentProjectAtom`, navigates via router
 2. **Kanban drawer** — rendered inside a `Drawer`, receives `onClose` and `onQuestChange` callbacks
 
 When `onClose` is provided, it's used instead of router navigation. When `onQuestChange` is provided, it's called on quest mutations so the parent can update its state.
 
 ### QuestCreate Navigation
-`QuestCreate` accepts an optional `onCreated` callback. When provided, it's called instead of the default `router.push("campaignQuest", ...)` after creating a quest. Used by the kanban header to stay on the kanban page.
+`QuestCreate` accepts an optional `onCreated` callback. When provided, it's called instead of the default `router.push("projectQuest", ...)` after creating a quest. Used by the kanban header to stay on the kanban view.
 
-### Campaign access model
-Lore campaigns are private. Every campaign-scoped endpoint goes through
+### Project access model
+Lore projects are private. Every project-scoped endpoint goes through
 `AppSecurityProvider.assertMember` (member-or-owner) or `assertOwner`
 (creator-only). There is no anonymous or "any-logged-in-user can browse"
-path — the old `campaign.public` flag was removed (the column is kept in
+path — the old `project.public` flag was removed (the column is kept in
 the schema only because dropping it on D1 triggers a cascade-wipe).
 
-The single exception is the petition module: `submitPetition` and
-`uploadPetitionAttachment` are gated on `campaign.features.petitions`
+The single exception is the feedback module: `submitFeedback` and
+`uploadFeedbackAttachment` are gated on `project.features.feedback`
 being on instead of membership, so any logged-in Lore user can submit
-feedback to a campaign that opts in. The petition module toggle is the
+feedback to a project that opts in. The feedback module toggle is the
 owner's opt-in/out lever.
 
 ### Drag & Drop
 Uses `@dnd-kit/core`. Cards are `useDraggable`, columns are `useDroppable`. Status transitions: `new → accepted → completed`. Completed quests cannot be moved back. New quests must be accepted before completing.
 
-## Petitions
+## Feedback
 
-User-submitted bug reports / feature requests that the campaign owner triages.
+User-submitted bug reports / feature requests that the project owner triages. (Renamed from **Petitions** in the 2026-08 great rename — same entity, same lifecycle, new name throughout code, DB, HTTP and MCP.)
 
-**Lifecycle**: `pending → accepted` (promoted to one or more quests, each linked back via `quests.petitionId` — there is no `promotedQuestId` column) `| rejected`.
+**Lifecycle**: `pending → accepted` (promoted to one or more quests, each linked back via `quests.feedbackId` — there is no `promotedQuestId` column) `| rejected`.
 
-**Submission flow (login required)** — there are **two** live entry points; both land on `POST /campaigns/:id/petitions`:
-- `/c/:campaignId/request` — first-party form on lore (`CampaignPetitionRequest.tsx`, route `campaignPetitionRequest`). Anonymous visitors see a sign-in CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).
-- External "report a bug" buttons on third-party sites are plain `<a target="_blank" rel="noopener noreferrer">` anchors pointing to `/c/:id/request?path=<encoded>&url=<encoded>&type=bug` — no embedded JS, no screenshot capture, no widget. The page reads query params, persists them to `sessionStorage` (key `lor.petition.draft.<campaignId>`), cleans the URL via `history.replaceState`, and re-reads after the OAuth round-trip. Cleared on successful submit.
-> There is now **one** path plus external links. The screenshot-capturing in-app dialog is gone with the package rename. `@alepha/sigil` mounts nothing *automatically*; it ships an opt-in React surface at `@alepha/sigil/react` — `<SigilRoot />` (a floating feedback button that links out to the petition form) and `usePetitionUrl()` for an app that renders its own link. The subpath is condition-free so an SSR host resolves it on the server pass too.
+**Submission flow (login required)** — both live entry points land on `POST /projects/:projectId/feedback`:
+- `/p/:projectId/request` — first-party form on lore (`ProjectFeedbackRequest.tsx`, route `projectFeedbackRequest`). Anonymous visitors see a sign-in CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).
+- External "report a bug" buttons on third-party sites are plain `<a target="_blank" rel="noopener noreferrer">` anchors pointing to `/p/:id/request?path=<encoded>&url=<encoded>&type=bug` — no embedded JS, no screenshot capture, no widget. The page reads query params, persists them to `sessionStorage` (key `lor.feedback.draft.<projectId>` — renamed from `lor.petition.draft` in the same pass, unlike the storage bucket literals below, because this key is not a persisted external reference, just a transient client-side draft), cleans the URL via `history.replaceState`, and re-reads after the OAuth round-trip. Cleared on successful submit. `@alepha/sigil`'s reporting client also surfaces this same request URL as `feedbackUrl` in its `/sigils/config` response (only when `features.feedback` is on) so an enrolled app's own "report a bug" widget links out to it.
 
-**Reporter-facing views** — `/me/petitions` (own submissions across campaigns) and `/c/:id/p/:petitionId` (single status page, readable by the reporter or the campaign owner).
+**Reporter-facing views** — `/auth/profile/feedback` (`myFeedback`, own submissions across projects, detail in a drawer/sheet). There is no separate per-feedback status page (the old one was retired before this rename).
 
 **Attachments**
-- Uploaded one-at-a-time via `POST /campaigns/:id/petitions/attachments`. Returns a file id; the client collects ids and includes them in the petition body.
+- Uploaded one-at-a-time via `POST /projects/:projectId/feedback/attachments`. Returns a file id; the client collects ids and includes them in the feedback body.
 - Allowed types: png/jpg/jpeg/webp/gif/csv/txt/json/xlsx/xls/pdf. Both MIME and extension are checked (neither alone is trustworthy).
-- 5 MB / file, 10 / petition.
-- Stored in the `petition-attachments` bucket (`alepha/api/files`); the petition row carries `attachments: uuid[]` (mirrors `quests.attachments`).
+- 5 MB / file, 10 / feedback item.
+- Stored in the `petition-attachments` bucket (`alepha/api/files`) — **kept un-renamed on purpose**: it's a value already persisted on every existing `files` row, not just an in-code identifier. Renaming it would orphan every attachment ever uploaded (the bucket lookup would 404 for files stored under the old name). The same reasoning keeps the folio-blob bucket at `archive-blobs` (see Folios section) and the project-icon bucket at `campaign-icons` un-renamed. The feedback row carries `attachments: uuid[]` (mirrors `quests.attachments`).
 - `assertAttachmentsBelongToUser` blocks cross-user file id reuse — the controller verifies every claimed attachment was uploaded by the same user.
 
-**Rate limits — `petitionOptionsAtom`**
-- `maxPetitionsPerUserPerDay: 5` — per user, across all campaigns.
-- `maxAttachmentsPerUserPerDay: 50` — per user, across all petitions.
-- `maxAttachmentsPerPetition: 10`, `maxFileSizeBytes: 5 MB`.
+**Rate limits — `feedbackOptionsAtom`** (lives in `src/api/atoms/`, server-only)
+- `maxFeedbackPerUserPerDay: 5` — per user, across all projects. Applies only to non-members; project owners/members submit without limit.
+- `maxFeedbackPerSigilPerDay: 50` — caps the blast radius of a leaked sigil token being weaponized to flood the inbox.
+- `maxAttachmentsPerUserPerDay: 50` — per user, across all feedback.
+- `maxAttachmentsPerFeedback: 10`, `maxFileSizeBytes: 5 MB`.
 - All counts are DB-derived (no in-memory windows) so they survive restarts and are correct across workers.
 
 **Visibility / access**
-- Submit: any logged-in Lore user (no membership required), provided the campaign has `features.petitions === true`. The petition module toggle in campaign settings is the owner's opt-in/out lever.
-- List/detail (read): any campaign member (`assertMember`). Triage — accept/reject/remove: campaign owner only (`assertOwner`). Same read-vs-mutate split applies to Blights and Insights (members can view the inbox / crash telemetry / analytics; owner-only actions stay gated).
+- Submit: any logged-in Lore user (no membership required), provided the project has `features.feedback === true`. The feedback module toggle in project settings is the owner's opt-in/out lever.
+- List/detail (read): any project member (`assertMember`). Triage — accept/reject/remove: project owner only (`assertOwner`). Same read-vs-mutate split applies to Blights and Insights (members can view the inbox / crash telemetry / analytics; owner-only actions stay gated).
 
 **Where to look**
-- Entity: `src/api/entities/petitions.ts`
-- Controller: `src/api/controllers/PetitionController.ts` (submit, uploadAttachment, list, detail, accept, reject, remove)
-- Rate limiter: `src/api/services/PetitionRateLimiter.ts`
-- Tunables atom: `src/api/atoms/petitionOptionsAtom.ts`
-- Inbox UI: `src/web/app/components/campaign/petitions/CampaignPetitions.tsx` (+ Card / Drawer / AcceptForm)
-- Request UI: `src/web/app/components/campaign/petitions/CampaignPetitionRequest.tsx`
-- Routes: `campaignPetitions` (under `campaign`), `campaignPetitionRequest` (top-level, not under the campaign layout — public landing)
+- Entity: `src/api/entities/feedback.ts`
+- Controller: `src/api/controllers/FeedbackController.ts` (submitFeedback, feedbackContext, uploadFeedbackAttachment, listFeedback, getFeedback, getFeedbackAttachment, acceptFeedback, rejectFeedback, removeFeedback, listMyFeedback, listMyFeedbackProjects, updateMyFeedback, deleteMyFeedback)
+- Rate limiter: `src/api/services/FeedbackRateLimiter.ts`
+- Tunables atom: `src/api/atoms/feedbackOptionsAtom.ts`
+- Inbox UI: `src/web/app/components/project/feedback/ProjectFeedback.tsx` (+ `ProjectFeedbackCard.tsx`, `ProjectFeedbackDetail.tsx`)
+- Request UI: `src/web/app/components/project/feedback/ProjectFeedbackRequest.tsx`
+- Routes: `projectFeedback` (under `project`), `projectFeedbackRequest` (top-level, not under the project layout — public landing), `myFeedback` (under `me`)
 
-## Folios are this campaign's memory for Claude
+## Folios are this project's memory for Claude
 
-Folios are markdown notes scoped to a **campaign** and shared across all its members (they were per-user before quest #65) — they mirror the `~/.claude/projects/*/memory/MEMORY.md` pattern but at the campaign level: persistent across sessions, exportable, tagged, fully MCP-readable. Treat them as the canonical place where any agent working on a Lore campaign should look for context and write down what it learns.
+Folios are markdown notes scoped to a **project** and shared across all its members (they were per-user before quest #65) — they mirror the `~/.claude/projects/*/memory/MEMORY.md` pattern but at the project level: persistent across sessions, exportable, tagged, fully MCP-readable. Treat them as the canonical place where any agent working on a Lore project should look for context and write down what it learns.
+
+Since the 2026-08 great rename, Folios also absorbed the standalone **Archive** module — the directory tree + binary blobs that used to have their own URL path, entities (`archiveDirectories`/`archiveBlobs`/`archiveNames`) and MCP tool class (`ArchiveTools`). Folios live in a directory tree rather than nesting under each other. `folioDirectories` is the tree (depth-capped at 8), `folioBlobs` holds binary attachments, and `folioNames` backs name-uniqueness. `folios.directoryId` is `undefined` for the project root and **cascades on directory delete** — removing a directory removes everything in it, folios included. Surfaced at `/p/:id/folios` and over MCP via `FolioTools` (`directory_*`, `blob_*` tools live in this same file now).
 
 **Conventions** (apply when curating folios — yourself or via Claude):
 
 - One topic per folio. Use the title as the topic; use tags (`tech/decision`, `runbook`, `incident`, …) for taxonomy.
 - Keep folios short and self-contained. A folio that needs scrolling is two folios.
-- When an agent creates a folio via MCP, it should always provide useful `tags` AND a `summary` (1-2 sentences, ~200 chars) so future `folio_list` / `folio_search` calls stay precise and `campaign_context` returns a self-explanatory index. Web-created folios may leave `summary` empty — the index falls back to the title.
+- When an agent creates a folio via MCP, it should always provide useful `tags` AND a `summary` (1-2 sentences, ~200 chars) so future `folio_list` / `folio_search` calls stay precise and `project_context` returns a self-explanatory index. Web-created folios may leave `summary` empty — the index falls back to the title.
 - Use `[[Folio Title]]` or `[[#shortId]]` syntax inside a folio's markdown to cross-link other folios. Links re-sync on every save; agents see them as `links.outbound` / `links.inbound` on `folio_get` and humans see a Connections panel under the folio view.
 
 **MCP orientation flow** (every AI client should follow this on a fresh task):
 
-1. `campaign_context` — one-shot orientation: campaign metadata + active quests + folio index (~2K tokens, no folio bodies).
+1. `project_context` — one-shot orientation: project metadata + active quests + folio index (~2K tokens, no folio bodies).
 2. `folio_get` / `quest_get` on the specific entries that look relevant.
 3. `folio_create` / `folio_update` when the agent decides something worth remembering long-term.
 
-The MCP tool descriptions in `src/mcp/tools/CampaignTools.ts` and `src/mcp/tools/FolioTools.ts` are the public-facing version of this convention — every Claude reads them on connect. Keep them sharp.
+The MCP tool descriptions in `src/mcp/tools/ProjectTools.ts` and `src/mcp/tools/FolioTools.ts` are the public-facing version of this convention — every Claude reads them on connect. Keep them sharp.
 
 **Where to look**
 
-- Entity: `src/api/entities/folios.ts` (campaign-scoped, `searchText` blob for cheap LIKE search — blank for protected folios, `summary` for agent-readable orientation)
+- Entity: `src/api/entities/folios.ts` (project-scoped, `searchText` blob for cheap LIKE search — blank for protected folios, `summary` for agent-readable orientation)
+- Blob / directory entities: `src/api/entities/folioBlobs.ts`, `folioDirectories.ts`, `folioNames.ts`
 - Link table: `src/api/entities/folioLinks.ts` (derived; re-synced from `[[...]]` references on every folio save)
 - Link sync: `src/api/services/FolioLinkService.ts`
-- Controller: `src/api/controllers/FolioController.ts` (list, listTags, getByShortId, get, getLinks, create, update, delete, listCampaignActivity, listHistory, revertHistory, pinHistory)
+- Blob / directory services: `src/api/services/FolioBlobService.ts`, `FolioDirectoryService.ts`, `FolioNameService.ts`
+- Controller: `src/api/controllers/FolioController.ts` (list, listTags, getByShortId, get, getLinks, create, update, delete, listProjectActivity, listHistory, revertHistory, pinHistory)
+- Directory / blob controllers: `src/api/controllers/DirectoryController.ts`, `src/api/controllers/BlobController.ts`
 - History: `src/api/services/FolioHistoryService.ts` (append, retention sweep, protection-domain purge)
-- MCP tools: `src/mcp/tools/FolioTools.ts` + `CampaignTools.ts` (`campaign_context`)
-- UI: `src/web/app/components/folios/FolioEditor.tsx`, `FolioView.tsx`, `FolioBacklinksPanel.tsx`
+- MCP tools: `src/mcp/tools/FolioTools.ts` (folio, directory and blob tools) + `ProjectTools.ts` (`project_context`)
+- UI: `src/web/app/components/folios/FolioEditor.tsx`, `FolioView.tsx`, `FolioBacklinksPanel.tsx`, `FolioBrowser.tsx`, `FolioTreePanel.tsx`
+
+**Bucket literals kept un-renamed** — `FOLIO_BLOB_BUCKET = "archive-blobs"` (`FolioBlobService.ts`, `LoreFileAccessProvider.ts`, `BlobController.ts`, `FolioBrowser.tsx`, `useFolioImageUpload.ts`). Same reasoning as the `petition-attachments` bucket in the Feedback section: it's a value already persisted on every existing `files` row, and renaming it would orphan every folio image/blob ever uploaded.
 
 ### ⚠️ Protected folios: the protection-domain invariant
 
@@ -245,7 +258,7 @@ A folio with `protected: true` stores a client-side `BrowserCryptoProvider` enve
 
 **Invariant: `folio_revisions` never holds a snapshot from a different protection domain than the folio's current one.** Crossing the boundary in either direction purges the folio's revision history (`FolioHistoryService.purgeRevisions`, called from `FolioController.update` when `isProtected !== existing.protected`).
 
-This is a **confidentiality requirement**, not a tidiness one. Before it existed, encrypting a folio blanked `searchText` and wiped the outbound links but left every pre-encryption plaintext snapshot in `folio_revisions` — readable by any campaign member through `GET /folios/:id/history`. Encrypting protected nothing already written. It also meant `revertHistory` could write a plaintext snapshot into a folio still flagged `protected`, leaving it undecryptable in the UI.
+This is a **confidentiality requirement**, not a tidiness one. Before it existed, encrypting a folio blanked `searchText` and wiped the outbound links but left every pre-encryption plaintext snapshot in `folio_revisions` — readable by any project member through `GET /folios/:id/history`. Encrypting protected nothing already written. It also meant `revertHistory` could write a plaintext snapshot into a folio still flagged `protected`, leaving it undecryptable in the UI.
 
 `pinned` revisions are exempt from the retention sweep but **not** from this purge. Regression guard: `test/folio-protected-history.spec.ts`.
 
@@ -253,39 +266,33 @@ This is a **confidentiality requirement**, not a tidiness one. Before it existed
 
 A **sigil** is one environment of one application — `lore` in `production` is a different sigil from `lore` in `staging`, and they report separately, because an error budget shared between environments is nobody's budget. It authenticates with a `sg_`-prefixed bearer token, stored hashed and shown once at creation; `tokenPrefix` exists so the UI can name a credential it cannot reconstruct.
 
-Managed at `/c/:id/settings/sigils` (`SigilController`, reads member-gated, mutations owner-gated — no role, no allowlist: owning the campaign is the whole gate). `features.sigils` is the master switch, with `petitions` / `blights` / `beacon` / `vitals` as the per-capability toggles `GET /sigils/config` reports back to the app.
+Managed at `/p/:id/settings/sigils` (`SigilController`, reads member-gated, mutations owner-gated — no role, no allowlist: owning the project is the whole gate). `features.sigils` is the master switch, with `feedback` / `blights` / `beacon` / `vitals` as the per-capability toggles `GET /sigils/config` reports back to the app.
 
-**The toggles are enforced, not advertised.** `SigilIngestService.gatesFor` intersects the campaign's features with the sigil's `kinds`, and both `absorb` (the write gate) and `/sigils/config` (the advertisement) call it — one definition, so the sink cannot invite a payload it then discards. Enforcing on write is not redundant with the config poll: `sigils.kinds` is written once at creation and has **no update path anywhere**, and the reporting client fails open on any config error, so gating on the token alone left an owner's "off" switch as a suggestion.
+**The toggles are enforced, not advertised.** `SigilIngestService.gatesFor` intersects the project's features with the sigil's `kinds`, and both `absorb` (the write gate) and `/sigils/config` (the advertisement) call it — one definition, so the sink cannot invite a payload it then discards. Enforcing on write is not redundant with the config poll: `sigils.kinds` is written once at creation and has **no update path anywhere**, and the reporting client fails open on any config error, so gating on the token alone left an owner's "off" switch as a suggestion.
 
 **Rotate, don't delete.** All four aggregate tables cascade on `sigilId`, so deleting a sigil to revoke a leaked token also erases that environment's views, vitals, uniques and error groups. `rotateSigil` re-mints `tokenHash`/`tokenPrefix` in place — the old token stops resolving immediately (`verify` looks a sigil up *by* its hash) and every row survives. The UI says which is which; so do the MCP tool descriptions.
 
-- **Blights** — one row per distinct failure, keyed by `fingerprint`, with a count. The owner triages them in the inbox (`/c/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` zone, provenance recorded in `quests.source`). Purged on a retention window (`campaign.retentionDays ?? 30`) by `BlightJobs`; resolved and `quest:`-forwarded rows are kept as audit trail. A blight survives its sigil — `blights.sigilId` is `ON DELETE SET NULL`.
-- **Insights** (`/c/:id/insights`, gated on `features.beacon`) — three segments over one payload: **Analytics** (page views, unique visitors), **Performance** (web-vitals p75) and **Errors** (the per-environment error budget), read out of `sigil_views_hourly` / `sigil_uniques_daily` / `sigil_vitals_hourly` / `sigil_error_groups`. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is a `substr(hour, 1, 10)` group over the same rows. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token.
-  - The **Errors** segment is the only place `sigil_error_groups` is read. It answers "is this still happening *in production*", which the Blights inbox cannot: the inbox keys on `(campaignId, fingerprint)` so a triage decision does not fork, which necessarily merges staging into production. Filtered on `lastSeenAt` (still failing), ordered by `count`, capped at 20.
+- **Blights** — one row per distinct failure, keyed by `(projectId, fingerprint)`, with a count. The owner triages them in the inbox (`/p/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` zone, provenance recorded in `quests.source`). Purged on a retention window (`project.retentionDays ?? 30`) by `BlightJobs`; resolved and `quest:`-forwarded rows are kept as audit trail. A blight survives its sigil — `blights.sigilId` is `ON DELETE SET NULL`.
+- **Insights** (`/p/:id/insights`, gated on `features.beacon`) — three segments over one payload: **Analytics** (page views, unique visitors), **Performance** (web-vitals p75) and **Errors** (the per-environment error budget), read out of `sigil_views_hourly` / `sigil_uniques_daily` / `sigil_vitals_hourly` / `sigil_error_groups`. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is a `substr(hour, 1, 10)` group over the same rows. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token.
+  - The **Errors** segment is the only place `sigil_error_groups` is read. It answers "is this still happening *in production*", which the Blights inbox cannot: the inbox keys on `(projectId, fingerprint)` so a triage decision does not fork, which necessarily merges staging into production. Filtered on `lastSeenAt` (still failing), ordered by `count`, capped at 20.
 
-> ⚠️ **`name`, `message`, `stack`, `sourceUrl` on a blight are 100% attacker-controlled** and are shown to the campaign owner — the highest-value target. Render as escaped plain text only. Never markdown, never `dangerouslySetInnerHTML`.
+> ⚠️ **`name`, `message`, `stack`, `sourceUrl` on a blight are 100% attacker-controlled** and are shown to the project owner — the highest-value target. Render as escaped plain text only. Never markdown, never `dangerouslySetInnerHTML`.
 
 Read endpoints are member-gated; mutations are owner-only. **Ingest has its own credential**: `POST /sigils/ingest` and `GET /sigils/config` (`SigilIngestController`, `$route` so they sit at the root) accept a sigil bearer token and nothing else — a logged-in member cannot post telemetry, and a sigil token opens nothing but those two routes.
 
-**The reporting half is a package, not an app.** `packages/@alepha/sigil` is what an enrolled app imports; it reads `SIGIL_SINK` + `SIGIL_KEY` (the token minted above) from env, aggregates errors by fingerprint before they leave the process, and polls `/sigils/config` for a kill-switch it obeys immediately. The two wire paths are one definition (`@alepha/sigil/paths`) imported by both ends — the client fails open, so a path disagreement is silent in both directions and has drifted once already. Lore itself sets neither variable: it is the sink, and a Cloudflare Worker cannot fetch its own hostname.
+**The reporting half is a package, not an app.** `packages/@alepha/sigil` is what an enrolled app imports; it reads `SIGIL_SINK` + `SIGIL_KEY` (the token minted above) from env, aggregates errors by fingerprint before they leave the process, and polls `/sigils/config` for a kill-switch it obeys immediately. The two wire paths are one definition (`@alepha/sigil/paths`) imported by both ends — the client fails open, so a path disagreement is silent in both directions and has drifted once already. Lore itself sets neither variable: it is the sink, and a Cloudflare Worker cannot fetch its own hostname — `LoreSigilSinkProvider` substitutes the base `SigilSinkProvider` in `main.server.ts` to route Lore's own self-report in-process instead.
 
 **Where to look**
 
-- Entities: `src/api/entities/sigils.ts` (the credential + `(campaignId, app, environment)` unique index), `blights.ts`, `sigilErrorGroups.ts`, `sigilViewsHourly.ts`, `sigilUniquesDaily.ts`, `sigilVitalsHourly.ts`
+- Entities: `src/api/entities/sigils.ts` (the credential + `(projectId, app, environment)` unique index), `blights.ts`, `sigilErrorGroups.ts`, `sigilViewsHourly.ts`, `sigilUniquesDaily.ts`, `sigilVitalsHourly.ts`
 - Owner CRUD: `src/api/controllers/SigilController.ts` (create / list / rotate / delete)
 - Ingest: `src/api/controllers/SigilIngestController.ts` + `src/api/services/SigilIngestService.ts`
 - Credential: `src/api/services/SigilTokenService.ts` (mint / verify / bearer)
 - Triage: `src/api/controllers/BlightController.ts`, `src/api/services/BlightRuleService.ts`, `src/api/jobs/BlightJobs.ts`
 - Analytics: `src/api/controllers/InsightsController.ts`
-- UI: `src/web/app/components/campaign/settings/CampaignSettingsSigilsPage.tsx` (+ `…SigilRow`, `…SigilToken`), `campaign/blights/CampaignBlights.tsx`, `campaign/insights/CampaignInsights.tsx` (+ `…Analytics`, `…Performance`, `…Errors`)
+- UI: `src/web/app/components/project/settings/ProjectSettingsSigilsPage.tsx` (+ `…SigilRow`, `…SigilToken`), `project/blights/ProjectBlights.tsx`, `project/insights/ProjectInsights.tsx` (+ `…Analytics`, `…Performance`, `…Errors`)
 - MCP: `src/mcp/tools/SigilTools.ts`, `src/mcp/tools/BlightTools.ts`
 - E2E: `e2e/sigil.spec.ts` — enrol → ingest → triage → rotate → delete, with ingest driven through Playwright's isolated `request` fixture (the page's `fetch` is patched to attach the session bearer, which would replace the sigil token)
-
-## Archive (directories + blobs)
-
-Folios live in a directory tree rather than nesting under each other. `archiveDirectories` is the tree (depth-capped at 8), `archiveBlobs` holds binary attachments, and `archiveNames` backs name-uniqueness. `folios.directoryId` is `undefined` for campaign root and **cascades on directory delete** — removing a directory removes everything in it, folios included.
-
-Surfaced at `/c/:id/archive` and over MCP via `ArchiveTools`.
 
 ## I18n
 
@@ -293,24 +300,24 @@ Two languages: English (`en`) and French (`fr`). All translations in `src/web/ap
 
 ## De-gamification (2026-07)
 
-Lore has **no gamification currency**: no XP, no gold, no levels, no achievements, no titles, no per-campaign alias/avatar. All of it was removed in two passes:
+Lore has **no gamification currency**: no XP, no gold, no levels, no achievements, no titles, no per-project alias/avatar. All of it was removed in two passes:
 
-- First pass killed the wall: `FeaturePaywallService` / Shop / `requiredLevel` quest gating. Ex-walled features (Chronicles, Quest Reminder, …) are plain `campaign.features.*` owner toggles.
+- First pass killed the wall: `FeaturePaywallService` / Shop / `requiredLevel` quest gating. Ex-walled features (Reports, Quest Reminder, …) are plain `project.features.*` owner toggles.
 - Second pass removed the remaining cosmetic progression and collapsed `characters` into `members` (migration `20260730154120_heavy_nova`: `ALTER TABLE characters RENAME TO members` + column drops — no rebuild, D1-safe). `CharacterInfo`, `AchievementEngine`, `CharacterController`, the character sheet, roster, XP bar and level-up animation are gone.
 
 What survives, deliberately:
 
-- **Quest rank letters F/C/B/A/S** — derived from quest difficulty 1–5 in `src/web/app/components/campaign/quest/questRank.ts`. A property of the task, never of the person.
-- The RPG **vocabulary** (campaigns, quests, zones, folios, blights, sigils) — flavor, not mechanics.
-- `campaigns.unlockedFeatures` / `unlockHistory` / `public` — **`@deprecated` dead columns**. Nothing reads or writes them; they stay because dropping a `campaigns` column risks the D1 rebuild path and `campaigns` is the CASCADE parent that wiped prod in 2026-05.
+- **Quest rank letters F/C/B/A/S** — derived from quest difficulty 1–5 in `src/web/app/components/project/quest/questRank.ts`. A property of the task, never of the person.
+- The RPG **vocabulary** for the work inside a project (quests, zones, folios, blights, sigils, outposts) — flavor, not mechanics. The container itself is deliberately *not* RPG-flavored — see "The Lore of Lore" above for why it's `project`, not `campaign`.
+- `projects.unlockedFeatures` / `unlockHistory` / `public` — **`@deprecated` dead columns**. Nothing reads or writes them; they stay because dropping a `projects` column risks the D1 rebuild path and `projects` is the CASCADE parent that wiped prod in 2026-05.
 
 Do not reintroduce progression mechanics without an explicit decision — the goal is a neutral tool usable with other people; the metaphor describes the work, never the person.
 
 ## Key Dependencies
 
 - `@dnd-kit/core` — drag & drop (kanban, quest board)
-- `@mdxeditor/editor` — the shared WYSIWYG markdown editor (`src/web/app/components/shared/markdown-editor/MarkdownEditor.tsx`): lazy client-only, markdown-features-only, source-mode toggle, per-context image upload (folios → archive blobs; quests → attachments, embedded ids merged server-side by `QuestService.mergeEmbeddedAttachments`). Rendering stays `@alepha/ui` `MarkdownView`. The petition request form keeps a plain textarea (its own paste/drag attachment flow)
-- `recharts` — chronicles charts
+- `@mdxeditor/editor` — the shared WYSIWYG markdown editor (`src/web/app/components/shared/markdown-editor/MarkdownEditor.tsx`): lazy client-only, markdown-features-only, source-mode toggle, per-context image upload (folios → folio blobs; quests → attachments, embedded ids merged server-side by `QuestService.mergeEmbeddedAttachments`). Rendering stays `@alepha/ui` `MarkdownView`. The feedback request form keeps a plain textarea (its own paste/drag attachment flow)
+- `recharts` — reports charts
 - `tw-animate-css` — generic enter/exit keyframe utilities used from Tailwind classes (replaces the old `animate.css`)
 
 ## Commands
@@ -356,13 +363,32 @@ Lore deploys to Cloudflare D1, which **ignores `PRAGMA foreign_keys=OFF`**. Driz
 
 Mitigations, in order of preference:
 
-- **Avoid the rebuild entirely.** If the only change is a column *default* (the bomb we hit), move the default into the application handler — e.g. `createCampaign` injects `defaultCampaignFeatures` server-side — and drop the `db.default(...)` from the entity schema. Drizzle won't generate a rebuild migration for an app-layer default.
+- **Avoid the rebuild entirely.** If the only change is a column *default* (the bomb we hit), move the default into the application handler — e.g. `createProject` injects `defaultProjectFeatures` server-side — and drop the `db.default(...)` from the entity schema. Drizzle won't generate a rebuild migration for an app-layer default.
 - **Manually rewrite the migration** to back child rows up into `__bk_*` tables before the `DROP`, then re-insert and drop the backups after `RENAME`. Tedious but correct.
 - **Temporarily switch the CASCADE child(ren) to `onDelete: "set null"`** for the migration window if the children make sense without a parent — only viable when the FK column is nullable.
 
 **Why local testing won't catch this:** `yarn v` uses in-memory SQLite, where `PRAGMA foreign_keys=OFF` actually works. The bomb only goes off on D1. Inspect the migration SQL manually.
 
 **CI auto-deploys to prod on every push to `main`** (alepha monorepo's `.github/workflows/ci.yml` → `deploy-lore-production` job → `yarn alepha platform up --env production` from `apps/lore`). There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
+
+### What the 2026-08 great-rename migration got right (worked example)
+
+`migrations/sqlite/20260805005114_green_captain_universe/` is a rename-only migration for the whole vocabulary rename — **6 table renames** (`campaigns`→`projects`, `petitions`→`feedback`, `chapters`→`milestones`, `archive_directories`→`folio_directories`, `archive_blobs`→`folio_blobs`, `archive_names`→`folio_names`) and 15 column renames, entirely via `ALTER TABLE ... RENAME TO` / `RENAME COLUMN`. **Zero `DROP TABLE`.**
+
+drizzle-kit's auto-generator wanted to add a `projects` table *rebuild* on top of the renames, because the `features` column's JSON `DEFAULT` embeds the old key names (`petitions`, `chapters`, …) baked in as a literal string, and those keys changed too. A rebuild there means `DROP TABLE projects`, which on D1 cascades through `members`/`quests`/`milestones`/`folios`/`feedback` — the exact class of incident described above. That block was **deleted by hand** from the generated migration, replaced with an explanatory SQL comment. This is safe *only* because nothing reads the stale column default — `createProject` injects `defaultProjectFeatures` server-side in application code, so the column's `DEFAULT` clause is dead weight. The upshot: **the migration snapshot and the live `projects.features` column now deliberately disagree on that one default, forever** (or until a future migration touches that column for an unrelated reason). Do not "fix" this drift by generating a rebuild — that's the bomb, not the fix. `db:generate`/`db:check` will keep flagging it; that's expected, not a regression.
+
+### ⚠️ `$sequence` keys its counter on the property name, not the table
+
+`$sequence()` fields (used for per-project short IDs / numbering, e.g. `MilestoneController.milestoneNumber`, `FeedbackController.feedbackShortId`) persist their running counter in the `alepha_sequences` table, keyed by **the property name**, not by the entity/table it numbers. Renaming the property — `chapterNumber` → `milestoneNumber`, `petitionShortId` → `feedbackShortId` — does not rename the existing counter row. It orphans it: the renamed property starts a brand-new counter at 1, colliding with whatever numbers already exist in production for that project.
+
+This is exactly what would have happened silently in the 2026-08 rename if the migration hadn't carried two explicit statements to repoint the existing rows:
+
+```sql
+UPDATE alepha_sequences SET name = 'milestoneNumber' WHERE name = 'chapterNumber';
+UPDATE alepha_sequences SET name = 'feedbackShortId' WHERE name = 'petitionShortId';
+```
+
+**No test catches this.** Test databases start with an empty `alepha_sequences` table, so a missing `UPDATE` is invisible in `yarn test` and only surfaces against a production database that already has rows. Any future rename of a `$sequence`-backed property needs the same treatment — check `alepha_sequences` for the old name and carry an `UPDATE` in the migration.
 
 ## ⚠️ The Cloudflare WAF rule on `/sigils/` has a job again — keep it
 
@@ -393,22 +419,29 @@ rule is that the flood never reaches the Worker.
 
 ## Tests
 
-49 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
+55 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
 
 - `mcp-security.spec.ts` — MCP auth, API keys, user isolation
-- `campaign-stats.spec.ts` — chronicles aggregation
-- `campaign-leave.spec.ts` — `leaveCampaign` (owner-forbidden, no-op, member removal)
-- `campaign-features.spec.ts` — `campaign.features` toggle behavior + defaults
-- `chapter-jobs.spec.ts` — chapter background work (open/close, scheduling)
+- `project-reports.spec.ts` — reports aggregation
+- `project-leave.spec.ts` — `leaveProject` (owner-forbidden, no-op, member removal)
+- `project-features.spec.ts` — `project.features` toggle behavior + defaults
+- `project-owns-guard.spec.ts` / `project-relations.spec.ts` — `$owns` gating and relational reads
+- `milestone-jobs.spec.ts` — milestone background work (open/close, scheduling)
 - `quest-csv-*.spec.ts` — generic + format-specific CSV import/export, plus the Trello round-trip
 - `quest-objective-history.spec.ts` — objective state history tracking
 - `quest-reminder.spec.ts` — quest reminder/notification logic
+- `quest-feedback-link.spec.ts` — feedback-to-quest promotion linkage
+- `feedback-attachment.spec.ts` / `feedback-rate-limit.spec.ts` / `feedback-source.spec.ts` — the Feedback module (attachments, rate limits, `source` provenance)
+- `my-feedback.spec.ts` — reporter-scoped `/me` feedback endpoints
 - `folio-protected-history.spec.ts` — **regression guard**: the protection-domain invariant (no plaintext left in `folio_revisions` after encrypting; pinned revisions are not exempt)
-- `folio-*.spec.ts` — links, backlinks, tidy, pinning, permissions, history, activity, blob links
-- `sigil-controller.spec.ts` / `sigil-ingest.spec.ts` / `sigil-entities.spec.ts` — sigil CRUD + rotation, token verification, capability gating, aggregate upserts
-- `insights-controller.spec.ts` — beacon/vitals windows and the p75 walk (clock pinned with `DateTimeProvider.pause()`)
+- `folio-*.spec.ts` — links, backlinks, tidy, pinning, permissions, history, activity, blob links, directories (the old Archive-module coverage lives here now too)
+- `sigil-controller.spec.ts` / `sigil-ingest.spec.ts` / `sigil-entities.spec.ts` / `sigil-self-report.spec.ts` — sigil CRUD + rotation, token verification, capability gating, aggregate upserts, and Lore's own in-process self-report path
+- `insights-controller.spec.ts` / `insights-tools.spec.ts` — beacon/vitals windows and the p75 walk (clock pinned with `DateTimeProvider.pause()`), plus the MCP surface
 - `blight-tools.spec.ts` — the MCP triage surface
-- `archive-module.spec.ts` — directory tree + blobs
+- `outpost-commands.spec.ts` / `outpost-ingest.spec.ts` — outpost enrolment, command channel, ingest
+- `release-lifecycle.spec.ts` — release record lifecycle
+- `migration-safety.spec.ts` — asserts the great-rename migration (and the sigil-family rebuild before it) never drops a table the `projects` cascade reaches, and that a fresh D1-shaped database boots with all migrations applied
+- `petition-reporter-migration.spec.ts` / `petition-reporter-restore-migration.spec.ts` — deliberately still "petition"-named: they pin the behavior of two specific *historical* migrations (`reporterUserId`/`reporterEmail` column churn) that predate the 2026-08 rename, not the current Feedback module
 - Shared fixtures live in `test/fixtures/`
 
 ### E2E convention: one file per feature
@@ -419,26 +452,25 @@ rule is that the flood never reaches the Worker.
 - `outposts.spec.ts` — enable the module → enrol a machine → token shown once → visible on the Outposts page → rotate → delete
 - `blights.spec.ts` — regression guard for the inbox render loop (the ingest path lives in `sigil.spec.ts`)
 - `quest.spec.ts` — quest lifecycle (open → accept → complete) + reminder UI
-- `petition.spec.ts` — petition submit → accept → link quests → status progression
+- `feedback.spec.ts` — feedback submit → accept → link quests → status progression (renamed from `petition.spec.ts`)
 - `register.spec.ts` — registration form + email verification
-- `settings-features.spec.ts` — campaign feature toggles
+- `settings-features.spec.ts` — project feature toggles
 - `theme-flicker.spec.ts` — theme no-flash boot
-- `invitation.spec.ts` — owner invites → user accepts → joins campaign as a member (drives the email-link round-trip)
+- `invitation.spec.ts` — owner invites → user accepts → joins project as a member (drives the email-link round-trip)
 - `protected-folio.spec.ts` — end-to-end encrypted folios (passphrase round-trip, wrong-passphrase rejection, no plaintext on the wire)
 - `quest-import-export.spec.ts` — Data settings page CSV export (import side is covered by the unit specs)
-- `archive.spec.ts` — directory tree navigation + blob upload
-- `blights.spec.ts` / `sigil.spec.ts` — sigil issuance, ingest, blight triage + forward-to-quest
-- `campaign-wizard.spec.ts` — 3-step create wizard
+- `folios.spec.ts` — directory tree navigation + blob upload (renamed from `archive.spec.ts`)
+- `project-wizard.spec.ts` — 3-step create wizard (renamed from `campaign-wizard.spec.ts`)
 - `members.spec.ts` — settings members list, identity hover-card, dead `/character` + `/roster` URLs 404
 - `home.spec.ts`, `admin-user-detail.spec.ts`
-- `security-public-campaign.spec.ts` — regression guard: non-member account hits 403 on every campaign endpoint after the public-campaign purge
+- `security-public-project.spec.ts` — regression guard: non-member account hits 403 on every project endpoint after the public-project purge (renamed from `security-public-campaign.spec.ts`)
 - `security-file-access.spec.ts` — regression guard: `/api/files/:id` IDOR fix via `LoreFileAccessProvider` (only owners/members can download an attachment)
 
-Shared setup (register/verify, campaign-create wizard, API helpers) lives in `e2e/_helpers.ts`. Re-use those rather than copy-pasting auth setup into each new spec.
+Shared setup (register/verify, project-create wizard, API helpers) lives in `e2e/_helpers.ts`. Re-use those rather than copy-pasting auth setup into each new spec.
 
-`setCampaignFeature(page, campaignId, key, value?)` flips a campaign feature toggle from inside a flow — use it when a spec needs an off-by-default module (e.g. `questReminder`). It replaced the old `unlockShopFeature`, which farmed gold from a throwaway quest to fund a Shop purchase; the Shop no longer exists.
+`setProjectFeature(page, projectId, key, value?)` flips a project feature toggle from inside a flow — use it when a spec needs an off-by-default module (e.g. `questReminder`). It replaced the old `unlockShopFeature`, which farmed gold from a throwaway quest to fund a Shop purchase; the Shop no longer exists.
 
-**When adding or modifying a feature, the matching `<feature>.spec.ts` must move with it.** No feature ships without its e2e moving in lockstep. If no spec exists yet for the feature, create one — start by composing `registerAndVerify` + `createCampaignViaWizard` from `_helpers.ts`, then drive the feature-specific UI.
+**When adding or modifying a feature, the matching `<feature>.spec.ts` must move with it.** No feature ships without its e2e moving in lockstep. If no spec exists yet for the feature, create one — start by composing `registerAndVerify` + `createProjectViaWizard` from `_helpers.ts`, then drive the feature-specific UI.
 
 ## Manual testing via Playwright (Claude)
 
@@ -474,13 +506,13 @@ rm node_modules/.alepha/sqlite.db
 yarn dev   # recreates + runs migrations from migrations/sqlite/
 ```
 
-Clears all campaigns, members, sessions, etc. Migrations auto-apply on boot. Optionally also `rm -rf node_modules/.alepha/emails/` to clear the inbox.
+Clears all projects, members, sessions, etc. Migrations auto-apply on boot. Optionally also `rm -rf node_modules/.alepha/emails/` to clear the inbox.
 
 ### Playwright tips
 
 - Hostname is `localhost`, no HTTPS in dev/prod-like.
 - The session cookie persists across reloads; if you need a clean slate, clear cookies via `context.clearCookies()` rather than relaunching the browser.
-- Pages load lazily — wait for the visible text of a known route element (e.g. "Campaigns") before asserting.
+- Pages load lazily — wait for the visible text of a known route element (e.g. "Projects") before asserting.
 - `claude-in-chrome` MCP works fine; the deferred `playwright` MCP is what most of the existing e2e specs target.
 
 ## Working on the framework while in this repo

@@ -1,6 +1,6 @@
 import { $repository } from "alepha/orm";
-import { archiveBlobs } from "../entities/archiveBlobs.ts";
-import { archiveDirectories } from "../entities/archiveDirectories.ts";
+import { folioBlobs } from "../entities/folioBlobs.ts";
+import { folioDirectories } from "../entities/folioDirectories.ts";
 import { type FolioLink, folioLinks } from "../entities/folioLinks.ts";
 import { type Folio, folios } from "../entities/folios.ts";
 import { quests } from "../entities/quests.ts";
@@ -35,7 +35,7 @@ export interface ParsedToken {
 const MAX_LINKS_PER_FOLIO = 200;
 
 /**
- * Sentinel for "campaign root" in the path-resolution maps. Directories
+ * Sentinel for "project root" in the path-resolution maps. Directories
  * with `parentId === null` (or undefined) bucket under this key; folios
  * with no `directoryId` likewise. Using a non-UUID string keeps the
  * sentinel from ever colliding with a real directory id.
@@ -50,7 +50,7 @@ const ROOT_DIR = "root";
  * - `childrenByParent`: parent dir id (or {@link ROOT_DIR}) → map of
  *   lowercased directory name → `{ id, count }`. `count > 1` means two
  *   siblings collide on case-insensitive name (shouldn't happen given
- *   the `archive_names` UNIQUE INDEX, but we defensively drop such
+ *   the `folio_names` UNIQUE INDEX, but we defensively drop such
  *   matches).
  * - `foliosByDir`: dir id (or {@link ROOT_DIR}) → map of lowercased title
  *   → `{ id, count }`. Same collision rule.
@@ -69,11 +69,11 @@ interface PathContext {
  * folios. Used by `FolioController` on every folio create/update to keep
  * `folio_links` in sync with the current content.
  *
- * Resolution rules (scoped to the folio's campaign — folios are
- * campaign-shared, so any member's folio is a valid target):
+ * Resolution rules (scoped to the folio's project — folios are
+ * project-shared, so any member's folio is a valid target):
  * - `[[#12]]` matches the folio with `shortId = 12`.
- * - `[[dir/sub/name]]` matches by archive path. Tried anchored at the
- *   campaign root first (`dir` is a root directory, `sub` is its child,
+ * - `[[dir/sub/name]]` matches by folio path. Tried anchored at the
+ *   project root first (`dir` is a root directory, `sub` is its child,
  *   `name` is a folio inside `sub`). If that fails and the path has 2+
  *   segments, falls back to a *suffix* match: any directory chain in the
  *   tree whose trailing names equal the leading segments AND that
@@ -88,8 +88,8 @@ export class FolioLinkService {
   protected readonly folios = $repository(folios);
   protected readonly links = $repository(folioLinks);
   protected readonly quests = $repository(quests);
-  protected readonly directories = $repository(archiveDirectories);
-  protected readonly blobs = $repository(archiveBlobs);
+  protected readonly directories = $repository(folioDirectories);
+  protected readonly blobs = $repository(folioBlobs);
 
   /**
    * Extract `[[...]]` tokens from markdown content into structured
@@ -174,15 +174,15 @@ export class FolioLinkService {
 
   /**
    * Resolve a list of structured tokens into target rows scoped to the
-   * source folio's campaign. Returns the deduped set of
+   * source folio's project. Returns the deduped set of
    * `{ targetType, toId }` pairs. Self-links are filtered out.
    *
-   * Both folios and quests are campaign-scoped only — any campaign member
+   * Both folios and quests are project-scoped only — any project member
    * sees the same target sets.
    */
   public async resolveTokenIds(
     tokens: ParsedToken[],
-    campaignId: number,
+    projectId: number,
     sourceFolioId: string,
   ): Promise<Array<{ targetType: "folio" | "quest" | "blob"; toId: string }>> {
     if (tokens.length === 0) return [];
@@ -196,7 +196,7 @@ export class FolioLinkService {
     );
 
     // In-memory maps after at most two DB roundtrips. Bounded by the
-    // per-campaign folio and quest counts.
+    // per-project folio and quest counts.
     const folioById = new Map<number, string>();
     const folioByTitle = new Map<string, { id: string; count: number }>();
     // Path-resolution structures — built only when at least one token
@@ -209,7 +209,7 @@ export class FolioLinkService {
     };
     if (needsFolios) {
       const candidates = await this.folios.findMany({
-        where: { campaignId: { eq: campaignId } },
+        where: { projectId: { eq: projectId } },
         columns: ["id", "shortId", "title", "directoryId"],
       });
       for (const c of candidates) {
@@ -233,7 +233,7 @@ export class FolioLinkService {
       }
       if (needsPaths) {
         const dirs = await this.directories.findMany({
-          where: { campaignId: { eq: campaignId } },
+          where: { projectId: { eq: projectId } },
           columns: ["id", "name", "parentId"],
         });
         for (const d of dirs) {
@@ -257,7 +257,7 @@ export class FolioLinkService {
     const questByTitle = new Map<string, { id: number; count: number }>();
     if (needsQuests) {
       const candidates = await this.quests.findMany({
-        where: { campaignId: { eq: campaignId } },
+        where: { projectId: { eq: projectId } },
         columns: ["id", "shortId", "title"],
       });
       for (const c of candidates) {
@@ -270,14 +270,14 @@ export class FolioLinkService {
     }
 
     // Blob refs only resolve by shortId (`#N`) or direct UUID — no
-    // title lookup. Blob names aren't unique within a campaign (only
+    // title lookup. Blob names aren't unique within a project (only
     // within a parent directory), so a title-style lookup would
     // collide too often to be useful.
     const blobByShort = new Map<number, string>();
     const blobUuids = new Set<string>();
     if (needsBlobs) {
       const candidates = await this.blobs.findMany({
-        where: { campaignId: { eq: campaignId } },
+        where: { projectId: { eq: projectId } },
         columns: ["fileId", "shortId"],
       });
       for (const c of candidates) {
@@ -328,8 +328,8 @@ export class FolioLinkService {
     blobUuids?: Set<string>,
   ): string | undefined {
     if (token.type === "blob") {
-      // `blob#42` → shortId 42 in this campaign. Bare `blob:<uuid>` →
-      // UUID lookup (validate it belongs to this campaign via the
+      // `blob#42` → shortId 42 in this project. Bare `blob:<uuid>` →
+      // UUID lookup (validate it belongs to this project via the
       // precomputed set).
       if (token.ref.startsWith("#")) {
         const n = Number.parseInt(token.ref.slice(1), 10);
@@ -370,7 +370,7 @@ export class FolioLinkService {
   }
 
   /**
-   * Resolve a path-style ref (`a/b/c`) against the precomputed archive
+   * Resolve a path-style ref (`a/b/c`) against the precomputed folio
    * tree. Returns the folio id if one (and only one) match is found.
    *
    * Two-pass matching:
@@ -378,7 +378,7 @@ export class FolioLinkService {
    *    Walk down. Last segment is the folio name inside the leaf dir.
    *    Single hit ⇒ accept. Otherwise fall to (2).
    * 2. **Suffix match** — only triggered when `dirSegments` has ≥ 1
-   *    segment. Look across the campaign for any directory chain whose
+   *    segment. Look across the project for any directory chain whose
    *    trailing names equal `dirSegments` AND that contains a folio
    *    matching the last segment. Accept iff exactly one such chain has a
    *    matching folio. Ambiguous → drop (caller falls back to title).
@@ -474,7 +474,7 @@ export class FolioLinkService {
     const tokens = this.parseTokens(content);
     const targets = await this.resolveTokenIds(
       tokens,
-      fromFolio.campaignId,
+      fromFolio.projectId,
       fromFolio.id,
     );
 
@@ -530,9 +530,9 @@ export class FolioLinkService {
   }
 
   /**
-   * Walk every folio in a campaign and rewrite `[[dir/sub/name]]`
-   * folio-path tokens whose path no longer matches the target's current
-   * archive location (Lore quest #108). Resolution itself is robust
+   * Walk every folio in a project and rewrite `[[dir/sub/name]]`
+   * folio-path tokens whose path no longer matches the target folio's
+   * current location (Lore quest #108). Resolution itself is robust
    * thanks to the title-fallback + suffix-match logic, but the path
    * token in the source markdown is cosmetically stale after a move and
    * misleads the reader.
@@ -550,7 +550,7 @@ export class FolioLinkService {
    *   `#anchor` suffix verbatim.
    *
    * Canonical form for a resolved target:
-   * - Target at campaign root → `[[<title>]]` (bare; no path needed).
+   * - Target at project root → `[[<title>]]` (bare; no path needed).
    * - Target inside a directory → `[[<dir1>/.../<title>]]` (full chain
    *   anchored at root). Never emits suffix-shorthand.
    *
@@ -563,7 +563,7 @@ export class FolioLinkService {
    * Returns one row per folio whose content actually changed.
    */
   public async tidyStalePaths(
-    campaignId: number,
+    projectId: number,
     options: {
       dryRun: boolean;
       updateContent: (folioId: string, newContent: string) => Promise<void>;
@@ -577,9 +577,9 @@ export class FolioLinkService {
       tokens: Array<{ before: string; after: string; count: number }>;
     }>;
   }> {
-    // 1) Load every folio in the campaign + the directory tree once.
+    // 1) Load every folio in the project + the directory tree once.
     const allFolios = await this.folios.findMany({
-      where: { campaignId: { eq: campaignId } },
+      where: { projectId: { eq: projectId } },
       columns: [
         "id",
         "shortId",
@@ -590,7 +590,7 @@ export class FolioLinkService {
       ],
     });
     const dirs = await this.directories.findMany({
-      where: { campaignId: { eq: campaignId } },
+      where: { projectId: { eq: projectId } },
       columns: ["id", "name", "parentId"],
     });
 

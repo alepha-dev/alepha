@@ -5,6 +5,15 @@ import { describe, expect, it } from "vitest";
 /**
  * Guards the petition reporter migration against D1 cascade-data-loss.
  *
+ * Still "petition" throughout on purpose (2026-08 great rename, Task 4):
+ * this test asserts against the physical SQL in `migrations/sqlite/.archive/`,
+ * which the rename engine never touches (see CLAUDE.md "Migration safety on
+ * D1" and the `deny` list in `rules/petitions.json`). The migration file,
+ * its table names (`petitions`, `__new_petitions`, `__bk_quest_petition`)
+ * and its `petition_id` column predate the entity-level rename to
+ * `feedback` and stay that way until Task 11 renames the physical table —
+ * do not mechanically rename this file's assertions before then.
+ *
  * Cloudflare D1 ignores `PRAGMA foreign_keys=OFF`. Rebuilding `petitions`
  * (required to drop reporter_user_id) fires `quests.petition_id ON DELETE
  * SET NULL` on D1, silently NULLing every petition→quest link in production.

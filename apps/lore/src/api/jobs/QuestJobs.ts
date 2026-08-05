@@ -4,7 +4,7 @@ import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
-import { campaigns } from "../entities/campaigns.ts";
+import { projects } from "../entities/projects.ts";
 import { quests, REMINDER_INTERVAL_MS } from "../entities/quests.ts";
 import { QuestNotifications } from "../notifications/QuestNotifications.ts";
 import { relations } from "../relations.ts";
@@ -15,9 +15,9 @@ export class QuestJobs {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly quests = $repository(quests);
-  /** ...with the assignee and campaign a reminder email needs. */
+  /** ...with the assignee and project a reminder email needs. */
   protected readonly questsWith = $repository(relations, "quests");
-  protected readonly campaigns = $repository(campaigns);
+  protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
   protected readonly questNotifications = $inject(QuestNotifications);
   protected readonly dt = $inject(DateTimeProvider);
@@ -49,7 +49,7 @@ export class QuestJobs {
     cron: "0 0 * * *",
     handler: async () => {
       const now = this.dt.nowISOString();
-      // The assignee and the campaign come back with the quest, so the batch
+      // The assignee and the project come back with the quest, so the batch
       // is one statement rather than three.
       const due = await this.questsWith.findMany({
         where: {
@@ -61,7 +61,7 @@ export class QuestJobs {
         },
         orderBy: [{ column: "reminderNextAt", direction: "asc" }],
         limit: REMINDER_BATCH,
-        include: { acceptedByUser: true, campaign: true },
+        include: { acceptedByUser: true, project: true },
       });
       if (due.length === 0) return;
 
@@ -74,8 +74,8 @@ export class QuestJobs {
         try {
           if (!quest.acceptedBy || !quest.reminderInterval) continue;
           const recipient = quest.acceptedByUser;
-          const campaign = quest.campaign;
-          if (!recipient?.email || !campaign) {
+          const project = quest.project;
+          if (!recipient?.email || !project) {
             // Assignee deleted or no email — clear the reminder so we
             // don't keep retrying a doomed send forever.
             await this.quests.updateById(quest.id, {
@@ -93,10 +93,10 @@ export class QuestJobs {
             contact: recipient.email,
             variables: {
               recipientName: recipient.username ?? recipient.email,
-              campaignTitle: campaign.title,
+              projectTitle: project.title,
               questTitle: quest.title,
               shortId: quest.shortId,
-              questUrl: `${baseUrl}/c/${campaign.id}/q/${quest.shortId}`,
+              questUrl: `${baseUrl}/p/${project.id}/q/${quest.shortId}`,
             },
           });
 

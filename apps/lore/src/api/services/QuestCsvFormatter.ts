@@ -6,7 +6,7 @@ export interface ExportRow {
   difficulty: number;
   zone: string;
   kanbanColumn: string;
-  chapter: string;
+  milestone: string;
   createdBy: string;
   acceptedBy: string;
   completedBy: string;
@@ -25,7 +25,7 @@ export const QUEST_CSV_HEADER: ReadonlyArray<keyof ExportRow> = [
   "difficulty",
   "zone",
   "kanbanColumn",
-  "chapter",
+  "milestone",
   "createdBy",
   "acceptedBy",
   "completedBy",

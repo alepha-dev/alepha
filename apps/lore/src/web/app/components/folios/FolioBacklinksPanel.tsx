@@ -8,7 +8,7 @@ import type { I18n } from "../../services/I18n.ts";
 
 export interface FolioBacklinksPanelProps {
   links: FolioLinks | undefined;
-  campaignId: string;
+  projectId: string;
 }
 
 type Ref = FolioLinks["outbound"][number] | FolioLinks["inbound"][number];
@@ -26,8 +26,8 @@ const FolioBacklinksPanel = (props: FolioBacklinksPanelProps) => {
     <ul className="flex flex-col gap-1">
       {refs.map((ref) => {
         const route =
-          ref.kind === "quest" ? "campaignQuest" : "campaignFoliosFolio";
-        // For folio refs that live in an archive directory, show the
+          ref.kind === "quest" ? "projectQuest" : "projectFoliosFolio";
+        // For folio refs that live in a folio directory, show the
         // full path (e.g. `specs/apps/admin`) rather than the bare title
         // — bare names (`admin`, `roadmap`) repeat across buckets and
         // need the directory chain to be unambiguous.
@@ -46,7 +46,7 @@ const FolioBacklinksPanel = (props: FolioBacklinksPanelProps) => {
                 <Link
                   href={router.path(route, {
                     params: {
-                      campaignId: props.campaignId,
+                      projectId: props.projectId,
                       shortId: String(ref.shortId),
                     },
                   })}

@@ -6,8 +6,8 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
-import { CampaignStatsController } from "../src/api/controllers/CampaignStatsController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
+import { ProjectReportsController } from "../src/api/controllers/ProjectReportsController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
@@ -21,9 +21,9 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   admin: AdminUserController;
-  campaigns: CampaignController;
+  projects: ProjectController;
   quests: QuestController;
-  stats: CampaignStatsController;
+  reports: ProjectReportsController;
   fake: FakeProvider;
 }
 
@@ -42,9 +42,9 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     admin: alepha.inject(AdminUserController),
-    campaigns: alepha.inject(CampaignController),
+    projects: alepha.inject(ProjectController),
     quests: alepha.inject(QuestController),
-    stats: alepha.inject(CampaignStatsController),
+    reports: alepha.inject(ProjectReportsController),
     fake: alepha.inject(FakeProvider),
   };
 };
@@ -58,25 +58,25 @@ const createUser = async (ctx: TestContext) => {
   return { id: response.data.id, roles: response.data.roles };
 };
 
-const createCampaign = async (ctx: TestContext, user: { id: string }) => {
-  const campaign = await ctx.campaigns.createCampaign.fetch(
+const createProject = async (ctx: TestContext, user: { id: string }) => {
+  const project = await ctx.projects.createProject.fetch(
     { body: { title: "Shelf probe" } },
     { user },
   );
-  return campaign.data.id;
+  return project.data.id;
 };
 
 const createQuest = async (
   ctx: TestContext,
   user: { id: string },
-  campaignId: number,
+  projectId: number,
   title: string,
   extra: Record<string, unknown> = {},
 ) => {
   const res = await ctx.quests.createQuest.fetch(
     {
       body: {
-        campaignId,
+        projectId,
         title,
         description: "",
         zone: "ops",
@@ -105,7 +105,7 @@ describe("QuestController — shelving", () => {
     expect,
   }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "Someday maybe");
 
     const res = await ctx.quests.shelveQuest.fetch(
@@ -121,7 +121,7 @@ describe("QuestController — shelving", () => {
 
   it("refuses to shelve an accepted quest", async ({ expect }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "In flight");
     await ctx.quests.acceptQuest.fetch({ params: { id: quest.id } }, { user });
 
@@ -132,7 +132,7 @@ describe("QuestController — shelving", () => {
 
   it("refuses to shelve a completed quest", async ({ expect }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "Already done");
     await ctx.quests.acceptQuest.fetch({ params: { id: quest.id } }, { user });
     await ctx.quests.completeQuest.fetch(
@@ -147,7 +147,7 @@ describe("QuestController — shelving", () => {
 
   it("unshelves back to new", async ({ expect }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "Back from the shelf");
     await ctx.quests.shelveQuest.fetch({ params: { id: quest.id } }, { user });
 
@@ -163,7 +163,7 @@ describe("QuestController — shelving", () => {
 
   it("accepting a shelved quest takes it off the shelf", async ({ expect }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "Picked back up");
     await ctx.quests.shelveQuest.fetch({ params: { id: quest.id } }, { user });
 
@@ -180,19 +180,19 @@ describe("QuestController — shelving", () => {
     expect,
   }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     const keep = await createQuest(ctx, user, cid, "Keep me");
     const shelf = await createQuest(ctx, user, cid, "Shelve me");
     await ctx.quests.shelveQuest.fetch({ params: { id: shelf.id } }, { user });
 
     const all = await ctx.quests.getQuests.fetch(
-      { params: { campaignId: cid }, query: {} },
+      { params: { projectId: cid }, query: {} },
       { user },
     );
     expect(all.data.content.map((q) => q.id)).toEqual([keep.id]);
 
     const news = await ctx.quests.getQuests.fetch(
-      { params: { campaignId: cid }, query: { status: "new" } },
+      { params: { projectId: cid }, query: { status: "new" } },
       { user },
     );
     expect(news.data.content.map((q) => q.id)).toEqual([keep.id]);
@@ -200,28 +200,28 @@ describe("QuestController — shelving", () => {
 
   it("returns shelved quests only under status=shelved", async ({ expect }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     await createQuest(ctx, user, cid, "Keep me");
     const shelf = await createQuest(ctx, user, cid, "Shelve me");
     await ctx.quests.shelveQuest.fetch({ params: { id: shelf.id } }, { user });
 
     const res = await ctx.quests.getQuests.fetch(
-      { params: { campaignId: cid }, query: { status: "shelved" } },
+      { params: { projectId: cid }, query: { status: "shelved" } },
       { user },
     );
 
     expect(res.data.content.map((q) => q.id)).toEqual([shelf.id]);
   });
 
-  it("drops shelved quests out of the campaign stats denominator", async ({
+  it("drops shelved quests out of the project stats denominator", async ({
     expect,
   }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     await createQuest(ctx, user, cid, "Counts");
     const shelf = await createQuest(ctx, user, cid, "Does not count");
 
-    const before = await ctx.stats.getChroniclesOverview.fetch(
+    const before = await ctx.reports.getReportsOverview.fetch(
       { params: { id: cid } },
       { user },
     );
@@ -230,7 +230,7 @@ describe("QuestController — shelving", () => {
 
     await ctx.quests.shelveQuest.fetch({ params: { id: shelf.id } }, { user });
 
-    const after = await ctx.stats.getChroniclesOverview.fetch(
+    const after = await ctx.reports.getReportsOverview.fetch(
       { params: { id: cid } },
       { user },
     );

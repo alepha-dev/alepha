@@ -70,7 +70,7 @@ interface FolioHistoryPanelProps {
  * per revision in a single bordered stack, mirroring the Admin → Parameters
  * History bar (`@alepha/ui` `parameter-history-item`). The whole row toggles
  * the before/after diff; the `…` menu (Pin / Revert) stops propagation so it
- * never toggles the row. Petition #15.
+ * never toggles the row. Feedback #15.
  */
 const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
   const { tr } = useI18n<I18n, "en">();

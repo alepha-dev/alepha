@@ -6,9 +6,9 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { DirectoryController } from "../src/api/controllers/DirectoryController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -21,7 +21,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
-  campaignController: CampaignController;
+  projectController: ProjectController;
   directoryController: DirectoryController;
   folioController: FolioController;
   fakeProvider: FakeProvider;
@@ -42,7 +42,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
-    campaignController: alepha.inject(CampaignController),
+    projectController: alepha.inject(ProjectController),
     directoryController: alepha.inject(DirectoryController),
     folioController: alepha.inject(FolioController),
     fakeProvider: alepha.inject(FakeProvider),
@@ -83,25 +83,25 @@ describe("FolioLinkService — path-style refs", () => {
 
   const setupTree = async () => {
     const owner = await createTestUser(ctx);
-    const campaign = await ctx.campaignController.createCampaign.fetch(
+    const project = await ctx.projectController.createProject.fetch(
       { body: { title: "Link path test" } },
       { user: owner },
     );
-    const cid = campaign.data.id;
+    const cid = project.data.id;
     const specs = await ctx.directoryController.createDirectory.fetch(
-      { params: { campaignId: cid }, body: { name: "specs" } },
+      { params: { projectId: cid }, body: { name: "specs" } },
       { user: owner },
     );
     const apps = await ctx.directoryController.createDirectory.fetch(
       {
-        params: { campaignId: cid },
+        params: { projectId: cid },
         body: { name: "apps", parentId: specs.data.id },
       },
       { user: owner },
     );
     const strategy = await ctx.directoryController.createDirectory.fetch(
       {
-        params: { campaignId: cid },
+        params: { projectId: cid },
         body: { name: "strategy", parentId: specs.data.id },
       },
       { user: owner },
@@ -109,7 +109,7 @@ describe("FolioLinkService — path-style refs", () => {
     const adminFolio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "admin",
           content: "stub",
           directoryId: apps.data.id,
@@ -120,7 +120,7 @@ describe("FolioLinkService — path-style refs", () => {
     const roadmapFolio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "roadmap",
           content: "stub",
           directoryId: strategy.data.id,
@@ -144,7 +144,7 @@ describe("FolioLinkService — path-style refs", () => {
     const source = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "Index",
           content: "See [[specs/apps/admin]] and [[specs/strategy/roadmap]].",
         },
@@ -167,7 +167,7 @@ describe("FolioLinkService — path-style refs", () => {
     const source = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "Idx2",
           content: "Pointer: [[strategy/roadmap]].",
         },
@@ -188,12 +188,12 @@ describe("FolioLinkService — path-style refs", () => {
   }) => {
     const { owner, cid, roadmapFolio } = await setupTree();
     const other = await ctx.directoryController.createDirectory.fetch(
-      { params: { campaignId: cid }, body: { name: "other" } },
+      { params: { projectId: cid }, body: { name: "other" } },
       { user: owner },
     );
     const strategy2 = await ctx.directoryController.createDirectory.fetch(
       {
-        params: { campaignId: cid },
+        params: { projectId: cid },
         body: { name: "strategy", parentId: other.data.id },
       },
       { user: owner },
@@ -201,7 +201,7 @@ describe("FolioLinkService — path-style refs", () => {
     await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "roadmap",
           content: "stub",
           directoryId: strategy2.data.id,
@@ -212,7 +212,7 @@ describe("FolioLinkService — path-style refs", () => {
     const ambiguous = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "IdxAmbig",
           content: "Ambiguous: [[strategy/roadmap]].",
         },
@@ -228,7 +228,7 @@ describe("FolioLinkService — path-style refs", () => {
     const anchored = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "IdxAnchored",
           content: "Anchored: [[specs/strategy/roadmap]].",
         },
@@ -250,14 +250,14 @@ describe("FolioLinkService — path-style refs", () => {
     const { owner, cid } = await setupTree();
     const literal = await ctx.folioController.create.fetch(
       {
-        body: { campaignId: cid, title: "a/b/c", content: "stub" },
+        body: { projectId: cid, title: "a/b/c", content: "stub" },
       },
       { user: owner },
     );
     const source = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "IdxFallback",
           content: "Literal: [[a/b/c]].",
         },

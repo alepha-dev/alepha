@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { createCampaignViaWizard, registerAndVerify } from "./_helpers.ts";
+import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**
  * Regression guard for the Blights inbox infinite render loop.
  *
- * `CampaignBlights` pushes the open-count to the sidebar badge atom from its
+ * `ProjectBlights` pushes the open-count to the sidebar badge atom from its
  * AlephaTable `fetch`. It used to do so via a *subscribing* `useStore`, so each
  * fetch re-rendered the component → new inline `fetch` prop → refetch → write
  * badge → … an infinite loop. The fix: write the badge with a non-subscribing
@@ -26,14 +26,14 @@ test.describe("Blights", () => {
 
     const t = Date.now();
     const email = `blight${t}@example.com`;
-    const campaignTitle = `BL${t}`.slice(0, 20);
+    const projectTitle = `BL${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, "BlightTest123!");
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     // The blights route is gated on the module toggle.
     await page.evaluate(async (id) => {
-      const res = await fetch(`/api/updateCampaignById/${id}`, {
+      const res = await fetch(`/api/updateProjectById/${id}`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -41,13 +41,13 @@ test.describe("Blights", () => {
       });
       if (!res.ok)
         throw new Error(`enable blights: ${res.status} ${await res.text()}`);
-    }, campaignId);
+    }, projectId);
 
-    await page.goto(`/c/${campaignId}/blights`);
+    await page.goto(`/p/${projectId}/blights`);
     await page.waitForLoadState("networkidle");
 
     // Inbox chrome renders (status filter defaults to "Open"; the empty-state
-    // message shows for a campaign with no blights) → the page is stable.
+    // message shows for a project with no blights) → the page is stable.
     await expect(page.getByText("Open").first()).toBeVisible({
       timeout: 10_000,
     });

@@ -9,11 +9,11 @@ import { OutpostTokenService } from "../services/OutpostTokenService.ts";
  * Where enrolled machines report.
  *
  * **Its own credential, in both directions**, exactly as `/sigils/ingest` is.
- * An authenticated campaign member cannot post a fleet report, and an outpost
+ * An authenticated project member cannot post a fleet report, and an outpost
  * token opens nothing but this route. Accepting the session cookie here would
  * mean a logged-in owner browsing a hostile page could be made to rewrite their
  * own infrastructure view; accepting an outpost token anywhere else would hand
- * out Lore's campaign surface to a credential that sits on a server.
+ * out Lore's project surface to a credential that sits on a server.
  *
  * `$secure` is therefore deliberately absent: this is not a public endpoint, it
  * is an endpoint with its own credential, resolved by hand below.

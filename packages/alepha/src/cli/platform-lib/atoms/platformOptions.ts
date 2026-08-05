@@ -100,14 +100,15 @@ export const platformOptions = $atom({
            */
           endpoint: z.text().optional(),
           /**
-           * Lore campaign a release is written into (`adapter: "lore"`).
+           * Lore project a release is written into (`adapter: "lore"`).
            *
-           * Required by that adapter and deliberately not derived from the
-           * project name: campaign ids and project names are separate
-           * namespaces, and guessing a mapping between them would silently
-           * deploy into whichever campaign happened to match.
+           * Required by that adapter and deliberately not derived from this
+           * config's own `name` (the deploying app's project name): Lore
+           * project ids and this app's project name are separate namespaces,
+           * and guessing a mapping between them would silently deploy into
+           * whichever Lore project happened to match.
            */
-          campaignId: z.integer().optional(),
+          projectId: z.integer().optional(),
           /**
            * Custom domain for the deployed worker (e.g. "api.example.com").
            *
@@ -186,14 +187,14 @@ export interface EnvironmentConfig {
    */
   endpoint?: string;
   /**
-   * Lore campaign a release is written into (`lore` adapter only).
+   * Lore project a release is written into (`lore` adapter only).
    *
-   * Required by that adapter, and deliberately not derived from the project
-   * name: campaign ids and project names are separate namespaces, so guessing
-   * a mapping between them would silently deploy into whichever campaign
-   * happened to match.
+   * Required by that adapter, and deliberately not derived from this
+   * config's own project name: Lore project ids and this app's project name
+   * are separate namespaces, so guessing a mapping between them would
+   * silently deploy into whichever Lore project happened to match.
    */
-  campaignId?: number;
+  projectId?: number;
   domain?: string;
   zone?: string;
   vars?: Record<string, string>;

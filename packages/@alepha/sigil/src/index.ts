@@ -28,7 +28,7 @@ export * from "./sigilEnv.ts";
  * **The feedback button mounts itself.** `<SigilRoot />` is pushed into
  * {@link RootComponentsProvider}, so importing this module is the whole
  * integration — there is no second module and no JSX to place. The component
- * renders `null` unless the sink hands out a `petitionUrl` and the current path
+ * renders `null` unless the sink hands out a `feedbackUrl` and the current path
  * is not excluded, so an app with no sink configured sees nothing.
  *
  * This entry therefore pulls React. That was once avoided so a headless API app
@@ -39,7 +39,7 @@ export * from "./sigilEnv.ts";
  * the `register` below into its own module behind `@alepha/sigil/react`.
  *
  * An app that wants the link somewhere else in its own layout can still render
- * it from `usePetitionUrl()`; `<SigilRoot />` hides itself when there is no URL,
+ * it from `useFeedbackUrl()`; `<SigilRoot />` hides itself when there is no URL,
  * so the two do not fight.
  *
  * Server services self-guard to the server; the browser bootstrap guards the

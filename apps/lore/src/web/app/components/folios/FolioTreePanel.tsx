@@ -12,19 +12,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DirectoryController } from "@/api/controllers/DirectoryController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
-import { campaignDirectoriesAtom } from "../../atoms/campaignDirectoriesAtom.ts";
+import { projectDirectoriesAtom } from "../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 
 /**
- * Read-only campaign archive tree (directories + folios) rendered in
+ * Read-only project folio tree (directories + folios) rendered in
  * the FolioView left side pane (#107). Click a folio leaf → navigates
  * to that folio. Blobs are excluded — you don't navigate to them via
  * the folio view.
  *
- * Designed for quick folio→folio jumping. Fetches the whole campaign's
+ * Designed for quick folio→folio jumping. Fetches the whole project's
  * folios + directories once on first mount; small enough to keep
- * in-memory (campaign-bounded).
+ * in-memory (project-bounded).
  */
 interface DirectoryNode {
   id: string;
@@ -34,15 +34,15 @@ interface DirectoryNode {
 }
 
 interface TreeProps {
-  campaignId: number;
+  projectId: number;
   currentFolioId?: string;
-  campaignIdStr: string;
+  projectIdStr: string;
 }
 
 const FolioTreePanel = ({
-  campaignId,
+  projectId,
   currentFolioId,
-  campaignIdStr,
+  projectIdStr,
 }: TreeProps) => {
   const { tr } = useI18n<I18n, "en">();
   const folioApi = useClient<FolioController>();
@@ -53,7 +53,7 @@ const FolioTreePanel = ({
   // the extra round-trip. Fallback fetch covers the case where the
   // panel is mounted outside the folio route (atoms empty).
   const [folios, setFolios] = useStore(userFoliosAtom);
-  const [dirs, setDirs] = useStore(campaignDirectoriesAtom);
+  const [dirs, setDirs] = useStore(projectDirectoriesAtom);
   // Seeded from the atoms the route loader fills, so a warm navigation
   // renders the tree without a fetch or a skeleton frame.
   const seeded = folios.length > 0 || dirs.length > 0;
@@ -66,22 +66,22 @@ const FolioTreePanel = ({
   // Guards the one-time default-collapse. Without it the seed re-ran on
   // every folio→folio navigation (the route loader hands the panel fresh
   // `folios`/`dirs` references each time), collapsing directories the
-  // user had open — petition #14.
+  // user had open — feedback #14.
   const initializedRef = useRef(false);
 
   // Keyed so the tree is shared with anything else querying the same
-  // campaign, and so a folio mutation can invalidate it by prefix instead
+  // project, and so a folio mutation can invalidate it by prefix instead
   // of hand-patching `userFoliosAtom`. Results are mirrored into the atoms
-  // the rest of the archive UI still reads.
+  // the rest of the folio UI still reads.
   const { loading: fetching, error } = useQuery(
     {
-      key: ["folioTree", campaignId],
+      key: ["folioTree", projectId],
       enabled: !seeded,
       staleTime: [30, "seconds"],
       handler: async () => {
         const [folioList, dirList] = await Promise.all([
-          folioApi.list({ query: { campaignId, limit: 100 } as never }),
-          dirApi.listAllDirectories({ params: { campaignId } }),
+          folioApi.list({ query: { projectId, limit: 100 } as never }),
+          dirApi.listAllDirectories({ params: { projectId } }),
         ]);
         return { folios: folioList, dirs: dirList as DirectoryNode[] };
       },
@@ -94,7 +94,7 @@ const FolioTreePanel = ({
       // navigation aid, not the page), but keep the error observable.
       onError: () => {},
     },
-    [campaignId],
+    [projectId],
   );
 
   const loading = !seeded && fetching && !error;
@@ -135,7 +135,7 @@ const FolioTreePanel = ({
   // On each later navigation, only EXPAND the new folio's ancestor path
   // (so the highlighted leaf is visible) — never collapse anything else.
   // This is what keeps `features` open when you jump from features/FolioX
-  // to a root-level FolioY (petition #14).
+  // to a root-level FolioY (feedback #14).
   useEffect(() => {
     if (!initializedRef.current) return;
     if (ancestorDirIds.size === 0) return;
@@ -224,7 +224,7 @@ const FolioTreePanel = ({
     return (
       <li key={`f:${f.id}`}>
         <Link
-          href={`/c/${campaignIdStr}/archive/${f.shortId}`}
+          href={`/p/${projectIdStr}/folios/${f.shortId}`}
           className={`hover:bg-muted/50 flex w-full items-center gap-1 rounded px-1 py-0.5 text-left text-sm ${
             isCurrent ? "font-semibold" : ""
           }`}

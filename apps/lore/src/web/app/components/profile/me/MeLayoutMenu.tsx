@@ -32,10 +32,10 @@ const MeLayoutMenu = () => {
         Invitations
       </MeLayoutNavLink>
       <MeLayoutNavLink
-        href={meRouter.path("myPetitions")}
+        href={meRouter.path("myFeedback")}
         icon={<MessageSquareWarning className="size-4" />}
       >
-        Petitions
+        Feedback
       </MeLayoutNavLink>
       <span className="hidden px-2 pt-2 text-xs text-muted-foreground md:block">
         Security

@@ -1,5 +1,5 @@
 import { z } from "alepha";
-import { campaignParamsSchema } from "./commonSchemas.ts";
+import { projectParamsSchema } from "./commonSchemas.ts";
 
 /**
  * One deduplicated failure.
@@ -30,7 +30,7 @@ const blightSchema = z.object({
 // blight_list
 // -----------------------------------------------------------------------------
 
-export const blightListParamsSchema = campaignParamsSchema.extend({
+export const blightListParamsSchema = projectParamsSchema.extend({
   include_resolved: z
     .boolean()
     .describe(
@@ -50,7 +50,7 @@ export const blightListResultSchema = z.object({
 // blight_resolve
 // -----------------------------------------------------------------------------
 
-export const blightResolveParamsSchema = campaignParamsSchema.extend({
+export const blightResolveParamsSchema = projectParamsSchema.extend({
   blight_id: z.integer().describe("The blight id, from `blight_list`."),
 });
 
@@ -60,7 +60,7 @@ export const blightResolveResultSchema = z.object({ ok: z.boolean() });
 // blight_forward
 // -----------------------------------------------------------------------------
 
-export const blightForwardParamsSchema = campaignParamsSchema.extend({
+export const blightForwardParamsSchema = projectParamsSchema.extend({
   blight_id: z.integer().describe("The blight id, from `blight_list`."),
 });
 

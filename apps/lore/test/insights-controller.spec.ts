@@ -8,8 +8,8 @@ import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { InsightsController } from "../src/api/controllers/InsightsController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { members } from "../src/api/entities/members.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
@@ -53,7 +53,7 @@ interface TestContext {
    */
   nowMs: number;
   adminUserController: AdminUserController;
-  campaignController: CampaignController;
+  projectController: ProjectController;
   sigilController: SigilController;
   insightsController: InsightsController;
   probe: Probe;
@@ -89,7 +89,7 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     nowMs: dateTime.nowMillis(),
     adminUserController: alepha.inject(AdminUserController),
-    campaignController: alepha.inject(CampaignController),
+    projectController: alepha.inject(ProjectController),
     sigilController: alepha.inject(SigilController),
     insightsController: alepha.inject(InsightsController),
     probe,
@@ -108,11 +108,11 @@ const createTestUser = async (
   return { id: response.data.id, roles: response.data.roles };
 };
 
-const createCampaign = async (
+const createProject = async (
   ctx: TestContext,
   user: { id: string; roles: string[] },
 ): Promise<number> => {
-  const created = await ctx.campaignController.createCampaign.fetch(
+  const created = await ctx.projectController.createProject.fetch(
     { body: { title: "Insights", features: { beacon: true } } },
     { user },
   );
@@ -121,13 +121,13 @@ const createCampaign = async (
 
 const createSigil = async (
   ctx: TestContext,
-  campaignId: number,
+  projectId: number,
   environment: string,
   user: { id: string; roles: string[] },
 ): Promise<string> => {
   const created = await ctx.sigilController.createSigil.fetch(
     {
-      params: { campaignId },
+      params: { projectId },
       body: { app: "lore", environment, kinds: ["beacon", "vitals"] },
     },
     { user },
@@ -175,8 +175,8 @@ describe("InsightsController", () => {
 
   it("totals views and unique visitors over the window", async ({ expect }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const sigilId = await createSigil(ctx, campaignId, "prod", owner);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "prod", owner);
 
     await ctx.probe.views.create({
       sigilId,
@@ -206,7 +206,7 @@ describe("InsightsController", () => {
     });
 
     const res = await ctx.insightsController.getInsights.fetch(
-      { params: { campaignId }, query: { range: "7d" } },
+      { params: { projectId }, query: { range: "7d" } },
       { user: owner },
     );
 
@@ -216,8 +216,8 @@ describe("InsightsController", () => {
 
   it("excludes rows outside the window", async ({ expect }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const sigilId = await createSigil(ctx, campaignId, "prod", owner);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "prod", owner);
 
     await ctx.probe.views.create({
       sigilId,
@@ -245,14 +245,14 @@ describe("InsightsController", () => {
     });
 
     const week = await ctx.insightsController.getInsights.fetch(
-      { params: { campaignId }, query: { range: "7d" } },
+      { params: { projectId }, query: { range: "7d" } },
       { user: owner },
     );
     expect(week.data.totalViews).toBe(4);
     expect(week.data.uniqueVisitors).toBe(1);
 
     const month = await ctx.insightsController.getInsights.fetch(
-      { params: { campaignId }, query: { range: "30d" } },
+      { params: { projectId }, query: { range: "30d" } },
       { user: owner },
     );
     expect(month.data.totalViews).toBe(103);
@@ -261,8 +261,8 @@ describe("InsightsController", () => {
 
   it("orders top countries by views, descending", async ({ expect }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const sigilId = await createSigil(ctx, campaignId, "prod", owner);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "prod", owner);
 
     await ctx.probe.views.create({
       sigilId,
@@ -287,7 +287,7 @@ describe("InsightsController", () => {
     });
 
     const res = await ctx.insightsController.getInsights.fetch(
-      { params: { campaignId }, query: { range: "30d" } },
+      { params: { projectId }, query: { range: "30d" } },
       { user: owner },
     );
 
@@ -299,8 +299,8 @@ describe("InsightsController", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const sigilId = await createSigil(ctx, campaignId, "prod", owner);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "prod", owner);
 
     await ctx.probe.views.create({
       sigilId,
@@ -318,7 +318,7 @@ describe("InsightsController", () => {
     });
 
     const res = await ctx.insightsController.getInsights.fetch(
-      { params: { campaignId }, query: { range: "30d" } },
+      { params: { projectId }, query: { range: "30d" } },
       { user: owner },
     );
 
@@ -334,8 +334,8 @@ describe("InsightsController", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const sigilId = await createSigil(ctx, campaignId, "prod", owner);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "prod", owner);
 
     // Two hours of the same day — the day point is their sum, which is the one
     // thing a `substr(hour, 1, 10)` group has to get right.
@@ -362,7 +362,7 @@ describe("InsightsController", () => {
     });
 
     const res = await ctx.insightsController.getInsights.fetch(
-      { params: { campaignId }, query: { range: "7d" } },
+      { params: { projectId }, query: { range: "7d" } },
       { user: owner },
     );
 
@@ -377,9 +377,9 @@ describe("InsightsController", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    const prod = await createSigil(ctx, campaignId, "prod", owner);
-    const staging = await createSigil(ctx, campaignId, "staging", owner);
+    const projectId = await createProject(ctx, owner);
+    const prod = await createSigil(ctx, projectId, "prod", owner);
+    const staging = await createSigil(ctx, projectId, "staging", owner);
 
     await ctx.probe.uniques.create({
       sigilId: prod,
@@ -398,21 +398,21 @@ describe("InsightsController", () => {
     });
 
     const res = await ctx.insightsController.getInsights.fetch(
-      { params: { campaignId }, query: { range: "7d" } },
+      { params: { projectId }, query: { range: "7d" } },
       { user: owner },
     );
 
     expect(res.data.uniqueVisitors).toBe(2);
   });
 
-  it("returns an empty snapshot for a campaign with no sigils", async ({
+  it("returns an empty snapshot for a project with no sigils", async ({
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
+    const projectId = await createProject(ctx, owner);
 
     const res = await ctx.insightsController.getInsights.fetch(
-      { params: { campaignId }, query: { range: "7d" } },
+      { params: { projectId }, query: { range: "7d" } },
       { user: owner },
     );
 
@@ -434,9 +434,9 @@ describe("InsightsController", () => {
       expect,
     }) => {
       const owner = await createTestUser(ctx);
-      const campaignId = await createCampaign(ctx, owner);
-      const prod = await createSigil(ctx, campaignId, "prod", owner);
-      const staging = await createSigil(ctx, campaignId, "staging", owner);
+      const projectId = await createProject(ctx, owner);
+      const prod = await createSigil(ctx, projectId, "prod", owner);
+      const staging = await createSigil(ctx, projectId, "staging", owner);
 
       // One fingerprint, both environments. The Blights inbox folds these into
       // a single row on purpose; the budget must not, or "is it still happening
@@ -465,7 +465,7 @@ describe("InsightsController", () => {
       });
 
       const res = await ctx.insightsController.getInsights.fetch(
-        { params: { campaignId }, query: { range: "7d" } },
+        { params: { projectId }, query: { range: "7d" } },
         { user: owner },
       );
 
@@ -489,8 +489,8 @@ describe("InsightsController", () => {
       expect,
     }) => {
       const owner = await createTestUser(ctx);
-      const campaignId = await createCampaign(ctx, owner);
-      const sigilId = await createSigil(ctx, campaignId, "prod", owner);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "prod", owner);
 
       // Filtered on `lastSeenAt`, not `firstSeenAt`: an old bug that fired an
       // hour ago is in the budget, and one that stopped last month is not —
@@ -519,7 +519,7 @@ describe("InsightsController", () => {
       });
 
       const week = await ctx.insightsController.getInsights.fetch(
-        { params: { campaignId }, query: { range: "7d" } },
+        { params: { projectId }, query: { range: "7d" } },
         { user: owner },
       );
       expect(week.data.errorGroups.map((g) => g.fingerprint)).toEqual([
@@ -527,7 +527,7 @@ describe("InsightsController", () => {
       ]);
 
       const month = await ctx.insightsController.getInsights.fetch(
-        { params: { campaignId }, query: { range: "30d" } },
+        { params: { projectId }, query: { range: "30d" } },
         { user: owner },
       );
       expect(month.data.errorGroups.map((g) => g.fingerprint).sort()).toEqual([
@@ -536,11 +536,11 @@ describe("InsightsController", () => {
       ]);
     });
 
-    it("never shows another campaign's groups", async ({ expect }) => {
+    it("never shows another project's groups", async ({ expect }) => {
       const owner = await createTestUser(ctx);
       const stranger = await createTestUser(ctx);
-      const mine = await createCampaign(ctx, owner);
-      const theirs = await createCampaign(ctx, stranger);
+      const mine = await createProject(ctx, owner);
+      const theirs = await createProject(ctx, stranger);
       const myScope = await createSigil(ctx, mine, "prod", owner);
       const theirScope = await createSigil(ctx, theirs, "prod", stranger);
 
@@ -562,7 +562,7 @@ describe("InsightsController", () => {
       }
 
       const res = await ctx.insightsController.getInsights.fetch(
-        { params: { campaignId: mine }, query: { range: "7d" } },
+        { params: { projectId: mine }, query: { range: "7d" } },
         { user: owner },
       );
 
@@ -575,8 +575,8 @@ describe("InsightsController", () => {
   describe("vitals p75", () => {
     it("walks the stored histogram to a p75 boundary", async ({ expect }) => {
       const owner = await createTestUser(ctx);
-      const campaignId = await createCampaign(ctx, owner);
-      const sigilId = await createSigil(ctx, campaignId, "prod", owner);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "prod", owner);
 
       // 1 sample in bucket 0, 2 in bucket 2, 1 in the overflow bucket.
       // Total 4, target = ceil(0.75 × 4) = 3. Cumulative reaches 3 at bucket 2,
@@ -590,7 +590,7 @@ describe("InsightsController", () => {
       });
 
       const res = await ctx.insightsController.getInsights.fetch(
-        { params: { campaignId }, query: { range: "7d" } },
+        { params: { projectId }, query: { range: "7d" } },
         { user: owner },
       );
 
@@ -602,9 +602,9 @@ describe("InsightsController", () => {
       expect,
     }) => {
       const owner = await createTestUser(ctx);
-      const campaignId = await createCampaign(ctx, owner);
-      const prod = await createSigil(ctx, campaignId, "prod", owner);
-      const staging = await createSigil(ctx, campaignId, "staging", owner);
+      const projectId = await createProject(ctx, owner);
+      const prod = await createSigil(ctx, projectId, "prod", owner);
+      const staging = await createSigil(ctx, projectId, "staging", owner);
 
       // Fast environment: 3 samples in bucket 0. Slow one: 1 sample in the
       // overflow bucket. Merged, 4 samples with target 3 → still bucket 0's
@@ -625,7 +625,7 @@ describe("InsightsController", () => {
       });
 
       const res = await ctx.insightsController.getInsights.fetch(
-        { params: { campaignId }, query: { range: "7d" } },
+        { params: { projectId }, query: { range: "7d" } },
         { user: owner },
       );
 
@@ -637,8 +637,8 @@ describe("InsightsController", () => {
       expect,
     }) => {
       const owner = await createTestUser(ctx);
-      const campaignId = await createCampaign(ctx, owner);
-      const sigilId = await createSigil(ctx, campaignId, "prod", owner);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "prod", owner);
 
       await ctx.probe.vitals.create({
         sigilId,
@@ -649,7 +649,7 @@ describe("InsightsController", () => {
       });
 
       const res = await ctx.insightsController.getInsights.fetch(
-        { params: { campaignId }, query: { range: "7d" } },
+        { params: { projectId }, query: { range: "7d" } },
         { user: owner },
       );
 
@@ -664,8 +664,8 @@ describe("InsightsController", () => {
       expect,
     }) => {
       const owner = await createTestUser(ctx);
-      const campaignId = await createCampaign(ctx, owner);
-      const sigilId = await createSigil(ctx, campaignId, "prod", owner);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "prod", owner);
 
       // CLS is bucketed on the collector's ×1000 integer, so the boundary is
       // 50 and the score is 0.05. Undoing the scaling is the controller's job,
@@ -679,7 +679,7 @@ describe("InsightsController", () => {
       });
 
       const res = await ctx.insightsController.getInsights.fetch(
-        { params: { campaignId }, query: { range: "7d" } },
+        { params: { projectId }, query: { range: "7d" } },
         { user: owner },
       );
 
@@ -691,19 +691,19 @@ describe("InsightsController", () => {
     const owner = await createTestUser(ctx);
     const member = await createTestUser(ctx);
     const stranger = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    await createSigil(ctx, campaignId, "prod", owner);
-    await ctx.probe.members.create({ userId: member.id, campaignId });
+    const projectId = await createProject(ctx, owner);
+    await createSigil(ctx, projectId, "prod", owner);
+    await ctx.probe.members.create({ userId: member.id, projectId });
 
     const res = await ctx.insightsController.getInsights.fetch(
-      { params: { campaignId }, query: { range: "7d" } },
+      { params: { projectId }, query: { range: "7d" } },
       { user: member },
     );
     expect(res.data.range).toBe("7d");
 
     await expect(
       ctx.insightsController.getInsights.fetch(
-        { params: { campaignId }, query: { range: "7d" } },
+        { params: { projectId }, query: { range: "7d" } },
         { user: stranger },
       ),
     ).rejects.toThrow();

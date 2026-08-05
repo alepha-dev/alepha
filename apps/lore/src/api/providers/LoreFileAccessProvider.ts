@@ -3,43 +3,47 @@ import { FileAccessProvider, type FileEntity } from "alepha/api/files";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { ForbiddenError } from "alepha/server";
-import { archiveBlobs } from "../entities/archiveBlobs.ts";
-import { campaigns } from "../entities/campaigns.ts";
-import { petitions } from "../entities/petitions.ts";
+import { feedback } from "../entities/feedback.ts";
+import { folioBlobs } from "../entities/folioBlobs.ts";
+import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
-import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
-import { PetitionRateLimiter } from "../services/PetitionRateLimiter.ts";
+import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 const attachmentLookupSchema = z.object({
   id: z.integer(),
-  campaignId: z.integer(),
+  projectId: z.integer(),
 });
 
 /**
  * Per-bucket file access policy for Lore.
  *
  * Files are tenant-scoped through the entities that reference them
- * (campaigns.icon, petitions.attachments[], quests.attachments[]). We
- * locate the owning entity by id, then delegate to the same campaign
+ * (projects.icon, feedback.attachments[], quests.attachments[]). We
+ * locate the owning entity by id, then delegate to the same project
  * gate used by HTTP controllers. The default framework policy is
  * creator-only — this widens it for the well-known buckets.
  */
 export class LoreFileAccessProvider extends FileAccessProvider {
-  protected readonly security = $inject(CampaignSecurityService);
+  protected readonly security = $inject(ProjectSecurityService);
   protected readonly database = $inject(DatabaseProvider);
-  protected readonly campaigns = $repository(campaigns);
-  protected readonly petitions = $repository(petitions);
+  protected readonly projects = $repository(projects);
+  protected readonly feedback = $repository(feedback);
   protected readonly quests = $repository(quests);
-  protected readonly archiveBlobs = $repository(archiveBlobs);
+  protected readonly folioBlobs = $repository(folioBlobs);
 
   /**
    * Quest attachments bucket inherits the property name when no `name:` is
    * passed to `$storage(...)` — see `QuestController.attachments`.
    */
   protected static readonly QUEST_ATTACHMENT_BUCKET = "attachments";
-  protected static readonly CAMPAIGN_ICON_BUCKET = "campaign-icons";
+  // Bucket value stays "campaign-icons" — see the note on `iconBucket`
+  // in `ProjectController.ts`.
+  protected static readonly PROJECT_ICON_BUCKET = "campaign-icons";
   protected static readonly AVATAR_BUCKET = "avatars";
-  protected static readonly ARCHIVE_BLOB_BUCKET = "archive-blobs";
+  // Bucket value stays "archive-blobs" — see the note on
+  // `FOLIO_BLOB_BUCKET` in `FolioBlobService.ts`.
+  protected static readonly FOLIO_BLOB_BUCKET = "archive-blobs";
 
   async assertReadable(
     file: FileEntity,
@@ -65,49 +69,49 @@ export class LoreFileAccessProvider extends FileAccessProvider {
       return;
     }
 
-    // Campaign icons: anyone who can see the campaign can render its icon.
-    if (file.bucket === LoreFileAccessProvider.CAMPAIGN_ICON_BUCKET) {
-      const campaign = await this.campaigns.findOne({
+    // Project icons: anyone who can see the project can render its icon.
+    if (file.bucket === LoreFileAccessProvider.PROJECT_ICON_BUCKET) {
+      const project = await this.projects.findOne({
         where: { icon: { eq: file.id } },
       });
-      if (campaign) {
-        await this.security.assertMember(campaign.id, user);
+      if (project) {
+        await this.security.assertMember(project.id, user);
         return;
       }
       // Orphan icon (uploaded but never assigned) stays creator-only.
       throw new ForbiddenError("File access denied");
     }
 
-    // Petition attachments: campaign owner triages, including reading
+    // Feedback attachments: project owner triages, including reading
     // attachments from reporters.
-    if (file.bucket === PetitionRateLimiter.ATTACHMENT_BUCKET) {
-      const petition = await this.findPetitionByAttachment(file.id);
-      if (petition) {
-        await this.security.assertOwner(petition.campaignId, user);
+    if (file.bucket === FeedbackRateLimiter.ATTACHMENT_BUCKET) {
+      const feedback = await this.findFeedbackByAttachment(file.id);
+      if (feedback) {
+        await this.security.assertOwner(feedback.projectId, user);
         return;
       }
       throw new ForbiddenError("File access denied");
     }
 
-    // Archive blobs: any campaign member can read the bytes (Drive-
+    // Folio blobs: any project member can read the bytes (Drive-
     // style sharing scope per folio #4 Q2). The Lore overlay row holds
-    // the campaign id.
-    if (file.bucket === LoreFileAccessProvider.ARCHIVE_BLOB_BUCKET) {
-      const blob = await this.archiveBlobs.findOne({
+    // the project id.
+    if (file.bucket === LoreFileAccessProvider.FOLIO_BLOB_BUCKET) {
+      const blob = await this.folioBlobs.findOne({
         where: { fileId: { eq: file.id } },
       });
       if (blob) {
-        await this.security.assertMember(blob.campaignId, user);
+        await this.security.assertMember(blob.projectId, user);
         return;
       }
       throw new ForbiddenError("File access denied");
     }
 
-    // Quest attachments: any campaign member can view.
+    // Quest attachments: any project member can view.
     if (file.bucket === LoreFileAccessProvider.QUEST_ATTACHMENT_BUCKET) {
       const quest = await this.findQuestByAttachment(file.id);
       if (quest) {
-        await this.security.assertMember(quest.campaignId, user);
+        await this.security.assertMember(quest.projectId, user);
         return;
       }
       throw new ForbiddenError("File access denied");
@@ -118,7 +122,7 @@ export class LoreFileAccessProvider extends FileAccessProvider {
   }
 
   /**
-   * Avatars and campaign icons are served anonymously through the
+   * Avatars and project icons are served anonymously through the
    * `/public/files/:id` route (edge-cacheable). They're low-sensitivity,
    * rendered in unauthenticated contexts, and addressed by opaque uuid —
    * so they opt out of the default deny-all. Everything else stays private
@@ -127,7 +131,7 @@ export class LoreFileAccessProvider extends FileAccessProvider {
   async assertPublic(file: FileEntity): Promise<void> {
     if (
       file.bucket === LoreFileAccessProvider.AVATAR_BUCKET ||
-      file.bucket === LoreFileAccessProvider.CAMPAIGN_ICON_BUCKET
+      file.bucket === LoreFileAccessProvider.PROJECT_ICON_BUCKET
     ) {
       return;
     }
@@ -135,14 +139,14 @@ export class LoreFileAccessProvider extends FileAccessProvider {
   }
 
   /**
-   * Find the petition that lists `fileId` in its `attachments` JSON array.
-   * Uses a LIKE against the JSON text — petition rows are small and the
-   * bucket constraint at the call site already narrows the search.
+   * Find the feedback row that lists `fileId` in its `attachments` JSON
+   * array. Uses a LIKE against the JSON text — feedback rows are small and
+   * the bucket constraint at the call site already narrows the search.
    */
-  protected async findPetitionByAttachment(fileId: string) {
+  protected async findFeedbackByAttachment(fileId: string) {
     const needle = `%"${fileId}"%`;
     const rows = await this.database.run(
-      sql`SELECT id, campaign_id as "campaignId" FROM ${this.petitions.table} WHERE attachments LIKE ${needle} LIMIT 1`,
+      sql`SELECT id, project_id as "projectId" FROM ${this.feedback.table} WHERE attachments LIKE ${needle} LIMIT 1`,
       attachmentLookupSchema,
     );
     return rows[0];
@@ -151,7 +155,7 @@ export class LoreFileAccessProvider extends FileAccessProvider {
   protected async findQuestByAttachment(fileId: string) {
     const needle = `%"${fileId}"%`;
     const rows = await this.database.run(
-      sql`SELECT id, campaign_id as "campaignId" FROM ${this.quests.table} WHERE attachments LIKE ${needle} LIMIT 1`,
+      sql`SELECT id, project_id as "projectId" FROM ${this.quests.table} WHERE attachments LIKE ${needle} LIMIT 1`,
       attachmentLookupSchema,
     );
     return rows[0];

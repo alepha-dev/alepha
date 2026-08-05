@@ -12,7 +12,8 @@ import { $atom, type Infer, z } from "alepha";
  */
 export const folioHistoryAtom = $atom({
   name: "lore.folio.history",
-  description: "Retention cap for folio revisions (Chronicles of the Folio).",
+  description:
+    "Retention cap for folio revisions (the folio's revision history).",
   schema: z.object({
     /**
      * Max revisions to keep per folio (excluding pinned revisions, which

@@ -6,7 +6,7 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, HttpError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
@@ -20,7 +20,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   admin: AdminUserController;
-  campaigns: CampaignController;
+  projects: ProjectController;
   quests: QuestController;
   fake: FakeProvider;
 }
@@ -47,7 +47,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     admin: alepha.inject(AdminUserController),
-    campaigns: alepha.inject(CampaignController),
+    projects: alepha.inject(ProjectController),
     quests: alepha.inject(QuestController),
     fake: alepha.inject(FakeProvider),
   };
@@ -65,25 +65,25 @@ const createUser = async (ctx: TestContext) => {
 const seedAcceptedQuest = async (
   ctx: TestContext,
   user: { id: string; roles: string[] },
-): Promise<{ id: number; campaignId: number }> => {
-  const campaign = await ctx.campaigns.createCampaign.fetch(
+): Promise<{ id: number; projectId: number }> => {
+  const project = await ctx.projects.createProject.fetch(
     { body: { title: "Reminder Probe" } },
     { user },
   );
   // Reminders are an owner toggle (off by default). The spec asserts the
   // setQuestReminder behavior, not the gate — enable it up front.
   // biome-ignore lint/suspicious/noExplicitAny: ORM repo generic is too strict
-  const campaignsRepo: any = (ctx.campaigns as any).campaigns;
-  const c = await campaignsRepo.getOne({
-    where: { id: { eq: campaign.data.id } },
+  const projectsRepo: any = (ctx.projects as any).projects;
+  const c = await projectsRepo.getOne({
+    where: { id: { eq: project.data.id } },
   });
   c.features = { ...c.features, questReminder: true };
-  await campaignsRepo.save(c);
+  await projectsRepo.save(c);
 
   const created = await ctx.quests.createQuest.fetch(
     {
       body: {
-        campaignId: campaign.data.id,
+        projectId: project.data.id,
         title: "Daily standup",
         description: "<p>standup</p>",
         zone: "ops",
@@ -97,7 +97,7 @@ const seedAcceptedQuest = async (
     { params: { id: created.data.id } },
     { user },
   );
-  return { id: created.data.id, campaignId: campaign.data.id };
+  return { id: created.data.id, projectId: project.data.id };
 };
 
 describe("QuestController setQuestReminder", () => {
@@ -152,10 +152,10 @@ describe("QuestController setQuestReminder", () => {
     const stranger = await createUser(ctx);
     const { id } = await seedAcceptedQuest(ctx, owner);
 
-    // Add stranger to the campaign so the ownership check passes; the
+    // Add stranger to the project so the ownership check passes; the
     // setQuestReminder handler is the layer that demands assignee-only.
     // For this test, we don't need them as a member — the assignee
-    // check fires before ownership matters since the campaign is
+    // check fires before ownership matters since the project is
     // accessible only to its creator (owner).
     await expect(
       ctx.quests.setQuestReminder.fetch(

@@ -6,7 +6,7 @@ import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, HttpError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { members } from "../src/api/entities/members.ts";
 import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
@@ -32,7 +32,7 @@ class Probe {
 interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
-  campaignController: CampaignController;
+  projectController: ProjectController;
   sigilController: SigilController;
   tokens: SigilTokenService;
   probe: Probe;
@@ -44,7 +44,7 @@ interface TestContext {
  *
  * Substituted in to force the *other* unique index on `sigils` — `tokenHash` —
  * to be the one that refuses an insert. It is the only unique index a test can
- * trip deterministically: the `(campaignId, app, environment)` one is guarded
+ * trip deterministically: the `(projectId, app, environment)` one is guarded
  * by a `findOne` that a single-connection in-memory database never lets a
  * second caller slip past, which is exactly why the handler cannot rely on
  * that check alone in production.
@@ -84,7 +84,7 @@ const setup = async (
   return {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
-    campaignController: alepha.inject(CampaignController),
+    projectController: alepha.inject(ProjectController),
     sigilController: alepha.inject(SigilController),
     tokens: alepha.inject(SigilTokenService),
     probe,
@@ -103,11 +103,11 @@ const createTestUser = async (
   return { id: response.data.id, roles: response.data.roles };
 };
 
-const createCampaign = async (
+const createProject = async (
   ctx: TestContext,
   user: { id: string; roles: string[] },
 ): Promise<number> => {
-  const created = await ctx.campaignController.createCampaign.fetch(
+  const created = await ctx.projectController.createProject.fetch(
     { body: { title: "Sigil Test" } },
     { user },
   );
@@ -137,10 +137,10 @@ describe("SigilController", () => {
 
   it("mints a token once, and never returns the hash", async ({ expect }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
+    const projectId = await createProject(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { campaignId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { app: "lore", environment: "prod" } },
       { user: owner },
     );
 
@@ -153,7 +153,7 @@ describe("SigilController", () => {
 
     // And it is gone from every later read — the list carries the prefix only.
     const list = await ctx.sigilController.listSigils.fetch(
-      { params: { campaignId } },
+      { params: { projectId } },
       { user: owner },
     );
     expect("token" in list.data.items[0]).toBe(false);
@@ -161,10 +161,10 @@ describe("SigilController", () => {
 
   it("defaults the label to `app / environment`", async ({ expect }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
+    const projectId = await createProject(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { campaignId }, body: { app: "lore", environment: "staging" } },
+      { params: { projectId }, body: { app: "lore", environment: "staging" } },
       { user: owner },
     );
 
@@ -172,7 +172,7 @@ describe("SigilController", () => {
     expect(created.data.kinds.sort()).toEqual([
       "beacon",
       "blights",
-      "petition",
+      "feedback",
       "vitals",
     ]);
   });
@@ -181,10 +181,10 @@ describe("SigilController", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
+    const projectId = await createProject(ctx, owner);
 
     await ctx.sigilController.createSigil.fetch(
-      { params: { campaignId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { app: "lore", environment: "prod" } },
       { user: owner },
     );
 
@@ -192,34 +192,34 @@ describe("SigilController", () => {
     // make every aggregate wrong — 409, not a silent second sigil.
     await expectStatus(
       ctx.sigilController.createSigil.fetch(
-        { params: { campaignId }, body: { app: "lore", environment: "prod" } },
+        { params: { projectId }, body: { app: "lore", environment: "prod" } },
         { user: owner },
       ),
       409,
     );
 
     const list = await ctx.sigilController.listSigils.fetch(
-      { params: { campaignId } },
+      { params: { projectId } },
       { user: owner },
     );
     expect(list.data.items).toHaveLength(1);
   });
 
-  it("lists a campaign's sigils, newest first", async ({ expect }) => {
+  it("lists a project's sigils, newest first", async ({ expect }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
+    const projectId = await createProject(ctx, owner);
 
     await ctx.sigilController.createSigil.fetch(
-      { params: { campaignId }, body: { app: "lore", environment: "staging" } },
+      { params: { projectId }, body: { app: "lore", environment: "staging" } },
       { user: owner },
     );
     await ctx.sigilController.createSigil.fetch(
-      { params: { campaignId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { app: "lore", environment: "prod" } },
       { user: owner },
     );
 
     const list = await ctx.sigilController.listSigils.fetch(
-      { params: { campaignId } },
+      { params: { projectId } },
       { user: owner },
     );
     expect(list.data.items).toHaveLength(2);
@@ -231,10 +231,10 @@ describe("SigilController", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
+    const projectId = await createProject(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { campaignId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { app: "lore", environment: "prod" } },
       { user: owner },
     );
     await ctx.probe.views.create({
@@ -246,7 +246,7 @@ describe("SigilController", () => {
     });
 
     const rotated = await ctx.sigilController.rotateSigil.fetch(
-      { params: { campaignId, sigilId: created.data.id } },
+      { params: { projectId, sigilId: created.data.id } },
       { user: owner },
     );
 
@@ -268,10 +268,10 @@ describe("SigilController", () => {
 
   it("deletes the sigil and everything it reported", async ({ expect }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
+    const projectId = await createProject(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { campaignId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { app: "lore", environment: "prod" } },
       { user: owner },
     );
     await ctx.probe.views.create({
@@ -283,12 +283,12 @@ describe("SigilController", () => {
     });
 
     await ctx.sigilController.deleteSigil.fetch(
-      { params: { campaignId, sigilId: created.data.id } },
+      { params: { projectId, sigilId: created.data.id } },
       { user: owner },
     );
 
     const list = await ctx.sigilController.listSigils.fetch(
-      { params: { campaignId } },
+      { params: { projectId } },
       { user: owner },
     );
     expect(list.data.items).toHaveLength(0);
@@ -302,7 +302,7 @@ describe("SigilController", () => {
     // Genuinely gone: a second delete is a clean 404, not a no-op.
     await expectStatus(
       ctx.sigilController.deleteSigil.fetch(
-        { params: { campaignId, sigilId: created.data.id } },
+        { params: { projectId, sigilId: created.data.id } },
         { user: owner },
       ),
       404,
@@ -314,39 +314,39 @@ describe("SigilController", () => {
   }) => {
     const owner = await createTestUser(ctx);
     const member = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
-    await ctx.probe.members.create({ userId: member.id, campaignId });
+    const projectId = await createProject(ctx, owner);
+    await ctx.probe.members.create({ userId: member.id, projectId });
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { campaignId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { app: "lore", environment: "prod" } },
       { user: owner },
     );
 
     // Reads are member-gated: the inventory drives the blights filter and the
     // insights page, neither of which is owner-only.
     const list = await ctx.sigilController.listSigils.fetch(
-      { params: { campaignId } },
+      { params: { projectId } },
       { user: member },
     );
     expect(list.data.items).toHaveLength(1);
 
     await expectStatus(
       ctx.sigilController.createSigil.fetch(
-        { params: { campaignId }, body: { app: "shop", environment: "prod" } },
+        { params: { projectId }, body: { app: "shop", environment: "prod" } },
         { user: member },
       ),
       403,
     );
     await expectStatus(
       ctx.sigilController.rotateSigil.fetch(
-        { params: { campaignId, sigilId: created.data.id } },
+        { params: { projectId, sigilId: created.data.id } },
         { user: member },
       ),
       403,
     );
     await expectStatus(
       ctx.sigilController.deleteSigil.fetch(
-        { params: { campaignId, sigilId: created.data.id } },
+        { params: { projectId, sigilId: created.data.id } },
         { user: member },
       ),
       403,
@@ -356,61 +356,61 @@ describe("SigilController", () => {
   it("refuses a stranger everything, reads included", async () => {
     const owner = await createTestUser(ctx);
     const stranger = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
+    const projectId = await createProject(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { campaignId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { app: "lore", environment: "prod" } },
       { user: owner },
     );
 
     await expectStatus(
       ctx.sigilController.listSigils.fetch(
-        { params: { campaignId } },
+        { params: { projectId } },
         { user: stranger },
       ),
       403,
     );
     await expectStatus(
       ctx.sigilController.rotateSigil.fetch(
-        { params: { campaignId, sigilId: created.data.id } },
+        { params: { projectId, sigilId: created.data.id } },
         { user: stranger },
       ),
       403,
     );
     await expectStatus(
       ctx.sigilController.deleteSigil.fetch(
-        { params: { campaignId, sigilId: created.data.id } },
+        { params: { projectId, sigilId: created.data.id } },
         { user: stranger },
       ),
       403,
     );
   });
 
-  it("404s on a sigil that belongs to another campaign", async () => {
+  it("404s on a sigil that belongs to another project", async () => {
     const owner = await createTestUser(ctx);
-    const campaignA = await createCampaign(ctx, owner);
-    const campaignB = await createCampaign(ctx, owner);
+    const projectA = await createProject(ctx, owner);
+    const projectB = await createProject(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
       {
-        params: { campaignId: campaignA },
+        params: { projectId: projectA },
         body: { app: "lore", environment: "prod" },
       },
       { user: owner },
     );
 
-    // The owner check would pass on campaign B; the campaign filter in
+    // The owner check would pass on project B; the project filter in
     // `loadSigil` is what stops the row being reachable from there.
     await expectStatus(
       ctx.sigilController.rotateSigil.fetch(
-        { params: { campaignId: campaignB, sigilId: created.data.id } },
+        { params: { projectId: projectB, sigilId: created.data.id } },
         { user: owner },
       ),
       404,
     );
     await expectStatus(
       ctx.sigilController.deleteSigil.fetch(
-        { params: { campaignId: campaignB, sigilId: created.data.id } },
+        { params: { projectId: projectB, sigilId: created.data.id } },
         { user: owner },
       ),
       404,
@@ -435,10 +435,10 @@ describe("SigilController — unique-index violations", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
+    const projectId = await createProject(ctx, owner);
 
     await ctx.sigilController.createSigil.fetch(
-      { params: { campaignId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { app: "lore", environment: "prod" } },
       { user: owner },
     );
 
@@ -448,7 +448,7 @@ describe("SigilController — unique-index violations", () => {
     await expectStatus(
       ctx.sigilController.createSigil.fetch(
         {
-          params: { campaignId },
+          params: { projectId },
           body: { app: "lore", environment: "staging" },
         },
         { user: owner },
@@ -461,7 +461,7 @@ describe("SigilController — unique-index violations", () => {
     const error: unknown = await ctx.sigilController.createSigil
       .fetch(
         {
-          params: { campaignId },
+          params: { projectId },
           body: { app: "lore", environment: "staging" },
         },
         { user: owner },
@@ -471,7 +471,7 @@ describe("SigilController — unique-index violations", () => {
     expect((error as HttpError).message).toMatch(/unique token/i);
 
     const list = await ctx.sigilController.listSigils.fetch(
-      { params: { campaignId } },
+      { params: { projectId } },
       { user: owner },
     );
     expect(list.data.items).toHaveLength(1);

@@ -14,7 +14,7 @@ import {
  * The registry, on the writing side.
  *
  * Bytes are not this service's business: `alepha/api/files` owns the upload
- * flow and the provider behind it, exactly as the Archive does for blobs. What
+ * flow and the provider behind it, exactly as folios do for blobs. What
  * lands here is a row describing an artifact that has already been stored —
  * which is what keeps the registry portable the day Lore leaves Workers, since
  * nothing in it names a storage provider.
@@ -52,7 +52,7 @@ export class ReleaseService {
    * that claims it into a download it can only reject.
    */
   public async register(input: {
-    campaignId: number;
+    projectId: number;
     app: string;
     environment: string;
     version: string;
@@ -77,7 +77,7 @@ export class ReleaseService {
 
     try {
       return await this.releases.create({
-        campaignId: input.campaignId,
+        projectId: input.projectId,
         app: input.app,
         environment: input.environment,
         version: input.version,
@@ -106,15 +106,15 @@ export class ReleaseService {
   }
 
   /**
-   * The campaign's recent releases, newest first.
+   * The project's recent releases, newest first.
    *
    * Capped rather than paginated: this answers "what happened lately", and the
    * caller that needs more than twenty is asking a different question that
    * deserves its own query.
    */
-  public async listByCampaign(campaignId: number): Promise<Release[]> {
+  public async listByProject(projectId: number): Promise<Release[]> {
     return this.releases.findMany({
-      where: { campaignId: { eq: campaignId } },
+      where: { projectId: { eq: projectId } },
       orderBy: [{ column: "createdAt", direction: "desc" }],
       limit: 20,
     });
@@ -141,7 +141,7 @@ export class ReleaseService {
     // a machine that stops deploying and never says why.
     const waiting = await this.releases.findMany({
       where: {
-        campaignId: { eq: outpost.campaignId },
+        projectId: { eq: outpost.projectId },
         status: { inArray: ["pending", "claimed"] },
       },
       orderBy: [{ column: "createdAt", direction: "asc" }],
@@ -172,7 +172,7 @@ export class ReleaseService {
    * Records what a machine says became of a release it took.
    *
    * **Scoped to the reporting outpost**, and that is not a formality: without
-   * it, any enrolled machine in the campaign could mark another machine's
+   * it, any enrolled machine in the project could mark another machine's
    * deploy failed, and the deploying client would believe it. Omitting the
    * filter instead of matching on it would leave the query unscoped, which is
    * the same bug wearing a different shape.

@@ -126,7 +126,7 @@ export class FolioHistoryService {
    * to the old cryptographic domain and must not outlive it.
    *
    * Going clear → protected this is a **confidentiality** requirement: the
-   * plaintext snapshots are readable by any campaign member via
+   * plaintext snapshots are readable by any project member via
    * `GET /folios/:id/history`, so encrypting a folio without this purge
    * protects nothing that was already written.
    *

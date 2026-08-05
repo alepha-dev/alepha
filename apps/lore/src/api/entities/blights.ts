@@ -1,12 +1,12 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
-import { campaigns } from "./campaigns.ts";
+import { projects } from "./projects.ts";
 import { sigils } from "./sigils.ts";
 
 /**
  * A deduplicated failure — the inbox Lore triages.
  *
- * One row per `(campaignId, fingerprint)`, incremented on ingest rather than
+ * One row per `(projectId, fingerprint)`, incremented on ingest rather than
  * stored per-occurrence: a crash loop is one fact with a count, not a log.
  *
  * ⚠️ SECURITY: `name`, `message`, `stack` and `sourceUrl` are entirely
@@ -19,13 +19,13 @@ export const blights = $entity({
   name: "blights",
   schema: z.object({
     id: db.primaryKey(z.integer()),
-    campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
+    projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
     /**
      * Which sigil reported it **most recently**.
      *
-     * Not "which sigil filed it": a row is keyed `(campaignId, fingerprint)`,
+     * Not "which sigil filed it": a row is keyed `(projectId, fingerprint)`,
      * so one bug present in both staging and production is one row, and this
      * column is overwritten by whichever environment reported last. That is
      * deliberate — "still happening, most recently over there" is the useful
@@ -64,8 +64,8 @@ export const blights = $entity({
     status: db.default(z.string().max(64), "open"),
   }),
   indexes: [
-    { columns: ["campaignId", "fingerprint"], unique: true },
-    { columns: ["campaignId", "lastSeenAt"] },
+    { columns: ["projectId", "fingerprint"], unique: true },
+    { columns: ["projectId", "lastSeenAt"] },
   ],
 });
 

@@ -8,7 +8,7 @@ import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
-import { campaigns } from "../src/api/entities/campaigns.ts";
+import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
 import { LoreApi } from "../src/api/index.ts";
@@ -29,7 +29,7 @@ import { LoreSigilSinkProvider } from "../src/api/providers/LoreSigilSinkProvide
  */
 
 class Probe {
-  campaigns = $repository(campaigns);
+  projects = $repository(projects);
   sigils = $repository(sigils);
   views = $repository(sigilViewsHourly);
 }
@@ -39,8 +39,8 @@ const KEY = "sg_selfreport_fixed_for_the_test";
 const allOn = {
   kanban: true,
   folios: true,
-  petitions: true,
-  chapters: true,
+  feedback: true,
+  milestones: true,
   sigils: true,
   blights: true,
   beacon: true,
@@ -77,7 +77,7 @@ const setup = async (over: { features?: unknown; key?: string } = {}) => {
   await alepha.start();
 
   const owner = await users.createUser({ username: "owner" });
-  const campaign = await probe.campaigns.create({
+  const project = await probe.projects.create({
     title: "Lore",
     createdBy: owner.id,
     features: over.features ?? allOn,
@@ -88,16 +88,16 @@ const setup = async (over: { features?: unknown; key?: string } = {}) => {
   // `mint()` is random. `verify` looks a sigil up BY hash, so this is the same
   // credential path a real token takes — not a bypass of it.
   const sigil = await probe.sigils.create({
-    campaignId: campaign.id,
+    projectId: project.id,
     app: "lore",
     environment: "production",
     label: "lore / production",
     tokenHash: crypto.hash(KEY),
     tokenPrefix: KEY.slice(0, 10),
-    kinds: ["beacon", "vitals", "blights", "petition"],
+    kinds: ["beacon", "vitals", "blights", "feedback"],
   });
 
-  return { alepha, probe, campaign, sigil, sink };
+  return { alepha, probe, project, sigil, sink };
 };
 
 describe("Lore reports to Lore", () => {
@@ -126,10 +126,10 @@ describe("Lore reports to Lore", () => {
     expect((await probe.sigils.findById(sigil.id))?.lastSeenAt).toBeTruthy();
   });
 
-  it("should read its appetite from the campaign toggles, not from a default", async () => {
+  it("should read its appetite from the project toggles, not from a default", async () => {
     // The config path is the second self-subrequest, and the easier one to
     // miss: it fails open to "collect everything", so a broken fetch looks
-    // exactly like a permissive campaign.
+    // exactly like a permissive project.
     const { sink } = await setup({
       features: { ...allOn, beacon: false },
     });
@@ -140,7 +140,7 @@ describe("Lore reports to Lore", () => {
     expect(sink.enabledTrackers().errors).toBe(true);
   });
 
-  it("should honour a switched-off campaign by writing nothing", async () => {
+  it("should honour a switched-off project by writing nothing", async () => {
     const { probe, sigil, sink } = await setup({
       features: { ...allOn, sigils: false },
     });

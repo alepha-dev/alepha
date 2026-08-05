@@ -8,12 +8,12 @@ import type { PlatformContext } from "../adapters/PlatformAdapter.ts";
  * Exposes what the adapter keeps protected.
  *
  * The three things under test here all run before a single byte moves — the
- * credential check, the campaign check and the release name — which is exactly
+ * credential check, the project check and the release name — which is exactly
  * why they are worth pinning cheaply. Everything past them needs a live sink
  * and belongs in the e2e.
  */
 class TestLoreAdapter extends LoreAdapter {
-  public testCampaignId = this.campaignId.bind(this);
+  public testProjectId = this.projectId.bind(this);
   public testApiKey = this.apiKey.bind(this);
   public testEndpoint = this.endpoint.bind(this);
   public testVersion = this.version.bind(this);
@@ -52,16 +52,17 @@ describe("LoreAdapter", () => {
     }
   });
 
-  it("refuses a config with no campaign rather than guessing one", async ({
+  it("refuses a config with no project rather than guessing one", async ({
     expect,
   }) => {
     const { adapter } = await setup();
 
-    // Guessing from the project name would silently deploy into whichever
-    // campaign happened to match — two namespaces that have no relationship.
+    // Guessing from this app's project name would silently deploy into
+    // whichever Lore project happened to match — two namespaces that have no
+    // relationship.
     expect(() =>
-      adapter.testCampaignId(contextFor({ adapter: "lore" })),
-    ).toThrow(/campaignId/);
+      adapter.testProjectId(contextFor({ adapter: "lore" })),
+    ).toThrow(/projectId/);
   });
 
   it("falls back to the public instance and trims a trailing slash", async ({

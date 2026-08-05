@@ -16,14 +16,14 @@ import {
 } from "../entities/blights.ts";
 import { sigils } from "../entities/sigils.ts";
 import { BlightRuleService } from "../services/BlightRuleService.ts";
-import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestService } from "../services/QuestService.ts";
 
 /** Zone every blight-forwarded quest is filed under — predictable triage. */
 const BLIGHT_ZONE = "Blights";
 
 /**
- * A blight row as exposed to the campaign owner's Blights inbox. Mirrors
+ * A blight row as exposed to the project owner's Blights inbox. Mirrors
  * the entity 1:1 — every field is included, but the UI must render
  * `name`, `message`, `stack` and `sourceUrl` as escaped plain text only
  * (attacker-controlled — see folio #12 + the entity-level note).
@@ -33,7 +33,7 @@ const blightResourceSchema = z.object({
   /**
    * Which environment reported it last.
    *
-   * A blight is one row per campaign and per fingerprint, so a bug present in
+   * A blight is one row per project and per fingerprint, so a bug present in
    * both staging and production is one triage decision; this names the sigil
    * that most recently saw it, which is what the inbox's filter means. The
    * per-environment breakdown lives in `sigil_error_groups`.
@@ -67,7 +67,7 @@ const blightSigilSchema = z.object({
   label: z.string(),
 });
 
-/** A campaign-wide blight ignore rule as exposed to the owner. */
+/** A project-wide blight ignore rule as exposed to the owner. */
 const blightRuleResourceSchema = z.object({
   id: z.integer(),
   pattern: z.string(),
@@ -78,19 +78,19 @@ export type BlightRuleResource = Infer<typeof blightRuleResourceSchema>;
 
 /**
  * Owner-facing triage surface for blights — the deduplicated uncaught
- * exceptions captured by a campaign's sigils.
+ * exceptions captured by a project's sigils.
  *
  * Read endpoints (list + count) are member-gated via
- * `CampaignSecurityService.assertMember` so any campaign member can view the
+ * `ProjectSecurityService.assertMember` so any project member can view the
  * inbox; mutations (resolve/forward/delete) stay owner-only via
- * `assertOwner`. A blight carries its own `campaignId`, so the scope is a
- * WHERE clause rather than a walk through the campaign's sigils — one less
+ * `assertOwner`. A blight carries its own `projectId`, so the scope is a
+ * WHERE clause rather than a walk through the project's sigils — one less
  * step to get wrong, and it keeps working for a blight whose sigil has since
  * been deleted.
  *
  * ⚠️ SECURITY: `name`, `message`, `stack`, `sourceUrl` on a blight row are
  * 100% attacker-controlled. They are persisted verbatim and shown to the
- * campaign owner (the highest-value target). They must only ever be
+ * project owner (the highest-value target). They must only ever be
  * rendered as escaped plain text — never markdown / `dangerouslySetInnerHTML`.
  * The forward-to-quest description embeds the stack as plain text too.
  * See folio #12.
@@ -99,21 +99,21 @@ export class BlightController {
   protected log = $logger();
   protected currentBlights = $repository(blights);
   protected sigils = $repository(sigils);
-  protected security = $inject(CampaignSecurityService);
+  protected security = $inject(ProjectSecurityService);
   protected questService = $inject(QuestService);
   protected ruleService = $inject(BlightRuleService);
 
   /**
-   * List blights for a campaign, newest-spread first (`count` desc).
+   * List blights for a project, newest-spread first (`count` desc).
    * Open-only by default; `includeResolved` also returns `resolved` and
    * `quest:*` rows. Owner-only.
    */
   listBlights = $action({
-    use: [$secure({ permissions: ["campaign:read"] })],
+    use: [$secure({ permissions: ["project:read"] })],
     method: "GET",
-    path: "/campaigns/:campaignId/blights",
+    path: "/projects/:projectId/blights",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       query: z.object({
         includeResolved: z.boolean().optional(),
       }),
@@ -124,11 +124,11 @@ export class BlightController {
       }),
     },
     handler: async ({ params, query, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
 
       const all = (
         await this.currentBlights.findMany({
-          where: { campaignId: { eq: params.campaignId } },
+          where: { projectId: { eq: params.projectId } },
           orderBy: [{ column: "count", direction: "desc" }],
         })
       ).sort((a, b) => b.count - a.count);
@@ -136,11 +136,11 @@ export class BlightController {
       // The inbox's filter options: which environments report here. Listed even
       // when they have filed nothing, so an owner can tell an environment that
       // is quiet from one that was never enrolled.
-      const campaignSigils = await this.sigils.findMany({
-        where: { campaignId: { eq: params.campaignId } },
+      const projectSigils = await this.sigils.findMany({
+        where: { projectId: { eq: params.projectId } },
         orderBy: [{ column: "createdAt", direction: "desc" }],
       });
-      const sigilOptions = campaignSigils.map((sigil) => ({
+      const sigilOptions = projectSigils.map((sigil) => ({
         id: sigil.id,
         label: sigil.label,
       }));
@@ -159,27 +159,27 @@ export class BlightController {
   });
 
   /**
-   * Count of `open` blights for a campaign — feeds the sidebar badge.
-   * Readable by any campaign member.
+   * Count of `open` blights for a project — feeds the sidebar badge.
+   * Readable by any project member.
    */
   countOpenBlights = $action({
-    use: [$secure({ permissions: ["campaign:read"] })],
+    use: [$secure({ permissions: ["project:read"] })],
     method: "GET",
-    path: "/campaigns/:campaignId/blights/count",
+    path: "/projects/:projectId/blights/count",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       response: z.object({ count: z.integer() }),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
 
       // One read of the live table, matching the inbox. The two-hop count
-      // through sigils would now return zero for every campaign, because
+      // through sigils would now return zero for every project, because
       // nothing has written to that table since Lore stopped ingesting — the
       // badge would sit at 0 over a full inbox.
       const open = await this.currentBlights.findMany({
         where: {
-          campaignId: { eq: params.campaignId },
+          projectId: { eq: params.projectId },
           status: { eq: "open" },
         },
         columns: ["id"],
@@ -194,26 +194,26 @@ export class BlightController {
    * default inbox view hides it. Owner-only.
    */
   resolveBlight = $action({
-    use: [$secure({ permissions: ["campaign:update"] })],
+    use: [$secure({ permissions: ["project:update"] })],
     method: "POST",
-    path: "/campaigns/:campaignId/blights/:blightId/resolve",
+    path: "/projects/:projectId/blights/:blightId/resolve",
     schema: {
       params: z.object({
-        campaignId: z.integer(),
+        projectId: z.integer(),
         blightId: z.integer(),
       }),
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.campaignId, user);
-      const blight = await this.loadBlight(params.campaignId, params.blightId);
+      await this.security.assertOwner(params.projectId, user);
+      const blight = await this.loadBlight(params.projectId, params.blightId);
       await this.currentBlights.updateById(blight.id, { status: "resolved" });
       return { ok: true };
     },
   });
 
   /**
-   * Forward a blight to a new quest. Creates a quest in the campaign with
+   * Forward a blight to a new quest. Creates a quest in the project with
    * the blight's name/message as the title and the stack + spread summary
    * as the (plain-text) description, links the quest back via
    * `quests.source.sigilBlightId`, and flips the blight to
@@ -222,20 +222,20 @@ export class BlightController {
   forwardBlightToQuest = $action({
     use: [$secure({ permissions: ["quest:create"] }), $transactional()],
     method: "POST",
-    path: "/campaigns/:campaignId/blights/:blightId/forward",
+    path: "/projects/:projectId/blights/:blightId/forward",
     schema: {
       params: z.object({
-        campaignId: z.integer(),
+        projectId: z.integer(),
         blightId: z.integer(),
       }),
       response: z.object({ questId: z.integer(), questShortId: z.integer() }),
     },
     handler: async ({ params, user }) => {
-      const { campaign } = await this.security.assertOwner(
-        params.campaignId,
+      const { project } = await this.security.assertOwner(
+        params.projectId,
         user,
       );
-      const blight = await this.loadBlight(params.campaignId, params.blightId);
+      const blight = await this.loadBlight(params.projectId, params.blightId);
 
       if (blight.status.startsWith(QUEST_STATUS_PREFIX)) {
         throw new BadRequestError("Blight already forwarded to a quest");
@@ -269,12 +269,12 @@ export class BlightController {
         .slice(0, 10_000);
 
       // Blight-forwarded quests always land in a dedicated "Blights" zone
-      // (created on the campaign if absent) — predictable triage, not
-      // whatever the campaign's arbitrary first zone happens to be.
+      // (created on the project if absent) — predictable triage, not
+      // whatever the project's arbitrary first zone happens to be.
       // Creation mechanics (shortId, zone-ensure, sanitizeHtml, defaults)
       // are shared with QuestController.createQuest via QuestService.
-      const quest = await this.questService.createQuest(campaign, {
-        campaignId: params.campaignId,
+      const quest = await this.questService.createQuest(project, {
+        projectId: params.projectId,
         title,
         description,
         zone: BLIGHT_ZONE,
@@ -297,50 +297,50 @@ export class BlightController {
    * Hard-delete a blight row. Owner-only.
    */
   deleteBlight = $action({
-    use: [$secure({ permissions: ["campaign:delete"] })],
+    use: [$secure({ permissions: ["project:delete"] })],
     method: "DELETE",
-    path: "/campaigns/:campaignId/blights/:blightId",
+    path: "/projects/:projectId/blights/:blightId",
     schema: {
       params: z.object({
-        campaignId: z.integer(),
+        projectId: z.integer(),
         blightId: z.integer(),
       }),
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.campaignId, user);
-      const blight = await this.loadBlight(params.campaignId, params.blightId);
+      await this.security.assertOwner(params.projectId, user);
+      const blight = await this.loadBlight(params.projectId, params.blightId);
       await this.currentBlights.deleteById(blight.id);
       return { ok: true };
     },
   });
 
   /**
-   * Mass-delete blights by id. Each id is validated to belong to the campaign
-   * (the `campaignId` filter is the cross-campaign guard), so stray ids are
+   * Mass-delete blights by id. Each id is validated to belong to the project
+   * (the `projectId` filter is the cross-project guard), so stray ids are
    * silently skipped rather than leaking or 404-ing the whole batch.
    * Owner-only. Returns how many rows were actually removed.
    */
   deleteBlights = $action({
-    use: [$secure({ permissions: ["campaign:delete"] })],
+    use: [$secure({ permissions: ["project:delete"] })],
     method: "DELETE",
-    path: "/campaigns/:campaignId/blights",
+    path: "/projects/:projectId/blights",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       body: z.object({
         ids: z.array(z.integer()).min(1).max(200),
       }),
       response: z.object({ deleted: z.integer() }),
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.campaignId, user);
-      // Scoped by `campaignId`, not by the campaign's sigil ids: a blight whose
-      // sigil was deleted keeps `campaignId` and loses `sigilId`, and the
+      await this.security.assertOwner(params.projectId, user);
+      // Scoped by `projectId`, not by the project's sigil ids: a blight whose
+      // sigil was deleted keeps `projectId` and loses `sigilId`, and the
       // sigil-list version silently refused to delete exactly those rows.
       const rows = await this.currentBlights.findMany({
         where: {
           id: { inArray: body.ids },
-          campaignId: { eq: params.campaignId },
+          projectId: { eq: params.projectId },
         },
       });
       for (const row of rows) {
@@ -351,21 +351,21 @@ export class BlightController {
   });
 
   /**
-   * List the campaign's blight ignore rules — the message substrings that
-   * drop matching crashes at ingestion. Readable by any campaign member (the
+   * List the project's blight ignore rules — the message substrings that
+   * drop matching crashes at ingestion. Readable by any project member (the
    * inbox surfaces them in the rules dialog); mutations stay owner-only.
    */
   listBlightRules = $action({
-    use: [$secure({ permissions: ["campaign:read"] })],
+    use: [$secure({ permissions: ["project:read"] })],
     method: "GET",
-    path: "/campaigns/:campaignId/blights/rules",
+    path: "/projects/:projectId/blights/rules",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       response: z.object({ items: z.array(blightRuleResourceSchema) }),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.campaignId, user);
-      const rules = await this.ruleService.listForCampaign(params.campaignId);
+      await this.security.assertMember(params.projectId, user);
+      const rules = await this.ruleService.listForProject(params.projectId);
       return { items: rules.map((r) => this.toRuleResource(r)) };
     },
   });
@@ -377,24 +377,24 @@ export class BlightController {
    * to clear them). Owner-only.
    */
   createBlightRule = $action({
-    use: [$secure({ permissions: ["campaign:update"] })],
+    use: [$secure({ permissions: ["project:update"] })],
     method: "POST",
-    path: "/campaigns/:campaignId/blights/rules",
+    path: "/projects/:projectId/blights/rules",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       body: z.object({
         pattern: z.string().min(1).max(200),
       }),
       response: blightRuleResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.campaignId, user);
+      await this.security.assertOwner(params.projectId, user);
       const pattern = body.pattern.trim();
       if (pattern.length === 0) {
         throw new BadRequestError("Pattern must not be empty");
       }
       const rule = await this.ruleService.create(
-        params.campaignId,
+        params.projectId,
         pattern,
         user.id,
       );
@@ -406,20 +406,20 @@ export class BlightController {
    * Delete a blight ignore rule. Owner-only.
    */
   deleteBlightRule = $action({
-    use: [$secure({ permissions: ["campaign:update"] })],
+    use: [$secure({ permissions: ["project:update"] })],
     method: "DELETE",
-    path: "/campaigns/:campaignId/blights/rules/:ruleId",
+    path: "/projects/:projectId/blights/rules/:ruleId",
     schema: {
       params: z.object({
-        campaignId: z.integer(),
+        projectId: z.integer(),
         ruleId: z.integer(),
       }),
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.campaignId, user);
-      const ok = await this.ruleService.deleteForCampaign(
-        params.campaignId,
+      await this.security.assertOwner(params.projectId, user);
+      const ok = await this.ruleService.deleteForProject(
+        params.projectId,
         params.ruleId,
       );
       if (!ok) {
@@ -430,17 +430,17 @@ export class BlightController {
   });
 
   /**
-   * Load a blight by id, asserting it belongs to the expected campaign.
-   * Returns 404 otherwise — never leaks cross-campaign rows.
+   * Load a blight by id, asserting it belongs to the expected project.
+   * Returns 404 otherwise — never leaks cross-project rows.
    *
-   * The campaign scope is a column rather than a join: a blight carries its own
-   * `campaignId`, so cross-campaign leakage is one WHERE clause instead of a
+   * The project scope is a column rather than a join: a blight carries its own
+   * `projectId`, so cross-project leakage is one WHERE clause instead of a
    * two-step lookup that could be got wrong — and it still answers for a blight
    * whose sigil has since been deleted.
    */
-  protected async loadBlight(campaignId: number, blightId: number) {
+  protected async loadBlight(projectId: number, blightId: number) {
     const blight = await this.currentBlights.findOne({
-      where: { id: { eq: blightId }, campaignId: { eq: campaignId } },
+      where: { id: { eq: blightId }, projectId: { eq: projectId } },
     });
     if (!blight) {
       throw new NotFoundError("Blight not found");

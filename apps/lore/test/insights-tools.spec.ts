@@ -7,7 +7,7 @@ import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { blights } from "../src/api/entities/blights.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
@@ -50,7 +50,7 @@ const setup = async () => {
   const tokens = alepha.inject(SigilTokenService);
   const insightsTools = alepha.inject(InsightsTools);
   const blightTools = alepha.inject(BlightTools);
-  const campaignApi = alepha.inject(CampaignController);
+  const projectApi = alepha.inject(ProjectController);
   const users = alepha.inject(UserService);
   await alepha.start();
 
@@ -65,23 +65,23 @@ const setup = async () => {
   const call = (tool: any, params: Record<string, unknown>) =>
     asUser(owner.id, () => tool.execute(params));
 
-  const campaign = await asUser(owner.id, () =>
-    campaignApi.createCampaign({ body: { title: "Insights" } } as any),
+  const project = await asUser(owner.id, () =>
+    projectApi.createProject({ body: { title: "Insights" } } as any),
   );
-  const otherCampaign = await asUser(owner.id, () =>
-    campaignApi.createCampaign({ body: { title: "Elsewhere" } } as any),
+  const otherProject = await asUser(owner.id, () =>
+    projectApi.createProject({ body: { title: "Elsewhere" } } as any),
   );
 
   const enrol = async (environment: string) => {
     const minted = tokens.mint();
     return await probe.sigils.create({
-      campaignId: campaign.id,
+      projectId: project.id,
       app: "demo",
       environment,
       label: `demo / ${environment}`,
       tokenHash: minted.hash,
       tokenPrefix: minted.prefix,
-      kinds: ["beacon", "vitals", "blights", "petition"],
+      kinds: ["beacon", "vitals", "blights", "feedback"],
     });
   };
 
@@ -107,8 +107,8 @@ const setup = async () => {
   return {
     alepha,
     probe,
-    campaign,
-    otherCampaign,
+    project,
+    otherProject,
     call,
     insightsTools,
     blightTools,
@@ -125,14 +125,14 @@ describe("Lore MCP — insights", () => {
       and that is precisely why it cannot answer "is production still
       affected". These groups can.
     */
-    const { campaign, call, insightsTools, enrol, reportError } = await setup();
+    const { project, call, insightsTools, enrol, reportError } = await setup();
     const staging = await enrol("staging");
     const production = await enrol("production");
     await reportError(staging.id);
     await reportError(production.id);
 
     const res = await call(insightsTools.insights_read, {
-      campaign: campaign.id,
+      project: project.id,
       segments: ["errors"],
     });
 
@@ -148,11 +148,11 @@ describe("Lore MCP — insights", () => {
   it("should return only the segments asked for", async () => {
     // The analytics segment is the largest and the least often needed. A
     // caller checking whether a bug is live should not pay for a timeline.
-    const { campaign, call, insightsTools, enrol, reportError } = await setup();
+    const { project, call, insightsTools, enrol, reportError } = await setup();
     await reportError((await enrol("production")).id);
 
     const res = await call(insightsTools.insights_read, {
-      campaign: campaign.id,
+      project: project.id,
       segments: ["errors"],
     });
 
@@ -162,11 +162,11 @@ describe("Lore MCP — insights", () => {
   });
 
   it("should return all three segments by default", async () => {
-    const { campaign, call, insightsTools, enrol, reportError } = await setup();
+    const { project, call, insightsTools, enrol, reportError } = await setup();
     await reportError((await enrol("production")).id);
 
     const res = await call(insightsTools.insights_read, {
-      campaign: campaign.id,
+      project: project.id,
     });
 
     expect(res.errorGroups).toBeDefined();
@@ -174,10 +174,10 @@ describe("Lore MCP — insights", () => {
     expect(res.analytics).toBeDefined();
   });
 
-  it("should refuse a campaign the caller is not a member of", async () => {
+  it("should refuse a project the caller is not a member of", async () => {
     // Every other Lore surface is membership-gated; an analytics read that was
-    // not would be the one way to enumerate another campaign's traffic.
-    const { insightsTools, otherCampaign, alepha } = await setup();
+    // not would be the one way to enumerate another project's traffic.
+    const { insightsTools, otherProject, alepha } = await setup();
     const users = alepha.inject(UserService);
     const stranger = await users.createUser({ username: "stranger" });
 
@@ -188,7 +188,7 @@ describe("Lore MCP — insights", () => {
           roles: ["user"],
         } as any);
         return insightsTools.insights_read.execute({
-          campaign: otherCampaign.id,
+          project: otherProject.id,
         });
       }),
     ).rejects.toThrow();

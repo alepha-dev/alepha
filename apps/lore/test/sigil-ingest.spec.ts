@@ -9,7 +9,7 @@ import { AlephaServer, ServerProvider } from "alepha/server";
 import { AlephaServerCors } from "alepha/server/cors";
 import { describe, expect, it } from "vitest";
 import { blights } from "../src/api/entities/blights.ts";
-import { campaigns } from "../src/api/entities/campaigns.ts";
+import { projects } from "../src/api/entities/projects.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
@@ -20,7 +20,7 @@ import { BlightRuleService } from "../src/api/services/BlightRuleService.ts";
 import { SigilTokenService } from "../src/api/services/SigilTokenService.ts";
 
 class Probe {
-  campaigns = $repository(campaigns);
+  projects = $repository(projects);
   sigils = $repository(sigils);
   views = $repository(sigilViewsHourly);
   uniques = $repository(sigilUniquesDaily);
@@ -33,17 +33,17 @@ class Probe {
  * Every capability switched on, which is what most tests here want as a
  * baseline so their subject is the one thing they vary.
  *
- * The sigil toggles are absent from `defaultCampaignFeatures` on purpose —
- * adding a key there changes the `campaigns` column DEFAULT, which on D1 means
- * a table rebuild that cascade-wipes production. So a campaign created without
+ * The sigil toggles are absent from `defaultProjectFeatures` on purpose —
+ * adding a key there changes the `projects` column DEFAULT, which on D1 means
+ * a table rebuild that cascade-wipes production. So a project created without
  * an explicit `features` accepts nothing, and a test that forgot this would
  * pass while asserting on empty tables.
  */
 const allOn = {
   kanban: true,
   folios: true,
-  petitions: true,
-  chapters: true,
+  feedback: true,
+  milestones: true,
   sigils: true,
   blights: true,
   beacon: true,
@@ -88,7 +88,7 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
   // it, so a made-up id fails the constraint rather than the assertion.
   const owner = await users.createUser({ username: "owner" });
 
-  const campaign = await probe.campaigns.create({
+  const project = await probe.projects.create({
     title: "Test",
     createdBy: owner.id,
     features: over.features ?? allOn,
@@ -96,13 +96,13 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
 
   const minted = tokens.mint();
   const sigil = await probe.sigils.create({
-    campaignId: campaign.id,
+    projectId: project.id,
     app: "demo",
     environment: "production",
     label: "demo / production",
     tokenHash: minted.hash,
     tokenPrefix: minted.prefix,
-    kinds: over.kinds ?? ["beacon", "vitals", "blights", "petition"],
+    kinds: over.kinds ?? ["beacon", "vitals", "blights", "feedback"],
   });
 
   // Built from the package's own constants, not from literals. That is what
@@ -128,7 +128,7 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
     alepha,
     probe,
     owner,
-    campaign,
+    project,
     sigil,
     token: minted.token,
     post,
@@ -203,7 +203,7 @@ describe("sigil ingest", () => {
   });
 
   it("refuses errors from a sigil without the blights kind", async () => {
-    const { probe, campaign, sigil, post } = await setup({
+    const { probe, project, sigil, post } = await setup({
       kinds: ["beacon", "vitals"],
     });
 
@@ -218,20 +218,20 @@ describe("sigil ingest", () => {
     ).toHaveLength(0);
     expect(
       await probe.blights.findMany({
-        where: { campaignId: { eq: campaign.id } },
+        where: { projectId: { eq: project.id } },
       }),
     ).toHaveLength(0);
   });
 
   /*
-    The campaign toggle is a GATE, not a hint.
+    The project toggle is a GATE, not a hint.
 
     `sigils.kinds` is written once by `createSigil` and there is no update path
     anywhere — not the UI, not MCP, not the API. So a sigil minted while Beacon
     was on carries `beacon` forever, and gating on the token alone made the
     settings switch advisory: the client is told to stop via `/sigils/config`,
-    the client fails open on any error, and rows kept accruing on a campaign
-    whose owner no longer had a page to see them on (`campaignInsights` 404s
+    the client fails open on any error, and rows kept accruing on a project
+    whose owner no longer had a page to see them on (`projectInsights` 404s
     when `features.beacon` is off).
 
     One test per tracker, each with the kind PRESENT so the only thing being
@@ -277,7 +277,7 @@ describe("sigil ingest", () => {
   });
 
   it("writes no errors when Blights is switched off, kind or not", async () => {
-    const { probe, campaign, sigil, post } = await setup({
+    const { probe, project, sigil, post } = await setup({
       features: { ...allOn, blights: false },
     });
 
@@ -292,13 +292,13 @@ describe("sigil ingest", () => {
     ).toHaveLength(0);
     expect(
       await probe.blights.findMany({
-        where: { campaignId: { eq: campaign.id } },
+        where: { projectId: { eq: project.id } },
       }),
     ).toHaveLength(0);
   });
 
   it("writes nothing at all when the sigils master switch is off", async () => {
-    const { probe, campaign, sigil, post } = await setup({
+    const { probe, project, sigil, post } = await setup({
       features: { ...allOn, sigils: false },
     });
 
@@ -317,7 +317,7 @@ describe("sigil ingest", () => {
     ).toHaveLength(0);
     expect(
       await probe.blights.findMany({
-        where: { campaignId: { eq: campaign.id } },
+        where: { projectId: { eq: project.id } },
       }),
     ).toHaveLength(0);
   });
@@ -404,8 +404,8 @@ describe("sigil ingest", () => {
     expect(rows[0].bucketCounts).toEqual({ "0": 2, "5": 1 });
   });
 
-  it("files an error into both the per-sigil group and the campaign inbox", async () => {
-    const { probe, campaign, sigil, post } = await setup();
+  it("files an error into both the per-sigil group and the project inbox", async () => {
+    const { probe, project, sigil, post } = await setup();
 
     await post({ errors: [anError({ count: 3 })] });
     await post({ errors: [anError({ count: 4 })] });
@@ -417,9 +417,9 @@ describe("sigil ingest", () => {
     expect(groups).toHaveLength(1);
     expect(groups[0].count).toBe(7);
 
-    // The campaign-wide editorial decision: one row, one status.
+    // The project-wide editorial decision: one row, one status.
     const inbox = await probe.blights.findMany({
-      where: { campaignId: { eq: campaign.id } },
+      where: { projectId: { eq: project.id } },
     });
     expect(inbox).toHaveLength(1);
     expect(inbox[0].count).toBe(7);
@@ -428,12 +428,12 @@ describe("sigil ingest", () => {
   });
 
   it("keeps two environments apart in the groups and together in the inbox", async () => {
-    const { alepha, probe, campaign, sigil, post } = await setup();
+    const { alepha, probe, project, sigil, post } = await setup();
 
     const tokens = alepha.inject(SigilTokenService);
     const staging = tokens.mint();
     const other = await probe.sigils.create({
-      campaignId: campaign.id,
+      projectId: project.id,
       app: "demo",
       environment: "staging",
       label: "demo / staging",
@@ -452,7 +452,7 @@ describe("sigil ingest", () => {
 
     // One triage decision, because one bug.
     const inbox = await probe.blights.findMany({
-      where: { campaignId: { eq: campaign.id } },
+      where: { projectId: { eq: project.id } },
     });
     expect(inbox).toHaveLength(1);
     expect(inbox[0].count).toBe(7);
@@ -461,22 +461,22 @@ describe("sigil ingest", () => {
   });
 
   it("keeps a triage decision when the same bug is reported again", async () => {
-    const { probe, campaign, post } = await setup();
+    const { probe, project, post } = await setup();
 
     await post({ errors: [anError({ count: 2 })] });
     const [filed] = await probe.blights.findMany({
-      where: { campaignId: { eq: campaign.id } },
+      where: { projectId: { eq: project.id } },
     });
     await probe.blights.updateById(filed.id, { status: "resolved" });
 
-    // The load-bearing half of the "one row per campaign" ruling: the whole
-    // reason `blights` is keyed by campaign rather than by sigil is that a
+    // The load-bearing half of the "one row per project" ruling: the whole
+    // reason `blights` is keyed by project rather than by sigil is that a
     // triage decision must not fork. If `status` ever joins the upsert's `set`
     // clause, resolving a bug becomes a decision the next batch undoes.
     await post({ errors: [anError({ count: 3 })] });
 
     const rows = await probe.blights.findMany({
-      where: { campaignId: { eq: campaign.id } },
+      where: { projectId: { eq: project.id } },
     });
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("resolved");
@@ -485,11 +485,11 @@ describe("sigil ingest", () => {
   });
 
   it("drops a muted message before it reaches either table", async () => {
-    const { alepha, probe, owner, campaign, sigil, post } = await setup();
+    const { alepha, probe, owner, project, sigil, post } = await setup();
 
     await alepha
       .inject(BlightRuleService)
-      .create(campaign.id, "ResizeObserver", owner.id);
+      .create(project.id, "ResizeObserver", owner.id);
 
     await post({
       errors: [anError({ message: "ResizeObserver loop limit exceeded" })],
@@ -504,7 +504,7 @@ describe("sigil ingest", () => {
     ).toHaveLength(0);
     expect(
       await probe.blights.findMany({
-        where: { campaignId: { eq: campaign.id } },
+        where: { projectId: { eq: project.id } },
       }),
     ).toHaveLength(0);
   });
@@ -522,13 +522,13 @@ describe("sigil ingest", () => {
     expect(after?.lastSeenAt).toBeTruthy();
   });
 
-  it("tells an app what the campaign currently wants from it", async () => {
+  it("tells an app what the project currently wants from it", async () => {
     const { getConfig } = await setup({
       features: {
         kanban: true,
         folios: true,
-        petitions: true,
-        chapters: true,
+        feedback: true,
+        milestones: true,
         sigils: true,
         beacon: true,
         vitals: false,
@@ -540,7 +540,7 @@ describe("sigil ingest", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.enabled).toEqual({ views: true, errors: true, vitals: false });
-    expect(body.petitionUrl).toMatch(/\/c\/\d+\/request$/);
+    expect(body.feedbackUrl).toMatch(/\/p\/\d+\/request$/);
   });
 
   it("refuses to describe itself to an unknown token", async () => {

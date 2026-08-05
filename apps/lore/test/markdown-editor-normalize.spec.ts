@@ -4,7 +4,7 @@ import { normalizeEditorMarkdown } from "../src/web/app/components/shared/markdo
 /**
  * The WYSIWYG editor (MDXEditor/Lexical) escapes brackets when it
  * serializes back to markdown, which would break Lore wiki-links and
- * silently drop the campaign link graph on the next folio save. The
+ * silently drop the project link graph on the next folio save. The
  * normalizer must repair every escaping combination the editor emits,
  * and must never touch anything else.
  */

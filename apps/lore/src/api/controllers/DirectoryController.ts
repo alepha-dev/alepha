@@ -2,42 +2,42 @@ import { $inject, z } from "alepha";
 import { $repository, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
-import { archiveBlobs } from "../entities/archiveBlobs.ts";
-import { archiveDirectories } from "../entities/archiveDirectories.ts";
+import { folioBlobs } from "../entities/folioBlobs.ts";
+import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
-import { ArchiveDirectoryService } from "../services/ArchiveDirectoryService.ts";
-import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
+import { FolioDirectoryService } from "../services/FolioDirectoryService.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
- * REST surface for the Archive directory tree. Reads scoped via
- * `assertMember`; mutations also `assertMember` (campaign-shared, per
+ * REST surface for the Folio directory tree. Reads scoped via
+ * `assertMember`; mutations also `assertMember` (project-shared, per
  * folio #4 Q2). Cycle / depth / uniqueness rules live in the service.
  */
 export class DirectoryController {
-  protected readonly directories = $repository(archiveDirectories);
+  protected readonly directories = $repository(folioDirectories);
   protected readonly folios = $repository(folios);
-  protected readonly blobs = $repository(archiveBlobs);
-  protected readonly directoryService = $inject(ArchiveDirectoryService);
-  protected readonly security = $inject(CampaignSecurityService);
+  protected readonly blobs = $repository(folioBlobs);
+  protected readonly directoryService = $inject(FolioDirectoryService);
+  protected readonly security = $inject(ProjectSecurityService);
 
   /**
    * List the immediate children of `parentDirectoryId` (or the
-   * campaign root when omitted). Mixed contents — folios + blobs +
+   * project root when omitted). Mixed contents — folios + blobs +
    * sub-directories under a single `entries` array, each tagged with
    * `kind`. That's the natural Drive-like response: the UI renders
    * them in one table.
    */
   listContents = $action({
     use: [$secure({ permissions: ["folio:read"] })],
-    path: "/campaigns/:campaignId/archive/contents",
+    path: "/projects/:projectId/folio/contents",
     description: "List directories + folios + blobs in a directory (or root).",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       query: z.object({
         parentId: z.uuid().optional(),
       }),
       response: z.object({
-        directory: archiveDirectories.schema.optional(),
+        directory: folioDirectories.schema.optional(),
         breadcrumb: z.array(
           z.object({
             id: z.uuid(),
@@ -65,24 +65,24 @@ export class DirectoryController {
       }),
     },
     handler: async ({ params, query, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
       const directory = query.parentId
         ? await this.directoryService.findById(query.parentId)
         : undefined;
       if (
         query.parentId &&
-        (!directory || directory.campaignId !== params.campaignId)
+        (!directory || directory.projectId !== params.projectId)
       ) {
         throw new NotFoundError("Directory not found");
       }
 
       const [childDirs, childFolios, childBlobs] = await Promise.all([
-        this.directoryService.listChildren(params.campaignId, query.parentId),
+        this.directoryService.listChildren(params.projectId, query.parentId),
         this.folios.findMany({
           where: query.parentId
             ? { directoryId: { eq: query.parentId } }
             : {
-                campaignId: { eq: params.campaignId },
+                projectId: { eq: params.projectId },
                 directoryId: { isNull: true },
               },
           orderBy: [{ column: "title", direction: "asc" }],
@@ -91,7 +91,7 @@ export class DirectoryController {
           where: query.parentId
             ? { directoryId: { eq: query.parentId } }
             : {
-                campaignId: { eq: params.campaignId },
+                projectId: { eq: params.projectId },
                 directoryId: { isNull: true },
               },
           orderBy: [{ column: "name", direction: "asc" }],
@@ -152,8 +152,8 @@ export class DirectoryController {
   });
 
   /**
-   * Campaign-wide name search across folios + blobs + directories.
-   * Powers the Archive page's top search bar. Case-insensitive
+   * Project-wide name search across folios + blobs + directories.
+   * Powers the Folio page's top search bar. Case-insensitive
    * substring match against name (blobs/dirs) and `searchText`
    * (folios — title + tags + summary + content). Capped at 50 results
    * per kind so the response stays small.
@@ -161,13 +161,13 @@ export class DirectoryController {
    * Returns the same Entry shape as `listContents` so the table
    * renders search results without a separate UI path.
    */
-  searchArchive = $action({
+  searchFolio = $action({
     use: [$secure({ permissions: ["folio:read"] })],
-    path: "/campaigns/:campaignId/archive/search",
+    path: "/projects/:projectId/folio/search",
     description:
       "Search folios + blobs + directories by name (and folio body).",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       query: z.object({ q: z.string().min(1) }),
       response: z.object({
         entries: z.array(
@@ -187,12 +187,12 @@ export class DirectoryController {
       }),
     },
     handler: async ({ params, query, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
       const needle = `%${query.q.toLowerCase()}%`;
       const [dirs, folioRows, blobRows] = await Promise.all([
         this.directories.findMany({
           where: {
-            campaignId: { eq: params.campaignId },
+            projectId: { eq: params.projectId },
             name: { like: `%${query.q}%` },
           },
           orderBy: [{ column: "name", direction: "asc" }],
@@ -200,7 +200,7 @@ export class DirectoryController {
         }),
         this.folios.findMany({
           where: {
-            campaignId: { eq: params.campaignId },
+            projectId: { eq: params.projectId },
             searchText: { like: needle },
           },
           orderBy: [
@@ -211,7 +211,7 @@ export class DirectoryController {
         }),
         this.blobs.findMany({
           where: {
-            campaignId: { eq: params.campaignId },
+            projectId: { eq: params.projectId },
             name: { like: `%${query.q}%` },
           },
           orderBy: [{ column: "updatedAt", direction: "desc" }],
@@ -251,16 +251,16 @@ export class DirectoryController {
   });
 
   /**
-   * Return every archive directory in the campaign, flattened. Used
-   * by the Archive UI's "Move" picker. Capped at 500 directories per
-   * campaign (no UI scrolls a flat list past that).
+   * Return every folio directory in the project, flattened. Used
+   * by the Folio UI's "Move" picker. Capped at 500 directories per
+   * project (no UI scrolls a flat list past that).
    */
   listAllDirectories = $action({
     use: [$secure({ permissions: ["folio:read"] })],
-    path: "/campaigns/:campaignId/archive/directories",
-    description: "Flat list of every archive directory in the campaign.",
+    path: "/projects/:projectId/folio/directories",
+    description: "Flat list of every folio directory in the project.",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       response: z.array(
         z.object({
           id: z.uuid(),
@@ -271,9 +271,9 @@ export class DirectoryController {
       ),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
       const rows = await this.directories.findMany({
-        where: { campaignId: { eq: params.campaignId } },
+        where: { projectId: { eq: params.projectId } },
         orderBy: [{ column: "name", direction: "asc" }],
         limit: 500,
       });
@@ -287,26 +287,26 @@ export class DirectoryController {
   });
 
   /**
-   * Look up an archive directory by per-campaign shortId. Member-only.
+   * Look up a folio directory by per-project shortId. Member-only.
    * Used by the MCP `directory_*` tools to resolve `directory_shortId`
-   * params, and by the Archive UI to translate URL `?dir=<n>` into a
+   * params, and by the Folio UI to translate URL `?dir=<n>` into a
    * UUID.
    */
   getDirectoryByShortId = $action({
     use: [$secure({ permissions: ["folio:read"] })],
-    path: "/campaigns/:campaignId/archive/directories/:shortId",
-    description: "Look up an archive directory by per-campaign shortId.",
+    path: "/projects/:projectId/folio/directories/:shortId",
+    description: "Look up a folio directory by per-project shortId.",
     schema: {
       params: z.object({
-        campaignId: z.integer(),
+        projectId: z.integer(),
         shortId: z.integer(),
       }),
-      response: archiveDirectories.schema,
+      response: folioDirectories.schema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
       const directory = await this.directoryService.findByShortId(
-        params.campaignId,
+        params.projectId,
         params.shortId,
       );
       if (!directory) throw new NotFoundError("Directory not found");
@@ -316,20 +316,20 @@ export class DirectoryController {
 
   createDirectory = $action({
     use: [$secure({ permissions: ["folio:write"] }), $transactional()],
-    path: "/campaigns/:campaignId/archive/directories",
-    description: "Create a new archive directory.",
+    path: "/projects/:projectId/folio/directories",
+    description: "Create a new folio directory.",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       body: z.object({
         name: z.string().min(1).max(200),
         parentId: z.uuid().optional(),
       }),
-      response: archiveDirectories.schema,
+      response: folioDirectories.schema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
       return this.directoryService.create({
-        campaignId: params.campaignId,
+        projectId: params.projectId,
         name: body.name,
         parentId: body.parentId,
       });
@@ -338,46 +338,45 @@ export class DirectoryController {
 
   renameDirectory = $action({
     use: [$secure({ permissions: ["folio:write"] }), $transactional()],
-    path: "/archive/directories/:id/rename",
-    description: "Rename an archive directory.",
+    path: "/folio/directories/:id/rename",
+    description: "Rename a folio directory.",
     schema: {
       params: z.object({ id: z.uuid() }),
       body: z.object({ name: z.string().min(1).max(200) }),
-      response: archiveDirectories.schema,
+      response: folioDirectories.schema,
     },
     handler: async ({ params, body, user }) => {
       const directory = await this.directoryService.findById(params.id);
       if (!directory) throw new NotFoundError("Directory not found");
-      await this.security.assertMember(directory.campaignId, user);
+      await this.security.assertMember(directory.projectId, user);
       return this.directoryService.rename(params.id, body.name);
     },
   });
 
   moveDirectory = $action({
     use: [$secure({ permissions: ["folio:write"] }), $transactional()],
-    path: "/archive/directories/:id/move",
-    description: "Move an archive directory under a new parent (or to root).",
+    path: "/folio/directories/:id/move",
+    description: "Move a folio directory under a new parent (or to root).",
     schema: {
       params: z.object({ id: z.uuid() }),
       body: z.object({
-        // null/omitted → move to campaign root.
+        // null/omitted → move to project root.
         parentId: z.uuid().optional(),
       }),
-      response: archiveDirectories.schema,
+      response: folioDirectories.schema,
     },
     handler: async ({ params, body, user }) => {
       const directory = await this.directoryService.findById(params.id);
       if (!directory) throw new NotFoundError("Directory not found");
-      await this.security.assertMember(directory.campaignId, user);
+      await this.security.assertMember(directory.projectId, user);
       return this.directoryService.move(params.id, body.parentId);
     },
   });
 
   deleteDirectory = $action({
     use: [$secure({ permissions: ["folio:write"] }), $transactional()],
-    path: "/archive/directories/:id",
-    description:
-      "Delete an archive directory. Pass cascade=true for non-empty.",
+    path: "/folio/directories/:id",
+    description: "Delete a folio directory. Pass cascade=true for non-empty.",
     schema: {
       params: z.object({ id: z.uuid() }),
       query: z.object({ cascade: z.boolean().optional() }),
@@ -386,7 +385,7 @@ export class DirectoryController {
     handler: async ({ params, query, user }) => {
       const directory = await this.directoryService.findById(params.id);
       if (!directory) throw new NotFoundError("Directory not found");
-      await this.security.assertMember(directory.campaignId, user);
+      await this.security.assertMember(directory.projectId, user);
       await this.directoryService.delete(params.id, {
         cascade: query.cascade === true,
       });

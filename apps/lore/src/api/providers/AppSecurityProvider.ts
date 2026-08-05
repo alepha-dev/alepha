@@ -5,9 +5,9 @@ import { $realm } from "alepha/api/users";
  * Realm configuration for Lore — identities, session policy, enabled
  * user-module features.
  *
- * **Only the realm lives here.** Campaign access gates
+ * **Only the realm lives here.** Project access gates
  * (`assertMember` / `assertOwner` / `isMember`) are in
- * `CampaignSecurityService`. `$realm` registers services into the container
+ * `ProjectSecurityService`. `$realm` registers services into the container
  * from inside the field initializer below, so any class declaring it becomes
  * a hub: everything that injected it for an authorization check also dragged
  * in realm registration, and `LoreFileAccessProvider` doing so closed a cycle

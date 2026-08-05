@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
-  createCampaignViaWizard,
+  createProjectViaWizard,
   fillMarkdownEditor,
   registerAndVerify,
 } from "./_helpers.ts";
@@ -34,7 +34,7 @@ test.describe("Protected folio", () => {
     const t = Date.now();
     const email = `pfolio${t}@example.com`;
     const password = "PFolioTest123!";
-    const campaignTitle = `PF${t}`.slice(0, 20);
+    const projectTitle = `PF${t}`.slice(0, 20);
     const passphrase = "correct horse battery staple";
     const wrongPassphrase = "wrong donkey panini sample";
     const folioTitle = `Secret${t}`;
@@ -44,22 +44,21 @@ test.describe("Protected folio", () => {
     const folioBody = `LOOTBAG-${t} — known-good marker for round-trip assertion`;
 
     await registerAndVerify(page, email, password);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     await test.step("create a clear folio via the editor", async () => {
-      // Navigate via SPA — direct `page.goto('/archive/new')` from the
-      // landing page lands on the campaign root for reasons that look
-      // like an SSR/hydration race. Going through the Archive link is
-      // closer to the user flow anyway. Quest #66 renamed the sidebar
-      // label from "Folios" → "Archive".
+      // Navigate via SPA — direct `page.goto('/folios/new')` from the
+      // landing page lands on the project root for reasons that look
+      // like an SSR/hydration race. Going through the Folios link is
+      // closer to the user flow anyway.
       await page
-        .getByRole("link", { name: /^archive$/i })
+        .getByRole("link", { name: /^folios$/i })
         .first()
         .click();
-      await page.waitForURL(new RegExp(`/c/${campaignId}/archive`), {
+      await page.waitForURL(new RegExp(`/p/${projectId}/folios`), {
         timeout: 15_000,
       });
-      // Archive toolbar: open the "Create" dropdown, then pick "New folio".
+      // Folio toolbar: open the "Create" dropdown, then pick "New folio".
       await page.getByRole("button", { name: /^create$/i }).click();
       await page
         .getByRole("menuitem", { name: /^new folio$/i })
@@ -76,14 +75,14 @@ test.describe("Protected folio", () => {
       // No encryption toggle any more — save as a clear folio, land on
       // its view.
       await page.getByRole("button", { name: /^save$/i }).click();
-      await page.waitForURL(new RegExp(`/c/${campaignId}/archive/\\d+`), {
+      await page.waitForURL(new RegExp(`/p/${projectId}/folios/\\d+`), {
         timeout: 30_000,
       });
     });
 
     await test.step("encrypt the folio from its view", async () => {
       // Encrypt now lives in the header "…" (More actions) dropdown
-      // (petition #16): open the menu, then pick Encrypt, which opens the
+      // (feedback #16): open the menu, then pick Encrypt, which opens the
       // set-passphrase dialog.
       await page
         .getByRole("button", { name: /more actions/i })
@@ -110,7 +109,7 @@ test.describe("Protected folio", () => {
       // Hit the same list endpoint the layout loader uses; assert the
       // freshly-encrypted folio's content shape.
       const folios = (await page.evaluate(async (cid) => {
-        const r = await fetch(`/api/list?campaignId=${cid}&limit=100`, {
+        const r = await fetch(`/api/list?projectId=${cid}&limit=100`, {
           credentials: "include",
         });
         if (!r.ok) throw new Error(`list: ${r.status}`);
@@ -119,7 +118,7 @@ test.describe("Protected folio", () => {
           protected: boolean;
           content: string;
         }>;
-      }, campaignId)) as Array<{
+      }, projectId)) as Array<{
         title: string;
         protected: boolean;
         content: string;

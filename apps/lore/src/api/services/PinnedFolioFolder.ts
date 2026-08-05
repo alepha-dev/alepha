@@ -1,6 +1,6 @@
 /**
  * Fold a list of pinned, non-protected folios into the `pinnedFolios`
- * payload surfaced by `campaign_context`. Newest-updated folios come
+ * payload surfaced by `project_context`. Newest-updated folios come
  * first (the caller is expected to pre-sort). The total character budget
  * across all included `content` is bounded by `cap`:
  *

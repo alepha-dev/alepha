@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { rewriteFolioWikiLinks } from "../src/web/app/components/folios/rewriteFolioWikiLinks.ts";
 
-const CAMPAIGN_ID = 1;
+const PROJECT_ID = 1;
 
 const folio = (shortId: number, title: string) =>
   ({
@@ -12,7 +12,7 @@ const folio = (shortId: number, title: string) =>
     tags: [],
     summary: "",
     directoryId: null,
-    campaignId: CAMPAIGN_ID,
+    projectId: PROJECT_ID,
     createdAt: "",
     updatedAt: "",
     createdBy: "",
@@ -25,7 +25,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   it("unresolved folio shortId → folio-not-found marker", () => {
     const out = rewriteFolioWikiLinks(
       "See [[#999]].",
-      CAMPAIGN_ID,
+      PROJECT_ID,
       [folio(1, "Roadmap")],
       [],
     );
@@ -35,7 +35,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   it("unresolved folio title → folio-not-found marker", () => {
     const out = rewriteFolioWikiLinks(
       "Cf. [[Nonexistent]].",
-      CAMPAIGN_ID,
+      PROJECT_ID,
       [folio(1, "Roadmap")],
       [],
     );
@@ -47,7 +47,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   it("ambiguous folio title → ambiguous-title marker", () => {
     const out = rewriteFolioWikiLinks(
       "Cf. [[Notes]].",
-      CAMPAIGN_ID,
+      PROJECT_ID,
       [folio(1, "Notes"), folio(2, "Notes")],
       [],
     );
@@ -57,7 +57,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   it("unresolved quest shortId → quest-not-found marker", () => {
     const out = rewriteFolioWikiLinks(
       "Cf. [[quest:#999]].",
-      CAMPAIGN_ID,
+      PROJECT_ID,
       [],
       [{ shortId: 1, title: "Onboard" }],
     );
@@ -69,7 +69,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   it("ambiguous quest title → ambiguous-title marker", () => {
     const out = rewriteFolioWikiLinks(
       "Cf. [[quest:Fix]].",
-      CAMPAIGN_ID,
+      PROJECT_ID,
       [],
       [
         { shortId: 1, title: "Fix" },
@@ -84,7 +84,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   it("unresolved blob shortId → blob-not-found marker", () => {
     const out = rewriteFolioWikiLinks(
       "Cf. [[blob:#999]].",
-      CAMPAIGN_ID,
+      PROJECT_ID,
       [],
       [],
       [],
@@ -98,17 +98,17 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   it("resolved links are NOT rewritten with broken markers", () => {
     const out = rewriteFolioWikiLinks(
       "Cf. [[#1]] and [[quest:#2]].",
-      CAMPAIGN_ID,
+      PROJECT_ID,
       [folio(1, "Roadmap")],
       [{ shortId: 2, title: "Onboard" }],
     );
     expect(out).not.toContain("lore-broken:");
-    expect(out).toContain("/c/1/archive/1");
-    expect(out).toContain("/c/1/q/2");
+    expect(out).toContain("/p/1/folios/1");
+    expect(out).toContain("/p/1/q/2");
   });
 
   it("empty token stays literal — not a wiki-link, not a broken marker", () => {
-    const out = rewriteFolioWikiLinks("Cf. [[ ]].", CAMPAIGN_ID, [], []);
+    const out = rewriteFolioWikiLinks("Cf. [[ ]].", PROJECT_ID, [], []);
     expect(out).toBe("Cf. [[ ]].");
   });
 });

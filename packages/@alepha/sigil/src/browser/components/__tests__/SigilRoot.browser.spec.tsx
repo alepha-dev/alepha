@@ -9,11 +9,11 @@ import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sigilClientAtom } from "../../../shared/sigilClientAtom.ts";
-import { SIGIL_PETITION_SUBMITTED_MESSAGE } from "../../../shared/sigilMessages.ts";
+import { SIGIL_FEEDBACK_SUBMITTED_MESSAGE } from "../../../shared/sigilMessages.ts";
 import { SigilRoot } from "../SigilRoot.tsx";
 
 const renderRoot = async (config: {
-  petitionUrl?: string;
+  feedbackUrl?: string;
   excludedPaths?: string[];
 }) => {
   const alepha = Alepha.create();
@@ -22,7 +22,7 @@ const renderRoot = async (config: {
     enabled: { views: true, errors: true, vitals: true },
     sampling: { views: 1, errors: 1, vitals: 1 },
     excludedPaths: config.excludedPaths ?? [],
-    petitionUrl: config.petitionUrl,
+    feedbackUrl: config.feedbackUrl,
   });
   render(
     <AlephaContext.Provider value={alepha}>
@@ -39,12 +39,12 @@ describe("SigilRoot", () => {
     window.history.pushState({}, "", "/");
   });
 
-  it("renders the feedback button when the sink hands out a petition URL", async () => {
-    await renderRoot({ petitionUrl: "https://lore.alepha.dev/c/2/request" });
+  it("renders the feedback button when the sink hands out a feedback URL", async () => {
+    await renderRoot({ feedbackUrl: "https://lore.alepha.dev/c/2/request" });
     expect(screen.getByLabelText("Feedback")).toBeTruthy();
   });
 
-  it("does not render the button when there is no petition URL", async () => {
+  it("does not render the button when there is no feedback URL", async () => {
     await renderRoot({});
     expect(screen.queryByLabelText("Feedback")).toBeNull();
   });
@@ -52,7 +52,7 @@ describe("SigilRoot", () => {
   it("hides the button on a path matching an excluded glob", async () => {
     window.history.pushState({}, "", "/c/2/request");
     await renderRoot({
-      petitionUrl: "https://lore.alepha.dev/c/2/request",
+      feedbackUrl: "https://lore.alepha.dev/c/2/request",
       excludedPaths: ["/c/*/request"],
     });
     expect(screen.queryByLabelText("Feedback")).toBeNull();
@@ -61,7 +61,7 @@ describe("SigilRoot", () => {
   it("keeps the button on a non-excluded path", async () => {
     window.history.pushState({}, "", "/home");
     await renderRoot({
-      petitionUrl: "https://lore.alepha.dev/c/2/request",
+      feedbackUrl: "https://lore.alepha.dev/c/2/request",
       excludedPaths: ["/c/*/request"],
     });
     expect(screen.getByLabelText("Feedback")).toBeTruthy();
@@ -70,7 +70,7 @@ describe("SigilRoot", () => {
   it("re-hides the button when navigating to an excluded path (SPA pushState)", async () => {
     window.history.pushState({}, "", "/home");
     await renderRoot({
-      petitionUrl: "https://lore.alepha.dev/c/2/request",
+      feedbackUrl: "https://lore.alepha.dev/c/2/request",
       excludedPaths: ["/c/*/request"],
     });
     expect(screen.getByLabelText("Feedback")).toBeTruthy();
@@ -83,13 +83,13 @@ describe("SigilRoot", () => {
   });
 
   it("flashes a thank-you when the popup posts the submitted message", async () => {
-    await renderRoot({ petitionUrl: "https://lore.alepha.dev/c/2/request" });
+    await renderRoot({ feedbackUrl: "https://lore.alepha.dev/c/2/request" });
     expect(screen.queryByText("Thank you!")).toBeNull();
 
     act(() => {
       window.dispatchEvent(
         new MessageEvent("message", {
-          data: { type: SIGIL_PETITION_SUBMITTED_MESSAGE },
+          data: { type: SIGIL_FEEDBACK_SUBMITTED_MESSAGE },
         }),
       );
     });
@@ -98,7 +98,7 @@ describe("SigilRoot", () => {
   });
 
   it("ignores unrelated postMessage events", async () => {
-    await renderRoot({ petitionUrl: "https://lore.alepha.dev/c/2/request" });
+    await renderRoot({ feedbackUrl: "https://lore.alepha.dev/c/2/request" });
 
     act(() => {
       window.dispatchEvent(
@@ -109,18 +109,18 @@ describe("SigilRoot", () => {
     expect(screen.queryByText("Thank you!")).toBeNull();
   });
 
-  it("opens the petition URL in a popup with captured page context when clicked", async () => {
+  it("opens the feedback URL in a popup with captured page context when clicked", async () => {
     const open = vi.fn((..._args: unknown[]) => ({}) as Window);
     vi.stubGlobal("open", open);
 
-    await renderRoot({ petitionUrl: "https://lore.alepha.dev/c/2/request" });
+    await renderRoot({ feedbackUrl: "https://lore.alepha.dev/c/2/request" });
     fireEvent.click(screen.getByLabelText("Feedback"));
 
     expect(open).toHaveBeenCalledWith(
       expect.stringMatching(
         /^https:\/\/lore\.alepha\.dev\/c\/2\/request\?.*\burl=/,
       ),
-      "lore-petition",
+      "lore-feedback",
       expect.stringMatching(
         /width=480,height=720,left=\d+(\.\d+)?,top=\d+(\.\d+)?/,
       ),

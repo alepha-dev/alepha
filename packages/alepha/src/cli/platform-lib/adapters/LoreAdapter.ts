@@ -64,18 +64,19 @@ export class LoreAdapter extends PlatformAdapter {
   }
 
   /**
-   * The campaign a release is written into.
+   * The Lore project a release is written into.
    *
-   * Required, and deliberately not derived from the project name: campaign ids
-   * and project names are separate namespaces, and guessing a mapping between
-   * them would silently deploy into whichever campaign happened to match.
+   * Required, and deliberately not derived from `ctx.project` (this app's own
+   * name): Lore project ids and this app's project name are separate
+   * namespaces, and guessing a mapping between them would silently deploy
+   * into whichever Lore project happened to match.
    */
-  protected campaignId(ctx: PlatformContext): number {
-    const configured = ctx.envConfig.campaignId;
+  protected projectId(ctx: PlatformContext): number {
+    const configured = ctx.envConfig.projectId;
     if (!configured) {
       throw new AlephaError(
-        `No Lore campaign for environment "${ctx.env}". Set it in alepha.config.ts — ` +
-          `platform({ environments: { ${ctx.env}: { adapter: "lore", campaignId: 42 } } })`,
+        `No Lore project for environment "${ctx.env}". Set it in alepha.config.ts — ` +
+          `platform({ environments: { ${ctx.env}: { adapter: "lore", projectId: 42 } } })`,
       );
     }
     return Number(configured);
@@ -86,7 +87,7 @@ export class LoreAdapter extends PlatformAdapter {
     if (!key) {
       throw new AlephaError(
         "No LORE_API_KEY in the environment. Mint one in Lore (Profile → API keys) " +
-          "under an account that is a member of the target campaign, and put it in " +
+          "under an account that is a member of the target Lore project, and put it in " +
           "the deploy job's secrets. A device-flow login wants a human, and there is " +
           "nobody at the keyboard in CI.",
       );
@@ -97,22 +98,21 @@ export class LoreAdapter extends PlatformAdapter {
   /**
    * Proves the credential works before anything expensive happens.
    *
-   * Listing the campaign's releases checks two things at once — that the key is
-   * valid, and that it can see the campaign being deployed to. Failing here
-   * costs a second; failing after the build costs two minutes.
+   * Listing the Lore project's releases checks two things at once — that the
+   * key is valid, and that it can see the Lore project being deployed to.
+   * Failing here costs a second; failing after the build costs two minutes.
    */
   async authenticate(ctx: PlatformContext, _run: RunnerMethod): Promise<void> {
     const endpoint = this.endpoint(ctx);
-    const campaignId = this.campaignId(ctx);
+    const projectId = this.projectId(ctx);
 
-    const res = await fetch(
-      `${endpoint}/api/campaigns/${campaignId}/releases`,
-      { headers: { authorization: `Bearer ${this.apiKey()}` } },
-    );
+    const res = await fetch(`${endpoint}/api/projects/${projectId}/releases`, {
+      headers: { authorization: `Bearer ${this.apiKey()}` },
+    });
     if (res.status === 401 || res.status === 403) {
       throw new AlephaError(
-        `${endpoint} rejected the credential for campaign ${campaignId}. ` +
-          "Is the key still valid, and is its owner a member of that campaign?",
+        `${endpoint} rejected the credential for Lore project ${projectId}. ` +
+          "Is the key still valid, and is its owner a member of that project?",
       );
     }
     if (!res.ok) {
@@ -149,7 +149,7 @@ export class LoreAdapter extends PlatformAdapter {
     run: RunnerMethod,
   ): Promise<string | undefined> {
     const endpoint = this.endpoint(ctx);
-    const campaignId = this.campaignId(ctx);
+    const projectId = this.projectId(ctx);
     const key = this.apiKey();
 
     let artifact = "";
@@ -193,7 +193,7 @@ export class LoreAdapter extends PlatformAdapter {
         const file = (await uploaded.json()) as { id: string };
 
         const registered = await fetch(
-          `${endpoint}/api/campaigns/${campaignId}/releases`,
+          `${endpoint}/api/projects/${projectId}/releases`,
           {
             method: "POST",
             headers: {
@@ -242,14 +242,14 @@ export class LoreAdapter extends PlatformAdapter {
     releaseId: string,
   ): Promise<string | undefined> {
     const endpoint = this.endpoint(ctx);
-    const campaignId = this.campaignId(ctx);
+    const projectId = this.projectId(ctx);
     const key = this.apiKey();
     const deadline = this.dateTime.nowMillis() + LoreAdapter.DEPLOY_TIMEOUT_MS;
 
     let last = "";
     while (this.dateTime.nowMillis() < deadline) {
       const res = await fetch(
-        `${endpoint}/api/campaigns/${campaignId}/releases/${releaseId}`,
+        `${endpoint}/api/projects/${projectId}/releases/${releaseId}`,
         { headers: { authorization: `Bearer ${key}` } },
       );
       if (!res.ok) {
@@ -288,7 +288,7 @@ export class LoreAdapter extends PlatformAdapter {
 
     throw new AlephaError(
       `Gave up after ${Math.round(LoreAdapter.DEPLOY_TIMEOUT_MS / 60_000)} minutes with the release still '${last || "pending"}'. ` +
-        "Either no machine is enrolled in this campaign, or the one that took it stopped reporting — " +
+        "Either no machine is enrolled in this Lore project, or the one that took it stopped reporting — " +
         "check the outposts page in Lore, then `bay logs <app>/<env>` on the host.",
     );
   }
@@ -315,11 +315,10 @@ export class LoreAdapter extends PlatformAdapter {
 
   async inspect(ctx: PlatformContext): Promise<PlatformState> {
     const endpoint = this.endpoint(ctx);
-    const campaignId = this.campaignId(ctx);
-    const res = await fetch(
-      `${endpoint}/api/campaigns/${campaignId}/releases`,
-      { headers: { authorization: `Bearer ${this.apiKey()}` } },
-    );
+    const projectId = this.projectId(ctx);
+    const res = await fetch(`${endpoint}/api/projects/${projectId}/releases`, {
+      headers: { authorization: `Bearer ${this.apiKey()}` },
+    });
     if (!res.ok) {
       throw new AlephaError(`Lore at ${endpoint} answered ${res.status}.`);
     }

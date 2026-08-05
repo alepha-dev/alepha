@@ -95,22 +95,22 @@ export const apiPost = async <T>(
 };
 
 /**
- * Turn a campaign feature toggle on (or off) from within an e2e flow.
+ * Turn a project feature toggle on (or off) from within an e2e flow.
  *
  * Replaces the old `unlockShopFeature`, which had to farm gold from a
  * throwaway quest and POST a purchase. The gold Shop is gone — the
  * per-quest modules (`questNote`, `questReminder`, `questChrono`) are
  * plain owner-controlled switches now, so the e2e just flips the flag.
  */
-export const setCampaignFeature = async (
+export const setProjectFeature = async (
   page: Page,
-  campaignId: number,
+  projectId: number,
   featureKey: string,
   value = true,
 ): Promise<void> => {
   // Action routes are name-derived: `/api/<actionName>/<param>` (same
   // shape as the acceptQuest / completeQuest URLs used above).
-  const url = `/api/updateCampaignById/${campaignId}`;
+  const url = `/api/updateProjectById/${projectId}`;
   await page.evaluate(
     async ({ url, featureKey, value }) => {
       const r = await fetch(url, {
@@ -120,7 +120,7 @@ export const setCampaignFeature = async (
         body: JSON.stringify({ features: { [featureKey]: value } }),
       });
       if (!r.ok)
-        throw new Error(`setCampaignFeature ${r.status} ${await r.text()}`);
+        throw new Error(`setProjectFeature ${r.status} ${await r.text()}`);
     },
     { url, featureKey, value },
   );
@@ -168,15 +168,15 @@ export const registerAndVerify = async (
 };
 
 /**
- * Drive the 3-step campaign-create wizard: name → logo (skip) → modules →
- * submit. Keeps the module defaults (folios + kanban + chapters on,
- * petitions off). Returns the new campaign id parsed from the URL.
+ * Drive the 3-step project-create wizard: name → logo (skip) → modules →
+ * submit. Keeps the module defaults (folios + kanban + milestones on,
+ * feedback off). Returns the new project id parsed from the URL.
  */
-export const createCampaignViaWizard = async (
+export const createProjectViaWizard = async (
   page: Page,
   title: string,
 ): Promise<number> => {
-  await page.goto("/new-campaign");
+  await page.goto("/new-project");
   await page.waitForLoadState("networkidle");
   await page.locator('input[type="text"]').first().fill(title);
   // Step 1 → Step 2 (logo)
@@ -184,9 +184,9 @@ export const createCampaignViaWizard = async (
   // Step 2 → Step 3 (modules) — icon is optional, skip via Next
   await page.getByRole("button", { name: /^next$/i }).click();
   // Step 3 → submit
-  await page.getByRole("button", { name: /create campaign/i }).click();
-  await page.waitForURL(/\/c\/\d+/, { timeout: 15_000 });
-  const match = page.url().match(/\/c\/(\d+)/);
+  await page.getByRole("button", { name: /create project/i }).click();
+  await page.waitForURL(/\/p\/\d+/, { timeout: 15_000 });
+  const match = page.url().match(/\/p\/(\d+)/);
   expect(match).not.toBeNull();
   return Number(match![1]);
 };

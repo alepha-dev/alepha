@@ -12,13 +12,13 @@ import { useEffect, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { AppRouter } from "../../AppRouter.ts";
-import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { currentFolioAtom } from "../../atoms/currentFolioAtom.ts";
+import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { folioTagsAtom } from "../../atoms/folioTagsAtom.ts";
 import { userFoliosAtom } from "../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import MarkdownEditor from "../shared/markdown-editor/MarkdownEditor.tsx";
-import { useArchiveImageUpload } from "../shared/markdown-editor/useArchiveImageUpload.ts";
+import { useFolioImageUpload } from "../shared/markdown-editor/useFolioImageUpload.ts";
 import {
   forgetProtectedKey,
   getProtectedKey,
@@ -61,17 +61,17 @@ const FolioEditor = (props: FolioEditorProps) => {
   const folioApi = useClient<FolioController>();
   const [folios, setFolios] = useStore(userFoliosAtom);
   const [tags, setTags] = useStore(folioTagsAtom);
-  const [campaign] = useStore(currentCampaignAtom);
-  const campaignId = campaign ? String(campaign.id) : "";
+  const [project] = useStore(currentProjectAtom);
+  const projectId = project ? String(project.id) : "";
 
   const isEdit = !!props.folio;
   const crypto = useInject(CryptoProvider);
 
-  // Image uploads land in the campaign Archive as blobs — disabled on
+  // Image uploads land in the project Folio as blobs — disabled on
   // protected folios (the bytes would sit unencrypted next to encrypted
   // content).
-  const imageUploadHandler = useArchiveImageUpload(
-    campaign?.id,
+  const imageUploadHandler = useFolioImageUpload(
+    project?.id,
     !props.folio?.protected,
   );
 
@@ -188,8 +188,8 @@ const FolioEditor = (props: FolioEditorProps) => {
                 ...data,
                 content: contentToSend,
                 protected: false,
-                // A folio is always created within the active campaign.
-                campaignId: campaign!.id,
+                // A folio is always created within the active project.
+                projectId: project!.id,
                 directoryId: props.directoryId,
               },
             });
@@ -208,8 +208,8 @@ const FolioEditor = (props: FolioEditorProps) => {
       alepha.store.set(currentFolioAtom, saved);
 
       await router.push(
-        router.path("campaignFoliosFolio", {
-          params: { campaignId, shortId: saved.shortId },
+        router.path("projectFoliosFolio", {
+          params: { projectId, shortId: saved.shortId },
         }),
       );
     },
@@ -220,13 +220,13 @@ const FolioEditor = (props: FolioEditorProps) => {
   const handleBack = async () => {
     if (isEdit && props.folio) {
       await router.push(
-        router.path("campaignFoliosFolio", {
-          params: { campaignId, id: props.folio.id },
+        router.path("projectFoliosFolio", {
+          params: { projectId, id: props.folio.id },
         }),
       );
     } else {
       await router.push(
-        router.path("campaignFolios", { params: { campaignId } }),
+        router.path("projectFolios", { params: { projectId } }),
       );
     }
   };
@@ -263,8 +263,8 @@ const FolioEditor = (props: FolioEditorProps) => {
           items={tags.map((tag) => ({ value: tag, label: tag }))}
         />
         {/* Folio nesting under other folios was removed by quest #66 —
-            folios live in archive directories now. The directory picker
-            lives in the new Archive UI. Encryption moved to the view
+            folios live in folio directories now. The directory picker
+            lives in the new Folio UI. Encryption moved to the view
             (FolioView's Encrypt action); the editor only shows save-time
             re-encryption errors for an already-protected folio. */}
         {protectError && (
@@ -316,8 +316,8 @@ const FolioContentField = (props: {
 
 /**
  * Small badge under the content textarea showing the approximate token
- * cost of this folio's content, plus a warning when the campaign's pinned
- * total would exceed the 8K-char cap used by `campaign_context`. Only
+ * cost of this folio's content, plus a warning when the project's pinned
+ * total would exceed the 8K-char cap used by `project_context`. Only
  * rendered for pinned, non-protected folios — the cap doesn't apply
  * elsewhere.
  *

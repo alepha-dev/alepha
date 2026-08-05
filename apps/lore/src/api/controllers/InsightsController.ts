@@ -9,7 +9,7 @@ import { sigils } from "../entities/sigils.ts";
 import { sigilUniquesDaily } from "../entities/sigilUniquesDaily.ts";
 import { sigilViewsHourly } from "../entities/sigilViewsHourly.ts";
 import { sigilVitalsHourly } from "../entities/sigilVitalsHourly.ts";
-import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /** Lookback windows the Insights page offers, in whole UTC days. */
 const RANGE_DAYS: Record<string, number> = {
@@ -31,7 +31,7 @@ const TOP_N = 10;
 const TOP_ERROR_GROUPS = 20;
 
 /**
- * One campaign's analytics over a 1d / 7d / 30d window.
+ * One project's analytics over a 1d / 7d / 30d window.
  *
  * ⚠️ `totalViews` is best-effort by construction. Nothing throttles what an
  * enrolled app reports, so the raw count is inflatable by whoever holds a sigil
@@ -62,7 +62,7 @@ const insightsSchema = z.object({
     }),
   ),
   /**
-   * Web-vitals p75 approximations across every sigil on the campaign.
+   * Web-vitals p75 approximations across every sigil on the project.
    *
    * Derived from the stored histograms, so the cost does not grow with traffic.
    * `null` means no sample landed in the window. CLS is reported as the real
@@ -94,7 +94,7 @@ const insightsSchema = z.object({
    *
    * This is the question `sigil_error_groups` exists to answer and the Blights
    * inbox structurally cannot — the inbox folds every environment into one row
-   * per campaign, because a triage decision must not fork, which is exactly
+   * per project, because a triage decision must not fork, which is exactly
    * what makes it useless for "is this still happening *in production*".
    *
    * ⚠️ `name` and `message` come out of an application's runtime and are
@@ -121,8 +121,8 @@ export type InsightsResource = Infer<typeof insightsSchema>;
 /**
  * The reading surface for what `SigilIngestService` writes.
  *
- * Every row it aggregates is scoped to a sigil, and every sigil to a campaign,
- * so each query is `WHERE sigil_id IN (the campaign's sigils)`.
+ * Every row it aggregates is scoped to a sigil, and every sigil to a project,
+ * so each query is `WHERE sigil_id IN (the project's sigils)`.
  *
  * **Hour buckets, day answers.** `sigil_views_hourly.hour` is `YYYY-MM-DDTHH`,
  * which shares its first ten characters with a `YYYY-MM-DD` day. That makes the
@@ -133,16 +133,16 @@ export type InsightsResource = Infer<typeof insightsSchema>;
  *
  * **The error budget lives here too.** `sigil_error_groups` is the only table
  * that keeps failures split by environment, and "is this still happening in
- * production" is a per-environment question the campaign-wide Blights inbox
+ * production" is a per-environment question the project-wide Blights inbox
  * cannot answer by construction. This is the surface that asks it — the same
  * range selector, the same member gate, no second route for one list.
  *
  * Reads are member-gated: analytics are not an owner secret, and the page is
- * linked from the campaign nav every member sees.
+ * linked from the project nav every member sees.
  */
 export class InsightsController {
   protected database = $inject(DatabaseProvider);
-  protected security = $inject(CampaignSecurityService);
+  protected security = $inject(ProjectSecurityService);
   protected dateTime = $inject(DateTimeProvider);
   protected sigils = $repository(sigils);
   protected views = $repository(sigilViewsHourly);
@@ -151,18 +151,18 @@ export class InsightsController {
   protected errorGroups = $repository(sigilErrorGroups);
 
   getInsights = $action({
-    use: [$secure({ permissions: ["campaign:read"] })],
+    use: [$secure({ permissions: ["project:read"] })],
     method: "GET",
-    path: "/campaigns/:campaignId/insights",
+    path: "/projects/:projectId/insights",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       query: z.object({
         range: z.enum(["1d", "7d", "30d"]).optional(),
       }),
       response: insightsSchema,
     },
     handler: async ({ params, query, user }): Promise<InsightsResource> => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
 
       const range = query.range ?? "7d";
       const days = RANGE_DAYS[range] ?? 7;
@@ -173,7 +173,7 @@ export class InsightsController {
       sinceDate.setUTCDate(sinceDate.getUTCDate() - (days - 1));
       const since = sinceDate.toISOString().slice(0, 10);
 
-      const labels = await this.campaignSigilLabels(params.campaignId);
+      const labels = await this.projectSigilLabels(params.projectId);
       const sigilIds = [...labels.keys()];
 
       if (sigilIds.length === 0) {
@@ -209,7 +209,7 @@ export class InsightsController {
 
       // --- Unique visitors — the headline.
       // Counted as distinct `(day, visitorHash)` pairs rather than rows: the
-      // same person visiting two environments of the same campaign on one day
+      // same person visiting two environments of the same project on one day
       // is one visitor, and one row per sigil would say two.
       const [uniqueAgg] = await this.database.run(
         sql`
@@ -305,18 +305,18 @@ export class InsightsController {
   });
 
   /**
-   * Every sigil on the campaign, id → label.
+   * Every sigil on the project, id → label.
    *
-   * The ids are the join key between a campaign-scoped request and sigil-scoped
+   * The ids are the join key between a project-scoped request and sigil-scoped
    * rows; the labels are what makes an error budget legible, since "which
    * environment" is the entire reason these rows are kept separately from the
    * inbox. Both come out of the one read the request already needed.
    */
-  protected async campaignSigilLabels(
-    campaignId: number,
+  protected async projectSigilLabels(
+    projectId: number,
   ): Promise<Map<string, string>> {
     const rows = await this.sigils.findMany({
-      where: { campaignId: { eq: campaignId } },
+      where: { projectId: { eq: projectId } },
       columns: ["id", "label"],
     });
     return new Map(rows.map((sigil) => [sigil.id, sigil.label]));
@@ -372,7 +372,7 @@ export class InsightsController {
   }
 
   /**
-   * p75 for all five metrics, merged across every sigil on the campaign.
+   * p75 for all five metrics, merged across every sigil on the project.
    *
    * Merged at the histogram level rather than by averaging per-sigil
    * percentiles, which would be arithmetic on numbers that cannot be averaged:

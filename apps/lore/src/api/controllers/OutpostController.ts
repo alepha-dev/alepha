@@ -4,18 +4,18 @@ import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 import { outpostApps } from "../entities/outpostApps.ts";
 import { type Outpost, outposts } from "../entities/outposts.ts";
-import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { OutpostTokenService } from "../services/OutpostTokenService.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
- * An outpost as the campaign's settings page sees it.
+ * An outpost as the project's settings page sees it.
  *
  * `tokenHash` is absent and `tokenPrefix` is present, for the same reason a
  * sigil keeps a prefix: the UI has to name a credential it can never rebuild.
  */
 const outpostResourceSchema = z.object({
   id: z.uuid(),
-  campaignId: z.integer(),
+  projectId: z.integer(),
   label: z.string(),
   tokenPrefix: z.string(),
   agent: z.string().optional(),
@@ -48,7 +48,7 @@ export type MintedOutpost = Infer<typeof mintedOutpostSchema>;
 export class OutpostController {
   protected outposts = $repository(outposts);
   protected apps = $repository(outpostApps);
-  protected security = $inject(CampaignSecurityService);
+  protected security = $inject(ProjectSecurityService);
   protected tokens = $inject(OutpostTokenService);
 
   /**
@@ -56,24 +56,24 @@ export class OutpostController {
    *
    * No uniqueness beyond the token: two outposts with the same label are a
    * naming annoyance, not a data problem, and the identity is the credential.
-   * That is the opposite of a sigil, where `(campaign, app, environment)` must
+   * That is the opposite of a sigil, where `(project, app, environment)` must
    * be unique because a second row would split an environment's history.
    */
   createOutpost = $action({
-    use: [$secure({ permissions: ["campaign:update"] })],
+    use: [$secure({ permissions: ["project:update"] })],
     method: "POST",
-    path: "/campaigns/:campaignId/outposts",
+    path: "/projects/:projectId/outposts",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       body: z.object({ label: z.string().min(1).max(200) }),
       response: mintedOutpostSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.campaignId, user);
+      await this.security.assertOwner(params.projectId, user);
 
       const minted = this.tokens.mint();
       const created = await this.outposts.create({
-        campaignId: params.campaignId,
+        projectId: params.projectId,
         label: body.label.trim(),
         tokenHash: minted.hash,
         tokenPrefix: minted.prefix,
@@ -84,17 +84,17 @@ export class OutpostController {
   });
 
   listOutposts = $action({
-    use: [$secure({ permissions: ["campaign:read"] })],
+    use: [$secure({ permissions: ["project:read"] })],
     method: "GET",
-    path: "/campaigns/:campaignId/outposts",
+    path: "/projects/:projectId/outposts",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       response: z.array(outpostResourceSchema),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
       const rows = await this.outposts.findMany({
-        where: { campaignId: { eq: params.campaignId } },
+        where: { projectId: { eq: params.projectId } },
       });
       return await Promise.all(
         rows.map(async (row) =>
@@ -118,16 +118,16 @@ export class OutpostController {
    * the outpost existed to build.
    */
   rotateOutpost = $action({
-    use: [$secure({ permissions: ["campaign:update"] })],
+    use: [$secure({ permissions: ["project:update"] })],
     method: "POST",
-    path: "/campaigns/:campaignId/outposts/:outpostId/rotate",
+    path: "/projects/:projectId/outposts/:outpostId/rotate",
     schema: {
-      params: z.object({ campaignId: z.integer(), outpostId: z.uuid() }),
+      params: z.object({ projectId: z.integer(), outpostId: z.uuid() }),
       response: mintedOutpostSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.campaignId, user);
-      const existing = await this.find(params.campaignId, params.outpostId);
+      await this.security.assertOwner(params.projectId, user);
+      const existing = await this.find(params.projectId, params.outpostId);
 
       const minted = this.tokens.mint();
       await this.outposts.updateMany(
@@ -149,32 +149,32 @@ export class OutpostController {
   });
 
   deleteOutpost = $action({
-    use: [$secure({ permissions: ["campaign:delete"] })],
+    use: [$secure({ permissions: ["project:delete"] })],
     method: "DELETE",
-    path: "/campaigns/:campaignId/outposts/:outpostId",
+    path: "/projects/:projectId/outposts/:outpostId",
     schema: {
-      params: z.object({ campaignId: z.integer(), outpostId: z.uuid() }),
+      params: z.object({ projectId: z.integer(), outpostId: z.uuid() }),
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.campaignId, user);
-      const existing = await this.find(params.campaignId, params.outpostId);
+      await this.security.assertOwner(params.projectId, user);
+      const existing = await this.find(params.projectId, params.outpostId);
       await this.outposts.deleteMany({ id: { eq: existing.id } });
       return { ok: true };
     },
   });
 
   /**
-   * Looks an outpost up **within** the campaign from the path.
+   * Looks an outpost up **within** the project from the path.
    *
-   * Scoped rather than fetched by id alone: without the campaign in the where
-   * clause, an owner of any campaign could rotate or delete a machine belonging
+   * Scoped rather than fetched by id alone: without the project in the where
+   * clause, an owner of any project could rotate or delete a machine belonging
    * to another, because the ownership check above only proves they own the
-   * campaign they named.
+   * project they named.
    */
-  protected async find(campaignId: number, outpostId: string) {
+  protected async find(projectId: number, outpostId: string) {
     const found = await this.outposts.findOne({
-      where: { id: { eq: outpostId }, campaignId: { eq: campaignId } },
+      where: { id: { eq: outpostId }, projectId: { eq: projectId } },
     });
     if (!found) {
       throw new NotFoundError("Outpost not found");
@@ -185,7 +185,7 @@ export class OutpostController {
   protected toResource(row: Outpost, appCount: number): OutpostResource {
     return {
       id: row.id,
-      campaignId: row.campaignId,
+      projectId: row.projectId,
       label: row.label,
       tokenPrefix: row.tokenPrefix,
       agent: row.agent,

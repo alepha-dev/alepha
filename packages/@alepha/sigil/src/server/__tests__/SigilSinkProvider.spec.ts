@@ -207,7 +207,7 @@ describe("SigilSinkProvider", () => {
     expect(ingests(http).length).toBe(before);
   });
 
-  it("has the petition URL ready for the very first render", async () => {
+  it("has the feedback URL ready for the very first render", async () => {
     // The full module, so `sigilClientAtom` is registered and the render hook
     // writes somewhere real.
     const alepha = Alepha.create({
@@ -222,19 +222,19 @@ describe("SigilSinkProvider", () => {
       .with({ provide: HttpClient, use: RecordingHttpClient })
       .with(AlephaSigil);
     const http = alepha.inject(HttpClient) as RecordingHttpClient;
-    http.configResponse = { petitionUrl: "https://lore.example/c/2/request" };
+    http.configResponse = { feedbackUrl: "https://lore.example/c/2/request" };
     await alepha.start();
 
     // Nothing has been ingested — and `ingest()` used to be the only caller of
     // `refreshConfig()`. A cold isolate rendering its first page still has to
-    // know where petitions go, or the button is absent until some unrelated
+    // know where feedback goes, or the button is absent until some unrelated
     // traffic happens to warm the cache, which on a per-request runtime may
     // never be the same isolate.
     await alepha.events.emit("react:server:render:begin", {
       state: {},
     } as any);
 
-    expect(alepha.store.get(sigilClientAtom).petitionUrl).toBe(
+    expect(alepha.store.get(sigilClientAtom).feedbackUrl).toBe(
       "https://lore.example/c/2/request",
     );
   });

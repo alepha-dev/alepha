@@ -8,22 +8,22 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { AlephaServerCors } from "alepha/server/cors";
 import { describe, expect, it } from "vitest";
-import { campaigns } from "../src/api/entities/campaigns.ts";
 import { outposts } from "../src/api/entities/outposts.ts";
+import { projects } from "../src/api/entities/projects.ts";
 import { releases } from "../src/api/entities/releases.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { OutpostTokenService } from "../src/api/services/OutpostTokenService.ts";
 import { ReleaseService } from "../src/api/services/ReleaseService.ts";
 
 class Probe {
-  campaigns = $repository(campaigns);
+  projects = $repository(projects);
   outposts = $repository(outposts);
   releases = $repository(releases);
   files = $repository(files);
 }
 
 /**
- * Boots a real HTTP server, a campaign, two enrolled machines and one artifact.
+ * Boots a real HTTP server, a project, two enrolled machines and one artifact.
  *
  * Two outposts because the interesting refusals are between machines, not
  * between a machine and an anonymous caller: the credential is designed to be
@@ -58,7 +58,7 @@ const setup = async () => {
   await alepha.start();
 
   const owner = await users.createUser({ username: "owner" });
-  const campaign = await probe.campaigns.create({
+  const project = await probe.projects.create({
     title: "Test",
     createdBy: owner.id,
   } as any);
@@ -66,7 +66,7 @@ const setup = async () => {
   const enrol = async (label: string) => {
     const minted = tokens.mint();
     const outpost = await probe.outposts.create({
-      campaignId: campaign.id,
+      projectId: project.id,
       label,
       tokenHash: minted.hash,
       tokenPrefix: minted.prefix,
@@ -107,7 +107,7 @@ const setup = async () => {
 
   const addRelease = (version: string) =>
     service.register({
-      campaignId: campaign.id,
+      projectId: project.id,
       app: "lindocara-main",
       environment: "production",
       version,

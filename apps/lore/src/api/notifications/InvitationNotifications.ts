@@ -2,12 +2,12 @@ import { $hook, $inject, Alepha, z } from "alepha";
 import { $notification } from "alepha/api/notifications";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
-import { campaigns } from "../entities/campaigns.ts";
+import { projects } from "../entities/projects.ts";
 
 export class InvitationNotifications {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly campaigns = $repository(campaigns);
+  protected readonly projects = $repository(projects);
 
   protected escapeHtml(value: string): string {
     return value
@@ -28,18 +28,18 @@ export class InvitationNotifications {
   public readonly invitationInvite = $notification({
     category: "tasks",
     description:
-      "Email sent to the invited address when a campaign owner sends a new invitation. Points the recipient to their profile invitations page where they can accept or decline.",
+      "Email sent to the invited address when a project owner sends a new invitation. Points the recipient to their profile invitations page where they can accept or decline.",
     email: {
-      subject: "You have been invited to a campaign",
+      subject: "You have been invited to a project",
       body: (it) => {
-        const campaignTitle = this.escapeHtml(it.campaignTitle);
+        const projectTitle = this.escapeHtml(it.projectTitle);
         const inviterName = this.escapeHtml(it.inviterName);
         const invitedEmail = this.escapeHtml(it.invitedEmail);
         const inboxUrl = encodeURI(it.inboxUrl);
         return `
-        <h1>${campaignTitle}</h1>
+        <h1>${projectTitle}</h1>
         <p>Hi,</p>
-        <p><strong>${inviterName}</strong> has invited you to join the campaign <strong>${campaignTitle}</strong> on Lore.</p>
+        <p><strong>${inviterName}</strong> has invited you to join the project <strong>${projectTitle}</strong> on Lore.</p>
         <p>The invitation is waiting in your profile inbox. To accept or decline, sign in to Lore with <strong>${invitedEmail}</strong> and open the invitations page:</p>
         <p>
           <a href="${inboxUrl}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
@@ -52,7 +52,7 @@ export class InvitationNotifications {
       },
     },
     schema: z.object({
-      campaignTitle: z.string(),
+      projectTitle: z.string(),
       inviterName: z.string(),
       invitedEmail: z.string(),
       inboxUrl: z.string(),
@@ -64,11 +64,11 @@ export class InvitationNotifications {
     on: "invitation:created",
     handler: async ({ invitation, inviter }) => {
       try {
-        const campaign = await this.campaigns.findOne({
+        const project = await this.projects.findOne({
           where: { id: { eq: Number(invitation.resourceId) } },
         });
-        if (!campaign) {
-          this.log.warn("Skipping invitation email — campaign not found", {
+        if (!project) {
+          this.log.warn("Skipping invitation email — project not found", {
             invitationId: invitation.id,
             resourceId: invitation.resourceId,
           });
@@ -89,12 +89,12 @@ export class InvitationNotifications {
           ? inviter.email.includes("@")
             ? inviter.email.slice(0, inviter.email.indexOf("@"))
             : inviter.email
-          : "A campaign owner";
+          : "A project owner";
 
         await this.invitationInvite.push({
           contact: invitation.email,
           variables: {
-            campaignTitle: campaign.title,
+            projectTitle: project.title,
             inviterName,
             invitedEmail: invitation.email,
             inboxUrl,

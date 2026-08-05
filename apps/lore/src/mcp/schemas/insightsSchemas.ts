@@ -1,11 +1,11 @@
 import { z } from "alepha";
-import { campaignParamsSchema } from "./commonSchemas.ts";
+import { projectParamsSchema } from "./commonSchemas.ts";
 
 /**
  * One failure as the error budget sees it — per environment, unlike a blight.
  *
  * The distinction is the reason this exists next to `blight_list`: a blight is
- * one triage decision per campaign, deliberately merged across environments so
+ * one triage decision per project, deliberately merged across environments so
  * the decision cannot fork. This is the other question — is it still burning,
  * and where — and it keeps staging and production apart.
  *
@@ -28,7 +28,7 @@ const errorGroupSchema = z.object({
 // insights_read
 // -----------------------------------------------------------------------------
 
-export const insightsReadParamsSchema = campaignParamsSchema.extend({
+export const insightsReadParamsSchema = projectParamsSchema.extend({
   range: z
     .enum(["1d", "7d", "30d"])
     .describe("Window to read. Defaults to 7d.")

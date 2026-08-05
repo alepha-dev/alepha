@@ -7,7 +7,7 @@ import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { blights } from "../src/api/entities/blights.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
@@ -40,7 +40,7 @@ const setup = async () => {
   const probe = alepha.inject(Probe);
   const blightTools = alepha.inject(BlightTools);
   const questTools = alepha.inject(QuestTools);
-  const campaignApi = alepha.inject(CampaignController);
+  const projectApi = alepha.inject(ProjectController);
   const users = alepha.inject(UserService);
   await alepha.start();
 
@@ -67,14 +67,14 @@ const setup = async () => {
     asUser(userId, () => tool.execute(params));
 
   // Created through the controller, not by inserting a row: ownership lives in
-  // a membership record, and `resolveCampaignId` looks the campaign up among
-  // the ones the caller belongs to. A bare row is a campaign nobody owns.
-  const campaign = await asUser(OWNER, () =>
-    campaignApi.createCampaign({ body: { title: "Test" } } as any),
+  // a membership record, and `resolveProjectId` looks the project up among
+  // the ones the caller belongs to. A bare row is a project nobody owns.
+  const project = await asUser(OWNER, () =>
+    projectApi.createProject({ body: { title: "Test" } } as any),
   );
 
-  const otherCampaign = await asUser(OWNER, () =>
-    campaignApi.createCampaign({ body: { title: "Elsewhere" } } as any),
+  const otherProject = await asUser(OWNER, () =>
+    projectApi.createProject({ body: { title: "Elsewhere" } } as any),
   );
 
   return {
@@ -82,8 +82,8 @@ const setup = async () => {
     probe,
     blightTools,
     questTools,
-    campaign,
-    otherCampaign,
+    project,
+    otherProject,
     call,
   };
 };
@@ -93,16 +93,16 @@ describe("Lore MCP — blights", () => {
     The regression these guard: `listBlights` once read the live table while
     resolve, forward and delete looked rows up in a second, vestigial one. So
     every triage action answered "Blight not found", for a row the inbox had
-    just displayed. One table, scoped by `campaignId`, is what fixed it.
+    just displayed. One table, scoped by `projectId`, is what fixed it.
   */
 
   const fileBlight = async (
     probe: any,
-    campaignId: number,
+    projectId: number,
     over: Record<string, unknown> = {},
   ) =>
     await probe.blights.create({
-      campaignId,
+      projectId,
       fingerprint: "fp-1",
       name: "TypeError",
       message: "Cannot read properties of undefined",
@@ -119,10 +119,10 @@ describe("Lore MCP — blights", () => {
     // A schema is what serializes: any field the tool result schema omits is
     // silently dropped on the way out, however well the row is populated. This
     // asserts the whole payload an agent triages from survives the round trip.
-    const { probe, blightTools, campaign, call } = await setup();
-    await fileBlight(probe, campaign.id);
+    const { probe, blightTools, project, call } = await setup();
+    await fileBlight(probe, project.id);
 
-    const res = await call(blightTools.blight_list, { campaign: campaign.id });
+    const res = await call(blightTools.blight_list, { project: project.id });
 
     expect(res.openCount).toBe(1);
     expect(res.blights[0]).toMatchObject({
@@ -138,15 +138,15 @@ describe("Lore MCP — blights", () => {
   });
 
   it("should hide resolved blights unless asked", async () => {
-    const { probe, blightTools, campaign, call } = await setup();
-    await fileBlight(probe, campaign.id, { status: "resolved" });
+    const { probe, blightTools, project, call } = await setup();
+    await fileBlight(probe, project.id, { status: "resolved" });
 
-    const open = await call(blightTools.blight_list, { campaign: campaign.id });
+    const open = await call(blightTools.blight_list, { project: project.id });
     expect(open.blights).toHaveLength(0);
     expect(open.openCount).toBe(0);
 
     const all = await call(blightTools.blight_list, {
-      campaign: campaign.id,
+      project: project.id,
       include_resolved: true,
     });
     expect(all.blights).toHaveLength(1);
@@ -155,48 +155,48 @@ describe("Lore MCP — blights", () => {
   it("should resolve a blight the inbox just listed", async () => {
     // The exact case that was broken: list from one table, resolve against
     // another, "Blight not found".
-    const { probe, blightTools, campaign, call } = await setup();
-    const filed = await fileBlight(probe, campaign.id);
+    const { probe, blightTools, project, call } = await setup();
+    const filed = await fileBlight(probe, project.id);
 
     const res = await call(blightTools.blight_resolve, {
-      campaign: campaign.id,
+      project: project.id,
       blight_id: filed.id,
     });
 
     expect(res.ok).toBe(true);
     const after = await call(blightTools.blight_list, {
-      campaign: campaign.id,
+      project: project.id,
     });
     expect(after.blights).toHaveLength(0);
   });
 
   it("should forward a blight into a quest and close it", async () => {
-    const { probe, blightTools, campaign, call } = await setup();
-    const filed = await fileBlight(probe, campaign.id);
+    const { probe, blightTools, project, call } = await setup();
+    const filed = await fileBlight(probe, project.id);
 
     const res = await call(blightTools.blight_forward, {
-      campaign: campaign.id,
+      project: project.id,
       blight_id: filed.id,
     });
 
     expect(res.questShortId).toBeGreaterThan(0);
     const after = await call(blightTools.blight_list, {
-      campaign: campaign.id,
+      project: project.id,
     });
     expect(after.blights).toHaveLength(0);
   });
 
-  it("should refuse a blight from another campaign", async () => {
-    // Scoped by a WHERE clause on `campaignId` rather than by walking the
-    // campaign's sigils — one less step to get wrong. A real second campaign,
-    // because `campaignId` is a foreign key: an invented id fails on insert
+  it("should refuse a blight from another project", async () => {
+    // Scoped by a WHERE clause on `projectId` rather than by walking the
+    // project's sigils — one less step to get wrong. A real second project,
+    // because `projectId` is a foreign key: an invented id fails on insert
     // and proves nothing about the scoping.
-    const { probe, blightTools, campaign, call, otherCampaign } = await setup();
-    const filed = await fileBlight(probe, otherCampaign.id);
+    const { probe, blightTools, project, call, otherProject } = await setup();
+    const filed = await fileBlight(probe, otherProject.id);
 
     await expect(
       call(blightTools.blight_resolve, {
-        campaign: campaign.id,
+        project: project.id,
         blight_id: filed.id,
       }),
     ).rejects.toThrow();
@@ -214,23 +214,23 @@ describe("Lore MCP — blights", () => {
       `sigil-ingest.spec.ts`, "keeps a triage decision"). That rule protects a
       decision from NOISE; deleting the quest is the owner withdrawing it.
     */
-    const { probe, blightTools, questTools, campaign, call } = await setup();
-    const filed = await fileBlight(probe, campaign.id);
+    const { probe, blightTools, questTools, project, call } = await setup();
+    const filed = await fileBlight(probe, project.id);
 
     const { questShortId } = await call(blightTools.blight_forward, {
-      campaign: campaign.id,
+      project: project.id,
       blight_id: filed.id,
     });
     expect((await probe.blights.findById(filed.id))?.status).toMatch(/^quest:/);
 
     await call(questTools.quest_delete, {
-      campaign: campaign.id,
+      project: project.id,
       shortId: questShortId,
     });
 
     expect((await probe.blights.findById(filed.id))?.status).toBe("open");
     const inbox = await call(blightTools.blight_list, {
-      campaign: campaign.id,
+      project: project.id,
     });
     expect(inbox.openCount).toBe(1);
   });
@@ -239,19 +239,19 @@ describe("Lore MCP — blights", () => {
     /*
       The guard on the reopen. Two quests, one blight: deleting the quest the
       blight is NOT pointing at must change nothing, or a tidy-up elsewhere in
-      the campaign silently reopens triaged rows.
+      the project silently reopens triaged rows.
     */
-    const { probe, blightTools, questTools, campaign, call } = await setup();
-    const filed = await fileBlight(probe, campaign.id);
+    const { probe, blightTools, questTools, project, call } = await setup();
+    const filed = await fileBlight(probe, project.id);
 
     await call(blightTools.blight_forward, {
-      campaign: campaign.id,
+      project: project.id,
       blight_id: filed.id,
     });
     const held = (await probe.blights.findById(filed.id))?.status;
 
     const unrelated = await call(questTools.quest_create, {
-      campaign: campaign.id,
+      project: project.id,
       title: "Unrelated",
       description: "Nothing to do with the blight",
       zone: "misc",
@@ -259,7 +259,7 @@ describe("Lore MCP — blights", () => {
       difficulty: 1,
     });
     await call(questTools.quest_delete, {
-      campaign: campaign.id,
+      project: project.id,
       shortId: unrelated.shortId,
     });
 

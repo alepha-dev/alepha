@@ -8,7 +8,7 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 
@@ -31,7 +31,7 @@ interface TestContext {
   baseUrl: string;
   adminUserController: AdminUserController;
   apiKeyController: ApiKeyController;
-  campaignController: CampaignController;
+  projectController: ProjectController;
   fakeProvider: FakeProvider;
 }
 
@@ -59,7 +59,7 @@ const setup = async (): Promise<TestContext> => {
     baseUrl: server.hostname,
     adminUserController: alepha.inject(AdminUserController),
     apiKeyController: alepha.inject(ApiKeyController),
-    campaignController: alepha.inject(CampaignController),
+    projectController: alepha.inject(ProjectController),
     fakeProvider: alepha.inject(FakeProvider),
   };
 };
@@ -142,17 +142,17 @@ interface QuestGetResult {
 describe("quest_create — accept flag", () => {
   let ctx: TestContext;
   let token: string;
-  let campaignId: number;
+  let projectId: number;
 
   beforeEach(async () => {
     ctx = await setup();
     const owner = await createTestUser(ctx);
     token = await createApiKey(ctx, owner);
-    const campaign = await ctx.campaignController.createCampaign.fetch(
+    const project = await ctx.projectController.createProject.fetch(
       { body: { title: "Accept Probe" } },
       { user: owner },
     );
-    campaignId = campaign.data.id;
+    projectId = project.data.id;
   });
 
   afterEach(async () => {
@@ -163,7 +163,7 @@ describe("quest_create — accept flag", () => {
     expect,
   }) => {
     const res = await mcpCall(ctx.baseUrl, token, "quest_create", {
-      campaign: campaignId,
+      project: projectId,
       title: "Wire the thing",
       description: "do it",
       zone: "core",
@@ -188,7 +188,7 @@ describe("quest_create — accept flag", () => {
     expect,
   }) => {
     const res = await mcpCall(ctx.baseUrl, token, "quest_create", {
-      campaign: campaignId,
+      project: projectId,
       title: "Backlog item",
       description: "later",
       zone: "core",
@@ -211,7 +211,7 @@ describe("quest_create — accept flag", () => {
   }) => {
     // Predecessor stays "new" (never accepted/completed).
     const predecessor = await mcpCall(ctx.baseUrl, token, "quest_create", {
-      campaign: campaignId,
+      project: projectId,
       title: "Setup first",
       description: "must finish before the follow-up",
       zone: "core",
@@ -221,7 +221,7 @@ describe("quest_create — accept flag", () => {
     const predShortId = payload<QuestCreateResult>(predecessor).shortId;
 
     const res = await mcpCall(ctx.baseUrl, token, "quest_create", {
-      campaign: campaignId,
+      project: projectId,
       title: "Follow-up",
       description: "depends on setup",
       zone: "core",

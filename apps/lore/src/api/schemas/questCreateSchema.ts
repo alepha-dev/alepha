@@ -19,7 +19,7 @@ export const questCreateSchema = z.object({
    * to none rather than rejected.
    */
   estimateMinutes: z.integer().nullable().optional(),
-  campaignId: z.integer(),
+  projectId: z.integer(),
   objectives: z
     .array(
       z.object({
@@ -37,15 +37,15 @@ export const questCreateSchema = z.object({
    */
   tags: z.array(z.string()).default([]).optional(),
   /**
-   * Optional petition this quest was spawned from. When set, the quest is
-   * linked back to the petition so its reporter can follow progression.
-   * Validated at handler time: the petition must belong to the same campaign,
-   * be in `accepted` state, and the caller must be the campaign owner.
+   * Optional feedback this quest was spawned from. When set, the quest is
+   * linked back to the feedback so its reporter can follow progression.
+   * Validated at handler time: the feedback must belong to the same project,
+   * be in `accepted` state, and the caller must be the project owner.
    */
-  petitionId: z.integer().optional(),
+  feedbackId: z.integer().optional(),
   /**
    * Optional predecessor quest. Validated server-side: must belong to the
-   * same campaign and cannot point at the quest itself. While the
+   * same project and cannot point at the quest itself. While the
    * predecessor's `completedAt` is null, `acceptQuest` refuses to start
    * this quest.
    */

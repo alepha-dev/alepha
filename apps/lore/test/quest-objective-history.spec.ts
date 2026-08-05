@@ -6,7 +6,7 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
@@ -20,7 +20,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   admin: AdminUserController;
-  campaigns: CampaignController;
+  projects: ProjectController;
   quests: QuestController;
   fake: FakeProvider;
 }
@@ -47,7 +47,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     admin: alepha.inject(AdminUserController),
-    campaigns: alepha.inject(CampaignController),
+    projects: alepha.inject(ProjectController),
     quests: alepha.inject(QuestController),
     fake: alepha.inject(FakeProvider),
   };
@@ -70,15 +70,15 @@ const seedAcceptedQuest = async (
   ctx: TestContext,
   user: { id: string; roles: string[] },
   objectives: Array<{ title: string; completed: boolean }>,
-): Promise<{ id: number; campaignId: number }> => {
-  const campaign = await ctx.campaigns.createCampaign.fetch(
+): Promise<{ id: number; projectId: number }> => {
+  const project = await ctx.projects.createProject.fetch(
     { body: { title: "Objective Probe" } },
     { user },
   );
   const created = await ctx.quests.createQuest.fetch(
     {
       body: {
-        campaignId: campaign.data.id,
+        projectId: project.data.id,
         title: "History Spam Probe",
         description: "<p>x</p>",
         zone: "test",
@@ -93,7 +93,7 @@ const seedAcceptedQuest = async (
     { params: { id: created.data.id } },
     { user },
   );
-  return { id: created.data.id, campaignId: campaign.data.id };
+  return { id: created.data.id, projectId: project.data.id };
 };
 
 describe("QuestController completeObjective", () => {

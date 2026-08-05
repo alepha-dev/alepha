@@ -82,21 +82,21 @@ Alepha uses a hybrid monorepo structure:
 
 ### Lore (`apps/lore`)
 
-The only public Alepha application — a campaign management app at `lore.alepha.dev`. Lore lives in this monorepo specifically to **dogfood the framework**: framework improvements and bug fixes that surface while building Lore are part of the same commit/PR, not a downstream issue. When working on `apps/lore`, treat `packages/alepha` and `packages/@alepha/ui` as fair game — edit them in place, run `yarn v` from the root, ship both sides in one commit.
+The only public Alepha application — a project management app at `lore.alepha.dev`. Lore lives in this monorepo specifically to **dogfood the framework**: framework improvements and bug fixes that surface while building Lore are part of the same commit/PR, not a downstream issue. When working on `apps/lore`, treat `packages/alepha` and `packages/@alepha/ui` as fair game — edit them in place, run `yarn v` from the root, ship both sides in one commit.
 
 CI auto-deploys Lore to Cloudflare on every push to `main` via the `deploy-lore-production` job in `.github/workflows/ci.yml`. There is no human gate. Lore migrations (`apps/lore/migrations/sqlite/`) target Cloudflare D1, which has a known cascade-on-DROP-TABLE quirk — see `apps/lore/CLAUDE.md` ("Migration safety on D1") before pushing anything that touches `migrations/sqlite/`.
 
 ### Lore MCP — framework planning memory
 
-The Lore MCP (`mcp__claude_ai_Lore__*`) is the long-term planning memory for framework work in this repo. Framework decisions, deferred plans, and bug reports live in the **Alepha campaign — id `1`** (separate from campaign `2` which is for the Lore app itself).
+The Lore MCP (`mcp__claude_ai_Lore__*`) is the long-term planning memory for framework work in this repo. Framework decisions, deferred plans, and bug reports live in the **Alepha project — id `1`** (separate from project `2` which is for the Lore app itself).
 
-- Before non-trivial framework changes, orient via `campaign_context` (campaign `1`) — returns campaign metadata, active quests, and the folio index in one shot.
+- Before non-trivial framework changes, orient via `project_context` (project `1`) — returns project metadata, active quests, and the folio index in one shot.
 - Read `folio_get` on relevant folios. Folios are how past sessions hand context to future sessions (current examples: #4 Drizzle v1 plan, #5 Stripe-deferred, #6 ui-registry removal).
 - **Prefer folios over quests for framework work.** Folios capture decisions, plans, and gotchas — write one (`folio_create` with a good `summary` + reusable `tags`) whenever a session produces a non-obvious decision or design note. Only create quests when the user explicitly asks.
 
-#### The archive is organised — file folios, don't dump them at the root
+#### The folio tree is organised — file folios, don't dump them at the root
 
-Campaign `1` has a directory tree (browse it with `directory_list`). Put a new folio where it belongs by passing `directory_shortId` to `folio_create`:
+Project `1` has a directory tree (browse it with `directory_list`). Put a new folio where it belongs by passing `directory_shortId` to `folio_create`:
 
 | Directory | What goes in it |
 |---|---|
@@ -113,7 +113,7 @@ Campaign `1` has a directory tree (browse it with `directory_list`). Put a new f
 
 `docs/superpowers/` is in `.gitignore`. A plan written there lives only in the worktree that produced it and **dies when that worktree is removed** — which is exactly what the finishing step does. That has already cost one 1100-line plan, recovered by hand into `assets/`.
 
-So when the `superpowers:writing-plans` or `superpowers:brainstorming` skills produce a plan or a spec, **also persist it as a folio** in campaign `1`, under `plans` or `specs`. The file on disk stays the working copy the executing agent reads; the folio is the copy that survives. Update the folio when the plan changes materially, and mark it done or superseded when the work ships.
+So when the `superpowers:writing-plans` or `superpowers:brainstorming` skills produce a plan or a spec, **also persist it as a folio** in project `1`, under `plans` or `specs`. The file on disk stays the working copy the executing agent reads; the folio is the copy that survives. Update the folio when the plan changes materially, and mark it done or superseded when the work ships.
 
 A plan folio needs: what is being built, the constraints that bind it, and the decisions already taken with their reasons. A future session that reads only the folio should not need the disk copy to understand why.
 

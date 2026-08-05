@@ -58,7 +58,7 @@ export class IdentityController {
       }
 
       // The realm's credentials provider is named "credentials" (see
-      // CampaignSecurityService `identities.credentials`). Login looks up that
+      // ProjectSecurityService `identities.credentials`). Login looks up that
       // provider and reads the top-level `password` column — so the password
       // MUST be written there, not under a custom provider / `providerData`.
       const existingIdentity = await this.identities.findOne({
