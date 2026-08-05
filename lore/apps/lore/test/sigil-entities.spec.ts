@@ -2,21 +2,21 @@ import { Alepha } from "alepha";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { describe, it } from "vitest";
 import { blights } from "../src/api/entities/blights.ts";
-import { campaigns } from "../src/api/entities/campaigns.ts";
+import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
 import { users } from "../src/api/entities/users.ts";
 
 describe("sigil entities", () => {
-  it("identifies a sigil by app + environment within a campaign", async ({
+  it("identifies a sigil by app + environment within a project", async ({
     expect,
   }) => {
-    // `sigils` carries FKs to `campaigns` and `users`; the model builder
+    // `sigils` carries FKs to `projects` and `users`; the model builder
     // resolves every `db.ref(...)` target eagerly at boot, so both referenced
     // tables must have a repository too or schema sync throws "Referenced
     // table ... not found" before this test ever gets to assert anything.
     class Repos {
-      campaigns = $repository(campaigns);
+      projects = $repository(projects);
       users = $repository(users);
       sigils = $repository(sigils);
     }
@@ -29,21 +29,21 @@ describe("sigil entities", () => {
     const repos = alepha.inject(Repos);
     await alepha.start();
 
-    // `sigils.campaignId` is a real, enforced foreign key (unlike D1, this
-    // in-memory sqlite does not ignore it) — a campaign row has to exist
+    // `sigils.projectId` is a real, enforced foreign key (unlike D1, this
+    // in-memory sqlite does not ignore it) — a project row has to exist
     // before a sigil can reference it.
-    const campaign = await repos.campaigns.create({
-      title: "Test Campaign",
+    const project = await repos.projects.create({
+      title: "Test Project",
       createdBy: crypto.randomUUID(),
     });
 
     const created = await repos.sigils.create({
-      campaignId: campaign.id,
+      projectId: project.id,
       app: "lore",
       environment: "production",
       tokenHash: "h",
       tokenPrefix: "sg_abc",
-      kinds: ["beacon", "vitals", "blights", "petition"],
+      kinds: ["beacon", "vitals", "blights", "feedback"],
       label: "lore / production",
     });
 
@@ -66,7 +66,7 @@ describe("sigil entities", () => {
     // no FK constraint at all. `.optional()` must be applied to the type
     // passed *into* `db.ref(...)`, not chained onto its result.
     class Repos {
-      campaigns = $repository(campaigns);
+      projects = $repository(projects);
       users = $repository(users);
       sigils = $repository(sigils);
       blights = $repository(blights);

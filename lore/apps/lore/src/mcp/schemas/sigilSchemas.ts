@@ -1,5 +1,5 @@
 import { z } from "alepha";
-import { campaignParamsSchema } from "./commonSchemas.ts";
+import { projectParamsSchema } from "./commonSchemas.ts";
 
 /**
  * One enrolled environment.
@@ -9,7 +9,7 @@ import { campaignParamsSchema } from "./commonSchemas.ts";
  */
 const sigilSchema = z.object({
   id: z.string(),
-  campaignId: z.integer(),
+  projectId: z.integer(),
   /** Application name, e.g. `lore`. */
   app: z.string(),
   /** Stage, e.g. `production`. */
@@ -43,7 +43,7 @@ const mintedSigilSchema = sigilSchema.extend({
 // sigil_list
 // -----------------------------------------------------------------------------
 
-export const sigilListParamsSchema = campaignParamsSchema;
+export const sigilListParamsSchema = projectParamsSchema;
 
 export const sigilListResultSchema = z.object({
   sigils: z.array(sigilSchema),
@@ -53,7 +53,7 @@ export const sigilListResultSchema = z.object({
 // sigil_create
 // -----------------------------------------------------------------------------
 
-export const sigilCreateParamsSchema = campaignParamsSchema.extend({
+export const sigilCreateParamsSchema = projectParamsSchema.extend({
   app: z
     .string()
     .min(1)
@@ -80,7 +80,7 @@ export const sigilCreateResultSchema = mintedSigilSchema;
 // sigil_rotate
 // -----------------------------------------------------------------------------
 
-export const sigilRotateParamsSchema = campaignParamsSchema.extend({
+export const sigilRotateParamsSchema = projectParamsSchema.extend({
   id: z.string().describe("The sigil id, from `sigil_list`."),
 });
 
@@ -90,7 +90,7 @@ export const sigilRotateResultSchema = mintedSigilSchema;
 // sigil_delete
 // -----------------------------------------------------------------------------
 
-export const sigilDeleteParamsSchema = campaignParamsSchema.extend({
+export const sigilDeleteParamsSchema = projectParamsSchema.extend({
   id: z.string().describe("The sigil id, from `sigil_list`."),
 });
 

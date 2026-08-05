@@ -6,7 +6,7 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
@@ -20,7 +20,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
-  campaignController: CampaignController;
+  projectController: ProjectController;
   questController: QuestController;
   fakeProvider: FakeProvider;
 }
@@ -43,7 +43,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
-    campaignController: alepha.inject(CampaignController),
+    projectController: alepha.inject(ProjectController),
     questController: alepha.inject(QuestController),
     fakeProvider: alepha.inject(FakeProvider),
   };
@@ -60,11 +60,11 @@ const createTestUser = async (
   return { id: response.data.id, roles: response.data.roles };
 };
 
-const createCampaign = async (
+const createProject = async (
   ctx: TestContext,
   user: { id: string; roles: string[] },
 ): Promise<number> => {
-  const created = await ctx.campaignController.createCampaign.fetch(
+  const created = await ctx.projectController.createProject.fetch(
     { body: { title: "Optional Desc Test" } },
     { user },
   );
@@ -86,12 +86,12 @@ describe("quest creation — optional description", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
+    const projectId = await createProject(ctx, owner);
 
     const created = await ctx.questController.createQuest.fetch(
       {
         body: {
-          campaignId,
+          projectId,
           title: "Title is enough",
           // description intentionally omitted
           zone: "Bugs",
@@ -110,12 +110,12 @@ describe("quest creation — optional description", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaignId = await createCampaign(ctx, owner);
+    const projectId = await createProject(ctx, owner);
 
     const created = await ctx.questController.createQuest.fetch(
       {
         body: {
-          campaignId,
+          projectId,
           title: "With description",
           description: "Plain description text",
           zone: "Bugs",

@@ -12,12 +12,12 @@ import { SigilTokenService } from "../services/SigilTokenService.ts";
  *
  * **A separate realm from everything else in Lore, in both directions.** These
  * two endpoints accept a sigil token and nothing else — an authenticated
- * campaign member is not enough to report into a campaign, and a sigil token
+ * project member is not enough to report into a project, and a sigil token
  * opens nothing but these two routes.
  *
  * The asymmetry matters more than it looks. A sigil token exists in cleartext
  * on every machine that runs the environment it belongs to; treating it as an
- * authentication of any kind would hand out Lore's campaign surface with it.
+ * authentication of any kind would hand out Lore's project surface with it.
  * Conversely, accepting the session cookie here would mean a logged-in owner
  * browsing a malicious page could be made to write into someone's insights.
  *
@@ -59,12 +59,12 @@ export class SigilIngestController {
    * `GET /sigils/config` — how much this environment should send.
    *
    * The answer is exactly what `SigilIngestService.absorb` would accept,
-   * because it is the same call: `gatesFor` is the one place the campaign's
+   * because it is the same call: `gatesFor` is the one place the project's
    * toggles are intersected with the sigil's kinds, and both the gate and this
    * advertisement read it. Restating the rule here is how a sink ends up
    * inviting payloads it then discards on arrival.
    *
-   * `sampling` is deliberately absent: Lore has no per-campaign rate to tune,
+   * `sampling` is deliberately absent: Lore has no per-project rate to tune,
    * and the package already defaults to keeping everything.
    */
   config = $route({

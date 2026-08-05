@@ -3,7 +3,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { AlertTriangle, Sparkles } from "lucide-react";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import QuestDifficulty from "../campaign/quest/QuestDifficulty.tsx";
+import QuestDifficulty from "../project/quest/QuestDifficulty.tsx";
 
 export interface KanbanCardProps {
   quest: QuestResource;

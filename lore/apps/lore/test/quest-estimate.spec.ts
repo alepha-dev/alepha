@@ -2,7 +2,7 @@ import { describe, it } from "vitest";
 import {
   ESTIMATE_PRESETS,
   formatEstimate,
-} from "../src/web/app/components/campaign/quest/questEstimate.ts";
+} from "../src/web/app/components/project/quest/questEstimate.ts";
 
 /**
  * Pure formatter for the optional quest time-estimate (`quests.estimateMinutes`).

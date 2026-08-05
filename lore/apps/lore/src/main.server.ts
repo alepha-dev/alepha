@@ -35,9 +35,9 @@ if (alepha.env.TURNSTILE_SITE_KEY) {
 }
 
 // Widen the framework's creator-only `/api/files/:id` policy with
-// lore-aware rules (avatars are public-authed, campaign icons follow
-// campaign visibility, quest attachments require campaign membership,
-// petition attachments require campaign ownership).
+// lore-aware rules (avatars are public-authed, project icons follow
+// project visibility, quest attachments require project membership,
+// feedback attachments require project ownership).
 alepha.with({ provide: FileAccessProvider, use: LoreFileAccessProvider });
 
 // Configure the OAuth 2.1 authorization server BEFORE `LoreApi` (which holds

@@ -5,6 +5,12 @@ import { describe, expect, it } from "vitest";
 /**
  * Guards the petition reporter-user-id restore migration.
  *
+ * Still "petition" throughout on purpose (2026-08 great rename, Task 4) —
+ * see the matching note in `petition-reporter-migration.spec.ts`: this test
+ * asserts against the physical SQL in `migrations/sqlite/.archive/`, which
+ * the rename engine never touches, and stays `petitions` until Task 11
+ * renames the physical table.
+ *
  * This migration reverses `0039_petition_reporter_email.sql` WITHOUT a table
  * rebuild: it adds a nullable `reporter_user_id` (with the cascade FK via the
  * `ADD COLUMN ... REFERENCES` form), back-fills it from `reporter_email`, drops

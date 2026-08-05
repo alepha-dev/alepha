@@ -3,11 +3,11 @@ import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { createInvitationSchema } from "../schemas/createInvitationSchema.ts";
 import { invitationResourceSchema } from "../schemas/invitationResourceSchema.ts";
-import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import { InvitationService } from "../services/InvitationService.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 const inboxItemSchema = invitationResourceSchema.extend({
-  campaignTitle: z.string(),
+  projectTitle: z.string(),
   inviterName: z.string().optional(),
 });
 
@@ -15,7 +15,7 @@ export class InvitationController {
   protected readonly url = "/invitations";
   protected readonly group = "invitations";
   protected readonly invitationService = $inject(InvitationService);
-  protected readonly security = $inject(CampaignSecurityService);
+  protected readonly security = $inject(ProjectSecurityService);
 
   /**
    * Create a new invitation.
@@ -34,23 +34,23 @@ export class InvitationController {
   });
 
   /**
-   * Owner-scoped: list pending invitations for a campaign the caller
+   * Owner-scoped: list pending invitations for a project the caller
    * owns. Used by the settings page to render pending rows.
    */
-  public readonly listCampaignInvitations = $action({
-    path: `${this.url}/campaign/:campaignId`,
+  public readonly listProjectInvitations = $action({
+    path: `${this.url}/project/:projectId`,
     group: this.group,
     use: [$secure()],
-    description: "List pending invitations for a campaign the caller owns",
+    description: "List pending invitations for a project the caller owns",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       response: z.array(invitationResourceSchema),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.campaignId, user as any);
+      await this.security.assertOwner(params.projectId, user as any);
       return this.invitationService.findByResource(
-        "campaign",
-        String(params.campaignId),
+        "project",
+        String(params.projectId),
         "pending",
       );
     },
@@ -85,12 +85,12 @@ export class InvitationController {
       params: z.object({ id: z.uuid() }),
       response: z.object({
         ok: z.boolean(),
-        campaignId: z.string(),
+        projectId: z.string(),
       }),
     },
     handler: async ({ params, user }) => {
       const result = await this.invitationService.accept(params.id, user);
-      return { ok: true, campaignId: result.campaignId };
+      return { ok: true, projectId: result.projectId };
     },
   });
 

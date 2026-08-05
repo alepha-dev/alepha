@@ -6,8 +6,8 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, HttpError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -20,7 +20,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   admin: AdminUserController;
-  campaigns: CampaignController;
+  projects: ProjectController;
   folios: FolioController;
   fake: FakeProvider;
 }
@@ -40,7 +40,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     admin: alepha.inject(AdminUserController),
-    campaigns: alepha.inject(CampaignController),
+    projects: alepha.inject(ProjectController),
     folios: alepha.inject(FolioController),
     fake: alepha.inject(FakeProvider),
   };
@@ -59,7 +59,7 @@ const createUser = async (ctx: TestContext) => {
   };
 };
 
-describe("FolioController.listCampaignActivity", () => {
+describe("FolioController.listProjectActivity", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -74,14 +74,14 @@ describe("FolioController.listCampaignActivity", () => {
     expect,
   }) => {
     const owner = await createUser(ctx);
-    const campaign = await ctx.campaigns.createCampaign.fetch(
+    const project = await ctx.projects.createProject.fetch(
       { body: { title: "Activity probe" } },
       { user: owner },
     );
-    const cid = campaign.data.id;
+    const cid = project.data.id;
 
     const a = await ctx.folios.create.fetch(
-      { body: { campaignId: cid, title: "A", content: "" } },
+      { body: { projectId: cid, title: "A", content: "" } },
       { user: owner },
     );
     // Edit to push a second revision.
@@ -90,12 +90,12 @@ describe("FolioController.listCampaignActivity", () => {
       { user: owner },
     );
     await ctx.folios.create.fetch(
-      { body: { campaignId: cid, title: "B", content: "" } },
+      { body: { projectId: cid, title: "B", content: "" } },
       { user: owner },
     );
 
-    const feed = await ctx.folios.listCampaignActivity.fetch(
-      { query: { campaignId: cid } },
+    const feed = await ctx.folios.listProjectActivity.fetch(
+      { query: { projectId: cid } },
       { user: owner },
     );
 
@@ -114,20 +114,20 @@ describe("FolioController.listCampaignActivity", () => {
 
   it("honors limit (caps to the most recent N)", async ({ expect }) => {
     const owner = await createUser(ctx);
-    const campaign = await ctx.campaigns.createCampaign.fetch(
+    const project = await ctx.projects.createProject.fetch(
       { body: { title: "Limit probe" } },
       { user: owner },
     );
-    const cid = campaign.data.id;
+    const cid = project.data.id;
     for (let i = 0; i < 5; i++) {
       await ctx.folios.create.fetch(
-        { body: { campaignId: cid, title: `F${i}`, content: "" } },
+        { body: { projectId: cid, title: `F${i}`, content: "" } },
         { user: owner },
       );
     }
 
-    const feed = await ctx.folios.listCampaignActivity.fetch(
-      { query: { campaignId: cid, limit: 3 } },
+    const feed = await ctx.folios.listProjectActivity.fetch(
+      { query: { projectId: cid, limit: 3 } },
       { user: owner },
     );
     expect(feed.data.items).toHaveLength(3);
@@ -142,32 +142,32 @@ describe("FolioController.listCampaignActivity", () => {
   it("rejects non-members with 403", async ({ expect }) => {
     const owner = await createUser(ctx);
     const stranger = await createUser(ctx);
-    const campaign = await ctx.campaigns.createCampaign.fetch(
+    const project = await ctx.projects.createProject.fetch(
       { body: { title: "Members only" } },
       { user: owner },
     );
     await ctx.folios.create.fetch(
-      { body: { campaignId: campaign.data.id, title: "Hidden", content: "" } },
+      { body: { projectId: project.data.id, title: "Hidden", content: "" } },
       { user: owner },
     );
     await expect(
-      ctx.folios.listCampaignActivity.fetch(
-        { query: { campaignId: campaign.data.id } },
+      ctx.folios.listProjectActivity.fetch(
+        { query: { projectId: project.data.id } },
         { user: stranger },
       ),
     ).rejects.toThrow(HttpError);
   });
 
-  it("returns empty array when the campaign has no folios", async ({
+  it("returns empty array when the project has no folios", async ({
     expect,
   }) => {
     const owner = await createUser(ctx);
-    const campaign = await ctx.campaigns.createCampaign.fetch(
-      { body: { title: "Empty campaign" } },
+    const project = await ctx.projects.createProject.fetch(
+      { body: { title: "Empty project" } },
       { user: owner },
     );
-    const feed = await ctx.folios.listCampaignActivity.fetch(
-      { query: { campaignId: campaign.data.id } },
+    const feed = await ctx.folios.listProjectActivity.fetch(
+      { query: { projectId: project.data.id } },
       { user: owner },
     );
     expect(feed.data.items).toEqual([]);

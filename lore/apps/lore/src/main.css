@@ -36,7 +36,7 @@
   }
 }
 
-@keyframes campaignOpen {
+@keyframes projectOpen {
   from {
     opacity: 0;
     transform: translateY(12px) scale(0.97);

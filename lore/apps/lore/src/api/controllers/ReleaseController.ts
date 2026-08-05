@@ -4,7 +4,7 @@ import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 import type { Release } from "../entities/releases.ts";
 import { releaseResourceSchema } from "../schemas/releaseResource.ts";
-import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { ReleaseService } from "../services/ReleaseService.ts";
 
 /**
@@ -20,11 +20,11 @@ import { ReleaseService } from "../services/ReleaseService.ts";
  *
  * Uploading the bytes is not here: `alepha/api/files` owns that flow, and this
  * controller registers a release on top of a file that already exists. One
- * upload path for the Archive, petitions and releases alike.
+ * upload path for folios, feedback and releases alike.
  */
 export class ReleaseController {
   protected readonly releases = $inject(ReleaseService);
-  protected readonly security = $inject(CampaignSecurityService);
+  protected readonly security = $inject(ProjectSecurityService);
 
   /**
    * Deployable artifacts.
@@ -55,11 +55,11 @@ export class ReleaseController {
    * uploaded".
    */
   createRelease = $action({
-    use: [$secure({ permissions: ["campaign:update"] })],
+    use: [$secure({ permissions: ["project:update"] })],
     method: "POST",
-    path: "/campaigns/:campaignId/releases",
+    path: "/projects/:projectId/releases",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       body: z.object({
         app: z.string().min(1).max(100),
         environment: z.string().min(1).max(50),
@@ -73,10 +73,10 @@ export class ReleaseController {
       response: releaseResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
 
       const release = await this.releases.register({
-        campaignId: params.campaignId,
+        projectId: params.projectId,
         app: body.app,
         environment: body.environment,
         version: body.version,
@@ -94,24 +94,24 @@ export class ReleaseController {
    * One release, for a client waiting on it.
    *
    * The only endpoint `platform up` polls, so it stays cheap: one row by id,
-   * scoped to the campaign in the path.
+   * scoped to the project in the path.
    */
   getRelease = $action({
-    use: [$secure({ permissions: ["campaign:read"] })],
+    use: [$secure({ permissions: ["project:read"] })],
     method: "GET",
-    path: "/campaigns/:campaignId/releases/:releaseId",
+    path: "/projects/:projectId/releases/:releaseId",
     schema: {
-      params: z.object({ campaignId: z.integer(), releaseId: z.uuid() }),
+      params: z.object({ projectId: z.integer(), releaseId: z.uuid() }),
       response: releaseResourceSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
 
       const release = await this.releases.get(params.releaseId);
-      // The campaign check is not redundant with the membership gate above:
-      // without it, a member of any campaign could read any release by id, and
+      // The project check is not redundant with the membership gate above:
+      // without it, a member of any project could read any release by id, and
       // a release names the app and environment it ships to.
-      if (!release || release.campaignId !== params.campaignId) {
+      if (!release || release.projectId !== params.projectId) {
         throw new NotFoundError("Release not found");
       }
 
@@ -120,24 +120,24 @@ export class ReleaseController {
   });
 
   /**
-   * The campaign's recent releases.
+   * The project's recent releases.
    *
    * Serves three callers at once: the authentication pre-check `platform up`
    * runs before spending two minutes on a build, its `inspect`, and the UI the
    * day it exists.
    */
   listReleases = $action({
-    use: [$secure({ permissions: ["campaign:read"] })],
+    use: [$secure({ permissions: ["project:read"] })],
     method: "GET",
-    path: "/campaigns/:campaignId/releases",
+    path: "/projects/:projectId/releases",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       response: z.object({ items: z.array(releaseResourceSchema) }),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
 
-      const items = await this.releases.listByCampaign(params.campaignId);
+      const items = await this.releases.listByProject(params.projectId);
       return { items: items.map((release) => this.toResource(release)) };
     },
   });
@@ -152,7 +152,7 @@ export class ReleaseController {
   protected toResource(release: Release) {
     return {
       id: release.id,
-      campaignId: release.campaignId,
+      projectId: release.projectId,
       app: release.app,
       environment: release.environment,
       version: release.version,

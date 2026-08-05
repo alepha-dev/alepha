@@ -5,8 +5,8 @@ import { type Infer, z } from "alepha";
  * shape regardless of which format the CSV came from (Alepha Lore / Trello).
  *
  * Fields are pre-resolved string values; reference resolution (user email →
- * userId, chapter title → chapterId) happens in the controller using
- * per-campaign lookups.
+ * userId, milestone title → milestoneId) happens in the controller using
+ * per-project lookups.
  */
 export const importRowSchema = z.object({
   /** 1-based data row number (header is row 0). Used for error/warning reporting. */
@@ -23,8 +23,8 @@ export const importRowSchema = z.object({
   difficulty: z.integer().min(1).max(5),
   /** Empty when null/unset. */
   kanbanColumn: z.string(),
-  /** Chapter title (exact match). Empty when null/unset. */
-  chapter: z.string(),
+  /** Milestone title (exact match). Empty when null/unset. */
+  milestone: z.string(),
   /** Emails. Empty when null/unset. */
   createdBy: z.string(),
   acceptedBy: z.string(),

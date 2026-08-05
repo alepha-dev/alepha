@@ -1,13 +1,12 @@
 import { $module } from "alepha";
 import { StreamableHttpMcpTransport } from "alepha/mcp";
-import { CampaignResources } from "./resources/CampaignResources.ts";
-import { ArchiveTools } from "./tools/ArchiveTools.ts";
+import { ProjectResources } from "./resources/ProjectResources.ts";
 import { BlightTools } from "./tools/BlightTools.ts";
-import { CampaignTools } from "./tools/CampaignTools.ts";
-import { ChapterTools } from "./tools/ChapterTools.ts";
+import { FeedbackTools } from "./tools/FeedbackTools.ts";
 import { FolioTools } from "./tools/FolioTools.ts";
 import { InsightsTools } from "./tools/InsightsTools.ts";
-import { PetitionTools } from "./tools/PetitionTools.ts";
+import { MilestoneTools } from "./tools/MilestoneTools.ts";
+import { ProjectTools } from "./tools/ProjectTools.ts";
 import { QuestTools } from "./tools/QuestTools.ts";
 import { SigilTools } from "./tools/SigilTools.ts";
 
@@ -17,13 +16,12 @@ export const LoreMcp = $module({
     StreamableHttpMcpTransport,
     QuestTools,
     BlightTools,
-    CampaignTools,
-    ChapterTools,
+    ProjectTools,
+    MilestoneTools,
     FolioTools,
-    ArchiveTools,
-    PetitionTools,
+    FeedbackTools,
     SigilTools,
     InsightsTools,
-    CampaignResources,
+    ProjectResources,
   ],
 });

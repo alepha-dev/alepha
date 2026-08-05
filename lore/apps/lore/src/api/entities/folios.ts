@@ -1,22 +1,22 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
-import { archiveDirectories } from "./archiveDirectories.ts";
-import { campaigns } from "./campaigns.ts";
+import { folioDirectories } from "./folioDirectories.ts";
+import { projects } from "./projects.ts";
 
 export const folios = $entity({
   name: "folios",
   schema: z.object({
     id: db.primaryKey(z.uuid()),
     /**
-     * Per-campaign sequential id, 1-based. Used in URLs
-     * (`/c/:campaignId/folios/:shortId`) and UI display. Allocated by
-     * `$sequence(scope=campaignId)` on insert. The global UUID `id` remains
+     * Per-project sequential id, 1-based. Used in URLs
+     * (`/p/:projectId/folios/:shortId`) and UI display. Allocated by
+     * `$sequence(scope=projectId)` on insert. The global UUID `id` remains
      * the canonical PK.
      */
     shortId: z.integer().min(1),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
+    projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
     title: z.string().min(1).max(200),
@@ -32,28 +32,28 @@ export const folios = $entity({
     content: db.default(z.string(), ""),
     tags: db.default(z.array(z.string()), []),
     /**
-     * Pin a folio so it sorts to the top of the campaign's folio list AND
+     * Pin a folio so it sorts to the top of the project's folio list AND
      * (when not protected) has its full content surfaced by
-     * `campaign_context` — the per-campaign equivalent of CLAUDE.md.
-     * Per-campaign (one shared pin set per campaign, since folios are
-     * campaign-shared since quest #65). Default false.
+     * `project_context` — the per-project equivalent of CLAUDE.md.
+     * Per-project (one shared pin set per project, since folios are
+     * project-shared since quest #65). Default false.
      */
     pinned: db.default(z.boolean(), false),
     /**
-     * Archive directory the folio lives in. `undefined` means "campaign
+     * Folio directory the folio lives in. `undefined` means "project
      * root". Replaces the old self-FK `parentId` from quest #45 — folios
      * no longer nest under other folios; they sit in directories instead
-     * (quest #66 - Archive module). Cascade-delete on directory removal:
+     * (quest #66 - Folio module). Cascade-delete on directory removal:
      * wiping a directory wipes everything in it, including its folios.
      */
-    directoryId: db.ref(z.uuid().optional(), () => archiveDirectories.cols.id, {
+    directoryId: db.ref(z.uuid().optional(), () => folioDirectories.cols.id, {
       onDelete: "cascade",
     }),
     /**
      * 1-2 sentence agent-readable summary (~200 chars). Filled by MCP tools
-     * (`folio_create` / `folio_update`) so `campaign_context` can return a
+     * (`folio_create` / `folio_update`) so `project_context` can return a
      * meaningful index without forcing agents to `folio_get` every entry.
-     * Web users may leave it empty — `campaign_context` then falls back to
+     * Web users may leave it empty — `project_context` then falls back to
      * the title.
      */
     summary: db.default(z.string().max(500), ""),
@@ -64,9 +64,9 @@ export const folios = $entity({
     searchText: db.default(z.string(), ""),
   }),
   indexes: [
-    { columns: ["campaignId", "updatedAt"] },
-    { columns: ["campaignId", "title"] },
-    { columns: ["campaignId", "shortId"], unique: true },
+    { columns: ["projectId", "updatedAt"] },
+    { columns: ["projectId", "title"] },
+    { columns: ["projectId", "shortId"], unique: true },
   ],
 });
 

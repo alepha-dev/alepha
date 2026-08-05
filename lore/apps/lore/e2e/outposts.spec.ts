@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { createCampaignViaWizard, registerAndVerify } from "./_helpers.ts";
+import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**
  * Outposts, end to end: turn the module on, enrol a machine, read its token
@@ -9,7 +9,7 @@ import { createCampaignViaWizard, registerAndVerify } from "./_helpers.ts";
  * form asks only for a label, because the identity is the credential and two
  * machines sharing a name is a naming annoyance rather than a data problem.
  *
- * Two mechanical traps, both of which have cost this project time before:
+ * Two mechanical traps, both of which have cost this codebase time before:
  *
  * 1. Every `$action` the SPA calls is multiplexed through `POST /api/_batch`,
  *    so `waitForResponse` on a per-action URL never fires. Assert on rendered
@@ -62,14 +62,14 @@ test.describe("Outposts", () => {
 
     const t = Date.now();
     const email = `outpost${t}@example.com`;
-    const campaignTitle = `Out${t}`.slice(0, 20);
+    const projectTitle = `Out${t}`.slice(0, 20);
     const machine = `OVH Bay ${t}`;
 
     await registerAndVerify(page, email, "OutpostTest123!");
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     await test.step("the owner turns Outposts on from settings", async () => {
-      await page.goto(`/c/${campaignId}/settings/outposts`);
+      await page.goto(`/p/${projectId}/settings/outposts`);
       await page.waitForLoadState("networkidle");
 
       // The settings page rendering at all is worth asserting: removing this
@@ -108,16 +108,28 @@ test.describe("Outposts", () => {
     await test.step("the machine appears on the Outposts page", async () => {
       // Driven from the board rather than from settings on purpose: the
       // settings nav has its own "Outposts" link, so clicking by name there
-      // matches two elements and trips Playwright's strict mode.
-      await page.goto(`/c/${campaignId}/`);
+      // matches two elements and trips Playwright's strict mode. Scope to
+      // the actual sidebar container (`[data-slot="sidebar"]`, from
+      // @alepha/ui's shadcn `<Sidebar>`) rather than a bare role/text
+      // lookup — the sidebar has no ARIA landmark of its own, and an
+      // unscoped locator would collide with the settings nav's identical
+      // link once that page is visited.
+      await page.goto(`/p/${projectId}/`);
       await page.waitForLoadState("networkidle");
 
-      // The Domain group only exists once the module is on.
-      await expect(page.getByText("Domain", { exact: true })).toBeVisible({
+      const sidebar = page.locator('[data-slot="sidebar"]');
+      // The sidebar groups are unlabelled now (no more "Domain" heading —
+      // the great rename, Task 9); the Outposts link itself only renders
+      // once the module is on, so assert that directly.
+      const sidebarOutposts = sidebar.getByRole("link", {
+        name: "Outposts",
+        exact: true,
+      });
+      await expect(sidebarOutposts).toBeVisible({
         timeout: 15_000,
       });
-      await page.getByRole("link", { name: "Outposts", exact: true }).click();
-      await page.waitForURL(`**/c/${campaignId}/outposts`);
+      await sidebarOutposts.click();
+      await page.waitForURL(`**/p/${projectId}/outposts`);
 
       await expect(page.getByText(machine, { exact: false })).toBeVisible({
         timeout: 15_000,
@@ -128,7 +140,7 @@ test.describe("Outposts", () => {
       ).toBeVisible();
       await expect(page.getByText("unknown", { exact: false })).toBeVisible();
 
-      await page.goto(`/c/${campaignId}/settings/outposts`);
+      await page.goto(`/p/${projectId}/settings/outposts`);
       await page.waitForLoadState("networkidle");
       // Wait for the list to rehydrate before the next step clicks Rotate.
       await expect(

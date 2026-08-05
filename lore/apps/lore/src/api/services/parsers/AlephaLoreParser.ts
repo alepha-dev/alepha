@@ -86,7 +86,7 @@ export class AlephaLoreParser {
       priority,
       difficulty,
       kanbanColumn: at("kanbanColumn"),
-      chapter: at("chapter"),
+      milestone: at("milestone"),
       createdBy: at("createdBy"),
       acceptedBy: at("acceptedBy"),
       completedBy: at("completedBy"),

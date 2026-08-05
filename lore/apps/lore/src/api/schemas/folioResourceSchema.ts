@@ -9,7 +9,7 @@ import { folios } from "../entities/folios.ts";
  * referenced from another folio. Used by the backlinks panel to display
  * the full path (e.g. `specs/apps/admin`) rather than the bare folio
  * title, which is often ambiguous once paths are in use. Quest refs and
- * folios living at campaign root come back without `path`.
+ * folios living at project root come back without `path`.
  */
 const folioRefPathSchema = z.array(
   z.object({
@@ -24,7 +24,7 @@ export const folioLinksSchema = z.object({
       kind: z.enum(["folio", "quest", "blob"]),
       shortId: z.integer(),
       // For folios and quests this is the entity title. For blobs it's
-      // the Archive display name (e.g. "diagram.png").
+      // the blob's display name (e.g. "diagram.png").
       title: z.string(),
       path: folioRefPathSchema.optional(),
     }),
@@ -52,8 +52,8 @@ export const folioLinksSchema = z.object({
  */
 /**
  * Directory ancestor chain (root → … → direct parent) for a folio.
- * Same shape archive directories carry on `listContents`. Empty
- * array when the folio lives at the campaign root.
+ * Same shape folio directories carry on `listContents`. Empty
+ * array when the folio lives at the project root.
  */
 export const folioPathSchema = z.array(
   z.object({

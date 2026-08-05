@@ -34,8 +34,8 @@ import {
 import { useEffect, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
-import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { currentFolioAtom } from "../../atoms/currentFolioAtom.ts";
+import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { folioTagsAtom } from "../../atoms/folioTagsAtom.ts";
 import { userFoliosAtom } from "../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -71,15 +71,15 @@ const FolioView = () => {
   const [folio] = useStore(currentFolioAtom);
   const [folios, setFolios] = useStore(userFoliosAtom);
   const [, setTags] = useStore(folioTagsAtom);
-  const [campaign] = useStore(currentCampaignAtom);
-  const campaignId = campaign ? String(campaign.id) : "";
+  const [project] = useStore(currentProjectAtom);
+  const projectId = project ? String(project.id) : "";
 
   // Resolve inline `[[#N]]` / `[[quest:#N]]` wiki-links to clickable links.
   // The hook also exposes the fetched lookups so the hover-preview
   // provider below can reuse them without a second round of fetches.
   const { content: rewrittenContent, blobs: wikiBlobs } = useWikiLinkRewrite(
     folio?.content ?? "",
-    campaign?.id,
+    project?.id,
   );
 
   // Side-pane open state, persisted per browser. Defaults closed so the
@@ -119,9 +119,9 @@ const FolioView = () => {
       },
       // The atom patch above keeps this view instant; invalidation stops the
       // shared tree query from serving a stale copy on a later navigation.
-      invalidates: [["folioTree", campaignId]],
+      invalidates: [["folioTree", projectId]],
     },
-    [folio, folioApi, folios, alepha, setFolios, campaignId],
+    [folio, folioApi, folios, alepha, setFolios, projectId],
   );
 
   const deleteAction = useAction(
@@ -136,18 +136,18 @@ const FolioView = () => {
         setTags([...remainingTags].sort());
         alepha.store.set(currentFolioAtom, undefined);
         await router.push(
-          router.path("campaignFolios", { params: { campaignId } }),
+          router.path("projectFolios", { params: { projectId } }),
         );
       },
-      invalidates: [["folioTree", campaignId]],
+      invalidates: [["folioTree", projectId]],
     },
-    [folio, folios, folioApi, alepha, router, setFolios, setTags, campaignId],
+    [folio, folios, folioApi, alepha, router, setFolios, setTags, projectId],
   );
 
   if (!folio) return null;
 
   // Folio-tree breadcrumb is gone since quest #66 — folios live in
-  // archive directories now, and the Archive page handles the
+  // folio directories now, and the Folio page handles the
   // directory-tree breadcrumb. Leaving the trail empty keeps the view
   // simple until that page lands in Phase F.
   const breadcrumb: typeof folios = [];
@@ -233,8 +233,8 @@ const FolioView = () => {
         <aside className="border-border bg-card/95 absolute bottom-0 left-0 top-0 z-20 w-72 overflow-y-auto border-r shadow-lg backdrop-blur">
           <div className={"pt-12"} />
           <FolioTreePanel
-            campaignId={campaign?.id ?? 0}
-            campaignIdStr={campaignId}
+            projectId={project?.id ?? 0}
+            projectIdStr={projectId}
             currentFolioId={folio.id}
           />
         </aside>
@@ -271,9 +271,9 @@ const FolioView = () => {
                 <span key={ancestor.id} className="flex items-center gap-1">
                   {i > 0 && <ChevronRight className="size-3 opacity-60" />}
                   <Link
-                    href={router.path("campaignFoliosFolio", {
+                    href={router.path("projectFoliosFolio", {
                       params: {
-                        campaignId,
+                        projectId,
                         shortId: ancestor.shortId,
                       },
                     })}
@@ -293,14 +293,14 @@ const FolioView = () => {
             </h1>
             {/* Edit stays a first-class, always-visible action. Everything
                 else (pin, encrypt, delete) folds into the `…` menu so the
-                header reads as one primary action — petition #16. */}
+                header reads as one primary action — feedback #16. */}
             <Button
               variant="ghost"
               size="icon"
               render={
                 <Link
-                  href={router.path("campaignFoliosFolioEdit", {
-                    params: { campaignId, shortId: folio.shortId },
+                  href={router.path("projectFoliosFolioEdit", {
+                    params: { projectId, shortId: folio.shortId },
                   })}
                   aria-label={tr("folios.edit")}
                 />
@@ -377,8 +377,8 @@ const FolioView = () => {
                 folio={folio}
                 onDeleteUnrecoverable={handleDelete}
               />
-            ) : folio.content && campaign ? (
-              <WikiLinkHoverProvider campaignId={campaign.id} blobs={wikiBlobs}>
+            ) : folio.content && project ? (
+              <WikiLinkHoverProvider projectId={project.id} blobs={wikiBlobs}>
                 <MarkdownView content={rewrittenContent} />
               </WikiLinkHoverProvider>
             ) : (
@@ -390,7 +390,7 @@ const FolioView = () => {
 
           <FolioBacklinksPanel
             links={folio.metadata?.links}
-            campaignId={campaignId}
+            projectId={projectId}
           />
         </article>
       </div>

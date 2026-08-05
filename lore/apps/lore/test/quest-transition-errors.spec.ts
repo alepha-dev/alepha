@@ -6,7 +6,7 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
@@ -20,7 +20,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   admin: AdminUserController;
-  campaigns: CampaignController;
+  projects: ProjectController;
   quests: QuestController;
   fake: FakeProvider;
 }
@@ -40,7 +40,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     admin: alepha.inject(AdminUserController),
-    campaigns: alepha.inject(CampaignController),
+    projects: alepha.inject(ProjectController),
     quests: alepha.inject(QuestController),
     fake: alepha.inject(FakeProvider),
   };
@@ -55,24 +55,24 @@ const createUser = async (ctx: TestContext) => {
   return { id: response.data.id, roles: response.data.roles };
 };
 
-const createCampaign = async (ctx: TestContext, user: { id: string }) => {
-  const campaign = await ctx.campaigns.createCampaign.fetch(
+const createProject = async (ctx: TestContext, user: { id: string }) => {
+  const project = await ctx.projects.createProject.fetch(
     { body: { title: "Transition probe" } },
     { user },
   );
-  return campaign.data.id;
+  return project.data.id;
 };
 
 const createQuest = async (
   ctx: TestContext,
   user: { id: string },
-  campaignId: number,
+  projectId: number,
   title: string,
 ) => {
   const res = await ctx.quests.createQuest.fetch(
     {
       body: {
-        campaignId,
+        projectId,
         title,
         description: "",
         zone: "ops",
@@ -109,7 +109,7 @@ describe("QuestController — transition preconditions", () => {
     expect,
   }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "Not started");
 
     const call = ctx.quests.completeQuest.fetch(
@@ -125,7 +125,7 @@ describe("QuestController — transition preconditions", () => {
     expect,
   }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "Done already");
     await ctx.quests.acceptQuest.fetch({ params: { id: quest.id } }, { user });
     await ctx.quests.completeQuest.fetch(
@@ -146,7 +146,7 @@ describe("QuestController — transition preconditions", () => {
     expect,
   }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "In flight");
     await ctx.quests.acceptQuest.fetch({ params: { id: quest.id } }, { user });
 
@@ -163,7 +163,7 @@ describe("QuestController — transition preconditions", () => {
     expect,
   }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "Untouched");
 
     const call = ctx.quests.abandonQuest.fetch(
@@ -179,7 +179,7 @@ describe("QuestController — transition preconditions", () => {
     expect,
   }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "On the board");
 
     const call = ctx.quests.unshelveQuest.fetch(
@@ -195,7 +195,7 @@ describe("QuestController — transition preconditions", () => {
     expect,
   }) => {
     const user = await createUser(ctx);
-    const cid = await createCampaign(ctx, user);
+    const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "No timer yet");
 
     const call = ctx.quests.startTimer.fetch(
@@ -211,7 +211,7 @@ describe("QuestController — transition preconditions", () => {
     expect,
   }) => {
     const user = await createUser(ctx);
-    await createCampaign(ctx, user);
+    await createProject(ctx, user);
 
     await expect(
       ctx.quests.completeQuest.fetch(

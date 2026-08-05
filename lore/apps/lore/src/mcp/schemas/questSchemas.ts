@@ -1,9 +1,9 @@
 import { z } from "alepha";
 import {
-  campaignParamsSchema,
   entityRefSchema,
   objectiveSchema,
   prioritySchema,
+  projectParamsSchema,
   questStatusSchema,
 } from "./commonSchemas.ts";
 
@@ -16,7 +16,7 @@ const PRIORITY_DESCRIPTION =
 const DIFFICULTY_DESCRIPTION =
   "Quest difficulty from 1 (trivial) to 5 (epic). Higher means harder.";
 const ZONE_DESCRIPTION =
-  "Functional area or module within the campaign — analogous to an Epic in Jira, or a module/package in a codebase (e.g. 'auth', 'billing', 'ui'). Required (every quest must have a zone). Free-form string, NOT constrained to a pre-declared list — passing a new value implicitly registers it on the campaign on first use. Case-SENSITIVE: 'Auth' and 'auth' are distinct zones, so reuse the exact casing of existing ones. Call campaign_info to see the campaign's current zones before picking a value.";
+  "Functional area or module within the project — analogous to an Epic in Jira, or a module/package in a codebase (e.g. 'auth', 'billing', 'ui'). Required (every quest must have a zone). Free-form string, NOT constrained to a pre-declared list — passing a new value implicitly registers it on the project on first use. Case-SENSITIVE: 'Auth' and 'auth' are distinct zones, so reuse the exact casing of existing ones. Call project_info to see the project's current zones before picking a value.";
 const DESCRIPTION_DESCRIPTION =
   "Quest description in Markdown. Plain text also works. HTML is not supported and any tags will be stripped.";
 
@@ -24,7 +24,7 @@ const DESCRIPTION_DESCRIPTION =
 // quest_list
 // -----------------------------------------------------------------------------
 
-export const questListParamsSchema = campaignParamsSchema.extend({
+export const questListParamsSchema = projectParamsSchema.extend({
   status: questStatusSchema
     .describe(
       "Filter by quest status. Omit to list everything still in scope — shelved quests are excluded unless you ask for them explicitly.",
@@ -34,7 +34,7 @@ export const questListParamsSchema = campaignParamsSchema.extend({
   tag: z
     .string()
     .describe(
-      "Filter by a single tag (exact match against normalized — trimmed/lowercased — values). Call `quest_tags` first to discover what tags exist in the campaign.",
+      "Filter by a single tag (exact match against normalized — trimmed/lowercased — values). Call `quest_tags` first to discover what tags exist in the project.",
     )
     .optional(),
   limit: z
@@ -89,8 +89,8 @@ export const questGetResultSchema = z.object({
   difficulty: z.integer(),
   status: questStatusSchema,
   objectives: z.array(objectiveSchema),
-  campaignId: z.integer(),
-  chapterId: z.integer().optional(),
+  projectId: z.integer(),
+  milestoneId: z.integer().optional(),
   createdAt: z.datetime(),
   updatedAt: z.datetime(),
   acceptedAt: z.datetime().optional(),
@@ -106,7 +106,7 @@ export const questGetResultSchema = z.object({
 // quest_create
 // -----------------------------------------------------------------------------
 
-export const questCreateParamsSchema = campaignParamsSchema.extend({
+export const questCreateParamsSchema = projectParamsSchema.extend({
   title: z.string().describe("Quest title"),
   description: z.string().describe(DESCRIPTION_DESCRIPTION),
   zone: z.string().describe(ZONE_DESCRIPTION),
@@ -127,13 +127,13 @@ export const questCreateParamsSchema = campaignParamsSchema.extend({
   dependsOn_shortId: z
     .integer()
     .describe(
-      "Per-campaign shortId of a predecessor quest. While the predecessor is incomplete, `quest_accept` refuses to start this quest. Use to express 'this can't start until that one is done' (typical setup quest gating a follow-up).",
+      "Per-project shortId of a predecessor quest. While the predecessor is incomplete, `quest_accept` refuses to start this quest. Use to express 'this can't start until that one is done' (typical setup quest gating a follow-up).",
     )
     .optional(),
-  petition_shortId: z
+  feedback_shortId: z
     .integer()
     .describe(
-      "Per-campaign shortId of an ACCEPTED petition to link this quest to (it then shows under that petition's 'linked quests'). Owner-only; the petition must already be accepted (accept it first via petition_accept).",
+      "Per-project shortId of an ACCEPTED feedback item to link this quest to (it then shows under that item's 'linked quests'). Owner-only; the feedback must already be accepted (accept it first via feedback_accept).",
     )
     .optional(),
   accept: z
@@ -252,13 +252,13 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
   dependsOn_shortId: z
     .integer()
     .describe(
-      "Reparent the quest's predecessor to the quest with this per-campaign shortId (Questline). Pass 0 to clear the dependency. While a non-null predecessor is incomplete, `quest_accept` is blocked.",
+      "Reparent the quest's predecessor to the quest with this per-project shortId (Questline). Pass 0 to clear the dependency. While a non-null predecessor is incomplete, `quest_accept` is blocked.",
     )
     .optional(),
-  petition_shortId: z
+  feedback_shortId: z
     .integer()
     .describe(
-      "Link this quest to the ACCEPTED petition with this per-campaign shortId (shows under that petition's 'linked quests'). Pass 0 to clear the link. Owner-only; the petition must already be accepted.",
+      "Link this quest to the ACCEPTED feedback item with this per-project shortId (shows under that item's 'linked quests'). Pass 0 to clear the link. Owner-only; the feedback must already be accepted.",
     )
     .optional(),
 });
@@ -274,7 +274,7 @@ export const questUpdateResultSchema = z.object({
 // quest_tags
 // -----------------------------------------------------------------------------
 
-export const questTagsParamsSchema = campaignParamsSchema;
+export const questTagsParamsSchema = projectParamsSchema;
 
 export const questTagsResultSchema = z.object({
   tags: z.array(z.string()),

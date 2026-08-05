@@ -9,47 +9,46 @@ import { $client } from "alepha/server/links";
 import { createElement } from "react";
 import type { AdminInvitationController } from "../../api/controllers/AdminInvitationController.ts";
 import type { BlightController } from "../../api/controllers/BlightController.ts";
-import type { CampaignController } from "../../api/controllers/CampaignController.ts";
-import type { CampaignStatsController } from "../../api/controllers/CampaignStatsController.ts";
-import type { ChapterController } from "../../api/controllers/ChapterController.ts";
 import type { DirectoryController } from "../../api/controllers/DirectoryController.ts";
+import type { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import type { FolioController } from "../../api/controllers/FolioController.ts";
 import type { InsightsController } from "../../api/controllers/InsightsController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
-import type { KanbanController } from "../../api/controllers/KanbanController.ts";
+import type { MilestoneController } from "../../api/controllers/MilestoneController.ts";
 import type { OutpostController } from "../../api/controllers/OutpostController.ts";
-import type { PetitionController } from "../../api/controllers/PetitionController.ts";
+import type { ProjectController } from "../../api/controllers/ProjectController.ts";
+import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
-import { campaignDirectoriesAtom } from "./atoms/campaignDirectoriesAtom.ts";
-import { currentArchiveContentsAtom } from "./atoms/currentArchiveContentsAtom.ts";
-import { currentArchivePathAtom } from "./atoms/currentArchivePathAtom.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
 import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
-import { currentCampaignAtom } from "./atoms/currentCampaignAtom.ts";
-import { currentCampaignMemberAtom } from "./atoms/currentCampaignMemberAtom.ts";
-import { currentChaptersAtom } from "./atoms/currentChaptersAtom.ts";
+import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAtom } from "./atoms/currentFolioAtom.ts";
-import { currentPetitionCountAtom } from "./atoms/currentPetitionCountAtom.ts";
+import { currentFolioContentsAtom } from "./atoms/currentFolioContentsAtom.ts";
+import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
+import { currentMilestonesAtom } from "./atoms/currentMilestonesAtom.ts";
+import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
+import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
+import { currentQuestCountAtom } from "./atoms/currentQuestCountAtom.ts";
 import { folioTagsAtom } from "./atoms/folioTagsAtom.ts";
-import { userCampaignsAtom } from "./atoms/userCampaignsAtom.ts";
+import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
+import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 
 export class AppRouter {
   alepha = $inject(Alepha);
   questApi = $client<QuestController>();
-  campaignApi = $client<CampaignController>();
-  campaignStatsApi = $client<CampaignStatsController>();
+  projectApi = $client<ProjectController>();
+  projectReportsApi = $client<ProjectReportsController>();
   invitationAdminApi = $client<AdminInvitationController>();
   invitationApi = $client<InvitationController>();
-  kanbanApi = $client<KanbanController>();
-  petitionApi = $client<PetitionController>();
+  feedbackApi = $client<FeedbackController>();
   blightApi = $client<BlightController>();
   outpostApi = $client<OutpostController>();
   insightsApi = $client<InsightsController>();
-  chapterApi = $client<ChapterController>();
+  milestoneApi = $client<MilestoneController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
   router = $inject(ReactRouter);
@@ -99,9 +98,9 @@ export class AppRouter {
       this.oauthContinue,
       this.register,
       this.resetPassword,
-      this.campaign,
-      this.campaignCreate,
-      this.campaignPetitionRequest,
+      this.project,
+      this.projectCreate,
+      this.projectFeedbackRequest,
       this.meRouter.me,
       this.notFound,
     ],
@@ -110,8 +109,8 @@ export class AppRouter {
     loader: async ({ user }) => {
       if (user) {
         this.alepha.store.set(
-          userCampaignsAtom,
-          await this.campaignApi.getHomeOverview(),
+          userProjectsAtom,
+          await this.projectApi.getHomeOverview(),
         );
       }
     },
@@ -217,7 +216,7 @@ export class AppRouter {
     // alternates to crawlers.
     ssr: true,
     animation: (state) => {
-      if (state.url.pathname === "/new-campaign") {
+      if (state.url.pathname === "/new-project") {
         return {
           exit: { name: "fadeScaleOut", duration: 700, timing: "ease-in" },
         };
@@ -226,128 +225,138 @@ export class AppRouter {
     lazy: () => import("./components/home/Home.tsx"),
   });
 
-  campaignCreate = $page({
-    path: "/new-campaign",
-    head: { title: "New campaign › Alepha Lore" },
+  projectCreate = $page({
+    path: "/new-project",
+    head: { title: "New project › Alepha Lore" },
     animation: {
       enter: { name: "fadeIn", duration: 500, timing: "ease-out" },
     },
-    lazy: () => import("./components/campaign/CampaignCreate.tsx"),
+    lazy: () => import("./components/project/ProjectCreate.tsx"),
   });
 
-  campaign = $page({
+  project = $page({
     children: () => [
-      this.campaignBoard,
-      this.campaignQuest,
-      this.campaignQuestGraph,
-      this.campaignChapters,
-      this.campaignSettings,
-      this.campaignChronicles,
-      this.campaignFolios,
-      this.campaignKanban,
-      this.campaignPetitions,
-      this.campaignBlights,
-      this.campaignOutposts,
-      this.campaignInsights,
+      this.projectQuests,
+      this.projectQuest,
+      this.projectQuestGraph,
+      this.projectMilestones,
+      this.projectSettings,
+      this.projectReports,
+      this.projectFolios,
+      this.projectFeedback,
+      this.projectBlights,
+      this.projectOutposts,
+      this.projectInsights,
     ],
-    path: "/c/:campaignId",
+    path: "/p/:projectId",
     schema: {
       params: z.object({
-        campaignId: z.integer(),
+        projectId: z.integer(),
       }),
     },
     head: (props) => {
-      const campaign = (props as { campaign?: { title?: string } } | undefined)
-        ?.campaign;
-      return { title: campaign?.title ?? "Campaign" };
+      const project = (props as { project?: { title?: string } } | undefined)
+        ?.project;
+      return { title: project?.title ?? "Project" };
     },
     animation: ({ meta }) => {
       if (meta.firstOpen) {
         return {
           enter: {
-            name: "campaignOpen",
+            name: "projectOpen",
             duration: 500,
             timing: "cubic-bezier(0.16, 1, 0.3, 1)",
           },
         };
       }
     },
-    lazy: () => import("./components/campaign/CampaignView.tsx"),
+    lazy: () => import("./components/project/ProjectView.tsx"),
     loader: async ({ params }) => {
-      const { member, quests, ...campaign } =
-        await this.campaignApi.getCampaignById({
+      const { member, quests, ...project } =
+        await this.projectApi.getProjectById({
           params: {
-            id: params.campaignId,
+            id: params.projectId,
           },
         });
 
-      const chapters = await this.chapterApi.getChapters({
-        params: { campaignId: params.campaignId },
+      const milestones = await this.milestoneApi.getMilestones({
+        params: { projectId: params.projectId },
       });
 
-      // Pending-petition count for the sidebar badge. Fetched once per
-      // campaign navigation instead of polled — accept/reject/remove
+      // Pending-feedback count for the sidebar badge. Fetched once per
+      // project navigation instead of polled — accept/reject/remove
       // actions adjust the atom locally, so within-session math stays
       // correct. Errors leave the count undefined (badge hides).
-      const pendingPetitions = await this.petitionApi
-        .listPetitions({
-          params: { campaignId: params.campaignId },
+      const pendingFeedback = await this.feedbackApi
+        .listFeedback({
+          params: { projectId: params.projectId },
           query: { status: "pending" },
         })
         .then((r) => r.items.length)
         .catch(() => 0);
 
       // Open-blight count for the sidebar badge. Member-readable; `.catch`
-      // keeps a transient error from blocking the whole campaign load
+      // keeps a transient error from blocking the whole project load
       // (badge just hides).
-      const openBlights = campaign.features?.blights
+      const openBlights = project.features?.blights
         ? await this.blightApi
-            .countOpenBlights({ params: { campaignId: params.campaignId } })
+            .countOpenBlights({ params: { projectId: params.projectId } })
             .then((r) => r.count)
             .catch(() => 0)
         : 0;
 
-      this.alepha.store.set(currentCampaignAtom, campaign);
-      this.alepha.store.set(currentCampaignMemberAtom, member);
+      // Open-quest count for the sidebar badge. Always on (unlike Blights /
+      // Feedback, Quests has no feature gate) and member-readable; `.catch`
+      // keeps a transient error from blocking the whole project load
+      // (badge just hides).
+      const openQuests = await this.questApi
+        .countOpenQuests({ params: { projectId: params.projectId } })
+        .then((r) => r.count)
+        .catch(() => 0);
+
+      this.alepha.store.set(currentProjectAtom, project);
+      this.alepha.store.set(currentProjectMemberAtom, member);
       this.alepha.store.set(currentAssignedQuestsAtom, quests);
-      this.alepha.store.set(currentChaptersAtom, chapters);
-      this.alepha.store.set(currentPetitionCountAtom, {
-        count: pendingPetitions,
+      this.alepha.store.set(currentMilestonesAtom, milestones);
+      this.alepha.store.set(currentFeedbackCountAtom, {
+        count: pendingFeedback,
       });
       this.alepha.store.set(currentBlightCountAtom, { count: openBlights });
+      this.alepha.store.set(currentQuestCountAtom, { count: openQuests });
 
       return {
-        campaign,
+        project,
       };
     },
     onLeave: () => {
-      this.alepha.store.set(currentCampaignMemberAtom, undefined);
-      this.alepha.store.set(currentCampaignAtom, undefined);
+      this.alepha.store.set(currentProjectMemberAtom, undefined);
+      this.alepha.store.set(currentProjectAtom, undefined);
       this.alepha.store.set(currentAssignedQuestsAtom, []);
-      this.alepha.store.set(currentChaptersAtom, undefined);
-      this.alepha.store.set(currentPetitionCountAtom, { count: 0 });
+      this.alepha.store.set(currentMilestonesAtom, undefined);
+      this.alepha.store.set(currentFeedbackCountAtom, { count: 0 });
       this.alepha.store.set(currentBlightCountAtom, { count: 0 });
+      this.alepha.store.set(currentQuestCountAtom, { count: 0 });
     },
   });
 
-  campaignBlights = $page({
-    name: "campaignBlights",
+  projectBlights = $page({
+    name: "projectBlights",
     path: "/blights",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Blights`,
     }),
-    lazy: () => import("./components/campaign/blights/CampaignBlights.tsx"),
+    lazy: () => import("./components/project/blights/ProjectBlights.tsx"),
     loader: async () => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
       }
       // Gate purely on the module toggle — no paywall.
-      if (!campaign.features?.blights) {
-        throw new NotFoundError("Blights not enabled for this campaign");
+      if (!project.features?.blights) {
+        throw new NotFoundError("Blights not enabled for this project");
       }
       const res = await this.blightApi.listBlights({
-        params: { campaignId: campaign.id },
+        params: { projectId: project.id },
         query: {},
       });
       this.alepha.store.set(currentBlightCountAtom, {
@@ -357,312 +366,292 @@ export class AppRouter {
     },
   });
 
-  campaignOutposts = $page({
-    name: "campaignOutposts",
+  projectOutposts = $page({
+    name: "projectOutposts",
     path: "/outposts",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Outposts`,
     }),
-    lazy: () => import("./components/campaign/outposts/CampaignOutposts.tsx"),
+    lazy: () => import("./components/project/outposts/ProjectOutposts.tsx"),
     loader: async () => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
       }
       // Gate purely on the module toggle, like Blights above.
-      if (!campaign.features?.outposts) {
-        throw new NotFoundError("Outposts not enabled for this campaign");
+      if (!project.features?.outposts) {
+        throw new NotFoundError("Outposts not enabled for this project");
       }
       // Responds with the array itself, not `{ items }`.
       const items = await this.outpostApi.listOutposts({
-        params: { campaignId: campaign.id },
+        params: { projectId: project.id },
       });
       return { items };
     },
   });
 
-  campaignInsights = $page({
-    name: "campaignInsights",
+  projectInsights = $page({
+    name: "projectInsights",
     path: "/insights",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Insights`,
     }),
-    lazy: () => import("./components/campaign/insights/CampaignInsights.tsx"),
+    lazy: () => import("./components/project/insights/ProjectInsights.tsx"),
     loader: async () => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
       }
       // The module toggle is the whole gate — the nav entry is hidden on the
       // same flag, so reaching this by URL with it off is a 404, not a 403.
-      if (!campaign.features?.beacon) {
-        throw new NotFoundError("Beacon not enabled for this campaign");
+      if (!project.features?.beacon) {
+        throw new NotFoundError("Beacon not enabled for this project");
       }
       const insights = await this.insightsApi.getInsights({
-        params: { campaignId: campaign.id },
+        params: { projectId: project.id },
         query: { range: "7d" },
       });
       return { insights };
     },
   });
 
-  campaignBoard = $page({
+  projectQuests = $page({
     path: "/",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Board`,
+      title: `${previous?.title ?? ""} › Quests`,
     }),
-    lazy: () => import("./components/campaign/CampaignBoardTable.tsx"),
+    lazy: () => import("./components/project/ProjectQuestsPage.tsx"),
   });
 
-  campaignChapters = $page({
-    path: "/chapters",
+  projectMilestones = $page({
+    path: "/milestones",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Chapters`,
+      title: `${previous?.title ?? ""} › Milestones`,
     }),
-    lazy: () => import("./components/campaign/chapters/CampaignChapters.tsx"),
+    lazy: () => import("./components/project/milestones/ProjectMilestones.tsx"),
   });
 
-  campaignKanban = $page({
-    name: "campaignKanban",
-    path: "/kanban",
+  projectFeedback = $page({
+    name: "projectFeedback",
+    path: "/feedback",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Kanban`,
+      title: `${previous?.title ?? ""} › Feedback`,
     }),
-    lazy: () => import("./components/kanban/KanbanBoard.tsx"),
+    lazy: () => import("./components/project/feedback/ProjectFeedback.tsx"),
     loader: async () => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
       }
-      const data = await this.kanbanApi.getBoard({
-        params: { campaignId: campaign.id },
-      });
-      return data;
-    },
-  });
-
-  campaignPetitions = $page({
-    name: "campaignPetitions",
-    path: "/petitions",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Petitions`,
-    }),
-    lazy: () => import("./components/campaign/petitions/CampaignPetitions.tsx"),
-    loader: async () => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
-      }
-      const { items } = await this.petitionApi.listPetitions({
-        params: { campaignId: campaign.id },
+      const { items } = await this.feedbackApi.listFeedback({
+        params: { projectId: project.id },
         query: { status: "pending" },
       });
       return { items };
     },
   });
 
-  campaignChronicles = $page({
-    path: "/chronicles",
+  projectReports = $page({
+    path: "/reports",
     children: () => [
-      this.chroniclesOverview,
-      this.chroniclesQuests,
-      this.chroniclesParty,
+      this.reportsOverview,
+      this.reportsQuests,
+      this.reportsMembers,
     ],
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Chronicles`,
+      title: `${previous?.title ?? ""} › Reports`,
     }),
-    lazy: () => import("./components/campaign/chronicles/ChroniclesLayout.tsx"),
+    lazy: () => import("./components/project/reports/ReportsLayout.tsx"),
   });
 
-  chroniclesOverview = $page({
-    name: "chroniclesOverview",
+  reportsOverview = $page({
+    name: "reportsOverview",
     path: "/",
-    lazy: () =>
-      import("./components/campaign/chronicles/ChroniclesOverview.tsx"),
+    lazy: () => import("./components/project/reports/ReportsOverview.tsx"),
     loader: async () => ({
-      overview: await this.campaignStatsApi.getChroniclesOverview({
+      overview: await this.projectReportsApi.getReportsOverview({
         params: {
-          id: this.alepha.store.get(currentCampaignAtom)?.id ?? -1,
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
         },
       }),
     }),
   });
 
-  chroniclesQuests = $page({
-    name: "chroniclesQuests",
+  reportsQuests = $page({
+    name: "reportsQuests",
     path: "/quests",
-    lazy: () => import("./components/campaign/chronicles/ChroniclesQuests.tsx"),
+    lazy: () => import("./components/project/reports/ReportsQuests.tsx"),
     loader: async () => ({
-      quests: await this.campaignStatsApi.getChroniclesQuests({
+      quests: await this.projectReportsApi.getReportsQuests({
         params: {
-          id: this.alepha.store.get(currentCampaignAtom)?.id ?? -1,
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
         },
       }),
     }),
   });
 
-  chroniclesParty = $page({
-    name: "chroniclesParty",
-    path: "/party",
-    lazy: () => import("./components/campaign/chronicles/ChroniclesParty.tsx"),
+  reportsMembers = $page({
+    name: "reportsMembers",
+    path: "/members",
+    lazy: () => import("./components/project/reports/ReportsMembers.tsx"),
     loader: async () => ({
-      party: await this.campaignStatsApi.getChroniclesParty({
+      members: await this.projectReportsApi.getReportsMembers({
         params: {
-          id: this.alepha.store.get(currentCampaignAtom)?.id ?? -1,
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
         },
       }),
     }),
   });
 
-  campaignSettings = $page({
+  projectSettings = $page({
     path: "/settings",
     children: () => [
-      this.campaignSettingsBanner,
-      this.campaignSettingsMembers,
-      this.campaignSettingsZones,
-      this.campaignSettingsKanban,
-      this.campaignSettingsFolios,
-      this.campaignSettingsSigils,
-      this.campaignSettingsOutposts,
-      this.campaignSettingsChapters,
-      this.campaignSettingsQuests,
+      this.projectSettingsBanner,
+      this.projectSettingsMembers,
+      this.projectSettingsZones,
+      this.projectSettingsKanban,
+      this.projectSettingsFolios,
+      this.projectSettingsSigils,
+      this.projectSettingsOutposts,
+      this.projectSettingsMilestones,
+      this.projectSettingsQuests,
     ],
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Settings`,
     }),
-    lazy: () => import("./components/campaign/settings/CampaignSettings.tsx"),
+    lazy: () => import("./components/project/settings/ProjectSettings.tsx"),
   });
 
-  campaignSettingsBanner = $page({
-    name: "campaignSettingsBanner",
+  projectSettingsBanner = $page({
+    name: "projectSettingsBanner",
     path: "/",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › General`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsGeneralPage.tsx"),
+      import("./components/project/settings/ProjectSettingsGeneralPage.tsx"),
   });
 
-  campaignSettingsMembers = $page({
-    name: "campaignSettingsMembers",
+  projectSettingsMembers = $page({
+    name: "projectSettingsMembers",
     path: "/members",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Members`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsMembersPage.tsx"),
+      import("./components/project/settings/ProjectSettingsMembersPage.tsx"),
     loader: async () => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
       }
       const [members, pendingInvitations] = await Promise.all([
-        this.campaignApi.getCampaignMembers({
-          params: { id: campaign.id },
+        this.projectApi.getProjectMembers({
+          params: { id: project.id },
         }),
         this.invitationApi
-          .listCampaignInvitations({ params: { campaignId: campaign.id } })
+          .listProjectInvitations({ params: { projectId: project.id } })
           .catch(() => []),
       ]);
       return { members, pendingInvitations };
     },
   });
 
-  campaignSettingsZones = $page({
-    name: "campaignSettingsZones",
+  projectSettingsZones = $page({
+    name: "projectSettingsZones",
     path: "/zones",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Zones`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsZonesPage.tsx"),
+      import("./components/project/settings/ProjectSettingsZonesPage.tsx"),
     loader: async () => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
       }
-      const zones = await this.campaignApi.getZones({
-        params: { id: campaign.id },
+      const zones = await this.projectApi.getZones({
+        params: { id: project.id },
       });
       return { zones };
     },
   });
 
-  campaignSettingsKanban = $page({
-    name: "campaignSettingsKanban",
+  projectSettingsKanban = $page({
+    name: "projectSettingsKanban",
     path: "/kanban",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Kanban`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsKanbanPage.tsx"),
+      import("./components/project/settings/ProjectSettingsKanbanPage.tsx"),
   });
 
-  campaignSettingsFolios = $page({
-    name: "campaignSettingsFolios",
+  projectSettingsFolios = $page({
+    name: "projectSettingsFolios",
     path: "/folios",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Folios`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsFoliosPage.tsx"),
+      import("./components/project/settings/ProjectSettingsFoliosPage.tsx"),
   });
 
   /**
    * Sigils — which applications and environments report here.
    *
-   * ⚠️ Named in `CampaignSettings.tsx`'s nav array, which is a list of route
+   * ⚠️ Named in `ProjectSettings.tsx`'s nav array, which is a list of route
    * names with nothing in the type system tying it to the routes it names.
    * Renaming or removing this page without editing that array crashes every
    * settings page, which is exactly what happened once.
    */
-  campaignSettingsSigils = $page({
-    name: "campaignSettingsSigils",
+  projectSettingsSigils = $page({
+    name: "projectSettingsSigils",
     path: "/sigils",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Sigils`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsSigilsPage.tsx"),
+      import("./components/project/settings/ProjectSettingsSigilsPage.tsx"),
   });
 
   /**
-   * ⚠️ Named in `CampaignSettings.tsx`'s nav array, which is a list of route
+   * ⚠️ Named in `ProjectSettings.tsx`'s nav array, which is a list of route
    * names with nothing in the type system tying it to the routes it names.
    * Renaming or removing this page without editing that array crashes every
    * settings page.
    */
-  campaignSettingsOutposts = $page({
-    name: "campaignSettingsOutposts",
+  projectSettingsOutposts = $page({
+    name: "projectSettingsOutposts",
     path: "/outposts",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Outposts`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsOutpostsPage.tsx"),
+      import("./components/project/settings/ProjectSettingsOutpostsPage.tsx"),
   });
 
-  campaignSettingsChapters = $page({
-    name: "campaignSettingsChapters",
-    path: "/chapters",
+  projectSettingsMilestones = $page({
+    name: "projectSettingsMilestones",
+    path: "/milestones",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Chapters`,
+      title: `${previous?.title ?? ""} › Milestones`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsChaptersPage.tsx"),
+      import("./components/project/settings/ProjectSettingsMilestonesPage.tsx"),
   });
 
-  campaignSettingsQuests = $page({
-    name: "campaignSettingsQuests",
+  projectSettingsQuests = $page({
+    name: "projectSettingsQuests",
     path: "/quests",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Quests`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsQuestsPage.tsx"),
+      import("./components/project/settings/ProjectSettingsQuestsPage.tsx"),
   });
 
-  campaignQuest = $page({
+  projectQuest = $page({
     path: "/q/:shortId",
     schema: {
       params: z.object({
@@ -699,15 +688,15 @@ export class AppRouter {
         };
       }
     },
-    lazy: () => import("./components/campaign/quest/QuestView.tsx"),
+    lazy: () => import("./components/project/quest/QuestView.tsx"),
     loader: async ({ params }) => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
       }
       const quest = await this.questApi.getQuestByShortId({
         params: {
-          campaignId: campaign.id,
+          projectId: project.id,
           shortId: params.shortId,
         },
       });
@@ -726,8 +715,8 @@ export class AppRouter {
 
   // Quest dependency graph page (Lore #98). Focused quest's connected
   // `dependsOn` component, dagre-laid-out, polled every 60s.
-  campaignQuestGraph = $page({
-    name: "campaignQuestGraph",
+  projectQuestGraph = $page({
+    name: "projectQuestGraph",
     path: "/q/:shortId/graph",
     schema: {
       params: z.object({
@@ -741,15 +730,15 @@ export class AppRouter {
         title: `${previous?.title ?? ""} › ${quest?.title ?? "Quest"} › Graph`,
       };
     },
-    lazy: () => import("./components/campaign/quest/QuestGraph.tsx"),
+    lazy: () => import("./components/project/quest/QuestGraph.tsx"),
     loader: async ({ params }) => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
       }
       const quest = await this.questApi.getQuestByShortId({
         params: {
-          campaignId: campaign.id,
+          projectId: project.id,
           shortId: params.shortId,
         },
       });
@@ -763,32 +752,32 @@ export class AppRouter {
   });
 
   // -------------------------------------------------------------------------------------------------------------------
-  // Folios — campaign-scoped markdown notes ("folios")
+  // Folios — project-scoped markdown notes ("folios")
   // -------------------------------------------------------------------------------------------------------------------
 
-  // Quest #66 — Archive module. URL path renamed from /folios →
-  // /archive (hard, no redirect — Lore is a small private app, no SEO
-  // / link concerns). Internal route name stays `campaignFolios` so
-  // components keep working without a cross-codebase rename;
-  // DB tables, MCP tools, controllers also stay 'folios'-named per
-  // folio #4 §3.
-  campaignFolios = $page({
-    name: "campaignFolios",
+  // Quest #66 originally split this from the entity-level "folios" naming
+  // by giving it its own URL path (/archive), when the directory tree +
+  // blobs were a distinct "Archive" module. The 2026-08 great rename
+  // (Task 5) folded that module back into Folios — entities, MCP tools,
+  // and now the URL path are all "folio(s)"-named again. Internal route
+  // name stays `projectFolios`, unchanged since before quest #66.
+  projectFolios = $page({
+    name: "projectFolios",
     children: () => [
-      this.campaignFoliosNew,
-      this.campaignFoliosFolio,
-      this.campaignFoliosFolioEdit,
+      this.projectFoliosNew,
+      this.projectFoliosFolio,
+      this.projectFoliosFolioEdit,
     ],
-    path: "/archive",
+    path: "/folios",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Archive`,
+      title: `${previous?.title ?? ""} › Folios`,
     }),
     lazy: () => import("./components/folios/FoliosLayout.tsx"),
     loader: async ({ url }) => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      const campaignId = campaign?.id;
-      if (campaignId === undefined) {
-        throw new NotFoundError("Campaign not found");
+      const project = this.alepha.store.get(currentProjectAtom);
+      const projectId = project?.id;
+      if (projectId === undefined) {
+        throw new NotFoundError("Project not found");
       }
       // Resolve `?dir=<shortId>` → directoryId for the contents fetch.
       // Stale dir (deleted directory) falls back to root.
@@ -799,7 +788,7 @@ export class AppRouter {
         if (Number.isFinite(shortId)) {
           try {
             const dir = await this.directoryApi.getDirectoryByShortId({
-              params: { campaignId, shortId },
+              params: { projectId, shortId },
             });
             parentId = dir.id;
           } catch {
@@ -812,17 +801,17 @@ export class AppRouter {
       // cloud — still referenced by older code paths).
       const [contents, folios, tags] = await Promise.all([
         this.directoryApi.listContents({
-          params: { campaignId },
+          params: { projectId },
           query: { parentId },
         }),
-        this.folioApi.list({ query: { limit: 100, campaignId } }),
-        this.folioApi.listTags({ query: { campaignId } }),
+        this.folioApi.list({ query: { limit: 100, projectId } }),
+        this.folioApi.listTags({ query: { projectId } }),
       ]);
       this.alepha.store.set(userFoliosAtom, folios);
       this.alepha.store.set(folioTagsAtom, tags);
-      this.alepha.store.set(currentArchiveContentsAtom, contents);
-      // Populate the archive breadcrumb (Lore › Archive › <dirs…>)
-      // before the page renders. ArchiveBrowser keeps the atom in sync
+      this.alepha.store.set(currentFolioContentsAtom, contents);
+      // Populate the folio breadcrumb (Lore › Folios › <dirs…>)
+      // before the page renders. FolioBrowser keeps the atom in sync
       // on subsequent in-page navigations.
       const segments = [
         ...contents.breadcrumb.map((b) => ({
@@ -836,17 +825,17 @@ export class AppRouter {
           shortId: contents.directory.shortId,
         });
       }
-      this.alepha.store.set(currentArchivePathAtom, segments);
+      this.alepha.store.set(currentFolioPathAtom, segments);
     },
     onLeave: () => {
       this.alepha.store.set(currentFolioAtom, undefined);
-      this.alepha.store.set(currentArchivePathAtom, []);
-      this.alepha.store.set(currentArchiveContentsAtom, undefined);
+      this.alepha.store.set(currentFolioPathAtom, []);
+      this.alepha.store.set(currentFolioContentsAtom, undefined);
     },
   });
 
-  campaignFoliosNew = $page({
-    name: "campaignFoliosNew",
+  projectFoliosNew = $page({
+    name: "projectFoliosNew",
     path: "/new",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › New`,
@@ -854,21 +843,21 @@ export class AppRouter {
     lazy: () => import("./components/folios/FolioCreatePage.tsx"),
     loader: async ({ url }) => {
       this.alepha.store.set(currentFolioAtom, undefined);
-      // Carry the source directory across the navigation: ArchiveBrowser's
+      // Carry the source directory across the navigation: FolioBrowser's
       // "+ Create → New folio" link adds `?dir=<shortId>` when the user
       // is in a directory; resolve to a UUID here so the editor can pass
       // it to `folioApi.create({ directoryId })`. Without this, every
-      // folio created via the Archive UI lands at the campaign root
+      // folio created from this page lands at the project root
       // regardless of the directory the user clicked from.
       const dirParam = url.searchParams.get("dir");
-      const campaign = this.alepha.store.get(currentCampaignAtom);
+      const project = this.alepha.store.get(currentProjectAtom);
       let directoryId: string | undefined;
-      if (dirParam && campaign) {
+      if (dirParam && project) {
         const shortId = Number.parseInt(dirParam, 10);
         if (Number.isFinite(shortId)) {
           try {
             const dir = await this.directoryApi.getDirectoryByShortId({
-              params: { campaignId: campaign.id, shortId },
+              params: { projectId: project.id, shortId },
             });
             directoryId = dir.id;
           } catch {
@@ -881,8 +870,8 @@ export class AppRouter {
     },
   });
 
-  campaignFoliosFolio = $page({
-    name: "campaignFoliosFolio",
+  projectFoliosFolio = $page({
+    name: "projectFoliosFolio",
     path: "/:shortId",
     schema: {
       params: z.object({ shortId: z.integer() }),
@@ -907,9 +896,9 @@ export class AppRouter {
     },
     lazy: () => import("./components/folios/FolioView.tsx"),
     loader: async ({ params }) => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
       }
       // Three calls in one tick → alepha auto-batches them into a
       // single `/api/_batch` round-trip. Folio (page subject), folio
@@ -918,22 +907,22 @@ export class AppRouter {
       // See Lore #109.
       const [folio, folios, directories] = await Promise.all([
         this.folioApi.getByShortId({
-          params: { campaignId: campaign.id, shortId: params.shortId },
+          params: { projectId: project.id, shortId: params.shortId },
           query: { withLinks: true, withPath: true },
         }),
-        this.folioApi.list({ query: { campaignId: campaign.id, limit: 100 } }),
+        this.folioApi.list({ query: { projectId: project.id, limit: 100 } }),
         this.directoryApi.listAllDirectories({
-          params: { campaignId: campaign.id },
+          params: { projectId: project.id },
         }),
       ]);
       this.alepha.store.set(currentFolioAtom, folio);
       this.alepha.store.set(userFoliosAtom, folios);
-      this.alepha.store.set(campaignDirectoriesAtom, directories);
-      // Populate the archive breadcrumb so the AppShell header reads
-      // "Lore › Archive › <dirs…> › <folio title>". Cleared on leave
-      // by the parent `campaignFolios` route.
+      this.alepha.store.set(projectDirectoriesAtom, directories);
+      // Populate the folio breadcrumb so the AppShell header reads
+      // "Lore › Folios › <dirs…> › <folio title>". Cleared on leave
+      // by the parent `projectFolios` route.
       const path = folio.metadata?.path ?? [];
-      this.alepha.store.set(currentArchivePathAtom, [
+      this.alepha.store.set(currentFolioPathAtom, [
         ...path,
         { name: folio.title },
       ]);
@@ -941,8 +930,8 @@ export class AppRouter {
     },
   });
 
-  campaignFoliosFolioEdit = $page({
-    name: "campaignFoliosFolioEdit",
+  projectFoliosFolioEdit = $page({
+    name: "projectFoliosFolioEdit",
     path: "/:shortId/edit",
     schema: {
       params: z.object({ shortId: z.integer() }),
@@ -967,40 +956,40 @@ export class AppRouter {
     },
     lazy: () => import("./components/folios/FolioEditPage.tsx"),
     loader: async ({ params }) => {
-      const campaign = this.alepha.store.get(currentCampaignAtom);
-      if (!campaign) {
-        throw new NotFoundError("Campaign not found");
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
       }
       // Batched with the tree-panel data the editor doesn't render
       // today but might once #106/#107 land — cheap to pre-populate
       // here so the atom is hot. See Lore #109.
       const [folio, folios, directories] = await Promise.all([
         this.folioApi.getByShortId({
-          params: { campaignId: campaign.id, shortId: params.shortId },
+          params: { projectId: project.id, shortId: params.shortId },
           query: { withPath: true },
         }),
-        this.folioApi.list({ query: { campaignId: campaign.id, limit: 100 } }),
+        this.folioApi.list({ query: { projectId: project.id, limit: 100 } }),
         this.directoryApi.listAllDirectories({
-          params: { campaignId: campaign.id },
+          params: { projectId: project.id },
         }),
       ]);
       this.alepha.store.set(currentFolioAtom, folio);
       this.alepha.store.set(userFoliosAtom, folios);
-      this.alepha.store.set(campaignDirectoriesAtom, directories);
+      this.alepha.store.set(projectDirectoriesAtom, directories);
       return { folio };
     },
   });
 
-  campaignPetitionRequest = $page({
-    name: "campaignPetitionRequest",
-    path: "/c/:campaignId/request",
+  projectFeedbackRequest = $page({
+    name: "projectFeedbackRequest",
+    path: "/p/:projectId/request",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
     },
-    head: { title: "Submit a petition › Alepha Lore" },
+    head: { title: "Submit feedback › Alepha Lore" },
     ssr: false,
     lazy: () =>
-      import("./components/campaign/petitions/CampaignPetitionRequest.tsx"),
+      import("./components/project/feedback/ProjectFeedbackRequest.tsx"),
   });
 
   notFound = $page({

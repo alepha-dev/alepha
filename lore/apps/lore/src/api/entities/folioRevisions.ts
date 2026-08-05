@@ -4,7 +4,7 @@ import { $entity, db } from "alepha/orm";
 import { folios } from "./folios.ts";
 
 /**
- * Append-only revision log for folios — the "Chronicles of the Folio".
+ * Append-only revision log for folios — the folio's revision history.
  * One row per non-trivial mutation (edit / rename / tag-change / revert).
  * AI agents edit folios often; without revisions there's no recovery
  * short of "remember what it said yesterday" — which an agent can't.

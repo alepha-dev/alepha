@@ -9,7 +9,7 @@ import { $notification } from "alepha/api/notifications";
 export class QuestNotifications {
   /**
    * Escape user-controlled strings before they land inside the HTML email
-   * body. Mail clients block JS, but unescaped quest/campaign titles can
+   * body. Mail clients block JS, but unescaped quest/project titles can
    * still inject anchors, images, and styling — turning a DKIM-signed
    * reminder into a high-trust phishing surface.
    */
@@ -29,12 +29,12 @@ export class QuestNotifications {
     email: {
       subject: "Quest reminder",
       body: (it) => {
-        const campaignTitle = this.escapeHtml(it.campaignTitle);
+        const projectTitle = this.escapeHtml(it.projectTitle);
         const recipientName = this.escapeHtml(it.recipientName);
         const questTitle = this.escapeHtml(it.questTitle);
         const questUrl = encodeURI(it.questUrl);
         return `
-        <h1>${campaignTitle} — Quest reminder</h1>
+        <h1>${projectTitle} — Quest reminder</h1>
         <p>Hi ${recipientName},</p>
         <p>You accepted the quest <strong>${questTitle}</strong> (#${it.shortId}) and haven't completed it yet. Just a nudge while it's still open.</p>
         <p>
@@ -48,7 +48,7 @@ export class QuestNotifications {
     },
     schema: z.object({
       recipientName: z.string(),
-      campaignTitle: z.string(),
+      projectTitle: z.string(),
       questTitle: z.string(),
       shortId: z.integer(),
       questUrl: z.string(),

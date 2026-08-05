@@ -17,21 +17,21 @@ export const objectiveSchema = z.object({
 });
 
 /**
- * Common campaign identification params for MCP tools.
- * Either campaign ID or campaign_name must be provided. If both are passed,
- * `campaign` (the ID) wins.
+ * Common project identification params for MCP tools.
+ * Either project ID or project_name must be provided. If both are passed,
+ * `project` (the ID) wins.
  */
-export const campaignParamsSchema = z.object({
-  campaign: z
+export const projectParamsSchema = z.object({
+  project: z
     .integer()
     .describe(
-      "Campaign ID. Required if campaign_name is not provided. Takes precedence if both are provided.",
+      "Project ID. Required if project_name is not provided. Takes precedence if both are provided.",
     )
     .optional(),
-  campaign_name: z
+  project_name: z
     .string()
     .describe(
-      "Campaign name (campaign title). Case-insensitive. Required if campaign is not provided. Ignored when campaign is also provided.",
+      "Project name (project title). Case-insensitive. Required if project is not provided. Ignored when project is also provided.",
     )
     .optional(),
 });
@@ -40,9 +40,9 @@ export const campaignParamsSchema = z.object({
  * Entity reference for MCP tools. Tools accept EITHER:
  *   - `id` — the global, stable identifier (preferred for agents that
  *     persist references across sessions; immune to entity transfer).
- *   - `shortId` — the per-campaign 1-based id shown in URLs and UI
- *     ("#12"). When using `shortId`, the campaign context must be
- *     resolvable via `campaign` or `campaign_name`.
+ *   - `shortId` — the per-project 1-based id shown in URLs and UI
+ *     ("#12"). When using `shortId`, the project context must be
+ *     resolvable via `project` or `project_name`.
  *
  * Exactly one of `id` or `shortId` must be provided.
  */
@@ -50,23 +50,23 @@ export const entityRefSchema = z.object({
   id: z
     .integer()
     .describe(
-      "Global entity ID (stable across sessions/campaigns). Mutually exclusive with shortId.",
+      "Global entity ID (stable across sessions/projects). Mutually exclusive with shortId.",
     )
     .optional(),
   shortId: z
     .integer()
     .describe(
-      "Per-campaign 1-based shortId (the '#12' you see in URLs and UI). Requires `campaign` or `campaign_name` to disambiguate.",
+      "Per-project 1-based shortId (the '#12' you see in URLs and UI). Requires `project` or `project_name` to disambiguate.",
     )
     .optional(),
-  campaign: z
+  project: z
     .integer()
-    .describe("Campaign ID — required when using `shortId`.")
+    .describe("Project ID — required when using `shortId`.")
     .optional(),
-  campaign_name: z
+  project_name: z
     .string()
     .describe(
-      "Campaign name (case-insensitive) — required when using `shortId` if `campaign` not provided.",
+      "Project name (case-insensitive) — required when using `shortId` if `project` not provided.",
     )
     .optional(),
 });

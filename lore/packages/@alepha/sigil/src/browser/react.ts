@@ -13,7 +13,7 @@
  * in sight. Rendering is opt-in, and paying for React should be too.
  *
  * Nothing here is mounted automatically. `<SigilRoot />` is the
- * batteries-included default; {@link usePetitionUrl} is for a host app that
+ * batteries-included default; {@link useFeedbackUrl} is for a host app that
  * would rather render its own link.
  */
 export {
@@ -21,4 +21,4 @@ export {
   type SigilFeedbackButtonProps,
 } from "./components/SigilFeedbackButton.tsx";
 export { SigilRoot } from "./components/SigilRoot.tsx";
-export * from "./usePetitionUrl.ts";
+export * from "./useFeedbackUrl.ts";

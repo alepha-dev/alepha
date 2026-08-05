@@ -45,16 +45,16 @@ across days.
 
 ## Nothing is mounted for you
 
-The petition button used to be injected into every host app's React tree as a
+The feedback button used to be injected into every host app's React tree as a
 root component. It still ships — but the app decides where it goes:
 
 ```tsx
-import { SigilRoot, usePetitionUrl } from "@alepha/sigil/react";
+import { SigilRoot, useFeedbackUrl } from "@alepha/sigil/react";
 
 <SigilRoot />; // the batteries-included floating button
 ```
 
-or, for an app that would rather render its own link, `usePetitionUrl()`
+or, for an app that would rather render its own link, `useFeedbackUrl()`
 returns the URL and nothing else.
 
 `@alepha/sigil/react` is a subpath of its own so that importing the module

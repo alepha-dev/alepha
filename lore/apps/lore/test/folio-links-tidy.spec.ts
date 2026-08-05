@@ -6,9 +6,9 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { DirectoryController } from "../src/api/controllers/DirectoryController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { FolioLinkService } from "../src/api/services/FolioLinkService.ts";
 
@@ -22,7 +22,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
-  campaignController: CampaignController;
+  projectController: ProjectController;
   directoryController: DirectoryController;
   folioController: FolioController;
   folioLinkService: FolioLinkService;
@@ -44,7 +44,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
-    campaignController: alepha.inject(CampaignController),
+    projectController: alepha.inject(ProjectController),
     directoryController: alepha.inject(DirectoryController),
     folioController: alepha.inject(FolioController),
     folioLinkService: alepha.inject(FolioLinkService),
@@ -86,18 +86,18 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
 
   it("rewrites path token to bare title after target moves to root", async () => {
     const owner = await createTestUser(ctx);
-    const c = await ctx.campaignController.createCampaign.fetch(
+    const c = await ctx.projectController.createProject.fetch(
       { body: { title: "Tidy A" } },
       { user: owner },
     );
     const cid = c.data.id;
     const specs = await ctx.directoryController.createDirectory.fetch(
-      { params: { campaignId: cid }, body: { name: "specs" } },
+      { params: { projectId: cid }, body: { name: "specs" } },
       { user: owner },
     );
     const strategy = await ctx.directoryController.createDirectory.fetch(
       {
-        params: { campaignId: cid },
+        params: { projectId: cid },
         body: { name: "strategy", parentId: specs.data.id },
       },
       { user: owner },
@@ -105,7 +105,7 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
     const roadmap = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "roadmap",
           directoryId: strategy.data.id,
           content: "",
@@ -116,7 +116,7 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
     const source = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "intro",
           content: "See [[specs/strategy/roadmap]] for details.",
         },
@@ -124,7 +124,7 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
       { user: owner },
     );
 
-    // Move roadmap to campaign root.
+    // Move roadmap to project root.
     await ctx.folioController.update.fetch(
       { params: { id: roadmap.data.id }, body: { directoryId: null } },
       { user: owner },
@@ -138,7 +138,7 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
     ]);
 
     const fresh = await ctx.folioController.getByShortId.fetch(
-      { params: { campaignId: cid, shortId: source.data.shortId } },
+      { params: { projectId: cid, shortId: source.data.shortId } },
       { user: owner },
     );
     expect(fresh.data.content).toBe("See [[roadmap]] for details.");
@@ -146,30 +146,30 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
 
   it("rewrites path token to new chain after target moves between dirs", async () => {
     const owner = await createTestUser(ctx);
-    const c = await ctx.campaignController.createCampaign.fetch(
+    const c = await ctx.projectController.createProject.fetch(
       { body: { title: "Tidy B" } },
       { user: owner },
     );
     const cid = c.data.id;
     const specs = await ctx.directoryController.createDirectory.fetch(
-      { params: { campaignId: cid }, body: { name: "specs" } },
+      { params: { projectId: cid }, body: { name: "specs" } },
       { user: owner },
     );
     const strategy = await ctx.directoryController.createDirectory.fetch(
       {
-        params: { campaignId: cid },
+        params: { projectId: cid },
         body: { name: "strategy", parentId: specs.data.id },
       },
       { user: owner },
     );
     const planning = await ctx.directoryController.createDirectory.fetch(
-      { params: { campaignId: cid }, body: { name: "planning" } },
+      { params: { projectId: cid }, body: { name: "planning" } },
       { user: owner },
     );
     const roadmap = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "roadmap",
           directoryId: strategy.data.id,
           content: "",
@@ -180,7 +180,7 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
     const source = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "intro",
           content:
             "Top [[specs/strategy/roadmap]] and again [[specs/strategy/roadmap#milestones]].",
@@ -219,7 +219,7 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
     );
 
     const fresh = await ctx.folioController.getByShortId.fetch(
-      { params: { campaignId: cid, shortId: source.data.shortId } },
+      { params: { projectId: cid, shortId: source.data.shortId } },
       { user: owner },
     );
     expect(fresh.data.content).toBe(
@@ -229,21 +229,21 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
 
   it("leaves dangling tokens, quest tokens, and #N tokens untouched", async () => {
     const owner = await createTestUser(ctx);
-    const c = await ctx.campaignController.createCampaign.fetch(
+    const c = await ctx.projectController.createProject.fetch(
       { body: { title: "Tidy C" } },
       { user: owner },
     );
     const cid = c.data.id;
     const roadmap = await ctx.folioController.create.fetch(
       {
-        body: { campaignId: cid, title: "roadmap", content: "" },
+        body: { projectId: cid, title: "roadmap", content: "" },
       },
       { user: owner },
     );
     const source = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "intro",
           content: `Dangling [[no/such/thing]], quest [[quest:#1]], shortId [[#${roadmap.data.shortId}]].`,
         },
@@ -255,7 +255,7 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
     expect(result.rewritten).toBe(0);
 
     const fresh = await ctx.folioController.getByShortId.fetch(
-      { params: { campaignId: cid, shortId: source.data.shortId } },
+      { params: { projectId: cid, shortId: source.data.shortId } },
       { user: owner },
     );
     expect(fresh.data.content).toContain("[[no/such/thing]]");
@@ -265,19 +265,19 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
 
   it("dryRun: returns changes but does not persist", async () => {
     const owner = await createTestUser(ctx);
-    const c = await ctx.campaignController.createCampaign.fetch(
+    const c = await ctx.projectController.createProject.fetch(
       { body: { title: "Tidy D" } },
       { user: owner },
     );
     const cid = c.data.id;
     const specs = await ctx.directoryController.createDirectory.fetch(
-      { params: { campaignId: cid }, body: { name: "specs" } },
+      { params: { projectId: cid }, body: { name: "specs" } },
       { user: owner },
     );
     const roadmap = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "roadmap",
           directoryId: specs.data.id,
           content: "",
@@ -288,7 +288,7 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
     const original = "See [[specs/roadmap]].";
     const source = await ctx.folioController.create.fetch(
       {
-        body: { campaignId: cid, title: "intro", content: original },
+        body: { projectId: cid, title: "intro", content: original },
       },
       { user: owner },
     );
@@ -307,7 +307,7 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
     expect(result.rewritten).toBe(1);
 
     const fresh = await ctx.folioController.getByShortId.fetch(
-      { params: { campaignId: cid, shortId: source.data.shortId } },
+      { params: { projectId: cid, shortId: source.data.shortId } },
       { user: owner },
     );
     expect(fresh.data.content).toBe(original);

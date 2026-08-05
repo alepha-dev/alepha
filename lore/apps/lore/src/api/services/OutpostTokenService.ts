@@ -13,7 +13,7 @@ import { type Outpost, outposts } from "../entities/outposts.ts";
  * resolve it by its own lookup against its own table.
  *
  * What an outpost token can do is narrower still than a sigil's: it writes the
- * state of a machine into one campaign. It cannot read a campaign, cannot touch
+ * state of a machine into one project. It cannot read a project, cannot touch
  * a quest, and — this is the part that made the push model worth choosing — it
  * grants **nothing at all on the machine it came from**. Someone who steals it
  * can lie to Lore about a fleet. They cannot deploy, read a secret, or open a

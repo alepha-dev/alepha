@@ -7,7 +7,7 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, sql } from "alepha/orm";
 import { blights } from "../entities/blights.ts";
-import { campaigns } from "../entities/campaigns.ts";
+import { projects } from "../entities/projects.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
 import { sigilUniquesDaily } from "../entities/sigilUniquesDaily.ts";
@@ -18,7 +18,7 @@ import { BlightRuleService } from "./BlightRuleService.ts";
 /**
  * What one sigil is allowed to write, right now.
  *
- * The campaign's toggles intersected with the sigil's own kinds — one answer
+ * The project's toggles intersected with the sigil's own kinds — one answer
  * for both the gate `absorb` applies and the answer `GET /sigils/config`
  * serves, so those two can never drift into disagreeing about what the sink
  * accepts.
@@ -27,7 +27,7 @@ export interface SigilGates {
   views: boolean;
   errors: boolean;
   vitals: boolean;
-  petition: boolean;
+  feedback: boolean;
 }
 
 /**
@@ -41,7 +41,7 @@ export interface SigilGates {
  * ## Errors are written twice, on purpose
  *
  * `sigil_error_groups` dedups on `(sigilId, fingerprint)` and `blights` on
- * `(campaignId, fingerprint)`, and both are written for every accepted error.
+ * `(projectId, fingerprint)`, and both are written for every accepted error.
  * They are not two copies of one thing — they answer two different questions:
  *
  * - *"Is this still happening in production?"* is per environment, because a
@@ -54,7 +54,7 @@ export interface SigilGates {
  *   That is `blights`.
  *
  * So the counts differ by design: a group's `count` is what that environment
- * saw, a blight's `count` is the campaign-wide total, which is the right sort
+ * saw, a blight's `count` is the project-wide total, which is the right sort
  * key for triage by blast radius. `blights.sigilId` records the **most recent**
  * reporter, which is what the inbox's "filter by sigil" dropdown means; the
  * per-environment breakdown lives in the groups, where it is not lossy.
@@ -65,7 +65,7 @@ export class SigilIngestService {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly rules = $inject(BlightRuleService);
 
-  protected readonly campaigns = $repository(campaigns);
+  protected readonly projects = $repository(projects);
   protected readonly sigils = $repository(sigils);
   protected readonly views = $repository(sigilViewsHourly);
   protected readonly uniques = $repository(sigilUniquesDaily);
@@ -76,15 +76,15 @@ export class SigilIngestService {
   /**
    * Absorbs one batch.
    *
-   * Every section is gated on {@link gatesFor} — the campaign's toggles AND the
+   * Every section is gated on {@link gatesFor} — the project's toggles AND the
    * sigil's kinds, both. The kinds alone are not enough: `sigils.kinds` is
    * written once at creation and has no update path, so a sigil minted before
    * an owner switched Beacon off still carries `beacon` forever. Gating on the
    * token alone made the settings switch a suggestion the client was trusted to
    * honour — and the client fails open, so page views and visitor hashes kept
-   * accruing on a campaign whose owner had no page left to see them on.
+   * accruing on a project whose owner had no page left to see them on.
    *
-   * The campaign toggles are still what `GET /sigils/config` reports, so a
+   * The project toggles are still what `GET /sigils/config` reports, so a
    * well-behaved app stops sending at the source. This is the enforcement
    * behind that advice, not a replacement for it.
    *
@@ -117,22 +117,22 @@ export class SigilIngestService {
   }
 
   /**
-   * The campaign's feature toggles intersected with the sigil's kinds.
+   * The project's feature toggles intersected with the sigil's kinds.
    *
    * Both gates, in one place, because they are one decision asked in two
    * places: here on write, and by `GET /sigils/config` on read. Stating it
    * twice is how a sink ends up advertising a capability it then discards.
    *
-   * A sigil whose campaign is gone reports nothing. It cannot normally happen —
-   * `sigils.campaignId` cascades — but answering "everything on" to a token
-   * with no campaign behind it is the wrong default.
+   * A sigil whose project is gone reports nothing. It cannot normally happen —
+   * `sigils.projectId` cascades — but answering "everything on" to a token
+   * with no project behind it is the wrong default.
    */
   async gatesFor(sigil: Sigil): Promise<SigilGates> {
-    const campaign = await this.campaigns.findOne({
-      where: { id: { eq: sigil.campaignId } },
+    const project = await this.projects.findOne({
+      where: { id: { eq: sigil.projectId } },
     });
 
-    const features = campaign?.features;
+    const features = project?.features;
     const master = features?.sigils === true;
 
     return {
@@ -142,10 +142,10 @@ export class SigilIngestService {
         master && features?.blights === true && this.carries(sigil, "blights"),
       vitals:
         master && features?.vitals === true && this.carries(sigil, "vitals"),
-      petition:
+      feedback:
         master &&
-        features?.petitions === true &&
-        this.carries(sigil, "petition"),
+        features?.feedback === true &&
+        this.carries(sigil, "feedback"),
     };
   }
 
@@ -158,7 +158,7 @@ export class SigilIngestService {
    * hostname). Two constructions of the same answer is how they drift, which is
    * the failure the shared `@alepha/sigil/paths` already had to fix once.
    *
-   * `sampling` is deliberately absent: Lore has no per-campaign rate to tune,
+   * `sampling` is deliberately absent: Lore has no per-project rate to tune,
    * and the client already defaults to keeping everything.
    */
   async configFor(sigil: Sigil): Promise<SigilConfig> {
@@ -176,14 +176,14 @@ export class SigilIngestService {
       },
       // Omitted rather than empty when the module is off: the client treats an
       // absent url as "no feedback surface", which is the honest reading.
-      ...(gates.petition
-        ? { petitionUrl: `${publicUrl}/c/${sigil.campaignId}/request` }
+      ...(gates.feedback
+        ? { feedbackUrl: `${publicUrl}/p/${sigil.projectId}/request` }
         : {}),
     };
   }
 
   /**
-   * Merges errors into their per-environment group, then into the campaign's
+   * Merges errors into their per-environment group, then into the project's
    * triage inbox.
    *
    * `count` comes from the sender, which has already collapsed a window's worth
@@ -198,7 +198,7 @@ export class SigilIngestService {
     errors: NonNullable<SigilForwarded["errors"]>,
     now: string,
   ): Promise<void> {
-    const ignoreRules = await this.rules.listForCampaign(sigil.campaignId);
+    const ignoreRules = await this.rules.listForProject(sigil.projectId);
 
     for (const error of errors) {
       if (this.rules.matches(error.message, ignoreRules)) {
@@ -242,7 +242,7 @@ export class SigilIngestService {
 
       await this.blights.upsert(
         {
-          campaignId: sigil.campaignId,
+          projectId: sigil.projectId,
           sigilId: sigil.id,
           fingerprint,
           name,
@@ -255,7 +255,7 @@ export class SigilIngestService {
           count: seen,
         },
         {
-          target: ["campaignId", "fingerprint"],
+          target: ["projectId", "fingerprint"],
           set: {
             count: sql`${this.blights.table.count} + ${seen}`,
             lastSeenAt: now,

@@ -131,7 +131,7 @@ export class OutpostCommandController {
       const release = await this.releases.get(params.releaseId);
       // Claimed *by this outpost* — not merely visible to it. A machine that
       // has not taken a release has no business pulling its bytes, and 404
-      // rather than 403 keeps the existence of other campaigns' releases from
+      // rather than 403 keeps the existence of other projects' releases from
       // being probeable with a valid token.
       if (!release || release.outpostId !== outpost.id) {
         throw new NotFoundError("No such release claimed by this outpost");

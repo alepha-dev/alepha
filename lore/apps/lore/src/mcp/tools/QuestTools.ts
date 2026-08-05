@@ -1,8 +1,8 @@
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
-import { CampaignController } from "../../api/controllers/CampaignController.ts";
-import { PetitionController } from "../../api/controllers/PetitionController.ts";
+import { FeedbackController } from "../../api/controllers/FeedbackController.ts";
+import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { QuestController } from "../../api/controllers/QuestController.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
@@ -34,61 +34,61 @@ import {
  */
 export class QuestTools {
   protected readonly questController = $inject(QuestController);
-  protected readonly campaignController = $inject(CampaignController);
-  protected readonly petitionController = $inject(PetitionController);
+  protected readonly projectController = $inject(ProjectController);
+  protected readonly feedbackController = $inject(FeedbackController);
   protected readonly questMapper = $inject(QuestResourceMapper);
 
   /**
-   * Resolve a per-campaign petition `shortId` to its global petition id, so a
-   * quest can be linked to it. Throws if no petition in the campaign carries
+   * Resolve a per-project feedback `shortId` to its global feedback id, so a
+   * quest can be linked to it. Throws if no feedback in the project carries
    * that shortId.
    */
-  protected async resolvePetitionId(
-    campaignId: number,
+  protected async resolveFeedbackId(
+    projectId: number,
     shortId: number,
   ): Promise<number> {
-    const result = await this.petitionController.listPetitions({
-      params: { campaignId },
+    const result = await this.feedbackController.listFeedback({
+      params: { projectId },
       query: { status: "all" },
     });
     const found = result.items.find((p) => p.shortId === shortId);
     if (!found) {
       throw new NotFoundError(
-        `Petition with shortId ${shortId} not found in this campaign`,
+        `Feedback with shortId ${shortId} not found in this project`,
       );
     }
     return found.id;
   }
 
   /**
-   * Resolve campaign ID from params (by ID or name).
+   * Resolve project ID from params (by ID or name).
    */
-  protected async resolveCampaignId(
-    campaign?: number,
-    campaignName?: string,
+  protected async resolveProjectId(
+    project?: number,
+    projectName?: string,
   ): Promise<number> {
-    const campaigns = await this.campaignController.getMyCampaigns();
+    const projects = await this.projectController.getMyProjects();
 
-    if (campaign) {
-      const found = campaigns.find((p) => p.id === campaign);
+    if (project) {
+      const found = projects.find((p) => p.id === project);
       if (!found) {
-        throw new NotFoundError(`Campaign with ID ${campaign} not found`);
+        throw new NotFoundError(`Project with ID ${project} not found`);
       }
       return found.id;
     }
 
-    if (campaignName) {
-      const found = campaigns.find(
-        (p) => p.title.toLowerCase() === campaignName.toLowerCase(),
+    if (projectName) {
+      const found = projects.find(
+        (p) => p.title.toLowerCase() === projectName.toLowerCase(),
       );
       if (!found) {
-        throw new NotFoundError(`Campaign "${campaignName}" not found`);
+        throw new NotFoundError(`Project "${projectName}" not found`);
       }
       return found.id;
     }
 
     throw new BadRequestError(
-      "Campaign is required. Specify campaign ID or campaign_name.",
+      "Project is required. Specify project ID or project_name.",
     );
   }
 
@@ -106,37 +106,37 @@ export class QuestTools {
   }
 
   /**
-   * Accept either a global `id` or a per-campaign `shortId` reference
-   * (with `campaign` / `campaign_name`) and return the global quest id.
+   * Accept either a global `id` or a per-project `shortId` reference
+   * (with `project` / `project_name`) and return the global quest id.
    */
   protected async resolveQuestId(params: {
     id?: number;
     shortId?: number;
-    campaign?: number;
-    campaign_name?: string;
+    project?: number;
+    project_name?: string;
   }): Promise<number> {
     if (params.id != null) return params.id;
     if (params.shortId != null) {
-      const campaignId = await this.resolveCampaignId(
-        params.campaign,
-        params.campaign_name,
+      const projectId = await this.resolveProjectId(
+        params.project,
+        params.project_name,
       );
       const quest = await this.questController.getQuestByShortId({
-        params: { campaignId, shortId: params.shortId },
+        params: { projectId, shortId: params.shortId },
       });
       return quest.id;
     }
     throw new BadRequestError(
-      "Quest reference required: pass `id` (global) or `shortId` (per-campaign — also requires `campaign` or `campaign_name`).",
+      "Quest reference required: pass `id` (global) or `shortId` (per-project — also requires `project` or `project_name`).",
     );
   }
 
   /**
-   * List quests for a campaign.
+   * List quests for a project.
    */
   quest_list = $tool({
     description:
-      'List quests for the campaign. Can filter by status (new, accepted, completed, shelved), search by title, or filter by a single tag (use `quest_tags` to discover existing tag values). Shelved quests — deliberately set aside as out of scope — are hidden unless you pass `status: "shelved"`.',
+      'List quests for the project. Can filter by status (new, accepted, completed, shelved), search by title, or filter by a single tag (use `quest_tags` to discover existing tag values). Shelved quests — deliberately set aside as out of scope — are hidden unless you pass `status: "shelved"`.',
     title: "List quests",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -144,16 +144,16 @@ export class QuestTools {
       result: questListResultSchema,
     },
     handler: async ({ params }) => {
-      const campaignId = await this.resolveCampaignId(
-        params.campaign,
-        params.campaign_name,
+      const projectId = await this.resolveProjectId(
+        params.project,
+        params.project_name,
       );
 
       const size = params.limit ?? 20;
       const page = params.offset ? Math.floor(params.offset / size) : 0;
 
       const result = await this.questController.getQuests({
-        params: { campaignId },
+        params: { projectId },
         query: {
           status: params.status,
           search: params.search,
@@ -191,7 +191,7 @@ export class QuestTools {
    */
   quest_create = $tool({
     description:
-      "Create a new quest in the campaign. Pass `accept: true` to also accept it (assign it to yourself) in the same call — skips a separate quest_accept round-trip.",
+      "Create a new quest in the project. Pass `accept: true` to also accept it (assign it to yourself) in the same call — skips a separate quest_accept round-trip.",
     title: "Create quest",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -199,30 +199,30 @@ export class QuestTools {
       result: questCreateResultSchema,
     },
     handler: async ({ params }) => {
-      const campaignId = await this.resolveCampaignId(
-        params.campaign,
-        params.campaign_name,
+      const projectId = await this.resolveProjectId(
+        params.project,
+        params.project_name,
       );
 
-      // Resolve `dependsOn_shortId` → global quest id (same campaign).
+      // Resolve `dependsOn_shortId` → global quest id (same project).
       let dependsOn: number | undefined;
       if (params.dependsOn_shortId != null) {
         const pred = await this.questController.getQuestByShortId({
-          params: { campaignId, shortId: params.dependsOn_shortId },
+          params: { projectId, shortId: params.dependsOn_shortId },
         });
         dependsOn = pred.id;
       }
-      // Resolve `petition_shortId` → global petition id (same campaign).
-      let petitionId: number | undefined;
-      if (params.petition_shortId != null) {
-        petitionId = await this.resolvePetitionId(
-          campaignId,
-          params.petition_shortId,
+      // Resolve `feedback_shortId` → global feedback id (same project).
+      let feedbackId: number | undefined;
+      if (params.feedback_shortId != null) {
+        feedbackId = await this.resolveFeedbackId(
+          projectId,
+          params.feedback_shortId,
         );
       }
       const quest = await this.questController.createQuest({
         body: {
-          campaignId,
+          projectId,
           title: params.title,
           description: params.description,
           zone: params.zone,
@@ -231,7 +231,7 @@ export class QuestTools {
           objectives: params.objectives,
           tags: params.tags,
           dependsOn,
-          petitionId,
+          feedbackId,
         },
       });
 
@@ -302,7 +302,7 @@ export class QuestTools {
    */
   quest_shelve = $tool({
     description:
-      "Shelve a quest: set it aside as out of scope for now without deleting it. Shelved quests disappear from the default `quest_list` and from campaign progress/stats, but keep their description, objectives and history — call `quest_unshelve` to bring one back. Only quests still in the 'new' status can be shelved; abandon an accepted quest first. Use this instead of `quest_delete` when the idea is worth keeping but nobody intends to work it now.",
+      "Shelve a quest: set it aside as out of scope for now without deleting it. Shelved quests disappear from the default `quest_list` and from project progress/stats, but keep their description, objectives and history — call `quest_unshelve` to bring one back. Only quests still in the 'new' status can be shelved; abandon an accepted quest first. Use this instead of `quest_delete` when the idea is worth keeping but nobody intends to work it now.",
     title: "Shelve quest",
     annotations: {
       readOnlyHint: false,
@@ -364,7 +364,7 @@ export class QuestTools {
    */
   quest_complete = $tool({
     description:
-      "Mark a quest as complete. All objectives must be completed first. Pass `message` with a short summary of what was actually done — the summary is persisted on the quest, shown in the UI, and returned by `quest_get` / `campaign_context` so future agents working on this campaign can read it. Leaving it blank is allowed but wastes a free way to hand context to the next session.",
+      "Mark a quest as complete. All objectives must be completed first. Pass `message` with a short summary of what was actually done — the summary is persisted on the quest, shown in the UI, and returned by `quest_get` / `project_context` so future agents working on this project can read it. Leaving it blank is allowed but wastes a free way to hand context to the next session.",
     title: "Complete quest",
     annotations: {
       // destructive: state-altering; cannot be undone
@@ -427,8 +427,8 @@ export class QuestTools {
         difficulty: quest.difficulty,
         status: this.getQuestStatus(quest),
         objectives: quest.objectives,
-        campaignId: quest.campaignId,
-        chapterId: quest.chapterId,
+        projectId: quest.projectId,
+        milestoneId: quest.milestoneId,
         createdAt: quest.createdAt,
         updatedAt: quest.updatedAt,
         acceptedAt: quest.acceptedAt,
@@ -443,12 +443,12 @@ export class QuestTools {
   });
 
   /**
-   * List the distinct set of tags used by any quest in a campaign — fuel
+   * List the distinct set of tags used by any quest in a project — fuel
    * for autocomplete and dedup. Mirrors `folio_tags`.
    */
   quest_tags = $tool({
     description:
-      "List every tag used by any quest in the campaign. Call before `quest_create` / `quest_update` so you reuse existing tags (`bug`, `feat`, `chore`, …) instead of inventing slight variants like `Bug` / `bugs`.",
+      "List every tag used by any quest in the project. Call before `quest_create` / `quest_update` so you reuse existing tags (`bug`, `feat`, `chore`, …) instead of inventing slight variants like `Bug` / `bugs`.",
     title: "List quest tags",
     annotations: {
       readOnlyHint: true,
@@ -459,12 +459,12 @@ export class QuestTools {
       result: questTagsResultSchema,
     },
     handler: async ({ params }) => {
-      const campaignId = await this.resolveCampaignId(
-        params.campaign,
-        params.campaign_name,
+      const projectId = await this.resolveProjectId(
+        params.project,
+        params.project_name,
       );
       const tags = await this.questController.listQuestTags({
-        query: { campaignId },
+        query: { projectId },
       });
       return { tags };
     },
@@ -475,7 +475,7 @@ export class QuestTools {
    */
   quest_update = $tool({
     description:
-      "Update a quest's properties. Non-completed quests accept any field; completed quests only accept `completionMessage` (campaign memory stays curatable, but the quest body is frozen as an audit record). Omitted fields stay unchanged. Note: passing `objectives` REPLACES the entire objectives array — fetch the current quest first (quest_get or quest_list) and pass back the full list with your edits.",
+      "Update a quest's properties. Non-completed quests accept any field; completed quests only accept `completionMessage` (project memory stays curatable, but the quest body is frozen as an audit record). Omitted fields stay unchanged. Note: passing `objectives` REPLACES the entire objectives array — fetch the current quest first (quest_get or quest_list) and pass back the full list with your edits.",
     title: "Update quest",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
@@ -484,39 +484,39 @@ export class QuestTools {
     },
     handler: async ({ params }) => {
       const id = await this.resolveQuestId(params);
-      // `dependsOn_shortId` / `petition_shortId` both resolve against the
-      // quest's OWN campaign; fetch it once if either is supplied.
-      const needsCampaign =
+      // `dependsOn_shortId` / `feedback_shortId` both resolve against the
+      // quest's OWN project; fetch it once if either is supplied.
+      const needsProject =
         (params.dependsOn_shortId != null && params.dependsOn_shortId !== 0) ||
-        (params.petition_shortId != null && params.petition_shortId !== 0);
-      const current = needsCampaign
+        (params.feedback_shortId != null && params.feedback_shortId !== 0);
+      const current = needsProject
         ? await this.questController.getQuestById({ params: { id } })
         : undefined;
 
       // Translate `dependsOn_shortId` for update: 0 = clear, integer =
-      // resolve to global id within the same campaign as the quest.
+      // resolve to global id within the same project as the quest.
       let dependsOn: number | null | undefined;
       if (params.dependsOn_shortId === 0) {
         dependsOn = null;
       } else if (params.dependsOn_shortId != null && current) {
         const pred = await this.questController.getQuestByShortId({
           params: {
-            campaignId: current.campaignId,
+            projectId: current.projectId,
             shortId: params.dependsOn_shortId,
           },
         });
         dependsOn = pred.id;
       }
 
-      // Translate `petition_shortId`: 0 = unlink, integer = resolve to the
-      // petition's global id within the quest's campaign.
-      let petitionId: number | null | undefined;
-      if (params.petition_shortId === 0) {
-        petitionId = null;
-      } else if (params.petition_shortId != null && current) {
-        petitionId = await this.resolvePetitionId(
-          current.campaignId,
-          params.petition_shortId,
+      // Translate `feedback_shortId`: 0 = unlink, integer = resolve to the
+      // underlying global id within the quest's project.
+      let feedbackId: number | null | undefined;
+      if (params.feedback_shortId === 0) {
+        feedbackId = null;
+      } else if (params.feedback_shortId != null && current) {
+        feedbackId = await this.resolveFeedbackId(
+          current.projectId,
+          params.feedback_shortId,
         );
       }
 
@@ -532,7 +532,7 @@ export class QuestTools {
           completionMessage: params.completionMessage,
           tags: params.tags,
           dependsOn,
-          petitionId,
+          feedbackId,
         },
       });
 
@@ -550,7 +550,7 @@ export class QuestTools {
    */
   quest_delete = $tool({
     description:
-      "Permanently delete a quest. Use this to clean up mistakenly-created quests. Only the quest creator or campaign owner can delete. Cannot be undone.",
+      "Permanently delete a quest. Use this to clean up mistakenly-created quests. Only the quest creator or project owner can delete. Cannot be undone.",
     title: "Delete quest",
     annotations: {
       destructiveHint: true,

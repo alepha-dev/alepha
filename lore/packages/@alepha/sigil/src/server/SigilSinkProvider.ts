@@ -95,7 +95,7 @@ export class SigilSinkProvider {
         //
         // `refreshConfig` is otherwise reached only from `ingest()`, which
         // meant this hook published a config nothing had asked for: a process
-        // rendering before it had sent any telemetry set `petitionUrl:
+        // rendering before it had sent any telemetry set `feedbackUrl:
         // undefined` and hid the feedback button. On a per-request runtime the
         // isolate serving that first page may never be the one that later warms
         // up, so the button could simply never appear.
@@ -115,7 +115,7 @@ export class SigilSinkProvider {
           sampling: this.config.sampling ?? SIGIL_CONFIG_DEFAULTS.sampling,
           excludedPaths:
             this.alepha.store.get(sigilOptions).excludedPaths ?? [],
-          petitionUrl: this.config.petitionUrl,
+          feedbackUrl: this.config.feedbackUrl,
         });
       });
     },
@@ -154,8 +154,8 @@ export class SigilSinkProvider {
     return { ...allTrackersEnabled(), ...(this.config.enabled ?? {}) };
   }
 
-  public petitionUrl(): string | undefined {
-    return this.config.petitionUrl;
+  public feedbackUrl(): string | undefined {
+    return this.config.feedbackUrl;
   }
 
   /**

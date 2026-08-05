@@ -9,22 +9,22 @@ import {
   NotFoundError,
   okSchema,
 } from "alepha/server";
-import { archiveBlobs } from "../entities/archiveBlobs.ts";
-import { archiveDirectories } from "../entities/archiveDirectories.ts";
-import { campaigns } from "../entities/campaigns.ts";
+import { folioBlobs } from "../entities/folioBlobs.ts";
+import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folioRevisions } from "../entities/folioRevisions.ts";
 import { buildFolioSearchText, folios } from "../entities/folios.ts";
+import { projects } from "../entities/projects.ts";
 import { relations } from "../relations.ts";
 import {
   folioLinksSchema,
   folioResourceSchema,
 } from "../schemas/folioResourceSchema.ts";
-import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
 import {
   decideRevisionAction,
   FolioHistoryService,
 } from "../services/FolioHistoryService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 const idParamsSchema = z.object({ id: z.uuid() });
 
@@ -33,49 +33,49 @@ const folioListQuerySchema = z.object({
   offset: z.integer().min(0).default(0).optional(),
   tag: z.string().optional(),
   q: z.string().optional(),
-  campaignId: z.integer(),
+  projectId: z.integer(),
 });
 
 const tagListQuerySchema = z.object({
-  campaignId: z.integer(),
+  projectId: z.integer(),
 });
 
 export class FolioController {
   log = $logger();
   folios = $repository(folios);
-  protected readonly campaigns = $repository(campaigns);
-  protected readonly directories = $repository(archiveDirectories);
-  protected readonly blobs = $repository(archiveBlobs);
+  protected readonly projects = $repository(projects);
+  protected readonly directories = $repository(folioDirectories);
+  protected readonly blobs = $repository(folioBlobs);
   protected readonly revisions = $repository(folioRevisions);
-  /** ...with the author attached, for the campaign activity feed. */
+  /** ...with the author attached, for the project activity feed. */
   protected readonly revisionsWith = $repository(relations, "folioRevisions");
   protected readonly users = $repository(users);
   protected readonly linkService = $inject(FolioLinkService);
   protected readonly historyService = $inject(FolioHistoryService);
-  protected readonly security = $inject(CampaignSecurityService);
+  protected readonly security = $inject(ProjectSecurityService);
 
   /**
-   * Per-campaign sequence for `folios.shortId`. Powers the human-friendly
-   * `/c/:campaignId/folios/:shortId` URL.
+   * Per-project sequence for `folios.shortId`. Powers the human-friendly
+   * `/p/:projectId/folios/:shortId` URL.
    */
   protected folioShortId = $sequence();
 
   /**
-   * List folios in a campaign (campaign-shared — any member sees every
+   * List folios in a project (project-shared — any member sees every
    * folio). Optional `q` runs `LIKE %q%` over `searchText`; `tag` filters
    * by the jsonb-encoded tags array.
    */
   list = $action({
     use: [$secure({ permissions: ["folio:read"] })],
-    description: "List the campaign's folios (newest first).",
+    description: "List the project's folios (newest first).",
     schema: {
       query: folioListQuerySchema,
       response: z.array(folios.schema),
     },
     handler: async ({ query, user }) => {
-      await this.security.assertMember(query.campaignId, user);
+      await this.security.assertMember(query.projectId, user);
       const where: Record<string, unknown> = {
-        campaignId: { eq: query.campaignId },
+        projectId: { eq: query.projectId },
       };
       if (query.q) {
         where.searchText = { like: `%${query.q.toLowerCase()}%` };
@@ -96,20 +96,20 @@ export class FolioController {
   });
 
   /**
-   * Distinct tag list for the campaign, used by the sidebar tag cloud and
+   * Distinct tag list for the project, used by the sidebar tag cloud and
    * the chip-style tag autocomplete in the editor.
    */
   listTags = $action({
     use: [$secure({ permissions: ["folio:read"] })],
-    description: "Return the distinct set of tags used in the campaign.",
+    description: "Return the distinct set of tags used in the project.",
     schema: {
       query: tagListQuerySchema,
       response: z.array(z.string()),
     },
     handler: async ({ query, user }) => {
-      await this.security.assertMember(query.campaignId, user);
+      await this.security.assertMember(query.projectId, user);
       const rows = await this.folios.findMany({
-        where: { campaignId: { eq: query.campaignId } },
+        where: { projectId: { eq: query.projectId } },
         columns: ["tags"],
       });
       const tags = new Set<string>();
@@ -122,17 +122,17 @@ export class FolioController {
 
   getByShortId = $action({
     use: [$secure({ permissions: ["folio:read"] })],
-    description: "Get a single folio by its per-campaign shortId.",
-    path: "/campaigns/:campaignId/folios/:shortId",
+    description: "Get a single folio by its per-project shortId.",
+    path: "/projects/:projectId/folios/:shortId",
     schema: {
       params: z.object({
-        campaignId: z.integer(),
+        projectId: z.integer(),
         shortId: z.integer(),
       }),
       // `withLinks=true` attaches the resolved [[wiki-link]] index in
       // the same response. `withPath=true` attaches the folio's
       // directory chain (root → … → direct parent) — used by the
-      // Archive UI to render the AppShell breadcrumb without a
+      // Folio UI to render the AppShell breadcrumb without a
       // separate `listAllDirectories` round-trip.
       query: z.object({
         withLinks: z.boolean().optional(),
@@ -141,10 +141,10 @@ export class FolioController {
       response: folioResourceSchema,
     },
     handler: async ({ params, query, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
       const folio = await this.folios.findOne({
         where: {
-          campaignId: { eq: params.campaignId },
+          projectId: { eq: params.projectId },
           shortId: { eq: params.shortId },
         },
       });
@@ -165,9 +165,9 @@ export class FolioController {
   });
 
   /**
-   * Walk the archive-directory chain from `directoryId` up to the root.
+   * Walk the folio-directory chain from `directoryId` up to the root.
    * Returns `[root, ..., directParent]` — empty when the folio lives at
-   * the campaign root. Bounded by `archiveDirectories` depth-cap (8).
+   * the project root. Bounded by `folioDirectories` depth-cap (8).
    */
   protected async resolveDirectoryPath(
     directoryId: string | undefined,
@@ -199,7 +199,7 @@ export class FolioController {
         where: { id: { eq: params.id } },
       });
       if (!folio) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(folio.campaignId, user);
+      await this.security.assertMember(folio.projectId, user);
       return folio;
     },
   });
@@ -222,7 +222,7 @@ export class FolioController {
         where: { id: { eq: params.id } },
       });
       if (!folio) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(folio.campaignId, user);
+      await this.security.assertMember(folio.projectId, user);
       return this.resolveLinks(folio.id);
     },
   });
@@ -256,7 +256,7 @@ export class FolioController {
       outFolioIds.length > 0
         ? this.folios.findMany({
             where: { id: { inArray: outFolioIds } },
-            columns: ["id", "shortId", "title", "directoryId", "campaignId"],
+            columns: ["id", "shortId", "title", "directoryId", "projectId"],
           })
         : Promise.resolve([]),
       outQuestIds.length > 0
@@ -265,28 +265,28 @@ export class FolioController {
       outBlobIds.length > 0
         ? this.blobs.findMany({
             where: { fileId: { inArray: outBlobIds } },
-            columns: ["fileId", "shortId", "name", "directoryId", "campaignId"],
+            columns: ["fileId", "shortId", "name", "directoryId", "projectId"],
           })
         : Promise.resolve([]),
       inb.length > 0
         ? this.folios.findMany({
             where: { id: { inArray: inb.map((l) => l.fromId) } },
-            columns: ["id", "shortId", "title", "directoryId", "campaignId"],
+            columns: ["id", "shortId", "title", "directoryId", "projectId"],
           })
         : Promise.resolve([]),
     ]);
 
-    // Build a single per-campaign directory map up front. All linked
-    // folios + blobs share the source's campaign (link rows are
+    // Build a single per-project directory map up front. All linked
+    // folios + blobs share the source's project (link rows are
     // tenant-scoped via folio_id), so one fetch covers every ref's
     // ancestor walk and avoids N+1 findOne calls per directory.
-    const campaignIds = new Set<number>();
-    for (const f of folioRefs) campaignIds.add(f.campaignId);
-    for (const b of blobRefs) campaignIds.add(b.campaignId);
-    for (const f of inboundRefs) campaignIds.add(f.campaignId);
-    const dirRows = campaignIds.size
+    const projectIds = new Set<number>();
+    for (const f of folioRefs) projectIds.add(f.projectId);
+    for (const b of blobRefs) projectIds.add(b.projectId);
+    for (const f of inboundRefs) projectIds.add(f.projectId);
+    const dirRows = projectIds.size
       ? await this.directories.findMany({
-          where: { campaignId: { inArray: [...campaignIds] } },
+          where: { projectId: { inArray: [...projectIds] } },
           columns: ["id", "shortId", "name", "parentId"],
         })
       : [];
@@ -369,26 +369,26 @@ export class FolioController {
 
   /**
    * Resolve a `directoryId` body input. Verifies the directory exists
-   * in the same campaign and returns the canonical UUID. `null` /
+   * in the same project and returns the canonical UUID. `null` /
    * `undefined` → root (returns `undefined`).
    *
    * Cross-type name uniqueness (folio vs blob vs other-folio in the
-   * same directory) is enforced separately via the `archive_names`
-   * reservation table — see `ArchiveDirectoryService` (Phase B).
+   * same directory) is enforced separately via the `folio_names`
+   * reservation table — see `FolioDirectoryService` (Phase B).
    */
   protected async resolveDirectoryId(
     directoryId: string | null | undefined,
-    campaignId: number,
+    projectId: number,
   ): Promise<string | undefined> {
     if (directoryId === null || directoryId === undefined) return undefined;
     const directory = await this.directories.findOne({
       where: {
         id: { eq: directoryId },
-        campaignId: { eq: campaignId },
+        projectId: { eq: projectId },
       },
     });
     if (!directory) {
-      throw new BadRequestError("Directory not found in this campaign");
+      throw new BadRequestError("Directory not found in this project");
     }
     return directory.id;
   }
@@ -402,11 +402,11 @@ export class FolioController {
         content: z.string().optional(),
         tags: z.array(z.string()).optional(),
         summary: z.string().max(500).optional(),
-        campaignId: z.integer(),
+        projectId: z.integer(),
         /**
-         * Archive directory the folio lives in. `null` / omitted →
-         * campaign root. See quest [[#66]] — folios no longer nest in
-         * other folios, they sit in archive directories.
+         * Folio directory the folio lives in. `null` / omitted →
+         * project root. See quest [[#66]] — folios no longer nest in
+         * other folios, they sit in folio directories.
          */
         directoryId: z.uuid().nullable().optional(),
         /**
@@ -422,7 +422,7 @@ export class FolioController {
       response: folios.schema,
     },
     handler: async ({ body, user }) => {
-      await this.security.assertMember(body.campaignId, user);
+      await this.security.assertMember(body.projectId, user);
       const tags = (body.tags ?? []).map((t) => t.trim()).filter(Boolean);
       const summary = (body.summary ?? "").trim();
       const content = body.content ?? "";
@@ -430,11 +430,11 @@ export class FolioController {
       const pinned = body.pinned === true;
       const directoryId = await this.resolveDirectoryId(
         body.directoryId,
-        body.campaignId,
+        body.projectId,
       );
-      const shortId = await this.folioShortId.next(String(body.campaignId));
+      const shortId = await this.folioShortId.next(String(body.projectId));
       const folio = await this.folios.create({
-        campaignId: body.campaignId,
+        projectId: body.projectId,
         shortId,
         title: body.title,
         content,
@@ -483,8 +483,8 @@ export class FolioController {
         tags: z.array(z.string()).optional(),
         summary: z.string().max(500).optional(),
         /**
-         * Move the folio to a different archive directory. `null` →
-         * campaign root; `undefined` → leave untouched.
+         * Move the folio to a different folio directory. `null` →
+         * project root; `undefined` → leave untouched.
          */
         directoryId: z.uuid().nullable().optional(),
         /**
@@ -503,7 +503,7 @@ export class FolioController {
         where: { id: { eq: params.id } },
       });
       if (!existing) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(existing.campaignId, user);
+      await this.security.assertMember(existing.projectId, user);
 
       const title = body.title ?? existing.title;
       const content = body.content ?? existing.content;
@@ -513,7 +513,7 @@ export class FolioController {
       const summary =
         body.summary !== undefined ? body.summary.trim() : existing.summary;
 
-      // `null` from the caller = "explicit move to campaign root" — must
+      // `null` from the caller = "explicit move to project root" — must
       // be propagated to `updateById` as `null` so Drizzle writes NULL.
       // `undefined` would be silently dropped by the ORM update layer,
       // leaving the folio stuck in its current directory (regression
@@ -526,7 +526,7 @@ export class FolioController {
         } else {
           directoryId = await this.resolveDirectoryId(
             body.directoryId,
-            existing.campaignId,
+            existing.projectId,
           );
         }
       }
@@ -566,7 +566,7 @@ export class FolioController {
       // appending below, so the revision written for THIS edit (already in
       // the new domain) survives. Going clear → protected this is the
       // confidentiality fix — without it, encrypting a folio left every
-      // pre-encryption plaintext snapshot readable by any campaign member
+      // pre-encryption plaintext snapshot readable by any project member
       // through `listHistory`.
       if (isProtected !== existing.protected) {
         await this.historyService.purgeRevisions(params.id);
@@ -604,9 +604,9 @@ export class FolioController {
         where: { id: { eq: params.id } },
       });
       if (!existing) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(existing.campaignId, user);
+      await this.security.assertMember(existing.projectId, user);
       // Folios no longer have folio children since quest #66 — they're
-      // leaves under archive directories. So a plain delete is enough;
+      // leaves under folio directories. So a plain delete is enough;
       // folio_links + folio_revisions cascade via their FKs.
       await this.folios.deleteById(params.id);
       return { ok: true };
@@ -614,26 +614,26 @@ export class FolioController {
   });
 
   // ---------------------------------------------------------------------------
-  // History — Chronicles of the Folio (#63)
+  // History — the folio's revision history (#63)
   // ---------------------------------------------------------------------------
 
   /**
-   * Cross-folio activity feed for a campaign — used by the Archive
+   * Cross-folio activity feed for a project — used by the Folio
    * "Recent activity" panel (Lore #105). Joins `folio_revisions` to
-   * `folios` to scope by campaign, batches user-metadata resolution,
+   * `folios` to scope by project, batches user-metadata resolution,
    * caps at 50 rows by construction.
    *
    * Bounded by the per-folio retention cap × folio count, so no cursor
    * pagination in v1. Revisit if this query shows up in the slow-query log.
    */
-  listCampaignActivity = $action({
+  listProjectActivity = $action({
     use: [$secure({ permissions: ["folio:read"] })],
     path: "/folios/activity",
     description:
-      "Recent folio activity in a campaign (revisions across all folios, newest first).",
+      "Recent folio activity in a project (revisions across all folios, newest first).",
     schema: {
       query: z.object({
-        campaignId: z.integer(),
+        projectId: z.integer(),
         limit: z.integer().min(1).max(100).optional(),
       }),
       response: z.object({
@@ -655,13 +655,13 @@ export class FolioController {
       }),
     },
     handler: async ({ query, user }) => {
-      await this.security.assertMember(query.campaignId, user);
+      await this.security.assertMember(query.projectId, user);
       const limit = query.limit ?? 50;
 
-      // One statement: the campaign is reached by filtering on the revision's
+      // One statement: the project is reached by filtering on the revision's
       // folio, and the folio and author both come back attached.
       const revisions = await this.revisionsWith.findMany({
-        where: { folio: { campaignId: { eq: query.campaignId } } },
+        where: { folio: { projectId: { eq: query.projectId } } },
         orderBy: [{ column: "at", direction: "desc" }],
         limit,
         include: {
@@ -708,7 +708,7 @@ export class FolioController {
         where: { id: { eq: params.id } },
       });
       if (!folio) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(folio.campaignId, user);
+      await this.security.assertMember(folio.projectId, user);
       return this.historyService.listRevisions(folio.id);
     },
   });
@@ -735,7 +735,7 @@ export class FolioController {
         where: { id: { eq: params.id } },
       });
       if (!folio) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(folio.campaignId, user);
+      await this.security.assertMember(folio.projectId, user);
 
       const revision = await this.historyService.findRevision(
         params.revisionId,
@@ -790,7 +790,7 @@ export class FolioController {
         where: { id: { eq: params.id } },
       });
       if (!folio) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(folio.campaignId, user);
+      await this.security.assertMember(folio.projectId, user);
       const revision = await this.historyService.findRevision(
         params.revisionId,
       );

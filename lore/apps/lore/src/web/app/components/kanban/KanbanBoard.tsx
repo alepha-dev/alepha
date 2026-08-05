@@ -16,15 +16,15 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { Campaign } from "@/api/entities/campaigns.ts";
+import type { Project } from "@/api/entities/projects.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import {
-  kanbanCampaignAtom,
+  kanbanProjectAtom,
   kanbanReloadAtom,
-} from "../../atoms/kanbanCampaignAtom.ts";
+} from "../../atoms/kanbanProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
-import QuestView from "../campaign/quest/QuestView.tsx";
+import QuestView from "../project/quest/QuestView.tsx";
 import KanbanColumn, {
   type ColumnDescriptor,
   type ColumnKind,
@@ -41,18 +41,18 @@ const SUB_COLUMN_DOTS = [
 ];
 
 export interface KanbanBoardProps {
-  campaign: Campaign;
+  project: Project;
   quests: QuestResource[];
 }
 
 const KanbanBoard = (props: KanbanBoardProps) => {
-  const { campaign, quests: initialQuests } = props;
+  const { project, quests: initialQuests } = props;
   const alepha = useAlepha();
   const [quests, setQuests] = useState<QuestResource[]>(initialQuests);
   const [loading, setLoading] = useState(false);
   const zoneOptions = useMemo(
-    () => (campaign.zones ?? []).map((z) => ({ value: z, label: z })),
-    [campaign.zones],
+    () => (project.zones ?? []).map((z) => ({ value: z, label: z })),
+    [project.zones],
   );
   const filterForm = useForm({
     schema: z.object({
@@ -68,16 +68,16 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const tagFilter = (tagFilterValue as string[] | undefined) ?? [];
   const [knownTags, setKnownTags] = useState<string[]>([]);
   useEffect(() => {
-    if (!campaign?.id) return;
+    if (!project?.id) return;
     questApi
-      .listQuestTags({ query: { campaignId: campaign.id } })
+      .listQuestTags({ query: { projectId: project.id } })
       .then(setKnownTags)
       .catch(() => null);
-  }, [campaign?.id]);
+  }, [project?.id]);
   const [selectedQuest, setSelectedQuest] = useState<QuestResource | null>(
     null,
   );
-  const [, setKanbanCampaign] = useStore(kanbanCampaignAtom);
+  const [, setKanbanProject] = useStore(kanbanProjectAtom);
   const [reloadKey] = useStore(kanbanReloadAtom);
   const questApi = useClient<QuestController>();
   const kanbanApi = useClient<KanbanController>();
@@ -86,9 +86,9 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const dndId = useId();
 
   useEffect(() => {
-    setKanbanCampaign({ campaign });
-    return () => setKanbanCampaign(undefined as any);
-  }, [campaign]);
+    setKanbanProject({ project });
+    return () => setKanbanProject(undefined as any);
+  }, [project]);
 
   useEffect(() => {
     if (reloadKey?.key) reload();
@@ -113,7 +113,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     return out;
   }, [quests, zoneFilter, tagFilter]);
 
-  const subColumns = campaign.kanbanColumns ?? ["In Progress"];
+  const subColumns = project.kanbanColumns ?? ["In Progress"];
 
   const columns: ColumnDescriptor[] = useMemo(() => {
     const cols: ColumnDescriptor[] = [
@@ -173,7 +173,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     setLoading(true);
     try {
       const data = await kanbanApi.getBoard({
-        params: { campaignId: campaign.id },
+        params: { projectId: project.id },
       });
       setQuests(data.quests);
     } finally {
@@ -254,7 +254,10 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div
+      data-testid="kanban-board"
+      className="flex flex-1 flex-col overflow-hidden"
+    >
       {/* Filter nav */}
       <div className="flex items-center gap-2 border-border border-b bg-card px-3 py-1.5">
         {loading && (

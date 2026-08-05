@@ -2,18 +2,18 @@ import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
 import { questSourceSchema } from "../schemas/questSourceSchema.ts";
-import { campaigns } from "./campaigns.ts";
-import { chapters } from "./chapters.ts";
-import { petitions } from "./petitions.ts";
+import { feedback } from "./feedback.ts";
+import { milestones } from "./milestones.ts";
+import { projects } from "./projects.ts";
 
 export const quests = $entity({
   name: "quests",
   schema: z.object({
     id: db.primaryKey(z.integer()),
     /**
-     * Per-campaign sequential id, 1-based. Stable user-facing reference used
-     * in URLs (`/c/:campaignId/q/:shortId`) and UI display ("#42"). Allocated
-     * by `$sequence(scope=campaignId)` on insert. The global `id` remains the
+     * Per-project sequential id, 1-based. Stable user-facing reference used
+     * in URLs (`/p/:projectId/q/:shortId`) and UI display ("#42"). Allocated
+     * by `$sequence(scope=projectId)` on insert. The global `id` remains the
      * canonical PK for foreign keys and stable MCP/agent references.
      */
     shortId: z.integer().min(1),
@@ -53,10 +53,10 @@ export const quests = $entity({
     }),
     /**
      * Free-form summary set when the quest closes — what was actually
-     * done. Editable post-completion via `updateQuest` (campaign memory
+     * done. Editable post-completion via `updateQuest` (project memory
      * is meant to be curated). Surfaced to humans in the quest view +
      * history timeline preview, and returned by MCP `quest_get` /
-     * `campaign_context` so future agents can read prior summaries.
+     * `project_context` so future agents can read prior summaries.
      */
     completionMessage: z.string().meta({ size: "rich" }).optional(),
     /**
@@ -67,8 +67,8 @@ export const quests = $entity({
     completionMessageUpdatedAt: z.datetime().optional(),
     /**
      * Kanban sub-column the quest sits in while `status === "accepted"`.
-     * Only used when the campaign's `kanban` feature is on. Free-form text
-     * that must match one of the campaign's configured `kanbanColumns`.
+     * Only used when the project's `kanban` feature is on. Free-form text
+     * that must match one of the project's configured `kanbanColumns`.
      * Cleared when the quest moves back to "New" or forward to "Completed".
      */
     kanbanColumn: z.string().optional(),
@@ -88,18 +88,18 @@ export const quests = $entity({
       ),
       [],
     ),
-    campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
+    projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
-    chapterId: db.ref(z.integer().optional(), () => chapters.cols.id, {
+    milestoneId: db.ref(z.integer().optional(), () => milestones.cols.id, {
       onDelete: "set null",
     }),
     /**
-     * Optional FK to the petition this quest was spawned from. When set, the
-     * reporter of that petition can see the quest's progression on the
-     * petition status page even if they are not a campaign member.
+     * Optional FK to the feedback this quest was spawned from. When set, the
+     * reporter of that feedback can see the quest's progression on the
+     * feedback status page even if they are not a project member.
      */
-    petitionId: db.ref(z.integer().optional(), () => petitions.cols.id, {
+    feedbackId: db.ref(z.integer().optional(), () => feedback.cols.id, {
       onDelete: "set null",
     }),
     createdBy: db.ref(z.uuid(), () => users.cols.id, {
@@ -175,7 +175,7 @@ export const quests = $entity({
      */
     tags: db.default(z.array(z.string()), []),
     /**
-     * Optional predecessor quest in the same campaign. While the
+     * Optional predecessor quest in the same project. While the
      * predecessor's `completedAt` is null, `acceptQuest` refuses to
      * assign this quest — the UI surfaces a "Blocked by #N" badge that
      * flips to "Unblocked" once the predecessor closes. ON DELETE
@@ -195,10 +195,10 @@ export const quests = $entity({
   }),
   indexes: [
     {
-      columns: ["campaignId", "deletedAt"],
+      columns: ["projectId", "deletedAt"],
     },
     {
-      columns: ["campaignId", "shortId"],
+      columns: ["projectId", "shortId"],
       unique: true,
     },
     {
@@ -208,7 +208,7 @@ export const quests = $entity({
       columns: ["completedBy"],
     },
     {
-      columns: ["chapterId"],
+      columns: ["milestoneId"],
     },
   ],
 });

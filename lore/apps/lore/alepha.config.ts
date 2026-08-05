@@ -44,12 +44,12 @@ export default defineConfig({
       // catalog.
       scan: ["src", "../../packages/@alepha/ui/src"],
       dynamicPrefixes: [
-        // tr(`archive.type.${kind}`) — kind in directory/folio/blob.
-        "archive.type.",
+        // tr(`folio.type.${kind}`) — kind in directory/folio/blob.
+        "folio.type.",
         // tr(`header.connections.state.${state}`) — live/stale/empty.
         "header.connections.state.",
-        // tr(`petitions.filter.${status}`) — pending/accepted/rejected/all.
-        "petitions.filter.",
+        // tr(`feedback.filter.${status}`) — pending/accepted/rejected/all.
+        "feedback.filter.",
         // tr(`insights.range.${r}`) — 1d/7d/30d.
         "insights.range.",
         // tr(`insights.vitals.${key}`) — lcp/cls/inp/fcp/ttfb (Web Vitals p75 cards).

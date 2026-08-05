@@ -9,8 +9,8 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 
@@ -199,7 +199,7 @@ describe("MCP Security Integration", () => {
   describe("Basic Authentication", () => {
     it("should reject request without authentication", async ({ expect }) => {
       const result = await mcpRequest(ctx.baseUrl, "tools/call", {
-        name: "campaign_list",
+        name: "project_list",
         arguments: {},
       });
 
@@ -214,7 +214,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
 
@@ -229,7 +229,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { token },
       );
 
@@ -241,7 +241,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: "Bearer ak_invalid_token_12345678" },
       );
 
@@ -254,7 +254,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: "Bearer" }, // Missing token
       );
 
@@ -268,7 +268,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Basic ${token}` }, // Wrong scheme
       );
 
@@ -289,7 +289,7 @@ describe("MCP Security Integration", () => {
       const beforeRevoke = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
       expect(isErrorResponse(beforeRevoke.data)).toBe(false);
@@ -304,7 +304,7 @@ describe("MCP Security Integration", () => {
       const afterRevoke = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
       expect(afterRevoke.status).toBe(401);
@@ -321,7 +321,7 @@ describe("MCP Security Integration", () => {
       const beforeExpiry = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
       expect(isErrorResponse(beforeExpiry.data)).toBe(false);
@@ -333,7 +333,7 @@ describe("MCP Security Integration", () => {
       const afterExpiry = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
       expect(afterExpiry.status).toBe(401);
@@ -353,7 +353,7 @@ describe("MCP Security Integration", () => {
       const result1 = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token1}` },
       );
       expect(isErrorResponse(result1.data)).toBe(false);
@@ -361,7 +361,7 @@ describe("MCP Security Integration", () => {
       const result2 = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token2}` },
       );
       expect(isErrorResponse(result2.data)).toBe(false);
@@ -389,7 +389,7 @@ describe("MCP Security Integration", () => {
       const result1 = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token1}` },
       );
       expect(result1.status).toBe(401);
@@ -398,7 +398,7 @@ describe("MCP Security Integration", () => {
       const result2 = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token2}` },
       );
       expect(isErrorResponse(result2.data)).toBe(false);
@@ -410,26 +410,26 @@ describe("MCP Security Integration", () => {
   // ---------------------------------------------------------------------------
 
   describe("User Isolation", () => {
-    it("should isolate campaigns between users", async ({ expect }) => {
+    it("should isolate projects between users", async ({ expect }) => {
       const user1 = await createTestUser(ctx);
       const user2 = await createTestUser(ctx);
 
       const { token: token1 } = await createApiKey(ctx, user1);
       const { token: token2 } = await createApiKey(ctx, user2);
 
-      // User1 lists campaigns (should be empty, but distinct from user2)
+      // User1 lists projects (should be empty, but distinct from user2)
       const result1 = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token1}` },
       );
 
-      // User2 lists campaigns
+      // User2 lists projects
       const result2 = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token2}` },
       );
 
@@ -459,7 +459,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
       expect(isErrorResponse(result.data)).toBe(false);
@@ -488,7 +488,7 @@ describe("MCP Security Integration", () => {
 
       // Should include lore tools
       const toolNames = result.data.result?.tools?.map((t) => t.name) ?? [];
-      expect(toolNames).toContain("campaign_list");
+      expect(toolNames).toContain("project_list");
       expect(toolNames).toContain("quest_list");
     });
 
@@ -557,7 +557,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: "" },
       );
 
@@ -573,7 +573,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${jwtLikeToken}` },
       );
 
@@ -592,7 +592,7 @@ describe("MCP Security Integration", () => {
         mcpRequest(
           ctx.baseUrl,
           "tools/call",
-          { name: "campaign_list", arguments: {} },
+          { name: "project_list", arguments: {} },
           { authorization: `Bearer ${token}` },
         ),
       );
@@ -622,7 +622,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
       expect(result.status).toBe(401);
@@ -636,7 +636,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${longToken}` },
       );
 
@@ -650,7 +650,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_list", arguments: {} },
+        { name: "project_list", arguments: {} },
         { authorization: `Bearer ${weirdToken}` },
       );
 
@@ -664,10 +664,10 @@ describe("MCP Security Integration", () => {
   // ---------------------------------------------------------------------------
 
   // ---------------------------------------------------------------------------
-  // campaign_context — orientation tool (folio index + active quests)
+  // project_context — orientation tool (folio index + active quests)
   // ---------------------------------------------------------------------------
 
-  describe("campaign_context", () => {
+  describe("project_context", () => {
     /**
      * Parse the JSON-encoded payload returned in MCP tool content. Tools
      * stringify their result into `content[0].text`; tests want the
@@ -679,7 +679,7 @@ describe("MCP Security Integration", () => {
       return JSON.parse(text) as T;
     };
 
-    interface CampaignContextResult {
+    interface ProjectContextResult {
       id: number;
       title: string;
       public: boolean;
@@ -697,21 +697,21 @@ describe("MCP Security Integration", () => {
     }) => {
       const owner = await createTestUser(ctx);
       const { token } = await createApiKey(ctx, owner);
-      const campaignCtrl = ctx.alepha.inject(CampaignController);
+      const projectCtrl = ctx.alepha.inject(ProjectController);
       const folioCtrl = ctx.alepha.inject(FolioController);
 
-      // Bootstrap: one campaign, a few folios, sorted by updatedAt desc on read.
-      const created = await campaignCtrl.createCampaign.fetch(
+      // Bootstrap: one project, a few folios, sorted by updatedAt desc on read.
+      const created = await projectCtrl.createProject.fetch(
         { body: { title: "Lore Probe" } },
         { user: owner },
       );
-      const campaignId = created.data.id;
+      const projectId = created.data.id;
       const folioTitles = ["Alpha", "Beta", "Gamma"];
       for (const title of folioTitles) {
         await folioCtrl.create.fetch(
           {
             body: {
-              campaignId,
+              projectId,
               title,
               content: `# ${title}`,
               tags: ["probe"],
@@ -724,15 +724,15 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "campaign_context", arguments: { campaign: campaignId } },
+        { name: "project_context", arguments: { project: projectId } },
         { token },
       );
 
       expect(result.status).toBe(200);
       expect(isErrorResponse(result.data)).toBe(false);
 
-      const payload = parseToolPayload<CampaignContextResult>(result.data);
-      expect(payload.id).toBe(campaignId);
+      const payload = parseToolPayload<ProjectContextResult>(result.data);
+      expect(payload.id).toBe(projectId);
       expect(payload.title).toBe("Lore Probe");
       expect(payload.folios.shown).toBe(folioTitles.length);
       expect(payload.folios.capped).toBe(false);
@@ -742,15 +742,15 @@ describe("MCP Security Integration", () => {
       expect(JSON.stringify(payload).length).toBeLessThan(12_000);
     });
 
-    it("rejects a non-member on a private campaign (404)", async ({
+    it("rejects a non-member on a private project (404)", async ({
       expect,
     }) => {
       const owner = await createTestUser(ctx);
       const stranger = await createTestUser(ctx);
       const { token: strangerToken } = await createApiKey(ctx, stranger);
-      const campaignCtrl = ctx.alepha.inject(CampaignController);
+      const projectCtrl = ctx.alepha.inject(ProjectController);
 
-      const created = await campaignCtrl.createCampaign.fetch(
+      const created = await projectCtrl.createProject.fetch(
         { body: { title: "Private Probe" } },
         { user: owner },
       );
@@ -759,8 +759,8 @@ describe("MCP Security Integration", () => {
         ctx.baseUrl,
         "tools/call",
         {
-          name: "campaign_context",
-          arguments: { campaign: created.data.id },
+          name: "project_context",
+          arguments: { project: created.data.id },
         },
         { token: strangerToken },
       );
@@ -769,19 +769,19 @@ describe("MCP Security Integration", () => {
       expect(isErrorResponse(result.data)).toBe(true);
     });
 
-    it("rejects a non-member from another user's campaign (campaign scoping is mine-only)", async ({
+    it("rejects a non-member from another user's project (project scoping is mine-only)", async ({
       expect,
     }) => {
-      // `resolveCampaignId` reuses `getMyCampaigns`, which lists owned +
-      // member-of campaigns. A stranger calling `campaign_context` with a
-      // foreign campaign id gets a NotFoundError — the actual security
+      // `resolveProjectId` reuses `getMyProjects`, which lists owned +
+      // member-of projects. A stranger calling `project_context` with a
+      // foreign project id gets a NotFoundError — the actual security
       // boundary the orientation tool enforces.
       const owner = await createTestUser(ctx);
       const stranger = await createTestUser(ctx);
       const { token: strangerToken } = await createApiKey(ctx, stranger);
-      const campaignCtrl = ctx.alepha.inject(CampaignController);
+      const projectCtrl = ctx.alepha.inject(ProjectController);
 
-      const created = await campaignCtrl.createCampaign.fetch(
+      const created = await projectCtrl.createProject.fetch(
         { body: { title: "Private Probe" } },
         { user: owner },
       );
@@ -790,8 +790,8 @@ describe("MCP Security Integration", () => {
         ctx.baseUrl,
         "tools/call",
         {
-          name: "campaign_context",
-          arguments: { campaign: created.data.id },
+          name: "project_context",
+          arguments: { project: created.data.id },
         },
         { token: strangerToken },
       );
@@ -827,7 +827,7 @@ describe("MCP Security Integration", () => {
     }
 
     const fetchFolio = async (
-      campaignId: number,
+      projectId: number,
       shortId: number,
       token: string,
     ): Promise<FolioGetResult> => {
@@ -836,7 +836,7 @@ describe("MCP Security Integration", () => {
         "tools/call",
         {
           name: "folio_get",
-          arguments: { shortId, campaign: campaignId },
+          arguments: { shortId, project: projectId },
         },
         { token },
       );
@@ -853,24 +853,24 @@ describe("MCP Security Integration", () => {
     }) => {
       const owner = await createTestUser(ctx);
       const { token } = await createApiKey(ctx, owner);
-      const campaignCtrl = ctx.alepha.inject(CampaignController);
+      const projectCtrl = ctx.alepha.inject(ProjectController);
       const folioCtrl = ctx.alepha.inject(FolioController);
 
-      const campaign = await campaignCtrl.createCampaign.fetch(
+      const project = await projectCtrl.createProject.fetch(
         { body: { title: "Links Probe" } },
         { user: owner },
       );
-      const campaignId = campaign.data.id;
+      const projectId = project.data.id;
 
       // shortId is allocated in creation order — Alpha=1, Beta=2.
       const alpha = await folioCtrl.create.fetch(
-        { body: { campaignId, title: "Alpha", content: "" } },
+        { body: { projectId, title: "Alpha", content: "" } },
         { user: owner },
       );
       const beta = await folioCtrl.create.fetch(
         {
           body: {
-            campaignId,
+            projectId,
             title: "Beta",
             content: `See [[Alpha]] for context, and [[#${alpha.data.shortId}]] again.`,
           },
@@ -878,14 +878,14 @@ describe("MCP Security Integration", () => {
         { user: owner },
       );
 
-      const betaResult = await fetchFolio(campaignId, beta.data.shortId, token);
+      const betaResult = await fetchFolio(projectId, beta.data.shortId, token);
       expect(betaResult.links?.outbound).toEqual([
         { kind: "folio", shortId: alpha.data.shortId, title: "Alpha" },
       ]);
       expect(betaResult.links?.inbound).toEqual([]);
 
       const alphaResult = await fetchFolio(
-        campaignId,
+        projectId,
         alpha.data.shortId,
         token,
       );
@@ -900,22 +900,22 @@ describe("MCP Security Integration", () => {
     }) => {
       const owner = await createTestUser(ctx);
       const { token } = await createApiKey(ctx, owner);
-      const campaignCtrl = ctx.alepha.inject(CampaignController);
+      const projectCtrl = ctx.alepha.inject(ProjectController);
       const folioCtrl = ctx.alepha.inject(FolioController);
 
-      const campaign = await campaignCtrl.createCampaign.fetch(
+      const project = await projectCtrl.createProject.fetch(
         { body: { title: "Re-sync Probe" } },
         { user: owner },
       );
-      const campaignId = campaign.data.id;
+      const projectId = project.data.id;
       const alpha = await folioCtrl.create.fetch(
-        { body: { campaignId, title: "Alpha", content: "" } },
+        { body: { projectId, title: "Alpha", content: "" } },
         { user: owner },
       );
       const beta = await folioCtrl.create.fetch(
         {
           body: {
-            campaignId,
+            projectId,
             title: "Beta",
             content: "See [[Alpha]].",
           },
@@ -925,8 +925,7 @@ describe("MCP Security Integration", () => {
 
       // Sanity — inbound is set.
       expect(
-        (await fetchFolio(campaignId, alpha.data.shortId, token)).links
-          ?.inbound,
+        (await fetchFolio(projectId, alpha.data.shortId, token)).links?.inbound,
       ).toHaveLength(1);
 
       // Drop the reference.
@@ -939,26 +938,25 @@ describe("MCP Security Integration", () => {
       );
 
       expect(
-        (await fetchFolio(campaignId, alpha.data.shortId, token)).links
-          ?.inbound,
+        (await fetchFolio(projectId, alpha.data.shortId, token)).links?.inbound,
       ).toEqual([]);
     });
 
     it("drops self-links and unresolved references", async ({ expect }) => {
       const owner = await createTestUser(ctx);
       const { token } = await createApiKey(ctx, owner);
-      const campaignCtrl = ctx.alepha.inject(CampaignController);
+      const projectCtrl = ctx.alepha.inject(ProjectController);
       const folioCtrl = ctx.alepha.inject(FolioController);
 
-      const campaign = await campaignCtrl.createCampaign.fetch(
+      const project = await projectCtrl.createProject.fetch(
         { body: { title: "Edge Probe" } },
         { user: owner },
       );
-      const campaignId = campaign.data.id;
+      const projectId = project.data.id;
       const solo = await folioCtrl.create.fetch(
         {
           body: {
-            campaignId,
+            projectId,
             title: "Solo",
             // Self-link [[Solo]] and a dangling [[Missing]] reference.
             content: "[[Solo]] [[Missing Note]] hello",
@@ -967,14 +965,14 @@ describe("MCP Security Integration", () => {
         { user: owner },
       );
 
-      const result = await fetchFolio(campaignId, solo.data.shortId, token);
+      const result = await fetchFolio(projectId, solo.data.shortId, token);
       expect(result.links?.outbound).toEqual([]);
       expect(result.links?.inbound).toEqual([]);
     });
   });
 
   // ---------------------------------------------------------------------------
-  // Blights inbox tools live with the campaign suite now that sigils are gone.
+  // Blights inbox tools live with the project suite now that sigils are gone.
   // ---------------------------------------------------------------------------
 
   // ---------------------------------------------------------------------------

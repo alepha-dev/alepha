@@ -7,8 +7,8 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import { folioHistoryAtom } from "../src/api/atoms/folioHistoryAtom.ts";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import {
   decideRevisionAction,
@@ -25,7 +25,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
-  campaignController: CampaignController;
+  projectController: ProjectController;
   folioController: FolioController;
   historyService: FolioHistoryService;
   fakeProvider: FakeProvider;
@@ -53,7 +53,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
-    campaignController: alepha.inject(CampaignController),
+    projectController: alepha.inject(ProjectController),
     folioController: alepha.inject(FolioController),
     historyService: alepha.inject(FolioHistoryService),
     fakeProvider: alepha.inject(FakeProvider),
@@ -132,14 +132,14 @@ describe("FolioController history (#63)", () => {
 
   it("writes a 'create' revision on folio creation", async ({ expect }) => {
     const owner = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
+    const created = await ctx.projectController.createProject.fetch(
       { body: { title: "History test" } },
       { user: owner },
     );
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: created.data.id,
+          projectId: created.data.id,
           title: "Source",
           content: "v1",
         },
@@ -160,14 +160,14 @@ describe("FolioController history (#63)", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
+    const created = await ctx.projectController.createProject.fetch(
       { body: { title: "Edit" } },
       { user: owner },
     );
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: created.data.id,
+          projectId: created.data.id,
           title: "Original",
           content: "first",
         },
@@ -209,14 +209,14 @@ describe("FolioController history (#63)", () => {
     ctx.alepha.store.set(folioHistoryAtom, { maxRevisions: 3 });
 
     const owner = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
+    const created = await ctx.projectController.createProject.fetch(
       { body: { title: "Cap" } },
       { user: owner },
     );
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: created.data.id,
+          projectId: created.data.id,
           title: "Cap test",
           content: "rev1",
         },
@@ -251,14 +251,14 @@ describe("FolioController history (#63)", () => {
     ctx.alepha.store.set(folioHistoryAtom, { maxRevisions: 2 });
 
     const owner = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
+    const created = await ctx.projectController.createProject.fetch(
       { body: { title: "Pin survives" } },
       { user: owner },
     );
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: created.data.id,
+          projectId: created.data.id,
           title: "Pin",
           content: "v1",
         },
@@ -305,14 +305,14 @@ describe("FolioController history (#63)", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
+    const created = await ctx.projectController.createProject.fetch(
       { body: { title: "Revert" } },
       { user: owner },
     );
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: created.data.id,
+          projectId: created.data.id,
           title: "Revert test",
           content: "v1",
         },

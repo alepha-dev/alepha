@@ -6,7 +6,7 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
@@ -20,7 +20,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   admin: AdminUserController;
-  campaigns: CampaignController;
+  projects: ProjectController;
   quests: QuestController;
   fake: FakeProvider;
 }
@@ -47,7 +47,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     admin: alepha.inject(AdminUserController),
-    campaigns: alepha.inject(CampaignController),
+    projects: alepha.inject(ProjectController),
     quests: alepha.inject(QuestController),
     fake: alepha.inject(FakeProvider),
   };
@@ -62,15 +62,15 @@ const createUser = async (ctx: TestContext) => {
   return { id: response.data.id, roles: response.data.roles };
 };
 
-const createCampaign = async (
+const createProject = async (
   ctx: TestContext,
   user: { id: string; roles: string[] },
 ) => {
-  const campaign = await ctx.campaigns.createCampaign.fetch(
+  const project = await ctx.projects.createProject.fetch(
     { body: { title: "Estimate Probe" } },
     { user },
   );
-  return campaign.data.id;
+  return project.data.id;
 };
 
 describe("QuestController estimateMinutes", () => {
@@ -88,12 +88,12 @@ describe("QuestController estimateMinutes", () => {
     expect,
   }) => {
     const user = await createUser(ctx);
-    const campaignId = await createCampaign(ctx, user);
+    const projectId = await createProject(ctx, user);
 
     const created = await ctx.quests.createQuest.fetch(
       {
         body: {
-          campaignId,
+          projectId,
           title: "Buy groceries",
           description: "<p>x</p>",
           zone: "errands",
@@ -110,12 +110,12 @@ describe("QuestController estimateMinutes", () => {
 
   it("defaults to no estimate when omitted", async ({ expect }) => {
     const user = await createUser(ctx);
-    const campaignId = await createCampaign(ctx, user);
+    const projectId = await createProject(ctx, user);
 
     const created = await ctx.quests.createQuest.fetch(
       {
         body: {
-          campaignId,
+          projectId,
           title: "No estimate",
           description: "<p>x</p>",
           zone: "errands",
@@ -131,12 +131,12 @@ describe("QuestController estimateMinutes", () => {
 
   it("updates the estimate and clears it with null", async ({ expect }) => {
     const user = await createUser(ctx);
-    const campaignId = await createCampaign(ctx, user);
+    const projectId = await createProject(ctx, user);
 
     const created = await ctx.quests.createQuest.fetch(
       {
         body: {
-          campaignId,
+          projectId,
           title: "Tweak estimate",
           description: "<p>x</p>",
           zone: "errands",
@@ -163,12 +163,12 @@ describe("QuestController estimateMinutes", () => {
 
   it("stores a non-positive estimate as none", async ({ expect }) => {
     const user = await createUser(ctx);
-    const campaignId = await createCampaign(ctx, user);
+    const projectId = await createProject(ctx, user);
 
     const created = await ctx.quests.createQuest.fetch(
       {
         body: {
-          campaignId,
+          projectId,
           title: "Bad estimate",
           description: "<p>x</p>",
           zone: "errands",

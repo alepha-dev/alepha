@@ -112,7 +112,7 @@ test.describe("Register", () => {
     await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout: 15_000 });
   });
 
-  test("?intent=createCampaign shows banner and lands on /new-campaign after signup", async ({
+  test("?intent=createProject shows banner and lands on /new-project after signup", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -120,12 +120,12 @@ test.describe("Register", () => {
     const email = `intent${ts}@example.com`;
     const password = "GoodPassw0rd";
 
-    await page.goto("/auth/register?intent=createCampaign");
+    await page.goto("/auth/register?intent=createProject");
     // `networkidle` never settles once Turnstile is loaded — its widget polls.
     await page.waitForLoadState("domcontentloaded");
 
     await expect(
-      page.getByText(/before creating a campaign, create an account/i),
+      page.getByText(/before creating a project, create an account/i),
     ).toBeVisible({ timeout: 5_000 });
 
     await page.getByRole("textbox", { name: "Email", exact: true }).fill(email);
@@ -151,7 +151,7 @@ test.describe("Register", () => {
     await page.locator("#emailCode").fill(code!);
     await page.getByRole("button", { name: /complete registration/i }).click();
 
-    // Post-register redirect via ?r= → / ?action=createCampaign → Home pushes to campaignCreate.
-    await page.waitForURL(/\/new-campaign(\?|$)/, { timeout: 15_000 });
+    // Post-register redirect via ?r= → / ?action=createProject → Home pushes to projectCreate.
+    await page.waitForURL(/\/new-project(\?|$)/, { timeout: 15_000 });
   });
 });

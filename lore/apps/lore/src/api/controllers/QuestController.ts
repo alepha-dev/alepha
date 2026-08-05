@@ -11,8 +11,8 @@ import {
   okSchema,
 } from "alepha/server";
 import { blights, QUEST_STATUS_PREFIX } from "../entities/blights.ts";
-import { type Campaign, campaigns } from "../entities/campaigns.ts";
-import { petitions } from "../entities/petitions.ts";
+import { feedback } from "../entities/feedback.ts";
+import { type Project, projects } from "../entities/projects.ts";
 import {
   normalizeQuestTags,
   type Quest,
@@ -27,18 +27,18 @@ import {
   questResourceSchema,
   questStatusSchema,
 } from "../schemas/questResourceSchema.ts";
-import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService, sanitizeHtml } from "../services/QuestService.ts";
 
 export class QuestController {
   log = $logger();
   quests = $repository(quests);
-  campaigns = $repository(campaigns);
-  petitions = $repository(petitions);
+  projects = $repository(projects);
+  feedback = $repository(feedback);
   blights = $repository(blights);
   dt = $inject(DateTimeProvider);
-  security = $inject(CampaignSecurityService);
+  security = $inject(ProjectSecurityService);
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
   questService = $inject(QuestService);
@@ -90,12 +90,9 @@ export class QuestController {
     user: UserAccountToken,
     action: string,
     allowed: QuestStatus[],
-  ): Promise<{ quest: Quest; campaign: Campaign }> {
+  ): Promise<{ quest: Quest; project: Project }> {
     const quest = await this.quests.getOne({ where: { id: { eq: id } } });
-    const { campaign } = await this.security.assertMember(
-      quest.campaignId,
-      user,
-    );
+    const { project } = await this.security.assertMember(quest.projectId, user);
 
     const status = this.questMapper.questStatus(quest);
     if (!allowed.includes(status)) {
@@ -105,7 +102,7 @@ export class QuestController {
       );
     }
 
-    return { quest, campaign };
+    return { quest, project };
   }
 
   /**
@@ -132,37 +129,37 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ body, user }) => {
-      const { campaign } = await this.security.assertMember(
-        body.campaignId,
+      const { project } = await this.security.assertMember(
+        body.projectId,
         user,
       );
 
-      // Validate petition link: must exist in this campaign, must be accepted.
+      // Validate feedback link: must exist in this project, must be accepted.
       // Anyone with quest:create can pass any id otherwise, so we check here
       // and not via FK alone.
-      if (body.petitionId != null) {
-        if (campaign.createdBy !== user.id) {
+      if (body.feedbackId != null) {
+        if (project.createdBy !== user.id) {
           throw new ForbiddenError(
-            "Only the campaign owner can link a quest to a petition",
+            "Only the project owner can link a quest to a feedback item",
           );
         }
-        const petition = await this.petitions.findOne({
+        const feedback = await this.feedback.findOne({
           where: {
-            id: { eq: body.petitionId },
-            campaignId: { eq: body.campaignId },
+            id: { eq: body.feedbackId },
+            projectId: { eq: body.projectId },
           },
         });
-        if (!petition) {
-          throw new BadRequestError("Petition not found in this campaign");
+        if (!feedback) {
+          throw new BadRequestError("Feedback not found in this project");
         }
-        if (petition.status !== "accepted") {
+        if (feedback.status !== "accepted") {
           throw new BadRequestError(
-            "Petition must be accepted before quests can be linked",
+            "Feedback must be accepted before quests can be linked",
           );
         }
       }
 
-      // Validate optional `dependsOn` — must be in the same campaign and
+      // Validate optional `dependsOn` — must be in the same project and
       // cannot point at the quest itself (we don't have the shortId yet,
       // so the self-check fires on update). NULL-by-default schema means
       // `dependsOn: null` from the client clears the link.
@@ -170,12 +167,12 @@ export class QuestController {
         const predecessor = await this.quests.findOne({
           where: {
             id: { eq: body.dependsOn },
-            campaignId: { eq: body.campaignId },
+            projectId: { eq: body.projectId },
           },
         });
         if (!predecessor) {
           throw new BadRequestError(
-            "dependsOn quest not found in this campaign",
+            "dependsOn quest not found in this project",
           );
         }
       }
@@ -183,8 +180,8 @@ export class QuestController {
       // Quest-creation mechanics (shortId sequence, zone-ensure, HTML
       // sanitization, defaults) live in QuestService — the single path
       // shared with BlightController.forwardBlightToQuest.
-      const quest = await this.questService.createQuest(campaign, {
-        campaignId: body.campaignId,
+      const quest = await this.questService.createQuest(project, {
+        projectId: body.projectId,
         title: body.title,
         // Title-only quests are allowed; default the optional description to
         // "" so the NOT-NULL column + sanitizeHtml never see undefined.
@@ -202,7 +199,7 @@ export class QuestController {
         attachments: body.attachments,
         tags: body.tags,
         dependsOn: body.dependsOn,
-        petitionId: body.petitionId,
+        feedbackId: body.feedbackId,
         createdBy: user.id,
       });
 
@@ -300,26 +297,26 @@ export class QuestController {
     use: [$secure({ permissions: ["quest:read"] })],
     schema: {
       params: z.object({
-        campaignId: z.integer(),
+        projectId: z.integer(),
       }),
       query: pageQuerySchema.extend({
         status: questStatusSchema.optional(),
         search: z.string().optional(),
-        chapterId: z.integer().optional(),
+        milestoneId: z.integer().optional(),
         zone: z.string().optional(),
         tag: z.string().optional(),
       }),
       response: db.page(questResourceSchema),
     },
     handler: async ({ params, query, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
 
       const where = this.quests.createQueryWhere();
-      where.campaignId = { eq: params.campaignId };
+      where.projectId = { eq: params.projectId };
 
       if (query.search) {
         // ID-by-search: a bare integer or `#N` form means "find this
-        // specific quest by its per-campaign shortId" (Lore #94 — UX
+        // specific quest by its per-project shortId" (Lore #94 — UX
         // shortcut for typing #42 into the same search box). Anything
         // else stays title `ilike`.
         const idMatch = query.search.trim().match(/^#?(\d+)$/);
@@ -330,8 +327,8 @@ export class QuestController {
         }
       }
 
-      if (query.chapterId) {
-        where.chapterId = { eq: query.chapterId };
+      if (query.milestoneId) {
+        where.milestoneId = { eq: query.milestoneId };
       }
 
       if (query.zone) {
@@ -382,6 +379,31 @@ export class QuestController {
   });
 
   /**
+   * Open-quest count for the sidebar badge. "Open" is everything not
+   * completed — the same "still needs attention" meaning the blight and
+   * feedback badges carry, so all three numbers read the same way.
+   * Readable by any project member.
+   */
+  countOpenQuests = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    path: "/projects/:projectId/quests/count",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({ count: z.integer() }),
+    },
+    handler: async ({ params, user }) => {
+      await this.security.assertMember(params.projectId, user);
+
+      const count = await this.quests.count({
+        projectId: { eq: params.projectId },
+        completedAt: { isNull: true },
+      });
+
+      return { count };
+    },
+  });
+
+  /**
    * Questline data for a single quest — the predecessor it depends on
    * (if any) and the quests that depend on it. Surfaces a "Blocked by"
    * badge and an "Unlocks" backlink in the UI; agents can read it via
@@ -389,17 +411,17 @@ export class QuestController {
    * exposed there only in aggregate via separate calls).
    */
   /**
-   * Lightweight per-campaign edge list for the dependency-graph page
+   * Lightweight per-project edge list for the dependency-graph page
    * (Lore #98). Returns just `{ id, shortId, title, status, dependsOn }`
-   * for every quest in the campaign — small enough to keep in the
+   * for every quest in the project — small enough to keep in the
    * client and BFS-walk to compute an epic component without burning
    * the full QuestResource pagination.
    */
   getDependencyGraph = $action({
     use: [$secure({ permissions: ["quest:read"] })],
-    path: "/campaigns/:campaignId/quests/graph",
+    path: "/projects/:projectId/quests/graph",
     schema: {
-      params: z.object({ campaignId: z.integer() }),
+      params: z.object({ projectId: z.integer() }),
       response: z.array(
         z.object({
           id: z.integer(),
@@ -411,9 +433,9 @@ export class QuestController {
       ),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.campaignId, user);
+      await this.security.assertMember(params.projectId, user);
       const rows = await this.quests.findMany({
-        where: { campaignId: { eq: params.campaignId } },
+        where: { projectId: { eq: params.projectId } },
         columns: [
           "id",
           "shortId",
@@ -469,7 +491,7 @@ export class QuestController {
       const quest = await this.quests.getOne({
         where: { id: { eq: params.id } },
       });
-      await this.security.assertMember(quest.campaignId, user);
+      await this.security.assertMember(quest.projectId, user);
 
       const [predecessor, dependents] = await Promise.all([
         quest.dependsOn != null
@@ -504,22 +526,22 @@ export class QuestController {
   });
 
   /**
-   * Return the distinct set of tags used by any quest in a campaign —
+   * Return the distinct set of tags used by any quest in a project —
    * fuel for chip autocomplete in the editor and the filter dropdown.
-   * Mirrors `FolioController.listTags` but scope is campaign-level (tags
-   * are a property of the campaign's quest taxonomy, not the user's).
+   * Mirrors `FolioController.listTags` but scope is project-level (tags
+   * are a property of the project's quest taxonomy, not the user's).
    */
   listQuestTags = $action({
     use: [$secure({ permissions: ["quest:read"] })],
-    description: "Return the distinct set of tags used in a campaign.",
+    description: "Return the distinct set of tags used in a project.",
     schema: {
-      query: z.object({ campaignId: z.integer() }),
+      query: z.object({ projectId: z.integer() }),
       response: z.array(z.string()),
     },
     handler: async ({ query, user }) => {
-      await this.security.assertMember(query.campaignId, user);
+      await this.security.assertMember(query.projectId, user);
       const rows = await this.quests.findMany({
-        where: { campaignId: { eq: query.campaignId } },
+        where: { projectId: { eq: query.projectId } },
         columns: ["tags"],
       });
       const tags = new Set<string>();
@@ -650,7 +672,7 @@ export class QuestController {
     },
     handler: async ({ params, user }) => {
       // "shelved" is allowed on purpose — see the un-shelving branch below.
-      const { quest, campaign } = await this.getQuestForTransition(
+      const { quest, project } = await this.getQuestForTransition(
         params.id,
         user,
         "accept",
@@ -688,8 +710,8 @@ export class QuestController {
       }
       // When kanban is on, drop the freshly-accepted quest into the first
       // configured sub-column so it has a place to live on the board.
-      if (campaign.features?.kanban) {
-        quest.kanbanColumn = campaign.kanbanColumns?.[0];
+      if (project.features?.kanban) {
+        quest.kanbanColumn = project.kanbanColumns?.[0];
       }
       quest.history.push({
         at: this.dt.nowISOString(),
@@ -714,15 +736,15 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const { quest, campaign } = await this.getQuestForTransition(
+      const { quest, project } = await this.getQuestForTransition(
         params.id,
         user,
         "move",
         ["accepted"],
       );
-      const columns = campaign.kanbanColumns ?? [];
+      const columns = project.kanbanColumns ?? [];
       if (!columns.includes(body.kanbanColumn)) {
-        throw new BadRequestError("Unknown kanban column for this campaign.");
+        throw new BadRequestError("Unknown kanban column for this project.");
       }
       quest.kanbanColumn = body.kanbanColumn;
       await this.quests.save(quest);
@@ -733,7 +755,7 @@ export class QuestController {
   /**
    * Configure (or clear) the periodic reminder for an accepted quest.
    * Only the assignee can set their own reminder — it's a per-user
-   * nudge, not a campaign-wide notification. `interval: null` clears
+   * nudge, not a project-wide notification. `interval: null` clears
    * any existing reminder; passing a preset schedules the next send
    * at `now + REMINDER_INTERVAL_MS[interval]` and the `QuestJobs`
    * nightly sweep advances from there.
@@ -753,7 +775,7 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const { quest, campaign } = await this.getQuestForTransition(
+      const { quest, project } = await this.getQuestForTransition(
         params.id,
         user,
         "set a reminder on",
@@ -767,11 +789,11 @@ export class QuestController {
       }
 
       // Reminders are an owner-controlled module toggle. Disabling
-      // (interval=null) is always allowed so a campaign that turned the
+      // (interval=null) is always allowed so a project that turned the
       // module off can still clear pre-existing reminders.
-      if (body.interval != null && !campaign.features?.questReminder) {
+      if (body.interval != null && !project.features?.questReminder) {
         throw new ForbiddenError(
-          "Quest Reminder is disabled for this campaign.",
+          "Quest Reminder is disabled for this project.",
         );
       }
 
@@ -867,7 +889,7 @@ export class QuestController {
         },
       });
 
-      await this.security.assertMember(quest.campaignId, user);
+      await this.security.assertMember(quest.projectId, user);
 
       return this.mapQuestToResource(quest);
     },
@@ -875,10 +897,10 @@ export class QuestController {
 
   getQuestByShortId = $action({
     use: [$secure({ permissions: ["quest:read"] })],
-    path: "/campaigns/:campaignId/quests/:shortId",
+    path: "/projects/:projectId/quests/:shortId",
     schema: {
       params: z.object({
-        campaignId: z.integer(),
+        projectId: z.integer(),
         shortId: z.integer(),
       }),
       response: questResourceSchema,
@@ -886,12 +908,12 @@ export class QuestController {
     handler: async ({ params, user }) => {
       const quest = await this.quests.getOne({
         where: {
-          campaignId: { eq: params.campaignId },
+          projectId: { eq: params.projectId },
           shortId: { eq: params.shortId },
         },
       });
 
-      await this.security.assertMember(quest.campaignId, user);
+      await this.security.assertMember(quest.projectId, user);
 
       return this.mapQuestToResource(quest);
     },
@@ -921,11 +943,11 @@ export class QuestController {
           // sets it. Picking from the entity schema would emit
           // `optional<integer>` only, dropping the explicit-clear path.
           dependsOn: z.integer().nullable().optional(),
-          // `petitionId` links this quest back to an accepted petition (what
-          // the petition inbox's "linked quests" reads). `null` clears the
-          // link; integer sets it. Owner-only + accepted-petition checks in
-          // the handler, mirroring `createQuest`.
-          petitionId: z.integer().nullable().optional(),
+          // `feedbackId` links this quest back to an accepted feedback item
+          // (what the feedback inbox's "linked quests" reads). `null` clears
+          // the link; integer sets it. Owner-only + accepted-feedback checks
+          // in the handler, mirroring `createQuest`.
+          feedbackId: z.integer().nullable().optional(),
           // Optional time estimate (minutes). `null` clears the column,
           // integer sets it; the generic `patch = { ...body }` spread below
           // applies it as-is (set / clear / leave-unchanged).
@@ -938,19 +960,19 @@ export class QuestController {
         where: { id: { eq: params.id } },
       });
 
-      const { campaign } = await this.security.assertMember(
-        quest.campaignId,
+      const { project } = await this.security.assertMember(
+        quest.projectId,
         user,
       );
 
-      if (quest.createdBy !== user.id && campaign.createdBy !== user.id) {
+      if (quest.createdBy !== user.id && project.createdBy !== user.id) {
         throw new ForbiddenError(
-          "Only the quest creator or campaign owner can edit this quest",
+          "Only the quest creator or project owner can edit this quest",
         );
       }
 
       // On completed quests the only field that can be revised is the
-      // completion summary — campaign memory is curatable, but the quest
+      // completion summary — project memory is curatable, but the quest
       // body (title/description/objectives/…) stays frozen as an audit
       // record of what was closed.
       if (quest.completedAt) {
@@ -985,44 +1007,44 @@ export class QuestController {
           const predecessor = await this.quests.findOne({
             where: {
               id: { eq: body.dependsOn },
-              campaignId: { eq: quest.campaignId },
+              projectId: { eq: quest.projectId },
             },
           });
           if (!predecessor) {
             throw new BadRequestError(
-              "dependsOn quest not found in this campaign",
+              "dependsOn quest not found in this project",
             );
           }
           patch.dependsOn = body.dependsOn;
         }
       }
-      // Link / unlink a petition. Same guard as `createQuest`: only the
-      // campaign owner may link, and only to a petition that exists in this
-      // campaign and is already accepted. `null` clears the link.
-      if (body.petitionId !== undefined) {
-        if (body.petitionId === null) {
-          patch.petitionId = null;
+      // Link / unlink a feedback item. Same guard as `createQuest`: only the
+      // project owner may link, and only to a feedback item that exists in
+      // this project and is already accepted. `null` clears the link.
+      if (body.feedbackId !== undefined) {
+        if (body.feedbackId === null) {
+          patch.feedbackId = null;
         } else {
-          if (campaign.createdBy !== user.id) {
+          if (project.createdBy !== user.id) {
             throw new ForbiddenError(
-              "Only the campaign owner can link a quest to a petition",
+              "Only the project owner can link a quest to a feedback item",
             );
           }
-          const petition = await this.petitions.findOne({
+          const feedback = await this.feedback.findOne({
             where: {
-              id: { eq: body.petitionId },
-              campaignId: { eq: quest.campaignId },
+              id: { eq: body.feedbackId },
+              projectId: { eq: quest.projectId },
             },
           });
-          if (!petition) {
-            throw new BadRequestError("Petition not found in this campaign");
+          if (!feedback) {
+            throw new BadRequestError("Feedback not found in this project");
           }
-          if (petition.status !== "accepted") {
+          if (feedback.status !== "accepted") {
             throw new BadRequestError(
-              "Petition must be accepted before quests can be linked",
+              "Feedback must be accepted before quests can be linked",
             );
           }
-          patch.petitionId = body.petitionId;
+          patch.feedbackId = body.feedbackId;
         }
       }
       if (
@@ -1138,16 +1160,16 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const { quest, campaign } = await this.getQuestForTransition(
+      const { quest, project } = await this.getQuestForTransition(
         params.id,
         user,
         "edit the objectives of",
         ["new", "accepted", "shelved"],
       );
 
-      if (quest.createdBy !== user.id && campaign.createdBy !== user.id) {
+      if (quest.createdBy !== user.id && project.createdBy !== user.id) {
         throw new ForbiddenError(
-          "Only the quest creator or campaign owner can edit objectives",
+          "Only the quest creator or project owner can edit objectives",
         );
       }
 
@@ -1188,14 +1210,14 @@ export class QuestController {
         },
       });
 
-      const { campaign } = await this.security.assertMember(
-        quest.campaignId,
+      const { project } = await this.security.assertMember(
+        quest.projectId,
         user,
       );
 
-      if (quest.createdBy !== user.id && campaign.createdBy !== user.id) {
+      if (quest.createdBy !== user.id && project.createdBy !== user.id) {
         throw new ForbiddenError(
-          "Only the quest creator or campaign owner can delete this quest",
+          "Only the quest creator or project owner can delete this quest",
         );
       }
 
@@ -1257,7 +1279,7 @@ export class QuestController {
         },
       });
 
-      await this.security.assertMember(quest.campaignId, user);
+      await this.security.assertMember(quest.projectId, user);
 
       // Update the quest's zone (zone)
       const updatedQuest = await this.quests.updateById(params.id, {
@@ -1272,11 +1294,11 @@ export class QuestController {
         ],
       });
 
-      // Ensure the new zone exists in the campaign's zones list
-      const campaign = await this.campaigns.getById(quest.campaignId);
-      if (!campaign.zones.includes(body.newZone)) {
-        await this.campaigns.updateById(campaign.id, {
-          zones: [...campaign.zones, body.newZone],
+      // Ensure the new zone exists in the project's zones list
+      const project = await this.projects.getById(quest.projectId);
+      if (!project.zones.includes(body.newZone)) {
+        await this.projects.updateById(project.id, {
+          zones: [...project.zones, body.newZone],
         });
       }
 
@@ -1302,7 +1324,7 @@ export class QuestController {
         },
       });
 
-      await this.security.assertMember(quest.campaignId, user);
+      await this.security.assertMember(quest.projectId, user);
 
       // sanitize HTML content
       const sanitizedNote = sanitizeHtml(body.note);

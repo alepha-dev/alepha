@@ -3,8 +3,8 @@ import { SIGIL_TRACKERS } from "./sigilFeatures.ts";
 
 /**
  * The public sigil config handed to the browser through SSR hydration: which
- * trackers are on, how much to sample, which paths to skip, and where a
- * petition goes.
+ * trackers are on, how much to sample, which paths to skip, and where
+ * feedback goes.
  *
  * **It never contains the key.** The browser talks only to its own origin; the
  * credential stays on the app's server, where the sink is called from.
@@ -19,12 +19,12 @@ import { SIGIL_TRACKERS } from "./sigilFeatures.ts";
 export const sigilClientAtom = $atom({
   name: "alepha.sigil.client",
   description:
-    "Public sigil config sent to the browser: enabled trackers, sampling, excluded paths, petition URL. Never contains the key.",
+    "Public sigil config sent to the browser: enabled trackers, sampling, excluded paths, feedback URL. Never contains the key.",
   schema: z.object({
     enabled: z.record(z.string(), z.boolean()),
     sampling: z.record(z.string(), z.number()),
     excludedPaths: z.array(z.string()),
-    petitionUrl: z.string().optional(),
+    feedbackUrl: z.string().optional(),
   }),
   default: {
     enabled: Object.fromEntries(SIGIL_TRACKERS.map((t) => [t, true])),

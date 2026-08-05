@@ -7,15 +7,15 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { AlephaServerCors } from "alepha/server/cors";
 import { describe, expect, it } from "vitest";
-import { campaigns } from "../src/api/entities/campaigns.ts";
 import { outpostApps } from "../src/api/entities/outpostApps.ts";
 import { outpostEvents } from "../src/api/entities/outpostEvents.ts";
 import { outposts } from "../src/api/entities/outposts.ts";
+import { projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { OutpostTokenService } from "../src/api/services/OutpostTokenService.ts";
 
 class Probe {
-  campaigns = $repository(campaigns);
+  projects = $repository(projects);
   outposts = $repository(outposts);
   apps = $repository(outpostApps);
   events = $repository(outpostEvents);
@@ -56,14 +56,14 @@ const setup = async () => {
   await alepha.start();
 
   const owner = await users.createUser({ username: "owner" });
-  const campaign = await probe.campaigns.create({
+  const project = await probe.projects.create({
     title: "Test",
     createdBy: owner.id,
   } as any);
 
   const minted = tokens.mint();
   const outpost = await probe.outposts.create({
-    campaignId: campaign.id,
+    projectId: project.id,
     label: "OVH Bay",
     tokenHash: minted.hash,
     tokenPrefix: minted.prefix,

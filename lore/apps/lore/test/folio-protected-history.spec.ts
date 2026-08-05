@@ -6,8 +6,8 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 /**
@@ -18,7 +18,7 @@ import { LoreApi } from "../src/api/index.ts";
  *
  * Before this fix, flipping a folio to `protected` blanked `searchText` and
  * wiped the outbound links but left every pre-encryption plaintext snapshot
- * in `folio_revisions` — readable by any campaign member through
+ * in `folio_revisions` — readable by any project member through
  * `GET /folios/:id/history`. Encrypting a folio silently did not protect
  * anything already written.
  */
@@ -33,7 +33,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
-  campaignController: CampaignController;
+  projectController: ProjectController;
   folioController: FolioController;
   fakeProvider: FakeProvider;
 }
@@ -60,7 +60,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
-    campaignController: alepha.inject(CampaignController),
+    projectController: alepha.inject(ProjectController),
     folioController: alepha.inject(FolioController),
     fakeProvider: alepha.inject(FakeProvider),
   };
@@ -102,7 +102,7 @@ describe("protected folio history (confidentiality)", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaign = await ctx.campaignController.createCampaign.fetch(
+    const project = await ctx.projectController.createProject.fetch(
       { body: { title: "Secrets" } },
       { user: owner },
     );
@@ -111,7 +111,7 @@ describe("protected folio history (confidentiality)", () => {
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: campaign.data.id,
+          projectId: project.data.id,
           title: "Ops runbook",
           content: SECRET,
         },
@@ -151,7 +151,7 @@ describe("protected folio history (confidentiality)", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaign = await ctx.campaignController.createCampaign.fetch(
+    const project = await ctx.projectController.createProject.fetch(
       { body: { title: "Secrets" } },
       { user: owner },
     );
@@ -159,7 +159,7 @@ describe("protected folio history (confidentiality)", () => {
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: campaign.data.id,
+          projectId: project.data.id,
           title: "Ops runbook",
           content: ENVELOPE,
           protected: true,
@@ -190,7 +190,7 @@ describe("protected folio history (confidentiality)", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaign = await ctx.campaignController.createCampaign.fetch(
+    const project = await ctx.projectController.createProject.fetch(
       { body: { title: "Secrets" } },
       { user: owner },
     );
@@ -198,7 +198,7 @@ describe("protected folio history (confidentiality)", () => {
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: campaign.data.id,
+          projectId: project.data.id,
           title: "Ops runbook",
           content: SECRET,
         },
@@ -236,7 +236,7 @@ describe("protected folio history (confidentiality)", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const campaign = await ctx.campaignController.createCampaign.fetch(
+    const project = await ctx.projectController.createProject.fetch(
       { body: { title: "Secrets" } },
       { user: owner },
     );
@@ -244,7 +244,7 @@ describe("protected folio history (confidentiality)", () => {
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: campaign.data.id,
+          projectId: project.data.id,
           title: "Ops runbook",
           content: SECRET,
         },

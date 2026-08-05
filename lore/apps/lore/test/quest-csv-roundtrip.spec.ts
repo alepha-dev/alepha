@@ -6,8 +6,8 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
-import { CampaignQuestPortabilityController } from "../src/api/controllers/CampaignQuestPortabilityController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
+import { ProjectQuestPortabilityController } from "../src/api/controllers/ProjectQuestPortabilityController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
@@ -21,9 +21,9 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
-  campaignController: CampaignController;
+  projectController: ProjectController;
   questController: QuestController;
-  portController: CampaignQuestPortabilityController;
+  portController: ProjectQuestPortabilityController;
   fakeProvider: FakeProvider;
 }
 
@@ -49,9 +49,9 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
-    campaignController: alepha.inject(CampaignController),
+    projectController: alepha.inject(ProjectController),
     questController: alepha.inject(QuestController),
-    portController: alepha.inject(CampaignQuestPortabilityController),
+    portController: alepha.inject(ProjectQuestPortabilityController),
     fakeProvider: alepha.inject(FakeProvider),
   };
 };
@@ -68,12 +68,12 @@ async function createTestUser(
   return { id: response.data.id, roles: response.data.roles };
 }
 
-async function createTestCampaign(
+async function createTestProject(
   ctx: TestContext,
   user: { id: string; roles: string[] },
-  title = "Test Campaign",
+  title = "Test Project",
 ): Promise<{ id: number; title: string }> {
-  const response = await ctx.campaignController.createCampaign.fetch(
+  const response = await ctx.projectController.createProject.fetch(
     { body: { title } },
     { user },
   );
@@ -93,12 +93,12 @@ describe("Quest CSV roundtrip", () => {
 
   it("exports quests and re-imports them losslessly", async ({ expect }) => {
     const owner = await createTestUser(ctx);
-    const c1 = await createTestCampaign(ctx, owner, "Campaign One");
+    const c1 = await createTestProject(ctx, owner, "Project One");
 
     await ctx.questController.createQuest.fetch(
       {
         body: {
-          campaignId: c1.id,
+          projectId: c1.id,
           title: "Plain",
           description: "",
           zone: "",
@@ -111,7 +111,7 @@ describe("Quest CSV roundtrip", () => {
     await ctx.questController.createQuest.fetch(
       {
         body: {
-          campaignId: c1.id,
+          projectId: c1.id,
           title: `He said "go"`,
           description: "<p>line one</p><p>line two</p>",
           zone: "North",
@@ -128,7 +128,7 @@ describe("Quest CSV roundtrip", () => {
     await ctx.questController.createQuest.fetch(
       {
         body: {
-          campaignId: c1.id,
+          projectId: c1.id,
           title: "Empty zone",
           description: "",
           zone: "",
@@ -146,8 +146,8 @@ describe("Quest CSV roundtrip", () => {
     const file = exportResponse.data;
     const csv = await file.text();
 
-    // Re-import into a fresh campaign — every row should CREATE.
-    const c2 = await createTestCampaign(ctx, owner, "Campaign Two");
+    // Re-import into a fresh project — every row should CREATE.
+    const c2 = await createTestProject(ctx, owner, "Project Two");
     const importResponse = await ctx.portController.importQuests.fetch(
       {
         params: { id: c2.id },
@@ -163,7 +163,7 @@ describe("Quest CSV roundtrip", () => {
     expect(result.skipped).toBe(0);
     expect(result.errors).toEqual([]);
 
-    // Re-import into the ORIGINAL campaign = full upsert, zero creates.
+    // Re-import into the ORIGINAL project = full upsert, zero creates.
     const importResponse2 = await ctx.portController.importQuests.fetch(
       {
         params: { id: c1.id },

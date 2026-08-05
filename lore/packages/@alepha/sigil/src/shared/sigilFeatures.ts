@@ -7,7 +7,7 @@
  * - `errors`  — client and server errors.
  * - `vitals`  — web-vitals samples.
  *
- * `petition` is deliberately absent from this list: it is a link the sink hands
+ * `feedback` is deliberately absent from this list: it is a link the sink hands
  * out, not something collected. It had no business among trackers.
  */
 export const SIGIL_TRACKERS = ["views", "errors", "vitals"] as const;

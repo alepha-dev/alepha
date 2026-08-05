@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { createCampaignViaWizard, registerAndVerify } from "./_helpers.ts";
+import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**
- * Home is the only SSR'd route. The campaign list's "Updated <relative time>"
+ * Home is the only SSR'd route. The project list's "Updated <relative time>"
  * uses `fromNow()`, which is relative-to-now and therefore mismatches between
  * the server render and client hydration (clock drift / unit boundary) →
  * React #418. The fix wraps the relative time in `<ClientOnly>` so it never
@@ -21,20 +21,20 @@ test.describe("Home (SSR)", () => {
 
     const t = Date.now();
     const email = `home${t}@example.com`;
-    const campaignTitle = `Home${t}`.slice(0, 20);
+    const projectTitle = `Home${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, "HomeTest123!");
-    await createCampaignViaWizard(page, campaignTitle);
+    await createProjectViaWizard(page, projectTitle);
 
     // Raw server-rendered HTML for the authenticated home page (page.request
     // shares the browser context's session cookie).
     const html = await (await page.request.get("/")).text();
 
-    // The campaign list IS server-rendered (the title is in the SSR HTML)...
-    expect(html).toContain(campaignTitle);
+    // The project list IS server-rendered (the title is in the SSR HTML)...
+    expect(html).toContain(projectTitle);
     // ...but the relative "updated" time is NOT — it's behind <ClientOnly>, so
     // server + first client render match and React #418 can't fire. A freshly
-    // created campaign reads as "a few seconds ago" / "a minute ago".
+    // created project reads as "a few seconds ago" / "a minute ago".
     expect(html).not.toContain("seconds ago");
     expect(html).not.toContain("minute ago");
 
@@ -62,20 +62,18 @@ test.describe("Home (SSR)", () => {
  * actually clicks.
  */
 test.describe("Home (signed out)", () => {
-  test("'Start your first campaign' reaches the register page", async ({
+  test("'Start your first project' reaches the register page", async ({
     page,
   }) => {
     await page.goto("/");
-    await page
-      .getByRole("link", { name: /start your first campaign/i })
-      .click();
+    await page.getByRole("link", { name: /start your first project/i }).click();
 
     await expect(page).toHaveURL(/\/auth\/register\?/);
     // The intent survives, and with it the message and the seeded redirect —
     // landing on a bare register form would mean the intent was dropped.
-    await expect(page).toHaveURL(/intent=createCampaign/);
+    await expect(page).toHaveURL(/intent=createProject/);
     await expect(page).toHaveURL(/redirect=/);
-    await expect(page.getByText(/before creating a campaign/i)).toBeVisible();
+    await expect(page.getByText(/before creating a project/i)).toBeVisible();
   });
 
   test("'Already registered? Sign in' reaches the login page", async ({

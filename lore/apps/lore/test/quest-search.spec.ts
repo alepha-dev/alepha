@@ -6,7 +6,7 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
@@ -20,7 +20,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   admin: AdminUserController;
-  campaigns: CampaignController;
+  projects: ProjectController;
   quests: QuestController;
   fake: FakeProvider;
 }
@@ -40,7 +40,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     admin: alepha.inject(AdminUserController),
-    campaigns: alepha.inject(CampaignController),
+    projects: alepha.inject(ProjectController),
     quests: alepha.inject(QuestController),
     fake: alepha.inject(FakeProvider),
   };
@@ -68,16 +68,16 @@ describe("QuestController.getQuests — search by shortId (#94)", () => {
 
   it("bare integer matches the quest with that shortId", async ({ expect }) => {
     const user = await createUser(ctx);
-    const campaign = await ctx.campaigns.createCampaign.fetch(
+    const project = await ctx.projects.createProject.fetch(
       { body: { title: "Search probe" } },
       { user },
     );
-    const cid = campaign.data.id;
+    const cid = project.data.id;
     for (let i = 0; i < 3; i++) {
       await ctx.quests.createQuest.fetch(
         {
           body: {
-            campaignId: cid,
+            projectId: cid,
             title: `Quest ${i}`,
             description: "",
             zone: "ops",
@@ -91,7 +91,7 @@ describe("QuestController.getQuests — search by shortId (#94)", () => {
 
     // shortId 2 — should return only that one.
     const res = await ctx.quests.getQuests.fetch(
-      { params: { campaignId: cid }, query: { search: "2" } },
+      { params: { projectId: cid }, query: { search: "2" } },
       { user },
     );
     expect(res.data.content.map((q) => q.shortId)).toEqual([2]);
@@ -99,15 +99,15 @@ describe("QuestController.getQuests — search by shortId (#94)", () => {
 
   it("#-prefixed integer matches the same shortId", async ({ expect }) => {
     const user = await createUser(ctx);
-    const campaign = await ctx.campaigns.createCampaign.fetch(
+    const project = await ctx.projects.createProject.fetch(
       { body: { title: "Hash probe" } },
       { user },
     );
-    const cid = campaign.data.id;
+    const cid = project.data.id;
     await ctx.quests.createQuest.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "Alpha",
           description: "",
           zone: "ops",
@@ -119,7 +119,7 @@ describe("QuestController.getQuests — search by shortId (#94)", () => {
     );
 
     const res = await ctx.quests.getQuests.fetch(
-      { params: { campaignId: cid }, query: { search: "#1" } },
+      { params: { projectId: cid }, query: { search: "#1" } },
       { user },
     );
     expect(res.data.content.map((q) => q.title)).toEqual(["Alpha"]);
@@ -127,15 +127,15 @@ describe("QuestController.getQuests — search by shortId (#94)", () => {
 
   it("non-numeric search still does a title ilike", async ({ expect }) => {
     const user = await createUser(ctx);
-    const campaign = await ctx.campaigns.createCampaign.fetch(
+    const project = await ctx.projects.createProject.fetch(
       { body: { title: "Title probe" } },
       { user },
     );
-    const cid = campaign.data.id;
+    const cid = project.data.id;
     await ctx.quests.createQuest.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "Build the rocket",
           description: "",
           zone: "ops",
@@ -148,7 +148,7 @@ describe("QuestController.getQuests — search by shortId (#94)", () => {
     await ctx.quests.createQuest.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "Refactor the launchpad",
           description: "",
           zone: "ops",
@@ -160,7 +160,7 @@ describe("QuestController.getQuests — search by shortId (#94)", () => {
     );
 
     const res = await ctx.quests.getQuests.fetch(
-      { params: { campaignId: cid }, query: { search: "rocket" } },
+      { params: { projectId: cid }, query: { search: "rocket" } },
       { user },
     );
     expect(res.data.content.map((q) => q.title)).toEqual(["Build the rocket"]);
@@ -170,15 +170,15 @@ describe("QuestController.getQuests — search by shortId (#94)", () => {
     expect,
   }) => {
     const user = await createUser(ctx);
-    const campaign = await ctx.campaigns.createCampaign.fetch(
+    const project = await ctx.projects.createProject.fetch(
       { body: { title: "Empty probe" } },
       { user },
     );
-    const cid = campaign.data.id;
+    const cid = project.data.id;
     await ctx.quests.createQuest.fetch(
       {
         body: {
-          campaignId: cid,
+          projectId: cid,
           title: "Only one",
           description: "",
           zone: "ops",
@@ -190,7 +190,7 @@ describe("QuestController.getQuests — search by shortId (#94)", () => {
     );
 
     const res = await ctx.quests.getQuests.fetch(
-      { params: { campaignId: cid }, query: { search: "#99" } },
+      { params: { projectId: cid }, query: { search: "#99" } },
       { user },
     );
     expect(res.data.content).toEqual([]);

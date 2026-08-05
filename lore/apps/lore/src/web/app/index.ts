@@ -4,17 +4,17 @@ import { AlephaCrypto } from "alepha/crypto";
 import { I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
 import { AppRouter } from "./AppRouter.ts";
-import { campaignDirectoriesAtom } from "./atoms/campaignDirectoriesAtom.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
-import { currentCampaignAtom } from "./atoms/currentCampaignAtom.ts";
-import { currentCampaignMemberAtom } from "./atoms/currentCampaignMemberAtom.ts";
-import { currentChaptersAtom } from "./atoms/currentChaptersAtom.ts";
+import { currentMilestonesAtom } from "./atoms/currentMilestonesAtom.ts";
+import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
+import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import {
-  kanbanCampaignAtom,
+  kanbanProjectAtom,
   kanbanReloadAtom,
-} from "./atoms/kanbanCampaignAtom.ts";
-import { userCampaignsAtom } from "./atoms/userCampaignsAtom.ts";
+} from "./atoms/kanbanProjectAtom.ts";
+import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
+import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import { I18n } from "./services/I18n.ts";
 import { ThemesProvider } from "./services/ThemesProvider.ts";
@@ -24,15 +24,15 @@ export const LoreWebApp = $module({
   imports: [AlephaReactUi, AlephaCrypto, AlephaSigil],
   services: [I18n, ThemesProvider, AppRouter, MeRouter],
   atoms: [
-    campaignDirectoriesAtom,
+    projectDirectoriesAtom,
     currentAssignedQuestsAtom,
-    currentChaptersAtom,
-    currentCampaignAtom,
-    currentCampaignMemberAtom,
+    currentMilestonesAtom,
+    currentProjectAtom,
+    currentProjectMemberAtom,
     currentQuestAtom,
-    kanbanCampaignAtom,
+    kanbanProjectAtom,
     kanbanReloadAtom,
-    userCampaignsAtom,
+    userProjectsAtom,
   ],
   register(alepha) {
     // Dogfood locale-prefix routing: French gets `/fr/...` URLs, English (the

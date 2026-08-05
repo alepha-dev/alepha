@@ -25,7 +25,7 @@
     "./server": "./src/server/index.ts",
     "./react": "./src/browser/react.ts",
     "./messages": "./src/shared/sigilMessages.ts",
-    "./context": "./src/shared/sigilPetitionContext.ts",
+    "./context": "./src/shared/sigilFeedbackContext.ts",
     "./vitals": "./src/shared/schemas/sigilVitalsBuckets.ts",
     "./fingerprint": "./src/shared/sigilFingerprint.ts",
     "./envelope": "./src/shared/schemas/sigilEnvelope.ts",

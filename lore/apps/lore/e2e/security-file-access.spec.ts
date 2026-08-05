@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import {
-  createCampaignViaWizard,
+  createProjectViaWizard,
   newUserContext,
   registerAndVerify,
 } from "./_helpers.ts";
@@ -17,7 +17,7 @@ import {
  * private attachments.
  *
  * This test:
- *   1. User A uploads a quest attachment to a private campaign.
+ *   1. User A uploads a quest attachment to a private project.
  *   2. User B (separate account, not a member) attempts to download that
  *      file by its UUID and must get 403.
  *   3. User A successfully downloads their own attachment (sanity).
@@ -25,17 +25,17 @@ import {
 
 const upload = async (
   page: Page,
-  campaignId: number,
+  projectId: number,
 ): Promise<{ fileId: string }> => {
   return await page.evaluate(
-    async ({ campaignId }) => {
+    async ({ projectId }) => {
       const node = document.getElementById("__ssr");
       if (!node?.textContent) throw new Error("__ssr missing");
       const parsed = JSON.parse(node.textContent);
       const links = parsed["alepha.server.request.apiLinks"];
       const action = links?.actions?.uploadAttachment;
       if (!action) throw new Error("uploadAttachment not in apiLinks");
-      const url = `${links.prefix ?? "/api"}${action.path.replace(/:campaignId\b/g, String(campaignId))}`;
+      const url = `${links.prefix ?? "/api"}${action.path.replace(/:projectId\b/g, String(projectId))}`;
       const form = new FormData();
       form.append(
         "file",
@@ -52,7 +52,7 @@ const upload = async (
       }
       return (await r.json()) as { fileId: string };
     },
-    { campaignId },
+    { projectId },
   );
 };
 
@@ -65,11 +65,11 @@ const fetchFile = async (page: Page, fileId: string): Promise<number> => {
 
 const attachToQuest = async (
   page: Page,
-  campaignId: number,
+  projectId: number,
   fileId: string,
 ): Promise<{ id: number }> => {
   return await page.evaluate(
-    async ({ campaignId, fileId }) => {
+    async ({ projectId, fileId }) => {
       const node = document.getElementById("__ssr");
       if (!node?.textContent) throw new Error("__ssr missing");
       const parsed = JSON.parse(node.textContent);
@@ -82,7 +82,7 @@ const attachToQuest = async (
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          campaignId,
+          projectId,
           title: "Attach test",
           description: "<p>test</p>",
           zone: "Default",
@@ -96,7 +96,7 @@ const attachToQuest = async (
       }
       return (await r.json()) as { id: number };
     },
-    { campaignId, fileId },
+    { projectId, fileId },
   );
 };
 
@@ -146,14 +146,14 @@ test.describe("Public file access", () => {
 
     const email = `pub-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
-    const campaignId = await createCampaignViaWizard(
+    const projectId = await createProjectViaWizard(
       page,
       `Pub${Date.now()}`.slice(0, 20),
     );
 
     const avatarId = await uploadAvatar(page); // avatars bucket → public
-    const { fileId: attachmentId } = await upload(page, campaignId); // private
-    await attachToQuest(page, campaignId, attachmentId);
+    const { fileId: attachmentId } = await upload(page, projectId); // private
+    await attachToQuest(page, projectId, attachmentId);
 
     // Anonymous browser context — no auth cookie at all.
     const anon = await browser.newContext();
@@ -182,15 +182,15 @@ test.describe("File download authorization", () => {
 
     const aEmail = `owner-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
-    const campaignId = await createCampaignViaWizard(
+    const projectId = await createProjectViaWizard(
       page,
       `Sec${Date.now()}`.slice(0, 20),
     );
 
     // Upload an attachment and link it to a quest so LoreFileAccessProvider
-    // can resolve the campaign by reverse-lookup.
-    const { fileId } = await upload(page, campaignId);
-    await attachToQuest(page, campaignId, fileId);
+    // can resolve the project by reverse-lookup.
+    const { fileId } = await upload(page, projectId);
+    await attachToQuest(page, projectId, fileId);
 
     // Sanity: uploader can still fetch their file.
     expect(await fetchFile(page, fileId)).toBe(200);

@@ -8,19 +8,19 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { AlephaServerCors } from "alepha/server/cors";
 import { describe, it } from "vitest";
-import { campaigns } from "../src/api/entities/campaigns.ts";
+import { projects } from "../src/api/entities/projects.ts";
 import { releases } from "../src/api/entities/releases.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { ReleaseService } from "../src/api/services/ReleaseService.ts";
 
 class Probe {
-  campaigns = $repository(campaigns);
+  projects = $repository(projects);
   releases = $repository(releases);
   files = $repository(files);
 }
 
 /**
- * Boots the app, a campaign, and one already-uploaded artifact.
+ * Boots the app, a project, and one already-uploaded artifact.
  *
  * The `files` row is written directly rather than pushed through the upload
  * endpoint: what is under test is the registry sitting on top of a stored
@@ -53,7 +53,7 @@ const setupService = async () => {
   await alepha.start();
 
   const owner = await users.createUser({ username: "owner" });
-  const campaign = await probe.campaigns.create({
+  const project = await probe.projects.create({
     title: "Test",
     createdBy: owner.id,
   });
@@ -65,7 +65,7 @@ const setupService = async () => {
     mimeType: "application/gzip",
   });
 
-  return { service, campaignId: campaign.id, fileId: file.id };
+  return { service, projectId: project.id, fileId: file.id };
 };
 
 /**
@@ -102,13 +102,13 @@ describe("releases entity", () => {
     await alepha.start();
 
     const owner = await users.createUser({ username: "owner" });
-    const campaign = await probe.campaigns.create({
+    const project = await probe.projects.create({
       title: "Test",
       createdBy: owner.id,
     });
 
     const base = {
-      campaignId: campaign.id,
+      projectId: project.id,
       app: "lindocara-main",
       environment: "production",
       version: "2026-08-03-120000",
@@ -167,11 +167,11 @@ describe("ReleaseService.register", () => {
   const digest = "b".repeat(64);
 
   it("refuses a digest that is not 64 hex characters", async ({ expect }) => {
-    const { service, campaignId, fileId } = await setupService();
+    const { service, projectId, fileId } = await setupService();
 
     await expect(
       service.register({
-        campaignId,
+        projectId,
         app: "lindocara-main",
         environment: "production",
         version: "v1",
@@ -184,10 +184,10 @@ describe("ReleaseService.register", () => {
   it("accepts an uppercase digest and stores it lowercase", async ({
     expect,
   }) => {
-    const { service, campaignId, fileId } = await setupService();
+    const { service, projectId, fileId } = await setupService();
 
     const release = await service.register({
-      campaignId,
+      projectId,
       app: "lindocara-main",
       environment: "production",
       version: "v1",
@@ -199,11 +199,11 @@ describe("ReleaseService.register", () => {
   });
 
   it("refuses a fileId that no upload produced", async ({ expect }) => {
-    const { service, campaignId } = await setupService();
+    const { service, projectId } = await setupService();
 
     await expect(
       service.register({
-        campaignId,
+        projectId,
         app: "lindocara-main",
         environment: "production",
         version: "v1",
@@ -216,9 +216,9 @@ describe("ReleaseService.register", () => {
   it("answers a conflict rather than a second row for a version already on file", async ({
     expect,
   }) => {
-    const { service, campaignId, fileId } = await setupService();
+    const { service, projectId, fileId } = await setupService();
     const input = {
-      campaignId,
+      projectId,
       app: "lindocara-main",
       environment: "production",
       version: "v1",

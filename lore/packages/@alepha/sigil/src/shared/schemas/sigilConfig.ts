@@ -40,12 +40,12 @@ export const sigilConfig = z.object({
     })
     .optional(),
   /**
-   * Where a user goes to file a petition, or absent when the sink offers none.
+   * Where a user goes to file feedback, or absent when the sink offers none.
    *
    * A URL rather than a feature flag: the app renders a link, and nothing in
    * this package needs to know what is behind it.
    */
-  petitionUrl: z.string().max(2000).optional(),
+  feedbackUrl: z.string().max(2000).optional(),
 });
 
 export type SigilConfig = Infer<typeof sigilConfig>;

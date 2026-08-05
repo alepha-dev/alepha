@@ -4,13 +4,13 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, type Page } from "alepha/orm";
 import { BadRequestError, ForbiddenError } from "alepha/server";
-import { campaigns } from "../entities/campaigns.ts";
 import { type InvitationEntity, invitations } from "../entities/invitations.ts";
 import { members } from "../entities/members.ts";
+import { projects } from "../entities/projects.ts";
 import type { CreateInvitation } from "../schemas/createInvitationSchema.ts";
 import { invitationConfigAtom } from "../schemas/invitationConfigAtom.ts";
 import type { InvitationQuery } from "../schemas/invitationQuerySchema.ts";
-import { CampaignSecurityService } from "../services/CampaignSecurityService.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 declare module "alepha" {
   interface Hooks {
@@ -41,10 +41,10 @@ export class InvitationService {
   protected readonly log = $logger();
   protected readonly repo = $repository(invitations);
   protected readonly users = $repository(users);
-  protected readonly campaigns = $repository(campaigns);
+  protected readonly projects = $repository(projects);
   protected readonly members = $repository(members);
   protected readonly dateTime = $inject(DateTimeProvider);
-  protected readonly security = $inject(CampaignSecurityService);
+  protected readonly security = $inject(ProjectSecurityService);
 
   public async getById(id: string): Promise<InvitationEntity> {
     return this.repo.getById(id);
@@ -67,7 +67,7 @@ export class InvitationService {
     });
 
     if (existingUser) {
-      const alreadyMember = await this.isCampaignMember(
+      const alreadyMember = await this.isProjectMember(
         data.resourceId,
         existingUser.id,
       );
@@ -191,7 +191,7 @@ export class InvitationService {
     id: string;
     email?: string;
   }): Promise<
-    Array<InvitationEntity & { campaignTitle: string; inviterName?: string }>
+    Array<InvitationEntity & { projectTitle: string; inviterName?: string }>
   > {
     if (!user.email) {
       return [];
@@ -209,7 +209,7 @@ export class InvitationService {
     }
     const enriched = await Promise.all(
       rows.map(async (inv) => {
-        const campaign = await this.campaigns.findOne({
+        const project = await this.projects.findOne({
           where: { id: { eq: Number(inv.resourceId) } },
         });
         const inviter = await this.users.findOne({
@@ -217,7 +217,7 @@ export class InvitationService {
         });
         return {
           ...inv,
-          campaignTitle: campaign?.title ?? "Campaign",
+          projectTitle: project?.title ?? "Project",
           inviterName: this.formatInviterName(inviter),
         };
       }),
@@ -232,7 +232,7 @@ export class InvitationService {
   public async accept(
     invitationId: string,
     acceptedBy: { id: string; email?: string },
-  ): Promise<{ campaignId: string }> {
+  ): Promise<{ projectId: string }> {
     const invitation = await this.repo.getById(invitationId);
     this.assertOwnedByEmail(invitation, acceptedBy);
     if (invitation.status !== "pending") {
@@ -249,13 +249,13 @@ export class InvitationService {
       throw new BadRequestError("Invitation has expired");
     }
 
-    const alreadyMember = await this.isCampaignMember(
+    const alreadyMember = await this.isProjectMember(
       invitation.resourceId,
       acceptedBy.id,
     );
     if (!alreadyMember) {
       await this.members.create({
-        campaignId: Number(invitation.resourceId),
+        projectId: Number(invitation.resourceId),
         userId: acceptedBy.id,
         owner: false,
       });
@@ -278,7 +278,7 @@ export class InvitationService {
       acceptedBy,
     });
 
-    return { campaignId: invitation.resourceId };
+    return { projectId: invitation.resourceId };
   }
 
   /**
@@ -433,13 +433,13 @@ export class InvitationService {
     return ids.length;
   }
 
-  protected async isCampaignMember(
-    campaignId: string,
+  protected async isProjectMember(
+    projectId: string,
     userId: string,
   ): Promise<boolean> {
     const member = await this.members.findOne({
       where: {
-        campaignId: { eq: Number(campaignId) },
+        projectId: { eq: Number(projectId) },
         userId: { eq: userId },
       },
     });

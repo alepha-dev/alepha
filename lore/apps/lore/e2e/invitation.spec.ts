@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
-  createCampaignViaWizard,
+  createProjectViaWizard,
   newUserContext,
   registerAndVerify,
 } from "./_helpers.ts";
@@ -15,12 +15,12 @@ test.describe("Invitation flow (in-app inbox)", () => {
 
     const aEmail = `inviter-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
-    const campaignTitle = `Inv${Date.now()}`.slice(0, 20);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectTitle = `Inv${Date.now()}`.slice(0, 20);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     const b = await newUserContext(browser, baseURL!, "invitee");
     try {
-      await page.goto(`/c/${campaignId}/settings/members`);
+      await page.goto(`/p/${projectId}/settings/members`);
       await page.waitForLoadState("domcontentloaded");
       await page.getByRole("button", { name: /^invite$/i }).click();
       await expect(
@@ -40,7 +40,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       // invite is bound to their (verified) email.
       await b.page.goto("/auth/profile/invitations");
       await b.page.waitForLoadState("domcontentloaded");
-      await expect(b.page.getByText(campaignTitle).first()).toBeVisible({
+      await expect(b.page.getByText(projectTitle).first()).toBeVisible({
         timeout: 10_000,
       });
 
@@ -53,12 +53,12 @@ test.describe("Invitation flow (in-app inbox)", () => {
       await b.page.getByRole("button", { name: /^accept$/i }).click();
       expect((await acceptResp).ok()).toBe(true);
 
-      await b.page.waitForURL(new RegExp(`/c/${campaignId}`), {
+      await b.page.waitForURL(new RegExp(`/p/${projectId}`), {
         timeout: 10_000,
       });
 
       await b.page.goto("/");
-      await expect(b.page.getByText(campaignTitle).first()).toBeVisible({
+      await expect(b.page.getByText(projectTitle).first()).toBeVisible({
         timeout: 10_000,
       });
     } finally {
@@ -75,12 +75,12 @@ test.describe("Invitation flow (in-app inbox)", () => {
 
     const aEmail = `inviter-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
-    const campaignTitle = `Dec${Date.now()}`.slice(0, 20);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectTitle = `Dec${Date.now()}`.slice(0, 20);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     const b = await newUserContext(browser, baseURL!, "decliner");
     try {
-      await page.goto(`/c/${campaignId}/settings/members`);
+      await page.goto(`/p/${projectId}/settings/members`);
       await page.waitForLoadState("domcontentloaded");
       await page.getByRole("button", { name: /^invite$/i }).click();
       await page.getByPlaceholder("user@example.com").fill(b.email);
@@ -95,7 +95,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
 
       await b.page.goto("/auth/profile/invitations");
       await b.page.waitForLoadState("domcontentloaded");
-      await expect(b.page.getByText(campaignTitle).first()).toBeVisible({
+      await expect(b.page.getByText(projectTitle).first()).toBeVisible({
         timeout: 10_000,
       });
 
@@ -108,12 +108,12 @@ test.describe("Invitation flow (in-app inbox)", () => {
       await b.page.getByRole("button", { name: /^decline$/i }).click();
       expect((await declineResp).ok()).toBe(true);
 
-      // After decline, the inbox is empty and the campaign is not in the
+      // After decline, the inbox is empty and the project is not in the
       // user's home list.
-      await expect(b.page.getByText(campaignTitle)).toHaveCount(0);
+      await expect(b.page.getByText(projectTitle)).toHaveCount(0);
       await b.page.goto("/");
       await b.page.waitForLoadState("domcontentloaded");
-      await expect(b.page.getByText(campaignTitle)).toHaveCount(0);
+      await expect(b.page.getByText(projectTitle)).toHaveCount(0);
     } finally {
       await b.ctx.close();
     }
@@ -130,11 +130,11 @@ test.describe("Invitation flow (in-app inbox)", () => {
 
     const aEmail = `inviter-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
-    const campaignTitle = `Bnd${Date.now()}`.slice(0, 20);
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectTitle = `Bnd${Date.now()}`.slice(0, 20);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     const invitedEmail = `target-${Date.now()}@example.com`;
-    await page.goto(`/c/${campaignId}/settings/members`);
+    await page.goto(`/p/${projectId}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
     await page.getByRole("button", { name: /^invite$/i }).click();
     await page.getByPlaceholder("user@example.com").fill(invitedEmail);
@@ -154,7 +154,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       await expect(b.page.getByText(/no pending invitations/i)).toBeVisible({
         timeout: 10_000,
       });
-      await expect(b.page.getByText(campaignTitle)).toHaveCount(0);
+      await expect(b.page.getByText(projectTitle)).toHaveCount(0);
     } finally {
       await b.ctx.close();
     }
@@ -165,12 +165,12 @@ test.describe("Invitation flow (in-app inbox)", () => {
     const aEmail = `inviter-${Date.now()}@example.com`;
     const target = `dup-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
-    const campaignId = await createCampaignViaWizard(
+    const projectId = await createProjectViaWizard(
       page,
       `Dup${Date.now()}`.slice(0, 20),
     );
 
-    await page.goto(`/c/${campaignId}/settings/members`);
+    await page.goto(`/p/${projectId}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
 
     await page.getByRole("button", { name: /^invite$/i }).click();
@@ -200,12 +200,12 @@ test.describe("Invitation flow (in-app inbox)", () => {
     test.setTimeout(90_000);
     const aEmail = `selfinv-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
-    const campaignId = await createCampaignViaWizard(
+    const projectId = await createProjectViaWizard(
       page,
       `Slf${Date.now()}`.slice(0, 20),
     );
 
-    await page.goto(`/c/${campaignId}/settings/members`);
+    await page.goto(`/p/${projectId}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
 
     await page.getByRole("button", { name: /^invite$/i }).click();

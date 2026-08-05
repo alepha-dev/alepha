@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { createCampaignViaWizard, registerAndVerify } from "./_helpers.ts";
+import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**
  * Sigils, end to end: enrol an environment, report as it, triage what arrives,
@@ -10,7 +10,7 @@ import { createCampaignViaWizard, registerAndVerify } from "./_helpers.ts";
  * is shown exactly once and stored hashed. Ingest is a root `$route`
  * (`POST /sigils/ingest`), authenticated by that token and by nothing else.
  *
- * Two mechanical traps, both of which have cost this project time before:
+ * Two mechanical traps, both of which have cost this codebase time before:
  *
  * 1. **Never drive ingest through the page.** Alepha patches the browser's
  *    `fetch` to attach the session bearer, which silently replaces the sigil
@@ -91,17 +91,17 @@ test.describe("Sigils", () => {
 
     const t = Date.now();
     const email = `sigil${t}@example.com`;
-    const campaignTitle = `Sig${t}`.slice(0, 20);
+    const projectTitle = `Sig${t}`.slice(0, 20);
     const blightMessage = `SigilE2E_${t} is not a function`;
 
     await registerAndVerify(page, email, "SigilTest123!");
-    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+    const projectId = await createProjectViaWizard(page, projectTitle);
 
     const ingest = `${baseURL}/sigils/ingest`;
     const config = `${baseURL}/sigils/config`;
 
     await test.step("the owner turns Sigils on from settings", async () => {
-      await page.goto(`/c/${campaignId}/settings/sigils`);
+      await page.goto(`/p/${projectId}/settings/sigils`);
       await page.waitForLoadState("networkidle");
 
       // The settings page rendering at all is worth asserting: removing this
@@ -113,7 +113,7 @@ test.describe("Sigils", () => {
       await page.getByRole("switch", { name: "Enable", exact: true }).click();
 
       // The capability switches only exist once the master toggle is on.
-      for (const capability of ["Petitions", "Blights", "Beacon", "Vitals"]) {
+      for (const capability of ["Feedback", "Blights", "Beacon", "Vitals"]) {
         const toggle = page.getByRole("switch", {
           name: capability,
           exact: true,
@@ -208,12 +208,12 @@ test.describe("Sigils", () => {
 
       const body = (await res.json()) as {
         enabled: Record<string, boolean>;
-        petitionUrl?: string;
+        feedbackUrl?: string;
       };
-      // Every capability was switched on above, so the answer is the campaign's
+      // Every capability was switched on above, so the answer is the project's
       // own toggles intersected with the sigil's kinds — all of them.
       expect(body.enabled).toEqual({ views: true, errors: true, vitals: true });
-      expect(body.petitionUrl).toContain(`/c/${campaignId}/request`);
+      expect(body.feedbackUrl).toContain(`/p/${projectId}/request`);
 
       const bogus = await request.get(config, {
         headers: { authorization: "Bearer sg_not_a_real_token" },
@@ -230,7 +230,7 @@ test.describe("Sigils", () => {
     });
 
     await test.step("the error lands in the blights inbox", async () => {
-      await page.goto(`/c/${campaignId}/blights`);
+      await page.goto(`/p/${projectId}/blights`);
       await page.waitForLoadState("networkidle");
 
       await expect(page.getByText(blightMessage)).toBeVisible({
@@ -265,7 +265,7 @@ test.describe("Sigils", () => {
       // 491 restored lines across three components plus a nav entry, and
       // nothing in the repo rendered any of them. A nav entry pointing at a
       // page that throws is exactly what took six specs down in `5366c6e4d`.
-      await page.goto(`/c/${campaignId}/insights`);
+      await page.goto(`/p/${projectId}/insights`);
       await page.waitForLoadState("networkidle");
 
       // Analytics: two views of /checkout from one visitor. The numbers are
@@ -293,7 +293,7 @@ test.describe("Sigils", () => {
       // `sigil_error_groups` was written on every accepted error and read by
       // nothing outside `test/`. This is the surface that reads it — split per
       // environment, unlike the inbox, which folds every sigil into one row per
-      // campaign on purpose.
+      // project on purpose.
       await page.getByRole("radio", { name: "Errors" }).click();
 
       await expect(page.getByText("Still happening")).toBeVisible({
@@ -309,7 +309,7 @@ test.describe("Sigils", () => {
 
     let rotated = "";
     await test.step("rotating revokes the old token and keeps the history", async () => {
-      await page.goto(`/c/${campaignId}/settings/sigils`);
+      await page.goto(`/p/${projectId}/settings/sigils`);
       await page.waitForLoadState("networkidle");
 
       await page.getByRole("button", { name: "Rotate", exact: true }).click();
@@ -340,7 +340,7 @@ test.describe("Sigils", () => {
 
       // Rotation is revocation *without* the amnesia — this is the whole
       // reason it exists beside delete.
-      await page.goto(`/c/${campaignId}/blights`);
+      await page.goto(`/p/${projectId}/blights`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(blightMessage)).toBeVisible({
         timeout: 15_000,
@@ -348,7 +348,7 @@ test.describe("Sigils", () => {
     });
 
     await test.step("deleting the sigil retires its token", async () => {
-      await page.goto(`/c/${campaignId}/settings/sigils`);
+      await page.goto(`/p/${projectId}/settings/sigils`);
       await page.waitForLoadState("networkidle");
 
       await page.getByRole("button", { name: "Delete", exact: true }).click();
@@ -369,7 +369,7 @@ test.describe("Sigils", () => {
 
       // The blight outlives the credential that filed it: `blights.sigilId` is
       // `ON DELETE SET NULL`, because a triage decision is not the sigil's.
-      await page.goto(`/c/${campaignId}/blights`);
+      await page.goto(`/p/${projectId}/blights`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(blightMessage)).toBeVisible({
         timeout: 15_000,

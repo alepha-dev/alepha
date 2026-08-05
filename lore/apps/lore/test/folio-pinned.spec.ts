@@ -6,8 +6,8 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { CampaignController } from "../src/api/controllers/CampaignController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { foldPinnedFolios } from "../src/api/services/PinnedFolioFolder.ts";
 
@@ -21,7 +21,7 @@ const userDataSchema = z.object({
 interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
-  campaignController: CampaignController;
+  projectController: ProjectController;
   folioController: FolioController;
   fakeProvider: FakeProvider;
 }
@@ -48,7 +48,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
-    campaignController: alepha.inject(CampaignController),
+    projectController: alepha.inject(ProjectController),
     folioController: alepha.inject(FolioController),
     fakeProvider: alepha.inject(FakeProvider),
   };
@@ -80,18 +80,18 @@ describe("FolioController pinned sort + roundtrip (#59)", () => {
     expect,
   }) => {
     const owner = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
+    const created = await ctx.projectController.createProject.fetch(
       { body: { title: "Pin sort" } },
       { user: owner },
     );
-    const campaignId = created.data.id;
+    const projectId = created.data.id;
 
     // Create three folios with a small delay between each so updatedAt
     // is strictly increasing.
     const titles = ["Oldest", "Middle", "Newest"];
     for (const title of titles) {
       await ctx.folioController.create.fetch(
-        { body: { campaignId, title, content: title } },
+        { body: { projectId, title, content: title } },
         { user: owner },
       );
       // Force-tick updatedAt so the ordering is unambiguous on fast
@@ -103,7 +103,7 @@ describe("FolioController pinned sort + roundtrip (#59)", () => {
     // first re-fetch the folio to read its shortId, then update with
     // pinned=true.
     const list1 = await ctx.folioController.list.fetch(
-      { query: { campaignId } },
+      { query: { projectId } },
       { user: owner },
     );
     const oldest = list1.data.find((f) => f.title === "Oldest");
@@ -114,7 +114,7 @@ describe("FolioController pinned sort + roundtrip (#59)", () => {
     );
 
     const list2 = await ctx.folioController.list.fetch(
-      { query: { campaignId } },
+      { query: { projectId } },
       { user: owner },
     );
     expect(list2.data.map((f) => f.title)).toEqual([
@@ -126,14 +126,14 @@ describe("FolioController pinned sort + roundtrip (#59)", () => {
 
   it("update pinned=false flips the sort back", async ({ expect }) => {
     const owner = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
+    const created = await ctx.projectController.createProject.fetch(
       { body: { title: "Pin off" } },
       { user: owner },
     );
     const folio = await ctx.folioController.create.fetch(
       {
         body: {
-          campaignId: created.data.id,
+          projectId: created.data.id,
           title: "Initially pinned",
           pinned: true,
         },

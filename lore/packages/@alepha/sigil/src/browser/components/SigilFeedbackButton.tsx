@@ -1,42 +1,42 @@
 import { useEffect, useRef, useState } from "react";
-import { SIGIL_PETITION_SUBMITTED_MESSAGE } from "../../shared/sigilMessages.ts";
-import { SIGIL_PETITION_CONTEXT_MAX_LEN } from "../../shared/sigilPetitionContext.ts";
+import { SIGIL_FEEDBACK_CONTEXT_MAX_LEN } from "../../shared/sigilFeedbackContext.ts";
+import { SIGIL_FEEDBACK_SUBMITTED_MESSAGE } from "../../shared/sigilMessages.ts";
 
 /**
  * Props for the SigilFeedbackButton component.
  */
 export interface SigilFeedbackButtonProps {
   /**
-   * The sink-provided petition URL (see `usePetitionUrl()`). The host page's
+   * The sink-provided feedback URL (see `useFeedbackUrl()`). The host page's
    * context (see {@link collectPageContext}) is appended to it as a query
    * string before the popup opens.
    */
-  petitionUrl: string;
+  feedbackUrl: string;
 }
 
 /**
  * Floating feedback button.
  *
- * On click it synchronously opens `petitionUrl` — the URL the sink handed
+ * On click it synchronously opens `feedbackUrl` — the URL the sink handed
  * out via config — in a popup, with the host page's context appended as a
  * query string. There used to be a same-origin proxy here that resolved a
- * secret sigil id to a campaign server-side; there is no such id any more,
+ * secret sigil id to a project server-side; there is no such id any more,
  * the sink now hands out a ready-to-use URL directly, so the popup can point
  * straight at it. Styled entirely inline — no stylesheet dependency.
  *
- * When the popup submits a petition it posts a
- * {@link SIGIL_PETITION_SUBMITTED_MESSAGE} message back to this window and
+ * When the popup submits feedback it posts a
+ * {@link SIGIL_FEEDBACK_SUBMITTED_MESSAGE} message back to this window and
  * closes itself; we flash a brief "thank you" pill above the button so the
  * user gets an acknowledgement once the popup is gone.
  */
 export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
-  const { petitionUrl } = props;
+  const { feedbackUrl } = props;
   const [showThanks, setShowThanks] = useState(false);
   const hideTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.data?.type !== SIGIL_PETITION_SUBMITTED_MESSAGE) return;
+      if (event.data?.type !== SIGIL_FEEDBACK_SUBMITTED_MESSAGE) return;
       setShowThanks(true);
       if (hideTimer.current !== undefined) {
         window.clearTimeout(hideTimer.current);
@@ -52,7 +52,7 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
     };
   }, []);
 
-  const openPetition = () => {
+  const openFeedback = () => {
     const width = 480;
     const height = 720;
     // Center on the CURRENT monitor (screenLeft/Top + innerWidth/Height),
@@ -69,15 +69,15 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
     const top = Math.max(0, dualTop + (viewportHeight - height) / 2);
 
     const features = `width=${width},height=${height},left=${left},top=${top}`;
-    // Carry the host page's context to the petition form via the popup URL.
-    // The Lore petition page (`@alepha/sigil/context`) reads this same
+    // Carry the host page's context to the feedback form via the popup URL.
+    // The Lore feedback page (`@alepha/sigil/context`) reads this same
     // whitelist back off the query string.
     const context = collectPageContext();
-    const separator = petitionUrl.includes("?") ? "&" : "?";
+    const separator = feedbackUrl.includes("?") ? "&" : "?";
     const target = context
-      ? `${petitionUrl}${separator}${context}`
-      : petitionUrl;
-    const popup = window.open(target, "lore-petition", features);
+      ? `${feedbackUrl}${separator}${context}`
+      : feedbackUrl;
+    const popup = window.open(target, "lore-feedback", features);
     if (!popup) window.open(target, "_blank");
   };
 
@@ -129,7 +129,7 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
       <button
         type="button"
         aria-label="Feedback"
-        onClick={openPetition}
+        onClick={openFeedback}
         style={{
           position: "fixed",
           bottom: 16,
@@ -172,16 +172,16 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
 
 /**
  * Snapshot the host page's context (URL, title, referrer, UA, locale, viewport)
- * as a query string the popup carries to the petition form. Best-effort: any
+ * as a query string the popup carries to the feedback form. Best-effort: any
  * field that throws or is unavailable is simply omitted. Each value is capped
  * so a hostile/huge value can't blow out the popup URL — the server schema
  * enforces the authoritative bounds on persist. Keys match
- * `SIGIL_PETITION_CONTEXT_PARAMS`.
+ * `SIGIL_FEEDBACK_CONTEXT_PARAMS`.
  */
 const collectPageContext = (): string => {
   const params = new URLSearchParams();
   const put = (key: string, value: string | undefined | null) => {
-    if (value) params.set(key, value.slice(0, SIGIL_PETITION_CONTEXT_MAX_LEN));
+    if (value) params.set(key, value.slice(0, SIGIL_FEEDBACK_CONTEXT_MAX_LEN));
   };
   try {
     put("url", window.location.href);

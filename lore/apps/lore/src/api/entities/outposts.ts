@@ -1,6 +1,6 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
-import { campaigns } from "./campaigns.ts";
+import { projects } from "./projects.ts";
 import { users } from "./users.ts";
 
 /**
@@ -27,7 +27,7 @@ export const outposts = $entity({
   name: "outposts",
   schema: z.object({
     id: db.primaryKey(z.uuid()),
-    campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
+    projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
     /** Operator-chosen name, e.g. `OVH Bay`. A label, never an identity. */
@@ -63,7 +63,7 @@ export const outposts = $entity({
     lastSeenAt: z.string().optional(),
   }),
   indexes: [
-    { columns: ["campaignId"] },
+    { columns: ["projectId"] },
     { columns: ["tokenHash"], unique: true },
     { columns: ["createdBy"] },
   ],

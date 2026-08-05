@@ -5,10 +5,10 @@ import { useAlepha, useClient } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 import { Check, Mail, X } from "lucide-react";
 import { useState } from "react";
-import type { CampaignController } from "@/api/controllers/CampaignController.ts";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
+import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
-import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
+import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 
 type Inbox = Awaited<ReturnType<InvitationController["listMyInvitations"]>>;
 
@@ -18,7 +18,7 @@ export interface MyInvitationsProps {
 
 const MyInvitations = (props: MyInvitationsProps) => {
   const invitationApi = useClient<InvitationController>();
-  const campaignApi = useClient<CampaignController>();
+  const projectApi = useClient<ProjectController>();
   const router = useRouter<AppRouter>();
   const alepha = useAlepha();
   const toaster = useToast();
@@ -26,14 +26,14 @@ const MyInvitations = (props: MyInvitationsProps) => {
   const [items, setItems] = useState<Inbox>(props.invitations);
   const [busyId, setBusyId] = useState<string | undefined>(undefined);
 
-  const accept = async (id: string, campaignId: string) => {
+  const accept = async (id: string, projectId: string) => {
     setBusyId(id);
     try {
       await invitationApi.acceptInvitation({ params: { id } });
-      alepha.store.set(userCampaignsAtom, await campaignApi.getHomeOverview());
+      alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
       setItems((prev) => prev.filter((it) => it.id !== id));
-      toaster.success("You have joined the campaign!");
-      await router.push("campaign", { params: { campaignId } });
+      toaster.success("You have joined the project!");
+      await router.push("project", { params: { projectId } });
     } catch (error: any) {
       toaster.error(error?.message ?? "Failed to accept invitation");
     } finally {
@@ -58,8 +58,8 @@ const MyInvitations = (props: MyInvitationsProps) => {
     <div className="flex w-full flex-col gap-2 p-2">
       <div className="p-2">
         <span className="text-xs text-muted-foreground">
-          Pending campaign invitations addressed to your email. Accept to join
-          the campaign as a new character, or decline to drop the invite.
+          Pending project invitations addressed to your email. Accept to join
+          the project as a new character, or decline to drop the invite.
         </span>
       </div>
 
@@ -81,7 +81,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
               <div className="flex flex-1 flex-col">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">
-                    {invitation.campaignTitle}
+                    {invitation.projectTitle}
                   </span>
                   <Badge variant="secondary">Pending</Badge>
                 </div>

@@ -34,8 +34,8 @@ export interface MemberIdentityProps {
 }
 
 /**
- * Single shared way to render a campaign member anywhere in the app.
- * Identity always comes from the user account — there is no per-campaign
+ * Single shared way to render a project member anywhere in the app.
+ * Identity always comes from the user account — there is no per-project
  * alias or avatar.
  */
 export const MemberIdentity = (props: MemberIdentityProps) => {

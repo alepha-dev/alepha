@@ -1,12 +1,12 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
-import { campaigns } from "./campaigns.ts";
+import { projects } from "./projects.ts";
 import { users } from "./users.ts";
 
 /**
  * The capabilities a sigil may grant.
  */
-export const SIGIL_KINDS = ["petition", "blights", "beacon", "vitals"] as const;
+export const SIGIL_KINDS = ["feedback", "blights", "beacon", "vitals"] as const;
 
 export type SigilKind = (typeof SIGIL_KINDS)[number];
 
@@ -26,7 +26,7 @@ export const sigils = $entity({
   name: "sigils",
   schema: z.object({
     id: db.primaryKey(z.uuid()),
-    campaignId: db.ref(z.integer(), () => campaigns.cols.id, {
+    projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
     /** Application name, e.g. `lore`. Free-form; the operator names it. */
@@ -46,9 +46,9 @@ export const sigils = $entity({
     lastSeenAt: z.string().optional(),
   }),
   indexes: [
-    { columns: ["campaignId"] },
+    { columns: ["projectId"] },
     { columns: ["tokenHash"], unique: true },
-    { columns: ["campaignId", "app", "environment"], unique: true },
+    { columns: ["projectId", "app", "environment"], unique: true },
     { columns: ["createdBy"] },
   ],
 });

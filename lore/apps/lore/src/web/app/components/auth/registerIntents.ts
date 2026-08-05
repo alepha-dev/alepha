@@ -10,9 +10,9 @@ export interface RegisterIntent {
 }
 
 export const registerIntents: Record<string, RegisterIntent> = {
-  createCampaign: {
-    messageKey: "auth.register.intent.createCampaign",
-    redirectTo: "/?action=createCampaign",
+  createProject: {
+    messageKey: "auth.register.intent.createProject",
+    redirectTo: "/?action=createProject",
   },
 };
 
