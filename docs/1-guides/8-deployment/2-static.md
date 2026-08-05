@@ -58,6 +58,37 @@ export default defineConfig({
 
 If no domain is specified, Alepha generates a deterministic domain from your `package.json` name: `{name}-{hash}.surge.sh`.
 
+## Shipping a Client Built by Something Else
+
+The steps above assume Alepha rendered the site: its own Vite client build, or a `$page` at `/`. A site built by anything else — a hand-written `index.html` through plain Vite, a static export from another tool — has no page for the target to render, and filling `dist/public/` yourself does not help either, because the build cleans `dist/` before any task runs.
+
+Point `static.source` at the directory your own build fills instead:
+
+```typescript check
+import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  build: {
+    target: "static",
+    static: {
+      source: "dist-client",
+    },
+  },
+});
+```
+
+```bash
+vite build --outDir dist-client --emptyOutDir
+alepha build --target=static
+```
+
+The directory is copied into `dist/public/` before the fallbacks are derived, so your `index.html` ships as written and `200.html`/`404.html` are stripped-down shells of it. Two rules:
+
+- **It must live outside `dist/`.** A source inside it is refused by name — the clean step deletes it before it can be read.
+- **It must contain an `index.html`.** Otherwise a static host has nothing to answer `/` with, and the build says so rather than failing later on a path you never wrote.
+
+A server entry is still required, because the build boots the workspace to analyze it. Nothing of it ships — the static target keeps only the client directory and the manifest — so a bare `run(Alepha.create())` is enough for a site with no server of its own.
+
 ## Other Hosting Providers
 
 The `dist/public/` directory is a standard static site. Deploy it to any static hosting:

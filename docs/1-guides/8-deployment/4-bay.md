@@ -17,6 +17,13 @@ alepha build --target=bare
 That is the whole target-specific story: Bay has no `wrangler.jsonc` equivalent, because everything
 it needs is already in the build manifest. `alepha platform up` runs this for you.
 
+One exception: a workspace that declares `target: "static"` is built as static instead. Bay hosts a
+site with no process behind it — no port, no `.env`, no database, no health probe, because there is
+nothing to give them to — and the deploy commands below are otherwise identical. See
+[Static Deployment](./2-static.md), including `static.source` for a site Alepha did not render
+itself. Every other target is overridden to `bare`: a workerd bundle has no entry point node can
+run, so one reaching Bay would deploy, never boot, and report only "never became ready".
+
 ## Configuration
 
 ```typescript
