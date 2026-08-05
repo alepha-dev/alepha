@@ -2,7 +2,7 @@ import { $inject, z } from "alepha";
 import { $storage } from "alepha/api/files";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
-import type { Release } from "../entities/releases.ts";
+import type { Deployment } from "../entities/deployments.ts";
 import { releaseResourceSchema } from "../schemas/releaseResource.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { ReleaseService } from "../services/ReleaseService.ts";
@@ -20,10 +20,10 @@ import { ReleaseService } from "../services/ReleaseService.ts";
  *
  * Uploading the bytes is not here: `alepha/api/files` owns that flow, and this
  * controller registers a release on top of a file that already exists. One
- * upload path for folios, feedback and releases alike.
+ * upload path for folios, feedback and deployments alike.
  */
 export class ReleaseController {
-  protected readonly releases = $inject(ReleaseService);
+  protected readonly deployments = $inject(ReleaseService);
   protected readonly security = $inject(ProjectSecurityService);
 
   /**
@@ -39,7 +39,7 @@ export class ReleaseController {
    * not a bigger number here.
    */
   releaseBucket = $storage({
-    name: "releases",
+    name: "deployments",
     description: "Deployable artifacts",
     maxSize: 100,
     mimeTypes: ["application/gzip"],
@@ -57,7 +57,7 @@ export class ReleaseController {
   createRelease = $action({
     use: [$secure({ permissions: ["project:update"] })],
     method: "POST",
-    path: "/projects/:projectId/releases",
+    path: "/projects/:projectId/deployments",
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
@@ -75,7 +75,7 @@ export class ReleaseController {
     handler: async ({ params, body, user }) => {
       await this.security.assertMember(params.projectId, user);
 
-      const release = await this.releases.register({
+      const release = await this.deployments.register({
         projectId: params.projectId,
         app: body.app,
         environment: body.environment,
@@ -99,7 +99,7 @@ export class ReleaseController {
   getRelease = $action({
     use: [$secure({ permissions: ["project:read"] })],
     method: "GET",
-    path: "/projects/:projectId/releases/:releaseId",
+    path: "/projects/:projectId/deployments/:releaseId",
     schema: {
       params: z.object({ projectId: z.integer(), releaseId: z.uuid() }),
       response: releaseResourceSchema,
@@ -107,12 +107,12 @@ export class ReleaseController {
     handler: async ({ params, user }) => {
       await this.security.assertMember(params.projectId, user);
 
-      const release = await this.releases.get(params.releaseId);
+      const release = await this.deployments.get(params.releaseId);
       // The project check is not redundant with the membership gate above:
       // without it, a member of any project could read any release by id, and
       // a release names the app and environment it ships to.
       if (!release || release.projectId !== params.projectId) {
-        throw new NotFoundError("Release not found");
+        throw new NotFoundError("Deployment not found");
       }
 
       return this.toResource(release);
@@ -120,7 +120,7 @@ export class ReleaseController {
   });
 
   /**
-   * The project's recent releases.
+   * The project's recent deployments.
    *
    * Serves three callers at once: the authentication pre-check `platform up`
    * runs before spending two minutes on a build, its `inspect`, and the UI the
@@ -129,7 +129,7 @@ export class ReleaseController {
   listReleases = $action({
     use: [$secure({ permissions: ["project:read"] })],
     method: "GET",
-    path: "/projects/:projectId/releases",
+    path: "/projects/:projectId/deployments",
     schema: {
       params: z.object({ projectId: z.integer() }),
       response: z.object({ items: z.array(releaseResourceSchema) }),
@@ -137,8 +137,10 @@ export class ReleaseController {
     handler: async ({ params, user }) => {
       await this.security.assertMember(params.projectId, user);
 
-      const items = await this.releases.listByProject(params.projectId);
-      return { items: items.map((release) => this.toResource(release)) };
+      const items = await this.deployments.listByProject(params.projectId);
+      return {
+        items: items.map((release: Deployment) => this.toResource(release)),
+      };
     },
   });
 
@@ -149,7 +151,7 @@ export class ReleaseController {
    * omission is visible at the place someone would otherwise add the field back
    * without thinking about who is asking.
    */
-  protected toResource(release: Release) {
+  protected toResource(release: Deployment) {
     return {
       id: release.id,
       projectId: release.projectId,

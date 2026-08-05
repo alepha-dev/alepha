@@ -1,6 +1,7 @@
 import { users } from "alepha/api/users";
 import { $relations } from "alepha/orm";
 import { blightIgnoreRules } from "./entities/blightIgnoreRules.ts";
+import { deployments } from "./entities/deployments.ts";
 import { feedback } from "./entities/feedback.ts";
 import { folioBlobs } from "./entities/folioBlobs.ts";
 import { folioDirectories } from "./entities/folioDirectories.ts";
@@ -14,7 +15,6 @@ import { outpostEvents } from "./entities/outpostEvents.ts";
 import { outposts } from "./entities/outposts.ts";
 import { projects } from "./entities/projects.ts";
 import { quests } from "./entities/quests.ts";
-import { releases } from "./entities/releases.ts";
 import { sigils } from "./entities/sigils.ts";
 
 /**
@@ -47,7 +47,7 @@ export const schema = {
   outposts,
   outpostApps,
   outpostEvents,
-  releases,
+  deployments,
   sigils,
   blightIgnoreRules,
 };

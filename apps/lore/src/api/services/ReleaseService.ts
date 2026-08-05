@@ -3,12 +3,12 @@ import { files } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbConflictError } from "alepha/orm";
 import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
-import type { Outpost } from "../entities/outposts.ts";
 import {
-  type Release,
-  type ReleaseStatus,
-  releases,
-} from "../entities/releases.ts";
+  type Deployment,
+  type DeploymentStatus,
+  deployments,
+} from "../entities/deployments.ts";
+import type { Outpost } from "../entities/outposts.ts";
 
 /**
  * The registry, on the writing side.
@@ -20,7 +20,7 @@ import {
  * nothing in it names a storage provider.
  */
 export class ReleaseService {
-  protected readonly releases = $repository(releases);
+  protected readonly deployments = $repository(deployments);
   protected readonly frameworkFiles = $repository(files);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -42,7 +42,7 @@ export class ReleaseService {
    * reader agree by construction — a blob validated against one bucket name and
    * fetched from another is a class of bug that only shows up in production.
    */
-  public static readonly BUCKET = "releases";
+  public static readonly BUCKET = "deployments";
 
   /**
    * Records an artifact that has already been uploaded.
@@ -60,7 +60,7 @@ export class ReleaseService {
     fileId: string;
     sizeBytes?: number;
     userId?: string;
-  }): Promise<Release> {
+  }): Promise<Deployment> {
     const sha256 = this.normaliseDigest(input.sha256);
 
     const frameworkFile = await this.frameworkFiles.findOne({
@@ -76,7 +76,7 @@ export class ReleaseService {
     }
 
     try {
-      return await this.releases.create({
+      return await this.deployments.create({
         projectId: input.projectId,
         app: input.app,
         environment: input.environment,
@@ -94,26 +94,26 @@ export class ReleaseService {
       // the pipeline reported success.
       if (error instanceof DbConflictError) {
         throw new ConflictError(
-          `Release '${input.version}' already exists for ${input.app}/${input.environment}. Build a new version rather than replacing this one.`,
+          `Deployment '${input.version}' already exists for ${input.app}/${input.environment}. Build a new version rather than replacing this one.`,
         );
       }
       throw error;
     }
   }
 
-  public async get(id: string): Promise<Release | undefined> {
-    return this.releases.findOne({ where: { id: { eq: id } } });
+  public async get(id: string): Promise<Deployment | undefined> {
+    return this.deployments.findOne({ where: { id: { eq: id } } });
   }
 
   /**
-   * The project's recent releases, newest first.
+   * The project's recent deployments, newest first.
    *
    * Capped rather than paginated: this answers "what happened lately", and the
    * caller that needs more than twenty is asking a different question that
    * deserves its own query.
    */
-  public async listByProject(projectId: number): Promise<Release[]> {
-    return this.releases.findMany({
+  public async listByProject(projectId: number): Promise<Deployment[]> {
+    return this.deployments.findMany({
       where: { projectId: { eq: projectId } },
       orderBy: [{ column: "createdAt", direction: "desc" }],
       limit: 20,
@@ -123,13 +123,13 @@ export class ReleaseService {
   /**
    * Hands the oldest waiting release to a machine, and marks it taken.
    *
-   * Also picks up releases whose claim has gone stale, which is the only way a
+   * Also picks up deployments whose claim has gone stale, which is the only way a
    * deploy survives the machine that took it dying mid-pull. The two cases are
    * one query on purpose: "nobody has it" and "whoever had it stopped talking"
    * want identical handling, and splitting them would mean a second sweep with
    * its own schedule to get wrong.
    */
-  public async claim(outpost: Outpost): Promise<Release | undefined> {
+  public async claim(outpost: Outpost): Promise<Deployment | undefined> {
     const now = this.dateTime.nowMillis();
     const staleBefore = new Date(
       now - ReleaseService.CLAIM_EXPIRY_MS,
@@ -139,7 +139,7 @@ export class ReleaseService {
     // taking the first N of *every* release would, after fifty deploys, return
     // fifty finished ones and leave a fresh `pending` outside the window —
     // a machine that stops deploying and never says why.
-    const waiting = await this.releases.findMany({
+    const waiting = await this.deployments.findMany({
       where: {
         projectId: { eq: outpost.projectId },
         status: { inArray: ["pending", "claimed"] },
@@ -149,7 +149,7 @@ export class ReleaseService {
     });
 
     const next = waiting.find(
-      (release) =>
+      (release: Deployment) =>
         release.status === "pending" ||
         (release.status === "claimed" &&
           (release.claimedAt ?? "") < staleBefore),
@@ -158,7 +158,7 @@ export class ReleaseService {
       return undefined;
     }
 
-    return this.releases.updateOne(
+    return this.deployments.updateOne(
       { id: { eq: next.id } },
       {
         status: "claimed",
@@ -183,10 +183,10 @@ export class ReleaseService {
   public async transition(
     releaseId: string,
     outpostId: string,
-    status: ReleaseStatus,
+    status: DeploymentStatus,
     failureReason?: string,
-  ): Promise<Release> {
-    const release = await this.releases.findOne({
+  ): Promise<Deployment> {
+    const release = await this.deployments.findOne({
       where: { id: { eq: releaseId }, outpostId: { eq: outpostId } },
     });
     if (!release) {
@@ -194,11 +194,11 @@ export class ReleaseService {
     }
     if (release.status === "serving" || release.status === "failed") {
       throw new ConflictError(
-        `Release '${release.version}' already finished as '${release.status}'`,
+        `Deployment '${release.version}' already finished as '${release.status}'`,
       );
     }
 
-    return this.releases.updateOne(
+    return this.deployments.updateOne(
       { id: { eq: releaseId } },
       {
         status,
