@@ -2,8 +2,11 @@ import { $inject, z } from "alepha";
 import { $storage } from "alepha/api/files";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
+import type { Artifact } from "../entities/artifacts.ts";
 import type { Deployment } from "../entities/deployments.ts";
+import { artifactResourceSchema } from "../schemas/artifactResource.ts";
 import { releaseResourceSchema } from "../schemas/releaseResource.ts";
+import { ArtifactService } from "../services/ArtifactService.ts";
 import { DeploymentService } from "../services/DeploymentService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
@@ -24,6 +27,7 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  */
 export class ReleaseController {
   protected readonly deployments = $inject(DeploymentService);
+  protected readonly artifacts = $inject(ArtifactService);
   protected readonly security = $inject(ProjectSecurityService);
 
   /**
@@ -143,6 +147,121 @@ export class ReleaseController {
       };
     },
   });
+
+  /**
+   * Registers an artifact without deploying it — `alepha platform push`.
+   *
+   * Separate from deploying on purpose: an artifact is a thing you can build
+   * once and place many times, and collapsing the two is what made every push
+   * a new version and every retention rule a no-op.
+   */
+  createArtifact = $action({
+    use: [$secure({ permissions: ["project:update"] })],
+    method: "POST",
+    path: "/projects/:projectId/artifacts",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({
+        app: z.string().min(1).max(100),
+        /** Docker-style tag. `latest` is replaced in place; anything else is write-once. */
+        tag: z.string().min(1).max(100),
+        sha256: z.string().min(64).max(64),
+        fileId: z.uuid(),
+        sizeBytes: z.integer().min(0).optional(),
+        /** Replace a pinned tag. For the one honest case: tagged the wrong commit. */
+        force: z.boolean().optional(),
+      }),
+      response: artifactResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      await this.security.assertMember(params.projectId, user);
+
+      return this.toArtifactResource(
+        await this.artifacts.register({
+          projectId: params.projectId,
+          app: body.app,
+          tag: body.tag,
+          sha256: body.sha256,
+          fileId: body.fileId,
+          sizeBytes: body.sizeBytes,
+          force: body.force,
+          userId: user?.id,
+        }),
+      );
+    },
+  });
+
+  /**
+   * What is in the registry, so a client can decide whether to build at all.
+   */
+  listArtifacts = $action({
+    use: [$secure({ permissions: ["project:read"] })],
+    method: "GET",
+    path: "/projects/:projectId/artifacts",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({ items: z.array(artifactResourceSchema) }),
+    },
+    handler: async ({ params, user }) => {
+      await this.security.assertMember(params.projectId, user);
+
+      const items = await this.artifacts.listByProject(params.projectId);
+      return {
+        items: items.map((artifact: Artifact) =>
+          this.toArtifactResource(artifact),
+        ),
+      };
+    },
+  });
+
+  /**
+   * Places an artifact already in the registry on an environment.
+   *
+   * This is promote, and it is deliberately not a variant of `createRelease`:
+   * nothing is uploaded, nothing is rebuilt, and the bytes are the ones the
+   * previous environment tested.
+   */
+  createDeployment = $action({
+    use: [$secure({ permissions: ["project:update"] })],
+    method: "POST",
+    path: "/projects/:projectId/deployments",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({
+        artifactId: z.uuid(),
+        environment: z.string().min(1).max(50),
+      }),
+      response: releaseResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      await this.security.assertMember(params.projectId, user);
+
+      return this.toResource(
+        await this.deployments.deployArtifact({
+          projectId: params.projectId,
+          artifactId: body.artifactId,
+          environment: body.environment,
+          userId: user?.id,
+        }),
+      );
+    },
+  });
+
+  /**
+   * Drops `fileId` on the way out, same as {@link toResource}.
+   */
+  protected toArtifactResource(artifact: Artifact) {
+    return {
+      id: artifact.id,
+      projectId: artifact.projectId,
+      app: artifact.app,
+      tag: artifact.tag,
+      sha256: artifact.sha256,
+      sizeBytes: artifact.sizeBytes,
+      createdAt: artifact.createdAt,
+      updatedAt: artifact.updatedAt,
+    };
+  }
 
   /**
    * Drops `fileId` on the way out.
