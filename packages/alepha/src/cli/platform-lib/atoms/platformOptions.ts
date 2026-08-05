@@ -86,7 +86,7 @@ export const platformOptions = $atom({
             "Environment name (e.g. 'production', 'staging', 'preview'). Used in resource naming and selected via --env.",
         }),
         z.object({
-          adapter: z.enum(["cloudflare", "bay", "lore"]),
+          adapter: z.enum(["cloudflare", "bay"]),
           /**
            * Base URL of the Bay control panel this environment deploys to,
            * e.g. `"https://admin.bay.alepha.dev"`. Only read by the `bay`
@@ -100,16 +100,6 @@ export const platformOptions = $atom({
            */
           endpoint: z.text().optional(),
           /**
-           * Lore project a release is written into (`adapter: "lore"`).
-           *
-           * Required by that adapter and deliberately not derived from this
-           * config's own `name` (the deploying app's project name): Lore
-           * project ids and this app's project name are separate namespaces,
-           * and guessing a mapping between them would silently deploy into
-           * whichever Lore project happened to match.
-           */
-          projectId: z.integer().optional(),
-          /**
            * Custom domain for the deployed worker (e.g. "api.example.com").
            *
            * On Cloudflare this is attached as a custom-domain route.
@@ -119,13 +109,6 @@ export const platformOptions = $atom({
            * `"*.club.alepha.dev"` routes every subdomain to the worker.
            * Wildcard patterns require `zone` to be set, and the wildcard DNS
            * record must already exist (proxied) in the Cloudflare zone.
-           *
-           * **The `lore` adapter does not read it.** There the machine composes
-           * the host from the app name — `<app>[-<env>].<base>`, bare name in
-           * production — and the artifact it reads carries no environments at
-           * all. So a domain here NAMES that host, it does not choose it, and
-           * `up` will not report it as the address it deployed to. Moving a
-           * `lore` app to a different host means renaming the app.
            */
           domain: z.text().optional(),
           /**
@@ -187,21 +170,12 @@ export type PlatformOptions = Infer<typeof platformOptions.schema>;
  * Configuration for a single named environment.
  */
 export interface EnvironmentConfig {
-  adapter: "cloudflare" | "bay" | "lore";
+  adapter: "cloudflare" | "bay";
   /**
-   * Base URL of the deploy gateway — the Bay control panel for `bay`, the Lore
-   * instance for `lore`.
+   * Base URL of the Bay control panel this environment deploys to. Only
+   * read by the `bay` adapter.
    */
   endpoint?: string;
-  /**
-   * Lore project a release is written into (`lore` adapter only).
-   *
-   * Required by that adapter, and deliberately not derived from this
-   * config's own project name: Lore project ids and this app's project name
-   * are separate namespaces, so guessing a mapping between them would
-   * silently deploy into whichever Lore project happened to match.
-   */
-  projectId?: number;
   domain?: string;
   zone?: string;
   vars?: Record<string, string>;

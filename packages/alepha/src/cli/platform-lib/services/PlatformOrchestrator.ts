@@ -4,7 +4,6 @@ import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { BayAdapter } from "../adapters/BayAdapter.ts";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
-import { LoreAdapter } from "../adapters/LoreAdapter.ts";
 import type {
   DetectedResources,
   PlatformAdapter,
@@ -35,7 +34,6 @@ export class PlatformOrchestrator {
   protected readonly naming = $inject(NamingService);
   protected readonly bayAdapter = $inject(BayAdapter);
   protected readonly cloudflareAdapter = $inject(CloudflareAdapter);
-  protected readonly loreAdapter = $inject(LoreAdapter);
   protected readonly alepha = $inject(Alepha);
 
   // -------------------------------------------------------------------------
@@ -48,8 +46,6 @@ export class PlatformOrchestrator {
         return this.cloudflareAdapter;
       case "bay":
         return this.bayAdapter;
-      case "lore":
-        return this.loreAdapter;
       default:
         throw new AlephaError(`Unknown adapter: "${adapterName}"`);
     }

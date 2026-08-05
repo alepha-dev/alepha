@@ -51,7 +51,7 @@ export class PlatformCommand {
       .text({
         aliases: ["t"],
         description:
-          "Artifact tag, Docker-style. Defaults to `latest`, which is replaced on every push. Any other tag is write-once: deploying it again deploys the same bytes instead of rebuilding, which is what makes promoting a tag from staging to production ship exactly what was tested. Registry-backed adapters only (lore).",
+          "Artifact tag, Docker-style. Defaults to `latest`, which is replaced on every push. Any other tag is write-once: deploying it again deploys the same bytes instead of rebuilding, which is what makes promoting a tag from staging to production ship exactly what was tested. Registry-backed adapters only.",
       })
       .optional(),
     verbose: z

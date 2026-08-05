@@ -68,7 +68,7 @@ Common flags accepted by most subcommands:
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `adapter` | `string` | Deploy target: `"cloudflare"` (Workers), `"lore"` (artifact registry → a Bay claims it) or `"bay"` |
+| `adapter` | `string` | Deploy target: `"cloudflare"` (Workers) or `"bay"` |
 | `domain` | `string` | Custom domain for the worker. Wildcards (`"*.club.myapp.com"`) are supported for multi-tenant apps and require `zone`. Omit to use the default `*.workers.dev` URL. |
 | `zone` | `string` | Cloudflare zone that owns `domain`. Required for wildcard domains; for a plain host it switches the binding from a Custom Domain to a zone route. |
 | `services` | `Array<{ binding, service }>` | Worker-to-worker service bindings, exposed on the runtime `env`. |
@@ -159,9 +159,11 @@ alepha p up --env staging
 
 ### push
 
-Build an artifact into the registry **without deploying it**. Registry-backed
-adapters only (`lore`) — an adapter that deploys straight to a provider has
-nowhere to put an artifact, and `push` refuses rather than quietly deploying.
+Build an artifact into the registry **without deploying it**. Only meaningful
+for an adapter with an artifact registry — one that deploys straight to a
+provider has nowhere to put an artifact, and `push` refuses rather than
+quietly deploying. No currently supported adapter (`cloudflare`, `bay`)
+has one, so `push` refuses on both today.
 
 ```bash
 alepha p push --tag 1.2.3

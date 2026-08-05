@@ -1,7 +1,6 @@
 import { $module } from "alepha";
 import { BayAdapter } from "./adapters/BayAdapter.ts";
 import { CloudflareAdapter } from "./adapters/CloudflareAdapter.ts";
-import { LoreAdapter } from "./adapters/LoreAdapter.ts";
 import { GitHubSecretStore } from "./providers/GitHubSecretStore.ts";
 import { MemorySecretStore } from "./providers/MemorySecretStore.ts";
 import { PlatformCacheProvider } from "./providers/PlatformCacheProvider.ts";
@@ -31,7 +30,6 @@ export const AlephaPlatformLibPlugin = $module({
   services: [
     BayAdapter,
     CloudflareAdapter,
-    LoreAdapter,
     CloudflareApi,
     WranglerApi,
     PlatformCacheProvider,
@@ -46,7 +44,6 @@ export const AlephaPlatformLibPlugin = $module({
 
 export * from "./adapters/BayAdapter.ts";
 export * from "./adapters/CloudflareAdapter.ts";
-export * from "./adapters/LoreAdapter.ts";
 export * from "./adapters/PlatformAdapter.ts";
 export * from "./atoms/platformOptions.ts";
 export * from "./providers/GitHubSecretStore.ts";

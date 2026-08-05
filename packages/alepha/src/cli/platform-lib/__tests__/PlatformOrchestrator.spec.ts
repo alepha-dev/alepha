@@ -51,17 +51,17 @@ describe("PlatformOrchestrator", () => {
   describe("what `up` reports as the address", () => {
     /*
       An adapter that does not choose the host still had its own config echoed
-      back as the deploy's address. On the `lore` path the machine composes the
-      host from the app name, so a `domain` that did not match produced a green
-      run printing a link to an address answering 404 with no certificate —
-      while the site was serving under the composed name the whole time.
+      back as the deploy's address. When the adapter leaves host composition to
+      something else, a `domain` that did not match produced a green run
+      printing a link to an address answering 404 with no certificate — while
+      the site was serving under the composed name the whole time.
     */
     const upWith = async (controlsDomain: boolean) => {
       const alepha = Alepha.create()
         .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
         .with({ provide: ShellProvider, use: MemoryShellProvider });
       alepha.set(platformOptions, {
-        environments: { production: { adapter: "lore", domain: "named.test" } },
+        environments: { production: { adapter: "bay", domain: "named.test" } },
       });
       const fs = alepha.inject(MemoryFileSystemProvider);
       await fs.writeFile(
@@ -153,7 +153,7 @@ class SilentAdapter extends PlatformAdapter {
   async teardown(): Promise<void> {}
 }
 
-/** Composes its own host, the way the `lore` path leaves it to the machine. */
+/** Composes its own host, unlike the base adapter's default of controlling it. */
 class ComposingAdapter extends SilentAdapter {
   override readonly controlsDomain = false;
 }
