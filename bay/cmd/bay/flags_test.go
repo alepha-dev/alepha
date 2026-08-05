@@ -40,3 +40,23 @@ func TestCheckFlags(t *testing.T) {
 		})
 	}
 }
+
+// `--allow-control-api` granted an app root-equivalent access to the control
+// API. It was removed once its only consumer (bay-ui/bay-admin) was deleted and
+// deploys moved to the outbound Lore connector — nothing needs inbound control
+// access any more, and a privilege path with no users is one nobody reviews.
+//
+// This pins that the flag is REFUSED rather than ignored. `cmdDeploy`'s parse
+// loop is a hand-rolled switch that skips what it does not match, so without
+// `checkFlags` the flag would be silently dropped and an operator carrying it
+// in a script would believe a grant was still being made.
+func TestAllowControlAPIIsRefusedNotIgnored(t *testing.T) {
+	err := checkFlags(
+		[]string{"--name", "demo", "--allow-control-api"},
+		map[string]bool{},
+		map[string]bool{"--name": true, "--env": true, "--domain": true,
+			"--control-socket": true})
+	if err == nil {
+		t.Fatal("a removed privilege flag must fail the command, not pass unnoticed")
+	}
+}

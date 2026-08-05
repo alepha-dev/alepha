@@ -421,7 +421,7 @@ func TestBackupNeverArchivesUploads(t *testing.T) {
 		// This app's files exist in exactly one place, on this disk. Saying so
 		// is the whole point: an operator who wants them elsewhere has to
 		// configure a bucket, and cannot learn that from silence.
-		if !strings.Contains(joined, "bay config storage") {
+		if !strings.Contains(joined, "bay config s3:apps") {
 			t.Fatalf("a local app must be told how to get its uploads off this disk, got %q", joined)
 		}
 	})
@@ -587,7 +587,7 @@ func TestMigrateRefusesWithoutSomewhereToPutTheFiles(t *testing.T) {
 	if rec.Code != http.StatusPreconditionFailed {
 		t.Fatalf("expected 412 with no storage configured, got %d: %s", rec.Code, rec.Body)
 	}
-	if !strings.Contains(rec.Body.String(), "bay config storage") {
+	if !strings.Contains(rec.Body.String(), "bay config s3:apps") {
 		t.Fatalf("the refusal must name the fix, got: %s", rec.Body)
 	}
 }
@@ -604,5 +604,80 @@ func TestGetConfigStorageReportsUnconfigured(t *testing.T) {
 	}
 	if got["configured"] != false {
 		t.Fatalf("expected configured:false, got %v", got)
+	}
+}
+
+// `s3` vs `storage` named the technology twice and the consumer never — both
+// ARE S3, and which is which was learnable only by reading the source. The
+// subcommands name the consumer instead.
+//
+// `bay config s3` still exists and sets BOTH from one credential. That is the
+// convenient path and the less safe one: an app handed a key that also reaches
+// the backup bucket can delete its own backups. Allowed, because a one-operator
+// fleet should not need two tokens to get started — but never silent.
+func TestSharedCredentialIsReportedAsShared(t *testing.T) {
+	f := newDeployFixture(t)
+	blobs := fakeS3(t)
+
+	if err := f.server.store.SetS3(&state.S3Config{
+		S3Target: state.S3Target{
+			Endpoint: blobs.URL, Bucket: "one-bucket",
+			AccessKey: "same-key", SecretKey: "same-secret", Region: "auto",
+		},
+		Keep: 7,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.server.store.SetStorage(&state.S3Target{
+		Endpoint: blobs.URL, Bucket: "one-bucket",
+		AccessKey: "same-key", SecretKey: "same-secret", Region: "auto",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if !f.server.store.CredentialsShared() {
+		t.Fatal("identical app and backup credentials must be reported as shared")
+	}
+}
+
+func TestSeparateCredentialsAreNotReportedAsShared(t *testing.T) {
+	f := newDeployFixture(t)
+	blobs := fakeS3(t)
+
+	if err := f.server.store.SetS3(&state.S3Config{
+		S3Target: state.S3Target{
+			Endpoint: blobs.URL, Bucket: "backups",
+			AccessKey: "backup-key", SecretKey: "backup-secret", Region: "auto",
+		},
+		Keep: 7,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.server.store.SetStorage(&state.S3Target{
+		Endpoint: blobs.URL, Bucket: "blobs",
+		AccessKey: "blob-key", SecretKey: "blob-secret", Region: "auto",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if f.server.store.CredentialsShared() {
+		t.Fatal("two distinct secrets must not be reported as shared")
+	}
+}
+
+// Sharing is only interesting once both halves exist.
+func TestBackupsAloneAreNotShared(t *testing.T) {
+	f := newDeployFixture(t)
+	blobs := fakeS3(t)
+	if err := f.server.store.SetS3(&state.S3Config{
+		S3Target: state.S3Target{
+			Endpoint: blobs.URL, Bucket: "backups",
+			AccessKey: "k", SecretKey: "s", Region: "auto",
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if f.server.store.CredentialsShared() {
+		t.Fatal("with no app storage configured nothing is shared")
 	}
 }

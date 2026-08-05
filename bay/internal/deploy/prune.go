@@ -26,7 +26,7 @@ other reason the number is more than one.
 
 `protect` names releases that must survive whatever the window says, on top of
 the one `current` points at. It exists for `Result.Previous`, the target an
-in-flight `watchAndRollback` is holding: a manual `bay rollback` sets
+in-flight `watchAndRollback` is holding: an automatic rollback sets
 `state.Release` to any release the operator named, so after rollback-then-deploy
 that target sits outside the keep window AND outside the symlink, which has just
 been repointed at the release that landed. Removing it does not lose a
@@ -99,7 +99,7 @@ func Prune(instance string, keep int, protect ...string) ([]string, error) {
 servingRelease reports which release `current` points at.
 
 Resolved here rather than taken as an argument, and rather than assumed to be
-the newest: after `bay rollback` the serving release is an OLD one, so pruning
+the newest: after an automatic rollback the serving release is an OLD one, so pruning
 by age alone would delete the running app's own directory out from under it.
 
 A missing `current` is a fact, not a failure — an app whose first deploy died

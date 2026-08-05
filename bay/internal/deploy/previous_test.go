@@ -116,7 +116,7 @@ func TestPreviousIsNotAffectedByReadingTheStoreAfterwards(t *testing.T) {
 
 func TestTwoDeploysInTheSameSecondBothSucceed(t *testing.T) {
 	// A release name is second-resolution because an operator types it into
-	// `bay rollback`. Two deploys inside one second used to collide, and the
+	// an incident note. Two deploys inside one second used to collide, and the
 	// failure was a bare `rename: file exists` naming two temporary paths —
 	// nothing about releases, nothing to act on.
 	root := t.TempDir()
@@ -194,5 +194,61 @@ func TestBayReclaimsNodeEnvFromAnAppThatOverrodeIt(t *testing.T) {
 	}
 	if !strings.Contains(string(raw), "STRIPE_KEY=sk_live_keepme") {
 		t.Error("a user's own key must survive a redeploy")
+	}
+}
+
+// A pruned release name must never be handed to a later deploy.
+//
+// The bug this reproduces: at second precision, two deploys inside one second
+// collided and `uniqueRelease` resolved it with a `-2` suffix. That still
+// sorted correctly — until retention deleted the bare name and FREED it. The
+// next deploy took the name back, and the newest release then sorted as the
+// OLDEST, because "X" is a prefix of "X-2" and therefore lexically smaller.
+//
+// `Releases` promises newest-first and `Prune` reads that order to choose what
+// to delete, so an inversion points retention at the wrong end of the list.
+//
+// The deletion below is what retention does; the assertion is that the name
+// does not come back around.
+func TestAPrunedReleaseNameIsNotReused(t *testing.T) {
+	root, store := newRoot(t)
+	instance := filepath.Join(root, "apps", "demo", "production")
+
+	deployOnce := func() string {
+		t.Helper()
+		res, err := Run(Options{
+			Root: root, Artifact: artifact(t, "demo"), Name: "demo",
+			Env: "production", BaseDomain: "bay.test",
+		}, store)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Release
+	}
+
+	first := deployOnce()
+	second := deployOnce()
+
+	// Retention deletes the oldest, freeing its name.
+	if err := os.RemoveAll(filepath.Join(instance, "releases", first)); err != nil {
+		t.Fatal(err)
+	}
+
+	third := deployOnce()
+	if third == first {
+		t.Fatalf("a deleted release name was handed out again (%q); the newest release "+
+			"would then sort as the oldest and retention reads that order", third)
+	}
+	if third <= second {
+		t.Fatalf("release %q must sort after %q — newest-first ordering depends on it",
+			third, second)
+	}
+
+	listed, err := Releases(instance)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if listed[0] != third {
+		t.Fatalf("newest first: want %q at the head, got %v", third, listed)
 	}
 }

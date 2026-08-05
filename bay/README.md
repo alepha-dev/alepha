@@ -70,7 +70,7 @@ A one-directional, unprunable, memory-bound copy is not a backup. So uploads are
 shared by putting them **in a bucket**, or they are not shared at all:
 
 ```bash
-bay config storage --endpoint URL --bucket NAME   # a SECOND credential, never the backup one
+bay config s3:apps --endpoint URL --bucket NAME   # a SECOND credential, never the backup one
 bay storage migrate <name/env>                    # copies what is on disk, keeps the originals
 ```
 

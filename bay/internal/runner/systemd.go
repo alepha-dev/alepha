@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/alepha/bay/internal/control"
 )
 
 // Systemd supervises apps as systemd units.
@@ -78,24 +76,6 @@ type Sandbox struct {
 	// and it is also the app most likely to be rolled back, so the full 90
 	// seconds gets spent with the site down.
 	StopGrace time.Duration
-	// ControlSocketDir is the directory holding the control socket. Added to the
-	// writable paths ONLY for a granted app.
-	//
-	// Connecting to a unix socket needs write access to its inode, and
-	// `ProtectSystem=strict` mounts everything read-only — so a granted app
-	// cannot reach the socket without this. A separate directory from the state
-	// root on purpose: granting write access to `/opt/bay/data` would hand the
-	// app `state.json`, which holds the control token and the S3 credentials. The
-	// grant must widen exactly one thing.
-	ControlSocketDir string
-	// ControlGroup, when set, is added as a supplementary group so the app can
-	// reach Bay's control socket.
-	//
-	// Emitted into the unit rather than only applied with `usermod` so the grant
-	// is legible where an operator looks: `systemctl cat` shows, in one line,
-	// that this app administers its own host. A privilege that only exists in
-	// /etc/group is a privilege nobody reviews.
-	ControlGroup string
 }
 
 func unitName(key string) string {
@@ -159,15 +139,6 @@ func (s *Systemd) Start(spec Spec) error {
 	if err := EnsureUser(user); err != nil {
 		return err
 	}
-	if sandbox.ControlGroup != "" {
-		// systemd resolves SupplementaryGroups at start, so the group must exist
-		// first — otherwise the unit refuses to start with a message about an
-		// unknown group rather than about the grant.
-		if err := control.EnsureGroupExists(sandbox.ControlGroup); err != nil {
-			return fmt.Errorf("control group for %s: %w", spec.Key, err)
-		}
-	}
-
 	// Every ReadWritePaths entry must exist, or systemd refuses to start the unit
 	// with `Failed to set up mount namespacing` — a message that says nothing
 	// about which path or why. Creating them here rather than tolerating absence
@@ -265,18 +236,6 @@ func (s *Systemd) render(spec Spec, sandbox Sandbox, user string) string {
 		// Each of these exists because the manifest declared the resource that
 		// needs it. Nothing else on the filesystem is writable.
 		w("ReadWritePaths=%s", p)
-	}
-	if sandbox.ControlGroup != "" {
-		if sandbox.ControlSocketDir != "" {
-			// Connecting needs write access on the socket inode, and
-			// ProtectSystem=strict makes everything read-only.
-			w("ReadWritePaths=%s", sandbox.ControlSocketDir)
-		}
-		w("")
-		w("# ⚠ ROOT-EQUIVALENT. This app may call Bay's control API: deploy code,")
-		w("# read every other app's secrets, delete every backup. Granted by the")
-		w("# operator with `--allow-control-api`, never by the artifact.")
-		w("SupplementaryGroups=%s", sandbox.ControlGroup)
 	}
 	if sandbox.MemoryMax != "" {
 		w("MemoryMax=%s", sandbox.MemoryMax)

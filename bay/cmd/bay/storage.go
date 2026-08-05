@@ -94,6 +94,10 @@ func (s *server) handleGetConfigStorage(w http.ResponseWriter, _ *http.Request) 
 		"endpoint":   cfg.Endpoint,
 		"bucket":     cfg.Bucket,
 		"region":     cfg.Region,
+		// Surfaced so `bay status` can keep saying it. A credential shared with
+		// the backup half is a decision that stays true long after the command
+		// that made it scrolled out of the terminal.
+		"sharedCredential": s.store.CredentialsShared(),
 	})
 }
 
@@ -114,7 +118,7 @@ func (s *server) handleMigrateStorage(w http.ResponseWriter, r *http.Request) {
 	cfg := s.store.Storage()
 	if cfg == nil {
 		writeError(w, http.StatusPreconditionFailed,
-			"no blob storage is configured: run `bay config storage --endpoint URL --bucket NAME` "+
+			"no blob storage is configured: run `bay config s3:apps --endpoint URL --bucket NAME` "+
 				"with BAY_STORAGE_ACCESS_KEY and BAY_STORAGE_SECRET_KEY set")
 		return
 	}
@@ -261,6 +265,37 @@ func cmdStorageMigrate(args []string) error {
 	return nil
 }
 
+// cmdConfigS3Both points BOTH halves at one bucket with one credential.
+//
+// The convenient path, and the less safe one: an app receives this key in its
+// `.env`, and this key also reaches the backups — so any hosted app can delete
+// every backup on the host, which is precisely what the two-credential split
+// exists to prevent.
+//
+// Allowed anyway. A one-operator fleet should not have to mint two tokens
+// before it can store its first file, and refusing would only teach people to
+// paste the same credential into both subcommands — the same outcome, with the
+// warning skipped. So it is offered, said out loud here, and reported by
+// `bay status` for as long as it is true.
+func cmdConfigS3Both(args []string) error {
+	fmt.Fprintln(os.Stderr,
+		"⚠ one credential for BOTH app storage and backups.\n"+
+			"  Every hosted app is given this key, and this key can delete every backup\n"+
+			"  on this host. For two separate tokens:\n"+
+			"      bay config s3:backups --endpoint URL --bucket NAME   # BAY_S3_*\n"+
+			"      bay config s3:apps    --endpoint URL --bucket NAME   # BAY_STORAGE_*")
+
+	if err := cmdConfigS3(args); err != nil {
+		return err
+	}
+	// Same values, second half. The env vars the operator already set for the
+	// backup half are reused rather than demanded twice — asking for
+	// BAY_STORAGE_* here would make the shortcut longer than doing it properly.
+	os.Setenv("BAY_STORAGE_ACCESS_KEY", os.Getenv("BAY_S3_ACCESS_KEY"))
+	os.Setenv("BAY_STORAGE_SECRET_KEY", os.Getenv("BAY_S3_SECRET_KEY"))
+	return cmdConfigStorage(args)
+}
+
 func cmdConfigStorage(args []string) error {
 	cfg := state.S3Target{Region: "auto"}
 	for i := 0; i < len(args)-1; i++ {
@@ -303,4 +338,25 @@ func cmdConfigStorage(args []string) error {
 		"version of a blob, not yesterday's. Without it, code that deletes the\n" +
 		"wrong key has deleted it everywhere.")
 	return nil
+}
+
+// sharedCredentialConfigured asks the control API whether the two halves are
+// one credential.
+//
+// Best-effort: a status report must not fail because a warning could not be
+// fetched. Silence here means "could not tell", which is the same shape as the
+// answer being false and does not deserve an error the operator has to read
+// past to see their fleet.
+func sharedCredentialConfigured() bool {
+	raw, err := call(http.MethodGet, controlHost+"/config/storage", nil)
+	if err != nil {
+		return false
+	}
+	var cfg struct {
+		SharedCredential bool `json:"sharedCredential"`
+	}
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		return false
+	}
+	return cfg.SharedCredential
 }

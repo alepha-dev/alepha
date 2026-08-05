@@ -67,11 +67,22 @@ const (
 	// A full disk does not take down the app being deployed, it takes down every
 	// app on the machine plus the backups and Bay's own state writes.
 	//
-	// Five rather than one because the proxy serves static files from every
-	// retained release, so a client holding the previous page's HTML can still
-	// fetch its hashed chunks after a deploy — and because retained releases are
-	// the rollback targets. Both want depth, neither wants forty.
-	defaultKeepReleases = 5
+	// TWO: the one being served and the one before it. Not a depth setting —
+	// the number the two mechanisms that read releases actually need.
+	//
+	// The automatic rollback needs exactly one predecessor: a release that will
+	// not boot goes back to the one that was demonstrably serving a moment ago,
+	// and nothing consults the one before that. And the proxy serves static
+	// files from every retained release, so a client holding the previous
+	// page's HTML can still fetch its hashed chunks through a deploy — which is
+	// a one-deploy window, not five.
+	//
+	// Bay is not an archive. Lore holds the artifacts, so history on this disk
+	// is both duplicated and, worse, unrecoverable: the whole premise is that
+	// this VPS can be destroyed and rebuilt in seconds, and anything only
+	// stored here is what makes that untrue. Measured on the real host, five
+	// releases of one app was 245 MB.
+	defaultKeepReleases = 2
 	// defaultControlGroup is the unix group whose members may reach the control
 	// socket. Membership is the whole authorization: joining it is equivalent to
 	// being handed the token.
@@ -131,22 +142,23 @@ func main() {
 		err = cmdLogs(os.Args[2:])
 	case "connector":
 		err = cmdConnector(os.Args[2:])
-	case "releases":
-		err = cmdReleases(os.Args[2:])
-	case "rollback":
-		err = cmdRollback(os.Args[2:])
 	case "remove":
 		err = cmdRemove(os.Args[2:])
 	case "stop":
 		err = cmdStop(os.Args[2:])
 	case "config":
+		// Named by CONSUMER, not by technology. `s3` vs `storage` said "S3"
+		// twice and never said which one an app gets — a distinction you could
+		// only recover by reading the source.
 		switch {
-		case len(os.Args) > 2 && os.Args[2] == "s3":
+		case len(os.Args) > 2 && os.Args[2] == "s3:backups":
 			err = cmdConfigS3(os.Args[3:])
-		case len(os.Args) > 2 && os.Args[2] == "storage":
+		case len(os.Args) > 2 && os.Args[2] == "s3:apps":
 			err = cmdConfigStorage(os.Args[3:])
+		case len(os.Args) > 2 && os.Args[2] == "s3":
+			err = cmdConfigS3Both(os.Args[3:])
 		default:
-			err = errors.New("usage: bay config (s3|storage) --endpoint … --bucket …")
+			err = errors.New("usage: bay config (s3|s3:apps|s3:backups) --endpoint … --bucket …")
 		}
 	case "storage":
 		if len(os.Args) > 2 && os.Args[2] == "migrate" {
@@ -187,7 +199,6 @@ func usage() {
               # instance key and the subdomain: one app, one identity
               # --domain is repeatable and accepts a comma-separated list —
               # apex + www are one site. The first is the canonical one.
-              [--allow-control-api]   # ⚠ root-equivalent; apps get NO access by default
   bay list
   bay status  [--json]            # releases, traffic + backup freshness
   bay logs    <name/env> [-n 200] [--since 15m] [--grep RE] [--json]
@@ -197,16 +208,18 @@ func usage() {
               # Outbound only: the token grants nothing on this host.
   bay stop    <name/env>
   bay remove  <name/env> [--purge]  # unregister; data is KEPT unless --purge
-  bay releases <name/env>          # what you could roll back to
-  bay rollback <name/env> [--to RELEASE] [--confirm]
-              # code only: migrations are forward-only and stay applied
   bay version
+  bay config s3:backups --endpoint URL --bucket NAME [--keep N]
+                # where BACKUPS go. Credentials from BAY_S3_ACCESS_KEY /
+                # BAY_S3_SECRET_KEY. Never handed to an app.
+  bay config s3:apps --endpoint URL --bucket NAME
+                # where hosted APPS put their blobs. Credentials from
+                # BAY_STORAGE_ACCESS_KEY / BAY_STORAGE_SECRET_KEY. Every app
+                # that declares a bucket is given these.
   bay config s3 --endpoint URL --bucket NAME [--keep N]
-                # where BACKUPS go; credentials from BAY_S3_ACCESS_KEY / BAY_S3_SECRET_KEY
-  bay config storage --endpoint URL --bucket NAME
-                # where hosted apps put their BLOBS; a SECOND credential, from
-                # BAY_STORAGE_ACCESS_KEY / BAY_STORAGE_SECRET_KEY — an app is
-                # given these, and must never be given the backup ones
+                # both of the above, from ONE credential. Convenient and less
+                # safe: an app given that key can delete every backup here.
+                # Warned about on use, and flagged by "bay status" while it lasts.
   bay storage migrate <name/env>  # copy local uploads into the bucket, then
                 # repoint the app; local files are KEPT for you to delete
   bay backup  <name/env>          # snapshot + verify + upload
@@ -710,9 +723,6 @@ func (s *server) start(app state.App) error {
 			TasksMax:      256,
 			CPUQuota:      cpuQuotaFor(runtime.NumCPU()),
 			StopGrace:     stopGrace,
-			ControlGroup:  controlGroupFor(app),
-			// Widened only for a granted app; empty otherwise.
-			ControlSocketDir: controlSocketDirFor(app, s.controlSocket),
 		},
 	}
 	// No hold armed here. Whoever took the app down owns the window — arming it
@@ -726,34 +736,8 @@ func (s *server) start(app state.App) error {
 	if err := s.probe.WaitReady(app.Port, readyTimeout); err != nil {
 		return fmt.Errorf("%s never became ready: %w", app.Key(), err)
 	}
-	if app.ControlAPI {
-		s.log.Warn("app has ROOT-EQUIVALENT control API access",
-			"app", app.Key(),
-			"why", "granted with --allow-control-api",
-			"means", "may deploy code, read other apps' secrets, delete backups")
-	}
 	s.log.Info("app ready", "app", app.Key(), "port", app.Port, "domain", app.Domain())
 	return nil
-}
-
-// controlGroupFor returns the control group when this app was granted access.
-//
-// Empty for every app by default: nothing reaches the control API unless an
-// operator said so. Warned about on every start, not just at grant time — a
-// privilege that was reviewed once, months ago, is one nobody remembers.
-// controlSocketDirFor returns the directory to make writable for a granted app.
-func controlSocketDirFor(app state.App, socketPath string) string {
-	if !app.ControlAPI || socketPath == "" {
-		return ""
-	}
-	return filepath.Dir(socketPath)
-}
-
-func controlGroupFor(app state.App) string {
-	if !app.ControlAPI {
-		return ""
-	}
-	return defaultControlGroup
 }
 
 // ---------------------------------------------------------------------------
@@ -897,7 +881,6 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 
 	out, derr := s.deployArtifact(r.Context(), deployArtifactOptions{
 		Artifact: tmp.Name(), Name: name, Env: env, Domains: domains,
-		AllowControlAPI: q.Get("allowControlApi") == "yes",
 	})
 	if derr != nil {
 		writeError(w, derr.Status, derr.Error(), derr.Detail)
@@ -919,11 +902,10 @@ type deployArtifactOptions struct {
 	// Artifact is a tar.gz already on local disk. Getting it there is the
 	// caller's problem: an upload for the control API, a download from the
 	// registry for the command loop.
-	Artifact        string
-	Name            string
-	Env             string
-	Domains         []string
-	AllowControlAPI bool
+	Artifact string
+	Name     string
+	Env      string
+	Domains  []string
 	// MigratedStorage says `bay storage migrate` has already copied this app's
 	// local files into the bucket. Set only by that command; a deploy that
 	// would otherwise strand files is refused without it.
@@ -981,14 +963,10 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	wasRunning := s.runner.Running(key)
 	_ = s.runner.Stop(key, stopGrace)
 
-	if opts.AllowControlAPI {
-		s.log.Warn("granting ROOT-EQUIVALENT control API access", "app", key)
-	}
 	res, err := deploy.Run(deploy.Options{
 		Root: s.root, Artifact: opts.Artifact, Name: opts.Name, Env: opts.Env,
 		Domains: opts.Domains, BaseDomain: s.store.BaseDomain(),
-		AllowControlAPI: opts.AllowControlAPI,
-		// Read per deploy rather than captured at boot, so `bay config storage`
+		// Read per deploy rather than captured at boot, so `bay config s3:apps`
 		// takes effect on the next deploy without restarting the proxy — the
 		// same contract `backupManager` has.
 		Storage:         s.store.Storage(),
@@ -1031,7 +1009,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	//
 	// `res.Previous` is named explicitly rather than left to the keep window,
 	// which does not cover it. It is whatever `state.Release` held before this
-	// deploy, and a manual `bay rollback` sets that to any release the operator
+	// deploy, and an automatic rollback sets that to the previous release
 	// chose — so after rollback-then-deploy the target of the watch started just
 	// above can sit well outside the newest five, with `current` already
 	// repointed here and no longer protecting it.
@@ -1105,17 +1083,16 @@ restoreUnstartable rolls a release that will not boot back to its predecessor.
 has returned successfully, so a release that never becomes ready has nothing
 watching it. By the time this is reached `current` and the store both name the new
 release, the process is not running, and no timer will ever put it back — the app
-stays down until somebody runs `bay rollback` by hand, which on a CI-driven deploy
-means until somebody notices.
+would stay down until somebody noticed — which on a CI-driven deploy is the
+problem, not the fix.
 
 Rolled back to what was demonstrably serving a moment ago: the same target and the
 same steps the health watch uses, for the same reason. Migrations are forward-only
 and stay applied — the known cost of both paths, and the smaller of the two when
 the alternative is a site that is down.
 
-The release name is still reported either way. It is what `bay releases` and a
-manual rollback need, and it is the one thing an operator cannot recover from the
-logs once `current` has moved back.
+The release name is still reported either way: once `current` has moved back it
+is the one thing an operator cannot recover from the logs.
 */
 func (s *server) restoreUnstartable(
 	res *deploy.Result, restore map[string]any, cause error,
@@ -1380,21 +1357,14 @@ func cmdDeploy(args []string) error {
 	}
 	artifact := args[0]
 	if err := checkFlags(args[1:],
-		map[string]bool{"--allow-control-api": true},
+		map[string]bool{},
 		map[string]bool{"--name": true, "--env": true, "--domain": true,
 			"--control-socket": true}); err != nil {
 		return err
 	}
 	name, env := "", "production"
 	var domains []string
-	allowControl := false
 	for i := 1; i < len(args); i++ {
-		// Checked before the value-taking flags so a trailing --allow-control-api
-		// is not silently dropped by the i<len-1 bound.
-		if args[i] == "--allow-control-api" {
-			allowControl = true
-			continue
-		}
 		if i >= len(args)-1 {
 			continue
 		}
@@ -1426,14 +1396,6 @@ func cmdDeploy(args []string) error {
 		query.Add("domain", host)
 	}
 	url := controlHost + "/apps?" + query.Encode()
-	if allowControl {
-		// Said out loud on the way out, not just recorded. This grant is
-		// root-equivalent and the operator should read it as they type it.
-		fmt.Fprintln(os.Stderr,
-			"⚠ granting "+name+"/"+env+" ROOT-EQUIVALENT access to Bay's control API: "+
-				"it will be able to deploy code, read other apps' secrets and delete backups")
-		url += "&allowControlApi=yes"
-	}
 	res, err := call(http.MethodPost, url, body)
 	if err != nil {
 		return err
@@ -1497,6 +1459,15 @@ func cmdStatus(args []string) error {
 	}
 
 	problems := 0
+	// Host-wide, printed once above the fleet. `bay config s3` is a decision
+	// that outlives the terminal it was made in, so the reminder has to live
+	// somewhere an operator returns to rather than only in that command's
+	// output.
+	if sharedCredentialConfigured() {
+		problems++
+		fmt.Printf("⚠ apps and backups share ONE credential — any hosted app can delete\n" +
+			"  every backup on this host. Split them with `bay config s3:apps`.\n\n")
+	}
 	for _, a := range apps {
 		fmt.Printf("%s/%s\n", a.Name, a.Env)
 		fmt.Printf("  domain   %s\n", strings.Join(a.Domains, ", "))
@@ -1566,7 +1537,7 @@ func cmdStatus(args []string) error {
 			// storage therefore has exactly one copy of them, on this disk, and
 			// a green backup line must not be read as covering that.
 			if a.StorageBackend == deploy.BackendLocal {
-				fmt.Printf("           uploads are on this disk ONLY — `bay config storage` to put them in a bucket\n")
+				fmt.Printf("           uploads are on this disk ONLY — `bay config s3:apps` to put them in a bucket\n")
 			}
 		}
 		fmt.Println()
@@ -1632,60 +1603,6 @@ func cmdRemove(args []string) error {
 	}
 	fmt.Println(res)
 	return nil
-}
-
-func cmdReleases(args []string) error {
-	key, err := appKey(args, "releases")
-	if err != nil {
-		return err
-	}
-	res, err := call(http.MethodGet, controlHost+"/apps/"+key+"/releases", nil)
-	if err != nil {
-		return err
-	}
-	fmt.Println(res)
-	return nil
-}
-
-// cmdRollback swaps an app back to an earlier release.
-//
-// `--confirm` is only needed when migrations were applied since the target. The
-// server decides that, not this client: a confirmation that fires when there is
-// no risk teaches people to pass the flag reflexively.
-func cmdRollback(args []string) error {
-	key, err := appKey(args, "rollback")
-	if err != nil {
-		return err
-	}
-	if err := checkFlags(args[1:],
-		map[string]bool{"--confirm": true},
-		map[string]bool{"--to": true, "--control-socket": true}); err != nil {
-		return err
-	}
-	query := ""
-	for i, arg := range args {
-		switch arg {
-		case "--to":
-			if i < len(args)-1 {
-				query = addParam(query, "to", args[i+1])
-			}
-		case "--confirm":
-			query = addParam(query, "confirm", "yes")
-		}
-	}
-	res, err := call(http.MethodPost, controlHost+"/apps/"+key+"/rollback"+query, nil)
-	if err != nil {
-		return err
-	}
-	fmt.Println(res)
-	return nil
-}
-
-func addParam(query, k, v string) string {
-	if query == "" {
-		return "?" + k + "=" + v
-	}
-	return query + "&" + k + "=" + v
 }
 
 // appKey validates the "name/env" argument shared by the per-app commands.

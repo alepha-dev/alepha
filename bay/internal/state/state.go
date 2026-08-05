@@ -51,18 +51,6 @@ type App struct {
 	// false — the answer that keeps an existing host supervising its apps after
 	// an upgrade.
 	Static bool `json:"static,omitempty"`
-	// ControlAPI is true when the operator granted this app access to Bay's
-	// control API, by putting its unix user in the control group.
-	//
-	// Granted by the operator, never by the artifact. A manifest travels inside
-	// the archive, so letting it decide would let an app declare itself
-	// administrator of its own host — harmless while one person deploys
-	// everything, and a privilege escalation the moment an app on the host
-	// accepts an upload from someone else.
-	//
-	// This is root-equivalent: an app that can reach the control API can deploy
-	// code, read every other app's secrets, and delete every backup.
-	ControlAPI bool `json:"controlApi"`
 	// Backups is true when Bay provisioned the app's database and can therefore
 	// snapshot it. Derived from the manifest at deploy time.
 	//
@@ -285,11 +273,6 @@ func (s *Store) Upsert(app App) error {
 	defer s.mu.Unlock()
 	for i, a := range s.state.Apps {
 		if a.Key() == app.Key() {
-			// Carried forward so a redeploy without the flag does not silently
-			// revoke a grant the operator made on purpose.
-			if a.ControlAPI {
-				app.ControlAPI = true
-			}
 			app.LastBackupAt = a.LastBackupAt
 			app.LastBackupKey = a.LastBackupKey
 			app.LastBackupError = a.LastBackupError
@@ -439,6 +422,27 @@ func (s *Store) SetS3(cfg *S3Config) error {
 	defer s.mu.Unlock()
 	s.state.S3 = cfg
 	return s.flush()
+}
+
+// CredentialsShared reports whether apps hold the same key that reaches
+// backups.
+//
+// True after `bay config s3`, which sets both halves from one credential
+// because a one-operator fleet should not need two tokens to get started. It is
+// the less safe arrangement: an app given that key can delete every backup on
+// this host, which is the one thing backups exist to prevent.
+//
+// Reported rather than refused. The operator chose it; what must not happen is
+// them forgetting — so `bay status` and the config readback both say so for as
+// long as it is true.
+func (s *Store) CredentialsShared() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.state.S3 == nil || s.state.Storage == nil {
+		return false
+	}
+	return s.state.S3.AccessKey == s.state.Storage.AccessKey &&
+		s.state.S3.SecretKey == s.state.Storage.SecretKey
 }
 
 // Storage returns the bucket hosted apps write their blobs to, or nil.

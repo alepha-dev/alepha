@@ -129,6 +129,10 @@ func newDeployFixture(t *testing.T) *deployFixture {
 			runner:   r,
 			probe:    &health.Probe{Client: &http.Client{Transport: readyTransport{}}},
 			log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+			// Built the way `serve` builds it. Left at zero the fixture prunes
+			// nothing, so a test could not tell retention working from
+			// retention never running.
+			keepReleases: defaultKeepReleases,
 		},
 	}
 }
@@ -347,9 +351,13 @@ func TestAReleaseThatNeverBecomesReadyIsRolledBack(t *testing.T) {
 		not cover it: that watch is only armed once `start` has returned
 		successfully, so a release that never becomes ready has nothing watching
 		it. By then `current` and the store both name the new release, the process
-		is not running, and no timer will ever put it back — the app stays down
-		until somebody runs `bay rollback` by hand, which on a CI-driven deploy
-		means until somebody notices.
+		is not running, and no timer will ever put it back — the app would stay
+		down until somebody noticed, which on a CI-driven deploy is the problem
+		rather than the fix.
+
+		This is the ONLY rollback Bay performs. There is no manual one: the
+		artifacts live in Lore, so going further back than the release that was
+		serving a moment ago is a redeploy, not a Bay operation.
 	*/
 	f := newDeployFixture(t)
 	first, derr := f.deploy(deployableArtifact(t))
@@ -421,3 +429,55 @@ func TestAReleaseThatNeverBecomesReadySaysWhenTheRollbackFailedToo(t *testing.T)
 // errAlwaysRefused stands in for whatever the supervisor says when it will not
 // start an app — a full disk, a systemd unit that will not load.
 var errAlwaysRefused = errors.New("supervisor refused to start the unit")
+
+// Bay keeps the release it serves and the one before it. Nothing else.
+//
+// Not a depth setting — the number the two readers of the releases directory
+// actually need. The automatic rollback consults exactly one predecessor, and
+// the proxy serves static files from every retained release so a client holding
+// the previous page's HTML can still fetch its hashed chunks through a deploy.
+// That is a one-deploy window.
+//
+// Bay is not an archive: Lore holds the artifacts, so history kept here is both
+// duplicated and unrecoverable — the premise is that this host can be destroyed
+// and rebuilt, and anything stored only here is what makes that false. Measured
+// on the real host, five releases of one app was 245 MB.
+func TestOnlyTheServingReleaseAndItsPredecessorAreKept(t *testing.T) {
+	f := newDeployFixture(t)
+
+	var releases []string
+	for range 4 {
+		out, derr := f.deploy(deployableArtifact(t))
+		if derr != nil {
+			t.Fatalf("deploy failed: %v", derr)
+		}
+		releases = append(releases, out.Result.Release)
+	}
+
+	entries, err := os.ReadDir(filepath.Join(f.root, "apps", "demo", "production", "releases"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var kept []string
+	for _, e := range entries {
+		kept = append(kept, e.Name())
+	}
+	if len(kept) != 2 {
+		t.Fatalf("after four deploys exactly two releases should remain, got %d: %v", len(kept), kept)
+	}
+
+	// And they must be the right two: the one being served, and the one the
+	// automatic rollback would fall back to.
+	current, previous := releases[3], releases[2]
+	for _, want := range []string{current, previous} {
+		found := false
+		for _, k := range kept {
+			if k == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("expected %q to be kept, got %v", want, kept)
+		}
+	}
+}
