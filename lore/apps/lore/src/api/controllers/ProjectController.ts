@@ -150,8 +150,15 @@ export class ProjectController {
   getMyProjects = $action({
     use: [
       $secure({ permissions: ["project:read"] }),
+      // `noCache`, not a freshness window: the viewer creates, renames and
+      // leaves projects from the pages that read this list, and `max-age`
+      // let the browser answer those reads from its own cache without
+      // asking — so the user's own write stayed invisible for the length of
+      // the window. `no-cache` still permits storage and still lets the
+      // ETag reply 304, so revalidation costs a header round trip, not a
+      // body. Reserve `maxAge` for what the viewer cannot mutate.
       $etag({
-        control: { private: true, maxAge: 30, staleWhileRevalidate: 120 },
+        control: { private: true, noCache: true },
       }),
     ],
     description: "Get all projects for the authenticated user",
@@ -376,8 +383,11 @@ export class ProjectController {
   getProjectMembers = $action({
     use: [
       $secure({ permissions: ["project:read"] }),
+      // Same reasoning as `getMyProjects`: members are invited and removed
+      // from the settings page that reads this list, so a freshness window
+      // hid the owner's own change from them.
       $etag({
-        control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
+        control: { private: true, noCache: true },
       }),
       this.ownsAsMember(),
     ],
