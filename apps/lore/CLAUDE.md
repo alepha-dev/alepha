@@ -431,6 +431,54 @@ would also stop the crash, but silently discards the owner's setting; prefer the
 rewrite. This was run as a one-off against prod rather than as a migration file
 because Lore has exactly one instance and a fresh database starts empty.
 
+### ⚠️ `ADD COLUMN … NOT NULL` is green on every database except production (2026-08-06)
+
+Folding `sigils.app` + `environment` + `label` into a single `name`
+(`20260806093400_confused_dazzler`), drizzle-kit generated:
+
+```sql
+ALTER TABLE `sigils` ADD `name` text NOT NULL;
+```
+
+**SQLite refuses this on any table that has rows** — *"Cannot add a NOT NULL column
+with default value NULL"* — and accepts it on an empty one. Every database CI, `yarn v`
+and the test suite construct is empty, so the statement is green everywhere it is ever
+exercised and fails only against the single database that has data. It is the same
+blind spot as the JSON-key incident above, from the opposite direction: there, empty
+databases hid a row that could not decode; here they hide a statement that cannot run.
+The blast radius is smaller — D1 applies a migration as one transaction, so this is a
+failed, rolled-back deploy rather than data loss — but nothing in the pipeline goes red
+first.
+
+The shape that works, and the one to reach for whenever a new column must end up
+`NOT NULL`:
+
+```sql
+ALTER TABLE `sigils` ADD `name` text;--> statement-breakpoint          -- nullable
+UPDATE `sigils` SET `name` = substr(`label`, 1, 100);--> statement-breakpoint  -- backfill
+-- …de-duplicate, swap indexes, then DROP the old columns LAST
+```
+
+Add nullable, backfill from a column that is already `NOT NULL`, and let the entity
+schema carry the constraint. Order matters beyond the constraint: SQLite refuses to drop
+a column an index still references, so the index swap precedes every `DROP COLUMN`.
+Also note drizzle emitted no backfill at all — it dropped `label` without carrying it
+anywhere, which would have left every existing sigil nameless before handing them to a
+`UNIQUE` index. Read generated migrations for what they *omit*, not only for `DROP TABLE`.
+
+**The drift this leaves behind is deliberate — do not "fix" it.** `sigils.name` is
+physically nullable on D1 while the snapshot declares it `NOT NULL`, because SQLite
+offers no way to add a `NOT NULL` column to a populated table without also inventing a
+`DEFAULT` the snapshot does not have. It cannot cause `check:migrations` drift —
+drizzle diffs the entity against the **snapshot**, never the live database — so this is
+invisible to tooling and lives only here and in the migration's own comment block. The
+only way to make the physical column match is a table rebuild, and `sigils` is the
+`ON DELETE CASCADE` parent of `sigil_views_hourly` / `sigil_uniques_daily` /
+`sigil_vitals_hourly` / `sigil_error_groups` — so that "fix" is the bomb at the top of
+this section. Same precedent, same verdict as the `projects.features` `DEFAULT` drift
+documented above: accepted drift beats a rebuild. `test/migration-safety.spec.ts` guards
+the table against a future `DROP TABLE` from the family rebuild forward.
+
 ### ⚠️ `$sequence` keys its counter on the property name, not the table
 
 `$sequence()` fields (used for per-project short IDs / numbering, e.g. `MilestoneController.milestoneNumber`, `FeedbackController.feedbackShortId`) persist their running counter in the `alepha_sequences` table, keyed by **the property name**, not by the entity/table it numbers. Renaming the property — `chapterNumber` → `milestoneNumber`, `petitionShortId` → `feedbackShortId` — does not rename the existing counter row. It orphans it: the renamed property starts a brand-new counter at 1, colliding with whatever numbers already exist in production for that project.
