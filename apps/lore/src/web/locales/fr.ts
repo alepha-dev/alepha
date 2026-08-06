@@ -618,14 +618,31 @@ export default {
 
   "project.menu.feedback": "Retours",
   "project.menu.blights": "Fléaux",
-  "project.menu.insights": "Analyses",
+  "project.menu.apps": "Applications",
+  "project.menu.apps.enrol": "Enrôler une application",
+
+  "app.tab.dashboard": "Vue d'ensemble",
+  "app.tab.analytics": "Audience",
+  "app.tab.performance": "Performance",
+  "app.tab.errors": "Erreurs",
+  "app.tab.settings": "Paramètres",
+  "app.dashboard.errors": "Erreurs toujours d'actualité",
+  "app.dashboard.beaconOff":
+    "Beacon est désactivé sur ce projet : rien n'est collecté depuis cette application. Activez-le dans Paramètres › Sigils.",
+  "app.dashboard.credential": "Identifiant",
+  "app.dashboard.token": "Jeton",
+  "app.dashboard.reports": "Remontées",
+  "app.dashboard.enrolled": "Enrôlée le",
+  "app.settings.rotate.title": "Renouveler le jeton",
+  "app.settings.rotate.description":
+    "Génère un nouveau jeton et invalide l'actuel immédiatement. Tout ce que cette application a remonté est conservé — c'est ainsi qu'on révoque un jeton fuité sans perdre son historique.",
+  "app.settings.delete.title": "Supprimer cette application",
+  "app.settings.delete.description":
+    "Supprime l'application et tout ce qu'elle a remonté : pages vues, Web Vitals, visiteurs uniques et budget d'erreurs. Les fléaux déjà déposés sont conservés. Cette action est irréversible.",
 
   "insights.range.1d": "Aujourd'hui",
   "insights.range.7d": "7 jours",
   "insights.range.30d": "30 jours",
-  "insights.tab.analytics": "Audience",
-  "insights.tab.performance": "Performance",
-  "insights.tab.errors": "Erreurs",
   "insights.uniqueVisitors": "Visiteurs uniques",
   "insights.uniqueVisitors.note":
     "Visiteurs distincts sans cookie — la mesure de référence.",

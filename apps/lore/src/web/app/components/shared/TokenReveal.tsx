@@ -3,7 +3,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { AlertCircle, Copy } from "lucide-react";
 
-export interface ProjectSettingsTokenRevealProps {
+export interface TokenRevealProps {
   token: string;
   title: string;
   copyLabel: string;
@@ -22,7 +22,7 @@ export interface ProjectSettingsTokenRevealProps {
  * The strings arrive as props rather than being hardcoded so the panel stays
  * usable by any credential-minting page, whatever it calls the thing it names.
  */
-const ProjectSettingsTokenReveal = (props: ProjectSettingsTokenRevealProps) => {
+const TokenReveal = (props: TokenRevealProps) => {
   const toaster = useToast();
 
   return (
@@ -54,4 +54,4 @@ const ProjectSettingsTokenReveal = (props: ProjectSettingsTokenRevealProps) => {
   );
 };
 
-export default ProjectSettingsTokenReveal;
+export default TokenReveal;

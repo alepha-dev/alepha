@@ -4,14 +4,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@alepha/ui/components/ui/card";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Gauge } from "lucide-react";
-import type { InsightsResource } from "@/api/controllers/InsightsController.ts";
+import { currentSigilInsightsAtom } from "../../../atoms/currentSigilInsightsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
-
-export interface ProjectInsightsPerformanceProps {
-  data: InsightsResource;
-}
 
 type Rating = "good" | "needsImprovement" | "poor";
 type VitalKey = "lcp" | "inp" | "cls" | "fcp" | "ttfb";
@@ -59,13 +56,19 @@ const RATING_TEXT: Record<Rating, string> = {
 };
 
 /**
- * Web-Vitals performance page (p75): one card per metric with its value and a
- * good / needs-work / poor rating. Rendered as the "Performance" segment of
- * the Insights page.
+ * Web-Vitals for one app (p75): one card per metric with its value and a
+ * good / needs-work / poor rating. The "Performance" tab of the app page.
+ *
+ * Reads `currentSigilInsightsAtom` for the same reason {@link AppAnalytics}
+ * does — the range toggle that rewrites it lives on the layout above.
  */
-const ProjectInsightsPerformance = (props: ProjectInsightsPerformanceProps) => {
+const AppPerformance = () => {
   const { tr } = useI18n<I18n, "en">();
-  const data = props.data;
+  const [data] = useStore(currentSigilInsightsAtom);
+
+  if (!data) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -130,4 +133,4 @@ const rate = (
   return "poor";
 };
 
-export default ProjectInsightsPerformance;
+export default AppPerformance;

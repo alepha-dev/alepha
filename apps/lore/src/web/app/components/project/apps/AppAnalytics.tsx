@@ -15,15 +15,12 @@ import {
   TooltipTrigger,
   Tooltip as UiTooltip,
 } from "@alepha/ui/components/ui/tooltip";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { BarChart3, Eye, Info, Users } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import type { InsightsResource } from "@/api/controllers/InsightsController.ts";
+import { currentSigilInsightsAtom } from "../../../atoms/currentSigilInsightsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
-
-export interface ProjectInsightsAnalyticsProps {
-  data: InsightsResource;
-}
 
 // Chart palette — `ChartContainer` exposes each key as a `--color-<key>`
 // CSS variable so the bars track the theme + dark mode.
@@ -36,13 +33,22 @@ const countryChartConfig = {
 } satisfies ChartConfig;
 
 /**
- * Privacy-first pageview analytics: unique visitors, total views, the views
- * timeline, top countries and top pages. Rendered as the "Analytics" segment
- * of the Insights page.
+ * Privacy-first pageview analytics for one app: unique visitors, total views,
+ * the views timeline, top countries and top pages. The "Analytics" tab of the
+ * app page.
+ *
+ * Reads `currentSigilInsightsAtom` rather than taking the data as a prop: the
+ * range toggle lives on the layout above, and a `NestedView` child is handed an
+ * element it cannot receive fresh props through. The atom is written by the
+ * `projectApp` loader before this ever renders, and rewritten by the toggle.
  */
-const ProjectInsightsAnalytics = (props: ProjectInsightsAnalyticsProps) => {
+const AppAnalytics = () => {
   const { tr } = useI18n<I18n, "en">();
-  const data = props.data;
+  const [data] = useStore(currentSigilInsightsAtom);
+
+  if (!data) {
+    return null;
+  }
 
   const countryData = data.topCountries.map((c) => ({
     label: `${flagEmoji(c.country)} ${c.country}`,
@@ -249,4 +255,4 @@ const flagEmoji = (code: string): string => {
   );
 };
 
-export default ProjectInsightsAnalytics;
+export default AppAnalytics;

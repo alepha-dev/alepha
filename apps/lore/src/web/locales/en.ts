@@ -613,14 +613,31 @@ export default {
 
   "project.menu.feedback": "Feedback",
   "project.menu.blights": "Blights",
-  "project.menu.insights": "Insights",
+  "project.menu.apps": "Apps",
+  "project.menu.apps.enrol": "Enrol an app",
+
+  "app.tab.dashboard": "Dashboard",
+  "app.tab.analytics": "Analytics",
+  "app.tab.performance": "Performance",
+  "app.tab.errors": "Errors",
+  "app.tab.settings": "Settings",
+  "app.dashboard.errors": "Errors still happening",
+  "app.dashboard.beaconOff":
+    "Beacon is off for this project, so nothing is being collected from this app. Turn it on in Settings › Sigils.",
+  "app.dashboard.credential": "Credential",
+  "app.dashboard.token": "Token",
+  "app.dashboard.reports": "Reports",
+  "app.dashboard.enrolled": "Enrolled",
+  "app.settings.rotate.title": "Rotate the token",
+  "app.settings.rotate.description":
+    "Mints a new token and stops the current one immediately. Everything this app has reported is kept — this is how a leaked token is revoked without losing its history.",
+  "app.settings.delete.title": "Delete this app",
+  "app.settings.delete.description":
+    "Removes the app and everything it ever reported: page views, web vitals, unique visitors and its error budget. Blights already filed are kept. This cannot be undone.",
 
   "insights.range.1d": "Today",
   "insights.range.7d": "7 days",
   "insights.range.30d": "30 days",
-  "insights.tab.analytics": "Analytics",
-  "insights.tab.performance": "Performance",
-  "insights.tab.errors": "Errors",
   "insights.uniqueVisitors": "Unique visitors",
   "insights.uniqueVisitors.note":
     "Cookieless distinct visitors — the trustworthy headline.",

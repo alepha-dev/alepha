@@ -6,34 +6,41 @@ import {
   CardTitle,
 } from "@alepha/ui/components/ui/card";
 import { DateTimeProvider } from "alepha/datetime";
-import { useInject } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Bug } from "lucide-react";
-import type { InsightsResource } from "@/api/controllers/InsightsController.ts";
+import { currentSigilInsightsAtom } from "../../../atoms/currentSigilInsightsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
-export interface ProjectInsightsErrorsProps {
-  data: InsightsResource;
-}
-
 /**
- * The per-app error budget — the "Errors" segment of the Insights page.
+ * This app's error budget — the "Errors" tab of the app page.
  *
  * One row per `(app, fingerprint)` still seen in the window, worst first. This
  * is the only surface that keeps failures split by app: the Blights inbox folds
  * every enrolled app into one row per project on purpose, because a triage
  * decision must not fork, and that is exactly what makes it unable to answer
- * "is this still happening *over there*".
+ * "is this still happening *over there*". The App column is kept even though
+ * every row now names the same app: it is the only thing on screen that shows
+ * the `?sigilId=` narrowing actually happened, and a table that silently widened
+ * to the whole project would otherwise look exactly like this one.
+ *
+ * Reads `currentSigilInsightsAtom` — see the note on `AppAnalytics`.
  *
  * ⚠️ SECURITY: `name` and `message` come out of an application's runtime and
  * are 100% attacker-controlled. They are rendered ONLY through plain React text
  * interpolation, which escapes them. Never MarkdownView, never
  * `dangerouslySetInnerHTML`.
  */
-const ProjectInsightsErrors = (props: ProjectInsightsErrorsProps) => {
+const AppErrors = () => {
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
-  const groups = props.data.errorGroups;
+  const [data] = useStore(currentSigilInsightsAtom);
+
+  if (!data) {
+    return null;
+  }
+
+  const groups = data.errorGroups;
 
   return (
     <div className="flex flex-col gap-4">
@@ -80,6 +87,13 @@ const ProjectInsightsErrors = (props: ProjectInsightsErrorsProps) => {
                   {groups.map((group) => (
                     <tr
                       key={`${group.sigilId}:${group.fingerprint}`}
+                      /*
+                        Marks the row as a row. The app's name is also in the
+                        breadcrumb, the sidebar and the page header, so a
+                        page-wide `getByText(name)` proves nothing about this
+                        table — a test has to scope to the row.
+                      */
+                      data-testid="error-group-row"
                       className="border-b last:border-0"
                     >
                       <td className="max-w-[420px] py-2 pr-3">
@@ -118,4 +132,4 @@ const ProjectInsightsErrors = (props: ProjectInsightsErrorsProps) => {
   );
 };
 
-export default ProjectInsightsErrors;
+export default AppErrors;
