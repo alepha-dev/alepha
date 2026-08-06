@@ -101,6 +101,20 @@ const schema = z.object({
     })
     .describe(">20 items → switches to Combobox automatically.")
     .optional(),
+  // 8. Clearable — the filter-chip shape, on a list big enough to be a combobox
+  region: z
+    .string()
+    .meta({
+      title: "Region (clearable)",
+      $control: {
+        items: COUNTRIES_BIG,
+        clearable: true,
+        clearLabel: "All regions",
+        width: 50,
+      },
+    })
+    .describe("$control.clearable → an explicit 'All regions' row.")
+    .optional(),
 });
 
 const SelectsForm = () => {

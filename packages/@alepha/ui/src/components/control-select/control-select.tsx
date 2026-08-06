@@ -286,6 +286,9 @@ export function ControlSelect(props: ControlSelectProps) {
     );
   }
 
+  const clearLabel =
+    props.clearLabel ?? tr("controlSelect.none", { default: "None" });
+
   // Async loader, multi-select, explicit combobox, or many items → Combobox
   if (isArray || props.combobox || mode === "long" || data.length > 20) {
     return (
@@ -308,20 +311,24 @@ export function ControlSelect(props: ControlSelectProps) {
           onSearch={mode === "long" ? search.run : undefined}
           createNewEntry={props.createNewEntry}
           icon={props.icon}
-          placeholder={
-            props.clearable
-              ? (props.clearLabel ??
-                tr("controlSelect.none", { default: "None" }))
-              : undefined
-          }
+          // `clearable` used to reach this path as a placeholder and nothing
+          // else, so a filter chip that had switched to the combobox (>20
+          // options) could be set but never put back to "All …".
+          clearable={props.clearable}
+          clearLabel={clearLabel}
+          // An optional field must also be able to go back to empty without a
+          // dedicated row: Base UI never emits `null`, so re-pressing the
+          // selected row deselects (see `handleSingle`). A required field keeps
+          // its value — clearing it would only produce a validation error the
+          // user cannot see yet.
+          deselectable={props.clearable || !meta.required}
+          placeholder={props.clearable ? clearLabel : undefined}
         />
       </FormField>
     );
   }
 
   // Infer / short — native Select
-  const clearLabel =
-    props.clearLabel ?? tr("controlSelect.none", { default: "None" });
   const labelFor = (raw: string) => {
     const found = data.find((o) => optValue(o) === raw);
     return found ? optLabel(found) : raw;
@@ -414,6 +421,20 @@ interface ComboboxProps {
    * empty placeholder. Defaults to "Select…".
    */
   placeholder?: string;
+  /**
+   * Prepend a row that resets the field to `undefined` — the combobox
+   * equivalent of the native `Select`'s clear row.
+   */
+  clearable?: boolean;
+  /**
+   * Label of the `clearable` row (e.g. "All zones").
+   */
+  clearLabel?: string;
+  /**
+   * Allow the single-select value to be unset by pressing the row that is
+   * already selected. Set for optional (and `clearable`) fields only.
+   */
+  deselectable?: boolean;
 }
 
 /**
@@ -433,6 +454,10 @@ interface ComboOption {
    * Marks the synthetic "create new" row injected by `createNewEntry`.
    */
   create?: boolean;
+  /**
+   * Marks the synthetic "clear" row injected by `clearable`.
+   */
+  clear?: boolean;
   /**
    * The raw query that produced a `create` row (used as the new entry's label).
    */
@@ -514,9 +539,26 @@ function Combobox(props: ComboboxProps) {
       })()
     : undefined;
 
-  const items: ComboOption[] = createOption
-    ? [...filtered, createOption]
-    : filtered;
+  // The synthetic "no selection" row — "All zones", "All tags", "None". Only
+  // meaningful for a single select: the multi path clears by removing chips.
+  const clearRow: ComboOption | undefined =
+    props.clearable && !props.multi
+      ? {
+          value: CLEAR_VALUE,
+          label:
+            props.clearLabel ?? tr("controlSelect.none", { default: "None" }),
+          clear: true,
+        }
+      : undefined;
+  // Filtered on its own label like any other row, so searching "zone" doesn't
+  // leave "All zones" stranded at the top of a list it doesn't match.
+  const showClear = clearRow && clearRow.label.toLowerCase().includes(q);
+
+  const items: ComboOption[] = [
+    ...(showClear && clearRow ? [clearRow] : []),
+    ...filtered,
+    ...(createOption ? [createOption] : []),
+  ];
 
   // Reconstruct option objects for the controlled value. Base UI matches them
   // back to list items via `isItemEqualToValue` (by `value`), so identity
@@ -531,7 +573,9 @@ function Combobox(props: ComboboxProps) {
     ? selected.map(toValueObject)
     : selected[0]
       ? toValueObject(selected[0])
-      : null;
+      : // Empty + clearable reads as "the clear row is what's selected", so it
+        // carries the check mark — same as the native `Select` path.
+        (clearRow ?? null);
 
   const remember = (o: ComboOption) => {
     if (o.create) labelCache.current.set(o.value, o.query ?? o.value);
@@ -539,8 +583,19 @@ function Combobox(props: ComboboxProps) {
   };
 
   const handleSingle = (o: ComboOption | null) => {
-    if (!o) {
+    if (!o || o.clear) {
       props.onChange(undefined);
+      setQuery("");
+      return;
+    }
+    // Base UI's single-select `Combobox` re-selects on every item press — its
+    // `handleSelection` calls `setSelectedValue(itemValue)` unconditionally and
+    // never emits `null` — so pressing the checked row was a no-op and an
+    // optional field had no way back to empty. Toggle it off here, the way the
+    // multi path already does via its chips.
+    if (props.deselectable && !o.create && selected[0] === o.value) {
+      props.onChange(undefined);
+      setQuery("");
       return;
     }
     remember(o);
