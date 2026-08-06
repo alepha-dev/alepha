@@ -130,4 +130,38 @@ describe("markdownOutline", () => {
     ].join("\n");
     expect(markdownOutline(md)).toEqual([{ level: 1, text: "real", index: 0 }]);
   });
+
+  it("strips emphasis that wraps a code span", () => {
+    expect(markdownOutline("## *before `code` after*")[0].text).toBe(
+      "before code after",
+    );
+    expect(markdownOutline("## **bold `code` text**")[0].text).toBe(
+      "bold code text",
+    );
+    expect(markdownOutline("## _a `b` c_")[0].text).toBe("a b c");
+  });
+
+  it("strips a link whose text contains a code span", () => {
+    expect(markdownOutline("## [a `b` c](https://example.com)")[0].text).toBe(
+      "a b c",
+    );
+  });
+
+  it("handles a code span delimited by several backticks", () => {
+    expect(markdownOutline("## uses ``a`b`` inline")[0].text).toBe(
+      "uses a`b inline",
+    );
+  });
+
+  it("preserves every character of an unmatched backtick", () => {
+    expect(markdownOutline("## a ` b")[0].text).toBe("a ` b");
+  });
+
+  it("handles a heading that is entirely one code span", () => {
+    expect(markdownOutline("## `everything`")[0].text).toBe("everything");
+  });
+
+  it("handles an empty code span", () => {
+    expect(markdownOutline("## empty `` here")[0].text).toBe("empty  here");
+  });
 });
