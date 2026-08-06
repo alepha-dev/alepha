@@ -1,0 +1,37 @@
+/*
+ * Folio workspace typography. Loaded lazily by `useFolioFonts` when the
+ * folio editor mounts, so pages that never open a folio do not pay for
+ * these files. Mirrors the per-theme font CSS convention next to it.
+ */
+
+@font-face {
+  font-family: "Literata";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/files/literata-400.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Literata";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/fonts/files/literata-600.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/files/jetbrains-mono-400.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/fonts/files/jetbrains-mono-500.woff2) format("woff2");
+}

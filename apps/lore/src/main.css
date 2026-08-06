@@ -588,3 +588,38 @@ body::before {
   --sidebar-border: oklch(0.32 0.05 240);
   --sidebar-ring: oklch(0.7 0.15 230);
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Folio workspace typography + find highlighting.
+ * The font files are lazy-loaded by `useFolioFonts`; these vars always
+ * resolve thanks to the fallback stacks, so a failed load degrades
+ * silently instead of leaving the document unstyled.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --font-folio-serif: "Literata", "Iowan Old Style", Georgia, serif;
+  --font-folio-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+}
+
+.folio-prose {
+  font-family: var(--font-folio-serif);
+}
+
+.folio-mono {
+  font-family: var(--font-folio-mono);
+}
+
+/*
+ * Find-in-folio highlighting via the CSS Custom Highlight API. Ranges are
+ * registered from `useFolioFind`; injecting <mark> elements would corrupt
+ * Lexical's document state, which is why this is done with highlights.
+ */
+::highlight(folio-find) {
+  background-color: color-mix(in oklch, var(--primary) 30%, transparent);
+}
+
+::highlight(folio-find-active) {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
