@@ -223,6 +223,30 @@ test.describe("Sigils", () => {
       expect(res.status()).toBe(204);
     });
 
+    await test.step("the owner turns Feedback on from its own settings page", async () => {
+      // Off by default for a wizard-created project — `ProjectCreate.tsx`'s
+      // `DEFAULT_FEATURES` sends `feedback: false` even though the
+      // entity-level `defaultProjectFeatures` defaults it on; the wizard
+      // deliberately starts a project with no feedback inbox. It moved off
+      // the Sigils page (Task 8) onto its own page (Task 7), which
+      // otherwise has no e2e coverage at all — this step earns its keep
+      // twice.
+      await page.goto(`/p/${projectId}/settings/feedback`);
+      await page.waitForLoadState("networkidle");
+
+      const toggle = page.getByRole("switch", { name: "Enable", exact: true });
+      await expect(toggle).toBeVisible({ timeout: 15_000 });
+      await toggle.click();
+      await expect(toggle).toBeChecked({ timeout: 15_000 });
+
+      // Back to the Sigils settings page — "the sink tells the app what it
+      // wants" step below only makes API calls (no navigation of its own),
+      // and the step after that reloads *this* page expecting to still be
+      // looking at the sigil row.
+      await page.goto(`/p/${projectId}/settings/sigils`);
+      await page.waitForLoadState("networkidle");
+    });
+
     await test.step("the sink tells the app what it wants", async () => {
       const res = await request.get(config, {
         headers: { authorization: `Bearer ${token}` },
@@ -236,7 +260,8 @@ test.describe("Sigils", () => {
       // A newly enrolled sigil carries all four kinds by default and the
       // project's `sigils` master switch is on, so the answer is everything
       // — `feedback` is the one gate that also needs the project's own
-      // `features.feedback`, which defaults on.
+      // `features.feedback`, off by default for a wizard-created project and
+      // turned on above through its own settings page.
       expect(body.enabled).toEqual({ views: true, errors: true, vitals: true });
       expect(body.feedbackUrl).toContain(`/p/${projectId}/request`);
 

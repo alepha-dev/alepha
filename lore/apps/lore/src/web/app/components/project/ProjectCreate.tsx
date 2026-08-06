@@ -38,9 +38,12 @@ type FeaturesDraft = {
 
 const DEFAULT_FEATURES: FeaturesDraft = {
   // Folios + Kanban + Milestones opt-in by default. Feedback is no longer a
-  // wizard-surfaced module — it's a Sigils sub-capability now, enabled from
-  // Settings → Sigils. We still send `feedback: false` so new projects
-  // start with no feedback inbox; we can't move that default into
+  // wizard-surfaced module — it's the project's own module switch now,
+  // enabled from Settings → Feedback (its own page, split out of the Sigils
+  // page). It is not a Sigils sub-capability: an app's own `feedback` kind
+  // is a separate, per-app decision made on that app's Settings tab. We
+  // still send `feedback: false` here so new projects start with no
+  // feedback inbox; we can't move that default into
   // `defaultProjectFeatures` (feedback=true there) without triggering a
   // D1 `projects` table rebuild — see CLAUDE.md "Migration safety on D1".
   folios: true,
