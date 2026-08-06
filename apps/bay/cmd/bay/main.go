@@ -202,6 +202,14 @@ func usage() {
               [--backup-interval 24h]   # 0 disables; needs "bay config s3"
             [--keep-releases 5]   # per app; min 2, the serving one is always kept
   bay deploy  (<app.tar.gz>|-) [--name NAME] [--env ENV] [--domain HOST]...
+              [--secrets-file PATH]
+              # --secrets-file names a 0600 file of KEY=VALUE lines holding the
+              # app's own environment. It is merged into the instance .env
+              # BEFORE the release is swapped in, so the app boots with its
+              # secrets — there is no window where it runs without them.
+              # Bay CONSUMES it: the file is unlinked whether the deploy
+              # succeeds or fails. A symlink or a group/world-readable file is
+              # refused, as are keys Bay owns.
               # --name defaults to the artifact's project, and drives BOTH the
               # instance key and the subdomain: one app, one identity
               # --domain is repeatable and accepts a comma-separated list —
@@ -865,6 +873,10 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	if env == "" {
 		env = "production"
 	}
+	// A PATH, never a value. The file it names is read, unlinked and merged
+	// during provision — see `deploy.ConsumeSecretsFile`. Putting the secrets
+	// themselves in a query string would be the argv mistake with extra steps.
+	secretsFile := q.Get("secretsFile")
 
 	tmp, err := os.CreateTemp("", "bay-upload-*.tar.gz")
 	if err != nil {
@@ -881,6 +893,7 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 
 	out, derr := s.deployArtifact(r.Context(), deployArtifactOptions{
 		Artifact: tmp.Name(), Name: name, Env: env, Domains: domains,
+		SecretsFile: secretsFile,
 	})
 	if derr != nil {
 		writeError(w, derr.Status, derr.Error(), derr.Detail)
@@ -910,6 +923,11 @@ type deployArtifactOptions struct {
 	// local files into the bucket. Set only by that command; a deploy that
 	// would otherwise strand files is refused without it.
 	MigratedStorage bool
+	// SecretsFile is a path on this host holding `KEY=VALUE` lines: the app's
+	// own environment, delivered with the deploy so it is in place before the
+	// process starts. Consumed — read and unlinked — before anything else
+	// happens. Empty for a deploy that carries no configuration.
+	SecretsFile string
 }
 
 // deployOutcome is what a completed deploy has to say for itself.
@@ -952,6 +970,24 @@ func (e *deployFailure) Unwrap() error { return e.Err }
 func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions) (*deployOutcome, *deployFailure) {
 	key := opts.Name + "/" + opts.Env
 
+	// Consumed BEFORE anything moves: before the hold, before the running app
+	// is stopped, before a byte is unpacked. A secrets file that is a symlink,
+	// world-readable, or full of keys Bay owns is a deploy that must not start
+	// — refusing it here costs the caller nothing, while refusing it after the
+	// stop would be an outage caused by a validation.
+	//
+	// The file is gone either way. `ConsumeSecretsFile` unlinks it on every
+	// path out, so a refusal does not leave plaintext credentials on the disk
+	// of the host somebody is about to go and debug.
+	var secrets map[string]string
+	if opts.SecretsFile != "" {
+		parsed, err := deploy.ConsumeSecretsFile(opts.SecretsFile)
+		if err != nil {
+			return nil, &deployFailure{Status: http.StatusBadRequest, Err: err}
+		}
+		secrets = parsed
+	}
+
 	// Requests wait from here rather than 502, and keep waiting through the
 	// unpack, the swap and the new process's boot.
 	defer s.holdDuring(key)()
@@ -971,6 +1007,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		// same contract `backupManager` has.
 		Storage:         s.store.Storage(),
 		MigratedStorage: opts.MigratedStorage,
+		Secrets:         secrets,
 	}, s.store)
 	if err != nil {
 		return nil, s.restoreRefused(key, wasRunning, err)
@@ -1385,10 +1422,11 @@ func cmdDeploy(args []string) error {
 	if err := checkFlags(args[1:],
 		map[string]bool{},
 		map[string]bool{"--name": true, "--env": true, "--domain": true,
-			"--control-socket": true}); err != nil {
+			"--secrets-file": true, "--control-socket": true}); err != nil {
 		return err
 	}
 	name, env := "", "production"
+	secretsFile := ""
 	var domains []string
 	for i := 1; i < len(args); i++ {
 		if i >= len(args)-1 {
@@ -1399,6 +1437,16 @@ func cmdDeploy(args []string) error {
 			name = args[i+1]
 		case "--env":
 			env = args[i+1]
+		case "--secrets-file":
+			// Absolute, because the server resolves it. This command runs as the
+			// deploying user with cwd $HOME; `bay serve` is a different process
+			// with a different working directory, and a relative path would land
+			// somewhere neither of them meant.
+			abs, err := filepath.Abs(args[i+1])
+			if err != nil {
+				return err
+			}
+			secretsFile = abs
 		case "--domain":
 			// Repeatable AND comma-separated, because both shapes turn up: a
 			// hand-typed apex plus www, and a value pasted out of a config file.
@@ -1420,6 +1468,9 @@ func cmdDeploy(args []string) error {
 	query := neturl.Values{"name": {name}, "env": {env}}
 	for _, host := range domains {
 		query.Add("domain", host)
+	}
+	if secretsFile != "" {
+		query.Set("secretsFile", secretsFile)
 	}
 	url := controlHost + "/apps?" + query.Encode()
 	res, err := call(http.MethodPost, url, body)

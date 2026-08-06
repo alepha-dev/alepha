@@ -20,7 +20,11 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
 import { S3mini } from "s3mini";
 import { platformOptions } from "../atoms/platformOptions.ts";
 import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";
-import { EXCLUDED_SECRET_KEYS as SHARED_EXCLUDED_SECRET_KEYS } from "../secretKeys.ts";
+import {
+  readManifestEnvKeys,
+  EXCLUDED_SECRET_KEYS as SHARED_EXCLUDED_SECRET_KEYS,
+  selectSecrets,
+} from "../secretKeys.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { tenantDomain } from "../services/NamingService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
@@ -442,18 +446,14 @@ export class CloudflareAdapter extends PlatformAdapter {
    * `$env`) from `dist/manifest.json`. Used as the default worker-secret
    * allowlist. Returns `undefined` when the manifest is absent or predates
    * the `env` field, so the caller falls back to the `.env` file keys.
+   *
+   * The body moved to `../secretKeys.ts` when `BayAdapter` needed the same
+   * allowlist; this stays as the adapter-shaped way in.
    */
   protected async readManifestEnvKeys(
     root: string,
   ): Promise<string[] | undefined> {
-    try {
-      const manifest = await this.fs.readJsonFile<Partial<BuildManifest>>(
-        this.fs.join(root, "dist", "manifest.json"),
-      );
-      return Array.isArray(manifest.env) ? manifest.env : undefined;
-    } catch {
-      return undefined;
-    }
+    return await readManifestEnvKeys(this.fs, root);
   }
 
   override async secrets(
@@ -491,15 +491,15 @@ export class CloudflareAdapter extends PlatformAdapter {
         new Set([...(manifestKeys ?? Object.keys(envVars)), ...localKeys]),
       );
 
-    // Filter out binding/build vars, VITE_* vars, and empty values
-    const secrets: Record<string, string> = {};
-    for (const key of keys) {
-      if (CloudflareAdapter.EXCLUDED_SECRET_KEYS.has(key)) continue;
-      if (key.startsWith("VITE_")) continue;
-      const value = envVars[key] ?? process.env[key];
-      if (!value) continue;
-      secrets[key] = value;
-    }
+    // Filter out binding/build vars, VITE_* vars, and empty values. Shared
+    // with `BayAdapter` (`../secretKeys.ts`) because it is the security
+    // boundary of both: `process.env` is consulted only for a key already on
+    // `keys`, so ambient runner vars can never leak.
+    const { secrets } = selectSecrets({
+      keys,
+      envVars,
+      excluded: CloudflareAdapter.EXCLUDED_SECRET_KEYS,
+    });
 
     // Auto-derive PUBLIC_URL from the configured domain so absolute links
     // (emails, OAuth callbacks, sitemap) resolve at runtime — the Worker

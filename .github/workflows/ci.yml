@@ -292,45 +292,69 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
 
-  deploy-docs-cloudflare:
-    # Runs alongside `deploy-docs`, not instead of it: `alepha.dev` stays on
-    # GitHub Pages until `docs.alepha.dev` has proven itself, and the two
-    # deploy the same commit from the same sources.
-    needs: [checks, test]
-    # Same condition as `deploy-docs` rather than lore's `push && ref == main`,
-    # so the two docs deploys never diverge — including on the `workflow_run`
-    # (Release) trigger.
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Prepare
-        run: yarn copy
-
-      # Build and deploy are split on purpose. `gen:llms` writes `llms.txt`,
-      # `llms-full.txt` and the raw markdown into `dist/public` *after* the
-      # bundle, and `alepha platform up` cleans `dist/` before building — so
-      # letting it build would delete them. Build first, fill `dist/public`,
-      # then deploy with `--prebuilt`, which skips the bundle and only
-      # regenerates `wrangler.jsonc` before uploading.
-      - name: Build Documentation
-        working-directory: apps/docs
-        run: yarn alepha build -t cloudflare && yarn alepha gen:llms
-
-      - name: Deploy
-        working-directory: apps/docs
-        run: yarn alepha platform up --env production --prebuilt
+  # ---------------------------------------------------------------------------
+  # PARKED — Cloudflare Workers deploy of the docs at `docs.alepha.dev`.
+  #
+  # Kept commented rather than deleted: the job below is correct and was proven
+  # green up to the upload itself. What it uploads is not.
+  #
+  # `alepha build -t cloudflare` currently emits a broken artifact for this app,
+  # silently (exit 0, no warning). `BuildServerTask.stubWorkerdImportMetaUrl`
+  # regex-replaces /import\.meta\.url\b/g across the whole rendered chunk,
+  # string literals included — and docs' changelog, generated from git history,
+  # carries the 0.25.0 commit message "stub import.meta.url in workerd server
+  # chunks…". Rewriting that data terminates the string early, the chunk no
+  # longer parses, rolldown drops it, `run()` goes with it, and Cloudflare
+  # refuses the upload with `ReferenceError: __alepha is not defined`.
+  #
+  # Only workerd builds run that rewrite, so `deploy-docs` above (plain
+  # `alepha build` → `dist/public` → GitHub Pages) is unaffected and keeps
+  # serving `alepha.dev`.
+  #
+  # To resume: fix the rewrite to be AST-aware, add a build-time guard that
+  # refuses an empty entry chunk, then uncomment this job and the `platform()`
+  # block in `apps/docs/alepha.config.ts`.
+  # ---------------------------------------------------------------------------
+  #
+  # deploy-docs-cloudflare:
+  #   # Runs alongside `deploy-docs`, not instead of it: `alepha.dev` stays on
+  #   # GitHub Pages until `docs.alepha.dev` has proven itself, and the two
+  #   # deploy the same commit from the same sources.
+  #   needs: [checks, test]
+  #   # Same condition as `deploy-docs` rather than lore's `push && ref == main`,
+  #   # so the two docs deploys never diverge — including on the `workflow_run`
+  #   # (Release) trigger.
+  #   if: github.event_name != 'pull_request'
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 10
+  #
+  #   env:
+  #     CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  #     CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  #
+  #   steps:
+  #     - name: Git Checkout
+  #       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+  #
+  #     - name: Setup
+  #       uses: ./.github/actions/setup
+  #
+  #     - name: Prepare
+  #       run: yarn copy
+  #
+  #     # Build and deploy are split on purpose. `gen:llms` writes `llms.txt`,
+  #     # `llms-full.txt` and the raw markdown into `dist/public` *after* the
+  #     # bundle, and `alepha platform up` cleans `dist/` before building — so
+  #     # letting it build would delete them. Build first, fill `dist/public`,
+  #     # then deploy with `--prebuilt`, which skips the bundle and only
+  #     # regenerates `wrangler.jsonc` before uploading.
+  #     - name: Build Documentation
+  #       working-directory: apps/docs
+  #       run: yarn alepha build -t cloudflare && yarn alepha gen:llms
+  #
+  #     - name: Deploy
+  #       working-directory: apps/docs
+  #       run: yarn alepha platform up --env production --prebuilt
 
   deploy-lore-production:
     needs: [checks, test, e2e]

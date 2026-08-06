@@ -1,10 +1,16 @@
+import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { $inject, $store, AlephaError } from "alepha";
 import { buildOptions, PackageManagerUtils } from "alepha/cli";
 import { EnvUtils, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
-import { EXCLUDED_SECRET_KEYS } from "../secretKeys.ts";
+import { platformOptions } from "../atoms/platformOptions.ts";
+import {
+  EXCLUDED_SECRET_KEYS,
+  readManifestEnvKeys,
+  selectSecrets,
+} from "../secretKeys.ts";
 import {
   PlatformAdapter,
   type PlatformContext,
@@ -37,8 +43,11 @@ export class BayAdapter extends PlatformAdapter {
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly envUtils = $inject(EnvUtils);
   // The workspace's resolved build configuration, read for one question only:
-  // whether this app is a static site. See `build`.
+  // whether this app is a static site. See `build` and `secrets`.
   protected readonly buildOptions = $store(buildOptions);
+  // Read for `platform.secrets.keys` alone — the explicit allowlist override,
+  // the same one `CloudflareAdapter` honours.
+  protected readonly options = $store(platformOptions);
 
   /**
    * The unix group Bay publishes its control socket to.
@@ -260,6 +269,10 @@ export class BayAdapter extends PlatformAdapter {
    *   the socket file was found (its directory is world-readable) but this
    *   user was refused. The expensive one, because the key works and the
    *   shell opens before it surfaces.
+   * - A refused `--secrets-file` is a `bay` older than that flag. Ordered
+   *   first because it is the most specific string here and the cheapest to
+   *   act on; it also carries the one reassurance none of the others can, that
+   *   the deploy failed before anything moved.
    * - A `bay` that answers with its usage banner does not know the subcommand
    *   it was given, which on a host that has not been upgraded is what a
    *   secrets push gets. Ordered first because it is the one branch keyed on
@@ -290,6 +303,19 @@ export class BayAdapter extends PlatformAdapter {
         `Signed in to ${host}, but its \`bay\` has no \`env\` command, so there is nowhere to put ` +
           "this app's secrets — it answered with its usage banner instead. Upgrade `bay` on the " +
           `host (see apps/bay/INSTALL.md). Until then the app runs without them. (${detail.slice(0, 200)})`,
+      );
+    }
+    if (/unknown flag "--secrets-file"/i.test(detail)) {
+      // `checkFlags` refuses a flag it does not know, which is what a `bay`
+      // from before `--secrets-file` says to a deploy carrying secrets. The
+      // good news is in the second sentence: this fires while the artifact is
+      // still on stdin, so nothing has been unpacked and the previous release
+      // is still serving.
+      return new AlephaError(
+        `Signed in to ${host}, but its \`bay\` does not know \`--secrets-file\`, so this app's ` +
+          "secrets have nowhere to go. Upgrade `bay` on the host (see apps/bay/INSTALL.md). " +
+          "Nothing was deployed — the release that was serving still is. " +
+          `(${detail.slice(0, 200)})`,
       );
     }
     if (/no control socket found/i.test(detail)) {
@@ -539,6 +565,14 @@ export class BayAdapter extends PlatformAdapter {
       },
     });
 
+    // The app's own secrets ride along with the artifact — see `secrets()` for
+    // why this is not a second command. A static site is skipped: it has no
+    // process and no `.env`, and Bay refuses a secrets file for one outright.
+    const secretsPath =
+      this.buildOptions.target === "static"
+        ? undefined
+        : await this.stageSecrets(ctx, run);
+
     let url: string | undefined;
     await run({
       name: `deploy → ${host}`,
@@ -546,6 +580,9 @@ export class BayAdapter extends PlatformAdapter {
         const args = ["deploy", "-", "--name", ctx.project, "--env", ctx.env];
         for (const domain of domains) {
           args.push("--domain", domain);
+        }
+        if (secretsPath) {
+          args.push("--secrets-file", secretsPath);
         }
 
         let answer: string;
@@ -559,12 +596,134 @@ export class BayAdapter extends PlatformAdapter {
             stdin: new Uint8Array(await this.fs.readFile(artifact)),
           });
         } catch (error) {
+          // Bay consumes the file itself, on success AND on every refusal, so
+          // the only way one survives is a deploy that never reached Bay: ssh
+          // refused, `bay` missing, the control socket down. Swept here rather
+          // than left, because that file is plaintext credentials.
+          //
+          // Best-effort and silent: whatever went wrong above is the error the
+          // caller needs, and a failed cleanup must not replace it with a
+          // complaint about `rm`.
+          if (secretsPath) {
+            await this.sweepSecrets(ctx, secretsPath);
+          }
           throw this.explain(host, error);
         }
         url = this.deployedUrl(answer);
       },
     });
     return url;
+  }
+
+  /**
+   * Where a deploy's secrets wait on the host, for the seconds between being
+   * written and being consumed.
+   *
+   * `/tmp` because it is the one directory both parties can reach: the file is
+   * written by the deploying user over ssh and read by `bay serve` as root.
+   * The name is 16 random bytes, which is the real defence — a predictable
+   * path on a shared box can be pre-created by another user as a symlink, and
+   * `cat >` would write the secrets straight through it. Bay refuses a symlink
+   * as well (`O_NOFOLLOW`), so both ends have to fail before that works.
+   */
+  protected secretsPath(): string {
+    return `/tmp/.bay-secrets-${randomBytes(16).toString("hex")}`;
+  }
+
+  /**
+   * The shape a staged secrets path is allowed to have.
+   *
+   * The value is generated a few lines above, so this can never fire today.
+   * It is here for the day someone makes the directory configurable: the path
+   * goes into a remote shell command that is deliberately NOT argv-quoted (see
+   * {@link stageSecrets}), and this is what stands in for the quoting.
+   */
+  protected readonly secretsPathPattern = /^\/tmp\/\.bay-secrets-[0-9a-f]{32}$/;
+
+  /**
+   * Writes this deploy's secrets to the host, and returns where.
+   *
+   * Returns `undefined` when there is nothing to send, which is what keeps
+   * `--secrets-file` off the deploy command line for an app that has no
+   * secrets — and off it entirely for a host whose `bay` is older.
+   *
+   * `umask 077; cat > PATH` rather than `scp`. Two reasons, and the first is
+   * the one that matters: `scp` reproduces the LOCAL file's mode, so a
+   * developer with a lax umask ships a world-readable secrets file, and a
+   * chmod afterwards leaves a window where it is readable. Setting the umask
+   * before the redirect means the file is 0600 from the instant it exists.
+   * The second is that the adapter already drives `ssh` and needs no second
+   * transport.
+   *
+   * This is the one remote command not built through {@link remote}: it is a
+   * shell snippet (`;` and `>` are the point of it), and argv-quoting would
+   * turn it into a command named "umask". {@link secretsPathPattern} is the
+   * guard that replaces the quoting.
+   */
+  protected async stageSecrets(
+    ctx: PlatformContext,
+    run: RunnerMethod,
+  ): Promise<string | undefined> {
+    const { secrets, platformOwned } = await this.selectAppSecrets(ctx);
+    const names = Object.keys(secrets).sort();
+    if (platformOwned.length > 0) {
+      // Said out loud rather than dropped. A user who put DATABASE_URL in
+      // `.env.production` and cannot find it on the host should learn here
+      // that it is not theirs to set.
+      this.log.info(
+        `Not pushed — Bay writes these itself, or the framework defaults them: ${platformOwned
+          .sort()
+          .join(", ")}.`,
+      );
+    }
+    if (names.length === 0) {
+      this.log.info(
+        `No secrets to send: nothing ${ctx.project} declares via $env is set in ` +
+          `.env.${ctx.env} or in this environment.`,
+      );
+      return undefined;
+    }
+
+    const payload = this.encodeAssignments(secrets);
+    const path = this.secretsPath();
+    this.assertSafe("secrets file path", path, this.secretsPathPattern);
+    const host = this.host(ctx);
+    await run({
+      name: `stage secrets → ${host}`,
+      handler: async () => {
+        try {
+          await this.shell.run(
+            ["ssh", "-o", "BatchMode=yes", host, `umask 077; cat > ${path}`],
+            { capture: true, stdin: new TextEncoder().encode(payload) },
+          );
+        } catch (error) {
+          throw this.explain(host, error);
+        }
+        this.log.info(
+          `Staged ${names.join(", ")} for ${ctx.project}/${ctx.env}. ` +
+            "Bay merges them before the release is swapped in, so the app boots with them.",
+        );
+      },
+    });
+    return path;
+  }
+
+  /**
+   * Removes a staged secrets file the deploy never got to consume.
+   *
+   * Deliberately swallows everything. It runs on a path where something has
+   * already failed, and the caller is about to throw the error that actually
+   * explains the deploy — replacing it with an `rm` failure would bury it.
+   */
+  protected async sweepSecrets(
+    ctx: PlatformContext,
+    path: string,
+  ): Promise<void> {
+    try {
+      await this.remote(ctx, ["rm", "-f", path]);
+    } catch {
+      this.log.debug(`Could not remove the staged secrets file at ${path}.`);
+    }
   }
 
   /**
@@ -630,96 +789,85 @@ export class BayAdapter extends PlatformAdapter {
   ]);
 
   /**
-   * Pushes `.env.{env}` onto the deployed instance, through `bay env set`.
+   * Everything this adapter refuses to push, in one set.
    *
-   * Read from the FILE, never from `process.env` — the hook's contract, and
-   * the only reading that is safe here: this runs on a developer's machine or
-   * a CI runner whose environment is full of things that are nobody's secret
-   * and some things that are somebody else's (`PATH`, `GITHUB_TOKEN`, the
-   * Cloudflare credentials of an unrelated deploy).
-   *
-   * On stdin, never in argv. `ssh HOST bay env set … VALUE` would put every
-   * secret in the host's process table, where any user running `ps` can read
-   * it, and in the local shell's history. `bay deploy -` already established
-   * stdin as this codebase's payload channel.
-   *
-   * Silence is the one outcome this must not produce, because silence was the
-   * bug: an empty push says so, a filtered key says so, and a host whose `bay`
-   * predates the command fails with the upgrade named (see {@link explain}).
+   * The union of the platform-wide list (binding vars, framework infra knobs)
+   * and Bay's own. Built once rather than tested twice per key, so there is a
+   * single answer to "would this key be pushed?" for a test to point at.
    */
-  override async secrets(
-    ctx: PlatformContext,
-    run: RunnerMethod,
-  ): Promise<void> {
-    const host = this.host(ctx);
-    this.assertSafe("app name", ctx.project, this.appKeyPattern);
-    this.assertSafe("environment", ctx.env, this.appKeyPattern);
+  static readonly EXCLUDED_KEYS: ReadonlySet<string> = new Set([
+    ...EXCLUDED_SECRET_KEYS,
+    ...BayAdapter.BAY_OWNED_KEYS,
+  ]);
 
-    const parsed = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
-    const secrets: Record<string, string> = {};
-    const platformOwned: string[] = [];
-    for (const [key, value] of Object.entries(parsed)) {
-      if (!value) continue;
-      // Build-time vars, inlined by Vite. Never a runtime secret anywhere.
-      if (key.startsWith("VITE_")) continue;
-      if (EXCLUDED_SECRET_KEYS.has(key) || BayAdapter.BAY_OWNED_KEYS.has(key)) {
-        platformOwned.push(key);
-        continue;
-      }
-      secrets[key] = value;
-    }
-
-    const names = Object.keys(secrets).sort();
-    if (platformOwned.length > 0) {
-      // Said out loud rather than dropped. A user who put DATABASE_URL in
-      // `.env.production` and cannot find it on the host should learn here
-      // that Bay writes that one itself.
-      this.log.info(
-        `Bay writes ${platformOwned.sort().join(", ")} itself — not pushed.`,
+  /**
+   * Selects which of the app's env keys are its own secrets, and their values.
+   *
+   * **The allowlist is the app's own `$env` declarations**, read from
+   * `dist/manifest.json` at build time — the same source Cloudflare uses, and
+   * the reason `process.env` can be consulted at all. A value resolves from
+   * `.env.<env>[.local]` first and from `process.env` second, so CI can deliver
+   * secrets through the job environment with no `.env` file on the runner,
+   * while `PATH`, `GITHUB_TOKEN` or `AWS_SECRET_ACCESS_KEY` still have no way
+   * in: they are not on the list, so they are never looked up. The key set is
+   * never derived from `process.env` itself — that would put the whole
+   * deploying environment in scope, and is the one change that would turn this
+   * into a leak.
+   *
+   * With no manifest (or one predating the `env` field) the `.env.<env>` file's
+   * own keys are the allowlist, which is the legacy shape and equally bounded.
+   */
+  protected async selectAppSecrets(ctx: PlatformContext): Promise<{
+    secrets: Record<string, string>;
+    platformOwned: string[];
+  }> {
+    // The key set, by precedence — the same resolution
+    // `CloudflareAdapter.secrets` uses, deliberately, because a second shape
+    // for "which keys are this app's" is a second thing to get wrong:
+    //   1. `platform.secrets.keys` — explicit override in alepha.config.ts.
+    //   2. otherwise the UNION of the manifest's `env` list (or the
+    //      `.env.<env>` file's keys, when there is no manifest) and the
+    //      `.env.<env>.local` keys, which are the per-deploy override layer.
+    const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
+    const declaredKeys = this.options?.secrets?.keys;
+    const manifestKeys = await readManifestEnvKeys(this.fs, ctx.root);
+    const localKeys = Object.keys(
+      await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}.local`]),
+    );
+    const keys =
+      declaredKeys ??
+      Array.from(
+        new Set([...(manifestKeys ?? Object.keys(envVars)), ...localKeys]),
       );
-    }
-    if (names.length === 0) {
-      this.log.info(
-        `No secrets to push: .env.${ctx.env} holds nothing that is the app's own. ` +
-          "Bay reads secrets from that file, not from this shell's environment.",
-      );
-      return;
-    }
 
-    const payload = this.encodeAssignments(secrets);
-    await run({
-      name: `secrets → ${host}`,
-      handler: async () => {
-        let answer: string;
-        try {
-          answer = await this.remote(
-            ctx,
-            this.bayArgv(ctx, ["env", "set", `${ctx.project}/${ctx.env}`, "-"]),
-            { stdin: new TextEncoder().encode(payload) },
-          );
-        } catch (error) {
-          throw this.explain(host, error);
-        }
-        // Bay answers which keys actually moved and whether the app was
-        // restarted onto them. Reporting what was SENT instead would call a
-        // no-op a success, which is the bug this method exists to end.
-        const applied = this.appliedSecrets(answer);
-        if (!applied || applied.changed.length === 0) {
-          this.log.info(
-            `${names.length} secret(s) already set on ${ctx.project}/${ctx.env}: nothing changed, ` +
-              "so the app was not restarted.",
-          );
-          return;
-        }
-        this.log.info(
-          `Set ${applied.changed.join(", ")} on ${ctx.project}/${ctx.env}` +
-            (applied.restarted
-              ? " — the app restarted onto the new environment."
-              : " — the app is not running, so they take effect at its next start."),
-        );
-      },
+    return selectSecrets({
+      keys,
+      envVars,
+      excluded: BayAdapter.EXCLUDED_KEYS,
     });
   }
+
+  /**
+   * Nothing to do here, and that is the fix rather than the bug.
+   *
+   * **This override is deliberately empty, and must not be deleted.** An empty
+   * `secrets()` on this adapter is exactly what the silent-no-op bug looked
+   * like, so a future reader finding no override at all would be right to
+   * assume Bay had regressed to pushing nothing. It has not: the secrets ride
+   * the deploy.
+   *
+   * `PlatformOrchestrator.up()` calls `deploy()` and then `secrets()`, and
+   * that order is the problem, not the solution. Pushing afterwards means the
+   * app boots once WITHOUT its secrets, and a failure at that step lands after
+   * the code already has — a half-deployed release serving without its
+   * configuration. So {@link deploy} stages them to a 0600 file on the host and
+   * passes `--secrets-file`; Bay merges them during provision, before the
+   * release is swapped in and before the process starts. There is no window.
+   *
+   * `bay env set` is still the way to change a running app's configuration
+   * without redeploying it — see {@link inspect}, which reads the result back.
+   */
+  override async secrets(): Promise<void> {}
 
   /**
    * Renders the payload `bay env set` parses.
@@ -742,32 +890,6 @@ export class BayAdapter extends PlatformAdapter {
         return `${key}=${value}`;
       })
       .join("\n")}\n`;
-  }
-
-  /**
-   * Reads what `bay env set` reported back.
-   *
-   * Returns nothing when the answer is not the JSON this expects — the same
-   * reasoning {@link deployedUrl} uses. A login banner parsed as "0 changed"
-   * would be reported as a successful no-op.
-   */
-  protected appliedSecrets(
-    answer: string,
-  ): { changed: string[]; restarted: boolean } | undefined {
-    try {
-      const parsed = JSON.parse(answer);
-      if (!Array.isArray(parsed?.changed)) {
-        return undefined;
-      }
-      return {
-        changed: parsed.changed.filter(
-          (key: unknown) => typeof key === "string",
-        ),
-        restarted: parsed.restarted === true,
-      };
-    } catch {
-      return undefined;
-    }
   }
 
   /**

@@ -1,3 +1,6 @@
+import type { BuildManifest } from "alepha/cli";
+import type { FileSystemProvider } from "alepha/system";
+
 /**
  * The env keys no adapter pushes as a runtime secret.
  *
@@ -40,3 +43,85 @@ export const EXCLUDED_SECRET_KEYS: ReadonlySet<string> = new Set([
   "DATABASE_SYNC",
   "DEBUG",
 ]);
+
+/**
+ * Every key the app declares via `$env`, read from `dist/manifest.json`.
+ *
+ * This is the **allowlist**, and it is what makes reading `process.env` safe at
+ * all: the key set comes from what the app declared at build time, never from
+ * enumerating the deploying shell. A CI runner can therefore deliver secrets
+ * through the job environment with no `.env` file on disk, and `PATH`,
+ * `GITHUB_TOKEN` or `AWS_SECRET_ACCESS_KEY` still have no way in — they are not
+ * on the list, so they are never looked up.
+ *
+ * Returns `undefined` when the manifest is absent or predates the `env` field,
+ * so the caller falls back to the `.env` file's own keys.
+ */
+export async function readManifestEnvKeys(
+  fs: FileSystemProvider,
+  root: string,
+): Promise<string[] | undefined> {
+  try {
+    const manifest = await fs.readJsonFile<Partial<BuildManifest>>(
+      fs.join(root, "dist", "manifest.json"),
+    );
+    return Array.isArray(manifest.env) ? manifest.env : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * What one adapter's `secrets()` step actually decided to push.
+ */
+export interface SecretSelection {
+  /**
+   * Key → value, ready to hand to the platform.
+   */
+  secrets: Record<string, string>;
+  /**
+   * Keys that were on the allowlist and dropped because the platform owns
+   * them. Kept so an adapter can say so out loud — a user who put
+   * `DATABASE_URL` in `.env.production` and cannot find it on the host is owed
+   * a sentence, not silence.
+   */
+  platformOwned: string[];
+}
+
+/**
+ * Resolves an allowlist of keys into the values to push.
+ *
+ * The security boundary of every `secrets()` implementation, in one place so
+ * the adapters cannot come to differ on it. Three rules, in order:
+ *
+ * - a key the platform owns is dropped, and reported;
+ * - a `VITE_*` key is dropped silently — Vite inlines it at build time, so it
+ *   is never a runtime secret on any platform;
+ * - the value is the `.env.<env>[.local]` one, falling back to `process.env`,
+ *   and an empty result is dropped.
+ *
+ * `process.env` is read only for a key that is ALREADY on `keys`. Callers must
+ * keep it that way: derive `keys` from the manifest, the config or the `.env`
+ * file — never from `process.env` itself, which would put the whole deploying
+ * environment in scope.
+ */
+export function selectSecrets(options: {
+  keys: string[];
+  envVars: Record<string, string>;
+  excluded?: ReadonlySet<string>;
+}): SecretSelection {
+  const excluded = options.excluded ?? EXCLUDED_SECRET_KEYS;
+  const secrets: Record<string, string> = {};
+  const platformOwned: string[] = [];
+  for (const key of options.keys) {
+    if (excluded.has(key)) {
+      platformOwned.push(key);
+      continue;
+    }
+    if (key.startsWith("VITE_")) continue;
+    const value = options.envVars[key] ?? process.env[key];
+    if (!value) continue;
+    secrets[key] = value;
+  }
+  return { secrets, platformOwned };
+}

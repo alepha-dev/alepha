@@ -17,6 +17,7 @@ package deploy
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"syscall"
 
 	"github.com/alepha/bay/internal/runner"
 )
@@ -109,7 +111,7 @@ func ParseAssignments(r io.Reader) (map[string]string, error) {
 		return nil, err
 	}
 	if len(values) == 0 {
-		return nil, fmt.Errorf("no assignments were sent — expected KEY=VALUE lines on stdin")
+		return nil, fmt.Errorf("no assignments were found — expected KEY=VALUE lines")
 	}
 	return values, nil
 }
@@ -144,22 +146,8 @@ func SetEnv(instance string, updates map[string]string) (changed []string, err e
 		return nil, statErr
 	}
 
-	// Refused before anything is written, and ALL of them are named rather
-	// than only the first: a caller fixing one at a time learns about the next
-	// only by trying again.
-	var refused []string
-	for key := range updates {
-		if IsBayOwned(key) {
-			refused = append(refused, key)
-		}
-	}
-	if len(refused) > 0 {
-		sort.Strings(refused)
-		return nil, fmt.Errorf(
-			"refusing to set %s: Bay writes %s itself on every deploy. "+
-				"APP_SECRET in particular is the instance's session key — overwriting it signs every "+
-				"user out and cannot be undone, because the value it replaced is gone",
-			strings.Join(refused, ", "), pluralKeys(len(refused)))
+	if err := refuseBayOwned(updates); err != nil {
+		return nil, err
 	}
 
 	env, err := runner.LoadEnvFile(envPath)
@@ -181,6 +169,101 @@ func SetEnv(instance string, updates map[string]string) (changed []string, err e
 		return nil, err
 	}
 	return changed, nil
+}
+
+// refuseBayOwned rejects a batch that would overwrite a key Bay writes itself.
+//
+// The single implementation, called by every way in: `bay env set` on a running
+// app, and a `--secrets-file` arriving with a deploy. A second copy of this
+// check is a second place for APP_SECRET to become writable.
+//
+// All of them are named rather than only the first: a caller fixing one at a
+// time learns about the next only by trying again.
+func refuseBayOwned(updates map[string]string) error {
+	var refused []string
+	for key := range updates {
+		if IsBayOwned(key) {
+			refused = append(refused, key)
+		}
+	}
+	if len(refused) == 0 {
+		return nil
+	}
+	sort.Strings(refused)
+	return fmt.Errorf(
+		"refusing to set %s: Bay writes %s itself on every deploy. "+
+			"APP_SECRET in particular is the instance's session key — overwriting it signs every "+
+			"user out and cannot be undone, because the value it replaced is gone",
+		strings.Join(refused, ", "), pluralKeys(len(refused)))
+}
+
+// ConsumeSecretsFile reads a `KEY=VALUE` file, deletes it, and returns what it
+// held.
+//
+// The delivery channel for `bay deploy --secrets-file`. It exists so an app's
+// secrets are in the instance `.env` BEFORE the release is swapped in and the
+// process starts — which removes the window where an app boots without them,
+// and the failure that used to land after the code already had.
+//
+// **Consume, not read.** The file is plaintext secrets sitting on a disk, so
+// the unlink is deferred the moment the path is known to denote a regular file
+// we were handed: a refused mode, an unparseable line, a Bay-owned key, all
+// still take it with them. A cleanup step that runs "unless something went
+// wrong" strands exactly the file that matters, on exactly the deploy someone
+// will come back to look at.
+//
+// Two refusals come first, because a file cannot be safely consumed until it is
+// known to be the right file:
+//
+//   - **A symlink is never followed.** Opened with O_NOFOLLOW rather than
+//     lstat-then-open, so there is no window to swap one in. Refused WITHOUT
+//     removing it: unlinking the link would not remove the plaintext, which is
+//     at its target, and the operator needs to be told to go look there.
+//   - **Group or world bits are refused.** 0600 or nothing. The writer sets
+//     `umask 077`, so anything wider means somebody else made this file.
+func ConsumeSecretsFile(path string) (map[string]string, error) {
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		if errors.Is(err, syscall.ELOOP) {
+			return nil, fmt.Errorf(
+				"%s is a symlink, and a secrets file is never followed — whatever it points at now "+
+					"holds this deploy's secrets in plaintext, so go and remove that", path)
+		}
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf(
+				"no secrets file at %s. The deploying user writes it moments before this call, so a "+
+					"missing one usually means Bay cannot see that user's filesystem — check for "+
+					"PrivateTmp= in bay.service", path)
+		}
+		return nil, err
+	}
+	defer f.Close()
+
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s is not a regular file, so it is not a secrets file", path)
+	}
+	// From here the path denotes a file we were handed, so it is ours to take
+	// away — on every path out of this function, including the refusals below.
+	defer os.Remove(path)
+
+	if perm := info.Mode().Perm(); perm&0o077 != 0 {
+		return nil, fmt.Errorf(
+			"%s is mode %04o: a secrets file must be readable by its owner and nobody else (0600). "+
+				"It has been removed", path, perm)
+	}
+
+	updates, err := ParseAssignments(f)
+	if err != nil {
+		return nil, err
+	}
+	if err := refuseBayOwned(updates); err != nil {
+		return nil, err
+	}
+	return updates, nil
 }
 
 func pluralKeys(n int) string {

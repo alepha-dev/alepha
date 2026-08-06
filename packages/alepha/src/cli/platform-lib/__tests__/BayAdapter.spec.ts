@@ -856,7 +856,7 @@ describe("BayAdapter — quoting", () => {
   });
 });
 
-describe("BayAdapter — the secrets it pushes", () => {
+describe("BayAdapter — the secrets that ride the deploy", () => {
   /**
    * A workspace whose `.env.production` holds what the author wrote in it.
    */
@@ -866,23 +866,212 @@ describe("BayAdapter — the secrets it pushes", () => {
     return it;
   };
 
+  /**
+   * A built workspace whose `dist/manifest.json` declares these `$env` keys.
+   *
+   * This is what a CI runner has and a laptop usually does not: the artifact,
+   * no `.env` file, and the secrets in the job environment.
+   */
+  const withManifest = async (envKeys: string[], file?: string) => {
+    const it = await setup();
+    await it.fs.writeFile(
+      "/project/dist/manifest.json",
+      JSON.stringify({ project: "demo", env: envKeys }),
+    );
+    if (file !== undefined) {
+      await it.fs.writeFile("/project/.env.production", file);
+    }
+    return it;
+  };
+
   const sentPayload = (shell: MemoryShellProvider): string => {
-    const [call] = shell.getCallsMatching(/bay env set/);
+    const [call] = shell.getCallsMatching(/cat >/);
+    if (!call) {
+      // Said explicitly, because "nothing was pushed" is the failure these
+      // tests exist to catch and a bare `undefined.options` names nothing.
+      throw new Error("nothing was staged — no secrets file was written");
+    }
     return new TextDecoder().decode(call.options.stdin as Uint8Array);
   };
 
-  it("pipes the assignments into `bay env set`, addressed at this app", async () => {
+  /**
+   * Runs `body` with these variables in `process.env`, and removes them again
+   * whatever happens — a leaked one would silently change a later test.
+   */
+  const withProcessEnv = async (
+    vars: Record<string, string>,
+    body: () => Promise<unknown>,
+  ) => {
+    const previous = new Map(
+      Object.keys(vars).map((key) => [key, process.env[key]]),
+    );
+    Object.assign(process.env, vars);
+    try {
+      await body();
+    } finally {
+      for (const [key, value] of previous) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  };
+
+  /**
+   * The path `--secrets-file` was given, pulled back out of the deploy command.
+   */
+  const stagedPath = (shell: MemoryShellProvider): string => {
+    const [call] = shell.getCallsMatching(/--secrets-file/);
+    if (!call) {
+      throw new Error("the deploy carried no --secrets-file");
+    }
+    const path = /--secrets-file (\S+)/.exec(call.command)?.[1];
+    if (!path) {
+      throw new Error(`no path after --secrets-file in: ${call.command}`);
+    }
+    return path;
+  };
+
+  /**
+   * A workspace whose `bay deploy` fails with this message, whatever random
+   * secrets path it happens to carry.
+   *
+   * `MemoryShellProvider` keys its errors on the exact command string, and the
+   * staged path is 16 random bytes — so the failure has to be installed by
+   * pattern rather than by key. The call is still recorded before it throws,
+   * so `stagedPath` can find it afterwards.
+   */
+  const failingDeploy = async (message: string) => {
+    const it = await withEnvFile("STRIPE_KEY=sk_live_1\n");
+    const inner = it.shell.run.bind(it.shell);
+    it.shell.run = (async (
+      command: string | string[],
+      options: Record<string, unknown> = {},
+    ) => {
+      const recorded = await inner(command, options);
+      const key = Array.isArray(command) ? command.join(" ") : command;
+      if (/bay deploy -/.test(key)) {
+        throw new AlephaError(message);
+      }
+      return recorded;
+    }) as typeof it.shell.run;
+    return it;
+  };
+
+  it("stages the assignments on the host and hands the deploy their path", async () => {
     const { adapter, shell } = await withEnvFile("STRIPE_KEY=sk_live_1\n");
 
-    await adapter.secrets(context(), run);
+    await adapter.deploy(context(), run);
+
+    expect(sentPayload(shell)).toBe("STRIPE_KEY=sk_live_1\n");
+    expect(
+      shell.wasCalled(
+        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy - " +
+          `--name demo --env production --secrets-file ${stagedPath(shell)}`,
+      ),
+    ).toBe(true);
+  });
+
+  it("stages the file before the deploy that consumes it", async () => {
+    /*
+      The ordering IS the fix. Bay merges the file during provision — before
+      the release is swapped in and before the process starts — so the app
+      boots with its secrets and there is no window where it runs without
+      them. A staging call that landed after the deploy would be the old
+      after-the-fact push wearing a new name.
+    */
+    const { adapter, shell } = await withEnvFile("STRIPE_KEY=sk_live_1\n");
+
+    await adapter.deploy(context(), run);
+
+    const staged = shell.calls.findIndex((c) => /cat >/.test(c.command));
+    const deployed = shell.calls.findIndex((c) =>
+      /bay deploy -/.test(c.command),
+    );
+    expect(staged).toBeGreaterThanOrEqual(0);
+    expect(deployed).toBeGreaterThan(staged);
+  });
+
+  it("writes the staged file 0600 by setting the umask, never by chmod after", async () => {
+    /*
+      `scp` would reproduce the LOCAL file's mode, so a developer with a lax
+      umask ships a world-readable secrets file — and a chmod afterwards
+      leaves a window in which it is readable. `umask 077` before the redirect
+      means the file is 0600 from the instant it exists.
+    */
+    const { adapter, shell } = await withEnvFile("STRIPE_KEY=sk_live_1\n");
+
+    await adapter.deploy(context(), run);
 
     expect(
       shell.wasCalled(
         "ssh -o BatchMode=yes deploy@bay.example.com " +
-          "bay env set demo/production -",
+          `umask 077; cat > ${stagedPath(shell)}`,
       ),
     ).toBe(true);
-    expect(sentPayload(shell)).toBe("STRIPE_KEY=sk_live_1\n");
+    expect(shell.wasCalledMatching(/scp/)).toBe(false);
+    expect(shell.wasCalledMatching(/chmod/)).toBe(false);
+  });
+
+  it("uses an unpredictable path, so nobody can pre-create it", async () => {
+    /*
+      The other half of the symlink defence. A predictable path under /tmp on a
+      shared box can be planted as a link by another user before the deploy
+      runs, and `cat >` would write the secrets straight through it. Bay
+      refuses a symlink too (O_NOFOLLOW), so both ends have to fail.
+    */
+    const { adapter, shell } = await withEnvFile("STRIPE_KEY=sk_live_1\n");
+    const { adapter: other, shell: otherShell } = await withEnvFile(
+      "STRIPE_KEY=sk_live_1\n",
+    );
+
+    await adapter.deploy(context(), run);
+    await other.deploy(context(), run);
+
+    expect(stagedPath(shell)).toMatch(/^\/tmp\/\.bay-secrets-[0-9a-f]{32}$/);
+    expect(stagedPath(shell)).not.toBe(stagedPath(otherShell));
+  });
+
+  it("sweeps the staged file when the deploy never reached Bay", async () => {
+    /*
+      Bay consumes the file itself, on success and on every refusal, so the
+      only way one survives is a deploy that never got there — ssh refused,
+      `bay` missing, the socket down. That file is plaintext credentials, and
+      the host is about to be logged into by somebody debugging.
+    */
+    const { adapter, shell } = await failingDeploy("boom");
+
+    await expect(adapter.deploy(context(), run)).rejects.toThrowError();
+
+    expect(
+      shell.wasCalled(
+        `ssh -o BatchMode=yes deploy@bay.example.com rm -f ${stagedPath(shell)}`,
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps the deploy's own error when the sweep also fails", async () => {
+    // The sweep runs on a path where something has already gone wrong. An
+    // `rm` failure replacing that error would bury the only message that
+    // explains the deploy.
+    const { adapter, shell } = await failingDeploy("the real failure");
+    const inner = shell.run.bind(shell);
+    shell.run = (async (
+      command: string | string[],
+      options: Record<string, unknown> = {},
+    ) => {
+      const key = Array.isArray(command) ? command.join(" ") : command;
+      if (/rm -f/.test(key)) {
+        throw new AlephaError("the sweep failed too");
+      }
+      return await inner(command, options);
+    }) as typeof shell.run;
+
+    await expect(adapter.deploy(context(), run)).rejects.toThrowError(
+      /the real failure/,
+    );
   });
 
   it("never puts a secret in argv", async () => {
@@ -894,28 +1083,26 @@ describe("BayAdapter — the secrets it pushes", () => {
     */
     const { adapter, shell } = await withEnvFile("STRIPE_KEY=sk_live_secret\n");
 
-    await adapter.secrets(context(), run);
+    await adapter.deploy(context(), run);
 
     for (const call of shell.calls) {
       expect(call.command).not.toContain("sk_live_secret");
     }
   });
 
-  it("reads the file, never this process's environment", async () => {
+  it("takes the file's value over this shell's", async () => {
     /*
-      The hook's docblock is explicit, and it is not a detail: this runs on a
-      developer's laptop or a CI runner whose environment holds other people's
-      credentials. A fallback to `process.env` would ship them.
+      `process.env` is the FALLBACK, not the source. A developer whose shell
+      happens to export a stale STRIPE_KEY must still deploy what their
+      `.env.production` says — otherwise the file everyone reads to know what
+      is deployed is not what is deployed.
     */
     const { adapter, shell } = await withEnvFile("STRIPE_KEY=from_the_file\n");
-    process.env.AMBIENT_ONLY = "from_the_shell";
-    process.env.STRIPE_KEY = "from_the_shell";
-    try {
-      await adapter.secrets(context(), run);
-    } finally {
-      delete process.env.AMBIENT_ONLY;
-      delete process.env.STRIPE_KEY;
-    }
+
+    await withProcessEnv(
+      { STRIPE_KEY: "from_the_shell", AMBIENT_ONLY: "from_the_shell" },
+      () => adapter.deploy(context(), run),
+    );
 
     const payload = sentPayload(shell);
     expect(payload).toContain("STRIPE_KEY=from_the_file");
@@ -936,7 +1123,7 @@ describe("BayAdapter — the secrets it pushes", () => {
       ].join("\n"),
     );
 
-    await adapter.secrets(context(), run);
+    await adapter.deploy(context(), run);
 
     expect(sentPayload(shell)).toBe("STRIPE_KEY=sk_live_1\n");
   });
@@ -948,12 +1135,12 @@ describe("BayAdapter — the secrets it pushes", () => {
       ),
     );
 
-    await adapter.secrets(context(), run);
+    await adapter.deploy(context(), run);
 
     expect(sentPayload(shell)).toBe("STRIPE_KEY=sk\n");
   });
 
-  it("says so when there is nothing to push, instead of finishing quietly", async () => {
+  it("says so when there is nothing to send, instead of finishing quietly", async () => {
     // The whole bug in one line: a deploy that pushes nothing must not be
     // indistinguishable from a deploy that pushed everything.
     const { adapter, shell, alepha } = await withEnvFile("NODE_ENV=production");
@@ -962,10 +1149,10 @@ describe("BayAdapter — the secrets it pushes", () => {
       said.push(e.message ?? "");
     });
 
-    await adapter.secrets(context(), run);
+    await adapter.deploy(context(), run);
 
-    expect(shell.getCallsMatching(/bay env set/)).toHaveLength(0);
-    expect(said.join("\n")).toMatch(/No secrets to push/);
+    expect(shell.getCallsMatching(/cat >/)).toHaveLength(0);
+    expect(said.join("\n")).toMatch(/No secrets to send/);
   });
 
   it("refuses a value carrying a newline rather than sending half of it", async () => {
@@ -984,66 +1171,215 @@ describe("BayAdapter — the secrets it pushes", () => {
       'PRIVATE_KEY="line one\\nline two"',
     );
 
-    await expect(adapter.secrets(context(), run)).rejects.toThrowError(
+    await expect(adapter.deploy(context(), run)).rejects.toThrowError(
       /PRIVATE_KEY contains a newline/,
     );
-    expect(shell.getCallsMatching(/bay env set/)).toHaveLength(0);
+    expect(shell.getCallsMatching(/cat >/)).toHaveLength(0);
   });
 
-  it("names the upgrade when the host's `bay` has no `env` command", async () => {
+  it("names the upgrade when the host's `bay` has no `--secrets-file`", async () => {
     /*
-      A `bay` that predates this prints its usage banner and exits 2 — the
-      whole banner, on stderr, with no sentence anywhere in it saying that the
-      subcommand was the problem. Without the branch this covers, `explain`
-      falls through to its generic "ssh to HOST failed: <a page of usage
-      text>", and the operator is left to work out for themselves that their
-      secrets did not land and that the fix is a binary upgrade.
+      `checkFlags` on the Go side refuses a flag it does not know, which is
+      what a `bay` from before `--secrets-file` says. Without the branch this
+      covers, `explain` falls through to its generic "ssh to HOST failed", and
+      the operator has to work out for themselves that the fix is a binary
+      upgrade rather than anything about their app.
 
-      The fixture is the real banner's opening, verbatim.
+      The reassurance in the message is load-bearing too: this fires while the
+      artifact is still on stdin, so nothing was unpacked and the release that
+      was serving still is.
     */
-    const { adapter, shell } = await withEnvFile("STRIPE_KEY=sk\n");
-    shell.configure({
-      errors: {
-        "ssh -o BatchMode=yes deploy@bay.example.com bay env set demo/production -":
-          "bay — Alepha application server (PoC)\n\n" +
-          "  bay serve   [--root DIR] [--runtimes DIR] [--addr :8080]\n" +
-          "              [--base-domain bay.example.com]\n" +
-          "  bay deploy  (<app.tar.gz>|-) [--name NAME] [--env ENV] [--domain HOST]...\n" +
-          "Client commands accept --control-socket PATH (or $BAY_SOCKET) and must run on\n" +
-          "the Bay host.",
-      },
-    });
+    const { adapter, shell } = await failingDeploy(
+      'unknown flag "--secrets-file" (run `bay --help`)',
+    );
 
-    await expect(adapter.secrets(context(), run)).rejects.toThrowError(
-      /has no `env` command[\s\S]*Upgrade `bay` on the host/,
+    await expect(adapter.deploy(context(), run)).rejects.toThrowError(
+      /does not know `--secrets-file`[\s\S]*Upgrade `bay` on the host/,
+    );
+    expect(shell.calls.length).toBeGreaterThan(0);
+  });
+
+  it("says nothing was deployed when the old host refused the flag", async () => {
+    // A deploy that failed BEFORE anything moved and a deploy that failed
+    // half-way want opposite reactions, and only the message can tell them
+    // apart.
+    const { adapter } = await failingDeploy(
+      'unknown flag "--secrets-file" (run `bay --help`)',
+    );
+
+    await expect(adapter.deploy(context(), run)).rejects.toThrowError(
+      /Nothing was deployed/,
     );
   });
 
-  it("reports what Bay says moved, not what it was sent", async () => {
-    // `alepha platform up` pushes the same secrets every deploy. Reporting the
-    // send would call an unchanged push a change, and vice versa.
-    const { adapter, shell, alepha } = await withEnvFile("STRIPE_KEY=sk\n");
-    shell.configure({
-      outputs: {
-        "ssh -o BatchMode=yes deploy@bay.example.com bay env set demo/production -":
-          JSON.stringify({ changed: [], restarted: false }),
-      },
-    });
+  it("reports what it staged, naming the keys", async () => {
+    const { adapter, alepha } = await withEnvFile(
+      "STRIPE_KEY=sk\nMAILER_DSN=smtp://x\n",
+    );
     const said: string[] = [];
     alepha.events.on("log", (e: { message?: string }) => {
       said.push(e.message ?? "");
     });
 
-    await adapter.secrets(context(), run);
+    await adapter.deploy(context(), run);
 
-    expect(said.join("\n")).toMatch(/nothing changed/);
+    expect(said.join("\n")).toMatch(/Staged MAILER_DSN, STRIPE_KEY/);
+    expect(said.join("\n")).toMatch(/boots with them/);
+  });
+
+  it("takes a declared secret from the job environment when CI has no .env file", async () => {
+    /*
+      How CI actually works: the runner checks out, builds, and holds the
+      secrets in the job environment. There is no `.env.production` on disk and
+      there should not be one. Without a key source that survives that, the
+      allowlist would be the file's keys — of which there are none — and the
+      value fallback could never fire.
+
+      The manifest is that source: `dist/manifest.json`'s `env` array is every
+      key the app declares via `$env`, captured at build time.
+    */
+    const { adapter, shell } = await withManifest(["STRIPE_KEY", "MAILER_DSN"]);
+
+    await withProcessEnv(
+      { STRIPE_KEY: "sk_live_from_ci", MAILER_DSN: "smtp://ci" },
+      () => adapter.deploy(context(), run),
+    );
+
+    expect(sentPayload(shell)).toBe(
+      "MAILER_DSN=smtp://ci\nSTRIPE_KEY=sk_live_from_ci\n",
+    );
+  });
+
+  it("does not push a process.env variable the app never declared", async () => {
+    /*
+      The security-relevant test of the whole fallback. Reading `process.env`
+      puts the deploying shell's entire environment within reach, and the ONLY
+      thing standing between it and an app's `.env` is that the key set comes
+      from the manifest rather than from `process.env` itself.
+
+      Real names, not placeholders: these are what is actually sitting in the
+      environment of the runner that deploys this repo.
+    */
+    const { adapter, shell } = await withManifest(["STRIPE_KEY"]);
+
+    await withProcessEnv(
+      {
+        STRIPE_KEY: "sk_live_1",
+        AWS_SECRET_ACCESS_KEY: "must-not-travel",
+        GITHUB_TOKEN: "must-not-travel",
+        LORE_API_KEY: "must-not-travel",
+        CLOUDFLARE_API_TOKEN: "must-not-travel",
+      },
+      () => adapter.deploy(context(), run),
+    );
+
+    expect(sentPayload(shell)).toBe("STRIPE_KEY=sk_live_1\n");
+    expect(sentPayload(shell)).not.toContain("must-not-travel");
+    // PATH is set in every process there has ever been, and is the cheapest
+    // proof that the key set is not an enumeration of `process.env`.
+    expect(sentPayload(shell)).not.toContain("PATH=");
+  });
+
+  it("pushes nothing at all when there is neither a manifest nor a file", async () => {
+    // With no allowlist from either source there are no keys to resolve, so
+    // `process.env` is never consulted — however full of secrets it is. This
+    // is the property that makes the fallback safe, asserted directly.
+    const { adapter, shell } = await setup();
+
+    await withProcessEnv(
+      { STRIPE_KEY: "sk_live_1", AWS_SECRET_ACCESS_KEY: "must-not-travel" },
+      () => adapter.deploy(context(), run),
+    );
+
+    expect(shell.getCallsMatching(/cat >/)).toHaveLength(0);
+  });
+
+  it("keeps Bay-owned and framework keys out even when the app declares them", async () => {
+    /*
+      A declared key is not automatically a pushable one. An app may perfectly
+      well read DATABASE_URL and LOG_LEVEL through `$env` — they will be in the
+      manifest — and both are the platform's to write. Bay refuses APP_SECRET
+      outright, so a push containing it fails the deploy rather than landing.
+    */
+    const { adapter, shell } = await withManifest([
+      "APP_SECRET",
+      "DATABASE_URL",
+      "LOG_LEVEL",
+      "STRIPE_KEY",
+    ]);
+
+    await withProcessEnv(
+      {
+        APP_SECRET: "would-sign-everyone-out",
+        DATABASE_URL: "postgres://a-laptop/dev",
+        LOG_LEVEL: "debug",
+        STRIPE_KEY: "sk_live_1",
+      },
+      () => adapter.deploy(context(), run),
+    );
+
+    expect(sentPayload(shell)).toBe("STRIPE_KEY=sk_live_1\n");
+  });
+
+  it("says which keys it dropped, rather than dropping them quietly", async () => {
+    const { adapter, alepha } = await withManifest([
+      "DATABASE_URL",
+      "STRIPE_KEY",
+    ]);
+    const said: string[] = [];
+    alepha.events.on("log", (e: { message?: string }) => {
+      said.push(e.message ?? "");
+    });
+
+    await withProcessEnv(
+      { DATABASE_URL: "postgres://a-laptop/dev", STRIPE_KEY: "sk" },
+      () => adapter.deploy(context(), run),
+    );
+
+    expect(said.join("\n")).toMatch(/Not pushed[\s\S]*DATABASE_URL/);
+  });
+
+  it("stages nothing for a static site, which has no process to configure", async () => {
+    /*
+      Bay refuses `--secrets-file` on a static site with a 400 — it has no
+      `.env` because it has no process. Sending one anyway would fail the
+      deploy of a site that happens to carry a `.env.production`, for a payload
+      that could never have applied.
+    */
+    const { adapter, shell, alepha } = await withEnvFile("STRIPE_KEY=sk\n");
+    alepha.store.mut(buildOptions, (current) => ({
+      ...current,
+      target: "static" as BuildTarget,
+    }));
+
+    await adapter.deploy(context(), run);
+
+    expect(shell.getCallsMatching(/cat >/)).toHaveLength(0);
+    expect(shell.wasCalledMatching(/--secrets-file/)).toBe(false);
+  });
+
+  it("keeps `secrets()` as an explicit no-op, not a deleted override", async () => {
+    /*
+      An empty `secrets()` on this adapter is exactly what the original bug
+      looked like, so this is here to say the emptiness is now the answer: the
+      secrets rode the deploy, and `PlatformOrchestrator.up()` calling this
+      afterwards has nothing left to do.
+
+      Asserting on the SHELL rather than on the method's return, because "did
+      nothing" is only meaningful as "spoke to no host".
+    */
+    const { adapter, shell } = await withEnvFile("STRIPE_KEY=sk\n");
+
+    await adapter.secrets();
+
+    expect(shell.calls).toHaveLength(0);
   });
 
   it("refuses an app name that would reach the remote shell", async () => {
     const { adapter, shell } = await withEnvFile("STRIPE_KEY=sk\n");
 
     await expect(
-      adapter.secrets(context({ project: "demo; rm -rf /" }), run),
+      adapter.deploy(context({ project: "demo; rm -rf /" }), run),
     ).rejects.toThrowError(AlephaError);
     expect(shell.calls).toHaveLength(0);
   });
@@ -1131,6 +1467,39 @@ describe("BayAdapter — inspect reports the secrets that are set", () => {
     );
 
     expect(state.secrets.map((s) => s.name)).toEqual(["STRIPE_KEY"]);
+  });
+
+  it("names the upgrade when the host's `bay` has no `env` command", async () => {
+    /*
+      The OTHER version gate, and the one `inspect` still walks into: a deploy
+      no longer uses `bay env set`, but `platform status` reads the configured
+      key names back with `bay env list`, and a `bay` that has neither prints
+      its whole usage banner and exits 2.
+
+      Without this branch `explain` falls through to its generic "ssh to HOST
+      failed: <a page of usage text>", and the operator has to work out for
+      themselves that the fix is a binary upgrade. The fixture is the real
+      banner's opening, verbatim.
+    */
+    const { adapter, shell } = await setup();
+    shell.configure({
+      outputs: {
+        "ssh -o BatchMode=yes deploy@bay.example.com bay list": deployed,
+      },
+      errors: {
+        "ssh -o BatchMode=yes deploy@bay.example.com bay env list demo/production":
+          "bay — Alepha application server (PoC)\n\n" +
+          "  bay serve   [--root DIR] [--runtimes DIR] [--addr :8080]\n" +
+          "              [--base-domain bay.example.com]\n" +
+          "  bay deploy  (<app.tar.gz>|-) [--name NAME] [--env ENV] [--domain HOST]...\n" +
+          "Client commands accept --control-socket PATH (or $BAY_SOCKET) and must run on\n" +
+          "the Bay host.",
+      },
+    });
+
+    await expect(adapter.inspect(context(), run)).rejects.toThrowError(
+      /has no `env` command[\s\S]*Upgrade `bay` on the host/,
+    );
   });
 
   it("does not ask about an app that is not deployed there", async () => {
