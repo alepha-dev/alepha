@@ -476,6 +476,16 @@ describe("SigilController", () => {
       403,
     );
     await expectStatus(
+      ctx.sigilController.updateSigil.fetch(
+        {
+          params: { projectId, sigilId: created.data.id },
+          body: { kinds: ["beacon"] },
+        },
+        { user: member },
+      ),
+      403,
+    );
+    await expectStatus(
       ctx.sigilController.deleteSigil.fetch(
         { params: { projectId, sigilId: created.data.id } },
         { user: member },
@@ -504,6 +514,16 @@ describe("SigilController", () => {
     await expectStatus(
       ctx.sigilController.rotateSigil.fetch(
         { params: { projectId, sigilId: created.data.id } },
+        { user: stranger },
+      ),
+      403,
+    );
+    await expectStatus(
+      ctx.sigilController.updateSigil.fetch(
+        {
+          params: { projectId, sigilId: created.data.id },
+          body: { kinds: ["beacon"] },
+        },
         { user: stranger },
       ),
       403,
