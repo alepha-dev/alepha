@@ -80,6 +80,20 @@ export class ServerRateLimitProvider {
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+  /**
+   * Counters live in the app's default cache, whatever the runtime bound.
+   *
+   * That default is not always durable or shared: per-process memory on Node
+   * turns a limit of N per window into N per *instance* per window, and the
+   * workerd default is a Cloudflare KV provider that is uninitialized unless
+   * the app provisioned a namespace, and whose `incr` is a non-atomic
+   * read-add-write. An app that needs the ceiling to hold across instances
+   * rebinds one line:
+   *
+   * ```ts
+   * alepha.with({ provide: CacheProvider, use: DatabaseCacheProvider });
+   * ```
+   */
   protected readonly cacheProvider = $inject(CacheProvider);
   protected readonly globalOptions = $store(rateLimitOptions);
 

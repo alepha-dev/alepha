@@ -1,5 +1,6 @@
-import { Alepha } from "alepha";
-import { CacheProvider, MemoryCacheProvider } from "alepha/cache";
+import { Alepha, AlephaError } from "alepha";
+import { CacheProvider } from "alepha/cache";
+import { DatabaseCacheProvider } from "alepha/cache/database";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import {
@@ -16,29 +17,87 @@ import {
   UserService,
 } from "../index.ts";
 
+/**
+ * The workerd default, reproduced.
+ *
+ * On Workers `CacheProvider` is bound to `CloudflareKVProvider` whether or not
+ * the app ever provisioned a namespace. When it didn't, the provider skips its
+ * own initialization at boot and every call throws this error — which is what
+ * disabled the login lockout in production, because the limiter injected the
+ * default provider and swallowed the failure as "not locked".
+ */
+class UninitializedKvProvider extends CacheProvider {
+  protected fail(): never {
+    throw new AlephaError("KV namespace not initialized. Call start() first.");
+  }
+  public async get(): Promise<never> {
+    return this.fail();
+  }
+  public async set(): Promise<never> {
+    return this.fail();
+  }
+  public async del(): Promise<never> {
+    return this.fail();
+  }
+  public async has(): Promise<never> {
+    return this.fail();
+  }
+  public async keys(): Promise<never> {
+    return this.fail();
+  }
+  public async clear(): Promise<never> {
+    return this.fail();
+  }
+  public async incr(): Promise<never> {
+    return this.fail();
+  }
+}
+
+/**
+ * Exposes the lockout counter so it can be driven without `login`'s random
+ * anti-timing delay in the way.
+ */
+class TestSessionService extends SessionService {
+  public testRecordFailedLogin = this.recordFailedLogin.bind(this);
+  public testIsLoginLocked = this.isLoginLocked.bind(this);
+}
+
 const setup = async (options?: {
   username?: "optional" | "required";
   brokenCache?: boolean;
+  workerdDefaultCache?: boolean;
 }) => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error" },
   });
 
   if (options?.brokenCache) {
-    class BrokenCacheProvider extends MemoryCacheProvider {
+    // Substitutes the provider the limiter actually injects — the SQL one.
+    // Substituting `CacheProvider` would no longer reach it.
+    class BrokenCacheProvider extends DatabaseCacheProvider {
       public override async getTyped(): Promise<never> {
         throw new Error("Cache unavailable");
       }
       public override async setTyped(): Promise<never> {
         throw new Error("Cache unavailable");
       }
+      public override async incr(): Promise<never> {
+        throw new Error("Cache unavailable");
+      }
     }
-    alepha.with({ provide: CacheProvider, use: BrokenCacheProvider });
+    alepha.with({ provide: DatabaseCacheProvider, use: BrokenCacheProvider });
+  }
+
+  if (options?.workerdDefaultCache) {
+    alepha.with({ provide: CacheProvider, use: UninitializedKvProvider });
   }
 
   alepha.with(AlephaOrmPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaApiUsers);
+
+  // Before start() — the container locks once started.
+  const testSessionService = alepha.inject(TestSessionService);
 
   await alepha.start();
 
@@ -57,6 +116,7 @@ const setup = async (options?: {
   return {
     alepha,
     sessionService,
+    testSessionService,
     userService: alepha.inject(UserService),
     cryptoProvider: alepha.inject(CryptoProvider),
     identities: sessionService.identities(),
@@ -593,7 +653,7 @@ describe("alepha/api/users - SessionService.login", () => {
       expect(result.id).toBe(user.id);
     });
 
-    it("should proceed with login when cache is unavailable", async ({
+    it("should refuse login when the counter store is unavailable (fail closed)", async ({
       expect,
     }) => {
       const { sessionService, userService, cryptoProvider, identities } =
@@ -612,13 +672,76 @@ describe("alepha/api/users - SessionService.login", () => {
         password: hashedPassword,
       });
 
-      // Login should still succeed (fail-open)
-      const result = await sessionService.login(
+      // A store that cannot be read cannot say this account is under the
+      // threshold. Allowing the attempt would silently remove the lockout for
+      // the whole duration of the outage, which is exactly the production bug;
+      // refusing costs a real user their login, loudly, and gets fixed.
+      await expect(
+        sessionService.login("local", "cachefail@example.com", "correct"),
+      ).rejects.toThrowError(InvalidCredentialsError);
+    });
+
+    it("should still lock out when the app's DEFAULT cache is an uninitialized KV provider", async ({
+      expect,
+    }) => {
+      // Regression for the production failure: on workerd the default
+      // `CacheProvider` is an uninitialized `CloudflareKVProvider` that throws
+      // on every call. The lockout must not ride it — it is pinned to SQL, so
+      // it keeps working while the default provider is entirely unusable.
+      //
+      // Both halves below are needed to pin the behaviour down. Only a limiter
+      // that reaches a WORKING store that is NOT the default satisfies both:
+      // riding the broken default either denies everything (fail closed, so
+      // the first assertion breaks) or counts nothing (fail open, so the last
+      // one does).
+      const {
+        sessionService,
+        userService,
+        cryptoProvider,
+        identities,
+        alepha,
+      } = await setup({ workerdDefaultCache: true });
+
+      // Guard the premise: the default really is unusable in this app.
+      await expect(
+        alepha.inject(CacheProvider).getTyped("any", "key"),
+      ).rejects.toThrowError(AlephaError);
+
+      const user = await userService.users().create({
+        email: "workerd-lockout@example.com",
+        roles: ["user"],
+      });
+
+      const hashedPassword = await cryptoProvider.hashPassword("correct");
+      await identities.create({
+        provider: "local",
+        providerUserId: "workerd-lockout@example.com",
+        userId: user.id,
+        password: hashedPassword,
+      });
+
+      // 1. A normal login is unaffected by the broken default.
+      const ok = await sessionService.login(
         "local",
-        "cachefail@example.com",
+        "workerd-lockout@example.com",
         "correct",
       );
-      expect(result.id).toBe(user.id);
+      expect(ok.id).toBe(user.id);
+
+      // 2. Exhaust the account limit (default: 5). A successful login does not
+      //    reset the counter, so these five are the whole budget.
+      for (let i = 0; i < 5; i++) {
+        await expect(
+          sessionService.login("local", "workerd-lockout@example.com", "wrong"),
+        ).rejects.toThrowError(InvalidCredentialsError);
+      }
+
+      // 3. The 6th attempt carries the CORRECT password and must still be
+      //    refused. This is what production got wrong: every counter write
+      //    threw, the limiter swallowed it, and the lockout never armed.
+      await expect(
+        sessionService.login("local", "workerd-lockout@example.com", "correct"),
+      ).rejects.toThrowError(InvalidCredentialsError);
     });
 
     it("should apply partial realm settings with defaults", async ({
@@ -676,9 +799,13 @@ describe("alepha/api/users - SessionService.login", () => {
       ).rejects.toThrowError(InvalidCredentialsError);
     });
 
-    it("should extend lockout on new failures (sliding window)", async ({
+    it("should not extend the lockout on new failures (fixed window)", async ({
       expect,
     }) => {
+      // The window is armed when the counter is created and increments do NOT
+      // extend it. This used to slide, which let anyone who knew a username
+      // hold that account locked indefinitely by failing one login just inside
+      // every window. A fixed window bounds the lockout to `windowMs`.
       const {
         sessionService,
         userService,
@@ -688,51 +815,75 @@ describe("alepha/api/users - SessionService.login", () => {
       } = await setup();
 
       const user = await userService.users().create({
-        email: "sliding@example.com",
+        email: "fixedwindow@example.com",
         roles: ["user"],
       });
 
       const hashedPassword = await cryptoProvider.hashPassword("correct");
       await identities.create({
         provider: "local",
-        providerUserId: "sliding@example.com",
+        providerUserId: "fixedwindow@example.com",
         userId: user.id,
         password: hashedPassword,
       });
 
-      // Fail 4 times
+      // Fail 4 times. The counter is created here, so the 15min window runs
+      // from now.
       for (let i = 0; i < 4; i++) {
         await expect(
-          sessionService.login("local", "sliding@example.com", "wrong"),
+          sessionService.login("local", "fixedwindow@example.com", "wrong"),
         ).rejects.toThrowError(InvalidCredentialsError);
       }
 
-      // Advance 10 minutes (still inside 15min window)
+      // Advance 10 minutes — still inside the window.
       await dateTimeProvider.travel(10 * 60 * 1000);
 
-      // 5th failure — triggers lockout, TTL refreshes from NOW
+      // 5th failure crosses the threshold. It does NOT push the expiry out.
       await expect(
-        sessionService.login("local", "sliding@example.com", "wrong"),
+        sessionService.login("local", "fixedwindow@example.com", "wrong"),
       ).rejects.toThrowError(InvalidCredentialsError);
 
-      // Advance 10 more minutes (20min total from first, but only 10min from last failure)
-      await dateTimeProvider.travel(10 * 60 * 1000);
-
-      // Should STILL be locked — TTL was refreshed on the 5th failure
+      // Locked right now, even with the correct password.
       await expect(
-        sessionService.login("local", "sliding@example.com", "correct"),
+        sessionService.login("local", "fixedwindow@example.com", "correct"),
       ).rejects.toThrowError(InvalidCredentialsError);
 
-      // Advance past the remaining window
+      // Advance past the ORIGINAL window (16min from the first failure, only
+      // 6min from the last). Under the old sliding behaviour this was still
+      // locked; under a fixed window the counter has expired.
       await dateTimeProvider.travel(6 * 60 * 1000);
 
-      // Now should succeed
       const result = await sessionService.login(
         "local",
-        "sliding@example.com",
+        "fixedwindow@example.com",
         "correct",
       );
       expect(result.id).toBe(user.id);
+    });
+
+    it("should count concurrent failures atomically", async ({ expect }) => {
+      // Straight at the counter, not through `login`: `login`'s 50-200ms
+      // anti-timing delay staggers concurrent calls enough that even a
+      // read-modify-write usually serialises, so a test driven through `login`
+      // passes either way and proves nothing.
+      //
+      // `incr` is one `INSERT ... ON CONFLICT DO UPDATE`, so all 20 land. The
+      // read-modify-write this replaced would have most of them read the same
+      // value and write the same `count + 1`, leaving the counter far short of
+      // the threshold — a lockout bypassable by anyone sending their guesses
+      // at once rather than in sequence.
+      const { testSessionService: service } = await setup();
+
+      const key = "login:account:default:concurrent-user";
+      const max = 20;
+
+      await Promise.all(
+        Array.from({ length: max }, () =>
+          service.testRecordFailedLogin(key, max, 900_000),
+        ),
+      );
+
+      expect(await service.testIsLoginLocked(key, max)).toBe(true);
     });
   });
 });

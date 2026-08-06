@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { $inject, Alepha } from "alepha";
 import type { FileController } from "alepha/api/files";
-import { CacheProvider } from "alepha/cache";
+import { DatabaseCacheProvider } from "alepha/cache/database";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
@@ -28,7 +28,23 @@ export class SessionService {
   protected readonly log = $logger();
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly fileController = $client<FileController>();
-  protected readonly cacheProvider = $inject(CacheProvider);
+  /**
+   * The login lockout counters, pinned to SQL rather than the app's default
+   * cache.
+   *
+   * The default is runtime-dependent: memory on Node, Cloudflare KV on
+   * workerd. Neither is acceptable here. Memory is per-process, so a counter
+   * written on one instance is invisible to the next request on another. KV is
+   * worse: it is bound as the workerd default whether or not the app ever
+   * provisioned a namespace, and when it wasn't it skips its own
+   * initialization and throws on every call — which is exactly how this
+   * lockout came to be silently disabled in production.
+   *
+   * SQL is the only backend that is present wherever this service is (it
+   * already owns the `users` table it is protecting) and strongly consistent
+   * on every runtime, D1 included.
+   */
+  protected readonly cacheProvider = $inject(DatabaseCacheProvider);
   protected readonly usernameSlugger = $inject(UsernameSlugger);
 
   protected userAudits(realmName?: string) {
@@ -155,6 +171,13 @@ export class SessionService {
   /**
    * Check if a login key is currently locked out.
    * Read-only — does not increment the counter.
+   *
+   * **Fails closed.** A counter store that cannot be read cannot say an
+   * attacker is under the threshold, and answering "not locked" turns an
+   * outage into an open door — brute force with the rate limiter removed, for
+   * as long as the store is down and with nothing in the response to show it.
+   * Refusing instead costs legitimate users their logins, loudly, which is the
+   * failure someone will actually come and fix.
    */
   protected async isLoginLocked(key: string, max: number): Promise<boolean> {
     try {
@@ -164,19 +187,38 @@ export class SessionService {
       );
       return count != null && count >= max;
     } catch (error) {
-      this.log.warn(
-        "Failed to check login rate limit, allowing attempt",
+      this.log.error(
+        "Failed to check login rate limit, denying attempt",
         error,
       );
-      return false;
+      return true;
     }
   }
 
   /**
-   * Record a failed login attempt. Uses getTyped + setTyped (not incr) so that
-   * each write refreshes the TTL — implementing sliding-window behavior.
+   * Record a failed login attempt.
    *
    * Returns `true` if this failure just crossed the lockout threshold.
+   *
+   * **Atomic, and a fixed window.** `incr` is one
+   * `INSERT ... ON CONFLICT DO UPDATE` against `cache_entries`, so concurrent
+   * attempts cannot interleave. The read-modify-write this replaces could:
+   * a hundred parallel attempts all read the same count and all wrote
+   * `count + 1`, moving the counter by one — the lockout was bypassable by
+   * anyone willing to send their guesses at once rather than in sequence.
+   *
+   * That read-modify-write bought a sliding window, because each write
+   * re-armed the TTL. `incr` stamps the expiry when the counter is created and
+   * never extends it, so the window is now fixed — and that is the better
+   * behaviour anyway: under a sliding window anyone who knows a username can
+   * hold that account locked forever by failing one login just inside every
+   * window. A fixed window bounds the lockout to `windowMs`.
+   *
+   * A write that fails is logged at `error` and swallowed: the attempt it
+   * belongs to is being rejected either way, and the return value only decides
+   * whether to raise the "just locked" audit and notification. The door it
+   * would otherwise leave open is closed by {@link isLoginLocked}, which
+   * denies when the same store cannot be read.
    */
   protected async recordFailedLogin(
     key: string,
@@ -184,21 +226,15 @@ export class SessionService {
     windowMs: number,
   ): Promise<boolean> {
     try {
-      const count =
-        (await this.cacheProvider.getTyped<number>(
-          SessionService.LOGIN_CACHE_NAME,
-          key,
-        )) ?? 0;
-      const newCount = count + 1;
-      await this.cacheProvider.setTyped(
+      const count = await this.cacheProvider.incr(
         SessionService.LOGIN_CACHE_NAME,
         key,
-        newCount,
-        { ttl: windowMs },
+        1,
+        windowMs,
       );
-      return newCount === max;
+      return count === max;
     } catch (error) {
-      this.log.warn("Failed to record failed login attempt", error);
+      this.log.error("Failed to record failed login attempt", error);
       return false;
     }
   }
