@@ -4,7 +4,13 @@ import {
   MemoryDestinationProvider,
 } from "alepha/logger";
 import { describe, expect, it } from "vitest";
-import { Asker, NoInputError } from "../index.ts";
+import {
+  $command,
+  AlephaCommand,
+  Asker,
+  cliOptions,
+  NoInputError,
+} from "../index.ts";
 
 /**
  * Stands in for `readline`'s `Interface`, including the part that used to
@@ -184,6 +190,37 @@ describe("Asker", () => {
     // A schema failure re-asks; an EOF must not, or it would spin forever
     // against a stream that has nothing left to give.
     expect(fake.prompts).toHaveLength(1);
+  });
+
+  it("releases stdin when the command that asked is over", async () => {
+    const alepha = Alepha.create({ env: { LOG_LEVEL: "info" } })
+      .with({ provide: LogDestinationProvider, use: MemoryDestinationProvider })
+      .with({ provide: Asker, use: TestAsker })
+      .with(AlephaCommand)
+      .with(
+        class Commands {
+          down = $command({
+            name: "",
+            description: "Asks, then finishes",
+            handler: async ({ ask }) => {
+              await ask('Type "staging" to confirm teardown:');
+            },
+          });
+        },
+      );
+
+    alepha.store.mut(cliOptions, (old) => ({ ...old, argv: [] }));
+
+    const asker = alepha.inject(Asker) as TestAsker;
+    const fake = asker.answers("staging");
+
+    // Commands run on `ready`; a CLI never reaches `stop`. The interface used
+    // to be closed only by the `stop` hook, so `alepha platform down` kept a
+    // ref'd handle on stdin and the process hung after doing all its work.
+    await alepha.start();
+
+    expect(fake.prompts).toHaveLength(1);
+    expect(fake.closeCount).toBe(1);
   });
 
   it("releases stdin on stop", async () => {

@@ -86,13 +86,18 @@ export class Asker {
    *
    * Holding an open readline interface keeps a `ref`'d handle on stdin, and
    * node stays alive on it forever.
+   *
+   * Idempotent, and safe to call before another question: the next `ask()`
+   * simply opens a fresh interface.
    */
+  public close(): void {
+    this.rl?.close();
+    this.rl = undefined;
+  }
+
   protected readonly onStop = $hook({
     on: "stop",
-    handler: () => {
-      this.rl?.close();
-      this.rl = undefined;
-    },
+    handler: () => this.close(),
   });
 
   protected createAskMethod(): AskMethod {
