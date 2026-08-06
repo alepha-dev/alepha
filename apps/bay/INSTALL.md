@@ -193,8 +193,44 @@ Signed in to HOST, but its `bay` is too old to read the deploy artifact from std
   (error: open -: no such file or directory)
 ```
 
+A Bay predating `bay env` is the second version gate, and the one that costs a running app its
+configuration. `alepha platform up` pushes the project's `.env.<env>` to `bay env set <name/env> -`;
+a Bay that has no such command prints its whole usage banner and exits 2, which the CLI reports as:
+
+```
+Signed in to HOST, but its `bay` has no `env` command, so there is nowhere to put this
+  app's secrets — it answered with its usage banner instead. Upgrade `bay` on the host.
+```
+
+The deploy fails at the secrets step, after the code has already landed: the app is serving the new
+release **without** the secrets. Upgrade the binary and re-run `alepha platform up`. A project with
+nothing to push — no `.env.<env>`, or nothing in it that is the app's own — never reaches this and
+keeps deploying to an old Bay unchanged.
+
 `bay --version` prints `dev` for a plain `go build`, so it will not tell you how old an installed
 binary is. Its mtime (`ls -l /opt/bay/bin/bay`) is the practical answer.
+
+## Setting an app's environment by hand
+
+The same door the deploy uses. Values are read from stdin — never from the command line, where an
+argument is visible in `ps` to every user on the machine and is kept in the shell's history:
+
+```bash
+bay env set myapp/production -   <<'ENV'
+STRIPE_KEY=sk_live_…
+MAILER_DSN=smtp://…
+ENV
+
+bay env list myapp/production    # which variables are set, by NAME only
+```
+
+Keys Bay writes itself (`APP_SECRET`, `DATABASE_URL`, `SERVER_PORT`, `APP_NAME`, `DATA_DIR`,
+`STORAGE_PATH`, `S3_*`) are **refused**, naming the key. `APP_SECRET` is the reason: it is generated
+once per instance and never regenerated, because a new value signs every user out and the one it
+replaced is gone.
+
+Anything whose value actually changes restarts the app — an environment variable the running process
+never sees has not been set. An identical push writes nothing and restarts nothing.
 
 ## Diagnosing a failed deploy
 
@@ -205,4 +241,5 @@ The `alepha platform` pre-flight distinguishes these for you, so read its messag
 | `bay` is not on that user's PATH | §5b — symlink into `/usr/local/bin` |
 | `connect: permission denied` on the socket | §5a — add the user to `bay-control`, then reconnect |
 | too old to read the artifact from stdin | §7 — upgrade the host binary |
+| `bay` has no `env` command | §7 — upgrade the host binary; the code landed, the secrets did not |
 | `control api unreachable` as root | Bay really is down: `systemctl status bay` |

@@ -164,6 +164,15 @@ func main() {
 		} else {
 			err = errors.New("usage: bay storage migrate <name/env>")
 		}
+	case "env":
+		switch {
+		case len(os.Args) > 2 && os.Args[2] == "set":
+			err = cmdEnvSet(os.Args[3:])
+		case len(os.Args) > 2 && os.Args[2] == "list":
+			err = cmdEnvList(os.Args[3:])
+		default:
+			err = errors.New("usage: bay env (set <name/env> - | list <name/env>)")
+		}
 	case "backup":
 		err = cmdBackup(os.Args[2:])
 	case "backups":
@@ -219,6 +228,14 @@ func usage() {
                 # Warned about on use, and flagged by "bay status" while it lasts.
   bay storage migrate <name/env>  # copy local uploads into the bucket, then
                 # repoint the app; local files are KEPT for you to delete
+  bay env set <name/env> (-|FILE)  # merge KEY=VALUE lines into the app's .env
+                # Values are read from stdin, never from argv — an argument is
+                # visible in "ps" to every user here. Keys Bay owns are
+                # REFUSED, not overwritten. A key whose value actually changes
+                # restarts the app, because an env var the process never sees
+                # has not been set. e.g.
+                #    ssh HOST 'bay env set demo/production -' < .env.production
+  bay env list <name/env>         # which variables are set, by NAME only
   bay backup  <name/env>          # snapshot + verify + upload
   bay backups <name/env>          # list what is stored
   bay restore <name/env> [--key K] # destructive; keeps the old db aside
@@ -746,6 +763,7 @@ func (s *server) controlMux() *http.ServeMux {
 	mux.HandleFunc("GET /apps/{name}/{env}/logs", s.handleLogs)
 	s.registerBackupRoutes(mux)
 	s.registerStorageRoutes(mux)
+	s.registerEnvRoutes(mux)
 	return mux
 }
 
