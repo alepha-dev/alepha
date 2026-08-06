@@ -57,4 +57,37 @@ describe("markdownOutline", () => {
   it("caps the level at 6", () => {
     expect(markdownOutline("####### seven")).toEqual([]);
   });
+
+  it("does not close a fence with a shorter run of the same marker", () => {
+    const md = [
+      "````markdown",
+      "# not a heading",
+      "```",
+      "## also not a heading",
+      "````",
+      "",
+      "# real",
+    ].join("\n");
+    expect(markdownOutline(md)).toEqual([{ level: 1, text: "real", index: 0 }]);
+  });
+
+  it("closes a fence with a longer run of the same marker", () => {
+    const md = ["```", "# not a heading", "`````", "", "# real"].join("\n");
+    expect(markdownOutline(md)).toEqual([{ level: 1, text: "real", index: 0 }]);
+  });
+
+  it("leaves intra-word underscores alone", () => {
+    const result = markdownOutline("## LOG_FORMAT and LOG_LEVEL");
+    expect(result[0].text).toBe("LOG_FORMAT and LOG_LEVEL");
+  });
+
+  it("preserves the contents of a code span", () => {
+    const result = markdownOutline("## Use `a*b*c` for globbing");
+    expect(result[0].text).toBe("Use a*b*c for globbing");
+  });
+
+  it("still strips real emphasis around whole words", () => {
+    const result = markdownOutline("## Why _directories_, not **nesting**");
+    expect(result[0].text).toBe("Why directories, not nesting");
+  });
 });
