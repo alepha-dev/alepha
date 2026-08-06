@@ -156,7 +156,7 @@ func SetEnv(instance string, updates map[string]string) (changed []string, err e
 	if len(refused) > 0 {
 		sort.Strings(refused)
 		return nil, fmt.Errorf(
-			"refusing to set %s: Bay owns %s and writes them itself on every deploy. "+
+			"refusing to set %s: Bay writes %s itself on every deploy. "+
 				"APP_SECRET in particular is the instance's session key — overwriting it signs every "+
 				"user out and cannot be undone, because the value it replaced is gone",
 			strings.Join(refused, ", "), pluralKeys(len(refused)))
