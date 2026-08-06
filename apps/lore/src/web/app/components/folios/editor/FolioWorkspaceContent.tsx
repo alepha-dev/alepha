@@ -1,6 +1,7 @@
 import { Control } from "@alepha/ui/components/control/control";
 import { ControlSelect } from "@alepha/ui/components/control-select/control-select";
 import { Button } from "@alepha/ui/components/ui/button";
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   useAction,
@@ -60,6 +61,7 @@ const FolioWorkspaceContent = (
 ): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
+  const dialog = useDialog();
   const alepha = useAlepha();
   const router = useRouter<AppRouter>();
   const folioApi = useClient<FolioController>();
@@ -150,6 +152,51 @@ const FolioWorkspaceContent = (
     ],
   );
 
+  // The escape hatch for a protected folio whose passphrase is genuinely
+  // lost — surfaced by `FolioProtectedView`'s "Lost the passphrase?"
+  // link. Ported from the deleted `FolioView.tsx`'s `handleDelete`;
+  // general delete/pin/duplicate/encrypt for a NON-protected folio is not
+  // wired here on purpose — those left with `FolioView` and come back
+  // with Task 8's `useFolioActions`.
+  const deleteAction = useAction(
+    {
+      handler: async () => {
+        if (!props.folio) return;
+        const id = props.folio.id;
+        await folioApi.delete({ params: { id } });
+        const remaining = folios.filter((f) => f.id !== id);
+        setFolios(remaining);
+        const remainingTags = new Set<string>();
+        for (const f of remaining) for (const t of f.tags) remainingTags.add(t);
+        setTags([...remainingTags].sort());
+        alepha.store.set(currentFolioAtom, undefined);
+        await router.push(
+          router.path("projectFolios", { params: { projectId } }),
+        );
+      },
+      invalidates: [["folioTree", projectId]],
+    },
+    [
+      props.folio,
+      folios,
+      setFolios,
+      setTags,
+      alepha,
+      router,
+      projectId,
+      folioApi,
+    ],
+  );
+
+  const handleDeleteUnrecoverable = async () => {
+    const confirmed = await dialog.confirm({
+      title: tr("folios.confirm-delete-title"),
+      description: tr("folios.confirm-delete-message"),
+      destructive: true,
+    });
+    if (confirmed) await deleteAction.run();
+  };
+
   const statusLabel =
     draft.statusKey === "saved" && draft.savedAt
       ? tr("folios.editor.status.saved", {
@@ -193,7 +240,10 @@ const FolioWorkspaceContent = (
               items={tags.map((tag) => ({ value: tag, label: tag }))}
             />
             {isProtected && props.folio ? (
-              <FolioProtectedView folio={props.folio} />
+              <FolioProtectedView
+                folio={props.folio}
+                onDeleteUnrecoverable={handleDeleteUnrecoverable}
+              />
             ) : (
               <MarkdownEditor
                 value={draft.values.content}
