@@ -1,8 +1,9 @@
-import { $inject, z } from "alepha";
-import { CryptoProvider } from "alepha/crypto";
+import { $env, $inject, z } from "alepha";
+import { CryptoProvider, SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $action } from "alepha/server";
 import { sigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
+import { sigilEnv } from "../sigilEnv.ts";
 import { SigilSinkProvider } from "./SigilSinkProvider.ts";
 
 /**
@@ -24,7 +25,9 @@ import { SigilSinkProvider } from "./SigilSinkProvider.ts";
 export class SigilProxyController {
   protected readonly sink = $inject(SigilSinkProvider);
   protected readonly crypto = $inject(CryptoProvider);
+  protected readonly secrets = $inject(SecretProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected env = $env(sigilEnv);
 
   ingest = $action({
     method: "POST",
@@ -45,7 +48,7 @@ export class SigilProxyController {
       const country = request.headers["cf-ipcountry"] ?? undefined;
 
       /**
-       * A daily-stable, non-reversible visitor hash.
+       * A daily-stable visitor hash that cannot be tested against a guess.
        *
        * `cf-connecting-ip` → `x-forwarded-for` → `request.ip`, so it works
        * behind Cloudflare, behind Bay's proxy, and direct. The salt rotates
@@ -56,9 +59,30 @@ export class SigilProxyController {
        * different hashes for the same person — the sink counts each app's
        * visitors without ever being able to tell they are the same visitor.
        *
-       * The host rather than the ingest key: rotating a key would otherwise
-       * silently reset the day's unique count, and the host is what actually
-       * identifies the site being visited.
+       * **And salted with a secret, which is what makes it one-way at all.**
+       * The salt was once `hash("alepha-sigil:" + utcDate)` — derivable by
+       * anyone who knows the date. Host and date are public, so a single
+       * SHA-256 answered "did this IP with this user-agent visit today?"
+       * against any stored value, and enumerating IPv4 × common user-agents was
+       * tractable on one GPU. The rotation and the host scoping were real; the
+       * one-wayness was not. Everything downstream that calls this data
+       * "aggregated" — including the sink's own unique count — rests on this
+       * line.
+       *
+       * `SIGIL_SALT` when set, else `APP_SECRET`. Alepha refuses to start in
+       * production while `APP_SECRET` is still its built-in default, so the
+       * fallback is guaranteed present, guaranteed strong, and guaranteed
+       * identical across every replica — three properties this hash needs and
+       * none of which a per-process value could give it. It also survives
+       * rotating the sigil credential, which an earlier version of this
+       * fallback did not.
+       *
+       * The derivation is labelled rather than hashing `APP_SECRET` directly.
+       * `APP_SECRET` signs sessions; prefixing the purpose is the `info`
+       * parameter idea from HKDF, and it is what keeps this salt provably
+       * distinct from every other thing the same secret will be asked to derive
+       * later. Retrofitting domain separation after hashes are stored is not
+       * possible, so it goes in now.
        *
        * A cookie would be more accurate here, and per-origin by nature. It is
        * deliberately not used: an analytics cookie is not "strictly necessary"
@@ -77,7 +101,10 @@ export class SigilProxyController {
         .toISOString()
         .slice(0, 10);
       const host = request.headers.host ?? "";
-      const dailySalt = this.crypto.hash(`alepha-sigil:${utcDate}`);
+      const secret = this.env.SIGIL_SALT || this.secrets.secretKey;
+      const dailySalt = this.crypto.hash(
+        `alepha-sigil-visitor:${secret}:${utcDate}`,
+      );
       const visitor = this.crypto.hash(`${host}:${ip}:${ua}:${dailySalt}`);
 
       // The kill-switches are applied by the sink provider. Filtering here too

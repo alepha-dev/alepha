@@ -14,16 +14,23 @@ Alepha.create()
   .start();
 ```
 
-Then two server-side variables:
+Then one server-side variable:
 
-| Variable | |
-|---|---|
-| `SIGIL_SINK` | origin of the sink, e.g. `https://lore.example.com` |
-| `SIGIL_KEY` | the sigil token the sink minted for this app + environment — **secret, server-only** |
+| Variable | Required | |
+|---|---|---|
+| `SIGIL_KEY` | **yes** | the sigil token the sink minted for this app — **secret, server-only** |
+| `SIGIL_SINK` | no | origin of the sink. Defaults to `https://lore.alepha.dev`; set it to self-host |
+| `SIGIL_SALT` | no | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET` |
 
-Both are optional. Without them the module still captures, and aggregated
-errors go to the logger instead of over the network — the headless case, for an
-app that must not phone home.
+`SIGIL_SINK` defaults to the public Lore instance the way `npm` defaults to
+`registry.npmjs.org` — a commons that is there if you want it and one variable
+away if you do not. The default is inert on its own: nothing is sent without a
+key, so an app that sets none of these still captures locally and hands
+aggregated errors to its own logger, phoning home to nothing. That is the
+headless case, for an app that must not.
+
+The resolved sink and where it came from are logged at boot, so a default is
+never a surprise.
 
 Active in production only.
 

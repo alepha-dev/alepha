@@ -1,6 +1,8 @@
 import { $hook, $inject, Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
 import type { SigilTracker } from "../shared/sigilFeatures.ts";
+import { sigilScrubUrl } from "../shared/sigilScrubUrl.ts";
 import { SigilQueue } from "./SigilQueue.ts";
 import { SigilVitals } from "./SigilVitals.ts";
 
@@ -16,11 +18,22 @@ import { SigilVitals } from "./SigilVitals.ts";
  *
  * Sampling is applied here too, at the source: an app told to keep a tenth of
  * its vitals sends a tenth, rather than sending everything for the sink to
- * throw away. The bandwidth and the battery belong to the visitor.
+ * throw away. The bandwidth and the battery belong to the visitor. Unlike the
+ * gates, it is decided once per page load and then held — see {@link wants}.
  */
 export class SigilBrowserProvider {
   protected readonly alepha = $inject(Alepha);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected queue?: SigilQueue;
+
+  /**
+   * This page load's sampling verdict per tracker, with the rate it was rolled
+   * against. See {@link wants} for why it is remembered rather than re-rolled.
+   */
+  protected readonly sampled = new Map<
+    SigilTracker,
+    { rate: number; keep: boolean }
+  >();
 
   protected readonly start = $hook({
     on: "start",
@@ -44,6 +57,7 @@ export class SigilBrowserProvider {
         if (!this.wants("views")) return;
         this.queue!.addView(
           ev.state?.url?.pathname ?? (location as any).pathname,
+          this.dateTime.nowMillis(),
         );
       });
 
@@ -70,6 +84,7 @@ export class SigilBrowserProvider {
           path: (location as any).pathname,
           metric: m.metric,
           value: m.value,
+          ts: this.dateTime.nowMillis(),
         });
       }).observe();
 
@@ -88,7 +103,10 @@ export class SigilBrowserProvider {
       // of the pre-hydration default.
       (this.alepha.events as any).on("react:browser:render", () => {
         if (!this.wants("views")) return;
-        this.queue!.addView((location as any).pathname);
+        this.queue!.addView(
+          (location as any).pathname,
+          this.dateTime.nowMillis(),
+        );
       });
     },
   });
@@ -102,12 +120,33 @@ export class SigilBrowserProvider {
   }
 
   /**
-   * Whether this event should be collected: the tracker is on, and it survives
-   * the sink's sampling rate.
+   * Whether this event should be collected: the tracker is on, and this page
+   * load survives the sink's sampling rate.
    *
-   * Both are read per event. Before hydration the atom holds its defaults —
-   * everything on, nothing sampled out — which errs toward collecting; the
-   * server applies the real config on the way to the sink.
+   * The kill-switch is read live, per event — that is the whole point of a
+   * kill-switch, and the atom can be rehydrated under it.
+   *
+   * **The sampling roll is not.** It used to be, and that biased the one number
+   * this package calls trustworthy. The `visitor` stamp only reaches the sink
+   * when an envelope is actually sent, so under per-event sampling a visitor
+   * with one pageview was far likelier to send nothing at all than a visitor
+   * with ten: the unique count fell away non-linearly with the rate and the
+   * survivors skewed engaged. Rolling once and reusing the answer means a
+   * sampled-in visitor contributes every view and a sampled-out one contributes
+   * none, so counts stay scalable and uniques stay unbiased. It is also what
+   * makes a funnel measurable at all — thinning each step independently would
+   * multiply every step-to-step conversion by the sampling rate.
+   *
+   * Kept in memory, deliberately. A session id in `sessionStorage` would
+   * survive a reload and be more accurate, and it would also put this package
+   * back inside ePrivacy Art. 5(3) — storage on terminal equipment — for every
+   * app that installs it. A reload re-rolls; that residual bias is a great deal
+   * smaller than the one being fixed, and it costs no downstream consent.
+   *
+   * The roll is cached against the rate that produced it, so the first events
+   * of a page load — buffered vitals fire before the atom is hydrated — do not
+   * pin the pre-hydration default of 1 for the rest of the visit. When
+   * hydration brings a real rate, it re-rolls once and then holds.
    *
    * Errors are never sampled away even when a rate is configured for them: the
    * first occurrence of a new crash is the one that matters, and a rate below 1
@@ -118,20 +157,31 @@ export class SigilBrowserProvider {
     const config = this.alepha.store.get(sigilClientAtom);
     if (config.enabled[tracker] === false) return false;
     if (tracker === "errors") return true;
+
     const rate = config.sampling[tracker] ?? 1;
-    return rate >= 1 || Math.random() < rate;
+    const rolled = this.sampled.get(tracker);
+    if (rolled && rolled.rate === rate) return rolled.keep;
+
+    const keep = rate >= 1 || Math.random() < rate;
+    this.sampled.set(tracker, { rate, keep });
+    return keep;
   }
 
   /**
    * Normalises any thrown value into the error shape expected by the ingest
    * envelope. Truncates message and stack to safe lengths.
+   *
+   * `sourceUrl` is scrubbed here rather than at the sink so the query string
+   * never leaves the browser — see {@link sigilScrubUrl} for what that field
+   * was carrying. Callers pass `location.href`; what goes in the envelope is
+   * the origin and path.
    */
   protected toError(err: any, sourceUrl: string) {
     return {
       name: err?.name ?? "Error",
       message: String(err?.message ?? err ?? "").slice(0, 2000),
       stack: String(err?.stack ?? "").slice(0, 4096),
-      sourceUrl,
+      sourceUrl: sigilScrubUrl(sourceUrl),
     };
   }
 }

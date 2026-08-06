@@ -15,7 +15,7 @@ import {
 import { sigilFingerprintSource } from "../shared/sigilFingerprint.ts";
 import { sigilOptions } from "../shared/sigilOptionsAtom.ts";
 import { SIGIL_CONFIG_PATH, SIGIL_INGEST_PATH } from "../shared/sigilPaths.ts";
-import { sigilEnv } from "../sigilEnv.ts";
+import { SIGIL_DEFAULT_SINK, sigilEnv } from "../sigilEnv.ts";
 
 /** How long a batch may sit before it is worth a round trip. */
 const FLUSH_WINDOW_MS = 10_000;
@@ -52,10 +52,11 @@ interface AggregatedError {
  * request on workerd, and an app that only flushes when it is already busy is
  * exactly the app whose last errors before a crash are the ones worth having.
  *
- * **Works with no sink at all.** Without `SIGIL_SINK` / `SIGIL_KEY`
- * nothing leaves the machine: the same aggregation happens, and the result goes
- * to the logger. An app that must not phone home still gets its crash loop
- * collapsed into one warning.
+ * **Works with no sink at all.** `SIGIL_SINK` carries a default, but a key does
+ * not: without `SIGIL_KEY` nothing leaves the machine. The same aggregation
+ * happens and the result goes to the logger, so an app that must not phone home
+ * still gets its crash loop collapsed into one warning — and gets it by doing
+ * nothing, which is the only default worth having here.
  */
 export class SigilSinkProvider {
   protected readonly alepha = $inject(Alepha);
@@ -84,7 +85,21 @@ export class SigilSinkProvider {
 
       if (!this.hasSink()) {
         this.log.info(
-          "No sink configured (SIGIL_SINK / SIGIL_KEY unset) — capturing locally, sending nothing.",
+          "No sink configured (SIGIL_KEY unset) — capturing locally, sending nothing.",
+        );
+      } else {
+        // `SIGIL_SINK` carries a default, and a default nobody can see is how
+        // an app ends up reporting somewhere its operator never chose. Naming
+        // the resolved origin AND where it came from is the whole mitigation:
+        // a self-hoster who forgot the variable reads one line instead of
+        // debugging why their own Lore stayed empty while the public instance
+        // answered 401 to a key it has never heard of.
+        this.log.info(
+          `Sigil sink: ${this.sinkOrigin()} (${
+            this.env.SIGIL_SINK === SIGIL_DEFAULT_SINK
+              ? "default — set SIGIL_SINK to self-host"
+              : "from SIGIL_SINK"
+          })`,
         );
       }
 
@@ -305,28 +320,49 @@ export class SigilSinkProvider {
   }
 
   /**
-   * Sends the batch, or logs it when there is no sink.
+   * Sends one capped batch, or logs it when there is no sink.
    *
    * The batch is cleared **before** the request: a sink that is down must not
    * make the app accumulate until it runs out of memory. Losing a batch is a
    * gap in a chart; holding every batch is an outage.
+   *
+   * **What is over the cap is carried forward, not dropped.** This used to
+   * `slice` to the cap and then `reset()`, so anything past it was discarded
+   * with no log and no counter — `pendingViews` at 49 taking a full 50-view
+   * envelope sent 50 and lost 49. That is reachable on Node, where a batch
+   * spans requests: `ingest()` pushes a whole envelope at once and `isDue()`
+   * only fires afterwards, so pending jumps past the cap in a single call.
+   * `sigilEnvelope` argues the case against exactly this — silently dropping
+   * the tail of a batch makes a sink look healthy while it loses data — and
+   * this method was the one place that did it.
+   *
+   * `oldestPendingAt` is deliberately left alone when a remainder survives: it
+   * is older than what just went out, so it should be due immediately rather
+   * than starting a fresh window.
    */
   public async flush(): Promise<void> {
     if (!this.hasPending()) return;
 
+    const views = this.pendingViews.splice(0, CAPS.views);
+    const vitals = this.pendingVitals.splice(0, CAPS.vitals);
+    // Entries, so the surviving ones are deleted by the key they were stored
+    // under rather than by a recomputed fingerprint.
+    const errorEntries = [...this.pendingErrors.entries()].slice(
+      0,
+      CAPS.errors,
+    );
+    for (const [key] of errorEntries) this.pendingErrors.delete(key);
+
     const envelope: SigilEnvelope = {
-      ...(this.pendingViews.length
-        ? { views: this.pendingViews.slice(0, CAPS.views) }
-        : {}),
-      ...(this.pendingVitals.length
-        ? { vitals: this.pendingVitals.slice(0, CAPS.vitals) }
-        : {}),
-      ...(this.pendingErrors.size
-        ? { errors: [...this.pendingErrors.values()].slice(0, CAPS.errors) }
+      ...(views.length ? { views } : {}),
+      ...(vitals.length ? { vitals } : {}),
+      ...(errorEntries.length
+        ? { errors: errorEntries.map(([, error]) => error) }
         : {}),
     };
     const stamp = this.pendingStamp;
-    this.reset();
+    // The stamp belongs to the remainder too — same visitor, same batch.
+    if (!this.hasPending()) this.reset();
 
     if (!this.hasSink()) {
       this.report(envelope);

@@ -10,12 +10,18 @@ describe("SigilQueue", () => {
       },
       { debounceMs: 5 },
     );
-    q.addView("/a");
+    q.addView("/a", 1_700_000_000_000);
     q.addError({ name: "E", message: "m", stack: "s", sourceUrl: "u" });
-    q.addVital({ path: "/a", metric: "lcp", value: 1234 });
+    q.addVital({
+      path: "/a",
+      metric: "lcp",
+      value: 1234,
+      ts: 1_700_000_000_000,
+    });
     await q.flush();
     expect(sent).toHaveLength(1);
     expect(sent[0].views[0].path).toBe("/a");
+    expect(sent[0].views[0].ts).toBe(1_700_000_000_000);
     expect(sent[0].errors[0].name).toBe("E");
     expect(sent[0].vitals[0].metric).toBe("lcp");
     await q.flush();
@@ -42,7 +48,7 @@ describe("SigilQueue", () => {
       },
       { debounceMs: 5 },
     );
-    for (let i = 0; i < 100; i++) q.addView("/" + i);
+    for (let i = 0; i < 100; i++) q.addView("/" + i, 1_700_000_000_000 + i);
     await q.flush();
     expect(sent[0].views.length).toBe(50); // cap
   });

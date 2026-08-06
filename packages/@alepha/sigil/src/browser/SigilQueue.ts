@@ -1,4 +1,4 @@
-type View = { path: string };
+type View = { path: string; ts: number };
 type ErrEvt = {
   name: string;
   message: string;
@@ -6,7 +6,7 @@ type ErrEvt = {
   sourceUrl: string;
   origin?: "client";
 };
-type Vital = { path: string; metric: string; value: number };
+type Vital = { path: string; metric: string; value: number; ts: number };
 type Envelope = { views?: View[]; errors?: ErrEvt[]; vitals?: Vital[] };
 
 /**
@@ -25,8 +25,8 @@ export class SigilQueue {
     protected readonly opts: { debounceMs: number } = { debounceMs: 5000 },
   ) {}
 
-  addView(path: string) {
-    this.push(this.views, { path }, 50);
+  addView(path: string, ts: number) {
+    this.push(this.views, { path, ts }, 50);
   }
   addError(e: ErrEvt) {
     this.push(this.errors, e, 20);
