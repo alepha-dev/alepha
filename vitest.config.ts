@@ -16,10 +16,16 @@ export default defineConfig({
     // import time, which is what `test/app-routes.spec.ts` did the moment it
     // imported `AppRouter.ts` (the first spec anywhere to do so).
     //
-    // Safe as a repo-wide alias: `apps/lore` is the only workspace in the tree
-    // that uses `@/` imports, so there is nothing to collide with. Lore keeps
-    // the same alias in its own config — that is what makes `yarn w lore test`
-    // work standalone, where this file is not loaded at all.
+    // ⚠️ Load-bearing, not incidental. `apps/lore` is the only workspace that
+    // currently *writes* `@/` imports, but `apps/playground` and `apps/shop`
+    // both DECLARE the same `@/* -> ./src/*` mapping in their tsconfig, and
+    // shop has specs this config collects. The first `@/` import added in
+    // either app would resolve into `apps/lore/src` here — typecheck green,
+    // test importing the wrong file. If that day comes, this has to become a
+    // per-project alias rather than a repo-wide one.
+    //
+    // Lore keeps the same alias in its own config — that is what makes
+    // `yarn w lore test` work standalone, where this file is not loaded at all.
     alias: [{ find: /^@\//, replacement: `${repoRoot}/apps/lore/src/` }],
   },
   test: {
