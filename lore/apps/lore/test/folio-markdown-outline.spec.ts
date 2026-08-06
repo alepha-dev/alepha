@@ -90,4 +90,44 @@ describe("markdownOutline", () => {
     const result = markdownOutline("## Why _directories_, not **nesting**");
     expect(result[0].text).toBe("Why directories, not nesting");
   });
+
+  it("does not let literal placeholder-shaped text corrupt a code span restore", () => {
+    expect(markdownOutline("## See ⟨0⟩ and `code`")[0].text).toBe(
+      "See ⟨0⟩ and code",
+    );
+    expect(markdownOutline("## See ⟨99⟩ report")[0].text).toBe(
+      "See ⟨99⟩ report",
+    );
+  });
+
+  it("handles several code spans in one heading", () => {
+    expect(markdownOutline("## `a` then `b` then `c`")[0].text).toBe(
+      "a then b then c",
+    );
+  });
+
+  it("leaves emphasis characters inside a code span alone", () => {
+    expect(markdownOutline("## Use `_x_` and `**y**`")[0].text).toBe(
+      "Use _x_ and **y**",
+    );
+  });
+
+  it("strips emphasis at the very start and end of a heading", () => {
+    expect(markdownOutline("## *leading* and trailing _words_")[0].text).toBe(
+      "leading and trailing words",
+    );
+  });
+
+  it("does not treat a line with trailing prose as a closing fence", () => {
+    const md = [
+      "```",
+      "code line",
+      "``` not a close, just prose",
+      "more code",
+      "```",
+      "",
+      "# real",
+    ].join("\n");
+    expect(markdownOutline(md)).toEqual([{ level: 1, text: "real", index: 0 }]);
+  });
 });
