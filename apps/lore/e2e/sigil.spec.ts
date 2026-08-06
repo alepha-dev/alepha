@@ -94,6 +94,85 @@ const errorBatch = (message: string, count: number) => ({
   ],
 });
 
+/**
+ * Poll `GET /api/getProjectById/:id` until `features[key]` matches `value`.
+ *
+ * `useProjectFeatureToggle` sets its `checked` prop optimistically the
+ * instant a click fires (`enabled = pending ?? persisted[key] ?? false`) and
+ * only clears `pending` once the write resolves — `await
+ * expect(toggle).toBeChecked()` is satisfied by that optimistic value and
+ * proves nothing about what the server actually has. A step that navigates
+ * away (or an assertion downstream that depends on the server's copy — the
+ * config gate, a route loader, the sidebar) can then race the write. Every
+ * `$action` call is multiplexed through `POST /api/_batch`, so waiting on a
+ * specific request is fragile; reading the value straight back from the
+ * plain `GET` action route is not.
+ */
+const waitForProjectFeature = async (
+  page: Page,
+  projectId: number,
+  key: string,
+  value: boolean,
+): Promise<void> => {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          async ({ projectId, key }) => {
+            const r = await fetch(`/api/getProjectById/${projectId}`, {
+              credentials: "include",
+            });
+            if (!r.ok) return undefined;
+            const body = (await r.json()) as {
+              features?: Record<string, boolean>;
+            };
+            return body.features?.[key];
+          },
+          { projectId, key },
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe(value);
+};
+
+/**
+ * Poll `GET /api/projects/:projectId/sigils` until the sigil named `name`
+ * carries (`present: true`) or has dropped (`present: false`) `kind`.
+ *
+ * Same shape as {@link waitForProjectFeature}, one level down: reads the
+ * capability straight back from the list endpoint rather than trusting the
+ * switch on `AppSettings.tsx`'s Capabilities card, which renders from
+ * `currentSigilAtom` — the SPA's belief, not a read of the server's row.
+ */
+const waitForSigilKind = async (
+  page: Page,
+  projectId: number,
+  name: string,
+  kind: string,
+  present: boolean,
+): Promise<void> => {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          async ({ projectId, name, kind }) => {
+            const r = await fetch(`/api/projects/${projectId}/sigils`, {
+              credentials: "include",
+            });
+            if (!r.ok) return undefined;
+            const body = (await r.json()) as {
+              items: { name: string; kinds: string[] }[];
+            };
+            const sigil = body.items.find((it) => it.name === name);
+            return sigil ? sigil.kinds.includes(kind) : undefined;
+          },
+          { projectId, name, kind },
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe(present);
+};
+
 test.describe("Sigils", () => {
   test("enrol an app, report as it, rotate it, delete it", async ({
     page,
@@ -129,6 +208,13 @@ test.describe("Sigils", () => {
       ).toBeVisible({ timeout: 15_000 });
 
       await page.getByRole("switch", { name: "Enable", exact: true }).click();
+
+      // The switch's own `checked` state is optimistic (see
+      // `waitForProjectFeature`) — wait on the server directly, since
+      // everything from here on (enrolling, ingest's config gate, the app
+      // and blights route loaders, the sidebar's Apps group) depends on
+      // `features.sigils` actually being on, not just the switch looking on.
+      await waitForProjectFeature(page, projectId, "sigils", true);
 
       // Capabilities moved off this page (Task 8): what an app may report is
       // per-app now, set on that app's own Settings tab, not a project-wide
@@ -237,7 +323,11 @@ test.describe("Sigils", () => {
       const toggle = page.getByRole("switch", { name: "Enable", exact: true });
       await expect(toggle).toBeVisible({ timeout: 15_000 });
       await toggle.click();
-      await expect(toggle).toBeChecked({ timeout: 15_000 });
+      // Not `toBeChecked()` — that's satisfied by `useProjectFeatureToggle`'s
+      // optimistic `pending` value the instant the click fires, which proves
+      // nothing about whether `updateProjectById` has actually landed. This
+      // is exactly the write the very next step's assertion depends on.
+      await waitForProjectFeature(page, projectId, "feedback", true);
 
       // Back to the Sigils settings page — "the sink tells the app what it
       // wants" step below only makes API calls (no navigation of its own),
@@ -417,11 +507,17 @@ test.describe("Sigils", () => {
 
       const beacon = page.getByRole("switch", { name: "Beacon", exact: true });
       await expect(beacon).toBeVisible({ timeout: 15_000 });
-      // A freshly enrolled sigil carries all four kinds by default.
+      // A freshly enrolled sigil carries all four kinds by default — this
+      // read reflects the page's loader, not a click, so there's no write to
+      // race here.
       await expect(beacon).toBeChecked();
 
       await beacon.click();
-      await expect(beacon).not.toBeChecked({ timeout: 15_000 });
+      // Not `not.toBeChecked()` — poll the sigil's own `kinds` on the server
+      // instead of the switch, which renders from `currentSigilAtom` (the
+      // SPA's copy). Same optimistic-switch shape as
+      // `waitForProjectFeature`, one level down.
+      await waitForSigilKind(page, projectId, appName, "beacon", false);
 
       // The toggle drives a `router.reload()` itself (see
       // AppSettingsCapabilities.tsx), so the tab bar reflects the app's own
@@ -434,7 +530,7 @@ test.describe("Sigils", () => {
       }
 
       await beacon.click();
-      await expect(beacon).toBeChecked({ timeout: 15_000 });
+      await waitForSigilKind(page, projectId, appName, "beacon", true);
 
       for (const label of ["Analytics", "Performance", "Errors"]) {
         await expect(
