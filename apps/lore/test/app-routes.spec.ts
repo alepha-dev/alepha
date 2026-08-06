@@ -89,23 +89,23 @@ describe("AppRouter route table", () => {
     await alepha.stop();
   });
 
-  const sigilId = "3f1d6f6a-06d5-4a1f-9a1a-2b3c4d5e6f70";
+  const appName = "lore-staging";
 
   it("resolves the per-app page and each of its tabs", ({ expect }) => {
-    const params = { projectId: "7", sigilId };
+    const params = { projectId: "7", appName };
 
-    expect(router.path("app", { params })).toBe(`/p/7/apps/${sigilId}/`);
+    expect(router.path("app", { params })).toBe(`/p/7/apps/${appName}/`);
     expect(router.path("appAnalytics", { params })).toBe(
-      `/p/7/apps/${sigilId}/analytics`,
+      `/p/7/apps/${appName}/analytics`,
     );
     expect(router.path("appPerformance", { params })).toBe(
-      `/p/7/apps/${sigilId}/performance`,
+      `/p/7/apps/${appName}/performance`,
     );
     expect(router.path("appErrors", { params })).toBe(
-      `/p/7/apps/${sigilId}/errors`,
+      `/p/7/apps/${appName}/errors`,
     );
     expect(router.path("appSettings", { params })).toBe(
-      `/p/7/apps/${sigilId}/settings`,
+      `/p/7/apps/${appName}/settings`,
     );
   });
 
@@ -113,7 +113,7 @@ describe("AppRouter route table", () => {
     // A superset of the params any of these routes declares, so a surviving
     // `:segment` in the result means the route's shape changed — not that this
     // test forgot to supply something.
-    const params = { projectId: "7", sigilId, shortId: "3" };
+    const params = { projectId: "7", appName, shortId: "3" };
 
     for (const name of NAV_ROUTE_NAMES) {
       const path = router.path(name, { params });
