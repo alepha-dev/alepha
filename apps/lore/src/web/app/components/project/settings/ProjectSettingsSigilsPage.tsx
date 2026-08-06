@@ -1,6 +1,5 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { Input } from "@alepha/ui/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
@@ -19,16 +18,16 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import TokenReveal from "../../shared/TokenReveal.tsx";
 import ProjectSettingsFeatureSection from "./ProjectSettingsFeatureSection.tsx";
 import ProjectSettingsSigilRow from "./ProjectSettingsSigilRow.tsx";
-import ProjectSettingsToggleRow from "./ProjectSettingsToggleRow.tsx";
+import ProjectSettingsSigilsEnrollDialog from "./ProjectSettingsSigilsEnrollDialog.tsx";
 import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 
 /**
- * Which applications report into this project, and what they may report.
+ * Which applications report into this project.
  *
  * A sigil is **one app** — a name and the token that name reports with — so the
- * form asks for one thing. How finely an operator slices their world is left to
- * them: an app that wants staging kept apart from production enrols two sigils
- * and names them so.
+ * dialog asks for one thing. How finely an operator slices their world is left
+ * to them: an app that wants staging kept apart from production enrols two
+ * sigils and names them so.
  *
  * The token appears exactly once, at creation. It is stored hashed, so nothing
  * can show it again. The way back from a lost or leaked token is to rotate it —
@@ -36,10 +35,14 @@ import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
  * between the two is the whole point: the aggregate tables cascade, so deleting
  * a sigil to revoke a token also erases everything that app ever reported.
  *
+ * What each app is *allowed* to report used to live here as a project-wide
+ * Capabilities card. It is per-app now, on that app's Settings tab — a project
+ * flag meant silencing a noisy staging deployment silenced production with it.
+ *
  * This page enrols and lists; each row links to the app it names.
  *
  * Enrolling is owner-only server-side (`$secure` + `assertOwner`), same as
- * rotate/delete on the app's own Settings tab. The form is disabled here for
+ * rotate/delete on the app's own Settings tab. The button is disabled here for
  * a non-owner, with a tooltip explaining why — a UX hint over
  * `currentProjectMemberAtom.owner`, not a second authorization boundary. See
  * the longer note on `AppSettings.tsx`.
@@ -57,19 +60,11 @@ const ProjectSettingsSigilsPage = () => {
   const [sigils, setSigils] = useStore(currentSigilsAtom);
 
   const master = useProjectFeatureToggle("sigils");
-  // What the ingest endpoint accepts, project-wide. Intersected with each
-  // sigil's own `kinds` — these are the lever an operator actually reaches for.
-  const feedback = useProjectFeatureToggle("feedback");
-  const blights = useProjectFeatureToggle("blights");
-  const beacon = useProjectFeatureToggle("beacon");
-  const vitals = useProjectFeatureToggle("vitals");
+  const enabled = master.enabled;
 
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
   /** The one moment a token is readable. Cleared as soon as it is dismissed. */
   const [freshToken, setFreshToken] = useState<string | undefined>();
-
-  const enabled = master.enabled;
 
   const reload = useCallback(async () => {
     if (!project) return;
@@ -89,25 +84,6 @@ const ProjectSettingsSigilsPage = () => {
     }
   }, [project, enabled, reload]);
 
-  const create = async () => {
-    if (!project || !name.trim()) return;
-    setBusy(true);
-    try {
-      const created = await sigilApi.createSigil({
-        params: { projectId: project.id },
-        body: { name: name.trim() },
-      });
-      setFreshToken(created.token);
-      setName("");
-      toaster.success(tr("sigils.toast.created"));
-      await reload();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   if (!project) return null;
 
   return (
@@ -119,49 +95,8 @@ const ProjectSettingsSigilsPage = () => {
       />
 
       {enabled && (
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">
-              {tr("sigils.features.title")}
-            </span>
-            <span className="text-muted-foreground text-xs">
-              {tr("sigils.features.subtitle")}
-            </span>
-          </div>
-
-          <Card className="bg-card divide-y gap-0 rounded-lg border py-0">
-            <ProjectSettingsToggleRow
-              title={tr("feedback.feature.title")}
-              description={tr("feedback.feature.description")}
-              toggle={feedback}
-            />
-            <ProjectSettingsToggleRow
-              title={tr("blights.feature.title")}
-              description={tr("blights.feature.description")}
-              toggle={blights}
-            />
-            <ProjectSettingsToggleRow
-              title={tr("beacon.feature.title")}
-              description={tr("beacon.feature.description")}
-              toggle={beacon}
-            />
-            <ProjectSettingsToggleRow
-              title={tr("vitals.feature.title")}
-              description={tr("vitals.feature.description")}
-              toggle={vitals}
-            />
-          </Card>
-        </div>
-      )}
-
-      {enabled && (
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">{tr("sigils.title")}</span>
-            <span className="text-muted-foreground text-xs">
-              {tr("sigils.subtitle")}
-            </span>
-          </div>
+        <div className="flex flex-col gap-2">
+          <span className="text-sm">{tr("sigils.title")}</span>
 
           {freshToken && (
             <TokenReveal
@@ -174,38 +109,43 @@ const ProjectSettingsSigilsPage = () => {
             />
           )}
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Input
-              value={name}
-              aria-label={tr("sigils.create.name")}
-              placeholder={tr("sigils.create.namePlaceholder")}
-              onChange={(event) => setName(event.target.value)}
-              disabled={!isOwner}
-            />
-            {isOwner ? (
-              <Button
-                onClick={() => void create()}
-                disabled={busy || !name.trim()}
-              >
-                <Plus />
-                {tr("sigils.create.submit")}
-              </Button>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button disabled aria-label={tr("sigils.create.submit")} />
-                  }
-                >
-                  <Plus />
-                  {tr("sigils.create.submit")}
-                </TooltipTrigger>
-                <TooltipContent>{tr("sigils.create.ownerOnly")}</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-
           <Card className="bg-card divide-y gap-0 rounded-lg border py-0">
+            <CardContent className="flex flex-col gap-3 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">
+                  {tr("sigils.create.title")}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("sigils.create.subtitle")}
+                </span>
+              </div>
+              <div className="flex justify-start sm:justify-end">
+                {isOwner ? (
+                  <Button onClick={() => setEnrolling(true)}>
+                    <Plus className="size-4" />
+                    {tr("sigils.create.submit")}
+                  </Button>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          disabled
+                          aria-label={tr("sigils.create.submit")}
+                        />
+                      }
+                    >
+                      <Plus className="size-4" />
+                      {tr("sigils.create.submit")}
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {tr("sigils.create.ownerOnly")}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </CardContent>
+
             {/*
               `?? []` is the sidebar's could-not-load state. This page always
               runs its own `reload()`, which either fills the atom or toasts the
@@ -222,6 +162,12 @@ const ProjectSettingsSigilsPage = () => {
               <ProjectSettingsSigilRow key={sigil.id} sigil={sigil} />
             ))}
           </Card>
+
+          <ProjectSettingsSigilsEnrollDialog
+            open={enrolling}
+            onOpenChange={setEnrolling}
+            onEnrolled={setFreshToken}
+          />
         </div>
       )}
     </div>
