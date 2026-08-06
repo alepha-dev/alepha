@@ -534,7 +534,17 @@ rule is that the flood never reaches the Worker.
 
 ## Tests
 
-55 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
+### ⚠️ `yarn w lore test` can be green while `yarn test` is red (2026-08-06)
+
+**Verify with `yarn test` from the repo root.** That is what CI runs, and the workspace command does not stand in for it.
+
+The root `vitest.config.ts`'s "node" project has no `include` filter (removed to keep WebStorm happy), so it collects every spec in the repo — lore's included — under the *root* config. `apps/lore/vitest.config.ts` is never consulted from the root; it only applies to `yarn w lore test`.
+
+It stayed hidden because no lore spec had ever imported `AppRouter.ts`, which is the first thing that reaches `@/`-aliased app source transitively. `test/app-routes.spec.ts` did, and died at import time under `yarn test` (`Cannot find package '@/api/schemas/…'`) while passing under `yarn w lore test` — the `@/` alias it needed had just been added to `apps/lore/vitest.config.ts`, the one file the workspace command loads and the root command ignores. The command used to verify the fix was structurally incapable of failing on it. Same shape as the `ADD COLUMN … NOT NULL` trap below — a check that could not have gone red — different mechanism: wrong runner, not empty database.
+
+The alias now lives in both configs, and the root copy is load-bearing: `apps/playground` and `apps/shop` declare the same `@/* → ./src/*` tsconfig mapping without writing a single `@/` import today, so the first one added in either app resolves into `apps/lore/src` under a root run — typecheck green, wrong file imported. At that point the repo-wide alias has to become per-project.
+
+56 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
 
 - `mcp-security.spec.ts` — MCP auth, API keys, user isolation
 - `project-reports.spec.ts` — reports aggregation
