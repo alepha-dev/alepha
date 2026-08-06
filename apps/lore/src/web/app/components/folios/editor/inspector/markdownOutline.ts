@@ -19,7 +19,8 @@ export interface FolioOutlineHeading {
   index: number;
 }
 
-const FENCE = /^\s{0,3}(`{3,}|~{3,})/;
+const FENCE_OPEN = /^\s{0,3}(`{3,}|~{3,})/;
+const FENCE_CLOSE = /^\s{0,3}(`{3,}|~{3,})\s*$/;
 const ATX = /^(#{1,6})\s+(.*)$/;
 const SETEXT_H1 = /^\s{0,3}={2,}\s*$/;
 const SETEXT_H2 = /^\s{0,3}-{2,}\s*$/;
@@ -29,35 +30,52 @@ const SETEXT_H2 = /^\s{0,3}-{2,}\s*$/;
  * words the reader sees. Deliberately shallow — headings rarely contain
  * anything beyond emphasis, code spans and links.
  *
- * Protects code spans from emphasis processing by extracting them to
- * placeholders first, and uses word-boundary checks on emphasis markers
- * so intra-word underscores (e.g., `LOG_FORMAT`) survive intact.
+ * Splits text into code-span and non-code-span segments, processes only
+ * the non-code segments to remove emphasis, then rejoins. This protects
+ * code contents from emphasis processing and avoids any placeholder collision.
  */
 const stripInline = (raw: string): string => {
-  // Extract code spans to protect them from emphasis processing
-  const codeSpans: string[] = [];
-  let protected_ = raw.replace(/`([^`]*)`/g, (_, content) => {
-    codeSpans.push(content);
-    return `⟨${codeSpans.length - 1}⟩`;
-  });
+  // Split into segments: code spans (in backticks) and everything else
+  const segments: Array<{ isCode: boolean; text: string }> = [];
+  let lastIndex = 0;
 
-  // Strip emphasis with word-boundary checks so intra-word underscores survive
-  protected_ = protected_
-    .replace(/\*\*([^*]*)\*\*/g, "$1")
-    .replace(/__([^_]*)__/g, "$1")
-    // Single emphasis: * or _ must not be flanked by word characters to match
-    .replace(/(?<!\w)\*(?!\*)([^*]+)\*(?!\w)/g, "$1")
-    .replace(/(?<!\w)_([^_]+)_(?!\w)/g, "$1")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\s*#+\s*$/, "")
-    .trim();
+  const codeRegex = /`([^`]*)`/g;
+  let match: RegExpExecArray | null = null;
+  // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex matching pattern
+  while ((match = codeRegex.exec(raw)) !== null) {
+    // Add non-code text before this code span
+    if (match.index > lastIndex) {
+      segments.push({ isCode: false, text: raw.slice(lastIndex, match.index) });
+    }
+    // Add the code span itself (without backticks)
+    segments.push({ isCode: true, text: match[1] });
+    lastIndex = match.index + match[0].length;
+  }
+  // Add remaining non-code text
+  if (lastIndex < raw.length) {
+    segments.push({ isCode: false, text: raw.slice(lastIndex) });
+  }
+  // If there were no code spans, add the whole text as non-code
+  if (segments.length === 0) {
+    segments.push({ isCode: false, text: raw });
+  }
 
-  // Restore code spans
-  protected_ = protected_.replace(/⟨(\d+)⟩/g, (_, index) => {
-    return codeSpans[Number(index)];
-  });
+  // Process non-code segments to remove emphasis
+  const processed = segments
+    .map((seg) => {
+      if (seg.isCode) return seg.text;
+      let text = seg.text;
+      text = text.replace(/\*\*([^*]*)\*\*/g, "$1");
+      text = text.replace(/__([^_]*)__/g, "$1");
+      // Single emphasis: * or _ must not be flanked by word characters
+      text = text.replace(/(?<!\w)\*(?!\*)([^*]+)\*(?!\w)/g, "$1");
+      text = text.replace(/(?<!\w)_([^_]+)_(?!\w)/g, "$1");
+      text = text.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
+      return text;
+    })
+    .join("");
 
-  return protected_;
+  return processed.replace(/\s*#+\s*$/, "").trim();
 };
 
 /**
@@ -74,20 +92,27 @@ export const markdownOutline = (markdown: string): FolioOutlineHeading[] => {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const fenceMatch = FENCE.exec(line);
-    if (fenceMatch) {
-      const marker = fenceMatch[1][0];
-      const length = fenceMatch[1].length;
-      if (!fence) {
-        fence = { marker, length };
-        continue;
-      }
-      // Only close a fence if marker matches AND length is at least as long as the opener
+    const openMatch = FENCE_OPEN.exec(line);
+    const closeMatch = FENCE_CLOSE.exec(line);
+
+    if (openMatch && !fence) {
+      // Opening a new fence
+      const marker = openMatch[1][0];
+      const length = openMatch[1].length;
+      fence = { marker, length };
+      continue;
+    }
+
+    if (closeMatch && fence) {
+      // Check if this closes the current fence
+      const marker = closeMatch[1][0];
+      const length = closeMatch[1].length;
       if (fence.marker === marker && length >= fence.length) {
         fence = undefined;
         continue;
       }
     }
+
     if (fence) continue;
 
     const atx = ATX.exec(line);
