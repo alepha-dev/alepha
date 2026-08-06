@@ -78,6 +78,31 @@ describe("folioFindMatches", () => {
   it("is case-insensitive for single character searches", () => {
     expect(folioFindMatches("AaBbCc", "a")).toHaveLength(2);
   });
+
+  it("returns offsets that index the original haystack", () => {
+    /**
+     * This is the critical round-trip test: haystack.slice(start, end) must
+     * equal the text that matched. This ensures offsets work correctly even
+     * for characters that change length when lowercased (like İ/U+0130).
+     */
+    const cases: [string, string][] = [
+      ["folio folio", "folio"],
+      ["Folio FOLIO folio", "folio"],
+      ["aİb dot", "dot"], // İ lowercases to two code units; without this fix, offsets after it shift by 1
+      ["İİİ needle here", "needle"],
+      ["a.c abc", "a.c"],
+      ["straße test", "test"], // ß: another length-changing character
+      ["aaaa", "aa"],
+    ];
+    for (const [haystack, needle] of cases) {
+      for (const m of folioFindMatches(haystack, needle)) {
+        expect(
+          haystack.slice(m.start, m.end).toLowerCase(),
+          `${JSON.stringify(haystack)} / ${JSON.stringify(needle)}`,
+        ).toBe(needle.toLowerCase());
+      }
+    }
+  });
 });
 
 describe("stepFolioMatch", () => {

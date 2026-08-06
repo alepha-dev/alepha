@@ -12,25 +12,41 @@ export interface FolioFindMatch {
  * Case-insensitive literal substring search over the document text.
  *
  * Deliberately not a regex over user input — a folio about regular
- * expressions would otherwise turn its own body into a pattern. Matches
- * are non-overlapping and scanned left to right, so `"aa"` in `"aaaa"`
- * yields two hits rather than three.
+ * expressions would otherwise turn its own body into a pattern. The needle
+ * is escaped so it is always literal text: a needle of `a.c` matches the
+ * three characters, not a regex dot. Matches are non-overlapping and
+ * scanned left to right, so `"aa"` in `"aaaa"` yields two hits rather
+ * than three.
+ *
+ * Returns offsets into the ORIGINAL haystack (not case-folded), so they
+ * map correctly onto DOM text nodes even for characters that change length
+ * when lowercased (like İ/U+0130 → i̇).
  */
 export const folioFindMatches = (
   haystack: string,
   needle: string,
 ): FolioFindMatch[] => {
   if (!needle || !haystack) return [];
-  const hay = haystack.toLowerCase();
-  const pin = needle.toLowerCase();
+
+  // Escape regex special characters so the needle is treated as literal text,
+  // not a regex pattern.
+  const escapedNeedle = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // Case-insensitive search against the original string. The `g` flag and
+  // `exec()` loop handle non-overlapping matches; regex.lastIndex advances
+  // automatically after each match.
+  const regex = new RegExp(escapedNeedle, "gi");
   const matches: FolioFindMatch[] = [];
-  let from = 0;
-  while (from <= hay.length - pin.length) {
-    const at = hay.indexOf(pin, from);
-    if (at === -1) break;
-    matches.push({ start: at, end: at + pin.length });
-    from = at + pin.length;
+
+  let match: RegExpExecArray | null = null;
+  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex.exec loop pattern
+  while ((match = regex.exec(haystack)) !== null) {
+    matches.push({
+      start: match.index,
+      end: match.index + match[0].length,
+    });
   }
+
   return matches;
 };
 
