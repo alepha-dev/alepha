@@ -1,6 +1,7 @@
 import type { SigilConfig } from "@alepha/sigil/config";
 import type { SigilForwarded } from "@alepha/sigil/envelope";
 import { sigilFingerprintSource } from "@alepha/sigil/fingerprint";
+import { sigilScrubUrl } from "@alepha/sigil/scrub";
 import { bucketIndex, type VitalMetric } from "@alepha/sigil/vitals";
 import { $inject, Alepha } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
@@ -205,6 +206,13 @@ export class SigilIngestService {
         continue;
       }
 
+      // `sourceUrl` is scrubbed at the source too, in the reporting package.
+      // Repeating it here is not belt-and-braces: a browser bundle and the sink
+      // it reports to deploy independently, so every app that has not yet taken
+      // the upgrade is still sending `location.href` with its query string —
+      // and this is the last point before it lands somewhere every project
+      // member can read and the retention sweep will not reclaim.
+
       // Hashed from the shared source string, so the group this lands in is the
       // same one the sender aggregated under.
       const fingerprint = this.crypto.hash(
@@ -221,7 +229,7 @@ export class SigilIngestService {
           name,
           message: error.message,
           stackSample: error.stack,
-          sourceUrl: error.sourceUrl,
+          sourceUrl: sigilScrubUrl(error.sourceUrl),
           origin,
           firstSeenAt: now,
           lastSeenAt: now,
@@ -248,7 +256,7 @@ export class SigilIngestService {
           name,
           message: error.message,
           stack: error.stack,
-          sourceUrl: error.sourceUrl,
+          sourceUrl: sigilScrubUrl(error.sourceUrl),
           origin,
           firstSeenAt: now,
           lastSeenAt: now,
@@ -277,7 +285,6 @@ export class SigilIngestService {
     visitor: string | undefined,
     now: string,
   ): Promise<void> {
-    const hour = this.hourBucket(now);
     const day = this.dayBucket(now);
 
     for (const view of views) {
@@ -287,7 +294,7 @@ export class SigilIngestService {
       await this.views.upsert(
         {
           sigilId: sigil.id,
-          hour,
+          hour: this.hourBucket(this.eventTime(view.ts, now)),
           path: this.normalizePath(view.path),
           // `||`, not `??`: the wire schema allows an empty string and the
           // column is `min(1)`, so a proxy that stamps `country: ""` rather
@@ -319,9 +326,8 @@ export class SigilIngestService {
     vitals: NonNullable<SigilForwarded["vitals"]>,
     now: string,
   ): Promise<void> {
-    const hour = this.hourBucket(now);
-
     for (const vital of vitals) {
+      const hour = this.hourBucket(this.eventTime(vital.ts, now));
       const path = this.normalizePath(vital.path);
       // Boundaries come from the package, so the chart and the ingest agree on
       // what "good" means without either side restating it.
@@ -395,6 +401,40 @@ export class SigilIngestService {
    */
   protected normalizePath(path: string): string {
     return path.split(/[?#]/)[0].slice(0, 1024) || "/";
+  }
+
+  /**
+   * When an event happened, for bucketing — the client's claim if it is
+   * credible, else when this batch arrived.
+   *
+   * Absorb time was the only answer until the envelope carried `ts`, and it is
+   * wrong by however long the batch waited: five seconds in the browser queue,
+   * up to ten more in the app's sink provider, plus whatever a retry added. An
+   * event a few seconds before the hour therefore landed in the next bucket,
+   * which defeats the reason the buckets are hourly — reading a 14:00 deploy
+   * against 13:00.
+   *
+   * **The value is client-supplied, so it is clamped rather than trusted.**
+   * Whoever holds the sigil token can claim any time at all; unclamped, that
+   * turns "can inflate today's count" — already true, and documented on
+   * `sigil_views_hourly` — into "can rewrite last month's chart", which is a
+   * different and worse property. Outside the window the timestamp is
+   * discarded, not rejected: a batch is not worth refusing over a bad clock,
+   * and absorb time is exactly as good as what came before.
+   *
+   * Six hours back covers any plausible retry or queue stall; five minutes
+   * forward covers ordinary client clock skew without opening the future.
+   */
+  protected eventTime(ts: number | undefined, now: string): string {
+    if (ts === undefined) return now;
+
+    const MAX_PAST_MS = 6 * 60 * 60 * 1000;
+    const MAX_FUTURE_MS = 5 * 60 * 1000;
+    const nowMs = Date.parse(now);
+    if (Number.isNaN(nowMs)) return now;
+    if (ts > nowMs + MAX_FUTURE_MS || ts < nowMs - MAX_PAST_MS) return now;
+
+    return new Date(ts).toISOString();
   }
 
   /**

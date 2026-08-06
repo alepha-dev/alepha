@@ -3,6 +3,7 @@ import { $hook, $inject } from "alepha";
 // declares `job:error` without pulling the jobs runtime into an app that has
 // none. The hook simply never fires there.
 import type {} from "alepha/api/jobs";
+import { sigilScrubUrl } from "../shared/sigilScrubUrl.ts";
 import { SigilSinkProvider } from "./SigilSinkProvider.ts";
 
 /**
@@ -76,12 +77,20 @@ export class SigilServerErrors {
     return status >= 500;
   }
 
+  /**
+   * `sourceUrl` is scrubbed for the same reason it is on the browser side, even
+   * though what reaches it today — a route pattern like `/users/:id`, or
+   * `job:<name>` — carries nothing. The invariant worth holding is that every
+   * `sourceUrl` in an envelope has been through {@link sigilScrubUrl}; leaving
+   * one path exempt because its current caller happens to be safe is how the
+   * exemption outlives the reason for it.
+   */
   protected toError(error: Error | undefined, sourceUrl: string) {
     return {
       name: error?.name ?? "Error",
       message: String(error?.message ?? "").slice(0, 2000),
       stack: String(error?.stack ?? "").slice(0, 4096),
-      sourceUrl,
+      sourceUrl: sigilScrubUrl(sourceUrl),
       origin: "server" as const,
     };
   }

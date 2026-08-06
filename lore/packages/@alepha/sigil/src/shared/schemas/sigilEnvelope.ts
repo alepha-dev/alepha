@@ -11,9 +11,32 @@ import { type Infer, z } from "alepha";
  * truncated: silently dropping the tail of a batch makes a sink look healthy
  * while it loses data.
  */
+/**
+ * When the event happened, epoch milliseconds, as claimed by the client.
+ *
+ * The sink used to bucket everything at absorb time, which is when the batch
+ * arrived rather than when the page was viewed. The browser holds a batch for
+ * five seconds, the app's own sink provider holds it for up to ten more, and a
+ * retry adds however long the sink was unreachable — so an event near an hour
+ * boundary routinely landed in the wrong bucket, and a deploy at 14:00 could
+ * not be read against 13:00, which is the entire reason these buckets are
+ * hourly.
+ *
+ * Optional, and it stays optional: a browser bundle and the sink it reports to
+ * deploy independently, so a client that predates this field must keep working.
+ * Absent means "use absorb time", the old behaviour.
+ *
+ * **Client-supplied and therefore hostile.** Nothing stops whoever holds the
+ * sigil token from claiming any time at all, so the sink clamps it to a window
+ * around its own clock before it reaches a bucket. Trusting it outright would
+ * let a token-holder rewrite history rather than merely inflate the present,
+ * which is the weaker property the count already has.
+ */
+export const sigilEventTime = z.integer().min(0).optional();
+
 export const sigilEnvelope = z.object({
   views: z
-    .array(z.object({ path: z.string().max(1024) }))
+    .array(z.object({ path: z.string().max(1024), ts: sigilEventTime }))
     .max(50)
     .optional(),
   errors: z
@@ -43,6 +66,7 @@ export const sigilEnvelope = z.object({
           .enum(["lcp", "cls", "inp", "fcp", "ttfb"])
           .meta({ mode: "text" }),
         value: z.number(),
+        ts: sigilEventTime,
       }),
     )
     .max(50)

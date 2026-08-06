@@ -20,10 +20,11 @@ export * from "./sigilEnv.ts";
  * The sigil an Alepha app reports under: page views, web vitals, and client
  * and server errors — pushed to a sink that the app names.
  *
- * Import this module in your WebModule and set `SIGIL_SINK` +
- * `SIGIL_KEY`. Without them the module still captures, but nothing leaves
- * the machine: errors go to the logger instead, aggregated. Active in
- * production only.
+ * Import this module in your WebModule and set `SIGIL_KEY` — the one variable
+ * that matters. `SIGIL_SINK` defaults to the public Lore instance and is only
+ * needed to self-host; `SIGIL_SALT` falls back to `APP_SECRET`. Without a key
+ * the module still captures, but nothing leaves the machine: errors go to the
+ * logger instead, aggregated. Active in production only.
  *
  * **The feedback button mounts itself.** `<SigilRoot />` is pushed into
  * {@link RootComponentsProvider}, so importing this module is the whole
