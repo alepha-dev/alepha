@@ -49,7 +49,9 @@ const AppSettings = () => {
   const [sigil, setSigil] = useStore(currentSigilAtom);
   const [sigils, setSigils] = useStore(currentSigilsAtom);
 
-  /** The one moment a rotated token is readable. Cleared when dismissed. */
+  /**
+   * The one moment a rotated token is readable. Cleared when dismissed.
+   */
   const [freshToken, setFreshToken] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
 
@@ -73,9 +75,13 @@ const AppSettings = () => {
       const { token, ...resource } = rotated;
       setFreshToken(token);
       // The prefix names the credential everywhere it is shown, and rotation
-      // changed it — refresh both the page's copy and the sidebar's.
+      // changed it — refresh both the page's copy and the sidebar's. `?? []`
+      // covers the sidebar's could-not-load state; this page's own loader
+      // always fills the atom, so it is a type guard rather than a real case.
       setSigil(resource);
-      setSigils(sigils.map((it) => (it.id === resource.id ? resource : it)));
+      setSigils(
+        (sigils ?? []).map((it) => (it.id === resource.id ? resource : it)),
+      );
       toaster.success(tr("sigils.toast.rotated"));
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
@@ -98,7 +104,7 @@ const AppSettings = () => {
       await sigilApi.deleteSigil({
         params: { projectId: project.id, sigilId: sigil.id },
       });
-      setSigils(sigils.filter((it) => it.id !== sigil.id));
+      setSigils((sigils ?? []).filter((it) => it.id !== sigil.id));
       toaster.success(tr("sigils.toast.deleted"));
       // This page's subject no longer exists, so staying here would render a
       // 404 on the next load. The enrolment page is where an operator goes

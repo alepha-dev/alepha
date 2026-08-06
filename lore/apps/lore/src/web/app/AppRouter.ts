@@ -319,13 +319,17 @@ export class AppRouter {
       // The sidebar's Apps section. Member-readable — `listSigils` is gated on
       // `project:read`, unlike every sigil mutation, which is owner-only — but
       // `.catch` keeps a transient failure from taking the whole project down
-      // with it: an empty list costs a section, an unhandled rejection costs
-      // the page.
+      // with it: a degraded section costs a section, an unhandled rejection
+      // costs the page.
+      //
+      // `undefined` on failure, NOT `[]`: the section says "Enrol an app" for
+      // an empty project, and telling a member whose read just failed that
+      // their project has no apps is a lie with a call to action attached.
       const sigils = project.features?.sigils
         ? await this.sigilApi
             .listSigils({ params: { projectId: params.projectId } })
             .then((r) => r.items)
-            .catch(() => [])
+            .catch(() => undefined)
         : [];
 
       this.alepha.store.set(currentProjectAtom, project);
@@ -351,7 +355,7 @@ export class AppRouter {
       this.alepha.store.set(currentFeedbackCountAtom, { count: 0 });
       this.alepha.store.set(currentBlightCountAtom, { count: 0 });
       this.alepha.store.set(currentQuestCountAtom, { count: 0 });
-      this.alepha.store.set(currentSigilsAtom, []);
+      this.alepha.store.set(currentSigilsAtom, undefined);
     },
   });
 

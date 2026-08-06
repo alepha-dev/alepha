@@ -15,6 +15,7 @@ import {
   Grid3x2,
   Inbox,
   Plus,
+  TriangleAlert,
 } from "lucide-react";
 import {
   defaultProjectFeatures,
@@ -192,24 +193,39 @@ const ProjectView = () => {
     const activeSigilId = ROUTES_APP.has(name)
       ? String(routerState.params.sigilId ?? "")
       : "";
+    // Three states, and they are not the same thing. `undefined` means the
+    // loader's `listSigils` failed and was swallowed to keep the page alive —
+    // saying "Enrol an app" there would tell a member their project is empty
+    // when it may be full. Both degenerate states still link to the settings
+    // page, which is where a retry (or the enrolment form) lives.
+    const appsUnavailable = sigils === undefined;
+    const apps = sigils ?? [];
+    const settingsHref = router.path("projectSettingsSigils", {
+      params: { projectId },
+    });
     opsItems.push({
       label: tr("project.menu.apps"),
       icon: AppWindow,
-      // No apps yet: keep the section, and make it the way in. Rendered open
-      // because a collapsed group holding the only affordance is a dead end.
-      defaultOpen: sigils.length === 0 ? true : undefined,
-      children:
-        sigils.length === 0
+      // Rendered open in both degenerate states: a collapsed group holding the
+      // only affordance — or the only explanation — is a dead end.
+      defaultOpen: apps.length === 0 ? true : undefined,
+      children: appsUnavailable
+        ? [
+            {
+              label: tr("project.menu.apps.unavailable"),
+              icon: TriangleAlert,
+              href: settingsHref,
+            },
+          ]
+        : apps.length === 0
           ? [
               {
                 label: tr("project.menu.apps.enrol"),
                 icon: Plus,
-                href: router.path("projectSettingsSigils", {
-                  params: { projectId },
-                }),
+                href: settingsHref,
               },
             ]
-          : sigils.map((it) => ({
+          : apps.map((it) => ({
               label: it.name,
               href: router.path("app", {
                 params: { projectId, sigilId: it.id },

@@ -38,7 +38,8 @@ const ProjectSettingsSigilsPage = () => {
   const sigilApi = useClient<SigilController>();
   const [project] = useStore(currentProjectAtom);
   // Shared with the sidebar's Apps section: enrolling here has to make the app
-  // appear there without a reload.
+  // appear there without a reload, and this page's own successful `reload()`
+  // repairs a sidebar whose read failed during the project load.
   const [sigils, setSigils] = useStore(currentSigilsAtom);
 
   const master = useProjectFeatureToggle("sigils");
@@ -176,14 +177,19 @@ const ProjectSettingsSigilsPage = () => {
           </div>
 
           <Card className="bg-card divide-y gap-0 rounded-lg border py-0">
-            {sigils.length === 0 && (
+            {/*
+              `?? []` is the sidebar's could-not-load state. This page always
+              runs its own `reload()`, which either fills the atom or toasts the
+              failure, so the empty message here is only ever the true one.
+            */}
+            {(sigils ?? []).length === 0 && (
               <CardContent className="px-4 py-6">
                 <span className="text-muted-foreground text-sm">
                   {tr("sigils.empty")}
                 </span>
               </CardContent>
             )}
-            {sigils.map((sigil) => (
+            {(sigils ?? []).map((sigil) => (
               <ProjectSettingsSigilRow key={sigil.id} sigil={sigil} />
             ))}
           </Card>

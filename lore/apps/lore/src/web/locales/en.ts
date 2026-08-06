@@ -615,6 +615,7 @@ export default {
   "project.menu.blights": "Blights",
   "project.menu.apps": "Apps",
   "project.menu.apps.enrol": "Enrol an app",
+  "project.menu.apps.unavailable": "Couldn't load apps",
 
   "app.tab.dashboard": "Dashboard",
   "app.tab.analytics": "Analytics",

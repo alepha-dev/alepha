@@ -620,6 +620,7 @@ export default {
   "project.menu.blights": "Fléaux",
   "project.menu.apps": "Applications",
   "project.menu.apps.enrol": "Enrôler une application",
+  "project.menu.apps.unavailable": "Liste indisponible",
 
   "app.tab.dashboard": "Vue d'ensemble",
   "app.tab.analytics": "Audience",
@@ -629,7 +630,7 @@ export default {
   "app.dashboard.errors": "Erreurs toujours d'actualité",
   "app.dashboard.beaconOff":
     "Beacon est désactivé sur ce projet : rien n'est collecté depuis cette application. Activez-le dans Paramètres › Sigils.",
-  "app.dashboard.credential": "Identifiant",
+  "app.dashboard.credential": "Accès",
   "app.dashboard.token": "Jeton",
   "app.dashboard.reports": "Remontées",
   "app.dashboard.enrolled": "Enrôlée le",
