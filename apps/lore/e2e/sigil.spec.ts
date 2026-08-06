@@ -105,8 +105,11 @@ test.describe("Sigils", () => {
     const t = Date.now();
     const email = `sigil${t}@example.com`;
     const projectTitle = `Sig${t}`.slice(0, 20);
-    // Distinct from the project title so `getByText` cannot match the header.
-    const appName = `App${t}`;
+    // Distinct from the project title so `getByText` cannot match the header,
+    // and constrained to `APP_NAME_PATTERN` — it's the app's URL segment now
+    // (`/p/:projectId/apps/:appName`), so a capital or a space would be
+    // refused rather than just cosmetic.
+    const appName = `app-${t}`;
     const blightMessage = `SigilE2E_${t} is not a function`;
 
     await registerAndVerify(page, email, "SigilTest123!");
@@ -127,26 +130,27 @@ test.describe("Sigils", () => {
 
       await page.getByRole("switch", { name: "Enable", exact: true }).click();
 
-      // The capability switches only exist once the master toggle is on.
-      for (const capability of ["Feedback", "Blights", "Beacon", "Vitals"]) {
-        const toggle = page.getByRole("switch", {
-          name: capability,
-          exact: true,
-        });
-        await expect(toggle).toBeVisible({ timeout: 15_000 });
-        await toggle.click();
-        await expect(toggle).toBeChecked({ timeout: 15_000 });
-      }
-
+      // Capabilities moved off this page (Task 8): what an app may report is
+      // per-app now, set on that app's own Settings tab, not a project-wide
+      // Capabilities card here. A newly enrolled sigil carries all four
+      // kinds by default, so nothing else is needed before ingest.
       await expect(page.getByText(/No app enrolled yet/i)).toBeVisible();
     });
 
     let token = "";
     await test.step("enrolling an app mints a token, once", async () => {
-      await page
+      // The card-button and the dialog's own submit share the accessible
+      // name "Enroll" — only one is on screen before the dialog opens.
+      await page.getByRole("button", { name: "Enroll", exact: true }).click();
+
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible({ timeout: 15_000 });
+      await dialog
         .getByRole("textbox", { name: "App name", exact: true })
         .fill(appName);
-      await page.getByRole("button", { name: "Enrol", exact: true }).click();
+      await dialog.getByRole("button", { name: "Enroll", exact: true }).click();
+      await expect(dialog).toBeHidden({ timeout: 10_000 });
+      await releasePointerEvents(page);
 
       token = await takeMintedToken(page);
 
@@ -161,10 +165,14 @@ test.describe("Sigils", () => {
     });
 
     await test.step("the same name cannot be enrolled twice", async () => {
-      await page
+      await page.getByRole("button", { name: "Enroll", exact: true }).click();
+
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible({ timeout: 15_000 });
+      await dialog
         .getByRole("textbox", { name: "App name", exact: true })
         .fill(appName);
-      await page.getByRole("button", { name: "Enrol", exact: true }).click();
+      await dialog.getByRole("button", { name: "Enroll", exact: true }).click();
 
       // A 409 surfaces as an error toast, and no second row appears — a second
       // sigil would split that app's history across two credentials. The toast
@@ -173,6 +181,12 @@ test.describe("Sigils", () => {
         timeout: 15_000,
       });
       await expect(sigilRows(page, appName)).toHaveCount(1);
+
+      // Only a successful submit closes the dialog — dismiss it explicitly
+      // so the next click doesn't land on a `pointer-events: none` body.
+      await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+      await expect(dialog).toBeHidden({ timeout: 10_000 });
+      await releasePointerEvents(page);
     });
 
     await test.step("the token, and only the token, opens ingest", async () => {
@@ -219,8 +233,10 @@ test.describe("Sigils", () => {
         enabled: Record<string, boolean>;
         feedbackUrl?: string;
       };
-      // Every capability was switched on above, so the answer is the project's
-      // own toggles intersected with the sigil's kinds — all of them.
+      // A newly enrolled sigil carries all four kinds by default and the
+      // project's `sigils` master switch is on, so the answer is everything
+      // — `feedback` is the one gate that also needs the project's own
+      // `features.feedback`, which defaults on.
       expect(body.enabled).toEqual({ views: true, errors: true, vitals: true });
       expect(body.feedbackUrl).toContain(`/p/${projectId}/request`);
 
@@ -271,18 +287,22 @@ test.describe("Sigils", () => {
     });
 
     await test.step("the sidebar's Apps section opens the app's own page", async () => {
-      // The section is the only way in that does not require knowing a UUID,
-      // and it is a collapsible group: nothing under it is active from the
-      // quest list, so it starts closed and has to be opened.
+      // The section is the only way in that does not require knowing a UUID.
+      // It's a collapsible group, but with one app it starts *open* — the
+      // shell only leaves it collapsed past five — so there is nothing to
+      // click before the app's own link is reachable.
       await page.goto(`/p/${projectId}`);
       await page.waitForLoadState("networkidle");
 
-      await page.getByRole("button", { name: "Apps", exact: true }).click();
+      await expect(
+        page.getByRole("button", { name: "Apps", exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
       await page.getByRole("link", { name: appName, exact: true }).click();
 
-      await expect(page).toHaveURL(new RegExp(`/p/${projectId}/apps/`), {
-        timeout: 15_000,
-      });
+      await expect(page).toHaveURL(
+        new RegExp(`/p/${projectId}/apps/${appName}`),
+        { timeout: 15_000 },
+      );
       await expect(
         page.getByRole("heading", { name: appName, exact: true }),
       ).toBeVisible({ timeout: 15_000 });
@@ -362,6 +382,55 @@ test.describe("Sigils", () => {
       await expect(row.getByText("7", { exact: true })).toBeVisible();
     });
 
+    await test.step("turning Beacon off hides the analytics tabs, back on restores them", async () => {
+      // Capabilities live on the app's own Settings tab now, not a
+      // project-wide card — the switch here governs this app alone.
+      await page
+        .getByTestId("app-tabs")
+        .getByRole("link", { name: "Settings", exact: true })
+        .click();
+
+      const beacon = page.getByRole("switch", { name: "Beacon", exact: true });
+      await expect(beacon).toBeVisible({ timeout: 15_000 });
+      // A freshly enrolled sigil carries all four kinds by default.
+      await expect(beacon).toBeChecked();
+
+      await beacon.click();
+      await expect(beacon).not.toBeChecked({ timeout: 15_000 });
+
+      // The toggle drives a `router.reload()` itself (see
+      // AppSettingsCapabilities.tsx), so the tab bar reflects the app's own
+      // kinds without a manual page reload.
+      const tabs = page.getByTestId("app-tabs");
+      for (const label of ["Analytics", "Performance", "Errors"]) {
+        await expect(
+          tabs.getByRole("link", { name: label, exact: true }),
+        ).toHaveCount(0, { timeout: 15_000 });
+      }
+
+      await beacon.click();
+      await expect(beacon).toBeChecked({ timeout: 15_000 });
+
+      for (const label of ["Analytics", "Performance", "Errors"]) {
+        await expect(
+          tabs.getByRole("link", { name: label, exact: true }),
+        ).toBeVisible({ timeout: 15_000 });
+      }
+
+      // Regression guard for a real bug (Task 6): `currentSigilInsightsAtom`
+      // is filled by the `projectApp` loader alone, and a sibling-tab
+      // navigation (Settings → Analytics) reuses that loader's layer instead
+      // of re-running it, so the atom stayed stale after Beacon flipped back
+      // on and Analytics rendered blank. `router.reload()` on the toggle is
+      // the fix — assert the tab renders content, not just that the link
+      // exists.
+      await tabs.getByRole("link", { name: "Analytics", exact: true }).click();
+      await expect(page.getByText("Top pages")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.getByText("/checkout").first()).toBeVisible();
+    });
+
     let rotated = "";
     await test.step("rotating revokes the old token and keeps the history", async () => {
       // Rotate and delete live on the app's own Settings tab — they are per-app
@@ -407,10 +476,11 @@ test.describe("Sigils", () => {
     });
 
     await test.step("deleting the sigil retires its token", async () => {
-      // Back to the app's Settings tab — the same page rotate was driven from.
+      // Back to the app's Settings tab — the same page rotate was driven
+      // from. Still one app, so the group is still open by default — no
+      // click needed to reach the link.
       await page.goto(`/p/${projectId}`);
       await page.waitForLoadState("networkidle");
-      await page.getByRole("button", { name: "Apps", exact: true }).click();
       await page.getByRole("link", { name: appName, exact: true }).click();
       await page
         .getByTestId("app-tabs")
@@ -429,6 +499,20 @@ test.describe("Sigils", () => {
       await expect(page.getByText(/No app enrolled yet/i)).toBeVisible({
         timeout: 15_000,
       });
+
+      // The Apps group is only built when the project has apps or the read
+      // failed (ProjectView.tsx) — with zero apps left, the whole section
+      // vanishes rather than rendering an empty shell.
+      await expect(
+        page.getByRole("button", { name: "Apps", exact: true }),
+      ).toHaveCount(0);
+      // Blights is derived from whether any enrolled app still carries the
+      // capability — the last app is gone, so is the entry. It renders as a
+      // link (a leaf item), not a button — only the collapsible Apps group
+      // above is a button.
+      await expect(
+        page.getByRole("link", { name: "Blights", exact: true }),
+      ).toHaveCount(0);
 
       const revoked = await request.post(ingest, {
         headers: {
