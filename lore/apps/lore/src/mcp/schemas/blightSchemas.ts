@@ -43,7 +43,20 @@ export const blightListResultSchema = z.object({
   blights: z.array(blightSchema),
   openCount: z.integer(),
   /** The apps that report here, for reading `sigilId` back to a name. */
-  sigils: z.array(z.object({ id: z.string(), label: z.string() })),
+  sigils: z.array(
+    z.object({
+      id: z.string(),
+      /**
+       * The sigil's display name — carries `sigil.name`. The wire field
+       * stays `label` deliberately: this surface predates the sigil
+       * reshape (app + environment + label collapsed into one `name`),
+       * and renaming the field would break every existing MCP client
+       * reading `blight_list`. `sigil_list` reports the identical string
+       * as `name` — same value, two field names, one per tool.
+       */
+      label: z.string(),
+    }),
+  ),
 });
 
 // -----------------------------------------------------------------------------

@@ -1,6 +1,11 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Input } from "@alepha/ui/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -8,6 +13,7 @@ import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { SigilController } from "@/api/controllers/SigilController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { currentProjectMemberAtom } from "@/web/app/atoms/currentProjectMemberAtom.ts";
 import { currentSigilsAtom } from "@/web/app/atoms/currentSigilsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import TokenReveal from "../../shared/TokenReveal.tsx";
@@ -31,12 +37,20 @@ import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
  * a sigil to revoke a token also erases everything that app ever reported.
  *
  * This page enrols and lists; each row links to the app it names.
+ *
+ * Enrolling is owner-only server-side (`$secure` + `assertOwner`), same as
+ * rotate/delete on the app's own Settings tab. The form is disabled here for
+ * a non-owner, with a tooltip explaining why — a UX hint over
+ * `currentProjectMemberAtom.owner`, not a second authorization boundary. See
+ * the longer note on `AppSettings.tsx`.
  */
 const ProjectSettingsSigilsPage = () => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const sigilApi = useClient<SigilController>();
   const [project] = useStore(currentProjectAtom);
+  const [member] = useStore(currentProjectMemberAtom);
+  const isOwner = member?.owner ?? false;
   // Shared with the sidebar's Apps section: enrolling here has to make the app
   // appear there without a reload, and this page's own successful `reload()`
   // repairs a sidebar whose read failed during the project load.
@@ -166,14 +180,29 @@ const ProjectSettingsSigilsPage = () => {
               aria-label={tr("sigils.create.name")}
               placeholder={tr("sigils.create.namePlaceholder")}
               onChange={(event) => setName(event.target.value)}
+              disabled={!isOwner}
             />
-            <Button
-              onClick={() => void create()}
-              disabled={busy || !name.trim()}
-            >
-              <Plus />
-              {tr("sigils.create.submit")}
-            </Button>
+            {isOwner ? (
+              <Button
+                onClick={() => void create()}
+                disabled={busy || !name.trim()}
+              >
+                <Plus />
+                {tr("sigils.create.submit")}
+              </Button>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button disabled aria-label={tr("sigils.create.submit")} />
+                  }
+                >
+                  <Plus />
+                  {tr("sigils.create.submit")}
+                </TooltipTrigger>
+                <TooltipContent>{tr("sigils.create.ownerOnly")}</TooltipContent>
+              </Tooltip>
+            )}
           </div>
 
           <Card className="bg-card divide-y gap-0 rounded-lg border py-0">
