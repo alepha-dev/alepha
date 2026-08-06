@@ -154,27 +154,16 @@ describe("comprehensive menu coverage", () => {
     }
   });
 
-  it("every binding has a shortcut display form", () => {
+  it("pairs every key-chord glyph with a binding, and no syntax hint with one", () => {
     for (const item of folioMenuItems()) {
-      if (item.binding) {
-        expect(
-          item.shortcut,
-          `${item.id} has binding but no shortcut display`,
-        ).toBeDefined();
-      }
-    }
-  });
-
-  it("modifier shortcuts with ⌘ or ⌧ have bindings", () => {
-    for (const item of folioMenuItems()) {
-      if (
-        item.shortcut &&
-        (item.shortcut.includes("⌘") || item.shortcut.includes("⌧"))
-      ) {
+      expect(!!item.shortcut, `${item.id}: shortcut without binding`).toBe(
+        !!item.binding,
+      );
+      if (item.syntaxHint) {
         expect(
           item.binding,
-          `${item.id} has modifier shortcut "${item.shortcut}" but no binding`,
-        ).toBeDefined();
+          `${item.id}: syntax hint must not bind`,
+        ).toBeUndefined();
       }
     }
   });
@@ -187,31 +176,13 @@ describe("comprehensive menu coverage", () => {
     }
   });
 
-  it("folio.newDirectory has no shortcut", () => {
-    const item = folioMenuItems().find((i) => i.id === "folio.newDirectory");
-    expect(item?.shortcut).toBeUndefined();
-    expect(item?.binding).toBeUndefined();
-  });
-
-  it("edit.wikiLink has shortcut but no binding", () => {
-    const item = folioMenuItems().find((i) => i.id === "edit.wikiLink");
-    expect(item?.shortcut).toBe("[[");
-    expect(item?.binding).toBeUndefined();
-  });
-
-  it("all insert actions without shortcuts have no bindings", () => {
+  it("actions without shortcuts or syntax hints can have no binding", () => {
     for (const item of folioMenuItems()) {
-      if (
-        item.id.startsWith("insert.") &&
-        item.id !== "insert.image" &&
-        item.id !== "insert.table"
-      ) {
-        if (!item.shortcut) {
-          expect(
-            item.binding,
-            `${item.id} has unexpected binding`,
-          ).toBeUndefined();
-        }
+      if (!item.shortcut && !item.syntaxHint) {
+        expect(
+          item.binding,
+          `${item.id} should not have a binding`,
+        ).toBeUndefined();
       }
     }
   });
@@ -288,9 +259,11 @@ describe("comprehensive menu coverage", () => {
     }
   });
 
-  it("disables row-scoped actions on an unsaved folio, even when locked", () => {
+  it("gates row-scoped actions on isNew before consulting locked", () => {
+    // {isNew:true, locked:false} is the state that distinguishes the two branch
+    // orders; with locked:true both orders return false and the test proves nothing.
     const fresh = {
-      locked: true,
+      locked: false,
       isNew: true,
       dirty: true,
       isProtected: false,
@@ -301,7 +274,7 @@ describe("comprehensive menu coverage", () => {
     }
   });
 
-  it("offers encryption only on a folio that is not already protected", () => {
+  it("swaps a toggle's label when its subject is already in the 'on' state", () => {
     const clear = {
       locked: false,
       isNew: false,
@@ -309,15 +282,23 @@ describe("comprehensive menu coverage", () => {
       isProtected: false,
       isPinned: false,
     };
-    const encrypted = {
+    const on = {
       locked: false,
       isNew: false,
       dirty: false,
       isProtected: true,
-      isPinned: false,
+      isPinned: true,
     };
-    expect(isFolioActionEnabled("folio.encrypt", clear)).toBe(true);
-    expect(isFolioActionEnabled("folio.encrypt", encrypted)).toBe(false);
+    for (const [id, state] of [
+      ["folio.encrypt", on],
+      ["folio.pin", on],
+    ] as const) {
+      const item = folioMenuItems().find((i) => i.id === id)!;
+      expect(item.alternateLabelKey, id).toBeDefined();
+      // Both remain ENABLED in the "on" state — the label changes, not availability.
+      expect(isFolioActionEnabled(id, state), id).toBe(true);
+      expect(isFolioActionEnabled(id, clear), id).toBe(true);
+    }
   });
 
   it("pin toggle action has alternate label for pinned state", () => {

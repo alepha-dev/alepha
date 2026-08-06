@@ -43,15 +43,22 @@ export interface FolioMenuItem {
   id: FolioActionId;
   labelKey: string;
   /**
-   * Display form shown right-aligned in the menu, e.g. `⌘S`.
+   * Key chord glyph displayed right-aligned in the menu, e.g. `⌘S`.
+   * Must be paired with a `binding` — never used without one.
    */
   shortcut?: string;
   /**
    * Normalized binding the keyboard handler matches against: lowercase,
    * `+`-joined, modifiers ordered `mod`, `shift`, `alt`. `mod` is ⌘ on
-   * macOS and Ctrl elsewhere.
+   * macOS and Ctrl elsewhere. Always paired with a `shortcut`.
    */
   binding?: string;
+  /**
+   * Markdown syntax hint displayed right-aligned in the menu, e.g. `##` or `[[`.
+   * Never paired with a binding — these are what the user *types*, not key
+   * chords to bind.
+   */
+  syntaxHint?: string;
   /**
    * Alternative label key for toggle actions that switch between two states.
    * Used by `folio.pin` (Pin / Unpin) and `folio.encrypt` (Encrypt / Remove
@@ -183,7 +190,7 @@ export const FOLIO_MENUS: FolioMenu[] = [
       {
         id: "edit.wikiLink",
         labelKey: "folios.editor.action.wiki-link",
-        shortcut: "[[",
+        syntaxHint: "[[",
       },
       sep,
       {
@@ -202,27 +209,27 @@ export const FOLIO_MENUS: FolioMenu[] = [
       {
         id: "insert.heading",
         labelKey: "folios.editor.action.heading",
-        shortcut: "##",
+        syntaxHint: "##",
       },
       {
         id: "insert.bulletList",
         labelKey: "folios.editor.action.bullet-list",
-        shortcut: "-",
+        syntaxHint: "-",
       },
       {
         id: "insert.numberedList",
         labelKey: "folios.editor.action.numbered-list",
-        shortcut: "1.",
+        syntaxHint: "1.",
       },
       {
         id: "insert.taskList",
         labelKey: "folios.editor.action.task-list",
-        shortcut: "[]",
+        syntaxHint: "[]",
       },
       {
         id: "insert.quote",
         labelKey: "folios.editor.action.quote",
-        shortcut: ">",
+        syntaxHint: ">",
       },
       sep,
       { id: "insert.image", labelKey: "folios.editor.action.image" },
@@ -230,12 +237,12 @@ export const FOLIO_MENUS: FolioMenu[] = [
       {
         id: "insert.codeBlock",
         labelKey: "folios.editor.action.code-block",
-        shortcut: "```",
+        syntaxHint: "```",
       },
       {
         id: "insert.divider",
         labelKey: "folios.editor.action.divider",
-        shortcut: "---",
+        syntaxHint: "---",
       },
     ],
   },
@@ -359,7 +366,6 @@ export const isFolioActionEnabled = (
   state: FolioActionState,
 ): boolean => {
   if (state.isNew && NEEDS_SAVED_FOLIO.has(id)) return false;
-  if (id === "folio.encrypt" && state.isProtected) return false;
   if (!state.locked) return true;
   const item = folioMenuItems().find((i) => i.id === id);
   return item?.availableWhenLocked === true;
