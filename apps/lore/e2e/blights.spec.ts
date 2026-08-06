@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
+import {
+  createProjectViaWizard,
+  registerAndVerify,
+  setProjectFeature,
+} from "./_helpers.ts";
 
 /**
  * Regression guard for the Blights inbox infinite render loop.
@@ -31,17 +35,14 @@ test.describe("Blights", () => {
     await registerAndVerify(page, email, "BlightTest123!");
     const projectId = await createProjectViaWizard(page, projectTitle);
 
-    // The blights route is gated on the module toggle.
-    await page.evaluate(async (id) => {
-      const res = await fetch(`/api/updateProjectById/${id}`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ features: { blights: true } }),
-      });
-      if (!res.ok)
-        throw new Error(`enable blights: ${res.status} ${await res.text()}`);
-    }, projectId);
+    // `projectBlights` is gated on `features.sigils`, not a `blights` flag —
+    // `features.blights` is `@deprecated` (Task 3: zero readers, zero
+    // writers) and blights only ever arrive from an enrolled app, so the
+    // route rides the Apps module's own master switch rather than a
+    // dedicated one. Deliberately relaxed this way (Task 5): deriving the
+    // gate from whether any app currently carries the `blights` kind would
+    // turn a transient `listSigils` failure into a 404 on a deep link.
+    await setProjectFeature(page, projectId, "sigils");
 
     await page.goto(`/p/${projectId}/blights`);
     await page.waitForLoadState("networkidle");
