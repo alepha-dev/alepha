@@ -459,9 +459,10 @@ export class AppRouter {
       this.alepha.store.set(currentSigilsAtom, items);
       this.alepha.store.set(currentSigilAtom, sigil);
 
-      // Beacon off means there is nothing collected to read, and the three
-      // tabs that would show it are not rendered. The app still has a page.
-      if (project.features?.beacon) {
+      // The app's own Beacon capability, not the project's. Off means there is
+      // nothing collected to read, and the three tabs that would show it are
+      // not rendered. The app still has a page.
+      if (sigil.kinds.includes("beacon")) {
         this.alepha.store.set(
           currentSigilInsightsAtom,
           await this.insightsApi.getInsights({
@@ -540,15 +541,16 @@ export class AppRouter {
   /**
    * The gate the three analytics tabs share.
    *
-   * A 404 rather than a 403, for the same reason the deleted project-level
-   * Insights route was: the tab is hidden on this exact flag, so reaching it by
-   * URL with Beacon off is asking for a page that does not exist here, not
-   * asking for one that is withheld.
+   * Reads the open app rather than the project: Beacon is a per-app capability
+   * now. A 404 rather than a 403, for the same reason the deleted project-level
+   * Insights route was — the tab is hidden on this exact condition, so reaching
+   * it by URL with Beacon off is asking for a page that does not exist here,
+   * not one that is withheld.
    */
   protected assertBeacon(): void {
-    const project = this.alepha.store.get(currentProjectAtom);
-    if (!project?.features?.beacon) {
-      throw new NotFoundError("Beacon not enabled for this project");
+    const sigil = this.alepha.store.get(currentSigilAtom);
+    if (!sigil?.kinds.includes("beacon")) {
+      throw new NotFoundError("Beacon is not enabled for this app");
     }
   }
 

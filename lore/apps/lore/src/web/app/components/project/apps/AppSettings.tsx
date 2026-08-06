@@ -25,6 +25,7 @@ import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import { currentSigilsAtom } from "../../../atoms/currentSigilsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TokenReveal from "../../shared/TokenReveal.tsx";
+import AppSettingsCapabilities from "./AppSettingsCapabilities.tsx";
 
 /**
  * What can be done to one app: rotate its token, or delete it.
@@ -143,6 +144,8 @@ const AppSettings = () => {
           onDismiss={() => setFreshToken(undefined)}
         />
       )}
+
+      <AppSettingsCapabilities />
 
       <Card>
         <CardHeader>
