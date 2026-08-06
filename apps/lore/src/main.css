@@ -598,8 +598,8 @@ body::before {
 
 :root {
   --font-folio-serif: "Literata", "Iowan Old Style", Georgia, serif;
-  --font-folio-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
-    monospace;
+  --font-folio-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .folio-prose {
