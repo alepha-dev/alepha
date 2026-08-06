@@ -17,13 +17,13 @@ export interface ProjectInsightsErrorsProps {
 }
 
 /**
- * The per-environment error budget — the "Errors" segment of the Insights page.
+ * The per-app error budget — the "Errors" segment of the Insights page.
  *
- * One row per `(environment, fingerprint)` still seen in the window, worst
- * first. This is the only surface that keeps failures split by environment: the
- * Blights inbox folds staging and production into one row per project on
- * purpose, because a triage decision must not fork, and that is exactly what
- * makes it unable to answer "is this still happening *in production*".
+ * One row per `(app, fingerprint)` still seen in the window, worst first. This
+ * is the only surface that keeps failures split by app: the Blights inbox folds
+ * every enrolled app into one row per project on purpose, because a triage
+ * decision must not fork, and that is exactly what makes it unable to answer
+ * "is this still happening *over there*".
  *
  * ⚠️ SECURITY: `name` and `message` come out of an application's runtime and
  * are 100% attacker-controlled. They are rendered ONLY through plain React text
@@ -63,7 +63,7 @@ const ProjectInsightsErrors = (props: ProjectInsightsErrorsProps) => {
                       {tr("insights.errors.col.error")}
                     </th>
                     <th className="py-2 pr-3 font-medium">
-                      {tr("insights.errors.col.environment")}
+                      {tr("insights.errors.col.app")}
                     </th>
                     <th className="py-2 pr-3 text-right font-medium">
                       {tr("insights.errors.col.count")}

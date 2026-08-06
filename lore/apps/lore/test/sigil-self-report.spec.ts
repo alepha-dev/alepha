@@ -89,9 +89,7 @@ const setup = async (over: { features?: unknown; key?: string } = {}) => {
   // credential path a real token takes — not a bypass of it.
   const sigil = await probe.sigils.create({
     projectId: project.id,
-    app: "lore",
-    environment: "production",
-    label: "lore / production",
+    name: "lore",
     tokenHash: crypto.hash(KEY),
     tokenPrefix: KEY.slice(0, 10),
     kinds: ["beacon", "vitals", "blights", "feedback"],
@@ -115,7 +113,7 @@ describe("Lore reports to Lore", () => {
   });
 
   it("should stamp its own lastSeenAt, so the sigil list does not call it silent", async () => {
-    // `lastSeenAt` is what tells an owner an environment is reporting at all.
+    // `lastSeenAt` is what tells an owner an app is reporting at all.
     // Left unstamped, Lore would show as never having sent anything while
     // filling its own tables — the one reading the column exists to prevent.
     const { probe, sigil, sink } = await setup();

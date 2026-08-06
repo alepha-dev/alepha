@@ -22,7 +22,7 @@ const userDataSchema = z.object({
 
 /**
  * Direct table access for the two facts the controller does not expose: that a
- * membership exists, and that an environment's history survives (or does not).
+ * membership exists, and that an app's history survives (or does not).
  */
 class Probe {
   members = $repository(members);
@@ -44,7 +44,7 @@ interface TestContext {
  *
  * Substituted in to force the *other* unique index on `sigils` — `tokenHash` —
  * to be the one that refuses an insert. It is the only unique index a test can
- * trip deterministically: the `(projectId, app, environment)` one is guarded
+ * trip deterministically: the `(projectId, name)` one is guarded
  * by a `findOne` that a single-connection in-memory database never lets a
  * second caller slip past, which is exactly why the handler cannot rely on
  * that check alone in production.
@@ -140,7 +140,7 @@ describe("SigilController", () => {
     const projectId = await createProject(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { name: "lore" } },
       { user: owner },
     );
 
@@ -159,16 +159,20 @@ describe("SigilController", () => {
     expect("token" in list.data.items[0]).toBe(false);
   });
 
-  it("defaults the label to `app / environment`", async ({ expect }) => {
+  it("keeps the name it was given, and grants every capability by default", async ({
+    expect,
+  }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { app: "lore", environment: "staging" } },
+      { params: { projectId }, body: { name: "  lore staging  " } },
       { user: owner },
     );
 
-    expect(created.data.label).toBe("lore / staging");
+    // Trimmed, because the trimmed value is what the uniqueness check reads —
+    // " lore" and "lore " must not be two apps.
+    expect(created.data.name).toBe("lore staging");
     expect(created.data.kinds.sort()).toEqual([
       "beacon",
       "blights",
@@ -177,26 +181,39 @@ describe("SigilController", () => {
     ]);
   });
 
-  it("refuses a second sigil for the same app and environment", async ({
-    expect,
-  }) => {
+  it("refuses a name that is only whitespace", async () => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+
+    // `min(1)` accepts "   ", so without the handler's own guard this reaches
+    // the insert as an empty name and fails entity validation as a 500.
+    await expectStatus(
+      ctx.sigilController.createSigil.fetch(
+        { params: { projectId }, body: { name: "   " } },
+        { user: owner },
+      ),
+      400,
+    );
+  });
+
+  it("refuses a second sigil with the same name", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
     await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { name: "lore" } },
       { user: owner },
     );
 
-    // A duplicate would split that environment's history across two rows and
-    // make every aggregate wrong — 409, not a silent second sigil.
-    await expectStatus(
-      ctx.sigilController.createSigil.fetch(
-        { params: { projectId }, body: { app: "lore", environment: "prod" } },
-        { user: owner },
-      ),
-      409,
-    );
+    // A duplicate would split that app's history across two rows and make every
+    // aggregate wrong — 409, not a silent second sigil.
+    const error: unknown = await ctx.sigilController.createSigil
+      .fetch({ params: { projectId }, body: { name: "lore" } }, { user: owner })
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(HttpError);
+    expect((error as HttpError).status).toBe(409);
+    // The message names the clash, so an operator knows which name to change.
+    expect((error as HttpError).message).toMatch(/already exists named "lore"/);
 
     const list = await ctx.sigilController.listSigils.fetch(
       { params: { projectId } },
@@ -205,16 +222,37 @@ describe("SigilController", () => {
     expect(list.data.items).toHaveLength(1);
   });
 
+  it("lets two projects each have a sigil of the same name", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const projectA = await createProject(ctx, owner);
+    const projectB = await createProject(ctx, owner);
+
+    // Uniqueness is `(projectId, name)`, not `name` — two people tracking an
+    // app called `lore` do not collide with each other.
+    await ctx.sigilController.createSigil.fetch(
+      { params: { projectId: projectA }, body: { name: "lore" } },
+      { user: owner },
+    );
+    const second = await ctx.sigilController.createSigil.fetch(
+      { params: { projectId: projectB }, body: { name: "lore" } },
+      { user: owner },
+    );
+
+    expect(second.data.name).toBe("lore");
+  });
+
   it("lists a project's sigils, newest first", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
     await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { app: "lore", environment: "staging" } },
+      { params: { projectId }, body: { name: "lore-staging" } },
       { user: owner },
     );
     await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { name: "lore" } },
       { user: owner },
     );
 
@@ -223,18 +261,16 @@ describe("SigilController", () => {
       { user: owner },
     );
     expect(list.data.items).toHaveLength(2);
-    expect(list.data.items.map((s) => s.environment)).toContain("prod");
-    expect(list.data.items.map((s) => s.environment)).toContain("staging");
+    expect(list.data.items.map((s) => s.name)).toContain("lore");
+    expect(list.data.items.map((s) => s.name)).toContain("lore-staging");
   });
 
-  it("rotates the token, keeping the environment's history", async ({
-    expect,
-  }) => {
+  it("rotates the token, keeping the app's history", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { name: "lore" } },
       { user: owner },
     );
     await ctx.probe.views.create({
@@ -271,7 +307,7 @@ describe("SigilController", () => {
     const projectId = await createProject(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { name: "lore" } },
       { user: owner },
     );
     await ctx.probe.views.create({
@@ -318,7 +354,7 @@ describe("SigilController", () => {
     await ctx.probe.members.create({ userId: member.id, projectId });
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { name: "lore" } },
       { user: owner },
     );
 
@@ -332,7 +368,7 @@ describe("SigilController", () => {
 
     await expectStatus(
       ctx.sigilController.createSigil.fetch(
-        { params: { projectId }, body: { app: "shop", environment: "prod" } },
+        { params: { projectId }, body: { name: "shop" } },
         { user: member },
       ),
       403,
@@ -359,7 +395,7 @@ describe("SigilController", () => {
     const projectId = await createProject(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { name: "lore" } },
       { user: owner },
     );
 
@@ -394,7 +430,7 @@ describe("SigilController", () => {
     const created = await ctx.sigilController.createSigil.fetch(
       {
         params: { projectId: projectA },
-        body: { app: "lore", environment: "prod" },
+        body: { name: "lore" },
       },
       { user: owner },
     );
@@ -438,18 +474,18 @@ describe("SigilController — unique-index violations", () => {
     const projectId = await createProject(ctx, owner);
 
     await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { app: "lore", environment: "prod" } },
+      { params: { projectId }, body: { name: "lore" } },
       { user: owner },
     );
 
-    // Different environment, so the handler's own duplicate check passes — the
-    // insert reaches the `tokenHash` unique index and the driver refuses it.
-    // Without the catch this is an unhandled DbConflictError and a 500.
+    // Different name, so the handler's own duplicate check passes — the insert
+    // reaches the `tokenHash` unique index and the driver refuses it. Without
+    // the catch this is an unhandled DbConflictError and a 500.
     await expectStatus(
       ctx.sigilController.createSigil.fetch(
         {
           params: { projectId },
-          body: { app: "lore", environment: "staging" },
+          body: { name: "lore-staging" },
         },
         { user: owner },
       ),
@@ -462,7 +498,7 @@ describe("SigilController — unique-index violations", () => {
       .fetch(
         {
           params: { projectId },
-          body: { app: "lore", environment: "staging" },
+          body: { name: "lore-staging" },
         },
         { user: owner },
       )

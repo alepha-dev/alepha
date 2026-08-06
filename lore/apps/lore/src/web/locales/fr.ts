@@ -653,7 +653,7 @@ export default {
   "insights.errors.subtitle": "par environnement",
   "insights.errors.heading": "Toujours d'actualité",
   "insights.errors.col.error": "Erreur",
-  "insights.errors.col.environment": "Environnement",
+  "insights.errors.col.app": "Application",
   "insights.errors.col.count": "Occurrences",
   "insights.errors.col.firstSeen": "Première fois",
   "insights.errors.col.lastSeen": "Dernière fois",
@@ -712,21 +712,19 @@ export default {
   "vitals.feature.description":
     "Collecte les Core Web Vitals (LCP, CLS, INP, FCP, TTFB) depuis les environnements enrôlés.",
 
-  "sigils.title": "Environnements enrôlés",
+  "sigils.title": "Applications enrôlées",
   "sigils.subtitle":
-    "Un sigil par application et par environnement. Chacun détient son propre jeton et remonte ses données séparément.",
+    "Un sigil par application. Chacun détient son propre jeton et remonte ses données séparément — pour distinguer la préproduction de la production, enrôlez les deux et nommez-les en conséquence.",
   "sigils.empty":
-    "Aucun environnement enrôlé. Tant qu’il n’y en a pas, rien ne peut remonter ici.",
+    "Aucune application enrôlée. Tant qu’il n’y en a pas, rien ne peut remonter ici.",
   "sigils.features.title": "Capacités",
   "sigils.features.subtitle":
     "Activez les Sigils, puis choisissez ce que le point d’ingestion accepte.",
-  "sigils.create.app": "Application",
-  "sigils.create.appPlaceholder": "lore",
-  "sigils.create.environment": "Environnement",
-  "sigils.create.environmentPlaceholder": "production",
+  "sigils.create.name": "Nom de l’application",
+  "sigils.create.namePlaceholder": "lore",
   "sigils.create.submit": "Enrôler",
   "sigils.token.title":
-    "Copiez ce jeton maintenant — il est stocké haché et ne sera plus jamais affiché.",
+    "Copiez ce jeton maintenant — il est stocké haché et ne sera plus jamais affiché. Renseignez-le comme SIGIL_KEY dans l’application, avec SIGIL_SINK pointant vers cette instance.",
   "sigils.token.copy": "Copier le jeton",
   "sigils.token.done": "Terminé",
   "sigils.lastSeen": "dernière remontée $1",
@@ -735,11 +733,11 @@ export default {
   "sigils.action.delete": "Supprimer",
   "sigils.rotate.confirmTitle": "Renouveler le jeton de $1 ?",
   "sigils.rotate.confirmDescription":
-    "Le jeton actuel cesse de fonctionner immédiatement et un nouveau est affiché une seule fois. Tout ce que cet environnement a remonté est conservé — c’est ainsi qu’on révoque un jeton fuité sans perdre son historique.",
+    "Le jeton actuel cesse de fonctionner immédiatement et un nouveau est affiché une seule fois. Tout ce que cette application a remonté est conservé — c’est ainsi qu’on révoque un jeton fuité sans perdre son historique.",
   "sigils.rotate.confirm": "Renouveler",
   "sigils.delete.confirmTitle": "Supprimer $1 ?",
   "sigils.delete.confirmDescription":
-    "Cela efface tout ce que cet environnement a remonté — pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs — ainsi que son jeton. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
+    "Cela efface tout ce que cette application a remonté — pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs — ainsi que son jeton. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
   "sigils.delete.confirm": "Supprimer",
   "sigils.toast.created": "Sigil créé",
   "sigils.toast.rotated": "Jeton renouvelé",

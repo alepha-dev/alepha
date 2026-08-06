@@ -2,7 +2,7 @@ import { z } from "alepha";
 import { projectParamsSchema } from "./commonSchemas.ts";
 
 /**
- * One enrolled environment.
+ * One enrolled app.
  *
  * `tokenPrefix` is the only part of the credential that survives creation, and
  * it exists so a sigil can be named in conversation without being usable.
@@ -10,17 +10,14 @@ import { projectParamsSchema } from "./commonSchemas.ts";
 const sigilSchema = z.object({
   id: z.string(),
   projectId: z.integer(),
-  /** Application name, e.g. `lore`. */
-  app: z.string(),
-  /** Stage, e.g. `production`. */
-  environment: z.string(),
-  label: z.string(),
+  /** Display name of the app, e.g. `lore`. Unique within the project. */
+  name: z.string(),
   /** First characters of the token — enough to name it, not to use it. */
   tokenPrefix: z.string(),
   /** Capability buckets this sigil's ingest endpoint accepts. */
   kinds: z.array(z.string()),
   createdAt: z.string(),
-  /** Last time this environment reported anything. Absent means never. */
+  /** Last time this app reported anything. Absent means never. */
   lastSeenAt: z.string().optional(),
 });
 
@@ -54,24 +51,13 @@ export const sigilListResultSchema = z.object({
 // -----------------------------------------------------------------------------
 
 export const sigilCreateParamsSchema = projectParamsSchema.extend({
-  app: z
+  name: z
     .string()
     .min(1)
     .max(100)
-    .describe("Application name, e.g. `lore`. Free-form."),
-  environment: z
-    .string()
-    .min(1)
-    .max(50)
     .describe(
-      "Stage, e.g. `production` or `staging`. One sigil per app per environment — they report separately on purpose.",
+      "Name of the app, e.g. `lore`. Free-form, and unique within the project — everything this sigil reports is filed under it. How finely to slice is the operator's call: an app that wants its staging traffic kept apart from production enrols two sigils and names them so.",
     ),
-  label: z
-    .string()
-    .min(1)
-    .max(200)
-    .describe("Display name. Defaults to `<app> / <environment>`.")
-    .optional(),
 });
 
 export const sigilCreateResultSchema = mintedSigilSchema;

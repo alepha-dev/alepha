@@ -8,9 +8,7 @@ import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
 import { users } from "../src/api/entities/users.ts";
 
 describe("sigil entities", () => {
-  it("identifies a sigil by app + environment within a project", async ({
-    expect,
-  }) => {
+  it("identifies a sigil by name within a project", async ({ expect }) => {
     // `sigils` carries FKs to `projects` and `users`; the model builder
     // resolves every `db.ref(...)` target eagerly at boot, so both referenced
     // tables must have a repository too or schema sync throws "Referenced
@@ -39,16 +37,38 @@ describe("sigil entities", () => {
 
     const created = await repos.sigils.create({
       projectId: project.id,
-      app: "lore",
-      environment: "production",
+      name: "lore",
       tokenHash: "h",
       tokenPrefix: "sg_abc",
       kinds: ["beacon", "vitals", "blights", "feedback"],
-      label: "lore / production",
     });
 
-    expect(created.app).toBe("lore");
-    expect(created.environment).toBe("production");
+    expect(created.name).toBe("lore");
+
+    // The name is the identity: unique within the project, and free for another
+    // project to reuse. Both halves of that are the index, not the handler.
+    await expect(
+      repos.sigils.create({
+        projectId: project.id,
+        name: "lore",
+        tokenHash: "h2",
+        tokenPrefix: "sg_def",
+        kinds: [],
+      }),
+    ).rejects.toThrow();
+
+    const other = await repos.projects.create({
+      title: "Other Project",
+      createdBy: crypto.randomUUID(),
+    });
+    const elsewhere = await repos.sigils.create({
+      projectId: other.id,
+      name: "lore",
+      tokenHash: "h3",
+      tokenPrefix: "sg_ghi",
+      kinds: [],
+    });
+    expect(elsewhere.name).toBe("lore");
   });
 
   it("buckets views by the hour, not the day", async ({ expect }) => {

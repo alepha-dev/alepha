@@ -11,12 +11,13 @@ export const SIGIL_KINDS = ["feedback", "blights", "beacon", "vitals"] as const;
 export type SigilKind = (typeof SIGIL_KINDS)[number];
 
 /**
- * A **sigil** is one environment of one application: `lore` in `production` is
- * a different sigil from `lore` in `staging`, and they report separately.
+ * A **sigil** is one app that reports into a project — nothing more than a
+ * name and the credential that name reports with.
  *
- * That is the unit because it is the unit a question is asked about. "Did the
- * deploy break anything" is meaningless across environments, and an error
- * budget shared between staging and production is nobody's budget.
+ * The name is free-form and unique within the project, so how finely an
+ * operator slices their world is their decision rather than the schema's: an
+ * app that wants its staging traffic kept apart from production creates two
+ * sigils and names them so, and one that does not, does not.
  *
  * The credential is a `sg_`-prefixed token shown once at creation and stored
  * as a hash. `tokenPrefix` exists so the UI can name a key it cannot
@@ -29,12 +30,8 @@ export const sigils = $entity({
     projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
-    /** Application name, e.g. `lore`. Free-form; the operator names it. */
-    app: z.string().min(1).max(100),
-    /** Stage, e.g. `production` / `staging`. Free-form for the same reason. */
-    environment: z.string().min(1).max(50),
-    /** Display label, defaulted to `<app> / <environment>` at creation. */
-    label: z.string().min(1).max(200),
+    /** Display name of the app, e.g. `lore`. Free-form; the operator names it. */
+    name: z.string().min(1).max(100),
     tokenHash: z.string().min(1).max(256),
     /** First characters of the token, so the UI can name it. */
     tokenPrefix: z.string().min(1).max(32),
@@ -48,7 +45,7 @@ export const sigils = $entity({
   indexes: [
     { columns: ["projectId"] },
     { columns: ["tokenHash"], unique: true },
-    { columns: ["projectId", "app", "environment"], unique: true },
+    { columns: ["projectId", "name"], unique: true },
     { columns: ["createdBy"] },
   ],
 });

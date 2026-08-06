@@ -2,13 +2,13 @@ import { expect, type Page, test } from "@playwright/test";
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**
- * Sigils, end to end: enrol an environment, report as it, triage what arrives,
- * rotate the credential, delete the environment.
+ * Sigils, end to end: enrol an app, report as it, triage what arrives, rotate
+ * the credential, delete the app.
  *
- * The surface under test is the one Task 4–7 rebuilt: a sigil is **one
- * application in one environment**, credentialed by an `sg_` bearer token that
- * is shown exactly once and stored hashed. Ingest is a root `$route`
- * (`POST /sigils/ingest`), authenticated by that token and by nothing else.
+ * The surface under test: a sigil is **one named app**, unique within its
+ * project, credentialed by an `sg_` bearer token that is shown exactly once and
+ * stored hashed. Ingest is a root `$route` (`POST /sigils/ingest`),
+ * authenticated by that token and by nothing else.
  *
  * Two mechanical traps, both of which have cost this codebase time before:
  *
@@ -82,7 +82,7 @@ const errorBatch = (message: string, count: number) => ({
 });
 
 test.describe("Sigils", () => {
-  test("enrol an environment, report as it, rotate it, delete it", async ({
+  test("enrol an app, report as it, rotate it, delete it", async ({
     page,
     request,
     baseURL,
@@ -92,6 +92,8 @@ test.describe("Sigils", () => {
     const t = Date.now();
     const email = `sigil${t}@example.com`;
     const projectTitle = `Sig${t}`.slice(0, 20);
+    // Distinct from the project title so `getByText` cannot match the header.
+    const appName = `App${t}`;
     const blightMessage = `SigilE2E_${t} is not a function`;
 
     await registerAndVerify(page, email, "SigilTest123!");
@@ -123,47 +125,37 @@ test.describe("Sigils", () => {
         await expect(toggle).toBeChecked({ timeout: 15_000 });
       }
 
-      await expect(
-        page.getByText(/No environment enrolled yet/i),
-      ).toBeVisible();
+      await expect(page.getByText(/No app enrolled yet/i)).toBeVisible();
     });
 
     let token = "";
-    await test.step("enrolling app + environment mints a token, once", async () => {
+    await test.step("enrolling an app mints a token, once", async () => {
       await page
-        .getByRole("textbox", { name: "Application", exact: true })
-        .fill("lore");
-      await page
-        .getByRole("textbox", { name: "Environment", exact: true })
-        .fill("production");
+        .getByRole("textbox", { name: "App name", exact: true })
+        .fill(appName);
       await page.getByRole("button", { name: "Enrol", exact: true }).click();
 
       token = await takeMintedToken(page);
 
-      // The row names the credential by its prefix, and says the environment
-      // has not reported — the two facts the list exists to carry.
-      await expect(page.getByText("lore / production")).toBeVisible({
-        timeout: 15_000,
-      });
+      // The row names the credential by its prefix, and says the app has not
+      // reported — the two facts the list exists to carry.
+      await expect(page.getByText(appName)).toBeVisible({ timeout: 15_000 });
       await expect(page.getByText(`${token.slice(0, 11)}…`)).toBeVisible();
       await expect(page.getByText(/never reported/i)).toBeVisible();
     });
 
-    await test.step("the same app + environment cannot be enrolled twice", async () => {
+    await test.step("the same name cannot be enrolled twice", async () => {
       await page
-        .getByRole("textbox", { name: "Application", exact: true })
-        .fill("lore");
-      await page
-        .getByRole("textbox", { name: "Environment", exact: true })
-        .fill("production");
+        .getByRole("textbox", { name: "App name", exact: true })
+        .fill(appName);
       await page.getByRole("button", { name: "Enrol", exact: true }).click();
 
       // A 409 surfaces as an error toast, and no second row appears — a second
-      // sigil would split that environment's history across two credentials.
+      // sigil would split that app's history across two credentials.
       await expect(page.getByText(/already exists/i)).toBeVisible({
         timeout: 15_000,
       });
-      await expect(page.getByText("lore / production")).toHaveCount(1);
+      await expect(page.getByText(appName)).toHaveCount(1);
     });
 
     await test.step("the token, and only the token, opens ingest", async () => {
@@ -221,7 +213,7 @@ test.describe("Sigils", () => {
       expect(bogus.status()).toBe(401);
     });
 
-    await test.step("the settings row now says the environment reported", async () => {
+    await test.step("the settings row now says the app reported", async () => {
       await page.reload();
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(/last reported/i)).toBeVisible({
@@ -289,10 +281,10 @@ test.describe("Sigils", () => {
       await expect(page.getByText(/2[,.\s]?500\s*ms/)).toBeVisible();
     });
 
-    await test.step("the error budget names the environment that is still failing", async () => {
+    await test.step("the error budget names the app that is still failing", async () => {
       // `sigil_error_groups` was written on every accepted error and read by
       // nothing outside `test/`. This is the surface that reads it — split per
-      // environment, unlike the inbox, which folds every sigil into one row per
+      // sigil, unlike the inbox, which folds every sigil into one row per
       // project on purpose.
       await page.getByRole("radio", { name: "Errors" }).click();
 
@@ -300,10 +292,10 @@ test.describe("Sigils", () => {
         timeout: 15_000,
       });
       await expect(page.getByText(blightMessage)).toBeVisible();
-      // The whole point of the table: which environment, by name.
-      await expect(page.getByText("lore / production").first()).toBeVisible();
-      // 3 + 4, counted per environment. Same total as the inbox here because
-      // there is one sigil; the split is what the table exists to keep.
+      // The whole point of the table: which app, by name.
+      await expect(page.getByText(appName).first()).toBeVisible();
+      // 3 + 4, counted per app. Same total as the inbox here because there is
+      // one sigil; the split is what the table exists to keep.
       await expect(page.getByText("7", { exact: true }).first()).toBeVisible();
     });
 
@@ -354,7 +346,7 @@ test.describe("Sigils", () => {
       await page.getByRole("button", { name: "Delete", exact: true }).click();
       await confirmDialog(page, "Delete");
 
-      await expect(page.getByText(/No environment enrolled yet/i)).toBeVisible({
+      await expect(page.getByText(/No app enrolled yet/i)).toBeVisible({
         timeout: 15_000,
       });
 

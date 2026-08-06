@@ -570,7 +570,7 @@ export class AppRouter {
   });
 
   /**
-   * Sigils — which applications and environments report here.
+   * Sigils — which applications report here.
    *
    * ⚠️ Named in `ProjectSettings.tsx`'s nav array, which is a list of route
    * names with nothing in the type system tying it to the routes it names.

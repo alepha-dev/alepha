@@ -31,12 +31,12 @@ const BLIGHT_ZONE = "Blights";
 const blightResourceSchema = z.object({
   id: z.integer(),
   /**
-   * Which environment reported it last.
+   * Which app reported it last.
    *
    * A blight is one row per project and per fingerprint, so a bug present in
-   * both staging and production is one triage decision; this names the sigil
+   * two enrolled apps is one triage decision; this names the sigil
    * that most recently saw it, which is what the inbox's filter means. The
-   * per-environment breakdown lives in `sigil_error_groups`.
+   * per-app breakdown lives in `sigil_error_groups`.
    */
   sigilId: z.uuid().optional(),
   fingerprint: z.string(),
@@ -133,16 +133,20 @@ export class BlightController {
         })
       ).sort((a, b) => b.count - a.count);
 
-      // The inbox's filter options: which environments report here. Listed even
-      // when they have filed nothing, so an owner can tell an environment that
-      // is quiet from one that was never enrolled.
+      // The inbox's filter options: which apps report here. Listed even when
+      // they have filed nothing, so an owner can tell an app that is quiet from
+      // one that was never enrolled.
+      //
+      // The wire field stays `label` — it is what the filter shows, and renaming
+      // it would break every MCP client reading `blight_list` — but its value is
+      // now the sigil's `name`, the column `label` having been folded into it.
       const projectSigils = await this.sigils.findMany({
         where: { projectId: { eq: params.projectId } },
         orderBy: [{ column: "createdAt", direction: "desc" }],
       });
       const sigilOptions = projectSigils.map((sigil) => ({
         id: sigil.id,
-        label: sigil.label,
+        label: sigil.name,
       }));
 
       const openCount = all.filter((b) => b.status === "open").length;
