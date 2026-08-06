@@ -30,52 +30,38 @@ const SETEXT_H2 = /^\s{0,3}-{2,}\s*$/;
  * words the reader sees. Deliberately shallow — headings rarely contain
  * anything beyond emphasis, code spans and links.
  *
- * Splits text into code-span and non-code-span segments, processes only
- * the non-code segments to remove emphasis, then rejoins. This protects
- * code contents from emphasis processing and avoids any placeholder collision.
+ * Uses U+0000 as a collision-proof sentinel: CommonMark requires null bytes
+ * to be sanitized away before parsing, so the sentinel is guaranteed absent.
+ * Extracts code spans to this sentinel, processes the whole string through
+ * emphasis/link removal (sentinel is not `\w`, so word boundaries work across
+ * code spans), then restores by consuming from a queue in order.
  */
 const stripInline = (raw: string): string => {
-  // Split into segments: code spans (in backticks) and everything else
-  const segments: Array<{ isCode: boolean; text: string }> = [];
-  let lastIndex = 0;
+  // CommonMark sanitization: U+0000 → U+FFFD, guaranteeing sentinel is absent
+  let text = raw.replace(/\0/g, "�");
 
-  const codeRegex = /`([^`]*)`/g;
-  let match: RegExpExecArray | null = null;
-  // biome-ignore lint/suspicious/noAssignInExpressions: Standard regex matching pattern
-  while ((match = codeRegex.exec(raw)) !== null) {
-    // Add non-code text before this code span
-    if (match.index > lastIndex) {
-      segments.push({ isCode: false, text: raw.slice(lastIndex, match.index) });
-    }
-    // Add the code span itself (without backticks)
-    segments.push({ isCode: true, text: match[1] });
-    lastIndex = match.index + match[0].length;
-  }
-  // Add remaining non-code text
-  if (lastIndex < raw.length) {
-    segments.push({ isCode: false, text: raw.slice(lastIndex) });
-  }
-  // If there were no code spans, add the whole text as non-code
-  if (segments.length === 0) {
-    segments.push({ isCode: false, text: raw });
-  }
+  // Extract code spans (handle multi-backtick delimiters per CommonMark)
+  const codeQueue: string[] = [];
+  text = text.replace(/(`+)([\s\S]*?)\1/g, (_match, _delim) => {
+    codeQueue.push(_match.slice(_delim.length, -_delim.length));
+    return "\0";
+  });
 
-  // Process non-code segments to remove emphasis
-  const processed = segments
-    .map((seg) => {
-      if (seg.isCode) return seg.text;
-      let text = seg.text;
-      text = text.replace(/\*\*([^*]*)\*\*/g, "$1");
-      text = text.replace(/__([^_]*)__/g, "$1");
-      // Single emphasis: * or _ must not be flanked by word characters
-      text = text.replace(/(?<!\w)\*(?!\*)([^*]+)\*(?!\w)/g, "$1");
-      text = text.replace(/(?<!\w)_([^_]+)_(?!\w)/g, "$1");
-      text = text.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
-      return text;
-    })
-    .join("");
+  // Process the whole string to remove emphasis and links
+  text = text.replace(/\*\*([^*]*)\*\*/g, "$1");
+  text = text.replace(/__([^_]*)__/g, "$1");
+  // Single emphasis: * or _ must not be flanked by word characters to match
+  text = text.replace(/(?<!\w)\*(?!\*)([^*]+)\*(?!\w)/g, "$1");
+  text = text.replace(/(?<!\w)_([^_]+)_(?!\w)/g, "$1");
+  text = text.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
 
-  return processed.replace(/\s*#+\s*$/, "").trim();
+  // Restore code spans by consuming from the queue in order
+  let queueIndex = 0;
+  text = text.replace(/\0/g, () => {
+    return queueIndex < codeQueue.length ? codeQueue[queueIndex++] : "\0";
+  });
+
+  return text.replace(/\s*#+\s*$/, "").trim();
 };
 
 /**
