@@ -362,14 +362,49 @@ describe("OAuth 2.1 authorization server", () => {
     expect(refreshToken.length).toBeGreaterThan(0);
 
     // The refresh_token grant must mint a fresh access token without
-    // re-running the authorization flow.
+    // re-running the authorization flow. `client_id` is required: the grant
+    // is bound to the client the session was issued to.
     const refreshed = await exchange(ctx.baseUrl, {
       grant_type: "refresh_token",
       refresh_token: refreshToken,
+      client_id: clientId,
     });
     expect(refreshed.status).toBe(200);
     expect(refreshed.json.token_type).toBe("Bearer");
     expect(String(refreshed.json.access_token).length).toBeGreaterThan(0);
+  });
+
+  it("refuses a refresh that does not identify its client", async ({
+    expect,
+  }) => {
+    const redirectUri = "https://claude.ai/cb";
+    const clientId = await registerClient(ctx.baseUrl, redirectUri);
+    const user = await createTestUser(ctx);
+    const apiKey = await createApiKey(ctx, user);
+    const { verifier, challenge } = pkce();
+
+    const code = await authorize(ctx.baseUrl, apiKey, {
+      clientId,
+      redirectUri,
+      challenge,
+    });
+    const token = await exchange(ctx.baseUrl, {
+      grant_type: "authorization_code",
+      code,
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      code_verifier: verifier,
+    });
+    const refreshToken = String(token.json.refresh_token);
+
+    // An anonymous refresh used to succeed AND mint an id_token whose `aud`
+    // was whatever client_id the caller named — cross-client impersonation.
+    const refreshed = await exchange(ctx.baseUrl, {
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    });
+    expect(refreshed.status).toBe(400);
+    expect(refreshed.json.error).toBe("invalid_client");
   });
 
   it("rejects a replayed authorization code", async ({ expect }) => {
