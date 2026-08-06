@@ -52,6 +52,13 @@ export interface FolioMenuItem {
    * macOS and Ctrl elsewhere.
    */
   binding?: string;
+  /**
+   * Alternative label key for toggle actions that switch between two states.
+   * Used by `folio.pin` (Pin / Unpin) and `folio.encrypt` (Encrypt / Remove
+   * protection) when the subject is in the appropriate state (`isPinned` /
+   * `isProtected`). If omitted, the single `labelKey` is always used.
+   */
+  alternateLabelKey?: string;
   danger?: boolean;
   /**
    * Stays usable while the folio is protected and still locked. Only
@@ -84,8 +91,6 @@ export const FOLIO_MENUS: FolioMenu[] = [
       {
         id: "folio.new",
         labelKey: "folios.editor.action.new",
-        shortcut: "⌘N",
-        binding: "mod+n",
         availableWhenLocked: true,
       },
       {
@@ -114,16 +119,20 @@ export const FOLIO_MENUS: FolioMenu[] = [
       {
         id: "folio.pin",
         labelKey: "folios.editor.action.pin",
+        alternateLabelKey: "folios.editor.action.unpin",
         availableWhenLocked: true,
       },
       sep,
       { id: "folio.export", labelKey: "folios.editor.action.export" },
-      { id: "folio.encrypt", labelKey: "folios.editor.action.encrypt" },
+      {
+        id: "folio.encrypt",
+        labelKey: "folios.editor.action.encrypt",
+        alternateLabelKey: "folios.editor.action.remove-protection",
+      },
       sep,
       {
         id: "folio.delete",
         labelKey: "folios.editor.action.delete",
-        shortcut: "⌫",
         danger: true,
         availableWhenLocked: true,
       },
@@ -248,15 +257,15 @@ export const FOLIO_MENUS: FolioMenu[] = [
       {
         id: "view.tree",
         labelKey: "folios.editor.action.toggle-tree",
-        shortcut: "⌘1",
-        binding: "mod+1",
+        shortcut: "⌘\\",
+        binding: "mod+\\",
         availableWhenLocked: true,
       },
       {
         id: "view.inspector",
         labelKey: "folios.editor.action.toggle-inspector",
-        shortcut: "⌘2",
-        binding: "mod+2",
+        shortcut: "⇧⌘\\",
+        binding: "mod+shift+\\",
         availableWhenLocked: true,
       },
       sep,
@@ -308,6 +317,9 @@ export const folioShortcutBindings = (): Map<string, FolioActionId> => {
  * a row (`id`) or on its revision history.
  */
 const NEEDS_SAVED_FOLIO = new Set<FolioActionId>([
+  "folio.delete",
+  "folio.move",
+  "folio.pin",
   "folio.duplicate",
   "folio.export",
   "folio.encrypt",
@@ -320,7 +332,9 @@ const NEEDS_SAVED_FOLIO = new Set<FolioActionId>([
 export interface FolioActionState {
   /**
    * The folio is protected and the passphrase has not been supplied in
-   * this session, so the body is ciphertext.
+   * this session, so the body is ciphertext. Separate from `isProtected`:
+   * a folio can be unlocked (`locked: false`) but still protected
+   * (`isProtected: true`).
    */
   locked: boolean;
   /**
@@ -328,6 +342,16 @@ export interface FolioActionState {
    */
   isNew: boolean;
   dirty: boolean;
+  /**
+   * The folio has end-to-end encryption enabled. Used to determine whether
+   * to show Encrypt (false) or Remove Protection (true) for `folio.encrypt`.
+   */
+  isProtected: boolean;
+  /**
+   * The folio is pinned to its project's context. Used to determine whether
+   * to show Pin (false) or Unpin (true) for `folio.pin`.
+   */
+  isPinned: boolean;
 }
 
 export const isFolioActionEnabled = (
@@ -335,6 +359,7 @@ export const isFolioActionEnabled = (
   state: FolioActionState,
 ): boolean => {
   if (state.isNew && NEEDS_SAVED_FOLIO.has(id)) return false;
+  if (id === "folio.encrypt" && state.isProtected) return false;
   if (!state.locked) return true;
   const item = folioMenuItems().find((i) => i.id === id);
   return item?.availableWhenLocked === true;
