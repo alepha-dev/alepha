@@ -48,6 +48,7 @@ const NAV_ROUTE_NAMES = [
   "projectSettingsZones",
   "projectSettingsKanban",
   "projectSettingsFolios",
+  "projectSettingsFeedback",
   "projectSettingsMilestones",
   "projectSettingsQuests",
   // Reports tab bar — ReportsLayout.tsx

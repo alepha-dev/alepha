@@ -650,6 +650,7 @@ export class AppRouter {
       this.projectSettingsZones,
       this.projectSettingsKanban,
       this.projectSettingsFolios,
+      this.projectSettingsFeedback,
       this.projectSettingsSigils,
       this.projectSettingsMilestones,
       this.projectSettingsQuests,
@@ -733,6 +734,16 @@ export class AppRouter {
     }),
     lazy: () =>
       import("./components/project/settings/ProjectSettingsFoliosPage.tsx"),
+  });
+
+  projectSettingsFeedback = $page({
+    name: "projectSettingsFeedback",
+    path: "/feedback",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Feedback`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsFeedbackPage.tsx"),
   });
 
   /**
