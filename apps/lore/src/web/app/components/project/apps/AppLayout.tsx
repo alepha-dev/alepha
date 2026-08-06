@@ -11,10 +11,6 @@ import {
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import type { InsightsController } from "@/api/controllers/InsightsController.ts";
-import {
-  defaultProjectFeatures,
-  type ProjectFeatures,
-} from "@/api/entities/projects.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
@@ -90,14 +86,13 @@ const AppLayout = () => {
     return null;
   }
 
-  const features: ProjectFeatures = {
-    ...defaultProjectFeatures,
-    ...project.features,
-  };
-
   const activeRoute = routerState.name ?? "";
   const params = { projectId: String(project.id), appName: sigil.name };
-  const tabs = TABS.filter((tab) => !tab.needsBeacon || features.beacon);
+  // The app's own capability, not the project's. Analytics, Performance and
+  // Errors all read what Beacon collects, and an app that does not carry it has
+  // nothing behind those three tabs.
+  const collectsBeacon = sigil.kinds.includes("beacon");
+  const tabs = TABS.filter((tab) => !tab.needsBeacon || collectsBeacon);
 
   const changeRange = async (next: Range) => {
     if (next === range) return;
@@ -161,7 +156,7 @@ const AppLayout = () => {
           })}
         </div>
 
-        {features.beacon && (
+        {collectsBeacon && (
           <div className="flex items-center gap-2 pb-1">
             {loading && (
               <Loader2 className="text-muted-foreground size-4 animate-spin" />

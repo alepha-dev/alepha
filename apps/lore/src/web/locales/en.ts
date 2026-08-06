@@ -623,11 +623,14 @@ export default {
   "app.tab.settings": "Settings",
   "app.dashboard.errors": "Errors still happening",
   "app.dashboard.beaconOff":
-    "Beacon is off for this project, so nothing is being collected from this app. Turn it on in Settings › Sigils.",
+    "Beacon is off for this app, so nothing is being collected. Turn it on under Settings.",
   "app.dashboard.credential": "Credential",
   "app.dashboard.token": "Token",
   "app.dashboard.reports": "Reports",
   "app.dashboard.enrolled": "Enrolled",
+  "app.settings.capabilities.title": "Capabilities",
+  "app.settings.capabilities.description":
+    "What this app may report. Turning one off stops the ingest endpoint accepting it — for this app only, not for the others.",
   "app.settings.rotate.title": "Rotate the token",
   "app.settings.rotate.description":
     "Mints a new token and stops the current one immediately. Everything this app has reported is kept — this is how a leaked token is revoked without losing its history.",
@@ -710,19 +713,19 @@ export default {
   "blights.status.quest": "Quest #$1",
   "blights.feature.title": "Blights",
   "blights.feature.description":
-    "Collect and triage uncaught exceptions reported by sigils with the Blights capability.",
+    "Collect and triage uncaught exceptions this app reports.",
 
   "feedback.feature.title": "Feedback",
   "feedback.feature.description":
-    "Hand enrolled apps a link back to this project's feedback form.",
+    "Let this app link back to the project's feedback form.",
 
   "beacon.feature.title": "Beacon",
   "beacon.feature.description":
-    "Collect cookieless page views and unique visitors from enrolled apps.",
+    "Collect cookieless page views and unique visitors from this app.",
 
   "vitals.feature.title": "Vitals",
   "vitals.feature.description":
-    "Collect Core Web Vitals (LCP, CLS, INP, FCP, TTFB) from enrolled apps.",
+    "Collect Core Web Vitals (LCP, CLS, INP, FCP, TTFB) from this app.",
 
   "sigils.title": "Enrolled apps",
   "sigils.subtitle":

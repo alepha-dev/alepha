@@ -628,11 +628,14 @@ export default {
   "app.tab.settings": "Paramètres",
   "app.dashboard.errors": "Erreurs toujours d'actualité",
   "app.dashboard.beaconOff":
-    "Beacon est désactivé sur ce projet : rien n'est collecté depuis cette application. Activez-le dans Paramètres › Sigils.",
+    "Beacon est désactivé pour cette application : rien n'est collecté. Activez-le dans les Paramètres.",
   "app.dashboard.credential": "Accès",
   "app.dashboard.token": "Jeton",
   "app.dashboard.reports": "Remontées",
   "app.dashboard.enrolled": "Enrôlée le",
+  "app.settings.capabilities.title": "Capacités",
+  "app.settings.capabilities.description":
+    "Ce que cette application peut remonter. Désactiver une capacité empêche le point d'ingestion de l'accepter — pour cette application seulement, pas pour les autres.",
   "app.settings.rotate.title": "Renouveler le jeton",
   "app.settings.rotate.description":
     "Génère un nouveau jeton et invalide l'actuel immédiatement. Tout ce que cette application a remonté est conservé — c'est ainsi qu'on révoque un jeton fuité sans perdre son historique.",
@@ -717,19 +720,19 @@ export default {
   "blights.status.quest": "Quête #$1",
   "blights.feature.title": "Fléaux",
   "blights.feature.description":
-    "Collectez et triez les exceptions non interceptées remontées par les sigils dotés de la capacité Fléaux.",
+    "Collecte et trie les exceptions non interceptées remontées par cette application.",
 
   "feedback.feature.title": "Retours",
   "feedback.feature.description":
-    "Donne aux applications enrôlées un lien vers le formulaire de retour de ce projet.",
+    "Donne à cette application un lien vers le formulaire de retour du projet.",
 
   "beacon.feature.title": "Balise",
   "beacon.feature.description":
-    "Collecte les pages vues et les visiteurs uniques, sans cookie, depuis les applications enrôlées.",
+    "Collecte les pages vues et les visiteurs uniques, sans cookie, depuis cette application.",
 
   "vitals.feature.title": "Vitals",
   "vitals.feature.description":
-    "Collecte les Core Web Vitals (LCP, CLS, INP, FCP, TTFB) depuis les applications enrôlées.",
+    "Collecte les Core Web Vitals (LCP, CLS, INP, FCP, TTFB) depuis cette application.",
 
   "sigils.title": "Applications enrôlées",
   "sigils.subtitle":
