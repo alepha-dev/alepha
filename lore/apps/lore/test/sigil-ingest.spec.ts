@@ -302,6 +302,7 @@ describe("sigil ingest", () => {
       views: [{ path: "/home" }],
       vitals: [{ path: "/home", metric: "lcp", value: 900 }],
       errors: [anError()],
+      visitor: "v1",
     });
     expect(res.status).toBe(204);
 
@@ -315,6 +316,11 @@ describe("sigil ingest", () => {
       await probe.blights.findMany({
         where: { projectId: { eq: project.id } },
       }),
+    ).toHaveLength(0);
+    // The daily visitor hash is a view-side write too, and it is the one
+    // that is personal data: it must not survive the master switch either.
+    expect(
+      await probe.uniques.findMany({ where: { sigilId: { eq: sigil.id } } }),
     ).toHaveLength(0);
   });
 
