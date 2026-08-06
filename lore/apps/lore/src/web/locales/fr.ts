@@ -231,6 +231,23 @@ export default {
   "folios.editor.locked.warning":
     "L'envoi d'images et la recherche plein texte restent désactivés tant qu'un folio est protégé.",
 
+  "folios.editor.tree.title": "Folios",
+  "folios.editor.tree.new-folio": "Nouveau folio",
+  "folios.editor.tree.new-directory": "Nouveau dossier",
+  "folios.editor.tree.search": "Rechercher des folios",
+  "folios.editor.tree.search-placeholder": "Rechercher dans ce projet…",
+  "folios.editor.tree.search-empty": "Aucun résultat.",
+  "folios.editor.tree.empty": "Aucun folio pour l'instant.",
+  "folios.editor.tree.untitled-folio": "Nouveau folio",
+  "folios.editor.tree.untitled-directory": "Nouveau dossier",
+  "folios.editor.tree.open": "Ouvrir",
+  "folios.editor.tree.open-new-tab": "Ouvrir dans un nouvel onglet",
+  "folios.editor.tree.rename": "Renommer",
+  "folios.editor.tree.copy-wiki-link": "Copier le lien wiki",
+  "folios.editor.tree.confirm-delete-directory-title": "Supprimer ce dossier ?",
+  "folios.editor.tree.confirm-delete-directory-body":
+    "Tout ce qu'il contient — folios compris — est également supprimé. Cette action est irréversible.",
+
   "project.menu.create-quest": "Créer quête",
   "project.menu.create-folio": "Nouveau folio",
   "project.menu.invite-member": "Inviter un membre",
