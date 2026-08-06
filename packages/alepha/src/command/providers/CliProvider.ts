@@ -177,6 +177,15 @@ export class CliProvider {
           return this.reportUsage(error.message, command);
         }
         throw error;
+      } finally {
+        // The command is over, so no question can follow: release stdin.
+        //
+        // A CLI has no `stop` — commands run on `ready` and the process is
+        // expected to exit once the event loop drains. An interactive command
+        // left an open readline interface behind, which keeps a ref'd handle
+        // on stdin, so the loop never drained: `alepha platform down` did all
+        // its work, printed its summary, and then sat there forever.
+        this.asker.close();
       }
     },
   });
