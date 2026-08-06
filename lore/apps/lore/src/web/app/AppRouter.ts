@@ -389,16 +389,21 @@ export class AppRouter {
   /**
    * One enrolled app — the tab shell, and the loader every tab under it reads.
    *
-   * ⚠️ The path segment is `:sigilId`, not `:id`, and that is load-bearing.
-   * `/p/:projectId` is already a param node at an outer position, and the
-   * router keeps one key per position: two routes naming different segments
-   * `id` collapse onto one, the outer one wins, and the inner param arrives
-   * missing. The API path (`/projects/:projectId/sigils/:sigilId`) names it the
-   * same way for the same reason.
+   * The segment is the app's **name**, not its id: `/p/2/apps/lore-staging`.
+   * Names are unique on `(projectId, name)` and constrained to
+   * `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$` on the way in (see `appNameSchema`), so
+   * they survive a path unescaped. The HTTP API still addresses a sigil by
+   * UUID — rotate, delete and `?sigilId=` are unchanged; only this page moved.
+   *
+   * ⚠️ The path segment is `:appName`, not `:id` or `:name`, and that is
+   * load-bearing. `/p/:projectId` is already a param node at an outer position,
+   * and the router keeps one key per position: two routes naming different
+   * segments the same thing collapse onto one, the outer one wins, and the
+   * inner param arrives missing.
    */
   projectApp = $page({
     name: "projectApp",
-    path: "/apps/:sigilId",
+    path: "/apps/:appName",
     children: () => [
       this.app,
       this.appAnalytics,
@@ -408,7 +413,7 @@ export class AppRouter {
     ],
     schema: {
       params: z.object({
-        sigilId: z.uuid(),
+        appName: z.string(),
       }),
     },
     head: (props, previous) => {
@@ -435,7 +440,7 @@ export class AppRouter {
       const { items } = await this.sigilApi.listSigils({
         params: { projectId: project.id },
       });
-      const sigil = items.find((it) => it.id === params.sigilId);
+      const sigil = items.find((it) => it.name === params.appName);
       if (!sigil) {
         throw new NotFoundError("App not found");
       }

@@ -96,7 +96,7 @@ const AppLayout = () => {
   };
 
   const activeRoute = routerState.name ?? "";
-  const params = { projectId: String(project.id), sigilId: sigil.id };
+  const params = { projectId: String(project.id), appName: sigil.name };
   const tabs = TABS.filter((tab) => !tab.needsBeacon || features.beacon);
 
   const changeRange = async (next: Range) => {

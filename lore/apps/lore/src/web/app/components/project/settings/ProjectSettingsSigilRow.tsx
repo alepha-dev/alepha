@@ -37,7 +37,7 @@ const ProjectSettingsSigilRow = (props: ProjectSettingsSigilRowProps) => {
         href={router.path("app", {
           params: {
             projectId: String(sigil.projectId),
-            sigilId: sigil.id,
+            appName: sigil.name,
           },
         })}
         className="hover:bg-muted/60 flex flex-wrap items-center gap-3 px-4 py-3 transition-colors"

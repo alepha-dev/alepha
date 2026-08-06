@@ -190,8 +190,8 @@ const ProjectView = () => {
   // would read the same at a glance, and the number that matters is per-tab.
   const opsItems: NavGroup["items"] = [];
   if (features.sigils) {
-    const activeSigilId = ROUTES_APP.has(name)
-      ? String(routerState.params.sigilId ?? "")
+    const activeAppName = ROUTES_APP.has(name)
+      ? String(routerState.params.appName ?? "")
       : "";
     // Three states, and they are not the same thing. `undefined` means the
     // loader's `listSigils` failed and was swallowed to keep the page alive —
@@ -228,9 +228,9 @@ const ProjectView = () => {
           : apps.map((it) => ({
               label: it.name,
               href: router.path("app", {
-                params: { projectId, sigilId: it.id },
+                params: { projectId, appName: it.name },
               }),
-              active: activeSigilId === it.id,
+              active: activeAppName === it.name,
             })),
     });
   }
@@ -279,7 +279,7 @@ const ProjectView = () => {
     breadcrumbs.push({
       label: sigil.name,
       href: router.path("app", {
-        params: { projectId, sigilId: sigil.id },
+        params: { projectId, appName: sigil.name },
       }),
     });
   }
