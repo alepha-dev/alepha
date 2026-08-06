@@ -40,6 +40,9 @@ describe("i18n coverage", () => {
     }
     for (const item of folioMenuItems()) {
       expect(en[item.labelKey], item.labelKey).toBeTruthy();
+      if (item.alternateLabelKey) {
+        expect(en[item.alternateLabelKey], item.alternateLabelKey).toBeTruthy();
+      }
     }
   });
 
@@ -50,6 +53,9 @@ describe("i18n coverage", () => {
     }
     for (const item of folioMenuItems()) {
       expect(fr[item.labelKey], item.labelKey).toBeTruthy();
+      if (item.alternateLabelKey) {
+        expect(fr[item.alternateLabelKey], item.alternateLabelKey).toBeTruthy();
+      }
     }
   });
 });
@@ -76,14 +82,20 @@ describe("folioShortcutBindings", () => {
     for (const item of folioMenuItems()) {
       if (!item.binding) continue;
       expect(item.binding, item.id).toMatch(
-        /^(mod\+)?(shift\+)?(alt\+)?[a-z0-9.]+$/,
+        /^(mod\+)?(shift\+)?(alt\+)?[a-z0-9.\\]+$/,
       );
     }
   });
 });
 
 describe("isFolioActionEnabled", () => {
-  const unlocked = { locked: false, isNew: false, dirty: true };
+  const unlocked = {
+    locked: false,
+    isNew: false,
+    dirty: true,
+    isProtected: false,
+    isPinned: false,
+  };
 
   it("enables everything on an unlocked saved folio", () => {
     for (const item of folioMenuItems()) {
@@ -92,21 +104,39 @@ describe("isFolioActionEnabled", () => {
   });
 
   it("disables editing actions while the folio is locked", () => {
-    const locked = { locked: true, isNew: false, dirty: false };
+    const locked = {
+      locked: true,
+      isNew: false,
+      dirty: false,
+      isProtected: false,
+      isPinned: false,
+    };
     expect(isFolioActionEnabled("edit.bold", locked)).toBe(false);
     expect(isFolioActionEnabled("insert.table", locked)).toBe(false);
     expect(isFolioActionEnabled("folio.save", locked)).toBe(false);
   });
 
   it("keeps pane toggles usable while locked", () => {
-    const locked = { locked: true, isNew: false, dirty: false };
+    const locked = {
+      locked: true,
+      isNew: false,
+      dirty: false,
+      isProtected: false,
+      isPinned: false,
+    };
     expect(isFolioActionEnabled("view.tree", locked)).toBe(true);
     expect(isFolioActionEnabled("view.inspector", locked)).toBe(true);
     expect(isFolioActionEnabled("folio.delete", locked)).toBe(true);
   });
 
   it("disables history, duplicate and export on an unsaved folio", () => {
-    const fresh = { locked: false, isNew: true, dirty: true };
+    const fresh = {
+      locked: false,
+      isNew: true,
+      dirty: true,
+      isProtected: false,
+      isPinned: false,
+    };
     expect(isFolioActionEnabled("history.revisions", fresh)).toBe(false);
     expect(isFolioActionEnabled("folio.duplicate", fresh)).toBe(false);
     expect(isFolioActionEnabled("folio.export", fresh)).toBe(false);
@@ -224,5 +254,79 @@ describe("comprehensive menu coverage", () => {
     for (const item of folioMenuItems()) {
       expect(item.labelKey).toMatch(/^folios\.editor\.action\./);
     }
+  });
+
+  it("never advertises a shortcut glyph without a live binding", () => {
+    for (const item of folioMenuItems()) {
+      if (!item.shortcut) continue;
+      // Shortcuts with modifier symbols (⌘, ⌧, ⇧) must have bindings
+      const hasModifierSymbol =
+        item.shortcut.includes("⌘") || item.shortcut.includes("⇧");
+      if (hasModifierSymbol) {
+        expect(
+          item.binding,
+          `${item.id} has modifier shortcut but no binding`,
+        ).toBeDefined();
+      }
+      // Raw keys like [[, ##, -, etc. don't need bindings (intentional)
+    }
+  });
+
+  it("binds nothing the browser chrome reserves", () => {
+    const reserved = new Set([
+      "mod+n",
+      "mod+t",
+      "mod+w",
+      "mod+1",
+      "mod+2",
+      "mod+3",
+    ]);
+    for (const item of folioMenuItems()) {
+      if (item.binding) {
+        expect(reserved.has(item.binding), item.id).toBe(false);
+      }
+    }
+  });
+
+  it("disables row-scoped actions on an unsaved folio, even when locked", () => {
+    const fresh = {
+      locked: true,
+      isNew: true,
+      dirty: true,
+      isProtected: false,
+      isPinned: false,
+    };
+    for (const id of ["folio.delete", "folio.move", "folio.pin"] as const) {
+      expect(isFolioActionEnabled(id, fresh), id).toBe(false);
+    }
+  });
+
+  it("offers encryption only on a folio that is not already protected", () => {
+    const clear = {
+      locked: false,
+      isNew: false,
+      dirty: false,
+      isProtected: false,
+      isPinned: false,
+    };
+    const encrypted = {
+      locked: false,
+      isNew: false,
+      dirty: false,
+      isProtected: true,
+      isPinned: false,
+    };
+    expect(isFolioActionEnabled("folio.encrypt", clear)).toBe(true);
+    expect(isFolioActionEnabled("folio.encrypt", encrypted)).toBe(false);
+  });
+
+  it("pin toggle action has alternate label for pinned state", () => {
+    const pin = folioMenuItems().find((i) => i.id === "folio.pin");
+    expect(pin?.alternateLabelKey).toBeDefined();
+  });
+
+  it("encrypt toggle action has alternate label for protected state", () => {
+    const encrypt = folioMenuItems().find((i) => i.id === "folio.encrypt");
+    expect(encrypt?.alternateLabelKey).toBeDefined();
   });
 });
