@@ -43,9 +43,6 @@ export default {
   "folios.content-placeholder": "Commencez à écrire en markdown…",
   "folios.confirm-delete-title": "Supprimer ce folio ?",
   "folios.confirm-delete-message": "Cette action est irréversible.",
-  "folios.backlinks.title": "Connexions",
-  "folios.backlinks.inbound": "Référencé depuis",
-  "folios.backlinks.outbound": "Référence vers",
   "folios.protected.encrypt": "Chiffrer",
   "folios.protected.encrypt-title": "Chiffrer ce folio",
   "folios.protected.encrypt-description":
@@ -132,12 +129,9 @@ export default {
   "folio.move.cancel": "Annuler",
   "folio.move.empty": "(aucun autre dossier)",
   loading: "Chargement…",
-  "folios.history.title": "Historique",
-  "folios.history.revert": "Restaurer",
   "folios.history.revert-confirm-title": "Restaurer ce folio ?",
   "folios.history.revert-confirm-body":
     "Cela crée une nouvelle révision avec l'ancien contenu. La version actuelle reste dans l'historique — vous pourrez annuler la restauration.",
-  "folios.history.pin": "Épingler cette révision",
   "folios.history.unpin": "Désépingler cette révision",
   "folios.history.actions": "Actions de la révision",
   "folios.history.pinned-badge": "Épinglée",
@@ -247,6 +241,25 @@ export default {
   "folios.editor.tree.confirm-delete-directory-title": "Supprimer ce dossier ?",
   "folios.editor.tree.confirm-delete-directory-body":
     "Tout ce qu'il contient — folios compris — est également supprimé. Cette action est irréversible.",
+
+  "folios.editor.inspector.outline": "Plan",
+  "folios.editor.inspector.history": "Historique",
+  "folios.editor.inspector.links": "Liens",
+  "folios.editor.inspector.outline-empty":
+    "Les titres apparaissent ici à mesure que vous écrivez.",
+  "folios.editor.inspector.history-footer":
+    "10 dernières révisions. Celles conservées survivent au nettoyage.",
+  "folios.editor.inspector.history-empty": "Aucune révision pour l'instant.",
+  "folios.editor.inspector.revert": "Revenir à cette version",
+  "folios.editor.inspector.keep": "Conserver",
+  "folios.editor.inspector.backlinks": "Liens entrants",
+  "folios.editor.inspector.outgoing": "Liens sortants",
+  "folios.editor.inspector.no-links": "Aucun lien pour l'instant.",
+  "folios.editor.pinned.title": "Contexte épinglé",
+  "folios.editor.pinned.self": "Ce folio $1",
+  "folios.editor.pinned.others": "$1 autres épinglés",
+  "folios.editor.pinned.note":
+    "Les folios épinglés sont envoyés en entier à chaque appel project_context.",
 
   "project.menu.create-quest": "Créer quête",
   "project.menu.create-folio": "Nouveau folio",

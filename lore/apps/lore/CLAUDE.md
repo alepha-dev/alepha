@@ -254,7 +254,7 @@ The MCP tool descriptions in `src/mcp/tools/ProjectTools.ts` and `src/mcp/tools/
 - Directory / blob controllers: `src/api/controllers/DirectoryController.ts`, `src/api/controllers/BlobController.ts`
 - History: `src/api/services/FolioHistoryService.ts` (append, retention sweep, protection-domain purge)
 - MCP tools: `src/mcp/tools/FolioTools.ts` (folio, directory and blob tools) + `ProjectTools.ts` (`project_context`)
-- UI: `src/web/app/components/folios/editor/FolioWorkspace.tsx` (the workspace shell — three panes: folio tree, document, inspector, filled in across several tasks), `FolioBacklinksPanel.tsx`, `FolioBrowser.tsx`, `FolioProtectedView.tsx`
+- UI: `src/web/app/components/folios/editor/FolioWorkspace.tsx` (the workspace shell — three panes: folio tree (`editor/tree/`), document (`editor/document/`), inspector (`editor/inspector/` — Outline / History / Links tabs, the History and Links tabs absorbed the old `FolioHistoryPanel.tsx` / `FolioBacklinksPanel.tsx`, both deleted)), `FolioBrowser.tsx`, `FolioProtectedView.tsx` (orphaned since the workspace's own locked-folio gate replaced it — see Task 8's report)
 
 **Bucket literals kept un-renamed** — `FOLIO_BLOB_BUCKET = "archive-blobs"` (`FolioBlobService.ts`, `LoreFileAccessProvider.ts`, `BlobController.ts`, `FolioBrowser.tsx`, `useFolioImageUpload.ts`). Same reasoning as the `petition-attachments` bucket in the Feedback section: it's a value already persisted on every existing `files` row, and renaming it would orphan every folio image/blob ever uploaded.
 

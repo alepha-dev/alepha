@@ -33,8 +33,10 @@ export interface FolioDocumentProps {
   actions: UseFolioActionsResult;
   /**
    * Revision count for the meta bar's "$3 revisions" — sourced from the
-   * inspector's history query (Task 10). Undefined until that task wires
-   * it; the meta bar already handles that (`revisionCount ?? 0`).
+   * inspector's History tab (`FolioInspector`'s `onRevisionCount`), via
+   * `FolioWorkspaceContent`. `undefined` until that tab's own
+   * `listHistory` fetch resolves (or in create mode, where there is no
+   * history yet); the meta bar already handles that (`revisionCount ?? 0`).
    */
   revisionCount?: number;
   imageUploadHandler?: (file: File) => Promise<string>;

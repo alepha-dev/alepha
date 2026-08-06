@@ -45,9 +45,6 @@ export default {
   "folios.content-placeholder": "Start writing markdown…",
   "folios.confirm-delete-title": "Delete this folio?",
   "folios.confirm-delete-message": "This cannot be undone.",
-  "folios.backlinks.title": "Connections",
-  "folios.backlinks.inbound": "Linked from",
-  "folios.backlinks.outbound": "Links to",
   "folios.protected.encrypt": "Encrypt",
   "folios.protected.encrypt-title": "Encrypt this folio",
   "folios.protected.encrypt-description":
@@ -131,12 +128,9 @@ export default {
   "folio.move.cancel": "Cancel",
   "folio.move.empty": "(no other directories)",
   loading: "Loading…",
-  "folios.history.title": "History",
-  "folios.history.revert": "Revert",
   "folios.history.revert-confirm-title": "Revert this folio?",
   "folios.history.revert-confirm-body":
     "This creates a new revision with the prior content. The current version stays in history so you can undo the revert.",
-  "folios.history.pin": "Pin this revision",
   "folios.history.unpin": "Unpin this revision",
   "folios.history.actions": "Revision actions",
   "folios.history.pinned-badge": "Pinned",
@@ -246,6 +240,25 @@ export default {
   "folios.editor.tree.confirm-delete-directory-title": "Delete this directory?",
   "folios.editor.tree.confirm-delete-directory-body":
     "Everything inside it — folios included — is deleted too. This cannot be undone.",
+
+  "folios.editor.inspector.outline": "Outline",
+  "folios.editor.inspector.history": "History",
+  "folios.editor.inspector.links": "Links",
+  "folios.editor.inspector.outline-empty":
+    "Headings appear here as you write them.",
+  "folios.editor.inspector.history-footer":
+    "Last 10 revisions. Kept ones survive the trim.",
+  "folios.editor.inspector.history-empty": "No revisions yet.",
+  "folios.editor.inspector.revert": "Revert to this",
+  "folios.editor.inspector.keep": "Keep",
+  "folios.editor.inspector.backlinks": "Backlinks",
+  "folios.editor.inspector.outgoing": "Outgoing",
+  "folios.editor.inspector.no-links": "Nothing links here yet.",
+  "folios.editor.pinned.title": "Pinned context",
+  "folios.editor.pinned.self": "This folio $1",
+  "folios.editor.pinned.others": "$1 other pinned",
+  "folios.editor.pinned.note":
+    "Pinned folios are sent whole with every project_context call.",
 
   "board.filter.search": "Search",
   "board.filter.status": "Status",
