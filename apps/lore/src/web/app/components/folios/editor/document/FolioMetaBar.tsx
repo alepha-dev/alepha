@@ -11,6 +11,14 @@ export interface FolioMetaBarProps {
   wordCount: number;
   revisionCount?: number;
   disabled?: boolean;
+  /**
+   * Disables ONLY the directory chip — separate from `disabled` because
+   * create mode (no folio row exists yet, so there's nothing for
+   * `folio.move` to act on) still has fully functional tags and title
+   * editing. `disabled` alone is the "protected and locked" case; the two
+   * are independent booleans, not one subsuming the other.
+   */
+  moveDisabled?: boolean;
   onOpenMove: () => void;
   onAddTag: () => void;
   onRemoveTag: (tag: string) => void;
@@ -28,8 +36,8 @@ const FolioMetaBar = (props: FolioMetaBarProps): ReactElement => {
       <button
         type="button"
         onClick={props.onOpenMove}
-        disabled={props.disabled}
-        className="border-border text-muted-foreground hover:text-foreground flex h-6.5 items-center gap-1.5 rounded-md border px-2 text-xs"
+        disabled={props.disabled || props.moveDisabled}
+        className="border-border text-muted-foreground hover:text-foreground flex h-6.5 items-center gap-1.5 rounded-md border px-2 text-xs disabled:pointer-events-none disabled:opacity-50"
       >
         <Folder className="size-3" />
         {props.directoryName}
@@ -42,7 +50,8 @@ const FolioMetaBar = (props: FolioMetaBarProps): ReactElement => {
             type="button"
             aria-label={String(tr("folios.editor.tag.remove"))}
             onClick={() => props.onRemoveTag(tag)}
-            className="opacity-0 transition-opacity group-hover:opacity-100"
+            disabled={props.disabled}
+            className="opacity-0 transition-opacity group-hover:opacity-100 disabled:pointer-events-none"
           >
             <X className="size-3" />
           </button>

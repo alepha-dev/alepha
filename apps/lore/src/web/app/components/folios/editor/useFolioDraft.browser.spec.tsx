@@ -5,7 +5,11 @@ import { AlephaContext } from "alepha/react";
 import { act } from "react";
 import { describe, it } from "vitest";
 import type { Folio } from "@/api/entities/folios.ts";
-import { type FolioDraftValues, useFolioDraft } from "./useFolioDraft.ts";
+import {
+  type FolioDraft,
+  type FolioDraftValues,
+  useFolioDraft,
+} from "./useFolioDraft.ts";
 
 /**
  * Regression guard for a race the reviewer found in the workspace's Save
@@ -151,6 +155,83 @@ describe("useFolioDraft — markSaved during an in-flight edit", () => {
 
     await waitFor(() =>
       expect(getByTestId("status").textContent).toBe("saved"),
+    );
+  });
+});
+
+/**
+ * Regression guard for a reviewer-found bug in `useFolioActions`'s create-
+ * mode catch-up (Task 8): `save()` re-read `input.draft.values` a second
+ * time after `await folioApi.create(...)` to see whether the user kept
+ * typing during the round-trip, expecting that to be a live read. It
+ * wasn't — `input` (and therefore `input.draft`) is fixed for the whole
+ * lifetime of the `save()` closure, and `useFolioDraft` rebuilds `values`
+ * as a brand new plain object every render, so re-reading `values` off the
+ * SAME captured `draft` object always returns the exact snapshot from
+ * whenever that closure was created, never anything typed afterward. The
+ * "catch-up" comparison silently reduced to comparing a value against
+ * itself, so an edit made during the round-trip was discarded by the
+ * post-create remount while the status line still read "Saved".
+ *
+ * The fix, `getLiveValues()`, reads through `form.currentValues` instead —
+ * `form` is the ONE object in `FolioDraft` that stays the same instance
+ * across every render (memoized in `useForm`), and `.set()` mutates its
+ * internal store synchronously and independently of React's render cycle.
+ * This test proves that property directly: it captures `draft` exactly
+ * once (simulating a `save()` closure created on the first render), types
+ * AFTER that capture, and shows `getLiveValues()` — called through the
+ * stale-captured object — still sees the edit, while `.values` does not.
+ */
+describe("useFolioDraft — getLiveValues reads through a closure-frozen `draft`", () => {
+  const mount = (alepha: Alepha, ui: React.ReactNode) =>
+    render(
+      <AlephaContext.Provider value={alepha}>{ui}</AlephaContext.Provider>,
+    );
+
+  it("sees an edit typed after the draft object was captured; `.values` does not", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    // Captured exactly once, on the FIRST render — exactly what happens
+    // when `useFolioActions`'s `save` closure is created on one render and
+    // then invoked later (by a click) without itself re-rendering.
+    let capturedDraft: FolioDraft | undefined;
+
+    const Widget = () => {
+      const draft = useFolioDraft(baseFolio());
+      if (!capturedDraft) capturedDraft = draft;
+      return (
+        <input
+          data-testid="title"
+          value={draft.values.title}
+          onChange={(e) => draft.form.input.title.set(e.target.value)}
+        />
+      );
+    };
+
+    const { getByTestId } = mount(alepha, <Widget />);
+    expect(capturedDraft?.values.title).toBe("Original title");
+
+    fireEvent.change(getByTestId("title"), {
+      target: { value: "typed after closure capture" },
+    });
+    await waitFor(() =>
+      expect((getByTestId("title") as HTMLInputElement).value).toBe(
+        "typed after closure capture",
+      ),
+    );
+
+    // The frozen snapshot property never saw the edit — this IS the bug:
+    // `save()` re-reading `input.draft.values` a second time returned this
+    // same stale value, so its "did anything change" comparison always
+    // came back "no".
+    expect(capturedDraft?.values.title).toBe("Original title");
+
+    // `getLiveValues()`, called through that SAME stale-captured object,
+    // sees the edit — it reads through the stable `form` instance, not the
+    // per-render `values` snapshot.
+    expect(capturedDraft?.getLiveValues().title).toBe(
+      "typed after closure capture",
     );
   });
 });
