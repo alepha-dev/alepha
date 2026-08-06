@@ -20,6 +20,7 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
 import { S3mini } from "s3mini";
 import { platformOptions } from "../atoms/platformOptions.ts";
 import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";
+import { EXCLUDED_SECRET_KEYS as SHARED_EXCLUDED_SECRET_KEYS } from "../secretKeys.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { tenantDomain } from "../services/NamingService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
@@ -428,29 +429,13 @@ export class CloudflareAdapter extends PlatformAdapter {
   /**
    * Vars that are handled by wrangler bindings or build config.
    * These should not be pushed as secrets.
+   *
+   * The list itself moved to `../secretKeys.ts` when {@link BayAdapter} needed
+   * the same answer; this alias stays because it is what every existing caller
+   * names (`platform.ts`'s plan output among them). Same Set, so nothing about
+   * this adapter's behaviour changed.
    */
-  static readonly EXCLUDED_SECRET_KEYS = new Set([
-    "DATABASE_URL",
-    "R2_BUCKET_NAME",
-    "CLOUDFLARE_DOMAIN",
-    "CLOUDFLARE_ZONE",
-    "CLOUDFLARE_JURISDICTION",
-    "HYPERDRIVE_ID",
-    "POSTGRES_SCHEMA",
-    "NODE_ENV",
-    // Framework infra knobs (have defaults, never worker secrets). The
-    // manifest's `env` auto-list surfaces every declared `$env` key, so
-    // exclude these here to keep them out of the secret push even when a CI
-    // runner happens to set them (LOG_LEVEL, DEBUG, etc.).
-    "LOG_LEVEL",
-    "LOG_FORMAT",
-    "SERVER_HOST",
-    "SERVER_PORT",
-    "TRUST_PROXY",
-    "REACT_SSR_ENABLED",
-    "DATABASE_SYNC",
-    "DEBUG",
-  ]);
+  static readonly EXCLUDED_SECRET_KEYS = SHARED_EXCLUDED_SECRET_KEYS;
 
   /**
    * Read the build manifest's `env` list (every key the app declares via

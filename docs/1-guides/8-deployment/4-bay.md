@@ -144,6 +144,44 @@ Bay takes it from there: it reads the manifest, creates the database, the storag
 cron entries the app declares, starts the new release, waits for `/health` to answer, swaps traffic
 over, and keeps the previous release around to roll back to if readiness never arrives.
 
+## Secrets
+
+`alepha platform up` pushes them, from `.env.<env>` in the project — parsed from that **file**, never
+read out of the shell's environment. The machine running a deploy has other people's credentials in
+its environment (`GITHUB_TOKEN`, another project's Cloudflare key); none of them are this app's, and
+none of them are sent.
+
+They travel on stdin, not on the command line:
+
+```bash
+ssh -o BatchMode=yes deploy@bay.example.com \
+  'bay env set myapp/production -' < the-filtered-assignments
+```
+
+An argument would sit in the host's process table for any user running `ps`, and in the local shell's
+history. Bay merges what arrives into the instance's `.env` — which lives outside the release
+directory and survives deploys and rollbacks — and **restarts the app when a value actually
+changed**, because an environment variable the running process never sees has not been set. An
+identical push changes nothing and restarts nothing, so redeploying does not cost an outage window.
+
+Two classes of key are dropped before anything is sent, each with a line in the deploy log saying so:
+
+- **Keys Bay writes itself** — `APP_SECRET`, `DATABASE_URL`, `SERVER_PORT`, `APP_NAME`, `DATA_DIR`,
+  `STORAGE_PATH` and the `S3_*` family. Bay generates `APP_SECRET` once per instance and never
+  regenerates it: a new value signs every user out, and the one it replaced is gone. Bay refuses
+  these on its own side too, naming the key.
+- **Framework infra knobs** — `LOG_LEVEL`, `DEBUG`, `NODE_ENV` and friends, which have defaults and
+  are the platform's business rather than the app's.
+
+`alepha platform status` reports the names that are actually set on the host, asked of it with
+`bay env list` — names only; Bay never answers with a value.
+
+If there is nothing to push, the deploy says so rather than finishing quietly.
+
+> This needs a `bay` on the host that has the `env` command. An older one prints its usage banner,
+> and the CLI turns that into `its bay has no env command … Upgrade bay on the host`. See
+> `apps/bay/INSTALL.md` §7.
+
 ## Resources
 
 You do not provision anything from the CLI. Cloudflare needs `provision` because D1, R2 and KV are

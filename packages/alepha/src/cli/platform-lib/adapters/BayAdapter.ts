@@ -1,13 +1,15 @@
 import { join } from "node:path";
 import { $inject, $store, AlephaError } from "alepha";
 import { buildOptions, PackageManagerUtils } from "alepha/cli";
-import type { RunnerMethod } from "alepha/command";
+import { EnvUtils, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
+import { EXCLUDED_SECRET_KEYS } from "../secretKeys.ts";
 import {
   PlatformAdapter,
   type PlatformContext,
   type PlatformState,
+  type SecretState,
 } from "./PlatformAdapter.ts";
 
 /**
@@ -33,6 +35,7 @@ export class BayAdapter extends PlatformAdapter {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
   protected readonly pm = $inject(PackageManagerUtils);
+  protected readonly envUtils = $inject(EnvUtils);
   // The workspace's resolved build configuration, read for one question only:
   // whether this app is a static site. See `build`.
   protected readonly buildOptions = $store(buildOptions);
@@ -257,6 +260,12 @@ export class BayAdapter extends PlatformAdapter {
    *   the socket file was found (its directory is world-readable) but this
    *   user was refused. The expensive one, because the key works and the
    *   shell opens before it surfaces.
+   * - A `bay` that answers with its usage banner does not know the subcommand
+   *   it was given, which on a host that has not been upgraded is what a
+   *   secrets push gets. Ordered first because it is the one branch keyed on
+   *   text nothing else produces; checked against the real banner, it matches
+   *   none of the patterns below, so unlike its neighbours it is not sitting
+   *   there to win a race.
    * - `bay` treating `-` as a literal filename means it predates stdin
    *   support and needs upgrading — not that it is missing from PATH.
    * - A dial that fails with "no such file or directory" (rather than
@@ -271,6 +280,18 @@ export class BayAdapter extends PlatformAdapter {
         error,
     ).trim();
 
+    if (/Alepha application server/i.test(detail)) {
+      // `bay` prints its whole usage banner and exits 2 for a subcommand it
+      // does not know, so this is what a host that predates `bay env` says to
+      // a secrets push. Without this branch it falls through to the generic
+      // "ssh to HOST failed" — which hands the reader a page of usage text and
+      // no statement of what is wrong or what to do about it.
+      return new AlephaError(
+        `Signed in to ${host}, but its \`bay\` has no \`env\` command, so there is nowhere to put ` +
+          "this app's secrets — it answered with its usage banner instead. Upgrade `bay` on the " +
+          `host (see apps/bay/INSTALL.md). Until then the app runs without them. (${detail.slice(0, 200)})`,
+      );
+    }
     if (/no control socket found/i.test(detail)) {
       return new AlephaError(
         `Signed in to ${host}, but Bay never found its own control socket — nothing was passed via ` +
@@ -572,11 +593,226 @@ export class BayAdapter extends PlatformAdapter {
    */
   async migrate(): Promise<void> {}
 
+  // -------------------------------------------------------------------------
+  // secrets (`bay env set`, over ssh, on stdin)
+  // -------------------------------------------------------------------------
+
+  /**
+   * The keys Bay writes into every instance's `.env` itself.
+   *
+   * A mirror of `bayOwnedKeys` in `apps/bay/internal/deploy/deploy.go`, which
+   * is the authority — Bay REFUSES a push containing one of these, naming it.
+   * Filtering here turns that refusal into a skipped key with a log line
+   * instead of a failed deploy, which matters because a workspace's
+   * `.env.production` legitimately carries `APP_SECRET` and `DATABASE_URL` for
+   * the platform it was first written for.
+   *
+   * The copy is guarded rather than trusted: `BayAdapter.spec.ts` reads the Go
+   * source and fails if the two lists diverge. Without that, a key added on
+   * the Go side would not break anything here — it would just start failing
+   * every deploy of any app that happens to set it.
+   */
+  static readonly BAY_OWNED_KEYS: ReadonlySet<string> = new Set([
+    "NODE_ENV",
+    "DATABASE_URL",
+    "APP_SECRET",
+    "STORAGE_PATH",
+    "DATA_DIR",
+    "SERVER_PORT",
+    "SERVER_HOST",
+    "APP_NAME",
+    "S3_ENDPOINT",
+    "S3_BUCKET_NAME",
+    "S3_ACCESS_KEY_ID",
+    "S3_SECRET_ACCESS_KEY",
+    "S3_REGION",
+    "S3_KEY_PREFIX",
+  ]);
+
+  /**
+   * Pushes `.env.{env}` onto the deployed instance, through `bay env set`.
+   *
+   * Read from the FILE, never from `process.env` — the hook's contract, and
+   * the only reading that is safe here: this runs on a developer's machine or
+   * a CI runner whose environment is full of things that are nobody's secret
+   * and some things that are somebody else's (`PATH`, `GITHUB_TOKEN`, the
+   * Cloudflare credentials of an unrelated deploy).
+   *
+   * On stdin, never in argv. `ssh HOST bay env set … VALUE` would put every
+   * secret in the host's process table, where any user running `ps` can read
+   * it, and in the local shell's history. `bay deploy -` already established
+   * stdin as this codebase's payload channel.
+   *
+   * Silence is the one outcome this must not produce, because silence was the
+   * bug: an empty push says so, a filtered key says so, and a host whose `bay`
+   * predates the command fails with the upgrade named (see {@link explain}).
+   */
+  override async secrets(
+    ctx: PlatformContext,
+    run: RunnerMethod,
+  ): Promise<void> {
+    const host = this.host(ctx);
+    this.assertSafe("app name", ctx.project, this.appKeyPattern);
+    this.assertSafe("environment", ctx.env, this.appKeyPattern);
+
+    const parsed = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
+    const secrets: Record<string, string> = {};
+    const platformOwned: string[] = [];
+    for (const [key, value] of Object.entries(parsed)) {
+      if (!value) continue;
+      // Build-time vars, inlined by Vite. Never a runtime secret anywhere.
+      if (key.startsWith("VITE_")) continue;
+      if (EXCLUDED_SECRET_KEYS.has(key) || BayAdapter.BAY_OWNED_KEYS.has(key)) {
+        platformOwned.push(key);
+        continue;
+      }
+      secrets[key] = value;
+    }
+
+    const names = Object.keys(secrets).sort();
+    if (platformOwned.length > 0) {
+      // Said out loud rather than dropped. A user who put DATABASE_URL in
+      // `.env.production` and cannot find it on the host should learn here
+      // that Bay writes that one itself.
+      this.log.info(
+        `Bay writes ${platformOwned.sort().join(", ")} itself — not pushed.`,
+      );
+    }
+    if (names.length === 0) {
+      this.log.info(
+        `No secrets to push: .env.${ctx.env} holds nothing that is the app's own. ` +
+          "Bay reads secrets from that file, not from this shell's environment.",
+      );
+      return;
+    }
+
+    const payload = this.encodeAssignments(secrets);
+    await run({
+      name: `secrets → ${host}`,
+      handler: async () => {
+        let answer: string;
+        try {
+          answer = await this.remote(
+            ctx,
+            this.bayArgv(ctx, ["env", "set", `${ctx.project}/${ctx.env}`, "-"]),
+            { stdin: new TextEncoder().encode(payload) },
+          );
+        } catch (error) {
+          throw this.explain(host, error);
+        }
+        // Bay answers which keys actually moved and whether the app was
+        // restarted onto them. Reporting what was SENT instead would call a
+        // no-op a success, which is the bug this method exists to end.
+        const applied = this.appliedSecrets(answer);
+        if (!applied || applied.changed.length === 0) {
+          this.log.info(
+            `${names.length} secret(s) already set on ${ctx.project}/${ctx.env}: nothing changed, ` +
+              "so the app was not restarted.",
+          );
+          return;
+        }
+        this.log.info(
+          `Set ${applied.changed.join(", ")} on ${ctx.project}/${ctx.env}` +
+            (applied.restarted
+              ? " — the app restarted onto the new environment."
+              : " — the app is not running, so they take effect at its next start."),
+        );
+      },
+    });
+  }
+
+  /**
+   * Renders the payload `bay env set` parses.
+   *
+   * One `KEY=VALUE` per line, so a value containing a newline would arrive as
+   * two variables — the second one a fragment of a secret, under a name the
+   * parser would reject or, worse, accept. Refused here with the key named,
+   * rather than sent and silently truncated.
+   */
+  protected encodeAssignments(secrets: Record<string, string>): string {
+    return `${Object.entries(secrets)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => {
+        if (/[\r\n]/.test(value)) {
+          throw new AlephaError(
+            `${key} contains a newline, and Bay's environment format is one KEY=VALUE per line. ` +
+              "Encode it (base64, JSON) before putting it in the .env file.",
+          );
+        }
+        return `${key}=${value}`;
+      })
+      .join("\n")}\n`;
+  }
+
+  /**
+   * Reads what `bay env set` reported back.
+   *
+   * Returns nothing when the answer is not the JSON this expects — the same
+   * reasoning {@link deployedUrl} uses. A login banner parsed as "0 changed"
+   * would be reported as a successful no-op.
+   */
+  protected appliedSecrets(
+    answer: string,
+  ): { changed: string[]; restarted: boolean } | undefined {
+    try {
+      const parsed = JSON.parse(answer);
+      if (!Array.isArray(parsed?.changed)) {
+        return undefined;
+      }
+      return {
+        changed: parsed.changed.filter(
+          (key: unknown) => typeof key === "string",
+        ),
+        restarted: parsed.restarted === true,
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * The names of the variables actually set on the instance, asked of the host.
+   *
+   * Names only — `bay env list` never answers with a value, so neither does
+   * this. Bay's own keys are reported separately by the host and deliberately
+   * dropped here: `APP_SECRET` and `DATABASE_URL` exist on every instance and
+   * listing them as this app's secrets would drown the two the author set.
+   */
+  protected async instanceSecrets(
+    ctx: PlatformContext,
+    host: string,
+  ): Promise<SecretState[]> {
+    let answer: string;
+    try {
+      answer = await this.remote(
+        ctx,
+        this.bayArgv(ctx, ["env", "list", `${ctx.project}/${ctx.env}`]),
+      );
+    } catch (error) {
+      throw this.explain(host, error);
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(answer.trim() || "{}");
+    } catch {
+      throw new AlephaError(
+        `Bay at ${host} answered \`bay env list\` with something other than JSON: ${answer.slice(0, 300)}`,
+      );
+    }
+    const keys = (parsed as { app?: string[] | null } | null)?.app ?? [];
+    return keys
+      .filter((name): name is string => typeof name === "string")
+      .map((name) => ({ name, deployed: true }));
+  }
+
   async inspect(
     ctx: PlatformContext,
     _run: RunnerMethod,
   ): Promise<PlatformState> {
     const host = this.host(ctx);
+    // Both go on a command line below, once there is an app to ask about.
+    this.assertSafe("app name", ctx.project, this.appKeyPattern);
+    this.assertSafe("environment", ctx.env, this.appKeyPattern);
     let answer: string;
     try {
       answer = await this.remote(ctx, this.bayArgv(ctx, ["list"]));
@@ -611,6 +847,13 @@ export class BayAdapter extends PlatformAdapter {
     const mine = apps.filter(
       (a) => a.name === ctx.project && a.env === ctx.env,
     );
+    // Asked of the host, not assumed. `secrets: []` used to mean "this adapter
+    // cannot answer" and read as "none are configured" — the same silence that
+    // let a whole `.env.production` go unpushed without a word. With nothing
+    // deployed there is genuinely no instance and no `.env`, and the empty
+    // list is then the true answer rather than a stand-in for one.
+    const secrets =
+      mine.length > 0 ? await this.instanceSecrets(ctx, host) : [];
     return {
       workers: mine.map((a) => ({
         name: `${a.name}/${a.env}`,
@@ -629,7 +872,7 @@ export class BayAdapter extends PlatformAdapter {
       buckets: [],
       kvNamespaces: [],
       queues: [],
-      secrets: [],
+      secrets,
     };
   }
 

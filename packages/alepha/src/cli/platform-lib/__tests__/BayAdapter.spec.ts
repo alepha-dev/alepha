@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { Alepha, AlephaError } from "alepha";
 import { type BuildTarget, buildOptions } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
@@ -852,5 +853,293 @@ describe("BayAdapter — quoting", () => {
     expect(adapter.testQuote("it's a test; rm -rf /")).toBe(
       "'it'\\''s a test; rm -rf /'",
     );
+  });
+});
+
+describe("BayAdapter — the secrets it pushes", () => {
+  /**
+   * A workspace whose `.env.production` holds what the author wrote in it.
+   */
+  const withEnvFile = async (body: string) => {
+    const it = await setup();
+    await it.fs.writeFile("/project/.env.production", body);
+    return it;
+  };
+
+  const sentPayload = (shell: MemoryShellProvider): string => {
+    const [call] = shell.getCallsMatching(/bay env set/);
+    return new TextDecoder().decode(call.options.stdin as Uint8Array);
+  };
+
+  it("pipes the assignments into `bay env set`, addressed at this app", async () => {
+    const { adapter, shell } = await withEnvFile("STRIPE_KEY=sk_live_1\n");
+
+    await adapter.secrets(context(), run);
+
+    expect(
+      shell.wasCalled(
+        "ssh -o BatchMode=yes deploy@bay.example.com " +
+          "bay env set demo/production -",
+      ),
+    ).toBe(true);
+    expect(sentPayload(shell)).toBe("STRIPE_KEY=sk_live_1\n");
+  });
+
+  it("never puts a secret in argv", async () => {
+    /*
+      The reason stdin was chosen. An argument is in the host's process table
+      for every user running `ps`, and in the caller's shell history. Asserting
+      on the composed command string rather than on the argv array, because
+      `ssh` joins them anyway — the string is what actually reaches the host.
+    */
+    const { adapter, shell } = await withEnvFile("STRIPE_KEY=sk_live_secret\n");
+
+    await adapter.secrets(context(), run);
+
+    for (const call of shell.calls) {
+      expect(call.command).not.toContain("sk_live_secret");
+    }
+  });
+
+  it("reads the file, never this process's environment", async () => {
+    /*
+      The hook's docblock is explicit, and it is not a detail: this runs on a
+      developer's laptop or a CI runner whose environment holds other people's
+      credentials. A fallback to `process.env` would ship them.
+    */
+    const { adapter, shell } = await withEnvFile("STRIPE_KEY=from_the_file\n");
+    process.env.AMBIENT_ONLY = "from_the_shell";
+    process.env.STRIPE_KEY = "from_the_shell";
+    try {
+      await adapter.secrets(context(), run);
+    } finally {
+      delete process.env.AMBIENT_ONLY;
+      delete process.env.STRIPE_KEY;
+    }
+
+    const payload = sentPayload(shell);
+    expect(payload).toContain("STRIPE_KEY=from_the_file");
+    expect(payload).not.toContain("from_the_shell");
+    expect(payload).not.toContain("AMBIENT_ONLY");
+  });
+
+  it("does not push a key Bay writes itself", async () => {
+    // Bay REFUSES these, naming them. Filtering here is what keeps a
+    // `.env.production` that legitimately carries APP_SECRET for another
+    // platform from failing every Bay deploy.
+    const { adapter, shell } = await withEnvFile(
+      [
+        "APP_SECRET=would-sign-everyone-out",
+        "DATABASE_URL=postgres://localhost/dev",
+        "S3_ACCESS_KEY_ID=local",
+        "STRIPE_KEY=sk_live_1",
+      ].join("\n"),
+    );
+
+    await adapter.secrets(context(), run);
+
+    expect(sentPayload(shell)).toBe("STRIPE_KEY=sk_live_1\n");
+  });
+
+  it("does not push the framework's infra knobs", async () => {
+    const { adapter, shell } = await withEnvFile(
+      ["LOG_LEVEL=debug", "DEBUG=1", "VITE_PUBLIC_X=1", "STRIPE_KEY=sk"].join(
+        "\n",
+      ),
+    );
+
+    await adapter.secrets(context(), run);
+
+    expect(sentPayload(shell)).toBe("STRIPE_KEY=sk\n");
+  });
+
+  it("says so when there is nothing to push, instead of finishing quietly", async () => {
+    // The whole bug in one line: a deploy that pushes nothing must not be
+    // indistinguishable from a deploy that pushed everything.
+    const { adapter, shell, alepha } = await withEnvFile("NODE_ENV=production");
+    const said: string[] = [];
+    alepha.events.on("log", (e: { message?: string }) => {
+      said.push(e.message ?? "");
+    });
+
+    await adapter.secrets(context(), run);
+
+    expect(shell.getCallsMatching(/bay env set/)).toHaveLength(0);
+    expect(said.join("\n")).toMatch(/No secrets to push/);
+  });
+
+  it("refuses a value carrying a newline rather than sending half of it", async () => {
+    /*
+      One KEY=VALUE per line is the format Bay parses, so a newline would
+      arrive as a second variable holding a fragment of a private key.
+
+      Written double-quoted with a `\n` escape, because that is the only shape
+      that actually produces one: `EnvUtils.parseEnv` splits the file on
+      newlines first, then JSON-decodes a double-quoted value — which is how
+      Rocket's injected `.env.<env>.local` overrides carry JSON blobs.
+    */
+    const { adapter, shell, fs } = await setup();
+    await fs.writeFile(
+      "/project/.env.production",
+      'PRIVATE_KEY="line one\\nline two"',
+    );
+
+    await expect(adapter.secrets(context(), run)).rejects.toThrowError(
+      /PRIVATE_KEY contains a newline/,
+    );
+    expect(shell.getCallsMatching(/bay env set/)).toHaveLength(0);
+  });
+
+  it("names the upgrade when the host's `bay` has no `env` command", async () => {
+    /*
+      A `bay` that predates this prints its usage banner and exits 2 — the
+      whole banner, on stderr, with no sentence anywhere in it saying that the
+      subcommand was the problem. Without the branch this covers, `explain`
+      falls through to its generic "ssh to HOST failed: <a page of usage
+      text>", and the operator is left to work out for themselves that their
+      secrets did not land and that the fix is a binary upgrade.
+
+      The fixture is the real banner's opening, verbatim.
+    */
+    const { adapter, shell } = await withEnvFile("STRIPE_KEY=sk\n");
+    shell.configure({
+      errors: {
+        "ssh -o BatchMode=yes deploy@bay.example.com bay env set demo/production -":
+          "bay — Alepha application server (PoC)\n\n" +
+          "  bay serve   [--root DIR] [--runtimes DIR] [--addr :8080]\n" +
+          "              [--base-domain bay.example.com]\n" +
+          "  bay deploy  (<app.tar.gz>|-) [--name NAME] [--env ENV] [--domain HOST]...\n" +
+          "Client commands accept --control-socket PATH (or $BAY_SOCKET) and must run on\n" +
+          "the Bay host.",
+      },
+    });
+
+    await expect(adapter.secrets(context(), run)).rejects.toThrowError(
+      /has no `env` command[\s\S]*Upgrade `bay` on the host/,
+    );
+  });
+
+  it("reports what Bay says moved, not what it was sent", async () => {
+    // `alepha platform up` pushes the same secrets every deploy. Reporting the
+    // send would call an unchanged push a change, and vice versa.
+    const { adapter, shell, alepha } = await withEnvFile("STRIPE_KEY=sk\n");
+    shell.configure({
+      outputs: {
+        "ssh -o BatchMode=yes deploy@bay.example.com bay env set demo/production -":
+          JSON.stringify({ changed: [], restarted: false }),
+      },
+    });
+    const said: string[] = [];
+    alepha.events.on("log", (e: { message?: string }) => {
+      said.push(e.message ?? "");
+    });
+
+    await adapter.secrets(context(), run);
+
+    expect(said.join("\n")).toMatch(/nothing changed/);
+  });
+
+  it("refuses an app name that would reach the remote shell", async () => {
+    const { adapter, shell } = await withEnvFile("STRIPE_KEY=sk\n");
+
+    await expect(
+      adapter.secrets(context({ project: "demo; rm -rf /" }), run),
+    ).rejects.toThrowError(AlephaError);
+    expect(shell.calls).toHaveLength(0);
+  });
+});
+
+describe("BayAdapter — the Bay-owned key list", () => {
+  it("still matches Bay's own, which is the authority", async () => {
+    /*
+      A cross-language guard, and the only thing that can catch this drift: a
+      key added to `bayOwnedKeys` on the Go side breaks nothing here — the
+      adapter simply starts pushing it, and Bay starts refusing every deploy
+      of any app that sets it. The Go list is the authority; this asserts the
+      TypeScript mirror has not fallen behind it.
+
+      If this fails because the Go file moved, update the path — do not delete
+      the test.
+    */
+    const source = await readFile(
+      new URL(
+        "../../../../../../apps/bay/internal/deploy/deploy.go",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    const block = source.match(
+      /var bayOwnedKeys = \[\]string\{([\s\S]*?)\n\}/,
+    )?.[1];
+    expect(block, "bayOwnedKeys not found in deploy.go").toBeTruthy();
+    const goKeys = [...(block as string).matchAll(/"([A-Z0-9_]+)"/g)]
+      .map((m) => m[1])
+      .sort();
+
+    expect(goKeys.length).toBeGreaterThan(0);
+    expect([...BayAdapter.BAY_OWNED_KEYS].sort()).toEqual(goKeys);
+  });
+});
+
+describe("BayAdapter — inspect reports the secrets that are set", () => {
+  const inspecting = async (listBody: string, envBody: string) => {
+    const { adapter, shell } = await setup();
+    shell.configure({
+      outputs: {
+        "ssh -o BatchMode=yes deploy@bay.example.com bay list": listBody,
+        "ssh -o BatchMode=yes deploy@bay.example.com bay env list demo/production":
+          envBody,
+      },
+    });
+    return { state: await adapter.inspect(context(), run), shell };
+  };
+
+  const deployed = JSON.stringify([
+    {
+      name: "demo",
+      env: "production",
+      domains: ["demo.example.com"],
+      release: "r-1",
+    },
+  ]);
+
+  it("asks the host rather than answering an empty list from memory", async () => {
+    // `secrets: []` used to mean "this adapter cannot answer" and read as
+    // "none are configured" — the same silence that let a whole
+    // `.env.production` go unpushed.
+    const { state } = await inspecting(
+      deployed,
+      JSON.stringify({
+        app: ["MAILER_DSN", "STRIPE_KEY"],
+        bayOwned: ["APP_SECRET"],
+      }),
+    );
+
+    expect(state.secrets).toEqual([
+      { name: "MAILER_DSN", deployed: true },
+      { name: "STRIPE_KEY", deployed: true },
+    ]);
+  });
+
+  it("leaves Bay's own keys out, so the app's two are not drowned in them", async () => {
+    const { state } = await inspecting(
+      deployed,
+      JSON.stringify({
+        app: ["STRIPE_KEY"],
+        bayOwned: ["APP_SECRET", "DATABASE_URL", "SERVER_PORT"],
+      }),
+    );
+
+    expect(state.secrets.map((s) => s.name)).toEqual(["STRIPE_KEY"]);
+  });
+
+  it("does not ask about an app that is not deployed there", async () => {
+    // Nothing deployed means no instance and no `.env`, so the empty list is
+    // the true answer rather than a stand-in for one — and asking would be a
+    // round trip that can only fail.
+    const { state, shell } = await inspecting("[]", "{}");
+
+    expect(state.secrets).toEqual([]);
+    expect(shell.getCallsMatching(/bay env list/)).toHaveLength(0);
   });
 });
