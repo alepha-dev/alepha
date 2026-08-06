@@ -20,6 +20,15 @@ export interface FolioDocumentProps {
    * `undefined` → create mode.
    */
   folio?: Folio;
+  /**
+   * Create-mode only: the directory the new folio will land in (carried
+   * from `FolioCreatePage`'s `?dir=` resolution). Read only when `folio` is
+   * unset — an existing folio's real `directoryId` always wins once it
+   * exists. Without this, the meta bar's directory chip showed "Project
+   * root" while creating a folio from inside a directory (via "+ Create →
+   * New folio"), even though the folio was about to be created there.
+   */
+  directoryId?: string;
   draft: FolioDraft;
   actions: UseFolioActionsResult;
   /**
@@ -56,7 +65,17 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   const values = props.draft.values;
   const disabled = props.actions.locked;
 
-  const directoryId = props.folio?.directoryId;
+  // `props.actions.directoryId` (LIVE — moved by `confirmMove`'s own
+  // success), NOT `props.folio?.directoryId`. The latter is the
+  // route-loader snapshot: reading it directly here reproduced the exact
+  // staleness bug the reviewer flagged for `isProtected` elsewhere in this
+  // task, just for the directory chip instead — after a successful
+  // in-session move, the chip kept showing the OLD directory until a full
+  // reload. In create mode `props.actions.directoryId` is always
+  // `undefined` (no folio yet), so this falls through to the create-mode
+  // target directory (`props.directoryId`) so the chip shows where the
+  // folio WILL land, not always "Project root" while creating.
+  const directoryId = props.actions.directoryId ?? props.directoryId;
   const directoryName = directoryId
     ? (directories.find((d) => d.id === directoryId)?.name ?? "…")
     : tr("folio.move.root");
@@ -91,6 +110,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
         wordCount={countWords(values.content)}
         revisionCount={props.revisionCount}
         disabled={disabled}
+        moveDisabled={!props.folio}
         onOpenMove={() => props.actions.handlers["folio.move"]()}
         onAddTag={handleAddTag}
         onRemoveTag={handleRemoveTag}

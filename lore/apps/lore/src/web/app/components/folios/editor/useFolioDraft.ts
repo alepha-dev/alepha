@@ -49,6 +49,28 @@ export interface FolioDraft {
    * re-baselines `dirty`.
    */
   markSaved: (at: string, values: FolioDraftValues) => void;
+  /**
+   * Read the CURRENT form values directly off the `FormModel`, bypassing
+   * the `values` snapshot above.
+   *
+   * `values` is a plain object rebuilt once per render from
+   * `useFormValues(form)` — a `save()`-style async handler that captures
+   * `values` (or the `FolioDraft` object containing it) in a closure and
+   * reads it again *after* an `await` does NOT see anything typed during
+   * that wait: the closure's `values` reference is frozen at whatever it
+   * was on the render that created it, and nothing forces that particular
+   * closure to re-run just because the user kept typing (React re-renders
+   * the component with a NEW closure; the already-invoked async function
+   * keeps running with the old one). `form` itself is a different story —
+   * `useForm`'s `FormModel` instance is memoized for the life of the
+   * mounted component (empty `deps`), so the SAME object is reachable from
+   * every closure regardless of which render captured it, and `.set()`
+   * mutates its internal store synchronously, independent of React's
+   * render cycle. `getLiveValues()` reads through that stable instance, so
+   * calling it a second time after an `await` returns whatever is
+   * genuinely in the fields right now — not a stale snapshot.
+   */
+  getLiveValues: () => FolioDraftValues;
 }
 
 /**
@@ -157,6 +179,16 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
 
   const dirty = !sameValues(values, baseline.current);
 
+  const getLiveValues = (): FolioDraftValues => {
+    const live = form.currentValues;
+    return {
+      title: (live.title as string) ?? "",
+      tags: (live.tags as string[]) ?? [],
+      summary: (live.summary as string) ?? "",
+      content: (live.content as string) ?? "",
+    };
+  };
+
   return {
     form,
     values,
@@ -165,5 +197,6 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
     statusKey: !folio ? "draft" : dirty ? "unsaved" : "saved",
     savedAt,
     markSaved,
+    getLiveValues,
   };
 };

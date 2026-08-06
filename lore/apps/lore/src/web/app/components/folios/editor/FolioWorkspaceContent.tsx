@@ -108,6 +108,7 @@ const FolioWorkspaceContent = (
           <div className="mx-auto flex max-w-[812px] flex-col gap-4 px-8 py-8">
             <FolioDocument
               folio={props.folio}
+              directoryId={props.directoryId}
               draft={draft}
               actions={actions}
               imageUploadHandler={imageUploadHandler}

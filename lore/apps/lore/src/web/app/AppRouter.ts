@@ -966,11 +966,13 @@ export class AppRouter {
         }
       }
       // Populate the directory list so the document workspace's meta bar
-      // (Task 8) can resolve `directoryId` to a display name and the move
-      // dialog has something to list — mirrors `projectFoliosFolio`'s own
-      // loader. Landing directly on `/folios/new` (rather than navigating
-      // here from `/folios`) previously left this atom unset or stale from
-      // a prior folio view.
+      // (Task 8) can resolve the create-mode `directoryId` above to a
+      // display name — the chip shows where the new folio WILL land, even
+      // though it's not clickable yet (there's no row for `folio.move` to
+      // act on until the folio is saved). Mirrors `projectFoliosFolio`'s
+      // own loader. Landing directly on `/folios/new` (rather than
+      // navigating here from `/folios`) previously left this atom unset or
+      // stale from a prior folio view.
       if (project) {
         const directories = await this.directoryApi.listAllDirectories({
           params: { projectId: project.id },

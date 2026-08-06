@@ -95,6 +95,16 @@ export interface UseFolioActionsResult {
    * reintroduce the exact staleness this hook exists to avoid.
    */
   actionState: FolioActionState;
+  /**
+   * The folio's CURRENT directory — local state for the same reason as
+   * `isProtected`/`protectedSalt`/`isPinned` above, caught the same way
+   * (live testing, not review): `props.folio.directoryId` is a
+   * route-loader snapshot, and `confirmMove` mutates the row without a
+   * remount. Reading `props.folio.directoryId` directly for display would
+   * keep showing the OLD directory after a successful in-session move.
+   * `undefined` means the project root.
+   */
+  directoryId?: string;
   moveDialogOpen: boolean;
   closeMoveDialog: () => void;
   confirmMove: (directoryId: string | null) => Promise<void>;
@@ -165,6 +175,25 @@ export interface UseFolioActionsResult {
  * current value). The meta bar's tag add/remove only mutate the draft
  * buffer — they go through `save()` like any other edit, not a separate
  * request.
+ *
+ * ## The same "props.folio is frozen" premise, applied twice, with opposite
+ * ## correct answers
+ *
+ * `isProtected`/`isPinned`/`unlocked` being LOCAL STATE (not re-read from
+ * `input.folio` every render) is what keeps them correct. `save()` and
+ * `duplicate()` re-encrypting against `protectedSalt` (also local state,
+ * NOT `parseProtectedEnvelope(input.folio.content)`) is the same fix for
+ * the same underlying cause, applied to the envelope instead of the flags:
+ * `input.folio.content` is ALSO a route-loader snapshot, frozen at whatever
+ * it was on mount. After an in-session `confirmEncrypt`, that snapshot is
+ * still the PRE-encryption plaintext markdown — parsing it as a crypto
+ * envelope returns `null`, and every save/duplicate after an in-session
+ * Encrypt would refuse with "invalid envelope" until a full page reload
+ * re-fetched the row. Both problems have the same shape (a value computed
+ * fresh from `input.folio` on every render is wrong the moment something in
+ * THIS hook changes what's actually persisted) and the same fix (track it
+ * as local state seeded once, moved only by this hook's own successful
+ * writes).
  */
 export const useFolioActions = (
   input: UseFolioActionsInput,
@@ -193,6 +222,33 @@ export const useFolioActions = (
   // Whether THIS session already holds the plaintext + key for a protected
   // folio. Irrelevant (and ignored) once `isProtected` is false.
   const [unlocked, setUnlocked] = useState<boolean>(!input.folio?.protected);
+  // The current envelope's salt — needed by `save()`/`duplicate()` to
+  // re-encrypt into the SAME envelope family. Seeded from `input.folio`
+  // (correct at mount) but, like `isProtected`/`isPinned`, moved by THIS
+  // hook's own successful transitions rather than re-read from
+  // `input.folio.content` later. `input.folio` is the route-loader prop —
+  // frozen for the mount's lifetime — so after an in-session `confirmEncrypt`
+  // establishes a brand new envelope, `input.folio.content` is still the
+  // PRE-encryption plaintext markdown. Parsing that as an envelope returns
+  // `null`, and every save/duplicate after an in-session Encrypt would
+  // refuse with "invalid envelope" until a full reload re-fetched the row.
+  // Tracking the salt locally (updated the moment `confirmEncrypt` succeeds)
+  // closes that gap the same way `isProtected`/`isPinned` close theirs.
+  const [protectedSalt, setProtectedSalt] = useState<string | undefined>(() =>
+    input.folio?.protected
+      ? (parseProtectedEnvelope(input.folio.content)?.salt ?? undefined)
+      : undefined,
+  );
+  // Same reasoning again, caught this round by actually clicking through
+  // the move flow: `input.folio.directoryId` is ALSO a route-loader
+  // snapshot. Without this, `confirmMove` correctly persists the new
+  // directory server-side (verified directly against the dev DB), but the
+  // meta bar's chip kept showing the folio's OLD directory until a full
+  // reload — `FolioDocument` had no live value to read instead. Seeded
+  // from `input.folio`, moved only by `confirmMove`'s own success.
+  const [currentDirectoryId, setCurrentDirectoryId] = useState<
+    string | undefined
+  >(input.folio?.directoryId);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [encryptDialogOpen, setEncryptDialogOpen] = useState(false);
 
@@ -211,10 +267,15 @@ export const useFolioActions = (
   // server holds.
   const applyDecryptedContent = (folio: Folio, plaintext: string): void => {
     input.draft.form.input.content.set(plaintext);
+    // Live read, not `input.draft.values` — see `getLiveValues`'s doc.
+    // Title/tags/summary aren't usually mid-edit during an unlock, but
+    // reading them live costs nothing and removes the same staleness class
+    // of bug from this call site too.
+    const live = input.draft.getLiveValues();
     const baselineValues: FolioDraftValues = {
-      title: input.draft.values.title,
-      tags: input.draft.values.tags,
-      summary: input.draft.values.summary,
+      title: live.title,
+      tags: live.tags,
+      summary: live.summary,
       content: plaintext,
     };
     input.draft.markSaved(folio.updatedAt, baselineValues);
@@ -283,7 +344,13 @@ export const useFolioActions = (
       // risk a non-null assertion throwing on a real `undefined`.
       return;
     }
-    const values = input.draft.values;
+    // Live read — see `getLiveValues`'s doc on `FolioDraft`. Using the
+    // per-render `values` snapshot here was the root cause of a real bug:
+    // re-reading it again below (post-`await`) returned the SAME frozen
+    // object every time, because `input` (and therefore `input.draft`) is
+    // fixed for the lifetime of this closure — it does not track later
+    // renders just because the user kept typing.
+    const values = input.draft.getLiveValues();
 
     let contentToSend = values.content;
     if (isProtected) {
@@ -296,15 +363,20 @@ export const useFolioActions = (
         toaster.error(tr("folios.protected.unlock-before-edit"));
         return;
       }
-      const existingEnv = parseProtectedEnvelope(folio.content);
-      if (!existingEnv) {
+      // `protectedSalt` (local state), NOT `parseProtectedEnvelope(folio.content)`
+      // — see the state declaration's doc. `folio.content` is the
+      // route-loader snapshot; after an in-session `confirmEncrypt` it is
+      // still the pre-encryption plaintext, which fails to parse as an
+      // envelope and would refuse every save with "invalid envelope"
+      // until a full reload.
+      if (!protectedSalt) {
         toaster.error(tr("folios.protected.invalid-envelope"));
         return;
       }
       contentToSend = await cryptoProvider.encryptWithPassphrase(
         values.content,
         cachedKey,
-        existingEnv.salt,
+        protectedSalt,
       );
       rememberProtectedKey(folio.id, cachedKey);
     }
@@ -348,13 +420,14 @@ export const useFolioActions = (
       // Create mode: `router.push` below changes `FolioWorkspace`'s `key`
       // from "new" to the folio id, which fully remounts the workspace —
       // the fresh mount's `useFolioDraft` seeds from the NEW page's own
-      // loader, which refetches the folio from the server. `values` above
-      // is a snapshot from before the `await folioApi.create` call; if the
-      // user kept typing during that round-trip, `input.draft.values` read
-      // again NOW differs from it. Without catching the server up before
-      // navigating, that typing would be silently discarded by the
-      // remount while the status line still read "Saved".
-      const latest = input.draft.values;
+      // loader, which refetches the folio from the server. `getLiveValues()`
+      // here is a SECOND, genuinely live read (see its doc) — if the user
+      // kept typing during the `await folioApi.create` above, this sees it,
+      // where re-reading the `values` snapshot would not have. Without
+      // catching the server up before navigating, that typing would be
+      // silently discarded by the remount while the status line still
+      // read "Saved".
+      const latest = input.draft.getLiveValues();
       if (!sameValues(latest, { ...values, title })) {
         const latestTitle =
           latest.title.trim() || tr("folios.title-placeholder");
@@ -390,6 +463,7 @@ export const useFolioActions = (
     [
       isProtected,
       locked,
+      protectedSalt,
       input.folio,
       input.directoryId,
       input.draft,
@@ -417,7 +491,7 @@ export const useFolioActions = (
           toaster.error(tr("folios.protected.unlock-before-edit"));
           return;
         }
-        const values = input.draft.values;
+        const values = input.draft.getLiveValues();
         let contentToSend = values.content;
         let keyForDuplicate: CryptoKey | undefined;
         if (isProtected) {
@@ -426,15 +500,16 @@ export const useFolioActions = (
             toaster.error(tr("folios.protected.unlock-before-edit"));
             return;
           }
-          const existingEnv = parseProtectedEnvelope(folio.content);
-          if (!existingEnv) {
+          // `protectedSalt`, not `parseProtectedEnvelope(folio.content)` —
+          // same staleness reasoning as `save()`.
+          if (!protectedSalt) {
             toaster.error(tr("folios.protected.invalid-envelope"));
             return;
           }
           contentToSend = await cryptoProvider.encryptWithPassphrase(
             values.content,
             keyForDuplicate,
-            existingEnv.salt,
+            protectedSalt,
           );
         }
         const created = await folioApi.create({
@@ -471,6 +546,7 @@ export const useFolioActions = (
       project,
       isProtected,
       locked,
+      protectedSalt,
       folioApi,
       folios,
       setFolios,
@@ -556,7 +632,7 @@ export const useFolioActions = (
           destructive: true,
         });
         if (!confirmed) return;
-        const values = input.draft.values;
+        const values = input.draft.getLiveValues();
         const updated = await folioApi.update({
           params: { id: folio.id },
           body: {
@@ -570,6 +646,7 @@ export const useFolioActions = (
         forgetProtectedKey(folio.id);
         setIsProtected(false);
         setUnlocked(true);
+        setProtectedSalt(undefined);
         alepha.store.set(currentFolioAtom, updated as Folio);
         setFolios(
           folios.map((f) => (f.id === updated.id ? (updated as Folio) : f)),
@@ -592,59 +669,108 @@ export const useFolioActions = (
     ],
   );
 
-  const confirmEncrypt = async (passphrase: string): Promise<string | null> => {
-    const folio = input.folio;
-    if (!folio) return null;
-    try {
-      const saltHex = cryptoProvider.randomUUID().replace(/-/g, "");
-      const key = await cryptoProvider.deriveKeyFromPassphrase(
-        passphrase,
-        saltHex,
-      );
-      const values = input.draft.values;
-      const envelope = await cryptoProvider.encryptWithPassphrase(
-        values.content,
-        key,
-        saltHex,
-      );
-      const updated = await folioApi.update({
-        params: { id: folio.id },
-        body: {
-          title: values.title,
-          tags: values.tags,
-          summary: values.summary,
-          content: envelope,
-          protected: true,
-        },
-      });
-      rememberProtectedKey(updated.id, key);
-      ensureProtectedKeysAutoLock();
-      setIsProtected(true);
-      setUnlocked(true);
-      alepha.store.set(currentFolioAtom, updated as Folio);
-      setFolios(
-        folios.map((f) => (f.id === updated.id ? (updated as Folio) : f)),
-      );
-      input.draft.markSaved(updated.updatedAt, values);
-      setEncryptDialogOpen(false);
-      return null;
-    } catch {
-      return tr("folios.protected.encrypt-failed");
-    }
-  };
+  // `useAction`-wrapped (unlike the brief's given shape) so a failure gets
+  // `["folioTree", projectId]` invalidation and the same `react:action:error`
+  // event every other mutation here emits, instead of an unhandled
+  // rejection. The try/catch stays INSIDE the handler and always returns a
+  // string, never throws: `confirmEncrypt`'s contract
+  // (`FolioPassphraseDialogProps.onSubmit`) is "return an error message, or
+  // null on success" — if the handler threw instead, `useAction` would
+  // swallow it into `.error` state and resolve `run()` to `undefined`, and
+  // `?? null` below would then read that as SUCCESS and close the dialog
+  // over a failed encrypt.
+  const confirmEncryptAction = useAction<[string], string | null>(
+    {
+      handler: async (passphrase) => {
+        const folio = input.folio;
+        if (!folio) return null;
+        try {
+          const saltHex = cryptoProvider.randomUUID().replace(/-/g, "");
+          const key = await cryptoProvider.deriveKeyFromPassphrase(
+            passphrase,
+            saltHex,
+          );
+          const values = input.draft.getLiveValues();
+          const envelope = await cryptoProvider.encryptWithPassphrase(
+            values.content,
+            key,
+            saltHex,
+          );
+          const updated = await folioApi.update({
+            params: { id: folio.id },
+            body: {
+              title: values.title,
+              tags: values.tags,
+              summary: values.summary,
+              content: envelope,
+              protected: true,
+            },
+          });
+          rememberProtectedKey(updated.id, key);
+          ensureProtectedKeysAutoLock();
+          setIsProtected(true);
+          setUnlocked(true);
+          setProtectedSalt(saltHex);
+          alepha.store.set(currentFolioAtom, updated as Folio);
+          setFolios(
+            folios.map((f) => (f.id === updated.id ? (updated as Folio) : f)),
+          );
+          input.draft.markSaved(updated.updatedAt, values);
+          setEncryptDialogOpen(false);
+          return null;
+        } catch {
+          return tr("folios.protected.encrypt-failed");
+        }
+      },
+      invalidates: [["folioTree", projectId]],
+    },
+    [
+      input.folio,
+      input.draft,
+      cryptoProvider,
+      folioApi,
+      folios,
+      setFolios,
+      alepha,
+      projectId,
+      tr,
+    ],
+  );
+
+  const confirmEncrypt = (passphrase: string): Promise<string | null> =>
+    confirmEncryptAction.run(passphrase).then((result) => result ?? null);
+
+  // Also `useAction`-wrapped — `FolioMoveDialog.handleConfirm` previously
+  // `await`ed a plain async function with no try/catch of its own, so a
+  // failed `folioApi.update` became an unhandled rejection: the dialog was
+  // left open with `picked` still set and no feedback, effectively stuck.
+  // `useAction` catches the error internally (never re-throws), so
+  // `handleConfirm`'s `await` now always resolves — on failure the dialog
+  // correctly stays open (only a SUCCESSFUL run calls
+  // `setMoveDialogOpen(false)`) instead of being left in an ambiguous state.
+  const confirmMoveAction = useAction<[string | null], void>(
+    {
+      handler: async (directoryId) => {
+        const folio = input.folio;
+        if (!folio) return;
+        const updated = await folioApi.update({
+          params: { id: folio.id },
+          body: { directoryId },
+        });
+        alepha.store.set(currentFolioAtom, updated as Folio);
+        setFolios(
+          folios.map((f) => (f.id === updated.id ? (updated as Folio) : f)),
+        );
+        setCurrentDirectoryId(directoryId ?? undefined);
+        setMoveDialogOpen(false);
+      },
+      invalidates: [["folioTree", projectId]],
+    },
+    [input.folio, folioApi, folios, setFolios, alepha, projectId],
+  );
 
   const confirmMove = async (directoryId: string | null): Promise<void> => {
-    const folio = input.folio;
-    if (!folio) return;
-    const updated = await folioApi.update({
-      params: { id: folio.id },
-      body: { directoryId },
-    });
-    alepha.store.set(currentFolioAtom, updated as Folio);
-    setFolios(
-      folios.map((f) => (f.id === updated.id ? (updated as Folio) : f)),
-    );
-    setMoveDialogOpen(false);
+    await confirmMoveAction.run(directoryId);
   };
 
   const exportFolio = (): void => {
@@ -654,7 +780,15 @@ export const useFolioActions = (
       toaster.error(tr("folios.protected.unlock-before-edit"));
       return;
     }
-    const values = input.draft.values;
+    // Deliberate divergence from `FolioBrowser.tsx`'s row-level download,
+    // which refuses ANY protected folio outright (it only ever has the
+    // ciphertext `folioApi.get` returns, never a decrypted body). Here the
+    // user has already unlocked this exact folio in this exact tab — the
+    // plaintext is legitimately on screen — so exporting it is exporting
+    // what they can already read, not a new disclosure. Recorded as a
+    // disclosed choice, not an oversight: the two exports are not held to
+    // the same rule on purpose.
+    const values = input.draft.getLiveValues();
     const markdown = folioMarkdownExport({
       ...folio,
       title: values.title,
@@ -685,7 +819,18 @@ export const useFolioActions = (
     "folio.duplicate": () => {
       duplicateAction.run();
     },
-    "folio.move": () => setMoveDialogOpen(true),
+    "folio.move": () => {
+      // Defense in depth: the meta bar's directory chip is already
+      // disabled in create mode (see `FolioDocument.tsx`), so nothing in
+      // Task 8 can reach this with `input.folio` unset — but a future
+      // menu/shortcut wired straight to `handlers` without consulting
+      // `isFolioActionEnabled` (which already excludes `folio.move` while
+      // `isNew`) would otherwise open a dialog whose Confirm silently does
+      // nothing (`confirmMove` returns early on a missing folio, before
+      // ever closing the dialog).
+      if (!input.folio) return;
+      setMoveDialogOpen(true);
+    },
     "folio.pin": () => {
       pinAction.run();
     },
@@ -746,6 +891,7 @@ export const useFolioActions = (
     unlock,
     saving: saveAction.loading,
     actionState,
+    directoryId: currentDirectoryId,
     moveDialogOpen,
     closeMoveDialog: () => setMoveDialogOpen(false),
     confirmMove,
