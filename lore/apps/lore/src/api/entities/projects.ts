@@ -27,15 +27,29 @@ export const projectFeaturesSchema = z.object({
   questReminder: z.boolean().optional(),
   questChrono: z.boolean().optional(),
   /**
-   * Sigils module toggles. Like the per-quest toggles above, these are
-   * intentionally optional and absent from `defaultProjectFeatures` —
-   * adding a key there changes the column DEFAULT and triggers a D1
-   * `projects` table rebuild that cascade-wipes prod. They default to
-   * `false` via the `useProjectFeatureToggle` hook.
+   * The Apps module master switch. Still live: it gates the sidebar section,
+   * the settings page and every capability in `SigilIngestService.gatesFor`.
+   *
+   * Intentionally optional and absent from `defaultProjectFeatures` — adding a
+   * key there changes the column DEFAULT and triggers a D1 `projects` table
+   * rebuild that cascade-wipes prod. It defaults to `false` via the
+   * `useProjectFeatureToggle` hook.
    */
   sigils: z.boolean().optional(),
+  /**
+   * @deprecated Superseded by per-app `sigils.kinds` (2026-08-06). Nothing
+   * reads these three. They stay in the schema because dropping a `projects`
+   * column risks the D1 rebuild path, and `projects` is the CASCADE parent
+   * that wiped prod in 2026-05. Do not write them; do not re-read them.
+   */
   blights: z.boolean().optional(),
+  /**
+   * @deprecated See {@link projectFeaturesSchema.blights}.
+   */
   beacon: z.boolean().optional(),
+  /**
+   * @deprecated See {@link projectFeaturesSchema.blights}.
+   */
   vitals: z.boolean().optional(),
 });
 

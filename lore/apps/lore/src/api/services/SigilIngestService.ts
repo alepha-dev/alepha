@@ -77,17 +77,12 @@ export class SigilIngestService {
   /**
    * Absorbs one batch.
    *
-   * Every section is gated on {@link gatesFor} — the project's toggles AND the
-   * sigil's kinds, both. The kinds alone are not enough: `sigils.kinds` is
-   * written once at creation and has no update path, so a sigil minted before
-   * an owner switched Beacon off still carries `beacon` forever. Gating on the
-   * token alone made the settings switch a suggestion the client was trusted to
-   * honour — and the client fails open, so page views and visitor hashes kept
-   * accruing on a project whose owner had no page left to see them on.
-   *
-   * The project toggles are still what `GET /sigils/config` reports, so a
-   * well-behaved app stops sending at the source. This is the enforcement
-   * behind that advice, not a replacement for it.
+   * Every section is gated on {@link gatesFor}: Blights, Beacon and Vitals on
+   * the project's `sigils` master switch and the sigil's own kinds; Feedback
+   * additionally on the project's `feedback` flag. Enforcing here, not just
+   * advertising via `GET /sigils/config`, matters because the reporting client
+   * fails open on any config error — a well-behaved app stops sending at the
+   * source, but this is the backstop, not a replacement for it.
    *
    * `lastSeenAt` is stamped whatever happens, including for a batch every gate
    * rejected. It answers "did this app report", which is Lore's own
@@ -118,15 +113,26 @@ export class SigilIngestService {
   }
 
   /**
-   * The project's feature toggles intersected with the sigil's kinds.
+   * What this sigil may report.
    *
-   * Both gates, in one place, because they are one decision asked in two
-   * places: here on write, and by `GET /sigils/config` on read. Stating it
-   * twice is how a sink ends up advertising a capability it then discards.
+   * Answered in one place because it is one decision asked in two: here on
+   * write, and by `GET /sigils/config` on read. Stating it twice is how a sink
+   * ends up advertising a capability it then discards.
+   *
+   * Blights, Beacon and Vitals are **the sigil's own decision**, under the
+   * project's `sigils` master switch. They used to be intersected with
+   * project-level feature flags as well, because `kinds` had no update path and
+   * an owner needed some lever — but that lever applied to every enrolled app
+   * at once. `SigilController.updateSigil` is now that lever, per app, and the
+   * three project flags are retired.
+   *
+   * Feedback is the exception and stays project-gated: `features.feedback` also
+   * governs the first-party form at `/p/:projectId/request`, which exists with
+   * no app enrolled at all.
    *
    * A sigil whose project is gone reports nothing. It cannot normally happen —
-   * `sigils.projectId` cascades — but answering "everything on" to a token
-   * with no project behind it is the wrong default.
+   * `sigils.projectId` cascades — but answering "everything on" to a token with
+   * no project behind it is the wrong default.
    */
   async gatesFor(sigil: Sigil): Promise<SigilGates> {
     const project = await this.projects.findOne({
@@ -137,12 +143,9 @@ export class SigilIngestService {
     const master = features?.sigils === true;
 
     return {
-      views:
-        master && features?.beacon === true && this.carries(sigil, "beacon"),
-      errors:
-        master && features?.blights === true && this.carries(sigil, "blights"),
-      vitals:
-        master && features?.vitals === true && this.carries(sigil, "vitals"),
+      views: master && this.carries(sigil, "beacon"),
+      errors: master && this.carries(sigil, "blights"),
+      vitals: master && this.carries(sigil, "vitals"),
       feedback:
         master &&
         features?.feedback === true &&
