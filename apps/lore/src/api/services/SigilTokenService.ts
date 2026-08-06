@@ -15,8 +15,8 @@ import { type Sigil, sigils } from "../entities/sigils.ts";
  *
  * That separation is enforced here rather than by convention, because the
  * tempting shortcut — reusing `api_keys` because it already exists — turns a
- * leaked sigil token, of which there is one per environment on every
- * machine that runs the app, into a project credential.
+ * leaked sigil token, of which there is one per enrolled app on every
+ * machine that runs it, into a project credential.
  */
 export class SigilTokenService {
   protected readonly crypto = $inject(CryptoProvider);
@@ -46,7 +46,7 @@ export class SigilTokenService {
    * existed. There is no revoked state to distinguish either — the lookup is
    * *by* `tokenHash`, so re-minting the hash is revocation: `rotateSigil` is
    * what an operator reaches for, and the old token stops resolving the instant
-   * the column changes, with the environment's history left intact. Deleting
+   * the column changes, with the app's history left intact. Deleting
    * the sigil also revokes, but it cascades the aggregates away with it.
    */
   async verify(token: string | undefined): Promise<Sigil | undefined> {

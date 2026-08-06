@@ -21,8 +21,8 @@ import { InsightsTools } from "../src/mcp/tools/InsightsTools.ts";
  * The error budget over MCP.
  *
  * These exist for one question `blight_list` structurally cannot answer: is
- * this failure still happening, and in which environment. The inbox merges
- * environments on purpose so a triage decision cannot fork; that merge is
+ * this failure still happening, and in which app. The inbox merges apps on
+ * purpose so a triage decision cannot fork; that merge is
  * exactly what makes it blind to "fixed in staging, still burning in prod".
  */
 
@@ -72,20 +72,18 @@ const setup = async () => {
     projectApi.createProject({ body: { title: "Elsewhere" } } as any),
   );
 
-  const enrol = async (environment: string) => {
+  const enrol = async (name: string) => {
     const minted = tokens.mint();
     return await probe.sigils.create({
       projectId: project.id,
-      app: "demo",
-      environment,
-      label: `demo / ${environment}`,
+      name,
       tokenHash: minted.hash,
       tokenPrefix: minted.prefix,
       kinds: ["beacon", "vitals", "blights", "feedback"],
     });
   };
 
-  /** The same failure, seen by one environment. */
+  /** The same failure, seen by one app. */
   const reportError = async (
     sigilId: string,
     over: Record<string, unknown> = {},
@@ -118,16 +116,16 @@ const setup = async () => {
 };
 
 describe("Lore MCP — insights", () => {
-  it("should keep environments apart, where the blights inbox merges them", async () => {
+  it("should keep apps apart, where the blights inbox merges them", async () => {
     /*
-      The whole reason this tool exists. One fingerprint, two environments:
+      The whole reason this tool exists. One fingerprint, two apps:
       the inbox is right to show a single row — the decision must not fork —
       and that is precisely why it cannot answer "is production still
       affected". These groups can.
     */
     const { project, call, insightsTools, enrol, reportError } = await setup();
-    const staging = await enrol("staging");
-    const production = await enrol("production");
+    const staging = await enrol("demo-staging");
+    const production = await enrol("demo-production");
     await reportError(staging.id);
     await reportError(production.id);
 
@@ -138,8 +136,8 @@ describe("Lore MCP — insights", () => {
 
     expect(res.errorGroups).toHaveLength(2);
     expect(res.errorGroups.map((g: any) => g.sigilLabel).sort()).toEqual([
-      "demo / production",
-      "demo / staging",
+      "demo-production",
+      "demo-staging",
     ]);
     // Named, not a uuid: an answer an operator can act on without a lookup.
     expect(res.errorGroups[0].fingerprint).toBe("fp-shared");
@@ -149,7 +147,7 @@ describe("Lore MCP — insights", () => {
     // The analytics segment is the largest and the least often needed. A
     // caller checking whether a bug is live should not pay for a timeline.
     const { project, call, insightsTools, enrol, reportError } = await setup();
-    await reportError((await enrol("production")).id);
+    await reportError((await enrol("demo-production")).id);
 
     const res = await call(insightsTools.insights_read, {
       project: project.id,
@@ -163,7 +161,7 @@ describe("Lore MCP — insights", () => {
 
   it("should return all three segments by default", async () => {
     const { project, call, insightsTools, enrol, reportError } = await setup();
-    await reportError((await enrol("production")).id);
+    await reportError((await enrol("demo-production")).id);
 
     const res = await call(insightsTools.insights_read, {
       project: project.id,

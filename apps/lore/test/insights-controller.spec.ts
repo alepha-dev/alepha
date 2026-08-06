@@ -122,13 +122,13 @@ const createProject = async (
 const createSigil = async (
   ctx: TestContext,
   projectId: number,
-  environment: string,
+  name: string,
   user: { id: string; roles: string[] },
 ): Promise<string> => {
   const created = await ctx.sigilController.createSigil.fetch(
     {
       params: { projectId },
-      body: { app: "lore", environment, kinds: ["beacon", "vitals"] },
+      body: { name, kinds: ["beacon", "vitals"] },
     },
     { user },
   );
@@ -176,7 +176,7 @@ describe("InsightsController", () => {
   it("totals views and unique visitors over the window", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "prod", owner);
+    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
 
     await ctx.probe.views.create({
       sigilId,
@@ -217,7 +217,7 @@ describe("InsightsController", () => {
   it("excludes rows outside the window", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "prod", owner);
+    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
 
     await ctx.probe.views.create({
       sigilId,
@@ -262,7 +262,7 @@ describe("InsightsController", () => {
   it("orders top countries by views, descending", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "prod", owner);
+    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
 
     await ctx.probe.views.create({
       sigilId,
@@ -300,7 +300,7 @@ describe("InsightsController", () => {
   }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "prod", owner);
+    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
 
     await ctx.probe.views.create({
       sigilId,
@@ -335,7 +335,7 @@ describe("InsightsController", () => {
   }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "prod", owner);
+    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
 
     // Two hours of the same day — the day point is their sum, which is the one
     // thing a `substr(hour, 1, 10)` group has to get right.
@@ -373,13 +373,13 @@ describe("InsightsController", () => {
     expect(byDate.get(dayUtc(ctx, 1))).toBe(0);
   });
 
-  it("counts a visitor seen in two environments on one day once", async ({
+  it("counts a visitor seen in two apps on one day once", async ({
     expect,
   }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
-    const prod = await createSigil(ctx, projectId, "prod", owner);
-    const staging = await createSigil(ctx, projectId, "staging", owner);
+    const prod = await createSigil(ctx, projectId, "lore-prod", owner);
+    const staging = await createSigil(ctx, projectId, "lore-staging", owner);
 
     await ctx.probe.uniques.create({
       sigilId: prod,
@@ -426,21 +426,21 @@ describe("InsightsController", () => {
   describe("error budget", () => {
     /*
       `sigil_error_groups` was written on every accepted error and read by
-      nothing outside `test/` — the per-environment error budget the delete
+      nothing outside `test/` — the per-app error budget the delete
       confirmation warns you about losing had no surface that could show it.
       These pin the surface that now does.
     */
-    it("reports each environment's groups separately, worst first", async ({
+    it("reports each app's groups separately, worst first", async ({
       expect,
     }) => {
       const owner = await createTestUser(ctx);
       const projectId = await createProject(ctx, owner);
-      const prod = await createSigil(ctx, projectId, "prod", owner);
-      const staging = await createSigil(ctx, projectId, "staging", owner);
+      const prod = await createSigil(ctx, projectId, "lore-prod", owner);
+      const staging = await createSigil(ctx, projectId, "lore-staging", owner);
 
-      // One fingerprint, both environments. The Blights inbox folds these into
-      // a single row on purpose; the budget must not, or "is it still happening
-      // in production" has no answer.
+      // One fingerprint, both apps. The Blights inbox folds these into a single
+      // row on purpose; the budget must not, or "is it still happening over
+      // there" has no answer.
       await ctx.probe.errorGroups.create({
         sigilId: prod,
         fingerprint: "fp-shared",
@@ -472,7 +472,7 @@ describe("InsightsController", () => {
       expect(res.data.errorGroups).toHaveLength(2);
       expect(res.data.errorGroups[0]).toMatchObject({
         sigilId: staging,
-        sigilLabel: "lore / staging",
+        sigilLabel: "lore-staging",
         fingerprint: "fp-shared",
         name: "TypeError",
         message: "boom",
@@ -480,7 +480,7 @@ describe("InsightsController", () => {
       });
       expect(res.data.errorGroups[1]).toMatchObject({
         sigilId: prod,
-        sigilLabel: "lore / prod",
+        sigilLabel: "lore-prod",
         count: 4,
       });
     });
@@ -490,7 +490,7 @@ describe("InsightsController", () => {
     }) => {
       const owner = await createTestUser(ctx);
       const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "prod", owner);
+      const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
 
       // Filtered on `lastSeenAt`, not `firstSeenAt`: an old bug that fired an
       // hour ago is in the budget, and one that stopped last month is not —
@@ -541,8 +541,8 @@ describe("InsightsController", () => {
       const stranger = await createTestUser(ctx);
       const mine = await createProject(ctx, owner);
       const theirs = await createProject(ctx, stranger);
-      const myScope = await createSigil(ctx, mine, "prod", owner);
-      const theirScope = await createSigil(ctx, theirs, "prod", stranger);
+      const myScope = await createSigil(ctx, mine, "lore-prod", owner);
+      const theirScope = await createSigil(ctx, theirs, "lore-prod", stranger);
 
       for (const [sigilId, fingerprint] of [
         [myScope, "fp-mine"],
@@ -576,7 +576,7 @@ describe("InsightsController", () => {
     it("walks the stored histogram to a p75 boundary", async ({ expect }) => {
       const owner = await createTestUser(ctx);
       const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "prod", owner);
+      const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
 
       // 1 sample in bucket 0, 2 in bucket 2, 1 in the overflow bucket.
       // Total 4, target = ceil(0.75 × 4) = 3. Cumulative reaches 3 at bucket 2,
@@ -603,10 +603,10 @@ describe("InsightsController", () => {
     }) => {
       const owner = await createTestUser(ctx);
       const projectId = await createProject(ctx, owner);
-      const prod = await createSigil(ctx, projectId, "prod", owner);
-      const staging = await createSigil(ctx, projectId, "staging", owner);
+      const prod = await createSigil(ctx, projectId, "lore-prod", owner);
+      const staging = await createSigil(ctx, projectId, "lore-staging", owner);
 
-      // Fast environment: 3 samples in bucket 0. Slow one: 1 sample in the
+      // Fast app: 3 samples in bucket 0. Slow one: 1 sample in the
       // overflow bucket. Merged, 4 samples with target 3 → still bucket 0's
       // boundary. Averaging the two p75s would have said otherwise.
       await ctx.probe.vitals.create({
@@ -638,7 +638,7 @@ describe("InsightsController", () => {
     }) => {
       const owner = await createTestUser(ctx);
       const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "prod", owner);
+      const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
 
       await ctx.probe.vitals.create({
         sigilId,
@@ -665,7 +665,7 @@ describe("InsightsController", () => {
     }) => {
       const owner = await createTestUser(ctx);
       const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "prod", owner);
+      const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
 
       // CLS is bucketed on the collector's ×1000 integer, so the boundary is
       // 50 and the score is 0.05. Undoing the scaling is the controller's job,
@@ -692,7 +692,7 @@ describe("InsightsController", () => {
     const member = await createTestUser(ctx);
     const stranger = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
-    await createSigil(ctx, projectId, "prod", owner);
+    await createSigil(ctx, projectId, "lore-prod", owner);
     await ctx.probe.members.create({ userId: member.id, projectId });
 
     const res = await ctx.insightsController.getInsights.fetch(

@@ -79,7 +79,7 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/p/:projectId/reports/members` | `reportsMembers` | `project/reports/ReportsMembers.tsx` | Per-member contribution (was Reports▸Party) |
 | `/p/:projectId/feedback` | `projectFeedback` | `project/feedback/ProjectFeedback.tsx` | Owner inbox: triage bug/feature requests |
 | `/p/:projectId/blights` | `projectBlights` | `project/blights/ProjectBlights.tsx` | Crash-telemetry inbox (sigil-fed) |
-| `/p/:projectId/insights` | `projectInsights` | `project/insights/ProjectInsights.tsx` | Beacon / vitals analytics + per-environment error budget |
+| `/p/:projectId/insights` | `projectInsights` | `project/insights/ProjectInsights.tsx` | Beacon / vitals analytics + per-app error budget |
 | `/p/:projectId/q/:shortId` | `projectQuest` | `project/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
 | `/p/:projectId/q/:shortId/graph` | `projectQuestGraph` | `project/quest/QuestGraph.tsx` | Quest dependency graph |
 | `/p/:projectId/folios` | `projectFolios` | `folios/FoliosLayout.tsx` | Folio + directory-tree index |
@@ -262,17 +262,19 @@ This is a **confidentiality requirement**, not a tidiness one. Before it existed
 
 ## Sigils, Blights, Beacon, Vitals
 
-A **sigil** is one environment of one application — `lore` in `production` is a different sigil from `lore` in `staging`, and they report separately, because an error budget shared between environments is nobody's budget. It authenticates with a `sg_`-prefixed bearer token, stored hashed and shown once at creation; `tokenPrefix` exists so the UI can name a credential it cannot reconstruct.
+A **sigil** is one **app** that reports into a project: a free-form `name`, unique on `(projectId, name)`, and nothing else. It authenticates with a `sg_`-prefixed bearer token, stored hashed and shown once at creation; `tokenPrefix` exists so the UI can name a credential it cannot reconstruct.
+
+> Until 2026-08-06 a sigil was "one environment of one application" — `app` + `environment` + a display `label`, unique on `(projectId, app, environment)`. The three columns collapsed into one `name` (migration `20260806093400_confused_dazzler`, hand-written and additive; see "Migration safety on D1" below). How finely to slice is now the operator's decision rather than the schema's: an app that wants staging kept apart from production enrols two sigils and names them so. Older notes and folios still use the old vocabulary.
 
 Managed at `/p/:id/settings/sigils` (`SigilController`, reads member-gated, mutations owner-gated — no role, no allowlist: owning the project is the whole gate). `features.sigils` is the master switch, with `feedback` / `blights` / `beacon` / `vitals` as the per-capability toggles `GET /sigils/config` reports back to the app.
 
 **The toggles are enforced, not advertised.** `SigilIngestService.gatesFor` intersects the project's features with the sigil's `kinds`, and both `absorb` (the write gate) and `/sigils/config` (the advertisement) call it — one definition, so the sink cannot invite a payload it then discards. Enforcing on write is not redundant with the config poll: `sigils.kinds` is written once at creation and has **no update path anywhere**, and the reporting client fails open on any config error, so gating on the token alone left an owner's "off" switch as a suggestion.
 
-**Rotate, don't delete.** All four aggregate tables cascade on `sigilId`, so deleting a sigil to revoke a leaked token also erases that environment's views, vitals, uniques and error groups. `rotateSigil` re-mints `tokenHash`/`tokenPrefix` in place — the old token stops resolving immediately (`verify` looks a sigil up *by* its hash) and every row survives. The UI says which is which; so do the MCP tool descriptions.
+**Rotate, don't delete.** All four aggregate tables cascade on `sigilId`, so deleting a sigil to revoke a leaked token also erases that app's views, vitals, uniques and error groups. `rotateSigil` re-mints `tokenHash`/`tokenPrefix` in place — the old token stops resolving immediately (`verify` looks a sigil up *by* its hash) and every row survives. The UI says which is which; so do the MCP tool descriptions.
 
 - **Blights** — one row per distinct failure, keyed by `(projectId, fingerprint)`, with a count. The owner triages them in the inbox (`/p/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` zone, provenance recorded in `quests.source`). Purged on a retention window (`project.retentionDays ?? 30`) by `BlightJobs`; resolved and `quest:`-forwarded rows are kept as audit trail. A blight survives its sigil — `blights.sigilId` is `ON DELETE SET NULL`.
-- **Insights** (`/p/:id/insights`, gated on `features.beacon`) — three segments over one payload: **Analytics** (page views, unique visitors), **Performance** (web-vitals p75) and **Errors** (the per-environment error budget), read out of `sigil_views_hourly` / `sigil_uniques_daily` / `sigil_vitals_hourly` / `sigil_error_groups`. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is a `substr(hour, 1, 10)` group over the same rows. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token.
-  - The **Errors** segment is the only place `sigil_error_groups` is read. It answers "is this still happening *in production*", which the Blights inbox cannot: the inbox keys on `(projectId, fingerprint)` so a triage decision does not fork, which necessarily merges staging into production. Filtered on `lastSeenAt` (still failing), ordered by `count`, capped at 20.
+- **Insights** (`/p/:id/insights`, gated on `features.beacon`) — three segments over one payload: **Analytics** (page views, unique visitors), **Performance** (web-vitals p75) and **Errors** (the per-app error budget), read out of `sigil_views_hourly` / `sigil_uniques_daily` / `sigil_vitals_hourly` / `sigil_error_groups`. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is a `substr(hour, 1, 10)` group over the same rows. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token.
+  - The **Errors** segment is the only place `sigil_error_groups` is read. It answers "is this still happening *in that app*", which the Blights inbox cannot: the inbox keys on `(projectId, fingerprint)` so a triage decision does not fork, which necessarily merges every enrolled app into one row. Filtered on `lastSeenAt` (still failing), ordered by `count`, capped at 20.
 
 > ⚠️ **`name`, `message`, `stack`, `sourceUrl` on a blight are 100% attacker-controlled** and are shown to the project owner — the highest-value target. Render as escaped plain text only. Never markdown, never `dangerouslySetInnerHTML`.
 
@@ -282,7 +284,7 @@ Read endpoints are member-gated; mutations are owner-only. **Ingest has its own 
 
 **Where to look**
 
-- Entities: `src/api/entities/sigils.ts` (the credential + `(projectId, app, environment)` unique index), `blights.ts`, `sigilErrorGroups.ts`, `sigilViewsHourly.ts`, `sigilUniquesDaily.ts`, `sigilVitalsHourly.ts`
+- Entities: `src/api/entities/sigils.ts` (the credential + `(projectId, name)` unique index), `blights.ts`, `sigilErrorGroups.ts`, `sigilViewsHourly.ts`, `sigilUniquesDaily.ts`, `sigilVitalsHourly.ts`
 - Owner CRUD: `src/api/controllers/SigilController.ts` (create / list / rotate / delete)
 - Ingest: `src/api/controllers/SigilIngestController.ts` + `src/api/services/SigilIngestService.ts`
 - Credential: `src/api/services/SigilTokenService.ts` (mint / verify / bearer)
@@ -498,7 +500,7 @@ rule is that the flood never reaches the Worker.
 
 `e2e/` is split by feature, not by user journey. One `<feature>.spec.ts` per major surface, each covering happy path + key edge cases:
 
-- `sigil.spec.ts` — enrol an environment → ingest as it → triage in the inbox → rotate → delete
+- `sigil.spec.ts` — enrol an app → ingest as it → triage in the inbox → rotate → delete
 - `blights.spec.ts` — regression guard for the inbox render loop (the ingest path lives in `sigil.spec.ts`)
 - `quest.spec.ts` — quest lifecycle (open → accept → complete) + reminder UI
 - `feedback.spec.ts` — feedback submit → accept → link quests → status progression (renamed from `petition.spec.ts`)

@@ -97,9 +97,7 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
   const minted = tokens.mint();
   const sigil = await probe.sigils.create({
     projectId: project.id,
-    app: "demo",
-    environment: "production",
-    label: "demo / production",
+    name: "demo",
     tokenHash: minted.hash,
     tokenPrefix: minted.prefix,
     kinds: over.kinds ?? ["beacon", "vitals", "blights", "feedback"],
@@ -410,7 +408,7 @@ describe("sigil ingest", () => {
     await post({ errors: [anError({ count: 3 })] });
     await post({ errors: [anError({ count: 4 })] });
 
-    // The per-environment truth: how bad is it *here*.
+    // The per-app truth: how bad is it *here*.
     const groups = await probe.errorGroups.findMany({
       where: { sigilId: { eq: sigil.id } },
     });
@@ -427,16 +425,14 @@ describe("sigil ingest", () => {
     expect(inbox[0].status).toBe("open");
   });
 
-  it("keeps two environments apart in the groups and together in the inbox", async () => {
+  it("keeps two apps apart in the groups and together in the inbox", async () => {
     const { alepha, probe, project, sigil, post } = await setup();
 
     const tokens = alepha.inject(SigilTokenService);
     const staging = tokens.mint();
     const other = await probe.sigils.create({
       projectId: project.id,
-      app: "demo",
-      environment: "staging",
-      label: "demo / staging",
+      name: "demo-staging",
       tokenHash: staging.hash,
       tokenPrefix: staging.prefix,
       kinds: ["blights"],
@@ -445,7 +441,7 @@ describe("sigil ingest", () => {
     await post({ errors: [anError({ count: 2 })] });
     await post({ errors: [anError({ count: 5 })] }, staging.token);
 
-    // Two budgets, because two environments.
+    // Two budgets, because two apps.
     const groups = await probe.errorGroups.findMany({});
     expect(groups).toHaveLength(2);
     expect(groups.map((g) => g.count).sort()).toEqual([2, 5]);

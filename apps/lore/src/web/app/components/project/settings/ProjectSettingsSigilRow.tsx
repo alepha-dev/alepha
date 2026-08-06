@@ -1,4 +1,3 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { CardContent } from "@alepha/ui/components/ui/card";
 import { useI18n } from "alepha/react/i18n";
@@ -13,11 +12,11 @@ export interface ProjectSettingsSigilRowProps {
 }
 
 /**
- * One enrolled environment.
+ * One enrolled app.
  *
  * The two actions are deliberately not symmetric. Rotating replaces the token
- * and keeps everything the environment has reported; deleting takes the history
- * with it, because the aggregate tables cascade. The row shows both, and the
+ * and keeps everything the app has reported; deleting takes the history with
+ * it, because the aggregate tables cascade. The row shows both, and the
  * confirmation each opens is where that difference is spelled out.
  */
 const ProjectSettingsSigilRow = (props: ProjectSettingsSigilRowProps) => {
@@ -27,10 +26,7 @@ const ProjectSettingsSigilRow = (props: ProjectSettingsSigilRowProps) => {
   return (
     <CardContent className="flex flex-wrap items-center gap-3 px-4 py-3">
       <div className="flex min-w-0 grow flex-col gap-0.5">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium">{sigil.label}</span>
-          <Badge variant="secondary">{sigil.environment}</Badge>
-        </div>
+        <span className="truncate text-sm font-medium">{sigil.name}</span>
         <code className="text-muted-foreground truncate font-mono text-xs">
           {sigil.tokenPrefix}…
         </code>
@@ -38,7 +34,7 @@ const ProjectSettingsSigilRow = (props: ProjectSettingsSigilRowProps) => {
       <span className="text-muted-foreground text-xs">
         {/*
           What an operator actually checks: not when the token was minted, but
-          whether the environment holding it is still reporting.
+          whether the app holding it is still reporting.
         */}
         {sigil.lastSeenAt
           ? tr("sigils.lastSeen", {

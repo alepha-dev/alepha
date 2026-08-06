@@ -11,7 +11,7 @@ import { projectParamsSchema } from "./commonSchemas.ts";
  */
 const blightSchema = z.object({
   id: z.integer(),
-  /** Which environment reported it last — see `sigils` in the same result. */
+  /** Which app reported it last — see `sigils` in the same result. */
   sigilId: z.string().optional(),
   fingerprint: z.string(),
   name: z.string(),
@@ -42,7 +42,7 @@ export const blightListParamsSchema = projectParamsSchema.extend({
 export const blightListResultSchema = z.object({
   blights: z.array(blightSchema),
   openCount: z.integer(),
-  /** The environments that report here, for reading `sigilId` back to a name. */
+  /** The apps that report here, for reading `sigilId` back to a name. */
   sigils: z.array(z.object({ id: z.string(), label: z.string() })),
 });
 

@@ -26,11 +26,11 @@ export const blights = $entity({
      * Which sigil reported it **most recently**.
      *
      * Not "which sigil filed it": a row is keyed `(projectId, fingerprint)`,
-     * so one bug present in both staging and production is one row, and this
-     * column is overwritten by whichever environment reported last. That is
+     * so one bug present in two enrolled apps is one row, and this column is
+     * overwritten by whichever app reported last. That is
      * deliberate — "still happening, most recently over there" is the useful
      * fact for triage, and it is what the inbox's filter-by-sigil means. The
-     * lossless per-environment split lives in `sigil_error_groups`, keyed
+     * lossless per-app split lives in `sigil_error_groups`, keyed
      * `(sigilId, fingerprint)`.
      *
      * Nulled rather than cascaded on sigil deletion: deleting a sigil is how a

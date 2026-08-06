@@ -16,7 +16,7 @@ import { SigilTokenService } from "../services/SigilTokenService.ts";
  * opens nothing but these two routes.
  *
  * The asymmetry matters more than it looks. A sigil token exists in cleartext
- * on every machine that runs the environment it belongs to; treating it as an
+ * on every machine that runs the app it belongs to; treating it as an
  * authentication of any kind would hand out Lore's project surface with it.
  * Conversely, accepting the session cookie here would mean a logged-in owner
  * browsing a malicious page could be made to write into someone's insights.
@@ -34,7 +34,7 @@ export class SigilIngestController {
   protected readonly ingest = $inject(SigilIngestService);
 
   /**
-   * `POST /sigils/ingest` — one batch from an enrolled environment.
+   * `POST /sigils/ingest` — one batch from an enrolled app.
    *
    * Answers 204 and nothing else. What the sink is willing to take is a
    * standing answer, not a per-batch one, and it is served by `/sigils/config`
@@ -56,7 +56,7 @@ export class SigilIngestController {
   });
 
   /**
-   * `GET /sigils/config` — how much this environment should send.
+   * `GET /sigils/config` — how much this app should send.
    *
    * The answer is exactly what `SigilIngestService.absorb` would accept,
    * because it is the same call: `gatesFor` is the one place the project's

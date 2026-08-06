@@ -648,7 +648,7 @@ export default {
   "insights.errors.subtitle": "per environment",
   "insights.errors.heading": "Still happening",
   "insights.errors.col.error": "Error",
-  "insights.errors.col.environment": "Environment",
+  "insights.errors.col.app": "App",
   "insights.errors.col.count": "Occurrences",
   "insights.errors.col.firstSeen": "First seen",
   "insights.errors.col.lastSeen": "Last seen",
@@ -706,21 +706,18 @@ export default {
   "vitals.feature.description":
     "Collect Core Web Vitals (LCP, CLS, INP, FCP, TTFB) from enrolled environments.",
 
-  "sigils.title": "Enrolled environments",
+  "sigils.title": "Enrolled apps",
   "sigils.subtitle":
-    "One sigil per application per environment. Each holds its own token and reports on its own.",
-  "sigils.empty":
-    "No environment enrolled yet. Until one is, nothing can report here.",
+    "One sigil per app. Each holds its own token and reports on its own — to keep staging apart from production, enrol both and name them so.",
+  "sigils.empty": "No app enrolled yet. Until one is, nothing can report here.",
   "sigils.features.title": "Capabilities",
   "sigils.features.subtitle":
     "Turn Sigils on, then choose what the ingest endpoint accepts.",
-  "sigils.create.app": "Application",
-  "sigils.create.appPlaceholder": "lore",
-  "sigils.create.environment": "Environment",
-  "sigils.create.environmentPlaceholder": "production",
+  "sigils.create.name": "App name",
+  "sigils.create.namePlaceholder": "lore",
   "sigils.create.submit": "Enrol",
   "sigils.token.title":
-    "Copy this token now — it is stored hashed and will never be shown again.",
+    "Copy this token now — it is stored hashed and will never be shown again. Set it as SIGIL_KEY in the app, alongside SIGIL_SINK pointing at this instance.",
   "sigils.token.copy": "Copy token",
   "sigils.token.done": "Done",
   "sigils.lastSeen": "last reported $1",
@@ -729,11 +726,11 @@ export default {
   "sigils.action.delete": "Delete",
   "sigils.rotate.confirmTitle": "Rotate the token for $1?",
   "sigils.rotate.confirmDescription":
-    "The current token stops working immediately and a new one is shown once. Everything this environment has reported is kept — this is how you revoke a leaked token without losing its history.",
+    "The current token stops working immediately and a new one is shown once. Everything this app has reported is kept — this is how you revoke a leaked token without losing its history.",
   "sigils.rotate.confirm": "Rotate",
   "sigils.delete.confirmTitle": "Delete $1?",
   "sigils.delete.confirmDescription":
-    "This erases everything this environment ever reported — page views, web vitals, unique visitors and its error budget — along with its token. Blights already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
+    "This erases everything this app ever reported — page views, web vitals, unique visitors and its error budget — along with its token. Blights already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
   "sigils.delete.confirm": "Delete",
   "sigils.toast.created": "Sigil created",
   "sigils.toast.rotated": "Token rotated",

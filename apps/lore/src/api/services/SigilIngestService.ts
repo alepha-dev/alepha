@@ -44,20 +44,20 @@ export interface SigilGates {
  * `(projectId, fingerprint)`, and both are written for every accepted error.
  * They are not two copies of one thing — they answer two different questions:
  *
- * - *"Is this still happening in production?"* is per environment, because a
- *   sigil is an environment and an error budget shared between staging and
- *   production is nobody's budget. That is `sigil_error_groups`.
+ * - *"Is this still happening over there?"* is per sigil, because an error
+ *   budget shared across every app reporting into a project is nobody's budget.
+ *   That is `sigil_error_groups`.
  * - *"Have we decided what to do about this bug?"* is one decision per bug, not
  *   one per place it was seen. An inbox that lists the same `TypeError` twice
- *   because staging has it too is a worse inbox, and `blights.status` — open,
- *   resolved, `quest:<id>` — is exactly the kind of state that must not fork.
- *   That is `blights`.
+ *   because a second app has it too is a worse inbox, and `blights.status` —
+ *   open, resolved, `quest:<id>` — is exactly the kind of state that must not
+ *   fork. That is `blights`.
  *
- * So the counts differ by design: a group's `count` is what that environment
- * saw, a blight's `count` is the project-wide total, which is the right sort
- * key for triage by blast radius. `blights.sigilId` records the **most recent**
+ * So the counts differ by design: a group's `count` is what that app saw, a
+ * blight's `count` is the project-wide total, which is the right sort key for
+ * triage by blast radius. `blights.sigilId` records the **most recent**
  * reporter, which is what the inbox's "filter by sigil" dropdown means; the
- * per-environment breakdown lives in the groups, where it is not lossy.
+ * per-app breakdown lives in the groups, where it is not lossy.
  */
 export class SigilIngestService {
   protected readonly alepha = $inject(Alepha);
@@ -89,7 +89,7 @@ export class SigilIngestService {
    * behind that advice, not a replacement for it.
    *
    * `lastSeenAt` is stamped whatever happens, including for a batch every gate
-   * rejected. It answers "did this environment report", which is Lore's own
+   * rejected. It answers "did this app report", which is Lore's own
    * bookkeeping — the app never sends a liveness signal of its own, and this
    * is deliberately not one: an app that reports nothing is silent here too.
    */
@@ -183,7 +183,7 @@ export class SigilIngestService {
   }
 
   /**
-   * Merges errors into their per-environment group, then into the project's
+   * Merges errors into their per-app group, then into the project's
    * triage inbox.
    *
    * `count` comes from the sender, which has already collapsed a window's worth
@@ -259,9 +259,9 @@ export class SigilIngestService {
           set: {
             count: sql`${this.blights.table.count} + ${seen}`,
             lastSeenAt: now,
-            // Which environment reported it last. Deliberately overwritten:
+            // Which app reported it last. Deliberately overwritten:
             // "still happening, most recently over there" is the useful fact
-            // for triage, and the per-environment split is kept in full by
+            // for triage, and the per-app split is kept in full by
             // `sigil_error_groups`.
             sigilId: sigil.id,
           },

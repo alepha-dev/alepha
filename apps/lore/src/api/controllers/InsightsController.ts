@@ -89,13 +89,13 @@ const insightsSchema = z.object({
     }),
   ),
   /**
-   * The per-environment error budget: one row per `(sigil, fingerprint)` still
-   * seen inside the window, worst first.
+   * The per-app error budget: one row per `(sigil, fingerprint)` still seen
+   * inside the window, worst first.
    *
    * This is the question `sigil_error_groups` exists to answer and the Blights
-   * inbox structurally cannot — the inbox folds every environment into one row
-   * per project, because a triage decision must not fork, which is exactly
-   * what makes it useless for "is this still happening *in production*".
+   * inbox structurally cannot — the inbox folds every sigil into one row per
+   * project, because a triage decision must not fork, which is exactly what
+   * makes it useless for "is this still happening *in that app*".
    *
    * ⚠️ `name` and `message` come out of an application's runtime and are
    * attacker-controlled. Escaped plain text only, never markdown.
@@ -103,12 +103,15 @@ const insightsSchema = z.object({
   errorGroups: z.array(
     z.object({
       sigilId: z.uuid(),
-      /** The environment's display label, so the UI needs no second lookup. */
+      /**
+       * The sigil's display name, so the UI needs no second lookup. The wire
+       * field keeps the `sigilLabel` name that MCP clients already read.
+       */
       sigilLabel: z.string(),
       fingerprint: z.string(),
       name: z.string(),
       message: z.string(),
-      /** Occurrences in this environment, summed across every batch. */
+      /** Occurrences in this app, summed across every batch. */
       count: z.integer(),
       firstSeenAt: z.string(),
       lastSeenAt: z.string(),
@@ -132,9 +135,9 @@ export type InsightsResource = Infer<typeof insightsSchema>;
  * against 13:00.
  *
  * **The error budget lives here too.** `sigil_error_groups` is the only table
- * that keeps failures split by environment, and "is this still happening in
- * production" is a per-environment question the project-wide Blights inbox
- * cannot answer by construction. This is the surface that asks it — the same
+ * that keeps failures split by app, and "is this still happening over there" is
+ * a per-app question the project-wide Blights inbox cannot answer by
+ * construction. This is the surface that asks it — the same
  * range selector, the same member gate, no second route for one list.
  *
  * Reads are member-gated: analytics are not an owner secret, and the page is
@@ -209,7 +212,7 @@ export class InsightsController {
 
       // --- Unique visitors — the headline.
       // Counted as distinct `(day, visitorHash)` pairs rather than rows: the
-      // same person visiting two environments of the same project on one day
+      // same person visiting two enrolled apps of the same project on one day
       // is one visitor, and one row per sigil would say two.
       const [uniqueAgg] = await this.database.run(
         sql`
@@ -305,21 +308,21 @@ export class InsightsController {
   });
 
   /**
-   * Every sigil on the project, id → label.
+   * Every sigil on the project, id → name.
    *
    * The ids are the join key between a project-scoped request and sigil-scoped
-   * rows; the labels are what makes an error budget legible, since "which
-   * environment" is the entire reason these rows are kept separately from the
-   * inbox. Both come out of the one read the request already needed.
+   * rows; the names are what makes an error budget legible, since "which app" is
+   * the entire reason these rows are kept separately from the inbox. Both come
+   * out of the one read the request already needed.
    */
   protected async projectSigilLabels(
     projectId: number,
   ): Promise<Map<string, string>> {
     const rows = await this.sigils.findMany({
       where: { projectId: { eq: projectId } },
-      columns: ["id", "label"],
+      columns: ["id", "name"],
     });
-    return new Map(rows.map((sigil) => [sigil.id, sigil.label]));
+    return new Map(rows.map((sigil) => [sigil.id, sigil.name]));
   }
 
   /**

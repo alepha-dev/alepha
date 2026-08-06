@@ -1,7 +1,13 @@
 import { $inject, type Infer, z } from "alepha";
 import { $repository, DbConflictError } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+  okSchema,
+} from "alepha/server";
 import { SIGIL_KINDS, type Sigil, sigils } from "../entities/sigils.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { SigilTokenService } from "../services/SigilTokenService.ts";
@@ -16,14 +22,12 @@ import { SigilTokenService } from "../services/SigilTokenService.ts";
 const sigilResourceSchema = z.object({
   id: z.uuid(),
   projectId: z.integer(),
-  app: z.string(),
-  environment: z.string(),
-  label: z.string(),
+  name: z.string(),
   /** First characters of the token — enough to name it, not to use it. */
   tokenPrefix: z.string(),
   kinds: z.array(z.string()),
   createdAt: z.string(),
-  /** Last time this environment reported. Absent means never. */
+  /** Last time this app reported. Absent means never. */
   lastSeenAt: z.string().optional(),
 });
 
@@ -43,13 +47,13 @@ const mintedSigilSchema = sigilResourceSchema.extend({
 export type MintedSigil = Infer<typeof mintedSigilSchema>;
 
 /**
- * Owner-facing CRUD for sigils — one credential per application per
- * environment, which is what an app presents to `POST /sigils/ingest`.
+ * Owner-facing CRUD for sigils — one credential per enrolled app, which is what
+ * that app presents to `POST /sigils/ingest`.
  *
  * **Reads are member-gated, mutations owner-gated**, the same split the rest of
  * the app uses. There is deliberately no role, no allowlist and no capability
- * beyond that: anyone who owns a project may enrol an environment into it, and
- * a sigil grants nothing outside the two ingest routes.
+ * beyond that: anyone who owns a project may enrol an app into it, and a sigil
+ * grants nothing outside the two ingest routes.
  */
 export class SigilController {
   protected sigils = $repository(sigils);
@@ -57,13 +61,12 @@ export class SigilController {
   protected tokens = $inject(SigilTokenService);
 
   /**
-   * Enrol one environment of one application, and hand back its token once.
+   * Enrol an app, and hand back its token once.
    *
-   * `(projectId, app, environment)` is unique, because the triple is the
-   * identity: a second sigil for `lore` in `production` would split that
-   * environment's history in two and make every aggregate wrong. A repeat is a
-   * 409 rather than a silent second row, and the way to replace a credential is
-   * {@link rotateSigil}.
+   * `(projectId, name)` is unique, because the name is the identity: a second
+   * sigil called `lore` would split that app's history in two and make every
+   * aggregate wrong. A repeat is a 409 rather than a silent second row, and the
+   * way to replace a credential is {@link rotateSigil}.
    *
    * The duplicate is refused twice, on purpose. The `findOne` names the clash
    * in the message an operator reads; the `DbConflictError` catch covers the
@@ -78,10 +81,8 @@ export class SigilController {
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
-        app: z.string().min(1).max(100),
-        environment: z.string().min(1).max(50),
-        /** Defaults to `<app> / <environment>` — a name, not an identity. */
-        label: z.string().min(1).max(200).optional(),
+        /** Display name of the app. Unique within the project. */
+        name: z.string().min(1).max(100),
         /**
          * Capability buckets the ingest endpoint will accept from this sigil.
          * Omitted grants all of them; the project's own feature toggles are
@@ -97,29 +98,29 @@ export class SigilController {
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.projectId, user);
 
-      const app = body.app.trim();
-      const environment = body.environment.trim();
+      // Trimmed before anything reads it: `min(1)` accepts `"   "`, which would
+      // otherwise reach the insert as an empty name and fail the entity's own
+      // validation as a 500 instead of the 400 it is.
+      const name = body.name.trim();
+      if (!name) {
+        throw new BadRequestError("A sigil needs a name");
+      }
 
       const existing = await this.sigils.findOne({
         where: {
           projectId: { eq: params.projectId },
-          app: { eq: app },
-          environment: { eq: environment },
+          name: { eq: name },
         },
       });
       if (existing) {
-        throw new ConflictError(
-          `A sigil already exists for ${app} / ${environment}`,
-        );
+        throw new ConflictError(`A sigil already exists named "${name}"`);
       }
 
       const minted = this.tokens.mint();
       try {
         const created = await this.sigils.create({
           projectId: params.projectId,
-          app,
-          environment,
-          label: body.label?.trim() || `${app} / ${environment}`,
+          name,
           tokenHash: minted.hash,
           tokenPrefix: minted.prefix,
           kinds: body.kinds ?? [...SIGIL_KINDS],
@@ -130,7 +131,7 @@ export class SigilController {
       } catch (error) {
         if (error instanceof DbConflictError) {
           throw new ConflictError(
-            await this.explainConflict(params.projectId, app, environment),
+            await this.explainConflict(params.projectId, name),
           );
         }
         throw error;
@@ -142,8 +143,8 @@ export class SigilController {
    * Every sigil on a project, newest first.
    *
    * Member-gated rather than owner-gated: the list is an inventory of which
-   * environments report, which is exactly what the blights inbox's filter and
-   * the insights page mean, and neither of those is owner-only.
+   * apps report, which is exactly what the blights inbox's filter and the
+   * insights page mean, and neither of those is owner-only.
    */
   listSigils = $action({
     use: [$secure({ permissions: ["project:read"] })],
@@ -170,8 +171,8 @@ export class SigilController {
    *
    * This is what revoking a leaked credential should cost. All four aggregate
    * tables cascade on `sigilId`, so {@link deleteSigil} — the other way to make
-   * a token stop working — also erases that environment's views, vitals,
-   * uniques and error budget. Rotation is the same revocation without the
+   * a token stop working — also erases that app's views, vitals, uniques and
+   * error budget. Rotation is the same revocation without the
    * amnesia: the old token stops resolving the moment the hash changes, because
    * `SigilTokenService.verify` looks a sigil up *by* its hash.
    */
@@ -199,7 +200,7 @@ export class SigilController {
   });
 
   /**
-   * Remove a sigil, and with it everything that environment ever reported.
+   * Remove a sigil, and with it everything that app ever reported.
    *
    * A hard delete — the entity carries no soft-delete column, and the four
    * aggregate tables cascade. Blights survive, because `blights.sigilId` is
@@ -226,29 +227,27 @@ export class SigilController {
   /**
    * Works out which unique index refused the insert, and says so.
    *
-   * `sigils` carries two: `(projectId, app, environment)` and `tokenHash`.
+   * `sigils` carries two: `(projectId, name)` and `tokenHash`.
    * `DbConflictError` does not name the one that fired, and the two mean
-   * opposite things to a caller — the first says "you already have this
-   * environment", the second says "try again and you will get a different
-   * token". Answering the first message to the second case would send an
-   * operator looking for a sigil that does not exist.
+   * opposite things to a caller — the first says "you already have this app",
+   * the second says "try again and you will get a different token". Answering
+   * the first message to the second case would send an operator looking for a
+   * sigil that does not exist.
    *
    * One extra read, only on the error path.
    */
   protected async explainConflict(
     projectId: number,
-    app: string,
-    environment: string,
+    name: string,
   ): Promise<string> {
     const clash = await this.sigils.findOne({
       where: {
         projectId: { eq: projectId },
-        app: { eq: app },
-        environment: { eq: environment },
+        name: { eq: name },
       },
     });
     return clash
-      ? `A sigil already exists for ${app} / ${environment}`
+      ? `A sigil already exists named "${name}"`
       : "Could not mint a unique token for this sigil — retry.";
   }
 
@@ -281,9 +280,7 @@ export class SigilController {
     return {
       id: sigil.id,
       projectId: sigil.projectId,
-      app: sigil.app,
-      environment: sigil.environment,
-      label: sigil.label,
+      name: sigil.name,
       tokenPrefix: sigil.tokenPrefix,
       kinds: sigil.kinds ?? [],
       createdAt: sigil.createdAt,

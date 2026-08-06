@@ -22,16 +22,16 @@ import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 /**
  * Which applications report into this project, and what they may report.
  *
- * A sigil is **one environment of one application** — `lore` in `production` is
- * a different sigil from `lore` in `staging`, so the form asks for the two
- * separately instead of a free-form name that would let the same environment be
- * enrolled twice under different spellings.
+ * A sigil is **one app** — a name and the token that name reports with — so the
+ * form asks for one thing. How finely an operator slices their world is left to
+ * them: an app that wants staging kept apart from production enrols two sigils
+ * and names them so.
  *
  * The token appears exactly once, at creation. It is stored hashed, so nothing
  * can show it again. The way back from a lost or leaked token is to rotate it,
  * which is offered beside delete precisely because delete is not the same
  * thing: the aggregate tables cascade, so deleting a sigil to revoke a token
- * also erases everything that environment ever reported.
+ * also erases everything that app ever reported.
  */
 const ProjectSettingsSigilsPage = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -49,8 +49,7 @@ const ProjectSettingsSigilsPage = () => {
   const vitals = useProjectFeatureToggle("vitals");
 
   const [sigils, setSigils] = useState<SigilResource[]>([]);
-  const [app, setApp] = useState("");
-  const [environment, setEnvironment] = useState("");
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   /** The one moment a token is readable. Cleared as soon as it is dismissed. */
   const [freshToken, setFreshToken] = useState<string | undefined>();
@@ -76,16 +75,15 @@ const ProjectSettingsSigilsPage = () => {
   }, [project, enabled, reload]);
 
   const create = async () => {
-    if (!project || !app.trim() || !environment.trim()) return;
+    if (!project || !name.trim()) return;
     setBusy(true);
     try {
       const created = await sigilApi.createSigil({
         params: { projectId: project.id },
-        body: { app: app.trim(), environment: environment.trim() },
+        body: { name: name.trim() },
       });
       setFreshToken(created.token);
-      setApp("");
-      setEnvironment("");
+      setName("");
       toaster.success(tr("sigils.toast.created"));
       await reload();
     } catch (error) {
@@ -98,7 +96,7 @@ const ProjectSettingsSigilsPage = () => {
   const rotate = async (sigil: SigilResource) => {
     if (!project) return;
     const confirmed = await dialog.confirm({
-      title: tr("sigils.rotate.confirmTitle", { args: [sigil.label] }),
+      title: tr("sigils.rotate.confirmTitle", { args: [sigil.name] }),
       description: tr("sigils.rotate.confirmDescription"),
       confirmLabel: tr("sigils.rotate.confirm"),
     });
@@ -119,7 +117,7 @@ const ProjectSettingsSigilsPage = () => {
   const remove = async (sigil: SigilResource) => {
     if (!project) return;
     const confirmed = await dialog.confirm({
-      title: tr("sigils.delete.confirmTitle", { args: [sigil.label] }),
+      title: tr("sigils.delete.confirmTitle", { args: [sigil.name] }),
       description: tr("sigils.delete.confirmDescription"),
       confirmLabel: tr("sigils.delete.confirm"),
       destructive: true,
@@ -205,20 +203,14 @@ const ProjectSettingsSigilsPage = () => {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Input
-              value={app}
-              aria-label={tr("sigils.create.app")}
-              placeholder={tr("sigils.create.appPlaceholder")}
-              onChange={(event) => setApp(event.target.value)}
-            />
-            <Input
-              value={environment}
-              aria-label={tr("sigils.create.environment")}
-              placeholder={tr("sigils.create.environmentPlaceholder")}
-              onChange={(event) => setEnvironment(event.target.value)}
+              value={name}
+              aria-label={tr("sigils.create.name")}
+              placeholder={tr("sigils.create.namePlaceholder")}
+              onChange={(event) => setName(event.target.value)}
             />
             <Button
               onClick={() => void create()}
-              disabled={busy || !app.trim() || !environment.trim()}
+              disabled={busy || !name.trim()}
             >
               <Plus />
               {tr("sigils.create.submit")}
