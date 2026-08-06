@@ -165,3 +165,135 @@ describe("useFolioActions — envelope salt survives an in-session encrypt", () 
     expect(envelopeAfterSave.salt).toBe(envelopeAfterEncrypt.salt);
   });
 });
+
+/**
+ * Regression guard for `applyReverted` (Task 10's inspector History tab).
+ * `revertHistory` reverts the row server-side and hands back the new
+ * state, but this hook's draft doesn't otherwise see it — `props.folio`
+ * is the route-loader snapshot, frozen for the mount's lifetime, same as
+ * everywhere else in this file. `applyReverted` is the function that
+ * closes that gap by writing the reverted title/tags/content straight
+ * into the live form and re-baselining `dirty`.
+ */
+describe("useFolioActions — applyReverted syncs the draft after a history revert", () => {
+  const mount = (alepha: Alepha, ui: React.ReactNode) =>
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>{ui}</DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+  const Widget = (props: {
+    folio: Folio;
+    onActions: (actions: UseFolioActionsResult) => void;
+  }) => {
+    const draft = useFolioDraft(props.folio);
+    props.onActions(
+      useFolioActions({
+        folio: props.folio,
+        draft,
+        panes: {
+          tree: false,
+          inspector: false,
+          toggleTree: () => {},
+          toggleInspector: () => {},
+          toggleFocus: () => {},
+        },
+        find: { show: () => {} },
+      }),
+    );
+    return (
+      <div>
+        <div data-testid="title">{draft.values.title}</div>
+        <div data-testid="content">{draft.values.content}</div>
+        <div data-testid="dirty">{String(draft.dirty)}</div>
+      </div>
+    );
+  };
+
+  it("writes the reverted title/tags/content into the draft and re-baselines dirty", async ({
+    expect,
+  }) => {
+    const folio = baseFolio({
+      title: "Original",
+      tags: ["a"],
+      content: "original body",
+    });
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with({ provide: LinkProvider, use: FakeLinkProvider });
+    alepha.inject(FakeLinkProvider).currentFolio = folio;
+
+    let actions: UseFolioActionsResult | undefined;
+    const { getByTestId } = mount(
+      alepha,
+      <Widget folio={folio} onActions={(a) => (actions = a)} />,
+    );
+
+    const reverted: Folio = {
+      ...folio,
+      title: "Reverted title",
+      tags: ["b"],
+      content: "reverted body",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    };
+
+    await actions?.applyReverted(reverted);
+
+    await waitFor(() =>
+      expect(getByTestId("title").textContent).toBe("Reverted title"),
+    );
+    expect(getByTestId("content").textContent).toBe("reverted body");
+    // `dirty` reads false: the revert re-baselined the comparison target
+    // together with the live values, not just one of the two — otherwise
+    // the status line would falsely read "Unsaved changes" right after a
+    // revert nobody has touched yet.
+    expect(getByTestId("dirty").textContent).toBe("false");
+  });
+
+  it("does not paint ciphertext as if it were plaintext when a protected folio is reverted while locked", async ({
+    expect,
+  }) => {
+    const folio = baseFolio({
+      protected: true,
+      content: JSON.stringify({
+        v: 1,
+        salt: "aa",
+        iv: "bb",
+        ciphertext: "cc",
+        kdf: { iterations: 600_000 },
+      }),
+    });
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with({ provide: LinkProvider, use: FakeLinkProvider });
+    alepha.inject(FakeLinkProvider).currentFolio = folio;
+
+    let actions: UseFolioActionsResult | undefined;
+    const { getByTestId } = mount(
+      alepha,
+      <Widget folio={folio} onActions={(a) => (actions = a)} />,
+    );
+
+    // No passphrase was ever entered this session, so there is no cached
+    // key for this folio — `applyReverted` must leave the draft's content
+    // untouched (still blank, per `useFolioDraft.initial()`'s protected
+    // blanking) rather than write the reverted row's ciphertext into the
+    // editor as if it had been decrypted.
+    const reverted: Folio = {
+      ...folio,
+      content: JSON.stringify({
+        v: 1,
+        salt: "aa",
+        iv: "dd",
+        ciphertext: "ee",
+        kdf: { iterations: 600_000 },
+      }),
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    };
+
+    await actions?.applyReverted(reverted);
+
+    expect(getByTestId("content").textContent).toBe("");
+  });
+});

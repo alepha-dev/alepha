@@ -111,6 +111,12 @@ export interface UseFolioActionsResult {
   encryptDialogOpen: boolean;
   closeEncryptDialog: () => void;
   confirmEncrypt: (passphrase: string) => Promise<string | null>;
+  /**
+   * Sync the workspace after a history revert (the inspector's History
+   * tab, Task 10). See the function's own doc below for why this can't be
+   * left to `props.folio` re-rendering on its own.
+   */
+  applyReverted: (folio: Folio) => Promise<void>;
 }
 
 /**
@@ -280,6 +286,67 @@ export const useFolioActions = (
     };
     input.draft.markSaved(folio.updatedAt, baselineValues);
     setUnlocked(true);
+  };
+
+  /**
+   * Sync the workspace after a history revert (the inspector's History
+   * tab, Task 10). `revertHistory` reverts the ROW server-side and
+   * returns the new state, but nothing about THIS hook's local state
+   * refreshes itself just because that happened — the same "props.folio
+   * is frozen" premise documented at the top of this file, generalized
+   * one step further: a revert can change title/tags/summary/content all
+   * at once (whichever fields the reverted-to revision's snapshot held),
+   * not just `content` the way `applyDecryptedContent` alone handles it
+   * for unlock. So title/tags/summary are written into the live form
+   * FIRST, then `applyDecryptedContent` sets content and re-baselines
+   * `dirty` against all four together.
+   *
+   * Protected folios: `reverted.content` is the OLD ciphertext from that
+   * revision (same salt — revisions never cross a protection-domain
+   * boundary, purged instead; see `apps/lore/CLAUDE.md`'s
+   * protection-domain invariant), so it has to be decrypted with the
+   * cached key before it can be shown. If this session never unlocked
+   * the folio (no cached key), there is no safe way to reflect the
+   * revert in THIS draft — the row IS reverted server-side regardless,
+   * and unlocking afterward decrypts the (already-reverted) content
+   * correctly, so nothing is lost, it just isn't shown until then.
+   */
+  const applyReverted = async (reverted: Folio): Promise<void> => {
+    const syncAtoms = (): void => {
+      alepha.store.set(currentFolioAtom, reverted);
+      setFolios(folios.map((f) => (f.id === reverted.id ? reverted : f)));
+      const merged = new Set<string>(tags);
+      for (const t of reverted.tags) merged.add(t);
+      setTags([...merged].sort());
+    };
+
+    if (isProtected) {
+      const cachedKey = locked ? undefined : getProtectedKey(reverted.id);
+      if (!cachedKey) {
+        syncAtoms();
+        return;
+      }
+      try {
+        const plaintext = await decryptEnvelopeWithKey(
+          cachedKey,
+          reverted.content,
+        );
+        input.draft.form.input.title.set(reverted.title);
+        input.draft.form.input.tags.set(reverted.tags);
+        input.draft.form.input.summary.set(reverted.summary);
+        applyDecryptedContent(reverted, plaintext);
+      } catch {
+        toaster.error(tr("folios.protected.unlock-failed"));
+      }
+      syncAtoms();
+      return;
+    }
+
+    input.draft.form.input.title.set(reverted.title);
+    input.draft.form.input.tags.set(reverted.tags);
+    input.draft.form.input.summary.set(reverted.summary);
+    applyDecryptedContent(reverted, reverted.content);
+    syncAtoms();
   };
 
   // If a passphrase was already entered for this folio earlier in the
@@ -910,6 +977,7 @@ export const useFolioActions = (
     encryptDialogOpen,
     closeEncryptDialog: () => setEncryptDialogOpen(false),
     confirmEncrypt,
+    applyReverted,
   };
 };
 

@@ -1,8 +1,9 @@
 import { useStore } from "alepha/react";
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 import type { Folio } from "@/api/entities/folios.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import FolioWorkspaceContent from "./FolioWorkspaceContent.tsx";
+import type { FolioInspectorTab } from "./inspector/FolioInspector.tsx";
 import FolioTree from "./tree/FolioTree.tsx";
 import { useFolioFonts } from "./useFolioFonts.ts";
 
@@ -36,6 +37,18 @@ export interface FolioWorkspaceProps {
  * reintroduce feedback #14 (every navigation re-collapsing directories the
  * user had opened).
  *
+ * The inspector's OPEN/CLOSED state and active tab live here too, for the
+ * same reason: `FolioInspector` itself mounts inside the keyed
+ * `FolioWorkspaceContent` (unlike the tree, it needs the live draft
+ * content and `useFolioActions`'s revert sync, both of which only exist
+ * in that keyed subtree) — but a plain `useState` living INSIDE that
+ * subtree would reset to its default (default tab, always open) on every
+ * folio-to-folio navigation, which is exactly the class of bug Task 9's
+ * report flagged for the tree's own collapse state. Threading the state
+ * down as props keeps "which tab is active" and "is the pane open"
+ * durable across navigation while the component that actually RENDERS
+ * the tabs still lives where its data does.
+ *
  * The document + inspector content lives in a child keyed on the folio id.
  * Alepha's router does not remount a page component on a param-only
  * navigation (`ReactPageProvider.createElement` passes no `key`, and
@@ -54,6 +67,9 @@ export interface FolioWorkspaceProps {
 const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   useFolioFonts();
   const [project] = useStore(currentProjectAtom);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [inspectorTab, setInspectorTab] =
+    useState<FolioInspectorTab>("outline");
 
   return (
     <div className="flex h-full min-h-0">
@@ -68,6 +84,10 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
         key={props.folio?.id ?? "new"}
         folio={props.folio}
         directoryId={props.directoryId}
+        inspectorOpen={inspectorOpen}
+        onToggleInspector={() => setInspectorOpen((v) => !v)}
+        inspectorTab={inspectorTab}
+        onInspectorTabChange={setInspectorTab}
       />
     </div>
   );
