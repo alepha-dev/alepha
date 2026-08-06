@@ -159,26 +159,54 @@ describe("SigilController", () => {
     expect("token" in list.data.items[0]).toBe(false);
   });
 
-  it("keeps the name it was given, and grants every capability by default", async ({
-    expect,
-  }) => {
+  it("lowercases and trims the name before storing it", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "  lore staging  " } },
+      { params: { projectId }, body: { name: "  Lore-Staging  " } },
       { user: owner },
     );
 
-    // Trimmed, because the trimmed value is what the uniqueness check reads —
-    // " lore" and "lore " must not be two apps.
-    expect(created.data.name).toBe("lore staging");
-    expect(created.data.kinds.sort()).toEqual([
-      "beacon",
-      "blights",
-      "feedback",
-      "vitals",
-    ]);
+    expect(created.data.name).toBe("lore-staging");
+  });
+
+  it("refuses a name with a space", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+
+    await expect(
+      ctx.sigilController.createSigil.fetch(
+        { params: { projectId }, body: { name: "lore staging" } },
+        { user: owner },
+      ),
+    ).rejects.toThrowError(/lowercase letters, digits and hyphens/i);
+  });
+
+  it("refuses a leading or trailing hyphen", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+
+    for (const name of ["-lore", "lore-"]) {
+      await expect(
+        ctx.sigilController.createSigil.fetch(
+          { params: { projectId }, body: { name } },
+          { user: owner },
+        ),
+      ).rejects.toThrowError(/lowercase letters, digits and hyphens/i);
+    }
+  });
+
+  it("refuses a name longer than 64 characters", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+
+    await expect(
+      ctx.sigilController.createSigil.fetch(
+        { params: { projectId }, body: { name: "a".repeat(65) } },
+        { user: owner },
+      ),
+    ).rejects.toThrowError();
   });
 
   it("refuses a name that is only whitespace", async () => {

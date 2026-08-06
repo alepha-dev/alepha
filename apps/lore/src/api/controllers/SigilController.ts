@@ -9,6 +9,7 @@ import {
   okSchema,
 } from "alepha/server";
 import { SIGIL_KINDS, type Sigil, sigils } from "../entities/sigils.ts";
+import { APP_NAME_PATTERN, appNameSchema } from "../schemas/appNameSchema.ts";
 import {
   type MintedSigil,
   mintedSigilSchema,
@@ -55,8 +56,11 @@ export class SigilController {
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
-        /** Display name of the app. Unique within the project. */
-        name: z.string().min(1).max(100),
+        /**
+         * Display name of the app, and its URL segment. Unique within the
+         * project. Trimmed and lowercased before it is validated.
+         */
+        name: appNameSchema,
         /**
          * Capability buckets the ingest endpoint will accept from this sigil.
          * Omitted grants all of them; the project's own feature toggles are
@@ -72,12 +76,17 @@ export class SigilController {
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.projectId, user);
 
-      // Trimmed before anything reads it: `min(1)` accepts `"   "`, which would
-      // otherwise reach the insert as an empty name and fail the entity's own
-      // validation as a 500 instead of the 400 it is.
-      const name = body.name.trim();
-      if (!name) {
-        throw new BadRequestError("A sigil needs a name");
+      // Normalised before anything reads it, then checked. `min(1)` accepts
+      // `"   "`, which would otherwise reach the insert as an empty name and
+      // fail the entity's own validation as a 500 instead of the 400 it is.
+      // Lowercasing rather than refusing is deliberate: `Lore-Staging` and
+      // `lore-staging` are not a distinction an operator means to draw, and the
+      // name is a URL segment.
+      const name = body.name.trim().toLowerCase();
+      if (!APP_NAME_PATTERN.test(name)) {
+        throw new BadRequestError(
+          "An app name may only contain lowercase letters, digits and hyphens, and must start and end with a letter or digit",
+        );
       }
 
       const existing = await this.sigils.findOne({
