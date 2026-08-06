@@ -46,6 +46,15 @@ export default {
   "folios.backlinks.title": "Connexions",
   "folios.backlinks.inbound": "Référencé depuis",
   "folios.backlinks.outbound": "Référence vers",
+  "folios.protected.encrypt": "Chiffrer",
+  "folios.protected.encrypt-title": "Chiffrer ce folio",
+  "folios.protected.encrypt-description":
+    "Définissez une phrase secrète. Le contenu est chiffré dans votre navigateur — le serveur ne stocke que le texte chiffré, et aucune récupération n'est possible si vous l'oubliez. Le titre, les tags et le résumé restent visibles aux autres membres du projet ; partagez la phrase secrète hors-bande avec qui doit déchiffrer.",
+  "folios.protected.encrypt-failed": "Le chiffrement a échoué.",
+  "folios.protected.remove-confirm-title":
+    "Retirer la protection de ce folio ?",
+  "folios.protected.remove-confirm-body":
+    "Le contenu sera réenregistré en clair. Toute personne ayant accès à ce projet pourra le lire.",
   "folios.protected.passphrase": "Phrase secrète",
   "folios.protected.passphrase-confirm": "Confirmer la phrase secrète",
   "folios.protected.passphrase-mismatch":
@@ -64,6 +73,8 @@ export default {
   "folios.protected.unlock-description":
     "Saisissez la phrase secrète pour afficher ce folio.",
   "folios.protected.unlock-failed": "Phrase secrète incorrecte.",
+  "folios.protected.unlock-before-edit":
+    "Déverrouillez ce folio avant de le modifier.",
   "folios.protected.invalid-envelope":
     "Le contenu chiffré semble corrompu ou a été écrit par une ancienne version.",
   "folios.protected.lost-passphrase-hint": "Phrase secrète perdue ?",
@@ -198,6 +209,27 @@ export default {
   "folios.editor.action.compare": "Comparer avec la précédente",
   "folios.editor.action.restore": "Restaurer…",
   "folios.editor.action.keep-version": "Conserver cette version",
+
+  "folios.editor.title-label": "Titre du folio",
+
+  "folios.editor.summary.label": "Résumé pour les agents",
+  "folios.editor.summary.hint": "cliquer pour modifier",
+  "folios.editor.summary.unavailable": "indisponible",
+  "folios.editor.summary.placeholder":
+    "Une ou deux phrases que les agents lisent pour décider s'ils ouvrent ce folio.",
+
+  "folios.editor.tag.add": "Ajouter un tag",
+  "folios.editor.tag.add-more": "Tag",
+  "folios.editor.tag.remove": "Retirer le tag",
+
+  "folios.editor.meta.draft": "Brouillon · pas encore enregistré",
+  "folios.editor.meta.saved": "n°$1 · $2 mots · $3 révisions",
+
+  "folios.editor.locked.title": "Ce folio est chiffré",
+  "folios.editor.locked.body":
+    "Le contenu a été chiffré dans votre navigateur. Le serveur n'a stocké que le texte chiffré : il est irrécupérable sans la phrase secrète.",
+  "folios.editor.locked.warning":
+    "L'envoi d'images et la recherche plein texte restent désactivés tant qu'un folio est protégé.",
 
   "project.menu.create-quest": "Créer quête",
   "project.menu.create-folio": "Nouveau folio",

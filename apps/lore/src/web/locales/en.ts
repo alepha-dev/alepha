@@ -48,6 +48,14 @@ export default {
   "folios.backlinks.title": "Connections",
   "folios.backlinks.inbound": "Linked from",
   "folios.backlinks.outbound": "Links to",
+  "folios.protected.encrypt": "Encrypt",
+  "folios.protected.encrypt-title": "Encrypt this folio",
+  "folios.protected.encrypt-description":
+    "Set a passphrase. The content is encrypted in your browser — the server only ever stores ciphertext, and there is no recovery if you forget it. Title, tags and summary stay visible to other project members; share the passphrase out-of-band with whoever should decrypt.",
+  "folios.protected.encrypt-failed": "Encryption failed.",
+  "folios.protected.remove-confirm-title": "Remove protection from this folio?",
+  "folios.protected.remove-confirm-body":
+    "The content will be re-saved as plain text. Anyone with access to this project will be able to read it.",
   "folios.protected.passphrase": "Passphrase",
   "folios.protected.passphrase-confirm": "Confirm passphrase",
   "folios.protected.passphrase-mismatch": "Passphrases don't match.",
@@ -65,6 +73,7 @@ export default {
   "folios.protected.unlock-description":
     "Enter the passphrase to view this folio.",
   "folios.protected.unlock-failed": "Wrong passphrase.",
+  "folios.protected.unlock-before-edit": "Unlock this folio before editing.",
   "folios.protected.invalid-envelope":
     "The encrypted content looks corrupt or was written by an older version.",
   "folios.protected.lost-passphrase-hint": "Lost the passphrase?",
@@ -199,6 +208,27 @@ export default {
   "folios.editor.action.compare": "Compare with previous",
   "folios.editor.action.restore": "Restore…",
   "folios.editor.action.keep-version": "Keep this version",
+
+  "folios.editor.title-label": "Folio title",
+
+  "folios.editor.summary.label": "Summary for agents",
+  "folios.editor.summary.hint": "click to edit",
+  "folios.editor.summary.unavailable": "unavailable",
+  "folios.editor.summary.placeholder":
+    "One or two sentences agents read to decide whether to open this folio.",
+
+  "folios.editor.tag.add": "Add a tag",
+  "folios.editor.tag.add-more": "Tag",
+  "folios.editor.tag.remove": "Remove tag",
+
+  "folios.editor.meta.draft": "Draft · not saved yet",
+  "folios.editor.meta.saved": "#$1 · $2 words · $3 revisions",
+
+  "folios.editor.locked.title": "This folio is encrypted",
+  "folios.editor.locked.body":
+    "The content was encrypted in your browser. The server only ever stored the ciphertext, so it cannot be recovered without the passphrase.",
+  "folios.editor.locked.warning":
+    "Image uploads and full-text search stay disabled while a folio is protected.",
 
   "board.filter.search": "Search",
   "board.filter.status": "Status",
