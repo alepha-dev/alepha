@@ -5,6 +5,11 @@ folio **Bay** de la campagne Lore « Alepha ».
 
 Ce PoC prouve la tranche verticale : **un `app.zip` entre, une URL HTTPS sort.**
 
+> Installing Bay on a real host: **[INSTALL.md](./INSTALL.md)**. The install itself is four steps;
+> granting a user the right to deploy over SSH is a fifth, and it is the one that produces every
+> confusing first-deploy failure — an empty `bay-control` group, a `bay` missing from the
+> non-interactive PATH, and a host binary too old to read the artifact from stdin.
+
 ## Ce qui est dedans
 
 | | |
