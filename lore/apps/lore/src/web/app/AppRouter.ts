@@ -866,11 +866,7 @@ export class AppRouter {
   // name stays `projectFolios`, unchanged since before quest #66.
   projectFolios = $page({
     name: "projectFolios",
-    children: () => [
-      this.projectFoliosNew,
-      this.projectFoliosFolio,
-      this.projectFoliosFolioEdit,
-    ],
+    children: () => [this.projectFoliosNew, this.projectFoliosFolio],
     path: "/folios",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Folios`,
@@ -997,7 +993,7 @@ export class AppRouter {
         title: `${previous?.title ?? ""} › ${dirPrefix}${folio?.title ?? "Folio"}`,
       };
     },
-    lazy: () => import("./components/folios/FolioView.tsx"),
+    lazy: () => import("./components/folios/editor/FolioWorkspace.tsx"),
     loader: async ({ params }) => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
@@ -1005,9 +1001,9 @@ export class AppRouter {
       }
       // Three calls in one tick → alepha auto-batches them into a
       // single `/api/_batch` round-trip. Folio (page subject), folio
-      // list + directory list (FolioTreePanel sibling) all arrive in
-      // one network hit, sparing the panel its own mount-time fetch.
-      // See Lore #109.
+      // list + directory list (the workspace's tree pane, Task 9)
+      // all arrive in one network hit, sparing the pane its own
+      // mount-time fetch. See Lore #109.
       const [folio, folios, directories] = await Promise.all([
         this.folioApi.getByShortId({
           params: { projectId: project.id, shortId: params.shortId },
@@ -1029,56 +1025,6 @@ export class AppRouter {
         ...path,
         { name: folio.title },
       ]);
-      return { folio };
-    },
-  });
-
-  projectFoliosFolioEdit = $page({
-    name: "projectFoliosFolioEdit",
-    path: "/:shortId/edit",
-    schema: {
-      params: z.object({ shortId: z.integer() }),
-    },
-    head: (props, previous) => {
-      const folio = (
-        props as
-          | {
-              folio?: {
-                title?: string;
-                metadata?: { path?: { name: string }[] };
-              };
-            }
-          | undefined
-      )?.folio;
-      const path = folio?.metadata?.path ?? [];
-      const dirPrefix =
-        path.length > 0 ? `${path.map((p) => p.name).join("/")}/` : "";
-      return {
-        title: `${previous?.title ?? ""} › Edit ${dirPrefix}${folio?.title ?? "folio"}`,
-      };
-    },
-    lazy: () => import("./components/folios/FolioEditPage.tsx"),
-    loader: async ({ params }) => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      // Batched with the tree-panel data the editor doesn't render
-      // today but might once #106/#107 land — cheap to pre-populate
-      // here so the atom is hot. See Lore #109.
-      const [folio, folios, directories] = await Promise.all([
-        this.folioApi.getByShortId({
-          params: { projectId: project.id, shortId: params.shortId },
-          query: { withPath: true },
-        }),
-        this.folioApi.list({ query: { projectId: project.id, limit: 100 } }),
-        this.directoryApi.listAllDirectories({
-          params: { projectId: project.id },
-        }),
-      ]);
-      this.alepha.store.set(currentFolioAtom, folio);
-      this.alepha.store.set(userFoliosAtom, folios);
-      this.alepha.store.set(projectDirectoriesAtom, directories);
       return { folio };
     },
   });

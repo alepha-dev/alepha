@@ -38,26 +38,12 @@ export default {
   "auth.register.intent.createProject":
     "Avant de créer un projet, créez un compte.",
 
-  "folios.new-folio": "Nouveau folio",
-  "folios.edit-folio": "Modifier le folio",
-  "folios.edit": "Modifier",
-  "folios.delete": "Supprimer",
-  "folios.save": "Enregistrer",
-  "folios.back": "Retour",
   "folios.empty-folio": "(vide)",
   "folios.title-placeholder": "Sans titre",
   "folios.content-placeholder": "Commencez à écrire en markdown…",
-  "folios.confirm-delete-title": "Supprimer ce folio ?",
-  "folios.confirm-delete-message": "Cette action est irréversible.",
-  "folios.updated": "Mis à jour $1",
   "folios.backlinks.title": "Connexions",
   "folios.backlinks.inbound": "Référencé depuis",
   "folios.backlinks.outbound": "Référence vers",
-  "folios.protected.encrypt": "Chiffrer",
-  "folios.protected.encrypt-title": "Chiffrer ce folio",
-  "folios.protected.encrypt-description":
-    "Définissez une phrase secrète. Le contenu est chiffré dans votre navigateur — le serveur ne stocke que le texte chiffré, et aucune récupération n'est possible si vous l'oubliez. Le titre, les tags et le résumé restent visibles aux autres membres du projet ; partagez la phrase secrète hors-bande avec qui doit déchiffrer.",
-  "folios.protected.encrypt-failed": "Le chiffrement a échoué.",
   "folios.protected.passphrase": "Phrase secrète",
   "folios.protected.passphrase-confirm": "Confirmer la phrase secrète",
   "folios.protected.passphrase-mismatch":
@@ -76,18 +62,10 @@ export default {
   "folios.protected.unlock-description":
     "Saisissez la phrase secrète pour afficher ce folio.",
   "folios.protected.unlock-failed": "Phrase secrète incorrecte.",
-  "folios.protected.unlock-before-edit":
-    "Déverrouillez ce folio dans la vue avant de le modifier.",
   "folios.protected.invalid-envelope":
     "Le contenu chiffré semble corrompu ou a été écrit par une ancienne version.",
   "folios.protected.lost-passphrase-hint": "Phrase secrète perdue ?",
   "folios.protected.delete-unrecoverable": "Supprimer le folio",
-  "folios.pin": "Épingler le folio",
-  "folios.unpin": "Désépingler le folio",
-  "folios.more-actions": "Plus d'actions",
-  "folios.token-estimate": "~$1 jetons",
-  "folios.pin-cap-warning":
-    "Les folios épinglés partagent un budget de 8K caractères — ce folio et les autres dépassent la limite.",
   "folio.new-directory": "Nouveau dossier",
   "folio.upload.failed": "Échec du téléversement.",
   "folio.search.placeholder": "Rechercher dans les Folios",
@@ -158,12 +136,6 @@ export default {
   "folios.history.action.tag-change": "Tags modifiés",
   "folios.history.action.revert": "Restauré",
 
-  "folios.tree.title": "Folios",
-  "folios.tree.open": "Ouvrir l'arbre des folios",
-  "folios.tree.close": "Fermer l'arbre des folios",
-  "folios.tree.empty": "Aucun folio pour l'instant",
-  "folios.history.open": "Ouvrir l'historique",
-  "folios.history.close": "Fermer l'historique",
   "folios.activity.title": "Activité récente",
   "folios.activity.open": "Ouvrir le panneau d'activité",
   "folios.activity.close": "Fermer le panneau d'activité",
@@ -182,6 +154,10 @@ export default {
   "folios.editor.menu.insert": "Insertion",
   "folios.editor.menu.view": "Affichage",
   "folios.editor.menu.history": "Historique",
+
+  "folios.editor.status.draft": "Brouillon · pas encore enregistré",
+  "folios.editor.status.saved": "Enregistré $1",
+  "folios.editor.status.unsaved": "Modifications non enregistrées",
 
   "folios.editor.action.new": "Nouveau folio",
   "folios.editor.action.new-directory": "Nouveau dossier",

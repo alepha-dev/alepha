@@ -40,26 +40,12 @@ export default {
   "auth.register.intent.createProject":
     "Before creating a project, create an account.",
 
-  "folios.new-folio": "New folio",
-  "folios.edit-folio": "Edit folio",
-  "folios.edit": "Edit",
-  "folios.delete": "Delete",
-  "folios.save": "Save",
-  "folios.back": "Back",
   "folios.empty-folio": "(empty)",
   "folios.title-placeholder": "Untitled",
   "folios.content-placeholder": "Start writing markdown…",
-  "folios.confirm-delete-title": "Delete this folio?",
-  "folios.confirm-delete-message": "This cannot be undone.",
-  "folios.updated": "Updated $1",
   "folios.backlinks.title": "Connections",
   "folios.backlinks.inbound": "Linked from",
   "folios.backlinks.outbound": "Links to",
-  "folios.protected.encrypt": "Encrypt",
-  "folios.protected.encrypt-title": "Encrypt this folio",
-  "folios.protected.encrypt-description":
-    "Set a passphrase. The content is encrypted in your browser — the server only ever stores ciphertext, and there is no recovery if you forget it. Title, tags and summary stay visible to other project members; share the passphrase out-of-band with whoever should decrypt.",
-  "folios.protected.encrypt-failed": "Encryption failed.",
   "folios.protected.passphrase": "Passphrase",
   "folios.protected.passphrase-confirm": "Confirm passphrase",
   "folios.protected.passphrase-mismatch": "Passphrases don't match.",
@@ -77,18 +63,10 @@ export default {
   "folios.protected.unlock-description":
     "Enter the passphrase to view this folio.",
   "folios.protected.unlock-failed": "Wrong passphrase.",
-  "folios.protected.unlock-before-edit":
-    "Unlock this folio in the view before editing.",
   "folios.protected.invalid-envelope":
     "The encrypted content looks corrupt or was written by an older version.",
   "folios.protected.lost-passphrase-hint": "Lost the passphrase?",
   "folios.protected.delete-unrecoverable": "Delete folio",
-  "folios.pin": "Pin folio",
-  "folios.unpin": "Unpin folio",
-  "folios.more-actions": "More actions",
-  "folios.token-estimate": "~$1 tokens",
-  "folios.pin-cap-warning":
-    "Pinned folios share an 8K-char budget — this folio plus the rest is over the cap.",
   "folio.new-directory": "New directory",
   "folio.upload.failed": "Upload failed.",
   "folio.search.placeholder": "Search in Folios",
@@ -159,12 +137,6 @@ export default {
   "folios.history.action.tag-change": "Tags changed",
   "folios.history.action.revert": "Reverted",
 
-  "folios.tree.title": "Folios",
-  "folios.tree.open": "Open folio tree",
-  "folios.tree.close": "Close folio tree",
-  "folios.tree.empty": "No folios yet",
-  "folios.history.open": "Open history",
-  "folios.history.close": "Close history",
   "folios.activity.title": "Recent activity",
   "folios.activity.open": "Open activity panel",
   "folios.activity.close": "Close activity panel",
@@ -183,6 +155,10 @@ export default {
   "folios.editor.menu.insert": "Insert",
   "folios.editor.menu.view": "View",
   "folios.editor.menu.history": "History",
+
+  "folios.editor.status.draft": "Draft · not saved yet",
+  "folios.editor.status.saved": "Saved $1",
+  "folios.editor.status.unsaved": "Unsaved changes",
 
   "folios.editor.action.new": "New folio",
   "folios.editor.action.new-directory": "New directory",
