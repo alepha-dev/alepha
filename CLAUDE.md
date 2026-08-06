@@ -96,23 +96,26 @@ The Lore MCP (`mcp__claude_ai_Lore__*`) is the long-term planning memory for fra
 
 #### The folio tree is organised — file folios, don't dump them at the root
 
-Project `1` has a directory tree (browse it with `directory_list`). Put a new folio where it belongs by passing `directory_shortId` to `folio_create`:
+Project `1` has a directory tree (browse it with `directory_list`). **Directories are subjects, not document types.** Put a new folio under the subject it is about and tag it `plan` / `spec` / `review`; there are no `plans/` or `specs/` directories, because a spec filed away from its subject is unfindable. Pass `directory_shortId` to `folio_create`:
 
 | Directory | What goes in it |
 |---|---|
-| `apps/bay` | the Go orchestrator and its deployment |
-| `apps/pulse` | observability history (Pulse is retired — see folio #21) |
-| `apps/rocket` | the deployer image |
-| `framework` | `packages/alepha` decisions, ORM, router, UI |
-| `reviews` | audits and code reviews |
-| `plans` | **superpowers plans** — see below |
-| `specs` | **superpowers specs** — see below |
+| `framework` | `packages/alepha` — core, ORM, react, security, build, `@alepha/ui` |
+| `lore` | `apps/lore` — the app, its data model, its UI, sigils, MCP |
+| `bay` | `apps/bay` — the Go supervisor, its deployment, the VPS |
+| `platform` | the deploy chain — `alepha platform`, its adapters, Cloudflare, SSH, npm release |
+| `commerce` | `@alepha/commerce` and `apps/shop` |
+| `reviews` | dated audits and security reviews that span everything |
+| `archive` | retired experiments, kept only where a lesson survives (pulse, bay-admin, outposts) |
+| `trash` | superseded folios awaiting real deletion — see below |
+
+**Lifecycle.** When work ships, the *outcome* folio survives and the spec folio moves to `trash`. `trash` is a manual soft-delete: `folio_delete` is immediate and permanent, so nothing is ever deleted outright — it is moved there and left for the user to purge. Do not empty `trash` without being asked.
 
 #### ⚠️ superpowers writes its plans and specs HERE, not to disk
 
 `docs/superpowers/` is in `.gitignore`. A plan written there lives only in the worktree that produced it and **dies when that worktree is removed** — which is exactly what the finishing step does. That has already cost one 1100-line plan, recovered by hand into `assets/`.
 
-So when the `superpowers:writing-plans` or `superpowers:brainstorming` skills produce a plan or a spec, **also persist it as a folio** in project `1`, under `plans` or `specs`. The file on disk stays the working copy the executing agent reads; the folio is the copy that survives. Update the folio when the plan changes materially, and mark it done or superseded when the work ships.
+So when the `superpowers:writing-plans` or `superpowers:brainstorming` skills produce a plan or a spec, **also persist it as a folio** in project `1`, under its **subject** directory, tagged `plan` or `spec`. The file on disk stays the working copy the executing agent reads; the folio is the copy that survives. Update the folio when the plan changes materially, and mark it done or superseded when the work ships.
 
 A plan folio needs: what is being built, the constraints that bind it, and the decisions already taken with their reasons. A future session that reads only the folio should not need the disk copy to understand why.
 
