@@ -131,6 +131,14 @@ export interface IssuerSettings {
     user: UserAccount;
     expiresIn: number;
     sessionId?: string;
+    /**
+     * OAuth client the session was minted for, when it came from an
+     * authorization-code grant (the `clientId` handed to `onCreateSession`).
+     * The OAuth token endpoint requires the refreshing client to match it, so
+     * one client cannot refresh another's session. A store that does not
+     * record it leaves the session unrefreshable at `/oauth/token`.
+     */
+    clientId?: string;
   }>;
 
   onDeleteSession?: (refreshToken: string) => Promise<void>;
@@ -421,13 +429,18 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
   ): Promise<{
     tokens: AccessTokenResponse;
     user: UserAccount;
+    /**
+     * OAuth client the refreshed session belongs to, when the store records
+     * one. Always undefined on the token-only path, which has no session row.
+     */
+    clientId?: string;
   }> {
     // -----------------------------------------------------------------------------------------------------------------
     // session based
 
     if (this.options.settings?.onRefreshSession) {
       // get user and expiration from the session
-      const { user, expiresIn, sessionId } =
+      const { user, expiresIn, sessionId, clientId } =
         await this.options.settings.onRefreshSession(refreshToken);
 
       // then, create a new access token
@@ -437,7 +450,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         refresh_token_expires_in: expiresIn,
       });
 
-      return { user, tokens };
+      return { user, tokens, clientId };
     }
 
     // -----------------------------------------------------------------------------------------------------------------

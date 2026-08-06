@@ -203,17 +203,24 @@ export class OAuthClientService {
     /** Subject of the refreshed session — lets the token endpoint re-mint an
      * OIDC `id_token` for relying parties that forward it as the Bearer. */
     userId: string;
+    /**
+     * OAuth client the refreshed session was minted for, so the token endpoint
+     * can refuse a client refreshing someone else's session.
+     */
+    clientId?: string;
   }> {
     const entry = this.issuers.get(realm);
     if (!entry) {
       throw new AlephaError(`No issuer registered for realm '${realm}'`);
     }
-    const { tokens, user } = await entry.issuer.refreshToken(refreshToken);
+    const { tokens, user, clientId } =
+      await entry.issuer.refreshToken(refreshToken);
     return {
       access_token: tokens.access_token,
       expires_in: tokens.expires_in,
       refresh_token: tokens.refresh_token,
       userId: user.id,
+      clientId,
     };
   }
 

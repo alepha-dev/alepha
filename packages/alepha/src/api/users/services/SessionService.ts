@@ -600,6 +600,9 @@ export class SessionService {
       user,
       expiresIn: expiresAt.unix() - now.unix(),
       sessionId: session.id,
+      // Carried so the OAuth token endpoint can bind a refresh to the client
+      // the session was issued to. Undefined for ordinary password logins.
+      clientId: session.clientId,
     };
   }
 

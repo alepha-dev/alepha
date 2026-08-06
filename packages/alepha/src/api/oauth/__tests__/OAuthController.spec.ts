@@ -241,24 +241,30 @@ describe("OAuthController refresh_token grant", () => {
    * exercise the refresh grant end-to-end.
    */
   const boot = async () => {
-    const sessions = new Map<string, string>(); // refresh_token -> userId
+    // refresh_token -> the session row, including the OAuth client it was
+    // minted for. Mirrors `sessions.clientId` in `alepha/api/users`.
+    const sessions = new Map<string, { userId: string; clientId?: string }>();
 
     class App {
       issuer = $issuer({
         name: "users",
         secret: "test-secret",
         settings: {
-          onCreateSession: async (user) => {
+          onCreateSession: async (user, config) => {
             const refreshToken = randomUUID();
-            sessions.set(refreshToken, user.id);
+            sessions.set(refreshToken, {
+              userId: user.id,
+              clientId: config.clientId,
+            });
             return { refreshToken, sessionId: randomUUID() };
           },
           onRefreshSession: async (refreshToken) => {
-            const userId = sessions.get(refreshToken);
-            if (!userId) throw new Error("unknown refresh token");
+            const session = sessions.get(refreshToken);
+            if (!session) throw new Error("unknown refresh token");
             return {
-              user: { id: userId, roles: [] } as UserAccount,
+              user: { id: session.userId, roles: [] } as UserAccount,
               expiresIn: 3600,
+              clientId: session.clientId,
             };
           },
         },
@@ -357,6 +363,174 @@ describe("OAuthController refresh_token grant", () => {
     expect(typeof refreshBody.access_token).toBe("string");
     expect(refreshBody.token_type).toBe("Bearer");
     expect(typeof refreshBody.id_token).toBe("string");
+  });
+
+  /**
+   * Run a full authorization_code exchange and return the refresh token the
+   * grant issued, so a test can then present it on the refresh branch.
+   */
+  const mintRefreshToken = async (
+    hostname: string,
+    service: OAuthClientService,
+    clientId: string,
+    redirectUri: string,
+    clientSecret?: string,
+  ): Promise<string> => {
+    const verifier = "the-code-verifier-value-1234567890";
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+    const code = await service.createAuthorizationCode("users", {
+      userId: randomUUID(),
+      clientId,
+      redirectUri,
+      codeChallenge: challenge,
+      scopes: ["openid"],
+    });
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+        ...(clientSecret ? { client_secret: clientSecret } : {}),
+      }).toString(),
+    });
+    const body = (await resp.json()) as Record<string, string>;
+    return body.refresh_token;
+  };
+
+  const decodeJwtPayload = (jwt: string): Record<string, unknown> =>
+    JSON.parse(Buffer.from(jwt.split(".")[1] ?? "", "base64url").toString());
+
+  it("refuses a refresh token minted for a different client", async ({
+    expect,
+  }) => {
+    const { hostname, service } = await boot();
+    const victimRedirect = "https://victim.example/cb";
+    const victimClient = await registerClient(hostname, victimRedirect);
+    const attackerClient = await registerClient(
+      hostname,
+      "https://attacker.example/cb",
+    );
+
+    const refreshToken = await mintRefreshToken(
+      hostname,
+      service,
+      victimClient,
+      victimRedirect,
+    );
+
+    // The attacker presents someone else's refresh token under their own
+    // client_id. Unbound, this mints an id_token whose `aud` is the attacker's
+    // client — which any RP that forwards id_tokens as Bearer will accept.
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: attackerClient,
+      }).toString(),
+    });
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_grant");
+    expect(body.id_token).toBeUndefined();
+  });
+
+  it("requires the client secret to refresh a confidential client", async ({
+    expect,
+  }) => {
+    const { hostname, service } = await boot();
+    const redirectUri = "https://confidential.example/cb";
+    const client = await service.register({
+      realm: "users",
+      clientName: "Confidential Client",
+      redirectUris: [redirectUri],
+      scopes: ["openid"],
+      type: "confidential",
+      secret: "the-client-secret",
+    });
+
+    const refreshToken = await mintRefreshToken(
+      hostname,
+      service,
+      client.clientId,
+      redirectUri,
+      "the-client-secret",
+    );
+
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: client.clientId,
+        client_secret: "wrong-secret",
+      }).toString(),
+    });
+
+    expect(resp.status).toBe(401);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client");
+  });
+
+  it("refuses a refresh request from an unknown client", async ({ expect }) => {
+    const { hostname, service } = await boot();
+    const redirectUri = "https://known.example/cb";
+    const clientId = await registerClient(hostname, redirectUri);
+    const refreshToken = await mintRefreshToken(
+      hostname,
+      service,
+      clientId,
+      redirectUri,
+    );
+
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: "mcp_does_not_exist",
+      }).toString(),
+    });
+
+    expect(resp.status).toBe(400);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client");
+  });
+
+  it("keeps the id_token audience bound to the authenticated client", async ({
+    expect,
+  }) => {
+    const { hostname, service } = await boot();
+    const redirectUri = "https://known.example/cb";
+    const clientId = await registerClient(hostname, redirectUri);
+    const refreshToken = await mintRefreshToken(
+      hostname,
+      service,
+      clientId,
+      redirectUri,
+    );
+
+    const resp = await fetch(`${hostname}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: clientId,
+      }).toString(),
+    });
+
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as Record<string, string>;
+    expect(decodeJwtPayload(body.id_token).aud).toBe(clientId);
   });
 });
 

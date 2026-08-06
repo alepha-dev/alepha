@@ -465,10 +465,46 @@ export class OAuthController {
         }
 
         if (body.grant_type === "refresh_token") {
+          // Authenticate the client BEFORE spending the refresh token — the
+          // same checks the authorization_code branch runs. Without them any
+          // refresh-token holder could name any client_id, and that id became
+          // the id_token `aud` unvalidated: a relying party that forwards
+          // id_tokens as its Bearer would accept a token minted for it out of
+          // a session belonging to an entirely different client.
+          const client = await this.clients.findByClientId(
+            body.client_id ?? "",
+          );
+          if (!client || client.revokedAt) {
+            reply.status = 400;
+            reply.body = JSON.stringify({ error: "invalid_client" });
+            return;
+          }
+          if (client.type === "confidential") {
+            const ok = await this.clients.verifySecret(
+              client.clientId,
+              body.client_secret ?? "",
+            );
+            if (!ok) {
+              reply.status = 401;
+              reply.body = JSON.stringify({ error: "invalid_client" });
+              return;
+            }
+          }
+
           const tokens = await this.clients.refreshAccessToken(
             this.options.realm,
             body.refresh_token ?? "",
           );
+
+          // Bind the refresh to the client the session was issued to. A
+          // session with no recorded client (an ordinary password login) is
+          // not an OAuth grant and cannot be refreshed here at all.
+          if (tokens.clientId !== client.clientId) {
+            reply.status = 400;
+            reply.body = JSON.stringify({ error: "invalid_grant" });
+            return;
+          }
+
           const response: Record<string, unknown> = {
             access_token: tokens.access_token,
             token_type: "Bearer",
@@ -480,17 +516,19 @@ export class OAuthController {
           // actually renew their identity on refresh — without it the RP keeps
           // forwarding the now-expired id_token and every call 401s. Per OIDC
           // Core §12.2 the refreshed id_token carries no `nonce`; `sub` is
-          // unchanged. Requires `client_id` to set the `aud`.
-          if (body.client_id) {
-            response.id_token = await this.clients.issueIdToken(
-              this.options.realm,
-              {
-                userId: tokens.userId,
-                clientId: body.client_id,
-                issuer: this.baseUrl(url),
-              },
-            );
-          }
+          // unchanged.
+          //
+          // `aud` is the AUTHENTICATED client, not the raw `body.client_id` —
+          // the two are equal by the check above, and naming the validated one
+          // keeps them from drifting apart again.
+          response.id_token = await this.clients.issueIdToken(
+            this.options.realm,
+            {
+              userId: tokens.userId,
+              clientId: client.clientId,
+              issuer: this.baseUrl(url),
+            },
+          );
           reply.body = JSON.stringify(response);
           return;
         }
