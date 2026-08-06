@@ -84,6 +84,26 @@ const PROTECTED_TABLES = [
 ];
 
 /**
+ * `sigils` is the CASCADE parent of the four aggregate tables
+ * (`sigil_views_hourly`, `sigil_uniques_daily`, `sigil_vitals_hourly`,
+ * `sigil_error_groups`) — the same hazard shape as `projects`, and a `DROP
+ * TABLE sigils` on D1 silently deletes every row in all four.
+ *
+ * It is deliberately NOT in {@link PROTECTED_TABLES}: that list scans **every**
+ * migration on disk, and `20260801154537_sigil_family_rebuild` legitimately
+ * drops `sigils` and recreates it two statements later. Adding it there does not
+ * tighten the guard, it just makes the suite assert something untrue about
+ * history — verified, it fails on exactly that migration.
+ *
+ * So the guard runs from the rebuild forward instead. Everything after it is
+ * ordinary schema evolution, where dropping this table is never the right
+ * answer: `20260806093400_confused_dazzler` (three columns folded into `name`)
+ * is the worked example — additive `ALTER TABLE`s, no rebuild, because
+ * drizzle-kit's rebuild pattern would have been a wipe.
+ */
+const SIGIL_FAMILY_REBUILD = "20260801154537_sigil_family_rebuild";
+
+/**
  * Every applied migration, oldest first. `.archive/` (superseded
  * migrations — unrelated to this app's Archive/Folios feature) and any
  * stray file are skipped: a migration is a directory holding a
@@ -121,6 +141,26 @@ describe("migration safety", () => {
           new RegExp(`DROP\\s+TABLE[^;]*\\b${table}\\b`, "i"),
         );
       }
+    }
+  });
+
+  it("never drops `sigils` after the family rebuilt it", ({ expect }) => {
+    const dirs = migrationDirs();
+    const rebuiltAt = dirs.indexOf(SIGIL_FAMILY_REBUILD);
+    expect(rebuiltAt, "the sigil family rebuild is missing").toBeGreaterThan(
+      -1,
+    );
+
+    const after = dirs.slice(rebuiltAt + 1);
+    // A guard that silently scans nothing is worse than no guard — and this one
+    // scans a suffix, so it empties out quietly if the rebuild ever moves.
+    expect(after.length).toBeGreaterThan(0);
+
+    for (const dir of after) {
+      expect(
+        statementsOnly(migrationSql(dir)),
+        `${dir} drops 'sigils' — on D1 that cascade-deletes every aggregate row`,
+      ).not.toMatch(/DROP\s+TABLE[^;]*\bsigils\b/i);
     }
   });
 

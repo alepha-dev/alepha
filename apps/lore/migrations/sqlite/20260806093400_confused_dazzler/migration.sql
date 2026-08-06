@@ -53,6 +53,18 @@
 -- row, which is how the 2026-08-05 outage worked. Production's one label is
 -- `lore / production` (17 chars), so nothing is actually truncated here.
 --
+-- Known hole in the de-duplication, accepted: the suffix can collide with a name
+-- that already exists. Rows `A` and `A`, plus a third literally named `A (2)`
+-- where 2 is the second row's rowid, produce two `A (2)` and the CREATE UNIQUE
+-- INDEX below refuses. Truncation can manufacture the same clash. The failure
+-- mode is a failed, rolled-back deploy — D1 applies a migration as one
+-- transaction — NOT data loss, which is the property that actually matters here.
+-- Left alone because production has one sigil, because the fix (loop until free,
+-- or suffix from a counter that checks) is more moving parts in a file that must
+-- be read and understood by hand before it ships, and because a migration that
+-- refuses to apply announces itself. If this ever does fire, rename the
+-- offending sigil in the UI and re-deploy.
+--
 -- Known, accepted drift: the snapshot describes `name` as NOT NULL and the
 -- physical D1 column is nullable, because SQLite offers no way to add a NOT NULL
 -- column to a populated table without also inventing a DEFAULT the snapshot does
