@@ -11,6 +11,17 @@ export interface FolioTreeNode {
   name: string;
   shortId: number;
   parentId?: string;
+  /**
+   * Present only on a directory whose `parentId` above was rewritten by
+   * cycle-breaking (see `resolveDirectoryParents`): holds the parent this
+   * directory's own record actually declares, which is what the database
+   * still has. Absent everywhere else — including a genuinely root-level
+   * directory or folio, whose `parentId` already IS the true value — so a
+   * consumer can tell the two apart (both show `parentId: undefined`)
+   * without re-deriving the cycle analysis itself. Folios never carry this:
+   * only a directory's `parentId` can chain into a cycle.
+   */
+  declaredParentId?: string;
   pinned?: boolean;
   children?: FolioTreeNode[];
 }
@@ -111,10 +122,24 @@ const compareTreeNodes = (a: FolioTreeNode, b: FolioTreeNode): number => {
  * keeps the rest of the cycle nested exactly as declared, one level under
  * the promoted node, discarding the least structure and leaving the tree
  * closest to whatever was intended before it became corrupted.
+ *
+ * Returns the effective parent per directory alongside `promoted`: the set
+ * of directories where that rewrite actually happened (as opposed to a
+ * directory that was already root, or already orphaned by a missing
+ * parent). `buildFolioTree` uses `promoted` to record each such
+ * directory's true declared parent on its node (`declaredParentId`) — the
+ * tree's `parentId` alone cannot be trusted to match the database once a
+ * cycle has been broken, and callers like `resolveFolioDrop` need to tell
+ * the difference without re-running this analysis themselves.
  */
+interface ResolvedDirectoryParents {
+  parentId: Map<string, string | undefined>;
+  promoted: Set<string>;
+}
+
 const resolveDirectoryParents = (
   directories: BuildFolioTreeInput["directories"],
-): Map<string, string | undefined> => {
+): ResolvedDirectoryParents => {
   const directoryIds = new Set(directories.map((d) => d.id));
   const byId = new Map(directories.map((d) => [d.id, d]));
   const rawParentOf = (id: string): string | undefined => {
@@ -123,6 +148,7 @@ const resolveDirectoryParents = (
   };
 
   const resolved = new Map<string, string | undefined>();
+  const promoted = new Set<string>();
 
   for (const start of directories) {
     if (resolved.has(start.id)) continue;
@@ -149,11 +175,16 @@ const resolveDirectoryParents = (
     }
 
     for (let i = 0; i < path.length; i++) {
-      resolved.set(path[i], i === cycleAt ? undefined : rawParentOf(path[i]));
+      if (i === cycleAt) {
+        resolved.set(path[i], undefined);
+        promoted.add(path[i]);
+      } else {
+        resolved.set(path[i], rawParentOf(path[i]));
+      }
     }
   }
 
-  return resolved;
+  return { parentId: resolved, promoted };
 };
 
 /**
@@ -170,7 +201,9 @@ const resolveDirectoryParents = (
  */
 export const buildFolioTree = (input: BuildFolioTreeInput): FolioTreeNode[] => {
   const directoryIds = new Set(input.directories.map((d) => d.id));
-  const directoryParents = resolveDirectoryParents(input.directories);
+  const { parentId: directoryParents, promoted } = resolveDirectoryParents(
+    input.directories,
+  );
 
   const childrenByParent = new Map<string, FolioTreeNode[]>();
   const childrenOf = (key: string): FolioTreeNode[] => {
@@ -189,6 +222,10 @@ export const buildFolioTree = (input: BuildFolioTreeInput): FolioTreeNode[] => {
       name: d.name,
       shortId: d.shortId,
       parentId,
+      // A promoted directory's raw `d.parentId` is always defined here — a
+      // cycle only closes through directories that exist, which is exactly
+      // what "promoted" means.
+      declaredParentId: promoted.has(d.id) ? d.parentId : undefined,
       children: [],
     });
   }
@@ -281,6 +318,21 @@ export const folioNodeHolds = (node: FolioTreeNode, id: string): boolean =>
  * descendant of `dragged`, then `target` itself is already inside
  * `dragged`'s subtree, which this single check catches regardless of
  * `position`.
+ *
+ * The no-op check compares the resolved new parent against `dragged`'s
+ * *database* parent, `dragged.declaredParentId ?? dragged.parentId` — not
+ * `dragged.parentId` alone. For an ordinary node the two are the same
+ * value, so this changes nothing. For a cycle-promoted directory they
+ * differ: its tree `parentId` already reads `undefined` (root) even though
+ * the database still has it parented on the cyclic value. Comparing
+ * against the tree's rewritten `parentId` would make the one drag that
+ * actually repairs the corruption — dragging the promoted node to
+ * root, which resolves to `{ parentId: undefined }` — indistinguishable
+ * from a true no-op, and silently drop the write that clears it. Using the
+ * database parent means that drag (and, in fact, any legal destination for
+ * that node, since its true parent is the broken cyclic value and no legal
+ * destination can equal it — the cycle guard above already refuses every
+ * target that would) resolves to a real write instead.
  */
 export const resolveFolioDrop = (
   nodes: FolioTreeNode[],
@@ -296,14 +348,16 @@ export const resolveFolioDrop = (
 
   if (folioNodeHolds(dragged, targetId)) return undefined;
 
+  const draggedDatabaseParentId = dragged.declaredParentId ?? dragged.parentId;
+
   if (position === "inside") {
     // Dropping "inside" only means something on a directory; a folio or
     // protected folio cannot hold children.
     if (target.kind !== "directory") return undefined;
-    if (target.id === dragged.parentId) return undefined;
+    if (target.id === draggedDatabaseParentId) return undefined;
     return { parentId: target.id };
   }
 
-  if (target.parentId === dragged.parentId) return undefined;
+  if (target.parentId === draggedDatabaseParentId) return undefined;
   return { parentId: target.parentId };
 };

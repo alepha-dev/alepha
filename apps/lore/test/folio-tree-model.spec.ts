@@ -208,6 +208,107 @@ describe("buildFolioTree — parent cycles", () => {
   });
 });
 
+describe("buildFolioTree — declaredParentId distinguishes a promoted node from a genuine root", () => {
+  it("sets declaredParentId to the true cyclic parent on the promoted node only", () => {
+    const tree = buildFolioTree({
+      directories: [
+        { id: "A", name: "a", shortId: 1, parentId: "B" },
+        { id: "B", name: "b", shortId: 2, parentId: "A" },
+        { id: "E", name: "e", shortId: 3 },
+      ],
+      folios: [],
+    });
+    const a = findFolioNode(tree, "A")!;
+    const b = findFolioNode(tree, "B")!;
+    const e = findFolioNode(tree, "E")!;
+
+    // A and E both show parentId: undefined in the tree — indistinguishable
+    // by parentId alone — but only A's is a rewrite. declaredParentId is
+    // how a consumer tells them apart without re-running cycle detection.
+    expect(a.parentId).toBeUndefined();
+    expect(e.parentId).toBeUndefined();
+    expect(a.declaredParentId).toBe("B");
+    expect(e.declaredParentId).toBeUndefined();
+    // B's own parentId was never rewritten — it already matches what B's
+    // record declares — so it carries no declaredParentId either.
+    expect(b.declaredParentId).toBeUndefined();
+  });
+
+  it("leaves declaredParentId unset for an orphan (missing parent), not just for a genuine root", () => {
+    // A missing parent and a cyclic parent both fall back to root, but they
+    // are different failure modes: an orphan's own declared parent is
+    // simply gone (no id to recover), so there is nothing meaningful for
+    // declaredParentId to carry. Only cycle-breaking rewrites a parent that
+    // was otherwise a valid, existing directory.
+    const tree = buildFolioTree({
+      directories: [{ id: "D", name: "d", shortId: 1, parentId: "missing" }],
+      folios: [],
+    });
+    expect(findFolioNode(tree, "D")?.declaredParentId).toBeUndefined();
+  });
+});
+
+describe("resolveFolioDrop — cycle-promoted nodes", () => {
+  it("resolves a drag-to-root for a cycle-promoted node to the repair write, not a no-op", () => {
+    // A's tree parentId is already undefined (root) because the cycle got
+    // broken here, but A's database row still declares parentId "B" — that
+    // is exactly what declaredParentId carries. A genuinely-root node
+    // (f-conv) has neither parentId nor declaredParentId set. Dragging A
+    // next to f-conv resolves the same new-parent value either way
+    // (f-conv's tree parentId, undefined) — the decision this test pins is
+    // the no-op check: it must compare against A's true database parent
+    // ("B"), not its rewritten tree parentId ("undefined"), or this exact
+    // drag — the one that actually clears the corruption by writing
+    // `{ parentId: undefined }` — would read as "nothing changed" (since
+    // undefined === undefined) and get silently dropped, along with every
+    // other legal destination for A.
+    const tree = buildFolioTree({
+      directories: [
+        { id: "A", name: "a", shortId: 1, parentId: "B" },
+        { id: "B", name: "b", shortId: 2, parentId: "A" },
+      ],
+      folios: [{ id: "f-conv", title: "Conventions", shortId: 10 }],
+    });
+    expect(resolveFolioDrop(tree, "A", "f-conv", "before")).toEqual({
+      parentId: undefined,
+    });
+  });
+
+  it("still treats a genuinely-root node next to another genuinely-root node as a no-op", () => {
+    // Regression check: the declaredParentId-aware comparison must not
+    // turn ordinary root-to-root reorders into writes. Neither node here
+    // was ever rewritten, so declaredParentId is unset on both and the
+    // check falls back to comparing parentId as before.
+    const tree = buildFolioTree({
+      directories: [],
+      folios: [
+        { id: "f-conv", title: "Conventions", shortId: 1 },
+        { id: "f-keys", title: "Deploy keys", shortId: 2 },
+      ],
+    });
+    expect(
+      resolveFolioDrop(tree, "f-conv", "f-keys", "before"),
+    ).toBeUndefined();
+  });
+
+  it("resolves a genuine move (not to root) for a cycle-promoted node normally", () => {
+    // Dragging the promoted node into an unrelated, ordinary directory is
+    // unaffected by declaredParentId — the target side of the comparison
+    // never involves it, only the dragged side does.
+    const tree = buildFolioTree({
+      directories: [
+        { id: "A", name: "a", shortId: 1, parentId: "B" },
+        { id: "B", name: "b", shortId: 2, parentId: "A" },
+        { id: "d-arch", name: "architecture", shortId: 3 },
+      ],
+      folios: [],
+    });
+    expect(resolveFolioDrop(tree, "A", "d-arch", "inside")).toEqual({
+      parentId: "d-arch",
+    });
+  });
+});
+
 describe("flattenFolioTree", () => {
   it("emits every node with its depth when nothing is collapsed", () => {
     const rows = flattenFolioTree(fixture(), new Set());
