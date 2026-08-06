@@ -737,16 +737,18 @@ export default {
   "vitals.feature.description":
     "Collecte les Core Web Vitals (LCP, CLS, INP, FCP, TTFB) depuis cette application.",
 
-  "sigils.title": "Applications enrôlées",
-  "sigils.subtitle":
-    "Un sigil par application. Chacun détient son propre jeton et remonte ses données séparément — pour distinguer la préproduction de la production, enrôlez les deux et nommez-les en conséquence.",
+  "sigils.title": "Applications",
   "sigils.empty":
     "Aucune application enrôlée. Tant qu’il n’y en a pas, rien ne peut remonter ici.",
-  "sigils.features.title": "Capacités",
-  "sigils.features.subtitle":
-    "Activez les Sigils, puis choisissez ce que le point d’ingestion accepte.",
+  "sigils.create.title": "Enrôler une application",
+  "sigils.create.subtitle":
+    "Crée un jeton avec lequel cette application remonte ses données. Le jeton est affiché une seule fois, jamais ensuite.",
+  "sigils.create.dialogDescription":
+    "Nommez l’application. Ce nom est son adresse — lettres minuscules, chiffres et tirets, jusqu’à 64 caractères, par ex. lore-staging.",
   "sigils.create.name": "Nom de l’application",
-  "sigils.create.namePlaceholder": "lore",
+  "sigils.create.namePlaceholder": "lore-staging",
+  "sigils.create.invalid":
+    "Lettres minuscules, chiffres et tirets uniquement, en commençant et en terminant par une lettre ou un chiffre.",
   "sigils.create.submit": "Enrôler",
   "sigils.create.ownerOnly":
     "Seul le propriétaire du projet peut enrôler une application.",

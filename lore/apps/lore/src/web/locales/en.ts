@@ -448,7 +448,7 @@ export default {
   "project.settings.feature.milestones.description":
     "Group quests into time-boxed cycles with start / end dates and changelogs.",
   "project.settings.feature.sigils.description":
-    "Enrol your applications so they can report crashes, page views and web vitals here — one token per app.",
+    "Enroll your applications so they can report crashes, page views and web vitals here — one token per app.",
   "project.settings.feature.feedback.description":
     "Let any signed-in user send this project a bug report or feature request, and give the owner an inbox to triage them in.",
   "project.settings.delete.modal.title": "Delete Project",
@@ -730,17 +730,19 @@ export default {
   "vitals.feature.description":
     "Collect Core Web Vitals (LCP, CLS, INP, FCP, TTFB) from this app.",
 
-  "sigils.title": "Enrolled apps",
-  "sigils.subtitle":
-    "One sigil per app. Each holds its own token and reports on its own — to keep staging apart from production, enrol both and name them so.",
+  "sigils.title": "Apps",
   "sigils.empty": "No app enrolled yet. Until one is, nothing can report here.",
-  "sigils.features.title": "Capabilities",
-  "sigils.features.subtitle":
-    "Turn Sigils on, then choose what the ingest endpoint accepts.",
+  "sigils.create.title": "Enroll an app",
+  "sigils.create.subtitle":
+    "Mints a token this app reports with. The token is shown once and never again.",
+  "sigils.create.dialogDescription":
+    "Name the app. This name is its address — lowercase letters, digits and hyphens, up to 64 characters, e.g. lore-staging.",
   "sigils.create.name": "App name",
-  "sigils.create.namePlaceholder": "lore",
-  "sigils.create.submit": "Enrol",
-  "sigils.create.ownerOnly": "Only the project owner can enrol an app.",
+  "sigils.create.namePlaceholder": "lore-staging",
+  "sigils.create.invalid":
+    "Lowercase letters, digits and hyphens only, starting and ending with a letter or digit.",
+  "sigils.create.submit": "Enroll",
+  "sigils.create.ownerOnly": "Only the project owner can enroll an app.",
   "sigils.token.title":
     "Copy this token now — it is stored hashed and will never be shown again. Set it as SIGIL_KEY in the app, alongside SIGIL_SINK pointing at this instance.",
   "sigils.token.copy": "Copy token",
