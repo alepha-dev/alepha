@@ -56,6 +56,8 @@ export default defineConfig({
         "insights.vitals.",
         // tr(`folios.activity.action.${action}`) — create/edit/rename/tag-change/revert.
         "folios.activity.action.",
+        // tr(`folios.editor.status.${draft.statusKey}`) — draft/saved/unsaved.
+        "folios.editor.status.",
         // tr(`blights.origin.${origin}`) — client/server crash provenance badge.
         "blights.origin.",
         // tr(`language.${code}`) — @alepha/ui button-language picker labels.

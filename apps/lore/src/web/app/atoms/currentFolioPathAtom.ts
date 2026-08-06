@@ -13,8 +13,8 @@ import { $atom, z } from "alepha";
  * and absent for the terminal folio title (the current page, not
  * clickable).
  *
- * FolioBrowser writes the directory chain on every refresh; FolioView
- * writes the same chain + appends the folio title. The atom is cleared
+ * FolioBrowser writes the directory chain on every refresh; the folio
+ * workspace writes the same chain + appends the folio title. The atom is cleared
  * by the Folio route's `onLeave` so non-folio routes don't inherit
  * stale segments.
  */

@@ -89,8 +89,7 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/p/:projectId/q/:shortId/graph` | `projectQuestGraph` | `project/quest/QuestGraph.tsx` | Quest dependency graph |
 | `/p/:projectId/folios` | `projectFolios` | `folios/FoliosLayout.tsx` | Folio + directory-tree index |
 | `/p/:projectId/folios/new` | `projectFoliosNew` | `folios/FolioCreatePage.tsx` | New folio |
-| `/p/:projectId/folios/:shortId` | `projectFoliosFolio` | `folios/FolioView.tsx` | Folio detail |
-| `/p/:projectId/folios/:shortId/edit` | `projectFoliosFolioEdit` | `folios/FolioEditPage.tsx` | Folio editor |
+| `/p/:projectId/folios/:shortId` | `projectFoliosFolio` | `folios/editor/FolioWorkspace.tsx` | Folio workspace — always-editable, title/tags/body/Save. The old read-only `FolioView` + separate `/edit` route (`projectFoliosFolioEdit`) were merged into this one surface and the `/edit` route was deleted, not redirected |
 | `/p/:projectId/settings` | `projectSettings` | `project/settings/ProjectSettings.tsx` | Settings layout (sub-routes below) |
 | `/p/:projectId/settings/` | `projectSettingsBanner` | `…/ProjectSettingsGeneralPage.tsx` | General / banner |
 | `/p/:projectId/settings/members` | `projectSettingsMembers` | `…/ProjectSettingsMembersPage.tsx` | Members & pending invitations — the future home of per-member access rights |
@@ -255,7 +254,7 @@ The MCP tool descriptions in `src/mcp/tools/ProjectTools.ts` and `src/mcp/tools/
 - Directory / blob controllers: `src/api/controllers/DirectoryController.ts`, `src/api/controllers/BlobController.ts`
 - History: `src/api/services/FolioHistoryService.ts` (append, retention sweep, protection-domain purge)
 - MCP tools: `src/mcp/tools/FolioTools.ts` (folio, directory and blob tools) + `ProjectTools.ts` (`project_context`)
-- UI: `src/web/app/components/folios/FolioEditor.tsx`, `FolioView.tsx`, `FolioBacklinksPanel.tsx`, `FolioBrowser.tsx`, `FolioTreePanel.tsx`
+- UI: `src/web/app/components/folios/editor/FolioWorkspace.tsx` (the workspace shell — three panes: folio tree, document, inspector, filled in across several tasks), `FolioBacklinksPanel.tsx`, `FolioBrowser.tsx`, `FolioProtectedView.tsx`
 
 **Bucket literals kept un-renamed** — `FOLIO_BLOB_BUCKET = "archive-blobs"` (`FolioBlobService.ts`, `LoreFileAccessProvider.ts`, `BlobController.ts`, `FolioBrowser.tsx`, `useFolioImageUpload.ts`). Same reasoning as the `petition-attachments` bucket in the Feedback section: it's a value already persisted on every existing `files` row, and renaming it would orphan every folio image/blob ever uploaded.
 
