@@ -447,7 +447,7 @@ export default {
   "project.settings.feature.milestones.description":
     "Group quests into time-boxed cycles with start / end dates and changelogs.",
   "project.settings.feature.sigils.description":
-    "Enrol your applications so they can report crashes, page views and web vitals here — one token per environment.",
+    "Enrol your applications so they can report crashes, page views and web vitals here — one token per app.",
   "project.settings.delete.modal.title": "Delete Project",
   "project.settings.delete.modal.description":
     "This action cannot be undone. This will permanently destroy the project and all its quests.",
@@ -645,7 +645,7 @@ export default {
   "insights.vitals.needsImprovement": "Needs work",
   "insights.vitals.poor": "Poor",
   "insights.errors.title": "Error budget",
-  "insights.errors.subtitle": "per environment",
+  "insights.errors.subtitle": "per app",
   "insights.errors.heading": "Still happening",
   "insights.errors.col.error": "Error",
   "insights.errors.col.app": "App",
@@ -653,7 +653,7 @@ export default {
   "insights.errors.col.firstSeen": "First seen",
   "insights.errors.col.lastSeen": "Last seen",
   "insights.errors.empty":
-    "No errors reported in this range. Unlike the Blights inbox, this list keeps each environment separate — so a bug fixed in production still shows here if staging is still hitting it.",
+    "No errors reported in this range. Unlike the Blights inbox, this list keeps each app separate — so a bug fixed in one app still shows here if another is still hitting it.",
 
   "blights.empty":
     "No blights. Crashes captured from your sigils will appear here.",
@@ -700,11 +700,11 @@ export default {
 
   "beacon.feature.title": "Beacon",
   "beacon.feature.description":
-    "Collect cookieless page views and unique visitors from enrolled environments.",
+    "Collect cookieless page views and unique visitors from enrolled apps.",
 
   "vitals.feature.title": "Vitals",
   "vitals.feature.description":
-    "Collect Core Web Vitals (LCP, CLS, INP, FCP, TTFB) from enrolled environments.",
+    "Collect Core Web Vitals (LCP, CLS, INP, FCP, TTFB) from enrolled apps.",
 
   "sigils.title": "Enrolled apps",
   "sigils.subtitle":

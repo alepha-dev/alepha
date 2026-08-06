@@ -449,7 +449,7 @@ export default {
   "project.settings.feature.milestones.description":
     "Regroupez les quêtes en jalons avec dates de début / fin et historique.",
   "project.settings.feature.sigils.description":
-    "Enrôlez vos applications pour qu’elles remontent ici plantages, pages vues et Web Vitals — un jeton par environnement.",
+    "Enrôlez vos applications pour qu’elles remontent ici plantages, pages vues et Web Vitals — un jeton par application.",
   "project.settings.delete.modal.title": "Détruire le projet",
   "project.settings.delete.modal.description":
     "Cette action est irréversible. Le projet et toutes ses quêtes seront définitivement perdus.",
@@ -650,7 +650,7 @@ export default {
   "insights.vitals.needsImprovement": "À améliorer",
   "insights.vitals.poor": "Médiocre",
   "insights.errors.title": "Budget d'erreurs",
-  "insights.errors.subtitle": "par environnement",
+  "insights.errors.subtitle": "par application",
   "insights.errors.heading": "Toujours d'actualité",
   "insights.errors.col.error": "Erreur",
   "insights.errors.col.app": "Application",
@@ -658,7 +658,7 @@ export default {
   "insights.errors.col.firstSeen": "Première fois",
   "insights.errors.col.lastSeen": "Dernière fois",
   "insights.errors.empty":
-    "Aucune erreur signalée sur cette période. Contrairement à la boîte des fléaux, cette liste garde chaque environnement séparé — un bug corrigé en production reste visible ici si la préproduction le déclenche encore.",
+    "Aucune erreur signalée sur cette période. Contrairement à la boîte des fléaux, cette liste garde chaque application séparée — un bug corrigé dans une application reste visible ici si une autre le déclenche encore.",
 
   "blights.empty":
     "Aucun fléau. Les plantages capturés par vos sigils apparaîtront ici.",
@@ -706,11 +706,11 @@ export default {
 
   "beacon.feature.title": "Balise",
   "beacon.feature.description":
-    "Collecte les pages vues et les visiteurs uniques, sans cookie, depuis les environnements enrôlés.",
+    "Collecte les pages vues et les visiteurs uniques, sans cookie, depuis les applications enrôlées.",
 
   "vitals.feature.title": "Vitals",
   "vitals.feature.description":
-    "Collecte les Core Web Vitals (LCP, CLS, INP, FCP, TTFB) depuis les environnements enrôlés.",
+    "Collecte les Core Web Vitals (LCP, CLS, INP, FCP, TTFB) depuis les applications enrôlées.",
 
   "sigils.title": "Applications enrôlées",
   "sigils.subtitle":
