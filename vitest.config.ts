@@ -7,6 +7,21 @@ const repoRoot = dirname(fileURLToPath(import.meta.url));
 loadEnv();
 
 export default defineConfig({
+  resolve: {
+    // `apps/lore` maps `@/*` to its own `src/*` in tsconfig, and the "node"
+    // project below has no `include` filter (see the WebStorm comment), so it
+    // collects lore's specs under THIS config — `apps/lore/vitest.config.ts` is
+    // never consulted by a root `yarn test`. Any lore spec that reaches app
+    // source transitively therefore has to resolve `@/` here or it dies at
+    // import time, which is what `test/app-routes.spec.ts` did the moment it
+    // imported `AppRouter.ts` (the first spec anywhere to do so).
+    //
+    // Safe as a repo-wide alias: `apps/lore` is the only workspace in the tree
+    // that uses `@/` imports, so there is nothing to collide with. Lore keeps
+    // the same alias in its own config — that is what makes `yarn w lore test`
+    // work standalone, where this file is not loaded at all.
+    alias: [{ find: /^@\//, replacement: `${repoRoot}/apps/lore/src/` }],
+  },
   test: {
     root: repoRoot,
     testTimeout: 10000,
