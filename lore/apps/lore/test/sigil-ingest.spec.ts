@@ -229,8 +229,8 @@ describe("sigil ingest", () => {
     was on carries `beacon` forever, and gating on the token alone made the
     settings switch advisory: the client is told to stop via `/sigils/config`,
     the client fails open on any error, and rows kept accruing on a project
-    whose owner no longer had a page to see them on (`projectInsights` 404s
-    when `features.beacon` is off).
+    whose owner no longer had a page to see them on (the app page's Analytics,
+    Performance and Errors tabs all 404 when `features.beacon` is off).
 
     One test per tracker, each with the kind PRESENT so the only thing being
     proven is the feature half of the intersection.

@@ -270,56 +270,106 @@ test.describe("Sigils", () => {
       });
     });
 
-    await test.step("the insights page renders what was just reported", async () => {
-      // 491 restored lines across three components plus a nav entry, and
-      // nothing in the repo rendered any of them. A nav entry pointing at a
-      // page that throws is exactly what took six specs down in `5366c6e4d`.
-      await page.goto(`/p/${projectId}/insights`);
+    await test.step("the sidebar's Apps section opens the app's own page", async () => {
+      // The section is the only way in that does not require knowing a UUID,
+      // and it is a collapsible group: nothing under it is active from the
+      // quest list, so it starts closed and has to be opened.
+      await page.goto(`/p/${projectId}`);
       await page.waitForLoadState("networkidle");
 
-      // Analytics: two views of /checkout from one visitor. The numbers are
-      // asserted, not just the headings — a page that renders zeros proves
-      // only that it does not throw.
-      await expect(page.getByText("Unique visitors")).toBeVisible({
+      await page.getByRole("button", { name: "Apps", exact: true }).click();
+      await page.getByRole("link", { name: appName, exact: true }).click();
+
+      await expect(page).toHaveURL(new RegExp(`/p/${projectId}/apps/`), {
         timeout: 15_000,
       });
-      await expect(page.getByText("Top pages")).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: appName, exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
+
+      // Every tab exists. Scoped to the tab bar: "Settings" is also a
+      // project-level sidebar entry, so a page-wide match proves nothing.
+      const tabs = page.getByTestId("app-tabs");
+      for (const label of [
+        "Dashboard",
+        "Analytics",
+        "Performance",
+        "Errors",
+        "Settings",
+      ]) {
+        await expect(
+          tabs.getByRole("link", { name: label, exact: true }),
+        ).toBeVisible();
+      }
+    });
+
+    await test.step("the Analytics tab renders what was just reported", async () => {
+      await page
+        .getByTestId("app-tabs")
+        .getByRole("link", { name: "Analytics", exact: true })
+        .click();
+
+      // Two views of /checkout from one visitor. The numbers are asserted, not
+      // just the headings — a page that renders zeros proves only that it does
+      // not throw.
+      await expect(page.getByText("Top pages")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.getByText("Unique visitors")).toBeVisible();
       await expect(page.getByText("/checkout").first()).toBeVisible();
       // The only page reported, so its two views are 100% of the total.
       await expect(page.getByText(/2\s*·\s*100%/)).toBeVisible();
+    });
 
-      // Performance: the 2100 ms LCP sample lands in the ≤2500 bucket, and p75
-      // reports that bucket's upper boundary. The thousands separator is
-      // whatever the browser's locale uses.
-      await page.getByRole("radio", { name: "Performance" }).click();
+    await test.step("the Performance tab reports the vitals p75", async () => {
+      // The 2100 ms LCP sample lands in the ≤2500 bucket, and p75 reports that
+      // bucket's upper boundary. The thousands separator is whatever the
+      // browser's locale uses.
+      await page
+        .getByTestId("app-tabs")
+        .getByRole("link", { name: "Performance", exact: true })
+        .click();
+
       await expect(page.getByText("Web Vitals")).toBeVisible({
         timeout: 15_000,
       });
       await expect(page.getByText(/2[,.\s]?500\s*ms/)).toBeVisible();
     });
 
-    await test.step("the error budget names the app that is still failing", async () => {
+    await test.step("the Errors tab names the app that is still failing", async () => {
       // `sigil_error_groups` was written on every accepted error and read by
       // nothing outside `test/`. This is the surface that reads it — split per
       // sigil, unlike the inbox, which folds every sigil into one row per
       // project on purpose.
-      await page.getByRole("radio", { name: "Errors" }).click();
+      await page
+        .getByTestId("app-tabs")
+        .getByRole("link", { name: "Errors", exact: true })
+        .click();
 
       await expect(page.getByText("Still happening")).toBeVisible({
         timeout: 15_000,
       });
-      await expect(page.getByText(blightMessage)).toBeVisible();
-      // The whole point of the table: which app, by name.
-      await expect(page.getByText(appName).first()).toBeVisible();
+
+      // Asserted on the row, not on the page: the app's name is also in the
+      // heading, the breadcrumb and the sidebar, so a page-wide match would
+      // pass with an empty table.
+      const row = page.getByTestId("error-group-row");
+      await expect(row).toHaveCount(1);
+      await expect(row.getByText(blightMessage)).toBeVisible();
+      await expect(row.getByText(appName, { exact: true })).toBeVisible();
       // 3 + 4, counted per app. Same total as the inbox here because there is
       // one sigil; the split is what the table exists to keep.
-      await expect(page.getByText("7", { exact: true }).first()).toBeVisible();
+      await expect(row.getByText("7", { exact: true })).toBeVisible();
     });
 
     let rotated = "";
     await test.step("rotating revokes the old token and keeps the history", async () => {
-      await page.goto(`/p/${projectId}/settings/sigils`);
-      await page.waitForLoadState("networkidle");
+      // Rotate and delete live on the app's own Settings tab — they are per-app
+      // actions, and the project settings page enrols rather than administers.
+      await page
+        .getByTestId("app-tabs")
+        .getByRole("link", { name: "Settings", exact: true })
+        .click();
 
       await page.getByRole("button", { name: "Rotate", exact: true }).click();
       await confirmDialog(page, "Rotate");
@@ -357,12 +407,25 @@ test.describe("Sigils", () => {
     });
 
     await test.step("deleting the sigil retires its token", async () => {
-      await page.goto(`/p/${projectId}/settings/sigils`);
+      // Back to the app's Settings tab — the same page rotate was driven from.
+      await page.goto(`/p/${projectId}`);
       await page.waitForLoadState("networkidle");
+      await page.getByRole("button", { name: "Apps", exact: true }).click();
+      await page.getByRole("link", { name: appName, exact: true }).click();
+      await page
+        .getByTestId("app-tabs")
+        .getByRole("link", { name: "Settings", exact: true })
+        .click();
 
       await page.getByRole("button", { name: "Delete", exact: true }).click();
       await confirmDialog(page, "Delete");
 
+      // Its own page no longer has a subject, so the delete lands the operator
+      // back on the enrolment page — which now says there is nothing enrolled.
+      await expect(page).toHaveURL(
+        new RegExp(`/p/${projectId}/settings/sigils`),
+        { timeout: 15_000 },
+      );
       await expect(page.getByText(/No app enrolled yet/i)).toBeVisible({
         timeout: 15_000,
       });

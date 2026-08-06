@@ -41,7 +41,7 @@ apps/lore/                # This app
 │   ├── mcp/              # MCP protocol integration (tools, resources)
 │   ├── web/
 │   │   ├── app/          # Main SPA
-│   │   │   ├── atoms/    # 16 state atoms — see "State Atoms" section
+│   │   │   ├── atoms/    # 19 state atoms — see "State Atoms" section
 │   │   │   ├── components/  # ~121 React components
 │   │   │   ├── services/ # I18n (EN + FR), Toaster
 │   │   │   └── AppRouter.ts  # All routes
@@ -79,7 +79,12 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/p/:projectId/reports/members` | `reportsMembers` | `project/reports/ReportsMembers.tsx` | Per-member contribution (was Reports▸Party) |
 | `/p/:projectId/feedback` | `projectFeedback` | `project/feedback/ProjectFeedback.tsx` | Owner inbox: triage bug/feature requests |
 | `/p/:projectId/blights` | `projectBlights` | `project/blights/ProjectBlights.tsx` | Crash-telemetry inbox (sigil-fed) |
-| `/p/:projectId/insights` | `projectInsights` | `project/insights/ProjectInsights.tsx` | Beacon / vitals analytics + per-app error budget |
+| `/p/:projectId/apps/:sigilId` | `projectApp` | `project/apps/AppLayout.tsx` | One enrolled app: tab bar + the range toggle every tab shares. Param is `:sigilId`, **never** `:id` — see the router note below |
+| `/p/:projectId/apps/:sigilId/` | `app` | `project/apps/AppDashboard.tsx` | Headline numbers + the credential card |
+| `/p/:projectId/apps/:sigilId/analytics` | `appAnalytics` | `project/apps/AppAnalytics.tsx` | Page views, unique visitors, top pages/countries. 404 when `features.beacon` is off |
+| `/p/:projectId/apps/:sigilId/performance` | `appPerformance` | `project/apps/AppPerformance.tsx` | Web-vitals p75. 404 when `features.beacon` is off |
+| `/p/:projectId/apps/:sigilId/errors` | `appErrors` | `project/apps/AppErrors.tsx` | This app's error budget. 404 when `features.beacon` is off |
+| `/p/:projectId/apps/:sigilId/settings` | `appSettings` | `project/apps/AppSettings.tsx` | Rotate / delete this app (owner-only server-side) |
 | `/p/:projectId/q/:shortId` | `projectQuest` | `project/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
 | `/p/:projectId/q/:shortId/graph` | `projectQuestGraph` | `project/quest/QuestGraph.tsx` | Quest dependency graph |
 | `/p/:projectId/folios` | `projectFolios` | `folios/FoliosLayout.tsx` | Folio + directory-tree index |
@@ -105,13 +110,15 @@ HTTP API routes follow the same vocabulary: `/projects/:id/quests/export`, `/que
 
 ### ⚠️ Deleting or renaming a `$page` is not typecheck-protected
 
-`router.path("someRouteName", ...)` / `router.push("someRouteName", ...)` are typed against the live route table — but only while the name exists. The moment a route is renamed or removed, any call site still passing the old name silently widens to the plain `string` overload instead of erroring. The build stays green; the call throws at render time, in production, the first time a user hits that code path. This bit the 2026-08 rename directly (`campaignQuest` → `projectQuest` etc., and the whole `Kanban` board route disappearing in favour of `?view=kanban`). There is no automated guard for this — **deleting or renaming a route name requires grepping the whole `src/` tree for the old string**, including nav arrays like `ProjectSettings.tsx`'s sidebar list, which references route names as plain strings with nothing in the type system tying it to the routes it names (see the comment on `projectSettingsSigils` in `AppRouter.ts`).
+`router.path("someRouteName", ...)` / `router.push("someRouteName", ...)` are typed against the live route table — but only while the name exists. The moment a route is renamed or removed, any call site still passing the old name silently widens to the plain `string` overload instead of erroring. The build stays green; the call throws at render time, in production, the first time a user hits that code path. This bit the 2026-08 rename directly (`campaignQuest` → `projectQuest` etc., and the whole `Kanban` board route disappearing in favour of `?view=kanban`). **Deleting or renaming a route name requires grepping the whole `src/` tree for the old string**, including nav arrays like `ProjectSettings.tsx`'s sidebar list and `ProjectView.tsx`'s `ROUTES_APP` set, which reference route names as plain strings with nothing in the type system tying them to the routes they name (see the comment on `projectSettingsSigils` in `AppRouter.ts`).
+
+`test/app-routes.spec.ts` is the partial automated guard added with the Apps page: it boots the real router and resolves every name the nav navigates to by string, so a deleted route is a red test rather than a production throw. It only covers the names listed in it — adding a route name to a nav means adding it there too.
 
 ## Key Patterns
 
 ### State Atoms
 
-Live in `src/web/app/atoms/` (16 files). The project route loader fills the `current*` atoms on enter and clears them on leave — components inside the layout can read them without re-fetching. Three more atoms live in `src/api/atoms/` (`feedbackOptionsAtom`, `folioHistoryAtom`, `pinnedContentAtom`) — server-only tunables read by the backend, not route-driven.
+Live in `src/web/app/atoms/` (19 files). The project route loader fills the `current*` atoms on enter and clears them on leave — components inside the layout can read them without re-fetching. Three more atoms live in `src/api/atoms/` (`feedbackOptionsAtom`, `folioHistoryAtom`, `pinnedContentAtom`) — server-only tunables read by the backend, not route-driven.
 
 **Per-project (set by `project` route loader)**
 - `currentProjectAtom` — project metadata
@@ -121,10 +128,12 @@ Live in `src/web/app/atoms/` (16 files). The project route loader fills the `cur
 - `currentFeedbackCountAtom` — pending-feedback badge for the project header
 - `currentBlightCountAtom` — open-blights badge for the project header
 - `currentQuestCountAtom` — open-quests badge for the project header (new: Quests has no feature gate, unlike Blights/Feedback, so this badge is always on)
+- `currentSigilsAtom` — the enrolled apps the sidebar's Apps section lists. Fetched behind `.catch(() => [])`: reads are member-gated but a transient failure must cost the section, not the page
 
 **Per-resource (set by their route loaders)**
 - `currentQuestAtom` — active quest detail
 - `currentFolioAtom` — active folio detail
+- `currentSigilAtom` / `currentSigilInsightsAtom` — the open app and its analytics for the range its page currently shows. Atoms rather than loader props because the range toggle lives on the tab layout and `NestedView` cannot pass props to the tab it renders
 
 **Folios index (set by the `projectFolios` loader)**
 - `userFoliosAtom`, `folioTagsAtom`
@@ -266,14 +275,16 @@ A **sigil** is one **app** that reports into a project: a free-form `name`, uniq
 
 > Until 2026-08-06 a sigil was "one environment of one application" — `app` + `environment` + a display `label`, unique on `(projectId, app, environment)`. The three columns collapsed into one `name` (migration `20260806093400_confused_dazzler`, hand-written and additive; see "Migration safety on D1" below). How finely to slice is now the operator's decision rather than the schema's: an app that wants staging kept apart from production enrols two sigils and names them so. Older notes and folios still use the old vocabulary.
 
-Managed at `/p/:id/settings/sigils` (`SigilController`, reads member-gated, mutations owner-gated — no role, no allowlist: owning the project is the whole gate). `features.sigils` is the master switch, with `feedback` / `blights` / `beacon` / `vitals` as the per-capability toggles `GET /sigils/config` reports back to the app.
+Enrolled at `/p/:id/settings/sigils` and administered per-app at `/p/:id/apps/:sigilId` (`SigilController`, reads member-gated, mutations owner-gated — no role, no allowlist: owning the project is the whole gate). `features.sigils` is the master switch, with `feedback` / `blights` / `beacon` / `vitals` as the per-capability toggles `GET /sigils/config` reports back to the app.
+
+**Apps are a sidebar section, not a settings page.** Since 2026-08-06 the project sidebar carries a collapsible **Apps** group (gated on `features.sigils`) listing every enrolled app by name; each opens that app's own page. Rotate and delete live on that page's Settings tab — the settings page enrols and lists, and its rows link out. An empty project shows the group with a single "Enrol an app" entry rather than hiding the section. The list reaches the sidebar through `currentSigilsAtom`, filled by the `project` route loader (defensively: `listSigils` is member-readable, but a failure costs the section, not the page).
 
 **The toggles are enforced, not advertised.** `SigilIngestService.gatesFor` intersects the project's features with the sigil's `kinds`, and both `absorb` (the write gate) and `/sigils/config` (the advertisement) call it — one definition, so the sink cannot invite a payload it then discards. Enforcing on write is not redundant with the config poll: `sigils.kinds` is written once at creation and has **no update path anywhere**, and the reporting client fails open on any config error, so gating on the token alone left an owner's "off" switch as a suggestion.
 
 **Rotate, don't delete.** All four aggregate tables cascade on `sigilId`, so deleting a sigil to revoke a leaked token also erases that app's views, vitals, uniques and error groups. `rotateSigil` re-mints `tokenHash`/`tokenPrefix` in place — the old token stops resolving immediately (`verify` looks a sigil up *by* its hash) and every row survives. The UI says which is which; so do the MCP tool descriptions.
 
 - **Blights** — one row per distinct failure, keyed by `(projectId, fingerprint)`, with a count. The owner triages them in the inbox (`/p/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` zone, provenance recorded in `quests.source`). Purged on a retention window (`project.retentionDays ?? 30`) by `BlightJobs`; resolved and `quest:`-forwarded rows are kept as audit trail. A blight survives its sigil — `blights.sigilId` is `ON DELETE SET NULL`.
-- **Insights** (`/p/:id/insights`, gated on `features.beacon`) — three segments over one payload: **Analytics** (page views, unique visitors), **Performance** (web-vitals p75) and **Errors** (the per-app error budget), read out of `sigil_views_hourly` / `sigil_uniques_daily` / `sigil_vitals_hourly` / `sigil_error_groups`. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is a `substr(hour, 1, 10)` group over the same rows. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token.
+- **Insights** (`InsightsController`, gated on `features.beacon`) — three segments over one payload: **Analytics** (page views, unique visitors), **Performance** (web-vitals p75) and **Errors** (the per-app error budget), read out of `sigil_views_hourly` / `sigil_uniques_daily` / `sigil_vitals_hourly` / `sigil_error_groups`. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is a `substr(hour, 1, 10)` group over the same rows. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token. The three segments are now the Analytics / Performance / Errors **tabs of one app's page**; `GET /projects/:projectId/insights?sigilId=` is what narrows them, and the id is verified to belong to the project in the path before it filters anything (member-gating is on the project, so an unchecked id would read another project's rows). Omitted, the endpoint still answers project-wide — which is what MCP's `insights_read` reads.
   - The **Errors** segment is the only place `sigil_error_groups` is read. It answers "is this still happening *in that app*", which the Blights inbox cannot: the inbox keys on `(projectId, fingerprint)` so a triage decision does not fork, which necessarily merges every enrolled app into one row. Filtered on `lastSeenAt` (still failing), ordered by `count`, capped at 20.
 
 > ⚠️ **`name`, `message`, `stack`, `sourceUrl` on a blight are 100% attacker-controlled** and are shown to the project owner — the highest-value target. Render as escaped plain text only. Never markdown, never `dangerouslySetInnerHTML`.
@@ -289,10 +300,12 @@ Read endpoints are member-gated; mutations are owner-only. **Ingest has its own 
 - Ingest: `src/api/controllers/SigilIngestController.ts` + `src/api/services/SigilIngestService.ts`
 - Credential: `src/api/services/SigilTokenService.ts` (mint / verify / bearer)
 - Triage: `src/api/controllers/BlightController.ts`, `src/api/services/BlightRuleService.ts`, `src/api/jobs/BlightJobs.ts`
-- Analytics: `src/api/controllers/InsightsController.ts`
-- UI: `src/web/app/components/project/settings/ProjectSettingsSigilsPage.tsx` (+ `…SigilRow`, `…SigilToken`), `project/blights/ProjectBlights.tsx`, `project/insights/ProjectInsights.tsx` (+ `…Analytics`, `…Performance`, `…Errors`)
+- Analytics: `src/api/controllers/InsightsController.ts` (schemas extracted to `src/api/schemas/insightsResourceSchema.ts` / `sigilResourceSchema.ts` so the browser can validate the atoms without importing a controller)
+- UI — enrolment: `src/web/app/components/project/settings/ProjectSettingsSigilsPage.tsx` (+ `…SigilRow`), `shared/TokenReveal.tsx`
+- UI — per app: `src/web/app/components/project/apps/AppLayout.tsx` (+ `AppDashboard`, `AppAnalytics`, `AppPerformance`, `AppErrors`, `AppSettings`); sidebar section in `project/ProjectView.tsx`; atoms `currentSigilsAtom` / `currentSigilAtom` / `currentSigilInsightsAtom`
+- UI — triage: `project/blights/ProjectBlights.tsx`
 - MCP: `src/mcp/tools/SigilTools.ts`, `src/mcp/tools/BlightTools.ts`
-- E2E: `e2e/sigil.spec.ts` — enrol → ingest → triage → rotate → delete, with ingest driven through Playwright's isolated `request` fixture (the page's `fetch` is patched to attach the session bearer, which would replace the sigil token)
+- E2E: `e2e/sigil.spec.ts` — enrol → ingest → triage → open the app from the sidebar → tabs → rotate → delete, with ingest driven through Playwright's isolated `request` fixture (the page's `fetch` is patched to attach the session bearer, which would replace the sigil token)
 
 ## I18n
 
@@ -538,7 +551,8 @@ rule is that the flood never reaches the Worker.
 - `folio-protected-history.spec.ts` — **regression guard**: the protection-domain invariant (no plaintext left in `folio_revisions` after encrypting; pinned revisions are not exempt)
 - `folio-*.spec.ts` — links, backlinks, tidy, pinning, permissions, history, activity, blob links, directories (the old Archive-module coverage lives here now too)
 - `sigil-controller.spec.ts` / `sigil-ingest.spec.ts` / `sigil-entities.spec.ts` / `sigil-self-report.spec.ts` — sigil CRUD + rotation, token verification, capability gating, aggregate upserts, and Lore's own in-process self-report path
-- `insights-controller.spec.ts` / `insights-tools.spec.ts` — beacon/vitals windows and the p75 walk (clock pinned with `DateTimeProvider.pause()`), plus the MCP surface
+- `insights-controller.spec.ts` / `insights-tools.spec.ts` — beacon/vitals windows and the p75 walk (clock pinned with `DateTimeProvider.pause()`), the `?sigilId=` per-app filter including the cross-project refusal, plus the MCP surface
+- `app-routes.spec.ts` — **regression guard**: boots the real `AppRouter` and resolves every route name the sidebar and settings nav navigate to by string. `router.path()` takes `keyof VirtualRouter<T> | string`, so a deleted or renamed route is never a type error — this is the only thing that turns it into a red test instead of a production throw
 - `blight-tools.spec.ts` — the MCP triage surface
 - `migration-safety.spec.ts` — asserts the great-rename migration (and the sigil-family rebuild before it) never drops a table the `projects` cascade reaches, and that a fresh D1-shaped database boots with all migrations applied
 - `petition-reporter-migration.spec.ts` / `petition-reporter-restore-migration.spec.ts` — deliberately still "petition"-named: they pin the behavior of two specific *historical* migrations (`reporterUserId`/`reporterEmail` column churn) that predate the 2026-08 rename, not the current Feedback module
@@ -548,7 +562,7 @@ rule is that the flood never reaches the Worker.
 
 `e2e/` is split by feature, not by user journey. One `<feature>.spec.ts` per major surface, each covering happy path + key edge cases:
 
-- `sigil.spec.ts` — enrol an app → ingest as it → triage in the inbox → rotate → delete
+- `sigil.spec.ts` — enrol an app → ingest as it → triage in the inbox → open the app from the sidebar's Apps section → walk its tabs → rotate → delete
 - `blights.spec.ts` — regression guard for the inbox render loop (the ingest path lives in `sigil.spec.ts`)
 - `quest.spec.ts` — quest lifecycle (open → accept → complete) + reminder UI
 - `feedback.spec.ts` — feedback submit → accept → link quests → status progression (renamed from `petition.spec.ts`)

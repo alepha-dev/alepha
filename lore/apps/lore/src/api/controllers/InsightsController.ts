@@ -1,15 +1,21 @@
 import { VITALS_BUCKETS, type VitalMetric } from "@alepha/sigil/vitals";
-import { $inject, type Infer, z } from "alepha";
+import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action } from "alepha/server";
+import { $action, NotFoundError } from "alepha/server";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { sigils } from "../entities/sigils.ts";
 import { sigilUniquesDaily } from "../entities/sigilUniquesDaily.ts";
 import { sigilViewsHourly } from "../entities/sigilViewsHourly.ts";
 import { sigilVitalsHourly } from "../entities/sigilVitalsHourly.ts";
+import {
+  type InsightsResource,
+  insightsResourceSchema,
+} from "../schemas/insightsResourceSchema.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
+
+export type { InsightsResource };
 
 /** Lookback windows the Insights page offers, in whole UTC days. */
 const RANGE_DAYS: Record<string, number> = {
@@ -31,101 +37,12 @@ const TOP_N = 10;
 const TOP_ERROR_GROUPS = 20;
 
 /**
- * One project's analytics over a 1d / 7d / 30d window.
- *
- * ⚠️ `totalViews` is best-effort by construction. Nothing throttles what an
- * enrolled app reports, so the raw count is inflatable by whoever holds a sigil
- * token. `uniqueVisitors` is the trustworthy headline, and the UI labels the
- * two accordingly.
- */
-const insightsSchema = z.object({
-  range: z.enum(["1d", "7d", "30d"]),
-  /** First UTC day included in the window, `YYYY-MM-DD`. */
-  since: z.string(),
-  /** Best-effort raw pageview count. Inflatable — see above. */
-  totalViews: z.integer(),
-  /** Abuse-resistant headline: distinct cookieless daily visitor hashes. */
-  uniqueVisitors: z.integer(),
-  topCountries: z.array(
-    z.object({
-      /** ISO-3166 alpha-2, or `ZZ` when the edge did not say. */
-      country: z.string(),
-      count: z.integer(),
-    }),
-  ),
-  topPaths: z.array(
-    z.object({
-      path: z.string(),
-      count: z.integer(),
-      /** Share of `totalViews`, rounded to a whole percent. */
-      percentage: z.number(),
-    }),
-  ),
-  /**
-   * Web-vitals p75 approximations across every sigil on the project.
-   *
-   * Derived from the stored histograms, so the cost does not grow with traffic.
-   * `null` means no sample landed in the window. CLS is reported as the real
-   * score — the collector scales it ×1000 before bucketing, and that scaling is
-   * undone here rather than left for the UI to remember.
-   */
-  vitals: z.object({
-    /** Largest Contentful Paint p75, ms. */
-    lcp: z.number().nullable(),
-    /** Cumulative Layout Shift p75, unitless. */
-    cls: z.number().nullable(),
-    /** Interaction to Next Paint p75, ms. */
-    inp: z.number().nullable(),
-    /** First Contentful Paint p75, ms. */
-    fcp: z.number().nullable(),
-    /** Time to First Byte p75, ms. */
-    ttfb: z.number().nullable(),
-  }),
-  timeline: z.array(
-    z.object({
-      /** UTC day, `YYYY-MM-DD`. */
-      date: z.string(),
-      views: z.integer(),
-    }),
-  ),
-  /**
-   * The per-app error budget: one row per `(sigil, fingerprint)` still seen
-   * inside the window, worst first.
-   *
-   * This is the question `sigil_error_groups` exists to answer and the Blights
-   * inbox structurally cannot — the inbox folds every sigil into one row per
-   * project, because a triage decision must not fork, which is exactly what
-   * makes it useless for "is this still happening *in that app*".
-   *
-   * ⚠️ `name` and `message` come out of an application's runtime and are
-   * attacker-controlled. Escaped plain text only, never markdown.
-   */
-  errorGroups: z.array(
-    z.object({
-      sigilId: z.uuid(),
-      /**
-       * The sigil's display name, so the UI needs no second lookup. The wire
-       * field keeps the `sigilLabel` name that MCP clients already read.
-       */
-      sigilLabel: z.string(),
-      fingerprint: z.string(),
-      name: z.string(),
-      message: z.string(),
-      /** Occurrences in this app, summed across every batch. */
-      count: z.integer(),
-      firstSeenAt: z.string(),
-      lastSeenAt: z.string(),
-    }),
-  ),
-});
-
-export type InsightsResource = Infer<typeof insightsSchema>;
-
-/**
  * The reading surface for what `SigilIngestService` writes.
  *
  * Every row it aggregates is scoped to a sigil, and every sigil to a project,
- * so each query is `WHERE sigil_id IN (the project's sigils)`.
+ * so each query is `WHERE sigil_id IN (the project's sigils)`. `?sigilId=`
+ * shrinks that set to one app — which is all the per-app page needs, and the
+ * reason the set is built as a list rather than hard-coded to the project.
  *
  * **Hour buckets, day answers.** `sigil_views_hourly.hour` is `YYYY-MM-DDTHH`,
  * which shares its first ten characters with a `YYYY-MM-DD` day. That makes the
@@ -161,8 +78,15 @@ export class InsightsController {
       params: z.object({ projectId: z.integer() }),
       query: z.object({
         range: z.enum(["1d", "7d", "30d"]).optional(),
+        /**
+         * Narrow every segment to a single enrolled app.
+         *
+         * Omitted, the answer is the project as a whole — the shape every
+         * caller had before the per-app page existed.
+         */
+        sigilId: z.uuid().optional(),
       }),
-      response: insightsSchema,
+      response: insightsResourceSchema,
     },
     handler: async ({ params, query, user }): Promise<InsightsResource> => {
       await this.security.assertMember(params.projectId, user);
@@ -177,7 +101,20 @@ export class InsightsController {
       const since = sinceDate.toISOString().slice(0, 10);
 
       const labels = await this.projectSigilLabels(params.projectId);
-      const sigilIds = [...labels.keys()];
+      // The membership check above is on the *project*, so a sigil id from the
+      // client has to be proved to belong to it before it narrows anything —
+      // otherwise `?sigilId=` would read another project's rows through a
+      // project the caller happens to be a member of. `labels` is the project's
+      // own set, so containment is the proof. A stranger's id is a 404 rather
+      // than an empty window: the two are different answers, and "no such app
+      // here" is the true one.
+      let sigilIds = [...labels.keys()];
+      if (query.sigilId) {
+        if (!labels.has(query.sigilId)) {
+          throw new NotFoundError("Sigil not found");
+        }
+        sigilIds = [query.sigilId];
+      }
 
       if (sigilIds.length === 0) {
         return {

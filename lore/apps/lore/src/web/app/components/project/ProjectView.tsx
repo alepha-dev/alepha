@@ -6,7 +6,7 @@ import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import {
-  Activity,
+  AppWindow,
   BarChart3,
   BookOpen,
   Bug,
@@ -14,6 +14,7 @@ import {
   Flag,
   Grid3x2,
   Inbox,
+  Plus,
 } from "lucide-react";
 import {
   defaultProjectFeatures,
@@ -25,6 +26,8 @@ import { currentFeedbackCountAtom } from "../../atoms/currentFeedbackCountAtom.t
 import { currentFolioPathAtom } from "../../atoms/currentFolioPathAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
+import { currentSigilAtom } from "../../atoms/currentSigilAtom.ts";
+import { currentSigilsAtom } from "../../atoms/currentSigilsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
@@ -32,6 +35,23 @@ import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import QuestLog from "./QuestLog.tsx";
 
 const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests", "projectQuest"]);
+
+/**
+ * The per-app page and its tabs.
+ *
+ * A plain string set, because route names are plain strings here with nothing
+ * in the type system tying them to the route table — renaming one of these
+ * `$page`s without editing this set is not a compile error, it is a sidebar
+ * that silently stops highlighting.
+ */
+const ROUTES_APP = new Set([
+  "projectApp",
+  "app",
+  "appAnalytics",
+  "appPerformance",
+  "appErrors",
+  "appSettings",
+]);
 
 const ROUTES_FULL_WIDTH = new Set([
   "projectMilestones",
@@ -41,8 +61,8 @@ const ROUTES_FULL_WIDTH = new Set([
   "projectFoliosFolioEdit",
   "projectFeedback",
   "projectBlights",
-  "projectInsights",
   "projectQuestGraph",
+  ...ROUTES_APP,
 ]);
 
 const SECTION_LABEL_KEYS: Record<string, string> = {
@@ -55,7 +75,12 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   projectFoliosFolioEdit: "project.menu.folios",
   projectFeedback: "project.menu.feedback",
   projectBlights: "project.menu.blights",
-  projectInsights: "project.menu.insights",
+  projectApp: "project.menu.apps",
+  app: "project.menu.apps",
+  appAnalytics: "project.menu.apps",
+  appPerformance: "project.menu.apps",
+  appErrors: "project.menu.apps",
+  appSettings: "project.menu.apps",
   projectSettings: "project.menu.settings",
   projectSettingsBanner: "project.menu.settings",
   projectSettingsZones: "project.menu.settings",
@@ -83,6 +108,8 @@ const ProjectView = () => {
   const [feedbackCount] = useStore(currentFeedbackCountAtom);
   const [blightCount] = useStore(currentBlightCountAtom);
   const [folioPath] = useStore(currentFolioPathAtom);
+  const [sigils] = useStore(currentSigilsAtom);
+  const [sigil] = useStore(currentSigilAtom);
 
   if (!project) {
     return null;
@@ -98,9 +125,9 @@ const ProjectView = () => {
   // Four unlabelled groups (`NavGroup.label` omitted on purpose — see the
   // great rename Task 9). Order is fixed: Work (Quests always on, Blights /
   // Feedback / Milestones feature-gated) → Memory (Folios gated, Reports
-  // always on) → Ops (Insights, gated) → Settings (always on). Groups with
-  // no items are dropped by the `.filter` below so an all-gates-off project
-  // still renders a clean sidebar.
+  // always on) → Ops (Apps, gated on `sigils`) → Settings (always on). Groups
+  // with no items are dropped by the `.filter` below so an all-gates-off
+  // project still renders a clean sidebar.
   const workItems: NavGroup["items"] = [
     {
       label: tr("project.menu.quests"),
@@ -153,13 +180,42 @@ const ProjectView = () => {
     active: name === "projectReports" || name.startsWith("reports"),
   });
 
+  // Apps — one collapsible entry per enrolled app. `NavItem.children` is what
+  // makes the parent a group; the shell opens it on its own whenever one of its
+  // descendants is active, so being inside an app reveals the list without any
+  // persisted open/closed state of our own.
+  //
+  // Names only, no badges: an app with three errors and one with three hundred
+  // would read the same at a glance, and the number that matters is per-tab.
   const opsItems: NavGroup["items"] = [];
-  if (features.beacon) {
+  if (features.sigils) {
+    const activeSigilId = ROUTES_APP.has(name)
+      ? String(routerState.params.sigilId ?? "")
+      : "";
     opsItems.push({
-      label: tr("project.menu.insights"),
-      icon: Activity,
-      href: router.path("projectInsights", { params: { projectId } }),
-      active: name === "projectInsights",
+      label: tr("project.menu.apps"),
+      icon: AppWindow,
+      // No apps yet: keep the section, and make it the way in. Rendered open
+      // because a collapsed group holding the only affordance is a dead end.
+      defaultOpen: sigils.length === 0 ? true : undefined,
+      children:
+        sigils.length === 0
+          ? [
+              {
+                label: tr("project.menu.apps.enrol"),
+                icon: Plus,
+                href: router.path("projectSettingsSigils", {
+                  params: { projectId },
+                }),
+              },
+            ]
+          : sigils.map((it) => ({
+              label: it.name,
+              href: router.path("app", {
+                params: { projectId, sigilId: it.id },
+              }),
+              active: activeSigilId === it.id,
+            })),
     });
   }
 
@@ -199,6 +255,16 @@ const ProjectView = () => {
     breadcrumbs.push({
       label: tr(sectionKey as never),
       href: sectionHref,
+    });
+  }
+  // The app pages contribute the app's own name as a leaf, so the header reads
+  // "Project › Apps › checkout" rather than stopping at the section.
+  if (ROUTES_APP.has(name) && sigil) {
+    breadcrumbs.push({
+      label: sigil.name,
+      href: router.path("app", {
+        params: { projectId, sigilId: sigil.id },
+      }),
     });
   }
   // Folio routes contribute their directory chain (and the folio

@@ -18,6 +18,7 @@ import type { MilestoneController } from "../../api/controllers/MilestoneControl
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
+import type { SigilController } from "../../api/controllers/SigilController.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
 import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
@@ -29,6 +30,9 @@ import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "./atoms/currentQuestCountAtom.ts";
+import { currentSigilAtom } from "./atoms/currentSigilAtom.ts";
+import { currentSigilInsightsAtom } from "./atoms/currentSigilInsightsAtom.ts";
+import { currentSigilsAtom } from "./atoms/currentSigilsAtom.ts";
 import { folioTagsAtom } from "./atoms/folioTagsAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
@@ -47,6 +51,7 @@ export class AppRouter {
   blightApi = $client<BlightController>();
   insightsApi = $client<InsightsController>();
   milestoneApi = $client<MilestoneController>();
+  sigilApi = $client<SigilController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
   router = $inject(ReactRouter);
@@ -243,7 +248,7 @@ export class AppRouter {
       this.projectFolios,
       this.projectFeedback,
       this.projectBlights,
-      this.projectInsights,
+      this.projectApp,
     ],
     path: "/p/:projectId",
     schema: {
@@ -311,6 +316,18 @@ export class AppRouter {
         .then((r) => r.count)
         .catch(() => 0);
 
+      // The sidebar's Apps section. Member-readable — `listSigils` is gated on
+      // `project:read`, unlike every sigil mutation, which is owner-only — but
+      // `.catch` keeps a transient failure from taking the whole project down
+      // with it: an empty list costs a section, an unhandled rejection costs
+      // the page.
+      const sigils = project.features?.sigils
+        ? await this.sigilApi
+            .listSigils({ params: { projectId: params.projectId } })
+            .then((r) => r.items)
+            .catch(() => [])
+        : [];
+
       this.alepha.store.set(currentProjectAtom, project);
       this.alepha.store.set(currentProjectMemberAtom, member);
       this.alepha.store.set(currentAssignedQuestsAtom, quests);
@@ -320,6 +337,7 @@ export class AppRouter {
       });
       this.alepha.store.set(currentBlightCountAtom, { count: openBlights });
       this.alepha.store.set(currentQuestCountAtom, { count: openQuests });
+      this.alepha.store.set(currentSigilsAtom, sigils);
 
       return {
         project,
@@ -333,6 +351,7 @@ export class AppRouter {
       this.alepha.store.set(currentFeedbackCountAtom, { count: 0 });
       this.alepha.store.set(currentBlightCountAtom, { count: 0 });
       this.alepha.store.set(currentQuestCountAtom, { count: 0 });
+      this.alepha.store.set(currentSigilsAtom, []);
     },
   });
 
@@ -363,30 +382,154 @@ export class AppRouter {
     },
   });
 
-  projectInsights = $page({
-    name: "projectInsights",
-    path: "/insights",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Insights`,
-    }),
-    lazy: () => import("./components/project/insights/ProjectInsights.tsx"),
-    loader: async () => {
+  /**
+   * One enrolled app — the tab shell, and the loader every tab under it reads.
+   *
+   * ⚠️ The path segment is `:sigilId`, not `:id`, and that is load-bearing.
+   * `/p/:projectId` is already a param node at an outer position, and the
+   * router keeps one key per position: two routes naming different segments
+   * `id` collapse onto one, the outer one wins, and the inner param arrives
+   * missing. The API path (`/projects/:projectId/sigils/:sigilId`) names it the
+   * same way for the same reason.
+   */
+  projectApp = $page({
+    name: "projectApp",
+    path: "/apps/:sigilId",
+    children: () => [
+      this.app,
+      this.appAnalytics,
+      this.appPerformance,
+      this.appErrors,
+      this.appSettings,
+    ],
+    schema: {
+      params: z.object({
+        sigilId: z.uuid(),
+      }),
+    },
+    head: (props, previous) => {
+      const sigil = (props as { sigil?: { name?: string } } | undefined)?.sigil;
+      return { title: `${previous?.title ?? ""} › ${sigil?.name ?? "App"}` };
+    },
+    lazy: () => import("./components/project/apps/AppLayout.tsx"),
+    loader: async ({ params }) => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      // The module toggle is the whole gate — the nav entry is hidden on the
+      // The module toggle is the whole gate — the nav section is hidden on the
       // same flag, so reaching this by URL with it off is a 404, not a 403.
-      if (!project.features?.beacon) {
-        throw new NotFoundError("Beacon not enabled for this project");
+      if (!project.features?.sigils) {
+        throw new NotFoundError("Sigils not enabled for this project");
       }
-      const insights = await this.insightsApi.getInsights({
+
+      // The list is the membership proof as well as the lookup: it is scoped to
+      // the project server-side, so an id that is not in it does not belong
+      // here, whoever it belongs to. Re-setting the atom also refreshes the
+      // sidebar when this page is deep-linked into (the project loader's own
+      // fetch may have failed, or another tab may have enrolled since).
+      const { items } = await this.sigilApi.listSigils({
         params: { projectId: project.id },
-        query: { range: "7d" },
       });
-      return { insights };
+      const sigil = items.find((it) => it.id === params.sigilId);
+      if (!sigil) {
+        throw new NotFoundError("App not found");
+      }
+      this.alepha.store.set(currentSigilsAtom, items);
+      this.alepha.store.set(currentSigilAtom, sigil);
+
+      // Beacon off means there is nothing collected to read, and the three
+      // tabs that would show it are not rendered. The app still has a page.
+      if (project.features?.beacon) {
+        this.alepha.store.set(
+          currentSigilInsightsAtom,
+          await this.insightsApi.getInsights({
+            params: { projectId: project.id },
+            query: { range: "7d", sigilId: sigil.id },
+          }),
+        );
+      } else {
+        this.alepha.store.set(currentSigilInsightsAtom, undefined);
+      }
+
+      return { sigil };
+    },
+    onLeave: () => {
+      this.alepha.store.set(currentSigilAtom, undefined);
+      this.alepha.store.set(currentSigilInsightsAtom, undefined);
+    },
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
     },
   });
+
+  app = $page({
+    name: "app",
+    path: "/",
+    lazy: () => import("./components/project/apps/AppDashboard.tsx"),
+  });
+
+  appAnalytics = $page({
+    name: "appAnalytics",
+    path: "/analytics",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Analytics`,
+    }),
+    lazy: () => import("./components/project/apps/AppAnalytics.tsx"),
+    loader: async () => {
+      this.assertBeacon();
+    },
+  });
+
+  appPerformance = $page({
+    name: "appPerformance",
+    path: "/performance",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Performance`,
+    }),
+    lazy: () => import("./components/project/apps/AppPerformance.tsx"),
+    loader: async () => {
+      this.assertBeacon();
+    },
+  });
+
+  appErrors = $page({
+    name: "appErrors",
+    path: "/errors",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Errors`,
+    }),
+    lazy: () => import("./components/project/apps/AppErrors.tsx"),
+    loader: async () => {
+      this.assertBeacon();
+    },
+  });
+
+  appSettings = $page({
+    name: "appSettings",
+    path: "/settings",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Settings`,
+    }),
+    lazy: () => import("./components/project/apps/AppSettings.tsx"),
+  });
+
+  /**
+   * The gate the three analytics tabs share.
+   *
+   * A 404 rather than a 403, for the same reason the deleted project-level
+   * Insights route was: the tab is hidden on this exact flag, so reaching it by
+   * URL with Beacon off is asking for a page that does not exist here, not
+   * asking for one that is withheld.
+   */
+  protected assertBeacon(): void {
+    const project = this.alepha.store.get(currentProjectAtom);
+    if (!project?.features?.beacon) {
+      throw new NotFoundError("Beacon not enabled for this project");
+    }
+  }
 
   projectQuests = $page({
     path: "/",

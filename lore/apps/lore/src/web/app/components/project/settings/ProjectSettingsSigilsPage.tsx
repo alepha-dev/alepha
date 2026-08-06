@@ -1,22 +1,19 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Input } from "@alepha/ui/components/ui/input";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import type {
-  SigilController,
-  SigilResource,
-} from "@/api/controllers/SigilController.ts";
+import type { SigilController } from "@/api/controllers/SigilController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { currentSigilsAtom } from "@/web/app/atoms/currentSigilsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+import TokenReveal from "../../shared/TokenReveal.tsx";
 import ProjectSettingsFeatureSection from "./ProjectSettingsFeatureSection.tsx";
 import ProjectSettingsSigilRow from "./ProjectSettingsSigilRow.tsx";
 import ProjectSettingsToggleRow from "./ProjectSettingsToggleRow.tsx";
-import ProjectSettingsTokenReveal from "./ProjectSettingsTokenReveal.tsx";
 import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 
 /**
@@ -28,17 +25,21 @@ import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
  * and names them so.
  *
  * The token appears exactly once, at creation. It is stored hashed, so nothing
- * can show it again. The way back from a lost or leaked token is to rotate it,
- * which is offered beside delete precisely because delete is not the same
- * thing: the aggregate tables cascade, so deleting a sigil to revoke a token
- * also erases everything that app ever reported.
+ * can show it again. The way back from a lost or leaked token is to rotate it —
+ * offered on the app's own Settings tab, beside delete, because the difference
+ * between the two is the whole point: the aggregate tables cascade, so deleting
+ * a sigil to revoke a token also erases everything that app ever reported.
+ *
+ * This page enrols and lists; each row links to the app it names.
  */
 const ProjectSettingsSigilsPage = () => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
-  const dialog = useDialog();
   const sigilApi = useClient<SigilController>();
   const [project] = useStore(currentProjectAtom);
+  // Shared with the sidebar's Apps section: enrolling here has to make the app
+  // appear there without a reload.
+  const [sigils, setSigils] = useStore(currentSigilsAtom);
 
   const master = useProjectFeatureToggle("sigils");
   // What the ingest endpoint accepts, project-wide. Intersected with each
@@ -48,7 +49,6 @@ const ProjectSettingsSigilsPage = () => {
   const beacon = useProjectFeatureToggle("beacon");
   const vitals = useProjectFeatureToggle("vitals");
 
-  const [sigils, setSigils] = useState<SigilResource[]>([]);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   /** The one moment a token is readable. Cleared as soon as it is dismissed. */
@@ -66,7 +66,7 @@ const ProjectSettingsSigilsPage = () => {
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
     }
-  }, [project, sigilApi]);
+  }, [project, sigilApi, setSigils]);
 
   useEffect(() => {
     if (project && enabled) {
@@ -90,48 +90,6 @@ const ProjectSettingsSigilsPage = () => {
       toaster.error(error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
-    }
-  };
-
-  const rotate = async (sigil: SigilResource) => {
-    if (!project) return;
-    const confirmed = await dialog.confirm({
-      title: tr("sigils.rotate.confirmTitle", { args: [sigil.name] }),
-      description: tr("sigils.rotate.confirmDescription"),
-      confirmLabel: tr("sigils.rotate.confirm"),
-    });
-    if (!confirmed) return;
-
-    try {
-      const rotated = await sigilApi.rotateSigil({
-        params: { projectId: project.id, sigilId: sigil.id },
-      });
-      setFreshToken(rotated.token);
-      toaster.success(tr("sigils.toast.rotated"));
-      await reload();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
-
-  const remove = async (sigil: SigilResource) => {
-    if (!project) return;
-    const confirmed = await dialog.confirm({
-      title: tr("sigils.delete.confirmTitle", { args: [sigil.name] }),
-      description: tr("sigils.delete.confirmDescription"),
-      confirmLabel: tr("sigils.delete.confirm"),
-      destructive: true,
-    });
-    if (!confirmed) return;
-
-    try {
-      await sigilApi.deleteSigil({
-        params: { projectId: project.id, sigilId: sigil.id },
-      });
-      toaster.success(tr("sigils.toast.deleted"));
-      await reload();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -191,7 +149,7 @@ const ProjectSettingsSigilsPage = () => {
           </div>
 
           {freshToken && (
-            <ProjectSettingsTokenReveal
+            <TokenReveal
               token={freshToken}
               title={tr("sigils.token.title")}
               copyLabel={tr("sigils.token.copy")}
@@ -226,12 +184,7 @@ const ProjectSettingsSigilsPage = () => {
               </CardContent>
             )}
             {sigils.map((sigil) => (
-              <ProjectSettingsSigilRow
-                key={sigil.id}
-                sigil={sigil}
-                onRotate={(target) => void rotate(target)}
-                onDelete={(target) => void remove(target)}
-              />
+              <ProjectSettingsSigilRow key={sigil.id} sigil={sigil} />
             ))}
           </Card>
         </div>

@@ -572,6 +572,157 @@ describe("InsightsController", () => {
     });
   });
 
+  describe("per-app filter", () => {
+    /*
+      `?sigilId=` is what the per-app page reads. It narrows the same set the
+      project-wide answer is built from, so the two cannot disagree — and it is
+      the one place a caller-supplied id reaches the query, which is why the
+      cross-project case is pinned as hard as the happy path.
+    */
+    it("narrows every segment to the app asked for", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const prod = await createSigil(ctx, projectId, "lore-prod", owner);
+      const staging = await createSigil(ctx, projectId, "lore-staging", owner);
+
+      await ctx.probe.views.create({
+        sigilId: prod,
+        hour: hourUtc(ctx, 0, 9),
+        path: "/",
+        country: "FR",
+        count: 10,
+      });
+      await ctx.probe.views.create({
+        sigilId: staging,
+        hour: hourUtc(ctx, 0, 9),
+        path: "/staging",
+        country: "FR",
+        count: 3,
+      });
+      await ctx.probe.uniques.create({
+        sigilId: prod,
+        day: dayUtc(ctx, 0),
+        visitorHash: "h1",
+      });
+      await ctx.probe.uniques.create({
+        sigilId: staging,
+        day: dayUtc(ctx, 0),
+        visitorHash: "h2",
+      });
+      await ctx.probe.errorGroups.create({
+        sigilId: staging,
+        fingerprint: "fp-staging",
+        name: "TypeError",
+        message: "boom",
+        stackSample: "TypeError: boom",
+        sourceUrl: "",
+        firstSeenAt: instantUtc(ctx, 1),
+        lastSeenAt: instantUtc(ctx, 0),
+        count: 2,
+      });
+
+      const scoped = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d", sigilId: prod } },
+        { user: owner },
+      );
+
+      expect(scoped.data.totalViews).toBe(10);
+      expect(scoped.data.uniqueVisitors).toBe(1);
+      expect(scoped.data.topPaths.map((p) => p.path)).toEqual(["/"]);
+      expect(scoped.data.errorGroups).toEqual([]);
+
+      // Omitted, the same call still answers for the whole project — the
+      // per-app page must not have changed what everything else reads.
+      const whole = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+      expect(whole.data.totalViews).toBe(13);
+      expect(whole.data.uniqueVisitors).toBe(2);
+      expect(whole.data.errorGroups).toHaveLength(1);
+    });
+
+    it("merges vitals for one app only", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const fast = await createSigil(ctx, projectId, "lore-prod", owner);
+      const slow = await createSigil(ctx, projectId, "lore-staging", owner);
+
+      await ctx.probe.vitals.create({
+        sigilId: fast,
+        hour: hourUtc(ctx, 0, 10),
+        metric: "lcp",
+        path: "/",
+        bucketCounts: { "0": 3 },
+      });
+      await ctx.probe.vitals.create({
+        sigilId: slow,
+        hour: hourUtc(ctx, 0, 11),
+        metric: "lcp",
+        path: "/",
+        bucketCounts: { "6": 3 },
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d", sigilId: fast } },
+        { user: owner },
+      );
+
+      // Only the fast app's histogram — the slow one's overflow samples would
+      // drag the merged p75 to the last boundary.
+      expect(res.data.vitals.lcp).toBe(VITALS_BUCKETS.lcp[0]);
+    });
+
+    it("refuses a sigil id from another project", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const stranger = await createTestUser(ctx);
+      const mine = await createProject(ctx, owner);
+      const theirs = await createProject(ctx, stranger);
+      await createSigil(ctx, mine, "lore-prod", owner);
+      const theirSigil = await createSigil(ctx, theirs, "lore-prod", stranger);
+
+      await ctx.probe.views.create({
+        sigilId: theirSigil,
+        hour: hourUtc(ctx, 0, 9),
+        path: "/secret",
+        country: "FR",
+        count: 99,
+      });
+
+      // The membership check is on the project in the path, so the id in the
+      // query has to be proved to belong to it — otherwise a member of any
+      // project could read any other project's rows by pasting a sigil id.
+      await expect(
+        ctx.insightsController.getInsights.fetch(
+          {
+            params: { projectId: mine },
+            query: { range: "7d", sigilId: theirSigil },
+          },
+          { user: owner },
+        ),
+      ).rejects.toThrow(/not found/i);
+    });
+
+    it("refuses a sigil id that exists nowhere", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      await createSigil(ctx, projectId, "lore-prod", owner);
+
+      await expect(
+        ctx.insightsController.getInsights.fetch(
+          {
+            params: { projectId },
+            query: {
+              range: "7d",
+              sigilId: "00000000-0000-4000-8000-000000000000",
+            },
+          },
+          { user: owner },
+        ),
+      ).rejects.toThrow(/not found/i);
+    });
+  });
+
   describe("vitals p75", () => {
     it("walks the stored histogram to a p75 boundary", async ({ expect }) => {
       const owner = await createTestUser(ctx);
