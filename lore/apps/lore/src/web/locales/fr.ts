@@ -189,7 +189,7 @@ export default {
   "folios.editor.action.duplicate": "Dupliquer",
   "folios.editor.action.move": "Déplacer vers…",
   "folios.editor.action.pin": "Épingler au contexte",
-  "folios.editor.action.unpin": "Dépingler du contexte",
+  "folios.editor.action.unpin": "Désépingler",
   "folios.editor.action.export": "Exporter en .md",
   "folios.editor.action.encrypt": "Chiffrer…",
   "folios.editor.action.remove-protection": "Supprimer la protection",
