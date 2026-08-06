@@ -330,6 +330,73 @@ describe("SigilController", () => {
     expect(views[0].count).toBe(7);
   });
 
+  it("replaces a sigil's kinds", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+
+    const created = await ctx.sigilController.createSigil.fetch(
+      { params: { projectId }, body: { name: "lore" } },
+      { user: owner },
+    );
+    expect(created.data.kinds).toEqual([
+      "feedback",
+      "blights",
+      "beacon",
+      "vitals",
+    ]);
+
+    const updated = await ctx.sigilController.updateSigil.fetch(
+      {
+        params: { projectId, sigilId: created.data.id },
+        body: { kinds: ["beacon"] },
+      },
+      { user: owner },
+    );
+
+    expect(updated.data.kinds).toEqual(["beacon"]);
+  });
+
+  it("accepts an empty kinds list", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+
+    const created = await ctx.sigilController.createSigil.fetch(
+      { params: { projectId }, body: { name: "lore" } },
+      { user: owner },
+    );
+
+    const updated = await ctx.sigilController.updateSigil.fetch(
+      {
+        params: { projectId, sigilId: created.data.id },
+        body: { kinds: [] },
+      },
+      { user: owner },
+    );
+
+    expect(updated.data.kinds).toEqual([]);
+  });
+
+  it("never returns the token hash", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+
+    const created = await ctx.sigilController.createSigil.fetch(
+      { params: { projectId }, body: { name: "lore" } },
+      { user: owner },
+    );
+
+    const updated = await ctx.sigilController.updateSigil.fetch(
+      {
+        params: { projectId, sigilId: created.data.id },
+        body: { kinds: ["vitals"] },
+      },
+      { user: owner },
+    );
+
+    expect("tokenHash" in updated.data).toBe(false);
+    expect("token" in updated.data).toBe(false);
+  });
+
   it("deletes the sigil and everything it reported", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
@@ -468,6 +535,16 @@ describe("SigilController", () => {
     await expectStatus(
       ctx.sigilController.rotateSigil.fetch(
         { params: { projectId: projectB, sigilId: created.data.id } },
+        { user: owner },
+      ),
+      404,
+    );
+    await expectStatus(
+      ctx.sigilController.updateSigil.fetch(
+        {
+          params: { projectId: projectB, sigilId: created.data.id },
+          body: { kinds: ["beacon"] },
+        },
         { user: owner },
       ),
       404,

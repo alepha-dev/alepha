@@ -183,6 +183,52 @@ export class SigilController {
   });
 
   /**
+   * Change what this app is allowed to report.
+   *
+   * The one write path `sigils.kinds` has ever had. Before it, `kinds` was set
+   * at creation and never again, which is why {@link SigilIngestService.gatesFor}
+   * had to intersect it with the project's own feature flags to give an owner
+   * any lever at all — a lever that necessarily applied to every app at once.
+   * With this in place the kinds are the lever, per app, and the project flags
+   * for blights / beacon / vitals are retired.
+   *
+   * Replaces the list rather than patching it: "what may this app report" is
+   * one answer, and a partial update of a set invites two clients to disagree
+   * about a member neither of them named.
+   *
+   * Owner-only, like rotate and delete — a member may read the inventory but
+   * not re-arm it.
+   */
+  updateSigil = $action({
+    use: [$secure({ permissions: ["project:update"] })],
+    method: "PATCH",
+    path: "/projects/:projectId/sigils/:sigilId",
+    schema: {
+      params: z.object({ projectId: z.integer(), sigilId: z.uuid() }),
+      body: z.object({
+        kinds: z
+          .array(z.enum([...SIGIL_KINDS]).meta({ mode: "text" }))
+          .max(SIGIL_KINDS.length),
+      }),
+      response: sigilResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      await this.security.assertOwner(params.projectId, user);
+      const sigil = await this.loadSigil(params.projectId, params.sigilId);
+
+      // De-duplicated so a caller that sends `["beacon", "beacon"]` cannot make
+      // the stored set disagree with the one it asked for.
+      await this.sigils.updateById(sigil.id, {
+        kinds: [...new Set(body.kinds)],
+      });
+
+      return this.toResource(
+        await this.loadSigil(params.projectId, params.sigilId),
+      );
+    },
+  });
+
+  /**
    * Remove a sigil, and with it everything that app ever reported.
    *
    * A hard delete — the entity carries no soft-delete column, and the four
