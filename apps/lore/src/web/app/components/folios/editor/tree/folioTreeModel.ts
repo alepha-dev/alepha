@@ -77,17 +77,100 @@ const compareTreeNodes = (a: FolioTreeNode, b: FolioTreeNode): number => {
 };
 
 /**
+ * For every directory, resolve the parent id to actually use when building
+ * the tree.
+ *
+ * A directory's declared `parentId` is used as-is when it points at a real
+ * directory (in `directories`) AND following it — then its parent, and so
+ * on — reaches the project root without revisiting a directory already on
+ * the walk. Both other cases fall back to root, the same treatment already
+ * given to a `parentId` that points nowhere:
+ *
+ * - the declared parent does not exist in `directories` (stale reference,
+ *   concurrent delete);
+ * - the chain cycles. `FolioDirectoryService.move()` guards against a
+ *   direct cycle server-side, but as two separate, non-atomic database
+ *   round-trips — two clients each reading pre-move state can each pass
+ *   that check independently and together still produce
+ *   `A.parentId === B.id && B.parentId === A.id`. There is no database
+ *   constraint behind it. Bucketing a cyclic directory under its "parent"
+ *   (which is itself never reachable from root through this chain) would
+ *   silently drop it, and everything nested under it — folios included —
+ *   from the tree the user sees, with no error and no broken row to
+ *   recover by dragging.
+ *
+ * When a cycle is found, only the directory where the walk first revisits
+ * a node is promoted to root; every other directory on the cycle keeps its
+ * own declared parent unchanged. A cycle has no correct direction once it
+ * has to be broken, so *which* member becomes the root is a choice: this
+ * implementation promotes whichever member the walk reaches first — a
+ * deterministic function of the order `directories` was given in, not a
+ * random pick — but the decision that actually matters is *that* exactly
+ * one member is promoted, rather than scattering every member of the
+ * cycle to the root as unrelated top-level siblings. Cutting a single edge
+ * keeps the rest of the cycle nested exactly as declared, one level under
+ * the promoted node, discarding the least structure and leaving the tree
+ * closest to whatever was intended before it became corrupted.
+ */
+const resolveDirectoryParents = (
+  directories: BuildFolioTreeInput["directories"],
+): Map<string, string | undefined> => {
+  const directoryIds = new Set(directories.map((d) => d.id));
+  const byId = new Map(directories.map((d) => [d.id, d]));
+  const rawParentOf = (id: string): string | undefined => {
+    const parentId = byId.get(id)?.parentId;
+    return parentId && directoryIds.has(parentId) ? parentId : undefined;
+  };
+
+  const resolved = new Map<string, string | undefined>();
+
+  for (const start of directories) {
+    if (resolved.has(start.id)) continue;
+
+    // Walk the parent chain, recording the path taken on this walk and
+    // where in it each id sits. Bounded by `directories.length`: with
+    // exactly one outgoing edge per node, a walk longer than the total
+    // directory count must have revisited one, so this cannot spin even
+    // on adversarial input.
+    const path: string[] = [];
+    const pathIndex = new Map<string, number>();
+    let cur: string | undefined = start.id;
+    let cycleAt = -1;
+    while (cur !== undefined && path.length <= directories.length) {
+      if (resolved.has(cur)) break;
+      const seenAt = pathIndex.get(cur);
+      if (seenAt !== undefined) {
+        cycleAt = seenAt;
+        break;
+      }
+      pathIndex.set(cur, path.length);
+      path.push(cur);
+      cur = rawParentOf(cur);
+    }
+
+    for (let i = 0; i < path.length; i++) {
+      resolved.set(path[i], i === cycleAt ? undefined : rawParentOf(path[i]));
+    }
+  }
+
+  return resolved;
+};
+
+/**
  * Assemble the directory + folio lists the route loader provides into one
  * nested tree. Directories sort before folios at every level, each group
  * alphabetically — the same ordering the server uses, so the tree does not
  * jump after a save.
  *
- * A folio pointing at a directory that is not in the list (stale atom,
- * concurrent delete) falls back to the root rather than disappearing — same
- * treatment for a directory whose declared parent is missing.
+ * Every directory and every folio in the input appears exactly once in the
+ * result, reachable from the root: a folio pointing at a directory that is
+ * not in the list (stale atom, concurrent delete) falls back to the root
+ * rather than disappearing, and so does a directory whose declared parent
+ * is missing or whose parent chain cycles (see `resolveDirectoryParents`).
  */
 export const buildFolioTree = (input: BuildFolioTreeInput): FolioTreeNode[] => {
   const directoryIds = new Set(input.directories.map((d) => d.id));
+  const directoryParents = resolveDirectoryParents(input.directories);
 
   const childrenByParent = new Map<string, FolioTreeNode[]>();
   const childrenOf = (key: string): FolioTreeNode[] => {
@@ -99,8 +182,7 @@ export const buildFolioTree = (input: BuildFolioTreeInput): FolioTreeNode[] => {
   };
 
   for (const d of input.directories) {
-    const parentId =
-      d.parentId && directoryIds.has(d.parentId) ? d.parentId : undefined;
+    const parentId = directoryParents.get(d.id);
     childrenOf(parentId ?? ROOT).push({
       id: d.id,
       kind: "directory",

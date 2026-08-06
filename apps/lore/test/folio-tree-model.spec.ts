@@ -102,6 +102,112 @@ describe("buildFolioTree", () => {
   });
 });
 
+describe("buildFolioTree — parent cycles", () => {
+  // A directory's `parentId` chain can cycle: `FolioDirectoryService.move()`
+  // guards against a direct cycle server-side, but as two separate,
+  // non-atomic round-trips — two clients each reading pre-move state can
+  // each pass that check independently and together still produce
+  // `A.parentId === B.id && B.parentId === A.id`. A chain that revisits a
+  // node can never be walked to root, so it gets the same fallback as a
+  // parent id that does not exist at all: root, not vanish.
+
+  it("falls back a self-parenting directory to the root; a folio filed there is still reachable", () => {
+    const tree = buildFolioTree({
+      directories: [{ id: "c", name: "self", shortId: 1, parentId: "c" }],
+      folios: [{ id: "f-in-c", title: "in c", shortId: 10, directoryId: "c" }],
+    });
+    expect(tree.map((n) => n.id)).toEqual(["c"]);
+    expect(tree[0].parentId).toBeUndefined();
+    expect(tree[0].children?.map((n) => n.id)).toEqual(["f-in-c"]);
+  });
+
+  it("cuts a two-directory parent cycle at one member, keeping the other nested under it", () => {
+    const tree = buildFolioTree({
+      directories: [
+        { id: "A", name: "a", shortId: 1, parentId: "B" },
+        { id: "B", name: "b", shortId: 2, parentId: "A" },
+      ],
+      folios: [{ id: "f-in-a", title: "in a", shortId: 10, directoryId: "A" }],
+    });
+    // A is encountered first (input order), so A is the member promoted to
+    // root; B keeps its own declared parent (A) rather than also moving.
+    expect(tree.map((n) => n.id)).toEqual(["A"]);
+    expect(tree[0].parentId).toBeUndefined();
+    expect(findFolioNode(tree, "B")?.parentId).toBe("A");
+    expect(findFolioNode(tree, "f-in-a")?.parentId).toBe("A");
+  });
+
+  it("cuts a three-directory parent cycle at the first-encountered member, chaining the rest beneath it", () => {
+    const tree = buildFolioTree({
+      directories: [
+        { id: "A", name: "a", shortId: 1, parentId: "B" },
+        { id: "B", name: "b", shortId: 2, parentId: "C" },
+        { id: "C", name: "c", shortId: 3, parentId: "A" },
+      ],
+      folios: [],
+    });
+    expect(tree.map((n) => n.id)).toEqual(["A"]);
+    expect(findFolioNode(tree, "A")?.parentId).toBeUndefined();
+    expect(findFolioNode(tree, "C")?.parentId).toBe("A");
+    expect(findFolioNode(tree, "B")?.parentId).toBe("C");
+  });
+
+  it("keeps a folio filed under a cyclic directory reachable at its declared position", () => {
+    const directories = [
+      { id: "A", name: "a", shortId: 1, parentId: "B" },
+      { id: "B", name: "b", shortId: 2, parentId: "A" },
+      { id: "C", name: "c", shortId: 3, parentId: "C" },
+    ];
+    const folios = [
+      { id: "f1", title: "one", shortId: 10, directoryId: "A" },
+      { id: "f2", title: "two", shortId: 11, directoryId: "C" },
+    ];
+    const tree = buildFolioTree({ directories, folios });
+    expect(findFolioNode(tree, "f1")?.parentId).toBe("A");
+    expect(findFolioNode(tree, "f2")?.parentId).toBe("C");
+  });
+
+  it("surfaces every input node exactly once, whatever the parent ids say", () => {
+    const directories = [
+      { id: "A", name: "a", shortId: 1, parentId: "B" },
+      { id: "B", name: "b", shortId: 2, parentId: "A" },
+      { id: "C", name: "c", shortId: 3, parentId: "C" },
+      { id: "D", name: "d", shortId: 4, parentId: "missing" },
+      { id: "E", name: "e", shortId: 5 },
+    ];
+    const folios = [
+      { id: "f1", title: "one", shortId: 10, directoryId: "A" },
+      { id: "f2", title: "two", shortId: 11, directoryId: "C" },
+      { id: "f3", title: "three", shortId: 12, directoryId: "gone" },
+      { id: "f4", title: "four", shortId: 13 },
+    ];
+    const rows = flattenFolioTree(
+      buildFolioTree({ directories, folios }),
+      new Set(),
+    );
+    const ids = rows.map((r) => r.node.id).sort();
+    expect(ids).toEqual(
+      [...directories.map((d) => d.id), ...folios.map((f) => f.id)].sort(),
+    );
+  });
+
+  it("locates every node with findFolioNode that flattenFolioTree also sees, even with a cycle in the input", () => {
+    const directories = [
+      { id: "A", name: "a", shortId: 1, parentId: "B" },
+      { id: "B", name: "b", shortId: 2, parentId: "A" },
+    ];
+    const folios = [
+      { id: "f-in-a", title: "in a", shortId: 10, directoryId: "A" },
+    ];
+    const tree = buildFolioTree({ directories, folios });
+    const rows = flattenFolioTree(tree, new Set());
+    expect(rows).toHaveLength(3);
+    for (const row of rows) {
+      expect(findFolioNode(tree, row.node.id)).toBe(row.node);
+    }
+  });
+});
+
 describe("flattenFolioTree", () => {
   it("emits every node with its depth when nothing is collapsed", () => {
     const rows = flattenFolioTree(fixture(), new Set());
