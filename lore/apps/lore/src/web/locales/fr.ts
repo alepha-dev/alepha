@@ -41,6 +41,8 @@ export default {
   "folios.empty-folio": "(vide)",
   "folios.title-placeholder": "Sans titre",
   "folios.content-placeholder": "Commencez à écrire en markdown…",
+  "folios.confirm-delete-title": "Supprimer ce folio ?",
+  "folios.confirm-delete-message": "Cette action est irréversible.",
   "folios.backlinks.title": "Connexions",
   "folios.backlinks.inbound": "Référencé depuis",
   "folios.backlinks.outbound": "Référence vers",

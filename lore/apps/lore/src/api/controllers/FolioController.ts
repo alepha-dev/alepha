@@ -505,6 +505,32 @@ export class FolioController {
       if (!existing) throw new NotFoundError("Folio not found");
       await this.security.assertMember(existing.projectId, user);
 
+      // A protected row's `content` is a passphrase-encrypted envelope the
+      // server cannot interpret. A caller that writes new `content` against
+      // a protected row WITHOUT stating `protected` does not know — or does
+      // not assert — which cryptographic domain that content belongs to;
+      // in practice it means an editor that has no idea the folio is
+      // protected sending its own plaintext buffer. Writing it anyway would
+      // silently replace the ciphertext with plaintext while leaving
+      // `protected: true` set on the row (undecryptable ever after) and
+      // would never trigger the purge below, since `isProtected` would
+      // still equal `existing.protected`. A plaintext snapshot would also
+      // land in `folio_revisions`, violating the protection-domain
+      // invariant (see apps/lore/CLAUDE.md's "Protected folios" section).
+      // Require the caller to explicitly assert the protection state of
+      // the content it is sending: `protected: true` to stay protected
+      // (re-encrypt in place) or `protected: false` to remove protection —
+      // both are legitimate, explicit transitions and stay allowed.
+      if (
+        existing.protected &&
+        body.content !== undefined &&
+        body.protected === undefined
+      ) {
+        throw new BadRequestError(
+          "This folio is protected. Updating its content requires explicitly asserting `protected` (true to re-encrypt, false to remove protection) — omitting it is refused to avoid silently overwriting the encrypted content with plaintext.",
+        );
+      }
+
       const title = body.title ?? existing.title;
       const content = body.content ?? existing.content;
       const tags = body.tags

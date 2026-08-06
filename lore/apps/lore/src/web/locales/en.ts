@@ -43,6 +43,8 @@ export default {
   "folios.empty-folio": "(empty)",
   "folios.title-placeholder": "Untitled",
   "folios.content-placeholder": "Start writing markdown…",
+  "folios.confirm-delete-title": "Delete this folio?",
+  "folios.confirm-delete-message": "This cannot be undone.",
   "folios.backlinks.title": "Connections",
   "folios.backlinks.inbound": "Linked from",
   "folios.backlinks.outbound": "Links to",

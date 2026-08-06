@@ -87,12 +87,28 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
   });
 
   const [savedAt, setSavedAt] = useState<string | undefined>(folio?.updatedAt);
-  const baseline = useRef<FolioDraftValues>(initial());
+
+  // Two refs, deliberately not one. `formInitial` is what gets handed to
+  // `useForm` as `initialValues` — the ONLY thing that should ever cause
+  // `FormModel.setInitialValues` to wipe the live buffer, and that must
+  // happen for exactly one reason: the document underneath changed (a
+  // different/updated `folio` prop). `baseline` is the separate "what is
+  // currently persisted" comparison target `dirty` is computed against.
+  //
+  // A save completing must move `baseline` (so `dirty` reports correctly
+  // against what the server now holds) WITHOUT moving `formInitial` (so
+  // `useForm` never re-triggers `setInitialValues`). If a single ref fed
+  // both roles, `markSaved` re-baselining after a save would ALSO reset
+  // the form's live values to the pre-save snapshot — discarding anything
+  // the user typed during the request's round-trip, silently, with the
+  // status line then lying "Saved" over an edit the server never saw.
+  const formInitial = useRef<FolioDraftValues>(initial());
+  const baseline = useRef<FolioDraftValues>(formInitial.current);
 
   const form = useForm({
     id: folio ? `folio-${folio.id}` : "folio-new",
     schema: folioDraftSchema,
-    initialValues: baseline.current,
+    initialValues: formInitial.current,
     handler: async () => {
       // Saving is orchestrated by `useFolioActions` — it needs the crypto
       // and API surfaces this hook deliberately does not import.
@@ -108,19 +124,27 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
     content: (raw.content as string) ?? "",
   };
 
-  // Re-baseline when the SAME folio changes underneath us without an id
-  // change — a save from elsewhere (the tree's rename, a revert) should
-  // not leave the status line stuck on "unsaved". A folio-to-folio
-  // switch does not rely on this effect: `FolioWorkspace` remounts this
-  // whole hook via its `key`, so `baseline.current`/`useForm` already
-  // start fresh on the correct folio before this ever runs.
+  // Re-baseline (and reset the form) when the SAME folio changes
+  // underneath us without an id change — a save from elsewhere (the
+  // tree's rename, a revert) should not leave the status line stuck on
+  // "unsaved". A folio-to-folio switch does not rely on this effect:
+  // `FolioWorkspace` remounts this whole hook via its `key`, so
+  // `formInitial.current`/`baseline.current`/`useForm` already start
+  // fresh on the correct folio before this ever runs.
   useEffect(() => {
-    baseline.current = initial();
+    formInitial.current = initial();
+    baseline.current = formInitial.current;
     setSavedAt(folio?.updatedAt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folio?.id, folio?.updatedAt, folio?.protected]);
 
   const markSaved = (at: string, saved: FolioDraftValues) => {
+    // Only `baseline` moves — see the comment above `formInitial`. If the
+    // user kept typing while this save was in flight, `values` (the LIVE
+    // buffer, untouched by this call) will differ from `saved` (the
+    // snapshot that was actually sent), so `dirty` below correctly comes
+    // back `true` and the status line reads "Unsaved changes" rather than
+    // falsely "Saved".
     baseline.current = saved;
     setSavedAt(at);
   };
