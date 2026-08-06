@@ -146,12 +146,21 @@ over, and keeps the previous release around to roll back to if readiness never a
 
 ## Secrets
 
-`alepha platform up` pushes them, from `.env.<env>` in the project — parsed from that **file**, never
-read out of the shell's environment. The machine running a deploy has other people's credentials in
-its environment (`GITHUB_TOKEN`, another project's Cloudflare key); none of them are this app's, and
-none of them are sent.
+`alepha platform up` pushes them, and **which keys** it pushes is decided by what your app declares
+via `$env` — captured into `dist/manifest.json` at build time. That list is the allowlist. Each
+value then resolves from `.env.<env>` (and `.env.<env>.local`) first, and from `process.env` second.
 
-They travel on stdin, not on the command line:
+That second step is what makes CI work: a runner checks out, builds, and holds the secrets in the job
+environment with no `.env` file on disk anywhere. It is also the step that has to be bounded, because
+the machine running a deploy has other people's credentials in its environment — `GITHUB_TOKEN`,
+`AWS_SECRET_ACCESS_KEY`, another project's Cloudflare key. The bound is that **the key set never
+comes from `process.env`**: an undeclared variable is never looked up, so it can never travel. With
+no manifest and no `.env.<env>` file there is no allowlist at all, and nothing is pushed.
+
+`platform({ secrets: { keys: [...] } })` in `alepha.config.ts` overrides the allowlist outright — to
+narrow it, or to add a key the app reads through `process.env` rather than `$env`.
+
+The values travel on stdin, not on the command line:
 
 ```bash
 ssh -o BatchMode=yes deploy@bay.example.com \
@@ -164,7 +173,8 @@ directory and survives deploys and rollbacks — and **restarts the app when a v
 changed**, because an environment variable the running process never sees has not been set. An
 identical push changes nothing and restarts nothing, so redeploying does not cost an outage window.
 
-Two classes of key are dropped before anything is sent, each with a line in the deploy log saying so:
+Two classes of key are dropped even when the app declares them, each with a line in the deploy log
+saying so:
 
 - **Keys Bay writes itself** — `APP_SECRET`, `DATABASE_URL`, `SERVER_PORT`, `APP_NAME`, `DATA_DIR`,
   `STORAGE_PATH` and the `S3_*` family. Bay generates `APP_SECRET` once per instance and never
@@ -176,7 +186,9 @@ Two classes of key are dropped before anything is sent, each with a line in the 
 `alepha platform status` reports the names that are actually set on the host, asked of it with
 `bay env list` — names only; Bay never answers with a value.
 
-If there is nothing to push, the deploy says so rather than finishing quietly.
+If there is nothing to push, the deploy says so rather than finishing quietly. A **static site** is
+skipped entirely and says so too: it has no process, so it has no environment, and anything it needs
+at build time is already inside the artifact.
 
 > This needs a `bay` on the host that has the `env` command. An older one prints its usage banner,
 > and the CLI turns that into `its bay has no env command … Upgrade bay on the host`. See

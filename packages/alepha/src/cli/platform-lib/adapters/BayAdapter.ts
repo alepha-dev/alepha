@@ -4,7 +4,12 @@ import { buildOptions, PackageManagerUtils } from "alepha/cli";
 import { EnvUtils, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
-import { EXCLUDED_SECRET_KEYS } from "../secretKeys.ts";
+import { platformOptions } from "../atoms/platformOptions.ts";
+import {
+  EXCLUDED_SECRET_KEYS,
+  readManifestEnvKeys,
+  selectSecrets,
+} from "../secretKeys.ts";
 import {
   PlatformAdapter,
   type PlatformContext,
@@ -37,8 +42,11 @@ export class BayAdapter extends PlatformAdapter {
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly envUtils = $inject(EnvUtils);
   // The workspace's resolved build configuration, read for one question only:
-  // whether this app is a static site. See `build`.
+  // whether this app is a static site. See `build` and `secrets`.
   protected readonly buildOptions = $store(buildOptions);
+  // Read for `platform.secrets.keys` alone — the explicit allowlist override,
+  // the same one `CloudflareAdapter` honours.
+  protected readonly options = $store(platformOptions);
 
   /**
    * The unix group Bay publishes its control socket to.
@@ -630,13 +638,34 @@ export class BayAdapter extends PlatformAdapter {
   ]);
 
   /**
-   * Pushes `.env.{env}` onto the deployed instance, through `bay env set`.
+   * Everything this adapter refuses to push, in one set.
    *
-   * Read from the FILE, never from `process.env` — the hook's contract, and
-   * the only reading that is safe here: this runs on a developer's machine or
-   * a CI runner whose environment is full of things that are nobody's secret
-   * and some things that are somebody else's (`PATH`, `GITHUB_TOKEN`, the
-   * Cloudflare credentials of an unrelated deploy).
+   * The union of the platform-wide list (binding vars, framework infra knobs)
+   * and Bay's own. Built once rather than tested twice per key, so there is a
+   * single answer to "would this key be pushed?" for a test to point at.
+   */
+  static readonly EXCLUDED_KEYS: ReadonlySet<string> = new Set([
+    ...EXCLUDED_SECRET_KEYS,
+    ...BayAdapter.BAY_OWNED_KEYS,
+  ]);
+
+  /**
+   * Pushes the app's declared secrets onto the deployed instance, through
+   * `bay env set`.
+   *
+   * **The allowlist is the app's own `$env` declarations**, read from
+   * `dist/manifest.json` at build time — the same source Cloudflare uses, and
+   * the reason `process.env` can be consulted at all. A value resolves from
+   * `.env.<env>[.local]` first and from `process.env` second, so CI can deliver
+   * secrets through the job environment with no `.env` file on the runner,
+   * while `PATH`, `GITHUB_TOKEN` or `AWS_SECRET_ACCESS_KEY` still have no way
+   * in: they are not on the list, so they are never looked up. The key set is
+   * never derived from `process.env` itself — that would put the whole
+   * deploying environment in scope, and is the one change that would turn this
+   * into a leak.
+   *
+   * With no manifest (or one predating the `env` field) the `.env.<env>` file's
+   * own keys are the allowlist, which is the legacy shape and equally bounded.
    *
    * On stdin, never in argv. `ssh HOST bay env set … VALUE` would put every
    * secret in the host's process table, where any user running `ps` can read
@@ -655,33 +684,58 @@ export class BayAdapter extends PlatformAdapter {
     this.assertSafe("app name", ctx.project, this.appKeyPattern);
     this.assertSafe("environment", ctx.env, this.appKeyPattern);
 
-    const parsed = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
-    const secrets: Record<string, string> = {};
-    const platformOwned: string[] = [];
-    for (const [key, value] of Object.entries(parsed)) {
-      if (!value) continue;
-      // Build-time vars, inlined by Vite. Never a runtime secret anywhere.
-      if (key.startsWith("VITE_")) continue;
-      if (EXCLUDED_SECRET_KEYS.has(key) || BayAdapter.BAY_OWNED_KEYS.has(key)) {
-        platformOwned.push(key);
-        continue;
-      }
-      secrets[key] = value;
+    // A static site has no process, so it has no environment — Bay refuses
+    // `bay env set` on one outright. Stopping here rather than sending a
+    // payload that can only come back a 400 is what keeps a site with a
+    // `.env.production` from failing its own deploy at the last step.
+    if (this.buildOptions.target === "static") {
+      this.log.info(
+        `${ctx.project}/${ctx.env} is a static site: it has no process, so there is no ` +
+          "environment to push. Anything it needs at build time is already in the artifact.",
+      );
+      return;
     }
+
+    // The key set to push, by precedence — the same resolution
+    // `CloudflareAdapter.secrets` uses, deliberately, because a second shape
+    // for "which keys are this app's" is a second thing to get wrong:
+    //   1. `platform.secrets.keys` — explicit override in alepha.config.ts.
+    //   2. otherwise the UNION of the manifest's `env` list (or the
+    //      `.env.<env>` file's keys, when there is no manifest) and the
+    //      `.env.<env>.local` keys, which are the per-deploy override layer.
+    const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
+    const declaredKeys = this.options?.secrets?.keys;
+    const manifestKeys = await readManifestEnvKeys(this.fs, ctx.root);
+    const localKeys = Object.keys(
+      await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}.local`]),
+    );
+    const keys =
+      declaredKeys ??
+      Array.from(
+        new Set([...(manifestKeys ?? Object.keys(envVars)), ...localKeys]),
+      );
+
+    const { secrets, platformOwned } = selectSecrets({
+      keys,
+      envVars,
+      excluded: BayAdapter.EXCLUDED_KEYS,
+    });
 
     const names = Object.keys(secrets).sort();
     if (platformOwned.length > 0) {
       // Said out loud rather than dropped. A user who put DATABASE_URL in
       // `.env.production` and cannot find it on the host should learn here
-      // that Bay writes that one itself.
+      // that it is not theirs to set.
       this.log.info(
-        `Bay writes ${platformOwned.sort().join(", ")} itself — not pushed.`,
+        `Not pushed — Bay writes these itself, or the framework defaults them: ${platformOwned
+          .sort()
+          .join(", ")}.`,
       );
     }
     if (names.length === 0) {
       this.log.info(
-        `No secrets to push: .env.${ctx.env} holds nothing that is the app's own. ` +
-          "Bay reads secrets from that file, not from this shell's environment.",
+        `No secrets to push: nothing ${ctx.project} declares via $env is set in ` +
+          `.env.${ctx.env} or in this environment.`,
       );
       return;
     }

@@ -866,9 +866,57 @@ describe("BayAdapter — the secrets it pushes", () => {
     return it;
   };
 
+  /**
+   * A built workspace whose `dist/manifest.json` declares these `$env` keys.
+   *
+   * This is what a CI runner has and a laptop usually does not: the artifact,
+   * no `.env` file, and the secrets in the job environment.
+   */
+  const withManifest = async (envKeys: string[], file?: string) => {
+    const it = await setup();
+    await it.fs.writeFile(
+      "/project/dist/manifest.json",
+      JSON.stringify({ project: "demo", env: envKeys }),
+    );
+    if (file !== undefined) {
+      await it.fs.writeFile("/project/.env.production", file);
+    }
+    return it;
+  };
+
   const sentPayload = (shell: MemoryShellProvider): string => {
     const [call] = shell.getCallsMatching(/bay env set/);
+    if (!call) {
+      // Said explicitly, because "nothing was pushed" is the failure these
+      // tests exist to catch and a bare `undefined.options` names nothing.
+      throw new Error("nothing was pushed — no `bay env set` call was made");
+    }
     return new TextDecoder().decode(call.options.stdin as Uint8Array);
+  };
+
+  /**
+   * Runs `body` with these variables in `process.env`, and removes them again
+   * whatever happens — a leaked one would silently change a later test.
+   */
+  const withProcessEnv = async (
+    vars: Record<string, string>,
+    body: () => Promise<unknown>,
+  ) => {
+    const previous = new Map(
+      Object.keys(vars).map((key) => [key, process.env[key]]),
+    );
+    Object.assign(process.env, vars);
+    try {
+      await body();
+    } finally {
+      for (const [key, value] of previous) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
   };
 
   it("pipes the assignments into `bay env set`, addressed at this app", async () => {
@@ -901,21 +949,19 @@ describe("BayAdapter — the secrets it pushes", () => {
     }
   });
 
-  it("reads the file, never this process's environment", async () => {
+  it("takes the file's value over this shell's", async () => {
     /*
-      The hook's docblock is explicit, and it is not a detail: this runs on a
-      developer's laptop or a CI runner whose environment holds other people's
-      credentials. A fallback to `process.env` would ship them.
+      `process.env` is the FALLBACK, not the source. A developer whose shell
+      happens to export a stale STRIPE_KEY must still deploy what their
+      `.env.production` says — otherwise the file everyone reads to know what
+      is deployed is not what is deployed.
     */
     const { adapter, shell } = await withEnvFile("STRIPE_KEY=from_the_file\n");
-    process.env.AMBIENT_ONLY = "from_the_shell";
-    process.env.STRIPE_KEY = "from_the_shell";
-    try {
-      await adapter.secrets(context(), run);
-    } finally {
-      delete process.env.AMBIENT_ONLY;
-      delete process.env.STRIPE_KEY;
-    }
+
+    await withProcessEnv(
+      { STRIPE_KEY: "from_the_shell", AMBIENT_ONLY: "from_the_shell" },
+      () => adapter.secrets(context(), run),
+    );
 
     const payload = sentPayload(shell);
     expect(payload).toContain("STRIPE_KEY=from_the_file");
@@ -1037,6 +1083,136 @@ describe("BayAdapter — the secrets it pushes", () => {
     await adapter.secrets(context(), run);
 
     expect(said.join("\n")).toMatch(/nothing changed/);
+  });
+
+  it("takes a declared secret from the job environment when CI has no .env file", async () => {
+    /*
+      How CI actually works: the runner checks out, builds, and holds the
+      secrets in the job environment. There is no `.env.production` on disk and
+      there should not be one. Without a key source that survives that, the
+      allowlist would be the file's keys — of which there are none — and the
+      value fallback could never fire.
+
+      The manifest is that source: `dist/manifest.json`'s `env` array is every
+      key the app declares via `$env`, captured at build time.
+    */
+    const { adapter, shell } = await withManifest(["STRIPE_KEY", "MAILER_DSN"]);
+
+    await withProcessEnv(
+      { STRIPE_KEY: "sk_live_from_ci", MAILER_DSN: "smtp://ci" },
+      () => adapter.secrets(context(), run),
+    );
+
+    expect(sentPayload(shell)).toBe(
+      "MAILER_DSN=smtp://ci\nSTRIPE_KEY=sk_live_from_ci\n",
+    );
+  });
+
+  it("does not push a process.env variable the app never declared", async () => {
+    /*
+      The security-relevant test of the whole fallback. Reading `process.env`
+      puts the deploying shell's entire environment within reach, and the ONLY
+      thing standing between it and an app's `.env` is that the key set comes
+      from the manifest rather than from `process.env` itself.
+
+      Real names, not placeholders: these are what is actually sitting in the
+      environment of the runner that deploys this repo.
+    */
+    const { adapter, shell } = await withManifest(["STRIPE_KEY"]);
+
+    await withProcessEnv(
+      {
+        STRIPE_KEY: "sk_live_1",
+        AWS_SECRET_ACCESS_KEY: "must-not-travel",
+        GITHUB_TOKEN: "must-not-travel",
+        LORE_API_KEY: "must-not-travel",
+        CLOUDFLARE_API_TOKEN: "must-not-travel",
+      },
+      () => adapter.secrets(context(), run),
+    );
+
+    expect(sentPayload(shell)).toBe("STRIPE_KEY=sk_live_1\n");
+    expect(sentPayload(shell)).not.toContain("must-not-travel");
+    // PATH is set in every process there has ever been, and is the cheapest
+    // proof that the key set is not an enumeration of `process.env`.
+    expect(sentPayload(shell)).not.toContain("PATH=");
+  });
+
+  it("pushes nothing at all when there is neither a manifest nor a file", async () => {
+    // With no allowlist from either source there are no keys to resolve, so
+    // `process.env` is never consulted — however full of secrets it is. This
+    // is the property that makes the fallback safe, asserted directly.
+    const { adapter, shell } = await setup();
+
+    await withProcessEnv(
+      { STRIPE_KEY: "sk_live_1", AWS_SECRET_ACCESS_KEY: "must-not-travel" },
+      () => adapter.secrets(context(), run),
+    );
+
+    expect(shell.getCallsMatching(/bay env set/)).toHaveLength(0);
+  });
+
+  it("keeps Bay-owned and framework keys out even when the app declares them", async () => {
+    /*
+      A declared key is not automatically a pushable one. An app may perfectly
+      well read DATABASE_URL and LOG_LEVEL through `$env` — they will be in the
+      manifest — and both are the platform's to write. Bay refuses APP_SECRET
+      outright, so a push containing it fails the deploy rather than landing.
+    */
+    const { adapter, shell } = await withManifest([
+      "APP_SECRET",
+      "DATABASE_URL",
+      "LOG_LEVEL",
+      "STRIPE_KEY",
+    ]);
+
+    await withProcessEnv(
+      {
+        APP_SECRET: "would-sign-everyone-out",
+        DATABASE_URL: "postgres://a-laptop/dev",
+        LOG_LEVEL: "debug",
+        STRIPE_KEY: "sk_live_1",
+      },
+      () => adapter.secrets(context(), run),
+    );
+
+    expect(sentPayload(shell)).toBe("STRIPE_KEY=sk_live_1\n");
+  });
+
+  it("says which keys it dropped, rather than dropping them quietly", async () => {
+    const { adapter, alepha } = await withManifest([
+      "DATABASE_URL",
+      "STRIPE_KEY",
+    ]);
+    const said: string[] = [];
+    alepha.events.on("log", (e: { message?: string }) => {
+      said.push(e.message ?? "");
+    });
+
+    await withProcessEnv(
+      { DATABASE_URL: "postgres://a-laptop/dev", STRIPE_KEY: "sk" },
+      () => adapter.secrets(context(), run),
+    );
+
+    expect(said.join("\n")).toMatch(/Not pushed[\s\S]*DATABASE_URL/);
+  });
+
+  it("pushes nothing for a static site, which has no process to configure", async () => {
+    /*
+      Bay refuses `bay env set` on a static site with a 400 — it has no `.env`
+      because it has no process. Sending anyway would fail the deploy of a site
+      that happens to have a `.env.production`, at the last step, for a payload
+      that could never have applied.
+    */
+    const { adapter, shell, alepha } = await withEnvFile("STRIPE_KEY=sk\n");
+    alepha.store.mut(buildOptions, (current) => ({
+      ...current,
+      target: "static" as BuildTarget,
+    }));
+
+    await adapter.secrets(context(), run);
+
+    expect(shell.getCallsMatching(/bay env set/)).toHaveLength(0);
   });
 
   it("refuses an app name that would reach the remote shell", async () => {

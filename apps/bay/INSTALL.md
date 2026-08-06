@@ -194,7 +194,7 @@ Signed in to HOST, but its `bay` is too old to read the deploy artifact from std
 ```
 
 A Bay predating `bay env` is the second version gate, and the one that costs a running app its
-configuration. `alepha platform up` pushes the project's `.env.<env>` to `bay env set <name/env> -`;
+configuration. `alepha platform up` pushes the app's declared secrets to `bay env set <name/env> -`;
 a Bay that has no such command prints its whole usage banner and exits 2, which the CLI reports as:
 
 ```
@@ -203,9 +203,11 @@ Signed in to HOST, but its `bay` has no `env` command, so there is nowhere to pu
 ```
 
 The deploy fails at the secrets step, after the code has already landed: the app is serving the new
-release **without** the secrets. Upgrade the binary and re-run `alepha platform up`. A project with
-nothing to push — no `.env.<env>`, or nothing in it that is the app's own — never reaches this and
-keeps deploying to an old Bay unchanged.
+release **without** the secrets. Upgrade the binary and re-run `alepha platform up`.
+
+A project with nothing to push never reaches this and keeps deploying to an old Bay unchanged — an
+app that declares no `$env` keys, or whose declared keys are set neither in `.env.<env>` nor in the
+deploying environment. Static sites are skipped outright, having no process to configure.
 
 `bay --version` prints `dev` for a plain `go build`, so it will not tell you how old an installed
 binary is. Its mtime (`ls -l /opt/bay/bin/bay`) is the practical answer.
