@@ -47,7 +47,9 @@ const allOn = {
   vitals: true,
 };
 
-const setup = async (over: { features?: unknown; key?: string } = {}) => {
+const setup = async (
+  over: { features?: unknown; key?: string; kinds?: string[] } = {},
+) => {
   const alepha = Alepha.create({
     env: {
       LOG_LEVEL: "silent",
@@ -92,7 +94,7 @@ const setup = async (over: { features?: unknown; key?: string } = {}) => {
     name: "lore",
     tokenHash: crypto.hash(KEY),
     tokenPrefix: KEY.slice(0, 10),
-    kinds: ["beacon", "vitals", "blights", "feedback"],
+    kinds: over.kinds ?? ["beacon", "vitals", "blights", "feedback"],
   });
 
   return { alepha, probe, project, sigil, sink };
@@ -124,12 +126,13 @@ describe("Lore reports to Lore", () => {
     expect((await probe.sigils.findById(sigil.id))?.lastSeenAt).toBeTruthy();
   });
 
-  it("should read its appetite from the project toggles, not from a default", async () => {
+  it("should read its appetite from the sigil's kinds, not from a default", async () => {
     // The config path is the second self-subrequest, and the easier one to
     // miss: it fails open to "collect everything", so a broken fetch looks
-    // exactly like a permissive project.
+    // exactly like a permissive project. Beacon is withheld via the sigil's
+    // own kinds, not a project flag — that flag is retired.
     const { sink } = await setup({
-      features: { ...allOn, beacon: false },
+      kinds: ["vitals", "blights", "feedback"],
     });
 
     await sink.refreshConfig();

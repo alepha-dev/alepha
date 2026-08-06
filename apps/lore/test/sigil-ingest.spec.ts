@@ -17,6 +17,7 @@ import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
 import { sigilVitalsHourly } from "../src/api/entities/sigilVitalsHourly.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { BlightRuleService } from "../src/api/services/BlightRuleService.ts";
+import { SigilIngestService } from "../src/api/services/SigilIngestService.ts";
 import { SigilTokenService } from "../src/api/services/SigilTokenService.ts";
 
 class Probe {
@@ -82,6 +83,7 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
   const tokens = alepha.inject(SigilTokenService);
   const server = alepha.inject(ServerProvider);
   const users = alepha.inject(UserService);
+  const service = alepha.inject(SigilIngestService);
   await alepha.start();
 
   // A real user row: `blight_ignore_rules.createdBy` carries a foreign key to
@@ -128,6 +130,7 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
     owner,
     project,
     sigil,
+    service,
     token: minted.token,
     post,
     getConfig,
@@ -222,20 +225,15 @@ describe("sigil ingest", () => {
   });
 
   /*
-    The project toggle is a GATE, not a hint.
+    Blights, Beacon and Vitals are the sigil's own decision now, gated only by
+    the project's `sigils` master switch — not by the three project-level
+    flags those trackers used to share. `SigilController.updateSigil` is the
+    per-app lever; the project flags are `@deprecated` and read by nothing.
 
-    `sigils.kinds` is written once by `createSigil` and there is no update path
-    anywhere — not the UI, not MCP, not the API. So a sigil minted while Beacon
-    was on carries `beacon` forever, and gating on the token alone made the
-    settings switch advisory: the client is told to stop via `/sigils/config`,
-    the client fails open on any error, and rows kept accruing on a project
-    whose owner no longer had a page to see them on (the app page's Analytics,
-    Performance and Errors tabs all 404 when `features.beacon` is off).
-
-    One test per tracker, each with the kind PRESENT so the only thing being
-    proven is the feature half of the intersection.
+    One test per tracker, each with the project flag explicitly off, so the
+    only thing being proven is that it no longer has any effect.
   */
-  it("writes no views when Beacon is switched off, kind or not", async () => {
+  it("writes views regardless of the retired Beacon project flag", async () => {
     const { probe, sigil, post } = await setup({
       features: { ...allOn, beacon: false },
     });
@@ -250,15 +248,15 @@ describe("sigil ingest", () => {
     expect(sigil.kinds).toContain("beacon");
     expect(
       await probe.views.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
     // The daily visitor hash is a view-side write too, and it is the one that
-    // is personal data: it must not survive the toggle either.
+    // is personal data — it follows the same gate.
     expect(
       await probe.uniques.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
   });
 
-  it("writes no vitals when Vitals is switched off, kind or not", async () => {
+  it("writes vitals regardless of the retired Vitals project flag", async () => {
     const { probe, sigil, post } = await setup({
       features: { ...allOn, vitals: false },
     });
@@ -271,10 +269,10 @@ describe("sigil ingest", () => {
     expect(sigil.kinds).toContain("vitals");
     expect(
       await probe.vitals.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
   });
 
-  it("writes no errors when Blights is switched off, kind or not", async () => {
+  it("writes errors regardless of the retired Blights project flag", async () => {
     const { probe, project, sigil, post } = await setup({
       features: { ...allOn, blights: false },
     });
@@ -287,12 +285,12 @@ describe("sigil ingest", () => {
       await probe.errorGroups.findMany({
         where: { sigilId: { eq: sigil.id } },
       }),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
     expect(
       await probe.blights.findMany({
         where: { projectId: { eq: project.id } },
       }),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
   });
 
   it("writes nothing at all when the sigils master switch is off", async () => {
@@ -323,8 +321,10 @@ describe("sigil ingest", () => {
   it("advertises exactly what it would accept", async () => {
     // The contract `/sigils/config` claims to honour. Both halves read the same
     // `gatesFor`, so this fails the moment one of them grows a rule of its own.
+    // Vitals is withheld via the sigil's own kinds, not a project flag — that
+    // flag is retired and no longer able to create this gap.
     const { probe, sigil, post, getConfig } = await setup({
-      features: { ...allOn, vitals: false },
+      kinds: ["beacon", "blights", "feedback"],
     });
 
     const body = await (await getConfig()).json();
@@ -519,23 +519,12 @@ describe("sigil ingest", () => {
   });
 
   it("tells an app what the project currently wants from it", async () => {
-    const { getConfig } = await setup({
-      features: {
-        kanban: true,
-        folios: true,
-        feedback: true,
-        milestones: true,
-        sigils: true,
-        beacon: true,
-        vitals: false,
-        blights: true,
-      },
-    });
+    const { getConfig } = await setup();
 
     const res = await getConfig();
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.enabled).toEqual({ views: true, errors: true, vitals: false });
+    expect(body.enabled).toEqual({ views: true, errors: true, vitals: true });
     expect(body.feedbackUrl).toMatch(/\/p\/\d+\/request$/);
   });
 
@@ -544,5 +533,58 @@ describe("sigil ingest", () => {
 
     const res = await getConfig("sg_nope");
     expect(res.status).toBe(401);
+  });
+
+  it("gates blights, beacon and vitals on the sigil's kinds alone", async () => {
+    // The project carries none of the retired flags — under the old rule that
+    // meant every capability was off regardless of what the sigil carried.
+    const { service, sigil } = await setup({
+      features: {
+        kanban: true,
+        folios: true,
+        feedback: true,
+        milestones: true,
+        sigils: true,
+      },
+    });
+
+    const gates = await service.gatesFor({
+      ...sigil,
+      kinds: ["blights", "beacon", "vitals"],
+    });
+
+    expect(gates.errors).toBe(true);
+    expect(gates.views).toBe(true);
+    expect(gates.vitals).toBe(true);
+  });
+
+  it("still requires the project's feedback flag", async () => {
+    const { service, sigil } = await setup({
+      features: { ...allOn, feedback: false },
+    });
+
+    const gates = await service.gatesFor({ ...sigil, kinds: ["feedback"] });
+
+    // `features.feedback` also gates the first-party /request form, which
+    // works with no app enrolled at all — so it stays a project-level
+    // decision.
+    expect(gates.feedback).toBe(false);
+  });
+
+  it("still requires the sigils master switch", async () => {
+    const { probe, project, service, sigil } = await setup();
+
+    await probe.projects.updateById(project.id, {
+      features: { ...allOn, sigils: false },
+    });
+
+    const gates = await service.gatesFor({
+      ...sigil,
+      kinds: ["blights", "beacon", "vitals"],
+    });
+
+    expect(gates.errors).toBe(false);
+    expect(gates.views).toBe(false);
+    expect(gates.vitals).toBe(false);
   });
 });
