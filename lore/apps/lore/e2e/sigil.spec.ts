@@ -67,6 +67,19 @@ const takeMintedToken = async (page: Page): Promise<string> => {
   return token;
 };
 
+/**
+ * The rows of the sigil list carrying `name`.
+ *
+ * Scoped to `data-testid="sigil-row"` rather than `page.getByText(name)`,
+ * because the conflict message embeds the sigil's name — "A sigil already
+ * exists named X" — so a page-wide count of X counts the error toast as well as
+ * the row. The question this list answers is *how many rows*, and a page-wide
+ * count answered it correctly only while the message happened not to contain the
+ * value being counted.
+ */
+const sigilRows = (page: Page, name: string) =>
+  page.getByTestId("sigil-row").filter({ hasText: name });
+
 /** One aggregated client error, as the cable would forward it. */
 const errorBatch = (message: string, count: number) => ({
   errors: [
@@ -137,11 +150,14 @@ test.describe("Sigils", () => {
 
       token = await takeMintedToken(page);
 
-      // The row names the credential by its prefix, and says the app has not
-      // reported — the two facts the list exists to carry.
-      await expect(page.getByText(appName)).toBeVisible({ timeout: 15_000 });
-      await expect(page.getByText(`${token.slice(0, 11)}…`)).toBeVisible();
-      await expect(page.getByText(/never reported/i)).toBeVisible();
+      // Exactly one row, and it names the credential by its prefix and says the
+      // app has not reported — the two facts the list exists to carry. Asserted
+      // *on the row* rather than on the page, so "the list shows this" cannot be
+      // satisfied by a toast that happens to say the same thing.
+      const row = sigilRows(page, appName);
+      await expect(row).toHaveCount(1, { timeout: 15_000 });
+      await expect(row.getByText(`${token.slice(0, 11)}…`)).toBeVisible();
+      await expect(row.getByText(/never reported/i)).toBeVisible();
     });
 
     await test.step("the same name cannot be enrolled twice", async () => {
@@ -151,11 +167,12 @@ test.describe("Sigils", () => {
       await page.getByRole("button", { name: "Enrol", exact: true }).click();
 
       // A 409 surfaces as an error toast, and no second row appears — a second
-      // sigil would split that app's history across two credentials.
+      // sigil would split that app's history across two credentials. The toast
+      // names the offending sigil, so the row count is scoped to the list.
       await expect(page.getByText(/already exists/i)).toBeVisible({
         timeout: 15_000,
       });
-      await expect(page.getByText(appName)).toHaveCount(1);
+      await expect(sigilRows(page, appName)).toHaveCount(1);
     });
 
     await test.step("the token, and only the token, opens ingest", async () => {

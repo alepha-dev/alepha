@@ -24,7 +24,15 @@ const ProjectSettingsSigilRow = (props: ProjectSettingsSigilRowProps) => {
   const sigil = props.sigil;
 
   return (
-    <CardContent className="flex flex-wrap items-center gap-3 px-4 py-3">
+    <CardContent
+      /*
+        Marks the row as a row. The conflict message names the offending sigil
+        ("A sigil already exists named …"), so counting the name across the whole
+        page counts the error toast too — this is what lets a test count rows.
+      */
+      data-testid="sigil-row"
+      className="flex flex-wrap items-center gap-3 px-4 py-3"
+    >
       <div className="flex min-w-0 grow flex-col gap-0.5">
         <span className="truncate text-sm font-medium">{sigil.name}</span>
         <code className="text-muted-foreground truncate font-mono text-xs">
