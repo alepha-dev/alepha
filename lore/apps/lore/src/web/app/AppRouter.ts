@@ -297,16 +297,6 @@ export class AppRouter {
         .then((r) => r.items.length)
         .catch(() => 0);
 
-      // Open-blight count for the sidebar badge. Member-readable; `.catch`
-      // keeps a transient error from blocking the whole project load
-      // (badge just hides).
-      const openBlights = project.features?.blights
-        ? await this.blightApi
-            .countOpenBlights({ params: { projectId: params.projectId } })
-            .then((r) => r.count)
-            .catch(() => 0)
-        : 0;
-
       // Open-quest count for the sidebar badge. Always on (unlike Blights /
       // Feedback, Quests has no feature gate) and member-readable; `.catch`
       // keeps a transient error from blocking the whole project load
@@ -322,15 +312,33 @@ export class AppRouter {
       // with it: a degraded section costs a section, an unhandled rejection
       // costs the page.
       //
-      // `undefined` on failure, NOT `[]`: the section says "Enrol an app" for
-      // an empty project, and telling a member whose read just failed that
-      // their project has no apps is a lie with a call to action attached.
+      // `undefined` on failure, NOT `[]`: the sidebar and the Blights
+      // derivation below both need to tell "no apps" apart from "could not
+      // read the apps" — see `currentSigilsAtom`.
       const sigils = project.features?.sigils
         ? await this.sigilApi
             .listSigils({ params: { projectId: params.projectId } })
             .then((r) => r.items)
             .catch(() => undefined)
         : [];
+
+      // Whether this project has blights at all is now the apps' answer, not a
+      // project flag: an app that does not report crashes cannot produce one.
+      // `?? []` folds the could-not-read state into "no badge", which is the
+      // same degradation the `.catch` below already accepts.
+      const collectsBlights = (sigils ?? []).some((it) =>
+        it.kinds.includes("blights"),
+      );
+
+      // Open-blight count for the sidebar badge. Member-readable; `.catch`
+      // keeps a transient error from blocking the whole project load
+      // (badge just hides).
+      const openBlights = collectsBlights
+        ? await this.blightApi
+            .countOpenBlights({ params: { projectId: params.projectId } })
+            .then((r) => r.count)
+            .catch(() => 0)
+        : 0;
 
       this.alepha.store.set(currentProjectAtom, project);
       this.alepha.store.set(currentProjectMemberAtom, member);
@@ -371,9 +379,13 @@ export class AppRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      // Gate purely on the module toggle — no paywall.
-      if (!project.features?.blights) {
-        throw new NotFoundError("Blights not enabled for this project");
+      // Gated on the Apps master switch, not on whether any app currently
+      // carries the Blights capability. Deriving it from the sigil list would
+      // turn a transient `listSigils` failure into a 404 on a deep link, and an
+      // inbox with nothing in it costs nothing. The sidebar entry is the one
+      // that derives.
+      if (!project.features?.sigils) {
+        throw new NotFoundError("Apps are not enabled for this project");
       }
       const res = await this.blightApi.listBlights({
         params: { projectId: project.id },
