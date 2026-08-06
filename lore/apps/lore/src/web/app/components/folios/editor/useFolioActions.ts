@@ -1,0 +1,806 @@
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { CryptoProvider } from "alepha/crypto";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useInject,
+  useStore,
+} from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
+import { useEffect, useState } from "react";
+import type { FolioController } from "@/api/controllers/FolioController.ts";
+import type { Folio } from "@/api/entities/folios.ts";
+import type { AppRouter } from "../../../AppRouter.ts";
+import { currentFolioAtom } from "../../../atoms/currentFolioAtom.ts";
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { folioTagsAtom } from "../../../atoms/folioTagsAtom.ts";
+import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
+import type { I18n } from "../../../services/I18n.ts";
+import {
+  ensureProtectedKeysAutoLock,
+  forgetProtectedKey,
+  getProtectedKey,
+  rememberProtectedKey,
+} from "../protectedFolioKeys.ts";
+import {
+  folioExportFilename,
+  folioMarkdownExport,
+  triggerFolioDownload,
+} from "./document/folioMarkdownExport.ts";
+import type {
+  FolioActionId,
+  FolioActionState,
+} from "./menubar/folioMenubarModel.ts";
+import {
+  type FolioDraft,
+  type FolioDraftValues,
+  sameValues,
+} from "./useFolioDraft.ts";
+
+export type FolioActionHandlers = Record<
+  FolioActionId,
+  () => void | Promise<void>
+>;
+
+export interface UseFolioActionsInput {
+  folio?: Folio;
+  /**
+   * Create-mode only: the directory the new folio lands in.
+   */
+  directoryId?: string;
+  draft: FolioDraft;
+  panes: {
+    tree: boolean;
+    inspector: boolean;
+    toggleTree: () => void;
+    toggleInspector: () => void;
+    toggleFocus: () => void;
+  };
+  find: { show: () => void };
+}
+
+export interface UseFolioActionsResult {
+  handlers: FolioActionHandlers;
+  /**
+   * True while a protected folio's plaintext has not been loaded into the
+   * draft this session (no cached key, and `unlock` hasn't succeeded yet).
+   * Always `false` for a non-protected folio.
+   */
+  locked: boolean;
+  /**
+   * Passphrase round-trip for the locked panel — see the file doc below.
+   */
+  unlock: (passphrase: string) => Promise<string | null>;
+  /**
+   * True while `folio.save`'s request is in flight. NOT the brief's stated
+   * return shape — added because the Save button needs a loading signal,
+   * and `FolioDraft.saving` (from `useFormState`) never becomes `true` in
+   * this wiring: `save()` reads `draft.values` and calls the API directly,
+   * it never calls `draft.form.submit()`. Task 7's report flagged this as
+   * dead weight it left for Task 8 to resolve; this is that resolution —
+   * `saving` here is the one real "is saving" signal, sourced from the
+   * `useAction` wrapping `save`.
+   */
+  saving: boolean;
+  /**
+   * Everything `folioMenubarModel.isFolioActionEnabled` needs to decide
+   * what's clickable. Not in the brief's stated return shape, but computed
+   * here deliberately: `isProtected`/`isPinned` are tracked as LOCAL state
+   * (see the file doc's "why local state" note below), not read from
+   * `props.folio` on every render. A menubar built in a later task that
+   * re-derived them from `folio.protected`/`folio.pinned` directly would
+   * reintroduce the exact staleness this hook exists to avoid.
+   */
+  actionState: FolioActionState;
+  moveDialogOpen: boolean;
+  closeMoveDialog: () => void;
+  confirmMove: (directoryId: string | null) => Promise<void>;
+  encryptDialogOpen: boolean;
+  closeEncryptDialog: () => void;
+  confirmEncrypt: (passphrase: string) => Promise<string | null>;
+}
+
+/**
+ * Owns every mutation the folio workspace can perform: save, pin,
+ * duplicate, export, encrypt (and its reverse, remove protection), delete,
+ * move — plus dispatching the pane-toggle and find-in-folio actions the
+ * menubar/toolbar (Tasks 9–11) will trigger. Returns one handler per
+ * `FolioActionId` so a menu, a toolbar button and a keyboard shortcut can
+ * all call the same function.
+ *
+ * ## Why `isProtected`/`isPinned` are local state, not `props.folio.*`
+ *
+ * `FolioWorkspace` remounts this whole subtree (via a `key` on the folio
+ * id) on every folio-to-folio navigation — but NOT on an in-place mutation
+ * of the SAME folio, like this hook's own `folio.encrypt` or `folio.pin`
+ * actions. `props.folio` is a route-loader prop, fixed for the life of this
+ * mount; it does not refresh just because `alepha.store.set(currentFolioAtom,
+ * ...)` ran. If `isProtected` were computed as `!!props.folio?.protected`
+ * on every render (as the brief's own `save()` snippet does), then the
+ * FIRST save issued right after an in-session Encrypt would read the STALE
+ * `false` and send `protected: false` with the live plaintext draft — which
+ * the server treats as a deliberate, permitted "remove protection" request
+ * (see `apps/lore/CLAUDE.md`'s protection-domain invariant). That would
+ * silently downgrade a folio the user just finished protecting. Local state,
+ * seeded once from `props.folio` and updated only by this hook's own
+ * successful encrypt/remove-protection calls, avoids that: it is always the
+ * CURRENT truth for the actions that can change it, without depending on a
+ * remount that isn't guaranteed to happen.
+ *
+ * ## The security-critical paths — every place `protected` is sent, and why
+ *
+ * 1. `save()` — always sends `protected: isProtected` (the local state
+ *    above) on every `folioApi.update` call, true or false, matching
+ *    whatever the row's ACTUAL current state is. Never omitted (the server
+ *    rejects an omitted `protected` against a protected row that also sends
+ *    `content`), never a stale/wrong value. When `isProtected` is true, the
+ *    content sent is freshly re-encrypted with the session's cached key —
+ *    or the save is BLOCKED (not downgraded) if that key is missing.
+ * 2. `duplicate()` — creates a NEW row. If the source is protected, the
+ *    new row is created `protected: true` too (re-encrypted with the same
+ *    cached key and the SAME salt as the source's envelope — an
+ *    independent envelope, since `encryptWithPassphrase` still draws a
+ *    fresh IV). This is a deliberate deviation from the brief's Step 6
+ *    (which doesn't mention `protected` for duplicate at all): shipping a
+ *    silent plaintext copy of a folio the user chose to protect would be a
+ *    worse outcome than the brief's omission suggests.
+ * 3. `confirmEncrypt()` — the NOT-yet-protected → protected transition.
+ *    Sends `protected: true` with a freshly derived key (new passphrase,
+ *    new random salt) encrypting the CURRENT draft content. Only reachable
+ *    through the passphrase dialog the user just filled in.
+ * 4. The remove-protection action (inside the `folio.encrypt` handler when
+ *    `isProtected` is already true) — sends `protected: false` together
+ *    with `draft.values.content`, which at that point is guaranteed to be
+ *    real plaintext (the action is blocked while `locked`). This is the
+ *    ONE deliberate, user-confirmed (via `dialog.confirm`) path that sends
+ *    `protected: false` with content — exactly the shape the server
+ *    accepts as "explicit removal", never folded into a generic save.
+ *
+ * `folio.move`, `folio.pin` and `folio.delete` never send `content` at all,
+ * so the server's protected-content guard never engages for them and
+ * `protected` doesn't need to be sent (omitting it preserves the row's
+ * current value). The meta bar's tag add/remove only mutate the draft
+ * buffer — they go through `save()` like any other edit, not a separate
+ * request.
+ */
+export const useFolioActions = (
+  input: UseFolioActionsInput,
+): UseFolioActionsResult => {
+  const { tr } = useI18n<I18n, "en">();
+  const alepha = useAlepha();
+  const router = useRouter<AppRouter>();
+  const dialog = useDialog();
+  const toaster = useToast();
+  const cryptoProvider = useInject(CryptoProvider);
+  const folioApi = useClient<FolioController>();
+  const [project] = useStore(currentProjectAtom);
+  const [folios, setFolios] = useStore(userFoliosAtom);
+  const [tags, setTags] = useStore(folioTagsAtom);
+  const projectId = project ? String(project.id) : "";
+
+  // Seeded once from the loader-provided `folio` prop. Safe as an
+  // INITIALIZER only because `FolioWorkspace` remounts this whole subtree
+  // on every folio switch (see the file doc above) — these are the local
+  // source of truth for the rest of this hook's lifetime, not re-derived
+  // from `input.folio` on later renders.
+  const [isProtected, setIsProtected] = useState<boolean>(
+    !!input.folio?.protected,
+  );
+  const [isPinned, setIsPinned] = useState<boolean>(!!input.folio?.pinned);
+  // Whether THIS session already holds the plaintext + key for a protected
+  // folio. Irrelevant (and ignored) once `isProtected` is false.
+  const [unlocked, setUnlocked] = useState<boolean>(!input.folio?.protected);
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [encryptDialogOpen, setEncryptDialogOpen] = useState(false);
+
+  const locked = isProtected && !unlocked;
+
+  // Writes the freshly decrypted plaintext into the draft AND re-baselines
+  // `dirty` against it — not just the former. `useFolioDraft.initial()`
+  // blanks `content` to `""` for a protected folio (so ciphertext never
+  // paints), which becomes the `dirty`-comparison baseline. Setting the
+  // live value to the real plaintext without ALSO moving the baseline left
+  // the two permanently apart: `dirty` compared the just-decrypted
+  // plaintext against a baseline of `""` and read `true` forever after
+  // unlock, so the status line read "Unsaved changes" the instant a folio
+  // was unlocked, before the user touched anything. `folio.updatedAt` is
+  // the correct "as of" timestamp — decrypting doesn't change what the
+  // server holds.
+  const applyDecryptedContent = (folio: Folio, plaintext: string): void => {
+    input.draft.form.input.content.set(plaintext);
+    const baselineValues: FolioDraftValues = {
+      title: input.draft.values.title,
+      tags: input.draft.values.tags,
+      summary: input.draft.values.summary,
+      content: plaintext,
+    };
+    input.draft.markSaved(folio.updatedAt, baselineValues);
+    setUnlocked(true);
+  };
+
+  // If a passphrase was already entered for this folio earlier in the
+  // session (the cache in `protectedFolioKeys.ts` — module-level, survives
+  // navigation within the tab), decrypt quietly on mount instead of making
+  // the user re-enter it. Ported from the deleted `FolioEditor.tsx`'s own
+  // mount effect. `input.folio?.id` is enough as a dep: a folio SWITCH
+  // remounts this hook entirely (see the file doc), so this only ever
+  // needs to run once for "the same folio, freshly mounted".
+  useEffect(() => {
+    const folio = input.folio;
+    if (!folio?.protected) return;
+    const cached = getProtectedKey(folio.id);
+    if (!cached) return;
+    let alive = true;
+    (async () => {
+      try {
+        const plaintext = await decryptEnvelopeWithKey(cached, folio.content);
+        if (!alive) return;
+        applyDecryptedContent(folio, plaintext);
+      } catch {
+        // Stale/incompatible cached key — fall back to the locked gate,
+        // which will re-prompt via `unlock`.
+        forgetProtectedKey(folio.id);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input.folio?.id]);
+
+  const unlock = async (passphrase: string): Promise<string | null> => {
+    const folio = input.folio;
+    if (!folio) return null;
+    const envelope = parseProtectedEnvelope(folio.content);
+    if (!envelope) return tr("folios.protected.invalid-envelope");
+    try {
+      const key = await cryptoProvider.deriveKeyFromPassphrase(
+        passphrase,
+        envelope.salt,
+        envelope.iterations,
+      );
+      const plaintext = await decryptEnvelopeWithKey(key, folio.content);
+      rememberProtectedKey(folio.id, key);
+      ensureProtectedKeysAutoLock();
+      applyDecryptedContent(folio, plaintext);
+      return null;
+    } catch {
+      // Web Crypto throws a generic OperationError on a bad passphrase or
+      // a corrupt envelope — never distinguish which in the message.
+      return tr("folios.protected.unlock-failed");
+    }
+  };
+
+  const save = async (): Promise<void> => {
+    const folio = input.folio;
+    if (!folio && !project) {
+      // Unreachable in practice — the project route loader always
+      // populates `currentProjectAtom` before this page renders — but
+      // `folioApi.create` below needs `project.id`, so guard rather than
+      // risk a non-null assertion throwing on a real `undefined`.
+      return;
+    }
+    const values = input.draft.values;
+
+    let contentToSend = values.content;
+    if (isProtected) {
+      if (locked || !folio) {
+        toaster.error(tr("folios.protected.unlock-before-edit"));
+        return;
+      }
+      const cachedKey = getProtectedKey(folio.id);
+      if (!cachedKey) {
+        toaster.error(tr("folios.protected.unlock-before-edit"));
+        return;
+      }
+      const existingEnv = parseProtectedEnvelope(folio.content);
+      if (!existingEnv) {
+        toaster.error(tr("folios.protected.invalid-envelope"));
+        return;
+      }
+      contentToSend = await cryptoProvider.encryptWithPassphrase(
+        values.content,
+        cachedKey,
+        existingEnv.salt,
+      );
+      rememberProtectedKey(folio.id, cachedKey);
+    }
+
+    const title = values.title.trim() || tr("folios.title-placeholder");
+
+    const saved = folio
+      ? await folioApi.update({
+          params: { id: folio.id },
+          body: {
+            title,
+            tags: values.tags,
+            summary: values.summary,
+            content: contentToSend,
+            protected: isProtected,
+          },
+        })
+      : await folioApi.create({
+          body: {
+            title,
+            tags: values.tags,
+            summary: values.summary,
+            content: contentToSend,
+            protected: false,
+            projectId: project!.id,
+            directoryId: input.directoryId,
+          },
+        });
+
+    alepha.store.set(currentFolioAtom, saved as Folio);
+    let nextFolios = folio
+      ? folios.map((f) => (f.id === saved.id ? (saved as Folio) : f))
+      : [saved as Folio, ...folios];
+    setFolios(nextFolios);
+    const merged = new Set<string>(tags);
+    for (const t of saved.tags) merged.add(t);
+    setTags([...merged].sort());
+    input.draft.markSaved(saved.updatedAt, { ...values, title });
+
+    if (!folio) {
+      // Create mode: `router.push` below changes `FolioWorkspace`'s `key`
+      // from "new" to the folio id, which fully remounts the workspace —
+      // the fresh mount's `useFolioDraft` seeds from the NEW page's own
+      // loader, which refetches the folio from the server. `values` above
+      // is a snapshot from before the `await folioApi.create` call; if the
+      // user kept typing during that round-trip, `input.draft.values` read
+      // again NOW differs from it. Without catching the server up before
+      // navigating, that typing would be silently discarded by the
+      // remount while the status line still read "Saved".
+      const latest = input.draft.values;
+      if (!sameValues(latest, { ...values, title })) {
+        const latestTitle =
+          latest.title.trim() || tr("folios.title-placeholder");
+        const caughtUp = await folioApi.update({
+          params: { id: saved.id },
+          body: {
+            title: latestTitle,
+            tags: latest.tags,
+            summary: latest.summary,
+            content: latest.content,
+          },
+        });
+        alepha.store.set(currentFolioAtom, caughtUp as Folio);
+        nextFolios = nextFolios.map((f) =>
+          f.id === caughtUp.id ? (caughtUp as Folio) : f,
+        );
+        setFolios(nextFolios);
+        input.draft.markSaved(caughtUp.updatedAt, {
+          ...latest,
+          title: latestTitle,
+        });
+      }
+      await router.push(
+        router.path("projectFoliosFolio", {
+          params: { projectId, shortId: saved.shortId },
+        }),
+      );
+    }
+  };
+
+  const saveAction = useAction(
+    { handler: save, invalidates: [["folioTree", projectId]] },
+    [
+      isProtected,
+      locked,
+      input.folio,
+      input.directoryId,
+      input.draft,
+      project,
+      folioApi,
+      folios,
+      setFolios,
+      tags,
+      setTags,
+      alepha,
+      router,
+      projectId,
+      tr,
+      toaster,
+      cryptoProvider,
+    ],
+  );
+
+  const duplicateAction = useAction(
+    {
+      handler: async () => {
+        const folio = input.folio;
+        if (!folio || !project) return;
+        if (isProtected && locked) {
+          toaster.error(tr("folios.protected.unlock-before-edit"));
+          return;
+        }
+        const values = input.draft.values;
+        let contentToSend = values.content;
+        let keyForDuplicate: CryptoKey | undefined;
+        if (isProtected) {
+          keyForDuplicate = getProtectedKey(folio.id);
+          if (!keyForDuplicate) {
+            toaster.error(tr("folios.protected.unlock-before-edit"));
+            return;
+          }
+          const existingEnv = parseProtectedEnvelope(folio.content);
+          if (!existingEnv) {
+            toaster.error(tr("folios.protected.invalid-envelope"));
+            return;
+          }
+          contentToSend = await cryptoProvider.encryptWithPassphrase(
+            values.content,
+            keyForDuplicate,
+            existingEnv.salt,
+          );
+        }
+        const created = await folioApi.create({
+          body: {
+            title: `${values.title.trim() || tr("folios.title-placeholder")}${tr("folio.action.duplicate-suffix")}`,
+            tags: values.tags,
+            summary: values.summary,
+            content: contentToSend,
+            protected: isProtected,
+            projectId: project.id,
+            directoryId: folio.directoryId,
+          },
+        });
+        if (isProtected && keyForDuplicate) {
+          rememberProtectedKey(created.id, keyForDuplicate);
+          ensureProtectedKeysAutoLock();
+        }
+        alepha.store.set(currentFolioAtom, created as Folio);
+        setFolios([created as Folio, ...folios]);
+        const merged = new Set<string>(tags);
+        for (const t of created.tags) merged.add(t);
+        setTags([...merged].sort());
+        await router.push(
+          router.path("projectFoliosFolio", {
+            params: { projectId, shortId: created.shortId },
+          }),
+        );
+      },
+      invalidates: [["folioTree", projectId]],
+    },
+    [
+      input.folio,
+      input.draft,
+      project,
+      isProtected,
+      locked,
+      folioApi,
+      folios,
+      setFolios,
+      tags,
+      setTags,
+      alepha,
+      router,
+      projectId,
+      tr,
+      toaster,
+      cryptoProvider,
+    ],
+  );
+
+  const pinAction = useAction(
+    {
+      handler: async () => {
+        const folio = input.folio;
+        if (!folio) return;
+        const next = !isPinned;
+        const updated = await folioApi.update({
+          params: { id: folio.id },
+          body: { pinned: next },
+        });
+        setIsPinned(next);
+        alepha.store.set(currentFolioAtom, updated as Folio);
+        setFolios(
+          folios.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)),
+        );
+      },
+      invalidates: [["folioTree", projectId]],
+    },
+    [input.folio, isPinned, folioApi, folios, setFolios, alepha, projectId],
+  );
+
+  const deleteAction = useAction(
+    {
+      handler: async () => {
+        const folio = input.folio;
+        if (!folio) return;
+        await folioApi.delete({ params: { id: folio.id } });
+        const remaining = folios.filter((f) => f.id !== folio.id);
+        setFolios(remaining);
+        const remainingTags = new Set<string>();
+        for (const f of remaining) for (const t of f.tags) remainingTags.add(t);
+        setTags([...remainingTags].sort());
+        alepha.store.set(currentFolioAtom, undefined);
+        await router.push(
+          router.path("projectFolios", { params: { projectId } }),
+        );
+      },
+      invalidates: [["folioTree", projectId]],
+    },
+    [
+      input.folio,
+      folios,
+      setFolios,
+      setTags,
+      alepha,
+      router,
+      projectId,
+      folioApi,
+    ],
+  );
+
+  const handleDelete = async (): Promise<void> => {
+    const confirmed = await dialog.confirm({
+      title: tr("folios.confirm-delete-title"),
+      description: tr("folios.confirm-delete-message"),
+      destructive: true,
+    });
+    if (confirmed) await deleteAction.run();
+  };
+
+  const removeProtectionAction = useAction(
+    {
+      handler: async () => {
+        const folio = input.folio;
+        if (!folio || locked) return;
+        const confirmed = await dialog.confirm({
+          title: tr("folios.protected.remove-confirm-title"),
+          description: tr("folios.protected.remove-confirm-body"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        const values = input.draft.values;
+        const updated = await folioApi.update({
+          params: { id: folio.id },
+          body: {
+            title: values.title,
+            tags: values.tags,
+            summary: values.summary,
+            content: values.content,
+            protected: false,
+          },
+        });
+        forgetProtectedKey(folio.id);
+        setIsProtected(false);
+        setUnlocked(true);
+        alepha.store.set(currentFolioAtom, updated as Folio);
+        setFolios(
+          folios.map((f) => (f.id === updated.id ? (updated as Folio) : f)),
+        );
+        input.draft.markSaved(updated.updatedAt, values);
+      },
+      invalidates: [["folioTree", projectId]],
+    },
+    [
+      input.folio,
+      input.draft,
+      locked,
+      dialog,
+      tr,
+      folioApi,
+      folios,
+      setFolios,
+      alepha,
+      projectId,
+    ],
+  );
+
+  const confirmEncrypt = async (passphrase: string): Promise<string | null> => {
+    const folio = input.folio;
+    if (!folio) return null;
+    try {
+      const saltHex = cryptoProvider.randomUUID().replace(/-/g, "");
+      const key = await cryptoProvider.deriveKeyFromPassphrase(
+        passphrase,
+        saltHex,
+      );
+      const values = input.draft.values;
+      const envelope = await cryptoProvider.encryptWithPassphrase(
+        values.content,
+        key,
+        saltHex,
+      );
+      const updated = await folioApi.update({
+        params: { id: folio.id },
+        body: {
+          title: values.title,
+          tags: values.tags,
+          summary: values.summary,
+          content: envelope,
+          protected: true,
+        },
+      });
+      rememberProtectedKey(updated.id, key);
+      ensureProtectedKeysAutoLock();
+      setIsProtected(true);
+      setUnlocked(true);
+      alepha.store.set(currentFolioAtom, updated as Folio);
+      setFolios(
+        folios.map((f) => (f.id === updated.id ? (updated as Folio) : f)),
+      );
+      input.draft.markSaved(updated.updatedAt, values);
+      setEncryptDialogOpen(false);
+      return null;
+    } catch {
+      return tr("folios.protected.encrypt-failed");
+    }
+  };
+
+  const confirmMove = async (directoryId: string | null): Promise<void> => {
+    const folio = input.folio;
+    if (!folio) return;
+    const updated = await folioApi.update({
+      params: { id: folio.id },
+      body: { directoryId },
+    });
+    alepha.store.set(currentFolioAtom, updated as Folio);
+    setFolios(
+      folios.map((f) => (f.id === updated.id ? (updated as Folio) : f)),
+    );
+    setMoveDialogOpen(false);
+  };
+
+  const exportFolio = (): void => {
+    const folio = input.folio;
+    if (!folio) return;
+    if (isProtected && locked) {
+      toaster.error(tr("folios.protected.unlock-before-edit"));
+      return;
+    }
+    const values = input.draft.values;
+    const markdown = folioMarkdownExport({
+      ...folio,
+      title: values.title,
+      tags: values.tags,
+      summary: values.summary,
+      content: values.content,
+    });
+    const filename = `${folioExportFilename(values.title)}.md`;
+    triggerFolioDownload(filename, markdown, "text/markdown;charset=utf-8");
+  };
+
+  // Not this task's job to wire (see the report): `edit.*` / `insert.*` /
+  // `view.rich` / `view.source` dispatch through the MDXEditor toolbar
+  // (Task 11); `history.*` needs the inspector's revision list (Task 10);
+  // `folio.newDirectory` needs a name-prompt + directory-create flow that
+  // more naturally belongs with the tree pane's own creation UI (Task 9).
+  const notYetWired = (): void => {};
+
+  const handlers: FolioActionHandlers = {
+    "folio.new": () => {
+      if (!project) return;
+      router.push(router.path("projectFoliosNew", { params: { projectId } }));
+    },
+    "folio.newDirectory": notYetWired,
+    "folio.save": () => {
+      saveAction.run();
+    },
+    "folio.duplicate": () => {
+      duplicateAction.run();
+    },
+    "folio.move": () => setMoveDialogOpen(true),
+    "folio.pin": () => {
+      pinAction.run();
+    },
+    "folio.export": exportFolio,
+    "folio.encrypt": () => {
+      if (!isProtected) {
+        setEncryptDialogOpen(true);
+        return;
+      }
+      if (locked) {
+        toaster.error(tr("folios.protected.unlock-before-edit"));
+        return;
+      }
+      removeProtectionAction.run();
+    },
+    "folio.delete": () => {
+      handleDelete();
+    },
+    "edit.undo": notYetWired,
+    "edit.redo": notYetWired,
+    "edit.bold": notYetWired,
+    "edit.italic": notYetWired,
+    "edit.code": notYetWired,
+    "edit.link": notYetWired,
+    "edit.wikiLink": notYetWired,
+    "edit.find": () => input.find.show(),
+    "insert.heading": notYetWired,
+    "insert.bulletList": notYetWired,
+    "insert.numberedList": notYetWired,
+    "insert.taskList": notYetWired,
+    "insert.quote": notYetWired,
+    "insert.image": notYetWired,
+    "insert.table": notYetWired,
+    "insert.codeBlock": notYetWired,
+    "insert.divider": notYetWired,
+    "view.rich": notYetWired,
+    "view.source": notYetWired,
+    "view.tree": () => input.panes.toggleTree(),
+    "view.inspector": () => input.panes.toggleInspector(),
+    "view.focus": () => input.panes.toggleFocus(),
+    "history.revisions": notYetWired,
+    "history.compare": notYetWired,
+    "history.restore": notYetWired,
+    "history.keep": notYetWired,
+  };
+
+  const actionState: FolioActionState = {
+    locked,
+    isNew: !input.folio,
+    dirty: input.draft.dirty,
+    isProtected,
+    isPinned,
+  };
+
+  return {
+    handlers,
+    locked,
+    unlock,
+    saving: saveAction.loading,
+    actionState,
+    moveDialogOpen,
+    closeMoveDialog: () => setMoveDialogOpen(false),
+    confirmMove,
+    encryptDialogOpen,
+    closeEncryptDialog: () => setEncryptDialogOpen(false),
+    confirmEncrypt,
+  };
+};
+
+// ---------------------------------------------------------------------------
+// Protected-envelope helpers. Deliberately NOT reimplementing the crypto
+// ceremony (PBKDF2 derivation, AES-GCM) — these are the same hex/JSON
+// plumbing `FolioProtectedView.tsx` and the deleted `FolioEditor.tsx` each
+// already carried around a cached `CryptoKey`, duplicated here rather than
+// imported because they are private helpers in a component, not exported
+// utilities.
+// ---------------------------------------------------------------------------
+
+const parseProtectedEnvelope = (
+  raw: string,
+): { salt: string; iterations: number } | null => {
+  try {
+    const parsed = JSON.parse(raw) as {
+      salt?: string;
+      kdf?: { iterations?: number };
+    };
+    if (!parsed.salt) return null;
+    return {
+      salt: parsed.salt,
+      iterations: parsed.kdf?.iterations ?? 600_000,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const hexToBytes = (hex: string): Uint8Array => {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    out[i / 2] = Number.parseInt(hex.substring(i, i + 2), 16);
+  }
+  return out;
+};
+
+const decryptEnvelopeWithKey = async (
+  key: CryptoKey,
+  envelopeRaw: string,
+): Promise<string> => {
+  const env = JSON.parse(envelopeRaw) as { iv: string; ciphertext: string };
+  const ivBytes = hexToBytes(env.iv);
+  const ctBytes = hexToBytes(env.ciphertext);
+  const decrypted = await window.crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: ivBytes.buffer as ArrayBuffer },
+    key,
+    ctBytes.buffer as ArrayBuffer,
+  );
+  return new TextDecoder().decode(decrypted);
+};

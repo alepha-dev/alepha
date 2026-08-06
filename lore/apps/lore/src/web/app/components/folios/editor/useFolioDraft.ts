@@ -51,7 +51,13 @@ export interface FolioDraft {
   markSaved: (at: string, values: FolioDraftValues) => void;
 }
 
-const sameValues = (a: FolioDraftValues, b: FolioDraftValues): boolean =>
+/**
+ * Exported for `useFolioActions`'s create-mode fix: after `folioApi.create`
+ * resolves, it re-reads `draft.values` to see whether the user kept typing
+ * during the request's round-trip, and needs the same "did anything
+ * actually change" comparison this hook already uses for `dirty`.
+ */
+export const sameValues = (a: FolioDraftValues, b: FolioDraftValues): boolean =>
   a.title === b.title &&
   a.summary === b.summary &&
   a.content === b.content &&
