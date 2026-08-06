@@ -156,6 +156,13 @@ alepha p up --env staging
 |------|-------------|
 | `--prebuilt` | Skip the Vite bundle steps; only regenerate the deploy config (`wrangler.jsonc`). Use when `dist/` was already produced upstream. |
 
+`--tag` and `PlatformOrchestrator.up()`'s `tag` option were removed along
+with the artifact registry and the `push` command that once wrote to it --
+they had already stopped doing anything once the registry-backed adapter
+was gone. A programmatic caller of `orchestrator.up({ ... })` (e.g. Alepha
+Rocket) that still passes `tag` needs to drop it; the option was inert
+beforehand, so this is a type-only break, not a behavior change.
+
 ### down
 
 Tear down all resources for an environment. Requires `--env`.

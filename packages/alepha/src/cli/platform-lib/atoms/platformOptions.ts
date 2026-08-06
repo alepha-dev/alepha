@@ -125,16 +125,6 @@ export const platformOptions = $atom({
            */
           socket: z.text().optional(),
           /**
-           * Base URL of a deploy gateway, e.g. `"https://example.com"`.
-           *
-           * **No adapter reads this.** The `bay` adapter reaches a Bay over
-           * SSH, at {@link host} — there was once an HTTP path here, aimed at
-           * a Bay admin panel that was never written. The `lore` adapter that
-           * consumed it has since been removed along with its artifact
-           * registry.
-           */
-          endpoint: z.text().optional(),
-          /**
            * Custom domain for the deployed worker (e.g. "api.example.com").
            *
            * On Cloudflare this is attached as a custom-domain route.
@@ -219,13 +209,6 @@ export interface EnvironmentConfig {
    * overrides.
    */
   socket?: string;
-  /**
-   * Base URL of a deploy gateway.
-   *
-   * **No adapter reads this.** `bay` reaches a Bay over SSH at {@link host},
-   * and the `lore` adapter that once consumed it has been removed.
-   */
-  endpoint?: string;
   domain?: string;
   zone?: string;
   vars?: Record<string, string>;

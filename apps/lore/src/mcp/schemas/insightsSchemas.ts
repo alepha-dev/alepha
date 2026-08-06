@@ -14,7 +14,13 @@ import { projectParamsSchema } from "./commonSchemas.ts";
  */
 const errorGroupSchema = z.object({
   sigilId: z.string(),
-  /** The sigil's name, so the answer names an app, not a uuid. */
+  /**
+   * The sigil's display name — carries `sigil.name`, so the answer names
+   * an app, not a uuid. The wire field stays `sigilLabel` deliberately:
+   * this surface predates the sigil reshape, and renaming it would break
+   * existing MCP clients. `sigil_list` reports the identical string as
+   * `name` — same value, two field names, one per tool.
+   */
   sigilLabel: z.string(),
   fingerprint: z.string(),
   name: z.string(),

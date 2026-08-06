@@ -5,6 +5,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@alepha/ui/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
@@ -15,6 +20,7 @@ import { useState } from "react";
 import type { SigilController } from "@/api/controllers/SigilController.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
 import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import { currentSigilsAtom } from "../../../atoms/currentSigilsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -33,10 +39,15 @@ import TokenReveal from "../../shared/TokenReveal.tsx";
  * because the four aggregate tables cascade on `sigilId`. The confirmation each
  * opens is where that difference is spelled out.
  *
- * Both are owner-only server-side (`$secure` + `assertOwner`). The buttons are
- * shown to members too, matching the rest of the app's settings surfaces: the
- * server refuses and the error surfaces as a toast, rather than the UI keeping
- * a second, drift-prone copy of the authorization rules.
+ * Both are owner-only server-side (`$secure` + `assertOwner`) — that is the
+ * real gate, and it does not move. The buttons are disabled here for a
+ * non-owner, with a tooltip explaining why, purely so a member is not walked
+ * through a destructive confirmation dialog only to be refused at the end.
+ * This is a UX hint over `currentProjectMemberAtom.owner`, the same
+ * server-authoritative boolean the viewer's own membership row already
+ * carries — not a second, independently-derived authorization boundary. If
+ * the server's rule ever changes, this hint would drift; it does not
+ * substitute for it.
  */
 const AppSettings = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -46,8 +57,10 @@ const AppSettings = () => {
   const sigilApi = useClient<SigilController>();
 
   const [project] = useStore(currentProjectAtom);
+  const [member] = useStore(currentProjectMemberAtom);
   const [sigil, setSigil] = useStore(currentSigilAtom);
   const [sigils, setSigils] = useStore(currentSigilsAtom);
+  const isOwner = member?.owner ?? false;
 
   /**
    * The one moment a rotated token is readable. Cleared when dismissed.
@@ -141,15 +154,33 @@ const AppSettings = () => {
           <p className="text-muted-foreground text-sm">
             {tr("app.settings.rotate.description")}
           </p>
-          <Button
-            variant="outline"
-            disabled={busy}
-            aria-label={tr("sigils.action.rotate")}
-            onClick={() => void rotate()}
-          >
-            <RefreshCw />
-            {tr("sigils.action.rotate")}
-          </Button>
+          {isOwner ? (
+            <Button
+              variant="outline"
+              disabled={busy}
+              aria-label={tr("sigils.action.rotate")}
+              onClick={() => void rotate()}
+            >
+              <RefreshCw />
+              {tr("sigils.action.rotate")}
+            </Button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    disabled
+                    aria-label={tr("sigils.action.rotate")}
+                  />
+                }
+              >
+                <RefreshCw />
+                {tr("sigils.action.rotate")}
+              </TooltipTrigger>
+              <TooltipContent>{tr("app.settings.ownerOnly")}</TooltipContent>
+            </Tooltip>
+          )}
         </CardContent>
       </Card>
 
@@ -163,15 +194,33 @@ const AppSettings = () => {
           <p className="text-muted-foreground text-sm">
             {tr("app.settings.delete.description")}
           </p>
-          <Button
-            variant="destructive"
-            disabled={busy}
-            aria-label={tr("sigils.action.delete")}
-            onClick={() => void remove()}
-          >
-            <Trash2 />
-            {tr("sigils.action.delete")}
-          </Button>
+          {isOwner ? (
+            <Button
+              variant="destructive"
+              disabled={busy}
+              aria-label={tr("sigils.action.delete")}
+              onClick={() => void remove()}
+            >
+              <Trash2 />
+              {tr("sigils.action.delete")}
+            </Button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="destructive"
+                    disabled
+                    aria-label={tr("sigils.action.delete")}
+                  />
+                }
+              >
+                <Trash2 />
+                {tr("sigils.action.delete")}
+              </TooltipTrigger>
+              <TooltipContent>{tr("app.settings.ownerOnly")}</TooltipContent>
+            </Tooltip>
+          )}
         </CardContent>
       </Card>
     </div>

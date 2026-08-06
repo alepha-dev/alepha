@@ -640,6 +640,8 @@ export default {
   "app.settings.delete.title": "Supprimer cette application",
   "app.settings.delete.description":
     "Supprime l'application et tout ce qu'elle a remonté : pages vues, Web Vitals, visiteurs uniques et budget d'erreurs. Les fléaux déjà déposés sont conservés. Cette action est irréversible.",
+  "app.settings.ownerOnly":
+    "Seul le propriétaire du projet peut effectuer cette action.",
 
   "insights.range.1d": "Aujourd'hui",
   "insights.range.7d": "7 jours",
@@ -741,6 +743,8 @@ export default {
   "sigils.create.name": "Nom de l’application",
   "sigils.create.namePlaceholder": "lore",
   "sigils.create.submit": "Enrôler",
+  "sigils.create.ownerOnly":
+    "Seul le propriétaire du projet peut enrôler une application.",
   "sigils.token.title":
     "Copiez ce jeton maintenant — il est stocké haché et ne sera plus jamais affiché. Renseignez-le comme SIGIL_KEY dans l’application, avec SIGIL_SINK pointant vers cette instance.",
   "sigils.token.copy": "Copier le jeton",

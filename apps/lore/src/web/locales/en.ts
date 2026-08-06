@@ -635,6 +635,7 @@ export default {
   "app.settings.delete.title": "Delete this app",
   "app.settings.delete.description":
     "Removes the app and everything it ever reported: page views, web vitals, unique visitors and its error budget. Blights already filed are kept. This cannot be undone.",
+  "app.settings.ownerOnly": "Only the project owner can do this.",
 
   "insights.range.1d": "Today",
   "insights.range.7d": "7 days",
@@ -734,6 +735,7 @@ export default {
   "sigils.create.name": "App name",
   "sigils.create.namePlaceholder": "lore",
   "sigils.create.submit": "Enrol",
+  "sigils.create.ownerOnly": "Only the project owner can enrol an app.",
   "sigils.token.title":
     "Copy this token now — it is stored hashed and will never be shown again. Set it as SIGIL_KEY in the app, alongside SIGIL_SINK pointing at this instance.",
   "sigils.token.copy": "Copy token",
