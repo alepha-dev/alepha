@@ -160,18 +160,31 @@ no manifest and no `.env.<env>` file there is no allowlist at all, and nothing i
 `platform({ secrets: { keys: [...] } })` in `alepha.config.ts` overrides the allowlist outright — to
 narrow it, or to add a key the app reads through `process.env` rather than `$env`.
 
-The values travel on stdin, not on the command line:
+**They travel with the deploy, not after it.** The values are staged to a 0600 file on the host and
+that file's path is handed to `bay deploy`:
 
 ```bash
+ssh -o BatchMode=yes deploy@bay.example.com 'umask 077; cat > /tmp/.bay-secrets-<random>' \
+  < the-filtered-assignments
 ssh -o BatchMode=yes deploy@bay.example.com \
-  'bay env set myapp/production -' < the-filtered-assignments
+  'bay deploy - --name myapp --secrets-file /tmp/.bay-secrets-<random>' < myapp-latest.tar.gz
 ```
 
-An argument would sit in the host's process table for any user running `ps`, and in the local shell's
-history. Bay merges what arrives into the instance's `.env` — which lives outside the release
-directory and survives deploys and rollbacks — and **restarts the app when a value actually
-changed**, because an environment variable the running process never sees has not been set. An
-identical push changes nothing and restarts nothing, so redeploying does not cost an outage window.
+Bay merges that file into the instance's `.env` **during provision — before the release is swapped
+in and before the process starts**, so the app boots with its secrets. There is no window in which it
+runs without them, and no step that can fail once the code has already landed: a host that rejects
+the secrets rejects the whole deploy, with the previous release still serving.
+
+The file never holds a value on a command line — an argument sits in the host's process table for any
+user running `ps`, and in the local shell's history. `umask 077` before the redirect rather than a
+`chmod` after it, so the file is 0600 from the instant it exists; the name is 16 random bytes, so a
+predictable path cannot be pre-created by another user as a symlink. Bay refuses a symlink
+(`O_NOFOLLOW`) and any group- or world-readable mode anyway, and **consumes** the file — it is
+unlinked whether the deploy succeeds or is refused, so an aborted deploy strands no plaintext
+credentials on the host.
+
+The instance `.env` lives outside the release directory and survives deploys and rollbacks, and the
+merge only touches the keys it was sent — a redeploy that carries no secrets changes none.
 
 Two classes of key are dropped even when the app declares them, each with a line in the deploy log
 saying so:
@@ -186,12 +199,17 @@ saying so:
 `alepha platform status` reports the names that are actually set on the host, asked of it with
 `bay env list` — names only; Bay never answers with a value.
 
-If there is nothing to push, the deploy says so rather than finishing quietly. A **static site** is
+If there is nothing to send, the deploy says so rather than finishing quietly. A **static site** is
 skipped entirely and says so too: it has no process, so it has no environment, and anything it needs
 at build time is already inside the artifact.
 
-> This needs a `bay` on the host that has the `env` command. An older one prints its usage banner,
-> and the CLI turns that into `its bay has no env command … Upgrade bay on the host`. See
+To change a running app's configuration **without** redeploying it, `bay env set` is still the way —
+it restarts the app onto the new environment when a value actually changed, and does nothing when
+none did. See `apps/bay/INSTALL.md`.
+
+> This needs a `bay` on the host new enough to know `--secrets-file`. An older one refuses the flag,
+> and the CLI turns that into `its bay does not know --secrets-file … Upgrade bay on the host`. That
+> failure happens **before anything is unpacked**, so the release that was serving still is. See
 > `apps/bay/INSTALL.md` §7.
 
 ## Resources

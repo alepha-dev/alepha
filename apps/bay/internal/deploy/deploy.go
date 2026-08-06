@@ -66,6 +66,20 @@ type Options struct {
 	// this app's local files into the bucket, so switching backends will not
 	// strand them. Without it a populated `storage/` refuses the switch.
 	MigratedStorage bool
+	// Secrets are the app's own env vars, delivered WITH this deploy and merged
+	// into the instance `.env` during `provision` — before the release is
+	// swapped in, and before the process starts.
+	//
+	// That ordering is the whole point of them being here rather than in a
+	// second command. Setting them afterwards means the app boots once without
+	// them, and a failure at that step lands after the code already has.
+	// Populated from `--secrets-file` by [ConsumeSecretsFile], which has
+	// already refused everything in `bayOwnedKeys`.
+	//
+	// Empty is the normal case. The merge touches only the keys present here,
+	// so everything else in the `.env` survives a redeploy exactly as it
+	// always has.
+	Secrets map[string]string
 }
 
 // Result reports what was deployed.
@@ -222,6 +236,18 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		dbCreated      bool
 		storageBackend string
 	)
+	if m.IsStatic() && len(opts.Secrets) > 0 {
+		// Refused rather than dropped. A static site has no `.env` and no
+		// process, so there is nowhere for these to go and nothing that would
+		// ever read them — and a deploy that accepted them would report success
+		// while silently discarding an app's credentials. The CLI does not send
+		// them for a static site; reaching here means somebody passed
+		// `--secrets-file` by hand.
+		return nil, fmt.Errorf(
+			"%s/%s is a static site: it has no process, so it has no environment for the %d value(s) "+
+				"in the secrets file. Anything it needs at build time belongs in the artifact",
+			opts.Name, opts.Env, len(opts.Secrets))
+	}
 	if !m.IsStatic() {
 		port, err = allocatePort(store.UsedPorts())
 		if err != nil {
@@ -322,6 +348,21 @@ func provision(opts Options, instance string, m *manifest.Manifest, port int, cu
 	env, err := runner.LoadEnvFile(envPath)
 	if err != nil {
 		return "", false, "", err
+	}
+
+	// The app's own secrets, arriving with this deploy.
+	//
+	// Merged FIRST, before every Bay-owned assignment below, so Bay's keys
+	// overwrite anything that reached here claiming to be one. That cannot
+	// happen — `ConsumeSecretsFile` already refuses them by name — which is
+	// exactly why the ordering costs nothing and is worth having: the two
+	// defences fail independently.
+	//
+	// And merged here rather than after the deploy, so the process this
+	// provision is preparing starts WITH them. There is no boot without them
+	// and no second command that could fail once the code has landed.
+	for key, value := range opts.Secrets {
+		env[key] = value
 	}
 
 	// APP_SECRET belongs to the instance, not the release. Regenerating it on

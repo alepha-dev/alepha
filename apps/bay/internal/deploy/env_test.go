@@ -188,3 +188,123 @@ func TestBayOwnedKeysCoversTheSecretThatCannotBeRegenerated(t *testing.T) {
 		t.Fatal("an ordinary app key must not be Bay-owned")
 	}
 }
+
+// secretsFile writes a file the way the deploying user does: 0600, KEY=VALUE.
+func secretsFile(t *testing.T, body string, mode os.FileMode) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "secrets")
+	if err := os.WriteFile(path, []byte(body), mode); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestConsumeSecretsFileTakesTheFileWithIt(t *testing.T) {
+	// "Consume", not "read". The file is plaintext credentials on a disk, and
+	// the deploy that wrote it is the only thing that wanted it there.
+	path := secretsFile(t, "STRIPE_KEY=sk_live_1\n", 0o600)
+
+	values, err := ConsumeSecretsFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if values["STRIPE_KEY"] != "sk_live_1" {
+		t.Fatalf("value did not survive the read: %q", values["STRIPE_KEY"])
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("the secrets file is still on disk: %v", err)
+	}
+}
+
+func TestConsumeSecretsFileTakesItAwayEvenWhenItRefuses(t *testing.T) {
+	/*
+		The requirement that is easy to satisfy on the happy path and easy to
+		miss everywhere else. A refused deploy is precisely the one somebody
+		comes back to look at, so it is precisely the one that must not have
+		left credentials lying in /tmp.
+	*/
+	for _, tc := range []struct {
+		name string
+		body string
+	}{
+		{"a key Bay owns", "APP_SECRET=attacker\n"},
+		{"a line that is not an assignment", "STRIPE_KEY=ok\nnonsense\n"},
+		{"nothing at all", "# just a comment\n"},
+		{"a key assigned twice", "A=1\nA=2\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := secretsFile(t, tc.body, 0o600)
+
+			if _, err := ConsumeSecretsFile(path); err == nil {
+				t.Fatal("expected a refusal")
+			}
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				t.Fatalf("a refused secrets file was left on disk: %v", err)
+			}
+		})
+	}
+}
+
+func TestConsumeSecretsFileRefusesAModeSomebodyElseCanRead(t *testing.T) {
+	// The writer sets `umask 077`, so anything wider was made by someone else
+	// — on a shared box, plausibly on purpose, at a path they guessed.
+	path := secretsFile(t, "STRIPE_KEY=sk_live_1\n", 0o644)
+
+	_, err := ConsumeSecretsFile(path)
+	if err == nil {
+		t.Fatal("a world-readable secrets file must be refused")
+	}
+	if !strings.Contains(err.Error(), "0644") {
+		t.Fatalf("the refusal must name the mode it saw, got: %v", err)
+	}
+	// Removed anyway: it is a plaintext secrets file at a path we were handed.
+	if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
+		t.Fatalf("a refused secrets file was left on disk: %v", statErr)
+	}
+}
+
+func TestConsumeSecretsFileNeverFollowsASymlink(t *testing.T) {
+	/*
+		The attack the mode check alone does not stop: another user on the box
+		pre-creates the path as a link to somewhere they can read, and `cat >`
+		writes the secrets straight through it.
+
+		O_NOFOLLOW rather than lstat-then-open, so there is no window to swap
+		the link in between the two calls.
+	*/
+	dir := t.TempDir()
+	target := filepath.Join(dir, "attacker-owned")
+	if err := os.WriteFile(target, []byte("STRIPE_KEY=sk_live_1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "secrets")
+	if err := os.Symlink(target, path); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := ConsumeSecretsFile(path)
+	if err == nil {
+		t.Fatal("a symlink must never be followed")
+	}
+	if !strings.Contains(err.Error(), "symlink") {
+		t.Fatalf("the refusal must say what it refused, got: %v", err)
+	}
+	// The target is deliberately NOT removed: unlinking the link would not
+	// take the plaintext with it, and the operator has to be sent to look.
+	if _, statErr := os.Stat(target); statErr != nil {
+		t.Fatalf("the symlink's target should be left alone: %v", statErr)
+	}
+}
+
+func TestConsumeSecretsFileSaysWhenBayCannotSeeTheFile(t *testing.T) {
+	// A `PrivateTmp=yes` in bay.service makes the deploying user's /tmp and
+	// Bay's two different directories, and the symptom is a file that was
+	// definitely just written being definitely not there.
+	_, err := ConsumeSecretsFile(filepath.Join(t.TempDir(), "never-written"))
+	if err == nil {
+		t.Fatal("a missing secrets file must be an error")
+	}
+	if !strings.Contains(err.Error(), "PrivateTmp") {
+		t.Fatalf("the error must name the cause an operator can act on, got: %v", err)
+	}
+}

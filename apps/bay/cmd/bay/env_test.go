@@ -216,3 +216,131 @@ func TestEnvSetRefusesAValueOnTheCommandLine(t *testing.T) {
 		t.Fatalf("the refusal must name both the channel and the reason, got: %v", err)
 	}
 }
+
+// deployWithSecrets runs the real deploy sequence with a secrets file beside
+// the artifact, exactly as `bay deploy --secrets-file` does.
+func deployWithSecrets(t *testing.T, f *deployFixture, body string, mode os.FileMode) (string, *deployOutcome, *deployFailure) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "secrets")
+	if err := os.WriteFile(path, []byte(body), mode); err != nil {
+		t.Fatal(err)
+	}
+	out, derr := f.server.deployArtifact(t.Context(), deployArtifactOptions{
+		Artifact: deployableArtifact(t), Name: "demo", Env: "production",
+		SecretsFile: path,
+	})
+	return path, out, derr
+}
+
+func TestTheAppBootsWithItsSecretsOnAFirstDeploy(t *testing.T) {
+	/*
+		The whole reason `--secrets-file` exists. Pushed after the deploy, the
+		app starts once without its secrets and a failure at that step lands
+		after the code already has. Merged during provision, the very first
+		process ever started for this release has them.
+
+		`lastSpec.Env` is what the supervisor was actually asked to run with —
+		the only assertion that tells "in the .env" from "in the process".
+	*/
+	f := newDeployFixture(t)
+
+	_, _, derr := deployWithSecrets(t, f, "STRIPE_KEY=sk_live_1\n", 0o600)
+	if derr != nil {
+		t.Fatalf("deploy failed: %v", derr)
+	}
+
+	if got := f.runner.lastSpec.Env["STRIPE_KEY"]; got != "sk_live_1" {
+		t.Fatalf("the first process must already have the secret, got %q", got)
+	}
+	// One start, not two. A second would mean the app booted once without
+	// them — precisely the window this closes.
+	if f.runner.starts != 1 {
+		t.Fatalf("expected exactly one start, got %d", f.runner.starts)
+	}
+}
+
+func TestTheSecretsFileIsGoneWhetherOrNotTheDeployWorked(t *testing.T) {
+	f := newDeployFixture(t)
+
+	path, _, derr := deployWithSecrets(t, f, "STRIPE_KEY=sk_live_1\n", 0o600)
+	if derr != nil {
+		t.Fatalf("deploy failed: %v", derr)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("a successful deploy left the secrets file behind: %v", err)
+	}
+}
+
+func TestARefusedSecretsFileStopsTheDeployBeforeItTouchesAnything(t *testing.T) {
+	/*
+		Consumed before the hold, before the stop, before a byte is unpacked.
+		A validation must not be the thing that takes an app down: the running
+		release keeps serving and the refusal costs the caller nothing but the
+		round trip.
+	*/
+	f := newDeployFixture(t)
+	if _, derr := f.deploy(deployableArtifact(t)); derr != nil {
+		t.Fatalf("the first deploy should succeed: %v", derr)
+	}
+	before := f.storedRelease(t)
+	starts := f.runner.starts
+
+	path, _, derr := deployWithSecrets(t, f, "APP_SECRET=attacker\n", 0o600)
+	if derr == nil {
+		t.Fatal("a secrets file naming a Bay-owned key must refuse the deploy")
+	}
+	if derr.Status != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %v", derr.Status, derr)
+	}
+	if !f.runner.Running("demo/production") {
+		t.Fatal("the previous release must still be serving")
+	}
+	if f.runner.starts != starts {
+		t.Fatalf("nothing should have been restarted: %d -> %d", starts, f.runner.starts)
+	}
+	if f.storedRelease(t) != before {
+		t.Fatalf("the release moved: %s -> %s", before, f.storedRelease(t))
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("a refused deploy left the secrets file behind: %v", err)
+	}
+}
+
+func TestSecretsSurviveTheNextDeployThatCarriesNone(t *testing.T) {
+	// Merge, never replace — the same contract the instance `.env` has always
+	// had. A redeploy that changes no configuration must not wipe it.
+	f := newDeployFixture(t)
+	if _, _, derr := deployWithSecrets(t, f, "STRIPE_KEY=sk_live_1\n", 0o600); derr != nil {
+		t.Fatalf("first deploy failed: %v", derr)
+	}
+
+	if _, derr := f.deploy(deployableArtifact(t)); derr != nil {
+		t.Fatalf("second deploy failed: %v", derr)
+	}
+
+	if got := f.runner.lastSpec.Env["STRIPE_KEY"]; got != "sk_live_1" {
+		t.Fatalf("a plain redeploy lost the secret: %q", got)
+	}
+}
+
+func TestAStaticSiteRefusesASecretsFileRatherThanDropIt(t *testing.T) {
+	// It has no `.env` and no process, so there is nowhere for these to go.
+	// Accepting them would report success while discarding an app's
+	// credentials — the silent class this whole line of work removes.
+	f := newDeployFixture(t)
+	path := filepath.Join(t.TempDir(), "secrets")
+	if err := os.WriteFile(path, []byte("STRIPE_KEY=sk\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, derr := f.server.deployArtifact(t.Context(), deployArtifactOptions{
+		Artifact: staticArtifact(t), Name: "demo", Env: "production",
+		SecretsFile: path,
+	})
+	if derr == nil {
+		t.Fatal("a static site must refuse a secrets file")
+	}
+	if !strings.Contains(derr.Error(), "static site") {
+		t.Fatalf("the refusal must say why, got: %v", derr)
+	}
+}

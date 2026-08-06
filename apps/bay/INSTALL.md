@@ -193,28 +193,41 @@ Signed in to HOST, but its `bay` is too old to read the deploy artifact from std
   (error: open -: no such file or directory)
 ```
 
-A Bay predating `bay env` is the second version gate, and the one that costs a running app its
-configuration. `alepha platform up` pushes the app's declared secrets to `bay env set <name/env> -`;
-a Bay that has no such command prints its whole usage banner and exits 2, which the CLI reports as:
+A Bay predating `--secrets-file` is the second version gate. `alepha platform up` stages the app's
+declared secrets to a 0600 file on this host and hands `bay deploy` its path, so that Bay can merge
+them before the release is swapped in. A Bay that does not know the flag refuses it:
 
 ```
-Signed in to HOST, but its `bay` has no `env` command, so there is nowhere to put this
-  app's secrets — it answered with its usage banner instead. Upgrade `bay` on the host.
+Signed in to HOST, but its `bay` does not know `--secrets-file`, so this app's secrets
+  have nowhere to go. Upgrade `bay` on the host. Nothing was deployed — the release
+  that was serving still is. (error: unknown flag "--secrets-file")
 ```
 
-The deploy fails at the secrets step, after the code has already landed: the app is serving the new
-release **without** the secrets. Upgrade the binary and re-run `alepha platform up`.
+**Nothing lands.** The flag is refused while the artifact is still on stdin, so no release is
+unpacked, `current` is not moved, and the app that was serving keeps serving. Upgrade the binary and
+re-run `alepha platform up`. (The CLI removes the staged secrets file itself when a deploy fails this
+way — see below.)
 
-A project with nothing to push never reaches this and keeps deploying to an old Bay unchanged — an
+A project with nothing to send never reaches this and keeps deploying to an old Bay unchanged — an
 app that declares no `$env` keys, or whose declared keys are set neither in `.env.<env>` nor in the
 deploying environment. Static sites are skipped outright, having no process to configure.
+
+A Bay predating `bay env` is a third, softer gate: `alepha platform status` reads back which
+variables are configured with `bay env list`, and an older Bay prints its usage banner instead. That
+one affects reporting only, never a deploy.
+
+**Do not add `PrivateTmp=yes` to `bay.service`.** The staged secrets file is written to `/tmp` by the
+deploying user and read by Bay as root; a private `/tmp` makes those two different directories and
+every deploy carrying secrets fails with `no secrets file at /tmp/…`. The error names this cause.
 
 `bay --version` prints `dev` for a plain `go build`, so it will not tell you how old an installed
 binary is. Its mtime (`ls -l /opt/bay/bin/bay`) is the practical answer.
 
 ## Setting an app's environment by hand
 
-The same door the deploy uses. Values are read from stdin — never from the command line, where an
+For changing a **running** app's configuration without redeploying it. (A deploy delivers its own
+secrets through `--secrets-file`, above, so that they are in place before the process starts; this is
+the other door, for afterwards.) Values are read from stdin — never from the command line, where an
 argument is visible in `ps` to every user on the machine and is kept in the shell's history:
 
 ```bash
@@ -243,5 +256,7 @@ The `alepha platform` pre-flight distinguishes these for you, so read its messag
 | `bay` is not on that user's PATH | §5b — symlink into `/usr/local/bin` |
 | `connect: permission denied` on the socket | §5a — add the user to `bay-control`, then reconnect |
 | too old to read the artifact from stdin | §7 — upgrade the host binary |
-| `bay` has no `env` command | §7 — upgrade the host binary; the code landed, the secrets did not |
+| `bay` does not know `--secrets-file` | §7 — upgrade the host binary; nothing was deployed |
+| `bay` has no `env` command | §7 — upgrade the host binary; affects `platform status` only |
+| `no secrets file at /tmp/…` | §7 — remove `PrivateTmp=` from `bay.service` |
 | `control api unreachable` as root | Bay really is down: `systemctl status bay` |
