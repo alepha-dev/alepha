@@ -14,7 +14,6 @@ import {
   Flag,
   Grid3x2,
   Inbox,
-  Plus,
   TriangleAlert,
 } from "lucide-react";
 import {
@@ -138,7 +137,14 @@ const ProjectView = () => {
       badge: questCount?.count ? questCount.count : undefined,
     },
   ];
-  if (features.blights) {
+  // Blights are reported by apps, so the entry follows the apps: it appears
+  // once some enrolled app carries the capability, and goes when the last one
+  // drops it. `?? []` means a failed sigil read hides the entry — the same
+  // "a degraded section costs a section" trade the Apps group below makes.
+  const collectsBlights = (sigils ?? []).some((it) =>
+    it.kinds.includes("blights"),
+  );
+  if (features.sigils && collectsBlights) {
     workItems.push({
       label: tr("project.menu.blights"),
       icon: Bug,
@@ -193,36 +199,29 @@ const ProjectView = () => {
     const activeAppName = ROUTES_APP.has(name)
       ? String(routerState.params.appName ?? "")
       : "";
-    // Three states, and they are not the same thing. `undefined` means the
-    // loader's `listSigils` failed and was swallowed to keep the page alive —
-    // saying "Enrol an app" there would tell a member their project is empty
-    // when it may be full. Both degenerate states still link to the settings
-    // page, which is where a retry (or the enrolment form) lives.
+    // Two states worth rendering, and they are not the same claim. `undefined`
+    // means the loader's `listSigils` failed and was swallowed to keep the page
+    // alive — that is worth saying, and it links to the settings page where a
+    // retry lives. `[]` renders nothing at all: the group would hold no apps
+    // and no way to add one, since enrolment lives on the settings page.
     const appsUnavailable = sigils === undefined;
     const apps = sigils ?? [];
-    const settingsHref = router.path("projectSettingsSigils", {
-      params: { projectId },
-    });
-    opsItems.push({
-      label: tr("project.menu.apps"),
-      icon: AppWindow,
-      // Rendered open in both degenerate states: a collapsed group holding the
-      // only affordance — or the only explanation — is a dead end.
-      defaultOpen: apps.length === 0 ? true : undefined,
-      children: appsUnavailable
-        ? [
-            {
-              label: tr("project.menu.apps.unavailable"),
-              icon: TriangleAlert,
-              href: settingsHref,
-            },
-          ]
-        : apps.length === 0
+    if (appsUnavailable || apps.length > 0) {
+      opsItems.push({
+        label: tr("project.menu.apps"),
+        icon: AppWindow,
+        // Open by default while the list is short enough to read at a glance,
+        // and once past that left to the shell — `undefined` means "closed
+        // unless a descendant is active".
+        defaultOpen: apps.length > 5 ? undefined : true,
+        children: appsUnavailable
           ? [
               {
-                label: tr("project.menu.apps.enrol"),
-                icon: Plus,
-                href: settingsHref,
+                label: tr("project.menu.apps.unavailable"),
+                icon: TriangleAlert,
+                href: router.path("projectSettingsSigils", {
+                  params: { projectId },
+                }),
               },
             ]
           : apps.map((it) => ({
@@ -232,7 +231,8 @@ const ProjectView = () => {
               }),
               active: activeAppName === it.name,
             })),
-    });
+      });
+    }
   }
 
   const nav: NavGroup[] = [

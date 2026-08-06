@@ -619,7 +619,6 @@ export default {
   "project.menu.feedback": "Retours",
   "project.menu.blights": "Fléaux",
   "project.menu.apps": "Applications",
-  "project.menu.apps.enrol": "Enrôler une application",
   "project.menu.apps.unavailable": "Liste indisponible",
 
   "app.tab.dashboard": "Vue d'ensemble",
