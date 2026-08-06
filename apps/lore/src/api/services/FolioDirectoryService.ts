@@ -152,7 +152,17 @@ export class FolioDirectoryService {
     const nextName = await this.names.autoSuffix(directory.name, scope);
     await this.names.reserve(nextName, "directory", id, scope);
     return this.directories.updateById(id, {
-      parentId: newParentId,
+      // `newParentId ?? null`, NOT `newParentId` bare — moving to the
+      // project root passes `newParentId: undefined`, and an object key
+      // present with value `undefined` is exactly what Drizzle's `.set()`
+      // silently skips (same rule `FolioController.update`'s own
+      // `directoryId` handling is built around, one file over: `undefined`
+      // means "no change", only an explicit `null` clears a nullable FK).
+      // Before this fix, a directory could never actually be moved to root
+      // through this method — the request succeeded (200, the row's own
+      // `updatedAt` even bumped from the `name` write) and silently left
+      // `parentId` exactly as it was.
+      parentId: newParentId ?? null,
       name: nextName,
     });
   }

@@ -520,7 +520,18 @@ export const useFolioActions = (
             content: contentToSend,
             protected: isProtected,
             projectId: project.id,
-            directoryId: folio.directoryId,
+            // `currentDirectoryId` (local state, moved by `confirmMove`'s
+            // own success), NOT `folio.directoryId` — the same staleness
+            // fix already applied to the meta bar's directory chip in
+            // `FolioDocument.tsx` (`props.actions.directoryId ??
+            // props.directoryId`). `folio` is `input.folio`, the
+            // route-loader prop, frozen for the mount's lifetime: after an
+            // in-session move via the tree (Task 9) or the meta bar's own
+            // "Move to…" dialog, `folio.directoryId` still reads the OLD
+            // directory, so a duplicate made after that move would file
+            // the copy back under the folio's pre-move location instead of
+            // where it now actually lives.
+            directoryId: currentDirectoryId,
           },
         });
         if (isProtected && keyForDuplicate) {
@@ -547,6 +558,7 @@ export const useFolioActions = (
       isProtected,
       locked,
       protectedSalt,
+      currentDirectoryId,
       folioApi,
       folios,
       setFolios,

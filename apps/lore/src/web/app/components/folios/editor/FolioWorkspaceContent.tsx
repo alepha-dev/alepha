@@ -31,12 +31,16 @@ export interface FolioWorkspaceContentProps {
  * reset all of it.
  *
  * Save, pin, duplicate, export, encrypt/remove-protection and delete are
- * all owned by `useFolioActions` now — this component only renders the
- * chrome (status line, Save button) and the three-region layout
- * (tree / document / inspector), wiring the tree and inspector regions'
- * open state through to the hook so `view.tree` / `view.inspector` have
- * something to toggle even though those panes don't render anything yet
- * (Task 9, Task 10).
+ * all owned by `useFolioActions` now — this component renders the chrome
+ * (status line, Save button) and the document + inspector regions. The
+ * folio TREE pane (Task 9) is NOT one of these regions — it mounts in
+ * `FolioWorkspace.tsx`, outside this component's `key`, because its
+ * collapse state must survive a folio-to-folio navigation and everything
+ * in this component is deliberately torn down by one. This component still
+ * wires the inspector region's open state through to `useFolioActions` so
+ * `view.tree` / `view.inspector` have something to toggle even though
+ * `view.tree` currently has no visible effect on the tree it no longer
+ * shares a subtree with (Task 10/11 concern — see the task report).
  */
 const FolioWorkspaceContent = (
   props: FolioWorkspaceContentProps,
@@ -84,7 +88,7 @@ const FolioWorkspaceContent = (
       : tr(`folios.editor.status.${draft.statusKey}`);
 
   return (
-    <div className="bg-card flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="bg-card flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {/* Chrome row — the menubar and toolbar mount here in Task 10,
           rendered through MDXEditor's `renderToolbar`. */}
       <div className="border-border flex h-13 flex-none items-center gap-2 border-b px-3">
@@ -103,7 +107,8 @@ const FolioWorkspaceContent = (
       </div>
 
       <div className="flex min-h-0 flex-1">
-        {/* Tree pane — Task 9 */}
+        {/* The tree pane (Task 9) mounts one level up, in
+            `FolioWorkspace.tsx` — not here. See that file's doc for why. */}
         <div className="min-w-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex max-w-[812px] flex-col gap-4 px-8 py-8">
             <FolioDocument

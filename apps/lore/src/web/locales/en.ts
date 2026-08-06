@@ -230,6 +230,23 @@ export default {
   "folios.editor.locked.warning":
     "Image uploads and full-text search stay disabled while a folio is protected.",
 
+  "folios.editor.tree.title": "Folios",
+  "folios.editor.tree.new-folio": "New folio",
+  "folios.editor.tree.new-directory": "New directory",
+  "folios.editor.tree.search": "Search folios",
+  "folios.editor.tree.search-placeholder": "Search this project…",
+  "folios.editor.tree.search-empty": "Nothing matched.",
+  "folios.editor.tree.empty": "No folios yet.",
+  "folios.editor.tree.untitled-folio": "New folio",
+  "folios.editor.tree.untitled-directory": "New directory",
+  "folios.editor.tree.open": "Open",
+  "folios.editor.tree.open-new-tab": "Open in new tab",
+  "folios.editor.tree.rename": "Rename",
+  "folios.editor.tree.copy-wiki-link": "Copy wiki-link",
+  "folios.editor.tree.confirm-delete-directory-title": "Delete this directory?",
+  "folios.editor.tree.confirm-delete-directory-body":
+    "Everything inside it — folios included — is deleted too. This cannot be undone.",
+
   "board.filter.search": "Search",
   "board.filter.status": "Status",
   "board.filter.zone": "Zone",
