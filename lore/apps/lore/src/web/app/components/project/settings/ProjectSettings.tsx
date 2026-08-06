@@ -11,6 +11,7 @@ import {
   BookMarked,
   BookOpen,
   Flag,
+  Inbox,
   KanbanSquare,
   type LucideIcon,
   MapPin,
@@ -28,6 +29,7 @@ type RouteName =
   | "projectSettingsZones"
   | "projectSettingsKanban"
   | "projectSettingsFolios"
+  | "projectSettingsFeedback"
   | "projectSettingsSigils"
   | "projectSettingsMilestones"
   | "projectSettingsQuests";
@@ -38,6 +40,7 @@ type NavLabelKey =
   | "project.settings.nav.zones"
   | "project.settings.nav.kanban"
   | "project.settings.nav.folios"
+  | "project.settings.nav.feedback"
   | "project.settings.nav.sigils"
   | "project.settings.nav.milestones"
   | "project.settings.nav.quests";
@@ -92,6 +95,11 @@ const NAV_GROUPS: NavGroup[] = [
         route: "projectSettingsFolios",
         labelKey: "project.settings.nav.folios",
         icon: BookOpen,
+      },
+      {
+        route: "projectSettingsFeedback",
+        labelKey: "project.settings.nav.feedback",
+        icon: Inbox,
       },
       {
         route: "projectSettingsSigils",

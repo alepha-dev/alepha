@@ -8,7 +8,12 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 // settings sub-page. Per-quest toggles (questNote / questReminder /
 // questChrono) live on the Quests settings page and render via a
 // dedicated row component, not this section.
-type ModuleFeatureKey = "kanban" | "folios" | "milestones" | "sigils";
+type ModuleFeatureKey =
+  | "kanban"
+  | "folios"
+  | "milestones"
+  | "sigils"
+  | "feedback";
 
 // Compile-time guarantee that ModuleFeatureKey stays a subset of
 // ProjectFeatures keys — if a key gets renamed in the entity, the
@@ -29,11 +34,13 @@ const DESCRIPTION_KEYS: Record<
   | "project.settings.feature.folios.description"
   | "project.settings.feature.milestones.description"
   | "project.settings.feature.sigils.description"
+  | "project.settings.feature.feedback.description"
 > = {
   kanban: "project.settings.feature.kanban.description",
   folios: "project.settings.feature.folios.description",
   milestones: "project.settings.feature.milestones.description",
   sigils: "project.settings.feature.sigils.description",
+  feedback: "project.settings.feature.feedback.description",
 };
 
 const NAV_KEYS: Record<
@@ -42,11 +49,13 @@ const NAV_KEYS: Record<
   | "project.settings.nav.folios"
   | "project.settings.nav.milestones"
   | "project.settings.nav.sigils"
+  | "project.settings.nav.feedback"
 > = {
   kanban: "project.settings.nav.kanban",
   folios: "project.settings.nav.folios",
   milestones: "project.settings.nav.milestones",
   sigils: "project.settings.nav.sigils",
+  feedback: "project.settings.nav.feedback",
 };
 
 const ProjectSettingsFeatureSection = (

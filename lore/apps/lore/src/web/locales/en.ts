@@ -375,6 +375,7 @@ export default {
   "project.settings.zones.never": "—",
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
+  "project.settings.nav.feedback": "Feedback",
   "project.settings.nav.sigils": "Sigils",
   "project.settings.nav.milestones": "Milestones",
   "project.settings.nav.quests": "Quests",
@@ -448,6 +449,8 @@ export default {
     "Group quests into time-boxed cycles with start / end dates and changelogs.",
   "project.settings.feature.sigils.description":
     "Enrol your applications so they can report crashes, page views and web vitals here — one token per app.",
+  "project.settings.feature.feedback.description":
+    "Let any signed-in user send this project a bug report or feature request, and give the owner an inbox to triage them in.",
   "project.settings.delete.modal.title": "Delete Project",
   "project.settings.delete.modal.description":
     "This action cannot be undone. This will permanently destroy the project and all its quests.",

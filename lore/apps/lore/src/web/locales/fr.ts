@@ -376,6 +376,7 @@ export default {
   "project.settings.zones.never": "—",
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
+  "project.settings.nav.feedback": "Retours",
   "project.settings.nav.sigils": "Sigils",
   "project.settings.nav.milestones": "Jalons",
   "project.settings.nav.quests": "Quêtes",
@@ -450,6 +451,8 @@ export default {
     "Regroupez les quêtes en jalons avec dates de début / fin et historique.",
   "project.settings.feature.sigils.description":
     "Enrôlez vos applications pour qu’elles remontent ici plantages, pages vues et Web Vitals — un jeton par application.",
+  "project.settings.feature.feedback.description":
+    "Autorisez tout utilisateur connecté à envoyer un rapport de bug ou une demande de fonctionnalité à ce projet, et donnez au propriétaire une boîte de réception pour les trier.",
   "project.settings.delete.modal.title": "Détruire le projet",
   "project.settings.delete.modal.description":
     "Cette action est irréversible. Le projet et toutes ses quêtes seront définitivement perdus.",
