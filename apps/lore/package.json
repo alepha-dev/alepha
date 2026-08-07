@@ -30,6 +30,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@mdxeditor/editor": "^4.2.0",
     "alepha": "workspace:*",
+    "lexical": "^0.48.0",
     "lucide-react": "^1.28.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

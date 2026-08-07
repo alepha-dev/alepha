@@ -10512,6 +10512,7 @@ __metadata:
     alepha: "workspace:*"
     better-sqlite3: "npm:^13.0.2"
     drizzle-kit: "npm:1.0.0-rc.4"
+    lexical: "npm:^0.48.0"
     lucide-react: "npm:^1.28.0"
     react: "npm:^19.2.8"
     react-dom: "npm:^19.2.8"

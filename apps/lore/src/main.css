@@ -225,6 +225,19 @@ body::before {
   background: var(--muted);
 }
 
+/* FolioToolbar's restyle of MDXEditor's own toolbar buttons (Task 11) —
+ * pill-shaped, fixed-height, matching the workspace's design instead of
+ * the library's default squarish look. Scoped to `.folio-toolbar-buttons`
+ * (a wrapper FolioToolbar renders around just this group), not `.mdx-toolbar`
+ * as a whole, so it never touches the Menubar row above it or the
+ * `Segmented`/Save controls that share the same row — those already have
+ * their own correct sizing. Targets the plain `button` element rather than
+ * any of MDXEditor's own (hashed, version-coupled) CSS-module class names. */
+.folio-toolbar-buttons button {
+  height: 30px;
+  border-radius: 9999px;
+}
+
 .lore-mdx-content {
   min-height: var(--lore-mdx-min-h, 16rem);
   font-size: 0.875rem;

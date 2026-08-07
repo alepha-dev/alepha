@@ -1,12 +1,7 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { DateTimeProvider } from "alepha/datetime";
-import { useInject, useStore } from "alepha/react";
-import { useI18n } from "alepha/react/i18n";
-import { Save } from "lucide-react";
+import { useStore } from "alepha/react";
 import { type ReactElement, useState } from "react";
 import type { Folio } from "@/api/entities/folios.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import { useFolioImageUpload } from "../../shared/markdown-editor/useFolioImageUpload.ts";
 import FolioDocument from "./document/FolioDocument.tsx";
 import FolioInspector, {
@@ -34,6 +29,16 @@ export interface FolioWorkspaceContentProps {
   onToggleInspector: () => void;
   inspectorTab: FolioInspectorTab;
   onInspectorTabChange: (tab: FolioInspectorTab) => void;
+  /**
+   * The tree pane's open/closed state, threaded from `FolioWorkspace.tsx`
+   * for the same reason as the inspector's — see that file's doc. `view.tree`
+   * (⌘\\) needs something to toggle; the tree pane itself does not live in
+   * this component's subtree (it mounts one level up), only the boolean
+   * driving its visibility passes through here, into `useFolioActions`'s
+   * `panes.tree`.
+   */
+  treeOpen: boolean;
+  onToggleTree: () => void;
 }
 
 /**
@@ -44,38 +49,33 @@ export interface FolioWorkspaceContentProps {
  * reset all of it.
  *
  * Save, pin, duplicate, export, encrypt/remove-protection and delete are
- * all owned by `useFolioActions` now — this component renders the chrome
- * (status line, Save button) and the document + inspector regions. The
- * folio TREE pane (Task 9) is NOT one of these regions — it mounts in
- * `FolioWorkspace.tsx`, outside this component's `key`, because its
- * collapse state must survive a folio-to-folio navigation and everything
- * in this component is deliberately torn down by one. This component still
- * wires the inspector region's open state through to `useFolioActions` so
- * `view.tree` / `view.inspector` have something to toggle even though
- * `view.tree` currently has no visible effect on the tree it no longer
- * shares a subtree with (Task 10/11 concern — see the task report).
- * `view.inspector` DOES now have a visible effect: the inspector's
- * open/closed state is a prop from `FolioWorkspace.tsx`, not local state
- * — see `FolioWorkspaceContentProps`'s doc.
+ * all owned by `useFolioActions` now — this component renders the document
+ * + inspector regions. The status line and Save button no longer live here
+ * either (Task 11): they moved into `FolioToolbar`, which mounts through
+ * `MarkdownEditor`'s `renderToolbar` (see `FolioDocument.tsx`) alongside
+ * `FolioMenubar`. The folio TREE pane (Task 9) is NOT one of these regions
+ * — it mounts in `FolioWorkspace.tsx`, outside this component's `key`,
+ * because its collapse state must survive a folio-to-folio navigation and
+ * everything in this component is deliberately torn down by one. Both
+ * `treeOpen` and `inspectorOpen` are props from `FolioWorkspace.tsx` for
+ * that same reason — see `FolioWorkspaceContentProps`'s doc.
  */
 const FolioWorkspaceContent = (
   props: FolioWorkspaceContentProps,
 ): ReactElement => {
-  const { tr } = useI18n<I18n, "en">();
-  const dt = useInject(DateTimeProvider);
   const [project] = useStore(currentProjectAtom);
 
   const draft = useFolioDraft(props.folio);
 
-  // Real boolean state only for the pane `useFolioActions`'s `panes`
-  // input declares a boolean for that this component still owns —
-  // `tree`. `inspector` now comes from `props` (see
-  // `FolioWorkspaceContentProps`'s doc: it has to live above this
-  // component's `key` or a folio switch would silently reset it).
-  // `toggleFocus` / `find.show` have no boolean in the input's declared
-  // shape — a later task owns their own state (focus mode, the
-  // find-in-folio overlay), so those stay inert.
-  const [treeOpen, setTreeOpen] = useState(true);
+  // Opens the inspector (if closed) and switches it to the History tab —
+  // backs `history.revisions` (⌘Y). Both `inspectorOpen` and
+  // `inspectorTab` are props from `FolioWorkspace.tsx` (see
+  // `FolioWorkspaceContentProps`'s doc), so this just composes the two
+  // setters already threaded down; it owns no state of its own.
+  const openHistory = (): void => {
+    if (!props.inspectorOpen) props.onToggleInspector();
+    props.onInspectorTabChange("history");
+  };
 
   // Revision count for the meta bar — sourced from the inspector's
   // History tab (`onRevisionCount`), which fetches `listHistory` itself.
@@ -99,11 +99,12 @@ const FolioWorkspaceContent = (
     directoryId: props.directoryId,
     draft,
     panes: {
-      tree: treeOpen,
+      tree: props.treeOpen,
       inspector: props.inspectorOpen,
-      toggleTree: () => setTreeOpen((v) => !v),
+      toggleTree: props.onToggleTree,
       toggleInspector: props.onToggleInspector,
       toggleFocus: () => {},
+      openHistory,
     },
     find: { show: () => {} },
   });
@@ -113,35 +114,8 @@ const FolioWorkspaceContent = (
     !actions.actionState.isProtected,
   );
 
-  const statusLabel =
-    draft.statusKey === "saved" && draft.savedAt
-      ? tr("folios.editor.status.saved", {
-          args: [String(dt.of(draft.savedAt).fromNow())],
-        })
-      : tr(`folios.editor.status.${draft.statusKey}`);
-
   return (
     <div className="bg-card flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      {/* Chrome row — the menubar and toolbar mount here in a later task,
-          rendered through MDXEditor's `renderToolbar`. (This comment
-          previously said "Task 10" — Task 10 turned out to be the
-          inspector pane instead; corrected so it doesn't mislead
-          whichever task actually builds the menubar.) */}
-      <div className="border-border flex h-13 flex-none items-center gap-2 border-b px-3">
-        <div className="flex-1" />
-        <span className="text-muted-foreground folio-mono text-xs">
-          {statusLabel}
-        </span>
-        <Button
-          size="sm"
-          onClick={() => actions.handlers["folio.save"]()}
-          disabled={actions.saving || actions.locked}
-        >
-          <Save className="size-4" />
-          {tr("folios.editor.action.save")}
-        </Button>
-      </div>
-
       <div className="flex min-h-0 flex-1">
         {/* The tree pane (Task 9) mounts one level up, in
             `FolioWorkspace.tsx` — not here. See that file's doc for why. */}

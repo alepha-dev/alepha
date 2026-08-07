@@ -49,6 +49,15 @@ export interface FolioWorkspaceProps {
  * durable across navigation while the component that actually RENDERS
  * the tabs still lives where its data does.
  *
+ * The tree pane's OPEN/CLOSED state (`view.tree`, ⌘\\) lives here too, for
+ * the same "must survive the keyed child's remount" reason as the
+ * inspector's — and for a second reason specific to the tree: it must also
+ * survive being toggled off and back on within the SAME folio, which is
+ * why the tree stays mounted (via a `hidden` class) rather than being
+ * conditionally rendered — unmounting it would drop `useFolioTreeModel`'s
+ * collapse state and re-run its one-time seed/fallback fetch every time
+ * the pane is reopened.
+ *
  * The document + inspector content lives in a child keyed on the folio id.
  * Alepha's router does not remount a page component on a param-only
  * navigation (`ReactPageProvider.createElement` passes no `key`, and
@@ -67,6 +76,7 @@ export interface FolioWorkspaceProps {
 const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   useFolioFonts();
   const [project] = useStore(currentProjectAtom);
+  const [treeOpen, setTreeOpen] = useState(true);
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [inspectorTab, setInspectorTab] =
     useState<FolioInspectorTab>("outline");
@@ -74,11 +84,13 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   return (
     <div className="flex h-full min-h-0">
       {project && (
-        <FolioTree
-          projectId={project.id}
-          projectIdStr={String(project.id)}
-          currentFolioId={props.folio?.id}
-        />
+        <div className={treeOpen ? "contents" : "hidden"}>
+          <FolioTree
+            projectId={project.id}
+            projectIdStr={String(project.id)}
+            currentFolioId={props.folio?.id}
+          />
+        </div>
       )}
       <FolioWorkspaceContent
         key={props.folio?.id ?? "new"}
@@ -88,6 +100,8 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
         onToggleInspector={() => setInspectorOpen((v) => !v)}
         inspectorTab={inspectorTab}
         onInspectorTabChange={setInspectorTab}
+        treeOpen={treeOpen}
+        onToggleTree={() => setTreeOpen((v) => !v)}
       />
     </div>
   );

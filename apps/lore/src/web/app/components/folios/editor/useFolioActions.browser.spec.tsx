@@ -127,6 +127,7 @@ describe("useFolioActions — envelope salt survives an in-session encrypt", () 
           toggleTree: () => {},
           toggleInspector: () => {},
           toggleFocus: () => {},
+          openHistory: () => {},
         },
         find: { show: () => {} },
       });
@@ -201,6 +202,7 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
           toggleTree: () => {},
           toggleInspector: () => {},
           toggleFocus: () => {},
+          openHistory: () => {},
         },
         find: { show: () => {} },
       }),
