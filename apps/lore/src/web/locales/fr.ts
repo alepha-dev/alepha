@@ -221,6 +221,7 @@ export default {
 
   "folios.editor.meta.draft": "Brouillon · pas encore enregistré",
   "folios.editor.meta.saved": "n°$1 · $2 mots · $3 révisions",
+  "folios.editor.meta.saved-one": "n°$1 · $2 mots · 1 révision",
 
   "folios.editor.locked.title": "Ce folio est chiffré",
   "folios.editor.locked.body":
@@ -253,6 +254,7 @@ export default {
     "Tout ce qu'il contient — folios compris — est également supprimé. Cette action est irréversible.",
 
   "folios.editor.inspector.outline": "Plan",
+  "folios.editor.inspector.collapse": "Réduire l'inspecteur",
   "folios.editor.inspector.history": "Historique",
   "folios.editor.inspector.links": "Liens",
   "folios.editor.inspector.outline-empty":

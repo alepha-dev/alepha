@@ -2,6 +2,7 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactElement } from "react";
+import { createPortal } from "react-dom";
 import type { Folio } from "@/api/entities/folios.ts";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
@@ -34,6 +35,14 @@ export interface FolioDocumentProps {
   directoryId?: string;
   draft: FolioDraft;
   actions: UseFolioActionsResult;
+  /**
+   * Where the menubar and toolbar rows render. They are created inside
+   * MDXEditor's realm — the only place their commands can be published
+   * from — but the design puts them above all three panes, so
+   * `renderToolbar` portals them into this node rather than rendering
+   * them in place. See `FolioWorkspace.tsx` for the full reasoning.
+   */
+  chromeSlot: HTMLElement | null;
   /**
    * Revision count for the meta bar's "$3 revisions" — sourced from the
    * inspector's History tab (`FolioInspector`'s `onRevisionCount`), via
@@ -155,24 +164,36 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
           placeholder={tr("folios.content-placeholder")}
           imageUploadHandler={props.imageUploadHandler}
           minHeight={420}
-          renderToolbar={() => (
-            <>
-              <FolioMenubar
-                handlers={props.actions.handlers}
-                state={props.actions.actionState}
-                hasImageUpload={!!props.imageUploadHandler}
-                onEditorCommands={props.actions.registerEditorCommands}
-              />
-              <FolioToolbar
-                handlers={props.actions.handlers}
-                state={props.actions.actionState}
-                statusKey={props.draft.statusKey}
-                savedAt={props.draft.savedAt}
-                saving={props.actions.saving}
-                hasImageUpload={!!props.imageUploadHandler}
-              />
-            </>
-          )}
+          variant="bare"
+          renderToolbar={() => {
+            const chrome = (
+              <>
+                <FolioMenubar
+                  handlers={props.actions.handlers}
+                  state={props.actions.actionState}
+                  hasImageUpload={!!props.imageUploadHandler}
+                  onEditorCommands={props.actions.registerEditorCommands}
+                  statusKey={props.draft.statusKey}
+                  savedAt={props.draft.savedAt}
+                />
+                <FolioToolbar
+                  handlers={props.actions.handlers}
+                  state={props.actions.actionState}
+                  saving={props.actions.saving}
+                  hasImageUpload={!!props.imageUploadHandler}
+                />
+              </>
+            );
+            // The portal keeps these two rows inside MDXEditor's React
+            // tree — so `usePublisher`/`useCellValue` still resolve against
+            // the live realm — while putting their DOM above the panes,
+            // where the design has them. Rendering in place until the slot
+            // exists would flash the rows inside the document column on
+            // first paint, so render nothing until then.
+            return props.chromeSlot
+              ? createPortal(chrome, props.chromeSlot)
+              : null;
+          }}
         />
       )}
 

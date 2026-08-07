@@ -7,6 +7,8 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from "@alepha/ui/components/ui/menubar";
+import { DateTimeProvider } from "alepha/datetime";
+import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { type ReactElement, useEffect } from "react";
 import type { I18n } from "../../../../services/I18n.ts";
@@ -40,6 +42,14 @@ export interface FolioMenubarProps {
    * `editorCommandsRef` for the full reasoning.
    */
   onEditorCommands: (commands: Partial<FolioActionHandlers>) => void;
+  /**
+   * The save-state line, right-aligned on this row. It lives here rather
+   * than on the toolbar because that is where the design puts it — the
+   * toolbar's own copy is gated behind `showDocActions`, which the shipped
+   * mockup state turns off.
+   */
+  statusKey: "draft" | "saved" | "unsaved";
+  savedAt?: string;
 }
 
 /**
@@ -55,6 +65,7 @@ export interface FolioMenubarProps {
  */
 const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
+  const dt = useInject(DateTimeProvider);
   const editorCommands = useEditorRealmCommands();
 
   // `onReady`/`editorCommands` change identity every render (neither is
@@ -95,8 +106,18 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
     return false;
   };
 
+  const statusLabel =
+    props.statusKey === "saved" && props.savedAt
+      ? tr("folios.editor.status.saved", {
+          args: [String(dt.of(props.savedAt).fromNow())],
+        })
+      : tr(`folios.editor.status.${props.statusKey}`);
+
+  // 34px, one subtle step off the card, as the design has it — expressed
+  // with the theme's own tokens rather than the mockup's raw oklch values,
+  // which are dark-only where Lore ships both modes.
   return (
-    <div className="flex h-9 flex-none items-center border-b border-border bg-muted px-2">
+    <div className="border-border bg-muted/40 flex h-[34px] flex-none items-center border-b pr-3 pl-2.5">
       <Menubar className="h-auto gap-0.5 rounded-none border-none bg-transparent p-0">
         {FOLIO_MENUS.map((menu) => (
           <MenubarMenu key={menu.id}>
@@ -125,6 +146,10 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
           </MenubarMenu>
         ))}
       </Menubar>
+      <div className="flex-1" />
+      <span className="text-muted-foreground text-[11.5px] whitespace-nowrap">
+        {statusLabel}
+      </span>
     </div>
   );
 };
