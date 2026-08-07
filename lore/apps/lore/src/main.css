@@ -225,6 +225,19 @@ body::before {
   background: var(--muted);
 }
 
+/* FolioToolbar's restyle of MDXEditor's own toolbar buttons (Task 11) —
+ * pill-shaped, fixed-height, matching the workspace's design instead of
+ * the library's default squarish look. Scoped to `.folio-toolbar-buttons`
+ * (a wrapper FolioToolbar renders around just this group), not `.mdx-toolbar`
+ * as a whole, so it never touches the Menubar row above it or the
+ * `Segmented`/Save controls that share the same row — those already have
+ * their own correct sizing. Targets the plain `button` element rather than
+ * any of MDXEditor's own (hashed, version-coupled) CSS-module class names. */
+.folio-toolbar-buttons button {
+  height: 30px;
+  border-radius: 9999px;
+}
+
 .lore-mdx-content {
   min-height: var(--lore-mdx-min-h, 16rem);
   font-size: 0.875rem;
@@ -587,4 +600,39 @@ body::before {
   --sidebar-accent-foreground: oklch(0.92 0.025 235);
   --sidebar-border: oklch(0.32 0.05 240);
   --sidebar-ring: oklch(0.7 0.15 230);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Folio workspace typography + find highlighting.
+ * The font files are lazy-loaded by `useFolioFonts`; these vars always
+ * resolve thanks to the fallback stacks, so a failed load degrades
+ * silently instead of leaving the document unstyled.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --font-folio-serif: "Literata", "Iowan Old Style", Georgia, serif;
+  --font-folio-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.folio-prose {
+  font-family: var(--font-folio-serif);
+}
+
+.folio-mono {
+  font-family: var(--font-folio-mono);
+}
+
+/*
+ * Find-in-folio highlighting via the CSS Custom Highlight API. Ranges are
+ * registered from `useFolioFind`; injecting <mark> elements would corrupt
+ * Lexical's document state, which is why this is done with highlights.
+ */
+::highlight(folio-find) {
+  background-color: color-mix(in oklch, var(--primary) 30%, transparent);
+}
+
+::highlight(folio-find-active) {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
 }

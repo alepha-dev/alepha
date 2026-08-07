@@ -76,6 +76,11 @@ import { currentFolioContentsAtom } from "../../atoms/currentFolioContentsAtom.t
 import { currentFolioPathAtom } from "../../atoms/currentFolioPathAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import {
+  folioExportFilename,
+  folioMarkdownExport,
+  triggerFolioDownload,
+} from "./editor/document/folioMarkdownExport.ts";
 
 type EntryKind = "directory" | "folio" | "blob";
 
@@ -402,9 +407,9 @@ const FolioBrowser = () => {
         window.alert(tr("folio.download.protected"));
         return;
       }
-      const markdown = buildFolioMarkdown(folio);
-      const filename = `${slugify(folio.title)}.md`;
-      triggerDownload(filename, markdown, "text/markdown;charset=utf-8");
+      const markdown = folioMarkdownExport(folio);
+      const filename = `${folioExportFilename(folio.title)}.md`;
+      triggerFolioDownload(filename, markdown, "text/markdown;charset=utf-8");
     }
   };
 
@@ -1403,71 +1408,6 @@ const MoveDialog = (props: MoveDialogProps) => {
       </DialogContent>
     </Dialog>
   );
-};
-
-/**
- * Build the markdown export for a folio. YAML frontmatter on top with
- * the metadata we keep (shortId, title, tags, summary, createdAt,
- * updatedAt, pinned). Body is the original markdown content.
- */
-const buildFolioMarkdown = (folio: {
-  shortId: number;
-  title: string;
-  tags: string[];
-  summary?: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  pinned?: boolean;
-}): string => {
-  const escapeYaml = (s: string) =>
-    s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  const lines = ["---"];
-  lines.push(`shortId: ${folio.shortId}`);
-  lines.push(`title: "${escapeYaml(folio.title)}"`);
-  if (folio.tags && folio.tags.length > 0) {
-    lines.push(
-      `tags: [${folio.tags.map((t) => `"${escapeYaml(t)}"`).join(", ")}]`,
-    );
-  } else {
-    lines.push("tags: []");
-  }
-  if (folio.summary?.trim()) {
-    lines.push(`summary: "${escapeYaml(folio.summary.trim())}"`);
-  }
-  lines.push(`pinned: ${folio.pinned ? "true" : "false"}`);
-  lines.push(`createdAt: ${folio.createdAt}`);
-  lines.push(`updatedAt: ${folio.updatedAt}`);
-  lines.push("---", "");
-  lines.push(folio.content ?? "");
-  return lines.join("\n");
-};
-
-/**
- * Drive-safe filename slug — keep letters, digits, dot, dash,
- * underscore; collapse anything else to underscore. Lowercased.
- */
-const slugify = (title: string): string =>
-  (title.trim() || "folio")
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 100) || "folio";
-
-/**
- * Browser-side download trigger via an in-memory blob URL. Works
- * synchronously, no server round-trip.
- */
-const triggerDownload = (filename: string, body: string, mime: string) => {
-  const blob = new Blob([body], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 };
 
 /**

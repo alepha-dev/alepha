@@ -23,11 +23,49 @@ import {
   Tag,
   Type,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ReactElement, useEffect, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioRevision } from "@/api/entities/folioRevisions.ts";
 import type { Folio } from "@/api/entities/folios.ts";
-import type { I18n } from "../../services/I18n.ts";
+import type { I18n } from "../../../../services/I18n.ts";
+
+export interface FolioHistoryTabProps {
+  folio: Folio;
+  /**
+   * Changes whenever a save completes elsewhere in the workspace (the
+   * chrome row's Save button, an unlock, an encrypt/remove-protection
+   * transition) — `useFolioDraft`'s `savedAt`, threaded down through
+   * `FolioInspector`. Included in the fetch effect's deps so THIS
+   * component re-fetches after a save it didn't itself trigger, not just
+   * on mount. Without it, `props.folio` (the route-loader snapshot,
+   * frozen for the mount's lifetime, same premise as everywhere else in
+   * this workspace) never changes identity on a same-folio save, so the
+   * revision list — and the count `FolioMetaBar` reads — would silently
+   * go stale the moment the user typed and hit Save while sitting on a
+   * different inspector tab. Found live while verifying this task.
+   */
+  refreshedAt?: string;
+  /**
+   * Fired after a successful revert — the caller (`useFolioActions`'s
+   * `applyReverted`) re-syncs the draft buffer and the shared atoms, since
+   * the server-reverted row does not otherwise reach this component's own
+   * `props.folio` (a route-loader snapshot, frozen for the mount's
+   * lifetime — same premise as everywhere else in this workspace).
+   *
+   * Typed `Promise<void>`, not `void` — `handleRevert` below `await`s it,
+   * and that `await` is load-bearing (it's what keeps `setBusy(false)`
+   * from firing before the baseline update lands, not just the network
+   * call). A `void` signature would let a future edit drop the `await`
+   * with nothing catching it — structural typing wouldn't complain.
+   */
+  onReverted: (folio: Folio) => Promise<void>;
+  /**
+   * Fired whenever the revision list changes (load, revert, pin toggle) so
+   * `FolioMetaBar`'s "$3 revisions" count stays in sync without its own
+   * fetch.
+   */
+  onRevisionCount: (count: number) => void;
+}
 
 const ActionLabel = (props: { action: FolioRevision["action"] }) => {
   const { tr } = useI18n<I18n, "en">();
@@ -60,19 +98,22 @@ const actionIcon = (action: FolioRevision["action"]) => {
   }
 };
 
-interface FolioHistoryPanelProps {
-  folio: Folio;
-  onReverted: (folio: Folio) => void;
-}
-
 /**
- * Folio revision history, styled as a flush "history bar" — one square row
- * per revision in a single bordered stack, mirroring the Admin → Parameters
- * History bar (`@alepha/ui` `parameter-history-item`). The whole row toggles
- * the before/after diff; the `…` menu (Pin / Revert) stops propagation so it
- * never toggles the row. Feedback #15.
+ * The History tab: revision list, ported wholesale from the deleted
+ * `FolioHistoryPanel.tsx` (its `listHistory` / `revertHistory` /
+ * `pinHistory` calls, expand-on-click rows, and the `grid-rows-[0fr]` →
+ * `[1fr]` collapse animation are all unchanged — only the surrounding
+ * chrome is restyled for the inspector).
+ *
+ * One thing this restyle deliberately does NOT add: an "agent" vs. "web"
+ * author badge. Nothing in `folio_revisions` (or anywhere else in the
+ * data model) records how a revision was made — `byUserId` is the same
+ * column whether the edit came from the browser or from an MCP tool call,
+ * because both authenticate as the same underlying user. Rendering a
+ * badge would mean guessing, and a confidently wrong "agent"/"web" label
+ * is worse than not showing one — see the task report.
  */
-const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
+const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
   const dialog = useDialog();
@@ -80,6 +121,7 @@ const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
 
   const [revisions, setRevisions] = useState<FolioRevision[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -92,9 +134,15 @@ const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
     return () => {
       alive = false;
     };
-  }, [props.folio.id, folioApi]);
+  }, [props.folio.id, props.refreshedAt, folioApi]);
 
-  const [busy, setBusy] = useState(false);
+  // Deliberately fires on every change to `revisions` (initial load,
+  // revert, pin toggle), not just once — the meta bar's count should
+  // never lag behind what this tab itself is showing.
+  useEffect(() => {
+    props.onRevisionCount(revisions.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revisions]);
 
   const refresh = async () => {
     const next = await folioApi.listHistory({
@@ -114,8 +162,17 @@ const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
       const updated = await folioApi.revertHistory({
         params: { id: props.folio.id, revisionId },
       });
-      props.onReverted(updated as Folio);
-      await refresh();
+      // No `refresh()` call here (unlike `handlePinToggle` below, which
+      // still needs one). `onReverted` (`useFolioActions.applyReverted`)
+      // always re-baselines `useFolioDraft.savedAt` on a successful
+      // revert — even when the folio is protected and still locked, see
+      // that function's own doc — and `savedAt` is threaded down as
+      // `props.refreshedAt`, which sits in this component's own fetch
+      // effect's deps above. That effect re-fires and re-fetches on its
+      // own; calling `refresh()` here too was a second, redundant
+      // `listHistory` GET landing at almost the same moment, for the
+      // same reason, every single revert.
+      await props.onReverted(updated as Folio);
     } finally {
       setBusy(false);
     }
@@ -129,14 +186,17 @@ const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
     await refresh();
   };
 
-  if (revisions.length === 0) return null;
+  if (revisions.length === 0) {
+    return (
+      <p className="text-muted-foreground px-3 py-4 text-center text-xs italic">
+        {tr("folios.editor.inspector.history-empty")}
+      </p>
+    );
+  }
 
   return (
-    <section>
-      <h3 className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide">
-        {tr("folios.history.title")}
-      </h3>
-      <div className="bg-card divide-border overflow-hidden rounded-md border divide-y">
+    <div className="flex flex-col">
+      <div className="divide-border flex flex-col divide-y">
         {revisions.map((revision, index) => {
           const isExpanded = expandedId === revision.id;
           // Diff against the next-older revision so the user sees what
@@ -166,7 +226,7 @@ const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
                   <span className="text-sm font-medium leading-tight">
                     <ActionLabel action={revision.action} />
                   </span>
-                  <span className="text-muted-foreground flex items-center gap-1 text-xs leading-tight">
+                  <span className="text-muted-foreground folio-mono flex items-center gap-1 text-[11px] leading-tight">
                     <Clock className="size-3 shrink-0" />
                     {dt.of(revision.at).fromNow()}
                     {revision.pinned && (
@@ -210,7 +270,7 @@ const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
                         {tr(
                           revision.pinned
                             ? "folios.history.unpin"
-                            : "folios.history.pin",
+                            : "folios.editor.inspector.keep",
                         )}
                       </DropdownMenuItem>
                       {!isNewest && (
@@ -221,7 +281,7 @@ const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
                             disabled={busy}
                           >
                             <RotateCcw className="size-4" />
-                            {tr("folios.history.revert")}
+                            {tr("folios.editor.inspector.revert")}
                           </DropdownMenuItem>
                         </>
                       )}
@@ -257,15 +317,18 @@ const FolioHistoryPanel = (props: FolioHistoryPanelProps) => {
           );
         })}
       </div>
-    </section>
+      <p className="text-muted-foreground/80 border-t px-3 py-2.5 text-[11px]">
+        {tr("folios.editor.inspector.history-footer")}
+      </p>
+    </div>
   );
 };
 
 /**
  * Side-by-side "before / after" snapshot view. Not a token-level diff —
  * the spec calls for a "markdown-aware diff" but that's its own feature.
- * Two readable `<pre>` blocks side-by-side are enough for v1 and let the
- * user see what changed without a diff library.
+ * Two readable blocks, tinted `--destructive` (before) / `--primary`
+ * (after) at low alpha, are enough for v1.
  */
 const DiffView = (props: {
   revision: FolioRevision;
@@ -279,21 +342,29 @@ const DiffView = (props: {
           <div className="text-muted-foreground mb-1 text-[10px] uppercase tracking-wider">
             {tr("folios.history.diff-before")}
           </div>
-          <SnapshotBlock revision={props.previous} />
+          <SnapshotBlock revision={props.previous} tone="before" />
         </div>
       )}
       <div>
         <div className="text-muted-foreground mb-1 text-[10px] uppercase tracking-wider">
           {tr("folios.history.diff-after")}
         </div>
-        <SnapshotBlock revision={props.revision} />
+        <SnapshotBlock revision={props.revision} tone="after" />
       </div>
     </div>
   );
 };
 
-const SnapshotBlock = (props: { revision: FolioRevision }) => (
-  <pre className="bg-muted/40 max-h-72 overflow-auto whitespace-pre-wrap rounded p-2 text-[11px]">
+const SnapshotBlock = (props: {
+  revision: FolioRevision;
+  tone: "before" | "after";
+}) => (
+  <pre
+    className={cn(
+      "max-h-72 overflow-auto whitespace-pre-wrap rounded p-2 text-[11px]",
+      props.tone === "before" ? "bg-destructive/10" : "bg-primary/10",
+    )}
+  >
     <div className="text-foreground/80 mb-1 text-xs font-semibold">
       {props.revision.titleSnapshot}
     </div>
@@ -306,4 +377,4 @@ const SnapshotBlock = (props: { revision: FolioRevision }) => (
   </pre>
 );
 
-export default FolioHistoryPanel;
+export default FolioHistoryTab;

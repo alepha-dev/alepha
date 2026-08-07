@@ -1,10 +1,16 @@
-import FolioEditor from "./FolioEditor.tsx";
+import FolioWorkspace from "./editor/FolioWorkspace.tsx";
 
-const FolioCreatePage = (props?: { directoryId?: string }) => (
-  // The Folio route loader passes `directoryId` when navigation
-  // came from "+ Create → New folio" inside a directory; without it
-  // the editor creates the folio at the project root.
-  <FolioEditor directoryId={props?.directoryId} />
+export interface FolioCreatePageProps {
+  /**
+   * The Folio route loader passes `directoryId` when navigation came from
+   * "+ Create → New folio" inside a directory; without it the workspace
+   * creates the folio at the project root.
+   */
+  directoryId?: string;
+}
+
+const FolioCreatePage = (props: FolioCreatePageProps) => (
+  <FolioWorkspace directoryId={props.directoryId} />
 );
 
 export default FolioCreatePage;
