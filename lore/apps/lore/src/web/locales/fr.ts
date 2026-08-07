@@ -228,6 +228,13 @@ export default {
   "folios.editor.locked.warning":
     "L'envoi d'images et la recherche plein texte restent désactivés tant qu'un folio est protégé.",
 
+  "folios.editor.find.placeholder": "Rechercher dans le folio",
+  "folios.editor.find.count": "$1 / $2",
+  "folios.editor.find.none": "Aucun résultat",
+  "folios.editor.find.next": "Résultat suivant",
+  "folios.editor.find.previous": "Résultat précédent",
+  "folios.editor.find.close": "Fermer la recherche",
+
   "folios.editor.tree.title": "Folios",
   "folios.editor.tree.new-folio": "Nouveau folio",
   "folios.editor.tree.new-directory": "Nouveau dossier",

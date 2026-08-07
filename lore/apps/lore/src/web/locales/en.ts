@@ -227,6 +227,13 @@ export default {
   "folios.editor.locked.warning":
     "Image uploads and full-text search stay disabled while a folio is protected.",
 
+  "folios.editor.find.placeholder": "Find in folio",
+  "folios.editor.find.count": "$1 / $2",
+  "folios.editor.find.none": "No matches",
+  "folios.editor.find.next": "Next match",
+  "folios.editor.find.previous": "Previous match",
+  "folios.editor.find.close": "Close find",
+
   "folios.editor.tree.title": "Folios",
   "folios.editor.tree.new-folio": "New folio",
   "folios.editor.tree.new-directory": "New directory",
