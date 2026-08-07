@@ -51,7 +51,7 @@ export class SigilTools {
   sigil_create = $tool({
     title: "Create a sigil",
     description:
-      "Enrol an app and mint its token. Project owner only. `name` is the identity — one sigil per name within a project, and a repeat is rejected rather than silently splitting that app's history across two credentials. ⚠️ The returned `token` is the only cleartext copy that will ever exist: it is stored hashed, so nothing can show it again. Hand it to whoever configures the app and do not echo it into a folio, a quest or a commit.",
+      "Enroll an app and mint its token. Project owner only. `name` is the identity, and it is a slug rather than a title: lowercase letters, digits and interior hyphens only, 64 characters at most — `lore-staging`, not `Lore Staging`, which is refused. It is also the app's URL segment. One sigil per name within a project, and a repeat is rejected rather than silently splitting that app's history across two credentials. ⚠️ The returned `token` is the only cleartext copy that will ever exist: it is stored hashed, so nothing can show it again. Hand it to whoever configures the app and do not echo it into a folio, a quest or a commit.",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
       params: sigilCreateParamsSchema,
