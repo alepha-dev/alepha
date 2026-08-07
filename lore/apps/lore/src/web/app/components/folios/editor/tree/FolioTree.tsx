@@ -49,7 +49,10 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
   };
 
   return (
-    <div className="flex h-full min-h-0 w-[242px] flex-none flex-col overflow-hidden border-r border-border">
+    <div
+      data-slot="folio-tree"
+      className="flex h-full min-h-0 w-[242px] flex-none flex-col overflow-hidden border-r border-border"
+    >
       <div className="flex h-10 flex-none items-center gap-1 border-b border-border px-2">
         <span className="flex-1 truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {tr("folios.editor.tree.title")}
