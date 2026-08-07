@@ -220,6 +220,7 @@ export default {
 
   "folios.editor.meta.draft": "Draft · not saved yet",
   "folios.editor.meta.saved": "#$1 · $2 words · $3 revisions",
+  "folios.editor.meta.saved-one": "#$1 · $2 words · 1 revision",
 
   "folios.editor.locked.title": "This folio is encrypted",
   "folios.editor.locked.body":
@@ -252,6 +253,7 @@ export default {
     "Everything inside it — folios included — is deleted too. This cannot be undone.",
 
   "folios.editor.inspector.outline": "Outline",
+  "folios.editor.inspector.collapse": "Collapse inspector",
   "folios.editor.inspector.history": "History",
   "folios.editor.inspector.links": "Links",
   "folios.editor.inspector.outline-empty":

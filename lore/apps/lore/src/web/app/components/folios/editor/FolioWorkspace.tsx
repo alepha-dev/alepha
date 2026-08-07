@@ -86,6 +86,7 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   const panes = useFolioPanes();
   const [inspectorTab, setInspectorTab] =
     useState<FolioInspectorTab>("outline");
+  const [chromeSlot, setChromeSlot] = useState<HTMLElement | null>(null);
 
   // Three states, not two: hidden, a column (`contents` — the wrapper
   // disappears and `FolioTree`'s own root becomes the flex child), or an
@@ -99,29 +100,43 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
       : "contents";
 
   return (
-    <div className="relative flex h-full min-h-0">
-      {project && (
-        <div className={treeClassName}>
-          <FolioTree
-            projectId={project.id}
-            projectIdStr={String(project.id)}
-            currentFolioId={props.folio?.id}
-          />
-        </div>
-      )}
-      <FolioWorkspaceContent
-        key={props.folio?.id ?? "new"}
-        folio={props.folio}
-        directoryId={props.directoryId}
-        inspectorOpen={panes.inspectorOpen}
-        inspectorDrawer={panes.inspectorDrawer}
-        onToggleInspector={panes.toggleInspector}
-        inspectorTab={inspectorTab}
-        onInspectorTabChange={setInspectorTab}
-        treeOpen={panes.treeOpen}
-        onToggleTree={panes.toggleTree}
-        onToggleFocus={panes.toggleFocus}
-      />
+    <div className="flex h-full min-h-0 flex-col">
+      {/* The menubar and toolbar rows land HERE, portalled up from inside
+          MDXEditor's realm (see `FolioDocument`'s `renderToolbar`). The
+          design puts both rows above all three panes, spanning the whole
+          surface — but every control on them (Bold, Block type, Undo) can
+          only be published from inside that realm. A portal is what
+          reconciles the two: it moves the DOM without leaving the React
+          tree, so the rows keep their realm context while rendering here.
+          A callback ref (via `useState`) rather than `useRef` so the
+          document re-renders once the node exists and the portal has a
+          target on the first paint after mount. */}
+      <div ref={setChromeSlot} className="flex flex-none flex-col" />
+      <div className="relative flex min-h-0 flex-1">
+        {project && (
+          <div className={treeClassName}>
+            <FolioTree
+              projectId={project.id}
+              projectIdStr={String(project.id)}
+              currentFolioId={props.folio?.id}
+            />
+          </div>
+        )}
+        <FolioWorkspaceContent
+          key={props.folio?.id ?? "new"}
+          folio={props.folio}
+          directoryId={props.directoryId}
+          chromeSlot={chromeSlot}
+          inspectorOpen={panes.inspectorOpen}
+          inspectorDrawer={panes.inspectorDrawer}
+          onToggleInspector={panes.toggleInspector}
+          inspectorTab={inspectorTab}
+          onInspectorTabChange={setInspectorTab}
+          treeOpen={panes.treeOpen}
+          onToggleTree={panes.toggleTree}
+          onToggleFocus={panes.toggleFocus}
+        />
+      </div>
     </div>
   );
 };
