@@ -57,25 +57,21 @@ export const useEditorRealmCommands = (): Partial<FolioActionHandlers> => {
   const changeViewMode = usePublisher(viewMode$);
 
   return {
+    // `edit.undo`/`edit.redo`/`edit.bold`/`edit.italic`/`edit.link` below
+    // back the Edit MENU's click path only — `useFolioShortcuts.ts`'s
+    // `EDITOR_NATIVE_BINDINGS` deliberately excludes these five from the
+    // ⌘-keyboard path, because the browser/Lexical/MDXEditor already
+    // handle them natively there and this hook's own dispatch actively
+    // broke that native handling when it intercepted the keydown first
+    // (see that file's doc for the full story). A menu click never goes
+    // through a keydown at all, so it was never affected and still uses
+    // this exact code.
     "edit.undo": () => {
       activeEditor?.dispatchCommand(UNDO_COMMAND, undefined);
     },
     "edit.redo": () => {
       activeEditor?.dispatchCommand(REDO_COMMAND, undefined);
     },
-    // KNOWN ISSUE, disclosed in the task report: reliably works when this
-    // handler is triggered from `FolioMenubar`'s own click (verified live,
-    // repeatedly), but does NOT reliably apply when triggered via the ⌘B
-    // keyboard shortcut — `applyFormat("bold")` runs (confirmed:
-    // `FORMAT_TEXT_COMMAND`'s registered handler in `@lexical/rich-text`
-    // reports `handled: true`), yet no formatting is applied to the DOM.
-    // `edit.italic`/`edit.code` (the same `applyFormat$` shape) are
-    // presumed to share this; `edit.undo`/`edit.redo`/`edit.link` do NOT —
-    // verified those three DO work via keyboard, narrowing this to
-    // selection-dependent TEXT-FORMAT commands specifically. Not
-    // reproducible via a menu click, only via the global keydown path;
-    // root cause not found within this task's time budget — see the task
-    // report's "Concerns" section for the full investigation trail.
     "edit.bold": () => applyFormat("bold"),
     "edit.italic": () => applyFormat("italic"),
     "edit.code": () => applyFormat("code"),

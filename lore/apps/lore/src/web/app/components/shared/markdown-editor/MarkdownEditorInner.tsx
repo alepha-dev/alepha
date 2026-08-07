@@ -70,6 +70,19 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
   // keystroke. Keeping it in a ref lets `toolbarContents` always call the
   // latest version WITHOUT the plugin memo (below) depending on its
   // identity — which would otherwise remount Lexical on every render.
+  //
+  // The assignment below runs DURING RENDER, on purpose — do not "clean
+  // this up" into a `useEffect`/`useLayoutEffect` latest-ref idiom. The
+  // toolbar plugin's `toolbarContents()` (in the `plugins` memo below) is
+  // invoked synchronously as part of the *same* top-down render pass, when
+  // React renders the toolbar plugin's own child — which happens before
+  // this component's effects are flushed, textbook `useLayoutEffect`
+  // included. An effect-based assignment would still hold the *previous*
+  // render's `props.renderToolbar` at the moment `toolbarContents()` reads
+  // it, permanently one render stale — every keystroke would paint the
+  // toolbar one edit behind the document. Assigning here, in the render
+  // body, guarantees the ref is current before `toolbarContents()` ever
+  // runs in this pass.
   const renderToolbarRef = useRef(props.renderToolbar);
   renderToolbarRef.current = props.renderToolbar;
 
