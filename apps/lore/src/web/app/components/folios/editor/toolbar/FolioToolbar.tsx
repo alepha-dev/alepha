@@ -16,8 +16,6 @@ import {
   usePublisher,
   viewMode$,
 } from "@mdxeditor/editor";
-import { DateTimeProvider } from "alepha/datetime";
-import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Save } from "lucide-react";
 import type { ReactElement } from "react";
@@ -28,8 +26,6 @@ import type { FolioActionHandlers } from "../useFolioActions.ts";
 export interface FolioToolbarProps {
   handlers: FolioActionHandlers;
   state: FolioActionState;
-  statusKey: "draft" | "saved" | "unsaved";
-  savedAt?: string;
   saving: boolean;
   /**
    * Whether an image upload handler is wired — hides `InsertImage`
@@ -63,19 +59,15 @@ export interface FolioToolbarProps {
  */
 const FolioToolbar = (props: FolioToolbarProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
-  const dt = useInject(DateTimeProvider);
   const viewMode = useCellValue(viewMode$);
   const changeViewMode = usePublisher(viewMode$);
 
-  const statusLabel =
-    props.statusKey === "saved" && props.savedAt
-      ? tr("folios.editor.status.saved", {
-          args: [String(dt.of(props.savedAt).fromNow())],
-        })
-      : tr(`folios.editor.status.${props.statusKey}`);
-
+  // 52px and a second step off the card, per the design. The status line
+  // is NOT here: the design keeps it on the menubar row and gates this
+  // row's own copy behind `showDocActions`, which the shipped state has
+  // switched off. Duplicating it in both places would just be noise.
   return (
-    <div className="flex h-9 flex-none items-center gap-1 border-b border-border px-2">
+    <div className="border-border bg-muted/60 flex h-[52px] flex-none items-center gap-1 border-b pr-3 pl-2.5">
       {viewMode === "rich-text" && (
         <div className="folio-toolbar-buttons flex items-center gap-1">
           <UndoRedo />
@@ -107,10 +99,6 @@ const FolioToolbar = (props: FolioToolbarProps): ReactElement => {
           { value: "md", label: tr("folios.editor.toolbar.md") },
         ]}
       />
-
-      <span className="text-muted-foreground folio-mono text-xs">
-        {statusLabel}
-      </span>
 
       <Button
         size="sm"

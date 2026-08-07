@@ -44,7 +44,14 @@ const FolioMetaBar = (props: FolioMetaBarProps): ReactElement => {
       </button>
 
       {props.tags.map((tag) => (
-        <Badge key={tag} variant="outline" className="group gap-1 text-xs">
+        // Tinted in the primary hue, as the design has them. Tags are the
+        // one chip on this row that carries colour, which is what tells
+        // them apart from the directory chip sitting beside them.
+        <Badge
+          key={tag}
+          variant="outline"
+          className="group border-primary/30 bg-primary/10 text-primary gap-1 text-xs"
+        >
           {tag}
           <button
             type="button"
@@ -75,13 +82,21 @@ const FolioMetaBar = (props: FolioMetaBarProps): ReactElement => {
       <div className="flex-1" />
       <span className="text-muted-foreground folio-mono text-xs tabular-nums">
         {props.shortId
-          ? tr("folios.editor.meta.saved", {
-              args: [
-                String(props.shortId),
-                String(props.wordCount),
-                String(props.revisionCount ?? 0),
-              ],
-            })
+          ? tr(
+              // "1 revisions" reads as a bug even though it is only a
+              // missing plural, and this line sits under every folio
+              // title in the app.
+              props.revisionCount === 1
+                ? "folios.editor.meta.saved-one"
+                : "folios.editor.meta.saved",
+              {
+                args: [
+                  String(props.shortId),
+                  String(props.wordCount),
+                  String(props.revisionCount ?? 0),
+                ],
+              },
+            )
           : tr("folios.editor.meta.draft")}
       </span>
     </div>

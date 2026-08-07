@@ -624,15 +624,49 @@ body::before {
 }
 
 /*
+ * The folio workspace's editor: no frame, and the body set in the reading
+ * face at the design's own size. The document there IS the page — the
+ * design runs the prose straight on under the summary divider rather than
+ * boxing it in a form field, which is what every other caller of the
+ * shared editor (quest descriptions, feedback replies) still wants.
+ */
+.lore-mdx-bare.lore-mdx-bare {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+/* The workspace portals its toolbar rows out of the editor, so MDXEditor's
+ * own toolbar container is left rendering nothing — but it keeps its
+ * height, background and bottom border, which paints a stray grey strip
+ * above the prose. */
+.lore-mdx-bare .mdx-toolbar {
+  display: none;
+}
+
+.lore-mdx-bare .lore-mdx-content {
+  font-family: var(--font-folio-serif);
+  font-size: 16.5px;
+  line-height: 1.8;
+}
+
+/*
  * Find-in-folio highlighting via the CSS Custom Highlight API. Ranges are
  * registered from `useFolioFind`; injecting <mark> elements would corrupt
  * Lexical's document state, which is why this is done with highlights.
+ *
+ * The colours are LITERAL on purpose. Custom properties do not resolve
+ * inside `::highlight()`: `var(--primary)` silently falls back and both
+ * layers paint the UA's default grey, which is exactly what shipped the
+ * first time. Verified by swapping literals in live and watching the
+ * highlight change colour.
  */
 ::highlight(folio-find) {
-  background-color: color-mix(in oklch, var(--primary) 30%, transparent);
+  background-color: oklch(0.696 0.17 162.48 / 32%);
 }
 
 ::highlight(folio-find-active) {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
+  background-color: oklch(0.696 0.17 162.48);
+  color: oklch(0.16 0 0);
 }

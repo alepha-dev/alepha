@@ -50,6 +50,15 @@ export interface MarkdownEditorInnerProps {
    * Omitted → the default single-row toolbar every other caller gets.
    */
   renderToolbar?: () => ReactNode;
+  /**
+   * `"bare"` drops the editor's own frame — border, radius, background —
+   * and switches the body to the folio reading face. The folio workspace
+   * uses it because the document there is the page itself, not a field on
+   * a form: the design has the prose flowing straight under the summary
+   * divider with nothing boxing it in. Every other caller (quest
+   * descriptions, feedback replies) keeps the default framed look.
+   */
+  variant?: "framed" | "bare";
 }
 
 /**
@@ -183,7 +192,9 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
     >
       <MDXEditor
         ref={ref}
-        className="lore-mdx"
+        className={
+          props.variant === "bare" ? "lore-mdx lore-mdx-bare" : "lore-mdx"
+        }
         contentEditableClassName="lore-mdx-content"
         markdown={props.value}
         placeholder={props.placeholder}
