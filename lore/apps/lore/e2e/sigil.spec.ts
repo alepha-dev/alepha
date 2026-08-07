@@ -627,13 +627,18 @@ test.describe("Sigils", () => {
       await expect(
         page.getByRole("button", { name: "Apps", exact: true }),
       ).toHaveCount(0);
-      // Blights is derived from whether any enrolled app still carries the
-      // capability — the last app is gone, so is the entry. It renders as a
+      // Blights, by contrast, stays. The blight outlives the credential that
+      // filed it — `blights.sigilId` is `ON DELETE SET NULL`, because a triage
+      // decision is not the sigil's — and it is still open, so the inbox must
+      // still be reachable. Deriving the entry from the enrolled apps alone
+      // would have hidden an inbox that still holds crashes. It renders as a
       // link (a leaf item), not a button — only the collapsible Apps group
       // above is a button.
-      await expect(
-        page.getByRole("link", { name: "Blights", exact: true }),
-      ).toHaveCount(0);
+      const blightsEntry = page.getByRole("link", {
+        name: "Blights",
+        exact: true,
+      });
+      await expect(blightsEntry).toBeVisible({ timeout: 15_000 });
 
       const revoked = await request.post(ingest, {
         headers: {
@@ -644,9 +649,12 @@ test.describe("Sigils", () => {
       });
       expect(revoked.status()).toBe(401);
 
-      // The blight outlives the credential that filed it: `blights.sigilId` is
-      // `ON DELETE SET NULL`, because a triage decision is not the sigil's.
-      await page.goto(`/p/${projectId}/blights`);
+      // Reachable, not merely rendered: the surviving blight is one click from
+      // the sidebar, no deep link needed.
+      await blightsEntry.click();
+      await expect(page).toHaveURL(new RegExp(`/p/${projectId}/blights`), {
+        timeout: 15_000,
+      });
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(blightMessage)).toBeVisible({
         timeout: 15_000,

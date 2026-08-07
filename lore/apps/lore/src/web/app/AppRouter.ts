@@ -322,18 +322,19 @@ export class AppRouter {
             .catch(() => undefined)
         : [];
 
-      // Whether this project has blights at all is now the apps' answer, not a
-      // project flag: an app that does not report crashes cannot produce one.
-      // `?? []` folds the could-not-read state into "no badge", which is the
-      // same degradation the `.catch` below already accepts.
-      const collectsBlights = (sigils ?? []).some((it) =>
-        it.kinds.includes("blights"),
-      );
-
       // Open-blight count for the sidebar badge. Member-readable; `.catch`
       // keeps a transient error from blocking the whole project load
       // (badge just hides).
-      const openBlights = collectsBlights
+      //
+      // Counted under the module's master switch alone, deliberately *not*
+      // narrowed to "some enrolled app still carries the `blights` kind". A
+      // blight outlives the credential that filed it — `blights.sigilId` is
+      // `ON DELETE SET NULL` and rows survive for `retentionDays` — so an
+      // owner who deletes their last app, or just switches Blights off on it,
+      // still has an inbox full of open crashes. Deriving the count from the
+      // apps would zero it in the same instant the sidebar entry vanished,
+      // and `ProjectView` reads this count to keep that entry reachable.
+      const openBlights = project.features?.sigils
         ? await this.blightApi
             .countOpenBlights({ params: { projectId: params.projectId } })
             .then((r) => r.count)

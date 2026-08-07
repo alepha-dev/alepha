@@ -141,10 +141,18 @@ const ProjectView = () => {
   // once some enrolled app carries the capability, and goes when the last one
   // drops it. `?? []` means a failed sigil read hides the entry — the same
   // "a degraded section costs a section" trade the Apps group below makes.
+  //
+  // …unless blights are already filed. They outlive the app that reported them
+  // (`blights.sigilId` is `ON DELETE SET NULL`) and stay for the retention
+  // window, so an owner who deletes their only app — or switches Blights off
+  // on it — would otherwise lose the only way into an inbox that still holds
+  // open crashes. A project that has never collected one still shows no entry,
+  // which is the property this gate exists for.
   const collectsBlights = (sigils ?? []).some((it) =>
     it.kinds.includes("blights"),
   );
-  if (features.sigils && collectsBlights) {
+  const hasOpenBlights = (blightCount?.count ?? 0) > 0;
+  if (features.sigils && (collectsBlights || hasOpenBlights)) {
     workItems.push({
       label: tr("project.menu.blights"),
       icon: Bug,
