@@ -207,6 +207,7 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
         <div data-testid="title">{draft.values.title}</div>
         <div data-testid="content">{draft.values.content}</div>
         <div data-testid="dirty">{String(draft.dirty)}</div>
+        <div data-testid="savedAt">{draft.savedAt}</div>
       </div>
     );
   };
@@ -249,6 +250,7 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
     // the status line would falsely read "Unsaved changes" right after a
     // revert nobody has touched yet.
     expect(getByTestId("dirty").textContent).toBe("false");
+    expect(getByTestId("savedAt").textContent).toBe("2026-01-02T00:00:00.000Z");
   });
 
   it("does not paint ciphertext as if it were plaintext when a protected folio is reverted while locked", async ({
@@ -295,5 +297,19 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
     await actions?.applyReverted(reverted);
 
     expect(getByTestId("content").textContent).toBe("");
+    // The row DID change server-side even though content couldn't be
+    // shown — `savedAt` must still move to the reverted row's
+    // `updatedAt` so `FolioHistoryTab`'s fetch effect (keyed on this
+    // exact value, see `FolioInspector`'s `savedAt` prop) notices and
+    // re-fetches the revision list. Before this fix, the locked branch
+    // returned without ever calling `markSaved`, so this stayed frozen
+    // at the folio's ORIGINAL `updatedAt` and the History tab needed its
+    // own separate `refresh()` call to catch up — this is the assertion
+    // that lets `FolioHistoryTab` drop that redundant call.
+    await waitFor(() =>
+      expect(getByTestId("savedAt").textContent).toBe(
+        "2026-01-02T00:00:00.000Z",
+      ),
+    );
   });
 });

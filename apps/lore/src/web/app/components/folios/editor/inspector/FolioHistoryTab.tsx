@@ -156,8 +156,17 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
       const updated = await folioApi.revertHistory({
         params: { id: props.folio.id, revisionId },
       });
-      props.onReverted(updated as Folio);
-      await refresh();
+      // No `refresh()` call here (unlike `handlePinToggle` below, which
+      // still needs one). `onReverted` (`useFolioActions.applyReverted`)
+      // always re-baselines `useFolioDraft.savedAt` on a successful
+      // revert — even when the folio is protected and still locked, see
+      // that function's own doc — and `savedAt` is threaded down as
+      // `props.refreshedAt`, which sits in this component's own fetch
+      // effect's deps above. That effect re-fires and re-fetches on its
+      // own; calling `refresh()` here too was a second, redundant
+      // `listHistory` GET landing at almost the same moment, for the
+      // same reason, every single revert.
+      await props.onReverted(updated as Folio);
     } finally {
       setBusy(false);
     }

@@ -5,6 +5,10 @@ import {
   type FolioOutlineHeading,
   markdownOutline,
 } from "./markdownOutline.ts";
+import {
+  type FolioOutlineDomHeading,
+  resolveHeadingIndex,
+} from "./resolveHeadingIndex.ts";
 
 export interface FolioOutlineTabProps {
   /**
@@ -43,7 +47,11 @@ export interface FolioOutlineTabProps {
  * agree on: the rendered heading's visible words), and falls back to the
  * `index` only to disambiguate two or more headings that are genuinely
  * identical in both level and text — the one case text alone can't
- * resolve on its own.
+ * resolve on its own. The actual matching rules live in the DOM-free
+ * `resolveHeadingIndex` (`resolveHeadingIndex.ts`) so they can be
+ * unit-tested without jsdom — see `apps/lore/test/folio-outline-resolve-heading.spec.ts`.
+ * This component's own `resolveHeading` is just that pure function plus
+ * the DOM query needed to feed it and turn its answer into an `Element`.
  */
 const FolioOutlineTab = (props: FolioOutlineTabProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
@@ -51,12 +59,11 @@ const FolioOutlineTab = (props: FolioOutlineTabProps): ReactElement => {
 
   /**
    * Resolve an outline entry to its element in the editor's contenteditable.
-   *
-   * Text is the reliable key: our markdown parser and MDXEditor's may
-   * disagree on what counts as a heading, and any disagreement makes a
-   * positional lookup silently address the wrong element. Index is kept
-   * only to disambiguate repeated identical headings, which is the one
-   * case text alone cannot resolve.
+   * Queries the live DOM, reduces it to the `{level, text}` shape
+   * `resolveHeadingIndex` matches against, and turns the returned index
+   * back into an `Element` — the matching RULES themselves live in that
+   * pure function so they're covered by a node spec, not just this
+   * component's own (necessarily DOM-dependent) behavior.
    */
   const resolveHeading = (
     heading: FolioOutlineHeading,
@@ -65,22 +72,12 @@ const FolioOutlineTab = (props: FolioOutlineTabProps): ReactElement => {
     const elements = [
       ...props.contentElement.querySelectorAll("h1, h2, h3, h4, h5, h6"),
     ];
-    const wanted = heading.text.trim().toLowerCase();
-    const matches = elements.filter(
-      (el) =>
-        Number(el.tagName.slice(1)) === heading.level &&
-        (el.textContent ?? "").trim().toLowerCase() === wanted,
-    );
-    if (matches.length === 1) return matches[0];
-    if (matches.length > 1) {
-      // Repeated heading: pick the occurrence whose rank among duplicates
-      // matches this entry's rank in the outline.
-      const rank = outline
-        .filter((h) => h.level === heading.level && h.text === heading.text)
-        .findIndex((h) => h.index === heading.index);
-      return matches[rank] ?? matches[0];
-    }
-    return elements[heading.index];
+    const domHeadings: FolioOutlineDomHeading[] = elements.map((el) => ({
+      level: Number(el.tagName.slice(1)),
+      text: el.textContent ?? "",
+    }));
+    const index = resolveHeadingIndex(outline, heading, domHeadings);
+    return index === undefined ? undefined : elements[index];
   };
 
   const scrollTo = (heading: FolioOutlineHeading) => {

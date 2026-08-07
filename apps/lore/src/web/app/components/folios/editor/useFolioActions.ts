@@ -310,6 +310,19 @@ export const useFolioActions = (
    * revert in THIS draft — the row IS reverted server-side regardless,
    * and unlocking afterward decrypts the (already-reverted) content
    * correctly, so nothing is lost, it just isn't shown until then.
+   *
+   * Every branch below re-baselines `draft.savedAt`, even the ones that
+   * can't touch `content` (no cached key, or a decrypt failure) — the
+   * inspector's `FolioHistoryTab` keys its `listHistory` fetch effect on
+   * `savedAt` (threaded down as `refreshedAt`) specifically so it
+   * notices a save made from elsewhere. A revert IS such a save: the
+   * server-side row changed (a new "Reverted" revision now exists)
+   * regardless of what the client can decrypt to show for it, so the
+   * History tab needs to refetch in EVERY case, not just the one where
+   * content happened to update too. This is also why `FolioHistoryTab`
+   * itself no longer calls its own `refresh()` after a revert — a second,
+   * separate `listHistory` call landing at nearly the same moment as this
+   * one was a wasted round-trip, not a correctness difference.
    */
   const applyReverted = async (reverted: Folio): Promise<void> => {
     const syncAtoms = (): void => {
@@ -319,10 +332,17 @@ export const useFolioActions = (
       for (const t of reverted.tags) merged.add(t);
       setTags([...merged].sort());
     };
+    // Re-baseline `savedAt` WITHOUT touching content or the other
+    // fields — used by the branches that can't (or didn't) call
+    // `applyDecryptedContent` themselves.
+    const bumpSavedAt = (): void => {
+      input.draft.markSaved(reverted.updatedAt, input.draft.getLiveValues());
+    };
 
     if (isProtected) {
       const cachedKey = locked ? undefined : getProtectedKey(reverted.id);
       if (!cachedKey) {
+        bumpSavedAt();
         syncAtoms();
         return;
       }
@@ -337,6 +357,7 @@ export const useFolioActions = (
         applyDecryptedContent(reverted, plaintext);
       } catch {
         toaster.error(tr("folios.protected.unlock-failed"));
+        bumpSavedAt();
       }
       syncAtoms();
       return;
