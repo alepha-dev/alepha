@@ -4,6 +4,8 @@ import type { Folio } from "@/api/entities/folios.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { useFolioImageUpload } from "../../shared/markdown-editor/useFolioImageUpload.ts";
 import FolioDocument from "./document/FolioDocument.tsx";
+import FolioFindBar from "./document/FolioFindBar.tsx";
+import { useFolioFind } from "./document/useFolioFind.ts";
 import FolioInspector, {
   type FolioInspectorTab,
 } from "./inspector/FolioInspector.tsx";
@@ -26,6 +28,13 @@ export interface FolioWorkspaceContentProps {
    * reset on every folio-to-folio navigation.
    */
   inspectorOpen: boolean;
+  /**
+   * `true` when the viewport is too narrow for the inspector to hold a
+   * column of its own — it floats over the document instead. Derived in
+   * `useFolioPanes`, threaded down alongside `inspectorOpen` because the
+   * inspector renders here.
+   */
+  inspectorDrawer: boolean;
   onToggleInspector: () => void;
   inspectorTab: FolioInspectorTab;
   onInspectorTabChange: (tab: FolioInspectorTab) => void;
@@ -39,6 +48,12 @@ export interface FolioWorkspaceContentProps {
    */
   treeOpen: boolean;
   onToggleTree: () => void;
+  /**
+   * Focus mode (⌘.) — hides both side panes and restores them on a second
+   * press. Owned by `useFolioPanes` one level up, like every other pane
+   * command, because it moves the tree as well as the inspector.
+   */
+  onToggleFocus: () => void;
 }
 
 /**
@@ -94,6 +109,12 @@ const FolioWorkspaceContent = (
     null,
   );
 
+  // Find-in-folio searches the RENDERED pane, which is why it is wired
+  // here — `contentElement` above is the same DOM handle the Outline tab
+  // scrolls headings within, and the only place the document's text nodes
+  // are reachable from.
+  const find = useFolioFind(contentElement, draft.values.content);
+
   const actions = useFolioActions({
     folio: props.folio,
     directoryId: props.directoryId,
@@ -103,10 +124,10 @@ const FolioWorkspaceContent = (
       inspector: props.inspectorOpen,
       toggleTree: props.onToggleTree,
       toggleInspector: props.onToggleInspector,
-      toggleFocus: () => {},
+      toggleFocus: props.onToggleFocus,
       openHistory,
     },
-    find: { show: () => {} },
+    find: { show: find.show },
   });
 
   const imageUploadHandler = useFolioImageUpload(
@@ -116,32 +137,56 @@ const FolioWorkspaceContent = (
 
   return (
     <div className="bg-card flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="flex min-h-0 flex-1">
+      {/* `relative` is the containing block for the inspector's drawer
+          form below — without it the drawer would position itself against
+          the viewport instead of the pane row. */}
+      <div className="relative flex min-h-0 flex-1">
         {/* The tree pane (Task 9) mounts one level up, in
             `FolioWorkspace.tsx` — not here. See that file's doc for why. */}
-        <div ref={setContentElement} className="min-w-0 flex-1 overflow-y-auto">
-          <div className="mx-auto flex max-w-[812px] flex-col gap-4 px-8 py-8">
-            <FolioDocument
-              folio={props.folio}
-              directoryId={props.directoryId}
-              draft={draft}
-              actions={actions}
-              revisionCount={revisionCount}
-              imageUploadHandler={imageUploadHandler}
-            />
+        {/* The find bar is a sibling of the scroll container, not a child
+            of it: an `absolute` element inside a scrolling box scrolls away
+            with the text it is searching. */}
+        <div className="relative flex min-w-0 flex-1 flex-col">
+          <div
+            ref={setContentElement}
+            className="min-w-0 flex-1 overflow-y-auto"
+          >
+            <div className="mx-auto flex max-w-[812px] flex-col gap-4 px-8 py-8">
+              <FolioDocument
+                folio={props.folio}
+                directoryId={props.directoryId}
+                draft={draft}
+                actions={actions}
+                revisionCount={revisionCount}
+                imageUploadHandler={imageUploadHandler}
+              />
+            </div>
           </div>
+          <FolioFindBar find={find} />
         </div>
         {props.inspectorOpen && (
-          <FolioInspector
-            folio={props.folio}
-            content={draft.values.content}
-            tab={props.inspectorTab}
-            onTabChange={props.onInspectorTabChange}
-            onRevisionCount={setRevisionCount}
-            onReverted={actions.applyReverted}
-            contentElement={contentElement}
-            savedAt={draft.savedAt}
-          />
+          // Below 1280px the inspector floats over the document instead of
+          // taking a third column — at that width three columns leave the
+          // text ~460px, too narrow to write in. `bg-card` matches the
+          // document pane it covers; without it the drawer is transparent.
+          <div
+            className={
+              props.inspectorDrawer
+                ? "bg-card absolute top-0 right-0 bottom-0 z-20 flex shadow-lg"
+                : "contents"
+            }
+          >
+            <FolioInspector
+              folio={props.folio}
+              content={draft.values.content}
+              tab={props.inspectorTab}
+              onTabChange={props.onInspectorTabChange}
+              onRevisionCount={setRevisionCount}
+              onReverted={actions.applyReverted}
+              contentElement={contentElement}
+              savedAt={draft.savedAt}
+            />
+          </div>
         )}
       </div>
     </div>

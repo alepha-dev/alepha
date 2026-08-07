@@ -6,6 +6,7 @@ import FolioWorkspaceContent from "./FolioWorkspaceContent.tsx";
 import type { FolioInspectorTab } from "./inspector/FolioInspector.tsx";
 import FolioTree from "./tree/FolioTree.tsx";
 import { useFolioFonts } from "./useFolioFonts.ts";
+import { useFolioPanes } from "./useFolioPanes.ts";
 
 export interface FolioWorkspaceProps {
   /**
@@ -58,6 +59,12 @@ export interface FolioWorkspaceProps {
  * collapse state and re-run its one-time seed/fallback fetch every time
  * the pane is reopened.
  *
+ * Both pane booleans (and focus mode) come from `useFolioPanes`, which
+ * also decides whether each pane is a column or an overlay drawer: below
+ * 1024px the tree floats over the document, below 1280px the inspector
+ * does. Only the WRAPPER's positioning changes at those breakpoints — the
+ * tree itself keeps its single mount either way, for the reason above.
+ *
  * The document + inspector content lives in a child keyed on the folio id.
  * Alepha's router does not remount a page component on a param-only
  * navigation (`ReactPageProvider.createElement` passes no `key`, and
@@ -76,15 +83,25 @@ export interface FolioWorkspaceProps {
 const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   useFolioFonts();
   const [project] = useStore(currentProjectAtom);
-  const [treeOpen, setTreeOpen] = useState(true);
-  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const panes = useFolioPanes();
   const [inspectorTab, setInspectorTab] =
     useState<FolioInspectorTab>("outline");
 
+  // Three states, not two: hidden, a column (`contents` — the wrapper
+  // disappears and `FolioTree`'s own root becomes the flex child), or an
+  // overlay drawer floating over the document on a viewport too narrow for
+  // a third column. The tree stays MOUNTED through all three (see this
+  // file's doc) — only its wrapper's positioning changes.
+  const treeClassName = !panes.treeOpen
+    ? "hidden"
+    : panes.treeDrawer
+      ? "bg-background absolute top-0 bottom-0 left-0 z-20 flex shadow-lg"
+      : "contents";
+
   return (
-    <div className="flex h-full min-h-0">
+    <div className="relative flex h-full min-h-0">
       {project && (
-        <div className={treeOpen ? "contents" : "hidden"}>
+        <div className={treeClassName}>
           <FolioTree
             projectId={project.id}
             projectIdStr={String(project.id)}
@@ -96,12 +113,14 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
         key={props.folio?.id ?? "new"}
         folio={props.folio}
         directoryId={props.directoryId}
-        inspectorOpen={inspectorOpen}
-        onToggleInspector={() => setInspectorOpen((v) => !v)}
+        inspectorOpen={panes.inspectorOpen}
+        inspectorDrawer={panes.inspectorDrawer}
+        onToggleInspector={panes.toggleInspector}
         inspectorTab={inspectorTab}
         onInspectorTabChange={setInspectorTab}
-        treeOpen={treeOpen}
-        onToggleTree={() => setTreeOpen((v) => !v)}
+        treeOpen={panes.treeOpen}
+        onToggleTree={panes.toggleTree}
+        onToggleFocus={panes.toggleFocus}
       />
     </div>
   );
