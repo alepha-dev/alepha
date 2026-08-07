@@ -212,8 +212,16 @@ export const useFolioFind = (
 
     const HighlightCtor = (window as unknown as { Highlight: typeof Highlight })
       .Highlight;
-    CSS.highlights.set(HIGHLIGHT_ALL, new HighlightCtor(...ranges));
-    CSS.highlights.set(HIGHLIGHT_ACTIVE, new HighlightCtor(activeRange));
+    const all = new HighlightCtor(...ranges);
+    const current = new HighlightCtor(activeRange);
+    // Both layers cover the active range, so one of them has to win.
+    // Priority defaults to 0 on both, and the tie left the active match
+    // painted over by the dimmer "all" layer — the match you were standing
+    // on looked like every other match. An explicit priority settles it
+    // regardless of registration order.
+    current.priority = 1;
+    CSS.highlights.set(HIGHLIGHT_ALL, all);
+    CSS.highlights.set(HIGHLIGHT_ACTIVE, current);
   }, [contentElement, query, open, active, content]);
 
   // A highlight registered on `CSS.highlights` is global to the document,

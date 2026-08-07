@@ -28,9 +28,16 @@ const MarkdownEditor = (props: MarkdownEditorProps) => {
     () => false,
   );
 
+  // The placeholder has to reserve the same shape the real editor will
+  // take, frame included — a bare editor that flashes a bordered box
+  // before hydration is a visible jump on every folio open.
   const placeholder = (
     <div
-      className="border-input bg-background min-h-64 rounded-md border"
+      className={
+        props.variant === "bare"
+          ? "min-h-64"
+          : "border-input bg-background min-h-64 rounded-md border"
+      }
       style={props.minHeight ? { minHeight: props.minHeight } : undefined}
     />
   );

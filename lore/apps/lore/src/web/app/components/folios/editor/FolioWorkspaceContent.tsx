@@ -22,6 +22,13 @@ export interface FolioWorkspaceContentProps {
    */
   directoryId?: string;
   /**
+   * The DOM node above the pane row that the menubar and toolbar portal
+   * into. Owned by `FolioWorkspace` because the design puts both rows
+   * above the tree as well as the document — see that file's comment for
+   * why a portal, and not a plain move, is what gets them there.
+   */
+  chromeSlot: HTMLElement | null;
+  /**
    * The inspector's open/closed state and active tab, threaded down from
    * `FolioWorkspace.tsx` — ABOVE the per-folio `key` that remounts this
    * component. See that file's doc for why: a boolean owned in here would
@@ -157,6 +164,7 @@ const FolioWorkspaceContent = (
                 directoryId={props.directoryId}
                 draft={draft}
                 actions={actions}
+                chromeSlot={props.chromeSlot}
                 revisionCount={revisionCount}
                 imageUploadHandler={imageUploadHandler}
               />
@@ -181,6 +189,7 @@ const FolioWorkspaceContent = (
               content={draft.values.content}
               tab={props.inspectorTab}
               onTabChange={props.onInspectorTabChange}
+              onCollapse={props.onToggleInspector}
               onRevisionCount={setRevisionCount}
               onReverted={actions.applyReverted}
               contentElement={contentElement}

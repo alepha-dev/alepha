@@ -1,6 +1,6 @@
 import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
-import { History, Link2, ListTree } from "lucide-react";
+import { PanelRightClose } from "lucide-react";
 import type { ReactElement } from "react";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { I18n } from "../../../../services/I18n.ts";
@@ -25,6 +25,11 @@ export interface FolioInspectorProps {
   content: string;
   tab: FolioInspectorTab;
   onTabChange: (tab: FolioInspectorTab) => void;
+  /**
+   * Closes the pane from the control at the end of its own tab row —
+   * `view.inspector`, the same handler ⇧⌘\ and View▸ drive.
+   */
+  onCollapse: () => void;
   /**
    * Bubbled up from the History tab so `FolioMetaBar` can show
    * "$3 revisions" without a fetch of its own.
@@ -54,18 +59,13 @@ export interface FolioInspectorProps {
   contentElement: HTMLElement | null;
 }
 
-const TABS: {
-  id: FolioInspectorTab;
-  labelKey: string;
-  icon: typeof ListTree;
-}[] = [
-  {
-    id: "outline",
-    labelKey: "folios.editor.inspector.outline",
-    icon: ListTree,
-  },
-  { id: "history", labelKey: "folios.editor.inspector.history", icon: History },
-  { id: "links", labelKey: "folios.editor.inspector.links", icon: Link2 },
+// Labels only, no icons: the design's tab row is three words and nothing
+// else. Icons at this size read as noise next to a 320px pane whose whole
+// job is dense text.
+const TABS: { id: FolioInspectorTab; labelKey: string }[] = [
+  { id: "outline", labelKey: "folios.editor.inspector.outline" },
+  { id: "history", labelKey: "folios.editor.inspector.history" },
+  { id: "links", labelKey: "folios.editor.inspector.links" },
 ];
 
 /**
@@ -101,16 +101,28 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
             aria-selected={props.tab === t.id}
             onClick={() => props.onTabChange(t.id)}
             className={cn(
-              "flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors",
+              "flex h-6.5 items-center rounded-md px-2.5 text-xs font-medium transition-colors",
               props.tab === t.id
                 ? "bg-accent text-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <t.icon className="size-3.5" />
             {tr(t.labelKey)}
           </button>
         ))}
+        <div className="flex-1" />
+        {/* Collapsing the pane from inside it. Without this the only ways
+            out are ⇧⌘\ and the View menu, neither of which is visible from
+            here — the design puts a control at the end of the tab row. */}
+        <button
+          type="button"
+          onClick={props.onCollapse}
+          aria-label={String(tr("folios.editor.inspector.collapse"))}
+          title={String(tr("folios.editor.inspector.collapse"))}
+          className="text-muted-foreground hover:text-foreground flex size-6.5 items-center justify-center rounded-md transition-colors"
+        >
+          <PanelRightClose className="size-3.5" />
+        </button>
       </div>
 
       {/*
