@@ -7,6 +7,9 @@ import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom
 import type { I18n } from "../../../../services/I18n.ts";
 import MarkdownEditor from "../../../shared/markdown-editor/MarkdownEditor.tsx";
 import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
+import FolioMenubar from "../menubar/FolioMenubar.tsx";
+import { useFolioShortcuts } from "../menubar/useFolioShortcuts.ts";
+import FolioToolbar from "../toolbar/FolioToolbar.tsx";
 import type { UseFolioActionsResult } from "../useFolioActions.ts";
 import type { FolioDraft } from "../useFolioDraft.ts";
 import FolioLockedPanel from "./FolioLockedPanel.tsx";
@@ -58,11 +61,25 @@ const countWords = (content: string): number => {
  * The document column: title → meta bar → summary → divider → body. Body
  * is either the editable MDXEditor or, for a protected-and-still-locked
  * folio, `FolioLockedPanel` in its place.
+ *
+ * Also owns the menubar/toolbar chrome (Task 11) and the keyboard
+ * shortcuts that drive it. `useFolioShortcuts` is called HERE, not inside
+ * `FolioMenubar`, deliberately: this component never unmounts while a
+ * folio is open (only the `MarkdownEditor`/`FolioLockedPanel` ternary
+ * below swaps), so binding shortcuts here — once — keeps every
+ * `availableWhenLocked` action (the pane toggles, ⌘S, ⌘D, …) reachable by
+ * keyboard the whole time, including while `FolioMenubar` itself isn't
+ * mounted (locked). See `useFolioActions.ts`'s doc on `editorCommandsRef`
+ * for how `props.actions.handlers` still resolves the realm-backed
+ * `edit.*`/`insert.*` ids correctly despite `useFolioShortcuts` living
+ * outside the realm.
  */
 const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const [directories] = useStore(projectDirectoriesAtom);
+
+  useFolioShortcuts(props.actions.handlers, props.actions.actionState);
 
   const values = props.draft.values;
   const disabled = props.actions.locked;
@@ -138,6 +155,24 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
           placeholder={tr("folios.content-placeholder")}
           imageUploadHandler={props.imageUploadHandler}
           minHeight={420}
+          renderToolbar={() => (
+            <>
+              <FolioMenubar
+                handlers={props.actions.handlers}
+                state={props.actions.actionState}
+                hasImageUpload={!!props.imageUploadHandler}
+                onEditorCommands={props.actions.registerEditorCommands}
+              />
+              <FolioToolbar
+                handlers={props.actions.handlers}
+                state={props.actions.actionState}
+                statusKey={props.draft.statusKey}
+                savedAt={props.draft.savedAt}
+                saving={props.actions.saving}
+                hasImageUpload={!!props.imageUploadHandler}
+              />
+            </>
+          )}
         />
       )}
 

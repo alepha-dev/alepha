@@ -166,6 +166,9 @@ export default {
   "folios.editor.status.saved": "Enregistré $1",
   "folios.editor.status.unsaved": "Modifications non enregistrées",
 
+  "folios.editor.toolbar.rich": "Riche",
+  "folios.editor.toolbar.md": "md",
+
   "folios.editor.action.new": "Nouveau folio",
   "folios.editor.action.new-directory": "Nouveau dossier",
   "folios.editor.action.save": "Enregistrer",

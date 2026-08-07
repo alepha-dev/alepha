@@ -165,6 +165,9 @@ export default {
   "folios.editor.status.saved": "Saved $1",
   "folios.editor.status.unsaved": "Unsaved changes",
 
+  "folios.editor.toolbar.rich": "Rich",
+  "folios.editor.toolbar.md": "md",
+
   "folios.editor.action.new": "New folio",
   "folios.editor.action.new-directory": "New directory",
   "folios.editor.action.save": "Save",

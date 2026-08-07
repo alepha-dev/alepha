@@ -10,7 +10,7 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
@@ -58,6 +58,16 @@ export interface UseFolioActionsInput {
     toggleTree: () => void;
     toggleInspector: () => void;
     toggleFocus: () => void;
+    /**
+     * Opens the inspector pane (if closed) and switches it to the History
+     * tab — backs `history.revisions` (⌘Y). The other three `history.*`
+     * ids (`compare`, `restore`, `keep`) have no generic implementation:
+     * they act on a SPECIFIC revision, which only exists as a concept
+     * inside the History tab's own per-row UI (Task 10) — a top-level
+     * menu/shortcut has no "which revision" to act on, so those three stay
+     * unwired. See the task report for the full reasoning.
+     */
+    openHistory: () => void;
   };
   find: { show: () => void };
 }
@@ -117,6 +127,14 @@ export interface UseFolioActionsResult {
    * left to `props.folio` re-rendering on its own.
    */
   applyReverted: (folio: Folio) => Promise<void>;
+  /**
+   * Feeds real MDXEditor realm-command dispatchers (Bold, Insert Table,
+   * Undo, …) into this hook's own `handlers`, from OUTSIDE this hook.
+   * Called by `FolioMenubar` (Task 11), the one component that actually
+   * runs inside MDXEditor's realm — see `editorCommandsRef`'s doc below
+   * for why this indirection exists at all.
+   */
+  registerEditorCommands: (commands: Partial<FolioActionHandlers>) => void;
 }
 
 /**
@@ -257,6 +275,46 @@ export const useFolioActions = (
   >(input.folio?.directoryId);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [encryptDialogOpen, setEncryptDialogOpen] = useState(false);
+
+  // Edit▸Bold, Insert▸Table and friends dispatch MDXEditor's own realm
+  // commands, reachable ONLY from inside its realm provider —
+  // `MDXEditorMethods` exposes just `insertMarkdown`/`setMarkdown`/
+  // `getMarkdown`/`focus` (see `MarkdownEditorInner.tsx`'s doc). This hook
+  // is called from `FolioWorkspaceContent`, a SIBLING of `<MDXEditor>` —
+  // not a descendant — so no hook call made directly in THIS function body
+  // can ever reach the realm, no matter what's imported.
+  //
+  // `FolioMenubar` (Task 11) is the one component that DOES run inside the
+  // realm (mounted through `renderToolbar`), so it computes the real
+  // dispatchers itself (`useEditorRealmCommands`) and hands them back UP
+  // to this hook via `registerEditorCommands`, which just does
+  // `editorCommandsRef.current = commands`. The `edit.*`/`insert.*`
+  // handlers below read through this ref rather than calling anything
+  // realm-specific directly.
+  //
+  // This indirection is what keeps a SINGLE `useFolioShortcuts` binding
+  // (called once, from `FolioDocument`, which never unmounts regardless of
+  // lock state) correct in every state: while locked, `FolioMenubar` isn't
+  // mounted at all (`MarkdownEditor` is replaced by `FolioLockedPanel`), so
+  // `editorCommandsRef.current` is empty and these handlers are safe
+  // no-ops — which matches `isFolioActionEnabled` already disabling every
+  // one of these ids while locked, so they're never actually reachable via
+  // keyboard either. While unlocked, `FolioMenubar`'s effect has populated
+  // the ref by the time any real keydown can fire, so the SAME handler
+  // reference works for a menu click AND a keyboard shortcut without a
+  // second, realm-aware merge living anywhere else. Binding shortcuts
+  // separately inside `FolioMenubar` instead (the seemingly obvious
+  // alternative) would double-handle every realm-backed shortcut while
+  // unlocked (two `window` capture listeners both matching the same
+  // keydown) and lose ALL shortcuts — including the pane toggles that have
+  // nothing to do with the editor content — the moment any folio locks,
+  // since that listener's host would have unmounted with it.
+  const editorCommandsRef = useRef<Partial<FolioActionHandlers>>({});
+  const registerEditorCommands = (
+    commands: Partial<FolioActionHandlers>,
+  ): void => {
+    editorCommandsRef.current = commands;
+  };
 
   const locked = isProtected && !unlocked;
 
@@ -920,12 +978,21 @@ export const useFolioActions = (
     triggerFolioDownload(filename, markdown, "text/markdown;charset=utf-8");
   };
 
-  // Not this task's job to wire (see the report): `edit.*` / `insert.*` /
-  // `view.rich` / `view.source` dispatch through the MDXEditor toolbar
-  // (Task 11); `history.*` needs the inspector's revision list (Task 10);
-  // `folio.newDirectory` needs a name-prompt + directory-create flow that
-  // more naturally belongs with the tree pane's own creation UI (Task 9).
+  // `history.compare` / `history.restore` / `history.keep` are not this
+  // task's job to wire (see the report): each acts on a SPECIFIC revision,
+  // a concept that only exists inside the History tab's own per-row UI
+  // (Task 10) — there is no generic "the current one" a top-level
+  // menu/shortcut could mean. `folio.newDirectory` needs a name-prompt +
+  // directory-create flow that more naturally belongs with the tree pane's
+  // own creation UI (Task 9).
   const notYetWired = (): void => {};
+
+  // Every `edit.*`/`insert.*`/`view.rich`/`view.source` id below reads
+  // through `editorCommandsRef` — see that ref's own doc above for why
+  // this hook cannot dispatch these directly.
+  const dispatchEditorCommand = (id: FolioActionId) => (): void => {
+    editorCommandsRef.current[id]?.();
+  };
 
   const handlers: FolioActionHandlers = {
     "folio.new": () => {
@@ -969,29 +1036,29 @@ export const useFolioActions = (
     "folio.delete": () => {
       handleDelete();
     },
-    "edit.undo": notYetWired,
-    "edit.redo": notYetWired,
-    "edit.bold": notYetWired,
-    "edit.italic": notYetWired,
-    "edit.code": notYetWired,
-    "edit.link": notYetWired,
-    "edit.wikiLink": notYetWired,
+    "edit.undo": dispatchEditorCommand("edit.undo"),
+    "edit.redo": dispatchEditorCommand("edit.redo"),
+    "edit.bold": dispatchEditorCommand("edit.bold"),
+    "edit.italic": dispatchEditorCommand("edit.italic"),
+    "edit.code": dispatchEditorCommand("edit.code"),
+    "edit.link": dispatchEditorCommand("edit.link"),
+    "edit.wikiLink": dispatchEditorCommand("edit.wikiLink"),
     "edit.find": () => input.find.show(),
-    "insert.heading": notYetWired,
-    "insert.bulletList": notYetWired,
-    "insert.numberedList": notYetWired,
-    "insert.taskList": notYetWired,
-    "insert.quote": notYetWired,
-    "insert.image": notYetWired,
-    "insert.table": notYetWired,
-    "insert.codeBlock": notYetWired,
-    "insert.divider": notYetWired,
-    "view.rich": notYetWired,
-    "view.source": notYetWired,
+    "insert.heading": dispatchEditorCommand("insert.heading"),
+    "insert.bulletList": dispatchEditorCommand("insert.bulletList"),
+    "insert.numberedList": dispatchEditorCommand("insert.numberedList"),
+    "insert.taskList": dispatchEditorCommand("insert.taskList"),
+    "insert.quote": dispatchEditorCommand("insert.quote"),
+    "insert.image": dispatchEditorCommand("insert.image"),
+    "insert.table": dispatchEditorCommand("insert.table"),
+    "insert.codeBlock": dispatchEditorCommand("insert.codeBlock"),
+    "insert.divider": dispatchEditorCommand("insert.divider"),
+    "view.rich": dispatchEditorCommand("view.rich"),
+    "view.source": dispatchEditorCommand("view.source"),
     "view.tree": () => input.panes.toggleTree(),
     "view.inspector": () => input.panes.toggleInspector(),
     "view.focus": () => input.panes.toggleFocus(),
-    "history.revisions": notYetWired,
+    "history.revisions": () => input.panes.openHistory(),
     "history.compare": notYetWired,
     "history.restore": notYetWired,
     "history.keep": notYetWired,
@@ -1019,6 +1086,7 @@ export const useFolioActions = (
     closeEncryptDialog: () => setEncryptDialogOpen(false),
     confirmEncrypt,
     applyReverted,
+    registerEditorCommands,
   };
 };
 
