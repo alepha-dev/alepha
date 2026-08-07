@@ -27,7 +27,7 @@ import {
   toolbarPlugin,
   UndoRedo,
 } from "@mdxeditor/editor";
-import { useEffect, useMemo, useRef } from "react";
+import { type ReactNode, useEffect, useMemo, useRef } from "react";
 import { normalizeEditorMarkdown } from "./normalizeEditorMarkdown.ts";
 import "@mdxeditor/editor/style.css";
 
@@ -41,6 +41,15 @@ export interface MarkdownEditorInnerProps {
    */
   imageUploadHandler?: (file: File) => Promise<string>;
   minHeight?: number;
+  /**
+   * Replaces the default toolbar contents. Rendered inside MDXEditor's
+   * realm provider, so the returned tree can use the editor's own toolbar
+   * primitives and dispatch its formatting commands — which is the only
+   * place those commands are reachable from.
+   *
+   * Omitted → the default single-row toolbar every other caller gets.
+   */
+  renderToolbar?: () => ReactNode;
 }
 
 /**
@@ -57,6 +66,25 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
   // Last value we emitted — used to tell "external reset" (e.g. a folio
   // decrypt filling the form) apart from our own onChange echo.
   const lastEmitted = useRef(props.value);
+  // `renderToolbar` closes over workspace state that changes on every
+  // keystroke. Keeping it in a ref lets `toolbarContents` always call the
+  // latest version WITHOUT the plugin memo (below) depending on its
+  // identity — which would otherwise remount Lexical on every render.
+  //
+  // The assignment below runs DURING RENDER, on purpose — do not "clean
+  // this up" into a `useEffect`/`useLayoutEffect` latest-ref idiom. The
+  // toolbar plugin's `toolbarContents()` (in the `plugins` memo below) is
+  // invoked synchronously as part of the *same* top-down render pass, when
+  // React renders the toolbar plugin's own child — which happens before
+  // this component's effects are flushed, textbook `useLayoutEffect`
+  // included. An effect-based assignment would still hold the *previous*
+  // render's `props.renderToolbar` at the moment `toolbarContents()` reads
+  // it, permanently one render stale — every keystroke would paint the
+  // toolbar one edit behind the document. Assigning here, in the render
+  // body, guarantees the ref is current before `toolbarContents()` ever
+  // runs in this pass.
+  const renderToolbarRef = useRef(props.renderToolbar);
+  renderToolbarRef.current = props.renderToolbar;
 
   useEffect(() => {
     if (props.value === lastEmitted.current) {
@@ -115,23 +143,27 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
       diffSourcePlugin({ viewMode: "rich-text" }),
       toolbarPlugin({
         toolbarClassName: "mdx-toolbar",
-        toolbarContents: () => (
-          <DiffSourceToggleWrapper options={["rich-text", "source"]}>
-            <UndoRedo />
-            <Separator />
-            <BoldItalicUnderlineToggles options={["Bold", "Italic"]} />
-            <CodeToggle />
-            <Separator />
-            <BlockTypeSelect />
-            <ListsToggle options={["bullet", "number", "check"]} />
-            <Separator />
-            <CreateLink />
-            {withImages && <InsertImage />}
-            <InsertTable />
-            <InsertCodeBlock />
-            <InsertThematicBreak />
-          </DiffSourceToggleWrapper>
-        ),
+        toolbarContents: () => {
+          const custom = renderToolbarRef.current;
+          if (custom) return <>{custom()}</>;
+          return (
+            <DiffSourceToggleWrapper options={["rich-text", "source"]}>
+              <UndoRedo />
+              <Separator />
+              <BoldItalicUnderlineToggles options={["Bold", "Italic"]} />
+              <CodeToggle />
+              <Separator />
+              <BlockTypeSelect />
+              <ListsToggle options={["bullet", "number", "check"]} />
+              <Separator />
+              <CreateLink />
+              {withImages && <InsertImage />}
+              <InsertTable />
+              <InsertCodeBlock />
+              <InsertThematicBreak />
+            </DiffSourceToggleWrapper>
+          );
+        },
       }),
     ];
     return list;

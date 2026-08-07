@@ -123,7 +123,18 @@ export default defineConfig({
         // browser tests
         extends: true,
         test: {
-          include: ["packages/**/src/**/*.browser.spec.{ts,tsx}"],
+          // `apps/**` added alongside the original `packages/**` when
+          // `apps/lore` got its first `.browser.spec.tsx` file (a React-hook
+          // test for the folio workspace) — until then no app had one, so
+          // this project's `include` had never needed to reach past
+          // `packages/`. Same shape as the `@/` alias comment above this
+          // file's `resolve.alias`: a root-only include is invisible from
+          // `yarn w <app> test`, so this is what makes an app-level browser
+          // spec actually run under the `yarn test` root command CI uses.
+          include: [
+            "packages/**/src/**/*.browser.spec.{ts,tsx}",
+            "apps/**/src/**/*.browser.spec.{ts,tsx}",
+          ],
           name: { label: "jsdom", color: "cyan" },
           environment: "jsdom",
           // Node >= 25 ships a native Web Storage global. Vitest's jsdom

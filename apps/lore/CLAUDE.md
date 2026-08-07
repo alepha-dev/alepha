@@ -89,8 +89,7 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/p/:projectId/q/:shortId/graph` | `projectQuestGraph` | `project/quest/QuestGraph.tsx` | Quest dependency graph |
 | `/p/:projectId/folios` | `projectFolios` | `folios/FoliosLayout.tsx` | Folio + directory-tree index |
 | `/p/:projectId/folios/new` | `projectFoliosNew` | `folios/FolioCreatePage.tsx` | New folio |
-| `/p/:projectId/folios/:shortId` | `projectFoliosFolio` | `folios/FolioView.tsx` | Folio detail |
-| `/p/:projectId/folios/:shortId/edit` | `projectFoliosFolioEdit` | `folios/FolioEditPage.tsx` | Folio editor |
+| `/p/:projectId/folios/:shortId` | `projectFoliosFolio` | `folios/editor/FolioWorkspace.tsx` | Folio workspace — always-editable, title/tags/body/Save. The old read-only `FolioView` + separate `/edit` route (`projectFoliosFolioEdit`) were merged into this one surface and the `/edit` route was deleted, not redirected |
 | `/p/:projectId/settings` | `projectSettings` | `project/settings/ProjectSettings.tsx` | Settings layout (sub-routes below) |
 | `/p/:projectId/settings/` | `projectSettingsBanner` | `…/ProjectSettingsGeneralPage.tsx` | General / banner |
 | `/p/:projectId/settings/members` | `projectSettingsMembers` | `…/ProjectSettingsMembersPage.tsx` | Members & pending invitations — the future home of per-member access rights |
@@ -256,7 +255,8 @@ The MCP tool descriptions in `src/mcp/tools/ProjectTools.ts` and `src/mcp/tools/
 - Directory / blob controllers: `src/api/controllers/DirectoryController.ts`, `src/api/controllers/BlobController.ts`
 - History: `src/api/services/FolioHistoryService.ts` (append, retention sweep, protection-domain purge)
 - MCP tools: `src/mcp/tools/FolioTools.ts` (folio, directory and blob tools) + `ProjectTools.ts` (`project_context`)
-- UI: `src/web/app/components/folios/FolioEditor.tsx`, `FolioView.tsx`, `FolioBacklinksPanel.tsx`, `FolioBrowser.tsx`, `FolioTreePanel.tsx`
+- UI: `src/web/app/components/folios/editor/FolioWorkspace.tsx` (the workspace shell — three panes: folio tree (`editor/tree/`), document (`editor/document/`), inspector (`editor/inspector/` — Outline / History / Links tabs, the History and Links tabs absorbed the old `FolioHistoryPanel.tsx` / `FolioBacklinksPanel.tsx`, both deleted)), `FolioBrowser.tsx`, `FolioProtectedView.tsx` (orphaned since the workspace's own locked-folio gate replaced it — see Task 8's report). Pane visibility, the 1280/1024px drawer breakpoints and focus mode (⌘.) live in `editor/useFolioPanes.ts`; find-in-folio (⌘F) in `editor/document/useFolioFind.ts`, which paints through the CSS Custom Highlight API (`::highlight(folio-find)` in `src/main.css`) rather than injecting `<mark>` elements — the body is a Lexical `contenteditable`, and injected nodes would end up saved into the folio
+- E2E: `e2e/folio-workspace.spec.ts` covers the workspace (summary round-trip, inspector tabs, tree drag-move, find, focus mode, pane persistence); `e2e/folios.spec.ts` covers `FolioBrowser`, the separate file-manager surface. A tree drag is a fire-and-forget `update` — arm `waitForResponse` BEFORE the drop, or navigating cancels it in flight and the drop looks like it did nothing
 
 **Bucket literals kept un-renamed** — `FOLIO_BLOB_BUCKET = "archive-blobs"` (`FolioBlobService.ts`, `LoreFileAccessProvider.ts`, `BlobController.ts`, `FolioBrowser.tsx`, `useFolioImageUpload.ts`). Same reasoning as the `petition-attachments` bucket in the Feedback section: it's a value already persisted on every existing `files` row, and renaming it would orphan every folio image/blob ever uploaded.
 

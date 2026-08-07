@@ -55,10 +55,9 @@ const NAV_ROUTE_NAMES = [
   "reportsOverview",
   "reportsQuests",
   "reportsMembers",
-  // Folios — FolioBrowser / FolioView / editor links
+  // Folios — FolioBrowser / the folio workspace
   "projectFoliosNew",
   "projectFoliosFolio",
-  "projectFoliosFolioEdit",
   // Quests
   "projectQuest",
   "projectQuestGraph",
