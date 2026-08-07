@@ -586,11 +586,14 @@ describe("sigil ingest", () => {
 
     const gates = await service.gatesFor({
       ...sigil,
-      kinds: ["blights", "beacon", "vitals"],
+      kinds: ["blights", "beacon", "vitals", "feedback"],
     });
 
     expect(gates.errors).toBe(false);
     expect(gates.views).toBe(false);
     expect(gates.vitals).toBe(false);
+    // Feedback too: `features.feedback` is still on here, so this asserts the
+    // master switch and not the module flag standing in for it.
+    expect(gates.feedback).toBe(false);
   });
 });

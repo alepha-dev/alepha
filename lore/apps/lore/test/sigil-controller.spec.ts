@@ -180,7 +180,7 @@ describe("SigilController", () => {
         { params: { projectId }, body: { name: "lore staging" } },
         { user: owner },
       ),
-    ).rejects.toThrowError(/lowercase letters, digits and hyphens/i);
+    ).rejects.toThrow(/lowercase letters, digits and hyphens/i);
   });
 
   it("refuses a leading or trailing hyphen", async ({ expect }) => {
@@ -193,7 +193,7 @@ describe("SigilController", () => {
           { params: { projectId }, body: { name } },
           { user: owner },
         ),
-      ).rejects.toThrowError(/lowercase letters, digits and hyphens/i);
+      ).rejects.toThrow(/lowercase letters, digits and hyphens/i);
     }
   });
 
@@ -206,7 +206,7 @@ describe("SigilController", () => {
         { params: { projectId }, body: { name: "a".repeat(65) } },
         { user: owner },
       ),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 
   it("refuses a name that is only whitespace", async () => {

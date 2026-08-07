@@ -112,8 +112,12 @@ const createProject = async (
   ctx: TestContext,
   user: { id: string; roles: string[] },
 ): Promise<number> => {
+  // `sigils` is the only flag this suite needs: the retired `beacon` project
+  // flag this fixture used to set is read by nothing since capabilities moved
+  // onto each sigil's own `kinds`, and the insights endpoints carry no feature
+  // check of their own — they are member-gated like any other project read.
   const created = await ctx.projectController.createProject.fetch(
-    { body: { title: "Insights", features: { beacon: true } } },
+    { body: { title: "Insights", features: { sigils: true } } },
     { user },
   );
   return created.data.id;
