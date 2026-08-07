@@ -8,9 +8,11 @@ import {
 /**
  * Protected folios (Lore quest #50) — end-to-end encrypted folios. As of
  * the encryption-UX rework, encryption is no longer chosen at create time;
- * a clear folio is encrypted from its view via an Encrypt action, and an
- * encrypted folio is read through a Clear ⇄ Encrypted toggle. The core
- * contracts under test:
+ * a clear folio is encrypted from the workspace's Folio▸Encrypt action,
+ * and a locked folio is opened through the locked panel's own Unlock
+ * button — both inside the one always-editable workspace that replaced the
+ * read-only view and its Clear ⇄ Encrypted toggle. The core contracts
+ * under test are unchanged by that move:
  *
  *  1. Encrypt-from-view: a clear folio encrypted with a passphrase
  *     persists ciphertext server-side. The server payload for that
@@ -64,9 +66,12 @@ test.describe("Protected folio", () => {
         .getByRole("menuitem", { name: /^new folio$/i })
         .first()
         .click();
-      await expect(
-        page.getByRole("heading", { name: /new folio/i }),
-      ).toBeVisible({ timeout: 15_000 });
+      // The create surface IS the workspace now — there is no "New folio"
+      // heading above it any more, so the title field's own placeholder is
+      // what says the editor is ready.
+      await expect(page.getByPlaceholder(/^untitled$/i)).toBeVisible({
+        timeout: 15_000,
+      });
 
       // The folio title input is the one with the "Untitled" placeholder.
       await page.getByPlaceholder(/^untitled$/i).fill(folioTitle);
@@ -81,15 +86,14 @@ test.describe("Protected folio", () => {
     });
 
     await test.step("encrypt the folio from its view", async () => {
-      // Encrypt now lives in the header "…" (More actions) dropdown
-      // (feedback #16): open the menu, then pick Encrypt, which opens the
-      // set-passphrase dialog.
+      // Encrypt lives in the workspace menubar's Folio menu now — the
+      // header "…" (More actions) dropdown went away with `FolioView`.
       await page
-        .getByRole("button", { name: /more actions/i })
+        .locator('[data-slot="menubar-trigger"]', { hasText: /^Folio$/ })
         .first()
         .click();
       await page
-        .getByRole("menuitem", { name: /^encrypt$/i })
+        .getByRole("menuitem", { name: /^encrypt/i })
         .first()
         .click();
       const dialog = page.getByRole("dialog");
@@ -140,16 +144,21 @@ test.describe("Protected folio", () => {
     await test.step("page reloads into the locked state (key not cached)", async () => {
       await page.reload();
       await page.waitForLoadState("networkidle");
-      await expect(page.getByText(/end-to-end encrypted/i).first()).toBeVisible(
-        { timeout: 10_000 },
-      );
+      // The workspace shows `FolioLockedPanel` in place of the document
+      // body — the old read-only `FolioProtectedView` and its
+      // "end-to-end encrypted" copy went with `FolioView`.
+      await expect(
+        page.getByRole("heading", { name: /this folio is encrypted/i }),
+      ).toBeVisible({ timeout: 10_000 });
       // The plaintext marker must NOT be on the rendered page either.
       await expect(page.getByText(`LOOTBAG-${t}`)).toHaveCount(0);
     });
 
     await test.step("wrong passphrase shows generic failure, no plaintext leak", async () => {
-      // Flip the Clear ⇄ Encrypted toggle toward Clear → unlock dialog.
-      await page.getByRole("switch").click();
+      // Unlock happens inside the workspace now: the locked panel's own
+      // Unlock button opens the passphrase dialog, in place of the
+      // deleted read-only view's Clear ⇄ Encrypted switch.
+      await page.getByRole("button", { name: /^unlock$/i }).click();
       const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 5_000 });
       await dialog.getByLabel(/^passphrase$/i).fill(wrongPassphrase);
@@ -169,8 +178,11 @@ test.describe("Protected folio", () => {
       await expect(page.getByText(`LOOTBAG-${t}`).first()).toBeVisible({
         timeout: 30_000,
       });
-      // Unlocked-state marker: the toggle now reads "Clear".
-      await expect(page.getByText(/^clear$/i).first()).toBeVisible();
+      // Unlocked-state marker: the locked panel is gone and the folio is
+      // an ordinary editable document again.
+      await expect(
+        page.getByRole("heading", { name: /this folio is encrypted/i }),
+      ).toHaveCount(0);
     });
   });
 });

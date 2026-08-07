@@ -147,6 +147,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
       <ContextMenuTrigger
         render={
           <div
+            data-slot="folio-tree-row"
             draggable={!isRenaming}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}

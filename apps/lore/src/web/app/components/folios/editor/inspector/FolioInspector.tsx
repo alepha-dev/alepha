@@ -84,7 +84,10 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
 
   return (
-    <div className="border-border flex h-full min-h-0 w-[320px] flex-none flex-col overflow-hidden border-l">
+    <div
+      data-slot="folio-inspector"
+      className="border-border flex h-full min-h-0 w-[320px] flex-none flex-col overflow-hidden border-l"
+    >
       <div
         role="tablist"
         aria-label={String(tr("folios.editor.action.toggle-inspector"))}
