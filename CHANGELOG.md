@@ -1,3 +1,37 @@
+## [0.25.1] - 2026-08-07
+
+### Features
+
+- **cli**: secrets ride the deploy, so an app never boots without them (`dfbcd5ac`)
+- **cli**: deploy to Bay over ssh instead of an admin panel (`03ab985f`)
+- **cli**: add host to the platform environment config (`3001a040`)
+- **system**: pipe stdin into argv shell commands (`9c6262f1`)
+- **protobuf**: publish @alepha/protobuf (`72e238da`)
+- **protobuf**: restore @alepha/protobuf, on zod (`c59711f1`)
+- **cli**: tell the agent about the devtools API (`c9230e7a`)
+- **cli**: platform push, and --tag on up and deploy (`57aa558a`)
+- **mqtt,ui**: publish @alepha/mqtt and @alepha/ui to npm (`a871f0de`)
+- **cli**: LoreAdapter deploys a tag, and reuses a pinned one rather than rebuilding it (`cfb01bd4`)
+- **cli**: ship a static site the framework did not render, and let Lore deploy one (`4ccc08ca`)
+- **bucket**: Bay hands apps a bucket, and owns APP_NAME (`bd30b2ec`)
+
+### Bug Fixes
+
+- **ui**: a searchable select could be set, but never cleared (`ac624fe1`)
+- **cli**: an answered prompt kept stdin open, so the command never exited (`92ee7abe`)
+- **oauth**: the refresh_token grant authenticated nobody (`8e688b55`)
+- **api/users**: the login lockout was disabled on Workers, and fail-open besides (`2655ec3c`)
+- **cli**: Bay could not take a secret from CI, where there is no .env file (`f7cd6ca0`)
+- **cli**: BayAdapter pushed no secrets at all, and said nothing about it (`3f13f434`)
+- **cli**: four review follow-ups from the outpost-purge / sigil-apps plan (`e45e2fa0`)
+- **cli**: make the Bay pre-flight actually reach the control socket (`2dcce305`)
+- **cli**: fix control-socket misdiagnosis, add --control-socket support (`e8a4f4cb`)
+- **ui**: make the shadcn sync actually write files, and refresh the primitives (`afdd0cb6`)
+- **api**: stop racing the wall clock in the parameter TTL test (`e93de2ef`)
+- **cli**: stop reporting a domain the deploy did not choose (`280d8a5c`)
+- **server**: drop the body on null-body statuses, and centre the error page (`d8c6f2af`)
+- **cli,command**: a mistyped subcommand exited 0, and openapi refused to run without $swagger (`34f72a12`)
+
 ## [0.25.0] - 2026-08-04
 
 ### Features
