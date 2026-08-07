@@ -495,6 +495,55 @@ this section. Same precedent, same verdict as the `projects.features` `DEFAULT` 
 documented above: accepted drift beats a rebuild. `test/migration-safety.spec.ts` guards
 the table against a future `DROP TABLE` from the family rebuild forward.
 
+### ⚠️ Dropping a conjunct from a gate is a data migration with no SQL (accepted, 2026-08-06)
+
+Moving telemetry capabilities off the project's feature flags and onto each app's
+own `sigils.kinds` changed what `SigilIngestService.gatesFor` computes:
+
+```ts
+// before
+views: master && features.beacon === true && carries(sigil, "beacon")
+// after
+views: master && carries(sigil, "beacon")
+```
+
+Same for `errors` (`features.blights`) and `vitals` (`features.vitals`). Only
+`feedback` still carries a project flag, because `features.feedback` also governs
+the first-party form at `/p/:projectId/request`, which exists with no app enrolled.
+
+**Removing a conjunct is monotone in the "on" direction.** No sigil loses a
+capability; some gain one. A newly minted sigil carries all four kinds, and
+`ProjectCreate.tsx`'s `DEFAULT_FEATURES` never set `blights` / `beacon` / `vitals` —
+so on every wizard-created project those flags are *absent*, the old `=== true`
+conjunct was false, and ingest was **silently discarding** everything those apps
+sent. The moment this deploys the same payloads are accepted: page views, web
+vitals, error groups, blights, and the daily visitor hash in `sigil_uniques_daily`
+— the one piece of personal data on this path. The reporting client re-polls
+`/sigils/config`, sees `enabled` flip to all-true, and starts sending on its own.
+No owner action, no notification, no migration file in the diff.
+
+**No SQL runs. The rows do not change — the meaning of `kinds` does.** That is
+what makes this easy to miss: `check:migrations` is green, `migrations/sqlite/` is
+untouched, and every test constructs its own fixtures so nothing goes red. There is
+no artifact anywhere in the pipeline that says data behaviour changed.
+
+**This was decided, not overlooked.** It was acceptable here because production
+holds a single sigil — `lore` — enrolled by the operator into their own project, so
+the set of people whose telemetry starts flowing is the operator's own visitors
+under a project the operator controls, and the new behaviour is the intended end
+state rather than a leak to be corrected. Writing an `UPDATE sigils SET kinds = …`
+migration to strip the newly-effective kinds was considered and rejected: it would
+have frozen every app into the retired flags' accidental values and left an owner
+with switches whose default disagreed with the design.
+
+**The rule.** A gate is a data-behaviour surface. Dropping a conjunct from one —
+or widening any authorization or ingest predicate — is a semantic data migration
+even when no schema changes and no SQL is written, and it belongs in this register
+next to the ones that do. Before merging such a change, answer: which existing rows
+change meaning, what starts being written that was not, does any of it include
+personal data, and would the affected owner want to be told. If the answer to the
+last one is yes and nobody is telling them, write the `UPDATE` instead.
+
 ### ⚠️ `$sequence` keys its counter on the property name, not the table
 
 `$sequence()` fields (used for per-project short IDs / numbering, e.g. `MilestoneController.milestoneNumber`, `FeedbackController.feedbackShortId`) persist their running counter in the `alepha_sequences` table, keyed by **the property name**, not by the entity/table it numbers. Renaming the property — `chapterNumber` → `milestoneNumber`, `petitionShortId` → `feedbackShortId` — does not rename the existing counter row. It orphans it: the renamed property starts a brand-new counter at 1, colliding with whatever numbers already exist in production for that project.
