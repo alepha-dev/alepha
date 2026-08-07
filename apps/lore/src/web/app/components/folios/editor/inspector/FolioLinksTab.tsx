@@ -58,13 +58,23 @@ type Ref = FolioLinks["outbound"][number] | FolioLinks["inbound"][number];
  * two INDEPENDENT per-project `$sequence()` counters, so a folio and a
  * blob routinely share a shortId — a folio containing `[[blob#3]]` got
  * an Outgoing row that opened whichever *folio* happens to own shortId
- * 3, an unrelated document (or a dead route, if no folio does). The
- * correct fix would be a real `/api/files/:id` download link, but
- * `resolveLinks` (`FolioController.ts`) never sends a blob ref's
- * underlying `files` row id in the first place — only `shortId` / `title`
- * / `path` — so there is nothing on the client to build that URL from
- * without a server-side schema change. Rendering non-navigable is the
- * fix that's correct with the data actually available today.
+ * 3, an unrelated document (or a dead route, if no folio does).
+ *
+ * A real download link IS reachable — `BlobController.getBlobByShortId`
+ * (`GET /projects/:projectId/folio/blobs/by-short-id/:shortId`,
+ * member-gated, already used by the MCP `blob_*` tools) resolves a
+ * shortId to the hydrated blob record, whose `id` is the underlying
+ * `files` row id `/api/files/:id` downloads need — the same id
+ * `FolioBrowser.tsx`'s own blob rows already open with
+ * `window.open(\`/api/files/${entry.id}\`, ...)`. This tab renders
+ * non-navigable anyway: `resolveLinks` (`FolioController.ts`) doesn't
+ * send that id inline with the outbound ref, only `shortId` / `title` /
+ * `path`, so making a blob row clickable means firing a resolve call on
+ * render for every blob ref this tab shows — a fetch-on-render this
+ * otherwise-synchronous tab doesn't have today. Deliberately deferred,
+ * not blocked: plain text is honest about "no link" without a false
+ * "impossible" claim, and is strictly safer than the wrong-route bug it
+ * replaces. See the task report.
  */
 const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
