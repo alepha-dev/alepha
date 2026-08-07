@@ -311,8 +311,8 @@ export const useFolioActions = (
    * and unlocking afterward decrypts the (already-reverted) content
    * correctly, so nothing is lost, it just isn't shown until then.
    *
-   * Every branch below re-baselines `draft.savedAt`, even the ones that
-   * can't touch `content` (no cached key, or a decrypt failure) — the
+   * Every branch below moves `draft.savedAt`, even the ones that can't
+   * touch `content` (no cached key, or a decrypt failure) — the
    * inspector's `FolioHistoryTab` keys its `listHistory` fetch effect on
    * `savedAt` (threaded down as `refreshedAt`) specifically so it
    * notices a save made from elsewhere. A revert IS such a save: the
@@ -323,6 +323,27 @@ export const useFolioActions = (
    * itself no longer calls its own `refresh()` after a revert — a second,
    * separate `listHistory` call landing at nearly the same moment as this
    * one was a wasted round-trip, not a correctness difference.
+   *
+   * The two branches that can't call `applyDecryptedContent` use
+   * `draft.touchSavedAt`, NOT `draft.markSaved`. This distinction is
+   * load-bearing, not stylistic: `locked` (`isProtected && !unlocked`) is
+   * what gates whether the title/tags/summary fields are `disabled`, but
+   * `unlocked` is React state while the cached key it's meant to track
+   * lives in `protectedFolioKeys.ts`'s module-level cache —
+   * `ensureProtectedKeysAutoLock` can evict that cache after 15 idle
+   * minutes (or sooner, hidden) WITHOUT resetting `unlocked`. So the
+   * `!cachedKey` branch below is reachable with `locked === false`: the
+   * fields are still fully editable, and the user may have real,
+   * never-persisted edits sitting in the live buffer at the exact moment
+   * a revert (from the History tab, of an OLDER revision) lands. Calling
+   * `markSaved(reverted.updatedAt, getLiveValues())` there would adopt
+   * those live edits as the new `dirty`-comparison baseline — silently
+   * marking un-persisted work "Saved" without ever sending it anywhere.
+   * `save()` treats this exact condition (not `locked`, no cached key) as
+   * an error and refuses; a revert must not treat it as success by
+   * accident. `touchSavedAt` moves only the timestamp `FolioHistoryTab`
+   * needs, leaving `baseline` (and therefore `dirty`) exactly where it
+   * was — a genuinely diverged buffer keeps reading "Unsaved changes".
    */
   const applyReverted = async (reverted: Folio): Promise<void> => {
     const syncAtoms = (): void => {
@@ -332,11 +353,10 @@ export const useFolioActions = (
       for (const t of reverted.tags) merged.add(t);
       setTags([...merged].sort());
     };
-    // Re-baseline `savedAt` WITHOUT touching content or the other
-    // fields — used by the branches that can't (or didn't) call
-    // `applyDecryptedContent` themselves.
+    // Move `savedAt` alone — see this function's own doc for why this is
+    // NOT `markSaved(reverted.updatedAt, input.draft.getLiveValues())`.
     const bumpSavedAt = (): void => {
-      input.draft.markSaved(reverted.updatedAt, input.draft.getLiveValues());
+      input.draft.touchSavedAt(reverted.updatedAt);
     };
 
     if (isProtected) {

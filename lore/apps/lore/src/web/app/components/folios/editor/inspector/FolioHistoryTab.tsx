@@ -51,8 +51,14 @@ export interface FolioHistoryTabProps {
    * the server-reverted row does not otherwise reach this component's own
    * `props.folio` (a route-loader snapshot, frozen for the mount's
    * lifetime — same premise as everywhere else in this workspace).
+   *
+   * Typed `Promise<void>`, not `void` — `handleRevert` below `await`s it,
+   * and that `await` is load-bearing (it's what keeps `setBusy(false)`
+   * from firing before the baseline update lands, not just the network
+   * call). A `void` signature would let a future edit drop the `await`
+   * with nothing catching it — structural typing wouldn't complain.
    */
-  onReverted: (folio: Folio) => void;
+  onReverted: (folio: Folio) => Promise<void>;
   /**
    * Fired whenever the revision list changes (load, revert, pin toggle) so
    * `FolioMetaBar`'s "$3 revisions" count stays in sync without its own

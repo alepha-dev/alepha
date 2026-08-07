@@ -50,6 +50,22 @@ export interface FolioDraft {
    */
   markSaved: (at: string, values: FolioDraftValues) => void;
   /**
+   * Move `savedAt` alone, WITHOUT touching the `dirty`-comparison
+   * `baseline`. Exists for events that changed the folio SERVER-SIDE
+   * (a history revert) but that must NOT be read as "whatever is
+   * currently in the buffer just got saved" — `markSaved` conflates the
+   * two, which is correct when the caller is actually reporting a
+   * successful write of the live values, and wrong when it isn't. Using
+   * `markSaved(at, getLiveValues())` for a revert the user didn't
+   * initiate through Save would silently adopt in-progress, un-persisted
+   * edits as the new baseline — `dirty` would flip to `false` and the
+   * status line would falsely read "Saved" over content the server has
+   * never seen. `touchSavedAt` only moves the timestamp consumers like
+   * `FolioHistoryTab`'s fetch effect key on; a genuinely diverged buffer
+   * keeps correctly reading `dirty: true`.
+   */
+  touchSavedAt: (at: string) => void;
+  /**
    * Read the CURRENT form values directly off the `FormModel`, bypassing
    * the `values` snapshot above.
    *
@@ -177,6 +193,10 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
     setSavedAt(at);
   };
 
+  const touchSavedAt = (at: string): void => {
+    setSavedAt(at);
+  };
+
   const dirty = !sameValues(values, baseline.current);
 
   const getLiveValues = (): FolioDraftValues => {
@@ -197,6 +217,7 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
     statusKey: !folio ? "draft" : dirty ? "unsaved" : "saved",
     savedAt,
     markSaved,
+    touchSavedAt,
     getLiveValues,
   };
 };

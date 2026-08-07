@@ -41,9 +41,11 @@ export interface FolioInspectorProps {
   /**
    * Bubbled up from the History tab after a successful revert — see
    * `useFolioActions.applyReverted`'s doc for why the sync has to happen
-   * there rather than by re-reading `props.folio`.
+   * there rather than by re-reading `props.folio`. Typed `Promise<void>`
+   * — `FolioHistoryTab.handleRevert` `await`s it, and that `await` is
+   * load-bearing (see that prop's own doc there).
    */
-  onReverted: (folio: Folio) => void;
+  onReverted: (folio: Folio) => Promise<void>;
   /**
    * The editor's contenteditable root (or an ancestor of it) — threaded
    * down to the Outline tab only. `null` until the MDXEditor's lazy chunk

@@ -6,11 +6,12 @@ import { AlephaContext } from "alepha/react";
 import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 import type { Folio } from "@/api/entities/folios.ts";
+import { forgetProtectedKey } from "../protectedFolioKeys.ts";
 import {
   type UseFolioActionsResult,
   useFolioActions,
 } from "./useFolioActions.ts";
-import { useFolioDraft } from "./useFolioDraft.ts";
+import { type FolioDraft, useFolioDraft } from "./useFolioDraft.ts";
 
 /**
  * Regression guard for a reviewer-found bug: after `confirmEncrypt`
@@ -186,8 +187,10 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
   const Widget = (props: {
     folio: Folio;
     onActions: (actions: UseFolioActionsResult) => void;
+    onDraft?: (draft: FolioDraft) => void;
   }) => {
     const draft = useFolioDraft(props.folio);
+    props.onDraft?.(draft);
     props.onActions(
       useFolioActions({
         folio: props.folio,
@@ -311,5 +314,95 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
         "2026-01-02T00:00:00.000Z",
       ),
     );
+  });
+
+  /**
+   * Reviewer-found bug, round 2: `locked` (`isProtected && !unlocked`)
+   * only tracks the React state `unlocked`, not whether a cached key
+   * actually still exists — `ensureProtectedKeysAutoLock` can evict the
+   * module-level cache in `protectedFolioKeys.ts` after an idle window
+   * WITHOUT resetting `unlocked`. So the folio can be genuinely
+   * `unlocked === true` (fields editable, real edits in the buffer) at
+   * the exact moment a revert lands with no cached key — the SAME
+   * `!cachedKey` branch the "locked" test above exercises, but reached
+   * from a state where the previous test's assumption ("nothing could
+   * have been typed") does not hold.
+   */
+  it("keeps a diverged live buffer marked unsaved when a revert lands after the cached key was evicted but unlocked is still true", async ({
+    expect,
+  }) => {
+    const folio = baseFolio();
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with({ provide: LinkProvider, use: FakeLinkProvider });
+    alepha.inject(FakeLinkProvider).currentFolio = folio;
+
+    let actions: UseFolioActionsResult | undefined;
+    let draft: FolioDraft | undefined;
+    const { getByTestId } = mount(
+      alepha,
+      <Widget
+        folio={folio}
+        onActions={(a) => (actions = a)}
+        onDraft={(d) => (draft = d)}
+      />,
+    );
+
+    // Genuinely unlock the folio in-session (same real crypto path the
+    // OTHER describe block above already proves works in this
+    // environment) — `unlocked` flips `true`, a real key gets cached.
+    const encryptResult = await actions?.confirmEncrypt("a real passphrase");
+    expect(encryptResult).toBeNull();
+
+    // Evict the cache the way the idle-timeout auto-lock does, WITHOUT
+    // touching `unlocked` — this is the exact gap the bug lives in.
+    // `locked` (`isProtected && !unlocked`) still reads `false` here.
+    forgetProtectedKey(folio.id);
+
+    // The user is mid-edit: real, un-persisted content sitting in the
+    // live buffer, diverged from what was last saved.
+    draft?.form.input.content.set("live edit nobody saved yet");
+    await waitFor(() =>
+      expect(getByTestId("content").textContent).toBe(
+        "live edit nobody saved yet",
+      ),
+    );
+    expect(getByTestId("dirty").textContent).toBe("true");
+
+    const reverted: Folio = {
+      ...folio,
+      protected: true,
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    };
+
+    await actions?.applyReverted(reverted);
+
+    // Wait for `savedAt` to reach the reverted row's timestamp FIRST —
+    // `savedAt` is `useState`, so `applyReverted`'s `setSavedAt` call is
+    // not guaranteed to have flushed into the DOM by the time the
+    // `await` above merely resolves (that promise settles once the
+    // synchronous body of `applyReverted` finishes; the React re-render
+    // it triggers is a separate, deferred step). Reading `dirty` and
+    // `content` from the DOM before this wait would risk observing the
+    // PRE-`applyReverted` render — where they already happened to read
+    // "true" / the live edit for an unrelated reason (nothing had
+    // reverted yet) — which would pass in both the fixed and the broken
+    // version and prove nothing. Waiting for `savedAt` to move is a
+    // value that MUST change on a genuine update, so it's what actually
+    // pins "the post-revert render has landed" before asserting on it.
+    await waitFor(() =>
+      expect(getByTestId("savedAt").textContent).toBe(
+        "2026-01-02T00:00:00.000Z",
+      ),
+    );
+    // NOW check the property under test, on a render we know reflects
+    // `applyReverted`'s outcome: the live edit must survive untouched,
+    // and `dirty` must NOT have flipped to `false` — that would be the
+    // status line falsely reporting "Saved" over content the server has
+    // never seen and this session never sent.
+    expect(getByTestId("content").textContent).toBe(
+      "live edit nobody saved yet",
+    );
+    expect(getByTestId("dirty").textContent).toBe("true");
   });
 });
