@@ -639,6 +639,8 @@ export default {
   "app.settings.capabilities.title": "Capacités",
   "app.settings.capabilities.description":
     "Ce que cette application peut remonter. Désactiver une capacité empêche le point d'ingestion de l'accepter — pour cette application seulement, pas pour les autres.",
+  "app.settings.capabilities.feedbackModuleOff":
+    "Le module Retours du projet est désactivé : le lien de cette application reste masqué quoi qu'indique cet interrupteur. Activez le module dans Paramètres ▸ Retours.",
   "app.settings.rotate.title": "Renouveler le jeton",
   "app.settings.rotate.description":
     "Génère un nouveau jeton et invalide l'actuel immédiatement. Tout ce que cette application a remonté est conservé — c'est ainsi qu'on révoque un jeton fuité sans perdre son historique.",

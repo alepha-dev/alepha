@@ -634,6 +634,8 @@ export default {
   "app.settings.capabilities.title": "Capabilities",
   "app.settings.capabilities.description":
     "What this app may report. Turning one off stops the ingest endpoint accepting it — for this app only, not for the others.",
+  "app.settings.capabilities.feedbackModuleOff":
+    "The project's Feedback module is off, so this app's link stays hidden whatever this switch says. Turn the module on under Settings ▸ Feedback.",
   "app.settings.rotate.title": "Rotate the token",
   "app.settings.rotate.description":
     "Mints a new token and stops the current one immediately. Everything this app has reported is kept — this is how a leaked token is revoked without losing its history.",

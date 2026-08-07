@@ -5,6 +5,11 @@ import {
   CardTitle,
 } from "@alepha/ui/components/ui/card";
 import { Switch } from "@alepha/ui/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -70,9 +75,19 @@ const ROWS: CapabilityRow[] = [
  * app enrolled at all. Turning it on here lets *this* app's widget submit; the
  * module itself is switched in Project ▸ Settings ▸ Feedback.
  *
+ * That asymmetry is why the Feedback row carries an extra line when the project
+ * flag is off. A new sigil is minted carrying all four kinds, and a project
+ * created through the wizard starts with `features.feedback: false` on purpose
+ * — so the switch reads ON while `gatesFor` answers `feedback: false` and
+ * `/sigils/config` omits `feedbackUrl` entirely. The switch is left usable (the
+ * per-app decision is real, and it takes effect the moment the module is turned
+ * on) but it must not claim an effect it does not have.
+ *
  * Owner-only server-side, like rotate and delete. The switches are disabled for
  * a non-owner as a UX hint over `currentProjectMemberAtom.owner` — not a second
- * authorization boundary. See the longer note on `AppSettings.tsx`.
+ * authorization boundary — and carry the same tooltip the rotate and delete
+ * buttons do, so a disabled control always says who it is waiting for. See the
+ * longer note on `AppSettings.tsx`.
  */
 const AppSettingsCapabilities = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -142,29 +157,60 @@ const AppSettingsCapabilities = () => {
         <p className="text-muted-foreground text-sm">
           {tr("app.settings.capabilities.description")}
         </p>
-        {ROWS.map((row) => (
-          <div
-            key={row.key}
-            className="flex flex-col gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6"
-          >
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">{tr(row.titleKey)}</span>
-              <span className="text-muted-foreground text-xs">
-                {tr(row.descriptionKey)}
-              </span>
+        {ROWS.map((row) => {
+          // The one row whose switch does not, on its own, decide anything —
+          // see the note on this component.
+          const moduleOff =
+            row.key === "feedback" && project.features?.feedback !== true;
+
+          return (
+            <div
+              key={row.key}
+              className="flex flex-col gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6"
+            >
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">{tr(row.titleKey)}</span>
+                <span className="text-muted-foreground text-xs">
+                  {tr(row.descriptionKey)}
+                </span>
+                {moduleOff && (
+                  <span className="text-amber-600 text-xs dark:text-amber-500">
+                    {tr("app.settings.capabilities.feedbackModuleOff")}
+                  </span>
+                )}
+              </div>
+              <div className="flex justify-start sm:justify-end">
+                {isOwner ? (
+                  <Switch
+                    checked={sigil.kinds.includes(row.key)}
+                    disabled={busy}
+                    aria-label={tr(row.titleKey)}
+                    onCheckedChange={(value) => {
+                      void toggle(row.key, value);
+                    }}
+                  />
+                ) : (
+                  // Wrapped in a span rather than handed to `render`: a
+                  // disabled control swallows the pointer events the tooltip
+                  // listens for, so the trigger has to be an element that is
+                  // not itself disabled.
+                  <Tooltip>
+                    <TooltipTrigger render={<span className="inline-flex" />}>
+                      <Switch
+                        checked={sigil.kinds.includes(row.key)}
+                        disabled
+                        aria-label={tr(row.titleKey)}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {tr("app.settings.ownerOnly")}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             </div>
-            <div className="flex justify-start sm:justify-end">
-              <Switch
-                checked={sigil.kinds.includes(row.key)}
-                disabled={!isOwner || busy}
-                aria-label={tr(row.titleKey)}
-                onCheckedChange={(value) => {
-                  void toggle(row.key, value);
-                }}
-              />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </CardContent>
     </Card>
   );
