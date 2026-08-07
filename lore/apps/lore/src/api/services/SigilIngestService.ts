@@ -19,10 +19,15 @@ import { BlightRuleService } from "./BlightRuleService.ts";
 /**
  * What one sigil is allowed to write, right now.
  *
- * The project's toggles intersected with the sigil's own kinds — one answer
- * for both the gate `absorb` applies and the answer `GET /sigils/config`
- * serves, so those two can never drift into disagreeing about what the sink
- * accepts.
+ * The sigil's own kinds under the project's `sigils` master switch — and, for
+ * `feedback` alone, the project's `feedback` flag on top. The three project
+ * flags that used to be intersected in as well are retired; see
+ * {@link SigilIngestService.gatesFor}, which is the definition this interface
+ * only names.
+ *
+ * One answer for both the gate `absorb` applies and the answer
+ * `GET /sigils/config` serves, so those two can never drift into disagreeing
+ * about what the sink accepts.
  */
 export interface SigilGates {
   views: boolean;

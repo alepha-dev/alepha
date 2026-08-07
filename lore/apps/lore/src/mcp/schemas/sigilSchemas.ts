@@ -1,4 +1,5 @@
 import { z } from "alepha";
+import { APP_NAME_MAX_LENGTH } from "../../api/schemas/appNameSchema.ts";
 import { projectParamsSchema } from "./commonSchemas.ts";
 
 /**
@@ -51,12 +52,15 @@ export const sigilListResultSchema = z.object({
 // -----------------------------------------------------------------------------
 
 export const sigilCreateParamsSchema = projectParamsSchema.extend({
+  // The bound is imported rather than restated: the server enforces
+  // `appNameSchema` on the way in, and a description that promises more than
+  // the handler accepts costs the caller a 400 it cannot see coming.
   name: z
     .string()
     .min(1)
-    .max(100)
+    .max(APP_NAME_MAX_LENGTH)
     .describe(
-      "Name of the app, e.g. `lore`. Free-form, and unique within the project — everything this sigil reports is filed under it. How finely to slice is the operator's call: an app that wants its staging traffic kept apart from production enrols two sigils and names them so.",
+      `A slug, not a title: lowercase letters, digits and interior hyphens only (\`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$\`), at most ${APP_NAME_MAX_LENGTH} characters — it becomes the app's URL segment, e.g. \`lore-staging\` for /p/2/apps/lore-staging. Leading and trailing whitespace is trimmed and capitals are lowercased, so \`Lore-Staging\` is accepted and stored as \`lore-staging\`; a space, an underscore or any other character is rejected outright. Unique within the project — everything this sigil reports is filed under it. How finely to slice is the operator's call: an app that wants its staging traffic kept apart from production enrolls two sigils and names them so.`,
     ),
 });
 

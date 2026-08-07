@@ -63,7 +63,9 @@ const ProjectSettingsSigilsPage = () => {
   const enabled = master.enabled;
 
   const [enrolling, setEnrolling] = useState(false);
-  /** The one moment a token is readable. Cleared as soon as it is dismissed. */
+  /**
+   * The one moment a token is readable. Cleared as soon as it is dismissed.
+   */
   const [freshToken, setFreshToken] = useState<string | undefined>();
 
   const reload = useCallback(async () => {
