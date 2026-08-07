@@ -2,7 +2,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, File as FileIcon } from "lucide-react";
 import type { ReactElement } from "react";
 import type {
   FolioLinks,
@@ -49,6 +49,22 @@ type Ref = FolioLinks["outbound"][number] | FolioLinks["inbound"][number];
  * payload the server sends. Showing one would mean fabricating text that
  * was never fetched; the brief called for excerpts, but the data to back
  * them doesn't exist yet. See the task report.
+ *
+ * A `blob` outbound ref renders as plain, NON-navigable text (not a
+ * `Link`) — carried over from the deleted `FolioBacklinksPanel.tsx`, that
+ * kind used to fall through to the same `projectFoliosFolio` route every
+ * `folio` ref uses, with `ref.shortId` as the param. That's wrong:
+ * `FolioController.folioShortId` and `FolioBlobService.blobShortId` are
+ * two INDEPENDENT per-project `$sequence()` counters, so a folio and a
+ * blob routinely share a shortId — a folio containing `[[blob#3]]` got
+ * an Outgoing row that opened whichever *folio* happens to own shortId
+ * 3, an unrelated document (or a dead route, if no folio does). The
+ * correct fix would be a real `/api/files/:id` download link, but
+ * `resolveLinks` (`FolioController.ts`) never sends a blob ref's
+ * underlying `files` row id in the first place — only `shortId` / `title`
+ * / `path` — so there is nothing on the client to build that URL from
+ * without a server-side schema change. Rendering non-navigable is the
+ * fix that's correct with the data actually available today.
  */
 const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
@@ -71,9 +87,38 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
   const renderRefs = (refs: Ref[]) => (
     <ul className="flex flex-col gap-0.5 px-1.5">
       {refs.map((ref) => {
+        const pathSegments = ref.kind !== "quest" ? ref.path : undefined;
+        const label = (
+          <>
+            <span className="flex min-w-0 flex-1 flex-col items-start gap-0">
+              {pathSegments && pathSegments.length > 0 && (
+                <span className="folio-mono text-muted-foreground w-full truncate text-[10px]">
+                  {pathSegments.map((p) => p.name).join("/")}/
+                </span>
+              )}
+              <span className="w-full truncate text-left">{ref.title}</span>
+            </span>
+            <span className="folio-mono text-muted-foreground shrink-0 text-[10px]">
+              {ref.kind === "quest" ? `Q#${ref.shortId}` : `#${ref.shortId}`}
+            </span>
+          </>
+        );
+
+        // No client-addressable target — see this file's doc. Plain,
+        // non-navigable row instead of a link to the wrong document.
+        if (ref.kind === "blob") {
+          return (
+            <li key={`${ref.kind}-${ref.shortId}`}>
+              <div className="text-muted-foreground/70 flex w-full items-center gap-2 px-2 py-1.5 text-sm">
+                <FileIcon className="size-3.5 shrink-0" />
+                {label}
+              </div>
+            </li>
+          );
+        }
+
         const route =
           ref.kind === "quest" ? "projectQuest" : "projectFoliosFolio";
-        const pathSegments = ref.kind === "folio" ? ref.path : undefined;
         return (
           <li key={`${ref.kind}-${ref.shortId}`}>
             <Button
@@ -92,17 +137,7 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
               }
             >
               <ArrowUpRight className="text-muted-foreground size-3.5 shrink-0" />
-              <span className="flex min-w-0 flex-1 flex-col items-start gap-0">
-                {pathSegments && pathSegments.length > 0 && (
-                  <span className="folio-mono text-muted-foreground w-full truncate text-[10px]">
-                    {pathSegments.map((p) => p.name).join("/")}/
-                  </span>
-                )}
-                <span className="w-full truncate text-left">{ref.title}</span>
-              </span>
-              <span className="folio-mono text-muted-foreground shrink-0 text-[10px]">
-                {ref.kind === "quest" ? `Q#${ref.shortId}` : `#${ref.shortId}`}
-              </span>
+              {label}
             </Button>
           </li>
         );
