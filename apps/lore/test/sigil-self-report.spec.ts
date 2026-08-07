@@ -36,15 +36,20 @@ class Probe {
 
 const KEY = "sg_selfreport_fixed_for_the_test";
 
+/**
+ * Every project flag that still means something.
+ *
+ * `blights` / `beacon` / `vitals` are deliberately absent: they are retired
+ * `@deprecated` columns nothing reads since capabilities moved onto each
+ * sigil's own `kinds`. Writing them here would suggest the gate still consults
+ * them — it consults `sigils` and the sigil's kinds.
+ */
 const allOn = {
   kanban: true,
   folios: true,
   feedback: true,
   milestones: true,
   sigils: true,
-  blights: true,
-  beacon: true,
-  vitals: true,
 };
 
 const setup = async (
