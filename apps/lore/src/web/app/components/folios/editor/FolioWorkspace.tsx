@@ -5,6 +5,7 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import FolioWorkspaceContent from "./FolioWorkspaceContent.tsx";
 import type { FolioInspectorTab } from "./inspector/FolioInspector.tsx";
 import FolioTree from "./tree/FolioTree.tsx";
+import FolioTreeResizer from "./tree/FolioTreeResizer.tsx";
 import { useFolioFonts } from "./useFolioFonts.ts";
 import { useFolioPanes } from "./useFolioPanes.ts";
 
@@ -119,6 +120,13 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
               projectId={project.id}
               projectIdStr={String(project.id)}
               currentFolioId={props.folio?.id}
+              width={panes.treeWidth}
+            />
+            {/* Inside the wrapper so the handle travels with the pane and
+                disappears along with it. */}
+            <FolioTreeResizer
+              width={panes.treeWidth}
+              onWidth={panes.setTreeWidth}
             />
           </div>
         )}

@@ -17,7 +17,19 @@ export interface FolioPanesState {
   toggleTree: () => void;
   toggleInspector: () => void;
   toggleFocus: () => void;
+  /**
+   * The tree pane's width in pixels, and the setter its drag handle calls.
+   * Persisted like the open/closed preference: someone working in deep
+   * directory paths widens it once, not once per session.
+   */
+  treeWidth: number;
+  setTreeWidth: (width: number) => void;
 }
+
+export const TREE_MIN_WIDTH = 180;
+export const TREE_MAX_WIDTH = 480;
+const TREE_DEFAULT_WIDTH = 242;
+const TREE_WIDTH_KEY = "lor.folio.workspace.treeWidth";
 
 /**
  * The design is 1660px wide. At 1280px the three columns leave the
@@ -127,6 +139,23 @@ export const useFolioPanes = (): FolioPanesState => {
 
   const toggleFocus = useCallback(() => setFocus((v) => !v), []);
 
+  const [treeWidth, setTreeWidthState] = useState<number>(() => {
+    if (typeof window === "undefined") return TREE_DEFAULT_WIDTH;
+    const raw = Number(window.localStorage.getItem(TREE_WIDTH_KEY));
+    if (!Number.isFinite(raw) || raw <= 0) return TREE_DEFAULT_WIDTH;
+    return Math.min(TREE_MAX_WIDTH, Math.max(TREE_MIN_WIDTH, raw));
+  });
+
+  const setTreeWidth = useCallback((width: number) => {
+    // Clamped here rather than at the drag handle so a stored value from a
+    // wider monitor cannot come back as a pane that eats the document.
+    const clamped = Math.min(TREE_MAX_WIDTH, Math.max(TREE_MIN_WIDTH, width));
+    setTreeWidthState(clamped);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(TREE_WIDTH_KEY, String(clamped));
+    }
+  }, []);
+
   return {
     treeOpen,
     inspectorOpen,
@@ -135,5 +164,7 @@ export const useFolioPanes = (): FolioPanesState => {
     toggleTree,
     toggleInspector,
     toggleFocus,
+    treeWidth,
+    setTreeWidth,
   };
 };

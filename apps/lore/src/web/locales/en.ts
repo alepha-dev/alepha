@@ -209,7 +209,6 @@ export default {
   "folios.editor.title-label": "Folio title",
 
   "folios.editor.summary.label": "Summary for agents",
-  "folios.editor.summary.hint": "click to edit",
   "folios.editor.summary.unavailable": "unavailable",
   "folios.editor.summary.placeholder":
     "One or two sentences agents read to decide whether to open this folio.",
@@ -254,6 +253,7 @@ export default {
 
   "folios.editor.inspector.outline": "Outline",
   "folios.editor.inspector.collapse": "Collapse inspector",
+  "folios.editor.inspector.expand": "Show inspector",
   "folios.editor.inspector.history": "History",
   "folios.editor.inspector.links": "Links",
   "folios.editor.inspector.outline-empty":

@@ -9,6 +9,7 @@ import { useFolioFind } from "./document/useFolioFind.ts";
 import FolioInspector, {
   type FolioInspectorTab,
 } from "./inspector/FolioInspector.tsx";
+import FolioInspectorRail from "./inspector/FolioInspectorRail.tsx";
 import { useFolioActions } from "./useFolioActions.ts";
 import { useFolioDraft } from "./useFolioDraft.ts";
 
@@ -172,6 +173,9 @@ const FolioWorkspaceContent = (
           </div>
           <FolioFindBar find={find} />
         </div>
+        {!props.inspectorOpen && (
+          <FolioInspectorRail onExpand={props.onToggleInspector} />
+        )}
         {props.inspectorOpen && (
           // Below 1280px the inspector floats over the document instead of
           // taking a third column — at that width three columns leave the
