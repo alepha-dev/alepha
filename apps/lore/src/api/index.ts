@@ -14,6 +14,7 @@ import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
+import { SearchController } from "./controllers/SearchController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
@@ -97,6 +98,7 @@ export const LoreApi = $module({
     KanbanController,
     FolioController,
     DirectoryController,
+    SearchController,
     BlobController,
     FeedbackController,
     SigilController,
