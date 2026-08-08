@@ -6,6 +6,7 @@ import {
   Alepha,
   AlephaError,
   coerceObject,
+  MIDDLEWARE_PROTECTED,
   OPTIONS,
   PipelineHandler,
   type ZType,
@@ -765,10 +766,37 @@ export class ReactPageProvider {
 
   /**
    * Resolve the effective `ssr` value for a route by walking up the parent
-   * chain. Returns the nearest explicit `ssr` value, defaulting to `true`.
+   * chain. Returns the nearest explicit `ssr` value, and otherwise derives one
+   * from whether the page is behind a guard — defaulting to `true`.
    *
-   * The decision is made at the leaf: a parent's `ssr` only acts as a default
-   * for descendants that did not set their own value.
+   * The decision is made at the leaf: a parent's value only acts as a default
+   * for descendants that did not decide for themselves.
+   *
+   * ## Why a guarded page defaults to CSR
+   *
+   * Server-rendering exists to hand HTML to something that will not run
+   * JavaScript — a crawler, a link unfurler, a slow first paint that should not
+   * wait on a bundle. A page behind a login wall has none of those readers:
+   * every visitor is authenticated, no crawler will ever see past the
+   * redirect, and the render costs CPU on every single request. On a per-request
+   * CPU budget (Cloudflare Workers) that is the difference between paying for a
+   * render nobody benefits from and not paying for it.
+   *
+   * It costs nothing in data: `ssr: false` still runs the loader on the server
+   * and serialises the result for hydration, so a CSR page makes no extra round
+   * trip — it only skips painting HTML.
+   *
+   * ## Precedence
+   *
+   * At each level of the walk: an explicit `ssr` wins outright; otherwise a
+   * guard at that level means CSR; otherwise keep walking. So a guarded layout
+   * puts its whole subtree in CSR, and any page can still opt back in with an
+   * explicit `ssr: true` — which is what a public marketing page nested under a
+   * guarded shell would do.
+   *
+   * The guard is recognised by the {@link MIDDLEWARE_PROTECTED} capability flag,
+   * never by middleware name, so an application's own auth middleware gets the
+   * same treatment as `$secure`.
    */
   public isSSR(route: PageRoute): boolean {
     let current: PageRoute | undefined = route;
@@ -776,9 +804,25 @@ export class ReactPageProvider {
       if (typeof current.ssr === "boolean") {
         return current.ssr;
       }
+      if (this.isProtected(current)) {
+        return false;
+      }
       current = current.parent;
     }
     return true;
+  }
+
+  /**
+   * Does this single route level carry a guard middleware?
+   *
+   * Only its own `use` — the caller walks the chain, so looking further here
+   * would double-count and make a child indistinguishable from its parent.
+   */
+  protected isProtected(route: PageRoute): boolean {
+    return (route.use ?? []).some(
+      (middleware) =>
+        middleware[OPTIONS]?.meta?.[MIDDLEWARE_PROTECTED] === "true",
+    );
   }
 
   protected map(

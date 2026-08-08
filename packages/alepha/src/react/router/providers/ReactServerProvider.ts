@@ -147,7 +147,10 @@ export class ReactServerProvider {
 
         const rawHandler = this.createHandler(page, cacheMiddleware);
         const handler = serverMiddleware.length
-          ? new PipelineHandler(rawHandler, serverMiddleware)
+          ? this.withGuardDenial(
+              page,
+              new PipelineHandler(rawHandler, serverMiddleware),
+            )
           : rawHandler;
 
         // Canonical (default-locale) route, served unprefixed.
@@ -318,6 +321,50 @@ export class ReactServerProvider {
    * When cacheMiddleware is provided, uses a non-streaming path that renders
    * to a string so the result can be cached. Otherwise uses early HTML streaming.
    */
+  /**
+   * Turn a guard's refusal into the same answer a client-side navigation gives.
+   *
+   * A page's `use` chain runs here, wrapped around the whole route handler, so
+   * it sits *outside* `createLayers` — the loop that owns `errorHandler`. A
+   * guard that throws therefore bypasses every handler an application could have
+   * written, and the two `$secure` variants do not even fail the same way: the
+   * browser short-circuits by returning, the server throws. Left alone, one
+   * guarded URL redirected to login on an in-app navigation and answered a bare
+   * 401 on a hard load or a crawl.
+   *
+   * Only 401 is translated. A 403 is a decision about a user we *do* know, and
+   * bouncing them to a login page they are already past is a loop, not an
+   * answer — it keeps its own status and message.
+   */
+  protected withGuardDenial(
+    route: PageRoute,
+    handler: { run: (...args: any[]) => any },
+  ): ServerHandler {
+    return async (serverRequest) => {
+      try {
+        return await handler.run(serverRequest);
+      } catch (e) {
+        if ((e as { status?: number })?.status !== 401) {
+          throw e;
+        }
+
+        const { url, reply } = serverRequest;
+        // Throws for an authenticated caller, or when there is no `login` route
+        // to send an anonymous one to — both cases keep surfacing as errors.
+        const { redirect } = this.pageApi.denyGuardedPage(url);
+
+        this.log.debug("Guard denied page, redirecting", {
+          name: route.name,
+          redirect,
+        });
+
+        reply.status = 302;
+        reply.headers.location = redirect;
+        return;
+      }
+    };
+  }
+
   protected createHandler(
     route: PageRoute,
     cacheMiddleware: Middleware[] = [],
@@ -655,9 +702,36 @@ export class ReactServerProvider {
     };
 
     const allMiddleware = this.collectMiddleware(page);
-    const result = allMiddleware.length
-      ? await new PipelineHandler(renderFn, allMiddleware).run(url.href)
-      : await renderFn(url.href);
+
+    let result: { html: string; redirect?: string } | undefined;
+    try {
+      result = allMiddleware.length
+        ? await new PipelineHandler(renderFn, allMiddleware).run(url.href)
+        : await renderFn(url.href);
+    } catch (e) {
+      // A guard refused an anonymous visitor. The two `$secure` variants
+      // disagree on how they say so — the browser returns, the server throws —
+      // and that disagreement used to reach the user: the same guarded URL
+      // redirected to login on a client-side navigation and answered a bare 401
+      // on a hard load or a crawl.
+      //
+      // The page's own `errorHandler` cannot paper over it either. On the server
+      // the middleware chain wraps the whole render (so `$cache` sees a
+      // `{ html }`), which puts it *outside* `createLayers` — the loop that owns
+      // `errorHandler`. A guard that throws therefore bypasses every handler an
+      // app could have written.
+      //
+      // So translate the throw into the same denial as the short-circuit above.
+      // Only 401: `denyGuardedPage` sends an anonymous visitor to login, and a
+      // 403 is a decision about a known user that must keep its own message
+      // rather than becoming a login loop.
+      if ((e as { status?: number })?.status !== 401) {
+        throw e;
+      }
+
+      const { redirect } = this.pageApi.denyGuardedPage(url);
+      return { state, html: "", redirect };
+    }
 
     // A guard middleware short-circuited without calling `next`, so `renderFn`
     // never ran and the pipeline resolved to whatever the guard returned —

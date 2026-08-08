@@ -114,9 +114,69 @@ describe("$page + $secure", () => {
     const app = alepha.inject(SecureRouter);
     await alepha.start();
 
-    // Server-side `$secure` throws rather than short-circuiting, which an app's
-    // `errorHandler` converts into its own Redirection (as Lore does).
+    // No `login` route to fall back on, so the denial stays an error.
     await expect(app.admin.render()).rejects.toMatchObject({ status: 401 });
+  });
+
+  /**
+   * The two `$secure` variants disagree on how they refuse — the browser
+   * returns, the server throws — and that disagreement used to reach the user:
+   * the same URL redirected on a client-side navigation and answered a bare 401
+   * on a hard load. A crawler or a pasted link got the 401.
+   *
+   * The page's `errorHandler` cannot cover it: on the server the middleware
+   * chain wraps the whole render, which puts it outside the loop that owns
+   * `errorHandler`.
+   */
+  it("sends an anonymous visitor to login when the server guard throws", async () => {
+    const alepha = setup();
+
+    class SecureRouter {
+      login = $page({ path: "/login", name: "login", component: () => null });
+      admin = $page({
+        path: "/admin",
+        use: [$secure()],
+        loader: () => ({ secret: "TOP SECRET" }),
+        component: () => null,
+      });
+    }
+
+    const app = alepha.inject(SecureRouter);
+    await alepha.start();
+
+    const result = await app.admin.render();
+
+    expect(result.redirect).toBe("/login?redirect=%2Fadmin");
+    expect(result.html).toBe("");
+    expect(result.html).not.toContain("TOP SECRET");
+  });
+
+  it("lets a non-401 error keep its own meaning", async () => {
+    const alepha = setup();
+
+    const $boom = (): Middleware =>
+      createMiddleware({
+        name: "$boom",
+        handler: () => async () => {
+          const error = new Error("upstream exploded") as Error & {
+            status?: number;
+          };
+          error.status = 503;
+          throw error;
+        },
+      });
+
+    class App {
+      login = $page({ path: "/login", name: "login", component: () => null });
+      page = $page({ path: "/x", use: [$boom()], component: () => null });
+    }
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    // Only 401 means "we do not know who you are". Anything else must not be
+    // laundered into a login redirect.
+    await expect(app.page.render()).rejects.toThrow("upstream exploded");
   });
 });
 

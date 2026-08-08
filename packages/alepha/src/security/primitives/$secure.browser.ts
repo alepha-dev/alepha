@@ -1,4 +1,9 @@
-import { $context, createMiddleware, type Middleware } from "alepha";
+import {
+  $context,
+  createMiddleware,
+  MIDDLEWARE_PROTECTED,
+  type Middleware,
+} from "alepha";
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import { PermissionRegistryProvider } from "../providers/PermissionRegistryProvider.ts";
@@ -55,6 +60,10 @@ export function $secure(options?: SecureOptions): Middleware {
   return createMiddleware({
     name: "$secure",
     options: (options as unknown as Record<string, unknown>) ?? undefined,
+    // Must match the server variant: the router reads this to pick a page's
+    // rendering mode, and a page that disagreed across the two bundles would
+    // server-render HTML the client then decided not to.
+    meta: { [MIDDLEWARE_PROTECTED]: "true" },
     handler: ({ alepha, next }) => {
       return async (...args: any[]) => {
         const user: UserAccountToken | undefined =

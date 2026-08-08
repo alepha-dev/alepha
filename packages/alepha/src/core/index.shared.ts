@@ -3,6 +3,7 @@
 export * from "./Alepha.ts";
 export * from "./AlephaCore.ts";
 export * from "./constants/KIND.ts";
+export * from "./constants/MIDDLEWARE_PROTECTED.ts";
 export * from "./constants/OPTIONS.ts";
 export * from "./errors/AlephaError.ts";
 export * from "./errors/AppNotStartedError.ts";
