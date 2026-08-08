@@ -180,6 +180,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
                   handlers={props.actions.handlers}
                   state={props.actions.actionState}
                   saving={props.actions.saving}
+                  dirty={props.draft.dirty}
                   hasImageUpload={!!props.imageUploadHandler}
                 />
               </>
