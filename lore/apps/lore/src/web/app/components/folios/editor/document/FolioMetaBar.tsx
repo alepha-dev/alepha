@@ -58,7 +58,10 @@ const FolioMetaBar = (props: FolioMetaBarProps): ReactElement => {
             aria-label={String(tr("folios.editor.tag.remove"))}
             onClick={() => props.onRemoveTag(tag)}
             disabled={props.disabled}
-            className="opacity-0 transition-opacity group-hover:opacity-100 disabled:pointer-events-none"
+            // `hidden`, not `opacity-0`: an invisible button still takes
+            // its width, which is what put a gap of dead space on the
+            // right of every tag chip.
+            className="hidden group-hover:inline-flex disabled:pointer-events-none"
           >
             <X className="size-3" />
           </button>

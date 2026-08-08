@@ -19,12 +19,18 @@ export interface FolioTreeProps {
    * create-mode `/folios/new` page.
    */
   currentFolioId?: string;
+  /**
+   * Pane width in pixels. Owned by `useFolioPanes` so the drag handle's
+   * value persists and survives a folio-to-folio navigation, like every
+   * other pane preference.
+   */
+  width: number;
 }
 
 /**
  * The folio tree pane: directories + folios, native HTML5 drag & drop, a
  * right-click menu (`FolioTreeContextMenu`, via `FolioTreeRow`), inline
- * rename, and project-wide search. 242px fixed width, a 40px header row
+ * rename, and project-wide search. Resizable width (see `width`), a 40px header row
  * (title + New folio / New directory / Search), scrolling body.
  *
  * Mounted from `FolioWorkspace.tsx`, NOT from the folio-keyed
@@ -51,7 +57,8 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
   return (
     <div
       data-slot="folio-tree"
-      className="flex h-full min-h-0 w-[242px] flex-none flex-col overflow-hidden border-r border-border"
+      style={{ width: props.width }}
+      className="flex h-full min-h-0 flex-none flex-col overflow-hidden border-r border-border"
     >
       <div className="flex h-10 flex-none items-center gap-1 border-b border-border px-2">
         <span className="flex-1 truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
