@@ -75,6 +75,23 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
   // Last value we emitted — used to tell "external reset" (e.g. a folio
   // decrypt filling the form) apart from our own onChange echo.
   const lastEmitted = useRef(props.value);
+  // Whether the user has actually engaged with this editor yet.
+  //
+  // MDXEditor parses the markdown on mount and fires `onChange` with its
+  // own re-serialization of it, which is not the same string for most
+  // real documents: `* item` becomes `- item`, `*emphasis*` becomes
+  // `_emphasis_`, a setext heading becomes an ATX one, table cells get
+  // repadded, a trailing-space hard break turns into a backslash. Passing
+  // that up made every such document report unsaved changes the instant it
+  // opened, before the reader had done anything — and agent-written folios
+  // (tables, `*` bullets) hit it almost every time.
+  //
+  // The emission is real, it just isn't an EDIT, so it must not reach the
+  // owning form. Focus is the discriminator, the same one the sync effect
+  // below already trusts: typing needs focus, and so does any toolbar
+  // command, which acts on a selection the user had to make first. Until
+  // focus lands inside, an emission is the editor talking to itself.
+  const userTouched = useRef(false);
   // `renderToolbar` closes over workspace state that changes on every
   // keystroke. Keeping it in a ref lets `toolbarContents` always call the
   // latest version WITHOUT the plugin memo (below) depending on its
@@ -184,6 +201,12 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
   return (
     <div
       ref={wrapperRef}
+      // React's onFocus is the bubbling `focusin`, and it crosses the
+      // portal the folio workspace renders its toolbar through — so a
+      // click on Bold marks the editor touched just as typing does.
+      onFocus={() => {
+        userTouched.current = true;
+      }}
       style={
         props.minHeight
           ? ({ "--lore-mdx-min-h": `${props.minHeight}px` } as never)
@@ -202,6 +225,12 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
         onChange={(markdown) => {
           const normalized = normalizeEditorMarkdown(markdown);
           lastEmitted.current = normalized;
+          // See `userTouched`: before the user has engaged, this is the
+          // editor's own re-serialization of the document it was handed,
+          // not an edit. Recording it in `lastEmitted` (so the sync effect
+          // still recognises our own output) but not passing it up is what
+          // keeps a freshly-opened document reading as saved.
+          if (!userTouched.current) return;
           props.onChange(normalized);
         }}
         toMarkdownOptions={{

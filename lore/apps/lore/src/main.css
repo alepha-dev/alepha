@@ -309,6 +309,65 @@ body::before {
   font-size: 0.8125rem;
 }
 
+/*
+ * Code blocks inside the editor.
+ *
+ * MDXEditor ships these as CSS modules with hashed class names
+ * (`_codeMirrorWrapper_er3ed_391`), so there is no stable hook — the
+ * substring match on the un-hashed part is the same version-coupled
+ * trade-off already taken for its diff/source toggle. Check these
+ * selectors when bumping @mdxeditor/editor.
+ *
+ * Two problems being fixed. The block ignored the theme entirely and
+ * painted its own light canvas, unreadable in dark mode. And its toolbar
+ * — a full-size language dropdown plus a Delete button — sat permanently
+ * on top of every block, competing with the code for attention on a page
+ * where most blocks are read, not edited.
+ */
+.lore-mdx [class*="_codeMirrorWrapper_"] {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.lore-mdx [class*="_codeMirrorWrapper_"] .cm-editor,
+.lore-mdx [class*="_codeMirrorWrapper_"] .cm-content,
+.lore-mdx [class*="_codeMirrorWrapper_"] .cm-gutters {
+  background: transparent;
+  color: var(--foreground);
+}
+
+.lore-mdx [class*="_codeMirrorWrapper_"] .cm-gutters {
+  border-right: 1px solid var(--border);
+  color: var(--muted-foreground);
+}
+
+.lore-mdx [class*="_codeMirrorWrapper_"] .cm-activeLine,
+.lore-mdx [class*="_codeMirrorWrapper_"] .cm-activeLineGutter {
+  background: color-mix(in oklch, var(--foreground) 6%, transparent);
+}
+
+/* The toolbar stays out of the way until the block is hovered or has
+ * focus inside it — `focus-within` is what keeps it reachable by keyboard
+ * rather than hover-only. */
+.lore-mdx [class*="_codeMirrorToolbar_"] {
+  opacity: 0;
+  transform: scale(0.92);
+  transform-origin: top right;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.lore-mdx [class*="_codeMirrorWrapper_"]:hover [class*="_codeMirrorToolbar_"],
+.lore-mdx
+  [class*="_codeMirrorWrapper_"]:focus-within
+  [class*="_codeMirrorToolbar_"] {
+  opacity: 1;
+  transform: scale(1);
+}
+
 /* ────────────────────────────────────────────────────────────────────────
  * Twilight — GitHub Primer-inspired. Cool blue-grey canvas, accent blue.
  * Light maps to canvas-default/subtle/muted; dark to #0d1117/#161b22/#21262d.

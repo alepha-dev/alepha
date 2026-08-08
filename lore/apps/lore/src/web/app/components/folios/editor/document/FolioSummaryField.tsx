@@ -33,20 +33,20 @@ const MAX_LENGTH = 500;
 const FolioSummaryField = (props: FolioSummaryFieldProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   return (
-    <div className="border-border hover:border-muted-foreground/40 mt-4 flex items-start gap-2 rounded-lg border p-3 transition-colors">
+    <div className="border-border hover:border-muted-foreground/40 mt-4 flex items-start gap-2 rounded-lg border px-2.5 py-2 transition-colors">
       <Sparkles className="text-muted-foreground mt-0.5 size-3.5 flex-none" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="folio-mono text-muted-foreground text-[10.5px] font-medium uppercase tracking-[0.1em]">
             {tr("folios.editor.summary.label")}
           </span>
-          <span className="text-muted-foreground/70 text-[11px]">
-            {tr(
-              props.unavailable
-                ? "folios.editor.summary.unavailable"
-                : "folios.editor.summary.hint",
-            )}
-          </span>
+          {/* Only the unavailable case earns a note. "Click to edit" on a
+              textbox tells the reader what a textbox is. */}
+          {props.unavailable && (
+            <span className="text-muted-foreground/70 text-[11px]">
+              {tr("folios.editor.summary.unavailable")}
+            </span>
+          )}
         </div>
         <textarea
           value={props.value}
@@ -57,7 +57,7 @@ const FolioSummaryField = (props: FolioSummaryFieldProps): ReactElement => {
           placeholder={String(tr("folios.editor.summary.placeholder"))}
           aria-label={String(tr("folios.editor.summary.label"))}
           className={cn(
-            "focus:bg-muted mt-1 w-full resize-none border-0 bg-transparent p-1 text-sm leading-relaxed outline-none",
+            "focus:bg-muted mt-0.5 w-full resize-none border-0 bg-transparent px-1 py-0.5 text-sm leading-relaxed outline-none",
             props.unavailable && "text-muted-foreground",
           )}
         />
