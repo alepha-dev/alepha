@@ -1,27 +1,48 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { Segmented } from "@alepha/ui/components/ui/segmented";
 import {
-  BlockTypeSelect,
-  BoldItalicUnderlineToggles,
-  CodeToggle,
-  CreateLink,
-  InsertCodeBlock,
-  InsertImage,
-  InsertTable,
-  InsertThematicBreak,
-  ListsToggle,
-  Separator,
-  UndoRedo,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@alepha/ui/components/ui/select";
+import {
+  applyBlockType$,
+  applyListType$,
+  type BlockType,
+  currentBlockType$,
+  currentFormat$,
+  currentListType$,
+  IS_BOLD,
+  IS_CODE,
+  IS_ITALIC,
   useCellValue,
   usePublisher,
   viewMode$,
 } from "@mdxeditor/editor";
 import { useI18n } from "alepha/react/i18n";
-import { Save } from "lucide-react";
+import {
+  Bold,
+  Code,
+  Image as ImageIcon,
+  Italic,
+  Link as LinkIcon,
+  List,
+  ListChecks,
+  ListOrdered,
+  Minus,
+  Redo2,
+  Save,
+  SquareCode,
+  Table as TableIcon,
+  Undo2,
+} from "lucide-react";
 import type { ReactElement } from "react";
 import type { I18n } from "../../../../services/I18n.ts";
 import type { FolioActionState } from "../menubar/folioMenubarModel.ts";
 import type { FolioActionHandlers } from "../useFolioActions.ts";
+import FolioToolbarButton from "./FolioToolbarButton.tsx";
 
 export interface FolioToolbarProps {
   handlers: FolioActionHandlers;
@@ -34,7 +55,7 @@ export interface FolioToolbarProps {
    */
   dirty: boolean;
   /**
-   * Whether an image upload handler is wired — hides `InsertImage`
+   * Whether an image upload handler is wired — hides the image button
    * entirely when it isn't (a protected folio), mirroring
    * `MarkdownEditorInner`'s own `withImages` gate on the default toolbar.
    */
@@ -42,31 +63,43 @@ export interface FolioToolbarProps {
 }
 
 /**
- * The formatting toolbar row, directly below `FolioMenubar`. The left group
- * renders MDXEditor's own toolbar primitives verbatim — each one dispatches
- * its own realm command internally (confirmed by reading their sources:
- * `BoldItalicUnderlineToggles`/`CodeToggle` publish to `applyFormat$`,
- * `ListsToggle` to `applyListType$`, `CreateLink` to `openLinkEditDialog$`,
- * `InsertImage` to `openNewImageDialog$`, `InsertTable`/`InsertCodeBlock`/
- * `InsertThematicBreak` to their own signals) — so this component wires
- * nothing for them beyond choosing which ones to show.
+ * The formatting toolbar row, directly below `FolioMenubar`.
  *
- * The Rich/md switch is the one custom piece: it reads and writes
- * `viewMode$` directly rather than using MDXEditor's own
- * `DiffSourceToggleWrapper`. That component's built-in toggle isn't
- * restylable into the design's `Segmented` pill (no `className`/render
- * prop, and its own toggle group renders unconditionally alongside
- * whatever `children` it's given — hiding it would need a CSS rule
- * targeting the library's internal, version-coupled class names). Reading
- * `viewMode$` directly gives full control over both the toggle's look AND
- * the "hide formatting buttons outside rich-text mode" behavior
- * `DiffSourceToggleWrapper` otherwise provides for free, with no
- * duplicate toggle UI to suppress.
+ * Every control is a house `Button` (via `FolioToolbarButton`) or a house
+ * `Select`/`Segmented` — MDXEditor's own toolbar components are not used
+ * here at all. They brought their own markup and sizing that no amount of
+ * wrapper CSS lined up with the Save button beside them, and they could
+ * not take a `variant`. What they DID provide for free was the active
+ * state, so that is read directly from the realm instead: `currentFormat$`
+ * is a bitmask of the marks at the caret, `currentBlockType$` and
+ * `currentListType$` the block context. Commands go out through the same
+ * `handlers` a menu click or a keyboard shortcut uses, so a button, a menu
+ * item and a shortcut all take one path.
+ *
+ * This component mounts inside MDXEditor's realm (through `renderToolbar`,
+ * portalled up by `FolioDocument`), which is the only place `useCellValue`
+ * and `usePublisher` resolve.
  */
 const FolioToolbar = (props: FolioToolbarProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const viewMode = useCellValue(viewMode$);
   const changeViewMode = usePublisher(viewMode$);
+  const format = useCellValue(currentFormat$);
+  const blockType = useCellValue(currentBlockType$);
+  const listType = useCellValue(currentListType$);
+  const applyBlockType = usePublisher(applyBlockType$);
+  const applyListType = usePublisher(applyListType$);
+
+  const label = (key: string): string => String(tr(key));
+  const run = (id: keyof FolioActionHandlers) => () => props.handlers[id]();
+
+  const BLOCK_TYPES: { value: BlockType; labelKey: string }[] = [
+    { value: "paragraph", labelKey: "folios.editor.block.paragraph" },
+    { value: "h1", labelKey: "folios.editor.block.h1" },
+    { value: "h2", labelKey: "folios.editor.block.h2" },
+    { value: "h3", labelKey: "folios.editor.block.h3" },
+    { value: "quote", labelKey: "folios.editor.action.quote" },
+  ];
 
   // 52px and a second step off the card, per the design. The status line
   // is NOT here: the design keeps it on the menubar row and gates this
@@ -75,20 +108,120 @@ const FolioToolbar = (props: FolioToolbarProps): ReactElement => {
   return (
     <div className="border-border bg-muted/60 flex h-[52px] flex-none items-center gap-1 border-b pr-3 pl-2.5">
       {viewMode === "rich-text" && (
-        <div className="folio-toolbar-buttons flex items-center gap-1">
-          <UndoRedo />
-          <Separator />
-          <BoldItalicUnderlineToggles options={["Bold", "Italic"]} />
-          <CodeToggle />
-          <Separator />
-          <BlockTypeSelect />
-          <ListsToggle options={["bullet", "number", "check"]} />
-          <Separator />
-          <CreateLink />
-          {props.hasImageUpload && <InsertImage />}
-          <InsertTable />
-          <InsertCodeBlock />
-          <InsertThematicBreak />
+        <div className="flex items-center gap-1">
+          <FolioToolbarButton
+            label={label("folios.editor.action.undo")}
+            icon={Undo2}
+            onClick={run("edit.undo")}
+          />
+          <FolioToolbarButton
+            label={label("folios.editor.action.redo")}
+            icon={Redo2}
+            onClick={run("edit.redo")}
+          />
+
+          <div className="bg-border mx-1.5 h-5.5 w-px" />
+
+          <Select
+            value={blockType || "paragraph"}
+            onValueChange={(value) => applyBlockType(value as BlockType)}
+          >
+            <SelectTrigger
+              size="sm"
+              className="w-33"
+              aria-label={label("folios.editor.block.label")}
+            >
+              {/* The label, not the raw value: left to itself the trigger
+                  renders the realm's own vocabulary ("h2"), which is an
+                  implementation detail and untranslatable. */}
+              <SelectValue>
+                {tr(
+                  BLOCK_TYPES.find(
+                    (b) => b.value === (blockType || "paragraph"),
+                  )?.labelKey ?? "folios.editor.block.paragraph",
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {BLOCK_TYPES.map((b) => (
+                <SelectItem key={b.value} value={b.value as string}>
+                  {tr(b.labelKey)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="bg-border mx-1.5 h-5.5 w-px" />
+
+          <FolioToolbarButton
+            label={label("folios.editor.action.bold")}
+            icon={Bold}
+            active={(format & IS_BOLD) !== 0}
+            onClick={run("edit.bold")}
+          />
+          <FolioToolbarButton
+            label={label("folios.editor.action.italic")}
+            icon={Italic}
+            active={(format & IS_ITALIC) !== 0}
+            onClick={run("edit.italic")}
+          />
+          <FolioToolbarButton
+            label={label("folios.editor.action.code")}
+            icon={Code}
+            active={(format & IS_CODE) !== 0}
+            onClick={run("edit.code")}
+          />
+
+          <div className="bg-border mx-1.5 h-5.5 w-px" />
+
+          <FolioToolbarButton
+            label={label("folios.editor.action.bullet-list")}
+            icon={List}
+            active={listType === "bullet"}
+            onClick={() => applyListType("bullet")}
+          />
+          <FolioToolbarButton
+            label={label("folios.editor.action.numbered-list")}
+            icon={ListOrdered}
+            active={listType === "number"}
+            onClick={() => applyListType("number")}
+          />
+          <FolioToolbarButton
+            label={label("folios.editor.action.task-list")}
+            icon={ListChecks}
+            active={listType === "check"}
+            onClick={() => applyListType("check")}
+          />
+
+          <div className="bg-border mx-1.5 h-5.5 w-px" />
+
+          <FolioToolbarButton
+            label={label("folios.editor.action.link")}
+            icon={LinkIcon}
+            onClick={run("edit.link")}
+          />
+          {props.hasImageUpload && (
+            <FolioToolbarButton
+              label={label("folios.editor.action.image")}
+              icon={ImageIcon}
+              onClick={run("insert.image")}
+            />
+          )}
+          <FolioToolbarButton
+            label={label("folios.editor.action.table")}
+            icon={TableIcon}
+            onClick={run("insert.table")}
+          />
+          <FolioToolbarButton
+            label={label("folios.editor.action.code-block")}
+            icon={SquareCode}
+            onClick={run("insert.codeBlock")}
+          />
+          <FolioToolbarButton
+            label={label("folios.editor.action.divider")}
+            icon={Minus}
+            onClick={run("insert.divider")}
+          />
         </div>
       )}
 
