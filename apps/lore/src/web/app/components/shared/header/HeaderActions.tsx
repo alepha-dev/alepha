@@ -9,6 +9,7 @@ import { useRouter } from "alepha/react/router";
 import { UserCircle2 } from "lucide-react";
 import type { I18n } from "../../../services/I18n.ts";
 import HeaderConnectionsChip from "./HeaderConnectionsChip.tsx";
+import HeaderSearchButton from "./HeaderSearchButton.tsx";
 
 const HeaderActions = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -21,6 +22,7 @@ const HeaderActions = () => {
 
   return (
     <div className="bg-background flex items-center gap-1 rounded-md border p-1">
+      <HeaderSearchButton />
       <HeaderConnectionsChip />
       <ButtonLanguage variant="ghost" label={tr("header.actions.language")} />
       <ButtonTheme variant="ghost" />

@@ -1,13 +1,9 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
-import { FilePlus, FolderPlus, Search, X } from "lucide-react";
-import { type ReactElement, useState } from "react";
+import { FilePlus, FolderPlus } from "lucide-react";
+import type { ReactElement } from "react";
 import type { I18n } from "../../../../services/I18n.ts";
 import FolioTreeRow from "./FolioTreeRow.tsx";
-import FolioTreeSearch, {
-  type FolioTreeSearchEntry,
-} from "./FolioTreeSearch.tsx";
-import FolioTreeSearchRow from "./FolioTreeSearchRow.tsx";
 import { useFolioTreeModel } from "./useFolioTreeModel.ts";
 
 export interface FolioTreeProps {
@@ -29,9 +25,15 @@ export interface FolioTreeProps {
 
 /**
  * The folio tree pane: directories + folios, native HTML5 drag & drop, a
- * right-click menu (`FolioTreeContextMenu`, via `FolioTreeRow`), inline
- * rename, and project-wide search. Resizable width (see `width`), a 40px header row
- * (title + New folio / New directory / Search), scrolling body.
+ * right-click menu (`FolioTreeContextMenu`, via `FolioTreeRow`) and inline
+ * rename. Resizable width (see `width`), a 40px header row (title + New
+ * folio / New directory), scrolling body.
+ *
+ * It no longer carries a search of its own. Searching only folios, only
+ * inside this pane, was the narrower half of a job the ⌘K palette now does
+ * across quests and folios at once from anywhere in the app — two search
+ * boxes for overlapping sets is a choice the reader should not have to
+ * make. See `shared/spotlight/Spotlight.tsx`.
  *
  * Mounted from `FolioWorkspace.tsx`, NOT from the folio-keyed
  * `FolioWorkspaceContent` — see `useFolioTreeModel`'s file doc for why that
@@ -44,24 +46,15 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
     projectIdStr: props.projectIdStr,
     currentFolioId: props.currentFolioId,
   });
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchResults, setSearchResults] = useState<
-    FolioTreeSearchEntry[] | null
-  >(null);
-
-  const closeSearch = (): void => {
-    setSearchOpen(false);
-    setSearchResults(null);
-  };
 
   return (
     <div
       data-slot="folio-tree"
       style={{ width: props.width }}
-      className="flex h-full min-h-0 flex-none flex-col overflow-hidden border-r border-border"
+      className="border-border flex h-full min-h-0 flex-none flex-col overflow-hidden border-r"
     >
-      <div className="flex h-10 flex-none items-center gap-1 border-b border-border px-2">
-        <span className="flex-1 truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="border-border flex h-10 flex-none items-center gap-1 border-b px-2">
+        <span className="text-muted-foreground flex-1 truncate text-xs font-medium tracking-wide uppercase">
           {tr("folios.editor.tree.title")}
         </span>
         <Button
@@ -82,66 +75,23 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
         >
           <FolderPlus className="size-3.5" />
         </Button>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="ghost"
-          aria-pressed={searchOpen}
-          onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
-          aria-label={String(tr("folios.editor.tree.search"))}
-        >
-          {searchOpen ? (
-            <X className="size-3.5" />
-          ) : (
-            <Search className="size-3.5" />
-          )}
-        </Button>
       </div>
 
-      {searchOpen && (
-        <FolioTreeSearch
-          projectId={props.projectId}
-          onResultsChange={setSearchResults}
-          onClose={closeSearch}
-        />
-      )}
-
-      {/*
-        Body state is keyed on `searchResults`, NOT `searchOpen`: the search
-        bar can stay open (so the user can keep typing) while the query is
-        blank, and a blank query means "not searching" — "Clearing restores
-        the tree" per the spec, without also forcing the user to close the
-        search bar to see it. `searchResults` is `null` exactly when there
-        is no active query.
-      */}
       <div className="min-h-0 flex-1 overflow-y-auto py-1">
-        {searchResults !== null && searchResults.length === 0 && (
-          <p className="px-3 py-4 text-center text-xs italic text-muted-foreground">
-            {tr("folios.editor.tree.search-empty")}
-          </p>
-        )}
-        {searchResults?.map((entry) => (
-          <FolioTreeSearchRow
-            key={`${entry.kind}:${entry.id}`}
-            entry={entry}
-            projectIdStr={props.projectIdStr}
-          />
-        ))}
-        {searchResults === null && !tree.loading && tree.rows.length === 0 && (
-          <p className="px-3 py-4 text-center text-xs italic text-muted-foreground">
+        {!tree.loading && tree.rows.length === 0 && (
+          <p className="text-muted-foreground px-3 py-4 text-center text-xs italic">
             {tr("folios.editor.tree.empty")}
           </p>
         )}
-        {searchResults === null &&
-          tree.rows.map((row) => (
-            <FolioTreeRow
-              key={row.node.id}
-              node={row.node}
-              depth={row.depth}
-              tree={tree}
-              projectIdStr={props.projectIdStr}
-            />
-          ))}
+        {tree.rows.map((row) => (
+          <FolioTreeRow
+            key={row.node.id}
+            node={row.node}
+            depth={row.depth}
+            tree={tree}
+            projectIdStr={props.projectIdStr}
+          />
+        ))}
       </div>
     </div>
   );
