@@ -3,7 +3,7 @@ import type { RealmController } from "alepha/api/users";
 import { ReactAuth } from "alepha/react/auth";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
-import { currentUserAtom } from "alepha/security";
+import { $secure, currentUserAtom } from "alepha/security";
 import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
@@ -106,7 +106,10 @@ export class AppRouter {
       this.meRouter.me,
       this.notFound,
     ],
-    ssr: false,
+    // No `ssr` here on purpose. The shell is shared by anonymous pages (home,
+    // login, register) and guarded ones, so the rendering mode belongs to each
+    // page: the guarded ones carry `$secure` and derive CSR from it, and the
+    // public ones keep real HTML for crawlers.
     lazy: () => import("./components/Layout.tsx"),
     loader: async ({ user }) => {
       if (user) {
@@ -213,10 +216,6 @@ export class AppRouter {
 
   home = $page({
     path: "/",
-    // Server-render the landing page (overrides the layout's `ssr: false`) so
-    // the locale-prefixed `/` and `/fr/` URLs ship real HTML + hreflang
-    // alternates to crawlers.
-    ssr: true,
     animation: (state) => {
       if (state.url.pathname === "/new-project") {
         return {
@@ -229,6 +228,7 @@ export class AppRouter {
 
   projectCreate = $page({
     path: "/new-project",
+    use: [$secure()],
     head: { title: "New project › Alepha Lore" },
     animation: {
       enter: { name: "fadeIn", duration: 500, timing: "ease-out" },
@@ -250,6 +250,11 @@ export class AppRouter {
       this.projectApp,
     ],
     path: "/p/:projectId",
+    // Every project surface is member-gated server-side, so nothing under here
+    // is reachable anonymously. The guard turns an anonymous visitor away at the
+    // router (instead of letting the loader 401 and the errorHandler catch it),
+    // and puts the whole subtree in CSR — no HTML render a crawler will ever see.
+    use: [$secure()],
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -1049,7 +1054,10 @@ export class AppRouter {
       params: z.object({ projectId: z.integer() }),
     },
     head: { title: "Submit feedback › Alepha Lore" },
-    ssr: false,
+    // Deliberately unguarded: an anonymous visitor gets the sign-in CTA rather
+    // than a redirect, because this is the URL third-party "report a bug"
+    // buttons link to. So it server-renders — the draft autofill it does on
+    // mount is `useEffect`-only and survives hydration.
     lazy: () =>
       import("./components/project/feedback/ProjectFeedbackRequest.tsx"),
   });

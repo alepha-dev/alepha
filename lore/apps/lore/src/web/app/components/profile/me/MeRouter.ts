@@ -1,5 +1,6 @@
 import type { ApiKeyController } from "alepha/api/keys";
 import { $page } from "alepha/react/router";
+import { $secure } from "alepha/security";
 import { $client } from "alepha/server/links";
 import type { IdentityController } from "@/api/controllers/IdentityController.ts";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
@@ -15,6 +16,9 @@ export class MeRouter {
 
   me = $page({
     path: "/auth/profile",
+    // Your own account — nothing here means anything to an anonymous visitor,
+    // so the guard both turns them away and puts the subtree in CSR.
+    use: [$secure()],
     lazy: () => import("./MeLayout.tsx"),
   });
 
