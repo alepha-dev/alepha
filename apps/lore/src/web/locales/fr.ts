@@ -210,7 +210,6 @@ export default {
   "folios.editor.title-label": "Titre du folio",
 
   "folios.editor.summary.label": "Résumé pour les agents",
-  "folios.editor.summary.hint": "cliquer pour modifier",
   "folios.editor.summary.unavailable": "indisponible",
   "folios.editor.summary.placeholder":
     "Une ou deux phrases que les agents lisent pour décider s'ils ouvrent ce folio.",
@@ -255,6 +254,7 @@ export default {
 
   "folios.editor.inspector.outline": "Plan",
   "folios.editor.inspector.collapse": "Réduire l'inspecteur",
+  "folios.editor.inspector.expand": "Afficher l'inspecteur",
   "folios.editor.inspector.history": "Historique",
   "folios.editor.inspector.links": "Liens",
   "folios.editor.inspector.outline-empty":
