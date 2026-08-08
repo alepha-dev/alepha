@@ -23,7 +23,6 @@ import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts"
 import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAtom } from "./atoms/currentFolioAtom.ts";
-import { currentFolioContentsAtom } from "./atoms/currentFolioContentsAtom.ts";
 import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
 import { currentMilestonesAtom } from "./atoms/currentMilestonesAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
@@ -903,64 +902,33 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › Folios`,
     }),
     lazy: () => import("./components/folios/FoliosLayout.tsx"),
-    loader: async ({ url }) => {
+    loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
       const projectId = project?.id;
       if (projectId === undefined) {
         throw new NotFoundError("Project not found");
       }
-      // Resolve `?dir=<shortId>` → directoryId for the contents fetch.
-      // Stale dir (deleted directory) falls back to root.
-      let parentId: string | undefined;
-      const dirParam = url.searchParams.get("dir");
-      if (dirParam) {
-        const shortId = Number.parseInt(dirParam, 10);
-        if (Number.isFinite(shortId)) {
-          try {
-            const dir = await this.directoryApi.getDirectoryByShortId({
-              params: { projectId, shortId },
-            });
-            parentId = dir.id;
-          } catch {
-            parentId = undefined;
-          }
-        }
-      }
-      // Three parallel fetches: directory contents (table data),
-      // folios (tag autocomplete on the editor), tag set (sidebar tag
-      // cloud — still referenced by older code paths).
-      const [contents, folios, tags] = await Promise.all([
-        this.directoryApi.listContents({
-          params: { projectId },
-          query: { parentId },
-        }),
+      // Two fetches, both for the workspace itself: the folio list (the
+      // tree's rows, and the editor's tag autocomplete) and the tag set.
+      //
+      // The directory-contents fetch and the `?dir=` resolution that used
+      // to sit here went with `FolioBrowser` — they existed to fill its
+      // table and its breadcrumb. The tree fetches what it needs on its
+      // own, and a folio page sets its own breadcrumb from the folio's
+      // `metadata.path`, so nothing downstream reads them any more.
+      const [folios, tags] = await Promise.all([
         this.folioApi.list({ query: { limit: 100, projectId } }),
         this.folioApi.listTags({ query: { projectId } }),
       ]);
       this.alepha.store.set(userFoliosAtom, folios);
       this.alepha.store.set(folioTagsAtom, tags);
-      this.alepha.store.set(currentFolioContentsAtom, contents);
-      // Populate the folio breadcrumb (Lore › Folios › <dirs…>)
-      // before the page renders. FolioBrowser keeps the atom in sync
-      // on subsequent in-page navigations.
-      const segments = [
-        ...contents.breadcrumb.map((b) => ({
-          name: b.name,
-          shortId: b.shortId,
-        })),
-      ];
-      if (contents.directory) {
-        segments.push({
-          name: contents.directory.name,
-          shortId: contents.directory.shortId,
-        });
-      }
-      this.alepha.store.set(currentFolioPathAtom, segments);
+      // `/folios` itself is just "Folios" in the header — a folio page
+      // appends its own directory chain and title when it loads.
+      this.alepha.store.set(currentFolioPathAtom, []);
     },
     onLeave: () => {
       this.alepha.store.set(currentFolioAtom, undefined);
       this.alepha.store.set(currentFolioPathAtom, []);
-      this.alepha.store.set(currentFolioContentsAtom, undefined);
     },
   });
 

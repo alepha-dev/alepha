@@ -24,6 +24,13 @@ import {
  *  - moving a folio by dragging it onto a directory in the tree pane
  *  - find-in-folio (⌘F): match count, stepping, Escape
  *  - focus mode (⌘.) and the tree toggle (⌘\), including persistence
+ *  - `/folios` opening with nothing selected, and creating from the tree
+ *
+ * The directory-table coverage that used to live in `folios.spec.ts` went
+ * with the table itself: `/folios` is the workspace now and the tree is the
+ * only way around it. What that spec tested and the tree still does —
+ * create, rename, delete, move — is covered here and by `folioTreeModel`'s
+ * own unit tests.
  */
 
 test.describe.configure({ mode: "serial" });
@@ -229,30 +236,23 @@ test.describe("Folio workspace", () => {
   });
 
   test("08 — dragging a folio onto a directory in the tree moves it", async () => {
-    // A directory to drop into, created from the browser surface.
-    await page.goto(`/p/${projectId}/folios`);
-    await page
-      .getByRole("button", { name: /^create$/i })
-      .first()
-      .click();
-    await page
-      .getByRole("menuitem", { name: /^new directory$|nouveau dossier/i })
-      .first()
-      .click();
-    const dialog = page
-      .locator('[role="dialog"], [role="alertdialog"]')
-      .first();
-    await expect(dialog).toBeVisible({ timeout: 5_000 });
-    await dialog.getByRole("textbox").first().fill(dirName);
-    await dialog
-      .getByRole("button", { name: /^ok$|^confirm$|^valider$|^create$/i })
-      .first()
-      .click();
-    await expect(page.getByText(dirName, { exact: true })).toBeVisible({
-      timeout: 10_000,
-    });
-
+    // A directory to drop into. Created through the API rather than the UI
+    // because the surface that used to offer "New directory" from a
+    // toolbar is gone — the tree's own button is covered by test 10, and
+    // this test is about the drag.
     await page.goto(folioUrl);
+    await page.evaluate(
+      async ({ pid, name }) => {
+        await fetch(`/api/projects/${pid}/folio/directories`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name }),
+        });
+      },
+      { pid: projectId, name: dirName },
+    );
+    await page.reload();
     const treeRow = (name: string) =>
       page
         .locator('[data-slot="folio-tree-row"]', {
@@ -297,17 +297,67 @@ test.describe("Folio workspace", () => {
     await page.mouse.up();
     await moved;
 
+    // Verified against the row itself, not a listing: the directory table
+    // that used to prove this is gone. `directoryId` moving is the actual
+    // contract the drop is meant to fulfil.
+    const shortId = Number(folioUrl.split("/").pop());
+    const movedInto = await page.evaluate(
+      async ({ pid, sid }) => {
+        const r = await fetch(`/api/list?projectId=${pid}&limit=100`, {
+          credentials: "include",
+        });
+        const rows = (await r.json()) as Array<{
+          shortId: number;
+          directoryId?: string;
+        }>;
+        return rows.find((f) => f.shortId === sid)?.directoryId ?? null;
+      },
+      { pid: projectId, sid: shortId },
+    );
+    expect(movedInto).not.toBeNull();
+
+    // And the tree agrees: the folio now sits one level deeper than root.
+    await page.reload();
+    await expect(treeRow(folioTitle)).toBeVisible({ timeout: 15_000 });
+    const depth = await treeRow(folioTitle).evaluate(
+      (el) => Number.parseInt((el as HTMLElement).style.paddingLeft, 10) || 0,
+    );
+    expect(depth).toBeGreaterThan(8);
+  });
+
+  test("09 — /folios opens with nothing selected", async () => {
     await page.goto(`/p/${projectId}/folios`);
-    await page.waitForLoadState("networkidle");
-    // Gone from the root listing…
-    await expect(page.getByText(folioTitle, { exact: true })).toHaveCount(0, {
+    await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible({
       timeout: 15_000,
     });
-    // …and inside the directory.
-    await page.getByText(dirName, { exact: true }).click();
-    await page.waitForURL(/\?dir=\d+/, { timeout: 10_000 });
-    await expect(page.getByText(folioTitle, { exact: true })).toBeVisible({
-      timeout: 10_000,
+    // The empty state, and none of the editing chrome: there is no
+    // document to format, so neither row should be mounted.
+    await expect(page.getByText(/no folio open/i)).toBeVisible();
+    await expect(page.locator('[data-slot="menubar"]')).toHaveCount(0);
+    // By role, not by class: MDXEditor gives its popup container and its
+    // placeholder the same classes as the real contenteditable.
+    await expect(
+      page.getByRole("textbox", { name: /editable markdown/i }),
+    ).toHaveCount(0);
+  });
+
+  test("10 — the tree's New folio button starts a folio", async () => {
+    await page.goto(`/p/${projectId}/folios`);
+    await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible({
+      timeout: 15_000,
     });
+    await page
+      .getByRole("button", { name: /^new folio$/i })
+      .first()
+      .click();
+    // The tree creates the row and navigates straight into it, ready to be
+    // renamed — so the editor is mounted and the chrome is back.
+    await page.waitForURL(new RegExp(`/p/${projectId}/folios/\\d+`), {
+      timeout: 20_000,
+    });
+    await expect(
+      page.getByRole("textbox", { name: /editable markdown/i }),
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/no folio open/i)).toHaveCount(0);
   });
 });
