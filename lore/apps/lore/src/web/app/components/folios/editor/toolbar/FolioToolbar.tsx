@@ -28,6 +28,12 @@ export interface FolioToolbarProps {
   state: FolioActionState;
   saving: boolean;
   /**
+   * Whether the draft differs from what is stored. Save is pointless
+   * otherwise, and an always-enabled Save button invites the reader to
+   * wonder what it would do.
+   */
+  dirty: boolean;
+  /**
    * Whether an image upload handler is wired — hides `InsertImage`
    * entirely when it isn't (a protected folio), mirroring
    * `MarkdownEditorInner`'s own `withImages` gate on the default toolbar.
@@ -88,8 +94,12 @@ const FolioToolbar = (props: FolioToolbarProps): ReactElement => {
 
       <div className="flex-1" />
 
+      {/* Same size token as the Save button beside it — `Segmented` is
+          built to line up pixel-for-pixel with a `Button` of the matching
+          token, and `xs` against a `sm` button was a 4px mismatch sitting
+          in the middle of the row. */}
       <Segmented
-        size="xs"
+        size="sm"
         value={viewMode === "source" ? "md" : "rich-text"}
         onChange={(value) =>
           changeViewMode(value === "md" ? "source" : "rich-text")
@@ -103,7 +113,7 @@ const FolioToolbar = (props: FolioToolbarProps): ReactElement => {
       <Button
         size="sm"
         onClick={() => props.handlers["folio.save"]()}
-        disabled={props.saving || props.state.locked}
+        disabled={props.saving || props.state.locked || !props.dirty}
       >
         <Save className="size-4" />
         {tr("folios.editor.action.save")}
