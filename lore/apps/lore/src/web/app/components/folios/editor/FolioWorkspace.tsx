@@ -1,7 +1,10 @@
 import { useStore } from "alepha/react";
+import { useRouter } from "alepha/react/router";
 import { type ReactElement, useState } from "react";
 import type { Folio } from "@/api/entities/folios.ts";
+import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import FolioEmptyState from "./document/FolioEmptyState.tsx";
 import FolioWorkspaceContent from "./FolioWorkspaceContent.tsx";
 import type { FolioInspectorTab } from "./inspector/FolioInspector.tsx";
 import FolioTree from "./tree/FolioTree.tsx";
@@ -18,6 +21,13 @@ export interface FolioWorkspaceProps {
    * Create-mode only: the directory the new folio lands in.
    */
   directoryId?: string;
+  /**
+   * `/folios` itself — the tree is open, nothing is chosen. Distinct from
+   * create mode, which has an empty but real document to type into: here
+   * there is no document at all, so the editor and both chrome rows stay
+   * unmounted and the document pane shows where to go instead.
+   */
+  empty?: boolean;
 }
 
 /**
@@ -84,6 +94,7 @@ export interface FolioWorkspaceProps {
 const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   useFolioFonts();
   const [project] = useStore(currentProjectAtom);
+  const router = useRouter<AppRouter>();
   const panes = useFolioPanes();
   const [inspectorTab, setInspectorTab] =
     useState<FolioInspectorTab>("outline");
@@ -130,20 +141,32 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
             />
           </div>
         )}
-        <FolioWorkspaceContent
-          key={props.folio?.id ?? "new"}
-          folio={props.folio}
-          directoryId={props.directoryId}
-          chromeSlot={chromeSlot}
-          inspectorOpen={panes.inspectorOpen}
-          inspectorDrawer={panes.inspectorDrawer}
-          onToggleInspector={panes.toggleInspector}
-          inspectorTab={inspectorTab}
-          onInspectorTabChange={setInspectorTab}
-          treeOpen={panes.treeOpen}
-          onToggleTree={panes.toggleTree}
-          onToggleFocus={panes.toggleFocus}
-        />
+        {props.empty ? (
+          <div className="bg-card min-w-0 flex-1">
+            <FolioEmptyState
+              onCreate={() =>
+                router.push("projectFoliosNew", {
+                  params: { projectId: String(project?.id ?? "") },
+                })
+              }
+            />
+          </div>
+        ) : (
+          <FolioWorkspaceContent
+            key={props.folio?.id ?? "new"}
+            folio={props.folio}
+            directoryId={props.directoryId}
+            chromeSlot={chromeSlot}
+            inspectorOpen={panes.inspectorOpen}
+            inspectorDrawer={panes.inspectorDrawer}
+            onToggleInspector={panes.toggleInspector}
+            inspectorTab={inspectorTab}
+            onInspectorTabChange={setInspectorTab}
+            treeOpen={panes.treeOpen}
+            onToggleTree={panes.toggleTree}
+            onToggleFocus={panes.toggleFocus}
+          />
+        )}
       </div>
     </div>
   );

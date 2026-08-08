@@ -60,10 +60,11 @@ test.describe("Protected folio", () => {
       await page.waitForURL(new RegExp(`/p/${projectId}/folios`), {
         timeout: 15_000,
       });
-      // Folio toolbar: open the "Create" dropdown, then pick "New folio".
-      await page.getByRole("button", { name: /^create$/i }).click();
+      // `/folios` opens the workspace with nothing selected — the directory
+      // table and its Create dropdown are gone, so a new folio starts from
+      // the tree pane's own New folio button.
       await page
-        .getByRole("menuitem", { name: /^new folio$/i })
+        .getByRole("button", { name: /^new folio$/i })
         .first()
         .click();
       // The create surface IS the workspace now — there is no "New folio"

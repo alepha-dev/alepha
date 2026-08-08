@@ -1,25 +1,29 @@
 import { NestedView, useRouterState } from "alepha/react/router";
-import FolioActivityPanel from "./FolioActivityPanel.tsx";
-import FolioBrowser from "./FolioBrowser.tsx";
+import FolioWorkspace from "./editor/FolioWorkspace.tsx";
 
 /**
- * Folio layout shell. Two modes:
- * - browse (`projectFolios`) → full-pane `FolioBrowser` table with
- *   the collapsible Recent Activity panel on the right (Lore #105).
- * - everything else (folio view / edit / new) → full-pane nested view.
+ * Folio layout shell.
  *
- * The split-pane experiment was dropped: folios get their own page.
+ * `/folios` itself renders the workspace with nothing open — tree, empty
+ * document pane, no chrome — the way an editor sits before you pick a
+ * file. Everything below it (a folio, or the create page) renders through
+ * the nested view.
+ *
+ * The directory table that used to own this route is gone. `FolioBrowser`
+ * and its Recent Activity panel were a second, competing way to move
+ * around the same folios, and the tree does that job inside the surface
+ * where the work actually happens. The blob and activity ENDPOINTS are
+ * untouched — only their browser UI went — so blob support can come back
+ * into the workspace later without a server change.
  */
 const FoliosLayout = () => {
   const name = useRouterState().name ?? "";
-  const isBrowse = name === "projectFolios";
 
   return (
     <div className="bg-background flex h-full min-h-0 flex-1">
-      <main className="min-h-0 flex-1 overflow-auto">
-        {isBrowse ? <FolioBrowser /> : <NestedView />}
+      <main className="flex min-h-0 min-w-0 flex-1">
+        {name === "projectFolios" ? <FolioWorkspace empty /> : <NestedView />}
       </main>
-      {isBrowse && <FolioActivityPanel />}
     </div>
   );
 };
