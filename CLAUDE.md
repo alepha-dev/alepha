@@ -251,6 +251,61 @@ For package-specific work, use:
 yarn w @package-name typecheck && yarn w @package-name test
 ```
 
+## Code Conventions
+
+Conventions enforced by review, not by lint. They are not obvious from the code, so read them before writing any.
+
+### Core rules
+
+- **Never use `Date.now()`** — inject `DateTimeProvider` and call `this.dateTime.nowMillis()`. This is what makes time testable via `travel()` / `pause()`. Not available inside `alepha/core` or `alepha/datetime` themselves. Note `travel()` also resolves `CronProvider` waits, so every `$job` cron in the container fires — assert end state, not call counts.
+- **Never throw `Error`** — always `AlephaError` (import from `"alepha"`); it extends `Error` with `name = "AlephaError"`.
+- **Never write code outside classes** — no standalone functions or constants in service files. Everything is a class method so it stays substitutable via DI for testing.
+- **No `_` prefix on class members** — use descriptive names.
+- **One schema per file** — never declare multiple schemas in one file.
+
+### Typing traps
+
+- **`t.any()` is not valid** for `TResponseBody` / `TRequestBody` in `$route` schemas. Use `t.record(t.text(), t.any())`, with `as any` on the return value.
+- **`schema.response` is what serializes.** A field added to the entity, the type and the component still will not appear in the payload unless it is declared on the response schema — and it fails silently.
+- **`this.alepha.env.*` returns `string | number | boolean`** — coerce with `String()` / `Number()` when assigning to a typed field.
+- **`HttpClient.fetch()` without a `schema` option returns `{ data: {} }`** — cast `res.data as any` for untyped endpoints.
+- **Never augment zod's `GlobalMeta`** — it poisons every `.meta()` call site and explodes the type graph. Use `satisfies SchemaControlFn` locally instead.
+
+### React components
+
+- **One component per file.** If a file has two, extract the second.
+- **File order:** PROPS interface → COMPONENT → the rest (other interfaces, helpers).
+- **Extracted component naming:** `ParentComponent.tsx` with an inner `Header` becomes `ParentComponentHeader.tsx`.
+- **Always arrow functions:** `const MyComponent = (props: MyComponentProps) => {}` — never `function`.
+- **Never destructure props in the parameter list:** use `(props: MyComponentProps)`, not `({ foo }: MyComponentProps)`. Destructure inside the body if you want.
+- **Props interfaces are named `MyComponentProps`** — always a named exported interface, never inline.
+- **No React Context** — use `$atom` + `useStore`, never `createContext` / `useContext`.
+- **`@alepha/ui/admin` is a separate sub-module** — importing from `@alepha/ui` inside admin code is correct, not a layering violation.
+
+### Router and i18n
+
+- **`useRouter<T>()` navigates with `router.push("pageName", { params })`** — there is no `router.navigate()`.
+- **`useI18n().l()` returns `string | number`** — wrap in `String()` for string fields.
+- **`I18nLocalizeOptions` has `date` and `number` only, no `time`** — for date+time pass a dayjs format string such as `"lll"` to `date`.
+- **Name route params uniquely across the whole route table.** Two routes with different param names at the same path position silently lose the inner value.
+- **`$route` never lives under `/api`** — it is the raw level below `$action`, does not prefix `/api`, and the `$action` dispatcher shadows anything under `/api/*` (404s). Root paths only.
+
+### Repository / query API
+
+- **`{ inArray: [...] }` for SQL `IN`**, not `{ in: [...] }`. See `FilterOperators.ts`.
+- **`findMany()` accepts** `{ where, limit, offset, orderBy, groupBy, columns, distinct }` — there is no `sort` and no `size`.
+- **For pagination use `paginate(query, { where }, { count: true })`**, which does accept `sort` / `size` on the query object.
+- **Never pass `undefined` into a where-filter.** `where: { col: undefined }` throws `AlephaError`. It used to be dropped silently, producing a query with no `WHERE` at all — that was a real P0. Omit the key entirely for optional filters.
+- **`.optional()` must go INSIDE `db.ref(...)`** — outside it, no foreign key is generated at all, silently, and the migration snapshot check cannot catch it.
+
+### CLI internals (`packages/alepha/src/cli`)
+
+- **Two Alepha instances.** `this.alepha` is the CLI's own container; `alepha` (passed as an argument) is the user's app container. Never confuse them — this is the most common CLI bug.
+- **Build tasks live in `cli/tasks/`**, not `cli/build/`, named `BuildXxxTask` (e.g. `BuildCompressTask`).
+- **No `index.ts` in `cli/tasks/`** — `index.ts` is reserved for module-level exports.
+- **`run` (RunnerMethod) is passed to tasks as an argument**, not injected via DI. Tasks decide when or whether to call `run()` (e.g. skipping pre-render when there is nothing to prerender).
+- **Use `FileSystemProvider` via `$inject`**, never raw `fs/promises`, so tasks stay testable with `MemoryFileSystemProvider`.
+
 ## Notes for AI Assistants
 
 - **CRITICAL**: Don't commit unless the user explicitly tells you to. No `git commit`, `git add`, `git push`, or other history/index-modifying commands by default — leave changes uncommitted and describe them. The only always-allowed git command is `git mv` for renaming/moving files. When the user does authorize a commit, run `yarn v` first and fix any red before committing.
