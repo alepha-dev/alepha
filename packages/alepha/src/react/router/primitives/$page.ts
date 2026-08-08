@@ -546,6 +546,58 @@ export class PagePrimitive<
         );
       }
     }
+
+    this.deriveCanFromGuards();
+  }
+
+  /**
+   * Give a guarded page a `can` predicate so navigation surfaces hide it.
+   *
+   * A page gated with `use: [$secure({ permissions })]` is already refused at
+   * the router — but the sidebar, breadcrumbs and command palette read `can`,
+   * so without one the entry stayed visible and led straight to a redirect or a
+   * 403. Declaring the permissions twice (once to guard, once to hide) is the
+   * kind of duplication that drifts, so derive the second from the first.
+   *
+   * Read structurally off `MiddlewareMetadata` rather than by importing
+   * `SecureOptions`: `alepha/react/router` must not depend on
+   * `alepha/security`. The `$secure` name match is the price of that direction.
+   *
+   * An explicit `can` always wins — this only fills a gap, and `false` from a
+   * hand-written predicate must never be widened by a derived one.
+   */
+  protected deriveCanFromGuards(): void {
+    if (this.options.can) {
+      return;
+    }
+
+    const required: string[] = [];
+
+    for (const middleware of this.options.use ?? []) {
+      const metadata = middleware[OPTIONS];
+      if (metadata?.name !== "$secure") {
+        continue;
+      }
+
+      const permissions = (
+        metadata.options as
+          | { permissions?: Array<string | { name: string }> }
+          | undefined
+      )?.permissions;
+
+      for (const permission of permissions ?? []) {
+        required.push(
+          typeof permission === "string" ? permission : permission.name,
+        );
+      }
+    }
+
+    if (!required.length) {
+      return;
+    }
+
+    // AND, matching how `$secure` and `nav.permission` both read a list.
+    this.options.can = ({ has }) => required.every((it) => has(it));
   }
 
   public get name(): string {

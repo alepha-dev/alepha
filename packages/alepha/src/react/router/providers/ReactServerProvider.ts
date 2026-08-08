@@ -659,6 +659,20 @@ export class ReactServerProvider {
       ? await new PipelineHandler(renderFn, allMiddleware).run(url.href)
       : await renderFn(url.href);
 
+    // A guard middleware short-circuited without calling `next`, so `renderFn`
+    // never ran and the pipeline resolved to whatever the guard returned —
+    // `undefined` for `$secure` / `$owns`. Reading `.redirect` off that used to
+    // throw a bare TypeError, which is neither a denial nor a render.
+    //
+    // `$secure` itself dodged this on the server by throwing, so only a
+    // middleware that denies by returning (a paywall, a feature gate, the
+    // browser-shaped guards) could reach it. Route it through the same denial
+    // as client-side navigation instead.
+    if (!result) {
+      const { redirect } = this.pageApi.denyGuardedPage(url);
+      return { state, html: "", redirect };
+    }
+
     if (result.redirect) {
       return { state, html: "", redirect: result.redirect };
     }

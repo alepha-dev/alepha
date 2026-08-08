@@ -35,6 +35,7 @@ export * from "./primitives/$secure.ts";
 export * from "./primitives/$serviceAccount.ts";
 export * from "./providers/JwtProvider.ts";
 export * from "./providers/OwnedResourceProvider.ts";
+export * from "./providers/PermissionRegistryProvider.ts";
 export * from "./providers/SecurityProvider.ts";
 export * from "./providers/ServerSecurityProvider.ts";
 export * from "./schemas/permissionSchema.ts";
