@@ -61,6 +61,25 @@ export class PipelinePrimitive<
 export interface MiddlewareMetadata {
   name: string;
   options?: Record<string, unknown>;
+
+  /**
+   * Free-form capability flags describing what this middleware *does*, for
+   * consumers that must react to it without knowing which middleware it is.
+   *
+   * `options` already carries a middleware's configuration, but reading it
+   * means knowing whose configuration it is — which is how the router ended up
+   * matching on `name === "$secure"`, a string comparison that survives no
+   * rename and admits no second implementation. `meta` is the portable half:
+   * a middleware declares a capability, and anything may act on the declaration
+   * without importing the module that made it.
+   *
+   * Flat `Record<string, string>` on purpose — serialisable, transport-safe,
+   * and cheap to read from a module that shares no types with the writer.
+   *
+   * See {@link MIDDLEWARE_PROTECTED} for the one key the framework defines.
+   * Applications may add their own; unknown keys are ignored.
+   */
+  meta?: Record<string, string>;
 }
 
 export type Middleware = (<T extends (...args: any[]) => any>(
@@ -86,6 +105,12 @@ export interface PipelineOptions<
 export interface CreateMiddlewareOptions {
   name: string;
   options?: any;
+
+  /**
+   * Capability flags for consumers that must react to what this middleware
+   * does without knowing which one it is. See {@link MiddlewareMetadata.meta}.
+   */
+  meta?: Record<string, string>;
   handler: (context: {
     alepha: Alepha;
     next: (...args: any[]) => any;
@@ -168,10 +193,15 @@ export const createMiddleware = (
   const mw: Middleware = <T extends (...args: any[]) => any>(handler: T): T =>
     config.handler({ alepha, next: handler }) as T;
 
-  mw[OPTIONS] =
-    config.options != null
-      ? { name: config.name, options: config.options }
-      : { name: config.name };
+  mw[OPTIONS] = { name: config.name };
+
+  if (config.options != null) {
+    mw[OPTIONS].options = config.options;
+  }
+
+  if (config.meta != null) {
+    mw[OPTIONS].meta = config.meta;
+  }
 
   return mw;
 };

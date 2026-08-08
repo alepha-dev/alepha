@@ -3,6 +3,7 @@ import {
   type Alepha,
   type Async,
   createMiddleware,
+  MIDDLEWARE_PROTECTED,
   type Middleware,
 } from "alepha";
 import {
@@ -159,6 +160,11 @@ export function $secure(options?: SecureOptions): Middleware {
   return createMiddleware({
     name: "$secure",
     options: (options as unknown as Record<string, unknown>) ?? undefined,
+    // Declares the capability rather than relying on being recognised by name,
+    // so consumers (the router's rendering-mode default) never match on
+    // `"$secure"`. Any middleware that turns a visitor away for who they are
+    // should set the same flag.
+    meta: { [MIDDLEWARE_PROTECTED]: "true" },
     handler: ({ alepha, next }) => {
       return async (...args: any[]) => {
         let user: UserAccountToken | undefined;
