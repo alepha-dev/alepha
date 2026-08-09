@@ -153,10 +153,13 @@ Both live in the one file `atoms/kanbanProjectAtom.ts`.
 ### Kanban ↔ Header Communication
 Kanban is not a route anymore — it's a `?view=kanban` query toggle on the `projectQuests` page (`ProjectQuestsPage.tsx` reads `routerState.query.view === "kanban"` and renders `KanbanBoard` instead of `ProjectQuestsTable`; the view lives in the URL rather than component state so a shared link still opens a board and the back button behaves). `KanbanBoard` sets `kanbanProjectAtom` with `{ project }`. The Header reads it to:
 1. Show the project name in the header (falls back from `currentProjectAtom`)
-2. Show the Board/Kanban toggle link (a plain `?view=kanban` query param, not a navigation to a different route)
-3. Show the "Create Quest" button
+2. Show the "Create Quest" button
 
 After creating a quest from the header, it bumps `kanbanReloadAtom` which `KanbanBoard` watches to trigger a reload.
+
+**The switch between the two views is not in the header.** It is `ProjectQuestsViewSwitcher.tsx`, a two-entry icon rail down the left edge of the Quests *content* area — deliberately inside the content and not in `ProjectView`, because that layout changes shape under the board (`fullWidth`, no quest log) and the rail has to sit still across both branches. It is gated on `project.features.kanban`: with kanban off the rail renders nothing rather than a single dead entry.
+
+The URL stays the single source of truth; `localStorage` (`lor.quests.view`, `questsView.ts`) only *seeds* it, and only on a bare `/p/:id/` with no `view` param — that seeding is a `replace` navigation so it costs no history entry. An explicit `?view=` always wins, which is why the rail writes `?view=list` rather than clearing the param. This is not stylistic: `ProjectView` reads the same query param for `fullWidth`, and it cannot see the stored preference, so a view held only in `localStorage` would render a board inside the list layout.
 
 ### QuestView Reusability
 `QuestView` works in two contexts:

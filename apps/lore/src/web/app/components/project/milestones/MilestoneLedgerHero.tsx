@@ -1,8 +1,10 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
 import { cn } from "@alepha/ui/lib/utils";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Square } from "lucide-react";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import type { MilestoneWithCount } from "./ProjectMilestones.tsx";
 
@@ -12,6 +14,14 @@ export interface MilestoneLedgerHeroProps {
   zoneCount: number;
   contributorCount: number;
   onOpenDetail: () => void;
+  /**
+   * Opens the close-milestone modal. This lives here rather than in a page
+   * header because the banner is the page's statement of current state, and
+   * closing is the one action that changes it — the mirror of Start Milestone
+   * on {@link MilestoneEmptyBanner}. It is also the only close affordance on
+   * the page, so it cannot be dropped without stranding `closeMilestone`.
+   */
+  onClose: () => void;
 }
 
 /**
@@ -42,6 +52,10 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
     <div
       role="button"
       tabIndex={0}
+      // Without an explicit label the banner's accessible name is computed
+      // from its contents, which now include the Close Milestone button —
+      // so a query for that button matched the banner too.
+      aria-label={milestone.title}
       onClick={props.onOpenDetail}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -49,7 +63,7 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
           props.onOpenDetail();
         }
       }}
-      className="bg-card hover:border-border flex cursor-pointer flex-col gap-6 rounded-xl border border-l-[3px] border-l-green-600 p-5 text-left transition-colors lg:flex-row lg:items-center lg:gap-7"
+      className="bg-card border-border flex cursor-pointer flex-col gap-6 border-b border-l-[3px] border-l-green-600 px-5 py-5 text-left transition-colors lg:flex-row lg:items-center lg:gap-7 lg:px-7"
     >
       <div className="relative flex size-13 shrink-0 items-center justify-center rounded-full bg-green-600 text-xl font-bold text-white">
         {milestone.number}
@@ -59,7 +73,7 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-green-600 dark:text-green-400">
           {tr("milestone.ledger.recording")}
-          <span className="text-muted-foreground font-medium tracking-[0.12em]">
+          <span className="text-muted-foreground truncate font-medium tracking-[0.12em]">
             {tr("milestone.ledger.started", {
               args: [dt.of(milestone.createdAt).fromNow()],
             })}
@@ -87,7 +101,7 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
           A manual-close milestone has no deadline and therefore no
           denominator — rendering an empty track and a dash reads as broken
           rather than as "no deadline". */}
-      <div className="shrink-0 lg:w-64">
+      <div className="shrink-0 lg:w-52">
         {progress != null ? (
           <>
             <div className="text-muted-foreground flex justify-between text-[10.5px] uppercase tracking-[0.1em]">
@@ -125,7 +139,10 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
         </div>
       </div>
 
-      <div className="border-border flex shrink-0 gap-6 lg:border-l lg:pl-6">
+      {/* Counters and the close action share one right-hand cluster rather
+          than each taking a top-level column: with the page header gone this
+          band carries everything, and a fifth column squeezed the title. */}
+      <div className="border-border flex shrink-0 items-center gap-6 lg:border-l lg:pl-6">
         <Stat
           label={tr("milestone.ledger.stat.quests")}
           value={props.questCount}
@@ -138,6 +155,21 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
           label={tr("milestone.ledger.stat.members")}
           value={props.contributorCount}
         />
+        {/* Mirrors where Start Milestone sits on the empty banner: the one
+            action that changes the state the banner reports. The banner
+            itself opens the detail sheet, so this has to stop the click
+            from reaching it. */}
+        <Button
+          variant="outline"
+          className="border-amber-500/60 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
+          onClick={(e) => {
+            e.stopPropagation();
+            props.onClose();
+          }}
+        >
+          <Square className="size-4" />
+          {tr("milestone.close")}
+        </Button>
       </div>
     </div>
   );

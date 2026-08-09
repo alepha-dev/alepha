@@ -18,7 +18,7 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Dices, Hourglass, Play, Square } from "lucide-react";
+import { Dices, Play } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { MilestoneController } from "@/api/controllers/MilestoneController.ts";
@@ -332,73 +332,41 @@ const ProjectMilestones = () => {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-col gap-4 px-5 pb-4 pt-5 lg:flex-row lg:items-end lg:justify-between lg:gap-6 lg:px-7">
-        <div>
-          <h1 className="text-[26px] font-bold tracking-[-0.02em]">
-            {tr("milestone.page.title")}
-          </h1>
-          <p className="text-muted-foreground mt-1.5 max-w-2xl text-[13px] text-pretty">
-            {tr("milestone.ledger.subtitle")}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {activeMilestone ? (
-            <Button
-              variant="outline"
-              className="border-amber-500/60 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
-              onClick={() => setCloseModal(activeMilestone)}
-            >
-              <Square className="size-4" />
-              {tr("milestone.close")}
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              onClick={() =>
-                router.push("projectSettingsMilestones", {
-                  params: { projectId },
-                })
-              }
-            >
-              <Hourglass className="size-4" />
-              {tr("milestone.ledger.autoCloseSettings")}
-            </Button>
-          )}
-        </div>
-      </div>
+      {/* No page header. The breadcrumb already reads "… › Milestones", and
+          the two controls that lived here were both redundant: Auto-close
+          settings pointed at the same route as the banner's own `change`
+          link, and Close Milestone now sits on the hero, opposite where
+          Start Milestone sits on the empty banner. Both banner states are
+          full-bleed so they occupy the same band under the breadcrumb. */}
+      {activeMilestone ? (
+        <MilestoneLedgerHero
+          milestone={activeMilestone}
+          questCount={changelog?.stats.questCount ?? activeMilestone.questCount}
+          zoneCount={changelog?.stats.zoneCount ?? 0}
+          contributorCount={changelog?.stats.contributorCount ?? 0}
+          onOpenDetail={() => setDetailMilestone(activeMilestone)}
+          onClose={() => setCloseModal(activeMilestone)}
+        />
+      ) : (
+        <MilestoneEmptyBanner
+          backlogCount={backlog?.count ?? 0}
+          lastLabel={
+            backlog?.lastNumber
+              ? `#${backlog.lastNumber} ${backlog.lastTitle ?? ""}`.trim()
+              : undefined
+          }
+          lastClosedOn={
+            backlog?.since
+              ? String(i18n.l(backlog.since, { date: "ll" }))
+              : undefined
+          }
+          autoCloseLabel={autoCloseLabel}
+          settingsHref={settingsHref}
+          onStart={openStart}
+        />
+      )}
 
-      <div className="px-5 lg:px-7">
-        {activeMilestone ? (
-          <MilestoneLedgerHero
-            milestone={activeMilestone}
-            questCount={
-              changelog?.stats.questCount ?? activeMilestone.questCount
-            }
-            zoneCount={changelog?.stats.zoneCount ?? 0}
-            contributorCount={changelog?.stats.contributorCount ?? 0}
-            onOpenDetail={() => setDetailMilestone(activeMilestone)}
-          />
-        ) : (
-          <MilestoneEmptyBanner
-            backlogCount={backlog?.count ?? 0}
-            lastLabel={
-              backlog?.lastNumber
-                ? `#${backlog.lastNumber} ${backlog.lastTitle ?? ""}`.trim()
-                : undefined
-            }
-            lastClosedOn={
-              backlog?.since
-                ? String(i18n.l(backlog.since, { date: "ll" }))
-                : undefined
-            }
-            autoCloseLabel={autoCloseLabel}
-            settingsHref={settingsHref}
-            onStart={openStart}
-          />
-        )}
-      </div>
-
-      <div className="border-border mt-3.5 flex min-h-0 flex-1 flex-col border-t xl:flex-row">
+      <div className="border-border flex min-h-0 flex-1 flex-col border-t xl:flex-row">
         <MilestoneChangelogPanel
           zones={changelog?.zones ?? []}
           statusLabel={String(statusLabel)}

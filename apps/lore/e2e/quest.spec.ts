@@ -774,4 +774,146 @@ test.describe("Quest", () => {
     await page.goto(`/p/${projectId}/kanban`);
     await expect(page.getByTestId("kanban-board")).toHaveCount(0);
   });
+
+  /**
+   * The view-switcher rail is the only entry point to the board since the
+   * sidebar entry left with the route (#135). It has to reach the board and
+   * come back without the URL bar, remember the choice across a reload, and
+   * still lose to an explicit `?view=` in a shared link.
+   */
+  test("view switcher reaches the kanban board and remembers the choice", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `viewrail${t}@example.com`;
+    const password = "ViewRail123!";
+    const projectTitle = `VR${t}`.slice(0, 20);
+
+    await registerAndVerify(page, email, password);
+    const projectId = await createProjectViaWizard(page, projectTitle);
+
+    await page.goto(`/p/${projectId}/`);
+    await expect(page.getByTestId("quests-table")).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await test.step("rail switches to the board and back", async () => {
+      await page.getByTestId("quests-view-kanban").click();
+      await expect(page.getByTestId("kanban-board")).toBeVisible({
+        timeout: 10_000,
+      });
+      expect(new URL(page.url()).searchParams.get("view")).toBe("kanban");
+
+      await page.getByTestId("quests-view-list").click();
+      await expect(page.getByTestId("quests-table")).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+
+    await test.step("a bare URL reopens the last view used", async () => {
+      await page.getByTestId("quests-view-kanban").click();
+      await expect(page.getByTestId("kanban-board")).toBeVisible({
+        timeout: 10_000,
+      });
+
+      await page.goto(`/p/${projectId}/`);
+      await expect(page.getByTestId("kanban-board")).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+
+    await test.step("an explicit ?view= still wins over the stored choice", async () => {
+      await page.goto(`/p/${projectId}/?view=list`);
+      await expect(page.getByTestId("quests-table")).toBeVisible({
+        timeout: 10_000,
+      });
+      await expect(page.getByTestId("kanban-board")).toHaveCount(0);
+    });
+
+    await test.step("the rail disappears when kanban is off", async () => {
+      await setProjectFeature(page, projectId, "kanban", false);
+      await page.goto(`/p/${projectId}/`);
+      await expect(page.getByTestId("quests-table")).toBeVisible({
+        timeout: 10_000,
+      });
+      await expect(page.getByTestId("quests-view-switcher")).toHaveCount(0);
+    });
+  });
+
+  /**
+   * Shelve is reversible and Delete is not, so Shelve must be at least as
+   * reachable — one click from the list, same as Delete (#136). The entry is
+   * state-aware: a shelved row offers Unshelve instead, never both.
+   */
+  test("shelve and unshelve from the quests table row actions", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `rowshelve${t}@example.com`;
+    const password = "RowShelve123!";
+    const projectTitle = `RS${t}`.slice(0, 20);
+    const questTitle = `RowShelveMe${t}`;
+
+    await registerAndVerify(page, email, password);
+    const projectId = await createProjectViaWizard(page, projectTitle);
+
+    await apiPost(page, "createQuest", {
+      projectId,
+      title: questTitle,
+      description: "Seeded quest for row-action shelve e2e",
+      zone: "Main",
+      priority: "low",
+      difficulty: 1,
+      objectives: [],
+      attachments: [],
+    });
+
+    await page.goto(`/p/${projectId}/`);
+    await expect(page.getByText(questTitle).first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await test.step("shelve from the row menu", async () => {
+      await page.getByRole("button", { name: "Open row actions" }).click();
+      await page.getByRole("menuitem", { name: /shelve quest/i }).click();
+      await expect(
+        page.getByRole("alertdialog", { name: /shelve this quest/i }),
+      ).toBeVisible({ timeout: 5_000 });
+      await page.getByRole("button", { name: /shelve quest/i }).click();
+
+      // The default filter hides shelved quests server-side, so the row
+      // leaves the table rather than changing appearance.
+      await expect(page.getByText(questTitle).first()).toBeHidden({
+        timeout: 10_000,
+      });
+    });
+
+    await test.step("the shelved row offers Unshelve, not Shelve", async () => {
+      await page
+        .getByRole("combobox")
+        .filter({ hasText: "All status" })
+        .click();
+      await page.getByRole("option", { name: "Shelved" }).click();
+      await expect(page.getByText(questTitle).first()).toBeVisible({
+        timeout: 10_000,
+      });
+
+      await page.getByRole("button", { name: "Open row actions" }).click();
+      await expect(
+        page.getByRole("menuitem", { name: /unshelve quest/i }),
+      ).toBeVisible({ timeout: 5_000 });
+      await expect(
+        page.getByRole("menuitem", { name: /^shelve quest$/i }),
+      ).toHaveCount(0);
+
+      await page.getByRole("menuitem", { name: /unshelve quest/i }).click();
+      await expect(page.getByText(questTitle).first()).toBeHidden({
+        timeout: 10_000,
+      });
+    });
+  });
 });

@@ -8,7 +8,7 @@ import {
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Plus } from "lucide-react";
+import { Ban, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { SigilController } from "@/api/controllers/SigilController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
@@ -16,6 +16,7 @@ import { currentProjectMemberAtom } from "@/web/app/atoms/currentProjectMemberAt
 import { currentSigilsAtom } from "@/web/app/atoms/currentSigilsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import TokenReveal from "../../shared/TokenReveal.tsx";
+import ProjectBlightRulesDialog from "../blights/ProjectBlightRulesDialog.tsx";
 import ProjectSettingsFeatureSection from "./ProjectSettingsFeatureSection.tsx";
 import ProjectSettingsSigilRow from "./ProjectSettingsSigilRow.tsx";
 import ProjectSettingsSigilsEnrollDialog from "./ProjectSettingsSigilsEnrollDialog.tsx";
@@ -58,6 +59,7 @@ const ProjectSettingsSigilsPage = () => {
   // appear there without a reload, and this page's own successful `reload()`
   // repairs a sidebar whose read failed during the project load.
   const [sigils, setSigils] = useStore(currentSigilsAtom);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   const master = useProjectFeatureToggle("sigils");
   const enabled = master.enabled;
@@ -165,10 +167,43 @@ const ProjectSettingsSigilsPage = () => {
             ))}
           </Card>
 
+          {/* Ignore rules used to be a toolbar action on the Blights inbox.
+              They are standing configuration, not triage: the inbox is where
+              you decide about one failure that already happened, and a rule
+              decides what never lands at all. The move also fixes a
+              permissions mismatch — rule mutations are owner-only
+              server-side, so a member could open the dialog from the inbox
+              only to be refused. Keep this owner-facing; do not re-expose it
+              on the inbox. */}
+          <Card className="py-4 shadow">
+            <CardContent className="flex flex-col gap-3 px-4 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">
+                  {tr("blights.rules.title")}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("blights.rules.settingsDescription")}
+                </span>
+              </div>
+              <div className="flex justify-start sm:justify-end">
+                <Button variant="outline" onClick={() => setRulesOpen(true)}>
+                  <Ban className="size-4" />
+                  {tr("blights.rules.manage")}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <ProjectSettingsSigilsEnrollDialog
             open={enrolling}
             onOpenChange={setEnrolling}
             onEnrolled={setFreshToken}
+          />
+
+          <ProjectBlightRulesDialog
+            open={rulesOpen}
+            projectId={project.id}
+            onOpenChange={setRulesOpen}
           />
         </div>
       )}

@@ -5,6 +5,7 @@ import {
   createProjectViaWizard,
   emailDir,
   registerAndVerify,
+  setProjectFeature,
 } from "./_helpers.ts";
 
 /**
@@ -95,6 +96,11 @@ test.describe("Folio workspace", () => {
   });
 
   test("01 — summary survives a save and a reload", async () => {
+    // The field is hidden unless the project opts in (#137) — the summary is
+    // written for agents, so for a reader it is chrome. Turning it on is part
+    // of this test's setup, not part of what it asserts.
+    await setProjectFeature(page, projectId, "folioSummary");
+
     await page.goto(folioUrl);
     const summary = page.getByLabel(/summary for agents/i);
     await expect(summary).toBeVisible({ timeout: 15_000 });

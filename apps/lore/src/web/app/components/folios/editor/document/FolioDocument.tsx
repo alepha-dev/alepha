@@ -4,6 +4,7 @@ import { useI18n } from "alepha/react/i18n";
 import type { ReactElement } from "react";
 import { createPortal } from "react-dom";
 import type { Folio } from "@/api/entities/folios.ts";
+import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import MarkdownEditor from "../../../shared/markdown-editor/MarkdownEditor.tsx";
@@ -87,8 +88,15 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const [directories] = useStore(projectDirectoriesAtom);
+  const [project] = useStore(currentProjectAtom);
 
   useFolioShortcuts(props.actions.handlers, props.actions.actionState);
+
+  // Absent on every project that has not opted in — the key is deliberately
+  // missing from `defaultProjectFeatures` (adding it there would change the
+  // `projects` column DEFAULT and trigger the D1 rebuild that cascade-wipes
+  // prod), so `?? false` is the default, not a fallback.
+  const summaryVisible = project?.features?.folioSummary ?? false;
 
   const values = props.draft.values;
   const disabled = props.actions.locked;
@@ -144,11 +152,18 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
         onRemoveTag={handleRemoveTag}
       />
 
-      <FolioSummaryField
-        value={values.summary}
-        onChange={(v) => props.draft.form.input.summary.set(v)}
-        unavailable={props.actions.actionState.isProtected}
-      />
+      {/* Off unless the project opts in (Settings › Folios). The summary is
+          written for `project_context` / `folio_list`, so for a reader it is
+          chrome between the title and the first line of prose. Hiding the
+          field does not stop it round-tripping — the draft still carries the
+          stored value and still saves it. */}
+      {summaryVisible && (
+        <FolioSummaryField
+          value={values.summary}
+          onChange={(v) => props.draft.form.input.summary.set(v)}
+          unavailable={props.actions.actionState.isProtected}
+        />
+      )}
 
       <div className="border-border my-6 border-t" />
 
