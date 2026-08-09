@@ -39,6 +39,7 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanProjectAtom.ts";
+import { questsViewAtom } from "../../atoms/questsViewAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import QuestCreate from "./quest/QuestCreate.tsx";
 
@@ -56,11 +57,12 @@ const ProjectActionsCreateButton = () => {
   const [project] = useStore(currentProjectAtom);
   const [reloadKey, setReloadKey] = useStore(kanbanReloadAtom);
   const routerState = useRouterState();
-  // Kanban is a `?view=kanban` toggle on the `projectQuests` route, not its
-  // own route (the great rename, Task 8) — detect it off the query instead
-  // of the route name.
+  const [questsView] = useStore(questsViewAtom);
+  // Kanban is not its own route (the great rename, Task 8), and since #156
+  // it is not a query param either — detect it off the stored view plus the
+  // route name.
   const onKanban =
-    routerState.name === "projectQuests" && routerState.query.view === "kanban";
+    routerState.name === "projectQuests" && questsView.view === "kanban";
 
   if (!project) {
     return null;

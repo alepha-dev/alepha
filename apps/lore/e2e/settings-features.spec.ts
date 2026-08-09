@@ -41,7 +41,7 @@ test.describe("Project settings — feature toggles", () => {
     expect(match).not.toBeNull();
     const projectId = match![1];
 
-    // Kanban is a `?view=kanban` toggle on the Quests page now, not a
+    // Kanban is a view of the Quests page now, not a
     // sidebar entry (the great rename, Task 8), so it can no longer prove
     // that a feature toggle updates the sidebar. Milestones is still a
     // plain gated sidebar link (ProjectView.tsx), so it drives the same

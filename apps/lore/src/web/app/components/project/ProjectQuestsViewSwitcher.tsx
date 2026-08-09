@@ -6,8 +6,8 @@ import {
 } from "@alepha/ui/components/ui/tooltip";
 import { useI18n } from "alepha/react/i18n";
 import { Columns3, List } from "lucide-react";
+import type { QuestsView } from "../../atoms/questsViewAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
-import type { QuestsView } from "./questsView.ts";
 
 export interface ProjectQuestsViewSwitcherProps {
   view: QuestsView;
@@ -22,8 +22,9 @@ export interface ProjectQuestsViewSwitcherProps {
 /**
  * The slim icon rail down the far-left edge of the project content area, and
  * the only way to reach the kanban board: the 2026-08 rename turned kanban
- * from its own route into a `?view=kanban` query toggle and took the sidebar
- * entry with it, leaving the board reachable only by hand-typing the URL.
+ * from its own route into a view of the Quests page and took the sidebar
+ * entry with it, leaving the board unreachable from the UI at all. The view
+ * itself lives in `questsViewAtom` since #156 — there is no URL to type.
  *
  * Rendered by `ProjectView`, as the first child of the content area and
  * OUTSIDE its `showQuestLog / fullWidth / else` branch (#153). It first lived
