@@ -1,6 +1,7 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+import { jsdomProject } from "../../vitest.jsdom.ts";
 
 const appRoot = dirname(fileURLToPath(import.meta.url));
 
@@ -29,18 +30,7 @@ export default defineConfig({
           ],
         },
       },
-      {
-        extends: true,
-        test: {
-          include: ["**/*.browser.spec.{ts,tsx}"],
-          name: { label: "jsdom", color: "cyan" },
-          environment: "jsdom",
-        },
-        resolve: {
-          conditions: ["browser", "module", "import", "default"],
-          mainFields: ["browser", "module", "main"],
-        },
-      },
+      jsdomProject(["**/*.browser.spec.{ts,tsx}"]),
     ],
   },
 });

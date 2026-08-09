@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+import { jsdomProject } from "./vitest.jsdom.ts";
 
 const repoRoot = dirname(fileURLToPath(import.meta.url));
 loadEnv();
@@ -119,37 +120,21 @@ export default defineConfig({
           ],
         },
       },
-      {
-        // browser tests
-        extends: true,
-        test: {
-          // `apps/**` added alongside the original `packages/**` when
-          // `apps/lore` got its first `.browser.spec.tsx` file (a React-hook
-          // test for the folio workspace) — until then no app had one, so
-          // this project's `include` had never needed to reach past
-          // `packages/`. Same shape as the `@/` alias comment above this
-          // file's `resolve.alias`: a root-only include is invisible from
-          // `yarn w <app> test`, so this is what makes an app-level browser
-          // spec actually run under the `yarn test` root command CI uses.
-          include: [
-            "packages/**/src/**/*.browser.spec.{ts,tsx}",
-            "apps/**/src/**/*.browser.spec.{ts,tsx}",
-          ],
-          name: { label: "jsdom", color: "cyan" },
-          environment: "jsdom",
-          // Node >= 25 ships a native Web Storage global. Vitest's jsdom
-          // environment refuses to overwrite globals that already exist, so
-          // the native (unbacked) `localStorage` shadows jsdom's real
-          // `Storage` and `window.localStorage.setItem` ends up undefined.
-          // Turning the Node built-in off in the test workers lets jsdom
-          // install its own spec-compliant implementation.
-          execArgv: ["--no-experimental-webstorage"],
-        },
-        resolve: {
-          conditions: ["browser", "module", "import", "default"],
-          mainFields: ["browser", "module", "main"],
-        },
-      },
+      // browser tests. Everything except `include` lives in `vitest.jsdom.ts`,
+      // shared with `apps/lore/vitest.config.ts` — read the comment there
+      // before adding a jsdom setting to either config.
+      //
+      // `apps/**` added alongside the original `packages/**` when `apps/lore`
+      // got its first `.browser.spec.tsx` file (a React-hook test for the folio
+      // workspace) — until then no app had one, so this project's `include` had
+      // never needed to reach past `packages/`. Same shape as the `@/` alias
+      // comment above this file's `resolve.alias`: a root-only include is
+      // invisible from `yarn w <app> test`, so this is what makes an app-level
+      // browser spec actually run under the `yarn test` root command CI uses.
+      jsdomProject([
+        "packages/**/src/**/*.browser.spec.{ts,tsx}",
+        "apps/**/src/**/*.browser.spec.{ts,tsx}",
+      ]),
     ],
   },
 });
