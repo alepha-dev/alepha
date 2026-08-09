@@ -1,6 +1,6 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
-import { FilePlus, FolderPlus } from "lucide-react";
+import { FilePlus, FolderPlus, Upload } from "lucide-react";
 import { type ReactElement, useEffect, useRef } from "react";
 import type { I18n } from "../../../../services/I18n.ts";
 import FolioTreeRow from "./FolioTreeRow.tsx";
@@ -109,6 +109,15 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
           aria-label={String(tr("folios.editor.tree.new-directory"))}
         >
           <FolderPlus className="size-3.5" />
+        </Button>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          onClick={() => tree.uploadBlobs()}
+          aria-label={String(tr("folios.editor.tree.upload"))}
+        >
+          <Upload className="size-3.5" />
         </Button>
       </div>
 

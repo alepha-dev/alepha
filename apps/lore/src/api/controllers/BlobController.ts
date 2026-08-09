@@ -139,6 +139,45 @@ export class BlobController {
     },
   });
 
+  /**
+   * Flat list of every blob in the project, for the folio tree.
+   *
+   * Separate from `listBlobs`, which is directory-scoped and treats a missing
+   * `directoryId` as "the root" — the tree needs the whole set at once, the
+   * same way it gets directories from `listAllDirectories`. Deliberately not a
+   * flag on `listBlobs`: "no directory" already means something there, and
+   * overloading it would make the root case indistinguishable from the all
+   * case at the call site.
+   */
+  listAllBlobs = $action({
+    use: [$secure({ permissions: ["folio:read"] })],
+    path: "/projects/:projectId/folio/blobs/all",
+    description: "Flat list of every blob in the project.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.array(
+        z.object({
+          fileId: z.uuid(),
+          shortId: z.integer(),
+          name: z.string(),
+          directoryId: z.uuid().optional(),
+          updatedAt: z.string(),
+        }),
+      ),
+    },
+    handler: async ({ params, user }) => {
+      await this.security.assertMember(params.projectId, user);
+      const rows = await this.blobService.listAll(params.projectId);
+      return rows.map((b) => ({
+        fileId: b.fileId,
+        shortId: b.shortId,
+        name: b.name,
+        directoryId: b.directoryId,
+        updatedAt: b.updatedAt,
+      }));
+    },
+  });
+
   getBlob = $action({
     use: [$secure({ permissions: ["folio:read"] })],
     path: "/folio/blobs/:id",
