@@ -46,6 +46,22 @@ export class FolioBlobService {
     });
   }
 
+  /**
+   * Every blob in the project, flat.
+   *
+   * Mirrors `listAllDirectories`: the folio tree is assembled in the browser
+   * from flat lists, so it needs the whole set in one call rather than a
+   * `listContents` per directory. `listInDirectory` cannot stand in — called
+   * without a directory it means "the project root", not "everywhere".
+   */
+  public async listAll(projectId: number): Promise<FolioBlob[]> {
+    return this.blobs.findMany({
+      where: { projectId: { eq: projectId } },
+      orderBy: [{ column: "name", direction: "asc" }],
+      limit: 1000,
+    });
+  }
+
   public async listInDirectory(
     projectId: number,
     directoryId: string | undefined,

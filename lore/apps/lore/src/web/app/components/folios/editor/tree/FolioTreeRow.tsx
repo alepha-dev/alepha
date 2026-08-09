@@ -10,6 +10,7 @@ import {
   Folder,
   FolderOpen,
   Lock,
+  Paperclip,
   Pin,
 } from "lucide-react";
 import {
@@ -140,7 +141,9 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
       : FolderOpen
     : node.kind === "protected"
       ? Lock
-      : FileText;
+      : node.kind === "blob"
+        ? Paperclip
+        : FileText;
 
   return (
     <ContextMenu>

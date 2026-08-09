@@ -3,7 +3,7 @@
  * client-side crypto envelope — it gets a padlock instead of a page icon
  * and a different context menu.
  */
-export type FolioTreeKind = "directory" | "folio" | "protected";
+export type FolioTreeKind = "directory" | "folio" | "protected" | "blob";
 
 export interface FolioTreeNode {
   id: string;
@@ -66,6 +66,16 @@ interface BuildFolioTreeInput {
     directoryId?: string;
     pinned?: boolean;
     protected?: boolean;
+  }[];
+  /**
+   * Uploaded files. Optional so a caller that has not loaded them yet builds
+   * the same tree it always did, rather than one that silently lost its files.
+   */
+  blobs?: {
+    fileId: string;
+    name: string;
+    shortId: number;
+    directoryId?: string;
   }[];
 }
 
@@ -245,8 +255,22 @@ export const buildFolioTree = (input: BuildFolioTreeInput): FolioTreeNode[] => {
     });
   }
 
+  for (const b of input.blobs ?? []) {
+    const parentId =
+      b.directoryId && directoryIds.has(b.directoryId)
+        ? b.directoryId
+        : undefined;
+    childrenOf(parentId ?? ROOT).push({
+      id: b.fileId,
+      kind: "blob",
+      name: b.name,
+      shortId: b.shortId,
+      parentId,
+    });
+  }
+
   // Every directory node was created with `children: []`; now that every
-  // node (directory or folio) has been bucketed by its resolved parent,
+  // node (directory, folio or blob) has been bucketed by its resolved parent,
   // wire each directory up to its actual children and sort every level.
   for (const siblings of childrenByParent.values()) {
     for (const node of siblings) {

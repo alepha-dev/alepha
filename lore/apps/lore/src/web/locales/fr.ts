@@ -204,6 +204,8 @@ export default {
   "folios.editor.tree.title": "Folios",
   "folios.editor.tree.new-folio": "Nouveau folio",
   "folios.editor.tree.new-directory": "Nouveau dossier",
+  "folios.editor.tree.upload": "Téléverser des fichiers",
+  "folios.editor.tree.upload-failed": "Échec du téléversement",
   "folios.editor.tree.empty": "Aucun folio pour l'instant.",
   "folios.editor.tree.untitled-folio": "Nouveau folio",
   "folios.editor.tree.untitled-directory": "Nouveau dossier",
