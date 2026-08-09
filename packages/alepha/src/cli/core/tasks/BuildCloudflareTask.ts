@@ -181,6 +181,7 @@ export class BuildCloudflareTask extends BuildTask {
     this.enhanceDatabase(wrangler);
     this.enhanceR2(wrangler);
     this.enhanceKV(wrangler);
+    this.enhanceAnalyticsEngine(wrangler);
     this.enhanceQueue(wrangler);
     this.enhanceEmail(ctx, wrangler);
     this.enhanceDurableObjects(wrangler);
@@ -377,6 +378,39 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler.kv_namespaces.push({
       binding: KV_DEFAULT_BINDING,
       id: kvId ?? "",
+    });
+  }
+
+  protected static readonly ANALYTICS_ENGINE_BINDING = "ANALYTICS";
+
+  /**
+   * Workers Analytics Engine dataset binding, from
+   * `CLOUDFLARE_ANALYTICS_DATASET`.
+   *
+   * A write-only, fire-and-forget sink: `env.ANALYTICS.writeDataPoint({...})`
+   * returns nothing and is not awaited — the runtime writes in the
+   * background. Reading it back is **not** this binding's job and cannot be:
+   * queries go over the account-scoped SQL API at
+   * `api.cloudflare.com/…/analytics_engine/sql`, which is plain HTTP with a
+   * bearer token. So a Worker that only writes needs this and nothing else,
+   * and a Worker that also reads needs two credentials that have nothing to do
+   * with each other.
+   *
+   * The dataset does not have to be created first — Cloudflare provisions it
+   * on the first data point, which is why there is no id here to pair with the
+   * name, unlike KV or D1.
+   */
+  protected enhanceAnalyticsEngine(wrangler: WranglerConfig): void {
+    const dataset = process.env.CLOUDFLARE_ANALYTICS_DATASET;
+    if (!dataset) {
+      return;
+    }
+
+    wrangler.analytics_engine_datasets =
+      wrangler.analytics_engine_datasets || [];
+    wrangler.analytics_engine_datasets.push({
+      binding: BuildCloudflareTask.ANALYTICS_ENGINE_BINDING,
+      dataset,
     });
   }
 

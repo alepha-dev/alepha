@@ -316,9 +316,24 @@ The adapter runs `alepha build -t cloudflare` with environment variables injecte
 | `CLOUDFLARE_KV_NAME` | KV provisioned |
 | `CLOUDFLARE_KV_ID` | KV provisioned |
 | `CLOUDFLARE_QUEUE_NAME` | Queue provisioned |
+| `CLOUDFLARE_ANALYTICS_DATASET` | Set by hand — see below |
 | `CLOUDFLARE_DOMAIN` | Domain configured |
 
-You do not set these manually. The adapter injects them between provisioning and build.
+You do not set these manually — with one exception.
+
+`CLOUDFLARE_ANALYTICS_DATASET` emits an `analytics_engine_datasets` binding
+(bound as `ANALYTICS`) and is **not** provisioned by the adapter, because there
+is nothing to provision: Cloudflare creates the dataset on the first data point,
+so there is no id to pair with the name the way KV and D1 need one. Set it in
+`.env.{env}` when the app writes to Workers Analytics Engine.
+
+That binding is **write-only** — `env.ANALYTICS.writeDataPoint({...})`, which
+returns nothing and is not awaited. Reading the data back is a different
+mechanism entirely: `POST /accounts/{account_id}/analytics_engine/sql` over
+plain HTTP with a bearer token scoped *Account · Account Analytics · Read*. Note
+that permission is **account-wide** — Cloudflare offers no per-dataset analytics
+read scope — so think about where that token lives before putting it in a Worker
+that also serves unauthenticated routes.
 
 ### Deploy
 

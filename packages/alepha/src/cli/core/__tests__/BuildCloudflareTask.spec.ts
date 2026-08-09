@@ -11,6 +11,7 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testEnhanceD1 = this.enhanceD1.bind(this);
   public testEnhanceR2 = this.enhanceR2.bind(this);
   public testEnhanceQueue = this.enhanceQueue.bind(this);
+  public testEnhanceAnalyticsEngine = this.enhanceAnalyticsEngine.bind(this);
   public testEnhanceDurableObjects = this.enhanceDurableObjects.bind(this);
   public testWriteWorkerEntryPoint = this.writeWorkerEntryPoint.bind(this);
   public testGenerateCloudflare = this.generateCloudflare.bind(this);
@@ -52,6 +53,7 @@ describe("BuildCloudflareTask", () => {
     "CLOUDFLARE_QUEUE_NAME",
     "CLOUDFLARE_QUEUE_DLQ_NAME",
     "CLOUDFLARE_QUEUE_MAX_RETRIES",
+    "CLOUDFLARE_ANALYTICS_DATASET",
   ] as const;
   const saved: Record<string, string | undefined> = {};
   beforeEach(() => {
@@ -100,6 +102,42 @@ describe("BuildCloudflareTask", () => {
       expect(wrangler.r2_buckets).toEqual([
         { binding: "my-bucket", bucket_name: "my-bucket", jurisdiction: "eu" },
       ]);
+    });
+  });
+
+  describe("enhanceAnalyticsEngine", () => {
+    it("emits the dataset binding with no id to pair it with", () => {
+      process.env.CLOUDFLARE_ANALYTICS_DATASET = "sigil_analytics";
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceAnalyticsEngine(wrangler);
+
+      // Unlike KV and D1, there is no id: Cloudflare provisions the dataset on
+      // the first data point, so there is nothing to reference beforehand.
+      expect(wrangler.analytics_engine_datasets).toEqual([
+        { binding: "ANALYTICS", dataset: "sigil_analytics" },
+      ]);
+    });
+
+    it("emits nothing at all when no dataset is configured", () => {
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceAnalyticsEngine(wrangler);
+
+      // Absent, not `[]`: an empty array is a key wrangler then validates, and
+      // every app that does not use Analytics Engine would carry it.
+      expect(wrangler.analytics_engine_datasets).toBeUndefined();
+    });
+
+    it("appends to a user-declared dataset list rather than replacing it", () => {
+      process.env.CLOUDFLARE_ANALYTICS_DATASET = "sigil_analytics";
+      const wrangler: Record<string, any> = {
+        analytics_engine_datasets: [{ binding: "OTHER", dataset: "other" }],
+      };
+      createTask().testEnhanceAnalyticsEngine(wrangler);
+
+      // The user's `cloudflare.config` is spread in before the enhancers run,
+      // so a hand-written binding is already present here and must survive.
+      expect(wrangler.analytics_engine_datasets).toHaveLength(2);
+      expect(wrangler.analytics_engine_datasets[1].binding).toBe("ANALYTICS");
     });
   });
 
