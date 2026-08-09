@@ -116,15 +116,10 @@ describe("QuestController.countOpenQuests", () => {
     expect(res.data.count).toBe(1);
   });
 
-  it("counts shelved and accepted quests as open too", async ({ expect }) => {
+  it("counts accepted quests as open", async ({ expect }) => {
     const user = await createUser(ctx);
     const projectId = await createProject(ctx, user);
 
-    const shelved = await createQuest(ctx, user, projectId, "shelved");
-    await ctx.quests.shelveQuest.fetch(
-      { params: { id: shelved.id } },
-      { user },
-    );
     const accepted = await createQuest(ctx, user, projectId, "accepted");
     await ctx.quests.acceptQuest.fetch(
       { params: { id: accepted.id } },
@@ -136,6 +131,37 @@ describe("QuestController.countOpenQuests", () => {
       { user },
     );
 
-    expect(res.data.count).toBe(2);
+    expect(res.data.count).toBe(1);
+  });
+
+  it("excludes shelved quests, and counts them again once unshelved", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const projectId = await createProject(ctx, user);
+
+    await createQuest(ctx, user, projectId, "open");
+    const shelved = await createQuest(ctx, user, projectId, "shelved");
+    await ctx.quests.shelveQuest.fetch(
+      { params: { id: shelved.id } },
+      { user },
+    );
+
+    const afterShelve = await ctx.quests.countOpenQuests.fetch(
+      { params: { projectId } },
+      { user },
+    );
+    expect(afterShelve.data.count).toBe(1);
+
+    await ctx.quests.unshelveQuest.fetch(
+      { params: { id: shelved.id } },
+      { user },
+    );
+
+    const afterUnshelve = await ctx.quests.countOpenQuests.fetch(
+      { params: { projectId } },
+      { user },
+    );
+    expect(afterUnshelve.data.count).toBe(2);
   });
 });

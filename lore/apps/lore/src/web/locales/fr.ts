@@ -280,7 +280,11 @@ export default {
   "board.table.created": "Créée",
   "board.table.updated": "Mise à jour",
   "board.action.acceptQuest": "Accepter la quête",
+  "board.action.shelveQuest": "Mettre la quête de côté",
+  "board.action.unshelveQuest": "Reprendre la quête",
   "board.action.deleteQuest": "Supprimer la quête",
+  "board.view.list": "Liste des quêtes",
+  "board.view.kanban": "Tableau kanban",
   "board.confirm-delete-title": "Supprimer cette quête ?",
   "board.confirm-delete-message": "Cette action est irréversible.",
   "quest.create.title": "Nom",
@@ -506,6 +510,9 @@ export default {
   "project.settings.kanban.columns.delete": "Supprimer",
   "project.settings.feature.folios.description":
     "Notes markdown rattachées au projet — cherchables, taguables, accessibles à l’IA.",
+  "project.settings.folios.summary.label": "Afficher le résumé pour les agents",
+  "project.settings.folios.summary.description":
+    "Affiche le court résumé que chaque folio conserve pour les agents IA. Il est toujours enregistré et toujours lisible via MCP — ceci décide seulement si le champ apparaît à la lecture ou à l’édition.",
   "project.settings.feature.milestones.description":
     "Regroupez les quêtes en jalons avec dates de début / fin et historique.",
   "project.settings.feature.sigils.description":
@@ -546,15 +553,12 @@ export default {
   "milestone.detail.editDescription": "Notes",
   "milestone.detail.save": "Enregistrer",
   "milestone.detail.saved": "Jalon mis à jour",
-  "milestone.page.title": "Jalons",
   "milestone.hero.progress": "Temps écoulé",
   "milestone.history.empty":
     "Aucun jalon clôturé. Une fois scellés, vos jalons apparaîtront ici comme un témoignage permanent.",
   "milestone.status.active": "Actif",
   "milestone.status.closed": "Clos",
 
-  "milestone.ledger.subtitle":
-    "Un jalon est une fenêtre de publication. Tant qu'il est ouvert, il enregistre chaque quête que vous terminez ; le clôturer fige le journal.",
   "milestone.ledger.recording": "Enregistrement",
   "milestone.ledger.started": "ouvert $1",
   "milestone.ledger.autoCloses": "Clôture automatique le $1 · $2",
@@ -572,7 +576,6 @@ export default {
     "Les quêtes terminées restent hors de tout journal tant qu'aucun jalon n'est ouvert.",
   "milestone.ledger.autoClose": "Clôture automatique : $1 ·",
   "milestone.ledger.autoClose.change": "modifier",
-  "milestone.ledger.autoCloseSettings": "Réglages de clôture",
   "milestone.ledger.stillOpen": "Encore ouvertes",
   "milestone.ledger.stillOpen.empty": "Rien en cours.",
   "milestone.ledger.viewInQuests": "Voir dans Quêtes →",
@@ -773,6 +776,9 @@ export default {
   "blights.rules.title": "Règles d'exclusion",
   "blights.rules.description":
     "Ignorer les crashs entrants dont le message contient l'une de ces sous-chaînes (insensible à la casse). Les règles ne s'appliquent qu'aux nouveaux envois — les fléaux existants restent jusqu'à leur suppression.",
+  "blights.rules.settingsDescription":
+    "Les crashs dont le message correspond à l'une de ces sous-chaînes sont écartés à l'arrivée, avant même d'atteindre la boîte de réception.",
+  "blights.rules.manage": "Gérer les règles",
   "blights.rules.placeholder": "ex. Unknown club",
   "blights.rules.add": "Ajouter",
   "blights.rules.remove": "Supprimer la règle",

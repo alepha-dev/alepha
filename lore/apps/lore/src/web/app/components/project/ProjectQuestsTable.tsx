@@ -12,7 +12,14 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Link2, Search, Signature, Trash } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Link2,
+  Search,
+  Signature,
+  Trash,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -21,6 +28,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
@@ -87,6 +95,20 @@ const ProjectQuestsTable = () => {
     return (
       <UserAvatar fileId={user?.picture} className="size-6" alt="user avatar" />
     );
+  };
+
+  /**
+   * The sidebar's Quests badge is filled once by the `project` route loader,
+   * which does not re-run on a row action. Shelving or deleting from the list
+   * changes the number it shows, so refresh it here — otherwise the badge and
+   * the table it links to disagree until the next full navigation.
+   */
+  const reloadQuestCount = async () => {
+    if (!project?.id) return;
+    await questApi
+      .countOpenQuests({ params: { projectId: project.id } })
+      .then(({ count }) => alepha.store.set(currentQuestCountAtom, { count }))
+      .catch(() => null);
   };
 
   if (!project) return null;
@@ -358,6 +380,62 @@ const ProjectQuestsTable = () => {
                 },
               ]
             : []),
+          ...(!quest.shelvedAt && questApi.shelveQuest.can()
+            ? [
+                {
+                  icon: Archive,
+                  label: tr("board.action.shelveQuest"),
+                  onClick: async (
+                    _quest: QuestResource,
+                    { refresh }: { refresh: () => void },
+                  ) => {
+                    // Same warning QuestView gives: shelving a quest others
+                    // depend on leaves them blocked with no path forward.
+                    // The questline is fetched on click rather than per row —
+                    // a table of 25 quests should not cost 25 extra requests
+                    // for a menu entry most rows never open.
+                    const questline = await questApi
+                      .getQuestLine({ params: { id: quest.id } })
+                      .catch(() => ({ dependents: [] }));
+                    const blocked = questline.dependents.filter(
+                      (d) => !d.completedAt,
+                    );
+                    const confirmed = await dialog.confirm({
+                      title: tr("quest.view.shelve.title"),
+                      description: blocked.length
+                        ? tr("quest.view.shelve.confirmWithDependents", {
+                            args: [
+                              blocked.map((d) => `#${d.shortId}`).join(", "),
+                            ],
+                          })
+                        : tr("quest.view.shelve.confirm"),
+                      confirmLabel: tr("quest.view.shelve.confirmButton"),
+                      cancelLabel: tr("common.cancel"),
+                    });
+                    if (!confirmed) return;
+                    await questApi.shelveQuest({ params: { id: quest.id } });
+                    await reloadQuestCount();
+                    refresh();
+                  },
+                },
+              ]
+            : []),
+          ...(quest.shelvedAt && questApi.unshelveQuest.can()
+            ? [
+                {
+                  icon: ArchiveRestore,
+                  label: tr("board.action.unshelveQuest"),
+                  onClick: async (
+                    _quest: QuestResource,
+                    { refresh }: { refresh: () => void },
+                  ) => {
+                    await questApi.unshelveQuest({ params: { id: quest.id } });
+                    await reloadQuestCount();
+                    refresh();
+                  },
+                },
+              ]
+            : []),
           ...(questApi.deleteQuest.can()
             ? [
                 {
@@ -375,6 +453,7 @@ const ProjectQuestsTable = () => {
                     });
                     if (!confirmed) return;
                     await questApi.deleteQuest({ params: { id: quest.id } });
+                    await reloadQuestCount();
                     refresh();
                   },
                 },

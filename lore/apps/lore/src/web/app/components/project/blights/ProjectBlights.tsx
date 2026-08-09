@@ -14,7 +14,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Ban, CheckCircle2, FileText, Send, Trash2 } from "lucide-react";
+import { CheckCircle2, FileText, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type {
   BlightController,
@@ -25,7 +25,6 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import ProjectBlightRulesDialog from "./ProjectBlightRulesDialog.tsx";
 
 export interface ProjectBlightsProps {
   items: BlightResource[];
@@ -65,7 +64,6 @@ const ProjectBlights = (_props: ProjectBlightsProps) => {
   const dt = useInject(DateTimeProvider);
 
   const [stackView, setStackView] = useState<BlightResource | null>(null);
-  const [rulesOpen, setRulesOpen] = useState(false);
   // Sigil options for the "filter by sigil" dropdown, hydrated from the list
   // response rather than from `SigilController.listSigils`: the filter needs
   // id + label, and that endpoint hands back the whole credential row
@@ -193,13 +191,6 @@ const ProjectBlights = (_props: ProjectBlightsProps) => {
           ),
         }}
         fetch={fetchBlights}
-        actions={[
-          {
-            icon: Ban,
-            label: tr("blights.rules.title"),
-            onClick: () => setRulesOpen(true),
-          },
-        ]}
         bulkActions={[
           {
             icon: Trash2,
@@ -422,14 +413,6 @@ const ProjectBlights = (_props: ProjectBlightsProps) => {
           </pre>
         </DialogContent>
       </Dialog>
-
-      {project && (
-        <ProjectBlightRulesDialog
-          open={rulesOpen}
-          projectId={project.id}
-          onOpenChange={setRulesOpen}
-        />
-      )}
     </div>
   );
 };

@@ -379,9 +379,14 @@ export class QuestController {
   });
 
   /**
-   * Open-quest count for the sidebar badge. "Open" is everything not
-   * completed — the same "still needs attention" meaning the blight and
-   * feedback badges carry, so all three numbers read the same way.
+   * Open-quest count for the sidebar badge. "Open" is everything neither
+   * completed nor shelved — the same "still needs attention" meaning the
+   * blight and feedback badges carry, so all three numbers read the same way.
+   *
+   * Shelved quests are deliberately out of scope, and the list this badge
+   * links to already hides them, so counting them made the sidebar disagree
+   * with the page it opens.
+   *
    * Readable by any project member.
    */
   countOpenQuests = $action({
@@ -397,6 +402,7 @@ export class QuestController {
       const count = await this.quests.count({
         projectId: { eq: params.projectId },
         completedAt: { isNull: true },
+        shelvedAt: { isNull: true },
       });
 
       return { count };

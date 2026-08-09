@@ -254,7 +254,11 @@ export default {
   "board.table.created": "Created",
   "board.table.updated": "Updated",
   "board.action.acceptQuest": "Accept Quest",
+  "board.action.shelveQuest": "Shelve Quest",
+  "board.action.unshelveQuest": "Unshelve Quest",
   "board.action.deleteQuest": "Delete Quest",
+  "board.view.list": "Quest list",
+  "board.view.kanban": "Kanban board",
   "board.confirm-delete-title": "Delete this quest?",
   "board.confirm-delete-message": "This cannot be undone.",
 
@@ -501,6 +505,9 @@ export default {
   "project.settings.kanban.columns.delete": "Delete",
   "project.settings.feature.folios.description":
     "Markdown notes attached to the project — searchable, taggable, AI-accessible.",
+  "project.settings.folios.summary.label": "Show summary for agents",
+  "project.settings.folios.summary.description":
+    "Reveal the short summary each folio carries for AI agents. It is always written and always readable over MCP — this only decides whether the field shows while you read or edit.",
   "project.settings.feature.milestones.description":
     "Group quests into time-boxed cycles with start / end dates and changelogs.",
   "project.settings.feature.sigils.description":
@@ -541,15 +548,12 @@ export default {
   "milestone.detail.editDescription": "Notes",
   "milestone.detail.save": "Save",
   "milestone.detail.saved": "Milestone updated",
-  "milestone.page.title": "Milestones",
   "milestone.hero.progress": "Time spent",
   "milestone.history.empty":
     "No closed milestones yet. Once you seal a milestone, it will appear here as a permanent record.",
   "milestone.status.active": "Active",
   "milestone.status.closed": "Closed",
 
-  "milestone.ledger.subtitle":
-    "A milestone is a release window. While one is open it records every quest you complete; closing it freezes the changelog.",
   "milestone.ledger.recording": "Recording",
   "milestone.ledger.started": "started $1",
   "milestone.ledger.autoCloses": "Auto-closes $1 · $2",
@@ -567,7 +571,6 @@ export default {
     "Completed quests stay out of every changelog until a milestone is open.",
   "milestone.ledger.autoClose": "Auto-close: $1 ·",
   "milestone.ledger.autoClose.change": "change",
-  "milestone.ledger.autoCloseSettings": "Auto-close settings",
   "milestone.ledger.stillOpen": "Still open",
   "milestone.ledger.stillOpen.empty": "Nothing in flight.",
   "milestone.ledger.viewInQuests": "View in Quests →",
@@ -763,6 +766,9 @@ export default {
   "blights.rules.title": "Ignore rules",
   "blights.rules.description":
     "Drop incoming crashes whose message contains one of these substrings (case-insensitive). Rules apply to future ingest only — existing blights stay until you delete them.",
+  "blights.rules.settingsDescription":
+    "Crashes whose message matches one of these substrings are dropped on arrival, before they ever reach the inbox.",
+  "blights.rules.manage": "Manage rules",
   "blights.rules.placeholder": "e.g. Unknown club",
   "blights.rules.add": "Add",
   "blights.rules.remove": "Remove rule",

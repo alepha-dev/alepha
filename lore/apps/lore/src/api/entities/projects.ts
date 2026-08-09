@@ -37,6 +37,19 @@ export const projectFeaturesSchema = z.object({
    */
   sigils: z.boolean().optional(),
   /**
+   * Reveal the "Summary for agents" field on a folio. Off by default: the
+   * summary is written for `project_context` / `folio_list`, so for a human
+   * reading a folio it is chrome between the title and the first line.
+   *
+   * Hiding it never stops it being persisted — MCP keeps writing it and
+   * turning the switch back on shows the stored value unchanged.
+   *
+   * Optional and absent from `defaultProjectFeatures` for the same reason as
+   * `sigils` above: a key there changes the column DEFAULT and triggers the
+   * D1 `projects` rebuild that cascade-wipes prod.
+   */
+  folioSummary: z.boolean().optional(),
+  /**
    * @deprecated Superseded by per-app `sigils.kinds` (2026-08-06). Nothing
    * reads these three. They stay in the schema because dropping a `projects`
    * column risks the D1 rebuild path, and `projects` is the CASCADE parent

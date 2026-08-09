@@ -21,6 +21,13 @@ export interface MilestoneEmptyBannerProps {
  * Shown when no milestone is recording. The sentence is the point: completed
  * work is piling up outside every changelog, and it names how much. An empty
  * state that only says "empty" gives the reader no reason to act.
+ *
+ * Full-bleed rather than a card: this is the first thing on the page now that
+ * the header is gone, so it has to read as a band flush under the breadcrumb.
+ * Its own horizontal padding matches what the page wrapper used to add, and a
+ * plain bottom border separates it from the changelog row —
+ * {@link MilestoneLedgerHero} carries the same treatment so the two states
+ * occupy an identical band.
  */
 const MilestoneEmptyBanner = (props: MilestoneEmptyBannerProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -41,7 +48,7 @@ const MilestoneEmptyBanner = (props: MilestoneEmptyBannerProps) => {
           });
 
   return (
-    <div className="bg-card flex flex-col gap-5 rounded-xl border border-dashed p-5 md:flex-row md:items-center md:gap-6">
+    <div className="bg-card border-border flex flex-col gap-5 border-b px-5 py-5 md:flex-row md:items-center md:gap-6 lg:px-7">
       <div className="bg-muted text-muted-foreground flex size-13 shrink-0 items-center justify-center rounded-xl">
         <Library className="size-6" />
       </div>
