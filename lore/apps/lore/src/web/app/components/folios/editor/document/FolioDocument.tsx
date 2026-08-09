@@ -1,19 +1,22 @@
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import type { ReactElement } from "react";
+import { type ReactElement, useMemo } from "react";
 import { createPortal } from "react-dom";
 import type { Folio } from "@/api/entities/folios.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
+import { projectBlobsAtom } from "../../../../atoms/projectBlobsAtom.ts";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import MarkdownEditor from "../../../shared/markdown-editor/MarkdownEditor.tsx";
 import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
+import WikiLinkHoverProvider from "../../WikiLinkHoverProvider.tsx";
 import FolioEditorMenubar from "../menubar/FolioEditorMenubar.tsx";
 import { useFolioShortcuts } from "../menubar/useFolioShortcuts.ts";
 import FolioToolbar from "../toolbar/FolioToolbar.tsx";
 import type { UseFolioActionsResult } from "../useFolioActions.ts";
 import type { FolioDraft } from "../useFolioDraft.ts";
+import { useWikiLinkEditorContext } from "../wikilink/useWikiLinkEditorContext.ts";
 import FolioLockedPanel from "./FolioLockedPanel.tsx";
 import FolioMetaBar from "./FolioMetaBar.tsx";
 import FolioMoveDialog from "./FolioMoveDialog.tsx";
@@ -88,9 +91,23 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const [directories] = useStore(projectDirectoriesAtom);
+  const [blobs] = useStore(projectBlobsAtom);
   const [project] = useStore(currentProjectAtom);
 
   useFolioShortcuts(props.actions.handlers, props.actions.actionState);
+
+  const wikiLinks = useWikiLinkEditorContext(project?.id);
+  // The hover card resolves a blob preview from a precomputed list rather
+  // than a fetch, so it needs the same rows the resolver got.
+  const hoverBlobs = useMemo(
+    () =>
+      blobs.map((b) => ({
+        fileId: b.fileId,
+        shortId: b.shortId,
+        name: b.name,
+      })),
+    [blobs],
+  );
 
   // Absent on every project that has not opted in — the key is deliberately
   // missing from `defaultProjectFeatures` (adding it there would change the
@@ -173,44 +190,51 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
           onDelete={() => props.actions.handlers["folio.delete"]()}
         />
       ) : (
-        <MarkdownEditor
-          value={values.content}
-          onChange={(v) => props.draft.form.input.content.set(v)}
-          placeholder={tr("folios.content-placeholder")}
-          imageUploadHandler={props.imageUploadHandler}
-          minHeight={420}
-          variant="bare"
-          renderToolbar={() => {
-            const chrome = (
-              <>
-                <FolioEditorMenubar
-                  handlers={props.actions.handlers}
-                  state={props.actions.actionState}
-                  hasImageUpload={!!props.imageUploadHandler}
-                  onEditorCommands={props.actions.registerEditorCommands}
-                  statusKey={props.draft.statusKey}
-                  savedAt={props.draft.savedAt}
-                />
-                <FolioToolbar
-                  handlers={props.actions.handlers}
-                  state={props.actions.actionState}
-                  saving={props.actions.saving}
-                  dirty={props.draft.dirty}
-                  hasImageUpload={!!props.imageUploadHandler}
-                />
-              </>
-            );
-            // The portal keeps these two rows inside MDXEditor's React
-            // tree — so `usePublisher`/`useCellValue` still resolve against
-            // the live realm — while putting their DOM above the panes,
-            // where the design has them. Rendering in place until the slot
-            // exists would flash the rows inside the document column on
-            // first paint, so render nothing until then.
-            return props.chromeSlot
-              ? createPortal(chrome, props.chromeSlot)
-              : null;
-          }}
-        />
+        // Same hover card the reader gets. The provider delegates on both
+        // `a[href]` and `[data-wiki-href]`, so one component serves the
+        // rewritten markdown of `MarkdownView` and the decorated tokens of
+        // the editor without either knowing about the other.
+        <WikiLinkHoverProvider projectId={project?.id ?? 0} blobs={hoverBlobs}>
+          <MarkdownEditor
+            value={values.content}
+            onChange={(v) => props.draft.form.input.content.set(v)}
+            placeholder={tr("folios.content-placeholder")}
+            imageUploadHandler={props.imageUploadHandler}
+            wikiLinks={wikiLinks}
+            minHeight={420}
+            variant="bare"
+            renderToolbar={() => {
+              const chrome = (
+                <>
+                  <FolioEditorMenubar
+                    handlers={props.actions.handlers}
+                    state={props.actions.actionState}
+                    hasImageUpload={!!props.imageUploadHandler}
+                    onEditorCommands={props.actions.registerEditorCommands}
+                    statusKey={props.draft.statusKey}
+                    savedAt={props.draft.savedAt}
+                  />
+                  <FolioToolbar
+                    handlers={props.actions.handlers}
+                    state={props.actions.actionState}
+                    saving={props.actions.saving}
+                    dirty={props.draft.dirty}
+                    hasImageUpload={!!props.imageUploadHandler}
+                  />
+                </>
+              );
+              // The portal keeps these two rows inside MDXEditor's React
+              // tree — so `usePublisher`/`useCellValue` still resolve against
+              // the live realm — while putting their DOM above the panes,
+              // where the design has them. Rendering in place until the slot
+              // exists would flash the rows inside the document column on
+              // first paint, so render nothing until then.
+              return props.chromeSlot
+                ? createPortal(chrome, props.chromeSlot)
+                : null;
+            }}
+          />
+        </WikiLinkHoverProvider>
       )}
 
       <FolioMoveDialog

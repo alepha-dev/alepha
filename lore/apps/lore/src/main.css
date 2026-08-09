@@ -291,6 +291,33 @@ body::before {
   border-color: var(--border);
 }
 
+/*
+ * Wiki-links inside the editor body (#131).
+ *
+ * The token keeps its `[[...]]` text — see `WikiLinkNode` for why the editor
+ * decorates in place instead of swapping in a resolved title — so the styling
+ * has to do all the work of saying "this is a live reference". A resolved one
+ * reads as a link; an unresolved one gets the wavy-underline treatment a
+ * spell-checker uses, which says "look at this" without claiming the document
+ * is broken.
+ */
+.lore-mdx-content .lore-wikilink {
+  color: var(--primary);
+  cursor: pointer;
+  border-radius: 0.1875rem;
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+  padding: 0 0.125rem;
+}
+
+.lore-mdx-content .lore-wikilink-broken {
+  color: var(--destructive);
+  background: transparent;
+  text-decoration: underline wavy
+    color-mix(in oklab, var(--destructive) 60%, transparent);
+  text-underline-offset: 0.2em;
+  cursor: help;
+}
+
 /* Source mode: match the old font-mono textarea feel. */
 .lore-mdx .cm-editor {
   font-size: 0.8125rem;

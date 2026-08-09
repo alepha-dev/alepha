@@ -62,6 +62,16 @@ export interface FolioTreeState {
   renamingId?: string;
   dragId?: string;
   drop?: { id: string; position: FolioDropPosition };
+  /**
+   * Set while an EXTERNAL file drag (`dataTransfer` carrying `Files`) is over
+   * the tree, naming the directory the bytes would land in — `parentId:
+   * undefined` is the project root. Kept separate from `drop` above because
+   * the two answer different questions: `drop` is a re-parent of a row that
+   * already exists and has three positions per row, this is a create with
+   * exactly one. Sharing the field would make `dragId` (never set for an
+   * external drag) the only thing telling them apart.
+   */
+  fileDrop?: { parentId?: string };
   toggle: (id: string) => void;
   select: (node: FolioTreeNode) => void;
   beginRename: (id: string) => void;
@@ -71,6 +81,12 @@ export interface FolioTreeState {
   onDragOver: (id: string, position: FolioDropPosition) => void;
   onDrop: (id: string) => Promise<void>;
   onDragEnd: () => void;
+  /** An external file drag is hovering the row/area that owns `parentId`. */
+  onFileDragOver: (parentId?: string) => void;
+  /** The file drag left the tree entirely — clear the highlight. */
+  onFileDragLeave: () => void;
+  /** Upload the dropped files into `parentId` (or the project root). */
+  dropFiles: (files: File[], parentId?: string) => Promise<void>;
   createFolio: (parentId?: string) => Promise<void>;
   createDirectory: (parentId?: string) => Promise<void>;
   /** Pick files and upload them into `parentId` (or the project root). */
@@ -174,6 +190,7 @@ export const useFolioTreeModel = (
   const [drop, setDrop] = useState<
     { id: string; position: FolioDropPosition } | undefined
   >();
+  const [fileDrop, setFileDrop] = useState<{ parentId?: string } | undefined>();
   // Guards the one-time default-collapse below — see the file doc.
   const initializedRef = useRef(false);
 
@@ -566,9 +583,41 @@ export const useFolioTreeModel = (
   );
 
   /**
-   * Ask for files and upload them. Errors surface through `useDialog`, never
+   * Run the upload and surface any failure through `useDialog`, never
    * `window.alert` — the deleted `FolioBrowser` used `alert` here and the
-   * project bans it.
+   * project bans it. Shared by the picker below and the file-drop path so a
+   * failed drop reports exactly like a failed pick.
+   */
+  const runUpload = async (files: File[], parentId?: string): Promise<void> => {
+    try {
+      await uploadBlobsAction.run(files, parentId);
+    } catch (error) {
+      await dialog.alert({
+        title: tr("folios.editor.tree.upload-failed"),
+        description: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+
+  const onFileDragOver = (parentId?: string): void => {
+    // Compare before setting: `dragover` fires continuously while the pointer
+    // sits still, and a fresh object literal every time would re-render the
+    // whole tree at the browser's dragover cadence.
+    setFileDrop((prev) =>
+      prev && prev.parentId === parentId ? prev : { parentId },
+    );
+  };
+
+  const onFileDragLeave = (): void => setFileDrop(undefined);
+
+  const dropFiles = async (files: File[], parentId?: string): Promise<void> => {
+    setFileDrop(undefined);
+    if (files.length === 0) return;
+    await runUpload(files, parentId);
+  };
+
+  /**
+   * Ask for files and upload them.
    */
   const uploadBlobs = async (parentId?: string): Promise<void> => {
     const picker = document.createElement("input");
@@ -586,14 +635,7 @@ export const useFolioTreeModel = (
     });
     picker.remove();
     if (files.length === 0) return;
-    try {
-      await uploadBlobsAction.run(files, parentId);
-    } catch (error) {
-      await dialog.alert({
-        title: tr("folios.editor.tree.upload-failed"),
-        description: error instanceof Error ? error.message : String(error),
-      });
-    }
+    await runUpload(files, parentId);
   };
 
   const createDirectoryAction = useAction<[string | undefined], void>(
@@ -807,6 +849,7 @@ export const useFolioTreeModel = (
     renamingId,
     dragId,
     drop,
+    fileDrop,
     toggle,
     select,
     beginRename: (id: string) => setRenamingId(id),
@@ -816,6 +859,9 @@ export const useFolioTreeModel = (
     onDragOver,
     onDrop,
     onDragEnd,
+    onFileDragOver,
+    onFileDragLeave,
+    dropFiles,
     createFolio,
     createDirectory,
     uploadBlobs,

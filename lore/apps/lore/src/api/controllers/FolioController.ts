@@ -644,13 +644,22 @@ export class FolioController {
   // ---------------------------------------------------------------------------
 
   /**
-   * Cross-folio activity feed for a project — used by the Folio
-   * "Recent activity" panel (Lore #105). Joins `folio_revisions` to
+   * Cross-folio activity feed for a project. Joins `folio_revisions` to
    * `folios` to scope by project, batches user-metadata resolution,
    * caps at 50 rows by construction.
    *
    * Bounded by the per-folio retention cap × folio count, so no cursor
    * pagination in v1. Revisit if this query shows up in the slow-query log.
+   *
+   * **It has no browser consumer today** — this is an HTTP surface, not dead
+   * code, but nothing in `src/web` calls it. It fed the "Recent activity"
+   * panel of the deleted `FolioBrowser` (Lore #105), and Lore #134 decided
+   * against rebuilding that panel as an inspector tab: the inspector is
+   * keyed to the folio open in the document pane (Outline / History / Links
+   * all describe THAT folio), and a project-wide feed is navigation, which
+   * is the tree's job. Keep the endpoint — a feed is cheap to surface again
+   * somewhere it belongs, and `folio_revisions` is the only place the
+   * "who changed what, when" question can be answered across folios.
    */
   listProjectActivity = $action({
     use: [$secure({ permissions: ["folio:read"] })],

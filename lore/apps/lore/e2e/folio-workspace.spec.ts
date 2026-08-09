@@ -472,4 +472,169 @@ test.describe("Folio workspace", () => {
     ).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/no folio open/i)).toHaveCount(0);
   });
+
+  test("11 — dropping a file on a directory row uploads it there", async () => {
+    // Its own directory rather than test 08's: every other test here leans on
+    // shared state, and the one thing this test must be sure of is WHICH
+    // directory the bytes landed in.
+    const dropDirName = `Drop-${stamp}`.slice(0, 24);
+    await page.goto(`/p/${projectId}/folios`);
+    const created = await page.evaluate(
+      async ({ pid, name }) => {
+        const r = await fetch(`/api/projects/${pid}/folio/directories`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name }),
+        });
+        return `${r.status} ${await r.text()}`;
+      },
+      { pid: projectId, name: dropDirName },
+    );
+    expect(created).toMatch(/^200/);
+    await page.reload();
+    const dirRow = page
+      .locator('[data-slot="folio-tree-row"]', {
+        hasText: new RegExp(`^${dropDirName}$`),
+      })
+      .first();
+    await expect(dirRow).toBeVisible({ timeout: 15_000 });
+
+    // A real OS file drop cannot be driven from Playwright — there is no
+    // page-side source element to start it from. Dispatching the two events
+    // with a hand-built `DataTransfer` carrying a `File` is the same thing
+    // from the handlers' point of view: `types` says "Files" on `dragover`
+    // and the bytes appear on `drop`, which is exactly the distinction the
+    // row makes between an external drop and one of its own rows moving.
+    const fileName = `dropped-${stamp}.txt`;
+    const dataTransfer = await page.evaluateHandle((name) => {
+      const dt = new DataTransfer();
+      dt.items.add(
+        new File(["hello dropped blob"], name, { type: "text/plain" }),
+      );
+      return dt;
+    }, fileName);
+
+    await dirRow.dispatchEvent("dragover", { dataTransfer });
+    // The directory highlights while the drag hovers it — the whole point of
+    // telling a file drop from a row drag is that the target is legible.
+    await expect(dirRow).toHaveClass(/ring-primary/);
+
+    const registered = page.waitForResponse(
+      (r) =>
+        /\/folio\/blobs$/.test(new URL(r.url()).pathname) &&
+        r.request().method() === "POST" &&
+        r.status() === 200,
+      { timeout: 20_000 },
+    );
+    await dirRow.dispatchEvent("drop", { dataTransfer });
+    await registered;
+
+    // The row appears in the tree under the directory it was dropped on —
+    // and the server agrees about which directory that is.
+    await expect(
+      page.locator('[data-slot="folio-tree-row"]', {
+        hasText: new RegExp(`^${fileName}$`),
+      }),
+    ).toBeVisible({ timeout: 15_000 });
+
+    const parentName = await page.evaluate(
+      async ({ pid, name }) => {
+        const [blobsRes, dirsRes] = await Promise.all([
+          fetch(`/api/projects/${pid}/folio/blobs/all`, {
+            credentials: "include",
+          }),
+          fetch(`/api/projects/${pid}/folio/directories`, {
+            credentials: "include",
+          }),
+        ]);
+        const blobs = (await blobsRes.json()) as Array<{
+          name: string;
+          directoryId?: string;
+        }>;
+        const dirs = (await dirsRes.json()) as Array<{
+          id: string;
+          name: string;
+        }>;
+        const blob = blobs.find((b) => b.name === name);
+        return dirs.find((d) => d.id === blob?.directoryId)?.name ?? null;
+      },
+      { pid: projectId, name: fileName },
+    );
+    expect(parentName).toBe(dropDirName);
+  });
+
+  test("12 — wiki-links are live inside the editor body", async () => {
+    // Two references in one body: one that resolves to the folio created in
+    // `beforeAll`, one that resolves to nothing. Both have to be decorated,
+    // and told apart.
+    const hostUrl = await createFolio(
+      `Refs-${stamp}`.slice(0, 24),
+      `Points at [[${folioTitle}]] and at [[No Such Folio ${stamp}]].`,
+    );
+    await page.goto(hostUrl);
+
+    const links = page.locator(".lore-mdx-content .lore-wikilink");
+    await expect(links).toHaveCount(2, { timeout: 20_000 });
+
+    // The token keeps its source text — that is the whole point of decorating
+    // in place rather than swapping in a resolved title (#131).
+    await expect(links.first()).toHaveText(`[[${folioTitle}]]`);
+    // …and carries the resolved target, which is what the ⌘-click handler
+    // and the hover card both read.
+    await expect(links.first()).toHaveAttribute(
+      "data-wiki-href",
+      new RegExp(`^/p/${projectId}/folios/\\d+$`),
+    );
+
+    const brokenLink = page.locator(".lore-mdx-content .lore-wikilink-broken");
+    await expect(brokenLink).toHaveCount(1);
+    await expect(brokenLink).toHaveAttribute(
+      "data-wiki-href",
+      "lore-broken:folio-not-found",
+    );
+
+    await test.step("the [[ picker inserts a reference", async () => {
+      const body = page.getByRole("textbox", { name: /editable markdown/i });
+      await body.click();
+      // End of the document, then a fresh paragraph so the new token cannot
+      // merge into the sentence the assertions above depend on.
+      await page.keyboard.press("ControlOrMeta+End");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("[[Ward");
+
+      const option = page.getByRole("button", { name: folioTitle }).last();
+      await expect(option).toBeVisible({ timeout: 10_000 });
+      await option.click();
+
+      // The picker only ever inserts plain `[[token]]` text — the same text
+      // entity that handles hand-typing is what turns it into a live token,
+      // so a third decorated link is the proof both paths converge.
+      await expect(links).toHaveCount(3, { timeout: 10_000 });
+    });
+
+    await test.step("the markdown round-trip keeps the brackets", async () => {
+      await page.getByRole("button", { name: /^save$|^enregistrer$/i }).click();
+      await expect(page.getByText(/^saved /i).first()).toBeVisible({
+        timeout: 15_000,
+      });
+
+      const shortId = Number(hostUrl.split("/").pop());
+      const content = await page.evaluate(
+        async ({ pid, sid }) => {
+          const r = await fetch(`/api/projects/${pid}/folios/${sid}`, {
+            credentials: "include",
+          });
+          const folio = (await r.json()) as { content?: string };
+          return folio.content ?? "";
+        },
+        { pid: projectId, sid: shortId },
+      );
+      // Not `\[\[…\]\]`: MDXEditor escapes brackets on the way out and
+      // `normalizeEditorMarkdown` repairs them. A regression there silently
+      // drops the project's whole link graph on the next save.
+      expect(content).toContain(`[[${folioTitle}]]`);
+      expect(content).toContain(`[[No Such Folio ${stamp}]]`);
+    });
+  });
 });

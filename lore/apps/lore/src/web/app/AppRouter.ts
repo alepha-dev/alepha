@@ -924,16 +924,29 @@ export class AppRouter {
       // table and its breadcrumb. The tree fetches what it needs on its
       // own, and a folio page sets its own breadcrumb from the folio's
       // `metadata.path`, so nothing downstream reads them any more.
-      const [folios, tags, blobs] = await Promise.all([
+      const [folios, tags, blobs, directories] = await Promise.all([
         this.folioApi.list({ query: { limit: 100, projectId } }),
         this.folioApi.listTags({ query: { projectId } }),
         // Uploaded files are tree rows too, so they load with the rest of
         // the tree rather than from inside it — same auto-batch window.
         this.blobApi.listAllBlobs({ params: { projectId: Number(projectId) } }),
+        // Directories likewise, and this one is load-bearing: the tree's own
+        // fallback `useQuery` is gated on `enabled: !seeded`, where "seeded"
+        // is satisfied by `userFoliosAtom` ALONE. Any project with at least
+        // one folio therefore looked seeded the moment the line above
+        // resolved, the fallback never ran, and a hard load of `/folios`
+        // rendered a tree with no directories in it — every nested folio flat
+        // at the root. It only escaped notice because navigating in from a
+        // folio page carried the atom over from `projectFoliosFolio`'s
+        // loader, which has always fetched this.
+        this.directoryApi.listAllDirectories({
+          params: { projectId: Number(projectId) },
+        }),
       ]);
       this.alepha.store.set(userFoliosAtom, folios);
       this.alepha.store.set(folioTagsAtom, tags);
       this.alepha.store.set(projectBlobsAtom, blobs);
+      this.alepha.store.set(projectDirectoriesAtom, directories);
       // `/folios` itself is just "Folios" in the header — a folio page
       // appends its own directory chain and title when it loads.
       this.alepha.store.set(currentFolioPathAtom, []);
