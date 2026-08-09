@@ -45,7 +45,7 @@ const NAV_ROUTE_NAMES = [
   "appSettings",
   // Settings nav array — ProjectSettings.tsx. This is the array that broke.
   "projectSettingsMembers",
-  "projectSettingsZones",
+  "projectSettingsAreas",
   "projectSettingsKanban",
   "projectSettingsFolios",
   "projectSettingsFeedback",

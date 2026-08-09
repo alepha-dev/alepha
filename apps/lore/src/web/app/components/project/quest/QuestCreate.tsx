@@ -110,12 +110,12 @@ const QuestCreate = (props: QuestCreateProps) => {
       acceptAfterCreate.current = false;
 
       if (
-        data.zone &&
-        !props.project.zones?.includes(data.zone) &&
+        data.area &&
+        !props.project.areas?.includes(data.area) &&
         currentProject
       ) {
-        const updatedZones = [...(currentProject.zones || []), data.zone];
-        setCurrentProject({ ...currentProject, zones: updatedZones });
+        const updatedAreas = [...(currentProject.areas || []), data.area];
+        setCurrentProject({ ...currentProject, areas: updatedAreas });
       }
 
       props.onSubmit(quest);
@@ -135,7 +135,7 @@ const QuestCreate = (props: QuestCreateProps) => {
 
   const { loading: submitting } = useFormState(form, ["loading"]);
 
-  const zones = currentProject?.zones || kanbanProject?.project?.zones || [];
+  const areas = currentProject?.areas || kanbanProject?.project?.areas || [];
 
   return (
     <form {...form.props} className="flex min-h-0 flex-1 flex-col">
@@ -148,13 +148,13 @@ const QuestCreate = (props: QuestCreateProps) => {
             icon={Tag}
           />
           <Control
-            label={tr("quest.create.zone")}
-            description={tr("quest.create.zone.helper")}
-            input={form.input.zone}
+            label={tr("quest.create.area")}
+            description={tr("quest.create.area.helper")}
+            input={form.input.area}
             icon={Tent}
             combobox
             createNewEntry
-            items={zones}
+            items={areas}
           />
         </div>
 

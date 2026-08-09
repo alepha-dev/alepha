@@ -32,7 +32,7 @@ test.describe("Quest CSV import / export", () => {
       projectId,
       title: "Roundtrip quest",
       description: "Seeded for the import/export e2e.",
-      zone: "Main",
+      area: "Main",
       priority: "medium",
       difficulty: 3,
       objectives: [],

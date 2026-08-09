@@ -254,7 +254,7 @@ describe("Lore MCP — blights", () => {
       project: project.id,
       title: "Unrelated",
       description: "Nothing to do with the blight",
-      zone: "misc",
+      area: "misc",
       priority: "low",
       difficulty: 1,
     });

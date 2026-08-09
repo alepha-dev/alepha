@@ -652,7 +652,7 @@ export class AppRouter {
     children: () => [
       this.projectSettingsBanner,
       this.projectSettingsMembers,
-      this.projectSettingsZones,
+      this.projectSettingsAreas,
       this.projectSettingsKanban,
       this.projectSettingsFolios,
       this.projectSettingsFeedback,
@@ -701,23 +701,23 @@ export class AppRouter {
     },
   });
 
-  projectSettingsZones = $page({
-    name: "projectSettingsZones",
-    path: "/zones",
+  projectSettingsAreas = $page({
+    name: "projectSettingsAreas",
+    path: "/areas",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Zones`,
+      title: `${previous?.title ?? ""} › Areas`,
     }),
     lazy: () =>
-      import("./components/project/settings/ProjectSettingsZonesPage.tsx"),
+      import("./components/project/settings/ProjectSettingsAreasPage.tsx"),
     loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      const zones = await this.projectApi.getZones({
+      const areas = await this.projectApi.getAreas({
         params: { id: project.id },
       });
-      return { zones };
+      return { areas };
     },
   });
 

@@ -94,7 +94,7 @@ describe("quest creation — optional description", () => {
           projectId,
           title: "Title is enough",
           // description intentionally omitted
-          zone: "Bugs",
+          area: "Bugs",
           priority: "low",
           difficulty: 1,
         },
@@ -118,7 +118,7 @@ describe("quest creation — optional description", () => {
           projectId,
           title: "With description",
           description: "Plain description text",
-          zone: "Bugs",
+          area: "Bugs",
           priority: "low",
           difficulty: 1,
         },

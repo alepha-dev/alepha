@@ -85,7 +85,7 @@ async function createTestQuest(
   projectId: number,
   overrides: Partial<{
     title: string;
-    zone: string;
+    area: string;
     priority: "optional" | "low" | "medium" | "high";
     difficulty: number;
   }> = {},
@@ -95,7 +95,7 @@ async function createTestQuest(
       body: {
         title: overrides.title ?? "Test Quest",
         description: "<p>Test description</p>",
-        zone: overrides.zone ?? "core",
+        area: overrides.area ?? "core",
         priority: overrides.priority ?? "medium",
         difficulty: overrides.difficulty ?? 3,
         projectId,
@@ -131,7 +131,7 @@ describe("ProjectReportsController", () => {
       // Completed quest — accepted then completed.
       const done = await createTestQuest(ctx, owner, project.id, {
         title: "Completed Quest",
-        zone: "core",
+        area: "core",
       });
       await ctx.questController.acceptQuest.fetch(
         { params: { id: done.id } },
@@ -145,7 +145,7 @@ describe("ProjectReportsController", () => {
       // Accepted-only quest.
       const accepted = await createTestQuest(ctx, owner, project.id, {
         title: "Accepted Quest",
-        zone: "core",
+        area: "core",
       });
       await ctx.questController.acceptQuest.fetch(
         { params: { id: accepted.id } },
@@ -155,7 +155,7 @@ describe("ProjectReportsController", () => {
       // Brand-new quest.
       await createTestQuest(ctx, owner, project.id, {
         title: "New Quest",
-        zone: "frontend",
+        area: "frontend",
       });
 
       return {
@@ -192,7 +192,7 @@ describe("ProjectReportsController", () => {
           res.data.funnel.accepted +
           res.data.funnel.completed,
       ).toBeGreaterThanOrEqual(3);
-      expect(Array.isArray(res.data.byZone)).toBe(true);
+      expect(Array.isArray(res.data.byArea)).toBe(true);
       expect(Array.isArray(res.data.aging)).toBe(true);
     });
 

@@ -88,7 +88,7 @@ export class BlightTools {
   blight_forward = $tool({
     title: "Forward a blight to a quest",
     description:
-      "Turn a blight into a NEW quest and close it. The quest carries the failure's name and message as its title and the stack in its description, links back to the blight, and lands in a dedicated triage zone. Fails if the blight was already forwarded — one blight, one quest. Project owner only.",
+      "Turn a blight into a NEW quest and close it. The quest carries the failure's name and message as its title and the stack in its description, links back to the blight, and lands in a dedicated triage area. Fails if the blight was already forwarded — one blight, one quest. Project owner only.",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
       params: blightForwardParamsSchema,

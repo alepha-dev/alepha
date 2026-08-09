@@ -211,6 +211,9 @@ describe("migration safety", () => {
       `INSERT INTO campaigns (id, title, created_by) VALUES (1, 'Lore', '${userId}')`,
     );
     db.exec(
+      // Still \`zone\`, not \`area\` — same reason as \`campaigns\` above. This
+      // seeds against the physical schema as it stood before the rebuild, and
+      // the Zone -> Area rename comes several migrations later.
       `INSERT INTO quests (short_id, title, description, zone, priority, difficulty, campaign_id, created_by) VALUES (1, 'q', 'd', 'z', 'normal', 1, 1, '${userId}')`,
     );
     db.exec(
@@ -353,6 +356,59 @@ describe("migration safety", () => {
       { metric: "lcp", b0: 2, b1: 0, b2: 0, b3: 0, b4: 0, b5: 1, b6: 0 },
       { metric: "cls", b0: 0, b1: 0, b2: 0, b3: 0, b4: 0, b5: 0, b6: 0 },
     ]);
+
+    db.close();
+  });
+
+  /**
+   * The Zone → Area rename is a `RENAME COLUMN`, and it has to stay one.
+   * Without a `--hints` rename hint drizzle-kit emits CREATE + DROP for the
+   * same entity diff, which passes every schema check and silently discards
+   * every quest's area — exactly the data the rename exists to keep.
+   *
+   * Seeds real values before the migration and reads them back after, rather
+   * than pattern-matching the SQL: the failure mode is lost rows, so lost rows
+   * is what this asserts.
+   */
+  it("carries quest areas and project areas across the Zone to Area rename", ({
+    expect,
+  }) => {
+    const require = createRequire(import.meta.url);
+    const Database = require("better-sqlite3");
+    const db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+
+    const apply = (dir: string) => {
+      for (const raw of migrationSql(dir).split("--> statement-breakpoint")) {
+        const statement = raw.trim();
+        if (statement) db.exec(statement);
+      }
+    };
+
+    const dirs = migrationDirs();
+    const rename = dirs.find((dir) => dir.endsWith("_zone_to_area"));
+    expect(rename, "the zone_to_area migration is missing").toBeDefined();
+
+    for (const dir of dirs.slice(0, dirs.indexOf(rename!))) {
+      apply(dir);
+    }
+
+    const userId = "00000000-0000-4000-8000-000000000003";
+    db.exec(`INSERT INTO users (id) VALUES ('${userId}')`);
+    db.exec(
+      `INSERT INTO projects (id, title, created_by, zones) VALUES (1, 'Lore', '${userId}', '["Bugs","UX"]')`,
+    );
+    db.exec(
+      `INSERT INTO quests (short_id, title, description, zone, priority, difficulty, project_id, created_by)
+       VALUES (1, 'q', 'd', 'Bugs', 'medium', 1, 1, '${userId}')`,
+    );
+
+    apply(rename!);
+
+    const quest = db.prepare("SELECT area FROM quests").get();
+    const project = db.prepare("SELECT areas FROM projects").get();
+    expect(quest.area).toBe("Bugs");
+    expect(JSON.parse(project.areas)).toEqual(["Bugs", "UX"]);
 
     db.close();
   });

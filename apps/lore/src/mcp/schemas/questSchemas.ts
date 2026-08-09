@@ -15,8 +15,8 @@ const PRIORITY_DESCRIPTION =
   "Quest priority. Ordered low → high: optional < low < medium < high. `optional` is below `low`.";
 const DIFFICULTY_DESCRIPTION =
   "Quest difficulty from 1 (trivial) to 5 (epic). Higher means harder.";
-const ZONE_DESCRIPTION =
-  "Functional area or module within the project — analogous to an Epic in Jira, or a module/package in a codebase (e.g. 'auth', 'billing', 'ui'). Required (every quest must have a zone). Free-form string, NOT constrained to a pre-declared list — passing a new value implicitly registers it on the project on first use. Case-SENSITIVE: 'Auth' and 'auth' are distinct zones, so reuse the exact casing of existing ones. Call project_info to see the project's current zones before picking a value.";
+const AREA_DESCRIPTION =
+  "Functional area or module within the project — analogous to an Epic in Jira, or a module/package in a codebase (e.g. 'auth', 'billing', 'ui'). Required (every quest must have one). Free-form string, NOT constrained to a pre-declared list — passing a new value implicitly registers it on the project on first use. Case-SENSITIVE: 'Auth' and 'auth' are distinct areas, so reuse the exact casing of existing ones. Call project_info to see the project's current areas before picking a value.";
 const DESCRIPTION_DESCRIPTION =
   "Quest description in Markdown. Plain text also works. HTML is not supported and any tags will be stripped.";
 
@@ -57,7 +57,7 @@ export const questListResultSchema = z.object({
       shortId: z.integer(),
       title: z.string(),
       description: z.string(),
-      zone: z.string(),
+      area: z.string(),
       priority: prioritySchema,
       difficulty: z.integer(),
       status: questStatusSchema,
@@ -84,7 +84,7 @@ export const questGetResultSchema = z.object({
   shortId: z.integer(),
   title: z.string(),
   description: z.string(),
-  zone: z.string(),
+  area: z.string(),
   priority: prioritySchema,
   difficulty: z.integer(),
   status: questStatusSchema,
@@ -109,7 +109,7 @@ export const questGetResultSchema = z.object({
 export const questCreateParamsSchema = projectParamsSchema.extend({
   title: z.string().describe("Quest title"),
   description: z.string().describe(DESCRIPTION_DESCRIPTION),
-  zone: z.string().describe(ZONE_DESCRIPTION),
+  area: z.string().describe(AREA_DESCRIPTION),
   priority: z
     .enum(["optional", "low", "medium", "high"])
     .describe(PRIORITY_DESCRIPTION),
@@ -121,7 +121,7 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
   tags: z
     .array(z.string())
     .describe(
-      "Free-form labels for the **nature** of the quest (`bug`, `feat`, `chore`, `regression`, `quick-win`, …). Orthogonal to `zone` which labels the **module / scope**. Normalized server-side (trim, lowercase, dedupe). Reuse existing tags when possible — call `quest_tags` first.",
+      "Free-form labels for the **nature** of the quest (`bug`, `feat`, `chore`, `regression`, `quick-win`, …). Orthogonal to `area` which labels the **module / scope**. Normalized server-side (trim, lowercase, dedupe). Reuse existing tags when possible — call `quest_tags` first.",
     )
     .optional(),
   dependsOn_shortId: z
@@ -220,7 +220,7 @@ export const questCompleteResultSchema = z.object({
 export const questUpdateParamsSchema = entityRefSchema.extend({
   title: z.string().describe("New quest title").optional(),
   description: z.string().describe(`New ${DESCRIPTION_DESCRIPTION}`).optional(),
-  zone: z.string().describe(`New ${ZONE_DESCRIPTION}`).optional(),
+  area: z.string().describe(`New ${AREA_DESCRIPTION}`).optional(),
   priority: z
     .enum(["optional", "low", "medium", "high"])
     .describe(`New ${PRIORITY_DESCRIPTION}`)

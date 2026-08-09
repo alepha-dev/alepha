@@ -58,7 +58,7 @@ const removeHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
 const boardFiltersSchema = z.object({
   search: z.string().optional(),
   status: z.enum(["new", "accepted", "completed", "shelved"]).optional(),
-  zone: z.string().optional(),
+  area: z.string().optional(),
   tag: z.string().optional(),
 });
 
@@ -113,7 +113,7 @@ const ProjectQuestsTable = () => {
 
   if (!project) return null;
 
-  const zoneOptions = (project.zones ?? []).map((p) => ({
+  const areaOptions = (project.areas ?? []).map((p) => ({
     label: p,
     value: p,
   }));
@@ -161,16 +161,16 @@ const ProjectQuestsTable = () => {
                   inputProps={{ "aria-label": tr("board.filter.status") }}
                 />
               </div>
-              {zoneOptions.length > 0 && (
+              {areaOptions.length > 0 && (
                 <div className="w-44">
                   <Control
-                    input={form.input.zone}
+                    input={form.input.area}
                     label=""
                     clearable
-                    clearLabel={tr("board.filter.allZones")}
+                    clearLabel={tr("board.filter.allAreas")}
                     triggerClassName="w-full"
-                    items={zoneOptions}
-                    inputProps={{ "aria-label": tr("board.filter.zone") }}
+                    items={areaOptions}
+                    inputProps={{ "aria-label": tr("board.filter.area") }}
                   />
                 </div>
               )}
@@ -199,7 +199,7 @@ const ProjectQuestsTable = () => {
               sort,
               search: f?.search || undefined,
               status: f?.status || undefined,
-              zone: f?.zone || undefined,
+              area: f?.area || undefined,
               tag: f?.tag || undefined,
             } as any,
           })
@@ -332,11 +332,11 @@ const ProjectQuestsTable = () => {
               <QuestDifficulty difficulty={quest.difficulty} />
             ),
           },
-          zone: {
-            label: tr("board.table.zone"),
+          area: {
+            label: tr("board.table.area"),
             sortable: true,
             cell: (quest: QuestResource) => (
-              <span className="text-xs">{quest.zone}</span>
+              <span className="text-xs">{quest.area}</span>
             ),
           },
           createdAt: {

@@ -8,8 +8,8 @@ import {
 
 /**
  * Quest feature e2e: seeded via API to keep the setup cheap, then driven
- * through the real shadcn UI for open → accept → complete. Creating a zone
- * from the Zone combobox has its own test at the bottom of this file.
+ * through the real shadcn UI for open → accept → complete. Creating an area
+ * from the Area combobox has its own test at the bottom of this file.
  *
  * Per the Lore CLAUDE.md convention, each big feature owns its own spec file.
  * Project create + auth are covered by the helpers — kept here as setup,
@@ -35,7 +35,7 @@ test.describe("Quest", () => {
       projectId,
       title: questTitle,
       description: "Seeded quest for e2e",
-      zone: "Main",
+      area: "Main",
       priority: "medium",
       difficulty: 3,
       estimateMinutes: 30,
@@ -120,7 +120,7 @@ test.describe("Quest", () => {
       projectId,
       title: questTitle,
       description: "Seeded quest for reminder e2e",
-      zone: "Main",
+      area: "Main",
       priority: "low",
       difficulty: 2,
       objectives: [],
@@ -197,7 +197,7 @@ test.describe("Quest", () => {
         projectId,
         title: `Setup${t}`,
         description: "Predecessor",
-        zone: "Main",
+        area: "Main",
         priority: "medium",
         difficulty: 2,
         objectives: [],
@@ -211,7 +211,7 @@ test.describe("Quest", () => {
         projectId,
         title: `Follower${t}`,
         description: "Depends on the setup",
-        zone: "Main",
+        area: "Main",
         priority: "medium",
         difficulty: 2,
         objectives: [],
@@ -300,7 +300,7 @@ test.describe("Quest", () => {
         projectId,
         title: `Setup${t}`,
         description: "Predecessor",
-        zone: "Main",
+        area: "Main",
         priority: "medium",
         difficulty: 2,
         objectives: [],
@@ -314,7 +314,7 @@ test.describe("Quest", () => {
         projectId,
         title: `Follow${t}`,
         description: "Will depend on the setup",
-        zone: "Main",
+        area: "Main",
         priority: "medium",
         difficulty: 2,
         objectives: [],
@@ -390,7 +390,7 @@ test.describe("Quest", () => {
         projectId,
         title: `Summary${t}`,
         description: "Quest under summary test",
-        zone: "Main",
+        area: "Main",
         priority: "medium",
         difficulty: 2,
         objectives: [],
@@ -484,7 +484,7 @@ test.describe("Quest", () => {
         projectId,
         title: `Target${t}`,
         description: "Link target",
-        zone: "Main",
+        area: "Main",
         priority: "low",
         difficulty: 1,
         objectives: [],
@@ -500,7 +500,7 @@ test.describe("Quest", () => {
         projectId,
         title: `Host${t}`,
         description: `See folio [[#${folio.shortId}]] and quest [[quest:#${target.shortId}]].`,
-        zone: "Main",
+        area: "Main",
         priority: "low",
         difficulty: 1,
         objectives: [],
@@ -557,7 +557,7 @@ test.describe("Quest", () => {
       projectId,
       title: questTitle,
       description: "Seeded quest for shelve e2e",
-      zone: "Main",
+      area: "Main",
       priority: "low",
       difficulty: 1,
       objectives: [],
@@ -644,7 +644,7 @@ test.describe("Quest", () => {
       projectId,
       title: questTitle,
       description: "Seeded quest for delete-confirm e2e",
-      zone: "Main",
+      area: "Main",
       priority: "low",
       difficulty: 1,
       objectives: [],
@@ -680,66 +680,66 @@ test.describe("Quest", () => {
   });
 
   /**
-   * Feedback #17: typing a new zone name and pressing Enter must create it.
+   * Feedback #17: typing a new area name and pressing Enter must create it.
    * Base UI's `autoHighlight` is off by default, so nothing was highlighted
    * while typing and Enter had no target — the `+ Create "…"` row could only
    * be clicked. Also covers the non-regression side: a query that matches an
-   * existing zone selects that zone rather than creating a near-duplicate.
+   * existing area selects that area rather than creating a near-duplicate.
    */
-  test("zone combobox creates a zone on Enter", async ({ page }) => {
+  test("area combobox creates an area on Enter", async ({ page }) => {
     test.setTimeout(60_000);
 
     const t = Date.now();
-    const email = `zone${t}@example.com`;
-    const password = "ZoneTest123!";
+    const email = `area${t}@example.com`;
+    const password = "AreaTest123!";
     const projectTitle = `ZC${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
     const projectId = await createProjectViaWizard(page, projectTitle);
 
-    const zoneCombobox = page.getByRole("combobox", { name: "Zone" });
-    const zoneSearch = page.getByRole("combobox", { name: "Search…" });
+    const areaCombobox = page.getByRole("combobox", { name: "Area" });
+    const areaSearch = page.getByRole("combobox", { name: "Search…" });
 
     const openQuestForm = async () => {
       await page.getByRole("button", { name: "Create Quest" }).click();
-      await expect(zoneCombobox).toBeVisible({ timeout: 10_000 });
+      await expect(areaCombobox).toBeVisible({ timeout: 10_000 });
     };
 
     await page.goto(`/p/${projectId}/`);
     await openQuestForm();
 
-    await test.step("Enter creates the typed zone", async () => {
-      await zoneCombobox.click();
-      await zoneSearch.fill("Donjon");
+    await test.step("Enter creates the typed area", async () => {
+      await areaCombobox.click();
+      await areaSearch.fill("Donjon");
       await expect(
         page.getByRole("option", { name: 'Create "Donjon"' }),
       ).toBeVisible({ timeout: 5_000 });
-      await zoneSearch.press("Enter");
+      await areaSearch.press("Enter");
       // The trigger shows the freshly created entry — no click on the
       // "+ Create" row needed.
-      await expect(zoneCombobox).toContainText("Donjon");
+      await expect(areaCombobox).toContainText("Donjon");
     });
 
-    await test.step("the created zone reaches the quest", async () => {
+    await test.step("the created area reaches the quest", async () => {
       await page.getByRole("textbox", { name: "Name" }).fill(`Q${t}`);
       await page.locator("form button[type=submit]").click();
       await page.waitForURL(/\/p\/\d+\/q\/\d+/, { timeout: 15_000 });
-      await page.goto(`/p/${projectId}/settings/zones`);
+      await page.goto(`/p/${projectId}/settings/areas`);
       await expect(page.getByRole("cell", { name: "Donjon" })).toBeVisible({
         timeout: 10_000,
       });
     });
 
-    await test.step("Enter on a partial query picks the existing zone", async () => {
+    await test.step("Enter on a partial query picks the existing area", async () => {
       await page.goto(`/p/${projectId}/`);
       await openQuestForm();
-      await zoneCombobox.click();
-      await zoneSearch.fill("Don");
+      await areaCombobox.click();
+      await areaSearch.fill("Don");
       await expect(page.getByRole("option", { name: "Donjon" })).toBeVisible({
         timeout: 5_000,
       });
-      await zoneSearch.press("Enter");
-      await expect(zoneCombobox).toContainText("Donjon");
+      await areaSearch.press("Enter");
+      await expect(areaCombobox).toContainText("Donjon");
     });
   });
 
@@ -865,7 +865,7 @@ test.describe("Quest", () => {
       projectId,
       title: questTitle,
       description: "Seeded quest for row-action shelve e2e",
-      zone: "Main",
+      area: "Main",
       priority: "low",
       difficulty: 1,
       objectives: [],

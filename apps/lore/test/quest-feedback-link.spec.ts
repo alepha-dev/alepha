@@ -101,7 +101,7 @@ const createQuest = async (
         projectId,
         title: "Fix the bug",
         description: "Investigate and fix",
-        zone: "Bugs",
+        area: "Bugs",
         priority: "medium",
         difficulty: 2,
         feedbackId,

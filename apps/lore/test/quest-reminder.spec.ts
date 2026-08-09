@@ -86,7 +86,7 @@ const seedAcceptedQuest = async (
         projectId: project.data.id,
         title: "Daily standup",
         description: "<p>standup</p>",
-        zone: "ops",
+        area: "ops",
         priority: "low",
         difficulty: 1,
       },

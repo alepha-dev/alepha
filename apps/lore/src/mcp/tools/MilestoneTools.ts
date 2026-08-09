@@ -189,7 +189,7 @@ export class MilestoneTools {
    */
   milestone_changelog = $tool({
     description:
-      "Generate a Markdown changelog for a milestone, listing all completed quests grouped by zone.",
+      "Generate a Markdown changelog for a milestone, listing all completed quests grouped by area.",
     title: "Milestone changelog",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {

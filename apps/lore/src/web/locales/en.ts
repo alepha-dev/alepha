@@ -33,7 +33,7 @@ export default {
   "header.connections.manage": "Manage connected apps",
 
   "quest-log.quests": "Quests:",
-  "quest-log.search": "Find by name, zone...",
+  "quest-log.search": "Find by name, area...",
   "quest-log.empty": "No quests yet",
   "quest-log.empty-description":
     "The kingdom is quiet. Forge a new quest to set your party in motion.",
@@ -236,10 +236,10 @@ export default {
 
   "board.filter.search": "Search",
   "board.filter.status": "Status",
-  "board.filter.zone": "Zone",
+  "board.filter.area": "Area",
   "board.filter.tag": "Tag",
   "board.filter.allStatuses": "All status",
-  "board.filter.allZones": "All zones",
+  "board.filter.allAreas": "All areas",
   "board.filter.allTags": "All tags",
 
   "board.table.status": "Status",
@@ -250,7 +250,7 @@ export default {
   "board.table.linked.tooltip": "Blocked by quest #{0}",
   "board.table.priority": "Priority",
   "board.table.rank": "Rank",
-  "board.table.zone": "Zone",
+  "board.table.area": "Area",
   "board.table.created": "Created",
   "board.table.updated": "Updated",
   "board.action.acceptQuest": "Accept Quest",
@@ -282,8 +282,8 @@ export default {
   "quest.create.description": "Description",
   "quest.create.description.helper":
     "Describe the quest, its objectives, and any relevant details",
-  "quest.create.zone": "Zone",
-  "quest.create.zone.helper": "Where the quest takes place",
+  "quest.create.area": "Area",
+  "quest.create.area.helper": "Which part of the system this quest belongs to",
   "quest.create.title": "Name",
   "quest.create.title.helper": "Short and descriptive name",
   "quest.create.objectives": "Objectives",
@@ -303,7 +303,7 @@ export default {
   "quest.create.estimate.clear": "Clear estimate",
   "quest.create.tags": "Tags",
   "quest.create.tags.helper":
-    "Labels for the nature of the quest (bug, feat, chore…). Zone says where, tag says what kind.",
+    "Labels for the nature of the quest (bug, feat, chore…). Area says where, tag says what kind.",
   "quest.tags.placeholder": "Add a tag and press Enter",
   "quest.tags.suggestions": "Reuse:",
   "quest.view.questline.blockedBy": "Blocked by #$1",
@@ -395,7 +395,7 @@ export default {
   "project.settings.general.title": "Project",
   "project.settings.nav.banner": "General",
   "project.settings.nav.members": "Members",
-  "project.settings.nav.zones": "Zones",
+  "project.settings.nav.areas": "Areas",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
   "project.settings.data.export.subtitle":
@@ -417,22 +417,22 @@ export default {
   "project.settings.data.import.details": "View details",
   "project.settings.data.import.error.title": "Import failed",
   "project.settings.nav.group.features": "Features",
-  "project.settings.zones.title": "Zones",
-  "project.settings.zones.description":
-    "Areas of your project. Each quest belongs to a zone. Rename a zone to refactor it across every quest.",
-  "project.settings.zones.column.name": "Zone",
-  "project.settings.zones.column.quests": "Quests",
-  "project.settings.zones.column.firstQuest": "First quest",
-  "project.settings.zones.empty":
-    "No zones yet. Forge a quest and pick a zone — it appears here.",
-  "project.settings.zones.rename.action": "Rename",
-  "project.settings.zones.rename.title": "Rename zone",
-  "project.settings.zones.rename.description":
-    'Rename "$1" — every quest in this zone will follow.',
-  "project.settings.zones.rename.label": "New name",
-  "project.settings.zones.rename.cancel": "Cancel",
-  "project.settings.zones.rename.submit": "Rename",
-  "project.settings.zones.never": "—",
+  "project.settings.areas.title": "Areas",
+  "project.settings.areas.description":
+    "Areas of your project. Each quest belongs to one. Rename an area to refactor it across every quest.",
+  "project.settings.areas.column.name": "Area",
+  "project.settings.areas.column.quests": "Quests",
+  "project.settings.areas.column.firstQuest": "First quest",
+  "project.settings.areas.empty":
+    "No areas yet. Forge a quest and pick an area — it appears here.",
+  "project.settings.areas.rename.action": "Rename",
+  "project.settings.areas.rename.title": "Rename area",
+  "project.settings.areas.rename.description":
+    'Rename "$1" — every quest in this area will follow.',
+  "project.settings.areas.rename.label": "New name",
+  "project.settings.areas.rename.cancel": "Cancel",
+  "project.settings.areas.rename.submit": "Rename",
+  "project.settings.areas.never": "—",
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
   "project.settings.nav.feedback": "Feedback",
@@ -464,7 +464,7 @@ export default {
   "reports.quests.status.accepted": "In progress",
   "reports.quests.status.completed": "Completed",
   "reports.quests.status.empty": "No quests yet",
-  "reports.quests.byZone.title": "By zone",
+  "reports.quests.byArea.title": "By area",
   "reports.quests.byPriority.title": "By priority",
   "reports.quests.cycleTime.title": "Cycle time by priority",
   "reports.quests.cycleTime.avgHours": "Avg hours",
@@ -560,7 +560,7 @@ export default {
   "milestone.ledger.manualOnly": "Closes when you say so",
   "milestone.ledger.window": "Window",
   "milestone.ledger.stat.quests": "Quests",
-  "milestone.ledger.stat.zones": "Zones",
+  "milestone.ledger.stat.areas": "Areas",
   "milestone.ledger.stat.members": "Members",
   "milestone.ledger.empty.title": "Nothing is recording",
   "milestone.ledger.empty.body":
@@ -610,7 +610,7 @@ export default {
   "kanban.column.completed": "Completed",
   "kanban.empty": "No quests",
   "kanban.showMore": "Show more",
-  "kanban.filter.allZones": "All zones",
+  "kanban.filter.allAreas": "All areas",
   "kanban.filter.allTags": "All tags",
   "kanban.error.completedCannotMove": "Completed quests cannot be moved",
   "kanban.error.acceptFirst": "You must accept the quest before completing it",
@@ -660,8 +660,8 @@ export default {
   "quest-log.collapse-all": "Collapse all",
   "quest-log.expand-all": "Expand all",
 
-  "zone.rename.name": "Zone Name",
-  "zone.rename.submit": "Rename",
+  "area.rename.name": "Area Name",
+  "area.rename.submit": "Rename",
 
   "error.title": "Oh no! Something went wrong.",
   "error.description":

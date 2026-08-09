@@ -14,7 +14,7 @@ export const feedbackLinkedQuestSchema = z.object({
   status: z.enum(["new", "accepted", "completed"]).meta({ mode: "text" }),
   difficulty: z.integer(),
   priority: z.string(),
-  zone: z.string(),
+  area: z.string(),
   acceptedAt: z.datetime().optional(),
   completedAt: z.datetime().optional(),
 });

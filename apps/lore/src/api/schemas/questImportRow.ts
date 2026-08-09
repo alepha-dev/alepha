@@ -16,7 +16,7 @@ export const importRowSchema = z.object({
   shortId: z.string(),
   title: z.string(),
   description: z.string(),
-  zone: z.string(),
+  area: z.string(),
   priority: z
     .enum(["optional", "low", "medium", "high"])
     .meta({ mode: "text" }),

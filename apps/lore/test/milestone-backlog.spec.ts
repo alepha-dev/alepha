@@ -92,7 +92,7 @@ const completeQuest = async (
       body: {
         projectId,
         title,
-        zone: "orm",
+        area: "orm",
         priority: "medium",
         difficulty: 1,
       },

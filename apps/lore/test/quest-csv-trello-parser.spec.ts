@@ -16,7 +16,7 @@ describe("TrelloParser", () => {
     expect(parser.canParse(["shortId", "title"])).toBe(false);
   });
 
-  it("maps Card Name → title, Card Description → description, List → zone", ({
+  it("maps Card Name → title, Card Description → description, List → area", ({
     expect,
   }) => {
     const parser = setup();
@@ -30,7 +30,7 @@ describe("TrelloParser", () => {
     if (!result.ok) throw new Error("unreachable");
     expect(result.row.title).toBe("Refactor login");
     expect(result.row.description).toBe("Step 1...\nStep 2...");
-    expect(result.row.zone).toBe("Doing");
+    expect(result.row.area).toBe("Doing");
     expect(result.row.acceptedBy).toBe("alice");
     expect(result.row.writeMode).toBe("create");
     expect(result.row.shortId).toBe("");

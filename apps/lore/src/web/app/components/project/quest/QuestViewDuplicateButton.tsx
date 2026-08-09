@@ -36,7 +36,7 @@ const QuestViewDuplicateButton = (props: QuestViewDuplicateButtonProps) => {
   const duplicateQuestData = {
     title: `${props.quest.title} ${tr("quest.view.duplicate.suffix")}`,
     description: props.quest.description,
-    zone: props.quest.zone,
+    area: props.quest.area,
     priority: props.quest.priority,
     difficulty: props.quest.difficulty,
     objectives: props.quest.objectives.map((obj) => ({

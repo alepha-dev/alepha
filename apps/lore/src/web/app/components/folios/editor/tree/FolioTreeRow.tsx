@@ -37,11 +37,11 @@ export interface FolioTreeRowProps {
  * right-click menu.
  *
  * Drop zones: a directory splits 28% / 44% / 28% (before / inside / after);
- * a folio splits 50/50 with no inside zone (it can't hold children).
+ * a folio splits 50/50 with no inside area (it can't hold children).
  * `@dnd-kit` is the house drag library elsewhere in this app (kanban,
  * `FolioBrowser`), but three drop zones per row is ~40 lines of
  * `onDragOver` arithmetic natively versus writing custom collision
- * detection for a library built around a single drop target per zone —
+ * detection for a library built around a single drop target per area —
  * native DnD stays local to this one component.
  */
 const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {

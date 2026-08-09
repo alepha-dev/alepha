@@ -50,20 +50,20 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const alepha = useAlepha();
   const [quests, setQuests] = useState<QuestResource[]>(initialQuests);
   const [loading, setLoading] = useState(false);
-  const zoneOptions = useMemo(
-    () => (project.zones ?? []).map((z) => ({ value: z, label: z })),
-    [project.zones],
+  const areaOptions = useMemo(
+    () => (project.areas ?? []).map((z) => ({ value: z, label: z })),
+    [project.areas],
   );
   const filterForm = useForm({
     schema: z.object({
-      zones: z.array(z.text()),
+      areas: z.array(z.text()),
       tags: z.array(z.text()),
     }),
-    initialValues: { zones: [] as string[], tags: [] as string[] },
+    initialValues: { areas: [] as string[], tags: [] as string[] },
     handler: async () => {},
   });
-  const [zoneFilterValue] = useFieldValue(filterForm.input.zones);
-  const zoneFilter = (zoneFilterValue as string[] | undefined) ?? [];
+  const [areaFilterValue] = useFieldValue(filterForm.input.areas);
+  const areaFilter = (areaFilterValue as string[] | undefined) ?? [];
   const [tagFilterValue] = useFieldValue(filterForm.input.tags);
   const tagFilter = (tagFilterValue as string[] | undefined) ?? [];
   const [knownTags, setKnownTags] = useState<string[]>([]);
@@ -102,8 +102,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
 
   const filteredQuests = useMemo(() => {
     let out = quests;
-    if (zoneFilter.length > 0) {
-      out = out.filter((quest) => zoneFilter.includes(quest.zone));
+    if (areaFilter.length > 0) {
+      out = out.filter((quest) => areaFilter.includes(quest.area));
     }
     if (tagFilter.length > 0) {
       out = out.filter((quest) =>
@@ -111,7 +111,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       );
     }
     return out;
-  }, [quests, zoneFilter, tagFilter]);
+  }, [quests, areaFilter, tagFilter]);
 
   const subColumns = project.kanbanColumns ?? ["In Progress"];
 
@@ -264,14 +264,14 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
         )}
         <form {...filterForm.props} className="flex flex-1 items-center gap-2">
-          {zoneOptions.length > 0 && (
+          {areaOptions.length > 0 && (
             <div className="w-64 max-w-full">
               <Control
-                input={filterForm.input.zones}
+                input={filterForm.input.areas}
                 label=""
                 clearable
-                clearLabel={tr("kanban.filter.allZones")}
-                items={zoneOptions}
+                clearLabel={tr("kanban.filter.allAreas")}
+                items={areaOptions}
               />
             </div>
           )}

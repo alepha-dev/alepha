@@ -100,7 +100,7 @@ export class ProjectTools {
    */
   project_info = $tool({
     description:
-      "Get lightweight metadata about a project — zones, currently-active quests for the calling user, membership info. Call this before `quest_create` to see existing zones and reuse them with correct casing. For a richer orientation that also includes the folio index, prefer `project_context`.",
+      "Get lightweight metadata about a project — areas, currently-active quests for the calling user, membership info. Call this before `quest_create` to see existing areas and reuse them with correct casing. For a richer orientation that also includes the folio index, prefer `project_context`.",
     title: "Project info",
     annotations: {
       readOnlyHint: true,
@@ -124,13 +124,13 @@ export class ProjectTools {
         id: result.id,
         title: result.title,
         public: result.public ?? false,
-        zones: result.zones,
+        areas: result.areas,
         createdAt: result.createdAt,
         activeQuests: result.quests.map((quest) => ({
           id: quest.id,
           shortId: quest.shortId,
           title: quest.title,
-          zone: quest.zone,
+          area: quest.area,
           priority: quest.priority,
           difficulty: quest.difficulty,
         })),
@@ -147,7 +147,7 @@ export class ProjectTools {
    */
   project_context = $tool({
     description:
-      "ORIENTATION TOOL — call FIRST on any project-scoped task. Returns project metadata, zones, the calling user's currently-active quests, the folio index (titles + tags + updatedAt, NO content bodies), AND the full content of any pinned folios (the per-project CLAUDE.md / AGENTS.md — read these first, they're the project rules). Folios are this project's shared memory for AI agents — read the index here, then call `folio_get` only on the ones that look relevant. ~2K tokens of complete situational awareness in one round-trip; the folio index is capped at 30 entries (sorted by pinned DESC, updatedAt DESC) — when `folios.capped` is true, use `folio_list` with a `tag` filter to fetch the rest. Pinned-folio total content is capped at ~8K chars; when `pinnedFoliosTruncated` is true some pinned bodies were dropped — `folio_get` them by id. When `preferredLanguage` is set (ISO 639-1 — e.g. `fr`, `ja`), generated content (quest titles, descriptions, folio bodies) MUST be written in that language unless the user explicitly asks for another.",
+      "ORIENTATION TOOL — call FIRST on any project-scoped task. Returns project metadata, areas, the calling user's currently-active quests, the folio index (titles + tags + updatedAt, NO content bodies), AND the full content of any pinned folios (the per-project CLAUDE.md / AGENTS.md — read these first, they're the project rules). Folios are this project's shared memory for AI agents — read the index here, then call `folio_get` only on the ones that look relevant. ~2K tokens of complete situational awareness in one round-trip; the folio index is capped at 30 entries (sorted by pinned DESC, updatedAt DESC) — when `folios.capped` is true, use `folio_list` with a `tag` filter to fetch the rest. Pinned-folio total content is capped at ~8K chars; when `pinnedFoliosTruncated` is true some pinned bodies were dropped — `folio_get` them by id. When `preferredLanguage` is set (ISO 639-1 — e.g. `fr`, `ja`), generated content (quest titles, descriptions, folio bodies) MUST be written in that language unless the user explicitly asks for another.",
     title: "Project context (orientation)",
     annotations: {
       readOnlyHint: true,
@@ -214,13 +214,13 @@ export class ProjectTools {
         id: result.id,
         title: result.title,
         public: result.public ?? false,
-        zones: result.zones,
+        areas: result.areas,
         createdAt: result.createdAt,
         activeQuests: result.quests.map((quest) => ({
           id: quest.id,
           shortId: quest.shortId,
           title: quest.title,
-          zone: quest.zone,
+          area: quest.area,
           priority: quest.priority,
           difficulty: quest.difficulty,
         })),

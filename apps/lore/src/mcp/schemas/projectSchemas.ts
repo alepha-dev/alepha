@@ -14,7 +14,7 @@ const questOrientationRefSchema = z.object({
   id: z.integer(),
   shortId: z.integer(),
   title: z.string(),
-  zone: z.string(),
+  area: z.string(),
   priority: prioritySchema,
   difficulty: z.integer(),
 });
@@ -44,7 +44,7 @@ export const projectInfoResultSchema = z.object({
   id: z.integer(),
   title: z.string(),
   public: z.boolean(),
-  zones: z.array(z.string()),
+  areas: z.array(z.string()),
   createdAt: z.datetime(),
   activeQuests: z.array(questOrientationRefSchema),
   /**
@@ -83,7 +83,7 @@ export const projectContextResultSchema = z.object({
   id: z.integer(),
   title: z.string(),
   public: z.boolean(),
-  zones: z.array(z.string()),
+  areas: z.array(z.string()),
   createdAt: z.datetime(),
   /**
    * Quests the calling user has accepted and not yet completed. Matches the

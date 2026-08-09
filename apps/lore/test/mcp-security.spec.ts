@@ -683,7 +683,7 @@ describe("MCP Security Integration", () => {
       id: number;
       title: string;
       public: boolean;
-      zones: string[];
+      areas: string[];
       activeQuests: Array<{ shortId: number; title: string }>;
       folios: {
         shown: number;

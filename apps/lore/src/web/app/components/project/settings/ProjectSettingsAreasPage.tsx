@@ -30,25 +30,25 @@ import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuests
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-export interface ProjectSettingsZonesPageProps {
-  zones: ZoneRow[];
+export interface ProjectSettingsAreasPageProps {
+  areas: AreaRow[];
 }
 
-interface ZoneRow {
+interface AreaRow {
   name: string;
   questCount: number;
   firstQuestAt?: string;
 }
 
-const ProjectSettingsZonesPage = (props: ProjectSettingsZonesPageProps) => {
+const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const dt = useInject(DateTimeProvider);
   const alepha = useAlepha();
   const projectApi = useClient<ProjectController>();
   const [project] = useStore(currentProjectAtom);
-  const [zones, setZones] = useState<ZoneRow[]>(props.zones);
-  const [renaming, setRenaming] = useState<ZoneRow | null>(null);
+  const [areas, setAreas] = useState<AreaRow[]>(props.areas);
+  const [renaming, setRenaming] = useState<AreaRow | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -56,7 +56,7 @@ const ProjectSettingsZonesPage = (props: ProjectSettingsZonesPageProps) => {
     return null;
   }
 
-  const openRename = (row: ZoneRow) => {
+  const openRename = (row: AreaRow) => {
     setRenaming(row);
     setRenameValue(row.name);
   };
@@ -70,25 +70,25 @@ const ProjectSettingsZonesPage = (props: ProjectSettingsZonesPageProps) => {
     }
     setSubmitting(true);
     try {
-      await projectApi.renameZone({
+      await projectApi.renameArea({
         params: { id: project.id },
-        body: { oldZoneName: renaming.name, newZoneName: newName },
+        body: { oldAreaName: renaming.name, newAreaName: newName },
       });
-      setZones((prev) =>
+      setAreas((prev) =>
         prev
           .map((z) => (z.name === renaming.name ? { ...z, name: newName } : z))
           .sort((a, b) => a.name.localeCompare(b.name)),
       );
       alepha.store.set(currentProjectAtom, {
         ...project,
-        zones: project.zones.map((z) => (z === renaming.name ? newName : z)),
+        areas: project.areas.map((z) => (z === renaming.name ? newName : z)),
       });
       // Keep the QuestLog (and anything else reading assigned quests) in sync:
-      // rewrite the zone on every cached quest that matched the old name.
+      // rewrite the area on every cached quest that matched the old name.
       alepha.store.set(
         currentAssignedQuestsAtom,
         (alepha.store.get(currentAssignedQuestsAtom) ?? []).map((q) =>
-          q.zone === renaming.name ? { ...q, zone: newName } : q,
+          q.area === renaming.name ? { ...q, area: newName } : q,
         ),
       );
       setRenaming(null);
@@ -104,37 +104,37 @@ const ProjectSettingsZonesPage = (props: ProjectSettingsZonesPageProps) => {
       <div className="flex items-center gap-2">
         <MapPin className="size-5" />
         <h2 className="text-base font-semibold">
-          {tr("project.settings.zones.title")}
+          {tr("project.settings.areas.title")}
         </h2>
       </div>
       <p className="text-muted-foreground text-sm">
-        {tr("project.settings.zones.description")}
+        {tr("project.settings.areas.description")}
       </p>
 
       <Card className="py-0 shadow">
         <CardContent className="p-0">
-          {zones.length === 0 ? (
+          {areas.length === 0 ? (
             <div className="text-muted-foreground p-6 text-center text-sm">
-              {tr("project.settings.zones.empty")}
+              {tr("project.settings.areas.empty")}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>
-                    {tr("project.settings.zones.column.name")}
+                    {tr("project.settings.areas.column.name")}
                   </TableHead>
                   <TableHead className="w-24 text-center">
-                    {tr("project.settings.zones.column.quests")}
+                    {tr("project.settings.areas.column.quests")}
                   </TableHead>
                   <TableHead className="w-40">
-                    {tr("project.settings.zones.column.firstQuest")}
+                    {tr("project.settings.areas.column.firstQuest")}
                   </TableHead>
                   <TableHead className="w-20" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {zones.map((z) => (
+                {areas.map((z) => (
                   <TableRow key={z.name}>
                     <TableCell className="font-medium">{z.name}</TableCell>
                     <TableCell className="text-center">
@@ -143,7 +143,7 @@ const ProjectSettingsZonesPage = (props: ProjectSettingsZonesPageProps) => {
                     <TableCell className="text-muted-foreground text-xs">
                       {z.firstQuestAt
                         ? dt.of(z.firstQuestAt).fromNow()
-                        : tr("project.settings.zones.never")}
+                        : tr("project.settings.areas.never")}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -152,7 +152,7 @@ const ProjectSettingsZonesPage = (props: ProjectSettingsZonesPageProps) => {
                         onClick={() => openRename(z)}
                       >
                         <Pencil className="size-3.5" />
-                        {tr("project.settings.zones.rename.action")}
+                        {tr("project.settings.areas.rename.action")}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -170,22 +170,22 @@ const ProjectSettingsZonesPage = (props: ProjectSettingsZonesPageProps) => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {tr("project.settings.zones.rename.title")}
+              {tr("project.settings.areas.rename.title")}
             </DialogTitle>
             <DialogDescription>
               {String(
-                tr("project.settings.zones.rename.description", [
+                tr("project.settings.areas.rename.description", [
                   renaming?.name ?? "",
                 ] as never),
               )}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="zone-rename-input">
-              {tr("project.settings.zones.rename.label")}
+            <Label htmlFor="area-rename-input">
+              {tr("project.settings.areas.rename.label")}
             </Label>
             <Input
-              id="zone-rename-input"
+              id="area-rename-input"
               value={renameValue}
               onChange={(e) => setRenameValue(e.currentTarget.value)}
               autoFocus
@@ -203,10 +203,10 @@ const ProjectSettingsZonesPage = (props: ProjectSettingsZonesPageProps) => {
               onClick={() => setRenaming(null)}
               disabled={submitting}
             >
-              {tr("project.settings.zones.rename.cancel")}
+              {tr("project.settings.areas.rename.cancel")}
             </Button>
             <Button onClick={() => void submitRename()} disabled={submitting}>
-              {tr("project.settings.zones.rename.submit")}
+              {tr("project.settings.areas.rename.submit")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -215,4 +215,4 @@ const ProjectSettingsZonesPage = (props: ProjectSettingsZonesPageProps) => {
   );
 };
 
-export default ProjectSettingsZonesPage;
+export default ProjectSettingsAreasPage;

@@ -109,7 +109,7 @@ export const milestoneChangelogResultSchema = z.object({
   markdown: z.string(),
   stats: z.object({
     questCount: z.integer(),
-    zoneCount: z.integer(),
+    areaCount: z.integer(),
     contributorCount: z.integer(),
   }),
 });

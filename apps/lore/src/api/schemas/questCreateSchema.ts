@@ -6,7 +6,7 @@ export const questCreateSchema = z.object({
   // all). Defaults to "" server-side in createQuest so the NOT-NULL
   // `quests.description` column and `sanitizeHtml` stay happy (no migration).
   description: z.string().meta({ size: "rich" }).optional(),
-  zone: z.string(),
+  area: z.string(),
   priority: z.enum(["optional", "low", "medium", "high"]),
   difficulty: z.integer().min(1).max(5),
   /**
@@ -33,7 +33,7 @@ export const questCreateSchema = z.object({
   /**
    * Free-form labels for the nature of the quest (`bug`, `feat`, `chore`,
    * …). Normalized server-side (trim, lowercase, dedupe). Orthogonal to
-   * `zone` which labels the module / scope.
+   * `area` which labels the module / scope.
    */
   tags: z.array(z.string()).default([]).optional(),
   /**

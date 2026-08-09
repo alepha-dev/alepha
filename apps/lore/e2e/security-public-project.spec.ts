@@ -97,7 +97,7 @@ test.describe("Project membership gate", () => {
       // flag; now they all require membership.
       const reads = [
         "getProjectById",
-        "getZones",
+        "getAreas",
         "getProjectMembers",
         "getProjectUsers",
         "getReportsOverview",
@@ -116,11 +116,11 @@ test.describe("Project membership gate", () => {
       });
       expect(updateResp.status).toBe(403);
 
-      const renameZoneResp = await callAction(b.page, "renameZone", {
-        oldZoneName: "Default",
-        newZoneName: "pwned",
+      const renameAreaResp = await callAction(b.page, "renameArea", {
+        oldAreaName: "Default",
+        newAreaName: "pwned",
       });
-      expect(renameZoneResp.status).toBe(403);
+      expect(renameAreaResp.status).toBe(403);
 
       const addColResp = await callAction(b.page, "addKanbanColumn", {
         name: "pwned-col",

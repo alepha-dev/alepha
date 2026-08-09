@@ -101,7 +101,7 @@ describe("Quest CSV roundtrip", () => {
           projectId: c1.id,
           title: "Plain",
           description: "",
-          zone: "",
+          area: "",
           priority: "medium",
           difficulty: 1,
         },
@@ -114,7 +114,7 @@ describe("Quest CSV roundtrip", () => {
           projectId: c1.id,
           title: `He said "go"`,
           description: "<p>line one</p><p>line two</p>",
-          zone: "North",
+          area: "North",
           priority: "high",
           difficulty: 4,
           objectives: [
@@ -129,9 +129,9 @@ describe("Quest CSV roundtrip", () => {
       {
         body: {
           projectId: c1.id,
-          title: "Empty zone",
+          title: "Empty area",
           description: "",
-          zone: "",
+          area: "",
           priority: "low",
           difficulty: 2,
         },
