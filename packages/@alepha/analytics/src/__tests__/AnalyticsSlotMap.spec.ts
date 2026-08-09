@@ -1,3 +1,4 @@
+import type { ZType } from "alepha";
 import { z } from "alepha";
 import { describe, expect, it } from "vitest";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
@@ -52,12 +53,21 @@ describe("AnalyticsSlotMap", () => {
   });
 
   it("rejects more than 18 dimensions", () => {
-    const shape: Record<string, z.ZodNumber> = {};
+    const shape: Record<string, ZType> = {};
     for (let i = 0; i < 19; i++)
       shape[`d${String(i).padStart(2, "0")}`] = z.number();
     expect(() =>
       AnalyticsSlotMap.forDataset({ ...dataset, dimensions: z.object(shape) }),
     ).toThrow(/at most 18 dimensions/);
+  });
+
+  it("rejects more than 20 measures", () => {
+    const shape: Record<string, ZType> = {};
+    for (let i = 0; i < 21; i++)
+      shape[`m${String(i).padStart(2, "0")}`] = z.number();
+    expect(() =>
+      AnalyticsSlotMap.forDataset({ ...dataset, measures: z.object(shape) }),
+    ).toThrow(/at most 20/);
   });
 
   it("rejects an index that is not a declared dimension", () => {

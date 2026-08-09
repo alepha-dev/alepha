@@ -62,7 +62,9 @@ export class AnalyticsSlotMap {
       );
     }
     if (!dimensions.includes(dataset.index)) {
-      throw new AlephaError(`'${dataset.index}' is not a declared dimension.`);
+      throw new AlephaError(
+        `Dataset '${dataset.name}': '${dataset.index}' is not a declared dimension.`,
+      );
     }
 
     const blobs = new Map<string, number>();

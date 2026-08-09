@@ -1,4 +1,4 @@
-import type { z } from "alepha";
+import type { ZObject } from "alepha";
 
 /**
  * The shape a dataset declares.
@@ -23,8 +23,8 @@ export interface AnalyticsDataset {
    */
   index: string;
 
-  dimensions: z.ZodObject<Record<string, z.ZodTypeAny>>;
-  measures: z.ZodObject<Record<string, z.ZodTypeAny>>;
+  dimensions: ZObject;
+  measures: ZObject;
 
   retention?: AnalyticsRetention;
 }
