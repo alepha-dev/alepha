@@ -664,6 +664,41 @@ When you need to drive the app yourself with the Playwright MCP, use these short
 
 Dev mode is what you usually want — it keeps state between runs and emails accumulate on disk.
 
+### ⚠️ Prod-like is not production — only workerd is
+
+| Mode | Runtime | Catches |
+|---|---|---|
+| `yarn dev` | Node + Vite | most things |
+| `yarn start` | Node, bundled | bundler/env issues |
+| **wrangler** | **workerd** | **isolate limits, Workers-only APIs** |
+
+The third row is not optional for anything that smells production-only. Quest #132 (folio page → error boundary in prod) was investigated once and closed as "not reproducible": dev fine, `node dist` fine, SSR already off. All true, and all irrelevant — the bug was an isolate crash, and neither Node mode runs an isolate. Under wrangler it reproduced on the first try.
+
+```bash
+yarn alepha platform build -e production
+```
+
+Then, in `dist/`, copy `wrangler.jsonc` to `wrangler.local.jsonc` with `routes` and `send_email` removed and `APP_SECRET` set in `vars`, and:
+
+```bash
+npx wrangler dev --config wrangler.local.jsonc --local --port 8788
+```
+
+`--local` is what keeps the D1/R2/KV bindings simulated. **Never drop it** — the config carries the real production `database_id`.
+
+Traps, all of which cost time once:
+
+- **The local D1 starts empty.** `alepha platform build` wipes `dist/`, and `dist/.wrangler/state` with it, so this is needed after every rebuild:
+  ```bash
+  for d in migrations/sqlite/2*/; do sed 's|--> statement-breakpoint|;|g' "$d/migration.sql"; echo ";"; done > /tmp/all.sql
+  npx wrangler d1 execute DB --config wrangler.local.jsonc --local --file=/tmp/all.sql
+  ```
+- **No email.** Registration still works: the verification code sits in plaintext in the job payload —
+  `SELECT payload FROM job_executions WHERE job_name LIKE '%notification%' ORDER BY rowid DESC LIMIT 1`.
+- **Sessions expire in 15 minutes.** A batch of `curl`s that suddenly all return 302 means the token aged out, not a regression.
+- **Measure bytes, not status codes.** A crashed isolate still returns `200` — the early head has already been flushed. The signal is a truncated body: ~300 bytes with no `</html>`, versus ~21KB for a healthy page.
+- **Restart between probes.** Once an isolate dies, every later route on that instance looks broken too. Diagnosing without a restart makes one broken route look like six.
+
 ### Accounts
 
 The realm admin (`.env` → `ADMIN_EMAIL=admin@alepha.dev`) is auto-bootstrapped on first start. Use that for owner/admin flows.
