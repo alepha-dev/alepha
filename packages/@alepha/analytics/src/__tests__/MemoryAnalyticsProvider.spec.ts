@@ -80,6 +80,53 @@ describe("MemoryAnalyticsProvider", () => {
     expect(result.rows).toEqual([{ count: 1 }]);
   });
 
+  it("counts rows for the count aggregate, not the sum of the measure", async () => {
+    const provider = new MemoryAnalyticsProvider();
+    await provider.record(dataset, [
+      { hour: "2026-08-09T10", app: "a", path: "/x", country: "FR", count: 5 },
+      { hour: "2026-08-09T11", app: "a", path: "/x", country: "FR", count: 7 },
+    ]);
+
+    const result = await provider.query(dataset, {
+      since: "2026-08-09",
+      select: { count: "count" },
+    });
+
+    expect(result.rows).toEqual([{ count: 2 }]);
+  });
+
+  it("returns the smallest measure value for the min aggregate", async () => {
+    const provider = new MemoryAnalyticsProvider();
+    await provider.record(dataset, [
+      { hour: "2026-08-09T10", app: "a", path: "/x", country: "FR", count: 5 },
+      { hour: "2026-08-09T11", app: "a", path: "/x", country: "FR", count: 2 },
+      { hour: "2026-08-09T12", app: "a", path: "/x", country: "FR", count: 9 },
+    ]);
+
+    const result = await provider.query(dataset, {
+      since: "2026-08-09",
+      select: { count: "min" },
+    });
+
+    expect(result.rows).toEqual([{ count: 2 }]);
+  });
+
+  it("returns the largest measure value for the max aggregate", async () => {
+    const provider = new MemoryAnalyticsProvider();
+    await provider.record(dataset, [
+      { hour: "2026-08-09T10", app: "a", path: "/x", country: "FR", count: 5 },
+      { hour: "2026-08-09T11", app: "a", path: "/x", country: "FR", count: 2 },
+      { hour: "2026-08-09T12", app: "a", path: "/x", country: "FR", count: 9 },
+    ]);
+
+    const result = await provider.query(dataset, {
+      since: "2026-08-09",
+      select: { count: "max" },
+    });
+
+    expect(result.rows).toEqual([{ count: 9 }]);
+  });
+
   it("groups by the day pseudo-dimension", async () => {
     const provider = new MemoryAnalyticsProvider();
     await provider.record(dataset, [

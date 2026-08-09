@@ -4,7 +4,9 @@ import type {
   AnalyticsResult,
 } from "../schemas/analyticsQuerySchema.ts";
 
-/** One recorded event: every dimension, every measure, and its hour bucket. */
+/**
+ * One recorded event: every dimension, every measure, and its hour bucket.
+ */
 export type AnalyticsRow = Record<string, string | number> & { hour: string };
 
 /**
@@ -38,6 +40,8 @@ export abstract class AnalyticsProvider {
    */
   abstract rollup(dataset: AnalyticsDataset, before: string): Promise<void>;
 
-  /** Deletes rolled rows older than `before`. */
+  /**
+   * Deletes rolled rows older than `before`.
+   */
   abstract prune(dataset: AnalyticsDataset, before: string): Promise<void>;
 }

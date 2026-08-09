@@ -11,7 +11,9 @@
  */
 export type AnalyticsAggregate = "sum" | "count" | "min" | "max";
 
-/** Dimension filters. Only equality and set membership — no ranges. */
+/**
+ * Dimension filters. Only equality and set membership — no ranges.
+ */
 export type AnalyticsFilter = Record<
   string,
   string | number | { inArray: Array<string | number> }
@@ -19,9 +21,13 @@ export type AnalyticsFilter = Record<
 
 export interface AnalyticsQuery {
   where?: AnalyticsFilter;
-  /** First UTC day included, `YYYY-MM-DD`. */
+  /**
+   * First UTC day included, `YYYY-MM-DD`.
+   */
   since: string;
-  /** Declared dimension names, plus the pseudo-dimensions `hour` and `day`. */
+  /**
+   * Declared dimension names, plus the pseudo-dimensions `hour` and `day`.
+   */
   groupBy?: string[];
   select: Record<string, AnalyticsAggregate>;
   orderBy?: { key: string; direction: "asc" | "desc" };

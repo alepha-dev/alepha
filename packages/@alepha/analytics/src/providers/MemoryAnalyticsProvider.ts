@@ -44,9 +44,13 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     const groups = new Map<string, Record<string, string | number>>();
 
     for (const row of rows) {
-      const key = groupBy
-        .map((name) => String(this.dimensionOf(row, name)))
-        .join("|");
+      // JSON.stringify escapes properly and is unambiguous for any input,
+      // unlike a delimiter-joined string: unsanitised dimension values (a URL
+      // path can carry any character) could otherwise collide across
+      // distinct groups.
+      const key = JSON.stringify(
+        groupBy.map((name) => this.dimensionOf(row, name)),
+      );
       let group = groups.get(key);
       if (!group) {
         group = {};
@@ -62,14 +66,12 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
       }
     }
 
-    let out = [...groups.values()];
-
     // With no groupBy the result is one total row — but only when something
-    // matched. An empty match must stay empty rather than reporting zero,
-    // otherwise "no data" and "measured zero" become indistinguishable.
-    if (groupBy.length === 0) {
-      out = rows.length === 0 ? [] : out;
-    }
+    // matched. An empty match stays empty rather than reporting zero, so that
+    // "no data" and "measured zero" remain distinguishable. This falls out of
+    // the grouping loop above: no matching rows means no group was ever
+    // created.
+    let out = [...groups.values()];
 
     if (query.orderBy) {
       const { key, direction } = query.orderBy;
@@ -105,7 +107,11 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
       // Folding to the day bucket is what makes this idempotent: a row already
       // folded has hour === day, so re-running maps it onto itself.
       const day = AnalyticsBuckets.day(row.hour);
-      const key = [day, ...this.dimensionsOf(dataset, row)].join("|");
+      // JSON.stringify avoids the collision a delimiter-joined string would
+      // risk here — and unlike in query(), a collision in rollup is
+      // irreversible: the colliding groups get summed and the pre-fold rows
+      // are gone.
+      const key = JSON.stringify([day, ...this.dimensionsOf(dataset, row)]);
       const existing = folded.get(key);
       if (existing) {
         for (const measure of Object.keys(dataset.measures.shape)) {
