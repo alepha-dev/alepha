@@ -732,7 +732,17 @@ function Combobox(props: ComboboxProps) {
             disabled={props.disabled}
             className={cn(
               "flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:hover:bg-input/50",
-              selected.length === 0 && "text-muted-foreground",
+              // Muted means "nothing chosen yet", which is only true without
+              // a clear row. WITH one, empty is a selected value — the popup
+              // already puts the check mark on it (see `cbValue`), and the
+              // native `Select` path renders the same state in full contrast
+              // because it makes the clear label a genuine `selectedValue`.
+              // Muting here made one `clearable` filter look unset and its
+              // neighbour look set for the same meaning, purely because the
+              // option count crossed the 20 that picks between the two paths.
+              selected.length === 0 &&
+                !props.clearable &&
+                "text-muted-foreground",
             )}
           >
             <span className="flex min-w-0 items-center gap-2">
