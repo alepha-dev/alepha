@@ -50,7 +50,7 @@ const MilestoneOpenQuestsRail = (props: MilestoneOpenQuestsRailProps) => {
             </div>
             <div className="mt-1 flex items-center gap-2 pl-[38px]">
               <span className="font-mono text-[10.5px] font-medium text-green-600 dark:text-green-400">
-                {quest.zone}
+                {quest.area}
               </span>
               <div className="flex-1" />
               {(quest.priority === "high" || quest.priority === "medium") && (

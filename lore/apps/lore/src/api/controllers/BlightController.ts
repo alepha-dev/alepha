@@ -19,8 +19,8 @@ import { BlightRuleService } from "../services/BlightRuleService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestService } from "../services/QuestService.ts";
 
-/** Zone every blight-forwarded quest is filed under — predictable triage. */
-const BLIGHT_ZONE = "Blights";
+/** Area every blight-forwarded quest is filed under — predictable triage. */
+const BLIGHT_AREA = "Blights";
 
 /**
  * A blight row as exposed to the project owner's Blights inbox. Mirrors
@@ -272,16 +272,16 @@ export class BlightController {
         .join("\n")
         .slice(0, 10_000);
 
-      // Blight-forwarded quests always land in a dedicated "Blights" zone
+      // Blight-forwarded quests always land in a dedicated "Blights" area
       // (created on the project if absent) — predictable triage, not
-      // whatever the project's arbitrary first zone happens to be.
-      // Creation mechanics (shortId, zone-ensure, sanitizeHtml, defaults)
+      // whatever the project's arbitrary first area happens to be.
+      // Creation mechanics (shortId, area-ensure, sanitizeHtml, defaults)
       // are shared with QuestController.createQuest via QuestService.
       const quest = await this.questService.createQuest(project, {
         projectId: params.projectId,
         title,
         description,
-        zone: BLIGHT_ZONE,
+        area: BLIGHT_AREA,
         priority: "medium",
         difficulty: 2,
         tags: ["bug", "blight"],

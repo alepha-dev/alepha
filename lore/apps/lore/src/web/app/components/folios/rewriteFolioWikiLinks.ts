@@ -68,7 +68,7 @@ const formatBytes = (bytes: number): string => {
  *    title match when both fail (useful for slash-bearing titles).
  *  - `[[Folio Title]]` → folio by title (case-insensitive, ambiguous
  *    titles fall back to literal text).
- *  - `[[#42#zones]]` / `[[Folio Title#zones]]` → folio + heading slug.
+ *  - `[[#42#areas]]` / `[[Folio Title#areas]]` → folio + heading slug.
  *  - `[[quest#32]]` → quest shortId 32 in the same project.
  *  - `[[quest:Some Title]]` → quest by title (resolved if a quest list
  *    is supplied; otherwise rendered as plain text).

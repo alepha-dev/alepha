@@ -22,7 +22,7 @@ export const quests = $entity({
     deletedAt: db.deletedAt(),
     title: z.string(),
     description: z.string().meta({ size: "rich" }),
-    zone: z.string(),
+    area: z.string(),
     priority: z
       .enum(["optional", "low", "medium", "high"])
       .meta({ mode: "text" }),
@@ -168,7 +168,7 @@ export const quests = $entity({
     attachments: db.default(z.array(z.uuid()), []),
     /**
      * Free-form labels for the **nature** of the quest (`bug`, `feat`,
-     * `chore`, `regression`, …) — orthogonal to `zone`, which labels the
+     * `chore`, `regression`, …) — orthogonal to `area`, which labels the
      * **module/scope**. Stored as a JSON array of normalized strings
      * (trimmed, lowercased, deduped). Filter via `like '%"value"%'` on
      * the serialized blob — mirrors the folio tag pattern.

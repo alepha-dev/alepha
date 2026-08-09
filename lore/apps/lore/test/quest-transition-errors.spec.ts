@@ -75,7 +75,7 @@ const createQuest = async (
         projectId,
         title,
         description: "",
-        zone: "ops",
+        area: "ops",
         priority: "low",
         difficulty: 1,
       },

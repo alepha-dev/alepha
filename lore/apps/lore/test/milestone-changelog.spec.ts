@@ -91,7 +91,7 @@ const completeQuest = async (
   projectId: number,
   quest: {
     title: string;
-    zone: string;
+    area: string;
     priority: "optional" | "low" | "medium" | "high";
   },
 ): Promise<{ id: number; shortId: number }> => {
@@ -100,7 +100,7 @@ const completeQuest = async (
       body: {
         projectId,
         title: quest.title,
-        zone: quest.zone,
+        area: quest.area,
         priority: quest.priority,
         difficulty: 1,
       },
@@ -130,7 +130,7 @@ describe("MilestoneController.getMilestoneChangelog", () => {
     await ctx.alepha.stop();
   });
 
-  it("returns structured zones alongside the markdown", async ({ expect }) => {
+  it("returns structured areas alongside the markdown", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
@@ -142,17 +142,17 @@ describe("MilestoneController.getMilestoneChangelog", () => {
     await ctx.dt.travel([1, "minute"]);
     const a = await completeQuest(ctx, user, project.id, {
       title: "Lateral joins on Postgres",
-      zone: "orm",
+      area: "orm",
       priority: "high",
     });
     const b = await completeQuest(ctx, user, project.id, {
       title: "Typed repository count",
-      zone: "orm",
+      area: "orm",
       priority: "medium",
     });
     const c = await completeQuest(ctx, user, project.id, {
       title: "Rate limiter for public actions",
-      zone: "server",
+      area: "server",
       priority: "low",
     });
 
@@ -161,9 +161,9 @@ describe("MilestoneController.getMilestoneChangelog", () => {
       { user },
     );
 
-    expect(result.data.zones.map((z) => z.name)).toEqual(["orm", "server"]);
+    expect(result.data.areas.map((z) => z.name)).toEqual(["orm", "server"]);
 
-    const orm = result.data.zones[0];
+    const orm = result.data.areas[0];
     expect(orm.questCount).toBe(2);
     expect(orm.quests).toEqual([
       {
@@ -178,7 +178,7 @@ describe("MilestoneController.getMilestoneChangelog", () => {
       },
     ]);
 
-    const server = result.data.zones[1];
+    const server = result.data.areas[1];
     expect(server.quests).toEqual([
       {
         shortId: c.shortId,
@@ -200,12 +200,12 @@ describe("MilestoneController.getMilestoneChangelog", () => {
     await ctx.dt.travel([1, "minute"]);
     await completeQuest(ctx, user, project.id, {
       title: "Streaming multipart uploads",
-      zone: "server",
+      area: "server",
       priority: "high",
     });
     await completeQuest(ctx, user, project.id, {
       title: "Router transition progress bar",
-      zone: "react",
+      area: "react",
       priority: "low",
     });
 
@@ -214,21 +214,21 @@ describe("MilestoneController.getMilestoneChangelog", () => {
       { user },
     );
 
-    // Every zone heading in the markdown has a matching structured zone,
-    // and each zone's title list matches line for line.
-    for (const zone of result.data.zones) {
-      expect(result.data.markdown).toContain(`## ${zone.name}`);
-      for (const quest of zone.quests) {
+    // Every area heading in the markdown has a matching structured area,
+    // and each area's title list matches line for line.
+    for (const area of result.data.areas) {
+      expect(result.data.markdown).toContain(`## ${area.name}`);
+      for (const quest of area.quests) {
         expect(result.data.markdown).toContain(`- ${quest.title}`);
       }
     }
 
-    const totalFromZones = result.data.zones.reduce(
-      (sum, zone) => sum + zone.questCount,
+    const totalFromAreas = result.data.areas.reduce(
+      (sum, area) => sum + area.questCount,
       0,
     );
-    expect(totalFromZones).toBe(result.data.stats.questCount);
-    expect(result.data.stats.zoneCount).toBe(result.data.zones.length);
+    expect(totalFromAreas).toBe(result.data.stats.questCount);
+    expect(result.data.stats.areaCount).toBe(result.data.areas.length);
   });
 
   it("returns the frozen markdown snapshot for a closed milestone", async ({
@@ -245,7 +245,7 @@ describe("MilestoneController.getMilestoneChangelog", () => {
     await ctx.dt.travel([1, "minute"]);
     await completeQuest(ctx, user, project.id, {
       title: "Sequence counter per project",
-      zone: "orm",
+      area: "orm",
       priority: "high",
     });
 
@@ -261,15 +261,15 @@ describe("MilestoneController.getMilestoneChangelog", () => {
     );
 
     expect(result.data.markdown).toBe(closed.data.changelog);
-    // Zones are recomputed rather than frozen — they still describe the
+    // Areas are recomputed rather than frozen — they still describe the
     // same window, so the closed milestone is not returned bare.
-    expect(result.data.zones).toHaveLength(1);
-    expect(result.data.zones[0].quests[0].title).toBe(
+    expect(result.data.areas).toHaveLength(1);
+    expect(result.data.areas[0].quests[0].title).toBe(
       "Sequence counter per project",
     );
   });
 
-  it("returns no zones when nothing was completed in the window", async ({
+  it("returns no areas when nothing was completed in the window", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
@@ -285,9 +285,9 @@ describe("MilestoneController.getMilestoneChangelog", () => {
       { user },
     );
 
-    expect(result.data.zones).toEqual([]);
+    expect(result.data.areas).toEqual([]);
     expect(result.data.stats.questCount).toBe(0);
-    expect(result.data.stats.zoneCount).toBe(0);
+    expect(result.data.stats.areaCount).toBe(0);
   });
 
   it("excludes quests completed before the milestone opened", async ({
@@ -298,7 +298,7 @@ describe("MilestoneController.getMilestoneChangelog", () => {
 
     await completeQuest(ctx, user, project.id, {
       title: "Landed before the window",
-      zone: "orm",
+      area: "orm",
       priority: "high",
     });
 
@@ -311,7 +311,7 @@ describe("MilestoneController.getMilestoneChangelog", () => {
     await ctx.dt.travel([1, "minute"]);
     await completeQuest(ctx, user, project.id, {
       title: "Landed inside the window",
-      zone: "orm",
+      area: "orm",
       priority: "high",
     });
 
@@ -320,8 +320,8 @@ describe("MilestoneController.getMilestoneChangelog", () => {
       { user },
     );
 
-    const titles = result.data.zones.flatMap((zone) =>
-      zone.quests.map((quest) => quest.title),
+    const titles = result.data.areas.flatMap((area) =>
+      area.quests.map((quest) => quest.title),
     );
     expect(titles).toEqual(["Landed inside the window"]);
   });

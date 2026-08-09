@@ -7,7 +7,7 @@ import type { ParseRowResult } from "./AlephaLoreParser.ts";
  * Trello columns we map:
  *   - `Card Name`        → `title` (required)
  *   - `Card Description` → `description`
- *   - `List`             → `zone`
+ *   - `List`             → `area`
  *   - `Members`          → `acceptedBy` (first member only; resolved by username)
  *
  * Trello columns we ignore: `Card ID`, `Card URL`, `Activity`, `Labels`,
@@ -55,7 +55,7 @@ export class TrelloParser {
       shortId: "",
       title,
       description: at("Card Description"),
-      zone: at("List"),
+      area: at("List"),
       priority: "medium",
       difficulty: 2,
       kanbanColumn: "",

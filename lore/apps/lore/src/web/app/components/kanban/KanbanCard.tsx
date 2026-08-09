@@ -62,7 +62,7 @@ const KanbanCard = (props: KanbanCardProps) => {
             <span className="text-[10px] font-mono text-muted-foreground/70">
               #{quest.shortId}
             </span>
-            <span className="text-xs text-muted-foreground">{quest.zone}</span>
+            <span className="text-xs text-muted-foreground">{quest.area}</span>
             {quest.metadata.objectivesProgress.total > 0 && (
               <span className="text-[10px] text-muted-foreground">
                 {quest.metadata.objectivesProgress.completed}/

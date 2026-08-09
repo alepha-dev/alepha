@@ -753,7 +753,7 @@ export class FeedbackController {
             : ("new" as const),
         difficulty: q.difficulty,
         priority: q.priority,
-        zone: q.zone,
+        area: q.area,
         acceptedAt: q.acceptedAt ?? undefined,
         completedAt: q.completedAt ?? undefined,
       }));

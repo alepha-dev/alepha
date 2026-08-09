@@ -31,7 +31,7 @@ export default {
   "header.connections.manage": "Gérer les applications connectées",
 
   "quest-log.quests": "Quêtes :",
-  "quest-log.search": "Chercher par nom, zone ou difficulté...",
+  "quest-log.search": "Chercher par nom, domaine ou difficulté...",
   "quest-log.empty": "Aucune quête en attente",
   "quest-log.empty-description":
     "Le royaume est bien calme. Forgez une nouvelle quête pour lancer votre compagnie.",
@@ -257,15 +257,16 @@ export default {
   "quest.create.description": "Description de la quête",
   "quest.create.description.helper":
     "Décrivez le but, les épreuves et les détails importants.",
-  "quest.create.zone": "Zone",
-  "quest.create.zone.helper": "Royaume ou lieu où se déroule la quête",
+  "quest.create.area": "Domaine",
+  "quest.create.area.helper":
+    "Partie du système à laquelle la quête appartient",
 
   "board.filter.search": "Rechercher",
   "board.filter.status": "Statut",
-  "board.filter.zone": "Zone",
+  "board.filter.area": "Domaine",
   "board.filter.tag": "Étiquette",
   "board.filter.allStatuses": "Tous les statuts",
-  "board.filter.allZones": "Toutes les zones",
+  "board.filter.allAreas": "Tous les domaines",
   "board.filter.allTags": "Toutes les étiquettes",
 
   "board.table.status": "Statut",
@@ -276,7 +277,7 @@ export default {
   "board.table.linked.tooltip": "Bloquée par la quête #{0}",
   "board.table.priority": "Priorité",
   "board.table.rank": "Rang",
-  "board.table.zone": "Zone",
+  "board.table.area": "Domaine",
   "board.table.created": "Créée",
   "board.table.updated": "Mise à jour",
   "board.action.acceptQuest": "Accepter la quête",
@@ -306,7 +307,7 @@ export default {
   "quest.create.estimate.clear": "Effacer l'estimation",
   "quest.create.tags": "Étiquettes",
   "quest.create.tags.helper":
-    "Étiquettes décrivant la nature de la quête (bug, feat, chore…). La zone dit où, l'étiquette dit quoi.",
+    "Étiquettes décrivant la nature de la quête (bug, feat, chore…). Le domaine dit où, l'étiquette dit quoi.",
   "quest.tags.placeholder": "Ajouter une étiquette puis Entrée",
   "quest.tags.suggestions": "Réutiliser :",
   "quest.view.questline.blockedBy": "Bloquée par #$1",
@@ -399,7 +400,7 @@ export default {
   "project.settings.general.title": "Projet",
   "project.settings.nav.banner": "Général",
   "project.settings.nav.members": "Membres",
-  "project.settings.nav.zones": "Zones",
+  "project.settings.nav.areas": "Domaines",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":
@@ -421,22 +422,22 @@ export default {
   "project.settings.data.import.details": "Voir les détails",
   "project.settings.data.import.error.title": "L'import a échoué",
   "project.settings.nav.group.features": "Fonctionnalités",
-  "project.settings.zones.title": "Zones",
-  "project.settings.zones.description":
-    "Les zones de votre projet. Chaque quête appartient à une zone. Renommer une zone met à jour toutes ses quêtes.",
-  "project.settings.zones.column.name": "Zone",
-  "project.settings.zones.column.quests": "Quêtes",
-  "project.settings.zones.column.firstQuest": "Première quête",
-  "project.settings.zones.empty":
-    "Aucune zone pour l'instant. Créez une quête et choisissez une zone — elle apparaîtra ici.",
-  "project.settings.zones.rename.action": "Renommer",
-  "project.settings.zones.rename.title": "Renommer la zone",
-  "project.settings.zones.rename.description":
-    "Renommer « $1 » — toutes les quêtes de cette zone suivront.",
-  "project.settings.zones.rename.label": "Nouveau nom",
-  "project.settings.zones.rename.cancel": "Annuler",
-  "project.settings.zones.rename.submit": "Renommer",
-  "project.settings.zones.never": "—",
+  "project.settings.areas.title": "Domaines",
+  "project.settings.areas.description":
+    "Les domaines de votre projet. Chaque quête appartient à un domaine. Renommer un domaine met à jour toutes ses quêtes.",
+  "project.settings.areas.column.name": "Domaine",
+  "project.settings.areas.column.quests": "Quêtes",
+  "project.settings.areas.column.firstQuest": "Première quête",
+  "project.settings.areas.empty":
+    "Aucun domaine pour l'instant. Créez une quête et choisissez un domaine — il apparaîtra ici.",
+  "project.settings.areas.rename.action": "Renommer",
+  "project.settings.areas.rename.title": "Renommer le domaine",
+  "project.settings.areas.rename.description":
+    "Renommer « $1 » — toutes les quêtes de ce domaine suivront.",
+  "project.settings.areas.rename.label": "Nouveau nom",
+  "project.settings.areas.rename.cancel": "Annuler",
+  "project.settings.areas.rename.submit": "Renommer",
+  "project.settings.areas.never": "—",
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
   "project.settings.nav.feedback": "Retours",
@@ -468,7 +469,7 @@ export default {
   "reports.quests.status.accepted": "En cours",
   "reports.quests.status.completed": "Terminées",
   "reports.quests.status.empty": "Aucune quête pour le moment",
-  "reports.quests.byZone.title": "Par zone",
+  "reports.quests.byArea.title": "Par domaine",
   "reports.quests.byPriority.title": "Par priorité",
   "reports.quests.cycleTime.title": "Temps de cycle par priorité",
   "reports.quests.cycleTime.avgHours": "Heures moy.",
@@ -565,7 +566,7 @@ export default {
   "milestone.ledger.manualOnly": "Clôture manuelle uniquement",
   "milestone.ledger.window": "Fenêtre",
   "milestone.ledger.stat.quests": "Quêtes",
-  "milestone.ledger.stat.zones": "Zones",
+  "milestone.ledger.stat.areas": "Domaines",
   "milestone.ledger.stat.members": "Membres",
   "milestone.ledger.empty.title": "Aucun enregistrement en cours",
   "milestone.ledger.empty.body":
@@ -615,7 +616,7 @@ export default {
   "kanban.column.completed": "Terminées",
   "kanban.empty": "Aucune quête",
   "kanban.showMore": "Afficher plus",
-  "kanban.filter.allZones": "Toutes les zones",
+  "kanban.filter.allAreas": "Tous les domaines",
   "kanban.filter.allTags": "Tous les tags",
   "kanban.error.completedCannotMove":
     "Les quêtes terminées ne peuvent pas être déplacées",
@@ -668,8 +669,8 @@ export default {
   "quest-log.collapse-all": "Tout réduire",
   "quest-log.expand-all": "Tout déplier",
 
-  "zone.rename.name": "Nom de la zone",
-  "zone.rename.submit": "Renommer",
+  "area.rename.name": "Nom du domaine",
+  "area.rename.submit": "Renommer",
 
   "error.title": "Oups ! Quelque chose s'est mal passé.",
   "error.description":

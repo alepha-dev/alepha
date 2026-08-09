@@ -17,33 +17,33 @@ import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-const EVENT = "lore:open-rename-zone";
+const EVENT = "lore:open-rename-area";
 
-export const openRenameZoneModal = (zoneName: string) => {
-  window.dispatchEvent(new CustomEvent(EVENT, { detail: { zoneName } }));
+export const openRenameAreaModal = (areaName: string) => {
+  window.dispatchEvent(new CustomEvent(EVENT, { detail: { areaName } }));
 };
 
-export interface RenameZoneFormProps {
-  zoneName: string;
+export interface RenameAreaFormProps {
+  areaName: string;
   onClose: () => void;
 }
 
-const RenameZoneForm = (props: RenameZoneFormProps) => {
+const RenameAreaForm = (props: RenameAreaFormProps) => {
   const { tr } = useI18n<I18n, "en">();
   const projectApi = useClient<ProjectController>();
   const router = useRouter();
   const [project] = useStore(currentProjectAtom);
 
   const form = useForm({
-    initialValues: { zoneName: props.zoneName },
-    schema: z.object({ zoneName: z.string().min(1) }),
+    initialValues: { areaName: props.areaName },
+    schema: z.object({ areaName: z.string().min(1) }),
     handler: async (data) => {
       if (!project) return;
-      await projectApi.renameZone({
+      await projectApi.renameArea({
         params: { id: project.id },
         body: {
-          oldZoneName: props.zoneName,
-          newZoneName: data.zoneName.trim(),
+          oldAreaName: props.areaName,
+          newAreaName: data.areaName.trim(),
         },
       });
       props.onClose();
@@ -56,13 +56,13 @@ const RenameZoneForm = (props: RenameZoneFormProps) => {
   return (
     <form {...form.props} className="flex flex-col gap-4">
       <Control
-        input={form.input.zoneName}
+        input={form.input.areaName}
         icon={Tag}
-        label={tr("zone.rename.name")}
+        label={tr("area.rename.name")}
       />
       <div className="flex flex-col gap-2">
         <Button type="submit" disabled={formState.loading}>
-          {tr("zone.rename.submit")}
+          {tr("area.rename.submit")}
         </Button>
         <Button
           type="button"
@@ -77,36 +77,36 @@ const RenameZoneForm = (props: RenameZoneFormProps) => {
   );
 };
 
-export const RenameZoneModal = () => {
+export const RenameAreaModal = () => {
   const { tr } = useI18n<I18n, "en">();
-  const [state, setState] = useState<{ open: boolean; zoneName: string }>({
+  const [state, setState] = useState<{ open: boolean; areaName: string }>({
     open: false,
-    zoneName: "",
+    areaName: "",
   });
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { zoneName: string };
-      setState({ open: true, zoneName: detail.zoneName });
+      const detail = (e as CustomEvent).detail as { areaName: string };
+      setState({ open: true, areaName: detail.areaName });
     };
     window.addEventListener(EVENT, handler);
     return () => window.removeEventListener(EVENT, handler);
   }, []);
 
-  const close = () => setState({ open: false, zoneName: "" });
+  const close = () => setState({ open: false, areaName: "" });
 
   return (
     <Dialog open={state.open} onOpenChange={(o) => !o && close()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{tr("zone.rename.name")}</DialogTitle>
+          <DialogTitle>{tr("area.rename.name")}</DialogTitle>
         </DialogHeader>
         {state.open && (
-          <RenameZoneForm zoneName={state.zoneName} onClose={close} />
+          <RenameAreaForm areaName={state.areaName} onClose={close} />
         )}
       </DialogContent>
     </Dialog>
   );
 };
 
-export default RenameZoneModal;
+export default RenameAreaModal;

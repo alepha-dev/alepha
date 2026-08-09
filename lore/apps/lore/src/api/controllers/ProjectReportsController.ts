@@ -256,7 +256,7 @@ export class ProjectReportsController {
 
   /**
    * Reports "Quests" tab: a lifecycle funnel (new → accepted → completed),
-   * completed-vs-remaining breakdowns by zone and by priority, average cycle
+   * completed-vs-remaining breakdowns by area and by priority, average cycle
    * time per priority, and an actionable list of the oldest still-open quests.
    *
    * Same access model as `getReportsOverview`: members-only + the
@@ -317,17 +317,17 @@ export class ProjectReportsController {
         completed: Number(funnelAgg?.completed_count) || 0,
       };
 
-      // Completed vs remaining per zone — top 8 busiest zones.
-      const byZoneQuery = await this.database.run(
+      // Completed vs remaining per area — top 8 busiest areas.
+      const byAreaQuery = await this.database.run(
         sql`
 					SELECT
-						COALESCE(${this.quests.table.zone}, 'Unassigned') as zone,
+						COALESCE(${this.quests.table.area}, 'Unassigned') as area,
 						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NOT NULL THEN 1 END) as completed,
 						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NULL THEN 1 END) as remaining
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
 						AND ${this.liveQuest}
-					GROUP BY ${this.quests.table.zone}
+					GROUP BY ${this.quests.table.area}
 					ORDER BY (
 						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NOT NULL THEN 1 END)
 						+ COUNT(CASE WHEN ${this.quests.table.completedAt} IS NULL THEN 1 END)
@@ -335,14 +335,14 @@ export class ProjectReportsController {
 					LIMIT 8
 				`,
         z.object({
-          zone: z.string(),
+          area: z.string(),
           completed: z.coerce.number(),
           remaining: z.coerce.number(),
         }),
       );
 
-      const byZone = byZoneQuery.map((row) => ({
-        zone: String(row.zone),
+      const byArea = byAreaQuery.map((row) => ({
+        area: String(row.area),
         completed: Number(row.completed) || 0,
         remaining: Number(row.remaining) || 0,
       }));
@@ -404,7 +404,7 @@ export class ProjectReportsController {
 					SELECT
 						${this.quests.table.shortId} as short_id,
 						${this.quests.table.title} as title,
-						${this.quests.table.zone} as zone,
+						${this.quests.table.area} as area,
 						${this.quests.table.priority} as priority,
 						${this.quests.table.acceptedAt} as accepted_at
 					FROM ${this.quests.table}
@@ -418,7 +418,7 @@ export class ProjectReportsController {
         z.object({
           short_id: z.coerce.number(),
           title: z.string(),
-          zone: z.string().nullish(),
+          area: z.string().nullish(),
           priority: z.string(),
           accepted_at: z.union([z.string(), z.number()]),
         }),
@@ -435,7 +435,7 @@ export class ProjectReportsController {
         return {
           shortId: Number(row.short_id) || 0,
           title: String(row.title),
-          zone: row.zone ?? "Unassigned",
+          area: row.area ?? "Unassigned",
           priority: String(row.priority),
           ageDays: Math.floor((now - acceptedMs) / 86400000),
         };
@@ -443,7 +443,7 @@ export class ProjectReportsController {
 
       return {
         funnel,
-        byZone,
+        byArea,
         byPriority,
         cycleTimeByPriority,
         aging,

@@ -26,7 +26,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 type RouteName =
   | "projectSettingsBanner"
   | "projectSettingsMembers"
-  | "projectSettingsZones"
+  | "projectSettingsAreas"
   | "projectSettingsKanban"
   | "projectSettingsFolios"
   | "projectSettingsFeedback"
@@ -37,7 +37,7 @@ type RouteName =
 type NavLabelKey =
   | "project.settings.nav.banner"
   | "project.settings.nav.members"
-  | "project.settings.nav.zones"
+  | "project.settings.nav.areas"
   | "project.settings.nav.kanban"
   | "project.settings.nav.folios"
   | "project.settings.nav.feedback"
@@ -67,8 +67,8 @@ const NAV_GROUPS: NavGroup[] = [
         icon: Flag,
       },
       {
-        route: "projectSettingsZones",
-        labelKey: "project.settings.nav.zones",
+        route: "projectSettingsAreas",
+        labelKey: "project.settings.nav.areas",
         icon: MapPin,
       },
       {

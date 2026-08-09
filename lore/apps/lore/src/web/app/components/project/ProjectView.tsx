@@ -81,7 +81,7 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   appSettings: "project.menu.apps",
   projectSettings: "project.menu.settings",
   projectSettingsBanner: "project.menu.settings",
-  projectSettingsZones: "project.menu.settings",
+  projectSettingsAreas: "project.menu.settings",
   projectSettingsKanban: "project.menu.settings",
   projectSettingsFolios: "project.menu.settings",
   projectSettingsMilestones: "project.menu.settings",

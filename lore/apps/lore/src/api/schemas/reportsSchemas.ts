@@ -38,9 +38,9 @@ export const reportsQuestsSchema = z.object({
     accepted: z.integer(),
     completed: z.integer(),
   }),
-  byZone: z.array(
+  byArea: z.array(
     z.object({
-      zone: z.string(),
+      area: z.string(),
       completed: z.integer(),
       remaining: z.integer(),
     }),
@@ -60,7 +60,7 @@ export const reportsQuestsSchema = z.object({
     z.object({
       shortId: z.integer(),
       title: z.string(),
-      zone: z.string(),
+      area: z.string(),
       priority: z.string(),
       ageDays: z.integer(),
     }),

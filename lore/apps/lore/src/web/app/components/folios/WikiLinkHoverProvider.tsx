@@ -219,7 +219,7 @@ interface FolioPreview {
 interface QuestPreview {
   kind: "quest";
   title: string;
-  zone?: string;
+  area?: string;
   priority?: string;
   status?: string;
   shortId: number;
@@ -282,7 +282,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
           const preview: QuestPreview = {
             kind: "quest",
             title: quest.title,
-            zone: quest.zone,
+            area: quest.area,
             priority: quest.priority,
             status: quest.metadata.status,
             shortId: quest.shortId,
@@ -395,7 +395,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
             <span className="text-sm font-semibold">{data.title}</span>
           </div>
           <div className="text-muted-foreground flex flex-wrap gap-2 text-xs">
-            {data.zone && <span>{data.zone}</span>}
+            {data.area && <span>{data.area}</span>}
             {data.priority && <span>· {data.priority}</span>}
             {data.status && <span>· {data.status}</span>}
           </div>

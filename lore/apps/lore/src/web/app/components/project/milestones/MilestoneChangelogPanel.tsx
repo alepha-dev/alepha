@@ -1,12 +1,12 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { BookMarked, Copy, Download, ScrollText } from "lucide-react";
-import type { MilestoneChangelogZone } from "@/api/schemas/milestoneChangelogZoneSchema.ts";
+import type { MilestoneChangelogArea } from "@/api/schemas/milestoneChangelogAreaSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import MilestoneChangelogRow from "./MilestoneChangelogRow.tsx";
 
 export interface MilestoneChangelogPanelProps {
-  zones: MilestoneChangelogZone[];
+  areas: MilestoneChangelogArea[];
   /**
    * `LIVE · N quests` when the milestone is still recording, `#N · FROZEN
    * <date>` once it has closed. The distinction is the whole point of a
@@ -22,8 +22,8 @@ export interface MilestoneChangelogPanelProps {
 }
 
 /**
- * The changelog itself: quests grouped by zone, one row each. Rendered from
- * the endpoint's structured `zones` rather than its markdown, so each entry
+ * The changelog itself: quests grouped by area, one row each. Rendered from
+ * the endpoint's structured `areas` rather than its markdown, so each entry
  * keeps its quest ref and priority.
  */
 const MilestoneChangelogPanel = (props: MilestoneChangelogPanelProps) => {
@@ -69,23 +69,23 @@ const MilestoneChangelogPanel = (props: MilestoneChangelogPanelProps) => {
           <p className="text-muted-foreground py-10 text-center text-sm">
             {tr("milestone.changelog.loading")}
           </p>
-        ) : props.zones.length === 0 ? (
+        ) : props.areas.length === 0 ? (
           <p className="text-muted-foreground py-10 text-center text-sm text-pretty">
             {tr("milestone.changelog.empty")}
           </p>
         ) : (
-          props.zones.map((zone) => (
-            <div key={zone.name} className="mb-6 last:mb-0">
+          props.areas.map((area) => (
+            <div key={area.name} className="mb-6 last:mb-0">
               <div className="mb-1.5 flex items-center gap-2.5">
                 <span className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-green-600 dark:text-green-400">
-                  {zone.name}
+                  {area.name}
                 </span>
                 <span className="text-muted-foreground text-[11px]">
-                  {zone.questCount}
+                  {area.questCount}
                 </span>
                 <div className="bg-border h-px flex-1" />
               </div>
-              {zone.quests.map((quest) => (
+              {area.quests.map((quest) => (
                 <MilestoneChangelogRow
                   key={quest.shortId}
                   shortId={quest.shortId}

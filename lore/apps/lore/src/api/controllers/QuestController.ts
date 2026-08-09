@@ -177,7 +177,7 @@ export class QuestController {
         }
       }
 
-      // Quest-creation mechanics (shortId sequence, zone-ensure, HTML
+      // Quest-creation mechanics (shortId sequence, area-ensure, HTML
       // sanitization, defaults) live in QuestService — the single path
       // shared with BlightController.forwardBlightToQuest.
       const quest = await this.questService.createQuest(project, {
@@ -186,7 +186,7 @@ export class QuestController {
         // Title-only quests are allowed; default the optional description to
         // "" so the NOT-NULL column + sanitizeHtml never see undefined.
         description: body.description ?? "",
-        zone: body.zone,
+        area: body.area,
         priority: body.priority,
         difficulty: body.difficulty,
         // `z.nullable` skips the schema's `minimum: 1`, so guard here: a
@@ -303,7 +303,7 @@ export class QuestController {
         status: questStatusSchema.optional(),
         search: z.string().optional(),
         milestoneId: z.integer().optional(),
-        zone: z.string().optional(),
+        area: z.string().optional(),
         tag: z.string().optional(),
       }),
       response: db.page(questResourceSchema),
@@ -331,8 +331,8 @@ export class QuestController {
         where.milestoneId = { eq: query.milestoneId };
       }
 
-      if (query.zone) {
-        where.zone = { eq: query.zone };
+      if (query.area) {
+        where.area = { eq: query.area };
       }
 
       if (query.tag) {
@@ -935,7 +935,7 @@ export class QuestController {
         .pick({
           title: true,
           description: true,
-          zone: true,
+          area: true,
           difficulty: true,
           priority: true,
           objectives: true,
@@ -1267,14 +1267,14 @@ export class QuestController {
     },
   });
 
-  moveQuestToZone = $action({
+  moveQuestToArea = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
       params: z.object({
         id: z.integer(),
       }),
       body: z.object({
-        newZone: z.string(),
+        newArea: z.string(),
       }),
       response: questResourceSchema,
     },
@@ -1287,9 +1287,9 @@ export class QuestController {
 
       await this.security.assertMember(quest.projectId, user);
 
-      // Update the quest's zone (zone)
+      // Update the quest's area (area)
       const updatedQuest = await this.quests.updateById(params.id, {
-        zone: body.newZone,
+        area: body.newArea,
         history: [
           ...quest.history,
           {
@@ -1300,11 +1300,11 @@ export class QuestController {
         ],
       });
 
-      // Ensure the new zone exists in the project's zones list
+      // Ensure the new area exists in the project's areas list
       const project = await this.projects.getById(quest.projectId);
-      if (!project.zones.includes(body.newZone)) {
+      if (!project.areas.includes(body.newArea)) {
         await this.projects.updateById(project.id, {
-          zones: [...project.zones, body.newZone],
+          areas: [...project.areas, body.newArea],
         });
       }
 

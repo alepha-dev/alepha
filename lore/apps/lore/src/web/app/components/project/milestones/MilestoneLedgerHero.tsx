@@ -11,7 +11,7 @@ import type { MilestoneWithCount } from "./ProjectMilestones.tsx";
 export interface MilestoneLedgerHeroProps {
   milestone: MilestoneWithCount;
   questCount: number;
-  zoneCount: number;
+  areaCount: number;
   contributorCount: number;
   onOpenDetail: () => void;
   /**
@@ -148,8 +148,8 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
           value={props.questCount}
         />
         <Stat
-          label={tr("milestone.ledger.stat.zones")}
-          value={props.zoneCount}
+          label={tr("milestone.ledger.stat.areas")}
+          value={props.areaCount}
         />
         <Stat
           label={tr("milestone.ledger.stat.members")}

@@ -104,7 +104,7 @@ export const projects = $entity({
      */
     public: z.boolean().optional(),
     icon: z.uuid().optional(),
-    zones: db.default(z.array(z.string()), []),
+    areas: db.default(z.array(z.string()), []),
     features: db.default(projectFeaturesSchema, defaultProjectFeatures),
     /**
      * ISO 8601 duration (e.g. "P14D", "P1M") for auto-closing milestones.

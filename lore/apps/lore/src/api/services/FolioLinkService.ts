@@ -151,7 +151,7 @@ export class FolioLinkService {
     // is the shortId separator (e.g. `quest#32`), NOT an anchor.
     let anchor: string | undefined;
     if (type === "folio") {
-      // For `[[#42#zones]]` (shortId + anchor) the FIRST `#` is part of
+      // For `[[#42#areas]]` (shortId + anchor) the FIRST `#` is part of
       // the ref; the second `#` starts the anchor. For `[[Title#anchor]]`
       // there's only one `#`. Detect the form by leading-`#`.
       if (body.startsWith("#")) {

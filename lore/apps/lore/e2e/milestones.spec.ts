@@ -73,7 +73,7 @@ test.describe("Milestones", () => {
           projectId,
           title: questTitle,
           description: "Seeded for the milestone changelog",
-          zone: "orm",
+          area: "orm",
           priority: "high",
           difficulty: 2,
           objectives: [],
@@ -106,7 +106,7 @@ test.describe("Milestones", () => {
       await page.reload();
       await page.waitForLoadState("networkidle");
 
-      // Zone heading + the quest row, under a LIVE pill.
+      // Area heading + the quest row, under a LIVE pill.
       await expect(page.getByText(/LIVE ·/).first()).toBeVisible({
         timeout: 15_000,
       });

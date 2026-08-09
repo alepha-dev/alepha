@@ -24,7 +24,7 @@ import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { MilestoneController } from "@/api/controllers/MilestoneController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Milestone } from "@/api/entities/milestones.ts";
-import type { MilestoneChangelogZone } from "@/api/schemas/milestoneChangelogZoneSchema.ts";
+import type { MilestoneChangelogArea } from "@/api/schemas/milestoneChangelogAreaSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentMilestonesAtom } from "@/web/app/atoms/currentMilestonesAtom.ts";
@@ -44,8 +44,8 @@ export type MilestoneWithCount = Milestone & { questCount: number };
 
 interface ChangelogState {
   markdown: string;
-  zones: MilestoneChangelogZone[];
-  stats: { questCount: number; zoneCount: number; contributorCount: number };
+  areas: MilestoneChangelogArea[];
+  stats: { questCount: number; areaCount: number; contributorCount: number };
 }
 
 interface BacklogState {
@@ -133,7 +133,7 @@ const ProjectMilestones = () => {
         if (cancelled) return;
         setChangelog({
           markdown: res.markdown,
-          zones: res.zones,
+          areas: res.areas,
           stats: res.stats,
         });
       })
@@ -342,7 +342,7 @@ const ProjectMilestones = () => {
         <MilestoneLedgerHero
           milestone={activeMilestone}
           questCount={changelog?.stats.questCount ?? activeMilestone.questCount}
-          zoneCount={changelog?.stats.zoneCount ?? 0}
+          areaCount={changelog?.stats.areaCount ?? 0}
           contributorCount={changelog?.stats.contributorCount ?? 0}
           onOpenDetail={() => setDetailMilestone(activeMilestone)}
           onClose={() => setCloseModal(activeMilestone)}
@@ -368,7 +368,7 @@ const ProjectMilestones = () => {
 
       <div className="border-border flex min-h-0 flex-1 flex-col border-t xl:flex-row">
         <MilestoneChangelogPanel
-          zones={changelog?.zones ?? []}
+          areas={changelog?.areas ?? []}
           statusLabel={String(statusLabel)}
           live={!!activeMilestone}
           loading={changelogLoading}

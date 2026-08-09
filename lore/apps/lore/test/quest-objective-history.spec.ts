@@ -81,7 +81,7 @@ const seedAcceptedQuest = async (
         projectId: project.data.id,
         title: "History Spam Probe",
         description: "<p>x</p>",
-        zone: "test",
+        area: "test",
         priority: "low",
         difficulty: 1,
         objectives,

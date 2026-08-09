@@ -510,7 +510,7 @@ export class ProjectController {
     },
   });
 
-  getZones = $action({
+  getAreas = $action({
     use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
     schema: {
       params: z.object({
@@ -531,25 +531,25 @@ export class ProjectController {
         where: { projectId: { eq: params.id } },
       });
 
-      // Aggregate per zone: union of project.zones + zones found on quests so
-      // empty zones (no quests) still appear, and orphan zones (quest with a
-      // zone the project forgot) aren't lost.
+      // Aggregate per area: union of project.areas + areas found on quests so
+      // empty areas (no quests) still appear, and orphan areas (quest with a
+      // area the project forgot) aren't lost.
       const stats = new Map<
         string,
         { questCount: number; firstQuestAt?: string }
       >();
-      for (const name of project.zones ?? []) {
+      for (const name of project.areas ?? []) {
         stats.set(name, { questCount: 0 });
       }
       for (const quest of projectQuests) {
-        const prev = stats.get(quest.zone) ?? { questCount: 0 };
+        const prev = stats.get(quest.area) ?? { questCount: 0 };
         const ts =
           typeof quest.createdAt === "string"
             ? quest.createdAt
             : new Date(quest.createdAt as never).toISOString();
         const firstQuestAt =
           prev.firstQuestAt && prev.firstQuestAt < ts ? prev.firstQuestAt : ts;
-        stats.set(quest.zone, {
+        stats.set(quest.area, {
           questCount: prev.questCount + 1,
           firstQuestAt,
         });
@@ -565,43 +565,43 @@ export class ProjectController {
     },
   });
 
-  renameZone = $action({
+  renameArea = $action({
     use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
     schema: {
       params: z.object({
         id: z.integer(),
       }),
       body: z.object({
-        oldZoneName: z.string(),
-        newZoneName: z.string().min(1),
+        oldAreaName: z.string(),
+        newAreaName: z.string().min(1),
       }),
       response: okSchema,
     },
     handler: async ({ params, body, user }) => {
       const project = this.owned.get<Project>();
 
-      // Update all quests with the old zone name to the new one
+      // Update all quests with the old area name to the new one
       const questsToUpdate = await this.quests.findMany({
         where: {
           projectId: { eq: params.id },
-          zone: { eq: body.oldZoneName },
+          area: { eq: body.oldAreaName },
         },
       });
 
-      // Update each quest's zone field
+      // Update each quest's area field
       for (const quest of questsToUpdate) {
         await this.quests.updateById(quest.id, {
-          zone: body.newZoneName,
+          area: body.newAreaName,
         });
       }
 
-      // Update the project's zones array
-      const updatedZones = project.zones.map((pkg) =>
-        pkg === body.oldZoneName ? body.newZoneName : pkg,
+      // Update the project's areas array
+      const updatedAreas = project.areas.map((pkg) =>
+        pkg === body.oldAreaName ? body.newAreaName : pkg,
       );
 
       await this.projects.updateById(params.id, {
-        zones: updatedZones,
+        areas: updatedAreas,
       });
 
       return { ok: true };

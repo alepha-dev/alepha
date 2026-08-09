@@ -13,21 +13,21 @@ export interface QuestListProps {
 const QuestList = (props: QuestListProps) => {
   const { tr } = useI18n<I18n, "en">();
 
-  const groupByZone = useMemo(() => {
+  const groupByArea = useMemo(() => {
     const grouped: Record<string, QuestResource[]> = {};
     for (const quest of props.quests) {
-      grouped[quest.zone] ??= [];
-      grouped[quest.zone].push(quest);
+      grouped[quest.area] ??= [];
+      grouped[quest.area].push(quest);
     }
     return grouped;
   }, [props.quests]);
 
-  const zoneList = useMemo(
-    () => Object.keys(groupByZone).sort(),
-    [groupByZone],
+  const areaList = useMemo(
+    () => Object.keys(groupByArea).sort(),
+    [groupByArea],
   );
 
-  if (zoneList.length === 0) {
+  if (areaList.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <div className="bg-muted text-muted-foreground inline-flex size-12 items-center justify-center rounded-full">
@@ -43,11 +43,11 @@ const QuestList = (props: QuestListProps) => {
 
   return (
     <div className="flex flex-col gap-2">
-      {zoneList.map((key) => (
+      {areaList.map((key) => (
         <QuestGroup
           key={key}
           name={key}
-          quests={groupByZone[key]}
+          quests={groupByArea[key]}
           collapseSignal={props.collapseSignal}
         />
       ))}

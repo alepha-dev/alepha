@@ -82,7 +82,13 @@ export class AlephaLoreParser {
       shortId,
       title,
       description: at("description"),
-      zone: at("zone"),
+      // Accepts the retired `zone` header as well as `area`. Export writes
+      // `area` only, so this is a one-way ramp for CSVs produced before the
+      // rename — a file someone exported last week should not fail to import
+      // this week, and silently dropping the column would be worse than
+      // failing. Removable once no pre-rename export is plausibly still in
+      // circulation.
+      area: at("area") || at("zone"),
       priority,
       difficulty,
       kanbanColumn: at("kanbanColumn"),

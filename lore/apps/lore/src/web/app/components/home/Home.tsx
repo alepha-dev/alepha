@@ -21,7 +21,7 @@ type Project = {
   title: string;
   updatedAt: string;
   public?: boolean;
-  zones: string[];
+  areas: string[];
   icon?: string;
 };
 
@@ -226,7 +226,7 @@ interface ProjectCardProps {
 }
 
 const ProjectCard = (props: ProjectCardProps) => {
-  const zones = props.project.zones.length;
+  const areas = props.project.areas.length;
   return (
     <Link
       href={props.href}
@@ -241,10 +241,10 @@ const ProjectCard = (props: ProjectCardProps) => {
             mismatches between the server render and client hydration (clock
             drift / unit boundary) → React #418. Render it client-only. */}
         Updated <ClientOnly>{props.relativeTime}</ClientOnly>
-        {zones > 0 && (
+        {areas > 0 && (
           <>
             {" · "}
-            {zones} zone{zones === 1 ? "" : "s"}
+            {areas} area{areas === 1 ? "" : "s"}
           </>
         )}
       </span>

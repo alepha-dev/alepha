@@ -56,8 +56,8 @@ export interface CreateQuestInput {
   title: string;
   /** Rich-text description — sanitized inside the service before insert. */
   description: string;
-  /** Target zone. Created on the project if it does not exist yet. */
-  zone: string;
+  /** Target area. Created on the project if it does not exist yet. */
+  area: string;
   priority?: Quest["priority"];
   difficulty?: number;
   /** Optional glanceable time estimate in minutes; `null`/`undefined` = none. */
@@ -75,7 +75,7 @@ export interface CreateQuestInput {
 
 /**
  * The single owner of quest-creation mechanics — the `quests.shortId`
- * sequence, the project zone-ensure step, HTML sanitization of the
+ * sequence, the project area-ensure step, HTML sanitization of the
  * description, and the `quests.create({...})` payload with defaults.
  *
  * Both `QuestController.createQuest` and
@@ -156,7 +156,7 @@ export class QuestService {
    * Create a quest. Holds the shared mechanics:
    * 1. allocate the next per-project `shortId`,
    * 2. sanitize the (attacker-controllable) rich-text description,
-   * 3. ensure `zone` exists on `project.zones`, persisting it if not,
+   * 3. ensure `area` exists on `project.areas`, persisting it if not,
    * 4. insert the `quests` row with the standard defaults.
    *
    * The caller passes the already-loaded `project` (it has done the auth
@@ -166,12 +166,12 @@ export class QuestService {
   async createQuest(project: Project, input: CreateQuestInput): Promise<Quest> {
     const shortId = await this.questShortId.next(String(input.projectId));
 
-    // Only register non-empty zones — an empty `zone` is a valid quest
-    // field but must not pollute the project's zone list.
-    if (input.zone && !project.zones.includes(input.zone)) {
-      project.zones.push(input.zone);
+    // Only register non-empty areas — an empty `area` is a valid quest
+    // field but must not pollute the project's area list.
+    if (input.area && !project.areas.includes(input.area)) {
+      project.areas.push(input.area);
       await this.projects.updateById(project.id, {
-        zones: project.zones,
+        areas: project.areas,
       });
     }
 
@@ -180,7 +180,7 @@ export class QuestService {
       shortId,
       title: input.title,
       description: sanitizeHtml(input.description),
-      zone: input.zone,
+      area: input.area,
       priority: input.priority ?? "medium",
       difficulty: input.difficulty ?? 2,
       estimateMinutes: input.estimateMinutes ?? undefined,

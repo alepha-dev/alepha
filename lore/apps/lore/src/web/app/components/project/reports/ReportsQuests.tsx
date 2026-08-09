@@ -21,17 +21,17 @@ export interface ReportsQuestsProps {
 
 /**
  * Reports "Quests" page — a flat dashboard of quest flow: a status funnel,
- * completed-vs-remaining breakdowns by zone and priority, cycle time, and an
+ * completed-vs-remaining breakdowns by area and priority, cycle time, and an
  * actionable list of the oldest open quests. Receives the loader result
  * directly as `props.quests`.
  */
 const ReportsQuests = (props: ReportsQuestsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
-  const { funnel, byZone, byPriority, cycleTimeByPriority, aging } =
+  const { funnel, byArea, byPriority, cycleTimeByPriority, aging } =
     props.quests;
 
-  // Stacked completed/remaining series — shared by the by-zone and by-priority
+  // Stacked completed/remaining series — shared by the by-area and by-priority
   // charts. `ChartContainer` exposes each key as a `--color-<key>` CSS
   // variable. Built in-body so labels can be translated via `tr`.
   const breakdownChartConfig = {
@@ -110,16 +110,16 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
         )}
       </ReportsSection>
 
-      <ReportsSection title={tr("reports.quests.byZone.title")}>
-        {byZone.length > 0 ? (
+      <ReportsSection title={tr("reports.quests.byArea.title")}>
+        {byArea.length > 0 ? (
           <ChartContainer
             config={breakdownChartConfig}
             className="aspect-auto h-[240px] w-full"
           >
-            <BarChart data={byZone}>
+            <BarChart data={byArea}>
               <CartesianGrid vertical={false} />
               <XAxis
-                dataKey="zone"
+                dataKey="area"
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
@@ -222,7 +222,7 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
                 </span>
                 <span className="truncate font-medium">{quest.title}</span>
                 <span className="text-muted-foreground shrink-0">
-                  {quest.zone}
+                  {quest.area}
                 </span>
                 <span className="text-muted-foreground shrink-0">
                   {quest.priority}

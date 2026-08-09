@@ -9,9 +9,9 @@ import { type Milestone, milestones } from "../entities/milestones.ts";
 import { projects } from "../entities/projects.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import {
-  type MilestoneChangelogZone,
-  milestoneChangelogZoneSchema,
-} from "../schemas/milestoneChangelogZoneSchema.ts";
+  type MilestoneChangelogArea,
+  milestoneChangelogAreaSchema,
+} from "../schemas/milestoneChangelogAreaSchema.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class MilestoneController {
@@ -219,12 +219,12 @@ export class MilestoneController {
         /**
          * The same entries the markdown lists, in structured form, so the
          * page can render `#ref · title · priority` rows. See
-         * `milestoneChangelogZoneSchema` for why both projections ship.
+         * `milestoneChangelogAreaSchema` for why both projections ship.
          */
-        zones: z.array(milestoneChangelogZoneSchema),
+        areas: z.array(milestoneChangelogAreaSchema),
         stats: z.object({
           questCount: z.integer(),
-          zoneCount: z.integer(),
+          areaCount: z.integer(),
           contributorCount: z.integer(),
         }),
       }),
@@ -234,17 +234,17 @@ export class MilestoneController {
       await this.security.assertMember(milestone.projectId, user);
 
       const completed = await this.queryCompletedInWindow(milestone);
-      const { zones, stats } = this.summarize(completed);
+      const { areas, stats } = this.summarize(completed);
 
       // Closed milestones return the frozen markdown snapshot when there is
-      // one; `zones` is recomputed either way, so a post-close quest edit
+      // one; `areas` is recomputed either way, so a post-close quest edit
       // shows up in the rows but not in the downloadable `.md`.
       if (milestone.closedAt && milestone.changelog) {
-        return { markdown: milestone.changelog, milestone, zones, stats };
+        return { markdown: milestone.changelog, milestone, areas, stats };
       }
 
       const { markdown } = this.renderChangelog(milestone, completed);
-      return { markdown, milestone, zones, stats };
+      return { markdown, milestone, areas, stats };
     },
   });
 
@@ -397,40 +397,40 @@ export class MilestoneController {
   }
 
   /**
-   * Group completed quests by zone, preserving insertion order so the
-   * structured zones and the rendered markdown list them identically.
+   * Group completed quests by area, preserving insertion order so the
+   * structured areas and the rendered markdown list them identically.
    */
-  protected groupByZone(completed: Quest[]): Map<string, Quest[]> {
-    const byZone = new Map<string, Quest[]>();
+  protected groupByArea(completed: Quest[]): Map<string, Quest[]> {
+    const byArea = new Map<string, Quest[]>();
     for (const quest of completed) {
-      const zone = quest.zone || "Uncategorized";
-      if (!byZone.has(zone)) byZone.set(zone, []);
-      byZone.get(zone)!.push(quest);
+      const area = quest.area || "Uncategorized";
+      if (!byArea.has(area)) byArea.set(area, []);
+      byArea.get(area)!.push(quest);
     }
-    return byZone;
+    return byArea;
   }
 
   /**
-   * The structured projection of a changelog: zone groups plus the headline
-   * counters. Shares `groupByZone` with `renderChangelog`, so the rows the
+   * The structured projection of a changelog: area groups plus the headline
+   * counters. Shares `groupByArea` with `renderChangelog`, so the rows the
    * page draws and the markdown it can download never disagree on grouping.
    */
   protected summarize(completed: Quest[]): {
-    zones: MilestoneChangelogZone[];
-    stats: { questCount: number; zoneCount: number; contributorCount: number };
+    areas: MilestoneChangelogArea[];
+    stats: { questCount: number; areaCount: number; contributorCount: number };
   } {
-    const byZone = this.groupByZone(completed);
+    const byArea = this.groupByArea(completed);
 
     const contributors = new Set<string>();
     for (const quest of completed) {
       if (quest.completedBy) contributors.add(quest.completedBy);
     }
 
-    const zones: MilestoneChangelogZone[] = [...byZone].map(
-      ([name, zoneQuests]) => ({
+    const areas: MilestoneChangelogArea[] = [...byArea].map(
+      ([name, areaQuests]) => ({
         name,
-        questCount: zoneQuests.length,
-        quests: zoneQuests.map((quest) => ({
+        questCount: areaQuests.length,
+        quests: areaQuests.map((quest) => ({
           shortId: quest.shortId,
           title: quest.title,
           priority: quest.priority,
@@ -439,10 +439,10 @@ export class MilestoneController {
     );
 
     return {
-      zones,
+      areas,
       stats: {
         questCount: completed.length,
-        zoneCount: byZone.size,
+        areaCount: byArea.size,
         contributorCount: contributors.size,
       },
     };
@@ -453,9 +453,9 @@ export class MilestoneController {
     completed: Quest[],
   ): {
     markdown: string;
-    stats: { questCount: number; zoneCount: number; contributorCount: number };
+    stats: { questCount: number; areaCount: number; contributorCount: number };
   } {
-    const byZone = this.groupByZone(completed);
+    const byArea = this.groupByArea(completed);
 
     const contributors = new Set<string>();
     for (const quest of completed) {
@@ -477,14 +477,14 @@ export class MilestoneController {
     }
 
     lines.push(
-      `> ${completed.length} quest(s) completed across ${byZone.size} zone(s) by ${contributors.size} member(s)`,
+      `> ${completed.length} quest(s) completed across ${byArea.size} area(s) by ${contributors.size} member(s)`,
     );
     lines.push("");
 
-    for (const [zone, zoneQuests] of byZone) {
-      lines.push(`## ${zone}`);
+    for (const [area, areaQuests] of byArea) {
+      lines.push(`## ${area}`);
       lines.push("");
-      for (const quest of zoneQuests) {
+      for (const quest of areaQuests) {
         const priority =
           quest.priority !== "optional" ? ` [${quest.priority}]` : "";
         lines.push(`- ${quest.title}${priority}`);
@@ -496,7 +496,7 @@ export class MilestoneController {
       markdown: lines.join("\n"),
       stats: {
         questCount: completed.length,
-        zoneCount: byZone.size,
+        areaCount: byArea.size,
         contributorCount: contributors.size,
       },
     };
