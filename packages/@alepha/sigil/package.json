@@ -23,6 +23,7 @@
       "default": "./src/index.ts"
     },
     "./server": "./src/server/index.ts",
+    "./ingest": "./src/ingest/index.ts",
     "./react": "./src/browser/react.ts",
     "./messages": "./src/shared/sigilMessages.ts",
     "./context": "./src/shared/sigilFeedbackContext.ts",

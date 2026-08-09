@@ -1,4 +1,5 @@
-import { VITALS_BUCKETS, type VitalMetric } from "@alepha/sigil/vitals";
+import type { AnalyticsVitalHistograms } from "@alepha/sigil/ingest";
+import { summariseVitals } from "@alepha/sigil/ingest";
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
@@ -363,64 +364,24 @@ export class InsightsController {
       ],
     });
 
-    const histograms = new Map<string, Map<number, number>>();
+    // Keyed by metric as a plain record, which is the shape `AnalyticsStore`
+    // returns — a Map keyed by metric would read the same and silently answer
+    // `undefined` to every lookup in `summariseVitals`.
+    const histograms: AnalyticsVitalHistograms = {};
     for (const row of rows) {
-      const histogram = histograms.get(row.metric) ?? new Map<number, number>();
+      const histogram = histograms[row.metric] ?? new Map<number, number>();
       for (let index = 0; index < VITALS_BUCKET_COUNT; index++) {
         const count = row[vitalsBucketColumn(index)] ?? 0;
         if (count === 0) continue;
         histogram.set(index, (histogram.get(index) ?? 0) + count);
       }
-      histograms.set(row.metric, histogram);
+      histograms[row.metric] = histogram;
     }
 
-    const p75 = (metric: VitalMetric): number | null =>
-      this.walkP75(histograms.get(metric), metric);
-
-    const cls = p75("cls");
-    return {
-      lcp: p75("lcp"),
-      // Stored ×1000 as an integer to keep the buckets free of float drift.
-      cls: cls === null ? null : cls / 1000,
-      inp: p75("inp"),
-      fcp: p75("fcp"),
-      ttfb: p75("ttfb"),
-    };
-  }
-
-  /**
-   * Walk a bucket histogram to the 75th percentile.
-   *
-   * Returns the **upper boundary** of the bucket the percentile falls in. A
-   * sample that overflowed every boundary has no upper bound to report, so the
-   * last boundary is returned as a conservative floor: the honest reading is
-   * "at least this bad", never "exactly this".
-   */
-  protected walkP75(
-    histogram: Map<number, number> | undefined,
-    metric: VitalMetric,
-  ): number | null {
-    if (!histogram || histogram.size === 0) {
-      return null;
-    }
-
-    let total = 0;
-    for (const count of histogram.values()) {
-      total += count;
-    }
-    if (total === 0) {
-      return null;
-    }
-
-    const boundaries = VITALS_BUCKETS[metric];
-    const target = Math.ceil(0.75 * total);
-    let cumulative = 0;
-    for (let index = 0; index <= boundaries.length; index++) {
-      cumulative += histogram.get(index) ?? 0;
-      if (cumulative >= target) {
-        return boundaries[Math.min(index, boundaries.length - 1)];
-      }
-    }
-    return boundaries[boundaries.length - 1];
+    // The walk and the CLS un-scaling live in `@alepha/sigil/ingest`: every
+    // AnalyticsStore implementation returns histograms and none of them should
+    // re-derive this, least of all the ÷1000 that undoes the collector's
+    // integer scaling.
+    return summariseVitals(histograms);
   }
 }
