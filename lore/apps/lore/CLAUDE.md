@@ -589,15 +589,21 @@ rule is that the flood never reaches the Worker.
 
 ## Tests
 
-### ⚠️ `yarn w lore test` can be green while `yarn test` is red (2026-08-06)
+### ⚠️ Two vitest configs, and neither runner can catch what the other is missing (2026-08-06 / 2026-08-09)
 
 **Verify with `yarn test` from the repo root.** That is what CI runs, and the workspace command does not stand in for it.
 
-The root `vitest.config.ts`'s "node" project has no `include` filter (removed to keep WebStorm happy), so it collects every spec in the repo — lore's included — under the *root* config. `apps/lore/vitest.config.ts` is never consulted from the root; it only applies to `yarn w lore test`.
+The root `vitest.config.ts`'s "node" project has no `include` filter (removed to keep WebStorm happy), so it collects every spec in the repo — lore's included — under the *root* config. `apps/lore/vitest.config.ts` is never consulted from the root; it only applies to `yarn w lore test`. **One hazard, two faces** — it has now produced a red suite in each direction, and the direction is not the lesson:
 
-It stayed hidden because no lore spec had ever imported `AppRouter.ts`, which is the first thing that reaches `@/`-aliased app source transitively. `test/app-routes.spec.ts` did, and died at import time under `yarn test` (`Cannot find package '@/api/schemas/…'`) while passing under `yarn w lore test` — the `@/` alias it needed had just been added to `apps/lore/vitest.config.ts`, the one file the workspace command loads and the root command ignores. The command used to verify the fix was structurally incapable of failing on it. Same shape as the `ADD COLUMN … NOT NULL` trap below — a check that could not have gone red — different mechanism: wrong runner, not empty database.
+**Face 1 — root red, workspace green (`@/` alias).** It stayed hidden because no lore spec had ever imported `AppRouter.ts`, which is the first thing that reaches `@/`-aliased app source transitively. `test/app-routes.spec.ts` did, and died at import time under `yarn test` (`Cannot find package '@/api/schemas/…'`) while passing under `yarn w lore test` — the `@/` alias it needed had just been added to `apps/lore/vitest.config.ts`, the one file the workspace command loads and the root command ignores. The command used to verify the fix was structurally incapable of failing on it.
 
-The alias now lives in both configs, and the root copy is load-bearing: `apps/playground` and `apps/shop` declare the same `@/* → ./src/*` tsconfig mapping without writing a single `@/` import today, so the first one added in either app resolves into `apps/lore/src` under a root run — typecheck green, wrong file imported. At that point the repo-wide alias has to become per-project.
+**Face 2 — workspace red, root green (`execArgv`).** `useFolioPanes.browser.spec.tsx` failed all 8 cases under `yarn w lore test` with `Cannot read properties of undefined (reading 'clear')` on `window.localStorage.clear()`, and passed under `yarn test`. Node ≥ 25 ships a native Web Storage global; vitest's jsdom environment will not overwrite a global that already exists, so the unbacked native `localStorage` shadows jsdom's real `Storage`. The root config disables it with `execArgv: ["--no-experimental-webstorage"]`; the app config had never grown the line. CI runs the root command, so CI was green and had always been green — the failure only ever appeared under the command a developer working inside `apps/lore` reaches for first.
+
+Both are the same shape as the `ADD COLUMN … NOT NULL` trap below — a check that could not have gone red — with a different mechanism: wrong runner, not empty database.
+
+**The fix for face 2 was structural, not the missing line.** The browser project now lives in `vitest.jsdom.ts` at the repo root and both configs call `jsdomProject(include)`, each supplying nothing but its own `include`. Add a jsdom setting there, never to a caller. Guarding the spec instead (`window.localStorage?.clear()`) was rejected: it would pass while still running in the wrong environment, so every assertion about persisted pane preferences would be testing nothing.
+
+The `@/` alias is still duplicated in both configs, and the root copy is load-bearing: `apps/playground` and `apps/shop` declare the same `@/* → ./src/*` tsconfig mapping without writing a single `@/` import today, so the first one added in either app resolves into `apps/lore/src` under a root run — typecheck green, wrong file imported. At that point the repo-wide alias has to become per-project, which is why it is not shared the way the jsdom project is.
 
 56 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
 
