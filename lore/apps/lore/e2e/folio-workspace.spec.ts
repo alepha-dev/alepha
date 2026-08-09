@@ -336,15 +336,121 @@ test.describe("Folio workspace", () => {
     await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible({
       timeout: 15_000,
     });
-    // The empty state, and none of the editing chrome: there is no
-    // document to format, so neither row should be mounted.
+    // The empty state keeps the menubar (#138) — the workspace should not
+    // lose its identity on the surface you land on — but not the formatting
+    // toolbar, which would be icon buttons that format nothing.
     await expect(page.getByText(/no folio open/i)).toBeVisible();
-    await expect(page.locator('[data-slot="menubar"]')).toHaveCount(0);
+    await expect(page.locator('[data-slot="folio-menubar"]')).toBeVisible();
+    await expect(page.locator('[data-slot="folio-toolbar"]')).toHaveCount(0);
     // By role, not by class: MDXEditor gives its popup container and its
     // placeholder the same classes as the real contenteditable.
     await expect(
       page.getByRole("textbox", { name: /editable markdown/i }),
     ).toHaveCount(0);
+  });
+
+  /**
+   * Regression guard for #139. `FoliosLayout` mounts the workspace inside a
+   * ROW flex container, where a flex item defaults to `flex: 0 1 auto` and
+   * sizes to its content — so the workspace silently stopped short of the
+   * content area's right edge. Asserted as a measurement rather than a
+   * screenshot because the failure was ~260px of dead space, not a visual
+   * regression anyone would catch by eye in CI.
+   */
+  test("08b — the workspace fills the content area at a wide viewport", async () => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.goto(folioUrl);
+    await expect(page.locator('[data-slot="folio-menubar"]')).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const gap = await page.evaluate(() => {
+      const right = (sel: string) => {
+        const el = document.querySelector(sel);
+        return el ? el.getBoundingClientRect().right : 0;
+      };
+      // The layout `<main>` is the content area the workspace must fill.
+      const main = document.querySelector("main");
+      return (
+        (main?.getBoundingClientRect().right ?? 0) -
+        right('[data-slot="folio-menubar"]')
+      );
+    });
+
+    // 1px of border, not 260px of dead space.
+    expect(gap).toBeLessThanOrEqual(2);
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+  });
+
+  test("09b — the empty-state menubar keeps its shape, only its enablement changes", async () => {
+    await page.goto(`/p/${projectId}/folios`);
+    await expect(page.locator('[data-slot="folio-menubar"]')).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const menubar = page.locator('[data-slot="folio-menubar"]');
+
+    await test.step("Folio: create is live, everything acting on a document is not", async () => {
+      await menubar.getByRole("menuitem", { name: "Folio" }).click();
+      // Present but disabled, never removed — a menu that changes its item
+      // list between states reads as a different surface.
+      await expect(
+        page.getByRole("menuitem", { name: "New folio" }),
+      ).toBeEnabled();
+      await expect(
+        page.getByRole("menuitem", { name: "New directory" }),
+      ).toBeEnabled();
+      // Anchored-but-not-terminated: a menu item's accessible name carries
+      // its shortcut glyph too ("Save ⌘S"), so `/^save$/` matches nothing.
+      for (const name of [/^save/i, /delete folio/i, /export as/i]) {
+        await expect(page.getByRole("menuitem", { name })).toBeDisabled();
+      }
+      await page.keyboard.press("Escape");
+    });
+
+    await test.step("View: the pane toggles stay live", async () => {
+      await menubar.getByRole("menuitem", { name: "View" }).click();
+      await expect(
+        page.getByRole("menuitem", { name: /folio tree/i }),
+      ).toBeEnabled();
+      await expect(
+        page.getByRole("menuitem", { name: /^inspector/i }),
+      ).toBeEnabled();
+      await expect(
+        page.getByRole("menuitem", { name: /rich text/i }),
+      ).toBeDisabled();
+
+      await page.getByRole("menuitem", { name: /folio tree/i }).click();
+      await expect(page.locator('[data-slot="folio-tree"]')).toBeHidden();
+
+      // The toggle persists in localStorage, and these tests share one page
+      // in serial mode — put it back so the next test still has a tree.
+      await menubar.getByRole("menuitem", { name: "View" }).click();
+      await page.getByRole("menuitem", { name: /folio tree/i }).click();
+      await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible();
+    });
+  });
+
+  test("09c — New directory works from the empty-state menubar", async () => {
+    await page.goto(`/p/${projectId}/folios`);
+    await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await page
+      .locator('[data-slot="folio-menubar"]')
+      .getByRole("menuitem", { name: "Folio" })
+      .click();
+    await page.getByRole("menuitem", { name: "New directory" }).click();
+
+    // The tree creates the row and drops straight into inline rename — the
+    // reason the menubar routes through the tree's own model rather than
+    // instantiating a second one.
+    await expect(
+      page.locator('[data-slot="folio-tree"]').getByRole("textbox"),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.keyboard.press("Enter");
   });
 
   test("10 — the tree's New folio button starts a folio", async () => {

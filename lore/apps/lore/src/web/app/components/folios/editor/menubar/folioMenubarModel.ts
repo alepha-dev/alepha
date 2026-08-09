@@ -73,6 +73,16 @@ export interface FolioMenuItem {
    * nothing that would write to a body the user cannot read.
    */
   availableWhenLocked?: boolean;
+  /**
+   * Stays usable at `/folios` with no folio open at all. Only creating
+   * something and moving the panes around qualify — there is no document,
+   * so there is nothing to save, format, export or version.
+   *
+   * The menubar still renders every other item, disabled: the menus must
+   * keep their shape between the empty and open states, or the surface
+   * appears to change identity when you open a folio.
+   */
+  availableWithoutFolio?: boolean;
 }
 
 export type FolioMenuEntry = FolioMenuItem | { separator: true };
@@ -99,11 +109,13 @@ export const FOLIO_MENUS: FolioMenu[] = [
         id: "folio.new",
         labelKey: "folios.editor.action.new",
         availableWhenLocked: true,
+        availableWithoutFolio: true,
       },
       {
         id: "folio.newDirectory",
         labelKey: "folios.editor.action.new-directory",
         availableWhenLocked: true,
+        availableWithoutFolio: true,
       },
       sep,
       {
@@ -267,6 +279,7 @@ export const FOLIO_MENUS: FolioMenu[] = [
         shortcut: "⌘\\",
         binding: "mod+\\",
         availableWhenLocked: true,
+        availableWithoutFolio: true,
       },
       {
         id: "view.inspector",
@@ -274,6 +287,7 @@ export const FOLIO_MENUS: FolioMenu[] = [
         shortcut: "⇧⌘\\",
         binding: "mod+shift+\\",
         availableWhenLocked: true,
+        availableWithoutFolio: true,
       },
       sep,
       {
@@ -282,6 +296,7 @@ export const FOLIO_MENUS: FolioMenu[] = [
         shortcut: "⌘.",
         binding: "mod+.",
         availableWhenLocked: true,
+        availableWithoutFolio: true,
       },
     ],
   },
@@ -338,6 +353,13 @@ const NEEDS_SAVED_FOLIO = new Set<FolioActionId>([
 
 export interface FolioActionState {
   /**
+   * `/folios` with nothing open — no document at all, as opposed to
+   * `isNew`, which is an empty but real document you can type into. The
+   * strongest of the three degraded states: it wins over `isNew` and
+   * `locked`, because neither can be true without a document.
+   */
+  noFolio?: boolean;
+  /**
    * The folio is protected and the passphrase has not been supplied in
    * this session, so the body is ciphertext. Separate from `isProtected`:
    * a folio can be unlocked (`locked: false`) but still protected
@@ -365,8 +387,11 @@ export const isFolioActionEnabled = (
   id: FolioActionId,
   state: FolioActionState,
 ): boolean => {
+  const item = folioMenuItems().find((i) => i.id === id);
+  // Checked first: with no document open there is no draft to be new or
+  // locked, so the other two branches have nothing to reason about.
+  if (state.noFolio) return item?.availableWithoutFolio === true;
   if (state.isNew && NEEDS_SAVED_FOLIO.has(id)) return false;
   if (!state.locked) return true;
-  const item = folioMenuItems().find((i) => i.id === id);
   return item?.availableWhenLocked === true;
 };

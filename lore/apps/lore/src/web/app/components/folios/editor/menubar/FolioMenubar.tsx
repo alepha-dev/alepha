@@ -10,7 +10,7 @@ import {
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { type ReactElement, useEffect } from "react";
+import type { ReactElement } from "react";
 import type { I18n } from "../../../../services/I18n.ts";
 import type { FolioActionHandlers } from "../useFolioActions.ts";
 import {
@@ -19,7 +19,6 @@ import {
   type FolioMenuItem,
   isFolioActionEnabled,
 } from "./folioMenubarModel.ts";
-import { useEditorRealmCommands } from "./useEditorRealmCommands.ts";
 
 export interface FolioMenubarProps {
   handlers: FolioActionHandlers;
@@ -34,15 +33,6 @@ export interface FolioMenubarProps {
    */
   hasImageUpload: boolean;
   /**
-   * Hands the real MDXEditor realm-command dispatchers this component
-   * computes (`useEditorRealmCommands`) back up to `useFolioActions`, so
-   * that hook's `handlers` — used for BOTH this menu's own clicks and the
-   * single, always-mounted `useFolioShortcuts` binding in `FolioDocument`
-   * — can actually reach them. See `useFolioActions.ts`'s doc on
-   * `editorCommandsRef` for the full reasoning.
-   */
-  onEditorCommands: (commands: Partial<FolioActionHandlers>) => void;
-  /**
    * The save-state line, right-aligned on this row. It lives here rather
    * than on the toolbar because that is where the design puts it — the
    * toolbar's own copy is gated behind `showDocActions`, which the shipped
@@ -54,36 +44,28 @@ export interface FolioMenubarProps {
 
 /**
  * The Folio / Edit / Insert / View / History menubar. Renders `FOLIO_MENUS`
- * (Task 4) as-is — labels, shortcuts, syntax hints and per-state
- * availability all come from that model; nothing here restates them.
+ * as-is — labels, shortcuts, syntax hints and per-state availability all
+ * come from that model; nothing here restates them.
  *
- * Mounts through `MarkdownEditor`'s `renderToolbar`
- * (`MarkdownEditorInner.tsx`), i.e. INSIDE MDXEditor's realm provider —
- * the only place `useEditorRealmCommands`'s `usePublisher`/`useCellValue`
- * calls can resolve. `FolioToolbar`, its sibling in the same
- * `renderToolbar` output, mounts the same way for the same reason.
+ * Deliberately free of any MDXEditor dependency. It mounts in two places
+ * that do not share a realm:
+ *
+ * - through `FolioEditorMenubar`, inside `MarkdownEditor`'s `renderToolbar`
+ *   and therefore inside MDXEditor's realm provider, which is the only
+ *   context where the `edit.*` / `insert.*` dispatchers can be built;
+ * - straight into the workspace's chrome slot on the empty `/folios` state,
+ *   where no editor is mounted at all and there is no realm to resolve
+ *   against.
+ *
+ * The second case is why the realm wiring lives in the wrapper rather than
+ * here: hooks cannot be called conditionally, so a single component that
+ * called `useEditorRealmCommands` could never render without an editor.
+ * Availability in that state comes from `FolioActionState.noFolio`, so the
+ * menus keep their exact shape and only their enablement changes.
  */
 const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
-  const editorCommands = useEditorRealmCommands();
-
-  // `onReady`/`editorCommands` change identity every render (neither is
-  // memoized — cheap to recompute, not worth a `useMemo`/`useCallback`
-  // pair just to skip a plain object assignment), so this effect re-runs
-  // every render too. That is fine: the assignment itself is free, and
-  // running it via `useEffect` — rather than during render, the way
-  // `MarkdownEditorInner.tsx`'s `renderToolbarRef` has to — is safe here
-  // specifically because nothing reads `editorCommandsRef` synchronously
-  // within the SAME render pass; it's only ever read later, from a click
-  // or keydown handler, by which point any commit strategy has already
-  // flushed. The cleanup clears the ref on unmount (the folio locks, or
-  // this folio's session ends) so a stale dispatcher — closed over an
-  // editor instance MDXEditor is about to tear down — can never fire.
-  useEffect(() => {
-    props.onEditorCommands(editorCommands);
-    return () => props.onEditorCommands({});
-  }, [editorCommands, props]);
 
   const dispatch = (id: FolioMenuItem["id"]): void => {
     props.handlers[id]();
@@ -117,7 +99,10 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
   // with the theme's own tokens rather than the mockup's raw oklch values,
   // which are dark-only where Lore ships both modes.
   return (
-    <div className="border-border bg-muted/40 flex h-[34px] flex-none items-center border-b pr-3 pl-2.5">
+    <div
+      data-slot="folio-menubar"
+      className="border-border bg-muted/40 flex h-[34px] flex-none items-center border-b pr-3 pl-2.5"
+    >
       <Menubar className="h-auto gap-0.5 rounded-none border-none bg-transparent p-0">
         {FOLIO_MENUS.map((menu) => (
           <MenubarMenu key={menu.id}>

@@ -106,7 +106,10 @@ const FolioToolbar = (props: FolioToolbarProps): ReactElement => {
   // row's own copy behind `showDocActions`, which the shipped state has
   // switched off. Duplicating it in both places would just be noise.
   return (
-    <div className="border-border bg-muted/60 flex h-[52px] flex-none items-center gap-1 border-b pr-3 pl-2.5">
+    <div
+      data-slot="folio-toolbar"
+      className="border-border bg-muted/60 flex h-[52px] flex-none items-center gap-1 border-b pr-3 pl-2.5"
+    >
       {viewMode === "rich-text" && (
         <div className="flex items-center gap-1">
           <FolioToolbarButton
