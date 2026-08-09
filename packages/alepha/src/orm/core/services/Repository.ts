@@ -1058,6 +1058,149 @@ export abstract class Repository<T extends ZObject> {
     }
   }
 
+  /**
+   * Insert or update many entities in ONE statement.
+   *
+   * The reason to reach for this over a loop of {@link upsert} is round-trips:
+   * against a remote database (D1 in particular) a batch of twenty becomes one
+   * network call instead of twenty, which is usually the whole cost.
+   *
+   * ⚠️ **Two rules the single-row version does not have.**
+   *
+   * 1. **No duplicate conflict targets within one call.** The engines disagree,
+   *    which is worse than either behaviour alone: Postgres refuses outright
+   *    ("ON CONFLICT DO UPDATE command cannot affect row a second time"), and
+   *    SQLite quietly applies them one after another. Code written and tested
+   *    against SQLite therefore passes locally and throws in Postgres. Fold
+   *    duplicates before calling.
+   * 2. **Counter updates must read `excluded`.** `set: { hits: sql`hits + 1` }`
+   *    is correct for one row and wrong for a batch: it adds one no matter how
+   *    many the batch carried. Use the incoming value instead, via the
+   *    `excluded` pseudo-table both engines expose:
+   *    `set: { hits: sql`${t.hits} + excluded.hits` }`.
+   *
+   * @param values The rows to insert. Empty array is a no-op.
+   * @param opts.target The column(s) to detect conflicts on. Defaults to the primary key.
+   * @param opts.set The fields to update on conflict. Defaults to each row's own insert data (minus conflict target columns) — note that with a shared `set` this is one clause for every row, which is why counters have to go through `excluded`.
+   * @returns The created or updated entities.
+   *
+   * @example
+   * ```ts
+   * // Accumulate page-view counters in one round-trip.
+   * await repo.upsertMany(
+   *   [
+   *     { path: "/", hour, count: 4 },
+   *     { path: "/about", hour, count: 1 },
+   *   ],
+   *   {
+   *     target: ["path", "hour"],
+   *     set: { count: sql`${repo.table.count} + excluded.count` },
+   *   },
+   * );
+   * ```
+   */
+  public async upsertMany(
+    values: Array<Infer<TObjectInsert<T>>>,
+    opts: StatementOptions & {
+      target?: Array<keyof Infer<T>>;
+      set?: WithSQL<Infer<TObjectUpdate<T>>>;
+    } = {},
+  ): Promise<Infer<T>[]> {
+    if (values.length === 0) {
+      return [];
+    }
+
+    for (const value of values) {
+      this.stampOrganization(value);
+    }
+
+    await this.alepha.events.emit("repository:create:before", {
+      tableName: this.tableName,
+      data: values,
+    });
+
+    const targetKeys = opts.target ?? [this.id.key];
+    const targetColumns = targetKeys.map((key) => this.col(key as string));
+
+    let setData: any;
+    if (opts.set) {
+      // Copy rather than stamp in place — same reasoning as `upsert`.
+      setData = { ...(opts.set as Record<string, unknown>) };
+    } else {
+      // Without an explicit clause there is no per-row `set` to build: one
+      // statement carries exactly one `DO UPDATE`. Fall back to `excluded`, so
+      // each conflicting row is updated from the values it arrived with rather
+      // than from whichever row of the batch happened to be first.
+      setData = {};
+      const sample = values[0] as Record<string, unknown>;
+      for (const key of Object.keys(sample)) {
+        if (targetKeys.includes(key as keyof Infer<T>)) continue;
+        if (key === this.id.key) continue;
+        setData[key] = sql.raw(`excluded.${this.col(key).name}`);
+      }
+    }
+
+    const updatedAtField = getAttrFields(
+      this.entity.schema,
+      PG_UPDATED_AT,
+    )?.[0];
+
+    if (updatedAtField) {
+      setData[updatedAtField.key] =
+        opts.now ?? this.dateTimeProvider.nowISOString();
+    }
+
+    // Same empty-SET guard as `upsert`: drizzle rejects a `DO UPDATE` with
+    // nothing to set, and `DO NOTHING` would not return the conflicting rows.
+    if (Object.keys(setData).length === 0) {
+      for (const key of targetKeys) {
+        setData[key as string] = sql.raw(
+          `excluded.${this.col(key as string).name}`,
+        );
+      }
+    }
+
+    setData = this.cast(setData, false) as any;
+
+    const setWhere =
+      this.organizationField() || this.deletedAt()
+        ? this.toSQL(
+            this.withOrganization(
+              this.withDeletedAt({} as PgQueryWhere<T>, opts),
+            ),
+          )
+        : undefined;
+
+    try {
+      const rows = await this.rawInsert(opts)
+        .values(values.map((value) => this.cast(value ?? {}, true)))
+        .onConflictDoUpdate({
+          target: targetColumns,
+          set: setData,
+          ...(setWhere ? { setWhere } : {}),
+        })
+        .returning(this.table);
+
+      const entities = rows.map((row: any) =>
+        this.clean(row, this.entity.schema),
+      );
+
+      this.dbCache
+        .invalidateTable(this.tableName)
+        .catch((err) => this.log.warn("Cache invalidation failed", err));
+
+      await this.alepha.events.emit("repository:create:after", {
+        tableName: this.tableName,
+        data: values,
+        entity: entities,
+      });
+
+      return entities;
+    } catch (error) {
+      throw this.handleError(error, "Upsert query has failed");
+    }
+  }
+
   // -------------------------------------------------------------------------------------------------------------------
 
   /**

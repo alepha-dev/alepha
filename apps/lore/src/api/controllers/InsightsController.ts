@@ -11,7 +11,11 @@ import {
   UNIQUES_COLLAPSED_HASH,
 } from "../entities/sigilUniquesDaily.ts";
 import { sigilViewsHourly } from "../entities/sigilViewsHourly.ts";
-import { sigilVitalsHourly } from "../entities/sigilVitalsHourly.ts";
+import {
+  sigilVitalsHourly,
+  VITALS_BUCKET_COUNT,
+  vitalsBucketColumn,
+} from "../entities/sigilVitalsHourly.ts";
 import {
   type InsightsResource,
   insightsResourceSchema,
@@ -341,23 +345,31 @@ export class InsightsController {
     sigilIds: string[],
     since: string,
   ): Promise<InsightsResource["vitals"]> {
-    // One read for the window, folded in memory. The histogram lives in a JSON
-    // column, so there is nothing for SQL to SUM — and the row count is bounded
-    // by (hour × metric × path), not by traffic.
+    // One read for the window, folded in memory. SQL could SUM the bucket
+    // columns now that they are columns, but the fold is per metric and the row
+    // count is bounded by (hour × metric × path) rather than by traffic — so a
+    // GROUP BY would buy nothing and cost a second shape to keep in step with
+    // the histogram walk below.
     const rows = await this.vitals.findMany({
       where: {
         sigilId: { inArray: sigilIds },
         hour: { gte: since },
       },
-      columns: ["metric", "bucketCounts"],
+      columns: [
+        "metric",
+        ...Array.from({ length: VITALS_BUCKET_COUNT }, (_, i) =>
+          vitalsBucketColumn(i),
+        ),
+      ],
     });
 
     const histograms = new Map<string, Map<number, number>>();
     for (const row of rows) {
       const histogram = histograms.get(row.metric) ?? new Map<number, number>();
-      for (const [bucket, count] of Object.entries(row.bucketCounts ?? {})) {
-        const index = Number(bucket);
-        histogram.set(index, (histogram.get(index) ?? 0) + Number(count));
+      for (let index = 0; index < VITALS_BUCKET_COUNT; index++) {
+        const count = row[vitalsBucketColumn(index)] ?? 0;
+        if (count === 0) continue;
+        histogram.set(index, (histogram.get(index) ?? 0) + count);
       }
       histograms.set(row.metric, histogram);
     }

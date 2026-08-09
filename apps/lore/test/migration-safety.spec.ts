@@ -286,6 +286,77 @@ describe("migration safety", () => {
     db.close();
   });
 
+  /**
+   * The vitals histogram moved from a `bucket_counts` JSON column to seven
+   * integer columns. drizzle-kit generated the seven `ADD COLUMN`s and the
+   * `DROP COLUMN` and **nothing in between** — applied as generated it would
+   * have thrown away every histogram in production.
+   *
+   * The backfill was added by hand, which means nothing regenerates it: a
+   * future `db:generate` that rewrites this migration drops it silently. This
+   * runs the real SQL against a real SQLite database with a real row to make
+   * that a red test rather than a quiet data loss.
+   */
+  it("carries the vitals histogram across the JSON-to-columns migration", ({
+    expect,
+  }) => {
+    const require = createRequire(import.meta.url);
+    const Database = require("better-sqlite3");
+    const db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+
+    const apply = (dir: string) => {
+      for (const raw of migrationSql(dir).split("--> statement-breakpoint")) {
+        const statement = raw.trim();
+        if (statement) db.exec(statement);
+      }
+    };
+
+    const dirs = migrationDirs();
+    const bucketColumns = dirs.find((dir) =>
+      dir.endsWith("_vitals_bucket_columns"),
+    );
+    expect(
+      bucketColumns,
+      "the vitals bucket-columns migration is missing",
+    ).toBeDefined();
+
+    for (const dir of dirs.slice(0, dirs.indexOf(bucketColumns!))) {
+      apply(dir);
+    }
+
+    const userId = "00000000-0000-4000-8000-000000000002";
+    db.exec(`INSERT INTO users (id) VALUES ('${userId}')`);
+    db.exec(
+      `INSERT INTO projects (id, title, created_by) VALUES (1, 'Lore', '${userId}')`,
+    );
+    db.exec(
+      `INSERT INTO sigils (id, project_id, name, token_hash, token_prefix) VALUES ('s1', 1, 'app', 'h', 'pfx')`,
+    );
+    // Two shapes that both have to survive: a populated histogram, and an
+    // empty one (a row can exist with no samples in any bucket yet).
+    db.exec(
+      `INSERT INTO sigil_vitals_hourly (sigil_id, hour, metric, path, bucket_counts)
+       VALUES ('s1', '2026-01-01T10', 'lcp', '/', '{"0":2,"5":1}'),
+              ('s1', '2026-01-01T11', 'cls', '/', '{}')`,
+    );
+
+    apply(bucketColumns!);
+
+    const rows = db
+      .prepare(
+        "SELECT metric, b0, b1, b2, b3, b4, b5, b6 FROM sigil_vitals_hourly ORDER BY hour",
+      )
+      .all();
+
+    expect(rows).toEqual([
+      { metric: "lcp", b0: 2, b1: 0, b2: 0, b3: 0, b4: 0, b5: 1, b6: 0 },
+      { metric: "cls", b0: 0, b1: 0, b2: 0, b3: 0, b4: 0, b5: 0, b6: 0 },
+    ]);
+
+    db.close();
+  });
+
   it("boots a fresh database with the sigil family present", async ({
     expect,
   }) => {

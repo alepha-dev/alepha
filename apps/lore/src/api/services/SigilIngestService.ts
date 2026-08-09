@@ -13,7 +13,12 @@ import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
 import { sigilUniquesDaily } from "../entities/sigilUniquesDaily.ts";
 import { sigilViewsHourly } from "../entities/sigilViewsHourly.ts";
-import { sigilVitalsHourly } from "../entities/sigilVitalsHourly.ts";
+import {
+  sigilVitalsHourly,
+  VITALS_BUCKET_COUNT,
+  type VitalsBucketColumn,
+  vitalsBucketColumn,
+} from "../entities/sigilVitalsHourly.ts";
 import { BlightRuleService } from "./BlightRuleService.ts";
 
 /**
@@ -295,27 +300,47 @@ export class SigilIngestService {
   ): Promise<void> {
     const day = this.dayBucket(now);
 
+    // Folded before the write, not just for speed: one statement carries one
+    // `ON CONFLICT` clause, and Postgres refuses to touch the same row twice
+    // within it. Folding is what makes the batch both legal and correct — the
+    // count each bucket contributes has to be its own, which is why the SET
+    // clause below reads `excluded` rather than adding a literal 1.
+    const buckets = new Map<
+      string,
+      { hour: string; path: string; country: string; count: number }
+    >();
     for (const view of views) {
-      // `INSERT … ON CONFLICT DO UPDATE count = count + 1`, in one statement.
-      // Reading then writing would lose views under concurrency, which is
-      // exactly the load this table exists to measure.
-      await this.views.upsert(
-        {
-          sigilId: sigil.id,
-          hour: this.hourBucket(this.eventTime(view.ts, now)),
-          path: this.normalizePath(view.path),
-          // `||`, not `??`: the wire schema allows an empty string and the
-          // column is `min(1)`, so a proxy that stamps `country: ""` rather
-          // than omitting the field would 500 the whole batch.
-          country: country || "ZZ",
-          count: 1,
-        },
-        {
-          target: ["sigilId", "hour", "path", "country"],
-          set: { count: sql`${this.views.table.count} + 1` },
-        },
-      );
+      const hour = this.hourBucket(this.eventTime(view.ts, now));
+      const path = this.normalizePath(view.path);
+      // `||`, not `??`: the wire schema allows an empty string and the
+      // column is `min(1)`, so a proxy that stamps `country: ""` rather
+      // than omitting the field would 500 the whole batch.
+      const iso = country || "ZZ";
+      const key = `${hour}|${path}|${iso}`;
+      const bucket = buckets.get(key);
+      if (bucket) {
+        bucket.count += 1;
+      } else {
+        buckets.set(key, { hour, path, country: iso, count: 1 });
+      }
     }
+
+    // `INSERT … ON CONFLICT DO UPDATE count = count + excluded.count`, one
+    // statement for the whole batch. Reading then writing would lose views
+    // under concurrency, which is exactly the load this table exists to
+    // measure; a loop of single upserts would cost one round-trip per view.
+    await this.views.upsertMany(
+      [...buckets.values()].map((bucket) => ({
+        sigilId: sigil.id,
+        ...bucket,
+      })),
+      {
+        target: ["sigilId", "hour", "path", "country"],
+        set: {
+          count: sql`${this.views.table.count} + excluded.${sql.raw(this.views.table.count.name)}`,
+        },
+      },
+    );
 
     // One row per visitor per day. Recorded once per batch rather than per
     // view: the same person loading ten pages is one unique.
@@ -334,47 +359,82 @@ export class SigilIngestService {
     vitals: NonNullable<SigilForwarded["vitals"]>,
     now: string,
   ): Promise<void> {
+    // Fold the batch into one row per `(hour, metric, path)`, carrying a count
+    // per bucket. Same two reasons as views: Postgres refuses duplicate
+    // conflict targets in a statement, and the increments have to add up.
+    const rows = new Map<
+      string,
+      {
+        hour: string;
+        metric: string;
+        path: string;
+        counts: Record<VitalsBucketColumn, number>;
+      }
+    >();
+
     for (const vital of vitals) {
       const hour = this.hourBucket(this.eventTime(vital.ts, now));
       const path = this.normalizePath(vital.path);
       // Boundaries come from the package, so the chart and the ingest agree on
       // what "good" means without either side restating it.
-      const bucket = String(
+      const column = vitalsBucketColumn(
         bucketIndex(vital.metric as VitalMetric, vital.value),
       );
 
-      // Read-modify-write, unlike the other buckets: the histogram lives inside
-      // a JSON column, so there is no column to increment. Two samples for the
-      // same (hour, metric, path) landing together can lose one — acceptable
-      // for a distribution, where one sample in a bucket of many changes
-      // nothing an operator would read differently.
-      const existing = await this.vitals.findOne({
-        where: {
-          sigilId: { eq: sigil.id },
-          hour: { eq: hour },
-          metric: { eq: vital.metric },
-          path: { eq: path },
-        },
-      });
-      const counts: Record<string, number> = {
-        ...((existing?.bucketCounts ?? {}) as Record<string, number>),
-      };
-      counts[bucket] = (counts[bucket] ?? 0) + 1;
-
-      await this.vitals.upsert(
-        {
-          sigilId: sigil.id,
-          hour,
-          metric: vital.metric,
-          path,
-          bucketCounts: counts,
-        },
-        {
-          target: ["sigilId", "hour", "metric", "path"],
-          set: { bucketCounts: counts },
-        },
-      );
+      const key = `${hour}|${vital.metric}|${path}`;
+      let row = rows.get(key);
+      if (!row) {
+        row = { hour, metric: vital.metric, path, counts: this.zeroBuckets() };
+        rows.set(key, row);
+      }
+      row.counts[column] += 1;
     }
+
+    // No read before the write. The histogram used to live in a JSON column,
+    // so there was nothing to increment and each sample cost a `findOne` plus
+    // an `upsert` — with a documented lost-update race between them. A column
+    // per bucket turns the whole batch into one atomic statement.
+    await this.vitals.upsertMany(
+      [...rows.values()].map((row) => ({
+        sigilId: sigil.id,
+        hour: row.hour,
+        metric: row.metric as VitalMetric,
+        path: row.path,
+        ...row.counts,
+      })),
+      {
+        target: ["sigilId", "hour", "metric", "path"],
+        set: this.bucketIncrements(),
+      },
+    );
+  }
+
+  /** A zeroed count for every bucket column. */
+  protected zeroBuckets(): Record<VitalsBucketColumn, number> {
+    const counts = {} as Record<VitalsBucketColumn, number>;
+    for (let i = 0; i < VITALS_BUCKET_COUNT; i++) {
+      counts[vitalsBucketColumn(i)] = 0;
+    }
+    return counts;
+  }
+
+  /**
+   * `bN = bN + excluded.bN` for every bucket column.
+   *
+   * `excluded`, not a literal `+ 1`: the batch was folded first, so a row can
+   * carry several samples for the same bucket and the update has to add what
+   * actually arrived. Buckets with no sample add zero, which is why every
+   * column can be listed unconditionally.
+   */
+  protected bucketIncrements(): Record<string, ReturnType<typeof sql>> {
+    const set: Record<string, ReturnType<typeof sql>> = {};
+    for (let i = 0; i < VITALS_BUCKET_COUNT; i++) {
+      const column = vitalsBucketColumn(i);
+      const name = this.vitals.table[column].name;
+      set[column] =
+        sql`${this.vitals.table[column]} + excluded.${sql.raw(name)}`;
+    }
+    return set;
   }
 
   /**

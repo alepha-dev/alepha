@@ -405,7 +405,89 @@ describe("sigil ingest", () => {
     });
     expect(rows).toHaveLength(1);
     // 900 and 950 both land in the first bucket (<= 1000); 5000 in the fifth.
-    expect(rows[0].bucketCounts).toEqual({ "0": 2, "5": 1 });
+    // Accumulated across three separate batches, so this is also the guard
+    // that the increment reads the stored value rather than overwriting it.
+    expect([
+      rows[0].b0,
+      rows[0].b1,
+      rows[0].b2,
+      rows[0].b3,
+      rows[0].b4,
+      rows[0].b5,
+      rows[0].b6,
+    ]).toEqual([2, 0, 0, 0, 0, 1, 0]);
+  });
+
+  /**
+   * The lost-update race the JSON column made unavoidable: with a
+   * read-modify-write, two samples for the same `(hour, metric, path)` in
+   * flight together both read the same "before" and one overwrites the other.
+   * A column per bucket makes it `b0 = b0 + excluded.b0` in one statement,
+   * where concurrency costs nothing.
+   */
+  it("does not lose concurrent samples for the same bucket", async () => {
+    const { probe, sigil, post } = await setup();
+
+    await Promise.all(
+      Array.from({ length: 8 }, () =>
+        post({ vitals: [{ path: "/race", metric: "lcp", value: 900 }] }),
+      ),
+    );
+
+    const rows = await probe.vitals.findMany({
+      where: { sigilId: { eq: sigil.id }, path: { eq: "/race" } },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].b0).toBe(8);
+  });
+
+  /**
+   * One batch, many samples in the same bucket. The fold has to add them up:
+   * a `+ 1` literal in the conflict clause would record one, and duplicate
+   * conflict targets in a single statement are rejected outright by Postgres.
+   */
+  it("adds up several samples for one bucket inside a single batch", async () => {
+    const { probe, sigil, post } = await setup();
+
+    await post({
+      vitals: [
+        { path: "/batch", metric: "lcp", value: 900 },
+        { path: "/batch", metric: "lcp", value: 950 },
+        { path: "/batch", metric: "lcp", value: 999 },
+        { path: "/batch", metric: "lcp", value: 5000 },
+      ],
+    });
+
+    const rows = await probe.vitals.findMany({
+      where: { sigilId: { eq: sigil.id }, path: { eq: "/batch" } },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].b0).toBe(3);
+    expect(rows[0].b5).toBe(1);
+  });
+
+  /**
+   * The same fold on the views side: several views of one path in a batch
+   * must add up rather than count as one.
+   */
+  it("adds up repeated views of one path inside a single batch", async () => {
+    const { probe, sigil, post } = await setup();
+
+    await post({
+      views: [
+        { path: "/dup" },
+        { path: "/dup" },
+        { path: "/dup" },
+        { path: "/other" },
+      ],
+    });
+
+    const rows = await probe.views.findMany({
+      where: { sigilId: { eq: sigil.id } },
+    });
+    const byPath = new Map(rows.map((r) => [r.path, r.count]));
+    expect(byPath.get("/dup")).toBe(3);
+    expect(byPath.get("/other")).toBe(1);
   });
 
   it("files an error into both the per-sigil group and the project inbox", async () => {
