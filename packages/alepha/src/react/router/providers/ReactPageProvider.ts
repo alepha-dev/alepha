@@ -462,6 +462,23 @@ export class ReactPageProvider {
       }
     }
 
+    // A route that opts out of SSR emits no HTML for its whole chain — the
+    // root layer is wrapped in `ClientOnly` below. So on the server there is
+    // nothing to gain from importing any layer's component, and quite a lot to
+    // lose: `createElement` awaits `page.lazy()`, which pulls that page's
+    // entire module graph into the server runtime for an element that is then
+    // thrown away.
+    //
+    // On Node that is only wasted memory. On Cloudflare Workers it took Lore's
+    // folio route down in production: importing MDXEditor + Lexical server-side
+    // exceeded the isolate's ceiling, killing it mid-stream — the client got
+    // the early-head flush and nothing else, then the error boundary. It never
+    // reproduced in dev or under `node dist`, because neither is workerd.
+    //
+    // Loaders are untouched. They ran in the loop above and their props are
+    // what the client hydrates from; only the component import is skipped.
+    const skipComponents = !this.alepha.isBrowser() && !this.isSSR(route);
+
     let acc = "";
     for (let i = 0; i < stack.length; i++) {
       const it = stack[i];
@@ -491,18 +508,20 @@ export class ReactPageProvider {
       // normal use case
       if (!it.error) {
         try {
-          const element = await this.createElement(
-            it.route,
-            {
-              // default props attached to page
-              ...(it.route.props ? it.route.props() : {}),
-              // resolved props
-              ...props,
-              // context props (from previous layers)
-              ...context,
-            },
-            state.url,
-          );
+          const element = skipComponents
+            ? undefined
+            : await this.createElement(
+                it.route,
+                {
+                  // default props attached to page
+                  ...(it.route.props ? it.route.props() : {}),
+                  // resolved props
+                  ...props,
+                  // context props (from previous layers)
+                  ...context,
+                },
+                state.url,
+              );
 
           state.layers.push({
             name: it.route.name,
