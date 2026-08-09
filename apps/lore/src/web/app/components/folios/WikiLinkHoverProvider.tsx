@@ -43,7 +43,8 @@ type HoverTarget =
 
 interface HoverState {
   target: HoverTarget;
-  anchorEl: HTMLAnchorElement;
+  /** The `<a href>` (reader) or `[data-wiki-href]` span (editor) hovered. */
+  anchorEl: HTMLElement;
 }
 
 const FOLIO_RE = /^\/p\/(\d+)\/folios\/(\d+)(?:[#?]|$)/;
@@ -141,9 +142,17 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
   const handleEnter = useCallback(
     (target: EventTarget | null) => {
       const el = target as HTMLElement | null;
-      const anchor = el?.closest("a[href]") as HTMLAnchorElement | null;
+      // Two markups, one preview. The reader side renders a rewritten
+      // markdown link, so the target is on `href`; the editor decorates the
+      // token in place and puts it on `data-wiki-href`, because an `<a>`
+      // inside a `contenteditable` brings its own drag and selection
+      // behaviour along with it (see `WikiLinkNode`).
+      const anchor = el?.closest(
+        "a[href], [data-wiki-href]",
+      ) as HTMLElement | null;
       if (!anchor) return;
-      const href = anchor.getAttribute("href");
+      const href =
+        anchor.getAttribute("data-wiki-href") ?? anchor.getAttribute("href");
       const t = parseHref(href, projectId);
       if (!t) return;
       cancelClose();

@@ -28,6 +28,10 @@ import {
   UndoRedo,
 } from "@mdxeditor/editor";
 import { type ReactNode, useEffect, useMemo, useRef } from "react";
+import {
+  type WikiLinkEditorContext,
+  wikiLinkPlugin,
+} from "../../folios/editor/wikilink/wikiLinkPlugin.tsx";
 import { normalizeEditorMarkdown } from "./normalizeEditorMarkdown.ts";
 import "@mdxeditor/editor/style.css";
 
@@ -59,6 +63,16 @@ export interface MarkdownEditorInnerProps {
    * descriptions, feedback replies) keeps the default framed look.
    */
   variant?: "framed" | "bare";
+  /**
+   * Turns `[[…]]` references into live, decorated tokens inside the body,
+   * and enables the `[[` picker (#131). Omitted → neither is mounted, and
+   * a wiki-link is inert text exactly as before.
+   *
+   * Its presence, not its identity, decides the plugin set — see the memo
+   * below. The value itself is read through a ref on every resolve, so the
+   * caller may hand a new object every render without remounting Lexical.
+   */
+  wikiLinks?: WikiLinkEditorContext;
 }
 
 /**
@@ -111,6 +125,14 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
   // runs in this pass.
   const renderToolbarRef = useRef(props.renderToolbar);
   renderToolbarRef.current = props.renderToolbar;
+  // Same reason, same render-body assignment: the wiki-link plugin resolves
+  // a token against the project's current folio / quest / blob lists, which
+  // change while the editor stays mounted (a new folio is created in the
+  // tree, a file is uploaded). Passing the context as a plugin parameter
+  // would freeze it at first render, since the plugin array below is
+  // memoized precisely so a re-render does not remount Lexical.
+  const wikiLinksRef = useRef(props.wikiLinks);
+  wikiLinksRef.current = props.wikiLinks;
 
   useEffect(() => {
     if (props.value === lastEmitted.current) {
@@ -133,6 +155,7 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
 
   const plugins = useMemo(() => {
     const withImages = !!props.imageUploadHandler;
+    const withWikiLinks = !!props.wikiLinks;
     const list = [
       headingsPlugin(),
       listsPlugin(),
@@ -165,6 +188,7 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
             }),
           ]
         : []),
+      ...(withWikiLinks ? [wikiLinkPlugin({ contextRef: wikiLinksRef })] : []),
       markdownShortcutPlugin(),
       diffSourcePlugin({ viewMode: "rich-text" }),
       toolbarPlugin({
@@ -193,10 +217,12 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
       }),
     ];
     return list;
-    // The handler's presence decides the plugin set; identity changes of
-    // the callback itself must not remount the editor.
+    // Presence, not identity, decides the plugin set — for the upload
+    // handler and for the wiki-link context alike. Depending on either
+    // object would remount the editor (and drop the caret) on every render
+    // of the owning form.
     // biome-ignore lint/correctness/useExhaustiveDependencies: see above
-  }, [!!props.imageUploadHandler]);
+  }, [!!props.imageUploadHandler, !!props.wikiLinks]);
 
   return (
     <div

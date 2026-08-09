@@ -2830,7 +2830,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lexical/text@npm:0.48.0":
+"@lexical/text@npm:0.48.0, @lexical/text@npm:^0.48.0":
   version: 0.48.0
   resolution: "@lexical/text@npm:0.48.0"
   dependencies:
@@ -3131,7 +3131,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mdxeditor/gurx@npm:^1.2.4":
+"@mdxeditor/gurx@npm:^1.2.1, @mdxeditor/gurx@npm:^1.2.4":
   version: 1.2.4
   resolution: "@mdxeditor/gurx@npm:1.2.4"
   peerDependencies:
@@ -10503,7 +10503,10 @@ __metadata:
     "@alepha/ui": "workspace:*"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/utilities": "npm:^3.2.2"
+    "@lexical/react": "npm:^0.48.0"
+    "@lexical/text": "npm:^0.48.0"
     "@mdxeditor/editor": "npm:^4.2.0"
+    "@mdxeditor/gurx": "npm:^1.2.1"
     "@playwright/test": "npm:^1.62.1"
     "@tailwindcss/vite": "npm:^4.3.3"
     "@testing-library/react": "npm:^16.3.2"

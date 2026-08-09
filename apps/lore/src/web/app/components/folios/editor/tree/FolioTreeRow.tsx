@@ -54,6 +54,12 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
   const isRenaming = tree.renamingId === node.id;
   const isDragging = tree.dragId === node.id;
   const dropHere = tree.drop?.id === node.id ? tree.drop.position : undefined;
+  // The directory a file drop on THIS row would land in: itself when it is a
+  // directory, otherwise its parent — dropping a file next to a folio puts it
+  // beside that folio rather than dead-zoning half the tree.
+  const fileDropParentId = isDirectory ? node.id : node.parentId;
+  const isFileDropTarget =
+    isDirectory && tree.fileDrop?.parentId === fileDropParentId;
 
   const [draftName, setDraftName] = useState(node.name);
   // Guards against a native `blur` fired by React unmounting the input on
@@ -93,6 +99,14 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
   const handleDragOver = (e: DragEvent<HTMLDivElement>): void => {
     e.preventDefault();
     e.stopPropagation();
+    if (isFileDrag(e)) {
+      // `dataTransfer.files` is deliberately empty during `dragover` (the
+      // browser only exposes the bytes on `drop`), so `types` is the only
+      // thing that can tell an OS file drag from a row being re-parented.
+      e.dataTransfer.dropEffect = "copy";
+      tree.onFileDragOver(fileDropParentId);
+      return;
+    }
     if (!tree.dragId || tree.dragId === node.id) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
@@ -111,6 +125,10 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
   const handleDrop = (e: DragEvent<HTMLDivElement>): void => {
     e.preventDefault();
     e.stopPropagation();
+    if (isFileDrag(e)) {
+      void tree.dropFiles([...e.dataTransfer.files], fileDropParentId);
+      return;
+    }
     void tree.onDrop(node.id);
   };
 
@@ -161,7 +179,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
               "relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm select-none hover:bg-muted/60",
               isSelected && "bg-muted font-medium",
               isDragging && "opacity-45",
-              dropHere === "inside" &&
+              (dropHere === "inside" || isFileDropTarget) &&
                 "bg-primary/10 ring-1 ring-inset ring-primary/60",
             )}
             style={{ paddingLeft: `${8 + props.depth * 13}px` }}
@@ -220,5 +238,20 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
     </ContextMenu>
   );
 };
+
+/**
+ * Whether a drag carries OS files rather than one of this tree's own rows.
+ *
+ * `dataTransfer.types` is the only readable signal during `dragover` —
+ * `dataTransfer.files` is empty until `drop` (the browser withholds the bytes
+ * so a page cannot read a file merely by being dragged across). Checking
+ * `tree.dragId` instead would be wrong in the other direction: it is unset
+ * for an external drag, but also unset in the frame before an internal drag's
+ * `dragstart` state lands.
+ */
+const isFileDrag = (e: DragEvent<HTMLElement>): boolean =>
+  [...e.dataTransfer.types].includes("Files");
+
+export { isFileDrag };
 
 export default FolioTreeRow;
