@@ -38,7 +38,7 @@ func NewSystemd(unitDir string) *Systemd {
 
 // Sandbox describes what an app is allowed to write, derived from its manifest.
 //
-// Declaring `$bucket` in application code is what grants write access to the
+// Declaring `$storage` in application code is what grants write access to the
 // storage directory; not declaring it denies it. Least privilege as a
 // consequence of the code, with no configuration file anywhere.
 type Sandbox struct {
