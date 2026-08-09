@@ -9,7 +9,7 @@ import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom
 import type { I18n } from "../../../../services/I18n.ts";
 import MarkdownEditor from "../../../shared/markdown-editor/MarkdownEditor.tsx";
 import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
-import FolioMenubar from "../menubar/FolioMenubar.tsx";
+import FolioEditorMenubar from "../menubar/FolioEditorMenubar.tsx";
 import { useFolioShortcuts } from "../menubar/useFolioShortcuts.ts";
 import FolioToolbar from "../toolbar/FolioToolbar.tsx";
 import type { UseFolioActionsResult } from "../useFolioActions.ts";
@@ -183,7 +183,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
           renderToolbar={() => {
             const chrome = (
               <>
-                <FolioMenubar
+                <FolioEditorMenubar
                   handlers={props.actions.handlers}
                   state={props.actions.actionState}
                   hasImageUpload={!!props.imageUploadHandler}

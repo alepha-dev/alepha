@@ -1,7 +1,7 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { FilePlus, FolderPlus } from "lucide-react";
-import type { ReactElement } from "react";
+import { type ReactElement, useEffect, useRef } from "react";
 import type { I18n } from "../../../../services/I18n.ts";
 import FolioTreeRow from "./FolioTreeRow.tsx";
 import { useFolioTreeModel } from "./useFolioTreeModel.ts";
@@ -21,6 +21,23 @@ export interface FolioTreeProps {
    * other pane preference.
    */
   width: number;
+  /**
+   * Hands the tree's two creation actions up to the workspace, so the
+   * menubar can drive them on the empty `/folios` state where there is no
+   * `useFolioActions` to route them through.
+   *
+   * A callback rather than hoisting `useFolioTreeModel` into the workspace:
+   * the model owns local state the tree needs (`renamingId` — a freshly
+   * created directory opens straight into inline rename), so a second
+   * instance would create the row and then fail to focus it. Mirrors how
+   * `FolioEditorMenubar` hands its realm dispatchers up.
+   */
+  onActions?: (actions: FolioTreeActions) => void;
+}
+
+export interface FolioTreeActions {
+  createFolio: () => void;
+  createDirectory: () => void;
 }
 
 /**
@@ -46,6 +63,24 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
     projectIdStr: props.projectIdStr,
     currentFolioId: props.currentFolioId,
   });
+
+  // Published through a ref, and the published closures read through it too.
+  // `useFolioTreeModel` returns fresh function identities every render, so
+  // depending on them here meant: effect re-runs → parent setState → parent
+  // re-renders this → new identities → effect re-runs. That was a live
+  // "Maximum update depth exceeded" loop. The ref keeps the published object
+  // stable (created once per `onActions` identity) while the closures still
+  // reach the current model.
+  const treeRef = useRef(tree);
+  treeRef.current = tree;
+
+  const { onActions } = props;
+  useEffect(() => {
+    onActions?.({
+      createFolio: () => void treeRef.current.createFolio(),
+      createDirectory: () => void treeRef.current.createDirectory(),
+    });
+  }, [onActions]);
 
   return (
     <div
