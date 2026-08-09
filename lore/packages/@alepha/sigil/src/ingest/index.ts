@@ -18,17 +18,29 @@
  * own docstring for why that is forced by the two known backends aggregating at
  * opposite ends.
  *
+ * {@link createSigilAnalyticsEntities} — the three aggregate tables, as a
+ * factory. They carry `db.ref(…, () => sigils.cols.id, { onDelete: "cascade" })`
+ * and `sigils` belongs to the *consuming* app, so the reference is a parameter
+ * rather than something this package can own: see that file for why dropping
+ * the cascade instead would have been the worse trade.
+ *
+ * {@link createOrmAnalyticsStore} and {@link MemoryAnalyticsStore} — the two
+ * default implementations. The orm one is what every Node / Postgres
+ * deployment runs and what answers unique visitors even on Cloudflare; the
+ * memory one exists because `vitest` cannot exercise an Analytics Engine
+ * binding and `wrangler dev` treats its writes as no-ops.
+ *
  * ## What does not live here yet
  *
- * The aggregate entities and `SigilIngestService` are still in `apps/lore`.
- * Moving them needs one design decision first: they carry
- * `db.ref(z.uuid(), () => sigils.cols.id, { onDelete: "cascade" })`, and
- * `sigils` is the consuming app's entity — it references that app's projects.
- * The cascade is load-bearing (deleting an app erases everything it reported),
- * so the ref cannot simply be dropped for a plain uuid; it has to be
- * parameterised by the consuming app. Until that is settled the entities stay
- * where their foreign key is.
+ * `SigilIngestService`'s envelope handling — path normalisation, the country
+ * and visitor plumbing, error groups and blights — is still in `apps/lore`.
+ * Only the parts that are storage are here.
  */
 
+export * from "./AnalyticsEngineSql.ts";
 export * from "./AnalyticsStore.ts";
+export * from "./createOrmAnalyticsStore.ts";
+export * from "./createSigilAnalyticsEntities.ts";
+export * from "./MemoryAnalyticsStore.ts";
 export * from "./vitalsPercentile.ts";
+export * from "./WaeAnalyticsStore.ts";

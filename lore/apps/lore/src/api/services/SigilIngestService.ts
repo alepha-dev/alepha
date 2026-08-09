@@ -11,15 +11,8 @@ import { blights } from "../entities/blights.ts";
 import { projects } from "../entities/projects.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
-import { sigilUniquesDaily } from "../entities/sigilUniquesDaily.ts";
-import { sigilViewsHourly } from "../entities/sigilViewsHourly.ts";
-import {
-  sigilVitalsHourly,
-  VITALS_BUCKET_COUNT,
-  type VitalsBucketColumn,
-  vitalsBucketColumn,
-} from "../entities/sigilVitalsHourly.ts";
 import { BlightRuleService } from "./BlightRuleService.ts";
+import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
 
 /**
  * What one sigil is allowed to write, right now.
@@ -76,11 +69,18 @@ export class SigilIngestService {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly rules = $inject(BlightRuleService);
 
+  /**
+   * Views, uniques and vitals go through the store, never through a
+   * repository here: those three are the closed set of questions
+   * `@alepha/sigil/ingest` owns, and routing them through the interface is
+   * what makes the storage backend swappable per runtime. Error groups and
+   * blights stay on repositories on purpose — see `AnalyticsStore`'s
+   * "deliberately not here".
+   */
+  protected readonly analytics = $inject(LoreAnalyticsStore);
+
   protected readonly projects = $repository(projects);
   protected readonly sigils = $repository(sigils);
-  protected readonly views = $repository(sigilViewsHourly);
-  protected readonly uniques = $repository(sigilUniquesDaily);
-  protected readonly vitals = $repository(sigilVitalsHourly);
   protected readonly errorGroups = $repository(sigilErrorGroups);
   protected readonly blights = $repository(blights);
 
@@ -300,11 +300,11 @@ export class SigilIngestService {
   ): Promise<void> {
     const day = this.dayBucket(now);
 
-    // Folded before the write, not just for speed: one statement carries one
-    // `ON CONFLICT` clause, and Postgres refuses to touch the same row twice
-    // within it. Folding is what makes the batch both legal and correct — the
-    // count each bucket contributes has to be its own, which is why the SET
-    // clause below reads `excluded` rather than adding a literal 1.
+    // Folded before the write, not just for speed: the store turns a batch
+    // into ONE statement, one `ON CONFLICT` clause, and Postgres refuses to
+    // touch the same row twice inside one. Folding is what makes the batch
+    // both legal and correct — each bucket has to carry its own count,
+    // because the store's SET clause adds `excluded` rather than a literal 1.
     const buckets = new Map<
       string,
       { hour: string; path: string; country: string; count: number }
@@ -325,33 +325,17 @@ export class SigilIngestService {
       }
     }
 
-    // `INSERT … ON CONFLICT DO UPDATE count = count + excluded.count`, one
-    // statement for the whole batch. Reading then writing would lose views
-    // under concurrency, which is exactly the load this table exists to
-    // measure; a loop of single upserts would cost one round-trip per view.
-    await this.views.upsertMany(
-      [...buckets.values()].map((bucket) => ({
+    await this.analytics.absorb({
+      views: [...buckets.values()].map((bucket) => ({
         sigilId: sigil.id,
         ...bucket,
       })),
-      {
-        target: ["sigilId", "hour", "path", "country"],
-        set: {
-          count: sql`${this.views.table.count} + excluded.${sql.raw(this.views.table.count.name)}`,
-        },
-      },
-    );
-
-    // One row per visitor per day. Recorded once per batch rather than per
-    // view: the same person loading ten pages is one unique.
-    if (visitor) {
-      // The conflict IS the expected case — a returning visitor. Upserting with
-      // the day set to itself makes it a no-op instead of an error.
-      await this.uniques.upsert(
-        { sigilId: sigil.id, day, visitorHash: visitor },
-        { target: ["sigilId", "day", "visitorHash"], set: { day } },
-      );
-    }
+      // One row per visitor per day. Recorded once per batch rather than per
+      // view: the same person loading ten pages is one unique.
+      uniques: visitor
+        ? [{ sigilId: sigil.id, day, visitorHash: visitor }]
+        : [],
+    });
   }
 
   protected async absorbVitals(
@@ -359,16 +343,18 @@ export class SigilIngestService {
     vitals: NonNullable<SigilForwarded["vitals"]>,
     now: string,
   ): Promise<void> {
-    // Fold the batch into one row per `(hour, metric, path)`, carrying a count
-    // per bucket. Same two reasons as views: Postgres refuses duplicate
-    // conflict targets in a statement, and the increments have to add up.
-    const rows = new Map<
+    // Fold the batch into one sample per `(hour, metric, path, bucket)`. Same
+    // two reasons as views: one statement carries one `ON CONFLICT` clause and
+    // Postgres refuses duplicate conflict targets inside it, and the
+    // increments have to add up.
+    const samples = new Map<
       string,
       {
         hour: string;
-        metric: string;
+        metric: VitalMetric;
         path: string;
-        counts: Record<VitalsBucketColumn, number>;
+        bucket: number;
+        count: number;
       }
     >();
 
@@ -377,64 +363,21 @@ export class SigilIngestService {
       const path = this.normalizePath(vital.path);
       // Boundaries come from the package, so the chart and the ingest agree on
       // what "good" means without either side restating it.
-      const column = vitalsBucketColumn(
-        bucketIndex(vital.metric as VitalMetric, vital.value),
-      );
+      const metric = vital.metric as VitalMetric;
+      const bucket = bucketIndex(metric, vital.value);
 
-      const key = `${hour}|${vital.metric}|${path}`;
-      let row = rows.get(key);
-      if (!row) {
-        row = { hour, metric: vital.metric, path, counts: this.zeroBuckets() };
-        rows.set(key, row);
-      }
-      row.counts[column] += 1;
+      const key = `${hour}|${metric}|${path}|${bucket}`;
+      const sample = samples.get(key);
+      if (sample) sample.count += 1;
+      else samples.set(key, { hour, metric, path, bucket, count: 1 });
     }
 
-    // No read before the write. The histogram used to live in a JSON column,
-    // so there was nothing to increment and each sample cost a `findOne` plus
-    // an `upsert` — with a documented lost-update race between them. A column
-    // per bucket turns the whole batch into one atomic statement.
-    await this.vitals.upsertMany(
-      [...rows.values()].map((row) => ({
+    await this.analytics.absorb({
+      vitals: [...samples.values()].map((sample) => ({
         sigilId: sigil.id,
-        hour: row.hour,
-        metric: row.metric as VitalMetric,
-        path: row.path,
-        ...row.counts,
+        ...sample,
       })),
-      {
-        target: ["sigilId", "hour", "metric", "path"],
-        set: this.bucketIncrements(),
-      },
-    );
-  }
-
-  /** A zeroed count for every bucket column. */
-  protected zeroBuckets(): Record<VitalsBucketColumn, number> {
-    const counts = {} as Record<VitalsBucketColumn, number>;
-    for (let i = 0; i < VITALS_BUCKET_COUNT; i++) {
-      counts[vitalsBucketColumn(i)] = 0;
-    }
-    return counts;
-  }
-
-  /**
-   * `bN = bN + excluded.bN` for every bucket column.
-   *
-   * `excluded`, not a literal `+ 1`: the batch was folded first, so a row can
-   * carry several samples for the same bucket and the update has to add what
-   * actually arrived. Buckets with no sample add zero, which is why every
-   * column can be listed unconditionally.
-   */
-  protected bucketIncrements(): Record<string, ReturnType<typeof sql>> {
-    const set: Record<string, ReturnType<typeof sql>> = {};
-    for (let i = 0; i < VITALS_BUCKET_COUNT; i++) {
-      const column = vitalsBucketColumn(i);
-      const name = this.vitals.table[column].name;
-      set[column] =
-        sql`${this.vitals.table[column]} + excluded.${sql.raw(name)}`;
-    }
-    return set;
+    });
   }
 
   /**

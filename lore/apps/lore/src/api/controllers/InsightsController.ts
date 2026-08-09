@@ -1,26 +1,16 @@
-import type { AnalyticsVitalHistograms } from "@alepha/sigil/ingest";
 import { summariseVitals } from "@alepha/sigil/ingest";
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, DatabaseProvider, sql } from "alepha/orm";
+import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { sigils } from "../entities/sigils.ts";
 import {
-  sigilUniquesDaily,
-  UNIQUES_COLLAPSED_HASH,
-} from "../entities/sigilUniquesDaily.ts";
-import { sigilViewsHourly } from "../entities/sigilViewsHourly.ts";
-import {
-  sigilVitalsHourly,
-  VITALS_BUCKET_COUNT,
-  vitalsBucketColumn,
-} from "../entities/sigilVitalsHourly.ts";
-import {
   type InsightsResource,
   insightsResourceSchema,
 } from "../schemas/insightsResourceSchema.ts";
+import { LoreAnalyticsStore } from "../services/LoreAnalyticsStore.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export type { InsightsResource };
@@ -69,13 +59,10 @@ const TOP_ERROR_GROUPS = 20;
  * linked from the project nav every member sees.
  */
 export class InsightsController {
-  protected database = $inject(DatabaseProvider);
+  protected analytics = $inject(LoreAnalyticsStore);
   protected security = $inject(ProjectSecurityService);
   protected dateTime = $inject(DateTimeProvider);
   protected sigils = $repository(sigils);
-  protected views = $repository(sigilViewsHourly);
-  protected uniques = $repository(sigilUniquesDaily);
-  protected vitals = $repository(sigilVitalsHourly);
   protected errorGroups = $repository(sigilErrorGroups);
 
   getInsights = $action({
@@ -138,120 +125,53 @@ export class InsightsController {
         };
       }
 
-      const sigilList = sql.join(
-        sigilIds.map((id) => sql`${id}`),
-        sql`, `,
-      );
+      // Five questions, one window, asked of the store rather than of a table.
+      // The SQL that used to sit here now lives in `OrmAnalyticsStore`
+      // (`@alepha/sigil/ingest`) — the point being that Workers Analytics
+      // Engine can answer the same five with a completely different strategy,
+      // and this handler cannot tell which one it is talking to.
+      const window = { sigilIds, since };
+      const [
+        totalViews,
+        uniqueVisitors,
+        topCountryRows,
+        topPathRows,
+        timelinePoints,
+        histograms,
+      ] = await Promise.all([
+        this.analytics.totalViews(window),
+        this.analytics.uniqueVisitors(window),
+        this.analytics.topCountries(window, TOP_N),
+        this.analytics.topPaths(window, TOP_N),
+        this.analytics.timeline(window),
+        this.analytics.vitalHistograms(window),
+      ]);
 
-      // --- Total views (raw, best-effort).
-      const [totals] = await this.database.run(
-        sql`
-          SELECT COALESCE(SUM(${this.views.table.count}), 0) AS total
-          FROM ${this.views.table}
-          WHERE ${this.views.table.sigilId} IN (${sigilList})
-            AND ${this.views.table.hour} >= ${since}
-        `,
-        z.object({ total: z.coerce.number() }),
-      );
-      const totalViews = Number(totals?.total) || 0;
-
-      // --- Unique visitors — the headline.
-      //
-      // Two row shapes, two halves of one number. Hash rows are counted as
-      // distinct `(day, visitorHash)` pairs rather than rows, so the same
-      // person visiting two of the project's apps on one day is one visitor;
-      // one row per sigil would say two.
-      //
-      // Collapsed rows (`SigilJobs`, ~48h old and older) no longer carry
-      // hashes, so all they can be is summed. That loses cross-app dedup for
-      // those days and can over-count a visitor who used two apps — accepted:
-      // the alternative is keeping per-visitor hashes indefinitely, and the
-      // whole point of the collapse is that they stop existing.
-      const [uniqueAgg] = await this.database.run(
-        sql`
-          SELECT
-            COUNT(DISTINCT CASE
-              WHEN ${this.uniques.table.visitorHash} <> ${UNIQUES_COLLAPSED_HASH}
-              THEN ${this.uniques.table.day} || '|' || ${this.uniques.table.visitorHash}
-            END)
-            + COALESCE(SUM(CASE
-              WHEN ${this.uniques.table.visitorHash} = ${UNIQUES_COLLAPSED_HASH}
-              THEN ${this.uniques.table.count} ELSE 0
-            END), 0) AS uniques
-          FROM ${this.uniques.table}
-          WHERE ${this.uniques.table.sigilId} IN (${sigilList})
-            AND ${this.uniques.table.day} >= ${since}
-        `,
-        z.object({ uniques: z.coerce.number() }),
-      );
-      const uniqueVisitors = Number(uniqueAgg?.uniques) || 0;
-
-      // --- Top countries, by views desc.
-      const countryRows = await this.database.run(
-        sql`
-          SELECT ${this.views.table.country} AS country,
-                 SUM(${this.views.table.count}) AS count
-          FROM ${this.views.table}
-          WHERE ${this.views.table.sigilId} IN (${sigilList})
-            AND ${this.views.table.hour} >= ${since}
-          GROUP BY ${this.views.table.country}
-          ORDER BY count DESC
-          LIMIT ${TOP_N}
-        `,
-        z.object({ country: z.string(), count: z.coerce.number() }),
-      );
-      const topCountries = countryRows.map((row) => ({
-        country: row.country,
-        count: Number(row.count) || 0,
+      const topCountries = topCountryRows.map((row) => ({
+        country: row.key,
+        count: row.count,
       }));
 
-      // --- Top paths, by views desc, with their share of the total.
-      const pathRows = await this.database.run(
-        sql`
-          SELECT ${this.views.table.path} AS path,
-                 SUM(${this.views.table.count}) AS count
-          FROM ${this.views.table}
-          WHERE ${this.views.table.sigilId} IN (${sigilList})
-            AND ${this.views.table.hour} >= ${since}
-          GROUP BY ${this.views.table.path}
-          ORDER BY count DESC
-          LIMIT ${TOP_N}
-        `,
-        z.object({ path: z.string(), count: z.coerce.number() }),
-      );
-      const topPaths = pathRows.map((row) => {
-        const count = Number(row.count) || 0;
-        return {
-          path: row.path,
-          count,
-          percentage:
-            totalViews > 0 ? Math.round((count / totalViews) * 100) : 0,
-        };
-      });
+      const topPaths = topPathRows.map((row) => ({
+        path: row.key,
+        count: row.count,
+        percentage:
+          totalViews > 0 ? Math.round((row.count / totalViews) * 100) : 0,
+      }));
 
-      // --- Views over time, one point per UTC day, zero-filled.
-      // `substr(hour, 1, 10)` is the day inside the hour bucket — the storage
-      // stays hourly, the chart asks for days.
-      const timelineRows = await this.database.run(
-        sql`
-          SELECT substr(${this.views.table.hour}, 1, 10) AS date,
-                 SUM(${this.views.table.count}) AS count
-          FROM ${this.views.table}
-          WHERE ${this.views.table.sigilId} IN (${sigilList})
-            AND ${this.views.table.hour} >= ${since}
-          GROUP BY substr(${this.views.table.hour}, 1, 10)
-        `,
-        z.object({ date: z.string(), count: z.coerce.number() }),
-      );
-      const byDate = new Map(
-        timelineRows.map((row) => [row.date, Number(row.count) || 0]),
-      );
+      // The store may omit days it saw nothing on — zero-filling is the
+      // caller's job, and has to be, because only the caller knows how wide
+      // the requested window was.
+      const byDate = new Map(timelinePoints.map((p) => [p.date, p.views]));
       const timeline = this.zeroTimeline(today, days).map((point) => ({
         date: point.date,
         views: byDate.get(point.date) ?? 0,
       }));
 
-      const vitals = await this.computeVitals(sigilIds, since);
+      // The walk and the CLS un-scaling live in `@alepha/sigil/ingest`: every
+      // store returns histograms and none of them should re-derive this,
+      // least of all the ÷1000 that undoes the collector's integer scaling.
+      const vitals = summariseVitals(histograms);
       const errorGroups = await this.readErrorGroups(sigilIds, labels, since);
 
       return {
@@ -333,55 +253,5 @@ export class InsightsController {
       day.setUTCDate(day.getUTCDate() - (days - 1 - index));
       return { date: day.toISOString().slice(0, 10), views: 0 };
     });
-  }
-
-  /**
-   * p75 for all five metrics, merged across every sigil on the project.
-   *
-   * Merged at the histogram level rather than by averaging per-sigil
-   * percentiles, which would be arithmetic on numbers that cannot be averaged:
-   * the p75 of two distributions is not the mean of their p75s.
-   */
-  protected async computeVitals(
-    sigilIds: string[],
-    since: string,
-  ): Promise<InsightsResource["vitals"]> {
-    // One read for the window, folded in memory. SQL could SUM the bucket
-    // columns now that they are columns, but the fold is per metric and the row
-    // count is bounded by (hour × metric × path) rather than by traffic — so a
-    // GROUP BY would buy nothing and cost a second shape to keep in step with
-    // the histogram walk below.
-    const rows = await this.vitals.findMany({
-      where: {
-        sigilId: { inArray: sigilIds },
-        hour: { gte: since },
-      },
-      columns: [
-        "metric",
-        ...Array.from({ length: VITALS_BUCKET_COUNT }, (_, i) =>
-          vitalsBucketColumn(i),
-        ),
-      ],
-    });
-
-    // Keyed by metric as a plain record, which is the shape `AnalyticsStore`
-    // returns — a Map keyed by metric would read the same and silently answer
-    // `undefined` to every lookup in `summariseVitals`.
-    const histograms: AnalyticsVitalHistograms = {};
-    for (const row of rows) {
-      const histogram = histograms[row.metric] ?? new Map<number, number>();
-      for (let index = 0; index < VITALS_BUCKET_COUNT; index++) {
-        const count = row[vitalsBucketColumn(index)] ?? 0;
-        if (count === 0) continue;
-        histogram.set(index, (histogram.get(index) ?? 0) + count);
-      }
-      histograms[row.metric] = histogram;
-    }
-
-    // The walk and the CLS un-scaling live in `@alepha/sigil/ingest`: every
-    // AnalyticsStore implementation returns histograms and none of them should
-    // re-derive this, least of all the ÷1000 that undoes the collector's
-    // integer scaling.
-    return summariseVitals(histograms);
   }
 }

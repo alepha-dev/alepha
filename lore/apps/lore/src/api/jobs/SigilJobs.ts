@@ -57,6 +57,15 @@ const MAX_ROWS_PER_DAY_SCAN = 5_000;
  * happens. Both are plain SQL-free repository work and behave identically on
  * SQLite, Postgres and D1.
  *
+ * **This is the one place that still holds repositories on the analytics
+ * tables**, and deliberately so. Every read and write path went behind
+ * `AnalyticsStore` (`@alepha/sigil/ingest`), whose interface is a closed set
+ * of *questions the UI asks* — and "rewrite these rows into fewer rows" is not
+ * one of them. It is maintenance of one particular storage strategy: an
+ * append-only backend like Workers Analytics Engine ages its own data out and
+ * would have nothing to collapse. Widening the interface to cover it would put
+ * a method on every implementation that only one could mean anything by.
+ *
  * **D1 safety**: these tables are CASCADE *children* of `sigils`. Reshaping a
  * child is safe; the wipe bomb is rebuilding a parent. `count` was added with
  * a `DEFAULT` for the separate `ADD COLUMN … NOT NULL` trap.
