@@ -1,0 +1,1 @@
+ALTER TABLE `sigil_uniques_daily` ADD `count` integer DEFAULT 1 NOT NULL;

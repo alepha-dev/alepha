@@ -27,7 +27,24 @@ import { sigils } from "./sigils.ts";
  *
  * Rows, not a counter, because "unique" cannot be incremented — you have to
  * know whether you have seen this one today. The count is `COUNT(*)`.
+ *
+ * **Two row shapes live here.** A *hash row* is the above: one visitor, one
+ * day, `count = 1`. A *collapsed row* uses {@link UNIQUES_COLLAPSED_HASH} in
+ * place of a hash and carries the day's total in `count`; `SigilJobs` writes
+ * one per `(sigilId, day)` about 48 hours after the fact and deletes the hash
+ * rows it replaces. Growth then stops being proportional to traffic, and — the
+ * bigger point — the visitor hashes cease to exist within two days, which
+ * settles the question the paragraph above leaves open rather than relying on
+ * the salt to stay secret forever.
  */
+/**
+ * Stands in for a visitor hash on a collapsed row. A single character, where
+ * every real `visitorHash` is a 64-char hex digest — they cannot collide, and
+ * the unique index on `(sigilId, day, visitorHash)` gives the collapsed row
+ * its uniqueness per `(sigilId, day)` for free.
+ */
+export const UNIQUES_COLLAPSED_HASH = "*";
+
 export const sigilUniquesDaily = $entity({
   name: "sigil_uniques_daily",
   schema: z.object({
@@ -35,7 +52,21 @@ export const sigilUniquesDaily = $entity({
     sigilId: db.ref(z.uuid(), () => sigils.cols.id, { onDelete: "cascade" }),
     /** UTC day bucket, `YYYY-MM-DD`. */
     day: z.string().min(10).max(10),
+    /**
+     * A visitor hash, or {@link UNIQUES_COLLAPSED_HASH} on a collapsed row.
+     * The sentinel is a single character and every real value is hex, so the
+     * two can never collide.
+     */
     visitorHash: z.string().min(1).max(128),
+    /**
+     * `1` on a hash row (one visitor). On a collapsed row, how many distinct
+     * visitors that day had.
+     *
+     * Added with a `DEFAULT`, deliberately: SQLite refuses `ADD COLUMN … NOT
+     * NULL` without one on a populated table, and this table has production
+     * rows. See `apps/lore/CLAUDE.md`.
+     */
+    count: db.default(z.integer().min(1), 1),
   }),
   indexes: [
     { columns: ["sigilId", "day", "visitorHash"], unique: true },

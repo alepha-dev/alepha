@@ -24,6 +24,7 @@ import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { InvitationJobs } from "./jobs/InvitationJobs.ts";
 import { MilestoneJobs } from "./jobs/MilestoneJobs.ts";
 import { QuestJobs } from "./jobs/QuestJobs.ts";
+import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
@@ -67,6 +68,7 @@ export const LoreApi = $module({
     MilestoneJobs,
     QuestJobs,
     BlightJobs,
+    SigilJobs,
     QuestNotifications,
     InvitationNotifications,
     FeedbackRateLimiter,

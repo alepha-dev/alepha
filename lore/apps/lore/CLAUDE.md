@@ -35,7 +35,7 @@ apps/lore/                # This app
 │   │   ├── controllers/  # 20 controllers — see list below
 │   │   ├── entities/     # 23 entities — see list below
 │   │   ├── providers/    # AppSecurityProvider (membership/owner gates), LoreFileAccessProvider (per-file IDOR gate), LoreSigilSinkProvider (in-process self-report — a Worker can't fetch its own hostname)
-│   │   ├── jobs/         # BlightJobs (retention purge), InvitationJobs, MilestoneJobs, QuestJobs (reminder sweep)
+│   │   ├── jobs/         # BlightJobs (retention purge), SigilJobs (analytics collapse), InvitationJobs, MilestoneJobs, QuestJobs (reminder sweep)
 │   │   ├── schemas/      # Request/response schemas
 │   │   └── services/     # 18 services — see list below
 │   ├── mcp/              # MCP protocol integration (tools, resources)
@@ -616,6 +616,7 @@ The alias now lives in both configs, and the root copy is load-bearing: `apps/pl
 - `folio-protected-history.spec.ts` — **regression guard**: the protection-domain invariant (no plaintext left in `folio_revisions` after encrypting; pinned revisions are not exempt)
 - `folio-*.spec.ts` — links, backlinks, tidy, pinning, permissions, history, activity, blob links, directories (the old Archive-module coverage lives here now too)
 - `sigil-controller.spec.ts` / `sigil-ingest.spec.ts` / `sigil-entities.spec.ts` / `sigil-self-report.spec.ts` — sigil CRUD + rotation, token verification, capability gating, aggregate upserts, and Lore's own in-process self-report path
+- `sigil-jobs.spec.ts` — the analytics collapse sweep: the uniques hash-fold, the hourly→daily view fold, idempotency across re-runs, and what Insights reads on either side of a sweep. Drives `DateTimeProvider.travel()` over the window boundary, so it asserts end state and never call counts
 - `insights-controller.spec.ts` / `insights-tools.spec.ts` — beacon/vitals windows and the p75 walk (clock pinned with `DateTimeProvider.pause()`), the `?sigilId=` per-app filter including the cross-project refusal, plus the MCP surface
 - `app-routes.spec.ts` — **regression guard**: boots the real `AppRouter` and resolves every route name the app passes the router as a plain string (every `router.path`/`push` call site and every `route: "…"` nav array in `src/`, including `ProjectSettings.tsx`'s — the array that broke once). `router.path()` takes `keyof VirtualRouter<T> | string`, so a deleted or renamed route is never a type error — this is the only thing that turns it into a red test instead of a production throw
 - `blight-tools.spec.ts` — the MCP triage surface

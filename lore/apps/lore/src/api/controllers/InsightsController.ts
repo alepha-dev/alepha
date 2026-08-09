@@ -6,7 +6,10 @@ import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { sigils } from "../entities/sigils.ts";
-import { sigilUniquesDaily } from "../entities/sigilUniquesDaily.ts";
+import {
+  sigilUniquesDaily,
+  UNIQUES_COLLAPSED_HASH,
+} from "../entities/sigilUniquesDaily.ts";
 import { sigilViewsHourly } from "../entities/sigilViewsHourly.ts";
 import { sigilVitalsHourly } from "../entities/sigilVitalsHourly.ts";
 import {
@@ -148,12 +151,28 @@ export class InsightsController {
       const totalViews = Number(totals?.total) || 0;
 
       // --- Unique visitors — the headline.
-      // Counted as distinct `(day, visitorHash)` pairs rather than rows: the
-      // same person visiting two enrolled apps of the same project on one day
-      // is one visitor, and one row per sigil would say two.
+      //
+      // Two row shapes, two halves of one number. Hash rows are counted as
+      // distinct `(day, visitorHash)` pairs rather than rows, so the same
+      // person visiting two of the project's apps on one day is one visitor;
+      // one row per sigil would say two.
+      //
+      // Collapsed rows (`SigilJobs`, ~48h old and older) no longer carry
+      // hashes, so all they can be is summed. That loses cross-app dedup for
+      // those days and can over-count a visitor who used two apps — accepted:
+      // the alternative is keeping per-visitor hashes indefinitely, and the
+      // whole point of the collapse is that they stop existing.
       const [uniqueAgg] = await this.database.run(
         sql`
-          SELECT COUNT(DISTINCT ${this.uniques.table.day} || '|' || ${this.uniques.table.visitorHash}) AS uniques
+          SELECT
+            COUNT(DISTINCT CASE
+              WHEN ${this.uniques.table.visitorHash} <> ${UNIQUES_COLLAPSED_HASH}
+              THEN ${this.uniques.table.day} || '|' || ${this.uniques.table.visitorHash}
+            END)
+            + COALESCE(SUM(CASE
+              WHEN ${this.uniques.table.visitorHash} = ${UNIQUES_COLLAPSED_HASH}
+              THEN ${this.uniques.table.count} ELSE 0
+            END), 0) AS uniques
           FROM ${this.uniques.table}
           WHERE ${this.uniques.table.sigilId} IN (${sigilList})
             AND ${this.uniques.table.day} >= ${since}
