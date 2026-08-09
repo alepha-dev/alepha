@@ -20,14 +20,19 @@ export interface ProjectQuestsViewSwitcherProps {
 }
 
 /**
- * The slim icon rail down the left edge of the Quests content area, and the
- * only way to reach the kanban board: the 2026-08 rename turned kanban from
- * its own route into a `?view=kanban` query toggle and took the sidebar entry
- * with it, leaving the board reachable only by hand-typing the URL.
+ * The slim icon rail down the far-left edge of the project content area, and
+ * the only way to reach the kanban board: the 2026-08 rename turned kanban
+ * from its own route into a `?view=kanban` query toggle and took the sidebar
+ * entry with it, leaving the board reachable only by hand-typing the URL.
  *
- * It lives inside the content area rather than in `ProjectView`, because that
- * layout changes shape under the board (`fullWidth`, no quest log) and the
- * rail has to sit still across both branches.
+ * Rendered by `ProjectView`, as the first child of the content area and
+ * OUTSIDE its `showQuestLog / fullWidth / else` branch (#153). It first lived
+ * inside the Quests page, which put it between the quest log and the table
+ * and made it read as a control for the table; the branch is the reason it
+ * cannot simply be moved within the page — anything a `NestedView` renders is
+ * necessarily right of the log. Staying outside the branch is what keeps the
+ * rail's x-position identical whether the layout shows the quest log, goes
+ * full width under the board, or centers a column.
  */
 const ProjectQuestsViewSwitcher = (props: ProjectQuestsViewSwitcherProps) => {
   const { tr } = useI18n<I18n, "en">();
