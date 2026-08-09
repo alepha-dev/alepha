@@ -657,14 +657,14 @@ describe("InsightsController", () => {
         hour: hourUtc(ctx, 0, 10),
         metric: "lcp",
         path: "/",
-        bucketCounts: { "0": 3 },
+        b0: 3,
       });
       await ctx.probe.vitals.create({
         sigilId: slow,
         hour: hourUtc(ctx, 0, 11),
         metric: "lcp",
         path: "/",
-        bucketCounts: { "6": 3 },
+        b6: 3,
       });
 
       const res = await ctx.insightsController.getInsights.fetch(
@@ -741,7 +741,9 @@ describe("InsightsController", () => {
         hour: hourUtc(ctx, 0, 10),
         metric: "lcp",
         path: "/",
-        bucketCounts: { "0": 1, "2": 2, "6": 1 },
+        b0: 1,
+        b2: 2,
+        b6: 1,
       });
 
       const res = await ctx.insightsController.getInsights.fetch(
@@ -769,14 +771,14 @@ describe("InsightsController", () => {
         hour: hourUtc(ctx, 0, 10),
         metric: "lcp",
         path: "/",
-        bucketCounts: { "0": 3 },
+        b0: 3,
       });
       await ctx.probe.vitals.create({
         sigilId: staging,
         hour: hourUtc(ctx, 0, 11),
         metric: "lcp",
         path: "/",
-        bucketCounts: { "6": 1 },
+        b6: 1,
       });
 
       const res = await ctx.insightsController.getInsights.fetch(
@@ -800,7 +802,7 @@ describe("InsightsController", () => {
         hour: hourUtc(ctx, 20, 10),
         metric: "lcp",
         path: "/",
-        bucketCounts: { "0": 5 },
+        b0: 5,
       });
 
       const res = await ctx.insightsController.getInsights.fetch(
@@ -830,7 +832,7 @@ describe("InsightsController", () => {
         hour: hourUtc(ctx, 0, 10),
         metric: "cls",
         path: "/",
-        bucketCounts: { "0": 1 },
+        b0: 1,
       });
 
       const res = await ctx.insightsController.getInsights.fetch(
