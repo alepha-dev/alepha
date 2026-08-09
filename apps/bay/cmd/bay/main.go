@@ -702,8 +702,10 @@ func (s *server) start(app state.App) error {
 	}
 
 	// Every writable path below exists because the manifest declared the
-	// resource that needs it. Declaring `$bucket` is what grants write access to
-	// storage/; not declaring it denies it.
+	// resource that needs it. Declaring `$storage` is what grants write access to
+	// storage/; not declaring it denies it. (The manifest key is still
+	// `hasBucket` — a wire-format name kept after the `$bucket` → `$storage`
+	// rename; there is no `$bucket` primitive anymore.)
 	writable := []string{filepath.Join(instance, "scratch")}
 	if m.Resources.Database {
 		writable = append(writable, filepath.Join(instance, "data"))
