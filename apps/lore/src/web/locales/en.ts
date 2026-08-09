@@ -21,17 +21,6 @@ export default {
   "spotlight.group.quests": "Quests",
   "spotlight.group.folios": "Folios",
 
-  "header.connections.title": "Connected apps",
-  "header.connections.state.live": "Connected — used in the last 24h",
-  "header.connections.state.stale": "Connected apps, idle recently",
-  "header.connections.state.empty": "No connected apps",
-  "header.connections.empty.body":
-    "Connect an MCP client (e.g. Claude) to https://lore.alepha.dev/mcp — it will appear here.",
-  "header.connections.row.usedAt": "Last used $1",
-  "header.connections.row.never": "never used",
-  "header.connections.revoke": "Revoke",
-  "header.connections.manage": "Manage connected apps",
-
   "quest-log.quests": "Quests:",
   "quest-log.search": "Find by name, area...",
   "quest-log.empty": "No quests yet",
