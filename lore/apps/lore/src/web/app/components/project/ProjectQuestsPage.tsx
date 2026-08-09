@@ -11,16 +11,11 @@ import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import KanbanBoard from "../kanban/KanbanBoard.tsx";
 import ProjectQuestsTable from "./ProjectQuestsTable.tsx";
-import ProjectQuestsViewSwitcher from "./ProjectQuestsViewSwitcher.tsx";
-import {
-  type QuestsView,
-  readStoredQuestsView,
-  writeStoredQuestsView,
-} from "./questsView.ts";
+import { readStoredQuestsView } from "./questsView.ts";
 
 /**
  * The Quests page. Renders the grouped table by default and the kanban
- * board when `?view=kanban`, with an icon rail to switch between the two.
+ * board when `?view=kanban`.
  *
  * The view lives in the URL rather than component state so a board link
  * still opens a board and the back button behaves. Kanban data is fetched
@@ -29,6 +24,12 @@ import {
  * the table needs), and the loader machinery does not re-run on a
  * query-only navigation anyway, so a loader-fetched board would be stale
  * on the first toggle.
+ *
+ * The icon rail that switches the two lives in `ProjectView`, not here (#153):
+ * a page rendered as the `NestedView` is necessarily to the RIGHT of the quest
+ * log, and the rail switches the whole surface, not the table inside it. What
+ * stays here is the seeding effect below — that is about this page's own
+ * default view, not about the control.
  */
 const ProjectQuestsPage = () => {
   const routerState = useRouterState();
@@ -87,27 +88,15 @@ const ProjectQuestsPage = () => {
     return null;
   }
 
-  const selectView = (view: QuestsView) => {
-    writeStoredQuestsView(view);
-    router.push("projectQuests", { query: { view } });
-  };
-
   return (
-    <div className="flex min-h-0 flex-1">
-      <ProjectQuestsViewSwitcher
-        view={kanban ? "kanban" : "list"}
-        kanbanEnabled={kanbanEnabled}
-        onSelect={selectView}
-      />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {kanban ? (
-          quests ? (
-            <KanbanBoard project={project} quests={quests} />
-          ) : null
-        ) : (
-          <ProjectQuestsTable />
-        )}
-      </div>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {kanban ? (
+        quests ? (
+          <KanbanBoard project={project} quests={quests} />
+        ) : null
+      ) : (
+        <ProjectQuestsTable />
+      )}
     </div>
   );
 };

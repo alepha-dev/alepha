@@ -31,8 +31,10 @@ import { currentSigilsAtom } from "../../atoms/currentSigilsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
+import ProjectQuestsViewSwitcher from "./ProjectQuestsViewSwitcher.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import QuestLog from "./QuestLog.tsx";
+import { type QuestsView, writeStoredQuestsView } from "./questsView.ts";
 
 const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests", "projectQuest"]);
 
@@ -100,6 +102,13 @@ const ProjectView = () => {
     name === "projectQuests" && routerState.query.view === "kanban";
   const showQuestLog = ROUTES_WITH_QUEST_LOG.has(name) && !kanbanView;
   const fullWidth = ROUTES_FULL_WIDTH.has(name) || kanbanView;
+  // The view rail belongs to the whole quests surface, so it renders on the
+  // same routes as the quest log — including the quest DETAIL route, where
+  // the log is also shown. Dropping it there would slide the log (and every
+  // pixel right of it) left by the rail's width the moment a quest opens,
+  // which is exactly the jump hoisting the rail out of the content area was
+  // meant to remove. From detail, picking a view navigates back to the list.
+  const showViewRail = ROUTES_WITH_QUEST_LOG.has(name);
 
   const [project] = useStore(currentProjectAtom);
   const [questCount] = useStore(currentQuestCountAtom);
@@ -118,6 +127,16 @@ const ProjectView = () => {
   const features: ProjectFeatures = {
     ...defaultProjectFeatures,
     ...project.features,
+  };
+
+  // Writes `?view=list` explicitly rather than clearing the param: the stored
+  // preference only SEEDS a bare `/p/:id/`, so an explicit choice has to win
+  // over it — clearing would let the seed put the board straight back. Also
+  // navigates by name, so picking a view from the quest DETAIL route lands on
+  // the list rather than trying to apply a view to a quest page.
+  const selectView = (view: QuestsView) => {
+    writeStoredQuestsView(view);
+    router.push("projectQuests", { params: { projectId }, query: { view } });
   };
 
   // Four unlabelled groups (`NavGroup.label` omitted on purpose — see the
@@ -319,36 +338,51 @@ const ProjectView = () => {
         </>
       }
     >
-      <div className="flex h-full flex-col">
-        <div
-          className={`flex min-h-0 flex-1 flex-col ${showQuestLog || fullWidth ? "overflow-hidden" : "overflow-auto"}`}
-        >
-          {showQuestLog ? (
-            <div className="flex min-h-0 flex-1">
-              <div
-                className="border-border hidden min-h-0 shrink-0 border-r lg:flex"
-                style={{ width: "25%", minWidth: 240, maxWidth: 420 }}
-              >
-                <QuestLog />
-              </div>
-              {/* QuestView owns its own scroll (`overflow-y-auto` on its
+      {/* The rail is the FIRST child of the content area — outside the
+          three-way branch below, so it holds the same x-position whether the
+          branch renders the quest log, the full-width board, or the centered
+          column. Anything rendered from inside a branch necessarily sits to
+          the right of the quest log, which is what this replaces. */}
+      <div className="flex h-full">
+        {showViewRail && (
+          <ProjectQuestsViewSwitcher
+            view={kanbanView ? "kanban" : "list"}
+            kanbanEnabled={features.kanban === true}
+            onSelect={selectView}
+          />
+        )}
+        <div className="flex h-full min-w-0 flex-1 flex-col">
+          <div
+            className={`flex min-h-0 flex-1 flex-col ${showQuestLog || fullWidth ? "overflow-hidden" : "overflow-auto"}`}
+          >
+            {showQuestLog ? (
+              <div className="flex min-h-0 flex-1">
+                <div
+                  data-testid="quest-log"
+                  className="border-border hidden min-h-0 shrink-0 border-r lg:flex"
+                  style={{ width: "25%", minWidth: 240, maxWidth: 420 }}
+                >
+                  <QuestLog />
+                </div>
+                {/* QuestView owns its own scroll (`overflow-y-auto` on its
                   body), so this wrapper must NOT also scroll — a nested
                   `overflow-auto` here showed a spurious scrollbar even on
                   short quests. Matches the `fullWidth` branch's no-scroll
                   intent. */}
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+                  <NestedView />
+                </div>
+              </div>
+            ) : fullWidth ? (
+              <div className="flex min-h-0 w-full flex-1 flex-col">
                 <NestedView />
               </div>
-            </div>
-          ) : fullWidth ? (
-            <div className="flex min-h-0 w-full flex-1 flex-col">
-              <NestedView />
-            </div>
-          ) : (
-            <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col p-2">
-              <NestedView />
-            </div>
-          )}
+            ) : (
+              <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col p-2">
+                <NestedView />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </AppShell>

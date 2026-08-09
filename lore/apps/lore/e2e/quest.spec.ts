@@ -832,6 +832,62 @@ test.describe("Quest", () => {
       await expect(page.getByTestId("kanban-board")).toHaveCount(0);
     });
 
+    await test.step("the rail is left of the quest log and never moves", async () => {
+      // #153: the rail used to be rendered by the Quests PAGE, which put it
+      // between the quest log and the table — reading as a control for the
+      // table rather than for the surface. It is now the first child of the
+      // content area, outside the layout's three-way branch, so its x must be
+      // smaller than the log's and identical under the board (which has no
+      // log at all and goes full width).
+      await page.goto(`/p/${projectId}/?view=list`);
+      await expect(page.getByTestId("quests-table")).toBeVisible({
+        timeout: 10_000,
+      });
+      const railInList = await page
+        .getByTestId("quests-view-switcher")
+        .boundingBox();
+      const log = await page.getByTestId("quest-log").boundingBox();
+      if (!railInList || !log) throw new Error("missing bounding boxes");
+      expect(railInList.x).toBeLessThan(log.x);
+
+      await page.getByTestId("quests-view-kanban").click();
+      await expect(page.getByTestId("kanban-board")).toBeVisible({
+        timeout: 10_000,
+      });
+      const railInKanban = await page
+        .getByTestId("quests-view-switcher")
+        .boundingBox();
+      if (!railInKanban) throw new Error("missing bounding box");
+      expect(railInKanban.x).toBe(railInList.x);
+
+      // And it survives opening a quest: the log is shown on the detail
+      // route too, so a rail that vanished there would slide the log left.
+      await page.goto(`/p/${projectId}/?view=list`);
+      const { shortId } = await apiPost<{ shortId: number }>(
+        page,
+        "createQuest",
+        {
+          projectId,
+          title: `RailProbe${t}`,
+          description: "Seeded so the detail route has something to open",
+          area: "Main",
+          priority: "low",
+          difficulty: 1,
+          objectives: [],
+          attachments: [],
+        },
+      );
+      await page.goto(`/p/${projectId}/q/${shortId}`);
+      await expect(page.getByTestId("quest-log")).toBeVisible({
+        timeout: 10_000,
+      });
+      const railInDetail = await page
+        .getByTestId("quests-view-switcher")
+        .boundingBox();
+      if (!railInDetail) throw new Error("missing bounding box");
+      expect(railInDetail.x).toBe(railInList.x);
+    });
+
     await test.step("the rail disappears when kanban is off", async () => {
       await setProjectFeature(page, projectId, "kanban", false);
       await page.goto(`/p/${projectId}/`);
