@@ -101,159 +101,175 @@ const FolioToolbar = (props: FolioToolbarProps): ReactElement => {
     { value: "quote", labelKey: "folios.editor.action.quote" },
   ];
 
-  // 52px and a second step off the card, per the design. The status line
-  // is NOT here: the design keeps it on the menubar row and gates this
-  // row's own copy behind `showDocActions`, which the shipped state has
-  // switched off. Duplicating it in both places would just be noise.
+  // 52px, and scoped to the DOCUMENT PANE rather than bleeding across the
+  // whole workspace: this row formats the document, so it has no business
+  // spanning the folio tree and the inspector the way the menubar above it
+  // legitimately does.
+  //
+  // Padded to `px-8` — the prose's own inset — rather than held to the
+  // prose's `max-w-[812px]` measure, which was tried first and does not
+  // work: the controls need ~810px and the measure leaves ~748, so the row
+  // overflowed its box and the Save button rendered on top of the
+  // inspector's tab bar. Since the pane is narrower than 812px whenever the
+  // tree and inspector are both open, `px-8` lines the row up with the text
+  // exactly in the common case, and merely starts it left of a centred
+  // column in the wide/focus-mode case. `overflow-x-auto` on the button
+  // group is the backstop for a genuinely cramped pane — it keeps the
+  // spill inside this row instead of over the pane beside it.
+  //
+  // The status line is NOT here: the design keeps it on the menubar row and
+  // gates this row's own copy behind `showDocActions`, which the shipped
+  // state has switched off. Duplicating it in both places would be noise.
   return (
-    <div
-      data-slot="folio-toolbar"
-      className="border-border bg-muted/60 flex h-[52px] flex-none items-center gap-1 border-b pr-3 pl-2.5"
-    >
-      {viewMode === "rich-text" && (
-        <div className="flex items-center gap-1">
-          <FolioToolbarButton
-            label={label("folios.editor.action.undo")}
-            icon={Undo2}
-            onClick={run("edit.undo")}
-          />
-          <FolioToolbarButton
-            label={label("folios.editor.action.redo")}
-            icon={Redo2}
-            onClick={run("edit.redo")}
-          />
+    <div data-slot="folio-toolbar" className="w-full flex-none px-8">
+      <div className="border-border flex h-[52px] items-center gap-1 border-b">
+        {viewMode === "rich-text" && (
+          // Pulled left by the ghost buttons' own padding so the first
+          // icon sits on the prose's left edge, not the button box does.
+          <div className="-ml-2 flex min-w-0 items-center gap-0.5 overflow-x-auto">
+            <FolioToolbarButton
+              label={label("folios.editor.action.undo")}
+              icon={Undo2}
+              onClick={run("edit.undo")}
+            />
+            <FolioToolbarButton
+              label={label("folios.editor.action.redo")}
+              icon={Redo2}
+              onClick={run("edit.redo")}
+            />
 
-          <div className="bg-border mx-1.5 h-5.5 w-px" />
+            <div className="bg-border mx-1 h-5.5 w-px" />
 
-          <Select
-            value={blockType || "paragraph"}
-            onValueChange={(value) => applyBlockType(value as BlockType)}
-          >
-            <SelectTrigger
-              size="sm"
-              className="w-33"
-              aria-label={label("folios.editor.block.label")}
+            <Select
+              value={blockType || "paragraph"}
+              onValueChange={(value) => applyBlockType(value as BlockType)}
             >
-              {/* The label, not the raw value: left to itself the trigger
+              <SelectTrigger
+                size="sm"
+                className="w-30"
+                aria-label={label("folios.editor.block.label")}
+              >
+                {/* The label, not the raw value: left to itself the trigger
                   renders the realm's own vocabulary ("h2"), which is an
                   implementation detail and untranslatable. */}
-              <SelectValue>
-                {tr(
-                  BLOCK_TYPES.find(
-                    (b) => b.value === (blockType || "paragraph"),
-                  )?.labelKey ?? "folios.editor.block.paragraph",
-                )}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {BLOCK_TYPES.map((b) => (
-                <SelectItem key={b.value} value={b.value as string}>
-                  {tr(b.labelKey)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                <SelectValue>
+                  {tr(
+                    BLOCK_TYPES.find(
+                      (b) => b.value === (blockType || "paragraph"),
+                    )?.labelKey ?? "folios.editor.block.paragraph",
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {BLOCK_TYPES.map((b) => (
+                  <SelectItem key={b.value} value={b.value as string}>
+                    {tr(b.labelKey)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <div className="bg-border mx-1.5 h-5.5 w-px" />
+            <div className="bg-border mx-1 h-5.5 w-px" />
 
-          <FolioToolbarButton
-            label={label("folios.editor.action.bold")}
-            icon={Bold}
-            active={(format & IS_BOLD) !== 0}
-            onClick={run("edit.bold")}
-          />
-          <FolioToolbarButton
-            label={label("folios.editor.action.italic")}
-            icon={Italic}
-            active={(format & IS_ITALIC) !== 0}
-            onClick={run("edit.italic")}
-          />
-          <FolioToolbarButton
-            label={label("folios.editor.action.code")}
-            icon={Code}
-            active={(format & IS_CODE) !== 0}
-            onClick={run("edit.code")}
-          />
-
-          <div className="bg-border mx-1.5 h-5.5 w-px" />
-
-          <FolioToolbarButton
-            label={label("folios.editor.action.bullet-list")}
-            icon={List}
-            active={listType === "bullet"}
-            onClick={() => applyListType("bullet")}
-          />
-          <FolioToolbarButton
-            label={label("folios.editor.action.numbered-list")}
-            icon={ListOrdered}
-            active={listType === "number"}
-            onClick={() => applyListType("number")}
-          />
-          <FolioToolbarButton
-            label={label("folios.editor.action.task-list")}
-            icon={ListChecks}
-            active={listType === "check"}
-            onClick={() => applyListType("check")}
-          />
-
-          <div className="bg-border mx-1.5 h-5.5 w-px" />
-
-          <FolioToolbarButton
-            label={label("folios.editor.action.link")}
-            icon={LinkIcon}
-            onClick={run("edit.link")}
-          />
-          {props.hasImageUpload && (
             <FolioToolbarButton
-              label={label("folios.editor.action.image")}
-              icon={ImageIcon}
-              onClick={run("insert.image")}
+              label={label("folios.editor.action.bold")}
+              icon={Bold}
+              active={(format & IS_BOLD) !== 0}
+              onClick={run("edit.bold")}
             />
-          )}
-          <FolioToolbarButton
-            label={label("folios.editor.action.table")}
-            icon={TableIcon}
-            onClick={run("insert.table")}
-          />
-          <FolioToolbarButton
-            label={label("folios.editor.action.code-block")}
-            icon={SquareCode}
-            onClick={run("insert.codeBlock")}
-          />
-          <FolioToolbarButton
-            label={label("folios.editor.action.divider")}
-            icon={Minus}
-            onClick={run("insert.divider")}
-          />
-        </div>
-      )}
+            <FolioToolbarButton
+              label={label("folios.editor.action.italic")}
+              icon={Italic}
+              active={(format & IS_ITALIC) !== 0}
+              onClick={run("edit.italic")}
+            />
+            <FolioToolbarButton
+              label={label("folios.editor.action.code")}
+              icon={Code}
+              active={(format & IS_CODE) !== 0}
+              onClick={run("edit.code")}
+            />
 
-      <div className="flex-1" />
+            <div className="bg-border mx-1 h-5.5 w-px" />
 
-      {/* Same size token as the Save button beside it — `Segmented` is
-          built to line up pixel-for-pixel with a `Button` of the matching
-          token, and `xs` against a `sm` button was a 4px mismatch sitting
-          in the middle of the row. */}
-      <Segmented
-        size="sm"
-        value={viewMode === "source" ? "md" : "rich-text"}
-        onChange={(value) =>
-          changeViewMode(value === "md" ? "source" : "rich-text")
-        }
-        options={[
-          { value: "rich-text", label: tr("folios.editor.toolbar.rich") },
-          { value: "md", label: tr("folios.editor.toolbar.md") },
-        ]}
-      />
+            <FolioToolbarButton
+              label={label("folios.editor.action.bullet-list")}
+              icon={List}
+              active={listType === "bullet"}
+              onClick={() => applyListType("bullet")}
+            />
+            <FolioToolbarButton
+              label={label("folios.editor.action.numbered-list")}
+              icon={ListOrdered}
+              active={listType === "number"}
+              onClick={() => applyListType("number")}
+            />
+            <FolioToolbarButton
+              label={label("folios.editor.action.task-list")}
+              icon={ListChecks}
+              active={listType === "check"}
+              onClick={() => applyListType("check")}
+            />
 
-      <Button
-        size="sm"
-        onClick={() => props.handlers["folio.save"]()}
-        disabled={props.saving || props.state.locked || !props.dirty}
-      >
-        <Save className="size-4" />
-        {tr("folios.editor.action.save")}
-      </Button>
+            <div className="bg-border mx-1 h-5.5 w-px" />
+
+            <FolioToolbarButton
+              label={label("folios.editor.action.link")}
+              icon={LinkIcon}
+              onClick={run("edit.link")}
+            />
+            {props.hasImageUpload && (
+              <FolioToolbarButton
+                label={label("folios.editor.action.image")}
+                icon={ImageIcon}
+                onClick={run("insert.image")}
+              />
+            )}
+            <FolioToolbarButton
+              label={label("folios.editor.action.table")}
+              icon={TableIcon}
+              onClick={run("insert.table")}
+            />
+            <FolioToolbarButton
+              label={label("folios.editor.action.code-block")}
+              icon={SquareCode}
+              onClick={run("insert.codeBlock")}
+            />
+            <FolioToolbarButton
+              label={label("folios.editor.action.divider")}
+              icon={Minus}
+              onClick={run("insert.divider")}
+            />
+          </div>
+        )}
+
+        <div className="flex-1" />
+
+        {/* Same size token as the Save button beside it — `Segmented` is
+            built to line up pixel-for-pixel with a `Button` of the matching
+            token, and `xs` against a `sm` button was a 4px mismatch sitting
+            in the middle of the row. */}
+        <Segmented
+          size="sm"
+          value={viewMode === "source" ? "md" : "rich-text"}
+          onChange={(value) =>
+            changeViewMode(value === "md" ? "source" : "rich-text")
+          }
+          options={[
+            { value: "rich-text", label: tr("folios.editor.toolbar.rich") },
+            { value: "md", label: tr("folios.editor.toolbar.md") },
+          ]}
+        />
+
+        <Button
+          size="sm"
+          onClick={() => props.handlers["folio.save"]()}
+          disabled={props.saving || props.state.locked || !props.dirty}
+        >
+          <Save className="size-4" />
+          {tr("folios.editor.action.save")}
+        </Button>
+      </div>
     </div>
   );
 };

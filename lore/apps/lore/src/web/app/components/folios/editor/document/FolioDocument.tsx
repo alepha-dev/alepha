@@ -40,13 +40,24 @@ export interface FolioDocumentProps {
   draft: FolioDraft;
   actions: UseFolioActionsResult;
   /**
-   * Where the menubar and toolbar rows render. They are created inside
-   * MDXEditor's realm — the only place their commands can be published
-   * from — but the design puts them above all three panes, so
-   * `renderToolbar` portals them into this node rather than rendering
-   * them in place. See `FolioWorkspace.tsx` for the full reasoning.
+   * Where the MENUBAR row renders. It is created inside MDXEditor's realm
+   * — the only place its commands can be published from — but the design
+   * puts it above all three panes, so `renderToolbar` portals it into this
+   * node rather than rendering it in place. See `FolioWorkspace.tsx` for
+   * the full reasoning.
    */
   chromeSlot: HTMLElement | null;
+  /**
+   * Where the FORMATTING TOOLBAR renders — a second target inside the
+   * document column, owned by `FolioWorkspaceContent`. The two rows shared
+   * `chromeSlot` until it became clear they are not the same kind of
+   * thing: the menubar carries folio-level actions (move, delete, the pane
+   * toggles) that apply with nothing selected and even while the folio is
+   * locked, so it is workspace chrome; the toolbar is nothing but
+   * text-formatting commands, so it belongs to the text. Same portal
+   * mechanism, different destination.
+   */
+  toolbarSlot: HTMLElement | null;
   /**
    * Revision count for the meta bar's "$3 revisions" — sourced from the
    * inspector's History tab (`FolioInspector`'s `onRevisionCount`), via
@@ -149,7 +160,10 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   };
 
   return (
-    <div className="flex flex-col gap-0">
+    // `data-slot` is what `FolioTitleField` scopes its Enter-moves-to-body
+    // lookup to — the tree and the inspector carry `contenteditable` nodes
+    // of their own, so a document-wide query would land in the wrong one.
+    <div data-slot="folio-document" className="flex flex-col gap-0">
       <FolioTitleField
         value={values.title}
         onChange={(v) => props.draft.form.input.title.set(v)}
@@ -203,36 +217,41 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
             wikiLinks={wikiLinks}
             minHeight={420}
             variant="bare"
-            renderToolbar={() => {
-              const chrome = (
-                <>
-                  <FolioEditorMenubar
-                    handlers={props.actions.handlers}
-                    state={props.actions.actionState}
-                    hasImageUpload={!!props.imageUploadHandler}
-                    onEditorCommands={props.actions.registerEditorCommands}
-                    statusKey={props.draft.statusKey}
-                    savedAt={props.draft.savedAt}
-                  />
-                  <FolioToolbar
-                    handlers={props.actions.handlers}
-                    state={props.actions.actionState}
-                    saving={props.actions.saving}
-                    dirty={props.draft.dirty}
-                    hasImageUpload={!!props.imageUploadHandler}
-                  />
-                </>
-              );
-              // The portal keeps these two rows inside MDXEditor's React
-              // tree — so `usePublisher`/`useCellValue` still resolve against
-              // the live realm — while putting their DOM above the panes,
-              // where the design has them. Rendering in place until the slot
-              // exists would flash the rows inside the document column on
-              // first paint, so render nothing until then.
-              return props.chromeSlot
-                ? createPortal(chrome, props.chromeSlot)
-                : null;
-            }}
+            renderToolbar={() => (
+              // Two portals, not one. Both keep their row inside MDXEditor's
+              // React tree — so `usePublisher`/`useCellValue` still resolve
+              // against the live realm — while putting the DOM where the
+              // design has it: the menubar above all three panes, the
+              // formatting toolbar inside the document column with the text
+              // it acts on. Rendering in place until a slot exists would
+              // flash the row in the wrong position on first paint, so each
+              // renders nothing until its own target is there.
+              <>
+                {props.chromeSlot &&
+                  createPortal(
+                    <FolioEditorMenubar
+                      handlers={props.actions.handlers}
+                      state={props.actions.actionState}
+                      hasImageUpload={!!props.imageUploadHandler}
+                      onEditorCommands={props.actions.registerEditorCommands}
+                      statusKey={props.draft.statusKey}
+                      savedAt={props.draft.savedAt}
+                    />,
+                    props.chromeSlot,
+                  )}
+                {props.toolbarSlot &&
+                  createPortal(
+                    <FolioToolbar
+                      handlers={props.actions.handlers}
+                      state={props.actions.actionState}
+                      saving={props.actions.saving}
+                      dirty={props.draft.dirty}
+                      hasImageUpload={!!props.imageUploadHandler}
+                    />,
+                    props.toolbarSlot,
+                  )}
+              </>
+            )}
           />
         </WikiLinkHoverProvider>
       )}
