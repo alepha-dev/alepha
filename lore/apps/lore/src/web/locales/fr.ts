@@ -11,12 +11,15 @@ export default {
 
   "spotlight.title": "Rechercher",
   "spotlight.description": "Trouver des quêtes et des folios dans ce projet.",
+  "spotlight.description.projects": "Accéder à l'un de vos projets.",
   "spotlight.placeholder": "Rechercher quêtes et folios…",
-  "spotlight.no-project": "Ouvrez un projet pour rechercher.",
+  "spotlight.placeholder.projects": "Accéder à un projet…",
   "spotlight.hint": "Saisissez pour rechercher quêtes et folios.",
   "spotlight.empty": "Aucun résultat.",
+  "spotlight.empty.projects": "Aucun projet ne correspond.",
   "spotlight.group.quests": "Quêtes",
   "spotlight.group.folios": "Folios",
+  "spotlight.group.projects": "Projets",
 
   "quest-log.quests": "Quêtes :",
   "quest-log.search": "Chercher par nom, domaine ou difficulté...",
@@ -694,6 +697,11 @@ export default {
     "Ce que cette application peut remonter. Désactiver une capacité empêche le point d'ingestion de l'accepter — pour cette application seulement, pas pour les autres.",
   "app.settings.capabilities.feedbackModuleOff":
     "Le module Retours du projet est désactivé : le lien de cette application reste masqué quoi qu'indique cet interrupteur. Activez le module dans Paramètres ▸ Retours.",
+  "app.settings.feedbackPosition.title": "Position du bouton de retour",
+  "app.settings.feedbackPosition.description":
+    "Le coin dans lequel se place le bouton flottant de cette application. Déplacez-le s'il recouvre un élément — la pagination occupe souvent le coin inférieur droit.",
+  "app.settings.feedbackPosition.bottomLeft": "En bas à gauche",
+  "app.settings.feedbackPosition.bottomRight": "En bas à droite",
   "app.settings.rotate.title": "Renouveler le jeton",
   "app.settings.rotate.description":
     "Génère un nouveau jeton et invalide l'actuel immédiatement. Tout ce que cette application a remonté est conservé — c'est ainsi qu'on révoque un jeton fuité sans perdre son historique.",
