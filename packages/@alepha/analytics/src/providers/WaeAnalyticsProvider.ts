@@ -516,12 +516,25 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
     projections.push("max(_sample_interval) AS _si");
 
+    // ⚠️ `count()`, with NO arguments — not `COUNT(*)`, which is what every
+    // relational sibling of this provider writes and what this line said
+    // until it took production down on 2026-08-11:
+    //
+    //   HAVING COUNT(*) > 0 → 422 "COUNT() function must have 0 arguments: 1"
+    //   HAVING count()  > 0 → 200
+    //
+    // `OrmAnalyticsProvider` keeps `COUNT(*)`, which is correct there and
+    // invalid here — the two clauses look like a copy-paste divergence and
+    // are not. The clause itself earns its place on both: with no `GROUP BY`,
+    // an aggregate over zero rows still returns one all-NULL row, and this is
+    // what suppresses it.
+
     const rows = await this.sql().query(`
       SELECT ${projections.join(", ")}
       FROM ${AnalyticsEngineSql.quoteIdentifier(this.requireDatasetName())}
       WHERE ${conditions.join(" AND ")}
       ${grouping.length ? `GROUP BY ${grouping.join(", ")}` : ""}
-      HAVING COUNT(*) > 0
+      HAVING count() > 0
     `);
 
     let sampleInterval = 1;

@@ -98,7 +98,35 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
 
   // -------------------------------------------------------------------------------------------------------------------
 
+  /**
+   * The handful of dialect rules this fake reproduces because getting them
+   * wrong is a 422 from the real endpoint and nothing else catches it.
+   *
+   * ⚠️ Added after a production outage (2026-08-11) in which the provider
+   * emitted `HAVING COUNT(*) > 0` — valid on every relational database,
+   * rejected by Analytics Engine with *"COUNT() function must have 0
+   * arguments: 1"*. This fake previously modelled that clause explicitly and
+   * so agreed with the bug: every test passed against SQL the real parser
+   * refuses.
+   *
+   * Same lesson as `AnalyticsEngineSql.quoteIdentifier`'s hyphen note ("no
+   * fake can catch this: it is the real endpoint's parser that rejects it"),
+   * which is precisely why the answer is to teach the fake each rule as it is
+   * learned, rather than to accept that class of bug as undetectable.
+   */
+  protected assertDialect(sql: string): void {
+    // `count()` takes no arguments in this dialect. `count(*)`, `count(1)`
+    // and `count(col)` are all the same 422.
+    const badCount = /\bcount\s*\(\s*[^)\s]/i.exec(sql);
+    if (badCount) {
+      throw new AlephaError(
+        "Analytics Engine SQL failed (422): Input was invalid: COUNT() function must have 0 arguments: 1",
+      );
+    }
+  }
+
   protected execute(sql: string): AnalyticsEngineRow[] {
+    this.assertDialect(sql);
     const select = /SELECT\s+([\s\S]+?)\s+FROM/.exec(sql)?.[1] ?? "";
     const where =
       /WHERE\s+([\s\S]+?)(?:\s+GROUP BY|\s+HAVING|$)/.exec(sql)?.[1] ?? "";
@@ -128,7 +156,7 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
     // No GROUP BY at all: the whole match is one implicit group — but only
     // when something matched. Plain aggregate SQL over zero matching rows
     // still returns one row with a NULL/0 total; `WaeAnalyticsProvider`
-    // guards against that with `HAVING COUNT(*) > 0`, which this fake
+    // guards against that with `HAVING count() > 0`, which this fake
     // honours by never inventing a group when nothing fed it.
     if (groupExpressions.length === 0 && matched.length > 0) {
       groups.set("", matched);

@@ -240,6 +240,36 @@ export class BuildManifestTask extends BuildTask {
       publicVars = declassified.length ? declassified : undefined;
     } catch {}
 
+    /*
+      ⚠️ The env surface above is the graph as instantiated HERE — under node.
+      A key declared only by a provider that exists only on workerd is
+      therefore absent from it, and since this list is the allowlist the
+      deploy `secrets` step pushes from, such a key can never reach the
+      worker. The operator sets it in `.env.production`, `platform up` reports
+      success, and the worker boots without it.
+
+      That is the same node-cannot-see-workerd hazard the bucket and dataset
+      detection above document, one layer over: not a missing binding, a
+      missing SECRET — and a missing secret fails at request time rather than
+      at boot, so it surfaces as a broken feature rather than a failed deploy.
+      It cost a production outage: `WaeAnalyticsProvider` declares
+      `CLOUDFLARE_ANALYTICS_TOKEN`, is selected only under workerd, and every
+      analytics read 500'd on a credential the deploy had quietly refused to
+      push.
+
+      Detection is the right fix because detection is the one thing that DOES
+      work from node: `hasAnalytics` is already known above, and it is exactly
+      the condition under which the runtime will demand these keys.
+      `CLOUDFLARE_ANALYTICS_DATASET` is deliberately not added — the platform
+      supplies it as a plain var and `EXCLUDED_SECRET_KEYS` drops it from
+      every push.
+    */
+    if (hasAnalytics) {
+      for (const key of ["CLOUDFLARE_ANALYTICS_TOKEN", "CLOUDFLARE_ACCOUNT_ID"])
+        if (!env.includes(key)) env.push(key);
+      env.sort();
+    }
+
     // Capture the CF email binding so manifest-mode deploys (Rocket) can
     // re-emit `send_email` — `enhanceEmail` can't introspect there.
     let email: BuildManifest["email"];
