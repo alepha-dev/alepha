@@ -6,6 +6,7 @@ import { AnalyticsProvider } from "./providers/AnalyticsProvider.ts";
 import { MemoryAnalyticsProvider } from "./providers/MemoryAnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "./providers/OrmAnalyticsProvider.ts";
 import { WaeAnalyticsProvider } from "./providers/WaeAnalyticsProvider.ts";
+import { AnalyticsRetentionGuard } from "./services/AnalyticsRetentionGuard.ts";
 
 export * from "./jobs/AnalyticsRollupJobs.ts";
 export * from "./planner/AnalyticsBuckets.ts";
@@ -18,6 +19,7 @@ export * from "./providers/WaeAnalyticsProvider.ts";
 export * from "./schemas/analyticsDatasetSchema.ts";
 export * from "./schemas/analyticsQuerySchema.ts";
 export * from "./services/AnalyticsEngineSql.ts";
+export * from "./services/AnalyticsRetentionGuard.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -40,6 +42,8 @@ export * from "./services/AnalyticsEngineSql.ts";
  *
  * `AnalyticsRollupJobs` is deliberately **not** wired here — see
  * {@link AlephaAnalyticsRollup} just below for why it is a separate module.
+ * `AnalyticsRetentionGuard` *is* wired here, unconditionally — see
+ * `index.ts` for why.
  *
  * @module alepha.analytics
  */
@@ -51,7 +55,7 @@ export const AlephaAnalytics = $module({
   // auto-injected) so only the one `register()` selects below is ever
   // instantiated — see `index.ts` for why `OrmAnalyticsProvider` is never
   // eagerly imported here either.
-  services: [AnalyticsProvider],
+  services: [AnalyticsProvider, AnalyticsRetentionGuard],
   variants: [
     MemoryAnalyticsProvider,
     OrmAnalyticsProvider,

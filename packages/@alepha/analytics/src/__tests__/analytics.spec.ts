@@ -90,6 +90,53 @@ describe("$analytics", () => {
     expect(app.views.dataset.retention?.hot).toBe("120d");
   });
 
+  it("rejects a cold window shorter than the hot window", () => {
+    // A shorter `cold` would let `prune()` delete rows in
+    // `[coldCutoff, hotCutoff)` that the same sweep's `rollup()` never
+    // touched — still hour-precision, still inside the hot window. That is
+    // data loss, not a resolution change, so it has to fail at declaration
+    // time rather than the first time the sweep actually runs.
+    class ShortCold {
+      public readonly views = $analytics({
+        index: "app",
+        dimensions: z.object({ app: z.string() }),
+        measures: z.object({ count: z.number() }),
+        retention: { hot: "60d", cold: "5d" },
+      });
+    }
+
+    const alepha = Alepha.create();
+    let error: Error | undefined;
+    try {
+      alepha.inject(ShortCold);
+    } catch (caught) {
+      error = caught as Error;
+    }
+
+    expect(error?.message).toContain("retention.cold");
+    expect(error?.message).toContain("60d");
+    expect(error?.message).toContain("5d");
+  });
+
+  it("accepts a cold window equal to the hot window", async () => {
+    // The boundary case: `cold === hot` prunes exactly what this sweep would
+    // have just rolled up, nothing more — not a violation of the invariant.
+    class EqualWindows {
+      public readonly views = $analytics({
+        index: "app",
+        dimensions: z.object({ app: z.string() }),
+        measures: z.object({ count: z.number() }),
+        retention: { hot: "60d", cold: "60d" },
+      });
+    }
+
+    const alepha = Alepha.create();
+    const app = alepha.inject(EqualWindows);
+    await alepha.start();
+
+    expect(app.views.dataset.retention?.cold).toBe("60d");
+  });
+
   it("rejects a camelCase property key, since it becomes a table name", () => {
     // `MemoryAnalyticsProvider.register()` is a no-op, so under test — where
     // memory is always the bound provider — a bad name would otherwise pass

@@ -5,6 +5,7 @@ import { $analytics } from "./primitives/$analytics.ts";
 import { AnalyticsProvider } from "./providers/AnalyticsProvider.ts";
 import { MemoryAnalyticsProvider } from "./providers/MemoryAnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "./providers/OrmAnalyticsProvider.ts";
+import { AnalyticsRetentionGuard } from "./services/AnalyticsRetentionGuard.ts";
 
 export * from "./jobs/AnalyticsRollupJobs.ts";
 export * from "./planner/AnalyticsBuckets.ts";
@@ -17,6 +18,7 @@ export * from "./providers/WaeAnalyticsProvider.ts";
 export * from "./schemas/analyticsDatasetSchema.ts";
 export * from "./schemas/analyticsQuerySchema.ts";
 export * from "./services/AnalyticsEngineSql.ts";
+export * from "./services/AnalyticsRetentionGuard.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -34,6 +36,10 @@ export * from "./services/AnalyticsEngineSql.ts";
  *
  * `AnalyticsRollupJobs` is deliberately **not** wired here — see
  * {@link AlephaAnalyticsRollup} just below for why it is a separate module.
+ * `AnalyticsRetentionGuard` *is* wired here, unconditionally, precisely to
+ * catch an app that forgets the split: it `log.warn`s at boot if any
+ * dataset declares `retention.hot` while no `AnalyticsRollupJobs` was ever
+ * constructed.
  *
  * @module alepha.analytics
  */
@@ -56,7 +62,7 @@ export const AlephaAnalytics = $module({
   // using whatever `DATABASE_URL` happens to be set — which in this repo's
   // test environment is a Postgres URL that the default SQLite driver cannot
   // parse.
-  services: [AnalyticsProvider],
+  services: [AnalyticsProvider, AnalyticsRetentionGuard],
   variants: [MemoryAnalyticsProvider, OrmAnalyticsProvider],
   register: (alepha) => {
     alepha.with({
@@ -92,6 +98,15 @@ export const AlephaAnalytics = $module({
  * something asks for it. An app that wants the scheduled sweep imports this
  * module explicitly, alongside `AlephaAnalytics` — the same relationship
  * `AlephaApiJobsQueue` already has to `AlephaApiJobs`.
+ *
+ * That relationship is not quite as safe as it sounds, though.
+ * `AlephaApiJobsQueue` is additive — omit it and `$job` still runs, just in
+ * direct mode instead of through a real queue. Omitting *this* module is not
+ * additive: `retention` simply does nothing, forever, with no fallback and
+ * no error. `AnalyticsRetentionGuard` (wired unconditionally into
+ * `AlephaAnalytics` above) exists specifically to catch that: it warns at
+ * boot if any dataset declares `retention.hot` while no `AnalyticsRollupJobs`
+ * was ever constructed.
  *
  * @module alepha.analytics.rollup
  */

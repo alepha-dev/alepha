@@ -96,11 +96,14 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    * Validates the dataset and registers it with the bound provider.
    *
    * `onInit` rather than a lifecycle hook or first use, and synchronous by
-   * requirement of the base class. Three things have to happen here, in
+   * requirement of the base class. Four things have to happen here, in
    * order:
    *
    * - The name has to be legal on every backend before anything else runs,
    *   since a rejected name should never reach a provider's `register()`.
+   * - `retention` has to describe a boundary that can actually be enforced
+   *   safely — see {@link assertValidRetention} — before anything downstream
+   *   (a provider's `register()`, `AnalyticsRollupJobs`) trusts it.
    * - The slot caps and the index check are cheap, and their failure mode is a
    *   wire format that silently misreads stored rows — so they are asserted at
    *   boot rather than at the first write.
@@ -113,6 +116,7 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    */
   protected onInit(): void {
     this.assertLegalName();
+    this.assertValidRetention();
     AnalyticsSlotMap.forDataset(this.dataset);
     this.provider.register(this.dataset);
   }
@@ -142,6 +146,43 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
         "and the Analytics Engine dataset discriminator, so it cannot be " +
         `camelCase. Either rename the property to '${AnalyticsPrimitive.toSnakeCase(name)}', ` +
         'or pass an explicit { name: "..." }.',
+    );
+  }
+
+  /**
+   * Refuses a `retention.cold` shorter than `retention.hot`.
+   *
+   * `AnalyticsRollupJobs` only ever folds up to the hot cutoff — see its
+   * `rollupBoundary` — so if `cold` names a boundary more recent than that,
+   * the very same sweep would prune rows in `[coldCutoff, hotCutoff)` that
+   * were never rolled up: still hour-precision, still inside the window
+   * `hot` promises, deleted outright instead of folded. That breaks the one
+   * invariant this whole feature exists to keep — no total the UI shows may
+   * change, only the time-axis resolution — so it is rejected here, at boot,
+   * rather than left to `prune()` to silently eat rows the first time the
+   * sweep runs.
+   *
+   * A no-op whenever either bound is absent: `cold` without `hot` has
+   * nothing to be shorter than (and does nothing on its own either, since
+   * `AnalyticsRollupJobs.sweepDataset` skips any dataset without `hot`).
+   */
+  protected assertValidRetention(): void {
+    const retention = this.dataset.retention;
+    if (!retention?.hot || !retention?.cold) {
+      return;
+    }
+
+    const hotMillis = AnalyticsBuckets.parseWindow(retention.hot);
+    const coldMillis = AnalyticsBuckets.parseWindow(retention.cold);
+    if (coldMillis >= hotMillis) {
+      return;
+    }
+
+    throw new AlephaError(
+      `Dataset '${this.dataset.name}' declares retention.cold ('${retention.cold}') ` +
+        `shorter than retention.hot ('${retention.hot}'). The sweep only ever rolls up ` +
+        "to the hot cutoff, so a shorter cold window would prune rows before they are " +
+        "ever folded — 'cold' must be at least as long as 'hot'.",
     );
   }
 

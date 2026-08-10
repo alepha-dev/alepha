@@ -39,6 +39,15 @@ export interface AnalyticsDataset {
 export interface AnalyticsRetention {
   /**
    * How long raw hour-bucketed rows are kept, e.g. `"60d"`.
+   *
+   * Declaring this does nothing by itself. Nothing in this package enforces
+   * retention automatically — the app must also import
+   * `AlephaAnalyticsRollup` (from `@alepha/analytics`, alongside
+   * `AlephaAnalytics`) so its hourly sweep (`AnalyticsRollupJobs`) actually
+   * runs. Forgetting it is silent: the table simply grows forever, with no
+   * error — though a boot-time `log.warn` from `AnalyticsRetentionGuard`
+   * names any dataset caught in this state, so it should not stay silent for
+   * long once the app is actually running.
    */
   hot?: string;
   /**
@@ -47,6 +56,12 @@ export interface AnalyticsRetention {
   rollup?: "day";
   /**
    * How long rolled rows are kept before deletion, e.g. `"400d"`.
+   *
+   * Must be at least as long as `hot` when both are set — `$analytics()`
+   * rejects a shorter `cold` at declaration time, because a sweep only ever
+   * folds up to the hot cutoff, and a `cold` boundary more recent than that
+   * would prune hour-precision rows the hot window still promises, before
+   * they are ever rolled up.
    */
   cold?: string;
 }

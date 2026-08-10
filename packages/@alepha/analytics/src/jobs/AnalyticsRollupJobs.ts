@@ -106,12 +106,26 @@ export class AnalyticsRollupJobs {
    *
    * Public (not just the `$job` handler) so tests can call it directly under
    * a paused clock without going through `sweep.trigger()`.
+   *
+   * Each dataset's sweep is isolated in its own `try`/`catch`: a provider
+   * failure for one dataset (a transient DB error, a bad row that trips a
+   * provider-side assertion) must not starve every dataset that iterates
+   * after it. The sweep is self-healing regardless — a failed dataset simply
+   * gets retried next hour — so the only thing a failure here should cost is
+   * that one dataset's progress for this cycle, never anyone else's.
    */
   public async sweepNow(): Promise<void> {
     const now = this.dateTime.nowMillis();
 
     for (const primitive of this.alepha.primitives($analytics)) {
-      await this.sweepDataset(primitive.dataset, now);
+      try {
+        await this.sweepDataset(primitive.dataset, now);
+      } catch (error) {
+        this.log.error(
+          `Sweep failed for dataset '${primitive.dataset.name}'`,
+          error,
+        );
+      }
     }
   }
 
