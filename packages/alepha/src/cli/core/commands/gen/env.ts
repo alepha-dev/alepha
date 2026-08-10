@@ -40,6 +40,14 @@ export class GenEnvCommand {
           if (value.enum) {
             dotEnvFile += `# Possible values: ${value.enum.join(", ")}\n`;
           }
+          // Every var is a secret unless it opted out, so the exception is what
+          // carries the label — marking the secrets instead would repeat the
+          // same line on nearly every key and tell the reader nothing. Last
+          // annotation before the key, so it reads as a label ON the line a
+          // human is about to paste a value into.
+          if (value.secret === false) {
+            dotEnvFile += `# (public)\n`;
+          }
           dotEnvFile += `#${key}=${value.default || ""}\n\n`;
         }
 

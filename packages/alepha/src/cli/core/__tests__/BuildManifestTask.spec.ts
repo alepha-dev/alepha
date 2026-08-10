@@ -49,6 +49,19 @@ const fakeAlephaWithPrimitives = (byName: Record<string, string[]>) =>
     },
   }) as any;
 
+/**
+ * Same fake, but answering `dump()` with a declared env surface — the shape
+ * `writeManifest` reads to fill `env` and `secrets`.
+ */
+const fakeAlephaWithEnv = (env: Record<string, { secret?: boolean }>) =>
+  ({
+    primitives: () => [],
+    inject: () => {
+      throw new AlephaError("not available in this fake");
+    },
+    dump: () => ({ env, providers: {} }),
+  }) as any;
+
 describe("BuildManifestTask", () => {
   const createTask = () => {
     const alepha = Alepha.create().with({
@@ -73,6 +86,45 @@ describe("BuildManifestTask", () => {
     JSON.parse(fs.getFileContent("/root/my-app/dist/manifest.json") ?? "{}");
 
   describe("writeManifest", () => {
+    // The one list a `vars` vs `secrets` split needs: everything NOT on it is a
+    // secret. There is deliberately no companion `secrets` field — it would be
+    // `env` minus this one, and two lists that must agree eventually don't.
+    it("records declassified keys, leaving every other declared key secret", async () => {
+      const { task, fs } = createTask();
+      const ctx = contextFor();
+      ctx.alepha = fakeAlephaWithEnv({
+        STRIPE_SECRET_KEY: { secret: true },
+        PUBLIC_URL: { secret: false },
+        UNANNOTATED: {},
+      });
+
+      await task.testWriteManifest(ctx, "dist");
+
+      const manifest = readManifest(fs);
+      expect(manifest.env).toEqual([
+        "PUBLIC_URL",
+        "STRIPE_SECRET_KEY",
+        "UNANNOTATED",
+      ]);
+      expect(manifest.publicVars).toEqual(["PUBLIC_URL"]);
+      expect(manifest.secrets).toBeUndefined();
+    });
+
+    // `[]` would be a claim that the app declassified nothing on purpose, which
+    // is true but useless — and it invites a reader to treat the field as
+    // present-and-complete. Absent keeps "this app never annotated" legible.
+    it("omits `publicVars` entirely when nothing is declassified", async () => {
+      const { task, fs } = createTask();
+      const ctx = contextFor();
+      ctx.alepha = fakeAlephaWithEnv({ PUBLIC_URL: {}, LOG_LEVEL: {} });
+
+      await task.testWriteManifest(ctx, "dist");
+
+      const manifest = readManifest(fs);
+      expect(manifest.env).toEqual(["LOG_LEVEL", "PUBLIC_URL"]);
+      expect(manifest.publicVars).toBeUndefined();
+    });
+
     it("captures registered $websocket channel paths into the manifest", async () => {
       const { task, fs } = createTask();
 

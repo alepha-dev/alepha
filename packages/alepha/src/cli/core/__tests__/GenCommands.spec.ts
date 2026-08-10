@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { $env, $module, Alepha, z } from "alepha";
 import { CliProvider } from "alepha/command";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
@@ -119,6 +119,36 @@ describe("gen commands", () => {
     await expect(
       cli.run(openapi.command, { argv: "", root: "/app" }),
     ).rejects.toThrow(/schema is broken/);
+  });
+
+  // A generated `.env` template is the one place a human decides what to paste
+  // where. Everything in it is a secret by default, so the useful annotation is
+  // the exception: which of these is safe to commit. Labelling the secrets
+  // instead would put the same line on nearly every key and say nothing.
+  it("should annotate declassified env vars in the generated template", async () => {
+    const { cli, env, utils, fs } = create();
+
+    class Payments {
+      env = $env(
+        z.object({
+          STRIPE_SECRET_KEY: z
+            .text({ description: "Stripe API key" })
+            .optional(),
+          PUBLIC_URL: z.text({ secret: false }).optional(),
+        }),
+      );
+    }
+
+    utils.userAlepha!.with($module({ name: "payments", services: [Payments] }));
+
+    await cli.run(env.command, { argv: "--out .env.example", root: "/app" });
+
+    const written = await fs.readTextFile("/app/.env.example");
+
+    expect(written).toContain("# (public)\n#PUBLIC_URL=");
+    // The unannotated key is a secret and carries no label — it is the norm.
+    expect(written).toContain("\n#STRIPE_SECRET_KEY=");
+    expect(written).not.toContain("# (public)\n#STRIPE_SECRET_KEY=");
   });
 
   it("should fail when env extraction throws", async () => {

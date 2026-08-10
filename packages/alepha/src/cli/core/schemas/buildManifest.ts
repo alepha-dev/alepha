@@ -146,4 +146,19 @@ export interface BuildManifest {
    * was unavailable (older artifacts / prebuilt mode).
    */
   env: string[];
+  /**
+   * The subset of {@link env} whose schema declared `secret: false` — keys an
+   * author explicitly vouched for as safe in plaintext.
+   *
+   * **Everything on {@link env} and not on this list is a secret.** There is no
+   * companion `secrets` field on purpose: it would be the exact complement of
+   * this one, and two lists obliged to agree eventually stop agreeing. Which
+   * one a deploy target then trusts decides whether a key ships encrypted.
+   *
+   * A deploy target may downgrade a key to a plaintext binding only if it
+   * appears here. Absent — never `[]` — when the app declassified nothing, so
+   * an artifact from an app that never annotated anything stays legible as
+   * such.
+   */
+  publicVars?: string[];
 }

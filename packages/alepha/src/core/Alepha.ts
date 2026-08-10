@@ -1327,6 +1327,14 @@ export class Alepha {
           enum: enumValues?.length
             ? ([...enumValues] as Array<string>)
             : undefined,
+          // Inner-then-wrapper, for the same reason as `description`: a
+          // `z.text({ secret: false }).optional()` tagged the string, and the
+          // ZodOptional wrapping it carries no meta of its own. `??` rather
+          // than `||` so the inner schema's explicit `false` is not skipped
+          // over in favour of the wrapper's absent one — and the final `?? true`
+          // is what makes "nobody said" mean secret.
+          secret:
+            this.declaredSecret(inner) ?? this.declaredSecret(value) ?? true,
         };
       }
     }
@@ -1335,6 +1343,18 @@ export class Alepha {
       env,
       providers,
     };
+  }
+
+  /**
+   * The `secret` marker a schema declared, or `undefined` if it declared none.
+   *
+   * A non-boolean `secret` in `.meta()` is dropped rather than coerced, so it
+   * falls back to secret. Coercing would let `secret: "no"` — truthy, and
+   * plainly meant as an opt-out — decide the question either way by accident.
+   */
+  protected declaredSecret(schema: unknown): boolean | undefined {
+    const value = z.schema.meta(schema).secret;
+    return typeof value === "boolean" ? value : undefined;
   }
 
   public services<T extends object>(base: Service<T>): Array<T> {
@@ -1467,6 +1487,24 @@ export interface AlephaDumpEnvVariable {
   default?: string;
   required?: boolean;
   enum?: Array<string>;
+  /**
+   * Whether the value is sensitive. **`true` unless declassified.**
+   *
+   * Opt OUT with `z.text({ secret: false })` (or `.meta({ secret: false })`)
+   * for a var that is genuinely safe in plaintext — a public URL, a log level.
+   * `secret: true` is accepted and is the default, so writing it is
+   * documentation rather than a behaviour change.
+   *
+   * Secret-by-default for two reasons. It is what already happens: every
+   * declared key is pushed to a deploy target as an encrypted binding today,
+   * so an app that annotates nothing keeps exactly the behaviour it has. And
+   * it is the only default that survives being forgotten — the annotation is
+   * new, it WILL be missed, and a missed annotation must not be what exposes a
+   * key. Always present rather than optional for the same reason: a consumer
+   * writing `if (v.secret)` gets the safe answer without having to know that
+   * absent meant "closed".
+   */
+  secret: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

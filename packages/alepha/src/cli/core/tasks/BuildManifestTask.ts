@@ -228,8 +228,16 @@ export class BuildManifestTask extends BuildTask {
     // start/ready hooks), so this is the full env surface — used by the
     // deploy `secrets` step as the worker-secret allowlist.
     let env: string[] = [];
+    let publicVars: string[] | undefined;
     try {
-      env = Object.keys(ctx.alepha.dump().env).sort();
+      const dumped = ctx.alepha.dump().env;
+      env = Object.keys(dumped).sort();
+      // Only the declassified keys are recorded: everything else on `env` is a
+      // secret, so a companion `secrets` list would just be the complement, and
+      // two lists obliged to agree eventually don't. Left undefined rather than
+      // `[]` so "never annotated" stays legible in the artifact.
+      const declassified = env.filter((key) => dumped[key]?.secret === false);
+      publicVars = declassified.length ? declassified : undefined;
     } catch {}
 
     // Capture the CF email binding so manifest-mode deploys (Rocket) can
@@ -281,6 +289,7 @@ export class BuildManifestTask extends BuildTask {
       websocketPaths,
       email,
       env,
+      publicVars,
     };
 
     // `writeFile` does not create parent directories. This used to be safe by

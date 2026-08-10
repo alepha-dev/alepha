@@ -30,6 +30,61 @@ describe("Alepha.dump", () => {
     expect(dump.providers.SecretService).toBeDefined();
   });
 
+  // Secret by default, and materialized as `true` rather than left absent: a
+  // consumer writing `if (v.secret)` must get the SAFE answer for a var nobody
+  // annotated. Absent would be falsy, so the naive reader would expose it.
+  it("reports env fields as secret unless declassified", () => {
+    class Payments {
+      env = $env(
+        z.object({
+          STRIPE_SECRET_KEY: z.text({ secret: true }),
+          UNANNOTATED: z.text(),
+          PUBLIC_URL: z.text({ secret: false }),
+        }),
+      );
+    }
+
+    const Mod = $module({ name: "payments", services: [Payments] });
+    const alepha = Alepha.create({
+      env: {
+        STRIPE_SECRET_KEY: "sk_test",
+        UNANNOTATED: "x",
+        PUBLIC_URL: "https://x.dev",
+      },
+    }).with(Mod);
+
+    const dump = alepha.dump();
+
+    expect(dump.env.STRIPE_SECRET_KEY.secret).toBe(true);
+    // Never annotated — treated exactly like an explicit `true`, because that
+    // is already what the deploy path does with every declared key.
+    expect(dump.env.UNANNOTATED.secret).toBe(true);
+    // Only an explicit opt-out declassifies.
+    expect(dump.env.PUBLIC_URL.secret).toBe(false);
+  });
+
+  // `.meta()` binds to the schema it was called on, so on an optional field the
+  // opt-out sits on the INNER schema — the same trap `description` already has.
+  // Losing it here would silently re-classify a declassified var as secret.
+  it("reports the declassifying opt-out through .optional() and .meta()", () => {
+    class Mixed {
+      env = $env(
+        z.object({
+          OPTIONAL_PUBLIC: z.text({ secret: false }).optional(),
+          META_PUBLIC: z.text().meta({ secret: false }),
+        }),
+      );
+    }
+
+    const Mod = $module({ name: "mixed", services: [Mixed] });
+    const dump = Alepha.create({ env: { META_PUBLIC: "v" } })
+      .with(Mod)
+      .dump();
+
+    expect(dump.env.OPTIONAL_PUBLIC.secret).toBe(false);
+    expect(dump.env.META_PUBLIC.secret).toBe(false);
+  });
+
   it("captures env from multiple independent services in one pass", () => {
     class A {
       env = $env(z.object({ A_KEY: z.text().optional() }));
