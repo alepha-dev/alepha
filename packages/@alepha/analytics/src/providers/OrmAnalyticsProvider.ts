@@ -86,10 +86,13 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   /**
    * The shared, package-owned prune-floor table (see
    * `analyticsPruneFloorEntity`'s own doc) — one repository for every
-   * dataset this provider ever registers, never one per dataset. Built the
-   * first time {@link register} runs for any dataset, guarded by this field
-   * rather than a second map, since there is exactly one such table
-   * regardless of how many datasets share this provider instance.
+   * dataset this provider ever registers, never one per dataset.
+   *
+   * **Not built by {@link register} unconditionally** — see
+   * {@link registerPruneFloors}'s own doc for why: a plain relational
+   * deployment genuinely deletes on `prune()` and has no use for a floor,
+   * so it must never carry this table, on pain of a phantom production
+   * migration.
    */
   protected floors?: Repository<ZObject>;
 
@@ -102,19 +105,10 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * dataset is a no-op, so callers do not need to track what they already
    * registered.
    *
-   * Also registers the shared prune-floor table on the first call, whatever
-   * dataset triggers it — eagerly, for the same reason the dataset's own
-   * tables are: {@link recordPruneFloor}/{@link pruneFloor} need it to exist
-   * before `alepha.start()` just as much as `record()`/`query()` need the
-   * dataset's own tables to.
+   * Deliberately does **not** also register the prune-floor table — see
+   * {@link registerPruneFloors}.
    */
   public register(dataset: AnalyticsDataset): void {
-    if (!this.floors) {
-      this.floors = this.buildRepository(
-        analyticsPruneFloorEntity as EntityPrimitive,
-      );
-    }
-
     if (this.registered.has(dataset.name)) return;
 
     const built = AnalyticsEntityFactory.build(dataset);
@@ -122,6 +116,30 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     const rolled = this.buildRepository(built.rolled);
 
     this.registered.set(dataset.name, { raw, rolled });
+  }
+
+  /**
+   * Registers the shared prune-floor table, idempotently. Callable more
+   * than once safely, and — like every other registration in this
+   * package — must run **before** `alepha.start()`.
+   *
+   * **Deliberately not part of {@link register}'s own unconditional path.**
+   * This provider's own `prune()` genuinely deletes; there is nothing for a
+   * floor to paper over on a plain relational deployment, and it would
+   * never write or read one. Registering the table anyway would mean every
+   * such deployment (Lore's own Cloudflare deployment among them, which
+   * runs this provider directly and has never constructed
+   * `WaeAnalyticsProvider`) carries a production table it can never use and
+   * pays a migration for it. Only `WaeAnalyticsProvider` — precisely
+   * because Analytics Engine has no delete API of its own — needs a floor,
+   * so only its own `register()` calls this, on `cold`, right alongside
+   * `cold.register(dataset)`.
+   */
+  public registerPruneFloors(): void {
+    if (this.floors) return;
+    this.floors = this.buildRepository(
+      analyticsPruneFloorEntity as EntityPrimitive,
+    );
   }
 
   public async record(
@@ -304,26 +322,42 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * failing to advance the floor on one of the two calls, which the next
    * sweep (an hour later) corrects — never a regression, since the guard
    * only ever skips a write, it never lets a smaller value through.
+   *
+   * A silent no-op when {@link registerPruneFloors} was never called —
+   * deliberately, not a defensive afterthought. Unlike {@link entities}
+   * (which throws for an unregistered *dataset*, always a caller bug, every
+   * dataset must be registered), an absent floor table is the permanent,
+   * correct state of a plain relational deployment: it has no floor and
+   * never will, because its own `prune()` genuinely deletes. Only
+   * `WaeAnalyticsProvider.register()` ever calls
+   * {@link registerPruneFloors}, so this only no-ops for exactly the
+   * deployments that were never going to call it in the first place.
    */
   public async recordPruneFloor(
     dataset: AnalyticsDataset,
     before: string,
   ): Promise<void> {
+    if (!this.floors) return;
+
     const boundary = AnalyticsBuckets.day(before);
     const existing = await this.readPruneFloorRow(dataset);
     if (existing && existing.floor >= boundary) {
       return;
     }
 
-    await this.requireFloors().upsertMany(
+    await this.floors.upsertMany(
       [{ dataset: dataset.name, floor: boundary } as never],
       { target: ["dataset"] as never },
     );
   }
 
   /**
-   * `dataset`'s currently recorded prune floor, or `undefined` if `prune()`
-   * has never been called for it.
+   * `dataset`'s currently recorded prune floor, or `undefined` — either
+   * because `prune()` has never been called for it, or because this
+   * provider never had {@link registerPruneFloors} called on it at all
+   * (a plain relational deployment, which has no floor and never will —
+   * see that method's own doc). Both cases mean the same thing to a
+   * caller: nothing to clamp reads to.
    */
   public async pruneFloor(
     dataset: AnalyticsDataset,
@@ -340,25 +374,14 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   protected async readPruneFloorRow(
     dataset: AnalyticsDataset,
   ): Promise<AnalyticsPruneFloorEntity | undefined> {
-    const row = await this.requireFloors().findOne({
+    if (!this.floors) return undefined;
+    const row = await this.floors.findOne({
       where: { dataset: { eq: dataset.name } } as never,
     });
     return row as never as AnalyticsPruneFloorEntity | undefined;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * The shared prune-floor repository, or a clear error if `register()`
-   * never ran — the same "never invent it at request time" rule
-   * {@link entities} already enforces for a dataset's own tables.
-   */
-  protected requireFloors(): Repository<ZObject> {
-    if (this.floors) return this.floors;
-    throw new AlephaError(
-      "The analytics prune-floor table was never registered — call register(dataset) for at least one dataset before alepha.start().",
-    );
-  }
 
   /**
    * Looks up the raw and rolled repositories for `dataset`.

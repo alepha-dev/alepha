@@ -267,8 +267,8 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
   /**
    * The hot tier has nothing to declare — Analytics Engine has no schema to
-   * create ahead of time, the same as `MemoryAnalyticsProvider`. Two things
-   * still have to happen here rather than at first write:
+   * create ahead of time, the same as `MemoryAnalyticsProvider`. Three
+   * things still have to happen here rather than at first write:
    *
    * - `retention.hot` is checked now, via {@link assertRetention}. Analytics
    *   Engine silently discards data past ~90 days regardless of what a
@@ -276,9 +276,16 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    *   time, not once a report quietly comes up short months later.
    * - `cold` is registered, so its own tables exist before `alepha.start()`
    *   — the same eager-registration rule `OrmAnalyticsProvider` follows.
+   * - `cold`'s shared prune-floor table is registered too, via
+   *   `OrmAnalyticsProvider.registerPruneFloors()` — **only from here**, not
+   *   from `OrmAnalyticsProvider.register()` itself. This provider is the
+   *   one deployment shape that needs a floor at all (Analytics Engine has
+   *   no delete API — see {@link prune}); a plain relational deployment
+   *   genuinely deletes and would otherwise carry a table it can never use.
    */
   public register(dataset: AnalyticsDataset): void {
     this.assertRetention(dataset);
+    this.cold.registerPruneFloors();
     this.cold.register(dataset);
   }
 

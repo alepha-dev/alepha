@@ -206,15 +206,42 @@ describe("OrmAnalyticsProvider", () => {
     }
   });
 
+  it("recordPruneFloor is a no-op, and pruneFloor always undefined, when registerPruneFloors() was never called", async () => {
+    // The property that keeps a plain relational deployment migration-free:
+    // `register(dataset)` alone — what every non-WAE consumer of this
+    // provider calls, Lore's own Cloudflare deployment included, which has
+    // never constructed `WaeAnalyticsProvider` — must never bring the
+    // shared `analytics_prune_floors` table into existence on its own.
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(dataset);
+    await alepha.start();
+
+    try {
+      expect(await provider.pruneFloor(dataset)).toBeUndefined();
+      // Must not throw either — a plain relational deployment has no floor
+      // and never will, which is a permanent, correct state, not an error.
+      await expect(
+        provider.recordPruneFloor(dataset, "2026-08-05"),
+      ).resolves.toBeUndefined();
+      expect(await provider.pruneFloor(dataset)).toBeUndefined();
+    } finally {
+      await alepha.stop();
+    }
+  });
+
   it("recordPruneFloor is monotonic: a later boundary moves it, an earlier one does not", async () => {
     // The mechanism `WaeAnalyticsProvider.prune()` relies on to honour
     // `AnalyticsProvider.prune`'s "on whichever tier it lives" contract when
     // the hot tier (Analytics Engine) has no delete API of its own. Tested
     // here directly, independent of any WAE plumbing, since this provider
-    // owns the storage and the monotonic guarantee.
+    // owns the storage and the monotonic guarantee — `registerPruneFloors()`
+    // called explicitly, the same way only `WaeAnalyticsProvider.register()`
+    // ever calls it in real use.
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
+    provider.registerPruneFloors();
     await alepha.start();
 
     try {
@@ -247,6 +274,7 @@ describe("OrmAnalyticsProvider", () => {
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
     provider.register(otherDataset);
+    provider.registerPruneFloors();
     await alepha.start();
 
     try {
@@ -254,6 +282,24 @@ describe("OrmAnalyticsProvider", () => {
 
       expect(await provider.pruneFloor(dataset)).toBe("2026-08-05");
       expect(await provider.pruneFloor(otherDataset)).toBeUndefined();
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("registerPruneFloors is idempotent", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(dataset);
+    provider.registerPruneFloors();
+    provider.registerPruneFloors();
+    await alepha.start();
+
+    try {
+      await expect(
+        provider.recordPruneFloor(dataset, "2026-08-05"),
+      ).resolves.toBeUndefined();
+      expect(await provider.pruneFloor(dataset)).toBe("2026-08-05");
     } finally {
       await alepha.stop();
     }

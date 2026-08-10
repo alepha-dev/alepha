@@ -22,9 +22,14 @@ import { $entity, db } from "alepha/orm";
  * problem: it carries nothing but the dataset name and a date string, so it
  * is trivially safe regardless of what any given dataset declares.
  *
- * Registered once per `OrmAnalyticsProvider` instance (see `register()`),
- * eagerly, the same as every dataset's own raw/rolled pair — not lazily on
- * first `prune()`, for the same container-locks-after-start reason.
+ * Registered eagerly — the same as every dataset's own raw/rolled pair, not
+ * lazily on first `prune()`, for the same container-locks-after-start
+ * reason — but **not** unconditionally alongside every dataset.
+ * `OrmAnalyticsProvider.registerPruneFloors()` is a separate call, made only
+ * by `WaeAnalyticsProvider.register()`: a plain relational deployment
+ * genuinely deletes on `prune()` and has no use for a floor, so it must
+ * never carry this table, on pain of a production migration nothing ever
+ * reads or writes.
  */
 export const analyticsPruneFloorEntity = $entity({
   name: "analytics_prune_floors",
