@@ -9,6 +9,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Gauge } from "lucide-react";
 import { currentSigilInsightsAtom } from "../../../atoms/currentSigilInsightsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import AppAnalyticsEstimatedBadge from "./AppAnalyticsEstimatedBadge.tsx";
 
 type Rating = "good" | "needsImprovement" | "poor";
 type VitalKey = "lcp" | "inp" | "cls" | "fcp" | "ttfb";
@@ -77,6 +78,10 @@ const AppPerformance = () => {
         <span>{tr("insights.vitals.title")}</span>
         <span className="text-xs">· {tr("insights.vitals.subtitle")}</span>
       </div>
+      <AppAnalyticsEstimatedBadge
+        estimated={data.estimated}
+        sampleInterval={data.sampleInterval}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {METRICS.map((metric) => {

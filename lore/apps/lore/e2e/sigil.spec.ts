@@ -454,6 +454,10 @@ test.describe("Sigils", () => {
       await expect(page.getByText("/checkout").first()).toBeVisible();
       // The only page reported, so its two views are 100% of the total.
       await expect(page.getByText(/2\s*·\s*100%/)).toBeVisible();
+      // This deployment runs the relational backend, where `estimated` is
+      // always false — the qualifier must not appear. Pins "no false
+      // qualifier" as deliberate rather than an untested absence.
+      await expect(page.getByText("Estimated")).toHaveCount(0);
     });
 
     await test.step("the Performance tab reports the vitals p75", async () => {
