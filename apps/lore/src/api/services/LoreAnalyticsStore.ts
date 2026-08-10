@@ -5,10 +5,14 @@ import {
   UNIQUES_COLLAPSED_HASH,
 } from "../entities/sigilUniquesDaily.ts";
 
-/** One visitor, once, on one day, for one app — what `absorb` accepts. */
+/**
+ * One visitor, once, on one day, for one app — what `absorb` accepts.
+ */
 export interface LoreAnalyticsUniqueSample {
   sigilId: string;
-  /** UTC day bucket, `YYYY-MM-DD`. */
+  /**
+   * UTC day bucket, `YYYY-MM-DD`.
+   */
   day: string;
   visitorHash: string;
 }
@@ -22,7 +26,9 @@ export interface LoreAnalyticsUniqueSample {
  */
 export interface LoreAnalyticsWindow {
   sigilIds: string[];
-  /** First UTC day included, `YYYY-MM-DD`. */
+  /**
+   * First UTC day included, `YYYY-MM-DD`.
+   */
   since: string;
 }
 
