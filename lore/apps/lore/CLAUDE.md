@@ -83,7 +83,6 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/p/:projectId/apps/:appName/` | `app` | `project/apps/AppDashboard.tsx` | Headline numbers + the credential card |
 | `/p/:projectId/apps/:appName/analytics` | `appAnalytics` | `project/apps/AppAnalytics.tsx` | Page views, unique visitors, top pages/countries. 404 when this app's own `kinds` lacks `beacon` |
 | `/p/:projectId/apps/:appName/performance` | `appPerformance` | `project/apps/AppPerformance.tsx` | Web-vitals p75. 404 when this app's own `kinds` lacks `beacon` |
-| `/p/:projectId/apps/:appName/errors` | `appErrors` | `project/apps/AppErrors.tsx` | This app's error budget. 404 when this app's own `kinds` lacks `beacon` |
 | `/p/:projectId/apps/:appName/settings` | `appSettings` | `project/apps/AppSettings.tsx` | Capabilities card (per-app `kinds`) + rotate / delete this app (owner-only server-side) |
 | `/p/:projectId/q/:shortId` | `projectQuest` | `project/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
 | `/p/:projectId/q/:shortId/graph` | `projectQuestGraph` | `project/quest/QuestGraph.tsx` | Quest dependency graph |
@@ -285,11 +284,14 @@ Enrolled at `/p/:id/settings/sigils` (a dialog on a card-button, not an inline f
 
 **The gate is enforced, not advertised.** `SigilIngestService.gatesFor` reads the sigil's own `kinds` under the `features.sigils` master switch for `blights` / `beacon` / `vitals`, and additionally requires `features.feedback` for `feedback` — and both `absorb` (the write gate) and `/sigils/config` (the advertisement) call it, one definition, so the sink cannot invite a payload it then discards. Enforcing on write is not redundant with the config poll even though `updateSigil` now gives an owner a real per-app lever: the reporting client fails open on any config error, so a token that never re-polls (or ignores what it reads) would otherwise keep sending after the switch is off. `gatesFor`'s enforcement is the backstop that makes the switch actually binding, not just advisory.
 
+**Lore's own crashes reach the inbox through two paths, and one of them was silent until 2026-08-11.** Server-side failures are reported by `SigilServerErrors`, which listens on `server:onError` — emitted only by `ServerRouterProvider.errorHandler`, i.e. only for a route that fails as its own HTTP request. Anything failing inside `POST /api/_batch` was caught by that endpoint's `Promise.allSettled` and answered as a 200 with a per-entry error, so the event never fired. Since the React client batches by default and Lore's guarded pages are client-rendered, that was **every API failure the app ever had** — the inbox stayed empty through an outage in which every Insights read was 500ing. `ServerLinksProvider` now emits `server:onError` per failed entry (guards: `BatchEndpoint.spec.ts`, `SigilServerErrors.spec.ts`). Still open: a **pure client-side render crash** reports nothing at all — `NestedView` mounts `ErrorBoundary` with no `onError`, and React fires no `window.error` for what a boundary caught, so `SigilBrowserProvider` never sees it. See folio #82.
+
 **Rotate, don't delete.** All four aggregate tables cascade on `sigilId`, so deleting a sigil to revoke a leaked token also erases that app's views, vitals, uniques and error groups. `rotateSigil` re-mints `tokenHash`/`tokenPrefix` in place — the old token stops resolving immediately (`verify` looks a sigil up *by* its hash) and every row survives. The UI says which is which; so do the MCP tool descriptions.
 
 - **Blights** — one row per distinct failure, keyed by `(projectId, fingerprint)`, with a count. The owner triages them in the inbox (`/p/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` area, provenance recorded in `quests.source`). Purged on a retention window (`project.retentionDays ?? 30`) by `BlightJobs`; resolved and `quest:`-forwarded rows are kept as audit trail. A blight survives its sigil — `blights.sigilId` is `ON DELETE SET NULL`.
-- **Insights** (`InsightsController`; the three UI tabs 404 in the router when the open app's own `kinds` lacks `beacon` — see `AppRouter.ts`'s `assertBeacon()` — the endpoint itself is member-gated like any other project read, with no feature check of its own) — three segments over one payload: **Analytics** (page views, unique visitors), **Performance** (web-vitals p75) and **Errors** (the per-app error budget). Views and vitals are read through `@alepha/analytics`'s `$analytics()` datasets — `sigil_views` / `sigil_vitals`, declared in `LoreAnalytics` (`src/api/entities/loreAnalytics.ts`) and asked via `views.query(...)` / `vitals.query(...)` — the same portable declaration that runs on a relational database, in memory for tests, and on Cloudflare Analytics Engine in production, with no backend-specific code in the controller (see the [Analytics guide](../../docs/1-guides/10-analytics.md)). `uniqueVisitors` stays on `sigil_uniques_daily` via `LoreAnalyticsStore`, because a distinct count cannot survive sampling or a rollup and so is out of `$analytics()`'s reach by construction. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is the dataset's `"day"` pseudo-dimension folding hour buckets with no epoch math on the controller's side, the same shape the old `substr(hour, 1, 10)` group produced. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token. The three segments are now the Analytics / Performance / Errors **tabs of one app's page**; `GET /projects/:projectId/insights?sigilId=` is what narrows them, and the id is verified to belong to the project in the path before it filters anything (member-gating is on the project, so an unchecked id would read another project's rows). Omitted, the endpoint still answers project-wide — which is what MCP's `insights_read` reads.
-  - The **Errors** segment is the only place `sigil_error_groups` is read. It answers "is this still happening *in that app*", which the Blights inbox cannot: the inbox keys on `(projectId, fingerprint)` so a triage decision does not fork, which necessarily merges every enrolled app into one row. Filtered on `lastSeenAt` (still failing), ordered by `count`, capped at 20. It stays on its own table rather than an analytics dataset because it keeps the *first* stack sample, which needs a read before every write — something an append-only analytics dataset cannot do.
+- **Insights** (`InsightsController`; the two beacon UI tabs 404 in the router when the open app's own `kinds` lacks `beacon` — see `AppRouter.ts`'s `assertBeacon()` — the endpoint itself is member-gated like any other project read, with no feature check of its own) — two segments over one payload: **Analytics** (page views, unique visitors) and **Performance** (web-vitals p75). Views and vitals are read through `@alepha/analytics`'s `$analytics()` datasets — `sigil_views` / `sigil_vitals`, declared in `LoreAnalytics` (`src/api/entities/loreAnalytics.ts`) and asked via `views.query(...)` / `vitals.query(...)` — the same portable declaration that runs on a relational database, in memory for tests, and on Cloudflare Analytics Engine in production, with no backend-specific code in the controller (see the [Analytics guide](../../docs/1-guides/10-analytics.md)). `uniqueVisitors` stays on `sigil_uniques_daily` via `LoreAnalyticsStore`, because a distinct count cannot survive sampling or a rollup and so is out of `$analytics()`'s reach by construction. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is the dataset's `"day"` pseudo-dimension folding hour buckets with no epoch math on the controller's side, the same shape the old `substr(hour, 1, 10)` group produced. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token. The segments are the Analytics / Performance **tabs of one app's page**; `GET /projects/:projectId/insights?sigilId=` is what narrows them, and the id is verified to belong to the project in the path before it filters anything (member-gating is on the project, so an unchecked id would read another project's rows). Omitted, the endpoint still answers project-wide — which is what MCP's `insights_read` reads.
+  - ⚠️ **`sigil_error_groups` is written and swept, and currently read by nothing.** The App ▸ Errors tab was its only reader and was removed in #178: with one enrolled app it duplicated the Blights inbox. It was not a duplicate by construction, though — it answered "is this still happening *in that app*", which the inbox cannot, because the inbox keys on `(projectId, fingerprint)` so a triage decision does not fork, and that necessarily merges every enrolled app into one row. The distinction is worth nothing at one app and returns at two.
+    **The table is kept on purpose — do not delete it as unused.** Production holds ~1,086 rows across all four analytics tables, so the storage argument does not exist, and this is the only per-app error signal there is; dropping it would make the tab's return a migration instead of a revert. It stays on its own table rather than an analytics dataset because it keeps the *first* stack sample, which needs a read before every write — something an append-only dataset cannot do.
   - **`sigil_views_hourly` / `sigil_vitals_hourly` are frozen, not deleted.** Both used to be the read path for Analytics/Performance and a dual-write target on ingest; both the read (this controller) and the write (`SigilIngestService`) moved onto the `$analytics()` datasets above, so nothing in the app reads or writes either table anymore. They stay declared purely so `yarn check:migrations` keeps agreeing with what is still physically on disk — `FrozenSigilAnalyticsTables` (`src/api/services/FrozenSigilAnalyticsTables.ts`) registers both entities directly with `DatabaseProvider` without handing any service a queryable repository on them, which is what keeps them in the migration snapshot instead of `check:migrations` proposing `DROP TABLE`. Actually dropping either table is a separate decision with its own migration review: `sigils` is the `ON DELETE CASCADE` parent of both (see "Migration safety on D1" below), so a rebuild migration here carries the same cascade-wipe risk as everywhere else in this file. When that review happens, `FrozenSigilAnalyticsTables` is what to delete first.
 
 > ⚠️ **`name`, `message`, `stack`, `sourceUrl` on a blight are 100% attacker-controlled** and are shown to the project owner — the highest-value target. Render as escaped plain text only. Never markdown, never `dangerouslySetInnerHTML`.
@@ -308,7 +310,7 @@ Read endpoints are member-gated; mutations are owner-only. **Ingest has its own 
 - Triage: `src/api/controllers/BlightController.ts`, `src/api/services/BlightRuleService.ts`, `src/api/jobs/BlightJobs.ts`
 - Analytics: `src/api/controllers/InsightsController.ts` (schemas extracted to `src/api/schemas/insightsResourceSchema.ts` / `sigilResourceSchema.ts` so the browser can validate the atoms without importing a controller)
 - UI — enrolment: `src/web/app/components/project/settings/ProjectSettingsSigilsPage.tsx` (+ `…SigilRow`, `…SigilsEnrollDialog`), `shared/TokenReveal.tsx`
-- UI — per app: `src/web/app/components/project/apps/AppLayout.tsx` (+ `AppDashboard`, `AppAnalytics`, `AppPerformance`, `AppErrors`, `AppSettings`, `AppSettingsCapabilities` — the per-app `kinds` switches); sidebar section in `project/ProjectView.tsx`; atoms `currentSigilsAtom` / `currentSigilAtom` / `currentSigilInsightsAtom`
+- UI — per app: `src/web/app/components/project/apps/AppLayout.tsx` (+ `AppDashboard`, `AppAnalytics`, `AppPerformance`, `AppSettings`, `AppSettingsCapabilities` — the per-app `kinds` switches); sidebar section in `project/ProjectView.tsx`; atoms `currentSigilsAtom` / `currentSigilAtom` / `currentSigilInsightsAtom`
 - UI — feedback module toggle: `src/web/app/components/project/settings/ProjectSettingsFeedbackPage.tsx` (its own settings page now, split out of the Sigils page)
 - UI — triage: `project/blights/ProjectBlights.tsx`
 - MCP: `src/mcp/tools/SigilTools.ts`, `src/mcp/tools/BlightTools.ts`
@@ -498,6 +500,42 @@ only way to make the physical column match is a table rebuild, and `sigils` is t
 this section. Same precedent, same verdict as the `projects.features` `DEFAULT` drift
 documented above: accepted drift beats a rebuild. `test/migration-safety.spec.ts` guards
 the table against a future `DROP TABLE` from the family rebuild forward.
+
+### ⚠️ A table registered only under one runtime gets a migration under neither (2026-08-11)
+
+Every Insights read 500'd in production — so every `/p/:id/apps/:appName` page
+rendered the generic ErrorPage — because `analytics_prune_floors` did not exist
+on D1. `WaeAnalyticsProvider.query()` reads that table before *every* read.
+
+`@alepha/analytics` registered it only from `WaeAnalyticsProvider.register()`,
+deliberately: only the Analytics Engine backend needs a prune floor (WAE has no
+delete API), so a plain relational deployment was spared a table it can never
+read. That gate made **the set of tables the app declares a function of the
+runtime it booted under**, and the two runtimes are not the same one:
+
+- `yarn db:generate` runs on **Node**, where `index.ts` selects
+  `OrmAnalyticsProvider` → the table entered no snapshot and no migration.
+- Production runs **workerd**, where `index.workerd.ts` selects
+  `WaeAnalyticsProvider` → it reads a table nothing ever created.
+
+Same blind spot as the two entries above, third mechanism: not an empty test
+database, a *different runtime*. `yarn test`, `yarn typecheck` and
+`yarn check:migrations` all run on the side where the table is not declared, so
+none of them could have gone red. Fixed in the framework —
+`OrmAnalyticsProvider.register()` now registers it unconditionally — plus
+migration `20260810222423_tidy_ozymandias` (bare `CREATE TABLE`, D1-safe).
+
+**The rule:** schema must not vary by runtime. Migrations are generated under one
+and applied under another, so anything registered behind "which provider did we
+select" exists in exactly one of the two. To check a suspicion of this class,
+diff what the snapshot declares against what production actually has:
+
+```bash
+npx wrangler d1 execute lore-production --remote --json --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+```
+
+The companion defect — why no blight was ever raised for any of it — is under
+"Sigils, Blights, Beacon, Vitals" above; both are written up in folio #82.
 
 ### ⚠️ Dropping a conjunct from a gate is a data migration with no SQL (accepted, 2026-08-06)
 
