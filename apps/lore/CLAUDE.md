@@ -525,6 +525,34 @@ none of them could have gone red. Fixed in the framework —
 `OrmAnalyticsProvider.register()` now registers it unconditionally — plus
 migration `20260810222423_tidy_ozymandias` (bare `CREATE TABLE`, D1-safe).
 
+**It was not alone.** Four faults sat on this one code path, each hidden behind
+the one in front of it, so each fix revealed the next and every "is it fixed?"
+answered itself with a new error:
+
+| # | Fault | Fix |
+|---|---|---|
+| 1 | `analytics_prune_floors` missing on D1 | register the table unconditionally |
+| 2 | `CLOUDFLARE_ANALYTICS_TOKEN` never pushed to the Worker | add it to the build manifest's env allowlist |
+| 3 | `HAVING COUNT(*) > 0` → 422 | `count()`, which takes no arguments |
+| 4 | `GROUP BY substring(blob2, 1, 10)` → 422 | group by the projected alias |
+
+**#1 and #2 are the same root cause.** The secret push is filtered by the build
+manifest's `env` list, which comes from `alepha.dump().env` — the graph as
+instantiated under node — and `CLOUDFLARE_ANALYTICS_TOKEN` is declared by
+`WaeAnalyticsProvider`, which exists only under workerd. So `platform up`
+dropped the key from every push while reporting success. A missing secret is
+worse than a missing binding: it fails at request time, not at boot, so the
+deploy is green and the feature is dead.
+
+**#3 and #4 are a different lesson: the test fake agreed with the bug.**
+`FakeAnalyticsEngine` was written to mirror the SQL `WaeAnalyticsProvider`
+generates, so it accepted whatever that SQL said — including two statements the
+real Analytics Engine parser rejects outright. Teaching the fake the *parser's*
+rules instead turned 28 of 43 WAE specs red immediately. A fake that mirrors
+generated SQL can never disagree with it; only one that mirrors the parser can.
+And validate against the real endpoint **before** fixing: #3 and #4 shipped a
+deploy apart purely because the first error masked the second.
+
 **The rule:** schema must not vary by runtime. Migrations are generated under one
 and applied under another, so anything registered behind "which provider did we
 select" exists in exactly one of the two. To check a suspicion of this class,
