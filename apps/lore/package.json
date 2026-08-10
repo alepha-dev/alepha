@@ -23,6 +23,7 @@
     "e2e:headed": "playwright test --headed"
   },
   "dependencies": {
+    "@alepha/analytics": "workspace:*",
     "@alepha/devtools": "workspace:*",
     "@alepha/sigil": "workspace:*",
     "@alepha/ui": "workspace:*",
