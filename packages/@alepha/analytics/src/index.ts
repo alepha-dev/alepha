@@ -10,6 +10,7 @@ export * from "./primitives/$analytics.ts";
 export * from "./providers/AnalyticsProvider.ts";
 export * from "./providers/MemoryAnalyticsProvider.ts";
 export * from "./providers/OrmAnalyticsProvider.ts";
+export * from "./providers/WaeAnalyticsProvider.ts";
 export * from "./schemas/analyticsDatasetSchema.ts";
 export * from "./schemas/analyticsQuerySchema.ts";
 export * from "./services/AnalyticsEngineSql.ts";
@@ -20,8 +21,13 @@ export * from "./services/AnalyticsEngineSql.ts";
  * Portable analytics datasets.
  *
  * Binds the relational provider under Node, and the memory provider under
- * test. The Analytics Engine provider is bound by `index.workerd.ts` instead —
- * it needs a binding that only exists inside a Worker.
+ * test. `WaeAnalyticsProvider` is exported here too — it has no
+ * platform-specific import and its read path is plain HTTP, so a Node script
+ * can construct one to query a real Analytics Engine account — but it is
+ * never auto-wired by this module's `register()`; only `index.workerd.ts`'s
+ * docstring covers why (it needs a write binding that only exists inside a
+ * Worker, and its constructor shape cannot be `alepha.with({ use })`'d
+ * generically either way).
  *
  * @module alepha.analytics
  */
