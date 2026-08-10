@@ -26,6 +26,7 @@ import { currentSigilsAtom } from "../../../atoms/currentSigilsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TokenReveal from "../../shared/TokenReveal.tsx";
 import AppSettingsCapabilities from "./AppSettingsCapabilities.tsx";
+import AppSettingsFeedbackPosition from "./AppSettingsFeedbackPosition.tsx";
 
 /**
  * What can be done to one app: rotate its token, or delete it.
@@ -146,6 +147,8 @@ const AppSettings = () => {
       )}
 
       <AppSettingsCapabilities />
+
+      <AppSettingsFeedbackPosition />
 
       <Card>
         <CardHeader>

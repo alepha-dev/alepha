@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { SIGIL_FEEDBACK_CONTEXT_MAX_LEN } from "../../shared/sigilFeedbackContext.ts";
+import {
+  SIGIL_FEEDBACK_POSITION_DEFAULT,
+  type SigilFeedbackPosition,
+} from "../../shared/sigilFeedbackPosition.ts";
 import { SIGIL_FEEDBACK_SUBMITTED_MESSAGE } from "../../shared/sigilMessages.ts";
 
 /**
@@ -12,6 +16,11 @@ export interface SigilFeedbackButtonProps {
    * string before the popup opens.
    */
   feedbackUrl: string;
+  /**
+   * Which corner to sit in. Defaults to `bottom-right`, which is where the
+   * button has always been.
+   */
+  position?: SigilFeedbackPosition;
 }
 
 /**
@@ -33,6 +42,12 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
   const { feedbackUrl } = props;
   const [showThanks, setShowThanks] = useState(false);
   const hideTimer = useRef<number | undefined>(undefined);
+
+  // One edge object for both the button and the "thank you" pill. They are
+  // separate fixed-position elements, so a position applied to only one of them
+  // detaches the pill from the button it belongs to.
+  const position = props.position ?? SIGIL_FEEDBACK_POSITION_DEFAULT;
+  const edge = position === "bottom-left" ? { left: 16 } : { right: 16 };
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -90,7 +105,7 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
           style={{
             position: "fixed",
             bottom: 68,
-            right: 16,
+            ...edge,
             zIndex: 2147483000,
             display: "inline-flex",
             alignItems: "center",
@@ -133,7 +148,7 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
         style={{
           position: "fixed",
           bottom: 16,
-          right: 16,
+          ...edge,
           zIndex: 2147483000,
           width: 44,
           height: 44,

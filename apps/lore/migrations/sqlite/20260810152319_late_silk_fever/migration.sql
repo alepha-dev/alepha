@@ -1,0 +1,16 @@
+-- Which corner an app's feedback button sits in.
+--
+-- Nullable, no DEFAULT, no NOT NULL — all three deliberate. `sigils` is the
+-- ON DELETE CASCADE parent of sigil_views_hourly / sigil_uniques_daily /
+-- sigil_vitals_hourly / sigil_error_groups, so any migration that makes
+-- drizzle rebuild the table is the wipe bomb described in apps/lore/CLAUDE.md.
+-- A plain nullable ADD COLUMN does not rebuild.
+--
+-- NOT NULL would additionally be green everywhere it is ever exercised and red
+-- only against the one database that has rows: SQLite refuses to add a NOT NULL
+-- column without a default to a populated table, and every CI/test database is
+-- built empty.
+--
+-- NULL means bottom-right, so every existing sigil keeps its current placement
+-- and no backfill is needed.
+ALTER TABLE `sigils` ADD `feedback_position` text;

@@ -1,3 +1,4 @@
+import { SIGIL_FEEDBACK_POSITIONS } from "@alepha/sigil/feedback-position";
 import { $inject, z } from "alepha";
 import { $repository, DbConflictError } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -208,7 +209,12 @@ export class SigilController {
       body: z.object({
         kinds: z
           .array(z.enum([...SIGIL_KINDS]).meta({ mode: "text" }))
-          .max(SIGIL_KINDS.length),
+          .max(SIGIL_KINDS.length)
+          .optional(),
+        feedbackPosition: z
+          .enum([...SIGIL_FEEDBACK_POSITIONS])
+          .meta({ mode: "text" })
+          .optional(),
       }),
       response: sigilResourceSchema,
     },
@@ -216,10 +222,17 @@ export class SigilController {
       await this.security.assertOwner(params.projectId, user);
       const sigil = await this.loadSigil(params.projectId, params.sigilId);
 
-      // De-duplicated so a caller that sends `["beacon", "beacon"]` cannot make
-      // the stored set disagree with the one it asked for.
+      // Both fields optional now that this endpoint carries more than `kinds`,
+      // so an omitted key means "leave it alone" rather than "clear it" — the
+      // capabilities card and the position control are separate surfaces and
+      // each PATCHes only what it owns.
       await this.sigils.updateById(sigil.id, {
-        kinds: [...new Set(body.kinds)],
+        // De-duplicated so a caller that sends `["beacon", "beacon"]` cannot
+        // make the stored set disagree with the one it asked for.
+        ...(body.kinds ? { kinds: [...new Set(body.kinds)] } : {}),
+        ...(body.feedbackPosition
+          ? { feedbackPosition: body.feedbackPosition }
+          : {}),
       });
 
       return this.toResource(
@@ -312,6 +325,7 @@ export class SigilController {
       name: sigil.name,
       tokenPrefix: sigil.tokenPrefix,
       kinds: sigil.kinds ?? [],
+      feedbackPosition: sigil.feedbackPosition,
       createdAt: sigil.createdAt,
       lastSeenAt: sigil.lastSeenAt,
     };
