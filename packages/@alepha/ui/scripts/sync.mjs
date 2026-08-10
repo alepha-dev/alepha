@@ -90,6 +90,42 @@ const resolveIconPlaceholders = (content) => {
 };
 
 /**
+ * Deliberate divergences from upstream, re-applied on every sync.
+ *
+ * This is the only durable place for them. `writeFiles` overwrites each stock
+ * primitive wholesale, so an edit made in `src/components/ui/*.tsx` — comment
+ * included — is gone the next time this script runs. A patch here is not.
+ *
+ * Each entry is `[registry-relative file, find, replace, why]`. A `find` that
+ * stops matching is reported loudly rather than skipped: a divergence that
+ * silently stopped applying is worse than one that was never made.
+ */
+const LOCAL_PATCHES = [
+  [
+    "ui/dropdown-menu.tsx",
+    "w-(--anchor-width) min-w-32",
+    "w-auto max-w-(--available-width) min-w-32",
+    "a menu is not a select: sizing it to a 32px icon trigger wrapped every label past min-w-32; max-w keeps w-auto from running off the viewport",
+  ],
+];
+
+const applyLocalPatches = (rel, content) => {
+  let next = content;
+  for (const [file, find, replace, why] of LOCAL_PATCHES) {
+    if (file !== rel) continue;
+    if (!next.includes(find)) {
+      console.warn(
+        `\x1b[33m!\x1b[0m local patch no longer applies to ${rel} — ${why}\n  looked for: ${find}`,
+      );
+      continue;
+    }
+    next = next.replaceAll(find, replace);
+    log(`patched ${rel} — ${why}`);
+  }
+  return next;
+};
+
+/**
  * Resolve where a registry file lands under `src/`.
  *
  * `registry:ui` items carry no `target` — only a registry-relative `path`
@@ -103,12 +139,21 @@ const destOf = (file) => {
   return join(srcDir, "components", rel);
 };
 
+const relOf = (file) =>
+  file.target ? file.target : file.path.replace(/^registry\/[^/]+\//, "");
+
 const writeFiles = (item) => {
   for (const file of item.files ?? []) {
     if (!file.path && !file.target) continue;
     const dest = destOf(file);
     mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, resolveIconPlaceholders(rewriteImports(file.content)));
+    writeFileSync(
+      dest,
+      applyLocalPatches(
+        relOf(file),
+        resolveIconPlaceholders(rewriteImports(file.content)),
+      ),
+    );
   }
 };
 
