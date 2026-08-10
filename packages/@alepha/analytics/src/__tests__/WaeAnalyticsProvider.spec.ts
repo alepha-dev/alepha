@@ -83,6 +83,29 @@ const build = async () => {
   return { alepha, provider, engine: provider.fakeEngine };
 };
 
+/**
+ * Same as {@link build}, except `provider.register(dataset)` runs BEFORE
+ * `start()` — required whenever a test needs `cold`'s tables to actually
+ * exist (registering after `start()` never gets migrated; see
+ * `OrmAnalyticsProvider`'s own eager-registration rule). `build()` cannot be
+ * reused for this because it already calls `start()` internally.
+ */
+const buildRegistered = async () => {
+  const alepha = Alepha.create({
+    env: {
+      CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
+      CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+      CLOUDFLARE_API_TOKEN: API_TOKEN,
+    },
+  }).with(AlephaOrmPostgres);
+
+  const provider = alepha.inject(TestWaeAnalyticsProvider);
+  alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
+  provider.register(dataset);
+  await alepha.start();
+  return { alepha, provider, engine: provider.fakeEngine };
+};
+
 describe("WaeAnalyticsProvider", () => {
   it("writes the dataset name into blob1 so datasets can share a binding", async () => {
     const { alepha, engine, provider } = await build();
@@ -370,26 +393,11 @@ describe("WaeAnalyticsProvider", () => {
   it("registers with, and rolls up into, the same durable cold provider it delegates to", async () => {
     // Proves real delegation rather than "did not throw": `register()` has
     // to reach the exact `cold` instance `rollup()`/`prune()` also use, or
-    // this would pass against an implementation that silently no-ops.
-    //
-    // Built by hand, not via `build()`: `register()` has to run BEFORE
-    // `start()` — the same eager-registration rule every
-    // `$entity`/`$repository` (and `OrmAnalyticsProvider` itself) follows —
-    // or the table it declares never gets migrated. `build()` already calls
-    // `start()`, so it cannot be used here.
-    const alepha = Alepha.create({
-      env: {
-        CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
-        CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
-        CLOUDFLARE_API_TOKEN: API_TOKEN,
-      },
-    }).with(AlephaOrmPostgres);
-    const provider = alepha.inject(TestWaeAnalyticsProvider);
-    alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
-
-    provider.register(dataset);
-    await alepha.start();
-
+    // this would pass against an implementation that silently no-ops. Data
+    // is seeded directly into `coldProvider` (bypassing Analytics Engine
+    // entirely) so this stays a test of delegation, not of forwarding —
+    // {@link forwardToCold} is covered on its own below.
+    const { alepha, provider } = await buildRegistered();
     try {
       await provider.coldProvider.record(dataset, [
         { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
@@ -414,6 +422,107 @@ describe("WaeAnalyticsProvider", () => {
         select: { count: "sum" },
       });
       expect(pruned.rows).toEqual([]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("forwards Analytics Engine rows into cold before folding them", async () => {
+    // Unlike the delegation test above, data is written through
+    // `provider.record()` — i.e. it only ever exists in Analytics Engine —
+    // so this proves `rollup()` itself moves it into `cold`, not merely that
+    // `cold.rollup()` gets called.
+    const { alepha, provider } = await buildRegistered();
+    try {
+      await provider.record(dataset, [
+        { hour: "2026-08-01T10", app: "a", path: "/x", count: 3 },
+        { hour: "2026-08-01T11", app: "a", path: "/x", count: 2 },
+      ]);
+
+      await provider.rollup(dataset, "2026-08-02");
+
+      const result = await provider.coldProvider.query(dataset, {
+        since: "2026-08-01",
+        groupBy: ["day"],
+        select: { count: "sum" },
+      });
+      expect(result.rows).toEqual([{ day: "2026-08-01", count: 5 }]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("does not double totals when rollup() runs twice", async () => {
+    // The one that matters most: without the watermark, the second sweep
+    // would re-query the same Analytics Engine rows (nothing ever deletes
+    // them) and `cold.record()`'s accumulate-upsert would add them again.
+    const { alepha, provider } = await buildRegistered();
+    try {
+      await provider.record(dataset, [
+        { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
+      ]);
+
+      await provider.rollup(dataset, "2026-08-02");
+      const once = await provider.coldProvider.query(dataset, {
+        since: "2026-08-01",
+        select: { count: "sum" },
+      });
+      expect(once.rows).toEqual([{ count: 4 }]);
+
+      await provider.rollup(dataset, "2026-08-02");
+      const twice = await provider.coldProvider.query(dataset, {
+        since: "2026-08-01",
+        select: { count: "sum" },
+      });
+
+      expect(twice.rows).toEqual(once.rows);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("forwards nothing and does not throw when the Analytics Engine window is empty", async () => {
+    const { alepha, provider } = await buildRegistered();
+    try {
+      await expect(
+        provider.rollup(dataset, "2026-08-02"),
+      ).resolves.toBeUndefined();
+
+      const result = await provider.coldProvider.query(dataset, {
+        since: "1970-01-01",
+        select: { count: "sum" },
+      });
+      expect(result.rows).toEqual([]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("forwards the sample-corrected value into cold, not a raw stored double", async () => {
+    const { alepha, provider, engine } = await buildRegistered();
+    try {
+      // `_sample_interval: 4` on a stored `count` of 10 means the corrected
+      // total is 40 — the fake never simulates real sampling (see its class
+      // doc), so `answer()` is the only way to produce an interval other
+      // than 1 and prove `forwardToCold` uses `query()`'s corrected output
+      // rather than reading `points[].doubles` itself.
+      engine.answer([
+        {
+          hour: "2026-08-01T10",
+          app: "a",
+          path: "/x",
+          count: "40",
+          _sample_interval: "4",
+        },
+      ]);
+
+      await provider.rollup(dataset, "2026-08-02");
+
+      const result = await provider.coldProvider.query(dataset, {
+        since: "2026-08-01",
+        select: { count: "sum" },
+      });
+      expect(result.rows).toEqual([{ count: 40 }]);
     } finally {
       await alepha.stop();
     }

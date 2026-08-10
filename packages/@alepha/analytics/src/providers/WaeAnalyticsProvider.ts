@@ -109,16 +109,25 @@ const envSchema = z.object({
  * hot window — the same compromise unique visitors already forced on
  * `WaeAnalyticsStore` in `@alepha/sigil`.
  *
- * `rollup`/`prune` delegate to `cold` — but `record()` never writes to `cold`,
- * only to Analytics Engine. Nothing in this class moves a row from hot to
- * cold; that migration (read the folded aggregate off Analytics Engine via
- * `sql().query`, write it into `cold` as an *exact* row even though it
- * started as an *estimate*) is a real, currently unaddressed gap, left for a
- * dedicated scheduled job rather than invented here without a spec for how an
- * estimate becomes a permanent exact number. Delegating still buys two things
- * today: `cold` gets driven on the same schedule as everything else it holds,
- * and both calls stay safe and idempotent no matter when the migration job
- * lands.
+ * `record()` never writes to `cold` — only to Analytics Engine — so `cold`'s
+ * raw tier starts every dataset's life with zero rows for it. Left alone,
+ * `cold.rollup()` would fold a table nothing ever populated: a structural
+ * no-op, not a race, and it would silently lose every hour past Analytics
+ * Engine's own ~90-day retention, which is exactly what a hot/cold split
+ * exists to prevent. {@link rollup} closes that gap itself, immediately
+ * before delegating: it tops up `cold`'s raw tier with Analytics Engine rows
+ * older than `before` (hour granularity, matching what `record()` would have
+ * written directly), *then* calls `cold.rollup()` to fold them — see
+ * {@link forwardToCold}. The rows that cross over stop being estimates the
+ * moment they land in `cold`: Analytics Engine's `_sample_interval`
+ * correction has already been applied by `query()`, so what gets forwarded
+ * is the corrected total, not a raw stored double, and `cold` from then on
+ * treats it as exact — the same one-way trip every folded number already
+ * takes when `OrmAnalyticsProvider` moves a row from its own raw tier to its
+ * own rolled tier.
+ *
+ * {@link prune} still delegates in full, unmodified: nothing needs to be
+ * forwarded to delete it.
  *
  * ## Writes are free of round-trips
  *
@@ -131,6 +140,13 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * Analytics Engine keeps roughly three months.
    */
   public static readonly MAX_HOT_DAYS = 90;
+
+  /**
+   * A `since` boundary older than any real bucket, for the one query in this
+   * class that means "from the beginning" — {@link forwardToCold}'s first
+   * sweep, before `cold` has a watermark of its own.
+   */
+  protected static readonly EPOCH_DAY = "1970-01-01";
 
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
@@ -365,15 +381,155 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   }
 
   /**
-   * Delegated in full to the durable cold provider. See the class doc for
-   * what this does and does not achieve.
+   * Tops up `cold`'s raw tier with Analytics Engine rows older than `before`
+   * (see {@link forwardToCold}), then folds `cold` exactly as
+   * `OrmAnalyticsProvider.rollup()` always has. See the class doc for why
+   * the top-up has to happen here at all.
    */
-  public rollup(dataset: AnalyticsDataset, before: string): Promise<void> {
-    return this.cold.rollup(dataset, before);
+  public async rollup(
+    dataset: AnalyticsDataset,
+    before: string,
+  ): Promise<void> {
+    await this.forwardToCold(dataset, before);
+    await this.cold.rollup(dataset, before);
   }
 
+  /**
+   * Delegated in full — nothing needs to be forwarded to delete it.
+   */
   public prune(dataset: AnalyticsDataset, before: string): Promise<void> {
     return this.cold.prune(dataset, before);
+  }
+
+  /**
+   * Writes Analytics Engine rows older than `before` into `cold`'s raw tier,
+   * so the `cold.rollup()` call right after this one has something to fold.
+   *
+   * Grouped by **hour** (plus every declared dimension) — not day.
+   * `OrmAnalyticsProvider` already owns the hour→day boundary inside its own
+   * `rollup()`, immediately following; routing around it by pre-folding to
+   * day here would duplicate that logic for no reason.
+   *
+   * ## Idempotency
+   *
+   * This runs on a schedule and Analytics Engine keeps every row it has ever
+   * received (there is no delete API), so a naive "forward everything before
+   * `before`" on every sweep would re-add the same corrected totals on top of
+   * themselves via `cold.record()`'s accumulate-upsert. Instead, a watermark
+   * is derived from `cold`'s own state — no new schema, no new API on
+   * `OrmAnalyticsProvider` — via {@link coldWatermark}, and only rows after
+   * it are forwarded.
+   *
+   * This is also what makes the sequence safe across a crash between this
+   * method and the `cold.rollup()` call that follows it: a row that landed in
+   * `cold`'s raw tier but was never folded still moves the watermark (it is
+   * still the newest row `cold` holds), so the next sweep will not forward it
+   * again — it will just re-run `cold.rollup()`, which is already idempotent.
+   */
+  protected async forwardToCold(
+    dataset: AnalyticsDataset,
+    before: string,
+  ): Promise<void> {
+    const watermark = await this.coldWatermark(dataset);
+    const since = watermark
+      ? AnalyticsBuckets.day(watermark)
+      : WaeAnalyticsProvider.EPOCH_DAY;
+
+    const dimensions = Object.keys(dataset.dimensions.shape).sort();
+    const measures = Object.keys(dataset.measures.shape);
+    const select: Record<string, AnalyticsAggregate> = {};
+    for (const measure of measures) select[measure] = "sum";
+
+    // Reuses this class's own `query()` rather than talking to `sql()`
+    // directly — the sample-interval correction (`aggregateExpression`) and
+    // the dimension/measure name validation both live there, and forwarded
+    // rows have to carry the same corrected totals a caller querying
+    // Analytics Engine directly would see, not a raw stored double.
+    const result = await this.query(dataset, {
+      since,
+      groupBy: ["hour", ...dimensions],
+      select,
+    });
+
+    const boundary = AnalyticsBuckets.day(before);
+    const rows: AnalyticsRow[] = [];
+    for (const row of result.rows) {
+      const hour = String(row.hour);
+      if (watermark && this.isForwarded(hour, watermark)) continue;
+      if (AnalyticsBuckets.day(hour) >= boundary) continue;
+
+      const forwarded: Record<string, string | number> & { hour: string } = {
+        hour,
+      };
+      for (const name of dimensions) forwarded[name] = row[name];
+      for (const measure of measures) {
+        forwarded[measure] = Number(row[measure] ?? 0);
+      }
+      rows.push(forwarded);
+    }
+
+    if (rows.length === 0) return;
+    await this.cold.record(dataset, rows);
+  }
+
+  /**
+   * The newest bucket `cold` already holds for `dataset`, across both its
+   * raw and rolled tiers — `OrmAnalyticsProvider.query()` merges them, so
+   * this sees a row whichever tier it currently lives in. `undefined` means
+   * `cold` has nothing yet for this dataset, i.e. forward from the beginning.
+   *
+   * The `select` measure is arbitrary — any declared one — and the
+   * aggregate is `"count"` only because `AnalyticsQuery.select` cannot be
+   * empty; the value itself is discarded. Only `row.hour` (really
+   * whichever bucket is newest, day- or hour-precision — see
+   * {@link isForwarded}) is used.
+   */
+  protected async coldWatermark(
+    dataset: AnalyticsDataset,
+  ): Promise<string | undefined> {
+    const measure = Object.keys(dataset.measures.shape)[0];
+    if (!measure) return undefined;
+
+    const result = await this.cold.query(dataset, {
+      since: WaeAnalyticsProvider.EPOCH_DAY,
+      groupBy: ["hour"],
+      select: { [measure]: "count" },
+      orderBy: { key: "hour", direction: "desc" },
+      limit: 1,
+    });
+
+    const newest = result.rows[0]?.hour;
+    return newest === undefined ? undefined : String(newest);
+  }
+
+  /**
+   * Whether an Analytics Engine `hour` bucket is already covered by
+   * `watermark`.
+   *
+   * `watermark` comes from {@link coldWatermark}, which reads the same
+   * `time_bucket` column `OrmAnalyticsProvider` uses for both of its tiers —
+   * so its precision tells you which tier it came from. A **day**-precision
+   * watermark (`YYYY-MM-DD`) can only have come from an already-rolled row,
+   * which folds a whole day atomically, so it covers every hour of that day.
+   * An **hour**-precision watermark (`YYYY-MM-DDTHH`) means a row survived a
+   * crash between {@link forwardToCold}'s write and the `cold.rollup()` fold
+   * that was supposed to follow it — still in the raw tier, still exactly
+   * one bucket, so a plain string comparison against another hour-precision
+   * value is correct as-is.
+   *
+   * Comparing a day-precision watermark to an hour string with a plain `<=`
+   * would be wrong: `"2026-08-01T14" <= "2026-08-01"` is `false` (the longer
+   * string sorts after any prefix of itself), which would forward every hour
+   * of an already-fully-rolled day right back into `cold` on the next sweep.
+   */
+  protected isForwarded(hour: string, watermark: string): boolean {
+    // `YYYY-MM-DD` is 10 characters; `YYYY-MM-DDTHH` is 13. Nothing shorter
+    // or in between is a bucket `coldWatermark` can produce.
+    const isDayPrecision = watermark.length === 10;
+    if (isDayPrecision) {
+      return AnalyticsBuckets.day(hour) <= watermark;
+    }
+    return hour <= watermark;
   }
 
   /**
