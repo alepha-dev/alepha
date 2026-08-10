@@ -59,7 +59,13 @@ const ProjectSwitcher = () => {
             align="start"
             side="bottom"
             sideOffset={4}
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
+            // No width class here on purpose: `DropdownMenuContent` already
+            // carries `w-(--anchor-width)`, and since `cn()` is tailwind-merge
+            // any `w-*` passed in REPLACES it. This used to pass
+            // `w-(--radix-dropdown-menu-trigger-width)` — a variable nothing in
+            // this codebase defines — which silently overrode the working
+            // anchor width and left the menu on `min-w-56` alone.
+            className="min-w-56"
           >
             <DropdownMenuItem render={<Link href={router.path("home")} />}>
               <Home className="size-4" />

@@ -86,7 +86,12 @@ const QuestDependencyPicker = (props: QuestDependencyPickerProps) => {
           <ChevronsUpDown className="text-muted-foreground ml-2 size-4 shrink-0" />
         </PopoverTrigger>
         <PopoverContent
-          className="w-[--radix-popover-trigger-width] p-0"
+          // `--anchor-width` is what Base UI's positioner exposes for "as wide
+          // as the trigger". The previous `--radix-popover-trigger-width` is
+          // defined by nothing here, so the class collapsed to no width at all
+          // and the popover sat at `PopoverContent`'s base `w-72` regardless of
+          // how wide the trigger was.
+          className="w-(--anchor-width) p-0"
           align="start"
         >
           <Command>
