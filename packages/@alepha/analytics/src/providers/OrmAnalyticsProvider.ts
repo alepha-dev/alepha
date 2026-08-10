@@ -290,6 +290,25 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     return set;
   }
 
+  /**
+   * Resolves a dataset-declared JS field name (a dimension or a measure) to
+   * its real, possibly-renamed SQL column name — the same resolution
+   * {@link accumulateSet} already relies on for the `excluded.<name>` half of
+   * an upsert.
+   *
+   * `readOne` never splices a JS field name into `sql.raw` directly: the
+   * model builder snake-cases multi-word column names (`sigilId` is stored as
+   * `sigil_id`), so a raw splice of the JS name produces valid SQL only by
+   * accident, when a dimension happens to be a single word. Every other name
+   * throws `no such column` — the `where` filter every project-scoped
+   * analytics read applies (`{ sigilId: { inArray: [...] } }`) hit exactly
+   * this.
+   */
+  protected columnName(repository: Repository<ZObject>, name: string): string {
+    const table = repository.table as never as Record<string, NamedColumn>;
+    return table[name].name;
+  }
+
   protected async readOne(
     dataset: AnalyticsDataset,
     repository: Repository<ZObject>,
@@ -303,6 +322,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
 
     for (const [name, filter] of Object.entries(query.where ?? {})) {
       this.assertKnownDimension(dataset, name);
+      const column = this.columnName(repository, name);
 
       if (
         typeof filter === "object" &&
@@ -314,13 +334,13 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
         // is exactly the wrong behaviour here. Short-circuit instead.
         if (filter.inArray.length === 0) return [];
         conditions.push(
-          sql`${sql.raw(name)} IN (${sql.join(
+          sql`${sql.raw(column)} IN (${sql.join(
             filter.inArray.map((value) => sql`${value}`),
             sql`, `,
           )})`,
         );
       } else {
-        conditions.push(sql`${sql.raw(name)} = ${filter}`);
+        conditions.push(sql`${sql.raw(column)} = ${filter}`);
       }
     }
 
@@ -330,7 +350,16 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       if (name === "day") return `substr(${timeColumn}, 1, 10) AS day`;
       if (name === "hour") return `${timeColumn} AS hour`;
       this.assertKnownDimension(dataset, name);
-      return name;
+      const column = this.columnName(repository, name);
+      // The decoded row is looked up by the JS field name everywhere
+      // downstream (`shape`, `query()`'s grouping key, the controller's
+      // `row.<dimension>` reads) — alias back to it whenever Drizzle's real
+      // column name differs, so a renamed column stays invisible past here.
+      // The alias is double-quoted: Postgres folds an unquoted identifier to
+      // lowercase, which would turn `AS appId` into a returned column named
+      // `appid` — a case mismatch the decode shape (keyed on the exact JS
+      // name) would then reject as a missing field.
+      return column === name ? column : `${column} AS "${name}"`;
     });
 
     // Each dimension decodes with its own declared type (a histogram bucket
@@ -347,8 +376,12 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
 
     for (const [measure, aggregate] of Object.entries(query.select)) {
       this.assertKnownMeasure(dataset, measure);
-      const expression = aggregate === "count" ? "COUNT(*)" : `SUM(${measure})`;
-      projections.push(`${expression} AS ${measure}`);
+      const column = this.columnName(repository, measure);
+      const expression = aggregate === "count" ? "COUNT(*)" : `SUM(${column})`;
+      // Quoted for the same reason the dimension alias above is: an
+      // unquoted multi-word alias would fold to lowercase on Postgres and no
+      // longer match `shape`'s exact-case key.
+      projections.push(`${expression} AS "${measure}"`);
       shape[measure] = z.coerce.number();
     }
 
@@ -358,7 +391,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
           ? `substr(${timeColumn}, 1, 10)`
           : name === "hour"
             ? timeColumn
-            : name,
+            : this.columnName(repository, name),
       )
       .join(", ");
 

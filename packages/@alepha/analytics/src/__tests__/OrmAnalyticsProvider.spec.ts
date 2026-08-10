@@ -128,6 +128,56 @@ describe("OrmAnalyticsProvider", () => {
     }
   });
 
+  it("filters and groups on a multi-word dimension name, which the model builder stores snake_cased", async () => {
+    // Regression guard: `readOne` used to splice the dataset's JS field name
+    // (`sigilId`) straight into `sql.raw` for `where` and `groupBy`, instead
+    // of resolving it through the table the way `accumulateSet` already did
+    // for upserts. That works by accident for a single-word dimension like
+    // `app` (its snake_case column name is identical), and throws `no such
+    // column` for any multi-word one — exactly what every Lore Insights read
+    // hit via `{ sigilId: { inArray: [...] } }`, on every single query,
+    // because a sigil-scoped analytics dataset has no other way to filter by
+    // app.
+    const multiWordDataset = {
+      name: "orm_multiword_views",
+      index: "appId",
+      dimensions: z.object({ appId: z.string(), path: z.string() }),
+      measures: z.object({ count: z.number() }),
+    };
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(multiWordDataset);
+    await alepha.start();
+
+    try {
+      await provider.record(multiWordDataset, [
+        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 2 },
+        { hour: "2026-08-09T10", appId: "b", path: "/x", count: 5 },
+      ]);
+
+      const filtered = await provider.query(multiWordDataset, {
+        since: "2026-08-09",
+        where: { appId: { inArray: ["a"] } },
+        select: { count: "sum" },
+      });
+      expect(filtered.rows).toEqual([{ count: 2 }]);
+
+      const grouped = await provider.query(multiWordDataset, {
+        since: "2026-08-09",
+        groupBy: ["appId"],
+        select: { count: "sum" },
+        orderBy: { key: "appId", direction: "asc" },
+      });
+      expect(grouped.rows).toEqual([
+        { appId: "a", count: 2 },
+        { appId: "b", count: 5 },
+      ]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
   it("returns no rows rather than a null-valued row when nothing matches", async () => {
     // Without a `GROUP BY`, `SUM(...)` over zero matching rows still
     // returns exactly one row with a NULL total in plain SQL — but the
