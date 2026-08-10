@@ -7,10 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@alepha/ui/components/ui/select";
+import { $createHeadingNode, $createQuoteNode } from "@lexical/rich-text";
 import {
-  applyBlockType$,
   applyListType$,
   type BlockType,
+  convertSelectionToNode$,
   currentBlockType$,
   currentFormat$,
   currentListType$,
@@ -22,6 +23,7 @@ import {
   viewMode$,
 } from "@mdxeditor/editor";
 import { useI18n } from "alepha/react/i18n";
+import { $createParagraphNode } from "lexical";
 import {
   Bold,
   Code,
@@ -87,8 +89,37 @@ const FolioToolbar = (props: FolioToolbarProps): ReactElement => {
   const format = useCellValue(currentFormat$);
   const blockType = useCellValue(currentBlockType$);
   const listType = useCellValue(currentListType$);
-  const applyBlockType = usePublisher(applyBlockType$);
+  // NOT `applyBlockType$`, which is what this used to publish to and is the
+  // reason the control never worked for any of its five values. That signal is
+  // exported and correctly typed, but it is declared `Signal()` with no
+  // subscriber anywhere in the package — publishing to it is a no-op. Its
+  // neighbour `applyListType$` two lines down IS wired (`Signal((r) => …)`),
+  // which is what made the asymmetry so easy to miss.
+  //
+  // `convertSelectionToNode$` is the signal MDXEditor's own BlockTypeSelect
+  // uses: it takes a node factory, runs `$setBlocksType` on the selection and
+  // restores focus afterwards, so the Select needs no focus handling of its own.
+  const convertSelectionToNode = usePublisher(convertSelectionToNode$);
   const applyListType = usePublisher(applyListType$);
+
+  const applyBlockType = (value: BlockType) => {
+    // `BlockType` includes `""` — the caret sitting somewhere with no block
+    // type of its own. There is nothing to convert to, and MDXEditor's own
+    // select ignores it too.
+    if (value === "") {
+      return;
+    }
+    if (value === "quote") {
+      convertSelectionToNode(() => $createQuoteNode());
+      return;
+    }
+    if (value === "paragraph") {
+      convertSelectionToNode(() => $createParagraphNode());
+      return;
+    }
+    // h1/h2/h3 — the only other values `BLOCK_TYPES` offers.
+    convertSelectionToNode(() => $createHeadingNode(value));
+  };
 
   const label = (key: string): string => String(tr(key));
   const run = (id: keyof FolioActionHandlers) => () => props.handlers[id]();
